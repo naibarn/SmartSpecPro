@@ -44,6 +44,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -66,7 +67,12 @@ import { verticalDramaSeriesRouter } from "../verticalDramaSeries";
 
 const router = verticalDramaSeriesRouter as unknown as Record<string, Function>;
 
-function ctx(overrides: Partial<{ tenantId: string | null; user: { id: number; role: string } }> = {}) {
+function ctx(
+  overrides: Partial<{
+    tenantId: string | null;
+    user: { id: number; role: string };
+  }> = {}
+) {
   return {
     tenantId: "tenant-1",
     user: { id: 42, role: "user" },
@@ -110,7 +116,7 @@ describe("deleteSeries — ownership guard", () => {
       router.deleteSeries({
         ctx: ctx(),
         input: { seriesId: "999", confirmName: "anything" },
-      }),
+      })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
     expect(mockDb.transaction).not.toHaveBeenCalled();
@@ -121,7 +127,7 @@ describe("deleteSeries — ownership guard", () => {
       router.deleteSeries({
         ctx: ctx(),
         input: { seriesId: "not-a-number", confirmName: "anything" },
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
     expect(mockDb.select).not.toHaveBeenCalled();
@@ -137,7 +143,7 @@ describe("deleteSeries — confirmName guard", () => {
       router.deleteSeries({
         ctx: ctx(),
         input: { seriesId: "10", confirmName: "Corporate betrayal" }, // wrong case
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
     expect(mockDb.transaction).not.toHaveBeenCalled();
@@ -150,7 +156,7 @@ describe("deleteSeries — confirmName guard", () => {
       router.deleteSeries({
         ctx: ctx(),
         input: { seriesId: "10", confirmName: "Corporate" },
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
     expect(mockDb.transaction).not.toHaveBeenCalled();
@@ -177,7 +183,9 @@ describe("deleteSeries — happy path", () => {
     });
 
     const tx = { select: txSelect, delete: txDelete };
-    mockDb.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn(tx));
+    mockDb.transaction.mockImplementation(
+      async (fn: (tx: unknown) => unknown) => fn(tx)
+    );
 
     const result = await router.deleteSeries({
       ctx: ctx(),
@@ -211,7 +219,7 @@ describe("deleteSeries — happy path", () => {
       router.deleteSeries({
         ctx: ctx({ tenantId: "other-tenant" }),
         input: { seriesId: "10", confirmName: "Corporate Betrayal" },
-      }),
+      })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
     expect(mockDb.transaction).not.toHaveBeenCalled();

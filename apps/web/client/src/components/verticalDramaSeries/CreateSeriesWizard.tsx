@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
+import { VerticalDramaPromptExpansionDialog } from "@/components/verticalDramaSeries/VerticalDramaPromptExpansionDialog";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import {
   Dialog,
@@ -109,13 +110,29 @@ import type {
 } from "@shared/verticalDramaSeries/seriesLookLock";
 import type { VerticalDramaVisualNarrativeProfile } from "@shared/verticalDramaSeries/visualNarrativeProfile";
 import {
+  createSeriesFormatConfig,
+  type VdSeriesFormatKind,
+} from "@shared/verticalDramaSeries/seriesFormat";
+import {
+  VD_SERIES_PROFILE_IDS,
+  getSeriesProfile,
+  listSeriesProfiles,
+  projectProfileToLegacy,
+  type VdSeriesProfileId,
+} from "@shared/verticalDramaSeries/seriesProfile";
+import {
   DRAFT_QC_IMMUTABLE_PRESERVED_PATHS,
   fingerprintDraftQualityQcCandidate,
   type DraftQualityQcResultSnapshot,
 } from "@shared/verticalDramaSeries/draftQualityQc";
 import { VerticalDramaBlendReportPanel } from "./VerticalDramaBlendReportPanel";
 import { VerticalDramaDraftQualityQcPanel } from "./VerticalDramaDraftQualityQcPanel";
-import { SeriesLookLockPicker } from "./SeriesLookLockPicker";
+import { SeriesProfilePicker } from "./SeriesProfilePicker";
+import { StorySourcesHub } from "./StorySourcesHub";
+import {
+  NEWS_REPORT_MODES,
+  type NewsReportMode,
+} from "@shared/verticalDramaSeries/newsReport";
 import { DisclosureBadge } from "./VerticalDramaSeriesMemoryStateTab";
 import {
   carryOverAvailabilityCopy,
@@ -273,6 +290,12 @@ interface WizardState {
   lookLockMode: VdLookLockMode;
   lookLockGenreKey?: VdLookLockGenre;
   visualNarrativeEnabled: boolean;
+  seriesFormatKind: VdSeriesFormatKind;
+  seriesProfileId?: VdSeriesProfileId;
+  newsReportMode?: NewsReportMode;
+  sourcePackId?: number;
+  sourceDraftSessionId?: string;
+  sourcePackAttachIdempotencyKey?: string;
 }
 
 const INITIAL_WIZARD: WizardState = {
@@ -307,16 +330,76 @@ const INITIAL_WIZARD: WizardState = {
   uploadedReferences: [],
   uploadedSummary: "",
   defaultModelId: null,
-  lookLockMode: "none",
-  lookLockGenreKey: undefined,
-  // Opt-in by design: selecting a look must not silently alter story planning
-  // for creators who are continuing the legacy visual-only workflow.
-  visualNarrativeEnabled: false,
+  lookLockMode: "genre",
+  lookLockGenreKey: "drama_romance",
+  // Series Profile is the source of truth; these fields are compatibility
+  // projections for the legacy look-lock payload.
+  visualNarrativeEnabled: true,
+  seriesFormatKind: "fiction_drama",
+  seriesProfileId: "drama_romance",
+  newsReportMode: "developing",
+  sourcePackId: undefined,
+  sourceDraftSessionId: undefined,
+  sourcePackAttachIdempotencyKey: undefined,
 };
 
 const CREATE_SERIES_WORKSPACE_STORAGE_KEY =
   "smartspec.vertical-drama.create-workspace.v1";
+const SOURCE_PACK_POINTERS_STORAGE_KEY =
+  "smartspec.vertical-drama.source-pack-pointers.v1";
+const PLANNING_SERIES_PLACEHOLDER_TITLE = "กำลังวางแผนซีรีย์ใหม่";
 const WORKSPACE_RECOVERY_WINDOW_MS = 30_000;
+
+export interface PersistedSourcePackPointer {
+  draftSessionId?: string;
+  sourcePackId?: number;
+  profileId?: string;
+  savedAt: number;
+}
+
+export type SourcePackPointerLike = {
+  draftSessionId?: string;
+  sourcePackId?: number;
+  profileId?: string;
+  savedAt?: number | string;
+};
+
+/**
+ * Merge the durable Series pointer with the browser fallback. The Series is
+ * authoritative when both exist; sessionStorage only fills fields written by
+ * an older client or during a partial bootstrap callback.
+ */
+export function mergeSourcePackPointers(
+  primary: SourcePackPointerLike | null | undefined,
+  fallback: SourcePackPointerLike | null | undefined
+): PersistedSourcePackPointer | null {
+  const merged = { ...fallback, ...primary };
+  const sourcePackId = Number(merged.sourcePackId);
+  const draftSessionId =
+    typeof merged.draftSessionId === "string" && merged.draftSessionId.trim()
+      ? merged.draftSessionId
+      : undefined;
+  const hasValidPackId = Number.isInteger(sourcePackId) && sourcePackId > 0;
+  if (!draftSessionId && !hasValidPackId) return null;
+
+  const rawSavedAt = primary?.savedAt ?? fallback?.savedAt;
+  const savedAt =
+    typeof rawSavedAt === "number"
+      ? rawSavedAt
+      : typeof rawSavedAt === "string"
+        ? Date.parse(rawSavedAt)
+        : Date.now();
+  return {
+    ...(draftSessionId ? { draftSessionId } : {}),
+    ...(hasValidPackId ? { sourcePackId } : {}),
+    ...(typeof merged.profileId === "string" && merged.profileId.trim()
+      ? { profileId: merged.profileId }
+      : {}),
+    savedAt: Number.isFinite(savedAt) ? savedAt : Date.now(),
+  };
+}
+
+type PersistedSourcePackPointerMap = Record<string, PersistedSourcePackPointer>;
 
 interface PersistedCreateSeriesWorkspace {
   version: 1;
@@ -404,6 +487,192 @@ function persistCreateSeriesWorkspace(
   } catch {
     // The server-side job pointers remain the authoritative recovery path.
   }
+}
+
+function readPersistedSourcePackPointers(): PersistedSourcePackPointerMap {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.sessionStorage.getItem(SOURCE_PACK_POINTERS_STORAGE_KEY);
+    if (!raw) return {};
+    const value = JSON.parse(raw) as Record<string, unknown>;
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return {};
+    }
+    return Object.fromEntries(
+      Object.entries(value).flatMap(([seriesId, pointer]) => {
+        if (!pointer || typeof pointer !== "object" || Array.isArray(pointer)) {
+          return [];
+        }
+        const candidate = pointer as Partial<PersistedSourcePackPointer>;
+        const sourcePackId = Number(candidate.sourcePackId);
+        const draftSessionId =
+          typeof candidate.draftSessionId === "string"
+            ? candidate.draftSessionId
+            : undefined;
+        if (
+          !seriesId ||
+          (!draftSessionId &&
+            (!Number.isInteger(sourcePackId) || sourcePackId <= 0))
+        ) {
+          return [];
+        }
+        return [
+          [
+            seriesId,
+            {
+              draftSessionId,
+              ...(Number.isInteger(sourcePackId) && sourcePackId > 0
+                ? { sourcePackId }
+                : {}),
+              ...(typeof candidate.profileId === "string"
+                ? { profileId: candidate.profileId }
+                : {}),
+              savedAt:
+                typeof candidate.savedAt === "number"
+                  ? candidate.savedAt
+                  : Date.now(),
+            },
+          ],
+        ];
+      })
+    ) as PersistedSourcePackPointerMap;
+  } catch {
+    return {};
+  }
+}
+
+export function readPersistedSourcePackPointer(
+  seriesId?: string
+): PersistedSourcePackPointer | null {
+  if (!seriesId) return null;
+  return readPersistedSourcePackPointers()[seriesId] ?? null;
+}
+
+export function persistSourcePackPointer(
+  seriesId: string | undefined,
+  pointer: Omit<PersistedSourcePackPointer, "savedAt"> & {
+    savedAt?: number;
+  }
+): void {
+  if (!seriesId || typeof window === "undefined") return;
+  try {
+    const pointers = readPersistedSourcePackPointers();
+    const previous = pointers[seriesId];
+    pointers[seriesId] = {
+      ...previous,
+      ...pointer,
+      savedAt: pointer.savedAt ?? Date.now(),
+    };
+    // Session and pack mutations complete independently. Preserve the value
+    // written by the other mutation when this update only carries one side of
+    // the pointer; otherwise a late callback can make a persisted slot look
+    // like a fresh/default source pack after the wizard remounts.
+    if (
+      pointer.draftSessionId === undefined &&
+      previous?.draftSessionId !== undefined
+    ) {
+      pointers[seriesId].draftSessionId = previous.draftSessionId;
+    }
+    if (
+      pointer.sourcePackId === undefined &&
+      previous?.sourcePackId !== undefined
+    ) {
+      pointers[seriesId].sourcePackId = previous.sourcePackId;
+    }
+    if (pointer.profileId === undefined && previous?.profileId !== undefined) {
+      pointers[seriesId].profileId = previous.profileId;
+    }
+    window.sessionStorage.setItem(
+      SOURCE_PACK_POINTERS_STORAGE_KEY,
+      JSON.stringify(pointers)
+    );
+  } catch {
+    // The server-side staged source pack remains authoritative.
+  }
+}
+
+export function clearPersistedSourcePackPointer(seriesId?: string): void {
+  if (!seriesId || typeof window === "undefined") return;
+  try {
+    const pointers = readPersistedSourcePackPointers();
+    delete pointers[seriesId];
+    if (Object.keys(pointers).length === 0) {
+      window.sessionStorage.removeItem(SOURCE_PACK_POINTERS_STORAGE_KEY);
+    } else {
+      window.sessionStorage.setItem(
+        SOURCE_PACK_POINTERS_STORAGE_KEY,
+        JSON.stringify(pointers)
+      );
+    }
+  } catch {
+    // Storage can be unavailable in privacy-restricted browser contexts.
+  }
+}
+
+/**
+ * Restore source-pack identity when the planning page is remounted.
+ *
+ * A planning page already has a Series identity, so its source-pack pointer
+ * is authoritative for this page. The generic create-workspace can contain a
+ * stale form from another series and must not be allowed to make the pointer
+ * look like a profile mismatch. When the pointer contains a current profile,
+ * restore that profile as well so the required source-pack UI is mounted again.
+ */
+export function restoreSourcePackPointerIntoWizard(
+  initialForm: WizardState,
+  pointer: PersistedSourcePackPointer | null,
+  planningSeriesId?: string
+): WizardState {
+  if (!pointer) return initialForm;
+
+  const pointerProfileId = VD_SERIES_PROFILE_IDS.includes(
+    pointer.profileId as VdSeriesProfileId
+  )
+    ? (pointer.profileId as VdSeriesProfileId)
+    : undefined;
+  const pointerMatchesProfile =
+    Boolean(planningSeriesId) ||
+    !pointer.profileId ||
+    pointer.profileId === (initialForm.seriesProfileId ?? "drama_romance");
+  if (!pointerMatchesProfile) return initialForm;
+
+  const profile = pointerProfileId
+    ? getSeriesProfile(pointerProfileId)
+    : undefined;
+  return {
+    ...initialForm,
+    ...(planningSeriesId && pointerProfileId
+      ? {
+          seriesProfileId: pointerProfileId,
+          seriesFormatKind:
+            profile?.seriesFormatKind ?? initialForm.seriesFormatKind,
+        }
+      : {}),
+    ...(pointer.draftSessionId
+      ? { sourceDraftSessionId: pointer.draftSessionId }
+      : {}),
+    ...(pointer.sourcePackId ? { sourcePackId: pointer.sourcePackId } : {}),
+  };
+}
+
+/**
+ * A planning Series must never bootstrap from the generic create-workspace.
+ * That workspace is intentionally shared by the create flow and may contain
+ * the source-pack identity of another series. Clear only the source-pack
+ * fields here; the durable Series pointer is restored separately once it is
+ * available from the server.
+ */
+export function preparePlanningSeriesInitialForm(
+  initialForm: WizardState,
+  planningSeriesId?: string
+): WizardState {
+  if (!planningSeriesId) return initialForm;
+  return {
+    ...initialForm,
+    sourcePackId: undefined,
+    sourceDraftSessionId: undefined,
+    sourcePackAttachIdempotencyKey: undefined,
+  };
 }
 
 /**
@@ -630,6 +899,8 @@ export function resolveCarryOverCharacters(
 export function CreateSeriesWizard({
   open,
   lang,
+  presentation = "modal",
+  planningSeriesId,
   recoveryJobId,
   recoverySessionId,
   recoveryQcRunId,
@@ -638,29 +909,127 @@ export function CreateSeriesWizard({
 }: {
   open: boolean;
   lang: "th" | "en";
+  presentation?: "modal" | "page";
+  planningSeriesId?: string;
   recoveryJobId?: string;
   recoverySessionId?: string;
   recoveryQcRunId?: string;
   onOpenChange: (open: boolean) => void;
   onCreated: (seriesId: string) => void;
 }) {
+  const utils = trpc.useUtils();
   const initialWorkspaceRef = useRef<
     PersistedCreateSeriesWorkspace | null | undefined
   >(undefined);
   if (initialWorkspaceRef.current === undefined) {
     initialWorkspaceRef.current = readPersistedCreateSeriesWorkspace();
   }
-  const initialWorkspace =
-    recoverySessionId &&
-    initialWorkspaceRef.current?.draftSessionId !== recoverySessionId
+  // The browser workspace is a convenience cache for the standalone "New
+  // Series" modal only. A selected Series must start from its owner-scoped
+  // server snapshot/ledger; otherwise a refresh or sidebar switch can briefly
+  // render the previous Series' form, composition job, or QC run before the
+  // durable Series pointer arrives.
+  const initialWorkspace = planningSeriesId
+    ? null
+    : recoverySessionId &&
+        initialWorkspaceRef.current?.draftSessionId !== recoverySessionId
       ? null
       : initialWorkspaceRef.current;
+  const initialSourcePackPointerRef = useRef<
+    PersistedSourcePackPointer | null | undefined
+  >(undefined);
+  if (initialSourcePackPointerRef.current === undefined) {
+    initialSourcePackPointerRef.current =
+      readPersistedSourcePackPointer(planningSeriesId);
+  }
+  const initialForm = preparePlanningSeriesInitialForm(
+    initialWorkspace?.form ?? INITIAL_WIZARD,
+    planningSeriesId
+  );
+  const initialSourcePackPointer = initialSourcePackPointerRef.current;
+  const restoredForm = restoreSourcePackPointerIntoWizard(
+    initialForm,
+    initialSourcePackPointer,
+    planningSeriesId
+  );
   const [stepIndex, setStepIndex] = useState(
     () => initialWorkspace?.stepIndex ?? 0
   );
-  const [form, setForm] = useState<WizardState>(
-    () => initialWorkspace?.form ?? INITIAL_WIZARD
+  const [form, setForm] = useState<WizardState>(() => restoredForm);
+  const initialDraftSessionId =
+    recoverySessionId ??
+    initialWorkspace?.draftSessionId ??
+    createDraftSessionId();
+  const [draftSessionId, setDraftSessionId] = useState(initialDraftSessionId);
+
+  const planningSourcePackPointerQuery =
+    trpc.verticalDramaSeries.getPlanningSourcePackPointer.useQuery(
+      { seriesId: planningSeriesId ?? "" },
+      {
+        enabled: open && Boolean(planningSeriesId),
+        staleTime: 0,
+        refetchOnMount: "always",
+      }
+    );
+  const planningSourcePackPointer = useMemo(
+    () =>
+      mergeSourcePackPointers(
+        planningSourcePackPointerQuery.data?.pointer,
+        planningSeriesId
+          ? readPersistedSourcePackPointer(planningSeriesId)
+          : null
+      ),
+    [planningSeriesId, planningSourcePackPointerQuery.data?.pointer]
   );
+  const planningSourcePackPointerError = planningSourcePackPointerQuery.isError
+    ? planningSourcePackPointerQuery.error?.message ||
+      (lang === "th"
+        ? "อ่านข้อมูลสื่อของซีรีส์ไม่สำเร็จ กรุณาลองใหม่"
+        : "Could not restore this series' source media. Please retry.")
+    : null;
+
+  const planningSnapshot = planningSourcePackPointerQuery.data;
+  const planningState = planningSnapshot?.planningState;
+  const planningDraftSessionId =
+    planningState?.draftSessionId ??
+    planningState?.legacyRecovery?.draftSessionId;
+  // A selected Series is the authoritative workspace identity. Do not query
+  // the browser's generic session until the Series snapshot has been fetched;
+  // otherwise React Query can briefly hydrate the previous Series' Draft/QC
+  // while the new Series route is still resolving its durable pointer.
+  const workspaceDraftSessionId = planningDraftSessionId ?? draftSessionId;
+  const planningSnapshotHydratedKeyRef = useRef<string | null>(null);
+
+  // The planning shell can provide its Series ID after this component has
+  // mounted (for example when the user switches tabs). The initial read above
+  // intentionally remains cheap, but it must not be the only restore attempt;
+  // otherwise the wizard keeps the default form after a remount.
+  useEffect(() => {
+    if (!open || !planningSeriesId) return;
+    const pointer = mergeSourcePackPointers(
+      planningSourcePackPointer,
+      readPersistedSourcePackPointer(planningSeriesId)
+    );
+    if (!pointer) return;
+
+    setForm(previous => {
+      const next = restoreSourcePackPointerIntoWizard(
+        previous,
+        pointer,
+        planningSeriesId
+      );
+      if (
+        next.seriesProfileId === previous.seriesProfileId &&
+        next.seriesFormatKind === previous.seriesFormatKind &&
+        next.sourceDraftSessionId === previous.sourceDraftSessionId &&
+        next.sourcePackId === previous.sourcePackId
+      ) {
+        return previous;
+      }
+      return next;
+    });
+  }, [open, planningSeriesId, planningSourcePackPointer]);
+
   const [presetSearch, setPresetSearch] = useState("");
   const [mixPresetIds, setMixPresetIds] = useState<string[]>(
     () => initialWorkspace?.mixPresetIds ?? []
@@ -719,16 +1088,20 @@ export function CreateSeriesWizard({
   );
   const [draftQcPreviousResultState, setDraftQcPreviousResult] =
     useState<DraftQualityQcResultSnapshot | null>(null);
-  const [draftQcSelectedCandidateFingerprint, setDraftQcSelectedCandidateFingerprint] =
-    useState<string | null>(null);
+  const [
+    draftQcSelectedCandidateFingerprint,
+    setDraftQcSelectedCandidateFingerprint,
+  ] = useState<string | null>(null);
   const [draftQcSelectedCandidateDraft, setDraftQcSelectedCandidateDraft] =
     useState<SynthesizedGenrePresetDraft | null>(null);
   const [draftQcHistoricalRunId, setDraftQcHistoricalRunId] = useState<
     string | null
   >(null);
-  const draftQcSessionId = useRef(
-    recoverySessionId ?? initialWorkspace?.draftSessionId ?? createDraftSessionId()
-  );
+  const draftQcSessionId = useRef(initialDraftSessionId);
+  const setDraftSession = (next: string) => {
+    draftQcSessionId.current = next;
+    setDraftSessionId(next);
+  };
   const synthesisRequestCounter = useRef(
     initialWorkspace?.synthesisRequestCounter ?? 0
   );
@@ -737,6 +1110,10 @@ export function CreateSeriesWizard({
     string | null
   >(null);
   const [recoveryFormHydratedId, setRecoveryFormHydratedId] = useState<
+    string | null
+  >(null);
+  const sourceSessionAttemptedRef = useRef(false);
+  const [sourcePackBootstrapError, setSourcePackBootstrapError] = useState<
     string | null
   >(null);
 
@@ -760,11 +1137,21 @@ export function CreateSeriesWizard({
     ]
   );
 
+  // These refs are consumed by the Draft workspace query's refetch policy.
+  // They must be initialized before the query is created because TanStack
+  // Query may evaluate `refetchInterval` during option setup/render.
+  const workspaceRestoreAttempted = useRef(false);
+  const workspaceRecoveryStartedAt = useRef<number | null>(null);
+
   const draftWorkspaceStatusQuery =
     trpc.verticalDramaSeries.getDraftWorkspaceStatus.useQuery(
-      { draftSessionId: draftQcSessionId.current },
+      planningSeriesId
+        ? { seriesId: planningSeriesId }
+        : { draftSessionId: workspaceDraftSessionId },
       {
-        enabled: open,
+        enabled:
+          open &&
+          (!planningSeriesId || planningSourcePackPointerQuery.isFetched),
         refetchInterval: query => {
           const compositionStatus = query.state.data?.composition?.status;
           const qcStatus = query.state.data?.qc?.status;
@@ -907,6 +1294,179 @@ export function CreateSeriesWizard({
 
   const uploadMutation = trpc.ai.upload.useMutation();
 
+  const planningSourcePackPointerMutation =
+    trpc.verticalDramaSeries.persistPlanningSourcePackPointer.useMutation();
+  const planningSnapshotMutation =
+    trpc.verticalDramaSeries.updatePlanningSeriesSnapshot.useMutation({
+      onSuccess: data => {
+        void utils.verticalDramaSeries.get.invalidate({
+          seriesId: planningSeriesId ?? "",
+        });
+        void utils.verticalDramaSeries.list.invalidate();
+      },
+    });
+
+  const sourceSessionMutation =
+    trpc.verticalDramaSeries.createSourcePackSession.useMutation({
+      onSuccess: data => {
+        setSourcePackBootstrapError(null);
+        const draftSessionId = String(data.draftSessionId);
+        persistSourcePackPointer(planningSeriesId, {
+          draftSessionId,
+          profileId: form.seriesProfileId ?? "drama_romance",
+        });
+        if (planningSeriesId) {
+          planningSourcePackPointerMutation.mutate({
+            seriesId: planningSeriesId,
+            draftSessionId,
+            profileId: form.seriesProfileId ?? "drama_romance",
+          });
+        }
+        setForm(prev => ({
+          ...prev,
+          sourceDraftSessionId: draftSessionId,
+        }));
+      },
+      onError: error => {
+        setSourcePackBootstrapError(error.message);
+        toast.error(error.message);
+      },
+    });
+  const sourcePackMutation =
+    trpc.verticalDramaSeries.getOrCreateSourcePack.useMutation({
+      onSuccess: data => {
+        setSourcePackBootstrapError(null);
+        const sourcePackId = Number(data.pack.id);
+        persistSourcePackPointer(planningSeriesId, {
+          sourcePackId,
+          draftSessionId: form.sourceDraftSessionId,
+          profileId: form.seriesProfileId ?? "drama_romance",
+        });
+        if (planningSeriesId) {
+          planningSourcePackPointerMutation.mutate({
+            seriesId: planningSeriesId,
+            sourcePackId,
+            draftSessionId: form.sourceDraftSessionId,
+            profileId: form.seriesProfileId ?? "drama_romance",
+          });
+        }
+        setForm(prev => ({ ...prev, sourcePackId }));
+      },
+      onError: error => {
+        setSourcePackBootstrapError(error.message);
+        toast.error(error.message);
+      },
+    });
+
+  const selectedProfile = getSeriesProfile(
+    form.seriesProfileId ?? "drama_romance"
+  );
+  const sourceReadinessQuery =
+    trpc.verticalDramaSeries.getSourcePackReadiness.useQuery(
+      { packId: form.sourcePackId ?? 0 },
+      {
+        enabled:
+          open &&
+          selectedProfile.sourceGatePolicy === "required" &&
+          Boolean(form.sourcePackId),
+      }
+    );
+  useEffect(() => {
+    const persistedPointer = planningSeriesId
+      ? mergeSourcePackPointers(
+          planningSourcePackPointer,
+          readPersistedSourcePackPointer(planningSeriesId)
+        )
+      : null;
+    if (
+      !open ||
+      selectedProfile.sourceGatePolicy !== "required" ||
+      form.sourceDraftSessionId ||
+      persistedPointer ||
+      planningSourcePackPointerQuery.isLoading ||
+      planningSourcePackPointerQuery.isError ||
+      sourceSessionMutation.isPending ||
+      sourceSessionAttemptedRef.current
+    ) {
+      if (!open || selectedProfile.sourceGatePolicy !== "required") {
+        sourceSessionAttemptedRef.current = false;
+      }
+      return;
+    }
+    sourceSessionAttemptedRef.current = true;
+    sourceSessionMutation.mutate({});
+  }, [
+    open,
+    selectedProfile.sourceGatePolicy,
+    form.sourceDraftSessionId,
+    planningSourcePackPointer,
+    planningSourcePackPointerQuery.isLoading,
+    sourceSessionMutation.isPending,
+  ]);
+
+  const retrySourcePackBootstrap = () => {
+    sourceSessionAttemptedRef.current = false;
+    setSourcePackBootstrapError(null);
+    void planningSourcePackPointerQuery.refetch();
+  };
+  const sourcePackBootstrapErrorForUi =
+    sourcePackBootstrapError ?? planningSourcePackPointerError;
+
+  useEffect(() => {
+    if (
+      !open ||
+      !planningSeriesId ||
+      selectedProfile.sourceGatePolicy !== "required" ||
+      (!form.sourceDraftSessionId && !form.sourcePackId)
+    ) {
+      return;
+    }
+    persistSourcePackPointer(planningSeriesId, {
+      draftSessionId: form.sourceDraftSessionId,
+      sourcePackId: form.sourcePackId,
+      profileId: form.seriesProfileId ?? "drama_romance",
+    });
+    planningSourcePackPointerMutation.mutate({
+      seriesId: planningSeriesId,
+      ...(form.sourceDraftSessionId
+        ? { draftSessionId: form.sourceDraftSessionId }
+        : {}),
+      ...(form.sourcePackId ? { sourcePackId: form.sourcePackId } : {}),
+      profileId: form.seriesProfileId ?? "drama_romance",
+    });
+  }, [
+    open,
+    planningSeriesId,
+    selectedProfile.sourceGatePolicy,
+    form.sourceDraftSessionId,
+    form.sourcePackId,
+    form.seriesProfileId,
+    planningSourcePackPointerMutation.mutate,
+  ]);
+
+  useEffect(() => {
+    if (
+      !open ||
+      selectedProfile.sourceGatePolicy !== "required" ||
+      !form.sourceDraftSessionId ||
+      form.sourcePackId ||
+      sourcePackMutation.isPending
+    ) {
+      return;
+    }
+    sourcePackMutation.mutate({
+      draftSessionId: form.sourceDraftSessionId,
+      profileId: selectedProfile.profileId,
+    });
+  }, [
+    open,
+    selectedProfile.profileId,
+    selectedProfile.sourceGatePolicy,
+    form.sourceDraftSessionId,
+    form.sourcePackId,
+    sourcePackMutation.isPending,
+  ]);
+
   const draftCompositionMutation =
     trpc.verticalDramaSeries.startDraftComposition.useMutation({
       onSuccess: data => {
@@ -964,18 +1524,17 @@ export function CreateSeriesWizard({
         }
       )
     : { data: undefined };
-  const recoveredRequestJson = (recoveryJobQuery.data?.job.requestJson ?? {}) as
-    | Record<string, unknown>
-    | undefined;
-  const recoveredRequestSynthesis =
-    (recoveredRequestJson?.synthesis ?? {}) as Record<string, unknown>;
+  const recoveredRequestJson = (recoveryJobQuery.data?.job.requestJson ??
+    {}) as Record<string, unknown> | undefined;
+  const recoveredRequestSynthesis = (recoveredRequestJson?.synthesis ??
+    {}) as Record<string, unknown>;
   const recoveredPremiseMissing = Boolean(
     recoveryJobId &&
-      recoveryJobQuery.data?.job &&
-      !(
-        typeof recoveredRequestSynthesis.userPremise === "string" &&
-        recoveredRequestSynthesis.userPremise.trim()
-      )
+    recoveryJobQuery.data?.job &&
+    !(
+      typeof recoveredRequestSynthesis.userPremise === "string" &&
+      recoveredRequestSynthesis.userPremise.trim()
+    )
   );
 
   // A selected Inbox job carries the original server-approved request snapshot.
@@ -1003,6 +1562,8 @@ export function CreateSeriesWizard({
       typeof synthesis.targetEpisodeCount === "number"
         ? String(synthesis.targetEpisodeCount)
         : undefined;
+    const defaultModelId =
+      synthesis.defaultModelId === null ? null : text(synthesis.defaultModelId);
     recoveryHydrationPendingRef.current = recoveryJobId;
     const recoveredDraftIsUsable =
       typeof draft.title === "string" &&
@@ -1038,6 +1599,7 @@ export function CreateSeriesWizard({
         ...(premise ? { userPremise: premise } : {}),
         ...(tone ? { tone } : {}),
         ...(targetEpisodeCount ? { targetEpisodeCount } : {}),
+        ...(defaultModelId !== undefined ? { defaultModelId } : {}),
       };
       if (!recoveredDraftIsUsable) return hydrated;
       return mergeSynthesizedDraftIntoWizardForm(
@@ -1061,14 +1623,14 @@ export function CreateSeriesWizard({
         )
       : [];
     const selections = Array.isArray(synthesis.selections)
-      ? synthesis.selections.filter(value => {
+      ? (synthesis.selections.filter(value => {
           if (!value || typeof value !== "object") return false;
           const item = value as Record<string, unknown>;
           return (
             typeof item.presetId === "string" &&
             [1, 2, 3, 4, 5].includes(item.weight as number)
           );
-        }) as Array<{ presetId: string; weight: 1 | 2 | 3 | 4 | 5 }>
+        }) as Array<{ presetId: string; weight: 1 | 2 | 3 | 4 | 5 }>)
       : [];
     if (selectedPresetIds.length > 0) setMixPresetIds(selectedPresetIds);
     if (selectedCategories.length > 0) setMixCategories(selectedCategories);
@@ -1088,12 +1650,7 @@ export function CreateSeriesWizard({
     if (title) setTitleOrigin("manual");
     setSynthesisRequestKey(previous => previous ?? 1);
     setRecoveryJobHydratedId(recoveryJobId);
-  }, [
-    open,
-    recoveryJobId,
-    recoveryJobQuery.data,
-    recoveryJobHydratedId,
-  ]);
+  }, [open, recoveryJobId, recoveryJobQuery.data, recoveryJobHydratedId]);
 
   const draftQcEstimateQuery =
     trpc.verticalDramaSeries.getDraftQualityQcEstimate.useQuery(
@@ -1114,12 +1671,20 @@ export function CreateSeriesWizard({
       }
     );
 
-  const workspaceRestoreAttempted = useRef(false);
-  const workspaceRecoveryStartedAt = useRef<number | null>(null);
   useEffect(() => {
     if (!open || workspaceRestoreAttempted.current) return;
     const workspace = draftWorkspaceStatusQuery.data;
     if (!workspace) return;
+    // React Query may briefly retain data from the previous session while the
+    // Series-owned session key is changing. Never hydrate a job/QC id from
+    // that stale response into the newly-selected Series workspace.
+    if (
+      !planningSeriesId &&
+      typeof workspace.draftSessionId === "string" &&
+      workspace.draftSessionId !== workspaceDraftSessionId
+    ) {
+      return;
+    }
     const composition = workspace.composition;
     const qc = workspace.qc;
     if (!composition?.jobId && !qc?.runId) return;
@@ -1139,10 +1704,80 @@ export function CreateSeriesWizard({
     }
   }, [
     open,
+    planningSeriesId,
     draftWorkspaceStatusQuery.data,
     currentSynthesisSourceSignature,
     draftCompositionJobId,
     draftQcRunId,
+    draftSessionId,
+    workspaceDraftSessionId,
+  ]);
+
+  // The Series planning snapshot is the durable recovery anchor. Prefer a
+  // persisted non-placeholder title and switch the workspace query to the
+  // server-owned Draft session. This lets a refresh recover both the Draft
+  // and its QC result without trusting a generic browser workspace from
+  // another series.
+  useEffect(() => {
+    if (
+      !open ||
+      !planningSeriesId ||
+      !planningSourcePackPointerQuery.isFetched ||
+      planningSourcePackPointerQuery.isError
+    ) {
+      return;
+    }
+    // Apply the server-owned snapshot only once per Series mount. The query is
+    // invalidated after every autosave; without this guard a delayed response
+    // containing the previous session could switch the wizard back while a
+    // newly-started Draft is already running.
+    if (planningSnapshotHydratedKeyRef.current === planningSeriesId) return;
+    planningSnapshotHydratedKeyRef.current = planningSeriesId;
+    const persistedTitle =
+      typeof planningSnapshot?.title === "string"
+        ? planningSnapshot.title.trim()
+        : "";
+    if (
+      persistedTitle &&
+      persistedTitle !== PLANNING_SERIES_PLACEHOLDER_TITLE
+    ) {
+      setForm(previous =>
+        previous.title === persistedTitle
+          ? previous
+          : { ...previous, title: persistedTitle }
+      );
+      setTitleOrigin("manual");
+    }
+    if (
+      planningDraftSessionId &&
+      !recoverySessionId &&
+      draftSessionId !== planningDraftSessionId
+    ) {
+      setDraftSession(planningDraftSessionId);
+      // A generic browser workspace may carry job ids from another Series.
+      // Once the Series row has a durable session, those ids are not allowed
+      // to win; the status query below will recover only this Series session.
+      setDraftCompositionJobId(null);
+      setDraftCompositionSourceSignature(null);
+      setDraftQcRunId(null);
+      setDraftQcSourceSignature(null);
+      setDraftQcPreviousResult(null);
+      setDraftQcHistoricalRunId(null);
+      setDraftQcOverride(false);
+      workspaceRestoreAttempted.current = false;
+      workspaceRecoveryStartedAt.current = null;
+    }
+  }, [
+    open,
+    planningSeriesId,
+    planningSourcePackPointerQuery.isFetched,
+    planningSourcePackPointerQuery.isError,
+    planningSnapshot?.title,
+    planningDraftSessionId,
+    recoverySessionId,
+    draftCompositionJobId,
+    draftQcRunId,
+    draftSessionId,
   ]);
 
   // A browser can retain an old run id after Redis/BullMQ has already
@@ -1210,32 +1845,32 @@ export function CreateSeriesWizard({
             (lang === "th"
               ? "เริ่มตรวจ QC ไม่สำเร็จ"
               : "Could not start Draft QC")
-      ),
+        ),
     });
   const draftQcRepairProcedure = (trpc.verticalDramaSeries as any)
     .repairDraftQualityQc;
   const draftQcRepairMutation = draftQcRepairProcedure?.useMutation
     ? draftQcRepairProcedure.useMutation({
-      onSuccess: (data: { runId: string }) => {
-        setDraftQcRunId(data.runId);
-        setDraftQcSourceSignature(currentSynthesisSourceSignature);
-        setDraftQcSelectedCandidateFingerprint(null);
-        setDraftQcSelectedCandidateDraft(null);
-        setDraftQcOverride(false);
-        toast.success(
-          lang === "th"
-            ? "สร้าง Draft ฉบับซ่อมแล้ว และกำลังตรวจ QC ใหม่"
-            : "Repaired Draft created; running fresh QC",
-        );
-      },
-      onError: (error: { message?: string }) =>
-        toast.error(
-          error.message ||
-            (lang === "th"
-              ? "เริ่มซ่อม Draft ไม่สำเร็จ"
-              : "Could not start Draft repair"),
-        ),
-    })
+        onSuccess: (data: { runId: string }) => {
+          setDraftQcRunId(data.runId);
+          setDraftQcSourceSignature(currentSynthesisSourceSignature);
+          setDraftQcSelectedCandidateFingerprint(null);
+          setDraftQcSelectedCandidateDraft(null);
+          setDraftQcOverride(false);
+          toast.success(
+            lang === "th"
+              ? "สร้าง Draft ฉบับซ่อมแล้ว และกำลังตรวจ QC ใหม่"
+              : "Repaired Draft created; running fresh QC"
+          );
+        },
+        onError: (error: { message?: string }) =>
+          toast.error(
+            error.message ||
+              (lang === "th"
+                ? "เริ่มซ่อม Draft ไม่สำเร็จ"
+                : "Could not start Draft repair")
+          ),
+      })
     : {
         isPending: false,
         mutate: (_input: unknown) => undefined,
@@ -1318,7 +1953,14 @@ export function CreateSeriesWizard({
       setDraftCompositionSourceSignature(null);
       setDraftQcOverride(false);
       clearPersistedCreateSeriesWorkspace();
-      draftQcSessionId.current = createDraftSessionId();
+      clearPersistedSourcePackPointer(planningSeriesId);
+      if (planningSeriesId) {
+        planningSourcePackPointerMutation.mutate({
+          seriesId: planningSeriesId,
+          clear: true,
+        });
+      }
+      setDraftSession(createDraftSessionId());
       workspaceRestoreAttempted.current = false;
       workspaceRecoveryStartedAt.current = null;
       synthesisRequestCounter.current = 0;
@@ -1441,9 +2083,9 @@ export function CreateSeriesWizard({
   ]);
   const draftQcStatus =
     draftQcRunId && draftQcSourceSignature === currentSynthesisSourceSignature
-      ? (draftQcStatusQuery.error
-          ? "idle"
-          : (draftQcStatusQuery.data?.status ?? "queued"))
+      ? draftQcStatusQuery.error
+        ? "idle"
+        : (draftQcStatusQuery.data?.status ?? "queued")
       : "idle";
   const draftQcResult =
     draftQcRunId && draftQcSourceSignature === currentSynthesisSourceSignature
@@ -1464,19 +2106,23 @@ export function CreateSeriesWizard({
   // If the creator selected a historical candidate while a newer run exists,
   // switch the receipt back to that historical run as well.
   const selectedCurrentQcHistoryEntry = draftQcResult?.history.find(
-    item => item.candidateFingerprint === draftQcSelectedCandidateFingerprint
+    (
+      item: import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcHistoryEntry
+    ) => item.candidateFingerprint === draftQcSelectedCandidateFingerprint
   );
   const selectedHistoricalQcHistoryEntry = draftQcPreviousResult?.history.find(
-    item => item.candidateFingerprint === draftQcSelectedCandidateFingerprint
+    (
+      item: import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcHistoryEntry
+    ) => item.candidateFingerprint === draftQcSelectedCandidateFingerprint
   );
   const draftQcAuthoritativeResult = selectedHistoricalQcHistoryEntry
     ? draftQcPreviousResult
-    : draftQcResult ?? draftQcPreviousResult;
+    : (draftQcResult ?? draftQcPreviousResult);
   const draftQcAuthoritativeRunId = selectedHistoricalQcHistoryEntry
-    ? draftQcPreviousResult?.runId ?? draftQcHistoricalRunId
+    ? (draftQcPreviousResult?.runId ?? draftQcHistoricalRunId)
     : draftQcResult
       ? draftQcRunId
-      : draftQcPreviousResult?.runId ?? draftQcHistoricalRunId;
+      : (draftQcPreviousResult?.runId ?? draftQcHistoricalRunId);
   // The best candidate is the default, but every scored round can be selected
   // explicitly. The selected content and its report always travel together so
   // the create receipt cannot approve a different Draft.
@@ -1484,11 +2130,10 @@ export function CreateSeriesWizard({
     selectedCurrentQcHistoryEntry ?? selectedHistoricalQcHistoryEntry;
   const draftToReview = (draftQcSelectedCandidateDraft ??
     draftQcAuthoritativeResult?.best?.draft ??
-    synthesizedDraft) as
-    | SynthesizedGenrePresetDraft
-    | undefined;
+    synthesizedDraft) as SynthesizedGenrePresetDraft | undefined;
   const draftQcReport =
-    selectedDraftHistoryEntry?.report ?? draftQcAuthoritativeResult?.best.report;
+    selectedDraftHistoryEntry?.report ??
+    draftQcAuthoritativeResult?.best.report;
   const draftQcCandidateMatches = Boolean(
     draftToReview &&
     (!draftQcAuthoritativeResult ||
@@ -1593,24 +2238,21 @@ export function CreateSeriesWizard({
               ? "draft มีข้อมูลโครงสร้างเรื่องหรือบทบาทตัวละครไม่ครบ — กดปรับใหม่ก่อนจึงเริ่ม QC ได้"
               : "This draft has incomplete story architecture or character-role data — regenerate it before Draft QC"
             : !draftTitleReady
-                ? hasValidDraftTitleOptions(draftToReview)
-                  ? lang === "th"
-                    ? "เลือกชื่อเรื่อง 1 รายการ หรือกรอกชื่อเรื่องเองก่อน"
-                    : "Select one title candidate or enter your own title"
-                  : lang === "th"
-                    ? "draft นี้ไม่มีตัวเลือกชื่อเรื่องที่ครบ 4-5 แบบ — กดปรับใหม่"
-                    : "This draft has no valid 4–5 title choices — generate a new one"
-                : !draftGateSatisfied
-                  ? lang === "th"
-                    ? "กด ใช้ draft นี้ ก่อนจึงไปต่อได้"
-                    : "Apply this draft before continuing"
-                  : "";
+              ? hasValidDraftTitleOptions(draftToReview)
+                ? lang === "th"
+                  ? "เลือกชื่อเรื่อง 1 รายการ หรือกรอกชื่อเรื่องเองก่อน"
+                  : "Select one title candidate or enter your own title"
+                : lang === "th"
+                  ? "draft นี้ไม่มีตัวเลือกชื่อเรื่องที่ครบ 4-5 แบบ — กดปรับใหม่"
+                  : "This draft has no valid 4–5 title choices — generate a new one"
+              : !draftGateSatisfied
+                ? lang === "th"
+                  ? "กด ใช้ draft นี้ ก่อนจึงไปต่อได้"
+                  : "Apply this draft before continuing"
+                : "";
 
   function startDraftQualityQc(maxRoundsOverride?: number) {
-    if (
-      !draftQcSourceReady ||
-      draftQcStartMutation.isPending
-    ) {
+    if (!draftQcSourceReady || draftQcStartMutation.isPending) {
       toast.error(
         lang === "th"
           ? !draftToReview
@@ -1654,6 +2296,7 @@ export function CreateSeriesWizard({
     if (
       !draftQcReport ||
       draftQcReport.pass ||
+      (draftQcStatus !== "succeeded" && !draftQcRecoveredFromFailure) ||
       !draftQcRunId ||
       draftQcStartMutation.isPending ||
       draftQcRepairMutation.isPending
@@ -1685,15 +2328,19 @@ export function CreateSeriesWizard({
     const itemBelongsToHistoricalResult = Boolean(
       item.candidateFingerprint &&
       draftQcPreviousResult?.history.some(
-        entry => entry.candidateFingerprint === item.candidateFingerprint
+        (
+          entry: import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcHistoryEntry
+        ) => entry.candidateFingerprint === item.candidateFingerprint
       ) &&
       !draftQcResult?.history.some(
-        entry => entry.candidateFingerprint === item.candidateFingerprint
+        (
+          entry: import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcHistoryEntry
+        ) => entry.candidateFingerprint === item.candidateFingerprint
       )
     );
     const selectedResult = itemBelongsToHistoricalResult
       ? draftQcPreviousResult
-      : draftQcResult ?? draftQcPreviousResult;
+      : (draftQcResult ?? draftQcPreviousResult);
     const draftId =
       selectedResult?.draftArtifactId ??
       draftCompositionStatusQuery.data?.result?.draftArtifactId;
@@ -1723,7 +2370,8 @@ export function CreateSeriesWizard({
     draftQcAuthoritativeResult && draftQcAuthoritativeRunId
       ? {
           runId: draftQcAuthoritativeRunId,
-          candidateFingerprint: fingerprintDraftQualityQcCandidate(draftToReview),
+          candidateFingerprint:
+            fingerprintDraftQualityQcCandidate(draftToReview),
           explicitOverride: draftQcOverride,
         }
       : undefined;
@@ -1743,7 +2391,7 @@ export function CreateSeriesWizard({
         return;
       }
       if (draftCompositionJobId || draftQcRunId) {
-        draftQcSessionId.current = createDraftSessionId();
+        setDraftSession(createDraftSessionId());
         workspaceRestoreAttempted.current = false;
         workspaceRecoveryStartedAt.current = null;
       }
@@ -2042,7 +2690,7 @@ export function CreateSeriesWizard({
     }
     const requestKey = synthesisRequestCounter.current + 1;
     synthesisRequestCounter.current = requestKey;
-    draftQcSessionId.current = createDraftSessionId();
+    setDraftSession(createDraftSessionId());
     workspaceRestoreAttempted.current = false;
     workspaceRecoveryStartedAt.current = null;
     latestCompositionRequest.current = {
@@ -2056,6 +2704,7 @@ export function CreateSeriesWizard({
       setTitleOrigin(undefined);
       setForm(prev => ({ ...prev, title: "" }));
     }
+    savePlanningSeriesSnapshot(draftQcSessionId.current);
     // Clear the previous response/error before a new request so a stale draft
     // cannot look like the result of the current selection and no refresh is
     // needed to recover the wizard state after a failed request.
@@ -2073,6 +2722,7 @@ export function CreateSeriesWizard({
       businessContext: mixBusinessContext || undefined,
       productContext: form.productName || undefined,
       targetEpisodeCount: Number(form.targetEpisodeCount) || undefined,
+      seriesFormatKind: form.seriesFormatKind,
       // Clamp every bounded hint to the same create-series limits the server
       // enforces (shared/verticalDramaSeries/createSeriesFieldLimits.ts).
       // Unclamped `form.genre` is exactly what produced the 2026-07-31
@@ -2104,6 +2754,7 @@ export function CreateSeriesWizard({
       // preset-mix synthesis to match the series' target maturity tier.
       // Always a defined enum value (see `handleCreate` above).
       audienceAgeRating: form.audienceAgeRating,
+      defaultModelId: form.defaultModelId,
       // A sequel/special edition can synthesize before its series row exists;
       // pass the same bounded lineage/carry-over snapshot that `create` will
       // persist so the basics-only draft respects continuity.
@@ -2116,6 +2767,9 @@ export function CreateSeriesWizard({
         : undefined,
       lookLockMode: lookLockEnabled ? form.lookLockMode : undefined,
       lookLockGenreKey: lookLockEnabled ? form.lookLockGenreKey : undefined,
+      seriesProfileId: form.seriesProfileId,
+      sourcePackId: form.sourcePackId,
+      planningSeriesId,
     } as Parameters<typeof draftCompositionMutation.mutate>[0]);
   }
 
@@ -2157,6 +2811,47 @@ export function CreateSeriesWizard({
   // therefore untouched for the original wizard.
   const steps = resolveWizardSteps(form.createMode);
 
+  function savePlanningSeriesSnapshot(sessionId = draftQcSessionId.current) {
+    if (
+      !open ||
+      !planningSeriesId ||
+      !planningSourcePackPointerQuery.isFetched ||
+      planningSourcePackPointerQuery.isError
+    ) {
+      return;
+    }
+    planningSnapshotMutation.mutate({
+      seriesId: planningSeriesId,
+      title: form.title.trim() || PLANNING_SERIES_PLACEHOLDER_TITLE,
+      draftSessionId: sessionId,
+      activeStep: steps[stepIndex]?.id,
+    });
+  }
+
+  // Keep the title and the Draft/QC session discoverable after a full page
+  // refresh. The payload is metadata-only; Draft and QC bodies remain in their
+  // durable ledgers and are loaded lazily by getDraftWorkspaceStatus.
+  useEffect(() => {
+    if (
+      !open ||
+      !planningSeriesId ||
+      !planningSourcePackPointerQuery.isFetched ||
+      planningSourcePackPointerQuery.isError
+    ) {
+      return;
+    }
+    const timer = window.setTimeout(() => savePlanningSeriesSnapshot(), 350);
+    return () => window.clearTimeout(timer);
+  }, [
+    open,
+    planningSeriesId,
+    planningSourcePackPointerQuery.isFetched,
+    planningSourcePackPointerQuery.isError,
+    form.title,
+    draftSessionId,
+    stepIndex,
+  ]);
+
   // A step can be revisited freely, but the first step is not complete until
   // the current skill draft has been explicitly applied and its title rule is
   // satisfied. This keeps the progress indicator aligned with the real gate.
@@ -2180,18 +2875,29 @@ export function CreateSeriesWizard({
     form.title.trim().length > 0 &&
     Number(form.targetEpisodeCount) > 0 &&
     (!form.createMode || Boolean(form.parentSeriesId));
-  const createValid = basicCreateValid && draftGateSatisfied;
+  const sourceGateSatisfied =
+    selectedProfile.sourceGatePolicy !== "required" ||
+    sourceReadinessQuery.data?.textDraftAllowed === true;
+  const createValid =
+    basicCreateValid && draftGateSatisfied && sourceGateSatisfied;
   const createBlockedReason = !createValid
-    ? !draftGateSatisfied
-      ? draftGateReason
-      : form.createMode && !form.parentSeriesId
-        ? pickCopy(lang, parentSeriesPickerCopy.required)
-        : lang === "th"
-          ? "กรุณากรอกชื่อซีรีย์และจำนวนตอนย่อยที่ถูกต้องในแท็บ 'ตั้งค่าพื้นฐาน'"
-          : "Enter a series title and a valid Sub-episode count in the 'Basic setup' tab"
+    ? !sourceGateSatisfied
+      ? lang === "th"
+        ? "กรุณาเตรียม slot และสื่ออ้างอิงให้ผ่านก่อนสร้างเรื่อง"
+        : "Complete Story Sources & Media before creating the series"
+      : !draftGateSatisfied
+        ? draftGateReason
+        : form.createMode && !form.parentSeriesId
+          ? pickCopy(lang, parentSeriesPickerCopy.required)
+          : lang === "th"
+            ? "กรุณากรอกชื่อซีรีย์และจำนวนตอนย่อยที่ถูกต้องในแท็บ 'ตั้งค่าพื้นฐาน'"
+            : "Enter a series title and a valid Sub-episode count in the 'Basic setup' tab"
     : "";
 
   const isLast = stepIndex === steps.length - 1;
+  const sourcePackStepIndex = steps.findIndex(step => step.id === "product");
+  const canOpenSourcePackBeforeDraft =
+    selectedProfile.sourceGatePolicy === "required" && sourcePackStepIndex >= 0;
 
   // Stage 2.6 — folds the AI-proposed carry-over draft + the user's
   // per-character overrides into the exact `VerticalDramaSeriesLineage`
@@ -2256,6 +2962,7 @@ export function CreateSeriesWizard({
       form.title
     );
     createMutation.mutate({
+      ...(planningSeriesId ? { planningSeriesId } : {}),
       title: form.title.trim(),
       locale: form.locale,
       genre: resolvedGenre || undefined,
@@ -2278,6 +2985,7 @@ export function CreateSeriesWizard({
         form.storyContext ||
         form.storyDesign ||
         form.storyContract ||
+        form.seriesFormatKind !== "fiction_drama" ||
         form.spokenLocale !== "auto"
           ? {
               logline: form.logline,
@@ -2311,6 +3019,15 @@ export function CreateSeriesWizard({
               ...(form.storyContract
                 ? { storyContract: form.storyContract }
                 : {}),
+              ...(form.seriesProfileId === "news_report"
+                ? {
+                    newsReportProfile: {
+                      profileId: "news_report",
+                      mode: form.newsReportMode ?? "developing",
+                    },
+                  }
+                : {}),
+              seriesFormat: createSeriesFormatConfig(form.seriesFormatKind),
             }
           : undefined,
       draftQualityQcReceipt,
@@ -2367,6 +3084,7 @@ export function CreateSeriesWizard({
       // `visualIdentityJson`. The current wizard only produces skill drafts;
       // their apply path explicitly clears this legacy identity field.
       appliedPresetId: form.appliedPresetId,
+      seriesFormat: createSeriesFormatConfig(form.seriesFormatKind),
       // Feature 132 §4.2 (F132A) — top-level sibling of `bible` (NOT nested
       // inside it), matching the router schema shape; sent unconditionally,
       // server decides whether to honor it (`verticalDramaUserPremise` flag).
@@ -2384,6 +3102,13 @@ export function CreateSeriesWizard({
       // sends the exact same `null` this payload sent before this field
       // existed (byte-identical automatic behavior). Mode-independent.
       defaultModelId: form.defaultModelId,
+      seriesProfileId: form.seriesProfileId,
+      sourcePackId: form.sourcePackId,
+      draftSessionId: form.sourceDraftSessionId,
+      planningSeriesId,
+      sourcePackAttachIdempotencyKey:
+        form.sourcePackAttachIdempotencyKey ??
+        `vd-create-${draftQcSessionId.current}`,
       lookLock: lookLockEnabled
         ? {
             mode: form.lookLockMode,
@@ -2416,11 +3141,34 @@ export function CreateSeriesWizard({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      modal={presentation !== "page"}
+    >
       {/* Desktop uses viewport-based widths so the wizard can use the available
           canvas instead of staying at the shared dialog's compact default. */}
-      <DialogContent className="flex h-[92dvh] max-h-[96dvh] !w-[96vw] !max-w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:h-[90dvh] sm:min-h-[28rem] sm:min-w-[24rem] sm:resize md:!w-[94vw] md:!max-w-[94vw] lg:!w-[92vw] lg:!max-w-[92vw] xl:!w-[90vw] xl:!max-w-[90vw] 2xl:!w-[88vw] 2xl:!max-w-[120rem]">
-        <div className="shrink-0 border-b p-4 sm:p-6">
+      <DialogContent
+        inline={presentation === "page"}
+        fullscreen={presentation === "page"}
+        className={cn(
+          "box-border isolate flex min-w-0 max-w-full [contain:inline-size] flex-col gap-0 overflow-hidden p-0",
+          presentation === "page"
+            ? "!h-auto min-h-[calc(100dvh-10rem)] max-h-none !w-full !max-w-full min-w-0 grid-cols-1 overflow-x-clip sm:min-h-[calc(100dvh-10rem)] sm:min-w-0 sm:resize-none"
+            : "h-[92dvh] max-h-[96dvh] !w-[96vw] !max-w-[96vw] sm:h-[90dvh] sm:min-h-[28rem] sm:resize md:!w-[94vw] md:!max-w-[94vw] lg:!w-[92vw] lg:!max-w-[92vw] xl:!w-[90vw] xl:!max-w-[90vw] 2xl:!w-[88vw] 2xl:!max-w-[120rem]"
+        )}
+        style={
+          presentation === "page"
+            ? {
+                width: "100%",
+                minWidth: 0,
+                maxWidth: "100%",
+                boxSizing: "border-box",
+              }
+            : undefined
+        }
+      >
+        <div className="box-border min-w-0 w-full max-w-full shrink-0 border-b p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>
               {pickCopy(lang, verticalDramaCopy.createSeries)}
@@ -2438,7 +3186,11 @@ export function CreateSeriesWizard({
                 <button
                   type="button"
                   aria-current={i === stepIndex ? "step" : undefined}
-                  disabled={i > stepIndex && !draftGateSatisfied}
+                  disabled={
+                    i > stepIndex &&
+                    !draftGateSatisfied &&
+                    !(canOpenSourcePackBeforeDraft && i === sourcePackStepIndex)
+                  }
                   onClick={() => setStepIndex(i)}
                   className={cn(
                     "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
@@ -2447,7 +3199,16 @@ export function CreateSeriesWizard({
                       : "bg-muted text-muted-foreground hover:bg-accent"
                   )}
                 >
-                  {i + 1}. {pickCopy(lang, step)}
+                  {i + 1}.{" "}
+                  {pickCopy(
+                    lang,
+                    canOpenSourcePackBeforeDraft && step.id === "product"
+                      ? {
+                          th: "แหล่งข้อมูลและสื่อประกอบ",
+                          en: "Story Sources & Media",
+                        }
+                      : step
+                  )}
                   <span
                     className={cn(
                       "h-1.5 w-1.5 shrink-0 rounded-full",
@@ -2465,10 +3226,12 @@ export function CreateSeriesWizard({
           </ol>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 xl:p-7">
+        <div className="box-border isolate min-h-0 min-w-0 w-full max-w-full flex-1 [contain:inline-size] overflow-x-clip overflow-y-auto p-4 sm:p-6 xl:p-7">
           <WizardStep
             stepId={steps[stepIndex]?.id ?? "basic"}
             lang={lang}
+            presentation={presentation}
+            planningSeriesId={planningSeriesId}
             form={form}
             set={set}
             presets={presets as GenrePreset[]}
@@ -2542,9 +3305,9 @@ export function CreateSeriesWizard({
               draftQcStatusQuery.data?.failure?.history
             }
             draftQualityQcRecoveredResult={Boolean(
-              (draftQcStatus === "failed" &&
-                (!draftQcResult || draftQcRecoveredFromFailure) &&
-                (draftQcPreviousResult || draftQcRecoveredFromFailure))
+              draftQcStatus === "failed" &&
+              (!draftQcResult || draftQcRecoveredFromFailure) &&
+              (draftQcPreviousResult || draftQcRecoveredFromFailure)
             )}
             draftQualityQcSelectedCandidateFingerprint={
               draftQcSelectedCandidateFingerprint
@@ -2580,12 +3343,6 @@ export function CreateSeriesWizard({
             productSearch={productSearch}
             onProductSearchChange={setProductSearch}
             lineageEnabled={lineageEnabled}
-            lookLockEnabled={lookLockEnabled}
-            lookLockHasInheritedSource={Boolean(
-              form.parentSeriesId ||
-              (presetMixEnabled && form.appliedPresetId) ||
-              form.aiMixVisualIdentity
-            )}
             onSetCreateMode={handleSetCreateMode}
             parentSeriesOptions={parentSeriesOptions}
             parentSeriesOptionsLoading={seriesListQuery.isLoading}
@@ -2614,6 +3371,22 @@ export function CreateSeriesWizard({
             parentMemoryCoverage={parentMemoryQuery.data?.coverage}
             planningModels={planningModels}
             recoveredPremiseMissing={recoveredPremiseMissing}
+            onOpenPremise={() => setStepIndex(0)}
+            onOpenSourcePack={() => {
+              if (canOpenSourcePackBeforeDraft) {
+                setStepIndex(sourcePackStepIndex);
+              }
+            }}
+            sourcePackBootstrapError={sourcePackBootstrapErrorForUi}
+            onRetrySourcePackBootstrap={retrySourcePackBootstrap}
+            onClearPlanningSourcePackPointer={() => {
+              if (planningSeriesId) {
+                planningSourcePackPointerMutation.mutate({
+                  seriesId: planningSeriesId,
+                  clear: true,
+                });
+              }
+            }}
           />
         </div>
 
@@ -2825,7 +3598,9 @@ export function mergeSynthesizedDraftIntoWizardForm(
     occupation: character.occupation,
   }));
   const mappedLocations = draft.locations
-    ? draft.locations.map(location => `${location.name} — ${location.description}`).join("\n")
+    ? draft.locations
+        .map(location => `${location.name} — ${location.description}`)
+        .join("\n")
     : previous.locations;
   const locale = requestString("locale");
   const spokenLocale = requestString("spokenLocale");
@@ -2843,8 +3618,11 @@ export function mergeSynthesizedDraftIntoWizardForm(
       ? { userPremise: requestString("userPremise") }
       : {}),
     ...(locale === "th" || locale === "en" ? { locale } : {}),
-    ...(spokenLocale ? { spokenLocale: spokenLocale as WizardState["spokenLocale"] } : {}),
-    ...(audienceAgeRating && AUDIENCE_AGE_RATINGS.includes(audienceAgeRating as AudienceAgeRating)
+    ...(spokenLocale
+      ? { spokenLocale: spokenLocale as WizardState["spokenLocale"] }
+      : {}),
+    ...(audienceAgeRating &&
+    AUDIENCE_AGE_RATINGS.includes(audienceAgeRating as AudienceAgeRating)
       ? { audienceAgeRating: audienceAgeRating as AudienceAgeRating }
       : {}),
     ...(requestNumber("targetEpisodeCount")
@@ -2856,7 +3634,10 @@ export function mergeSynthesizedDraftIntoWizardForm(
     tone: clampToCreateSeriesLimit(draft.tone, "tone") ?? draft.tone,
     cliffhangerStyle: draft.cliffhangerStyle,
     characters: mappedCharacters
-      .map(character => `${character.name} — ${character.role}: ${character.description}`)
+      .map(
+        character =>
+          `${character.name} — ${character.role}: ${character.description}`
+      )
       .join("\n"),
     characterProfiles: mappedCharacters,
     locations: mappedLocations,
@@ -2928,6 +3709,7 @@ function buildSynthesisSourceSignature(params: {
     locale: form.locale,
     spokenLocale: form.spokenLocale,
     audienceAgeRating: form.audienceAgeRating,
+    defaultModelId: form.defaultModelId ?? null,
     userPremise: form.userPremise.trim(),
     productName: form.productName.trim(),
     businessContext: mixBusinessContext.trim(),
@@ -3074,6 +3856,8 @@ interface ParentSeriesDetail {
 function WizardStep({
   stepId,
   lang,
+  presentation,
+  planningSeriesId,
   form,
   set,
   presets,
@@ -3132,8 +3916,6 @@ function WizardStep({
   productSearch,
   onProductSearchChange,
   lineageEnabled,
-  lookLockEnabled,
-  lookLockHasInheritedSource,
   onSetCreateMode,
   parentSeriesOptions,
   parentSeriesOptionsLoading,
@@ -3154,9 +3936,16 @@ function WizardStep({
   parentMemoryCoverage,
   planningModels,
   recoveredPremiseMissing,
+  onOpenPremise,
+  onOpenSourcePack,
+  sourcePackBootstrapError,
+  onRetrySourcePackBootstrap,
+  onClearPlanningSourcePackPointer,
 }: {
   stepId: string;
   lang: "th" | "en";
+  presentation: "modal" | "page";
+  planningSeriesId?: string;
   form: WizardState;
   set: <K extends keyof WizardState>(key: K, value: WizardState[K]) => void;
   presets: GenrePreset[];
@@ -3238,8 +4027,6 @@ function WizardStep({
   onProductSearchChange: (value: string) => void;
   /** Stage 2.6 — false hides ALL lineage UI below (mode toggle never renders), so `createMode` can never be set for a tenant without the flag. */
   lineageEnabled: boolean;
-  lookLockEnabled: boolean;
-  lookLockHasInheritedSource: boolean;
   onSetCreateMode: (mode: VerticalDramaSeriesCreateMode | undefined) => void;
   parentSeriesOptions: ParentSeriesOption[];
   parentSeriesOptionsLoading: boolean;
@@ -3286,6 +4073,11 @@ function WizardStep({
   /** Manual LLM model pin at creation time (mirrors `VerticalDramaSettingsTab`'s query of the same name) — mode-independent. */
   planningModels: Array<{ modelId: string; label: string }>;
   recoveredPremiseMissing: boolean;
+  onOpenPremise: () => void;
+  onOpenSourcePack: () => void;
+  sourcePackBootstrapError: string | null;
+  onRetrySourcePackBootstrap: () => void;
+  onClearPlanningSourcePackPointer: () => void;
 }) {
   const th = lang === "th";
   // Stage 2.6 — used by both the "basic" (genre) and "story" (tone) cases
@@ -3294,6 +4086,9 @@ function WizardStep({
   const isSequel = form.createMode === "sequel";
   const isSpecialEdition = form.createMode === "special_edition";
   const isLineageMode = isSequel || isSpecialEdition;
+  const selectedProfile = getSeriesProfile(
+    form.seriesProfileId ?? "drama_romance"
+  );
   const [acceptedCharacterSuggestions, setAcceptedCharacterSuggestions] =
     useState<Set<string>>(new Set());
   // Preset browser height: toggle between compact and tall; the list is also
@@ -3314,6 +4109,12 @@ function WizardStep({
   // pre-existing shipped default (premise-first hero, presets already
   // labelled optional) and the plan's own stated default.
   const [seriesMode, setSeriesMode] = useState<"premise" | "preset">("premise");
+  const [promptExpansionOpen, setPromptExpansionOpen] = useState(false);
+  const [promptExpansionStale, setPromptExpansionStale] = useState(false);
+  const setPremise = (value: string) => {
+    set("userPremise", value);
+    setPromptExpansionStale(true);
+  };
   // vd-premise-first-wizard follow-up (discoverability fix) — the weight
   // sliders live inside `MixAndMatchPresetPanel` (the preset rail), but the
   // "Adjust weights" link inside a blend report can now render either there
@@ -3345,7 +4146,7 @@ function WizardStep({
         (form.createMode && form.parentSeriesId)
       );
       return (
-        <div className="grid gap-4">
+        <div className="grid w-full min-w-0 max-w-full gap-4">
           {/* Phase 2 (`planning/fix-create-series-premise-blend/plan-phase2-mode-first.md`)
               — explicit up-front mode choice, ahead of every other section
               in this step (including the lineage toggle below): the creator
@@ -3364,7 +4165,7 @@ function WizardStep({
             <p className="text-sm font-semibold">
               {th ? "เริ่มต้นสร้างซีรีย์ยังไง" : "How do you want to start"}
             </p>
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="mt-3 grid min-w-0 w-full max-w-full grid-cols-1 gap-2 sm:grid-cols-2">
               <button
                 type="button"
                 role="radio"
@@ -3428,7 +4229,7 @@ function WizardStep({
                 {pickCopy(lang, createModeToggleCopy.hint)}
               </p>
               <div
-                className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-3"
+                className="mt-3 grid min-w-0 w-full max-w-full grid-cols-1 gap-1.5 md:grid-cols-3"
                 role="group"
                 aria-label={pickCopy(lang, createModeToggleCopy.label)}
               >
@@ -3530,25 +4331,89 @@ function WizardStep({
             </div>
           )}
 
-          {lookLockEnabled ? (
-            <SeriesLookLockPicker
-              lang={lang}
-              value={{
-                mode: form.lookLockMode,
-                genreKey: form.lookLockGenreKey,
-                visualNarrativeEnabled: form.visualNarrativeEnabled,
-              }}
-              hasInheritedLook={lookLockHasInheritedSource}
-              onChange={value => {
-                set("lookLockMode", value.mode);
-                set("lookLockGenreKey", value.genreKey);
-                set(
-                  "visualNarrativeEnabled",
-                  value.visualNarrativeEnabled ?? false
-                );
-              }}
-            />
-          ) : null}
+          <SeriesProfilePicker
+            lang={lang}
+            value={form.seriesProfileId ?? "drama_romance"}
+            onChange={profileId => {
+              const projection = projectProfileToLegacy(profileId);
+              const profile = projection.profile;
+              onRetrySourcePackBootstrap();
+              clearPersistedSourcePackPointer(planningSeriesId);
+              onClearPlanningSourcePackPointer();
+              set("seriesProfileId", profileId);
+              set("seriesFormatKind", profile.seriesFormatKind);
+              set("sourcePackId", undefined);
+              set("sourceDraftSessionId", undefined);
+              if (projection.legacyLookLockGenreKey) {
+                set("lookLockMode", "genre");
+                set("lookLockGenreKey", projection.legacyLookLockGenreKey);
+                set("visualNarrativeEnabled", true);
+              } else {
+                set("lookLockMode", "none");
+                set("lookLockGenreKey", undefined);
+                set("visualNarrativeEnabled", true);
+              }
+            }}
+          />
+
+          {selectedProfile.profileId === "news_report" && (
+            <Field
+              label={th ? "โหมดการรายงานข่าว" : "News report mode"}
+              helperText={
+                th
+                  ? "กำหนดจังหวะการเล่า แต่ไม่ทำให้ข้อมูลเป็นข้อเท็จจริงโดยอัตโนมัติ"
+                  : "Sets reporting cadence; it never verifies facts automatically."
+              }
+            >
+              <Select
+                value={form.newsReportMode ?? "developing"}
+                onValueChange={value =>
+                  set("newsReportMode", value as NewsReportMode)
+                }
+              >
+                <SelectTrigger
+                  aria-label={th ? "โหมดการรายงานข่าว" : "News report mode"}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {NEWS_REPORT_MODES.map(mode => (
+                    <SelectItem key={mode} value={mode}>
+                      {mode}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
+
+          {selectedProfile.sourceGatePolicy === "required" && (
+            <div className="grid gap-2 rounded-xl border border-primary/30 bg-primary/5 p-4 shadow-sm">
+              <div>
+                <p className="text-sm font-semibold">
+                  {th ? "แหล่งข้อมูลและสื่อประกอบ" : "Story Sources & Media"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {th
+                    ? "แนวนี้ต้องเตรียมภาพ วิดีโอ ลิงก์ หรือข้อมูลอ้างอิงก่อนร่างเรื่อง ระบบจะนำไปใช้เป็นแกนข้อมูลและ B-roll"
+                    : "This profile needs images, videos, links, or notes before drafting. The approved sources ground the story and B-roll."}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-fit"
+                onClick={onOpenSourcePack}
+              >
+                {th ? "ไปอัปโหลดและเตรียมสื่อ" : "Open upload & source setup"}
+              </Button>
+              {sourcePackBootstrapError && (
+                <p className="text-xs text-destructive" role="alert">
+                  {sourcePackBootstrapError}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Premise leads step 1 as a full-width hero input — everything
               below (presets, basic setup) builds on top of it, not the
@@ -3695,14 +4560,10 @@ function WizardStep({
                   // trim + word-boundary clamp runs on blur below.
                   const raw = e.target.value;
                   const limit = CREATE_SERIES_FIELD_LIMITS.userPremise;
-                  set(
-                    "userPremise",
-                    raw.length > limit ? raw.slice(0, limit) : raw
-                  );
+                  setPremise(raw.length > limit ? raw.slice(0, limit) : raw);
                 }}
                 onBlur={e =>
-                  set(
-                    "userPremise",
+                  setPremise(
                     clampToCreateSeriesLimit(e.target.value, "userPremise") ??
                       ""
                   )
@@ -3726,7 +4587,51 @@ function WizardStep({
                   {CREATE_SERIES_FIELD_LIMITS.userPremise}
                 </span>
               </div>
+              <div className="mt-3 grid gap-2 rounded-md border border-primary/20 bg-primary/5 p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!form.userPremise.trim()}
+                    onClick={() => setPromptExpansionOpen(true)}
+                  >
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    {th ? "ขยายโจทย์ด้วย AI" : "Expand premise with AI"}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    {form.userPremise.trim()
+                      ? th
+                        ? "ระบบจะแสดงโจทย์เต็ม แหล่งข้อมูล และ slot ใน dialog ให้ตรวจ/แก้ไขก่อนยืนยัน"
+                        : "Review and edit the full premise, sources, and visual slots in a dialog before applying"
+                      : th
+                        ? "พิมพ์โจทย์ก่อน แล้วปุ่มนี้จะเปิดผลวิเคราะห์ให้ตรวจสอบ"
+                        : "Enter a premise first; this opens an editable AI analysis dialog"}
+                  </span>
+                </div>
+                {promptExpansionStale && form.userPremise.trim() && (
+                  <p className="text-xs text-amber-700" role="status">
+                    {th
+                      ? "โจทย์ถูกแก้ไขแล้ว ต้องขยายและยืนยันใหม่ก่อนเตรียมสื่อ"
+                      : "The premise changed; expand and approve it again before preparing media"}
+                  </p>
+                )}
+              </div>
             </Field>
+
+            <VerticalDramaPromptExpansionDialog
+              open={promptExpansionOpen}
+              prompt={form.userPremise}
+              seriesId={planningSeriesId ? Number(planningSeriesId) : undefined}
+              packId={form.sourcePackId}
+              draftSessionId={form.sourceDraftSessionId}
+              lang={lang}
+              onOpenChange={setPromptExpansionOpen}
+              onApply={value => {
+                set("userPremise", value.expandedPrompt);
+                setPromptExpansionStale(false);
+              }}
+            />
 
             {/* Discoverability fix (2026-07-17 follow-up to
                 vd-premise-first-wizard) — the user reported that after typing
@@ -3825,8 +4730,12 @@ function WizardStep({
               preset library (narrow, clearly-optional column) is on the
               RIGHT — inverted from the old layout, which taught the opposite
               mental model (plan.md root-cause item 4). */}
-          <div className="grid min-h-full gap-4 lg:grid-cols-[minmax(0,2.35fr)_minmax(22rem,0.85fr)] lg:items-start">
-            <div className="rounded-xl border bg-background p-4 shadow-sm">
+          {/* Keep the optional preset rail below the form until the viewport
+              has enough room after the shell sidebar is accounted for. The
+              old `xl` breakpoint still overflowed on common laptop/desktop
+              widths because the sidebar consumes part of the viewport. */}
+          <div className="grid min-h-full min-w-0 w-full max-w-full grid-cols-1 gap-4">
+            <div className="min-w-0 rounded-xl border bg-background p-4 shadow-sm">
               <div className="mb-4">
                 <p className="text-sm font-semibold">
                   {th ? "ข้อมูลพื้นฐาน" : "Basic setup"}
@@ -3959,7 +4868,7 @@ function WizardStep({
                     </SelectContent>
                   </Select>
                 </Field>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                <div className="grid min-w-0 w-full max-w-full grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field
                     label={
                       th
@@ -4126,7 +5035,7 @@ function WizardStep({
                   : "Add optional presets"
               }
               className={cn(
-                "flex flex-col rounded-xl border bg-muted/20 p-4 shadow-sm",
+                "flex min-w-0 w-full max-w-full flex-col overflow-x-hidden rounded-xl border bg-muted/20 p-4 shadow-sm",
                 seriesMode === "preset" &&
                   "min-h-[26rem] xl:min-h-[calc(90dvh-22rem)]"
               )}
@@ -4240,8 +5149,12 @@ function WizardStep({
                       draftQualityQcStatus={draftQualityQcStatus}
                       draftQualityQcProgress={draftQualityQcProgress}
                       draftQualityQcReport={draftQualityQcReport}
-                      draftQualityQcPreviousResult={draftQualityQcPreviousResult}
-                      draftQualityQcRecoveredResult={draftQualityQcRecoveredResult}
+                      draftQualityQcPreviousResult={
+                        draftQualityQcPreviousResult
+                      }
+                      draftQualityQcRecoveredResult={
+                        draftQualityQcRecoveredResult
+                      }
                       draftQualityQcHistory={draftQualityQcHistory}
                       draftQualityQcSelectedCandidateFingerprint={
                         draftQualityQcSelectedCandidateFingerprint
@@ -4372,7 +5285,7 @@ function WizardStep({
             >
               <Textarea
                 value={form.userPremise}
-                onChange={e => set("userPremise", e.target.value)}
+                onChange={e => setPremise(e.target.value)}
                 rows={5}
               />
             </Field>
@@ -4380,7 +5293,7 @@ function WizardStep({
         );
       }
       return (
-        <div className="grid gap-4">
+        <div className="grid w-full min-w-0 max-w-full gap-4">
           <Field label={th ? "โครงเรื่องหลัก" : "Main plot"}>
             <Textarea
               value={form.mainPlot}
@@ -4395,7 +5308,7 @@ function WizardStep({
               rows={2}
             />
           </Field>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid min-w-0 w-full max-w-full grid-cols-1 gap-4 sm:grid-cols-2">
             <Field
               label={th ? "โทน" : "Tone"}
               helperText={
@@ -4522,7 +5435,7 @@ function WizardStep({
 
             {carryOverDraft && (
               <>
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid min-w-0 w-full max-w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
                   {carryOverDraft.characters.map(character => {
                     const override =
                       form.carryOverOverrides[character.characterKey];
@@ -4718,7 +5631,7 @@ function WizardStep({
       }
 
       return (
-        <div className="grid gap-4">
+        <div className="grid w-full min-w-0 max-w-full gap-4">
           <Field
             label={
               th
@@ -4778,8 +5691,13 @@ function WizardStep({
         <Field
           label={
             th
-              ? "วิชวลไบเบิล / สไตล์ภาพ (ร่าง)"
-              : "Visual bible / style notes (draft)"
+              ? "รายละเอียดลุคเพิ่มเติม (ขั้นสูง)"
+              : "Additional visual notes (advanced)"
+          }
+          helperText={
+            th
+              ? "เป็นรายละเอียดเสริมจาก Series Profile เช่น โทน เสื้อผ้า กล้อง หรือบรรยากาศ ไม่เปลี่ยนแนวทางซีรีส์ที่เลือก"
+              : "Supplemental tone, wardrobe, camera, or atmosphere notes. They refine the Series Profile but do not replace it."
           }
         >
           <Textarea
@@ -4791,165 +5709,189 @@ function WizardStep({
       );
     case "product": {
       return (
-        <div className="grid gap-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.productTieInEnabled}
-              onChange={e => set("productTieInEnabled", e.target.checked)}
-            />
-            {th
-              ? "เปิดใช้สินค้าผูกเรื่อง (Product tie-in)"
-              : "Enable product tie-in"}
-          </label>
-          {form.productTieInEnabled && (
+        <div className="grid w-full min-w-0 max-w-full gap-4">
+          {selectedProfile.sourceGatePolicy === "required" && (
             <>
-              {form.productId ? (
-                <div className="flex items-center gap-3 rounded-md border bg-background p-2.5">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
-                    {form.productImageUrl ? (
-                      <AuthenticatedMediaImage
-                        src={form.productImageUrl}
-                        alt={form.productName || "Product"}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <ImageIcon
-                        className="h-5 w-5 text-muted-foreground"
-                        aria-hidden="true"
-                      />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {form.productName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {th
-                        ? "สินค้าจากคลังสินค้า"
-                        : "Linked from saved products"}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="shrink-0"
-                    onClick={() => {
-                      set("productId", undefined);
-                      set("productImageUrl", undefined);
-                    }}
-                    aria-label={
-                      th ? "ยกเลิกการเลือกสินค้า" : "Clear selected product"
-                    }
-                  >
-                    <X className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="relative mb-2">
-                    <Search
-                      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                      aria-hidden="true"
-                    />
-                    <Input
-                      value={productSearch}
-                      onChange={e => onProductSearchChange(e.target.value)}
-                      placeholder={
-                        th
-                          ? "ค้นหาสินค้าที่บันทึกไว้..."
-                          : "Search saved products..."
-                      }
-                      className="pl-9"
-                    />
-                  </div>
-                  {productsLoading ? (
-                    <p className="text-xs text-muted-foreground">
-                      {th ? "กำลังโหลด…" : "Loading…"}
-                    </p>
-                  ) : products.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">
-                      {th
-                        ? "ไม่พบสินค้าที่บันทึกไว้"
-                        : "No saved products found"}
-                    </p>
-                  ) : (
-                    <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
-                      {products.map(product => (
-                        <button
-                          key={product.id}
-                          type="button"
-                          onClick={() => {
-                            set("productId", product.id);
-                            set("productName", product.productName);
-                            set(
-                              "productImageUrl",
-                              product.imageUrl ?? undefined
-                            );
-                          }}
-                          className={cn(
-                            "flex items-center gap-2 rounded-md border bg-background p-2.5 text-left text-xs transition-colors hover:border-primary hover:bg-accent",
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          )}
-                        >
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
-                            {product.imageUrl ? (
-                              <AuthenticatedMediaImage
-                                src={product.imageUrl}
-                                alt={product.productName}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <ImageIcon
-                                className="h-4 w-4 text-muted-foreground"
-                                aria-hidden="true"
-                              />
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium">
-                              {product.productName}
-                            </p>
-                            <p className="mt-0.5 truncate text-muted-foreground">
-                              {[product.priceCurrent, product.currency]
-                                .filter(Boolean)
-                                .join(" ") || "-"}
-                              {product.platform ? ` · ${product.platform}` : ""}
-                            </p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              <Field
-                label={
-                  th
-                    ? "หรือกรอกชื่อสินค้าเอง"
-                    : "Or enter a product name manually"
-                }
-              >
-                <Input
-                  value={form.productName}
-                  onChange={e => set("productName", e.target.value)}
-                />
-              </Field>
-              <Field
-                label={
-                  th
-                    ? "ข้อความต้องห้าม (คั่นด้วยจุลภาค)"
-                    : "Forbidden claims (comma-separated)"
-                }
-              >
-                <Input
-                  value={form.forbiddenClaims}
-                  onChange={e => set("forbiddenClaims", e.target.value)}
-                />
-              </Field>
+              <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+                {th
+                  ? "แนวสารคดี/รีวิวต้องเตรียมภาพ วิดีโอ ลิงก์ หรือข้อมูลอ้างอิงในพื้นที่นี้ก่อน ระบบจึงจะเปิดให้ร่างเรื่องได้"
+                  : "Documentary and review profiles require images, videos, links, or notes here before story drafting is enabled."}
+              </p>
+              <StorySourcesHub
+                lang={lang}
+                packId={form.sourcePackId}
+                seriesId={planningSeriesId}
+                prompt={form.userPremise}
+                promptExpansionStale={promptExpansionStale}
+                onOpenPremise={onOpenPremise}
+                bootstrapError={sourcePackBootstrapError}
+                onRetryBootstrap={onRetrySourcePackBootstrap}
+              />
             </>
           )}
+          {selectedProfile.sourceGatePolicy !== "required" && (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.productTieInEnabled}
+                onChange={e => set("productTieInEnabled", e.target.checked)}
+              />
+              {th
+                ? "เปิดใช้สินค้าผูกเรื่อง (Product tie-in)"
+                : "Enable product tie-in"}
+            </label>
+          )}
+          {form.productTieInEnabled &&
+            selectedProfile.sourceGatePolicy !== "required" && (
+              <>
+                {form.productId ? (
+                  <div className="flex items-center gap-3 rounded-md border bg-background p-2.5">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
+                      {form.productImageUrl ? (
+                        <AuthenticatedMediaImage
+                          src={form.productImageUrl}
+                          alt={form.productName || "Product"}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <ImageIcon
+                          className="h-5 w-5 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {form.productName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {th
+                          ? "สินค้าจากคลังสินค้า"
+                          : "Linked from saved products"}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => {
+                        set("productId", undefined);
+                        set("productImageUrl", undefined);
+                      }}
+                      aria-label={
+                        th ? "ยกเลิกการเลือกสินค้า" : "Clear selected product"
+                      }
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="relative mb-2">
+                      <Search
+                        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                        aria-hidden="true"
+                      />
+                      <Input
+                        value={productSearch}
+                        onChange={e => onProductSearchChange(e.target.value)}
+                        placeholder={
+                          th
+                            ? "ค้นหาสินค้าที่บันทึกไว้..."
+                            : "Search saved products..."
+                        }
+                        className="pl-9"
+                      />
+                    </div>
+                    {productsLoading ? (
+                      <p className="text-xs text-muted-foreground">
+                        {th ? "กำลังโหลด…" : "Loading…"}
+                      </p>
+                    ) : products.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        {th
+                          ? "ไม่พบสินค้าที่บันทึกไว้"
+                          : "No saved products found"}
+                      </p>
+                    ) : (
+                      <div className="grid min-w-0 w-full max-w-full max-h-64 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
+                        {products.map(product => (
+                          <button
+                            key={product.id}
+                            type="button"
+                            onClick={() => {
+                              set("productId", product.id);
+                              set("productName", product.productName);
+                              set(
+                                "productImageUrl",
+                                product.imageUrl ?? undefined
+                              );
+                            }}
+                            className={cn(
+                              "flex items-center gap-2 rounded-md border bg-background p-2.5 text-left text-xs transition-colors hover:border-primary hover:bg-accent",
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            )}
+                          >
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
+                              {product.imageUrl ? (
+                                <AuthenticatedMediaImage
+                                  src={product.imageUrl}
+                                  alt={product.productName}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <ImageIcon
+                                  className="h-4 w-4 text-muted-foreground"
+                                  aria-hidden="true"
+                                />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-medium">
+                                {product.productName}
+                              </p>
+                              <p className="mt-0.5 truncate text-muted-foreground">
+                                {[product.priceCurrent, product.currency]
+                                  .filter(Boolean)
+                                  .join(" ") || "-"}
+                                {product.platform
+                                  ? ` · ${product.platform}`
+                                  : ""}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <Field
+                  label={
+                    th
+                      ? "หรือกรอกชื่อสินค้าเอง"
+                      : "Or enter a product name manually"
+                  }
+                >
+                  <Input
+                    value={form.productName}
+                    onChange={e => set("productName", e.target.value)}
+                  />
+                </Field>
+                <Field
+                  label={
+                    th
+                      ? "ข้อความต้องห้าม (คั่นด้วยจุลภาค)"
+                      : "Forbidden claims (comma-separated)"
+                  }
+                >
+                  <Input
+                    value={form.forbiddenClaims}
+                    onChange={e => set("forbiddenClaims", e.target.value)}
+                  />
+                </Field>
+              </>
+            )}
 
           {/* Stage 2.5 (`planning/vd-series-memory-and-lineage/plan.md`) —
               special-edition sources 1 (product description companion to the
@@ -5018,7 +5960,7 @@ function WizardStep({
     case "review":
     default:
       return (
-        <div className="grid gap-3 text-sm">
+        <div className="grid w-full min-w-0 max-w-full gap-3 text-sm">
           <p className="rounded-md bg-muted p-3 text-muted-foreground">
             {th
               ? "ตรวจสอบก่อนสร้าง: การกดสร้างจะสร้างเฉพาะโครงซีรีย์ (dry-run) เท่านั้น ยังไม่มีการสร้างสื่อที่มีค่าใช้จ่าย"
@@ -5148,13 +6090,15 @@ function PresetCard({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        "rounded-md border bg-background p-2.5 text-left text-xs transition-colors hover:border-primary hover:bg-accent",
+        "min-w-0 rounded-md border bg-background p-2.5 text-left text-xs transition-colors hover:border-primary hover:bg-accent",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         selected && "border-primary bg-primary/5"
       )}
     >
-      <div className="flex items-center gap-1.5">
-        <p className="font-medium">{preset.title}</p>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <p className="min-w-0 [overflow-wrap:anywhere] font-medium">
+          {preset.title}
+        </p>
         {preset.scope === "private" && (
           <Badge
             variant="secondary"
@@ -5172,10 +6116,10 @@ function PresetCard({
           </Badge>
         )}
       </div>
-      <p className="mt-0.5 text-[10px] text-muted-foreground/80">
+      <p className="mt-0.5 [overflow-wrap:anywhere] text-[10px] text-muted-foreground/80">
         {genrePresetCategoryLabel(preset.category, lang)}
       </p>
-      <p className="mt-0.5 line-clamp-2 text-muted-foreground">
+      <p className="mt-0.5 line-clamp-2 [overflow-wrap:anywhere] text-muted-foreground">
         {preset.logline}
       </p>
       {preset.visualIdentityJson && (
@@ -5342,7 +6286,7 @@ function MixAndMatchPresetPanel({
     {}
   );
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
+    <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col gap-3">
       <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
         <div className="flex items-start gap-2">
           <Wand2
@@ -5382,8 +6326,8 @@ function MixAndMatchPresetPanel({
         </div>
       </div>
 
-      <div className="grid gap-2">
-        <div className="flex items-center justify-between gap-2">
+      <div className="grid min-w-0 w-full max-w-full gap-2">
+        <div className="flex min-w-0 max-w-full items-center justify-between gap-2">
           <p className="text-xs font-medium">
             {th ? "เลือกหมวดแนวเรื่อง" : "Choose categories"}
           </p>
@@ -5393,7 +6337,7 @@ function MixAndMatchPresetPanel({
               : `${selectedCategories.length} categories selected`}
           </p>
         </div>
-        <div className="relative">
+        <div className="relative min-w-0 w-full max-w-full">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
@@ -5402,25 +6346,19 @@ function MixAndMatchPresetPanel({
             value={categorySearch}
             onChange={e => setCategorySearch(e.target.value)}
             placeholder={th ? "ค้นหาหมวดแนวเรื่อง…" : "Search categories…"}
-            className="h-9 pl-9 text-xs"
+            className="h-9 min-w-0 w-full pl-9 text-xs"
             aria-label={th ? "ค้นหาหมวดแนวเรื่อง" : "Search categories"}
           />
         </div>
-        {/* Discoverability follow-up (2026-07-17) — this grid used to be
-            `grid-cols-2 sm:grid-cols-3`, i.e. a VIEWPORT-width breakpoint.
-            That was fine back when this panel lived in the wide 2.35fr
-            column, but Phase 4 moved it into the narrow
-            `minmax(22rem,0.85fr)` rail — a fixed 3-column split of a ~22rem
-            (352px) container leaves ~100px per chip, nowhere near enough for
-            labels like "คลุมถุงชนศัตรูหัวใจ (1)" or "ทายาทถูกตัดขาดคัมแบ็ก
-            (1)", and `sm:` doesn't know the rail is narrower than the
-            viewport. `auto-fill`/`minmax` sizes columns off the GRID's own
-            (container) width instead, so it never forces more columns than
-            actually fit, at any viewport size or rail width — correctness
-            (never clipped) over squeezing in an extra column. */}
+        {/* Keep this grid bounded. An `auto-fill` grid can become intrinsically
+            wider than its parent when the containing block is still being
+            sized (which is exactly what happens while the planner is sharing
+            space with the project sidebar). A fixed responsive column count
+            lets the grid wrap inside the available width instead of creating
+            a new horizontal overflow surface. */}
         <div
           className={cn(
-            "grid gap-1.5 overflow-y-auto rounded-lg border bg-background p-2 [grid-template-columns:repeat(auto-fill,minmax(7.5rem,1fr))]",
+            "grid min-w-0 w-full max-w-full grid-cols-1 gap-1.5 overflow-x-hidden overflow-y-auto rounded-lg border bg-background p-2 sm:grid-cols-2",
             expanded ? "max-h-[18rem]" : "max-h-[14rem]"
           )}
         >
@@ -5442,7 +6380,7 @@ function MixAndMatchPresetPanel({
                     // grid track's min-content sizing, so the column itself
                     // never has to grow past its `minmax` share to avoid
                     // clipping the label.
-                    "min-h-8 [overflow-wrap:anywhere] rounded-md border px-2 py-1 text-left text-xs leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "min-h-8 min-w-0 max-w-full [overflow-wrap:anywhere] rounded-md border px-2 py-1 text-left text-xs leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     selected
                       ? "border-primary bg-primary text-primary-foreground"
                       : "bg-background hover:bg-accent"
@@ -5465,8 +6403,8 @@ function MixAndMatchPresetPanel({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-col gap-2">
-        <div className="relative">
+      <div className="flex min-h-0 min-w-0 w-full max-w-full flex-col gap-2">
+        <div className="relative min-w-0 w-full max-w-full">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden="true"
@@ -5479,7 +6417,7 @@ function MixAndMatchPresetPanel({
                 ? "ค้นหา preset ในหมวดที่เลือก…"
                 : "Search presets in selected categories…"
             }
-            className="pl-9"
+            className="min-w-0 w-full pl-9"
           />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -5503,7 +6441,7 @@ function MixAndMatchPresetPanel({
             // vd-premise-first-wizard plan Phase 4.1 — this panel now lives in
             // the narrow "supplemental" rail (see step-1 layout below), so the
             // card grid no longer bumps past 2 columns regardless of viewport.
-            "grid auto-rows-min grid-cols-1 gap-2 overflow-y-auto rounded-lg border bg-background/80 p-2 sm:grid-cols-2",
+            "grid min-w-0 w-full max-w-full auto-rows-min grid-cols-1 gap-2 overflow-x-hidden overflow-y-auto rounded-lg border bg-background/80 p-2 sm:grid-cols-2",
             expanded
               ? "min-h-[16rem] max-h-[34vh]"
               : "min-h-[12rem] max-h-[26vh]"
@@ -5533,7 +6471,7 @@ function MixAndMatchPresetPanel({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid min-w-0 w-full max-w-full grid-cols-1 gap-3 sm:grid-cols-2">
         <Field
           label={
             th
@@ -5958,7 +6896,7 @@ function PresetSynthesisActionPanel({
               </div>
               {draft.storyContext && (
                 <div
-                  className="mb-3 grid gap-2 rounded-md border border-indigo-200/70 bg-indigo-50/50 p-3 text-xs dark:border-indigo-900/70 dark:bg-indigo-950/20"
+                  className="mb-3 grid min-w-0 w-full max-w-full gap-2 rounded-md border border-indigo-200/70 bg-indigo-50/50 p-3 text-xs dark:border-indigo-900/70 dark:bg-indigo-950/20"
                   data-testid="vd-draft-story-identity"
                   role="note"
                 >
@@ -5974,7 +6912,7 @@ function PresetSynthesisActionPanel({
                         : "Market, setting, character background, and spoken language are separate facts; language alone never determines nationality."}
                     </p>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="grid min-w-0 w-full max-w-full gap-2 sm:grid-cols-2">
                     {(
                       [
                         [
@@ -6041,7 +6979,7 @@ function PresetSynthesisActionPanel({
               )}
               {draft.storyContract && (
                 <div
-                  className="mb-3 grid gap-2 rounded-md border border-violet-200/70 bg-violet-50/50 p-3 text-xs dark:border-violet-900/70 dark:bg-violet-950/20"
+                  className="mb-3 grid min-w-0 w-full max-w-full gap-2 rounded-md border border-violet-200/70 bg-violet-50/50 p-3 text-xs dark:border-violet-900/70 dark:bg-violet-950/20"
                   data-testid="vd-draft-story-architecture"
                   role="note"
                 >
@@ -6057,7 +6995,7 @@ function PresetSynthesisActionPanel({
                         : "This foundation contract fixes the destination, transformation, story engine, and required arcs before Draft QC."}
                     </p>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="grid min-w-0 w-full max-w-full gap-2 sm:grid-cols-2">
                     <div className="rounded-md border border-violet-200/60 bg-background/70 p-2 dark:border-violet-900/60">
                       <p className="text-[11px] font-medium text-foreground/80">
                         {th ? "คำสัญญาต่อผู้ชม" : "Audience promise"}
@@ -6133,7 +7071,7 @@ function PresetSynthesisActionPanel({
               )}
               {draft.storyDesign && (
                 <div
-                  className="mb-3 grid gap-2 rounded-md border border-emerald-200/70 bg-emerald-50/50 p-3 text-xs dark:border-emerald-900/70 dark:bg-emerald-950/20"
+                  className="mb-3 grid min-w-0 w-full max-w-full gap-2 rounded-md border border-emerald-200/70 bg-emerald-50/50 p-3 text-xs dark:border-emerald-900/70 dark:bg-emerald-950/20"
                   data-testid="vd-draft-story-design"
                   role="note"
                 >
@@ -6149,7 +7087,7 @@ function PresetSynthesisActionPanel({
                         : "Review the primary engine, early payoff, romance progression, and advantage shifts before generating the full season."}
                     </p>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="grid min-w-0 w-full max-w-full gap-2 sm:grid-cols-2">
                     <div className="rounded-md border border-emerald-200/60 bg-background/70 p-2 dark:border-emerald-900/60">
                       <p className="text-[11px] font-medium text-foreground/80">
                         {th ? "แกนหลัก" : "Primary engine"}
@@ -6621,14 +7559,18 @@ function ModeSection({
   children: React.ReactNode;
 }) {
   if (primary) {
-    return <div className={className}>{children}</div>;
+    return (
+      <div className={cn("min-w-0 w-full max-w-full", className)}>
+        {children}
+      </div>
+    );
   }
   return (
-    <details className={className}>
+    <details className={cn("min-w-0 w-full max-w-full", className)}>
       <summary className="cursor-pointer list-none text-sm font-semibold text-muted-foreground">
         {collapsedSummary}
       </summary>
-      <div className="mt-3">{children}</div>
+      <div className="mt-3 min-w-0 w-full max-w-full">{children}</div>
     </details>
   );
 }
@@ -6643,7 +7585,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid gap-1.5">
+    <div className="grid min-w-0 w-full max-w-full gap-1.5">
       <Label className="text-xs font-medium text-muted-foreground">
         {label}
       </Label>
@@ -6682,9 +7624,13 @@ function OptionalInputGuide({
 
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b py-1.5 last:border-b-0">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value}</span>
+    <div className="flex min-w-0 items-center justify-between gap-4 border-b py-1.5 last:border-b-0">
+      <span className="min-w-0 [overflow-wrap:anywhere] text-muted-foreground">
+        {label}
+      </span>
+      <span className="min-w-0 [overflow-wrap:anywhere] text-right font-medium">
+        {value}
+      </span>
     </div>
   );
 }

@@ -57,6 +57,7 @@ export type PersistVerticalDramaDraftVersion = (
 ) => Promise<VerticalDramaDraftVersionRef>;
 
 export interface VerticalDramaDraftJobPatch {
+  seriesId?: number | null;
   jobStatus?: VerticalDramaDraftJobStatus;
   compositionJobId?: string | null;
   qcRunId?: string | null;
@@ -143,6 +144,7 @@ export async function ensureVerticalDramaDraftJob(
   input: AppendVerticalDramaDraftVersionInput & {
     requestJson?: unknown;
     synthesis?: unknown;
+    seriesId?: number;
   }
 ): Promise<void> {
   const db = await getDb();
@@ -157,6 +159,7 @@ export async function ensureVerticalDramaDraftJob(
       id: input.draftId,
       tenantId: input.tenantId,
       userId: input.userId,
+      seriesId: input.seriesId,
       draftSessionId: input.draftSessionId,
       compositionJobId: input.jobId ?? input.draftId,
       jobStatus: "queued",
@@ -166,6 +169,19 @@ export async function ensureVerticalDramaDraftJob(
       currentJson: {},
     })
     .onConflictDoNothing();
+  if (input.seriesId !== undefined) {
+    await db
+      .update(verticalDramaDraftLedgers)
+      .set({ seriesId: input.seriesId, updatedAt: new Date() })
+      .where(
+        and(
+          eq(verticalDramaDraftLedgers.id, input.draftId),
+          eq(verticalDramaDraftLedgers.tenantId, input.tenantId),
+          eq(verticalDramaDraftLedgers.userId, input.userId),
+          isNull(verticalDramaDraftLedgers.seriesId)
+        )
+      );
+  }
 }
 
 export async function updateVerticalDramaDraftJob(
@@ -363,6 +379,30 @@ export async function getVerticalDramaDraftLedgerBySession(
   return row ?? null;
 }
 
+/** Durable Series-first lookup used when the browser session pointer is stale
+ * or absent. The Series id is owner-scoped before any Draft/QC identity is
+ * returned, so a different Series' session can never win recovery. */
+export async function getVerticalDramaDraftLedgerBySeriesId(
+  seriesId: number,
+  owner: VerticalDramaDraftLedgerOwner
+) {
+  const db = await getDb();
+  const [row] = await db
+    .select()
+    .from(verticalDramaDraftLedgers)
+    .where(
+      and(
+        eq(verticalDramaDraftLedgers.seriesId, seriesId),
+        eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
+        eq(verticalDramaDraftLedgers.userId, owner.userId),
+        isNull(verticalDramaDraftLedgers.archivedAt)
+      )
+    )
+    .orderBy(desc(verticalDramaDraftLedgers.updatedAt))
+    .limit(1);
+  return row ?? null;
+}
+
 /** Durable lookup used when the short-lived Redis QC record has expired. */
 export async function getVerticalDramaDraftLedgerByQcRunId(
   qcRunId: string,
@@ -399,6 +439,8 @@ export async function getVerticalDramaDraftQcSnapshotsByRunId(
     .select({
       draftId: verticalDramaDraftVersions.draftId,
       runId: verticalDramaDraftVersions.runId,
+      candidateVersion: verticalDramaDraftVersions.version,
+      contentHash: verticalDramaDraftVersions.contentHash,
       contentJson: verticalDramaDraftVersions.contentJson,
       metadata: verticalDramaDraftVersions.metadata,
       createdAt: verticalDramaDraftVersions.createdAt,
@@ -430,6 +472,8 @@ export async function getVerticalDramaDraftQcSnapshotsByDraftId(
     .select({
       draftId: verticalDramaDraftVersions.draftId,
       runId: verticalDramaDraftVersions.runId,
+      candidateVersion: verticalDramaDraftVersions.version,
+      contentHash: verticalDramaDraftVersions.contentHash,
       contentJson: verticalDramaDraftVersions.contentJson,
       metadata: verticalDramaDraftVersions.metadata,
       createdAt: verticalDramaDraftVersions.createdAt,
@@ -487,6 +531,42 @@ export async function getVerticalDramaDraftVersion(
   return row ?? null;
 }
 
+/** Metadata-only history index. Content is intentionally excluded. */
+export async function listVerticalDramaDraftVersionSummaries(
+  draftId: string,
+  owner: VerticalDramaDraftLedgerOwner,
+  limit = 20,
+  offset = 0
+) {
+  const db = await getDb();
+  return db
+    .select({
+      id: verticalDramaDraftVersions.id,
+      draftId: verticalDramaDraftVersions.draftId,
+      version: verticalDramaDraftVersions.version,
+      stage: verticalDramaDraftVersions.stage,
+      contentHash: verticalDramaDraftVersions.contentHash,
+      runId: verticalDramaDraftVersions.runId,
+      metadata: verticalDramaDraftVersions.metadata,
+      createdAt: verticalDramaDraftVersions.createdAt,
+    })
+    .from(verticalDramaDraftVersions)
+    .innerJoin(
+      verticalDramaDraftLedgers,
+      eq(verticalDramaDraftVersions.draftId, verticalDramaDraftLedgers.id)
+    )
+    .where(
+      and(
+        eq(verticalDramaDraftVersions.draftId, draftId),
+        eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
+        eq(verticalDramaDraftLedgers.userId, owner.userId)
+      )
+    )
+    .orderBy(desc(verticalDramaDraftVersions.createdAt))
+    .limit(Math.max(1, Math.min(limit, 50)))
+    .offset(Math.max(0, offset));
+}
+
 /** Lightweight server-owned recovery index; the full draft is loaded only after selection. */
 export async function listVerticalDramaDraftLedgers(
   owner: VerticalDramaDraftLedgerOwner,
@@ -497,6 +577,7 @@ export async function listVerticalDramaDraftLedgers(
   const rows = await db
     .select({
       id: verticalDramaDraftLedgers.id,
+      seriesId: verticalDramaDraftLedgers.seriesId,
       jobCode: verticalDramaDraftLedgers.jobCode,
       draftSessionId: verticalDramaDraftLedgers.draftSessionId,
       jobStatus: verticalDramaDraftLedgers.jobStatus,
@@ -523,6 +604,7 @@ export async function listVerticalDramaDraftLedgers(
       and(
         eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
         eq(verticalDramaDraftLedgers.userId, owner.userId),
+        isNull(verticalDramaDraftLedgers.seriesId),
         ...(includeArchived
           ? []
           : [isNull(verticalDramaDraftLedgers.archivedAt)])
@@ -534,6 +616,7 @@ export async function listVerticalDramaDraftLedgers(
   return rows.map(row => {
     return {
       id: row.id,
+      seriesId: row.seriesId,
       jobCode: row.jobCode,
       draftSessionId: row.draftSessionId,
       jobStatus: row.jobStatus,
@@ -556,8 +639,20 @@ export async function archiveVerticalDramaDraftJob(
   draftId: string,
   owner: VerticalDramaDraftLedgerOwner
 ): Promise<boolean> {
-  return updateVerticalDramaDraftJob(draftId, owner, {
-    jobStatus: "archived",
-    archivedAt: new Date(),
-  });
+  const db = await getDb();
+  const now = new Date();
+  const [row] = await db
+    .update(verticalDramaDraftLedgers)
+    .set({ jobStatus: "archived", archivedAt: now, updatedAt: now })
+    .where(
+      and(
+        eq(verticalDramaDraftLedgers.id, draftId),
+        eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
+        eq(verticalDramaDraftLedgers.userId, owner.userId),
+        isNull(verticalDramaDraftLedgers.seriesId),
+        isNull(verticalDramaDraftLedgers.archivedAt)
+      )
+    )
+    .returning({ id: verticalDramaDraftLedgers.id });
+  return Boolean(row);
 }

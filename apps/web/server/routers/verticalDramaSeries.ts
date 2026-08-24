@@ -13,11 +13,15 @@
 import { createHash, randomUUID } from "crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { router, protectedProcedure } from "../_core/trpc";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
 import { db } from "../db";
-import { ingestVerticalDramaMediaAsset } from "../services/verticalDramaMediaAssetService";
+import { assertR2StorageActive, storageExists } from "../storage";
+import {
+  ingestVerticalDramaMediaAsset,
+  registerVerticalDramaUploadedMediaAsset,
+} from "../services/verticalDramaMediaAssetService";
 import { getUnifiedMediaTask } from "../services/mediaTaskPollingService";
 import { calculateCreditsForLLM } from "../services/creditService";
 import {
@@ -51,6 +55,8 @@ import {
   verticalDramaMemorySnapshots,
   verticalDramaQcReports,
   mediaAssets,
+  verticalDramaSourceMediaSegments,
+  verticalDramaSourcePacks,
   apiAuditEvents,
   /**
    * Manual LLM model override for the "generate start-frame render plan" /
@@ -111,6 +117,24 @@ import {
   CREATE_SERIES_FIELD_LIMITS,
 } from "@shared/verticalDramaSeries";
 import {
+  buildVerticalDramaPlanningState,
+  readVerticalDramaPlanningState,
+} from "@shared/verticalDramaSeries/planningState";
+import {
+  hasVerticalDramaGeneratedStory,
+  resolveVerticalDramaSeriesStatus,
+} from "@shared/verticalDramaSeries/seriesStatus";
+import {
+  characterRelationshipGraphSchema,
+  fingerprintLongFormPolicy,
+  findRelationshipPaths,
+  queryRelationshipGraph,
+  relationshipGraphQuerySchema,
+  validateStrictRelationshipGraphDeltas,
+  type CharacterRelationshipGraph,
+  type RelationshipGraphQuery,
+} from "@shared/verticalDramaSeries/longFormContracts";
+import {
   VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS,
   type VerticalDramaTargetAudienceRegion,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
@@ -153,6 +177,16 @@ import {
   resolveEffectiveSeriesVisualIdentity,
 } from "@shared/verticalDramaSeries/seriesLookLock";
 import { verticalDramaVisualNarrativeProfileSchema } from "@shared/verticalDramaSeries/visualNarrativeProfile";
+import {
+  resolveSeriesFormatConfig,
+  verticalDramaSeriesFormatConfigSchema,
+  type VdSeriesFormatConfig,
+} from "@shared/verticalDramaSeries/seriesFormat";
+import {
+  resolveVisualGroundingContract,
+  verticalDramaVisualGroundingContractSchema,
+  type VdVisualGroundingContract,
+} from "@shared/verticalDramaSeries/visualGrounding";
 import {
   VD_SERIES_LOOK_LOCK_APPLIED_EVENT,
   VD_SERIES_LOOK_LOCK_CHANGED_EVENT,
@@ -221,6 +255,12 @@ import {
   type VdSeriesMemory,
   type VdSeriesMemoryCurrentState,
 } from "@shared/verticalDramaSeries/seriesMemoryState";
+import {
+  VD_THREAD_CLOSURE_DISPOSITIONS,
+  VD_THREAD_CLOSURE_INTENTS,
+  assessThreadClosures,
+  type VdThreadClosureAnnotation,
+} from "@shared/verticalDramaSeries/closureAssurance";
 /**
  * Series Memory tab write path (Stage 1.4) reuses ONLY this pure formatter
  * from the Stage 1.2 projection service — see the import block's doc
@@ -364,6 +404,22 @@ import {
   type VerticalDramaStoryJobCheckpoint,
 } from "../services/verticalDramaStoryJobs";
 import {
+  admitStoryGenerationRun,
+  getStoryGenerationRunSummary,
+  finalizeStoryGeneration,
+  transitionStoryGenerationRun,
+} from "../services/verticalDramaStoryGenerationRuntime";
+import { createLongFormRunExtension } from "../services/verticalDramaLongFormAdmission";
+import {
+  getStoryGenerationRun,
+  requestStoryGenerationCancellation,
+  updateStoryGenerationCheckpoint,
+} from "../services/verticalDramaStoryGenerationRepository";
+import {
+  mergeStoryPlanFieldsIntoCandidate,
+  validateStoryGenerationOutput,
+} from "../services/verticalDramaStoryGenerationValidation";
+import {
   cancelVerticalDramaDraftQualityQc,
   enqueueVerticalDramaDraftQualityQc,
   getVerticalDramaDraftQualityQcStatus,
@@ -385,17 +441,19 @@ import {
 import {
   getVerticalDramaDraftLedger,
   getVerticalDramaDraftLedgerBySession,
+  getVerticalDramaDraftLedgerBySeriesId,
   ensureVerticalDramaDraftJob,
   archiveVerticalDramaDraftJob,
   listVerticalDramaDraftLedgers,
   updateVerticalDramaDraftJob,
   getVerticalDramaDraftVersion,
+  listVerticalDramaDraftVersionSummaries,
 } from "../services/verticalDramaDraftLedger";
 import {
   archiveVerticalDramaStaleDraftJobs,
-  getVerticalDramaStaleDraftCounts,
   verticalDramaStaleDraftDaysSchema,
 } from "../services/verticalDramaDraftCleanup";
+import { migrateLegacyVerticalDramaDrafts } from "../services/verticalDramaLegacyDraftMigration";
 import {
   draftQualityQcReceiptSchema,
   draftQualityQcRoundBudgetSchema,
@@ -404,7 +462,10 @@ import {
   fingerprintDraftQualityQcCandidate,
 } from "@shared/verticalDramaSeries/draftQualityQc";
 import { inspectVerticalDramaDraftCompleteness } from "@shared/verticalDramaSeries/draftCompletion";
-import { resolveVerticalDramaRecommendedDraftModel } from "../services/verticalDramaLlmModelPolicy";
+import {
+  assertVerticalDramaRecommendedDraftModel,
+  resolveVerticalDramaRecommendedDraftModel,
+} from "../services/verticalDramaLlmModelPolicy";
 
 function recoveredDraftCompositionStatus(ledger: {
   id: string;
@@ -428,7 +489,8 @@ function recoveredDraftCompositionStatus(ledger: {
       status: "failed" as const,
       progress: null,
       result: undefined,
-      error: "ไม่พบเนื้อหา Draft ที่กู้กลับได้จากงานเดิม งานนี้ยังไม่ถึงขั้นสร้าง Draft",
+      error:
+        "ไม่พบเนื้อหา Draft ที่กู้กลับได้จากงานเดิม งานนี้ยังไม่ถึงขั้นสร้าง Draft",
       failure: {
         code: "internal_error" as const,
         stage: "building_foundation" as const,
@@ -491,6 +553,34 @@ function recoveredDraftCompositionStatus(ledger: {
     jobId: ledger.id,
     requestFingerprint: `ledger:${ledger.id}:${ledger.currentVersion}`,
     recoveredAt: now,
+  };
+}
+
+/** Keep the currently selected QC result, but strip prior rounds by default. */
+function projectDraftQualityQcResult(result: any, includeHistory: boolean) {
+  if (!result || includeHistory) return result;
+  return { ...result, history: [] };
+}
+
+/**
+ * Legacy rows may still contain QC round history inside bible JSON. Keep the
+ * active report but remove that historical array from normal Series reads.
+ */
+function projectSeriesBibleForRead(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const bible = value as Record<string, unknown>;
+  const qc = bible.draftQualityQc;
+  if (!qc || typeof qc !== "object" || Array.isArray(qc)) return value;
+  const history = (qc as Record<string, unknown>).history;
+  if (!Array.isArray(history) || history.length === 0) return value;
+  return {
+    ...bible,
+    draftQualityQc: {
+      ...(qc as Record<string, unknown>),
+      history: [],
+      historyCount:
+        (qc as Record<string, unknown>).historyCount ?? history.length,
+    },
   };
 }
 /**
@@ -646,6 +736,69 @@ import {
   VerticalDramaArcReplanGuardViolationError,
 } from "../services/verticalDramaArcReplan";
 import { verticalDramaSeriesMemoryService } from "../services/verticalDramaSeriesMemory";
+import {
+  addSourceAsset,
+  attachStagedSourcePackInTransaction,
+  assertSourcePackDraftReady,
+  assertSeriesSourcePackDraftReady,
+  buildStoredSourcePackDigest,
+  buildStoredSourcePackBrollManifest,
+  buildStoredSeriesSourcePackBrollManifest,
+  createDraftSourceSession,
+  findAttachedSourcePackByIdempotencyKey,
+  getOrCreateStagedSourcePack,
+  getSourcePackReadiness,
+  loadSourcePack,
+  pruneUnapprovedPromptSlots,
+  saveSourceSlot,
+  setSourceAssetRights,
+} from "../services/verticalDramaSourcePackService";
+import {
+  acceptSourceAnalysisSuggestion,
+  requestSourceAnalysis,
+  validateSourceReferenceUrl,
+} from "../services/verticalDramaSourceIngestionService";
+import {
+  applyPromptExpansion,
+  buildDeterministicPromptExpansionPreview,
+  savePromptExpansionPreview,
+} from "../services/verticalDramaPromptExpansionService";
+import {
+  buildSlotPrompt,
+  promptExpansionPreviewSchema,
+} from "@shared/verticalDramaSeries/promptExpansion";
+import { newsClaimSchema } from "@shared/verticalDramaSeries/newsReport";
+import {
+  applyNewsCorrection,
+  assessNewsClaimFreshness,
+  evaluateNewsReadiness,
+  listPersistedNewsClaims,
+  persistNewsClaim,
+  persistNewsCorrection,
+} from "../services/verticalDramaNewsReportService";
+import { executeUnified } from "../services/unifiedOrchestrator";
+import {
+  projectBrollTimeline,
+  parseShotBrollBinding,
+  validateBrollBinding,
+} from "../services/verticalDramaBrollService";
+import {
+  shotBrollBindingSchema,
+  sourceMediaSegmentSchema,
+} from "@shared/verticalDramaSeries/visualSource";
+import { captureSeriesVisualSourceSnapshot } from "../services/verticalDramaVisualSourceSnapshotService";
+import {
+  VD_SERIES_PROFILE_IDS,
+  getSeriesProfile,
+  projectProfileToLegacy,
+  type VdSeriesProfileId,
+} from "@shared/verticalDramaSeries/seriesProfile";
+import {
+  verticalDramaSourceAssetInputSchema,
+  verticalDramaSourceSlotInputSchema,
+  VD_SOURCE_DISCLOSURE_STATUSES,
+  VD_SOURCE_RIGHTS_STATUSES,
+} from "@shared/verticalDramaSeries/sourcePack";
 /**
  * Production-grade full-story generation
  * (`planning/vertical-drama-full-story-production-grade`, added 2026-07-13)
@@ -663,6 +816,10 @@ import { persistDeepDraftDeclaredLocations } from "../services/verticalDramaLoca
  * (`runGenerateStoryBibleDeepJob` / `runExtendStoryDraftHorizonJob` below).
  */
 import { persistDeepDraftEpisodeMemories } from "../services/verticalDramaSeriesMemoryProjection";
+import {
+  attachRelationshipGraphToBible,
+  materializeCompatibilityRelationshipGraph,
+} from "../services/verticalDramaLongFormGraph";
 /**
  * Auto-register story-introduced characters (`planning/vd-auto-register-story-characters/plan.md`)
  * — INSERT-capable counterpart to this file's own `reconcileCharactersFromStoryBible`
@@ -968,6 +1125,25 @@ export const setSeriesLookLockInput = z
     }
   });
 
+/** Feature 153: bounded, tenant-scoped relationship graph diagnostics. */
+export const getCharacterRelationshipGraphInput = z
+  .object({
+    seriesId: z.string().min(1),
+  })
+  .and(relationshipGraphQuerySchema);
+
+export const getCharacterRelationshipPathInput = z.object({
+  seriesId: z.string().min(1),
+  graphRevisionId: z.string().min(1),
+  fromCharacterKey: z.string().min(1),
+  toCharacterKey: z.string().min(1),
+  episodeNumber: z.number().int().positive().optional(),
+  maxHops: z.number().int().min(1).max(6).optional(),
+  maxPaths: z.number().int().min(1).max(3).optional(),
+  expectedRedactionPolicyFingerprint: z.string().min(1).optional(),
+  viewpointCharacterKey: z.string().trim().min(1).optional(),
+});
+
 /**
  * Base procedure for the read-only series share link OWNER mutations (task
  * #32, Collab-lite L1, F131AA, added 2026-07-09): the base
@@ -1018,6 +1194,97 @@ function requireTenantId(tenantId: string | null): string {
   return tenantId;
 }
 
+// A planning shell is an addressable resume anchor, not a new Series draft on
+// every click. Keep the placeholder in one place so the create/reuse contract
+// cannot drift from the client-side title guard.
+const PLANNING_SERIES_PLACEHOLDER_TITLE = "กำลังวางแผนซีรีย์ใหม่";
+
+/** Feature 152 rollout switch. The additive persistence/runtime path is dark
+ * until the migration and focused verification have been applied in the
+ * target environment. `true` enables admission alongside the legacy job
+ * adapter; `false` preserves the existing submit/poll behavior. */
+function isStoryGenerationAssuranceEnabled(): boolean {
+  return process.env.VERTICAL_DRAMA_STORY_ASSURANCE === "true";
+}
+
+/** Feature 152 final-gate preflight. Assurance runs must validate the merged
+ * candidate before this legacy executor writes the active breakdown. The
+ * worker repeats the same validation after the job terminal response so a
+ * durable report exists even when the process crashes after this point. */
+async function assuranceCandidateGate(input: {
+  tenantId: string;
+  runId: string;
+  candidateOutput: unknown[];
+  plan: unknown;
+  partial: boolean;
+}): Promise<boolean> {
+  const row = await getStoryGenerationRun(input.tenantId, input.runId);
+  const contract = row?.contractJson as
+    | import("../services/verticalDramaStoryGenerationContracts").StoryGenerationRunContract
+    | undefined;
+  if (!row || !contract) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Durable story-generation contract is unavailable",
+    });
+  }
+  const report = validateStoryGenerationOutput({
+    contract,
+    output: mergeStoryPlanFieldsIntoCandidate(
+      input.candidateOutput,
+      input.plan
+    ),
+    plan: input.plan,
+  });
+  if (input.partial || !report.passed) return false;
+  return true;
+}
+
+async function enqueueStoryAssuranceRecoveryJob(input: {
+  tenantId: string;
+  runId: string;
+  row: Awaited<ReturnType<typeof getStoryGenerationRun>>;
+  repair: boolean;
+}): Promise<string> {
+  const row = input.row;
+  const checkpoint = row?.checkpointJson as Record<string, unknown> | null;
+  const kind = checkpoint?.kind;
+  const originalInput = checkpoint?.input;
+  if (!row || !kind || !originalInput || typeof originalInput !== "object") {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Story generation checkpoint is not resumable",
+    });
+  }
+  if (
+    kind !== "deep_generate" &&
+    kind !== "extend" &&
+    kind !== "improve_script"
+  ) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Unsupported story recovery job",
+    });
+  }
+  const { jobId } = await enqueueVerticalDramaStoryJob({
+    kind,
+    seriesId: Number(row.seriesId),
+    tenantId: input.tenantId,
+    userId: row.userId,
+    input: {
+      ...(originalInput as Record<string, unknown>),
+      ...(input.repair && kind !== "improve_script"
+        ? { repairContinuityOnly: true }
+        : {}),
+      runId: input.runId,
+    },
+  });
+  await updateStoryGenerationCheckpoint(input.tenantId, input.runId, {
+    checkpoint: { ...checkpoint, legacyJobId: jobId },
+  });
+  return jobId;
+}
+
 /** Ownership predicate reused by every query: tenant + user + id. */
 function seriesOwnershipWhere(
   tenantId: string,
@@ -1050,6 +1317,182 @@ async function loadOwnedSeries(
     throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
   }
   return row;
+}
+
+async function enforceSeriesSourcePackDraftGate(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  bible: Record<string, unknown>
+) {
+  const profileIdFromFormat = (kind: unknown): string | undefined => {
+    if (typeof kind !== "string") return undefined;
+    const mapping: Record<string, string> = {
+      documentary: "documentary",
+      news_report: "news_report",
+      location_review: "location_review",
+      restaurant_review: "restaurant_review",
+      product_review: "product_review",
+      software_review: "software_review",
+      hybrid_docu_drama: "hybrid_docu_drama",
+    };
+    return mapping[kind];
+  };
+  const profileIdFromBible =
+    bible.seriesProfile && typeof bible.seriesProfile === "object"
+      ? (bible.seriesProfile as { profileId?: unknown }).profileId
+      : undefined;
+  const profileId =
+    typeof profileIdFromBible === "string"
+      ? profileIdFromBible
+      : bible.seriesFormat && typeof bible.seriesFormat === "object"
+        ? profileIdFromFormat((bible.seriesFormat as { kind?: unknown }).kind)
+        : undefined;
+  if (
+    typeof profileId !== "string" ||
+    !(VD_SERIES_PROFILE_IDS as readonly string[]).includes(profileId)
+  ) {
+    return null;
+  }
+  const profile = getSeriesProfile(profileId as VdSeriesProfileId);
+  if (profile.sourceGatePolicy !== "required") return null;
+  return assertSeriesSourcePackDraftReady(
+    { tenantId, userId },
+    seriesId,
+    profile.profileId
+  );
+}
+
+/**
+ * Compatibility backfill for older bibles. The first draft generation now
+ * writes this graph, but legacy series may reach deep drafting without one.
+ * Backfill is persisted before paid admission so the worker and assurance
+ * contract observe the same revision; malformed existing graphs fail closed.
+ */
+async function ensureLongFormRelationshipGraph(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  row: { bible: unknown; memory: unknown },
+  bible: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  const longForm =
+    bible.longForm && typeof bible.longForm === "object"
+      ? (bible.longForm as Record<string, unknown>)
+      : {};
+  const rawGraph = longForm.relationshipGraph;
+  if (rawGraph !== undefined) {
+    if (!characterRelationshipGraphSchema.safeParse(rawGraph).success) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Relationship graph needs repair before deep generation",
+      });
+    }
+    return bible;
+  }
+  const memory =
+    row.memory && typeof row.memory === "object"
+      ? (row.memory as { episodes?: unknown[] })
+      : null;
+  const materialization = materializeCompatibilityRelationshipGraph({
+    seriesId,
+    characterKeys: readBibleRefinedCharacterProfiles(bible).map(
+      character => character.name
+    ),
+    episodeMemories:
+      memory && Array.isArray(memory.episodes) ? memory.episodes : [],
+  });
+  const nextBible = attachRelationshipGraphToBible(bible, materialization);
+  await db
+    .update(verticalDramaSeries)
+    .set({ bible: nextBible, updatedAt: new Date() })
+    .where(seriesOwnershipWhere(tenantId, userId, seriesId));
+  return nextBible;
+}
+
+function createLongFormExtensionForBible(
+  seriesId: number,
+  targetEpisodeCount: number,
+  bible: Record<string, unknown>
+) {
+  const longForm =
+    bible.longForm && typeof bible.longForm === "object"
+      ? (bible.longForm as Record<string, unknown>)
+      : {};
+  const graph = characterRelationshipGraphSchema.safeParse(
+    longForm.relationshipGraph
+  );
+  if (!graph.success)
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "Relationship graph is not ready for long-form admission",
+    });
+  return createLongFormRunExtension({
+    blueprintId: String(longForm.blueprintId ?? `series-${seriesId}-blueprint`),
+    blueprintFingerprint: String(
+      longForm.blueprintFingerprint ??
+        fingerprintLongFormPolicy({
+          seriesId,
+          targetEpisodeCount,
+          episodeBreakdown: bible.episodeBreakdown,
+        })
+    ),
+    targetEpisodeCount,
+    relationshipGraphRevisionId: graph.data.graphRevisionId,
+    relationshipGraphFingerprint: graph.data.fingerprint,
+    relationshipDependencyIndexFingerprint: String(
+      longForm.relationshipDependencyIndexFingerprint ??
+        fingerprintLongFormPolicy(graph.data.edges.map(edge => edge.edgeId))
+    ),
+    relationshipRedactionPolicyVersion: String(
+      longForm.relationshipRedactionPolicyVersion ?? "relationship-redaction-v1"
+    ),
+    relationshipRedactionPolicyFingerprint: String(
+      longForm.relationshipRedactionPolicyFingerprint ??
+        "relationship-redaction-default"
+    ),
+    policyValues: {
+      longFormMode:
+        longForm.relationshipGraphReadiness ?? "compatibility_backfill",
+    },
+  });
+}
+
+/** Strict long-form runs require an explicit graph-delta array on every newly authored episode. */
+function assertStrictRelationshipGraphDeltaCoverage(
+  draftedItems: readonly unknown[],
+  bible: Record<string, unknown>
+): void {
+  const longForm =
+    bible.longForm && typeof bible.longForm === "object"
+      ? (bible.longForm as Record<string, unknown>)
+      : null;
+  // No additive long-form graph means this is an untouched legacy worker call.
+  if (!longForm) return;
+  const findings = draftedItems.flatMap(item => {
+    if (!item || typeof item !== "object") return ["episode_output_invalid"];
+    const value = item as {
+      episodeNumber?: unknown;
+      episodeMemory?: { relationshipGraphDeltas?: unknown };
+    };
+    if (
+      !Number.isInteger(value.episodeNumber) ||
+      Number(value.episodeNumber) < 1
+    )
+      return ["episode_output_episode_number_invalid"];
+    return validateStrictRelationshipGraphDeltas({
+      episodeNumber: Number(value.episodeNumber),
+      deltas: value.episodeMemory?.relationshipGraphDeltas,
+    }).map(finding => `episode:${String(value.episodeNumber)}:${finding}`);
+  });
+  if (findings.length > 0) {
+    throw new TRPCError({
+      code: "UNPROCESSABLE_CONTENT",
+      message: `Strict relationship graph delta contract failed: ${findings
+        .slice(0, 8)
+        .join(", ")}`,
+    });
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1103,6 +1546,26 @@ const vdOpenThreadInputSchema = z.object({
   threadClass: vdThreadClassInputSchema,
   openedEpisode: z.number().int().positive(),
   resolvedEpisode: z.number().int().positive().optional(),
+  expectedResolution: z
+    .enum(["this_episode", "future_episode", "season"])
+    .optional(),
+  expectedResolutionEpisode: z.number().int().positive().optional(),
+  closureIntent: z.enum(VD_THREAD_CLOSURE_INTENTS).optional(),
+  expectedEvidence: z
+    .array(z.string().trim().min(1).max(240))
+    .max(12)
+    .optional(),
+});
+
+const vdThreadClosureInputSchema = z.object({
+  threadId: z.string().trim().min(1).max(120),
+  disposition: z.enum(VD_THREAD_CLOSURE_DISPOSITIONS),
+  evidenceEpisodeNumbers: z
+    .array(z.number().int().positive())
+    .max(32)
+    .default([]),
+  rationale: z.string().trim().min(1).max(1000),
+  confidence: z.enum(["high", "medium", "low"]).optional(),
 });
 
 const vdKnowledgeChangeInputSchema = z.object({
@@ -1122,6 +1585,7 @@ const vdEpisodeMemoryInputSchema = z.object({
   threadsOpened: z.array(vdOpenThreadInputSchema).default([]),
   threadsResolved: z.array(z.string().trim().min(1)).default([]),
   relationshipChanges: z.array(vdRelationshipStateInputSchema).default([]),
+  threadClosures: z.array(vdThreadClosureInputSchema).max(64).default([]),
   knowledgeChanges: z.array(vdKnowledgeChangeInputSchema).default([]),
 });
 
@@ -1202,6 +1666,7 @@ function toVdEpisodeMemoryFromInput(
     threadsOpened: input.threadsOpened,
     threadsResolved: input.threadsResolved,
     relationshipChanges,
+    threadClosures: input.threadClosures as VdThreadClosureAnnotation[],
     knowledgeChanges: input.knowledgeChanges,
   };
 }
@@ -2114,6 +2579,7 @@ export async function runGenerateStoryBibleDeepJob(
     idempotencyKey?: string;
     /** Internal recovery mode: repair a complete failed checkpoint only. */
     repairContinuityOnly?: boolean;
+    runId?: string;
   },
   onProgress: (progress: VerticalDramaStoryJobProgress) => void,
   /**
@@ -2139,6 +2605,7 @@ export async function runGenerateStoryBibleDeepJob(
 
   const row = await loadOwnedSeries(tenantId, userId, seriesId);
   const bible = (row.bible as Record<string, unknown> | null) ?? {};
+  await enforceSeriesSourcePackDraftGate(tenantId, userId, seriesId, bible);
   const rawExistingItems = getActiveBreakdown(bible);
   if (rawExistingItems.length === 0) {
     throw new TRPCError({
@@ -2270,10 +2737,10 @@ export async function runGenerateStoryBibleDeepJob(
       const checkpointMemories = checkpointItems
         .map(item => item.episodeMemory)
         .filter((memory): memory is VdEpisodeMemory => memory != null);
-      const totalEpisodeCount = row.targetEpisodeCount ?? episodesToDraft.length;
-      const normalized = normalizeVerticalDramaContinuityTimeline(
-        checkpointMemories,
-      );
+      const totalEpisodeCount =
+        row.targetEpisodeCount ?? episodesToDraft.length;
+      const normalized =
+        normalizeVerticalDramaContinuityTimeline(checkpointMemories);
       const checkpointIssues = validateVerticalDramaContinuity({
         episodes: normalized.episodes,
         currentEpisodeNumber: totalEpisodeCount,
@@ -2307,7 +2774,16 @@ export async function runGenerateStoryBibleDeepJob(
         newLocations: [],
         continuityIssues: repaired.continuityIssues,
       };
-      resolvedResume.persistCheckpoint(repaired.draftedItems);
+      resolvedResume.persistCheckpoint({
+        draftedItems: repaired.draftedItems,
+        completedEpisodeNumbers: repaired.draftedItems.map(
+          item => item.episodeNumber
+        ),
+        chunkSizesDone: resolvedResume.checkpoint?.chunkSizesDone ?? [],
+        creditsUsed:
+          (resolvedResume.checkpoint?.creditsUsed ?? 0) + repaired.creditsUsed,
+        updatedAt: new Date().toISOString(),
+      });
     } else {
       ledgerPlan = await planQualityLedgersForBreakdown({
         tenantId,
@@ -2326,60 +2802,60 @@ export async function runGenerateStoryBibleDeepJob(
         onProgress,
       });
       result = await generateStoryBibleDeep({
-      userId,
-      tenantId,
-      seriesId,
-      title: row.title,
-      locale: normalizeVerticalDramaSeriesLocale(row.locale),
-      dialogueLanguageProfile:
-        buildVerticalDramaDialogueLanguageProfileFromBible(bible),
-      genre: row.genre,
-      tone: row.tone,
-      episodeDurationSeconds: row.defaultEpisodeDurationSeconds,
-      durationPlan: durationPlan ?? undefined,
-      storyControlSeed,
-      ...resolveStoryVisualNarrativeInputs(bible),
-      ...resolveStoryPlanningInputs(bible),
-      episodes: episodesToDraft,
-      openThreadIds: resolveOpenThreadIdsFromSeriesMemory(row.memory),
-      mode,
-      // Resilient resume — see the doc comment on this const block above.
-      resumeDraftedItems,
-      alreadyDraftedEpisodeNumbers,
-      onChunkComplete,
-      // F131X + finale price_paid rule (both dormant without these — the
-      // service's optional params default off; see #23's wiring note)
-      totalEpisodeCount: row.targetEpisodeCount ?? undefined,
-      formatProfilesEnabled,
-      motionContractsEnabled,
-      // Task #22 — dormant (`undefined`) unless the bootstrap above actually
-      // activated; see `resolveTieInDraftBootstrap`'s own doc comment.
-      tieInDraftContext: tieInBootstrap.context,
-      // Feature 132 §4.2.7 (F132A) — inherits the premise via the same
-      // bible read already done above; the flag gate itself lives at
-      // `create`/`synthesizeGenrePreset` write time (only a truthy string
-      // ever gets persisted into `bible.userPremise` in the first place).
-      userPremise:
-        typeof bible.userPremise === "string" ? bible.userPremise : undefined,
-      // Series-level audience age rating (Phase 1) — same "inherit via the
-      // bible read already done above" convention as `userPremise` just
-      // above; always resolves to a concrete tier (defaults to the
-      // least-restrictive "18plus" when absent/invalid).
-      audienceAgeRating: resolveAudienceAgeRating(bible.audienceAgeRating),
-      // Production-grade full-story generation — see this function's own
-      // "existingLocations"/"characterBibleNames" load above.
-      existingLocations,
-      characterBibleNames,
-      // `planning/vd-character-identity-repair/plan.md` Phase 2.0 — the
-      // deep-draft prompt's "CHARACTER BIBLE" FACT block source; reuses the
-      // SAME `characterBibleProfiles` load above (Phase 1's role-preserving
-      // read), never a separate query.
-      knownCharacters: characterBibleProfiles,
-      // Stage 2.4 threading — see this function's own `seasonLineage` load
-      // above. `undefined` for every non-sequel run, byte-identical to
-      // before this feature existed.
-      seasonLineage,
-      onProgress,
+        userId,
+        tenantId,
+        seriesId,
+        title: row.title,
+        locale: normalizeVerticalDramaSeriesLocale(row.locale),
+        dialogueLanguageProfile:
+          buildVerticalDramaDialogueLanguageProfileFromBible(bible),
+        genre: row.genre,
+        tone: row.tone,
+        episodeDurationSeconds: row.defaultEpisodeDurationSeconds,
+        durationPlan: durationPlan ?? undefined,
+        storyControlSeed,
+        ...resolveStoryVisualNarrativeInputs(bible),
+        ...resolveStoryPlanningInputs(bible),
+        episodes: episodesToDraft,
+        openThreadIds: resolveOpenThreadIdsFromSeriesMemory(row.memory),
+        mode,
+        // Resilient resume — see the doc comment on this const block above.
+        resumeDraftedItems,
+        alreadyDraftedEpisodeNumbers,
+        onChunkComplete,
+        // F131X + finale price_paid rule (both dormant without these — the
+        // service's optional params default off; see #23's wiring note)
+        totalEpisodeCount: row.targetEpisodeCount ?? undefined,
+        formatProfilesEnabled,
+        motionContractsEnabled,
+        // Task #22 — dormant (`undefined`) unless the bootstrap above actually
+        // activated; see `resolveTieInDraftBootstrap`'s own doc comment.
+        tieInDraftContext: tieInBootstrap.context,
+        // Feature 132 §4.2.7 (F132A) — inherits the premise via the same
+        // bible read already done above; the flag gate itself lives at
+        // `create`/`synthesizeGenrePreset` write time (only a truthy string
+        // ever gets persisted into `bible.userPremise` in the first place).
+        userPremise:
+          typeof bible.userPremise === "string" ? bible.userPremise : undefined,
+        // Series-level audience age rating (Phase 1) — same "inherit via the
+        // bible read already done above" convention as `userPremise` just
+        // above; always resolves to a concrete tier (defaults to the
+        // least-restrictive "18plus" when absent/invalid).
+        audienceAgeRating: resolveAudienceAgeRating(bible.audienceAgeRating),
+        // Production-grade full-story generation — see this function's own
+        // "existingLocations"/"characterBibleNames" load above.
+        existingLocations,
+        characterBibleNames,
+        // `planning/vd-character-identity-repair/plan.md` Phase 2.0 — the
+        // deep-draft prompt's "CHARACTER BIBLE" FACT block source; reuses the
+        // SAME `characterBibleProfiles` load above (Phase 1's role-preserving
+        // read), never a separate query.
+        knownCharacters: characterBibleProfiles,
+        // Stage 2.4 threading — see this function's own `seasonLineage` load
+        // above. `undefined` for every non-sequel run, byte-identical to
+        // before this feature existed.
+        seasonLineage,
+        onProgress,
       });
     }
   } catch (error) {
@@ -2425,7 +2901,17 @@ export async function runGenerateStoryBibleDeepJob(
           creditsUsed: result.creditsUsed + repaired.creditsUsed,
         };
         if (result.continuityIssues.length === 0) {
-          resolvedResume.persistCheckpoint(repaired.draftedItems);
+          resolvedResume.persistCheckpoint({
+            draftedItems: repaired.draftedItems,
+            completedEpisodeNumbers: repaired.draftedItems.map(
+              item => item.episodeNumber
+            ),
+            chunkSizesDone: resolvedResume.checkpoint?.chunkSizesDone ?? [],
+            creditsUsed:
+              (resolvedResume.checkpoint?.creditsUsed ?? 0) +
+              repaired.creditsUsed,
+            updatedAt: new Date().toISOString(),
+          });
         }
       } catch (error) {
         if (error instanceof InsufficientCreditsError) {
@@ -2434,7 +2920,7 @@ export async function runGenerateStoryBibleDeepJob(
         debugError(
           "verticalDramaSeries.deepStoryDraft",
           "Bounded continuity repair failed closed",
-          error,
+          error
         );
       }
     }
@@ -2449,7 +2935,29 @@ export async function runGenerateStoryBibleDeepJob(
     }
   }
 
+  if (params.runId) {
+    const assurancePassed = await assuranceCandidateGate({
+      tenantId,
+      runId: params.runId,
+      candidateOutput: result.draftedItems,
+      plan: bible,
+      partial: result.partial,
+    });
+    if (!assurancePassed) {
+      return { ...result, assuranceGateBlocked: true };
+    }
+  }
+
   const mergedItems = mergeDeepDraftItems(existingItems, result.draftedItems);
+  if (!params.repairContinuityOnly) {
+    assertStrictRelationshipGraphDeltaCoverage(result.draftedItems, bible);
+  }
+  const relationshipGraphMaterialization =
+    materializeCompatibilityRelationshipGraph({
+      seriesId,
+      characterKeys: characterBibleProfiles.map(character => character.name),
+      episodeMemories: mergedItems.map(item => item.episodeMemory),
+    });
   // Silent-no-op fix (plan
   // `planning/vertical-drama-deep-draft-update-all-noop`, added 2026-07-14)
   // — compute over the MERGED (existing + newly-drafted) state, not just
@@ -2506,18 +3014,21 @@ export async function runGenerateStoryBibleDeepJob(
     };
   }
 
-  const nextBible = appendBreakdownVersion(bible, {
-    source: "generate_story",
-    items: mergedItems,
-    createdByUserId: userId,
-    ...(ledgerPlan ? { ledgers: ledgerPlan.ledgers } : {}),
-    deepDraft: {
-      horizonEndEpisode,
-      chunkSizes: result.chunkSizes,
-      generatedAt,
-      ...(result.premiumMetrics ? { premium: result.premiumMetrics } : {}),
-    },
-  });
+  const nextBible = attachRelationshipGraphToBible(
+    appendBreakdownVersion(bible, {
+      source: "generate_story",
+      items: mergedItems,
+      createdByUserId: userId,
+      ...(ledgerPlan ? { ledgers: ledgerPlan.ledgers } : {}),
+      deepDraft: {
+        horizonEndEpisode,
+        chunkSizes: result.chunkSizes,
+        generatedAt,
+        ...(result.premiumMetrics ? { premium: result.premiumMetrics } : {}),
+      },
+    }),
+    relationshipGraphMaterialization
+  );
 
   const [updatedRow] = await db
     .update(verticalDramaSeries)
@@ -2824,6 +3335,7 @@ export async function runExtendStoryDraftHorizonJob(
     additionalEpisodes?: number;
     mode?: VerticalDramaDeepStoryDraftMode;
     idempotencyKey?: string;
+    runId?: string;
   },
   onProgress: (progress: VerticalDramaStoryJobProgress) => void,
   /** Resilient resume (added 2026-07-14) — see `runGenerateStoryBibleDeepJob`'s identical param doc comment. */
@@ -2842,6 +3354,7 @@ export async function runExtendStoryDraftHorizonJob(
 
   const row = await loadOwnedSeries(tenantId, userId, seriesId);
   const bible = (row.bible as Record<string, unknown> | null) ?? {};
+  await enforceSeriesSourcePackDraftGate(tenantId, userId, seriesId, bible);
   const rawExistingItems = getActiveBreakdown(bible);
   if (rawExistingItems.length === 0) {
     throw new TRPCError({
@@ -3073,7 +3586,27 @@ export async function runExtendStoryDraftHorizonJob(
     });
   }
 
+  if (params.runId) {
+    const assurancePassed = await assuranceCandidateGate({
+      tenantId,
+      runId: params.runId,
+      candidateOutput: result.draftedItems,
+      plan: bible,
+      partial: result.partial,
+    });
+    if (!assurancePassed) {
+      return { ...result, assuranceGateBlocked: true };
+    }
+  }
+
   const mergedItems = mergeDeepDraftItems(existingItems, result.draftedItems);
+  assertStrictRelationshipGraphDeltaCoverage(result.draftedItems, bible);
+  const relationshipGraphMaterialization =
+    materializeCompatibilityRelationshipGraph({
+      seriesId,
+      characterKeys: characterBibleProfiles.map(character => character.name),
+      episodeMemories: mergedItems.map(item => item.episodeMemory),
+    });
   const newHorizonEndEpisode = result.draftedItems.reduce(
     (max, item) => Math.max(max, item.episodeNumber),
     priorMetadata?.horizonEndEpisode ?? 0
@@ -3081,18 +3614,21 @@ export async function runExtendStoryDraftHorizonJob(
   const generatedAt = new Date().toISOString();
   const totalCreditsUsed = result.creditsUsed + (ledgerPlan?.creditsUsed ?? 0);
 
-  const nextBible = appendBreakdownVersion(bible, {
-    source: "generate_story",
-    items: mergedItems,
-    createdByUserId: userId,
-    ...(ledgerPlan ? { ledgers: ledgerPlan.ledgers } : {}),
-    deepDraft: {
-      horizonEndEpisode: newHorizonEndEpisode,
-      chunkSizes: result.chunkSizes,
-      generatedAt,
-      ...(result.premiumMetrics ? { premium: result.premiumMetrics } : {}),
-    },
-  });
+  const nextBible = attachRelationshipGraphToBible(
+    appendBreakdownVersion(bible, {
+      source: "generate_story",
+      items: mergedItems,
+      createdByUserId: userId,
+      ...(ledgerPlan ? { ledgers: ledgerPlan.ledgers } : {}),
+      deepDraft: {
+        horizonEndEpisode: newHorizonEndEpisode,
+        chunkSizes: result.chunkSizes,
+        generatedAt,
+        ...(result.premiumMetrics ? { premium: result.premiumMetrics } : {}),
+      },
+    }),
+    relationshipGraphMaterialization
+  );
 
   const [updatedRow] = await db
     .update(verticalDramaSeries)
@@ -3327,6 +3863,7 @@ export async function runVerticalDramaStoryJobExecutor(
             mode?: VerticalDramaDeepStoryDraftMode;
             idempotencyKey?: string;
             repairContinuityOnly?: boolean;
+            runId?: string;
           }),
         },
         onProgress,
@@ -3340,6 +3877,7 @@ export async function runVerticalDramaStoryJobExecutor(
             additionalEpisodes?: number;
             mode?: VerticalDramaDeepStoryDraftMode;
             idempotencyKey?: string;
+            runId?: string;
           }),
         },
         onProgress,
@@ -4320,14 +4858,17 @@ function resolveStoryVisualNarrativeInputs(bible: Record<string, unknown>): {
     typeof verticalDramaVisualNarrativeProfileSchema
   >;
   visualNarrativeIdentity?: VerticalDramaPresetVisualIdentity;
+  seriesFormat?: VdSeriesFormatConfig;
+  visualGroundingContract?: VdVisualGroundingContract;
 } {
+  const seriesFormat = resolveSeriesFormatConfig(bible.seriesFormat);
   const control = readSeriesLookLockControl(bible.lookLockControl);
   if (
     !control ||
     control.mode === "none" ||
     control.visualNarrativeEnabled !== true
   ) {
-    return {};
+    return seriesFormat.kind === "fiction_drama" ? {} : { seriesFormat };
   }
 
   const profile = verticalDramaVisualNarrativeProfileSchema.safeParse(
@@ -4336,9 +4877,21 @@ function resolveStoryVisualNarrativeInputs(bible: Record<string, unknown>): {
   const identity = verticalDramaPresetVisualIdentitySchema.safeParse(
     bible.presetVisualIdentity
   );
+  const visualGrounding = verticalDramaVisualGroundingContractSchema.safeParse(
+    bible.visualGroundingContract
+  );
+  const visualGroundingContract = visualGrounding.success
+    ? visualGrounding.data
+    : resolveVisualGroundingContract({
+        genreKey: control.genreKey,
+        formatKind: seriesFormat.kind,
+        mode: "strict_genre",
+      });
   return {
     ...(profile.success ? { visualNarrativeProfile: profile.data } : {}),
     ...(identity.success ? { visualNarrativeIdentity: identity.data } : {}),
+    ...(seriesFormat.kind !== "fiction_drama" ? { seriesFormat } : {}),
+    visualGroundingContract,
   };
 }
 
@@ -4374,6 +4927,7 @@ function resolveStoryPlanningInputs(bible: Record<string, unknown>): {
 const SERIES_STATUSES = [
   "draft",
   "planning",
+  "story_ready",
   "active",
   "paused",
   "completed",
@@ -4389,6 +4943,8 @@ const SERIES_STATUSES = [
 export const createSeriesInput = z
   .object({
     title: z.string().trim().min(1).max(CREATE_SERIES_FIELD_LIMITS.title),
+    /** Existing planning shell to promote in-place; omitted for legacy creates. */
+    planningSeriesId: z.string().trim().min(1).optional(),
     locale: z.enum(VERTICAL_DRAMA_SERIES_LOCALES).optional(),
     aspectRatio: z.literal("9:16").optional(),
     /** Legacy API name; this is the planned Sub-episode count for story structure. */
@@ -4420,6 +4976,17 @@ export const createSeriesInput = z
       .optional(),
     // Wizard shell payloads — stored losslessly, validated by their own contracts.
     bible: z.record(z.string(), z.unknown()).optional(),
+    /** Feature 156 canonical profile authority; format/look are projections. */
+    seriesProfileId: z.enum(VD_SERIES_PROFILE_IDS).optional(),
+    sourcePackId: z.number().int().positive().optional(),
+    draftSessionId: z.string().trim().min(40).max(128).optional(),
+    sourcePackAttachIdempotencyKey: z
+      .string()
+      .trim()
+      .min(16)
+      .max(256)
+      .optional(),
+    seriesFormat: verticalDramaSeriesFormatConfigSchema.optional(),
     /** Additive pre-create Draft QC receipt. The server re-reads and validates it; client scores are never trusted. */
     draftQualityQcReceipt: draftQualityQcReceiptSchema.optional(),
     /** The exact applied transient candidate used to bind the receipt fingerprint. Never used as an authority without the server job record. */
@@ -4602,6 +5169,20 @@ const synthesizeGenrePresetInput = z.object({
     .optional(),
   /** Same contract as `createSeriesInput.audienceAgeRating`; forwarded into synthesis. */
   audienceAgeRating: z.enum(AUDIENCE_AGE_RATINGS).optional(),
+  seriesFormatKind: z
+    .enum([
+      "fiction_drama",
+      "documentary",
+      "news_report",
+      "location_review",
+      "restaurant_review",
+      "product_review",
+      "software_review",
+      "hybrid_docu_drama",
+    ])
+    .optional(),
+  seriesProfileId: z.enum(VD_SERIES_PROFILE_IDS).optional(),
+  sourcePackId: z.number().int().positive().optional(),
   /** Additive opt-in: derive creator-readable story guidance from the selected series look. */
   visualNarrativeEnabled: z.boolean().optional(),
   lookLockMode: z
@@ -5169,7 +5750,10 @@ export const verticalDramaSeriesRouter = router({
           return {
             id: String(row.id),
             title: row.title,
-            status: row.status,
+            status: resolveVerticalDramaSeriesStatus({
+              status: row.status,
+              bible: row.bible,
+            }),
             locale: row.locale,
             aspectRatio: row.aspectRatio,
             genre: row.genre,
@@ -5212,6 +5796,1038 @@ export const verticalDramaSeriesRouter = router({
       };
     }),
 
+  /** Feature 156 — server-owned staging session for Story Sources & Media. */
+  createSourcePackSession: verticalDramaProcedure
+    .input(z.object({}))
+    .mutation(async ({ ctx }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      return createDraftSourceSession({ tenantId, userId: ctx.user.id });
+    }),
+
+  /**
+   * Create the lightweight Series identity before any Draft/QC work starts.
+   * This is deliberately free and metadata-only: it gives the Planning route a
+   * durable URL without loading or persisting a full candidate body.
+   */
+  createPlanningSeriesShell: verticalDramaProcedure
+    .input(
+      z.object({
+        title: z
+          .string()
+          .trim()
+          .max(CREATE_SERIES_FIELD_LIMITS.title)
+          .optional(),
+        locale: z.enum(VERTICAL_DRAMA_SERIES_LOCALES).optional(),
+        targetEpisodeCount: z.number().int().positive().max(1000).optional(),
+        seriesProfileId: z.enum(VD_SERIES_PROFILE_IDS).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const requestedTitle = input.title?.trim();
+      const [row] = await db.transaction(async tx => {
+        // There is no row to lock when the first placeholder is being created.
+        // Serialize this owner-scoped decision as well, otherwise two concurrent
+        // retries could both observe an empty result and insert twin shells.
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext(${`vertical-drama-planning-shell:${tenantId}:${userId}`}))`
+        );
+        // The blank New flow creates its title only after the wizard has a
+        // durable Series id. Reuse the caller's newest unfinished placeholder
+        // so a retry, refresh, or repeated click cannot create twin shells with
+        // the same title and split the Draft/QC session across both rows.
+        if (!requestedTitle) {
+          const existing = await tx
+            .select()
+            .from(verticalDramaSeries)
+            .where(
+              and(
+                eq(verticalDramaSeries.tenantId, tenantId),
+                eq(verticalDramaSeries.userId, userId),
+                eq(verticalDramaSeries.status, "planning"),
+                eq(verticalDramaSeries.title, PLANNING_SERIES_PLACEHOLDER_TITLE)
+              )
+            )
+            .orderBy(
+              desc(verticalDramaSeries.updatedAt),
+              desc(verticalDramaSeries.id)
+            )
+            .limit(1);
+          if (existing[0]) return existing;
+        }
+
+        const now = new Date().toISOString();
+        return tx
+          .insert(verticalDramaSeries)
+          .values({
+            tenantId,
+            userId,
+            title: requestedTitle || PLANNING_SERIES_PLACEHOLDER_TITLE,
+            locale: input.locale ?? "th",
+            aspectRatio: "9:16",
+            status: "planning",
+            targetEpisodeCount: input.targetEpisodeCount ?? 10,
+            defaultEpisodeDurationSeconds: 60,
+            bible: {
+              planningState: buildVerticalDramaPlanningState({
+                now,
+                activeStep: "basic",
+              }),
+              ...(input.seriesProfileId
+                ? { seriesProfile: { profileId: input.seriesProfileId } }
+                : {}),
+            },
+          })
+          .returning();
+      });
+      return { series: { ...row, id: String(row.id) } };
+    }),
+
+  /** Create or retrieve the one active staged pack for this owner/session. */
+  getOrCreateSourcePack: verticalDramaProcedure
+    .input(
+      z.object({
+        draftSessionId: z.string().trim().min(40).max(128),
+        profileId: z.enum(VD_SERIES_PROFILE_IDS),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      return getOrCreateStagedSourcePack({
+        tenantId,
+        userId: ctx.user.id,
+        draftSessionId: input.draftSessionId,
+        profileId: input.profileId as VdSeriesProfileId,
+      });
+    }),
+
+  getSourcePack: verticalDramaProcedure
+    .input(z.object({ packId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      return loadSourcePack({ tenantId, userId: ctx.user.id }, input.packId);
+    }),
+
+  /**
+   * Return only the Series-owned source-pack identity. The source pack itself
+   * remains lazy and is fetched by pack id, so switching Planning tabs never
+   * reloads Draft/QC bodies or silently falls back to a new default pack.
+   */
+  getPlanningSourcePackPointer: verticalDramaProcedure
+    .input(z.object({ seriesId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      const row = await loadOwnedSeries(tenantId, ctx.user.id, seriesId);
+      const state = readVerticalDramaPlanningState(row.bible);
+      return {
+        seriesId: input.seriesId,
+        title: row.title,
+        planningState: state,
+        pointer: state?.sourcePackPointer ?? null,
+      };
+    }),
+
+  /**
+   * Persist the staged source-pack identity on the Series row. This is a
+   * metadata-only read-modify-write and deliberately does not copy source
+   * assets, Draft candidates, or QC history into the Series bible.
+   */
+  persistPlanningSourcePackPointer: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        draftSessionId: z.string().trim().min(1).max(128).optional(),
+        sourcePackId: z.number().int().positive().optional(),
+        profileId: z.enum(VD_SERIES_PROFILE_IDS).optional(),
+        clear: z.boolean().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+
+      // A client may only persist a pack that belongs to this owner and is
+      // either still staged or already attached to this same Series. This
+      // keeps the recovery pointer tenant-safe and prevents cross-series
+      // attachments from being resurrected after a remount.
+      if (input.sourcePackId !== undefined) {
+        // Do not hydrate the full pack here. `loadSourcePack` also reads the
+        // prompt-expansion run table, but this metadata-only pointer write
+        // must remain usable while that optional feature migration is being
+        // rolled out. The source-pack row is sufficient for every ownership
+        // and identity check performed by this procedure.
+        const [pack] = await db
+          .select({
+            id: verticalDramaSourcePacks.id,
+            seriesId: verticalDramaSourcePacks.seriesId,
+            draftSessionId: verticalDramaSourcePacks.draftSessionId,
+            profileId: verticalDramaSourcePacks.profileId,
+          })
+          .from(verticalDramaSourcePacks)
+          .where(
+            and(
+              eq(verticalDramaSourcePacks.id, input.sourcePackId),
+              eq(verticalDramaSourcePacks.tenantId, tenantId),
+              eq(verticalDramaSourcePacks.userId, userId),
+              isNull(verticalDramaSourcePacks.deletedAt)
+            )
+          )
+          .limit(1);
+        if (!pack) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Source pack not found",
+          });
+        }
+        const attachedSeriesId =
+          pack.seriesId == null ? null : Number(pack.seriesId);
+        if (attachedSeriesId !== null && attachedSeriesId !== seriesId) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Source pack belongs to another series",
+          });
+        }
+        if (
+          input.draftSessionId &&
+          pack.draftSessionId &&
+          input.draftSessionId !== pack.draftSessionId
+        ) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Source pack session does not match",
+          });
+        }
+        if (
+          input.profileId &&
+          pack.profileId &&
+          input.profileId !== pack.profileId
+        ) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Source pack profile does not match",
+          });
+        }
+      }
+
+      // The session and pack mutations can finish back-to-back. Read and
+      // merge the latest Series state under one row lock so those partial
+      // pointer updates cannot overwrite each other with a stale bible.
+      const pointer = await db.transaction(async tx => {
+        const ownershipWhere = seriesOwnershipWhere(tenantId, userId, seriesId);
+        const [current] = await tx
+          .select({ bible: verticalDramaSeries.bible })
+          .from(verticalDramaSeries)
+          .where(ownershipWhere)
+          .for("update");
+        if (!current) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Series not found",
+          });
+        }
+
+        const currentBible =
+          (current.bible as Record<string, unknown> | null) ?? {};
+        const currentState =
+          readVerticalDramaPlanningState(currentBible) ??
+          buildVerticalDramaPlanningState({});
+        const now = new Date().toISOString();
+        const nextState = input.clear
+          ? (() => {
+              const {
+                sourcePackPointer: _sourcePackPointer,
+                ...withoutPointer
+              } = currentState;
+              return {
+                ...withoutPointer,
+                revision: currentState.revision + 1,
+                lastSavedAt: now,
+              };
+            })()
+          : {
+              ...currentState,
+              sourcePackPointer: {
+                ...currentState.sourcePackPointer,
+                ...(input.sourcePackId !== undefined
+                  ? { sourcePackId: input.sourcePackId }
+                  : {}),
+                ...(input.draftSessionId !== undefined
+                  ? { draftSessionId: input.draftSessionId }
+                  : {}),
+                ...(input.profileId !== undefined
+                  ? { profileId: input.profileId }
+                  : {}),
+                savedAt: now,
+              },
+              revision: currentState.revision + 1,
+              lastSavedAt: now,
+            };
+
+        const [updated] = await tx
+          .update(verticalDramaSeries)
+          .set({
+            bible: { ...currentBible, planningState: nextState },
+            updatedAt: new Date(),
+          })
+          .where(ownershipWhere)
+          .returning();
+        if (!updated) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Planning series changed",
+          });
+        }
+
+        return "sourcePackPointer" in nextState
+          ? (nextState.sourcePackPointer ?? null)
+          : null;
+      });
+
+      return { seriesId: input.seriesId, pointer };
+    }),
+
+  saveSourceSlot: verticalDramaProcedure
+    .input(
+      verticalDramaSourceSlotInputSchema.extend({
+        packId: z.number().int().positive(),
+        expectedPackVersion: z.number().int().positive(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      return saveSourceSlot({ tenantId, userId: ctx.user.id }, input);
+    }),
+
+  addSourceAsset: verticalDramaProcedure
+    .input(
+      verticalDramaSourceAssetInputSchema.extend({
+        packId: z.number().int().positive(),
+        expectedPackVersion: z.number().int().positive(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const referenceUrl = input.provenance.referenceUrl;
+      if (typeof referenceUrl === "string" && referenceUrl.trim()) {
+        validateSourceReferenceUrl(referenceUrl);
+      }
+      return addSourceAsset({ tenantId, userId: ctx.user.id }, input);
+    }),
+
+  registerUploadedSourceMedia: verticalDramaProcedure
+    .input(
+      z.object({
+        storageKey: z.string().trim().min(1).max(1024),
+        mediaType: z.enum(["image", "video"]),
+        mimeType: z.string().trim().min(1).max(100).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      return registerVerticalDramaUploadedMediaAsset({
+        tenantId,
+        userId: ctx.user.id,
+        storageKey: input.storageKey,
+        mediaType: input.mediaType,
+        mimeType: input.mimeType,
+      });
+    }),
+
+  /** Feature 160 — settle an AI result into the managed-media ledger before
+   * attaching it to Story Sources & Media. Provider URLs are provenance only;
+   * source-pack assets must reference owner-scoped durable storage. */
+  createGeneratedSourceAsset: verticalDramaProcedure
+    .input(
+      verticalDramaSourceAssetInputSchema.extend({
+        packId: z.number().int().positive(),
+        expectedPackVersion: z.number().int().positive(),
+        taskId: z.string().trim().min(1).max(255),
+        seriesId: z.number().int().positive().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const pack = await loadSourcePack({ tenantId, userId }, input.packId);
+      const userToken = await getAdBannerMediaUserToken(ctx);
+      let task;
+      try {
+        task = await getUnifiedMediaTask({
+          taskId: input.taskId,
+          userId,
+          userToken,
+          tenantId,
+          auditContext: {
+            userId,
+            tenantId,
+            source: "trpc.verticalDramaSeries.createGeneratedSourceAsset",
+            stage: "settle_source_asset",
+          },
+        });
+      } catch (error) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message:
+            error instanceof Error ? error.message : "Generated task not found",
+        });
+      }
+      if (task.status !== "completed" || !task.resultUrl) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Generated image is not ready yet",
+        });
+      }
+      const durable = await ingestVerticalDramaMediaAsset({
+        tenantId,
+        userId,
+        seriesId: input.seriesId ?? Number(pack.pack.seriesId ?? input.packId),
+        mediaType: "image",
+        sourceUrl: task.resultUrl,
+        mimeType: "image/png",
+        identity: task.id,
+        purpose: "source_pack_generated_reference",
+      });
+      return addSourceAsset(
+        { tenantId, userId },
+        {
+          ...input,
+          mediaAssetId: durable.mediaAssetId,
+          provenance: {
+            ...input.provenance,
+            source: "generated_reference",
+            taskId: task.id,
+            managed: true,
+            storageKey: durable.storageKey,
+            uploadedUrl: durable.url,
+            generatedUrl: task.resultUrl,
+          },
+        }
+      );
+    }),
+
+  setSourceAssetRights: verticalDramaProcedure
+    .input(
+      z.object({
+        packId: z.number().int().positive(),
+        sourceAssetId: z.number().int().positive(),
+        expectedPackVersion: z.number().int().positive(),
+        rightsStatus: z.enum(VD_SOURCE_RIGHTS_STATUSES),
+        disclosureStatus: z.enum(VD_SOURCE_DISCLOSURE_STATUSES),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      return setSourceAssetRights({ tenantId, userId: ctx.user.id }, input);
+    }),
+
+  getSourcePackReadiness: verticalDramaProcedure
+    .input(z.object({ packId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      return getSourcePackReadiness(
+        { tenantId, userId: ctx.user.id },
+        input.packId
+      );
+    }),
+
+  getSourcePackDigest: verticalDramaProcedure
+    .input(z.object({ packId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      return buildStoredSourcePackDigest(
+        { tenantId, userId: ctx.user.id },
+        input.packId
+      );
+    }),
+
+  getSourcePackBrollManifest: verticalDramaProcedure
+    .input(z.object({ packId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      return buildStoredSourcePackBrollManifest(
+        { tenantId, userId: ctx.user.id },
+        input.packId
+      );
+    }),
+
+  getSeriesSourcePackBrollManifest: verticalDramaProcedure
+    .input(z.object({ seriesId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      return buildStoredSeriesSourcePackBrollManifest(
+        { tenantId, userId: ctx.user.id },
+        input.seriesId
+      );
+    }),
+
+  requestSourceAnalysis: verticalDramaProcedure
+    .input(
+      z.object({
+        packId: z.number().int().positive(),
+        sourceAssetId: z.number().int().positive(),
+        policyVersion: z.string().trim().min(1).max(64).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      return requestSourceAnalysis({ tenantId, userId: ctx.user.id }, input);
+    }),
+
+  suggestSourceDescription: verticalDramaProcedure
+    .input(
+      z.object({
+        packId: z.number().int().positive(),
+        sourceAssetId: z.number().int().positive(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const pack = await loadSourcePack(
+        { tenantId, userId: ctx.user.id },
+        input.packId
+      );
+      const asset = pack.assets.find(
+        (item: {
+          id: number;
+          title: string;
+          provenanceJson: Record<string, unknown> | null;
+          description: string | null;
+          mediaAssetId: number | null;
+        }) => item.id === input.sourceAssetId
+      );
+      if (!asset)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Source asset not found",
+        });
+      const analysis = await requestSourceAnalysis(
+        { tenantId, userId: ctx.user.id },
+        { packId: input.packId, sourceAssetId: asset.id }
+      );
+      return {
+        ...analysis,
+        sourceAssetId: asset.id,
+        requiresVisionReview: Boolean(
+          asset.mediaAssetId ||
+          (asset.provenanceJson &&
+            (typeof asset.provenanceJson.uploadedUrl === "string" ||
+              typeof asset.provenanceJson.url === "string" ||
+              typeof asset.provenanceJson.referenceUrl === "string"))
+        ),
+      };
+    }),
+
+  acceptSourceDescriptionSuggestion: verticalDramaProcedure
+    .input(
+      z.object({
+        packId: z.number().int().positive(),
+        sourceAssetId: z.number().int().positive(),
+        suggestion: z.string().trim().min(1).max(5000),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      return acceptSourceAnalysisSuggestion(
+        { tenantId, userId: ctx.user.id },
+        input
+      );
+    }),
+
+  validateSourceUrl: verticalDramaProcedure
+    .input(z.object({ url: z.string().trim().min(1).max(2048) }))
+    .query(({ input }) => {
+      const url = validateSourceReferenceUrl(input.url);
+      return { origin: url.origin, pathname: url.pathname };
+    }),
+
+  /** Feature 160 — optional dialog-first prompt interpretation. It never
+   * mutates the premise; the client must show/edit/apply the returned preview. */
+  previewPromptExpansion: verticalDramaProcedure
+    .input(
+      z.object({
+        prompt: z.string().trim().min(1).max(12000),
+        draftSessionId: z.string().trim().min(1).max(128).optional(),
+        seriesId: z.number().int().positive().optional(),
+        idempotencyKey: z.string().trim().min(1).max(256),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      let modelOutput: string | null = null;
+      let aiWarning: string | null = null;
+      try {
+        const execution = await executeUnified({
+          channel: "chat",
+          userId: ctx.user.id,
+          tenantId,
+          userMessage: [
+            "Interpret the following creator premise and return JSON only with this exact shape:",
+            '{"brief":{"title":"","oneLineSummary":"","profile":"review|documentary|news_report|software_review|story","angle":"","audience":"","scope":[],"factualClaims":[],"creativeAssumptions":[],"exclusions":[]},"expandedPrompt":"","sources":[],"slots":[],"warnings":[]}',
+            "Do not invent factual claims. If the premise names a real place, product, system, or current event, use web search when available and include URL/title/publisher/publishedAt/accessedAt/supports in sources. Broad topics must remain illustrative.",
+            `Creator premise:\n${input.prompt}`,
+          ].join("\n\n"),
+          routeHint: {
+            route: "skill",
+            reason: "auto_web_search",
+            selectedSkillId: "general-article-writer",
+            confidence: 0.9,
+          },
+          creditMode: "deduct",
+        });
+        if (execution.result.type === "text")
+          modelOutput = execution.result.content;
+      } catch (error) {
+        aiWarning =
+          error instanceof Error
+            ? `AI preview ใช้งานไม่ได้ชั่วคราว: ${error.message}`
+            : "AI preview ใช้งานไม่ได้ชั่วคราว";
+      }
+      const preview = buildDeterministicPromptExpansionPreview({
+        prompt: input.prompt,
+        locale: "th",
+        modelOutput,
+      });
+      if (aiWarning) preview.warnings.push(aiWarning);
+      const run = await savePromptExpansionPreview(
+        { tenantId, userId: ctx.user.id },
+        {
+          draftSessionId: input.draftSessionId,
+          seriesId: input.seriesId,
+          idempotencyKey: input.idempotencyKey,
+          preview,
+        }
+      );
+      return { runId: Number(run.id), preview };
+    }),
+
+  applyPromptExpansion: verticalDramaProcedure
+    .input(
+      z.object({
+        runId: z.number().int().positive(),
+        expectedRevision: z.number().int().positive(),
+        originalPromptHash: z.string().regex(/^[a-f0-9]{64}$/),
+        approved: promptExpansionPreviewSchema,
+        packId: z.number().int().positive().optional(),
+        expectedPackVersion: z.number().int().positive().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const row = await applyPromptExpansion(
+        { tenantId, userId: ctx.user.id },
+        input
+      );
+      let sourcePackVersion: number | null = null;
+      if (input.packId) {
+        let currentPack = await loadSourcePack(
+          { tenantId, userId: ctx.user.id },
+          input.packId
+        );
+        let expectedPackVersion =
+          input.expectedPackVersion ?? currentPack.pack.version;
+        currentPack = await pruneUnapprovedPromptSlots(
+          { tenantId, userId: ctx.user.id },
+          {
+            packId: input.packId,
+            expectedPackVersion,
+            approvedSlotKeys: input.approved.slots.map(slot => slot.slotKey),
+          }
+        );
+        expectedPackVersion = currentPack.pack.version;
+        for (const [index, slot] of input.approved.slots.entries()) {
+          const existing = currentPack.slots.find(
+            (candidate: { slotKey: string }) =>
+              candidate.slotKey === slot.slotKey
+          ) as
+            | {
+                id: number;
+                version: number;
+                sortOrder: number;
+                sourceAssetId: number | null;
+              }
+            | undefined;
+          const sourceKind =
+            slot.semanticRole === "scene_anchor"
+              ? "known_place"
+              : slot.semanticRole === "reference"
+                ? input.approved.brief.profile === "software_review"
+                  ? "software_review"
+                  : "product_snapshot"
+                : slot.mediaType === "video" ||
+                    slot.semanticRole === "b_roll_footage"
+                  ? "upload_video"
+                  : "upload_image";
+          const usagePolicy =
+            slot.semanticRole === "scene_anchor" ||
+            slot.semanticRole === "reference"
+              ? "reference"
+              : "broll";
+          currentPack = await saveSourceSlot(
+            { tenantId, userId: ctx.user.id },
+            {
+              packId: input.packId,
+              expectedPackVersion,
+              slotId: existing?.id,
+              version: existing?.version,
+              slotKey: slot.slotKey,
+              title: slot.title,
+              narrativeDescription: slot.description,
+              sourceKind,
+              required: slot.required,
+              usagePolicy,
+              sortOrder: existing?.sortOrder ?? index,
+              sourceAssetId: existing?.sourceAssetId ?? null,
+            }
+          );
+          expectedPackVersion = currentPack.pack.version;
+        }
+        sourcePackVersion = currentPack.pack.version;
+      }
+      return {
+        runId: Number(row.id),
+        status: row.status,
+        approved: row.approvedJson,
+        sourcePackVersion,
+      };
+    }),
+
+  generateSourceSlotPrompt: verticalDramaProcedure
+    .input(
+      z.object({
+        slot: z.object({
+          slotKey: z.string().min(1),
+          title: z.string().min(1),
+          description: z.string().min(1),
+          semanticRole: z.enum([
+            "scene_anchor",
+            "reference",
+            "b_roll_still",
+            "b_roll_footage",
+          ]),
+          mediaType: z.enum(["image", "video", "mixed"]),
+          required: z.boolean(),
+          evidenceStatus: z.enum([
+            "not_applicable",
+            "illustrative",
+            "needs_verification",
+            "verified",
+          ]),
+        }),
+        brief: z.object({
+          title: z.string().min(1),
+          oneLineSummary: z.string().min(1),
+          profile: z.enum([
+            "review",
+            "documentary",
+            "news_report",
+            "software_review",
+            "story",
+          ]),
+          angle: z.string().min(1),
+          scope: z.array(z.string()),
+          factualClaims: z.array(z.string()),
+          creativeAssumptions: z.array(z.string()),
+          exclusions: z.array(z.string()),
+        }),
+      })
+    )
+    .mutation(({ input }) => ({
+      prompt: buildSlotPrompt(input.slot, input.brief, "en"),
+    })),
+
+  evaluateNewsReport: verticalDramaProcedure
+    .input(
+      z.object({
+        claims: z.array(newsClaimSchema).max(200),
+        now: z.string().datetime().optional(),
+      })
+    )
+    .mutation(({ input }) => {
+      const claims = input.claims.map(claim =>
+        assessNewsClaimFreshness({
+          claim,
+          now: input.now ? new Date(input.now) : undefined,
+        })
+      );
+      return { claims, readiness: evaluateNewsReadiness(claims) };
+    }),
+
+  listNewsClaims: verticalDramaProcedure
+    .input(z.object({ seriesId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadOwnedSeries(tenantId, ctx.user.id, seriesId);
+      return listPersistedNewsClaims(
+        { tenantId, userId: ctx.user.id },
+        seriesId
+      );
+    }),
+
+  saveNewsClaim: verticalDramaProcedure
+    .input(z.object({ seriesId: z.string().min(1), claim: newsClaimSchema }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadOwnedSeries(tenantId, ctx.user.id, seriesId);
+      return persistNewsClaim(
+        { tenantId, userId: ctx.user.id },
+        { seriesId, claim: input.claim }
+      );
+    }),
+
+  correctNewsClaim: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        claimId: z.string().trim().min(1).max(128),
+        nextEvidence: newsClaimSchema.shape.evidenceRefs,
+        note: z.string().trim().min(1).max(1000),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadOwnedSeries(tenantId, ctx.user.id, seriesId);
+      try {
+        return await persistNewsCorrection(
+          { tenantId, userId: ctx.user.id },
+          {
+            seriesId,
+            claimId: input.claimId,
+            nextEvidence: input.nextEvidence,
+            note: input.note,
+          }
+        );
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "News claim not found"
+        ) {
+          throw new TRPCError({ code: "NOT_FOUND", message: error.message });
+        }
+        throw error;
+      }
+    }),
+
+  previewNewsCorrection: verticalDramaProcedure
+    .input(
+      z.object({
+        claim: newsClaimSchema,
+        nextEvidence: newsClaimSchema.shape.evidenceRefs,
+        note: z.string().trim().min(1).max(1000),
+      })
+    )
+    .mutation(({ input }) => applyNewsCorrection(input)),
+
+  validateBrollTimeline: verticalDramaProcedure
+    .input(
+      z.object({
+        snapshotRevision: z.number().int().positive(),
+        snapshotFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+        maxDurationSeconds: z.number().positive().max(86_400).optional(),
+        items: z
+          .array(
+            z.object({
+              binding: shotBrollBindingSchema,
+              segment: sourceMediaSegmentSchema.nullable().optional(),
+            })
+          )
+          .max(200),
+      })
+    )
+    .mutation(({ input }) => {
+      const bindings = input.items.map(item =>
+        validateBrollBinding(parseShotBrollBinding(item.binding), {
+          snapshotRevision: input.snapshotRevision,
+          snapshotFingerprint: input.snapshotFingerprint,
+          segment: item.segment ?? null,
+        })
+      );
+      return projectBrollTimeline(bindings, input.maxDurationSeconds);
+    }),
+
+  createSourceMediaSegment: verticalDramaProcedure
+    .input(
+      z.object({
+        packId: z.number().int().positive(),
+        sourceAssetId: z.number().int().positive(),
+        segmentKey: z.string().trim().min(1).max(128),
+        inSeconds: z.number().finite().min(0).max(86_400),
+        outSeconds: z.number().finite().min(0).max(86_400),
+        label: z.string().trim().min(1).max(180),
+        description: z.string().trim().max(5000).optional(),
+        evidenceScope: z
+          .array(z.string().trim().min(1).max(128))
+          .max(32)
+          .default([]),
+        sourceLabel: z.string().trim().max(240).optional(),
+        locationLabel: z.string().trim().max(240).optional(),
+        audioPolicy: z.enum(["keep", "mute", "replace"]).default("keep"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      if (input.outSeconds <= input.inSeconds)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "outSeconds must be greater than inSeconds",
+        });
+      assertR2StorageActive();
+      const pack = await loadSourcePack(
+        { tenantId, userId: ctx.user.id },
+        input.packId
+      );
+      const asset = pack.assets.find(
+        (item: {
+          id: number;
+          sourceKind: string;
+          mediaAssetId?: number | null;
+        }) => Number(item.id) === input.sourceAssetId
+      );
+      if (!asset || asset.sourceKind !== "upload_video")
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "A video source asset is required",
+        });
+      if (!asset.mediaAssetId)
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Video source is not registered in managed media",
+        });
+      const [mediaAsset] = await db
+        .select({
+          status: mediaAssets.status,
+          storageKey: mediaAssets.storageKey,
+        })
+        .from(mediaAssets)
+        .where(
+          and(
+            eq(mediaAssets.id, asset.mediaAssetId),
+            eq(mediaAssets.tenantId, tenantId),
+            eq(mediaAssets.userId, ctx.user.id)
+          )
+        )
+        .limit(1);
+      if (
+        !mediaAsset ||
+        mediaAsset.status !== "ready" ||
+        !mediaAsset.storageKey ||
+        !(await storageExists(mediaAsset.storageKey))
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Video source must be present in owner-scoped R2 storage",
+        });
+      }
+      const [latest] = await db
+        .select({ revision: verticalDramaSourceMediaSegments.revision })
+        .from(verticalDramaSourceMediaSegments)
+        .where(
+          and(
+            eq(verticalDramaSourceMediaSegments.tenantId, tenantId),
+            eq(
+              verticalDramaSourceMediaSegments.sourceAssetId,
+              input.sourceAssetId
+            ),
+            eq(verticalDramaSourceMediaSegments.segmentKey, input.segmentKey)
+          )
+        )
+        .orderBy(desc(verticalDramaSourceMediaSegments.revision))
+        .limit(1);
+      const [segment] = await db
+        .insert(verticalDramaSourceMediaSegments)
+        .values({
+          tenantId,
+          userId: ctx.user.id,
+          packId: input.packId,
+          sourceAssetId: input.sourceAssetId,
+          segmentKey: input.segmentKey,
+          revision: (latest?.revision ?? 0) + 1,
+          mediaType: "video",
+          inSeconds: input.inSeconds,
+          outSeconds: input.outSeconds,
+          displayDurationSeconds: null,
+          label: input.label,
+          description: input.description ?? null,
+          evidenceScopeJson: input.evidenceScope,
+          sourceLabel: input.sourceLabel ?? null,
+          locationLabel: input.locationLabel ?? null,
+          audioPolicy: input.audioPolicy,
+          status: "ready",
+        })
+        .returning();
+      return { segment };
+    }),
+
+  listSourceMediaSegments: verticalDramaProcedure
+    .input(
+      z.object({
+        packId: z.number().int().positive(),
+        sourceAssetId: z.number().int().positive().optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      await loadSourcePack({ tenantId, userId: ctx.user.id }, input.packId);
+      return db
+        .select()
+        .from(verticalDramaSourceMediaSegments)
+        .where(
+          and(
+            eq(verticalDramaSourceMediaSegments.tenantId, tenantId),
+            eq(verticalDramaSourceMediaSegments.userId, ctx.user.id),
+            eq(verticalDramaSourceMediaSegments.packId, input.packId),
+            ...(input.sourceAssetId !== undefined
+              ? [
+                  eq(
+                    verticalDramaSourceMediaSegments.sourceAssetId,
+                    input.sourceAssetId
+                  ),
+                ]
+              : [])
+          )
+        )
+        .orderBy(
+          asc(verticalDramaSourceMediaSegments.sourceAssetId),
+          asc(verticalDramaSourceMediaSegments.segmentKey),
+          desc(verticalDramaSourceMediaSegments.revision)
+        );
+    }),
+
   /**
    * Create a series SHELL in dry-run mode. This persists metadata only and
    * does not trigger episode/story generation. A stale or incomplete Story
@@ -5225,6 +6841,138 @@ export const verticalDramaSeriesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
+
+      const planningSeriesNumber = input.planningSeriesId
+        ? Number(input.planningSeriesId)
+        : null;
+      if (
+        input.planningSeriesId &&
+        (planningSeriesNumber === null ||
+          !Number.isFinite(planningSeriesNumber))
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid planning series id",
+        });
+      }
+      const planningSeriesRow = planningSeriesNumber
+        ? await loadOwnedSeries(tenantId, userId, planningSeriesNumber)
+        : null;
+      if (input.planningSeriesId && !planningSeriesRow) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Planning series not found",
+        });
+      }
+      if (planningSeriesRow && planningSeriesRow.status !== "planning") {
+        if (input.sourcePackAttachIdempotencyKey) {
+          const attached = await findAttachedSourcePackByIdempotencyKey(
+            { tenantId, userId },
+            input.sourcePackAttachIdempotencyKey
+          );
+          if (attached?.seriesId === planningSeriesRow.id) {
+            return {
+              series: {
+                ...planningSeriesRow,
+                id: String(planningSeriesRow.id),
+              },
+            };
+          }
+        }
+        const state = readVerticalDramaPlanningState(planningSeriesRow.bible);
+        if (
+          state?.finalizedDraftSessionId &&
+          state.finalizedDraftSessionId === input.draftSessionId
+        ) {
+          return {
+            series: { ...planningSeriesRow, id: String(planningSeriesRow.id) },
+          };
+        }
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This planning series has already been finalized",
+        });
+      }
+
+      // Feature 156 gate: enforce the new Source Pack contract at the server
+      // boundary. A retry with the same attach key is idempotent and returns
+      // the already-created shell before any paid repair work is attempted.
+      if (input.sourcePackAttachIdempotencyKey) {
+        const attached = await findAttachedSourcePackByIdempotencyKey(
+          { tenantId, userId },
+          input.sourcePackAttachIdempotencyKey
+        );
+        if (attached?.seriesId != null) {
+          const existingSeries = await loadOwnedSeries(
+            tenantId,
+            userId,
+            attached.seriesId
+          );
+          return {
+            series: { ...existingSeries, id: String(existingSeries.id) },
+          };
+        }
+      }
+      const formatProfileId =
+        input.seriesFormat?.kind && input.seriesFormat.kind !== "fiction_drama"
+          ? (input.seriesFormat.kind as VdSeriesProfileId)
+          : undefined;
+      const effectiveProfile = input.seriesProfileId
+        ? getSeriesProfile(input.seriesProfileId)
+        : formatProfileId
+          ? getSeriesProfile(formatProfileId)
+          : undefined;
+      if (effectiveProfile?.sourceGatePolicy === "required") {
+        if (
+          !input.sourcePackId ||
+          !input.draftSessionId ||
+          !input.sourcePackAttachIdempotencyKey
+        ) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "เตรียมเรื่องและสื่อประกอบให้พร้อมก่อนร่างเรื่อง",
+          });
+        }
+        const stagedPack = await loadSourcePack(
+          { tenantId, userId },
+          input.sourcePackId
+        );
+        if (stagedPack.pack.profileId !== effectiveProfile.profileId) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "Source Pack profile does not match the selected Series Profile",
+          });
+        }
+        if (
+          stagedPack.pack.seriesId == null &&
+          stagedPack.pack.draftSessionId !== input.draftSessionId
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Source Pack session does not belong to this draft",
+          });
+        }
+        if (!stagedPack.readiness.textDraftAllowed) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Story Sources & Media is not ready",
+            cause: stagedPack.readiness,
+          });
+        }
+      } else if (input.sourcePackId) {
+        const stagedPack = await loadSourcePack(
+          { tenantId, userId },
+          input.sourcePackId
+        );
+        if (stagedPack.profile.sourceGatePolicy === "required") {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "Source Pack requires its matching documentary/review profile",
+          });
+        }
+      }
 
       // New synthesized drafts carry a foundation contract. Re-evaluate it at
       // the server boundary so a client cannot bypass the pre-QC gate by
@@ -5496,7 +7244,12 @@ export const verticalDramaSeriesRouter = router({
           appliedTitle: input.title.trim(),
           bestRound: qcResult.best.round,
           stopReason: qcResult.stopReason,
-          history: qcResult.history,
+          ...(qcResult.draftArtifactId
+            ? { draftId: qcResult.draftArtifactId }
+            : {}),
+          // Keep the Series projection compact. Immutable round history stays
+          // in the Draft ledger and is exposed only by getDraftHistory.
+          historyCount: qcResult.history.length,
           creditEstimate: qcResult.creditEstimate,
           evaluatedAt: qcResult.best.report.evaluatedAt,
         };
@@ -5691,11 +7444,36 @@ export const verticalDramaSeriesRouter = router({
       // `locale: input.locale ?? "th"` above), so `bible` is no longer ever
       // persisted as `null` — the "no premise, no bible" branch now persists
       // an object carrying just `audienceAgeRating`.
+      const profileProjection = effectiveProfile
+        ? projectProfileToLegacy(effectiveProfile.profileId)
+        : undefined;
       let initialBible: Record<string, unknown> = {
         ...(input.userPremise
           ? { ...(input.bible ?? {}), userPremise: input.userPremise }
           : (input.bible ?? {})),
         audienceAgeRating: resolveAudienceAgeRating(input.audienceAgeRating),
+        ...(profileProjection
+          ? {
+              seriesProfile: {
+                profileId: effectiveProfile?.profileId,
+                version: effectiveProfile?.version,
+                visualVersion: effectiveProfile?.visualVersion,
+              },
+              seriesFormat: profileProjection.seriesFormat,
+              visualGroundingContract: effectiveProfile?.grounding,
+            }
+          : input.seriesFormat
+            ? { seriesFormat: input.seriesFormat }
+            : {}),
+        ...(input.lookLock?.visualNarrativeEnabled === true
+          ? {
+              visualGroundingContract: resolveVisualGroundingContract({
+                genreKey: input.lookLock.genreKey,
+                formatKind: input.seriesFormat?.kind,
+                mode: "strict_genre",
+              }),
+            }
+          : {}),
         ...(validatedDraftQualityQcAudit
           ? { draftQualityQc: validatedDraftQualityQcAudit }
           : {}),
@@ -5830,13 +7608,60 @@ export const verticalDramaSeriesRouter = router({
         }
       }
 
+      if (planningSeriesRow) {
+        const previousPlanningState = readVerticalDramaPlanningState(
+          planningSeriesRow.bible
+        );
+        const now = new Date().toISOString();
+        initialBible = {
+          ...initialBible,
+          planningState: {
+            ...(previousPlanningState ??
+              buildVerticalDramaPlanningState({ now })),
+            version: 1 as const,
+            revision: (previousPlanningState?.revision ?? 0) + 1,
+            status: "confirmed" as const,
+            ...(input.draftSessionId
+              ? { draftSessionId: input.draftSessionId }
+              : {}),
+            activeDraft: input.draftQualityQcReceipt
+              ? {
+                  ...(validatedDraftQualityQcAudit?.draftId
+                    ? {
+                        draftId: validatedDraftQualityQcAudit.draftId as string,
+                      }
+                    : {}),
+                  fingerprint: input.draftQualityQcReceipt.candidateFingerprint,
+                  confirmedAt: now,
+                }
+              : (previousPlanningState?.activeDraft ?? null),
+            activeQc: validatedDraftQualityQcAudit
+              ? {
+                  runId: input.draftQualityQcReceipt?.runId,
+                  score: validatedDraftQualityQcAudit.overallScore as number,
+                  status: validatedDraftQualityQcAudit.status as string,
+                  confirmedAt: now,
+                }
+              : (previousPlanningState?.activeQc ?? null),
+            lastSavedAt: now,
+            ...(input.draftSessionId
+              ? { finalizedDraftSessionId: input.draftSessionId }
+              : {}),
+          },
+        };
+      }
+
       const insertValues: InsertVerticalDramaSeriesRow = {
         tenantId,
         userId,
         title: input.title,
         locale: input.locale ?? "th",
         aspectRatio: input.aspectRatio ?? "9:16",
-        status: "draft",
+        status: hasVerticalDramaGeneratedStory(initialBible)
+          ? "story_ready"
+          : planningSeriesRow
+            ? "planning"
+            : "draft",
         targetEpisodeCount: input.targetEpisodeCount ?? 10,
         defaultEpisodeDurationSeconds:
           input.defaultEpisodeDurationSeconds ?? 60,
@@ -5873,6 +7698,17 @@ export const verticalDramaSeriesRouter = router({
         } satisfies VerticalDramaSeriesLlmModelPolicy,
       };
 
+      if (
+        input.sourcePackId &&
+        (!input.draftSessionId || !input.sourcePackAttachIdempotencyKey)
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Source Pack attach requires a server-issued session and idempotency key",
+        });
+      }
+
       // Insert + cast/location clone transactional guarantee (Stage 2.3
       // orphan-row fix): for a sequel/special-edition (`parentSeriesRow`
       // set), the new row's INSERT and `cloneSeriesCastForLineage` now run
@@ -5899,7 +7735,53 @@ export const verticalDramaSeriesRouter = router({
       // code did — no new explicit annotation to drift out of sync with
       // whatever shape `db.insert(...).returning()` actually infers.
       const row = await (async () => {
-        if (!parentSeriesRow) {
+        if (planningSeriesRow) {
+          return db.transaction(async tx => {
+            const [updatedRow] = await tx
+              .update(verticalDramaSeries)
+              .set(insertValues)
+              .where(
+                seriesOwnershipWhere(tenantId, userId, planningSeriesRow.id)
+              )
+              .returning();
+            if (!updatedRow) {
+              throw new TRPCError({
+                code: "CONFLICT",
+                message: "Planning series changed before confirmation",
+              });
+            }
+            if (parentSeriesRow) {
+              await cloneSeriesCastForLineage(
+                {
+                  tenantId,
+                  userId,
+                  parentSeriesId: parentSeriesRow.id,
+                  childSeriesId: Number(updatedRow.id),
+                  lineage: input.lineage as
+                    | VerticalDramaSeriesLineage
+                    | undefined,
+                },
+                tx
+              );
+            }
+            if (
+              input.sourcePackId &&
+              input.draftSessionId &&
+              input.sourcePackAttachIdempotencyKey
+            ) {
+              await attachStagedSourcePackInTransaction(tx, {
+                tenantId,
+                userId,
+                packId: input.sourcePackId,
+                draftSessionId: input.draftSessionId,
+                seriesId: Number(updatedRow.id),
+                idempotencyKey: input.sourcePackAttachIdempotencyKey,
+              });
+            }
+            return updatedRow;
+          });
+        }
+        if (!parentSeriesRow && !input.sourcePackId) {
           const [insertedRow] = await db
             .insert(verticalDramaSeries)
             .values(insertValues)
@@ -5907,38 +7789,54 @@ export const verticalDramaSeriesRouter = router({
           return insertedRow;
         }
 
-        const parentSeriesIdForClone = parentSeriesRow.id;
+        const parentSeriesIdForClone = parentSeriesRow?.id;
         try {
           return await db.transaction(async tx => {
             const [insertedRow] = await tx
               .insert(verticalDramaSeries)
               .values(insertValues)
               .returning();
-            await cloneSeriesCastForLineage(
-              {
+            if (parentSeriesRow) {
+              await cloneSeriesCastForLineage(
+                {
+                  tenantId,
+                  userId,
+                  parentSeriesId: parentSeriesRow.id,
+                  childSeriesId: Number(insertedRow.id),
+                  lineage: input.lineage as
+                    | VerticalDramaSeriesLineage
+                    | undefined,
+                },
+                tx
+              );
+            }
+            if (
+              input.sourcePackId &&
+              input.draftSessionId &&
+              input.sourcePackAttachIdempotencyKey
+            ) {
+              await attachStagedSourcePackInTransaction(tx, {
                 tenantId,
                 userId,
-                parentSeriesId: parentSeriesIdForClone,
-                childSeriesId: Number(insertedRow.id),
-                lineage: input.lineage as
-                  | VerticalDramaSeriesLineage
-                  | undefined,
-              },
-              tx
-            );
+                packId: input.sourcePackId,
+                draftSessionId: input.draftSessionId,
+                seriesId: Number(insertedRow.id),
+                idempotencyKey: input.sourcePackAttachIdempotencyKey,
+              });
+            }
             return insertedRow;
           });
         } catch (error) {
           debugError(
             "verticalDramaSeries.create",
-            `Failed to clone cast/locations from parent ${parentSeriesIdForClone} — series creation rolled back, no orphan row persisted`,
+            `Failed to finalize atomic series create/Source Pack attach for parent ${parentSeriesIdForClone ?? "none"} — series creation rolled back`,
             error
           );
           if (error instanceof TRPCError) throw error;
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
             message:
-              "Failed to copy the parent series' cast and locations. No series was created — please try again.",
+              "Failed to finalize series creation. No series was created — please try again.",
             cause: error instanceof Error ? error : undefined,
           });
         }
@@ -6065,7 +7963,16 @@ export const verticalDramaSeriesRouter = router({
         });
       }
 
-      return { series: { ...finalRow, id: String(finalRow.id) } };
+      return {
+        series: {
+          ...finalRow,
+          id: String(finalRow.id),
+          status: resolveVerticalDramaSeriesStatus({
+            status: finalRow.status,
+            bible: finalRow.bible,
+          }),
+        },
+      };
     }),
 
   /**
@@ -6157,6 +8064,11 @@ export const verticalDramaSeriesRouter = router({
         series: {
           ...row,
           id: String(row.id),
+          status: resolveVerticalDramaSeriesStatus({
+            status: row.status,
+            bible: row.bible,
+          }),
+          bible: projectSeriesBibleForRead(row.bible),
           // Explicitly project the legacy value for the settings UI. It is
           // read-only compatibility metadata; new profiles live in bible.
           defaultEpisodeDurationSeconds: row.defaultEpisodeDurationSeconds,
@@ -6520,14 +8432,22 @@ export const verticalDramaSeriesRouter = router({
         });
       }
 
-      // Ensure the caller owns it (throws NOT_FOUND otherwise).
-      await loadOwnedSeries(tenantId, userId, seriesId);
+      // Ensure the caller owns it (throws NOT_FOUND otherwise), and use the
+      // current bible as the source of truth when this is a metadata-only
+      // status update. A generated story must never be written back as draft.
+      const currentRow = await loadOwnedSeries(tenantId, userId, seriesId);
+      const effectiveBible = input.bible ?? currentRow.bible;
 
       const updates: Partial<typeof verticalDramaSeries.$inferInsert> = {
         updatedAt: new Date(),
       };
       if (input.title !== undefined) updates.title = input.title;
-      if (input.status !== undefined) updates.status = input.status;
+      if (input.status !== undefined || input.bible !== undefined) {
+        updates.status = resolveVerticalDramaSeriesStatus({
+          status: input.status ?? currentRow.status,
+          bible: effectiveBible,
+        }) as typeof updates.status;
+      }
       if (input.bible !== undefined) updates.bible = input.bible;
       if (input.policy !== undefined) updates.policy = input.policy;
       if (input.productTieIn !== undefined)
@@ -6539,7 +8459,107 @@ export const verticalDramaSeriesRouter = router({
         .where(seriesOwnershipWhere(tenantId, userId, seriesId))
         .returning();
 
-      return { series: { ...row, id: String(row.id) } };
+      return {
+        series: {
+          ...row,
+          id: String(row.id),
+          status: resolveVerticalDramaSeriesStatus({
+            status: row.status,
+            bible: row.bible,
+          }),
+        },
+      };
+    }),
+
+  /**
+   * Free, compact Planning autosave. It never stores Draft/QC bodies. When a
+   * caller supplies expectedRevision it remains a compare-and-swap guard;
+   * browser autosave may omit it because the row lock serializes metadata-only
+   * writes while the wizard is recovering from a refresh.
+   */
+  updatePlanningSeriesSnapshot: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        /** Optional for the autosave path; the row lock still serializes writes. */
+        expectedRevision: z.number().int().nonnegative().optional(),
+        title: z
+          .string()
+          .trim()
+          .max(CREATE_SERIES_FIELD_LIMITS.title)
+          .optional(),
+        activeStep: z.string().trim().max(64).optional(),
+        draftSessionId: z.string().trim().min(1).max(128).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      const result = await db.transaction(async tx => {
+        const ownershipWhere = seriesOwnershipWhere(tenantId, userId, seriesId);
+        const [current] = await tx
+          .select({ bible: verticalDramaSeries.bible })
+          .from(verticalDramaSeries)
+          .where(ownershipWhere)
+          .for("update");
+        if (!current) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Planning series not found",
+          });
+        }
+        const currentBible =
+          (current.bible as Record<string, unknown> | null) ?? {};
+        const currentState =
+          readVerticalDramaPlanningState(currentBible) ??
+          buildVerticalDramaPlanningState({});
+        if (
+          input.expectedRevision !== undefined &&
+          currentState.revision !== input.expectedRevision
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `Planning snapshot is stale; reload revision ${currentState.revision}`,
+          });
+        }
+        const now = new Date().toISOString();
+        const nextState = {
+          ...currentState,
+          revision: currentState.revision + 1,
+          ...(input.activeStep ? { activeStep: input.activeStep } : {}),
+          ...(input.draftSessionId
+            ? { draftSessionId: input.draftSessionId }
+            : {}),
+          lastSavedAt: now,
+        };
+        const [row] = await tx
+          .update(verticalDramaSeries)
+          .set({
+            ...(input.title !== undefined ? { title: input.title } : {}),
+            bible: { ...currentBible, planningState: nextState },
+            updatedAt: new Date(),
+          })
+          .where(ownershipWhere)
+          .returning();
+        if (!row) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Planning series changed",
+          });
+        }
+        return { row, nextState };
+      });
+      return {
+        series: { ...result.row, id: String(result.row.id) },
+        planningState: result.nextState,
+      };
     }),
 
   /**
@@ -6794,9 +8814,20 @@ export const verticalDramaSeriesRouter = router({
         memory.lastFoldedEpisode,
         ...episodeRows.map(row => row.episodeNumber)
       );
+      const horizonEpisode = Math.max(
+        currentEpisode,
+        series.targetEpisodeCount ?? 0
+      );
 
       return {
         memory,
+        closureAudit: assessThreadClosures({
+          episodes: memory.episodes,
+          horizonEpisode,
+          seasonComplete:
+            series.targetEpisodeCount != null &&
+            currentEpisode >= series.targetEpisodeCount,
+        }),
         storyControlSeed,
         storyControlAudit: auditVerticalDramaStoryControl({
           seed: storyControlSeed,
@@ -7206,7 +9237,8 @@ export const verticalDramaSeriesRouter = router({
         });
       }
       const key = `vertical-drama/${input.seriesId}/watermark/${randomUUID()}${ext ? "." + ext : ""}`;
-      const { storagePut } = await import("../storage");
+      const { assertR2StorageActive, storagePut } = await import("../storage");
+      await assertR2StorageActive();
       const { url } = await storagePut(key, buf, input.fileType);
       return { url };
     }),
@@ -7356,9 +9388,9 @@ export const verticalDramaSeriesRouter = router({
           targetEpisodeCount,
           genre,
           userPremise,
-          storyArchitecture: readVerticalDramaStoryArchitecture(
-            input.draft.storyContract
-          ) ?? undefined,
+          storyArchitecture:
+            readVerticalDramaStoryArchitecture(input.draft.storyContract) ??
+            undefined,
         },
         onCreditsUsed: usage =>
           deductVerticalDramaDraftCompletionCredits({
@@ -7383,9 +9415,8 @@ export const verticalDramaSeriesRouter = router({
         },
       };
       if (repaired.repaired && input.draftId) {
-        const { appendVerticalDramaDraftVersion } = await import(
-          "../services/verticalDramaDraftLedger"
-        );
+        const { appendVerticalDramaDraftVersion } =
+          await import("../services/verticalDramaDraftLedger");
         await appendVerticalDramaDraftVersion({
           tenantId,
           userId: ctx.user.id,
@@ -7404,7 +9435,8 @@ export const verticalDramaSeriesRouter = router({
           },
         });
       }
-      const result = await enqueueVerticalDramaDraftQualityQc({
+      const result = await enqueueVerticalDramaDraftQualityQc(
+        {
           tenantId,
           userId: ctx.user.id,
           model,
@@ -7413,9 +9445,11 @@ export const verticalDramaSeriesRouter = router({
           draft: draftForQc,
           immutableConstraints: qcImmutableConstraints,
           maxImprovementRounds: input.maxImprovementRounds ?? 2,
-      }, {
+        },
+        {
           persistJobStatus: updateVerticalDramaDraftJob,
-      });
+        }
+      );
       return {
         ...result,
         candidateFingerprint: fingerprintDraftQualityQcCandidate(draftForQc),
@@ -7435,32 +9469,67 @@ export const verticalDramaSeriesRouter = router({
       z.object({
         runId: z.string().uuid(),
         candidateFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const owner = { tenantId, userId: ctx.user.id };
-      const record = await getVerticalDramaDraftQualityQcStatus(input.runId, owner);
-      if (!record || record.status !== "succeeded" || !record.result) {
+      const record = await getVerticalDramaDraftQualityQcStatus(
+        input.runId,
+        owner
+      );
+      const durableRecoveredResult =
+        record && record.status === "failed" && !record.result
+          ? await recoverVerticalDramaDraftQualityQcResultByRunId(
+              input.runId,
+              owner
+            ).catch(() => null)
+          : null;
+      const effectiveResult = durableRecoveredResult
+        ? {
+            ...durableRecoveredResult,
+            recoveredFromFailure: true,
+            recoveryMessage:
+              durableRecoveredResult.recoveryMessage ??
+              "กู้คืนผล QC ล่าสุดที่ตรวจครบแล้วจาก Draft ledger",
+          }
+        : (record?.result ?? null);
+      // A revision can fail after a baseline was fully scored. In that case
+      // the recovery path provides a validated current candidate from the
+      // ledger; it is safe to repair that candidate without pretending the
+      // failed revision itself succeeded.
+      const hasCompletedCurrentResult = Boolean(
+        effectiveResult &&
+        (record?.status === "succeeded" ||
+          effectiveResult.recoveredFromFailure === true)
+      );
+      if (!record || !effectiveResult || !hasCompletedCurrentResult) {
         throw new TRPCError({
           code: "CONFLICT",
           message: "Draft QC repair requires a completed, current QC result",
         });
       }
-      const candidate = record.result.history.find(
-        item => item.candidateFingerprint === input.candidateFingerprint,
+      const candidate = effectiveResult.history.find(
+        item => item.candidateFingerprint === input.candidateFingerprint
       );
       const report =
-        candidate?.report && draftQualityQcReportSchema.safeParse(candidate.report).success
+        candidate?.report &&
+        draftQualityQcReportSchema.safeParse(candidate.report).success
           ? draftQualityQcReportSchema.parse(candidate.report)
-          : record.result.best.fingerprint === input.candidateFingerprint
-            ? record.result.best.report
+          : effectiveResult.best.fingerprint === input.candidateFingerprint
+            ? effectiveResult.best.report
             : null;
       const plan = report?.repairPlan;
-      if (!report || report.pass || !plan?.available || !plan.actions.some(action => action.autoRunnable)) {
+      if (
+        !report ||
+        report.pass ||
+        !plan?.available ||
+        !plan.actions.some(action => action.autoRunnable)
+      ) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "No safe Draft QC repair plan is available for this candidate",
+          message:
+            "No safe Draft QC repair plan is available for this candidate",
         });
       }
       const draftId = record.draftId;
@@ -7469,10 +9538,15 @@ export const verticalDramaSeriesRouter = router({
       if (!draftId || !draftSessionId || !sourceVersion) {
         throw new TRPCError({
           code: "CONFLICT",
-          message: "This historical Draft candidate has no durable version to repair",
+          message:
+            "This historical Draft candidate has no durable version to repair",
         });
       }
-      const version = await getVerticalDramaDraftVersion(draftId, sourceVersion, owner);
+      const version = await getVerticalDramaDraftVersion(
+        draftId,
+        sourceVersion,
+        owner
+      );
       const sourceDraft =
         version?.contentJson &&
         typeof version.contentJson === "object" &&
@@ -7485,13 +9559,18 @@ export const verticalDramaSeriesRouter = router({
           message: "Draft QC repair source version is stale or unavailable",
         });
       }
-      if (fingerprintDraftQualityQcCandidate(sourceDraft) !== input.candidateFingerprint) {
+      if (
+        fingerprintDraftQualityQcCandidate(sourceDraft) !==
+        input.candidateFingerprint
+      ) {
         throw new TRPCError({
           code: "CONFLICT",
-          message: "Draft QC repair source fingerprint does not match the ledger",
+          message:
+            "Draft QC repair source fingerprint does not match the ledger",
         });
       }
-      const model = record.model ?? (await resolveVerticalDramaRecommendedDraftModel());
+      const model =
+        record.model ?? (await resolveVerticalDramaRecommendedDraftModel());
       const result = await enqueueVerticalDramaDraftQualityQc(
         {
           tenantId,
@@ -7507,7 +9586,7 @@ export const verticalDramaSeriesRouter = router({
           repairSourceFingerprint: input.candidateFingerprint,
           repairSourceReport: report,
         },
-        { persistJobStatus: updateVerticalDramaDraftJob },
+        { persistJobStatus: updateVerticalDramaDraftJob }
       );
       return {
         ...result,
@@ -7518,7 +9597,13 @@ export const verticalDramaSeriesRouter = router({
     }),
 
   getDraftQualityQcStatus: verticalDramaProcedure
-    .input(z.object({ runId: z.string().uuid() }))
+    .input(
+      z.object({
+        runId: z.string().uuid(),
+        /** Full QC round history is an explicit, lazy user action. */
+        includeHistory: z.boolean().optional().default(false),
+      })
+    )
     .query(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const reconciliation = await reconcileVerticalDramaDraftQualityQc(
@@ -7526,6 +9611,9 @@ export const verticalDramaSeriesRouter = router({
         {
           tenantId,
           userId: ctx.user.id,
+        },
+        {
+          includeHistory: input.includeHistory,
         }
       );
       const record = reconciliation.record;
@@ -7560,16 +9648,20 @@ export const verticalDramaSeriesRouter = router({
         // A failed run may still contain an immutable, fully scored candidate
         // recovered from the ledger. Expose it without changing the terminal
         // status so the UI can require an explicit warning confirmation.
-        result: record.result ?? recoverableResult ?? undefined,
-        historicalResult: record.draftId
-          ? (
-              await recoverVerticalDramaDraftQualityQcHistory(
-                record.draftId,
-                { tenantId, userId: ctx.user.id },
-                record.runId
-              )
-            )[0]
-          : undefined,
+        result: projectDraftQualityQcResult(
+          record.result ?? recoverableResult ?? undefined,
+          input.includeHistory
+        ),
+        historicalResult:
+          input.includeHistory && record.draftId
+            ? (
+                await recoverVerticalDramaDraftQualityQcHistory(
+                  record.draftId,
+                  { tenantId, userId: ctx.user.id },
+                  record.runId
+                )
+              )[0]
+            : undefined,
         error:
           record.status === "failed" ? (record.error ?? undefined) : undefined,
         failure:
@@ -7629,7 +9721,8 @@ export const verticalDramaSeriesRouter = router({
       if (fingerprint !== input.candidateFingerprint) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Draft QC candidate fingerprint does not match its ledger version",
+          message:
+            "Draft QC candidate fingerprint does not match its ledger version",
         });
       }
       return {
@@ -7648,25 +9741,67 @@ export const verticalDramaSeriesRouter = router({
    * even if the mutation response was lost before the job id reached React.
    */
   getDraftWorkspaceStatus: verticalDramaProcedure
-    .input(z.object({ draftSessionId: z.string().trim().min(1).max(120) }))
+    .input(
+      z
+        .object({
+          /** Legacy/browser recovery identity. */
+          draftSessionId: z.string().trim().min(1).max(120).optional(),
+          /** Preferred identity when a Series is selected from the sidebar. */
+          seriesId: z.string().trim().min(1).optional(),
+          /** Historical QC candidates are fetched only from an explicit viewer. */
+          includeHistory: z.boolean().optional().default(false),
+        })
+        .refine(input => input.draftSessionId || input.seriesId, {
+          message: "Either draftSessionId or seriesId is required",
+        })
+    )
     .query(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const owner = { tenantId, userId: ctx.user.id };
-      const [composition, qc, ledger, pointerRunId] = await Promise.all([
-        getVerticalDramaDraftCompositionStatusBySession(
-          input.draftSessionId,
+      let resolvedDraftSessionId = input.draftSessionId ?? null;
+      let seriesLedger = null;
+      if (input.seriesId) {
+        const seriesId = Number(input.seriesId);
+        if (!Number.isInteger(seriesId) || seriesId <= 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invalid series id",
+          });
+        }
+        const series = await loadOwnedSeries(tenantId, ctx.user.id, seriesId);
+        const planningState = readVerticalDramaPlanningState(series.bible);
+        seriesLedger = await getVerticalDramaDraftLedgerBySeriesId(
+          seriesId,
           owner
-        ),
-        getVerticalDramaDraftQualityQcStatusBySession(
-          input.draftSessionId,
-          owner
-        ),
-        getVerticalDramaDraftLedgerBySession(input.draftSessionId, owner),
-        getVerticalDramaDraftQualityQcRunIdBySession(
-          input.draftSessionId,
-          owner
-        ),
-      ]);
+        );
+        resolvedDraftSessionId =
+          seriesLedger?.draftSessionId ??
+          planningState?.draftSessionId ??
+          planningState?.legacyRecovery?.draftSessionId ??
+          null;
+      }
+
+      const [composition, qc, ledger, pointerRunId] = resolvedDraftSessionId
+        ? await Promise.all([
+            getVerticalDramaDraftCompositionStatusBySession(
+              resolvedDraftSessionId,
+              owner
+            ),
+            getVerticalDramaDraftQualityQcStatusBySession(
+              resolvedDraftSessionId,
+              owner
+            ),
+            seriesLedger ??
+              getVerticalDramaDraftLedgerBySession(
+                resolvedDraftSessionId,
+                owner
+              ),
+            getVerticalDramaDraftQualityQcRunIdBySession(
+              resolvedDraftSessionId,
+              owner
+            ),
+          ])
+        : [null, null, seriesLedger, null];
       let recoveredComposition = composition;
       // Redis is intentionally short-lived. The ledger is the durable recovery
       // path used after refresh, another browser, or Redis expiry.
@@ -7675,32 +9810,41 @@ export const verticalDramaSeriesRouter = router({
       }
       const qcRunId = qc?.runId ?? ledger?.qcRunId ?? pointerRunId ?? null;
       const qcReconciliation = qcRunId
-        ? await reconcileVerticalDramaDraftQualityQc(qcRunId, owner)
+        ? await reconcileVerticalDramaDraftQualityQc(
+            qcRunId,
+            {
+              ...owner,
+            },
+            {
+              includeHistory: input.includeHistory,
+            }
+          )
         : null;
       if (pointerRunId && pointerRunId !== qcRunId) {
         await clearVerticalDramaDraftQualityQcPointer(
-          input.draftSessionId,
+          resolvedDraftSessionId!,
           owner
         );
       }
       if (pointerRunId && !qc && !ledger) {
         await clearVerticalDramaDraftQualityQcPointer(
-          input.draftSessionId,
+          resolvedDraftSessionId!,
           owner
         );
       }
       const recoveredQc = qcReconciliation?.record ?? qc;
-      const historicalQcResult =
-        qcReconciliation?.historicalResult ??
-        (recoveredQc?.draftId
-          ? (
-              await recoverVerticalDramaDraftQualityQcHistory(
-                recoveredQc.draftId,
-                owner,
-                recoveredQc.runId
-              )
-            )[0]
-          : undefined);
+      const historicalQcResult = input.includeHistory
+        ? (qcReconciliation?.historicalResult ??
+          (recoveredQc?.draftId
+            ? (
+                await recoverVerticalDramaDraftQualityQcHistory(
+                  recoveredQc.draftId,
+                  owner,
+                  recoveredQc.runId
+                )
+              )[0]
+            : undefined))
+        : undefined;
       const recoverableQcResult =
         recoveredQc?.status === "failed" &&
         recoveredQc.failure &&
@@ -7711,7 +9855,7 @@ export const verticalDramaSeriesRouter = router({
             )
           : null;
       return {
-        draftSessionId: input.draftSessionId,
+        draftSessionId: resolvedDraftSessionId,
         composition: recoveredComposition
           ? {
               jobId: recoveredComposition.jobId,
@@ -7737,7 +9881,10 @@ export const verticalDramaSeriesRouter = router({
               runId: recoveredQc.runId,
               status: recoveredQc.status,
               progress: recoveredQc.progress,
-              result: recoveredQc.result ?? recoverableQcResult ?? undefined,
+              result: projectDraftQualityQcResult(
+                recoveredQc.result ?? recoverableQcResult ?? undefined,
+                input.includeHistory
+              ),
               historicalResult: historicalQcResult,
               error:
                 recoveredQc.status === "failed"
@@ -7774,22 +9921,34 @@ export const verticalDramaSeriesRouter = router({
     .query(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const owner = { tenantId, userId: ctx.user.id };
-      const [jobs, counts] = await Promise.all([
-        listVerticalDramaDraftLedgers(
-          owner,
-          input?.limit ?? 50,
-          input?.includeArchived ?? false
-        ),
-        getVerticalDramaStaleDraftCounts(owner),
-      ]);
+      const jobs = await listVerticalDramaDraftLedgers(
+        owner,
+        input?.limit ?? 50,
+        input?.includeArchived ?? false
+      );
       return {
         jobs,
-        cleanup: { counts },
       };
     }),
 
+  /** One-time, owner-scoped compatibility migration for pre-Series Draft jobs. */
+  migrateLegacyDraftJobs: verticalDramaProcedure
+    .input(
+      z
+        .object({ limit: z.number().int().min(1).max(100).optional() })
+        .optional()
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      return migrateLegacyVerticalDramaDrafts(
+        { tenantId, userId: ctx.user.id },
+        input?.limit ?? 50
+      );
+    }),
+
   // Compatibility alias for clients from the previous recovery implementation.
-  listRecoverableDraftWorkspaces: verticalDramaProcedure.query(async ({ ctx }) => {
+  listRecoverableDraftWorkspaces: verticalDramaProcedure.query(
+    async ({ ctx }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       return {
         workspaces: await listVerticalDramaDraftLedgers({
@@ -7797,7 +9956,8 @@ export const verticalDramaSeriesRouter = router({
           userId: ctx.user.id,
         }),
       };
-  }),
+    }
+  ),
 
   getDraftJob: verticalDramaProcedure
     .input(z.object({ jobId: z.string().uuid() }))
@@ -7814,6 +9974,63 @@ export const verticalDramaSeriesRouter = router({
         });
       }
       return { job };
+    }),
+
+  /** Explicit, metadata-only Draft history index. */
+  getDraftHistory: verticalDramaProcedure
+    .input(
+      z.object({
+        draftId: z.string().uuid(),
+        limit: z.number().int().min(1).max(50).optional(),
+        offset: z.number().int().min(0).max(1000).optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const owner = { tenantId, userId: ctx.user.id };
+      const ledger = await getVerticalDramaDraftLedger(input.draftId, owner);
+      if (!ledger) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "ไม่พบ Draft history นี้ หรือคุณไม่มีสิทธิ์เข้าถึง",
+        });
+      }
+      return {
+        draftId: input.draftId,
+        versions: await listVerticalDramaDraftVersionSummaries(
+          input.draftId,
+          owner,
+          input.limit ?? 20,
+          input.offset ?? 0
+        ),
+      };
+    }),
+
+  /** Full Draft content is loaded only after an explicit history selection. */
+  getDraftHistoryVersion: verticalDramaProcedure
+    .input(
+      z.object({
+        draftId: z.string().uuid(),
+        version: z.number().int().positive(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const version = await getVerticalDramaDraftVersion(
+        input.draftId,
+        input.version,
+        {
+          tenantId,
+          userId: ctx.user.id,
+        }
+      );
+      if (!version) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "ไม่พบ Draft version นี้ หรือคุณไม่มีสิทธิ์เข้าถึง",
+        });
+      }
+      return version;
     }),
 
   archiveDraftJob: verticalDramaProcedure
@@ -7855,7 +10072,10 @@ export const verticalDramaSeriesRouter = router({
       const owner = { tenantId, userId: ctx.user.id };
       const job = await getVerticalDramaDraftLedger(input.jobId, owner);
       if (!job) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Draft Job not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Draft Job not found",
+        });
       }
       if (job.compositionJobId) {
         await cancelVerticalDramaDraftComposition(job.compositionJobId, owner);
@@ -7896,12 +10116,73 @@ export const verticalDramaSeriesRouter = router({
     .input(
       synthesizeGenrePresetInput.extend({
         draftSessionId: z.string().trim().min(1).max(120),
+        planningSeriesId: z.string().trim().min(1).optional(),
+        /** Explicit wizard selection; null/omitted means automatic routing. */
+        defaultModelId: z.string().trim().min(1).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
+      const planningSeriesNumber = input.planningSeriesId
+        ? Number(input.planningSeriesId)
+        : undefined;
+      if (
+        input.planningSeriesId &&
+        (!Number.isFinite(planningSeriesNumber) ||
+          planningSeriesNumber === undefined)
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid planning series id",
+        });
+      }
+      if (planningSeriesNumber !== undefined) {
+        await loadOwnedSeries(tenantId, ctx.user.id, planningSeriesNumber);
+      }
       const flags = await getTenantFeatureFlags(tenantId);
       const useV2 = flags.verticalDramaSeriesPresetMixV2 === true;
+      const selectedProfile = input.seriesProfileId
+        ? getSeriesProfile(input.seriesProfileId)
+        : undefined;
+      let sourcePackDigest: Record<string, unknown> | undefined;
+      if (selectedProfile?.sourceGatePolicy === "required") {
+        if (!input.sourcePackId) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Complete Story Sources & Media before drafting",
+          });
+        }
+        const sourcePack = await assertSourcePackDraftReady(
+          { tenantId, userId: ctx.user.id },
+          input.sourcePackId
+        );
+        if (sourcePack.pack.profileId !== selectedProfile.profileId) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Source Pack profile does not match the selected profile",
+          });
+        }
+        sourcePackDigest = (await buildStoredSourcePackDigest(
+          { tenantId, userId: ctx.user.id },
+          input.sourcePackId
+        )) as unknown as Record<string, unknown>;
+        sourcePackDigest = {
+          ...sourcePackDigest,
+          brollManifest: await buildStoredSourcePackBrollManifest(
+            { tenantId, userId: ctx.user.id },
+            input.sourcePackId
+          ),
+        };
+        if (planningSeriesNumber !== undefined) {
+          const visualSourceSnapshot = await captureSeriesVisualSourceSnapshot(
+            { tenantId, userId: ctx.user.id },
+            planningSeriesNumber
+          );
+          if (visualSourceSnapshot) {
+            sourcePackDigest.visualSourceSnapshot = visualSourceSnapshot;
+          }
+        }
+      }
       const selectedPresetIds = Array.from(
         new Set(input.selectedPresetIds ?? [])
       );
@@ -7953,12 +10234,30 @@ export const verticalDramaSeriesRouter = router({
         visualIdentityJson:
           row.visualIdentityJson as VerticalDramaPresetVisualIdentity | null,
       }));
-      const model = await resolveVerticalDramaRecommendedDraftModel();
-      const result = await enqueueVerticalDramaDraftComposition({
+      let model: string;
+      if (input.defaultModelId != null) {
+        try {
+          await assertVerticalDramaRecommendedDraftModel(input.defaultModelId);
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              error instanceof Error
+                ? error.message
+                : `Model "${input.defaultModelId}" is not eligible for this planning stage`,
+          });
+        }
+        model = input.defaultModelId;
+      } else {
+        model = await resolveVerticalDramaRecommendedDraftModel();
+      }
+      const result = await enqueueVerticalDramaDraftComposition(
+        {
           tenantId,
           userId: ctx.user.id,
           model,
           draftSessionId: input.draftSessionId,
+          seriesId: planningSeriesNumber,
           // Persist the creator's raw source independently of feature flags.
           // `synthesis.userPremise` is intentionally server-gated for model
           // behavior, but recovery must never lose what the creator typed.
@@ -7982,6 +10281,9 @@ export const verticalDramaSeriesRouter = router({
               visualNarrativeEnabled: input.visualNarrativeEnabled,
               lookLockMode: input.lookLockMode,
               lookLockGenreKey: input.lookLockGenreKey,
+              seriesProfileId: input.seriesProfileId,
+              sourcePackId: input.sourcePackId,
+              defaultModelId: input.defaultModelId ?? null,
             },
           },
           synthesis: {
@@ -8014,11 +10316,15 @@ export const verticalDramaSeriesRouter = router({
               input.lookLockMode === "genre" && input.lookLockGenreKey
                 ? getSeriesLookLockGenreIdentity(input.lookLockGenreKey)
                 : undefined,
+            seriesProfileId: input.seriesProfileId,
+            sourcePackDigest,
           },
-      }, {
+        },
+        {
           persistJob: ensureVerticalDramaDraftJob,
           persistJobStatus: updateVerticalDramaDraftJob,
-      });
+        }
+      );
       return result;
     }),
 
@@ -8030,13 +10336,18 @@ export const verticalDramaSeriesRouter = router({
         tenantId,
         userId: ctx.user.id,
       };
-      const record = await getVerticalDramaDraftCompositionStatus(input.jobId, owner);
+      const record = await getVerticalDramaDraftCompositionStatus(
+        input.jobId,
+        owner
+      );
       if (record) {
         let recoveredResult = record.result ?? undefined;
         if (!recoveredResult && record.status === "failed") {
           const ledger = await getVerticalDramaDraftLedger(input.jobId, owner);
           if (ledger) {
-            recoveredResult = recoveredDraftCompositionStatus(ledger).result;
+            recoveredResult = recoveredDraftCompositionStatus(ledger).result as
+              | VerticalDramaDraftCompositionResult
+              | undefined;
           }
         }
         return {
@@ -8046,7 +10357,9 @@ export const verticalDramaSeriesRouter = router({
           // it available for diagnostic QC rather than forcing regeneration.
           result: recoveredResult,
           error:
-            record.status === "failed" ? (record.error ?? undefined) : undefined,
+            record.status === "failed"
+              ? (record.error ?? undefined)
+              : undefined,
           failure: record.status === "failed" ? record.failure : undefined,
           jobId: record.jobId,
           requestFingerprint: record.requestFingerprint,
@@ -8565,11 +10878,64 @@ export const verticalDramaSeriesRouter = router({
       }
 
       const row = await loadOwnedSeries(tenantId, userId, seriesId);
-      const bible = (row.bible as Record<string, unknown> | null) ?? {};
+      let bible = (row.bible as Record<string, unknown> | null) ?? {};
+      const sourcePack = await enforceSeriesSourcePackDraftGate(
+        tenantId,
+        userId,
+        seriesId,
+        bible
+      );
+      if (sourcePack) {
+        bible = {
+          ...bible,
+          sourcePackDigest: await buildStoredSourcePackDigest(
+            { tenantId, userId },
+            Number(sourcePack.pack.id)
+          ),
+          sourcePackBrollManifest: await buildStoredSourcePackBrollManifest(
+            { tenantId, userId },
+            Number(sourcePack.pack.id)
+          ),
+        };
+      }
+      bible = await ensureLongFormRelationshipGraph(
+        tenantId,
+        userId,
+        seriesId,
+        row,
+        bible
+      );
       const durationPlan = resolveVerticalDramaDurationPlan(
         bible,
         row.defaultEpisodeDurationSeconds
       );
+
+      let assuranceRunId: string | null = null;
+      if (isStoryGenerationAssuranceEnabled()) {
+        const visualSourceSnapshot = await captureSeriesVisualSourceSnapshot(
+          { tenantId, userId },
+          seriesId
+        );
+        const assuranceRun = await admitStoryGenerationRun({
+          tenantId,
+          userId,
+          seriesId,
+          taskKind: "plan",
+          runKey: `plan:${seriesId}:${String(row.updatedAt)}`,
+          idempotencyKey: `plan:${seriesId}:${String(row.updatedAt)}`,
+          sourceRevision: String(row.updatedAt),
+          sourceSnapshotKind: "plan",
+          sourcePayload: { bible },
+          targetEpisodes: Array.from(
+            { length: row.targetEpisodeCount },
+            (_, index) => index + 1
+          ),
+          objective: "Create an accepted story plan before deep generation",
+          mode: "premium",
+          ...(visualSourceSnapshot ? { visualSourceSnapshot } : {}),
+        });
+        assuranceRunId = assuranceRun.runId;
+      }
 
       let result;
       try {
@@ -8607,6 +10973,46 @@ export const verticalDramaSeriesRouter = router({
         });
       }
 
+      if (assuranceRunId) {
+        const durableRun = await getStoryGenerationRun(
+          tenantId,
+          assuranceRunId
+        );
+        const contract = durableRun?.contractJson as
+          | import("../services/verticalDramaStoryGenerationContracts").StoryGenerationRunContract
+          | undefined;
+        if (!contract) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Durable story-plan contract is unavailable",
+          });
+        }
+        const report = validateStoryGenerationOutput({
+          contract,
+          output: result.expanded,
+        });
+        await updateStoryGenerationCheckpoint(tenantId, assuranceRunId, {
+          status: "validating",
+          stage: "validation",
+          report,
+          checkpoint: { planCandidate: result.expanded },
+        });
+        if (!report.passed) {
+          await transitionStoryGenerationRun({
+            tenantId,
+            runId: assuranceRunId,
+            to: "needs_repair",
+            stage: "repair",
+            checkpoint: { planCandidate: result.expanded },
+            errorCode: "STORY_PLAN_FINAL_GATE_FAILED",
+          });
+          throw new TRPCError({
+            code: "UNPROCESSABLE_CONTENT",
+            message: "Story plan did not pass the durable final gate",
+          });
+        }
+      }
+
       await reconcileCharactersFromStoryBible(
         tenantId,
         userId,
@@ -8624,17 +11030,45 @@ export const verticalDramaSeriesRouter = router({
           ? { storyControlSeed: result.expanded.storyControlSeed }
           : {}),
       };
+      const compatibilityGraph = materializeCompatibilityRelationshipGraph({
+        seriesId,
+        characterKeys: result.expanded.refinedCharacters.map(
+          character => character.name
+        ),
+        episodeMemories: (() => {
+          const memory =
+            row.memory && typeof row.memory === "object"
+              ? (row.memory as { episodes?: unknown[] })
+              : null;
+          return memory && Array.isArray(memory.episodes)
+            ? memory.episodes
+            : [];
+        })(),
+      });
+      const bibleWithRelationshipGraph = attachRelationshipGraphToBible(
+        updatedBible,
+        compatibilityGraph
+      );
 
       const [updatedRow] = await db
         .update(verticalDramaSeries)
-        .set({ bible: updatedBible, updatedAt: new Date() })
+        .set({ bible: bibleWithRelationshipGraph, updatedAt: new Date() })
         .where(seriesOwnershipWhere(tenantId, userId, seriesId))
         .returning();
+
+      if (assuranceRunId) {
+        await finalizeStoryGeneration(
+          tenantId,
+          assuranceRunId,
+          `finalize:${assuranceRunId}`
+        );
+      }
 
       return {
         series: { ...updatedRow, id: String(updatedRow.id) },
         creditsUsed: result.creditsUsed,
         model: result.model,
+        runId: assuranceRunId,
       };
     }),
 
@@ -8707,7 +11141,15 @@ export const verticalDramaSeriesRouter = router({
       // `critiqueSeasonDrafts`'s service-level defensive re-check doc
       // comment).
       const row = await loadOwnedSeries(tenantId, userId, seriesId);
-      const bible = (row.bible as Record<string, unknown> | null) ?? {};
+      let bible = (row.bible as Record<string, unknown> | null) ?? {};
+      await enforceSeriesSourcePackDraftGate(tenantId, userId, seriesId, bible);
+      bible = await ensureLongFormRelationshipGraph(
+        tenantId,
+        userId,
+        seriesId,
+        row,
+        bible
+      );
       const existingItems = getActiveBreakdown(bible);
       if (existingItems.length === 0) {
         throw new TRPCError({
@@ -8755,7 +11197,12 @@ export const verticalDramaSeriesRouter = router({
         // early-complete path). Both branches share the same three keys so
         // tRPC/TS infer one consistent object shape; the client narrows on
         // `!jobId` to detect this case and must not attempt to poll it.
-        return { jobId: null, deduped: false, alreadyComplete: true as const };
+        return {
+          jobId: null,
+          deduped: false,
+          alreadyComplete: true as const,
+          runId: null,
+        };
       }
 
       await ensureStoryJobCreditsAvailable(
@@ -8767,6 +11214,40 @@ export const verticalDramaSeriesRouter = router({
         estimateDeepDraftJobCredits(remainingToDraft.length, mode)
       );
 
+      let assuranceRunId: string | null = null;
+      const assuranceIdempotencyKey =
+        input.idempotencyKey ??
+        `deep:${seriesId}:${row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt)}:${horizon}:${mode}`;
+      if (isStoryGenerationAssuranceEnabled()) {
+        const visualSourceSnapshot = await captureSeriesVisualSourceSnapshot(
+          { tenantId, userId },
+          seriesId
+        );
+        const assuranceRun = await admitStoryGenerationRun({
+          tenantId,
+          userId,
+          seriesId,
+          taskKind: "deep_generate",
+          runKey: `deep_generate:${seriesId}:${assuranceIdempotencyKey}`,
+          idempotencyKey: assuranceIdempotencyKey,
+          sourceRevision: String(row.updatedAt),
+          sourcePayload: { bible, targetEpisodeCount: row.targetEpisodeCount },
+          targetEpisodes: remainingToDraft.map(item => item.episodeNumber),
+          mode,
+          maxEstimatedCredits: estimateDeepDraftJobCredits(
+            remainingToDraft.length,
+            mode
+          ),
+          longForm: createLongFormExtensionForBible(
+            seriesId,
+            row.targetEpisodeCount,
+            bible
+          ),
+          ...(visualSourceSnapshot ? { visualSourceSnapshot } : {}),
+        });
+        assuranceRunId = assuranceRun.runId;
+      }
+
       const { jobId, deduped } = await enqueueVerticalDramaStoryJob({
         kind: "deep_generate",
         seriesId,
@@ -8776,9 +11257,28 @@ export const verticalDramaSeriesRouter = router({
           horizonEpisodes: input.horizonEpisodes,
           mode,
           idempotencyKey: input.idempotencyKey,
+          ...(assuranceRunId ? { runId: assuranceRunId } : {}),
         },
       });
-      return { jobId, deduped, alreadyComplete: false as const };
+      if (assuranceRunId) {
+        await updateStoryGenerationCheckpoint(tenantId, assuranceRunId, {
+          checkpoint: {
+            legacyJobId: jobId,
+            kind: "deep_generate",
+            input: {
+              horizonEpisodes: input.horizonEpisodes,
+              mode,
+              idempotencyKey: input.idempotencyKey,
+            },
+          },
+        });
+      }
+      return {
+        jobId,
+        deduped,
+        alreadyComplete: false as const,
+        runId: assuranceRunId,
+      };
     }),
 
   /**
@@ -8830,7 +11330,15 @@ export const verticalDramaSeriesRouter = router({
       // so a user who wants to save credits can opt out.
       const mode: VerticalDramaDeepStoryDraftMode =
         input.mode ?? (row.parentSeriesId != null ? "premium" : "standard");
-      const bible = (row.bible as Record<string, unknown> | null) ?? {};
+      let bible = (row.bible as Record<string, unknown> | null) ?? {};
+      await enforceSeriesSourcePackDraftGate(tenantId, userId, seriesId, bible);
+      bible = await ensureLongFormRelationshipGraph(
+        tenantId,
+        userId,
+        seriesId,
+        row,
+        bible
+      );
       const existingItems = getActiveBreakdown(bible);
       if (existingItems.length === 0) {
         throw new TRPCError({
@@ -8878,6 +11386,40 @@ export const verticalDramaSeriesRouter = router({
         estimateDeepDraftJobCredits(episodesToDraft.length, mode)
       );
 
+      let assuranceRunId: string | null = null;
+      const assuranceIdempotencyKey =
+        input.idempotencyKey ??
+        `extend:${seriesId}:${row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt)}:${horizonEnd}:${mode}`;
+      if (isStoryGenerationAssuranceEnabled()) {
+        const visualSourceSnapshot = await captureSeriesVisualSourceSnapshot(
+          { tenantId, userId },
+          seriesId
+        );
+        const assuranceRun = await admitStoryGenerationRun({
+          tenantId,
+          userId,
+          seriesId,
+          taskKind: "extend",
+          runKey: `extend:${seriesId}:${assuranceIdempotencyKey}`,
+          idempotencyKey: assuranceIdempotencyKey,
+          sourceRevision: String(row.updatedAt),
+          sourcePayload: { bible, horizonStart, horizonEnd },
+          targetEpisodes: episodesToDraft.map(item => item.episodeNumber),
+          mode,
+          maxEstimatedCredits: estimateDeepDraftJobCredits(
+            episodesToDraft.length,
+            mode
+          ),
+          longForm: createLongFormExtensionForBible(
+            seriesId,
+            row.targetEpisodeCount,
+            bible
+          ),
+          ...(visualSourceSnapshot ? { visualSourceSnapshot } : {}),
+        });
+        assuranceRunId = assuranceRun.runId;
+      }
+
       const { jobId, deduped } = await enqueueVerticalDramaStoryJob({
         kind: "extend",
         seriesId,
@@ -8887,9 +11429,23 @@ export const verticalDramaSeriesRouter = router({
           additionalEpisodes: input.additionalEpisodes,
           mode,
           idempotencyKey: input.idempotencyKey,
+          ...(assuranceRunId ? { runId: assuranceRunId } : {}),
         },
       });
-      return { jobId, deduped };
+      if (assuranceRunId) {
+        await updateStoryGenerationCheckpoint(tenantId, assuranceRunId, {
+          checkpoint: {
+            legacyJobId: jobId,
+            kind: "extend",
+            input: {
+              additionalEpisodes: input.additionalEpisodes,
+              mode,
+              idempotencyKey: input.idempotencyKey,
+            },
+          },
+        });
+      }
+      return { jobId, deduped, runId: assuranceRunId };
     }),
 
   /**
@@ -9410,6 +11966,40 @@ export const verticalDramaSeriesRouter = router({
         estimateImproveScriptJobCredits(draftedEpisodeCount)
       );
 
+      let assuranceRunId: string | null = null;
+      const assuranceIdempotencyKey =
+        input.idempotencyKey ??
+        `improve:${seriesId}:${row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt)}:${draftedEpisodeCount}`;
+      if (isStoryGenerationAssuranceEnabled()) {
+        const visualSourceSnapshot = await captureSeriesVisualSourceSnapshot(
+          { tenantId, userId },
+          seriesId
+        );
+        const assuranceRun = await admitStoryGenerationRun({
+          tenantId,
+          userId,
+          seriesId,
+          taskKind: "repair",
+          runKey: `improve_script:${seriesId}:${assuranceIdempotencyKey}`,
+          idempotencyKey: assuranceIdempotencyKey,
+          sourceRevision: String(row.updatedAt),
+          sourcePayload: {
+            bible,
+            userRevisionRequest: input.userRevisionRequest,
+          },
+          targetEpisodes: existingItems
+            .filter(item => readItemShotDrafts(item) !== null)
+            .map(item => item.episodeNumber),
+          objective:
+            "Improve the existing story while preserving the accepted plan",
+          mode: "premium",
+          maxEstimatedCredits:
+            estimateImproveScriptJobCredits(draftedEpisodeCount),
+          ...(visualSourceSnapshot ? { visualSourceSnapshot } : {}),
+        });
+        assuranceRunId = assuranceRun.runId;
+      }
+
       const { jobId, deduped } = await enqueueVerticalDramaStoryJob({
         kind: "improve_script",
         seriesId,
@@ -9418,9 +12008,22 @@ export const verticalDramaSeriesRouter = router({
         input: {
           userRevisionRequest: input.userRevisionRequest,
           idempotencyKey: input.idempotencyKey,
+          ...(assuranceRunId ? { runId: assuranceRunId } : {}),
         },
       });
-      return { jobId, deduped };
+      if (assuranceRunId) {
+        await updateStoryGenerationCheckpoint(tenantId, assuranceRunId, {
+          checkpoint: {
+            legacyJobId: jobId,
+            kind: "improve_script",
+            input: {
+              userRevisionRequest: input.userRevisionRequest,
+              idempotencyKey: input.idempotencyKey,
+            },
+          },
+        });
+      }
+      return { jobId, deduped, runId: assuranceRunId };
     }),
 
   /**
@@ -9785,10 +12388,11 @@ export const verticalDramaSeriesRouter = router({
    * library assets remain untouched and reusable by other series/features.
    *
    * Defense-in-depth: in addition to the standard ownership guard, the
-   * caller must pass `confirmName` matching the series title exactly
-   * (case-sensitive, no trimming) or the mutation is rejected before any
-   * row is touched. This mirrors the client's "type the series name to
-   * confirm" dialog so a scripted/replayed request can't skip that guard.
+   * caller must pass `confirmName` matching the series title exactly after
+   * Unicode NFC normalization and outer-whitespace trimming (still
+   * case-sensitive) or the mutation is rejected before any row is touched.
+   * This mirrors the client's "type the series name to confirm" dialog so a
+   * scripted/replayed request can't skip that guard.
    */
   deleteSeries: verticalDramaProcedure
     .input(
@@ -9812,7 +12416,12 @@ export const verticalDramaSeriesRouter = router({
       // discloses existence of another tenant's/user's series).
       const row = await loadOwnedSeries(tenantId, userId, seriesId);
 
-      if (input.confirmName !== row.title) {
+      const normalizedConfirmName = input.confirmName.normalize("NFC").trim();
+      const normalizedSeriesTitle = row.title.normalize("NFC").trim();
+      if (
+        normalizedConfirmName.length === 0 ||
+        normalizedConfirmName !== normalizedSeriesTitle
+      ) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Series name confirmation does not match — deletion aborted",
@@ -10774,7 +13383,15 @@ export const verticalDramaSeriesRouter = router({
             showEpisodeIndicator: input.showEpisodeIndicator ?? true,
             showSeriesTitle: input.showSeriesTitle ?? true,
             useSeriesWatermarks: input.useSeriesWatermarks ?? true,
-            bgm: input.bgm,
+            bgm:
+              input.bgm && "tracks" in input.bgm
+                ? {
+                    tracks: input.bgm.tracks.map((track, index) => ({
+                      ...track,
+                      id: track.id ?? `track-${index + 1}`,
+                    })),
+                  }
+                : input.bgm,
             credits: input.credits,
             overlays: input.overlays,
             internalBaseUrl,
@@ -11606,6 +14223,7 @@ export const verticalDramaSeriesRouter = router({
           tenantId,
           auditContext: {
             userId,
+            tenantId,
             source: "trpc.verticalDramaSeries.getAdBannerImageStatus",
             stage: "poll",
           },
@@ -11689,6 +14307,418 @@ export const verticalDramaSeriesRouter = router({
       }
 
       return { banner, taskStatus: task.status };
+    }),
+
+  /** Feature 152 — durable story-generation run summary. */
+  getStoryGenerationRun: verticalDramaDeepStoryDraftsProcedure
+    .input(z.object({ seriesId: z.string().min(1), runId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId))
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const summary = await getStoryGenerationRunSummary(tenantId, input.runId);
+      if (!summary || summary.seriesId !== seriesId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Story generation run not found",
+        });
+      }
+      return summary;
+    }),
+
+  /** Feature 152 — validation report is readable independently of polling. */
+  getStoryGenerationValidation: verticalDramaDeepStoryDraftsProcedure
+    .input(z.object({ seriesId: z.string().min(1), runId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId))
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const row = await getStoryGenerationRun(tenantId, input.runId);
+      if (!row || Number(row.seriesId) !== seriesId)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Story generation run not found",
+        });
+      return {
+        runId: row.runId,
+        status: row.status,
+        report: row.validationReportJson ?? null,
+      };
+    }),
+
+  /** Feature 152 — resume from the last durable checkpoint. */
+  resumeStoryGeneration: verticalDramaDeepStoryDraftsProcedure
+    .input(z.object({ seriesId: z.string().min(1), runId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId))
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const row = await getStoryGenerationRun(tenantId, input.runId);
+      if (!row || Number(row.seriesId) !== seriesId || row.userId !== userId)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Story generation run not found",
+        });
+      if (row.status !== "partial" && row.status !== "needs_repair") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Story generation run is not resumable",
+        });
+      }
+      await transitionStoryGenerationRun({
+        tenantId,
+        runId: row.runId,
+        to: "running",
+        stage: "generation",
+      });
+      const jobId = await enqueueStoryAssuranceRecoveryJob({
+        tenantId,
+        runId: row.runId,
+        row,
+        repair: false,
+      });
+      return { runId: row.runId, jobId, status: "running" as const };
+    }),
+
+  /** Feature 152 — targeted repair reuses the bounded legacy generator adapter. */
+  repairStoryGeneration: verticalDramaDeepStoryDraftsProcedure
+    .input(z.object({ seriesId: z.string().min(1), runId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId))
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const row = await getStoryGenerationRun(tenantId, input.runId);
+      if (!row || Number(row.seriesId) !== seriesId || row.userId !== userId)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Story generation run not found",
+        });
+      if (row.status !== "needs_repair" && row.status !== "partial") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Story generation run has no repairable findings",
+        });
+      }
+      await transitionStoryGenerationRun({
+        tenantId,
+        runId: row.runId,
+        to: "repairing",
+        stage: "repair",
+      });
+      const jobId = await enqueueStoryAssuranceRecoveryJob({
+        tenantId,
+        runId: row.runId,
+        row,
+        repair: true,
+      });
+      return { runId: row.runId, jobId, status: "repairing" as const };
+    }),
+
+  /** Feature 152 — explicit approval/rejection for structural repair scope. */
+  approveStoryGenerationRepair: verticalDramaDeepStoryDraftsProcedure
+    .input(z.object({ seriesId: z.string().min(1), runId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId))
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const row = await getStoryGenerationRun(tenantId, input.runId);
+      if (!row || Number(row.seriesId) !== seriesId || row.userId !== userId)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Story generation run not found",
+        });
+      if (row.status !== "awaiting_approval")
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Story generation run is not awaiting approval",
+        });
+      await transitionStoryGenerationRun({
+        tenantId,
+        runId: row.runId,
+        to: "repairing",
+        stage: "repair",
+      });
+      const jobId = await enqueueStoryAssuranceRecoveryJob({
+        tenantId,
+        runId: row.runId,
+        row,
+        repair: true,
+      });
+      return { runId: row.runId, jobId, status: "repairing" as const };
+    }),
+
+  rejectStoryGenerationRepair: verticalDramaDeepStoryDraftsProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        runId: z.string().min(1),
+        reason: z.string().trim().min(1).max(500),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId))
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const row = await getStoryGenerationRun(tenantId, input.runId);
+      if (!row || Number(row.seriesId) !== seriesId || row.userId !== userId)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Story generation run not found",
+        });
+      const summary = await transitionStoryGenerationRun({
+        tenantId,
+        runId: row.runId,
+        to: "needs_repair",
+        stage: "repair",
+        errorCode: input.reason,
+      });
+      return {
+        runId: row.runId,
+        status: summary?.status ?? ("needs_repair" as const),
+      };
+    }),
+
+  cancelStoryGeneration: verticalDramaDeepStoryDraftsProcedure
+    .input(z.object({ seriesId: z.string().min(1), runId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId))
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const row = await getStoryGenerationRun(tenantId, input.runId);
+      if (!row || Number(row.seriesId) !== seriesId || row.userId !== userId)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Story generation run not found",
+        });
+      await requestStoryGenerationCancellation(tenantId, row.runId);
+      const summary = await transitionStoryGenerationRun({
+        tenantId,
+        runId: row.runId,
+        to: "cancelled",
+        stage: row.stage as
+          | "admission"
+          | "context"
+          | "generation"
+          | "validation"
+          | "alignment"
+          | "repair"
+          | "finalization",
+        errorCode: "CANCELLED_BY_USER",
+      });
+      if (!summary)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Story generation run not found",
+        });
+      return summary;
+    }),
+
+  /** Feature 153: read a bounded, redacted relationship graph page. */
+  getCharacterRelationshipGraph: verticalDramaProcedure
+    .input(getCharacterRelationshipGraphInput)
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      const row = await loadOwnedSeries(tenantId, userId, seriesId);
+      const bible = (row.bible as Record<string, unknown> | null) ?? {};
+      const longForm =
+        bible.longForm && typeof bible.longForm === "object"
+          ? (bible.longForm as Record<string, unknown>)
+          : {};
+      const rawGraph = longForm.relationshipGraph;
+      const parsedGraph =
+        rawGraph === undefined
+          ? null
+          : characterRelationshipGraphSchema.safeParse(rawGraph);
+      if (rawGraph !== undefined && parsedGraph && !parsedGraph.success) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Relationship graph needs repair",
+        });
+      }
+      const graph = parsedGraph?.success
+        ? (parsedGraph.data as CharacterRelationshipGraph)
+        : undefined;
+      const parsedCandidateGraph = characterRelationshipGraphSchema.safeParse(
+        longForm.candidateRelationshipGraph
+      );
+      const candidateGraph = parsedCandidateGraph.success
+        ? (parsedCandidateGraph.data as CharacterRelationshipGraph)
+        : undefined;
+      if (!graph) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Relationship graph is not available; generate or repair the story draft first",
+        });
+      }
+      const query: RelationshipGraphQuery = {
+        graphRevisionId: input.graphRevisionId,
+        episodeNumber: input.episodeNumber,
+        episodeRange: input.episodeRange,
+        familySide: input.familySide,
+        familyGroupId: input.familyGroupId,
+        factionId: input.factionId,
+        relationTypes: input.relationTypes,
+        statuses: input.statuses,
+        disclosure: input.disclosure,
+        arcId: input.arcId,
+        candidateGraphRevisionId: input.candidateGraphRevisionId,
+        includeCandidateActiveDiff: input.includeCandidateActiveDiff,
+        cursor: input.cursor,
+        pageSize: input.pageSize,
+        expectedRedactionPolicyFingerprint:
+          input.expectedRedactionPolicyFingerprint,
+        viewpointCharacterKey: input.viewpointCharacterKey,
+      };
+      try {
+        return queryRelationshipGraph(graph, query, {
+          candidateGraph,
+          // Secret edges are never returned by this general diagnostic read.
+          // A future elevated review surface can use a separate audited scope.
+          canViewSecretEdges: false,
+          redactionPolicyVersion: String(
+            longForm.relationshipRedactionPolicyVersion ??
+              "relationship-redaction-v1"
+          ),
+          redactionPolicyFingerprint: String(
+            longForm.relationshipRedactionPolicyFingerprint ??
+              "relationship-redaction-default"
+          ),
+          viewpointCharacterKey: input.viewpointCharacterKey,
+        });
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "stale_redaction_policy"
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Relationship graph redaction policy is stale",
+          });
+        }
+        if (
+          error instanceof Error &&
+          error.message === "stale_graph_revision"
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Relationship graph revision is stale",
+          });
+        }
+        throw error;
+      }
+    }),
+
+  /** Feature 153: bounded, explainable pair-path inspection. */
+  getCharacterRelationshipPath: verticalDramaProcedure
+    .input(getCharacterRelationshipPathInput)
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId))
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      const row = await loadOwnedSeries(tenantId, userId, seriesId);
+      const bible = (row.bible as Record<string, unknown> | null) ?? {};
+      const longForm =
+        bible.longForm && typeof bible.longForm === "object"
+          ? (bible.longForm as Record<string, unknown>)
+          : {};
+      const parsedGraph = characterRelationshipGraphSchema.safeParse(
+        longForm.relationshipGraph
+      );
+      const graph = parsedGraph.success
+        ? (parsedGraph.data as CharacterRelationshipGraph)
+        : undefined;
+      if (!graph || graph.graphRevisionId !== input.graphRevisionId)
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Relationship graph revision is stale",
+        });
+      const redactionPolicyVersion = String(
+        longForm.relationshipRedactionPolicyVersion ??
+          "relationship-redaction-v1"
+      );
+      const redactionPolicyFingerprint = String(
+        longForm.relationshipRedactionPolicyFingerprint ??
+          "relationship-redaction-default"
+      );
+      if (
+        input.expectedRedactionPolicyFingerprint &&
+        input.expectedRedactionPolicyFingerprint !== redactionPolicyFingerprint
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Relationship graph redaction policy is stale",
+        });
+      }
+      return findRelationshipPaths(
+        graph,
+        input.fromCharacterKey,
+        input.toCharacterKey,
+        {
+          episodeNumber: input.episodeNumber,
+          maxHops: input.maxHops,
+          maxPaths: input.maxPaths,
+          canViewSecretEdges: false,
+          viewpointCharacterKey: input.viewpointCharacterKey,
+          redactionPolicyVersion,
+          redactionPolicyFingerprint,
+        }
+      );
     }),
 
   /**

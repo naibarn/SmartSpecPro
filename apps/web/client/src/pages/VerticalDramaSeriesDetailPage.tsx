@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useRoute, useSearch } from "wouter";
+import { Link, useLocation, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
 import {
   Clapperboard,
@@ -63,13 +63,18 @@ import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { VerticalDramaCharacterStockPanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
 import { VerticalDramaLocationStockPanel } from "@/components/verticalDramaSeries/VerticalDramaLocationStockPanel";
 import { VerticalDramaSeriesTrailerPanel } from "@/components/verticalDramaSeries/VerticalDramaSeriesTrailerPanel";
+import { VerticalDramaRelationshipGraphPanel } from "@/components/verticalDramaSeries/VerticalDramaRelationshipGraphPanel";
 // Production Episodes panel (Phase D′-1,
 // `planning/vertical-drama-production-episodes/plan.md`) — the public
 // deliverable surface (groups of 5/10 Sub-episodes concatenated into one
 // 4-10 min video), distinct from the per-Sub-episode workspace this page's
 // own "episodes" tab already links out to.
 import { VerticalDramaProductionEpisodesPanel } from "@/components/verticalDramaSeries/VerticalDramaProductionEpisodesPanel";
-import { VerticalDramaShell } from "@/components/verticalDramaSeries/VerticalDramaShell";
+import {
+  isVerticalDramaPlannerEditSearch,
+  VerticalDramaPlanningWizardSlot,
+  VerticalDramaShell,
+} from "@/components/verticalDramaSeries/VerticalDramaShell";
 import { VerticalDramaSettingsTab } from "@/components/verticalDramaSeries/VerticalDramaSettingsTab";
 import { VerticalDramaProductTieInTab } from "@/components/verticalDramaSeries/VerticalDramaProductTieInTab";
 import { VerticalDramaAssetsTab } from "@/components/verticalDramaSeries/VerticalDramaAssetsTab";
@@ -136,8 +141,10 @@ import {
 // modules" precedent this file's own doc comment above already establishes.
 import { vdTextOverlayCopy } from "@/components/verticalDramaSeries/verticalDramaTextOverlayCopy";
 import { parseSeriesWatermarkConfig } from "@shared/verticalDramaSeries/textOverlay";
+import { readVerticalDramaPlanningState } from "@shared/verticalDramaSeries/planningState";
 
 type TabId =
+  | "planning"
   | "overview"
   | "characters"
   | "scenes"
@@ -160,6 +167,7 @@ type TabId =
 // references should be planned before episode/storyboard generation
 // consumes them.
 const ALL_TABS: TabId[] = [
+  "planning",
   "overview",
   "characters",
   "scenes",
@@ -182,6 +190,7 @@ const STORY_TABS: TabId[] = [
 const ADVANCED_TABS: TabId[] = ["product", "assets", "settings"];
 
 const tabLabels: Record<TabId, { th: string; en: string }> = {
+  planning: { th: "วางแผน", en: "Planning" },
   overview: { th: "ภาพรวม", en: "Overview" },
   episodes: { th: "ตอนย่อย", en: "Sub-episodes" },
   // Production Episodes (Phase D′-1) — the public deliverable surface,
@@ -226,9 +235,13 @@ export default function VerticalDramaSeriesDetailPage() {
   const [, params] = useRoute("/drama-series/:seriesId");
   const seriesId = params?.seriesId ?? "";
   const search = useSearch();
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<TabId>(() =>
     resolveInitialSeriesTab(search)
   );
+  useEffect(() => {
+    setActiveTab(resolveInitialSeriesTab(search));
+  }, [search]);
   // W10-C (spec F131T) — resolved once here and passed down as a prop so
   // `StoryBibleOverviewCard` (and the deep-draft child components it
   // conditionally mounts) stay fully prop-driven; flag off -> those children
@@ -274,7 +287,11 @@ export default function VerticalDramaSeriesDetailPage() {
 
   const detailQuery = trpc.verticalDramaSeries.get.useQuery(
     { seriesId },
-    { enabled: Boolean(seriesId), staleTime: 30_000 }
+    {
+      enabled: Boolean(seriesId),
+      staleTime: 5 * 60_000,
+      gcTime: 15 * 60_000,
+    }
   );
 
   const series = detailQuery.data?.series as
@@ -362,6 +379,55 @@ export default function VerticalDramaSeriesDetailPage() {
     return flags;
   }, [storyPopulated, advancedPopulated]);
 
+  const planningState = readVerticalDramaPlanningState(series?.bible);
+  const isStoryReady = series?.status === "story_ready";
+  const hasUnacceptedDraftWorkspace = Boolean(
+    !isStoryReady &&
+    planningState &&
+    !planningState.finalizedDraftSessionId &&
+    (planningState.draftSessionId ||
+      planningState.activeDraft?.draftId ||
+      planningState.activeQc?.runId ||
+      planningState.legacyRecovery?.draftSessionId)
+  );
+  const requestedTab = new URLSearchParams(search).get("tab");
+  const planningEditMode =
+    activeTab === "planning" &&
+    isVerticalDramaPlannerEditSearch(search) &&
+    !isStoryReady;
+
+  // Existing planning shells are resumable work, not ordinary read-only
+  // series. When the user opens one from the sidebar, or explicitly opens its
+  // Planning tab, take them directly to the planning workspace while an
+  // unaccepted Draft/QC workspace exists. An explicit non-Planning tab still
+  // wins, so this does not hijack navigation to Overview/Bible/etc.
+  useEffect(() => {
+    if (
+      (series?.status !== "planning" && !hasUnacceptedDraftWorkspace) ||
+      (requestedTab !== null && requestedTab !== "planning")
+    ) {
+      return;
+    }
+    setActiveTab("planning");
+    setLocation(
+      `${verticalDramaRoutes.seriesDetail(seriesId)}?tab=planning&edit=1`
+    );
+  }, [
+    hasUnacceptedDraftWorkspace,
+    requestedTab,
+    series?.status,
+    seriesId,
+    setLocation,
+  ]);
+
+  // A generated story is no longer a planning shell. Normalize a stale or
+  // bookmarked planner URL back to the read-only planning summary instead of
+  // mounting the wizard a second time.
+  useEffect(() => {
+    if (!isStoryReady || !isVerticalDramaPlannerEditSearch(search)) return;
+    setLocation(`${verticalDramaRoutes.seriesDetail(seriesId)}?tab=planning`);
+  }, [isStoryReady, search, seriesId, setLocation]);
+
   const pageState: AppPageState = detailQuery.isLoading
     ? "loading"
     : detailQuery.isError || !series
@@ -401,6 +467,7 @@ export default function VerticalDramaSeriesDetailPage() {
             seriesId={seriesId}
           />
         }
+        constrainToParent
         state={pageState}
         loadingSkeleton={
           <div className="grid gap-4" aria-busy="true">
@@ -426,12 +493,30 @@ export default function VerticalDramaSeriesDetailPage() {
             </div>
 
             <Tabs
+              className="isolate min-w-0 w-full max-w-full overflow-x-clip [contain:inline-size]"
               value={activeTab}
-              onValueChange={v => setActiveTab(v as TabId)}
+              onValueChange={v => {
+                const nextTab = v as TabId;
+                setActiveTab(nextTab);
+                const shouldResumePlanningWorkspace =
+                  nextTab === "planning" &&
+                  (series.status === "planning" ||
+                    hasUnacceptedDraftWorkspace) &&
+                  !isStoryReady;
+                setLocation(
+                  `${verticalDramaRoutes.seriesDetail(seriesId)}?tab=${nextTab}${
+                    shouldResumePlanningWorkspace ? "&edit=1" : ""
+                  }`
+                );
+              }}
             >
-              <TabsList className="flex-wrap">
+              <TabsList className="flex w-full min-w-0 max-w-full flex-wrap overflow-x-clip">
                 {ALL_TABS.map(tab => (
-                  <TabsTrigger key={tab} value={tab} className="gap-1.5">
+                  <TabsTrigger
+                    key={tab}
+                    value={tab}
+                    className="min-w-0 max-w-full gap-1.5 whitespace-normal [overflow-wrap:anywhere]"
+                  >
                     {pickCopy(lang, tabLabels[tab])}
                     {needsAttention[tab] ? (
                       <span
@@ -447,6 +532,118 @@ export default function VerticalDramaSeriesDetailPage() {
                   </TabsTrigger>
                 ))}
               </TabsList>
+
+              <TabsContent
+                value="planning"
+                className="isolate min-w-0 w-full max-w-full space-y-4 overflow-x-clip pt-4 [contain:inline-size]"
+              >
+                {planningEditMode && <VerticalDramaPlanningWizardSlot />}
+                {!planningEditMode && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">
+                        {lang === "th" ? "สถานะการวางแผน" : "Planning status"}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                      <p className="text-muted-foreground">
+                        {lang === "th"
+                          ? "หน้านี้แสดงเฉพาะแผนปัจจุบันที่ยืนยันแล้วและสถานะงานสด ประวัติ Draft/QC จะโหลดเมื่อกดดูเท่านั้น"
+                          : "This view shows only the confirmed active plan and live job status. Draft/QC history loads only when requested."}
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <div className="rounded-lg border bg-muted/30 p-3">
+                          <p className="text-xs text-muted-foreground">
+                            Status
+                          </p>
+                          <p className="mt-1 font-medium">
+                            {planningState?.status ?? series.status}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-muted/30 p-3">
+                          <p className="text-xs text-muted-foreground">
+                            Revision
+                          </p>
+                          <p className="mt-1 font-medium">
+                            {planningState?.revision ?? 0}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-muted/30 p-3">
+                          <p className="text-xs text-muted-foreground">
+                            Active QC
+                          </p>
+                          <p className="mt-1 font-medium">
+                            {planningState?.activeQc?.score != null
+                              ? `${planningState.activeQc.score}/10`
+                              : lang === "th"
+                                ? "ยังไม่มี"
+                                : "Not confirmed"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {!isArchived && (
+                          <Button
+                            type="button"
+                            disabled={isStoryReady}
+                            title={
+                              isStoryReady
+                                ? lang === "th"
+                                  ? "เนื้อเรื่องพร้อมแล้ว ไม่ต้องวางแผนซ้ำ"
+                                  : "The story is ready; planning is no longer required"
+                                : undefined
+                            }
+                            onClick={() =>
+                              setLocation(
+                                `${verticalDramaRoutes.seriesDetail(seriesId)}?tab=planning&edit=1`
+                              )
+                            }
+                          >
+                            {isStoryReady
+                              ? lang === "th"
+                                ? "เนื้อเรื่องพร้อมแล้ว"
+                                : "Story ready"
+                              : lang === "th"
+                                ? "เปิดตัวช่วยวางแผน"
+                                : "Open planner"}
+                          </Button>
+                        )}
+                        {planningState?.legacyRecovery && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              const recovery = planningState.legacyRecovery;
+                              if (!recovery) return;
+                              setLocation(
+                                `${verticalDramaRoutes.seriesDetail(seriesId)}?tab=planning&edit=1&recoveryJobId=${encodeURIComponent(recovery.draftId)}&recoverySessionId=${encodeURIComponent(recovery.draftSessionId)}${recovery.qcRunId ? `&recoveryQcRunId=${encodeURIComponent(recovery.qcRunId)}` : ""}`
+                              );
+                            }}
+                          >
+                            {lang === "th"
+                              ? "กู้คืน Draft เดิม"
+                              : "Recover legacy Draft"}
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setActiveTab("bible");
+                            setLocation(
+                              `${verticalDramaRoutes.seriesDetail(seriesId)}?tab=bible`
+                            );
+                          }}
+                        >
+                          {lang === "th"
+                            ? "ดูไบเบิลเรื่อง"
+                            : "Open Story Bible"}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
 
               <TabsContent value="overview" className="space-y-4 pt-4">
                 <Card>
@@ -569,7 +766,9 @@ export default function VerticalDramaSeriesDetailPage() {
                       tone={series.tone}
                       targetAudience={series.targetAudience}
                       targetEpisodeCount={series.targetEpisodeCount}
-                      legacyDurationSeconds={series.defaultEpisodeDurationSeconds}
+                      legacyDurationSeconds={
+                        series.defaultEpisodeDurationSeconds
+                      }
                       locale={series.locale}
                       bible={series.bible}
                       llmModelPolicy={series.llmModelPolicy}
@@ -923,6 +1122,7 @@ export function EpisodesTab({
     trpc.verticalDramaEpisodes.generateEpisodeCover.useMutation({
       onSuccess: () => {
         void utils.verticalDramaSeries.get.invalidate();
+        void utils.verticalDramaSeries.list.invalidate();
       },
       onError: (err: { message?: string }) => {
         toast.error(
@@ -939,6 +1139,7 @@ export function EpisodesTab({
       onSuccess: () => {
         setUploadingCoverEpisodeId(null);
         void utils.verticalDramaSeries.get.invalidate();
+        void utils.verticalDramaSeries.list.invalidate();
         toast.success(lang === "th" ? "เปลี่ยนหน้าปกแล้ว" : "Cover replaced");
       },
       onError: (err: { message?: string }) => {
@@ -973,6 +1174,7 @@ export function EpisodesTab({
             ["ready", "failed"].includes(result.coverImage?.status ?? "")
           ) {
             await utils.verticalDramaSeries.get.invalidate();
+            await utils.verticalDramaSeries.list.invalidate();
           }
         } catch {
           // The next poll retries; the current cover remains visible.
@@ -1052,7 +1254,7 @@ export function EpisodesTab({
         throw new Error(
           lang === "th"
             ? "อัปโหลดหน้าปกไม่สำเร็จ: ไม่พบ media asset ID"
-            : "Cover upload failed: the server did not return a media asset ID",
+            : "Cover upload failed: the server did not return a media asset ID"
         );
       }
       setCoverAssetMutation.mutate({
@@ -2040,6 +2242,10 @@ interface ExpandedStoryBible {
     keyBeats: string[];
   }>;
   expandedAt?: string;
+  longForm?: {
+    relationshipGraphRevisionId?: string;
+    relationshipGraph?: { graphRevisionId?: string };
+  };
 }
 
 /** Re-exported from the shared module (was a locally-declared constant) — see `storyScriptText.ts`'s own doc comment. */
@@ -2130,6 +2336,9 @@ function StoryBibleTab({
   readOnly: boolean;
 }) {
   const b = (bible ?? {}) as ExpandedStoryBible;
+  const relationshipGraphRevisionId =
+    b.longForm?.relationshipGraphRevisionId ??
+    b.longForm?.relationshipGraph?.graphRevisionId;
   const hasRefinedCharacters = Boolean(
     b.refinedCharacters && b.refinedCharacters.length > 0
   );
@@ -2162,6 +2371,14 @@ function StoryBibleTab({
         mainPlot={b.mainPlot}
         readOnly={readOnly}
       />
+
+      {relationshipGraphRevisionId && (
+        <VerticalDramaRelationshipGraphPanel
+          lang={lang}
+          seriesId={seriesId}
+          graphRevisionId={relationshipGraphRevisionId}
+        />
+      )}
 
       <Card>
         <CardHeader>
@@ -2424,8 +2641,7 @@ export function StoryBibleOverviewCard({
   };
   const expanded = (bible ?? {}) as ExpandedStoryBible;
   const durationPlan = readVerticalDramaDurationPlan(
-    (bible as { durationProfile?: unknown } | null | undefined)
-      ?.durationProfile
+    (bible as { durationProfile?: unknown } | null | undefined)?.durationProfile
   );
   const createdEpisodeNumberSet = useMemo(
     () => new Set(createdEpisodeNumbers),
