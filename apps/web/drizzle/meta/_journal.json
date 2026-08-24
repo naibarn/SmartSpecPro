@@ -1681,6 +1681,13 @@
       "when": 1787564823932,
       "tag": "0253_vertical_drama_draft_series_integrity",
       "breakpoints": true
+    },
+    {
+      "idx": 240,
+      "version": "7",
+      "when": 1787575173477,
+      "tag": "0254_vertical_drama_legacy_draft_cleanup",
+      "breakpoints": true
     }
   ]
 }

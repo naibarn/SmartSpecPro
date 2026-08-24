@@ -1145,12 +1145,11 @@ export function CreateSeriesWizard({
 
   const draftWorkspaceStatusQuery =
     trpc.verticalDramaSeries.getDraftWorkspaceStatus.useQuery(
-      planningSeriesId
-        ? { seriesId: planningSeriesId }
-        : { draftSessionId: workspaceDraftSessionId },
+      { seriesId: planningSeriesId ?? "0" },
       {
         enabled:
           open &&
+          Boolean(planningSeriesId) &&
           (!planningSeriesId || planningSourcePackPointerQuery.isFetched),
         refetchInterval: query => {
           const compositionStatus = query.state.data?.composition?.status;
@@ -1496,9 +1495,10 @@ export function CreateSeriesWizard({
     trpc.verticalDramaSeries.getDraftCompositionStatus.useQuery(
       {
         jobId: draftCompositionJobId ?? "00000000-0000-4000-8000-000000000000",
+        seriesId: planningSeriesId ?? "0",
       },
       {
-        enabled: Boolean(draftCompositionJobId),
+        enabled: Boolean(draftCompositionJobId && planningSeriesId),
         refetchInterval: query =>
           [
             "queued",
@@ -1517,9 +1517,12 @@ export function CreateSeriesWizard({
   const recoveryJobProcedure = trpc.verticalDramaSeries.getDraftJob;
   const recoveryJobQuery = recoveryJobProcedure?.useQuery
     ? recoveryJobProcedure.useQuery(
-        { jobId: recoveryJobId ?? "00000000-0000-4000-8000-000000000000" },
         {
-          enabled: open && Boolean(recoveryJobId),
+          jobId: recoveryJobId ?? "00000000-0000-4000-8000-000000000000",
+          seriesId: planningSeriesId ?? "0",
+        },
+        {
+          enabled: open && Boolean(recoveryJobId && planningSeriesId),
           retry: 1,
         }
       )
@@ -1659,9 +1662,12 @@ export function CreateSeriesWizard({
     );
   const draftQcStatusQuery =
     trpc.verticalDramaSeries.getDraftQualityQcStatus.useQuery(
-      { runId: draftQcRunId ?? "00000000-0000-4000-8000-000000000000" },
       {
-        enabled: Boolean(draftQcRunId),
+        runId: draftQcRunId ?? "00000000-0000-4000-8000-000000000000",
+        seriesId: planningSeriesId ?? "0",
+      },
+      {
+        enabled: Boolean(draftQcRunId && planningSeriesId),
         retry: false,
         refetchInterval: query =>
           query.state.data?.status === "queued" ||
@@ -2267,9 +2273,20 @@ export function CreateSeriesWizard({
     if (draftQcHistoricalResult) {
       setDraftQcPreviousResult(draftQcHistoricalResult);
     }
+    const draftArtifactId =
+      draftCompositionStatusQuery.data?.result?.draftArtifactId;
+    if (!draftArtifactId) {
+      toast.error(
+        lang === "th"
+          ? "ไม่พบ Draft ledger ที่ผูกกับ Series นี้"
+          : "No Draft ledger is bound to this Series"
+      );
+      return;
+    }
     draftQcStartMutation.mutate({
+      seriesId: planningSeriesId ?? "",
       draftSessionId: draftQcSessionId.current,
-      draftId: draftCompositionStatusQuery.data?.result?.draftArtifactId,
+      draftId: draftArtifactId,
       draft: draftToReview as unknown as Record<string, unknown>,
       immutableConstraints: {
         preservedPaths: [...DRAFT_QC_IMMUTABLE_PRESERVED_PATHS],
@@ -2309,13 +2326,17 @@ export function CreateSeriesWizard({
       fingerprintDraftQualityQcCandidate(draftToReview);
     draftQcRepairMutation.mutate({
       runId: draftQcRunId,
+      seriesId: planningSeriesId ?? "",
       candidateFingerprint,
     });
   }
 
   function cancelDraftQualityQc() {
     if (!draftQcRunId || draftQcCancelMutation.isPending) return;
-    draftQcCancelMutation.mutate({ runId: draftQcRunId });
+    draftQcCancelMutation.mutate({
+      runId: draftQcRunId,
+      seriesId: planningSeriesId ?? "",
+    });
   }
 
   function selectDraftQualityQcCandidate(
@@ -2359,6 +2380,7 @@ export function CreateSeriesWizard({
       return;
     }
     draftQcCandidateSelectMutation.mutate({
+      seriesId: planningSeriesId ?? "",
       runId,
       draftId,
       version: item.candidateVersion,
@@ -2367,9 +2389,10 @@ export function CreateSeriesWizard({
   }
 
   const draftQualityQcReceipt =
-    draftQcAuthoritativeResult && draftQcAuthoritativeRunId
+    draftQcAuthoritativeResult && draftQcAuthoritativeRunId && planningSeriesId
       ? {
           runId: draftQcAuthoritativeRunId,
+          seriesId: Number(planningSeriesId),
           candidateFingerprint:
             fingerprintDraftQualityQcCandidate(draftToReview),
           explicitOverride: draftQcOverride,
@@ -2663,6 +2686,14 @@ export function CreateSeriesWizard({
   }
 
   function handleSynthesizePreset() {
+    if (!planningSeriesId) {
+      toast.error(
+        lang === "th"
+          ? "ต้องสร้างหรือเลือก Series ก่อนจึงจะสร้าง Draft ได้"
+          : "Create or select a Series before starting a Draft"
+      );
+      return;
+    }
     // vd-premise-first-wizard plan Phase 3.1 — the premise stands on its own:
     // synthesis is allowed with 0 presets when a premise is present, and the
     // hard error now only fires for the genuinely-empty case (see

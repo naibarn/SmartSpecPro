@@ -88,6 +88,7 @@ function selectChain(rows: unknown[]) {
     from: vi.fn(() => chain),
     leftJoin: vi.fn(() => chain),
     where: vi.fn(() => chain),
+    for: vi.fn(() => chain),
     orderBy: vi.fn(() => chain),
     groupBy: vi.fn(() => Promise.resolve(rows)),
     limit: vi.fn(() => Promise.resolve(rows)),
@@ -169,6 +170,12 @@ describe("deleteSeries — happy path", () => {
 
     const txDeleteWhere = vi.fn(() => Promise.resolve());
     const txDelete = vi.fn(() => ({ where: txDeleteWhere }));
+    const txUpdateWhere = vi.fn(() => ({
+      returning: vi.fn(() => Promise.resolve([])),
+      then: (resolve: any) => Promise.resolve().then(resolve),
+    }));
+    const txUpdateSet = vi.fn(() => ({ where: txUpdateWhere }));
+    const txUpdate = vi.fn(() => ({ set: txUpdateSet }));
 
     // 10 COUNT aggregate queries (one per child table) run via Promise.all
     // inside the transaction — each resolves to a single-row count.
@@ -177,12 +184,16 @@ describe("deleteSeries — happy path", () => {
     // shotReferences, episodeRuns, runArtifacts, approvalCheckpoints, memoryEvents,
     // memorySnapshots, qcReports (matches Promise.all order in the router)
     const txSelect = vi.fn(() => {
-      const value = countValues[countCall] ?? 0;
+      if (countCall === 0) {
+        countCall += 1;
+        return selectChain([]);
+      }
+      const value = countValues[countCall - 1] ?? 0;
       countCall += 1;
       return selectChain([{ count: value }]);
     });
 
-    const tx = { select: txSelect, delete: txDelete };
+    const tx = { select: txSelect, update: txUpdate, delete: txDelete };
     mockDb.transaction.mockImplementation(
       async (fn: (tx: unknown) => unknown) => fn(tx)
     );
@@ -194,7 +205,7 @@ describe("deleteSeries — happy path", () => {
 
     expect(mockDb.transaction).toHaveBeenCalledTimes(1);
     expect(txDelete).toHaveBeenCalledTimes(1);
-    expect(txSelect).toHaveBeenCalledTimes(10);
+    expect(txSelect).toHaveBeenCalledTimes(11);
 
     expect(result).toMatchObject({
       deleted: true,
@@ -209,6 +220,7 @@ describe("deleteSeries — happy path", () => {
       memoryEventsDeleted: 7,
       memorySnapshotsDeleted: 1,
       qcReportsDeleted: 0,
+      sourcePacksDetached: 0,
     });
   });
 
@@ -223,5 +235,32 @@ describe("deleteSeries — happy path", () => {
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
     expect(mockDb.transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe("Series-bound Draft route contracts", () => {
+  it("requires a Series ID when cancelling composition", async () => {
+    await expect(
+      router.cancelDraftComposition({
+        ctx: ctx(),
+        input: { jobId: "00000000-0000-4000-8000-000000000001" },
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(mockDb.select).not.toHaveBeenCalled();
+  });
+
+  it("requires a Series ID when loading Draft history content", async () => {
+    await expect(
+      router.getDraftHistoryVersion({
+        ctx: ctx(),
+        input: {
+          draftId: "00000000-0000-4000-8000-000000000001",
+          version: 1,
+        },
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(mockDb.select).not.toHaveBeenCalled();
   });
 });

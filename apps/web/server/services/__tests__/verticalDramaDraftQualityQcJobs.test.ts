@@ -52,17 +52,21 @@ describe("vertical drama pre-create Draft QC jobs", () => {
     const payload = {
       tenantId: "tenant-a",
       userId: 7,
+      seriesId: 101,
       draftSessionId: "session-1",
+      draftId: "draft-1",
       draft: { title: "Proof of Us" },
       immutableConstraints: {},
       maxImprovementRounds: 3 as const,
     };
     const first = await enqueueVerticalDramaDraftQualityQc(payload, {
       redis,
+      persistJobStatus: async () => true,
       enqueueBullmqJob: async () => undefined,
     });
     const second = await enqueueVerticalDramaDraftQualityQc(payload, {
       redis,
+      persistJobStatus: async () => true,
       enqueueBullmqJob: async () => undefined,
     });
     expect(second).toEqual({ runId: first.runId, deduped: true });
@@ -70,6 +74,7 @@ describe("vertical drama pre-create Draft QC jobs", () => {
       await getVerticalDramaDraftQualityQcStatus(
         first.runId,
         { tenantId: "tenant-b", userId: 7 },
+        101,
         { redis }
       )
     ).toBeNull();
@@ -78,10 +83,40 @@ describe("vertical drama pre-create Draft QC jobs", () => {
         await getVerticalDramaDraftQualityQcStatusBySession(
           "session-1",
           { tenantId: "tenant-a", userId: 7 },
+          101,
           { redis }
         )
       )?.runId
     ).toBe(first.runId);
+  });
+
+  it("passes the selected Series ID into durable QC snapshot recovery", async () => {
+    const redis = fakeRedis();
+    let recoveredSeriesId: number | undefined;
+    const result = await reconcileVerticalDramaDraftQualityQc(
+      "run-series-scoped",
+      { tenantId: "tenant-a", userId: 7 },
+      101,
+      {
+        redis,
+        persistJobStatus: async () => true,
+        getLedgerByQcRunId: async () =>
+          ({
+            id: "draft-series-scoped",
+            qcRunId: "run-series-scoped",
+            seriesId: 101,
+            jobStatus: "qc_running",
+          }) as any,
+        getQcSnapshotsByRunId: async (_runId, _owner, seriesId) => {
+          recoveredSeriesId = seriesId;
+          return [];
+        },
+        getQcSnapshotsByDraftId: async () => [],
+      }
+    );
+
+    expect(result.stale).toBe(true);
+    expect(recoveredSeriesId).toBe(101);
   });
 
   it("cancels an active run idempotently", async () => {
@@ -90,17 +125,24 @@ describe("vertical drama pre-create Draft QC jobs", () => {
       {
         tenantId: "tenant-a",
         userId: 7,
+        seriesId: 101,
         draftSessionId: "session-2",
+        draftId: "draft-2",
         draft: { title: "Proof of Us" },
         immutableConstraints: {},
         maxImprovementRounds: 0,
       },
-      { redis, enqueueBullmqJob: async () => undefined }
+      {
+        redis,
+        persistJobStatus: async () => true,
+        enqueueBullmqJob: async () => undefined,
+      }
     );
     expect(
       await cancelVerticalDramaDraftQualityQc(
         runId,
         { tenantId: "tenant-a", userId: 7 },
+        101,
         { redis }
       )
     ).toBe(true);
@@ -109,6 +151,7 @@ describe("vertical drama pre-create Draft QC jobs", () => {
         await getVerticalDramaDraftQualityQcStatus(
           runId,
           { tenantId: "tenant-a", userId: 7 },
+          101,
           { redis }
         )
       )?.status
@@ -117,6 +160,7 @@ describe("vertical drama pre-create Draft QC jobs", () => {
       await cancelVerticalDramaDraftQualityQc(
         runId,
         { tenantId: "tenant-a", userId: 7 },
+        101,
         { redis }
       )
     ).toBe(true);
@@ -129,7 +173,9 @@ describe("vertical drama pre-create Draft QC jobs", () => {
         {
           tenantId: "tenant-a",
           userId: 7,
+          seriesId: 101,
           draftSessionId: "session-3",
+          draftId: "draft-3",
           draft: { title: "Proof of Us" },
           immutableConstraints: {},
           maxImprovementRounds: 0,
@@ -144,7 +190,7 @@ describe("vertical drama pre-create Draft QC jobs", () => {
     ).rejects.toThrow("queue is unavailable");
 
     const pointerRun = await redis.get(
-      "vd:draft-qc:active:tenant-a:7:session-3"
+      "vd:draft-qc:active:tenant-a:7:101:session-3"
     );
     expect(pointerRun).toBeNull();
   });
@@ -156,6 +202,7 @@ describe("vertical drama pre-create Draft QC jobs", () => {
       {
         tenantId: "tenant-a",
         userId: 7,
+        seriesId: 101,
         draftSessionId: "session-stale",
         draftId: "draft-stale",
         draft: { title: "Stale draft" },
@@ -172,6 +219,7 @@ describe("vertical drama pre-create Draft QC jobs", () => {
     const result = await reconcileVerticalDramaDraftQualityQc(
       runId,
       { tenantId: "tenant-a", userId: 7 },
+      101,
       {
         redis,
         now: () => createdAt + DRAFT_QC_STALE_AFTER_MS + 1,
@@ -183,13 +231,14 @@ describe("vertical drama pre-create Draft QC jobs", () => {
     expect(result.record?.status).toBe("failed");
     expect(result.message).toContain("เคลียร์คิว");
     expect(
-      await redis.get("vd:draft-qc:active:tenant-a:7:session-stale")
+      await redis.get("vd:draft-qc:active:tenant-a:7:101:session-stale")
     ).toBeNull();
     expect(
       (
         await getVerticalDramaDraftQualityQcStatus(
           runId,
           { tenantId: "tenant-a", userId: 7 },
+          101,
           { redis }
         )
       )?.status
@@ -201,6 +250,7 @@ describe("vertical drama pre-create Draft QC jobs", () => {
     const result = await reconcileVerticalDramaDraftQualityQc(
       "run-missing",
       { tenantId: "tenant-a", userId: 7 },
+      101,
       {
         redis,
         persistJobStatus: async () => true,
@@ -227,6 +277,7 @@ describe("vertical drama pre-create Draft QC jobs", () => {
     const result = await reconcileVerticalDramaDraftQualityQc(
       "run-expired-with-snapshot",
       { tenantId: "tenant-a", userId: 7 },
+      101,
       {
         redis,
         persistJobStatus: async () => true,
@@ -272,7 +323,10 @@ describe("vertical drama pre-create Draft QC jobs", () => {
 
   it("recovers a valid prior candidate when the current run fails before scoring", async () => {
     const report = durableReport();
-    const draft = { title: "Proof of Us", storyDesign: { totalEpisodeCount: 50 } };
+    const draft = {
+      title: "Proof of Us",
+      storyDesign: { totalEpisodeCount: 50 },
+    };
     const fingerprint = fingerprintDraftQualityQcCandidate(draft);
     const recovered = await recoverVerticalDramaDraftQualityQcResultFromFailure(
       {
@@ -317,13 +371,14 @@ describe("vertical drama pre-create Draft QC jobs", () => {
         lastReport: report,
       },
       {
-        getDraftVersion: async () => ({
-          draftId: "draft-failed",
-          version: 1,
-          runId: "run-failed",
-          stage: "qc-baseline",
-          contentJson: draft,
-        }) as any,
+        getDraftVersion: async () =>
+          ({
+            draftId: "draft-failed",
+            version: 1,
+            runId: "run-failed",
+            stage: "qc-baseline",
+            contentJson: draft,
+          }) as any,
       }
     );
 

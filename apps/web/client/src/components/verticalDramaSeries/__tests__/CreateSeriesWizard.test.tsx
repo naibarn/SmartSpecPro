@@ -114,8 +114,55 @@ vi.mock("@/hooks/useTenantFeatureFlag", () => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: () => ({
+      verticalDramaSeries: {
+        get: { invalidate: vi.fn() },
+        list: { invalidate: vi.fn() },
+      },
+    }),
     verticalDramaSeries: {
       listGenrePresets: { useQuery: () => mockListGenrePresetsQuery() },
+      getPlanningSourcePackPointer: {
+        useQuery: () => ({
+          data: { pointer: null },
+          isLoading: false,
+          refetch: vi.fn(),
+        }),
+      },
+      persistPlanningSourcePackPointer: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      updatePlanningSeriesSnapshot: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      createSourcePackSession: {
+        useMutation: () => ({
+          mutate: vi.fn(),
+          isPending: false,
+          error: undefined,
+          reset: vi.fn(),
+        }),
+      },
+      getOrCreateSourcePack: {
+        useMutation: () => ({
+          mutate: vi.fn(),
+          isPending: false,
+          error: undefined,
+          reset: vi.fn(),
+        }),
+      },
+      getSourcePackReadiness: {
+        useQuery: () => ({ data: null, isLoading: false, error: undefined }),
+      },
+      getSourcePack: {
+        useQuery: () => ({ data: null, isLoading: false, error: undefined }),
+      },
+      previewPromptExpansion: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      applyPromptExpansion: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
       getDraftCompositionStatus: {
         useQuery: () =>
           mockDraftCompositionStatus.data
@@ -136,7 +183,19 @@ vi.mock("@/lib/trpc", () => ({
                   }
                 : mockDraftCompositionStatus,
       },
-      getDraftWorkspaceStatus: { useQuery: () => ({ data: null }) },
+      getDraftWorkspaceStatus: {
+        useQuery: (
+          _input: unknown,
+          options?: {
+            refetchInterval?: (query: { state: { data: unknown } }) => unknown;
+          }
+        ) => {
+          // Exercise the real query option during render. This catches TDZ
+          // regressions where the callback reads refs declared below the hook.
+          options?.refetchInterval?.({ state: { data: null } });
+          return { data: null };
+        },
+      },
       startDraftComposition: {
         useMutation: (opts: {
           onSuccess?: (data: unknown) => void;
@@ -207,7 +266,10 @@ vi.mock("@/lib/trpc", () => ({
             mockDraftCompositionStatus = {
               data: {
                 status: "ready_for_qc",
-                result: mockSynthesizeMutationState.data,
+                result: {
+                  ...mockSynthesizeMutationState.data,
+                  draftArtifactId: "draft-artifact-1",
+                },
               },
             };
             opts.onSuccess?.({
@@ -437,6 +499,7 @@ function renderWizard() {
     <CreateSeriesWizard
       open
       lang="th"
+      planningSeriesId="99"
       onOpenChange={() => {}}
       onCreated={() => {}}
     />
@@ -566,7 +629,7 @@ describe("CreateSeriesWizard — draft confirmation gate", () => {
     expect(screen.getByRole("button", { name: "ถัดไป" })).toBeDisabled();
   });
 
-  it("restores the workspace after refresh without submitting the draft again", () => {
+  it("does not restore the generic browser workspace into another Series", () => {
     const firstRender = renderWizard();
     const premise =
       "Proof of Us — a mathematics scholar builds structures that change the world";
@@ -580,7 +643,7 @@ describe("CreateSeriesWizard — draft confirmation gate", () => {
     firstRender.unmount();
     renderWizard();
 
-    expect(getWizardPremiseTextarea().value).toBe(premise);
+    expect(getWizardPremiseTextarea().value).toBe("");
     expect(mockSynthesizeMutate).toHaveBeenCalledTimes(1);
   });
 
@@ -614,12 +677,20 @@ describe("CreateSeriesWizard — draft confirmation gate", () => {
     };
     firstResult.stopReason = "max_rounds";
     mockDraftCompositionStatus = {
-      data: { status: "failed", error: "composition record reconciled" },
+      data: {
+        status: "failed",
+        error: "composition record reconciled",
+        result: {
+          draft: firstResult.best.draft,
+          draftArtifactId: "draft-artifact-1",
+        },
+      },
     };
     view.rerender(
       <CreateSeriesWizard
         open
         lang="th"
+        planningSeriesId="99"
         onOpenChange={() => {}}
         onCreated={() => {}}
       />
@@ -654,6 +725,7 @@ describe("CreateSeriesWizard — draft confirmation gate", () => {
       <CreateSeriesWizard
         open
         lang="th"
+        planningSeriesId="99"
         onOpenChange={() => {}}
         onCreated={() => {}}
       />
@@ -787,16 +859,14 @@ describe("CreateSeriesWizard — series look lock", () => {
     mockPlanningModelsQuery.mockReturnValue({ data: [], isLoading: false });
   });
 
-  it("sends the selected visual genre in the initial create payload", () => {
+  it("uses the selected Series Profile to derive the legacy visual genre", () => {
     renderWizard();
     const titleLabel = screen.getByText(/^ชื่อซีรีย์/);
     const titleInput = titleLabel
       .closest("div")
       ?.querySelector("input") as HTMLInputElement;
     fireEvent.change(titleInput, { target: { value: "Look Locked Series" } });
-    fireEvent.click(
-      screen.getByRole("checkbox", { name: "แอ็กชัน / มหากาพย์" })
-    );
+    fireEvent.click(screen.getByRole("radio", { name: /แอ็กชัน \/ มหากาพย์/ }));
     generateDraft(/ให้ AI สร้างทั้งหมดให้/);
     applyDraft();
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
@@ -805,67 +875,22 @@ describe("CreateSeriesWizard — series look lock", () => {
     );
     expect(mockCreateMutate).toHaveBeenCalledWith(
       expect.objectContaining({
-        lookLock: { mode: "genre", genreKey: "action_epic" },
+        lookLock: expect.objectContaining({
+          mode: "genre",
+          genreKey: "action_epic",
+          visualNarrativeEnabled: true,
+        }),
       })
     );
   });
 
-  it("forwards a complete AI-mix look candidate only when source inheritance is selected", () => {
-    const candidate = presetOne.visualIdentityJson!;
-    mockSynthesizeMutationState = {
-      data: {
-        draft: {
-          contract_version: 2,
-          title: "AI Look Series",
-          titleOptions: [
-            "AI Look Series",
-            "AI Look Series: Afterimage",
-            "AI Look Series: Signal",
-            "AI Look Series: Refracted",
-          ],
-          category: "sci_fi_mecha",
-          logline: "mixed logline",
-          mainPlot: "mixed main plot",
-          seasonArc: "mixed season arc",
-          tone: "mixed tone",
-          cliffhangerStyle: "mixed cliff",
-          characters: [{ name: "E", role: "Lead", description: "desc" }],
-          visualBible: "mixed visual bible",
-          visualIdentity: candidate,
-          mixRecipe: {
-            primaryFlavor: "1",
-            supportingFlavors: [],
-            rationale: "mix",
-          },
-          blendReport: {
-            contractVersion: 2,
-            facets: [],
-            contributionCoverage: {},
-            minFacetsPerPreset: 0,
-            underBlended: [],
-          },
-          warnings: [],
-        },
-        creditsUsed: 3,
-        model: "test-model",
-      },
-      isPending: false,
-    };
+  it("does not render a second editable visual-look picker", () => {
     renderWizard();
-    fireEvent.change(getTitleInput(), { target: { value: "AI Look Series" } });
-    generateDraft(/ให้ AI สร้างทั้งหมดให้/);
-    applyDraft();
-    fireEvent.click(screen.getByRole("checkbox", { name: "ใช้ลุคจากต้นทาง" }));
-    fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
-    fireEvent.click(
-      screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
-    );
-
-    expect(mockCreateMutate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        lookLock: { mode: "inherit_source", candidateIdentity: candidate },
-      })
-    );
+    expect(
+      screen.getByRole("radiogroup", { name: /แนวทางซีรีส์/ })
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/ลุคภาพอัตโนมัติ:/).length).toBeGreaterThan(0);
+    expect(screen.queryByText("ลุคภาพประจำซีรีส์")).not.toBeInTheDocument();
   });
 });
 
@@ -1811,6 +1836,21 @@ describe("CreateSeriesWizard — LLM model pin at creation", () => {
     fillTitleAndCreate("Pinned Model Series");
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        defaultModelId: "anthropic/claude-quality-large",
+      })
+    );
+  });
+
+  it("after picking a specific model, draft composition payload sends that modelId too", () => {
+    renderWizard();
+    const trigger = screen.getByTestId("vd-wizard-default-llm-model");
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByText("Anthropic — Claude Quality Large"));
+
+    fillTitleAndCreate("Pinned Draft Model Series");
+
+    expect(mockSynthesizeMutate).toHaveBeenCalledWith(
       expect.objectContaining({
         defaultModelId: "anthropic/claude-quality-large",
       })

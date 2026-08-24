@@ -46,7 +46,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
-import { useAuth } from "@/contexts/AuthContext";
 import {
   CreateSeriesWizard,
   clearPersistedCreateSeriesWorkspace,
@@ -346,7 +345,6 @@ export function VerticalDramaShell({
   children: ReactNode;
 }) {
   const lang = useVerticalDramaLang();
-  const { isLoading: authLoading, isAuthenticated } = useAuth();
   const [location, setLocation] = useLocation();
   // wouter's useLocation intentionally returns pathname only. Planner edit
   // mode is a query-string deep link, so subscribe to the search separately;
@@ -371,9 +369,6 @@ export function VerticalDramaShell({
   const [deleteTarget, setDeleteTarget] = useState<SidebarSeriesItem | null>(
     null
   );
-  const [legacyDraftMigrationStatus, setLegacyDraftMigrationStatus] = useState<
-    "idle" | "pending" | "success" | "error"
-  >("idle");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
   const [filterChip, setFilterChip] =
@@ -396,34 +391,11 @@ export function VerticalDramaShell({
       },
     });
 
-  // Legacy Draft migration is intentionally fire-and-forget. The Series-first
-  // UI must not fetch or render the old Draft Inbox after the migration: doing
-  // so reintroduces the expensive history load and makes a new Series appear
-  // to depend on an unrelated Draft job.
-  const migrateLegacyDraftJobsMutation =
-    trpc.verticalDramaSeries.migrateLegacyDraftJobs.useMutation({
-      onSuccess: data =>
-        setLegacyDraftMigrationStatus(data.failed > 0 ? "error" : "success"),
-      onError: () => setLegacyDraftMigrationStatus("error"),
-    });
-  useEffect(() => {
-    if (
-      !isSeriesIndexPage ||
-      authLoading ||
-      !isAuthenticated ||
-      legacyDraftMigrationStatus !== "idle"
-    ) {
-      return;
-    }
-    setLegacyDraftMigrationStatus("pending");
-    migrateLegacyDraftJobsMutation.mutate({ limit: 100 });
-  }, [
-    authLoading,
-    isAuthenticated,
-    isSeriesIndexPage,
-    legacyDraftMigrationStatus,
-    migrateLegacyDraftJobsMutation,
-  ]);
+  // Do not auto-migrate unlinked Draft ledgers when opening the Series index.
+  // A legacy row can have lost its Series identity after an older delete, so
+  // guessing a new parent here creates the "deleted item returns as Draft #N"
+  // loop. Recovery remains an explicit server procedure for audited legacy
+  // rows; all new Draft/QC work is Series-bound and never needs this path.
   // A refreshed Planning URL is the durable resume signal for the page-mode
   // wizard. No Draft/QC history is fetched here; the Series detail query owns
   // only the compact active projection.

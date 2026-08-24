@@ -119,8 +119,51 @@ vi.mock("@/hooks/useTenantFeatureFlag", () => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: () => ({
+      verticalDramaSeries: {
+        get: { invalidate: vi.fn() },
+        list: { invalidate: vi.fn() },
+      },
+    }),
     verticalDramaSeries: {
       listGenrePresets: { useQuery: () => mockListGenrePresetsQuery() },
+      getPlanningSourcePackPointer: {
+        useQuery: () => ({ data: { pointer: null }, isLoading: false }),
+      },
+      persistPlanningSourcePackPointer: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      updatePlanningSeriesSnapshot: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      createSourcePackSession: {
+        useMutation: () => ({
+          mutate: vi.fn(),
+          isPending: false,
+          error: undefined,
+          reset: vi.fn(),
+        }),
+      },
+      getOrCreateSourcePack: {
+        useMutation: () => ({
+          mutate: vi.fn(),
+          isPending: false,
+          error: undefined,
+          reset: vi.fn(),
+        }),
+      },
+      getSourcePackReadiness: {
+        useQuery: () => ({ data: null, isLoading: false, error: undefined }),
+      },
+      getSourcePack: {
+        useQuery: () => ({ data: null, isLoading: false, error: undefined }),
+      },
+      previewPromptExpansion: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      applyPromptExpansion: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
       getDraftCompositionStatus: {
         useQuery: () =>
           mockDraftCompositionStatus.data
@@ -134,7 +177,17 @@ vi.mock("@/lib/trpc", () => ({
                 }
               : mockDraftCompositionStatus,
       },
-      getDraftWorkspaceStatus: { useQuery: () => ({ data: null }) },
+      getDraftWorkspaceStatus: {
+        useQuery: (
+          _input: unknown,
+          options?: {
+            refetchInterval?: (query: { state: { data: unknown } }) => unknown;
+          }
+        ) => {
+          options?.refetchInterval?.({ state: { data: null } });
+          return { data: null };
+        },
+      },
       startDraftComposition: {
         useMutation: (opts: { onSuccess?: (data: unknown) => void }) => ({
           mutate: (input: unknown) => {
@@ -389,6 +442,7 @@ function renderWizard() {
     <CreateSeriesWizard
       open
       lang="th"
+      planningSeriesId="99"
       onOpenChange={() => {}}
       onCreated={() => {}}
     />

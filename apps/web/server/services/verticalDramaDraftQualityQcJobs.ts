@@ -49,6 +49,8 @@ export interface VerticalDramaDraftQualityQcOwner {
 export interface VerticalDramaDraftQualityQcPayload extends VerticalDramaDraftQualityQcOwner {
   runId: string;
   draftSessionId: string;
+  /** Canonical Series owner for every new QC run; legacy records may omit it. */
+  seriesId?: number;
   requestFingerprint: string;
   /** Snapshot of the server-approved LLM Recommend model used by QC. */
   model?: string;
@@ -62,8 +64,10 @@ export interface VerticalDramaDraftQualityQcPayload extends VerticalDramaDraftQu
   repairSourceReport?: DraftQualityQcReport;
 }
 
-export interface VerticalDramaDraftQualityQcPublicResult
-  extends Omit<DraftQualityQcResultSnapshot, "best"> {
+export interface VerticalDramaDraftQualityQcPublicResult extends Omit<
+  DraftQualityQcResultSnapshot,
+  "best"
+> {
   best: {
     draft: DraftQualityQcDraft;
     report: DraftQualityQcReport;
@@ -106,11 +110,15 @@ export interface DraftQualityQcRedisAdapter {
 type DurableQcSnapshot = {
   draftId: string;
   runId: string | null;
+  candidateVersion?: number;
+  contentHash?: string;
   contentJson: unknown;
   metadata: Record<string, unknown>;
 };
 
 interface JobDependencies {
+  /** History is an explicit UI action; default callers must stay metadata-light. */
+  includeHistory?: boolean;
   redis?: DraftQualityQcRedisAdapter;
   now?: () => number;
   enqueueBullmqJob?: (runId: string) => Promise<void>;
@@ -148,9 +156,10 @@ function recordKey(runId: string): string {
 
 function pointerKey(
   owner: VerticalDramaDraftQualityQcOwner,
-  draftSessionId: string
+  draftSessionId: string,
+  seriesId?: number
 ): string {
-  return `vd:draft-qc:active:${owner.tenantId}:${owner.userId}:${draftSessionId}`;
+  return `vd:draft-qc:active:${owner.tenantId}:${owner.userId}:${seriesId ?? "legacy"}:${draftSessionId}`;
 }
 
 async function readRecord(
@@ -182,7 +191,7 @@ async function writeRecord(
   // workspace so refresh can restore the review/QC result without recharging.
   if (record.status !== "cancelled") {
     await redis.set(
-      pointerKey(record, record.draftSessionId),
+      pointerKey(record, record.draftSessionId, record.seriesId),
       record.runId,
       "EX",
       ACTIVE_POINTER_TTL_SECONDS
@@ -228,7 +237,9 @@ function publicResultFromDurableSnapshot(
     ? metadata.history
         .map(item => draftQualityQcHistoryEntrySchema.safeParse(item))
         .filter(
-          (item): item is {
+          (
+            item
+          ): item is {
             success: true;
             data: DraftQualityQcHistoryEntry;
           } => item.success
@@ -239,6 +250,20 @@ function publicResultFromDurableSnapshot(
     typeof metadata.round === "number" && Number.isInteger(metadata.round)
       ? metadata.round
       : 0;
+  const recoveredHistory = history.length
+    ? history
+    : [
+        {
+          round: bestRound,
+          score: report.data.overallScore,
+          status: report.data.status,
+          kept: true,
+          reason: "failed" as const,
+          candidateVersion: snapshot.candidateVersion,
+          candidateFingerprint: fingerprintDraftQualityQcCandidate(draft),
+          report: report.data,
+        },
+      ];
   return {
     runId: snapshot.runId ?? undefined,
     best: {
@@ -247,18 +272,7 @@ function publicResultFromDurableSnapshot(
       round: bestRound,
       fingerprint: fingerprintDraftQualityQcCandidate(draft),
     },
-    history: history.length
-      ? history
-      : [
-          {
-            round: bestRound,
-            score: report.data.overallScore,
-            status: report.data.status,
-            kept: true,
-            reason: "failed",
-            report: report.data,
-          },
-        ],
+    history: recoveredHistory,
     creditEstimate: creditEstimate.success
       ? creditEstimate.data
       : {
@@ -268,8 +282,7 @@ function publicResultFromDurableSnapshot(
           estimatedCredits: 1,
           actualCredits: 0,
         },
-    stopReason:
-      metadata.stopReason === "passed" ? "passed" : "max_rounds",
+    stopReason: metadata.stopReason === "passed" ? "passed" : "max_rounds",
     roundsAttempted:
       typeof metadata.roundsAttempted === "number"
         ? metadata.roundsAttempted
@@ -278,8 +291,7 @@ function publicResultFromDurableSnapshot(
       typeof metadata.evaluationsCompleted === "number"
         ? metadata.evaluationsCompleted
         : 1,
-    model:
-      typeof metadata.model === "string" ? metadata.model : "historical",
+    model: typeof metadata.model === "string" ? metadata.model : "historical",
     draftArtifactId: snapshot.draftId,
     recoveredFromFailure: metadata.recoveredFromFailure === true,
     recoveryMessage:
@@ -376,15 +388,13 @@ export async function recoverVerticalDramaDraftQualityQcResultFromFailure(
 export async function recoverVerticalDramaDraftQualityQcResultByRunId(
   runId: string,
   owner: VerticalDramaDraftQualityQcOwner,
+  seriesId?: number,
   dependencies?: JobDependencies
 ): Promise<VerticalDramaDraftQualityQcPublicResult | null> {
   const [snapshot] = await (
     dependencies?.getQcSnapshotsByRunId ??
     getVerticalDramaDraftQcSnapshotsByRunId
-  )(
-    runId,
-    owner
-  );
+  )(runId, owner, seriesId);
   return snapshot
     ? publicResultFromDurableSnapshot(snapshot as DurableQcSnapshot)
     : null;
@@ -394,15 +404,13 @@ export async function recoverVerticalDramaDraftQualityQcHistory(
   draftId: string,
   owner: VerticalDramaDraftQualityQcOwner,
   excludeRunId?: string,
+  seriesId?: number,
   dependencies?: JobDependencies
 ): Promise<VerticalDramaDraftQualityQcPublicResult[]> {
   const snapshots = await (
     dependencies?.getQcSnapshotsByDraftId ??
     getVerticalDramaDraftQcSnapshotsByDraftId
-  )(
-    draftId,
-    owner
-  );
+  )(draftId, owner, seriesId);
   return snapshots
     .filter(snapshot => snapshot.runId && snapshot.runId !== excludeRunId)
     .map(snapshot =>
@@ -421,6 +429,17 @@ export async function enqueueVerticalDramaDraftQualityQc(
   >,
   dependencies: JobDependencies = {}
 ): Promise<{ runId: string; deduped: boolean }> {
+  const seriesId = payload.seriesId;
+  if (
+    typeof seriesId !== "number" ||
+    !Number.isInteger(seriesId) ||
+    seriesId <= 0
+  ) {
+    throw new Error("Draft QC requires an owning Series");
+  }
+  if (!payload.draftId) {
+    throw new Error("Draft QC requires a durable Draft ledger");
+  }
   const bytes = Buffer.byteLength(JSON.stringify(payload.draft), "utf8");
   if (bytes > MAX_DRAFT_BYTES)
     throw new Error("Draft QC candidate is too large");
@@ -436,7 +455,7 @@ export async function enqueueVerticalDramaDraftQualityQc(
     repairSourceFingerprint: payload.repairSourceFingerprint,
   });
   const deps = resolveDependencies(dependencies);
-  const activeKey = pointerKey(payload, payload.draftSessionId);
+  const activeKey = pointerKey(payload, payload.draftSessionId, seriesId);
   const existingRunId = await deps.redis.get(activeKey);
   if (existingRunId) {
     const existing = await readRecord(existingRunId, dependencies);
@@ -468,17 +487,16 @@ export async function enqueueVerticalDramaDraftQualityQc(
     // Persist the run id before admitting the paid job to BullMQ. Otherwise a
     // fast worker can finish QC and have its terminal status overwritten by a
     // late `ready_for_qc` update from the router.
-    if (payload.draftId) {
-      const persisted = await (
-        dependencies.persistJobStatus ?? updateVerticalDramaDraftJob
-      )(payload.draftId, payload, {
-        jobStatus: "ready_for_qc",
-        qcRunId: runId,
-        lastError: null,
-      });
-      if (!persisted) {
-        throw new Error("Draft ledger not found; QC was not queued");
-      }
+    const persisted = await (
+      dependencies.persistJobStatus ?? updateVerticalDramaDraftJob
+    )(payload.draftId, payload, {
+      jobStatus: "ready_for_qc",
+      qcRunId: runId,
+      seriesId,
+      lastError: null,
+    });
+    if (!persisted) {
+      throw new Error("Draft ledger not found or not owned by this Series");
     }
     await (dependencies.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(runId);
   } catch (error) {
@@ -504,13 +522,15 @@ export async function enqueueVerticalDramaDraftQualityQc(
 export async function getVerticalDramaDraftQualityQcStatus(
   runId: string,
   owner: VerticalDramaDraftQualityQcOwner,
+  seriesId?: number,
   dependencies?: JobDependencies
 ): Promise<VerticalDramaDraftQualityQcRecord | null> {
   const record = await readRecord(runId, dependencies);
   if (
     !record ||
     record.tenantId !== owner.tenantId ||
-    record.userId !== owner.userId
+    record.userId !== owner.userId ||
+    (seriesId !== undefined && record.seriesId !== seriesId)
   )
     return null;
   return record;
@@ -519,32 +539,40 @@ export async function getVerticalDramaDraftQualityQcStatus(
 export async function getVerticalDramaDraftQualityQcStatusBySession(
   draftSessionId: string,
   owner: VerticalDramaDraftQualityQcOwner,
+  seriesId?: number,
   dependencies?: JobDependencies
 ): Promise<VerticalDramaDraftQualityQcRecord | null> {
   const runId = await resolveDependencies(dependencies).redis.get(
-    pointerKey(owner, draftSessionId)
+    pointerKey(owner, draftSessionId, seriesId)
   );
   if (!runId) return null;
-  return getVerticalDramaDraftQualityQcStatus(runId, owner, dependencies);
+  return getVerticalDramaDraftQualityQcStatus(
+    runId,
+    owner,
+    seriesId,
+    dependencies
+  );
 }
 
 export async function getVerticalDramaDraftQualityQcRunIdBySession(
   draftSessionId: string,
   owner: VerticalDramaDraftQualityQcOwner,
+  seriesId?: number,
   dependencies?: JobDependencies
 ): Promise<string | null> {
   return resolveDependencies(dependencies).redis.get(
-    pointerKey(owner, draftSessionId)
+    pointerKey(owner, draftSessionId, seriesId)
   );
 }
 
 export async function clearVerticalDramaDraftQualityQcPointer(
   draftSessionId: string,
   owner: VerticalDramaDraftQualityQcOwner,
+  seriesId?: number,
   dependencies?: JobDependencies
 ): Promise<void> {
   await resolveDependencies(dependencies).redis.del(
-    pointerKey(owner, draftSessionId)
+    pointerKey(owner, draftSessionId, seriesId)
   );
 }
 
@@ -607,7 +635,9 @@ async function markStaleQcRecord(
     },
     dependencies
   );
-  await deps.redis.del(pointerKey(record, record.draftSessionId));
+  await deps.redis.del(
+    pointerKey(record, record.draftSessionId, record.seriesId)
+  );
   await removeQueuedBullmqJob(record.runId);
   if (record.draftId) {
     await (dependencies.persistJobStatus ?? updateVerticalDramaDraftJob)(
@@ -616,6 +646,7 @@ async function markStaleQcRecord(
       {
         jobStatus: "failed",
         qcRunId: record.runId,
+        seriesId: record.seriesId,
         lastError: message,
       }
     );
@@ -631,12 +662,14 @@ async function markStaleQcRecord(
 export async function reconcileVerticalDramaDraftQualityQc(
   runId: string,
   owner: VerticalDramaDraftQualityQcOwner,
+  seriesId?: number,
   dependencies: JobDependencies = {}
 ): Promise<DraftQualityQcReconciliation> {
   const deps = resolveDependencies(dependencies);
   const record = await getVerticalDramaDraftQualityQcStatus(
     runId,
     owner,
+    seriesId,
     dependencies
   );
   if (record) {
@@ -658,7 +691,7 @@ export async function reconcileVerticalDramaDraftQualityQc(
 
   const ledger = await (
     dependencies.getLedgerByQcRunId ?? getVerticalDramaDraftLedgerByQcRunId
-  )(runId, owner);
+  )(runId, owner, seriesId);
   if (!ledger || ledger.qcRunId !== runId) {
     const message =
       "Draft QC run record ไม่พบแล้ว (อาจหมดอายุหรือ Worker หยุดทำงาน) ระบบเคลียร์คิวนี้แล้ว กรุณายืนยันเริ่ม QC ใหม่";
@@ -666,23 +699,26 @@ export async function reconcileVerticalDramaDraftQualityQc(
     return { record: null, stale: true, message };
   }
   const historicalResult =
-    (await recoverVerticalDramaDraftQualityQcResultByRunId(
-      runId,
-      owner,
-      dependencies
-    )) ??
-    (
-      await recoverVerticalDramaDraftQualityQcHistory(
-        ledger.id,
-        owner,
-        runId,
-        dependencies
-      )
-    )[0];
-  const message =
-    historicalResult
-      ? "คิว QC รอบเดิมหมดอายุแล้ว แต่ระบบกู้ผล QC รอบก่อนจากประวัติถาวรให้แล้ว กรุณาเริ่ม QC รอบใหม่เพื่อเปรียบเทียบ"
-      : "Draft QC run record ไม่อยู่ในคิวแล้ว (อาจหมดอายุหรือ Worker หยุดทำงาน) ระบบเคลียร์สถานะค้างแล้ว กรุณายืนยันเริ่ม QC ใหม่";
+    dependencies.includeHistory !== false
+      ? ((await recoverVerticalDramaDraftQualityQcResultByRunId(
+          runId,
+          owner,
+          seriesId,
+          dependencies
+        )) ??
+        (
+          await recoverVerticalDramaDraftQualityQcHistory(
+            ledger.id,
+            owner,
+            runId,
+            seriesId,
+            dependencies
+          )
+        )[0])
+      : undefined;
+  const message = historicalResult
+    ? "คิว QC รอบเดิมหมดอายุแล้ว แต่ระบบกู้ผล QC รอบก่อนจากประวัติถาวรให้แล้ว กรุณาเริ่ม QC รอบใหม่เพื่อเปรียบเทียบ"
+    : "Draft QC run record ไม่อยู่ในคิวแล้ว (อาจหมดอายุหรือ Worker หยุดทำงาน) ระบบเคลียร์สถานะค้างแล้ว กรุณายืนยันเริ่ม QC ใหม่";
   if (
     !["passed", "failed", "cancelled", "archived"].includes(ledger.jobStatus)
   ) {
@@ -692,6 +728,7 @@ export async function reconcileVerticalDramaDraftQualityQc(
       {
         jobStatus: "failed",
         qcRunId: runId,
+        seriesId: ledger.seriesId ?? undefined,
         lastError: message,
       }
     );
@@ -709,12 +746,14 @@ export async function reconcileVerticalDramaDraftQualityQc(
 export async function cancelVerticalDramaDraftQualityQc(
   runId: string,
   owner: VerticalDramaDraftQualityQcOwner,
+  seriesId?: number,
   dependencies?: JobDependencies
 ): Promise<boolean> {
   const deps = resolveDependencies(dependencies);
   const record = await getVerticalDramaDraftQualityQcStatus(
     runId,
     owner,
+    seriesId,
     dependencies
   );
   if (!record) return false;
@@ -733,7 +772,9 @@ export async function cancelVerticalDramaDraftQualityQc(
     },
     dependencies
   );
-  await deps.redis.del(pointerKey(record, record.draftSessionId));
+  await deps.redis.del(
+    pointerKey(record, record.draftSessionId, record.seriesId)
+  );
   await removeQueuedBullmqJob(record.runId);
   return true;
 }
@@ -756,10 +797,15 @@ export async function runVerticalDramaDraftQualityQcJob(
   if (!record || record.status !== "queued") return;
   const persistJobStatus =
     dependencies.persistJobStatus ?? updateVerticalDramaDraftJob;
+  const persistVersionBase =
+    dependencies.persistVersion ?? appendVerticalDramaDraftVersion;
+  const persistVersion: PersistVerticalDramaDraftVersion = input =>
+    persistVersionBase({ ...input, seriesId: record.seriesId });
   if (record.draftId) {
     await persistJobStatus(record.draftId, record, {
       jobStatus: "qc_running",
       qcRunId: record.runId,
+      seriesId: record.seriesId,
       lastError: null,
     });
   }
@@ -820,9 +866,8 @@ export async function runVerticalDramaDraftQualityQcJob(
             },
             {
               model: record.model,
-              persistVersion:
-                dependencies.persistVersion ?? appendVerticalDramaDraftVersion,
-            },
+              persistVersion,
+            }
           )
         : await runVerticalDramaDraftQualityQc(
             {
@@ -840,9 +885,8 @@ export async function runVerticalDramaDraftQualityQcJob(
             },
             {
               model: record.model,
-              persistVersion:
-                dependencies.persistVersion ?? appendVerticalDramaDraftVersion,
-            },
+              persistVersion,
+            }
           );
     const latest = await readRecord(runId, dependencies);
     if (!latest || latest.status !== "running") return;
@@ -869,6 +913,7 @@ export async function runVerticalDramaDraftQualityQcJob(
         qcRunId: latest.runId,
         lastQcScore: Math.round(result.best.report.overallScore * 10),
         lastQcPassed: result.best.report.pass,
+        seriesId: latest.seriesId,
         lastError:
           result.stopReason === "passed"
             ? null
@@ -898,6 +943,7 @@ export async function runVerticalDramaDraftQualityQcJob(
           userId: latest.userId,
           draftId: latest.draftId,
           draftSessionId: latest.draftSessionId,
+          seriesId: latest.seriesId,
           stage: "qc-final",
           content: recoveredResult.best.draft,
           runId: latest.runId,
@@ -936,6 +982,7 @@ export async function runVerticalDramaDraftQualityQcJob(
       await persistJobStatus(latest.draftId, latest, {
         jobStatus: "failed",
         qcRunId: latest.runId,
+        seriesId: latest.seriesId,
         lastError: latest.error,
       });
     }

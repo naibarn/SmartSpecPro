@@ -107,11 +107,15 @@ export interface VerticalDramaDraftCompositionSynthesisInput {
   lineageContext?: Record<string, unknown>;
   visualNarrativeEnabled?: boolean;
   visualNarrativeIdentity?: Record<string, unknown>;
+  sourcePackDigest?: Record<string, unknown>;
+  seriesProfileId?: string;
 }
 
 export interface VerticalDramaDraftCompositionPayload extends VerticalDramaDraftCompositionOwner {
   jobId: string;
   draftSessionId: string;
+  /** Canonical Series owner for every new composition job. */
+  seriesId: number;
   requestFingerprint: string;
   /** Snapshot of the server-approved LLM Recommend model used by every stage. */
   model?: string;
@@ -193,9 +197,10 @@ function recordKey(jobId: string): string {
 
 function pointerKey(
   owner: VerticalDramaDraftCompositionOwner,
-  sessionId: string
+  sessionId: string,
+  seriesId?: number
 ): string {
-  return `vd:draft-composition:active:${owner.tenantId}:${owner.userId}:${sessionId}`;
+  return `vd:draft-composition:active:${owner.tenantId}:${owner.userId}:${seriesId ?? "legacy"}:${sessionId}`;
 }
 
 async function readRecord(
@@ -227,7 +232,7 @@ async function writeRecord(
   // reviewing or waiting to start QC.
   if (record.status !== "cancelled") {
     await redis.set(
-      pointerKey(record, record.draftSessionId),
+      pointerKey(record, record.draftSessionId, record.seriesId),
       record.jobId,
       "EX",
       ACTIVE_POINTER_TTL_SECONDS
@@ -282,7 +287,7 @@ export function classifyVerticalDramaDraftCompositionFailure(params: {
     };
   }
   if (
-    /timeout|timed out|network|upstream|rate limit|429|502|503|504|connection/.test(
+    /no healthy provider|timeout|timed out|network|upstream|rate limit|429|502|503|504|connection/.test(
       normalized
     )
   ) {
@@ -342,10 +347,13 @@ export async function enqueueVerticalDramaDraftComposition(
   >,
   input: JobDependencies = {}
 ): Promise<{ jobId: string; deduped: boolean }> {
+  if (!Number.isInteger(payload.seriesId) || payload.seriesId <= 0) {
+    throw new Error("Draft composition requires an owning Series");
+  }
   if (Buffer.byteLength(JSON.stringify(payload), "utf8") > MAX_PAYLOAD_BYTES)
     throw new Error("Draft composition payload is too large");
   const runtime = deps(input);
-  const active = pointerKey(payload, payload.draftSessionId);
+  const active = pointerKey(payload, payload.draftSessionId, payload.seriesId);
   const existingId = await runtime.redis.get(active);
   const requestFingerprint = fingerprint(payload);
   if (existingId) {
@@ -401,6 +409,7 @@ export async function enqueueVerticalDramaDraftComposition(
       await input.persistJobStatus(jobId, payload, {
         jobStatus: "failed",
         compositionJobId: jobId,
+        seriesId: payload.seriesId,
         lastError: record.error,
       });
     }
@@ -413,12 +422,14 @@ export async function enqueueVerticalDramaDraftComposition(
 export async function getVerticalDramaDraftCompositionStatus(
   jobId: string,
   owner: VerticalDramaDraftCompositionOwner,
+  seriesId?: number,
   input?: JobDependencies
 ): Promise<VerticalDramaDraftCompositionRecord | null> {
   const record = await readRecord(jobId, input);
   return record &&
     record.tenantId === owner.tenantId &&
-    record.userId === owner.userId
+    record.userId === owner.userId &&
+    (seriesId === undefined || record.seriesId === seriesId)
     ? record
     : null;
 }
@@ -426,22 +437,37 @@ export async function getVerticalDramaDraftCompositionStatus(
 export async function getVerticalDramaDraftCompositionStatusBySession(
   draftSessionId: string,
   owner: VerticalDramaDraftCompositionOwner,
+  seriesId?: number,
   input?: JobDependencies
 ): Promise<VerticalDramaDraftCompositionRecord | null> {
-  const jobId = await deps(input).redis.get(pointerKey(owner, draftSessionId));
+  const jobId = await deps(input).redis.get(
+    pointerKey(owner, draftSessionId, seriesId)
+  );
   if (!jobId) return null;
-  return getVerticalDramaDraftCompositionStatus(jobId, owner, input);
+  return getVerticalDramaDraftCompositionStatus(jobId, owner, seriesId, input);
+}
+
+/** Clear a stale Series-scoped pointer even when the Redis job record expired. */
+export async function clearVerticalDramaDraftCompositionPointer(
+  draftSessionId: string,
+  owner: VerticalDramaDraftCompositionOwner,
+  seriesId?: number,
+  input?: JobDependencies
+): Promise<void> {
+  await deps(input).redis.del(pointerKey(owner, draftSessionId, seriesId));
 }
 
 export async function cancelVerticalDramaDraftComposition(
   jobId: string,
   owner: VerticalDramaDraftCompositionOwner,
+  seriesId?: number,
   input?: JobDependencies
 ): Promise<boolean> {
   const runtime = deps(input);
   const record = await getVerticalDramaDraftCompositionStatus(
     jobId,
     owner,
+    seriesId,
     input
   );
   if (!record) return false;
@@ -456,7 +482,9 @@ export async function cancelVerticalDramaDraftComposition(
     },
     input
   );
-  await runtime.redis.del(pointerKey(record, record.draftSessionId));
+  await runtime.redis.del(
+    pointerKey(record, record.draftSessionId, record.seriesId)
+  );
   return true;
 }
 
@@ -516,12 +544,13 @@ export async function runVerticalDramaDraftCompositionJob(
   let draft: SynthesizedGenrePresetDraft | undefined;
   let totalCredits = 0;
   try {
-    const model =
+    let model =
       record.model ?? (await resolveVerticalDramaRecommendedDraftModel());
     selectedModel = model;
     await persistJobStatus(jobId, record, {
       jobStatus: "composing",
       compositionJobId: jobId,
+      seriesId: record.seriesId,
       lastError: null,
     });
     await assertVerticalDramaRecommendedDraftModel(model);
@@ -559,11 +588,16 @@ export async function runVerticalDramaDraftCompositionJob(
     }
     const storyArchitecture =
       foundation.contract as VerticalDramaStoryArchitectureContract;
+    if (foundation.model !== model) {
+      model = foundation.model;
+      selectedModel = model;
+    }
     latestArtifact = await persistVersion({
       tenantId: record.tenantId,
       userId: record.userId,
       draftId: record.jobId,
       draftSessionId: record.draftSessionId,
+      seriesId: record.seriesId,
       stage: "foundation",
       content: { storyArchitecture },
       jobId: record.jobId,
@@ -581,6 +615,7 @@ export async function runVerticalDramaDraftCompositionJob(
         tenantId: record.tenantId,
         amount: foundationCredits,
         description: "Vertical Drama - build transient story foundation",
+        skillSlug: "vertical-drama-deep-story-draft",
         sourceType: "skill",
         metadata: {
           feature: "vertical_drama_draft_composition",
@@ -610,6 +645,8 @@ export async function runVerticalDramaDraftCompositionJob(
       lineageContext: synthesis.lineageContext as any,
       visualNarrativeEnabled: synthesis.visualNarrativeEnabled,
       visualNarrativeIdentity: synthesis.visualNarrativeIdentity as any,
+      sourcePackDigest: synthesis.sourcePackDigest,
+      seriesProfileId: synthesis.seriesProfileId,
       storyArchitecture,
     };
     currentStage = "composing";
@@ -628,16 +665,20 @@ export async function runVerticalDramaDraftCompositionJob(
         });
     draft = result.draft as SynthesizedGenrePresetDraft;
     totalCredits = foundationCredits + result.creditsUsed;
+    // The shared planning wrapper may rotate away from a temporarily
+    // unavailable model into an admin-recommended healthy model. Carry that
+    // effective model forward so completion/QC never jumps back to the failed
+    // selection mid-job.
     if (result.model !== model) {
-      throw new Error(
-        `Draft synthesis used an unexpected LLM model: ${result.model}`
-      );
+      model = result.model;
+      selectedModel = model;
     }
     latestArtifact = await persistVersion({
       tenantId: record.tenantId,
       userId: record.userId,
       draftId: record.jobId,
       draftSessionId: record.draftSessionId,
+      seriesId: record.seriesId,
       stage: "compose",
       content: draft as unknown as Record<string, unknown>,
       jobId: record.jobId,
@@ -672,6 +713,7 @@ export async function runVerticalDramaDraftCompositionJob(
           userId: record.userId,
           draftId: record.jobId,
           draftSessionId: record.draftSessionId,
+          seriesId: record.seriesId,
           stage: "validation",
           content: draft as unknown as Record<string, unknown>,
           jobId: record.jobId,
@@ -706,6 +748,7 @@ export async function runVerticalDramaDraftCompositionJob(
         await persistJobStatus(jobId, record, {
           jobStatus: "ready_for_qc",
           compositionJobId: jobId,
+          seriesId: record.seriesId,
           lastError: null,
         });
         return;
@@ -740,6 +783,7 @@ export async function runVerticalDramaDraftCompositionJob(
         userId: record.userId,
         draftId: record.jobId,
         draftSessionId: record.draftSessionId,
+        seriesId: record.seriesId,
         stage: "completion",
         content: draft as unknown as Record<string, unknown>,
         jobId: record.jobId,
@@ -751,9 +795,8 @@ export async function runVerticalDramaDraftCompositionJob(
       });
       totalCredits += completed.creditsUsed;
       if (completed.model !== model) {
-        throw new Error(
-          `Draft completion used an unexpected LLM model: ${completed.model}`
-        );
+        model = completed.model;
+        selectedModel = model;
       }
     }
   } catch (error) {
@@ -802,6 +845,7 @@ export async function runVerticalDramaDraftCompositionJob(
     await persistJobStatus(jobId, record, {
       jobStatus: "failed",
       compositionJobId: jobId,
+      seriesId: record.seriesId,
       lastError: failure.message,
     });
   }

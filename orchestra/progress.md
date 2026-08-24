@@ -1,56 +1,30 @@
-# Orchestra Progress
+# Progress: Series-owned Draft and QC lifecycle
 
-Mode: standard light mode; SocratiCode unavailable, bounded shell discovery used.
+- [COMPLETED] evidence-and-design — traced the delete/recovery loop, Draft ledger ownership, composition admission, QC admission, and status recovery.
+- [COMPLETED] schema-tombstone — added `seriesDeletedAt`, the active-Series uniqueness guard, and migration `0253`; applied successfully to the local `smartspec` database from `apps/web/.env`.
+- [COMPLETED] lifecycle-enforcement — enforced Series ownership across composition, QC, selection, status, receipt, cache pointers, and delete paths; disabled automatic legacy migration on Series index load.
+- [COMPLETED] data-retention — detached source packs before Series deletion and changed their FK to `ON DELETE SET NULL` so source assets/analyses survive.
+- [COMPLETED] focused-tests — Draft composition/QC, deleteSeries, and delete-dialog regression suites pass.
+- [COMPLETED] verification — server integrity suites pass (5 files / 45 tests), UI Wizard suites pass under jsdom (2 files / 70 tests), `git diff --check` is clean, and post-migration DB checks confirm no active unlinked/duplicate/orphan Series links; full typecheck remains baseline-noisy outside this change, and browser/production deployment proof is not run.
 
-Evidence ledger:
-  source: ui-screenshot
-  identifier: traceId `ad5OgMuHcSFyj6zXJ0Txk`, ticket `422`, user `24`, `2026-08-24 10:14:04 +07:00`
-  observed failure: tRPC `verticalDramaEpisodes.getEpisodeCoverStatus` -> `INTERNAL_SERVER_ERROR` / `UnknownError`
-  data state: ticket #422 stack is AWS SDK S3 protocol; audit task completed; DB episode 167 has ready cover asset 4139
-  confidence: high for R2 HeadObject boundary; medium-high for duplicate-ingest call site
-  next evidence needed: deployed R2 operation-level status/metrics for exact transient response code
+## Database action
 
-[COMPLETE] evidence-and-route — matched ticket #422, audit timestamp, route, and task id
-[COMPLETE] data-path — proved completed provider result, durable asset #4139, and uncaught R2 HeadObject boundary
-[COMPLETE] verification-and-handoff — no code changed; local DB/audit/static checks completed; deployed-runtime proof remains pending
+- Target: local PostgreSQL `smartspec` at `localhost:5432`, loaded from `apps/web/.env`.
+- Before migration: 41 Draft ledgers, 29 unlinked, 12 active linked, and 3 active ledgers duplicated `seriesId=52`.
+- Safe audit action: archived the 2 older duplicate ledgers for Series 52; their rows, immutable versions, and QC identifiers were preserved. The latest row matched the Series planning session and remained active.
+- After 0253/0254 cleanup: 41 ledgers, 5 active linked, 36 archived, 0 active unlinked, 0 active duplicate links, 0 orphan links, and 174 immutable versions retained; latest migration id 228 recorded at `1787575173477`.
+- Production was not targeted.
 
-Verification:
-  - PASS `jq -e` matched the exact completed media response for task `2f89fe49-0f3e-493b-afdf-7044bb4043d8` at `2026-08-24T03:14:04.424Z`.
-  - PASS read-only DB assertion matched ticket #422's AWS SDK S3 stack.
-  - PASS read-only DB assertion matched asset #4139 as `ready`, tenant `tenant-ZCSKEM9s`, user `24`, key under `vertical-drama/23/`.
-  - SKIPPED authenticated browser replay, deployed service logs, and live R2 retry/status metrics; those require external/deployed runtime access.
-  - SKIPPED tests/typecheck because no source code was changed and the request was diagnosis-only.
+## Discovery note
 
-Finding:
-  root_cause: getUnifiedMediaTask durabilizes the task, then getEpisodeCoverStatus ingests the managed URL again; its storageExists/HeadObject path throws on a non-404 R2 protocol error
-  impact: one status poll returns INTERNAL_SERVER_ERROR/UnknownError even though generation and durable asset persistence can succeed; client polling may retry and later settle
-  not_root_cause: provider generation failure, insufficient credits, tenant mismatch, or missing episode row
+SocratiCode MCP tools were not callable in this session, so discovery used bounded `rg` and targeted `sed` reads after narrowing the known router/service paths. No broad repository rewrite or destructive command was used.
 
-Gap closure:
-  must_do_now: none | reason: user requested diagnosis only; no safe implementation was authorized
-  should_offer_next: add a regression test and make the settle path single-writer/idempotent with bounded R2 probe handling | reason: prevents repeat incident | suggested_next_step: authorize implementation
-  safely_deferred: deployed-runtime R2 status/metrics and authenticated browser replay | reason: external production evidence not available in this read-only turn | residual_risk: medium
-  no_action_needed: generation and asset persistence verified from local audit/DB evidence | reason: task result and asset 4139 are present
+## Gap closure wave
 
-Loop policy:
-  orchestra_id: vertical_drama_cover_status_ticket_422
-  purpose: read-only coding bug investigation with evidence-gated diagnosis
-  iteration: 3/12
-  tool_call_batches: unknown/30
-  estimated_cost_usd: unknown <= 0.50
-  dispatch_waves: 0/6
-  active_subagents: 0/4
-  parallel_writers: 0/2
-  repair_rounds: 0/5
-  stop_conditions: evidence_collected, root_cause_reported, no_unverified_fix_claim
-  stop_reason: success
-
-Loop policy final:
-  iterations_used: 3/12
-  tool_call_batches_used: unknown/30
-  estimated_cost_usd: unknown <= 0.50
-  dispatch_waves_used: 0/6
-  timed_out_subagents: none
-  repair_rounds_used: 0/5
-  stop_conditions_met: [evidence_collected, root_cause_reported, no_unverified_fix_claim]
-  stop_reason: success
+- Added Series guards to Draft composition cancellation and Draft history/version loading.
+- Added active-ledger filters for tombstoned/archived rows and Series-scoped QC snapshot recovery.
+- Added deterministic cleanup migration `0254_vertical_drama_legacy_draft_cleanup`; local backup was written under `/tmp/smartspec-vd-draft-backup-Rmgl4v/` before applying it.
+- Applied `0254` locally: 0 active unlinked ledgers, 0 visible legacy recovery shells, 5 active Series-linked ledgers, 36 archived ledgers; immutable history was preserved.
+- Made 0253 self-healing for pre-existing duplicate active ledgers by retaining the newest row and archiving older rows before creating the unique index; a transaction rollback smoke check confirms the SQL parses and executes safely.
+- Removed the final browser-session-only Draft workspace recovery path; `getDraftWorkspaceStatus` and the Wizard now require an active Series ID before loading Draft/QC state.
+- Added route/QC regression coverage; server integrity suite passes 45 tests and UI Wizard suite passes 70 tests under jsdom.

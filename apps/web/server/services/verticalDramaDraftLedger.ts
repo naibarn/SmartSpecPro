@@ -4,6 +4,7 @@ import { getDb } from "../db";
 import {
   verticalDramaDraftLedgers,
   verticalDramaDraftVersions,
+  verticalDramaSeries,
 } from "../../drizzle/schema";
 import { storagePut } from "../storage";
 
@@ -35,6 +36,8 @@ export interface VerticalDramaDraftLedgerOwner {
 export interface AppendVerticalDramaDraftVersionInput extends VerticalDramaDraftLedgerOwner {
   draftId: string;
   draftSessionId: string;
+  /** Required by every new Series-first worker; omitted only for legacy rows. */
+  seriesId?: number;
   stage: VerticalDramaDraftLedgerStage;
   content: Record<string, unknown>;
   parentVersion?: number;
@@ -153,9 +156,93 @@ export async function ensureVerticalDramaDraftJob(
     string,
     unknown
   >;
-  await db
-    .insert(verticalDramaDraftLedgers)
-    .values({
+  await db.transaction(async tx => {
+    if (input.seriesId !== undefined) {
+      const [ownedSeries] = await tx
+        .select({ id: verticalDramaSeries.id })
+        .from(verticalDramaSeries)
+        .where(
+          and(
+            eq(verticalDramaSeries.id, input.seriesId),
+            eq(verticalDramaSeries.tenantId, input.tenantId),
+            eq(verticalDramaSeries.userId, input.userId)
+          )
+        )
+        .limit(1);
+      if (!ownedSeries) throw new Error("Draft Series ownership conflict");
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${`vertical-drama-draft-series:${input.tenantId}:${input.userId}:${input.seriesId}`}))`
+      );
+    }
+
+    const [existing] = await tx
+      .select()
+      .from(verticalDramaDraftLedgers)
+      .where(
+        and(
+          eq(verticalDramaDraftLedgers.id, input.draftId),
+          eq(verticalDramaDraftLedgers.tenantId, input.tenantId),
+          eq(verticalDramaDraftLedgers.userId, input.userId)
+        )
+      )
+      .for("update")
+      .limit(1);
+    if (existing) {
+      if (existing.seriesDeletedAt) {
+        throw new Error("Draft Series was deleted; start a new Series");
+      }
+      if (
+        input.seriesId !== undefined &&
+        existing.seriesId !== null &&
+        Number(existing.seriesId) !== input.seriesId
+      ) {
+        throw new Error("Draft Series ownership conflict");
+      }
+      if (input.seriesId !== undefined && existing.seriesId === null) {
+        await tx
+          .update(verticalDramaDraftLedgers)
+          .set({ seriesId: input.seriesId, updatedAt: new Date() })
+          .where(eq(verticalDramaDraftLedgers.id, input.draftId));
+      }
+      return;
+    }
+
+    if (input.seriesId !== undefined) {
+      const [active] = await tx
+        .select({
+          id: verticalDramaDraftLedgers.id,
+          jobStatus: verticalDramaDraftLedgers.jobStatus,
+        })
+        .from(verticalDramaDraftLedgers)
+        .where(
+          and(
+            eq(verticalDramaDraftLedgers.seriesId, input.seriesId),
+            isNull(verticalDramaDraftLedgers.seriesDeletedAt),
+            isNull(verticalDramaDraftLedgers.archivedAt)
+          )
+        )
+        .orderBy(desc(verticalDramaDraftLedgers.updatedAt))
+        .limit(1);
+      if (active) {
+        if (
+          ["queued", "composing", "ready_for_qc", "qc_running"].includes(
+            active.jobStatus
+          )
+        ) {
+          throw new Error("A Draft is already running for this Series");
+        }
+        await tx
+          .update(verticalDramaDraftLedgers)
+          .set({
+            jobStatus: "archived",
+            archivedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(verticalDramaDraftLedgers.id, active.id));
+      }
+    }
+
+    await tx.insert(verticalDramaDraftLedgers).values({
       id: input.draftId,
       tenantId: input.tenantId,
       userId: input.userId,
@@ -167,21 +254,8 @@ export async function ensureVerticalDramaDraftJob(
       currentVersion: 0,
       currentStage: "created",
       currentJson: {},
-    })
-    .onConflictDoNothing();
-  if (input.seriesId !== undefined) {
-    await db
-      .update(verticalDramaDraftLedgers)
-      .set({ seriesId: input.seriesId, updatedAt: new Date() })
-      .where(
-        and(
-          eq(verticalDramaDraftLedgers.id, input.draftId),
-          eq(verticalDramaDraftLedgers.tenantId, input.tenantId),
-          eq(verticalDramaDraftLedgers.userId, input.userId),
-          isNull(verticalDramaDraftLedgers.seriesId)
-        )
-      );
-  }
+    });
+  });
 }
 
 export async function updateVerticalDramaDraftJob(
@@ -197,7 +271,11 @@ export async function updateVerticalDramaDraftJob(
       and(
         eq(verticalDramaDraftLedgers.id, draftId),
         eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
-        eq(verticalDramaDraftLedgers.userId, owner.userId)
+        eq(verticalDramaDraftLedgers.userId, owner.userId),
+        isNull(verticalDramaDraftLedgers.seriesDeletedAt),
+        ...(patch.seriesId !== undefined && patch.seriesId !== null
+          ? [eq(verticalDramaDraftLedgers.seriesId, patch.seriesId)]
+          : [])
       )
     )
     .returning({ id: verticalDramaDraftLedgers.id });
@@ -209,19 +287,41 @@ async function lockLedger(
   input: AppendVerticalDramaDraftVersionInput
 ): Promise<number> {
   const rows = (await tx.execute(sql`
-    SELECT "tenantId", "userId", "currentVersion"
+    SELECT "tenantId", "userId", "currentVersion", "seriesId", "seriesDeletedAt", "draftSessionId"
     FROM "vertical_drama_draft_ledgers"
     WHERE "id" = ${input.draftId}
     FOR UPDATE
-  `)) as Array<{ tenantId: string; userId: number; currentVersion: number }>;
+  `)) as Array<{
+    tenantId: string;
+    userId: number;
+    currentVersion: number;
+    seriesId: number | null;
+    seriesDeletedAt: Date | null;
+    draftSessionId: string;
+  }>;
 
   if (rows.length === 0) {
+    if (input.seriesId !== undefined) {
+      const [ownedSeries] = await tx
+        .select({ id: verticalDramaSeries.id })
+        .from(verticalDramaSeries)
+        .where(
+          and(
+            eq(verticalDramaSeries.id, input.seriesId),
+            eq(verticalDramaSeries.tenantId, input.tenantId),
+            eq(verticalDramaSeries.userId, input.userId)
+          )
+        )
+        .limit(1);
+      if (!ownedSeries) throw new Error("Draft Series ownership conflict");
+    }
     await tx
       .insert(verticalDramaDraftLedgers)
       .values({
         id: input.draftId,
         tenantId: input.tenantId,
         userId: input.userId,
+        seriesId: input.seriesId,
         draftSessionId: input.draftSessionId,
         currentVersion: 0,
         currentStage: "created",
@@ -229,11 +329,18 @@ async function lockLedger(
       })
       .onConflictDoNothing();
     const afterInsert = (await tx.execute(sql`
-      SELECT "tenantId", "userId", "currentVersion"
+      SELECT "tenantId", "userId", "currentVersion", "seriesId", "seriesDeletedAt", "draftSessionId"
       FROM "vertical_drama_draft_ledgers"
       WHERE "id" = ${input.draftId}
       FOR UPDATE
-    `)) as Array<{ tenantId: string; userId: number; currentVersion: number }>;
+    `)) as Array<{
+      tenantId: string;
+      userId: number;
+      currentVersion: number;
+      seriesId: number | null;
+      seriesDeletedAt: Date | null;
+      draftSessionId: string;
+    }>;
     if (afterInsert.length === 0)
       throw new Error("Draft ledger could not be created");
     const row = afterInsert[0];
@@ -243,12 +350,33 @@ async function lockLedger(
     ) {
       throw new Error("Draft ledger ownership conflict");
     }
+    if (row.seriesDeletedAt || row.draftSessionId !== input.draftSessionId) {
+      throw new Error("Draft ledger identity conflict");
+    }
+    if (
+      input.seriesId !== undefined
+        ? Number(row.seriesId) !== input.seriesId
+        : row.seriesId !== null
+    ) {
+      throw new Error("Draft Series does not match its ledger");
+    }
     return Number(row.currentVersion);
   }
 
   const row = rows[0];
   if (row.tenantId !== input.tenantId || Number(row.userId) !== input.userId) {
     throw new Error("Draft ledger ownership conflict");
+  }
+  if (row.seriesDeletedAt) throw new Error("Draft Series was deleted");
+  if (row.draftSessionId !== input.draftSessionId) {
+    throw new Error("Draft session does not match its ledger");
+  }
+  if (
+    input.seriesId !== undefined
+      ? Number(row.seriesId) !== input.seriesId
+      : row.seriesId !== null
+  ) {
+    throw new Error("Draft Series does not match its ledger");
   }
   return Number(row.currentVersion);
 }
@@ -352,7 +480,9 @@ export async function getVerticalDramaDraftLedger(
       and(
         eq(verticalDramaDraftLedgers.id, draftId),
         eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
-        eq(verticalDramaDraftLedgers.userId, owner.userId)
+        eq(verticalDramaDraftLedgers.userId, owner.userId),
+        isNull(verticalDramaDraftLedgers.seriesDeletedAt),
+        isNull(verticalDramaDraftLedgers.archivedAt)
       )
     )
     .limit(1);
@@ -361,7 +491,8 @@ export async function getVerticalDramaDraftLedger(
 
 export async function getVerticalDramaDraftLedgerBySession(
   draftSessionId: string,
-  owner: VerticalDramaDraftLedgerOwner
+  owner: VerticalDramaDraftLedgerOwner,
+  seriesId?: number
 ) {
   const db = await getDb();
   const [row] = await db
@@ -371,7 +502,12 @@ export async function getVerticalDramaDraftLedgerBySession(
       and(
         eq(verticalDramaDraftLedgers.draftSessionId, draftSessionId),
         eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
-        eq(verticalDramaDraftLedgers.userId, owner.userId)
+        eq(verticalDramaDraftLedgers.userId, owner.userId),
+        isNull(verticalDramaDraftLedgers.seriesDeletedAt),
+        isNull(verticalDramaDraftLedgers.archivedAt),
+        ...(seriesId !== undefined
+          ? [eq(verticalDramaDraftLedgers.seriesId, seriesId)]
+          : [])
       )
     )
     .orderBy(desc(verticalDramaDraftLedgers.updatedAt))
@@ -395,7 +531,8 @@ export async function getVerticalDramaDraftLedgerBySeriesId(
         eq(verticalDramaDraftLedgers.seriesId, seriesId),
         eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
         eq(verticalDramaDraftLedgers.userId, owner.userId),
-        isNull(verticalDramaDraftLedgers.archivedAt)
+        isNull(verticalDramaDraftLedgers.archivedAt),
+        isNull(verticalDramaDraftLedgers.seriesDeletedAt)
       )
     )
     .orderBy(desc(verticalDramaDraftLedgers.updatedAt))
@@ -406,7 +543,8 @@ export async function getVerticalDramaDraftLedgerBySeriesId(
 /** Durable lookup used when the short-lived Redis QC record has expired. */
 export async function getVerticalDramaDraftLedgerByQcRunId(
   qcRunId: string,
-  owner: VerticalDramaDraftLedgerOwner
+  owner: VerticalDramaDraftLedgerOwner,
+  seriesId?: number
 ) {
   const db = await getDb();
   const [row] = await db
@@ -416,7 +554,12 @@ export async function getVerticalDramaDraftLedgerByQcRunId(
       and(
         eq(verticalDramaDraftLedgers.qcRunId, qcRunId),
         eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
-        eq(verticalDramaDraftLedgers.userId, owner.userId)
+        eq(verticalDramaDraftLedgers.userId, owner.userId),
+        isNull(verticalDramaDraftLedgers.seriesDeletedAt),
+        isNull(verticalDramaDraftLedgers.archivedAt),
+        ...(seriesId !== undefined
+          ? [eq(verticalDramaDraftLedgers.seriesId, seriesId)]
+          : [])
       )
     )
     .orderBy(desc(verticalDramaDraftLedgers.updatedAt))
@@ -432,6 +575,7 @@ export async function getVerticalDramaDraftLedgerByQcRunId(
 export async function getVerticalDramaDraftQcSnapshotsByRunId(
   runId: string,
   owner: VerticalDramaDraftLedgerOwner,
+  seriesId?: number,
   limit = 1
 ) {
   const db = await getDb();
@@ -455,7 +599,12 @@ export async function getVerticalDramaDraftQcSnapshotsByRunId(
         eq(verticalDramaDraftVersions.runId, runId),
         eq(verticalDramaDraftVersions.stage, "qc-final"),
         eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
-        eq(verticalDramaDraftLedgers.userId, owner.userId)
+        eq(verticalDramaDraftLedgers.userId, owner.userId),
+        isNull(verticalDramaDraftLedgers.seriesDeletedAt),
+        isNull(verticalDramaDraftLedgers.archivedAt),
+        ...(seriesId !== undefined
+          ? [eq(verticalDramaDraftLedgers.seriesId, seriesId)]
+          : [])
       )
     )
     .orderBy(desc(verticalDramaDraftVersions.createdAt))
@@ -465,6 +614,7 @@ export async function getVerticalDramaDraftQcSnapshotsByRunId(
 export async function getVerticalDramaDraftQcSnapshotsByDraftId(
   draftId: string,
   owner: VerticalDramaDraftLedgerOwner,
+  seriesId?: number,
   limit = 10
 ) {
   const db = await getDb();
@@ -488,7 +638,12 @@ export async function getVerticalDramaDraftQcSnapshotsByDraftId(
         eq(verticalDramaDraftVersions.draftId, draftId),
         eq(verticalDramaDraftVersions.stage, "qc-final"),
         eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
-        eq(verticalDramaDraftLedgers.userId, owner.userId)
+        eq(verticalDramaDraftLedgers.userId, owner.userId),
+        isNull(verticalDramaDraftLedgers.seriesDeletedAt),
+        isNull(verticalDramaDraftLedgers.archivedAt),
+        ...(seriesId !== undefined
+          ? [eq(verticalDramaDraftLedgers.seriesId, seriesId)]
+          : [])
       )
     )
     .orderBy(desc(verticalDramaDraftVersions.createdAt))
@@ -499,13 +654,15 @@ export async function getVerticalDramaDraftQcSnapshotsByDraftId(
 export async function getVerticalDramaDraftVersion(
   draftId: string,
   version: number,
-  owner: VerticalDramaDraftLedgerOwner
+  owner: VerticalDramaDraftLedgerOwner,
+  seriesId?: number
 ) {
   const db = await getDb();
   const [row] = await db
     .select({
       id: verticalDramaDraftVersions.id,
       draftId: verticalDramaDraftVersions.draftId,
+      seriesId: verticalDramaDraftLedgers.seriesId,
       version: verticalDramaDraftVersions.version,
       stage: verticalDramaDraftVersions.stage,
       contentJson: verticalDramaDraftVersions.contentJson,
@@ -524,7 +681,12 @@ export async function getVerticalDramaDraftVersion(
         eq(verticalDramaDraftVersions.draftId, draftId),
         eq(verticalDramaDraftVersions.version, version),
         eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
-        eq(verticalDramaDraftLedgers.userId, owner.userId)
+        eq(verticalDramaDraftLedgers.userId, owner.userId),
+        isNull(verticalDramaDraftLedgers.seriesDeletedAt),
+        isNull(verticalDramaDraftLedgers.archivedAt),
+        ...(seriesId !== undefined
+          ? [eq(verticalDramaDraftLedgers.seriesId, seriesId)]
+          : [])
       )
     )
     .limit(1);
@@ -535,6 +697,7 @@ export async function getVerticalDramaDraftVersion(
 export async function listVerticalDramaDraftVersionSummaries(
   draftId: string,
   owner: VerticalDramaDraftLedgerOwner,
+  seriesId?: number,
   limit = 20,
   offset = 0
 ) {
@@ -559,7 +722,12 @@ export async function listVerticalDramaDraftVersionSummaries(
       and(
         eq(verticalDramaDraftVersions.draftId, draftId),
         eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
-        eq(verticalDramaDraftLedgers.userId, owner.userId)
+        eq(verticalDramaDraftLedgers.userId, owner.userId),
+        isNull(verticalDramaDraftLedgers.seriesDeletedAt),
+        isNull(verticalDramaDraftLedgers.archivedAt),
+        ...(seriesId !== undefined
+          ? [eq(verticalDramaDraftLedgers.seriesId, seriesId)]
+          : [])
       )
     )
     .orderBy(desc(verticalDramaDraftVersions.createdAt))
@@ -605,6 +773,7 @@ export async function listVerticalDramaDraftLedgers(
         eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
         eq(verticalDramaDraftLedgers.userId, owner.userId),
         isNull(verticalDramaDraftLedgers.seriesId),
+        isNull(verticalDramaDraftLedgers.seriesDeletedAt),
         ...(includeArchived
           ? []
           : [isNull(verticalDramaDraftLedgers.archivedAt)])
@@ -650,6 +819,7 @@ export async function archiveVerticalDramaDraftJob(
         eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
         eq(verticalDramaDraftLedgers.userId, owner.userId),
         isNull(verticalDramaDraftLedgers.seriesId),
+        isNull(verticalDramaDraftLedgers.seriesDeletedAt),
         isNull(verticalDramaDraftLedgers.archivedAt)
       )
     )

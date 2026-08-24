@@ -57,6 +57,7 @@ import {
   mediaAssets,
   verticalDramaSourceMediaSegments,
   verticalDramaSourcePacks,
+  verticalDramaDraftLedgers,
   apiAuditEvents,
   /**
    * Manual LLM model override for the "generate start-frame render plan" /
@@ -433,6 +434,7 @@ import {
 } from "../services/verticalDramaDraftQualityQcJobs";
 import {
   cancelVerticalDramaDraftComposition,
+  clearVerticalDramaDraftCompositionPointer,
   enqueueVerticalDramaDraftComposition,
   getVerticalDramaDraftCompositionStatus,
   getVerticalDramaDraftCompositionStatusBySession,
@@ -440,6 +442,7 @@ import {
 } from "../services/verticalDramaDraftCompositionJobs";
 import {
   getVerticalDramaDraftLedger,
+  getVerticalDramaDraftLedgerByQcRunId,
   getVerticalDramaDraftLedgerBySession,
   getVerticalDramaDraftLedgerBySeriesId,
   ensureVerticalDramaDraftJob,
@@ -1314,6 +1317,19 @@ async function loadOwnedSeries(
     .where(seriesOwnershipWhere(tenantId, userId, seriesId))
     .limit(1);
   if (!row) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
+  }
+  return row;
+}
+
+/** Draft/QC work may only target a visible, non-archived Series. */
+async function loadActiveOwnedSeries(
+  tenantId: string,
+  userId: number,
+  seriesId: number
+) {
+  const row = await loadOwnedSeries(tenantId, userId, seriesId);
+  if (row.status === "archived") {
     throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
   }
   return row;
@@ -7135,6 +7151,12 @@ export const verticalDramaSeriesRouter = router({
         const receipt = draftQualityQcReceiptSchema.parse(
           input.draftQualityQcReceipt
         );
+        if (!planningSeriesRow || receipt.seriesId !== planningSeriesRow.id) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Draft QC receipt does not belong to the selected Series",
+          });
+        }
         const candidate = input.draftQualityQcCandidate;
         if (
           !candidate ||
@@ -7148,13 +7170,21 @@ export const verticalDramaSeriesRouter = router({
         }
         const qcRecord = await getVerticalDramaDraftQualityQcStatus(
           receipt.runId,
-          { tenantId, userId }
+          { tenantId, userId },
+          receipt.seriesId
         );
         // A completed run is intentionally also recoverable from the durable
         // ledger after Redis/BullMQ expiry. The receipt still has to identify
         // the exact owner-scoped run and candidate fingerprint; this fallback
         // only prevents a refresh/TTL boundary from making a valid Draft
         // impossible to confirm.
+        const durableQcLedger = !qcRecord?.result
+          ? await getVerticalDramaDraftLedgerByQcRunId(
+              receipt.runId,
+              { tenantId, userId },
+              receipt.seriesId
+            )
+          : null;
         const qcResult =
           qcRecord?.result ??
           (qcRecord?.status === "failed" && qcRecord.failure
@@ -7164,10 +7194,13 @@ export const verticalDramaSeriesRouter = router({
               )
             : qcRecord?.status === "succeeded"
               ? qcRecord.result
-              : await recoverVerticalDramaDraftQualityQcResultByRunId(
-                  receipt.runId,
-                  { tenantId, userId }
-                ));
+              : durableQcLedger
+                ? await recoverVerticalDramaDraftQualityQcResultByRunId(
+                    receipt.runId,
+                    { tenantId, userId },
+                    receipt.seriesId
+                  )
+                : null);
         if (!qcResult) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
@@ -9349,8 +9382,9 @@ export const verticalDramaSeriesRouter = router({
   startDraftQualityQc: verticalDramaProcedure
     .input(
       z.object({
+        seriesId: z.string().trim().min(1),
         draftSessionId: z.string().trim().min(1).max(120),
-        draftId: z.string().uuid().optional(),
+        draftId: z.string().uuid(),
         draft: z.record(z.string(), z.unknown()),
         immutableConstraints: z.record(z.string(), z.unknown()).optional(),
         maxImprovementRounds: draftQualityQcRoundBudgetSchema.optional(),
@@ -9358,6 +9392,28 @@ export const verticalDramaSeriesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadActiveOwnedSeries(tenantId, ctx.user.id, seriesId);
+      const draftLedger = await getVerticalDramaDraftLedger(input.draftId, {
+        tenantId,
+        userId: ctx.user.id,
+      });
+      if (
+        !draftLedger ||
+        draftLedger.seriesId !== seriesId ||
+        draftLedger.seriesDeletedAt
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Draft does not belong to the selected Series",
+        });
+      }
       const constraints = input.immutableConstraints ?? {};
       const targetEpisodeCount =
         typeof constraints.targetEpisodeCount === "number"
@@ -9420,6 +9476,7 @@ export const verticalDramaSeriesRouter = router({
         await appendVerticalDramaDraftVersion({
           tenantId,
           userId: ctx.user.id,
+          seriesId,
           draftId: input.draftId,
           draftSessionId: input.draftSessionId,
           stage: "completion",
@@ -9439,6 +9496,7 @@ export const verticalDramaSeriesRouter = router({
         {
           tenantId,
           userId: ctx.user.id,
+          seriesId,
           model,
           draftSessionId: input.draftSessionId,
           draftId: input.draftId,
@@ -9468,21 +9526,32 @@ export const verticalDramaSeriesRouter = router({
     .input(
       z.object({
         runId: z.string().uuid(),
+        seriesId: z.string().trim().min(1),
         candidateFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const owner = { tenantId, userId: ctx.user.id };
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadActiveOwnedSeries(tenantId, ctx.user.id, seriesId);
       const record = await getVerticalDramaDraftQualityQcStatus(
         input.runId,
-        owner
+        owner,
+        seriesId
       );
       const durableRecoveredResult =
         record && record.status === "failed" && !record.result
           ? await recoverVerticalDramaDraftQualityQcResultByRunId(
               input.runId,
-              owner
+              owner,
+              seriesId
             ).catch(() => null)
           : null;
       const effectiveResult = durableRecoveredResult
@@ -9542,10 +9611,17 @@ export const verticalDramaSeriesRouter = router({
             "This historical Draft candidate has no durable version to repair",
         });
       }
+      if (record.seriesId !== seriesId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Draft QC does not belong to the selected Series",
+        });
+      }
       const version = await getVerticalDramaDraftVersion(
         draftId,
         sourceVersion,
-        owner
+        owner,
+        seriesId
       );
       const sourceDraft =
         version?.contentJson &&
@@ -9575,6 +9651,7 @@ export const verticalDramaSeriesRouter = router({
         {
           tenantId,
           userId: ctx.user.id,
+          seriesId,
           model,
           draftSessionId,
           draftId,
@@ -9600,18 +9677,28 @@ export const verticalDramaSeriesRouter = router({
     .input(
       z.object({
         runId: z.string().uuid(),
+        seriesId: z.string().trim().min(1),
         /** Full QC round history is an explicit, lazy user action. */
         includeHistory: z.boolean().optional().default(false),
       })
     )
     .query(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadActiveOwnedSeries(tenantId, ctx.user.id, seriesId);
       const reconciliation = await reconcileVerticalDramaDraftQualityQc(
         input.runId,
         {
           tenantId,
           userId: ctx.user.id,
         },
+        seriesId,
         {
           includeHistory: input.includeHistory,
         }
@@ -9658,7 +9745,8 @@ export const verticalDramaSeriesRouter = router({
                 await recoverVerticalDramaDraftQualityQcHistory(
                   record.draftId,
                   { tenantId, userId: ctx.user.id },
-                  record.runId
+                  record.runId,
+                  record.seriesId
                 )
               )[0]
             : undefined,
@@ -9682,6 +9770,7 @@ export const verticalDramaSeriesRouter = router({
     .input(
       z.object({
         runId: z.string().uuid(),
+        seriesId: z.string().trim().min(1),
         draftId: z.string().uuid(),
         version: z.number().int().positive(),
         candidateFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
@@ -9689,14 +9778,24 @@ export const verticalDramaSeriesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadActiveOwnedSeries(tenantId, ctx.user.id, seriesId);
       const owner = { tenantId, userId: ctx.user.id };
       const version = await getVerticalDramaDraftVersion(
         input.draftId,
         input.version,
-        owner
+        owner,
+        seriesId
       );
       if (
         !version ||
+        version.seriesId !== seriesId ||
         version.runId !== input.runId ||
         !["qc-baseline", "qc-revision"].includes(version.stage)
       ) {
@@ -9736,69 +9835,67 @@ export const verticalDramaSeriesRouter = router({
     }),
 
   /**
-   * Recover both durable pre-create jobs by the wizard session id. The browser
-   * stores this id before submitting work, so a refresh can rediscover a job
-   * even if the mutation response was lost before the job id reached React.
+   * Recover the durable Draft/QC workspace by its authoritative Series ID.
+   * A browser-only session is deliberately not accepted here: it can point
+   * at a previous/deleted Series and recreate the deleted-item loop.
    */
   getDraftWorkspaceStatus: verticalDramaProcedure
     .input(
       z
         .object({
-          /** Legacy/browser recovery identity. */
-          draftSessionId: z.string().trim().min(1).max(120).optional(),
-          /** Preferred identity when a Series is selected from the sidebar. */
-          seriesId: z.string().trim().min(1).optional(),
+          seriesId: z.string().trim().min(1),
           /** Historical QC candidates are fetched only from an explicit viewer. */
           includeHistory: z.boolean().optional().default(false),
-        })
-        .refine(input => input.draftSessionId || input.seriesId, {
-          message: "Either draftSessionId or seriesId is required",
         })
     )
     .query(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const owner = { tenantId, userId: ctx.user.id };
-      let resolvedDraftSessionId = input.draftSessionId ?? null;
-      let seriesLedger = null;
-      if (input.seriesId) {
-        const seriesId = Number(input.seriesId);
-        if (!Number.isInteger(seriesId) || seriesId <= 0) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Invalid series id",
-          });
-        }
-        const series = await loadOwnedSeries(tenantId, ctx.user.id, seriesId);
-        const planningState = readVerticalDramaPlanningState(series.bible);
-        seriesLedger = await getVerticalDramaDraftLedgerBySeriesId(
-          seriesId,
-          owner
-        );
-        resolvedDraftSessionId =
-          seriesLedger?.draftSessionId ??
-          planningState?.draftSessionId ??
-          planningState?.legacyRecovery?.draftSessionId ??
-          null;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
+      const series = await loadActiveOwnedSeries(
+        tenantId,
+        ctx.user.id,
+        seriesId
+      );
+      const planningState = readVerticalDramaPlanningState(series.bible);
+      const seriesLedger = await getVerticalDramaDraftLedgerBySeriesId(
+        seriesId,
+        owner
+      );
+      const resolvedDraftSessionId =
+        seriesLedger?.draftSessionId ??
+        planningState?.draftSessionId ??
+        planningState?.legacyRecovery?.draftSessionId ??
+        null;
 
       const [composition, qc, ledger, pointerRunId] = resolvedDraftSessionId
         ? await Promise.all([
             getVerticalDramaDraftCompositionStatusBySession(
               resolvedDraftSessionId,
-              owner
+              owner,
+              seriesId
             ),
             getVerticalDramaDraftQualityQcStatusBySession(
               resolvedDraftSessionId,
-              owner
+              owner,
+              seriesId
             ),
             seriesLedger ??
               getVerticalDramaDraftLedgerBySession(
                 resolvedDraftSessionId,
-                owner
+                owner,
+                seriesId
               ),
             getVerticalDramaDraftQualityQcRunIdBySession(
               resolvedDraftSessionId,
-              owner
+              owner,
+              seriesId
             ),
           ])
         : [null, null, seriesLedger, null];
@@ -9815,6 +9912,7 @@ export const verticalDramaSeriesRouter = router({
             {
               ...owner,
             },
+            seriesId,
             {
               includeHistory: input.includeHistory,
             }
@@ -9823,13 +9921,15 @@ export const verticalDramaSeriesRouter = router({
       if (pointerRunId && pointerRunId !== qcRunId) {
         await clearVerticalDramaDraftQualityQcPointer(
           resolvedDraftSessionId!,
-          owner
+          owner,
+          seriesId
         );
       }
       if (pointerRunId && !qc && !ledger) {
         await clearVerticalDramaDraftQualityQcPointer(
           resolvedDraftSessionId!,
-          owner
+          owner,
+          seriesId
         );
       }
       const recoveredQc = qcReconciliation?.record ?? qc;
@@ -9840,7 +9940,8 @@ export const verticalDramaSeriesRouter = router({
                 await recoverVerticalDramaDraftQualityQcHistory(
                   recoveredQc.draftId,
                   owner,
-                  recoveredQc.runId
+                  recoveredQc.runId,
+                  recoveredQc.seriesId
                 )
               )[0]
             : undefined))
@@ -9960,14 +10061,27 @@ export const verticalDramaSeriesRouter = router({
   ),
 
   getDraftJob: verticalDramaProcedure
-    .input(z.object({ jobId: z.string().uuid() }))
+    .input(
+      z.object({
+        jobId: z.string().uuid(),
+        seriesId: z.string().trim().min(1),
+      })
+    )
     .query(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadActiveOwnedSeries(tenantId, ctx.user.id, seriesId);
       const job = await getVerticalDramaDraftLedger(input.jobId, {
         tenantId,
         userId: ctx.user.id,
       });
-      if (!job) {
+      if (!job || job.seriesId !== seriesId) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "ไม่พบ Draft Job นี้ หรือคุณไม่มีสิทธิ์เข้าถึง",
@@ -9981,6 +10095,7 @@ export const verticalDramaSeriesRouter = router({
     .input(
       z.object({
         draftId: z.string().uuid(),
+        seriesId: z.string().trim().min(1),
         limit: z.number().int().min(1).max(50).optional(),
         offset: z.number().int().min(0).max(1000).optional(),
       })
@@ -9988,8 +10103,16 @@ export const verticalDramaSeriesRouter = router({
     .query(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const owner = { tenantId, userId: ctx.user.id };
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadActiveOwnedSeries(tenantId, ctx.user.id, seriesId);
       const ledger = await getVerticalDramaDraftLedger(input.draftId, owner);
-      if (!ledger) {
+      if (!ledger || ledger.seriesId !== seriesId) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "ไม่พบ Draft history นี้ หรือคุณไม่มีสิทธิ์เข้าถึง",
@@ -9997,9 +10120,11 @@ export const verticalDramaSeriesRouter = router({
       }
       return {
         draftId: input.draftId,
+        seriesId: input.seriesId,
         versions: await listVerticalDramaDraftVersionSummaries(
           input.draftId,
           owner,
+          seriesId,
           input.limit ?? 20,
           input.offset ?? 0
         ),
@@ -10012,17 +10137,27 @@ export const verticalDramaSeriesRouter = router({
       z.object({
         draftId: z.string().uuid(),
         version: z.number().int().positive(),
+        seriesId: z.string().trim().min(1),
       })
     )
     .query(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadActiveOwnedSeries(tenantId, ctx.user.id, seriesId);
       const version = await getVerticalDramaDraftVersion(
         input.draftId,
         input.version,
         {
           tenantId,
           userId: ctx.user.id,
-        }
+        },
+        seriesId
       );
       if (!version) {
         throw new TRPCError({
@@ -10066,22 +10201,43 @@ export const verticalDramaSeriesRouter = router({
     }),
 
   cancelDraftJob: verticalDramaProcedure
-    .input(z.object({ jobId: z.string().uuid() }))
+    .input(
+      z.object({
+        jobId: z.string().uuid(),
+        seriesId: z.string().trim().min(1),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const owner = { tenantId, userId: ctx.user.id };
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadActiveOwnedSeries(tenantId, ctx.user.id, seriesId);
       const job = await getVerticalDramaDraftLedger(input.jobId, owner);
-      if (!job) {
+      if (!job || job.seriesId !== seriesId) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Draft Job not found",
         });
       }
       if (job.compositionJobId) {
-        await cancelVerticalDramaDraftComposition(job.compositionJobId, owner);
+        await cancelVerticalDramaDraftComposition(
+          job.compositionJobId,
+          owner,
+          seriesId
+        );
       }
       if (job.qcRunId) {
-        await cancelVerticalDramaDraftQualityQc(job.qcRunId, owner);
+        await cancelVerticalDramaDraftQualityQc(
+          job.qcRunId,
+          owner,
+          seriesId
+        );
       }
       await updateVerticalDramaDraftJob(input.jobId, owner, {
         jobStatus: "cancelled",
@@ -10091,13 +10247,30 @@ export const verticalDramaSeriesRouter = router({
     }),
 
   cancelDraftQualityQc: verticalDramaProcedure
-    .input(z.object({ runId: z.string().uuid() }))
+    .input(
+      z.object({
+        runId: z.string().uuid(),
+        seriesId: z.string().trim().min(1),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
-      const cancelled = await cancelVerticalDramaDraftQualityQc(input.runId, {
-        tenantId,
-        userId: ctx.user.id,
-      });
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadActiveOwnedSeries(tenantId, ctx.user.id, seriesId);
+      const cancelled = await cancelVerticalDramaDraftQualityQc(
+        input.runId,
+        {
+          tenantId,
+          userId: ctx.user.id,
+        },
+        seriesId
+      );
       if (!cancelled) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -10116,29 +10289,28 @@ export const verticalDramaSeriesRouter = router({
     .input(
       synthesizeGenrePresetInput.extend({
         draftSessionId: z.string().trim().min(1).max(120),
-        planningSeriesId: z.string().trim().min(1).optional(),
+        planningSeriesId: z.string().trim().min(1),
         /** Explicit wizard selection; null/omitted means automatic routing. */
         defaultModelId: z.string().trim().min(1).nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
-      const planningSeriesNumber = input.planningSeriesId
-        ? Number(input.planningSeriesId)
-        : undefined;
+      const planningSeriesNumber = Number(input.planningSeriesId);
       if (
-        input.planningSeriesId &&
-        (!Number.isFinite(planningSeriesNumber) ||
-          planningSeriesNumber === undefined)
+        !Number.isInteger(planningSeriesNumber) ||
+        planningSeriesNumber <= 0
       ) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Invalid planning series id",
         });
       }
-      if (planningSeriesNumber !== undefined) {
-        await loadOwnedSeries(tenantId, ctx.user.id, planningSeriesNumber);
-      }
+      await loadActiveOwnedSeries(
+        tenantId,
+        ctx.user.id,
+        planningSeriesNumber
+      );
       const flags = await getTenantFeatureFlags(tenantId);
       const useV2 = flags.verticalDramaSeriesPresetMixV2 === true;
       const selectedProfile = input.seriesProfileId
@@ -10329,16 +10501,30 @@ export const verticalDramaSeriesRouter = router({
     }),
 
   getDraftCompositionStatus: verticalDramaProcedure
-    .input(z.object({ jobId: z.string().uuid() }))
+    .input(
+      z.object({
+        jobId: z.string().uuid(),
+        seriesId: z.string().trim().min(1),
+      })
+    )
     .query(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadActiveOwnedSeries(tenantId, ctx.user.id, seriesId);
       const owner = {
         tenantId,
         userId: ctx.user.id,
       };
       const record = await getVerticalDramaDraftCompositionStatus(
         input.jobId,
-        owner
+        owner,
+        seriesId
       );
       if (record) {
         let recoveredResult = record.result ?? undefined;
@@ -10366,7 +10552,7 @@ export const verticalDramaSeriesRouter = router({
         };
       }
       const ledger = await getVerticalDramaDraftLedger(input.jobId, owner);
-      if (!ledger)
+      if (!ledger || ledger.seriesId !== seriesId || ledger.seriesDeletedAt)
         throw new TRPCError({
           code: "NOT_FOUND",
           message:
@@ -10376,13 +10562,30 @@ export const verticalDramaSeriesRouter = router({
     }),
 
   cancelDraftComposition: verticalDramaProcedure
-    .input(z.object({ jobId: z.string().uuid() }))
+    .input(
+      z.object({
+        jobId: z.string().uuid(),
+        seriesId: z.string().trim().min(1),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
-      const cancelled = await cancelVerticalDramaDraftComposition(input.jobId, {
-        tenantId,
-        userId: ctx.user.id,
-      });
+      const seriesId = Number(input.seriesId);
+      if (!Number.isInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadActiveOwnedSeries(tenantId, ctx.user.id, seriesId);
+      const cancelled = await cancelVerticalDramaDraftComposition(
+        input.jobId,
+        {
+          tenantId,
+          userId: ctx.user.id,
+        },
+        seriesId
+      );
       if (!cancelled)
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -12429,6 +12632,63 @@ export const verticalDramaSeriesRouter = router({
       }
 
       const counts = await db.transaction(async tx => {
+        const draftsToCancel = await tx
+          .select({
+            id: verticalDramaDraftLedgers.id,
+            compositionJobId: verticalDramaDraftLedgers.compositionJobId,
+            qcRunId: verticalDramaDraftLedgers.qcRunId,
+            draftSessionId: verticalDramaDraftLedgers.draftSessionId,
+          })
+          .from(verticalDramaDraftLedgers)
+          .where(
+            and(
+              eq(verticalDramaDraftLedgers.tenantId, tenantId),
+              eq(verticalDramaDraftLedgers.userId, userId),
+              eq(verticalDramaDraftLedgers.seriesId, seriesId),
+              isNull(verticalDramaDraftLedgers.seriesDeletedAt)
+            )
+          )
+          .for("update");
+
+        // Preserve immutable Draft/QC history while making the deletion
+        // visible to legacy migration and every worker write path.
+        if (draftsToCancel.length > 0) {
+          await tx
+            .update(verticalDramaDraftLedgers)
+            .set({
+              seriesId: null,
+              seriesDeletedAt: new Date(),
+              jobStatus: "cancelled",
+              lastError: "Series deleted",
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(verticalDramaDraftLedgers.tenantId, tenantId),
+                eq(verticalDramaDraftLedgers.userId, userId),
+                eq(verticalDramaDraftLedgers.seriesId, seriesId),
+                isNull(verticalDramaDraftLedgers.seriesDeletedAt)
+              )
+            );
+        }
+
+        const detachedSourcePacks = await tx
+          .update(verticalDramaSourcePacks)
+          .set({
+            seriesId: null,
+            attachedAt: null,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(verticalDramaSourcePacks.tenantId, tenantId),
+              eq(verticalDramaSourcePacks.userId, userId),
+              eq(verticalDramaSourcePacks.seriesId, seriesId),
+              isNull(verticalDramaSourcePacks.deletedAt)
+            )
+          )
+          .returning({ id: verticalDramaSourcePacks.id });
+
         const [
           [episodesAgg],
           [charactersAgg],
@@ -12546,14 +12806,17 @@ export const verticalDramaSeriesRouter = router({
         const memorySnapshotsDeleted = Number(memorySnapshotsAgg?.count ?? 0);
         const qcReportsDeleted = Number(qcReportsAgg?.count ?? 0);
 
-        // Deleting the parent row cascades to every child table above at
-        // the database level (all declared `onDelete: "cascade"` on
-        // `seriesId`) — `media_assets` rows themselves are never touched.
+        // Deleting the parent row cascades to execution/content rows. Source
+        // packs were detached above so their assets and analyses remain
+        // recoverable after the Series is deleted.
         await tx
           .delete(verticalDramaSeries)
           .where(seriesOwnershipWhere(tenantId, userId, seriesId));
 
         return {
+          draftsToCancel,
+          draftLedgersTombstoned: draftsToCancel.length,
+          sourcePacksDetached: detachedSourcePacks.length,
           episodesDeleted,
           charactersDeleted,
           characterAssetsDeleted,
@@ -12567,7 +12830,50 @@ export const verticalDramaSeriesRouter = router({
         };
       });
 
-      return { deleted: true, seriesId: input.seriesId, ...counts };
+      const { draftsToCancel, ...safeCounts } = counts;
+      // The database tombstone is authoritative. Queue cleanup is best effort;
+      // a worker that races this transaction is rejected by its ledger guard.
+      await Promise.allSettled(
+        draftsToCancel.flatMap(draft => [
+          draft.compositionJobId
+            ? cancelVerticalDramaDraftComposition(
+                draft.compositionJobId,
+                {
+                  tenantId,
+                  userId,
+                },
+                seriesId
+              )
+            : Promise.resolve(false),
+          clearVerticalDramaDraftCompositionPointer(
+            draft.draftSessionId,
+            {
+              tenantId,
+              userId,
+            },
+            seriesId
+          ),
+          draft.qcRunId
+            ? cancelVerticalDramaDraftQualityQc(
+                draft.qcRunId,
+                {
+                  tenantId,
+                  userId,
+                },
+                seriesId
+              )
+            : Promise.resolve(false),
+          clearVerticalDramaDraftQualityQcPointer(
+            draft.draftSessionId,
+            {
+              tenantId,
+              userId,
+            },
+            seriesId
+          ),
+        ])
+      );
+      return { deleted: true, seriesId: input.seriesId, ...safeCounts };
     }),
 
   /**
