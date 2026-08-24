@@ -1,46 +1,40 @@
-# Orchestra Plan
+# Task
 
-## Task
-Repair the Vertical Drama Draft QC revision gate so server-managed `storyDesign.legacyControlArchive` metadata does not stop QC or Draft confirmation.
+Diagnose the reported tRPC failure for `verticalDramaEpisodes.getEpisodeCoverStatus` (ticket #422, user #24).
 
 ## Task Classification
-- Scope: small
+- Scope: medium
 - Risk: medium
-- Affected domains: Backend QC service, shared Vertical Drama story-design contract, focused tests
-- Estimated file count: 3
-- Chosen route: direct-edit / inline-standard-light
+- Affected domains: Backend tRPC, Vertical Drama data/storage, runtime/audit evidence
+- Estimated file count: 4-8 read-only candidates; no edits authorized by the request
+- Chosen route: direct-inline-waves / data-first-debug
 - Bug route: true
-- Classification notes: The failing component is identified and the evidence points to a narrow cross-file contract mismatch. No schema, auth, or external provider change is required.
+- Dispatch preference: inline-standard-light
+- Classification notes: This is an error-log investigation with a trace ID and a named route, but the authoritative failure may cross router, cover JSON parsing, storage lookup, and audit logging. The request asks for diagnosis only, so no implementation wave is planned.
 
-## Discovery and Evidence Ledger
-- SocratiCode: unavailable in this runtime; scoped `rg`, file reads, git blame, and focused tests used as fallback.
-- source: ui-only + source inspection
-- identifier: `Draft revision changed immutable field: storyDesign.legacyControlArchive`; `apps/web/server/services/verticalDramaDraftQualityQc.ts:1059`
-- observed failure: QC stops in `revise (round 1)` when `legacyControlArchive` differs after server-side story-design repair.
-- data state: `repairVerticalDramaDraftStoryDesign` writes `legacyControlArchive` as audit-only metadata; `assertMutableStoryDesignContract` rejects unknown `storyDesign` keys.
-- confidence: high
-- next evidence needed: focused regression test proving an audit archive change is accepted while active story-control mutations remain rejected.
+## Evidence Ledger
 
-## Impact Preflight
-- Directly changed files: `apps/web/shared/verticalDramaSeries/draftQualityQc.ts`, `apps/web/server/services/verticalDramaDraftQualityQc.ts`, `apps/web/server/services/__tests__/verticalDramaDraftQualityQc.test.ts`
-- Dependent surfaces: Draft QC queue and explicit repair both call the same immutable/story-design checks; Create Series uses the resulting QC receipt as its server-side confirmation gate.
-- Risk-sensitive surfaces: Draft data integrity and user-facing QC/confirmation workflow; no auth, tenant, migration, or payment contract changes.
-- Sequential work: test first, then smallest shared/server contract fix, then focused verification.
+source: ui-screenshot
+identifier: traceId `ad5OgMuHcSFyj6zXJ0Txk`, ticket `422`, user `24`, time `2026-08-24 10:14:04 +07:00`
+observed failure: tRPC `verticalDramaEpisodes.getEpisodeCoverStatus` returned `INTERNAL_SERVER_ERROR`; UI rendered `UnknownError`; one occurrence
+data state: feedback ticket #422 contains an AWS SDK S3 protocol stack; audit at `2026-08-24T03:14:04.424Z` shows task `2f89fe49-0f3e-493b-afdf-7044bb4043d8` completed with a provider result URL for series 23 / episode 167; local DB has ready asset 4139 and episode cover slot 2 persisted
+confidence: high for the failing boundary (R2 `HeadObject`), medium-high for the exact duplicate-ingest call site because the runtime log lacks operation-level instrumentation
+next evidence needed: deployed-runtime retry/HeadObject metrics if exact R2 response code and transient cause must be proven
 
-## Loop Policy
-- dispatch_preference: direct-standard-light
-- parallel_default: false
-- planned_agents: []
-- security_gate_required: false
+## Root-Cause Finding
 
-## Planned Waves
-1. Add a regression test that reproduces the server-managed audit archive change. Complete: the test failed with the reported immutable-field error.
-2. Update the immutable story-design contract to ignore only the known audit-only archive metadata and strip provider-supplied copies before merge, then run focused tests and diff checks.
+`getUnifiedMediaTask()` now durabilizes completed Vertical Drama tasks and rewrites `task.resultUrl` to a managed `/api/storage/files/...` URL. The same procedure then calls `ingestVerticalDramaMediaAsset()` again. Its managed-URL branch performs an uncaught `storageExists()` check, which maps to S3 `HeadObject`; any R2 protocol/transport error other than 404 escapes as `INTERNAL_SERVER_ERROR`. This matches ticket #422's AWS SDK stack and the completed provider task. The generated cover was eventually persisted as asset 4139, so this incident is a settle/status read-path failure, not a failed generation or credit failure.
 
-## Current Task Addendum — MCP / Remotion Executor Production Gap
+Relevant code path:
+- `apps/web/server/routers/verticalDramaEpisodes.ts:15948-16061` — poll, then duplicate durable-ingest on completed result
+- `apps/web/server/services/mediaTaskPollingService.ts:48-75` — already durabilizes Vertical Drama result before returning task
+- `apps/web/server/services/verticalDramaMediaAssetService.ts:488-540` — managed URL path calls `storageExists()` without a retry/fail-soft boundary
+- `apps/web/server/storage.ts:310-325` — S3 `HeadObject`, only 404 is converted to `false`
+- `apps/web/server/services/verticalDramaEpisodeCover.ts:119-124` — projection path already catches storage probe errors, unlike the managed ingest branch
 
-- Scope: executor release contract, server pack admission, Windows/macOS installer layout, UI guidance, and production-readiness proof.
-- Discovery: SocratiCode MCP was unavailable; scoped shell inspection was used.
-- Critical external blocker: all three production executor manifest URLs return `404 runtime_pack_not_published`.
-- Implemented path: signed archive admission with SHA-256 + Ed25519 + actual ZIP content checks; executor CLI/runtime pack co-packaging; platform installer and credential-preserving upgrade/uninstall; UI status and documentation alignment.
-- Remaining release action: build on Windows x64, macOS arm64, and macOS x64; configure the matching public key on the web server; verify and promote each signed pack; then run native doctor/connect/render/upload evidence.
+## Scope Boundary
+
+- Read-only diagnosis in the current worktree.
+- Preserve all unrelated dirty worktree changes.
+- Do not query or mutate production data/services without an explicit live-access path and authorization.
+- Do not infer the affected series/episode from the email or user ID alone.
