@@ -88,6 +88,7 @@ import {
 import { defaultMenuItems, type MenuItem as SharedMenuItem, type UserRole } from "@smartspec/shared";
 import StorageSettingsPanel from "@/components/admin/StorageSettingsPanel";
 import InfrastructureSettingsPanel from "@/components/admin/InfrastructureSettingsPanel";
+import PublicContactProtectionSettingsPanel from "@/components/admin/PublicContactProtectionSettingsPanel";
 import AgencyAdminPanel from "@/components/admin/AgencyAdminPanel";
 import DocumentOcrSettingsPanel from "@/components/admin/DocumentOcrSettingsPanel";
 import TelegramConnectionsPanel from "@/components/admin/TelegramConnectionsPanel";
@@ -1642,6 +1643,7 @@ export default function AdminSettings() {
     { key: "vectordb", label: copy.nav.vectordb.label, sublabel: copy.nav.vectordb.sublabel, icon: Database },
     { key: "storage", label: copy.nav.storage.label, sublabel: copy.nav.storage.sublabel, icon: Cloud },
     { key: "infrastructure", label: copy.nav.infrastructure.label, sublabel: copy.nav.infrastructure.sublabel, icon: Server },
+    { key: "public_contact", label: isThai ? "ป้องกัน Contact" : "Contact Protection", sublabel: isThai ? "Turnstile และ Anti-spam" : "Turnstile & Anti-spam", icon: Shield },
     { key: "agencies", label: copy.nav.agencies.label, sublabel: copy.nav.agencies.sublabel, icon: Zap },
     { key: "automation", label: copy.nav.automation.label, sublabel: copy.nav.automation.sublabel, icon: Bot },
     { key: "menu", label: copy.nav.menu.label, sublabel: copy.nav.menu.sublabel, icon: Menu },
@@ -4862,6 +4864,10 @@ export default function AdminSettings() {
 
           <TabsContent value="infrastructure">
             <InfrastructureSettingsPanel />
+          </TabsContent>
+
+          <TabsContent value="public_contact">
+            <PublicContactProtectionSettingsPanel />
           </TabsContent>
 
           <TabsContent value="agencies">

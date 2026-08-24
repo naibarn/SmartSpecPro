@@ -36,6 +36,10 @@ import {
   browserPolicyConfigSchema,
   browserPolicyUserCustomizationSchema,
 } from "../../shared/browserPolicy";
+import {
+  getPublicContactProtectionAdminSettings,
+  updatePublicContactProtectionSettings,
+} from "../services/publicContactProtectionSettings";
 
 // ============================================================
 // System Settings Router
@@ -58,6 +62,7 @@ const settingCategorySchema = z.enum([
   "document_ocr",
   "finance",
   "marketplace_capture",
+  "public_contact",
 ]);
 
 const desktopReleaseSettingsUpdateSchema = z.object({
@@ -597,6 +602,33 @@ export const systemSettingsRouter = router({
   // ============================================================
   // General Settings
   // ============================================================
+
+  publicContactProtection: router({
+    get: adminProcedure.query(async () => getPublicContactProtectionAdminSettings()),
+    update: adminProcedure
+      .input(z.object({
+        siteKey: z.string().trim().max(255),
+        secretKey: z.string().trim().max(4096).optional(),
+        clearSecret: z.boolean().default(false),
+        allowedHostnames: z.array(z.string().trim().min(1).max(253)).max(20),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        try {
+          return await updatePublicContactProtectionSettings({
+            userId: ctx.user.id,
+            siteKey: input.siteKey,
+            secretKey: input.secretKey,
+            clearSecret: input.clearSecret,
+            allowedHostnames: input.allowedHostnames,
+          });
+        } catch (error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: error instanceof Error ? error.message : "Invalid public contact protection settings",
+          });
+        }
+      }),
+  }),
 
   /**
    * Get a setting by category and key
