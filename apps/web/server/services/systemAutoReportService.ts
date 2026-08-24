@@ -156,6 +156,7 @@ async function notifyCreditFailureUser(params: {
   userId: number;
   classification: CreditFailureClassification;
   source: string;
+  path?: string;
   traceId?: string;
 }): Promise<void> {
   if (!params.db) return;
@@ -169,7 +170,15 @@ async function notifyCreditFailureUser(params: {
       ? "กำลังตรวจสอบคำขอใช้เครดิต"
       : "ผู้ให้บริการ AI ขัดข้อง";
   const content = isPurchase
-    ? "เครดิตของคุณไม่เพียงพอสำหรับคำขอนี้ กรุณาซื้อเครดิตเพิ่มเพื่อดำเนินการต่อ"
+    ? `เครดิตของคุณไม่เพียงพอสำหรับคำขอนี้${
+        params.classification.modelKind !== "unknown"
+          ? ` (ประเภท ${params.classification.modelKind === "media" ? "งานสื่อ" : "งาน AI/ข้อความ"})`
+          : ""
+      }${
+        params.classification.requestedCredits != null
+          ? ` ระบบประเมินว่าคำขอนี้ต้องใช้ประมาณ ${params.classification.requestedCredits} เครดิต`
+          : ""
+      } กรุณาซื้อเครดิตเพิ่มเพื่อดำเนินการต่อ`
     : isReview
       ? "ระบบไม่สามารถดำเนินการคำขอนี้ได้ เนื่องจากจำนวนเครดิตที่ขอสูงผิดปกติ ทีมงานกำลังตรวจสอบ"
       : "ผู้ให้บริการ AI มีเครดิตหรือโควตาไม่เพียงพอ ทีมงานกำลังเร่งตรวจสอบให้คุณ";
@@ -177,6 +186,7 @@ async function notifyCreditFailureUser(params: {
     route: params.classification.route,
     modelKind: params.classification.modelKind,
   };
+  if (params.path) metadataItems.operation = params.path.slice(0, 200);
   if (params.classification.provider) metadataItems.provider = params.classification.provider;
   if (params.classification.requestedCredits != null) {
     metadataItems.requestedCredits = String(params.classification.requestedCredits);
@@ -261,6 +271,7 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
         userId: numericUserId,
         classification: creditClassification,
         source: params.source,
+        path: params.path,
         traceId: params.traceId,
       });
       if (creditClassification.route === "user_purchase") return;

@@ -52,6 +52,10 @@ describe("systemAutoReportService credit routing", () => {
       priority: "high",
       relatedResourceType: "credits",
       groupKey: "credit-failure:user_purchase:7",
+      content: expect.stringContaining("100 เครดิต"),
+      metadata: expect.objectContaining({
+        relatedItems: expect.objectContaining({ operation: "chat.complete" }),
+      }),
     }));
     expect(mockDb.insert).not.toHaveBeenCalled();
     expect(mockProcessTicket).not.toHaveBeenCalled();

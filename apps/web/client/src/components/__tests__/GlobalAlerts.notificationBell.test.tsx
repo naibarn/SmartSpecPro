@@ -370,6 +370,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
   });
 
   it("repairs a stale deduplicated feedback target from the latest ticket in the content", async () => {
+    currentLocation = "/admin/feedback-hub";
     urgentRemindersData = [
       {
         id: 101,
@@ -420,6 +421,63 @@ describe("GlobalNotificationBell occurrence badge", () => {
       "_blank",
       "noopener,noreferrer",
     );
+  });
+
+  it("does not cover an admin feedback investigation with a user purchase credit reminder", async () => {
+    currentLocation = "/admin/feedback-hub?ticketId=422";
+    urgentRemindersData = [
+      {
+        id: 103,
+        title: "เครดิตไม่เพียงพอ",
+        content: "เครดิตของคุณไม่เพียงพอสำหรับคำขอนี้",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        relatedResourceType: "credits",
+        groupKey: "credit-failure:user_purchase:1",
+        metadata: { source: "trpc" },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.queryByRole("dialog", { name: /เครดิตไม่เพียงพอ/i })
+    ).toBeNull();
+  });
+
+  it("explains the estimated credits and operation for a user credit reminder", async () => {
+    mockLocale = "th";
+    urgentRemindersData = [
+      {
+        id: 104,
+        title: "เครดิตไม่เพียงพอ",
+        content: "เครดิตของคุณไม่เพียงพอสำหรับคำขอนี้",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        relatedResourceType: "credits",
+        groupKey: "credit-failure:user_purchase:1",
+        metadata: {
+          source: "trpc",
+          relatedItems: {
+            modelKind: "media",
+            requestedCredits: "12",
+            operation: "verticalDramaEpisodes.generateShot",
+          },
+        },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    expect(await screen.findByText(/เครดิตที่ระบบประเมินว่าต้องใช้: 12/i)).toBeTruthy();
+    expect(screen.getByText(/รายการที่แจ้ง:/i)).toBeTruthy();
+    expect(screen.getByText("verticalDramaEpisodes.generateShot")).toBeTruthy();
   });
 
   it("treats billing invoice due reminders as billing reminders instead of incident guidance", async () => {

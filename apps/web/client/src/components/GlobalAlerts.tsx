@@ -4,7 +4,14 @@
  * Replaces per-page UrgentMessageAlert and NotificationBell from Chat.tsx.
  */
 
-import { useEffect, useState, useCallback, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
@@ -154,6 +161,24 @@ export function resolveNotificationActionUrl(notification: {
   return `/admin/feedback-hub?ticketId=${ticketMatch[1]}`;
 }
 
+export function shouldShowUrgentReminderOnRoute(
+  reminder: {
+    relatedResourceType?: string | null;
+    groupKey?: string | null;
+  },
+  location: string
+): boolean {
+  const isAdminRoute = /^\/admin(?:\/|$)/.test(location);
+  const isUserPurchaseCreditReminder =
+    reminder.relatedResourceType === "credits" &&
+    reminder.groupKey?.startsWith("credit-failure:user_purchase:");
+
+  // A user's own top-up prompt is actionable in the product, but it must not
+  // cover an admin investigation screen. Admin-owned feedback/billing/ops
+  // reminders remain eligible for the global urgent surface.
+  return !(isAdminRoute && isUserPurchaseCreditReminder);
+}
+
 function localizeActionLabel(
   label: string | null | undefined,
   locale: "en" | "th",
@@ -184,6 +209,7 @@ function localizeActionLabel(
 export function GlobalAlerts() {
   const { user } = useAuth();
   const { locale } = useScopedTranslation("admin");
+  const [location] = useLocation();
   const activeUrgentSurfaceRef = useRef<UrgentSurface | null>(null);
   const [activeUrgentSurface, setActiveUrgentSurface] = useState<UrgentSurface | null>(null);
 
@@ -217,6 +243,7 @@ export function GlobalAlerts() {
       />
       <GlobalUrgentReminders
         locale={locale}
+        location={location}
         activeUrgentSurface={activeUrgentSurface}
         claimUrgentSurface={claimUrgentSurface}
         releaseUrgentSurface={releaseUrgentSurface}
@@ -460,11 +487,13 @@ function GlobalUrgentAlerts({
  */
 function GlobalUrgentReminders({
   locale,
+  location,
   activeUrgentSurface,
   claimUrgentSurface,
   releaseUrgentSurface,
 }: {
   locale: "en" | "th";
+  location: string;
   activeUrgentSurface: UrgentSurface | null;
   claimUrgentSurface: (surface: UrgentSurface) => boolean;
   releaseUrgentSurface: (surface: UrgentSurface) => void;
@@ -502,12 +531,19 @@ function GlobalUrgentReminders({
     },
   });
 
+  const visibleUrgentReminders = useMemo(
+    () => (urgentReminders ?? []).filter((reminder: any) =>
+      shouldShowUrgentReminderOnRoute(reminder, location),
+    ),
+    [urgentReminders, location],
+  );
+
   useEffect(() => {
     if (modalReminder || (activeUrgentSurface && activeUrgentSurface !== "reminder")) {
       return;
     }
-    if (!urgentReminders?.length) return;
-    const newReminders = urgentReminders.filter(
+    if (!visibleUrgentReminders.length) return;
+    const newReminders = visibleUrgentReminders.filter(
       (r: any) => !shownIds.has(r.id) && r.id !== dismissedId
     );
     if (newReminders.length === 0) return;
@@ -563,7 +599,7 @@ function GlobalUrgentReminders({
         });
       });
     }
-  }, [urgentReminders, shownIds, dismissedId, modalReminder, activeUrgentSurface, claimUrgentSurface]);
+  }, [visibleUrgentReminders, shownIds, dismissedId, modalReminder, activeUrgentSurface, claimUrgentSurface]);
 
   const handleDismiss = useCallback(() => {
     if (modalReminder) {
@@ -624,6 +660,20 @@ function GlobalUrgentReminders({
   const isOpsIncidentReminder =
     !isBillingReminder &&
     (modalReminder.relatedResourceType === "system_health" || modalReminder.relatedResourceType === "incident");
+  const isCreditReminder =
+    modalReminder.relatedResourceType === "credits" ||
+    modalReminder.groupKey?.startsWith("credit-failure:");
+  const creditItems = isCreditReminder && metadata?.relatedItems && typeof metadata.relatedItems === "object"
+    ? metadata.relatedItems
+    : null;
+  const requestedCredits = creditItems?.requestedCredits != null && Number.isFinite(Number(creditItems.requestedCredits))
+    ? Number(creditItems.requestedCredits)
+    : null;
+  const creditModelLabel = creditItems?.modelKind === "media"
+    ? (locale === "th" ? "งานสื่อ" : "media")
+    : creditItems?.modelKind === "llm"
+      ? (locale === "th" ? "งาน AI/ข้อความ" : "AI/text")
+      : null;
   const isCritical = modalReminder.priority === "critical";
   const borderColor = isCritical ? "#ef4444" : "#f59e0b";
   const badgeColor = isCritical ? "#ef4444" : "#f59e0b";
@@ -664,6 +714,18 @@ function GlobalUrgentReminders({
       : modalReminder.title;
   const summary = isOpsIncidentReminder
     ? guidance.summary
+    : isCreditReminder
+      ? [
+          modalReminder.content,
+          creditModelLabel
+            ? (locale === "th" ? `ประเภทคำขอ: ${creditModelLabel}` : `Request type: ${creditModelLabel}`)
+            : null,
+          requestedCredits != null
+            ? (locale === "th"
+                ? `เครดิตที่ระบบประเมินว่าต้องใช้: ${requestedCredits.toLocaleString("th-TH")}`
+                : `Estimated credits required: ${requestedCredits.toLocaleString("en-US")}`)
+            : (locale === "th" ? "ระบบไม่ได้ส่งจำนวนเครดิตที่ต้องใช้มาในแจ้งเตือนนี้" : "The request did not include an estimated credit amount."),
+        ].filter(Boolean).join(" ")
     : billingNotificationType === "invoice_due_reminder" && locale === "th"
       ? `พบใบแจ้งหนี้${invoiceNumber ? ` ${invoiceNumber}` : ""} ที่ยังค้างชำระ โปรดตรวจสอบสถานะและติดตามการชำระเงิน`
       : modalReminder.content && modalReminder.content !== modalReminder.title
@@ -678,6 +740,12 @@ function GlobalUrgentReminders({
     metadata?.source ? { label: "Source", value: String(metadata.source) } : null,
     isBillingReminder && invoiceNumber ? { label: locale === "th" ? "ใบแจ้งหนี้" : "Invoice", value: invoiceNumber } : null,
     metadata?.relatedItems?.category ? { label: "Category", value: String(metadata.relatedItems.category) } : null,
+    isCreditReminder && creditItems?.operation
+      ? { label: locale === "th" ? "รายการที่แจ้ง" : "Operation", value: String(creditItems.operation) }
+      : null,
+    isCreditReminder && creditItems?.provider
+      ? { label: locale === "th" ? "ผู้ให้บริการ" : "Provider", value: String(creditItems.provider) }
+      : null,
     modalReminder.relatedResourceType ? { label: "Resource", value: String(modalReminder.relatedResourceType).replace(/_/g, " ") } : null,
     modalReminder.groupKey ? { label: detailReferenceLabel, value: modalReminder.groupKey } : null,
   ].filter(Boolean) as Array<{ label: string; value: string }>;
@@ -1311,6 +1379,7 @@ function GlobalNotificationBell() {
   // Real-time SSE for instant notification updates (with exponential backoff)
   const handleSSEMessage = useCallback(() => {
     utils.scheduledMessages.getNotificationCount.invalidate();
+    utils.scheduledMessages.getUrgentReminders.invalidate();
     if (showDropdown) {
       utils.scheduledMessages.getNotifications.invalidate();
     }
