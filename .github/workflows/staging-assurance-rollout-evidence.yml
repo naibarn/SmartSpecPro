@@ -1,0 +1,192 @@
+name: Staging Assurance Rollout Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type run-staging-assurance-evidence to run the controlled staging drill."
+        required: true
+        type: string
+      image_tag:
+        description: "Immutable Artifact Registry tag to canary (for example a commit SHA)."
+        required: true
+        type: string
+      run_rollback_drill:
+        description: "Temporarily restore the captured previous revision and restore the canary afterward."
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  staging-assurance-drill:
+    if: ${{ github.event.inputs.confirm == 'run-staging-assurance-evidence' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      REGION: ${{ secrets.GCP_REGION }}
+      IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+      NODE_SERVICE: node-api-staging
+      PYTHON_SERVICE: python-orchestrator-staging
+
+    steps:
+      - name: Checkout exact requested revision
+        uses: actions/checkout@v4
+
+      - name: Verify deployment credentials before any mutation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          missing=()
+          [[ -n "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" ]] || missing+=(GCP_WORKLOAD_IDENTITY_PROVIDER)
+          [[ -n "${{ secrets.GCP_SERVICE_ACCOUNT }}" ]] || missing+=(GCP_SERVICE_ACCOUNT)
+          [[ -n "${PROJECT_ID}" ]] || missing+=(GCP_PROJECT_ID)
+          [[ -n "${REGION}" ]] || missing+=(GCP_REGION)
+          if ((${#missing[@]})); then
+            echo "Missing required staging rollout secrets: ${missing[*]}" >&2
+            exit 1
+          fi
+          [[ "${IMAGE_TAG}" =~ ^[A-Za-z0-9._-]{1,128}$ ]] || {
+            echo "image_tag contains unsupported characters" >&2
+            exit 1
+          }
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Capture current traffic and revision evidence
+        id: before
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p evidence
+          gcloud run services describe "${NODE_SERVICE}" --region "${REGION}" --format=json > evidence/node-before.json
+          gcloud run services describe "${PYTHON_SERVICE}" --region "${REGION}" --format=json > evidence/python-before.json
+          node - <<'NODE'
+          const fs = require("fs");
+          for (const [name, file] of [["node", "evidence/node-before.json"], ["python", "evidence/python-before.json"]]) {
+            const service = JSON.parse(fs.readFileSync(file, "utf8"));
+            const revisions = (service.status?.traffic ?? [])
+              .filter(x => Number(x.percent ?? 0) > 0)
+              .sort((a, b) => Number(b.percent) - Number(a.percent));
+            if (!revisions[0]?.revisionName) throw new Error(`${name} has no active revision`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `${name}_revision=${revisions[0].revisionName}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `${name}_traffic=${JSON.stringify(revisions)}\n`);
+          }
+          NODE
+
+      - name: Controlled staging restart evidence
+        id: restart
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          nonce="assurance-restart-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          echo "nonce=${nonce}" >> "$GITHUB_OUTPUT"
+          # Cloud Run has no in-place restart primitive. Updating a harmless,
+          # trace-only revision marker creates a new revision while traffic is
+          # restored explicitly to the captured revision below.
+          gcloud run services update "${NODE_SERVICE}" \
+            --region "${REGION}" \
+            --update-env-vars "ASSURANCE_RESTART_NONCE=${nonce}" \
+            --no-traffic \
+            --quiet
+          gcloud run services update "${PYTHON_SERVICE}" \
+            --region "${REGION}" \
+            --update-env-vars "ASSURANCE_RESTART_NONCE=${nonce}" \
+            --no-traffic \
+            --quiet
+          gcloud run services update-traffic "${NODE_SERVICE}" --region "${REGION}" --to-revisions "${{ steps.before.outputs.node_revision }}=100" --quiet
+          gcloud run services update-traffic "${PYTHON_SERVICE}" --region "${REGION}" --to-revisions "${{ steps.before.outputs.python_revision }}=100" --quiet
+          gcloud run services describe "${NODE_SERVICE}" --region "${REGION}" --format='value(status.latestReadyRevisionName)' > evidence/node-restart-latest.txt
+          gcloud run services describe "${PYTHON_SERVICE}" --region "${REGION}" --format='value(status.latestReadyRevisionName)' > evidence/python-restart-latest.txt
+
+      - name: Deploy immutable canary revisions without traffic
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          image_base="${REGION}-docker.pkg.dev/${PROJECT_ID}/smartspec-images"
+          gcloud run deploy "${NODE_SERVICE}" \
+            --image "${image_base}/node-api:${IMAGE_TAG}" \
+            --region "${REGION}" --platform managed --no-traffic \
+            --tag "assurance-${GITHUB_RUN_ID}" --quiet
+          gcloud run deploy "${PYTHON_SERVICE}" \
+            --image "${image_base}/python-orchestrator:${IMAGE_TAG}" \
+            --region "${REGION}" --platform managed --no-traffic \
+            --tag "assurance-${GITHUB_RUN_ID}" --quiet
+
+      - name: Shift canary to 10 percent and smoke test
+        id: canary
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          trap 'gcloud run services update-traffic "${NODE_SERVICE}" --region "${REGION}" --to-revisions "${{ steps.before.outputs.node_revision }}=100" --quiet || true; gcloud run services update-traffic "${PYTHON_SERVICE}" --region "${REGION}" --to-revisions "${{ steps.before.outputs.python_revision }}=100" --quiet || true' ERR
+          gcloud run services update-traffic "${NODE_SERVICE}" --region "${REGION}" --to-revisions "assurance-${GITHUB_RUN_ID}=10,${{ steps.before.outputs.node_revision }}=90" --quiet
+          gcloud run services update-traffic "${PYTHON_SERVICE}" --region "${REGION}" --to-revisions "assurance-${GITHUB_RUN_ID}=10,${{ steps.before.outputs.python_revision }}=90" --quiet
+          canary_url="$(gcloud run services describe "${NODE_SERVICE}" --region "${REGION}" --format='value(status.traffic[tag=assurance-'"${GITHUB_RUN_ID}"'].url)')"
+          [[ -n "${canary_url}" ]] || { echo "Canary URL was not published" >&2; exit 1; }
+          echo "canary_url=${canary_url}" >> "$GITHUB_OUTPUT"
+          bash scripts/smoke-test.sh "${canary_url}"
+
+      - name: Shift canary to 100 percent
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          gcloud run services update-traffic "${NODE_SERVICE}" --region "${REGION}" --to-revisions "assurance-${GITHUB_RUN_ID}=100" --quiet
+          gcloud run services update-traffic "${PYTHON_SERVICE}" --region "${REGION}" --to-revisions "assurance-${GITHUB_RUN_ID}=100" --quiet
+          bash scripts/smoke-test.sh "${{ steps.canary.outputs.canary_url }}"
+
+      - name: Rollback drill and restore canary
+        if: ${{ github.event.inputs.run_rollback_drill == 'true' }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          gcloud run services update-traffic "${NODE_SERVICE}" --region "${REGION}" --to-revisions "${{ steps.before.outputs.node_revision }}=100" --quiet
+          gcloud run services update-traffic "${PYTHON_SERVICE}" --region "${REGION}" --to-revisions "${{ steps.before.outputs.python_revision }}=100" --quiet
+          rollback_url="$(gcloud run services describe "${NODE_SERVICE}" --region "${REGION}" --format='value(status.url)')"
+          bash scripts/smoke-test.sh "${rollback_url}"
+          gcloud run services update-traffic "${NODE_SERVICE}" --region "${REGION}" --to-revisions "assurance-${GITHUB_RUN_ID}=100" --quiet
+          gcloud run services update-traffic "${PYTHON_SERVICE}" --region "${REGION}" --to-revisions "assurance-${GITHUB_RUN_ID}=100" --quiet
+
+      - name: Capture final evidence
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          mkdir -p evidence
+          gcloud run services describe "${NODE_SERVICE}" --region "${REGION}" --format=json > evidence/node-after.json || true
+          gcloud run services describe "${PYTHON_SERVICE}" --region "${REGION}" --format=json > evidence/python-after.json || true
+          node - <<'NODE'
+          const fs = require("fs");
+          const redact = value => {
+            if (Array.isArray(value)) return value.map(redact);
+            if (!value || typeof value !== "object") return value;
+            return Object.fromEntries(Object.entries(value).filter(([key]) => !/secret|token|password|url/i.test(key)).map(([key, value]) => [key, redact(value)]));
+          };
+          const evidence = { runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT, imageTag: process.env.IMAGE_TAG, capturedAt: new Date().toISOString(), restartNonce: process.env.RESTART_NONCE ?? null };
+          for (const name of ["node", "python"]) {
+            const file = `evidence/${name}-after.json`;
+            if (!fs.existsSync(file) || fs.statSync(file).size === 0) continue;
+            try { evidence[name] = redact(JSON.parse(fs.readFileSync(file, "utf8"))); } catch { /* preflight may have no GCP response */ }
+          }
+          fs.writeFileSync("evidence/manifest.json", JSON.stringify(evidence, null, 2));
+          NODE
+
+      - name: Upload bounded staging evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-assurance-evidence-${{ github.run_id }}
+          path: evidence/
+          retention-days: 14
