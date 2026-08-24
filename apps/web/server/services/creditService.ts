@@ -4,7 +4,7 @@
  */
 
 import { db } from "../db";
-import { users, creditTransactions, creditPackages, modelProviderMap, systemSettings, conversations, llmProviders } from "../../drizzle/schema";
+import { users, creditTransactions, creditPackages, modelProviderMap, systemSettings, conversations, llmProviders, skillRevenueSettlements } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { createHash, randomUUID } from "crypto";
 import { getRedisClient, isRedisAvailable } from "./redis";
@@ -99,6 +99,8 @@ export interface DeductCreditsParams {
   /** Context fields for rich transaction tracking */
   conversationId?: number;
   skillSlug?: string;
+  /** Stable fixed-credit settlement id for a skill run. */
+  skillRunId?: string;
   sourceType?: CreditSourceType;
   metadata?: {
     model?: string;
@@ -119,6 +121,7 @@ export interface AddCreditsParams {
   description: string;
   referenceId?: string;
   idempotencyKey?: string;
+  tenantId?: string;
   metadata?: Record<string, any>;
   /** Context fields for rich transaction tracking */
   conversationId?: number;
@@ -549,6 +552,43 @@ export async function deductCredits(params: DeductCreditsParams) {
     throw new Error("Deduction amount must be positive");
   }
 
+  // All registered skill charges use the fixed skill price and revenue split.
+  // Keep this compatibility boundary so legacy/domain skill callers cannot
+  // bypass tenant-owner and skill-owner settlement while migrating callers.
+  if (params.sourceType === "skill") {
+    if (!params.skillSlug) {
+      throw new Error("Skill billing requires skillSlug");
+    }
+    const { settleSkillRun } = await import("./skillRevenueBilling");
+    const settlement = await settleSkillRun({
+      runId: params.skillRunId ?? idempotencyKey ?? randomUUID(),
+      userId,
+      tenantId,
+      skillSlug: params.skillSlug,
+      actualWorkCredits: amount,
+      description,
+      metadata,
+    });
+    const userTransaction = settlement.userTransactionId
+      ? await db
+        .select({
+          id: creditTransactions.id,
+          amount: creditTransactions.amount,
+          balanceAfter: creditTransactions.balanceAfter,
+        })
+        .from(creditTransactions)
+        .where(eq(creditTransactions.id, settlement.userTransactionId))
+        .limit(1)
+      : [];
+    return {
+      success: true,
+      creditsUsed: settlement.totalCredits,
+      newBalance: userTransaction[0]?.balanceAfter ?? 0,
+      transactionId: userTransaction[0]?.id ?? 0,
+      ...(settlement.duplicate ? { duplicate: true } : {}),
+    };
+  }
+
   // Budget pre-check (only when tenantId is provided and not skipped)
   let budgetAlert = false;
   let budgetUsagePctValue: number | undefined;
@@ -776,8 +816,11 @@ export interface CreditReservation {
   drawnAmount: number;
   transactionId: number;
   sourceType: CreditSourceType;
+  idempotencyKey?: string;
   createdAt: string;
   expiresAt: string;
+  /** Durable-in-Redis settlement keys prevent a provider call from being drawn twice. */
+  settledCallAmounts?: Record<string, number>;
 }
 
 const RESERVATION_TTL_SECONDS = 600; // 10 minutes
@@ -787,12 +830,15 @@ export async function createCreditReservation(
   amount: number,
   sourceType: CreditSourceType,
   metadata?: Record<string, any>,
+  idempotencyKey?: string,
 ): Promise<CreditReservation> {
   if (!isRedisAvailable()) {
     throw new Error("Redis unavailable — cannot create credit reservation");
   }
 
-  const reservationId = randomUUID();
+  const reservationId = idempotencyKey
+    ? `reservation-${createHash("sha256").update(idempotencyKey).digest("hex").slice(0, 32)}`
+    : randomUUID();
 
   // Deduct the full amount upfront
   const deductResult = await deductCredits({
@@ -800,6 +846,7 @@ export async function createCreditReservation(
     amount,
     description: `Credit reservation ${reservationId}`,
     sourceType,
+    idempotencyKey,
     metadata: { ...metadata, reservationId },
   });
 
@@ -834,20 +881,33 @@ const DRAW_LUA = `
 local raw = redis.call('GET', KEYS[1])
 if not raw then return {err='not_found'} end
 local r = cjson.decode(raw)
+local settlementKey = ARGV[3]
+if settlementKey and settlementKey ~= '' then
+  r.settledCallAmounts = r.settledCallAmounts or {}
+  if r.settledCallAmounts[settlementKey] ~= nil then
+    local ttl = redis.call('TTL', KEYS[1])
+    return {0, r.reservedAmount - r.drawnAmount, 1}
+  end
+end
 local newDrawn = r.drawnAmount + tonumber(ARGV[1])
 if newDrawn > r.reservedAmount then return {err='budget_exceeded'} end
 r.drawnAmount = newDrawn
+if settlementKey and settlementKey ~= '' then
+  r.settledCallAmounts = r.settledCallAmounts or {}
+  r.settledCallAmounts[settlementKey] = tonumber(ARGV[1])
+end
 local ttl = redis.call('TTL', KEYS[1])
 if ttl < 1 then ttl = tonumber(ARGV[2]) end
 redis.call('SET', KEYS[1], cjson.encode(r), 'EX', ttl)
-return {r.reservedAmount - newDrawn}
+return {tonumber(ARGV[1]), r.reservedAmount - newDrawn, 0}
 `;
 
 export async function drawFromReservation(
   reservationId: string,
   amount: number,
   _description?: string,
-): Promise<{ drawn: number; remaining: number }> {
+  settlementKey?: string,
+): Promise<{ drawn: number; remaining: number; duplicate?: boolean }> {
   if (!isRedisAvailable()) {
     throw new Error("Redis unavailable for reservation tracking");
   }
@@ -860,6 +920,7 @@ export async function drawFromReservation(
     key,
     String(amount),
     String(RESERVATION_TTL_SECONDS),
+    settlementKey ?? "",
   ) as any;
 
   if (result?.err === "not_found" || result === null) {
@@ -869,8 +930,14 @@ export async function drawFromReservation(
     throw new Error(`Reservation budget exceeded`);
   }
 
-  const remaining = Number(Array.isArray(result) ? result[0] : result);
-  return { drawn: amount, remaining };
+  if (Array.isArray(result)) {
+    if (result.length === 1) {
+      return { drawn: amount, remaining: Number(result[0]) };
+    }
+    return { drawn: Number(result[0]), remaining: Number(result[1]), duplicate: Number(result[2]) === 1 };
+  }
+  // Compatibility with older Redis/Lua deployments while they roll forward.
+  return { drawn: amount, remaining: Number(result) };
 }
 
 export async function refundReservation(
@@ -933,12 +1000,46 @@ export async function refundCredits(params: {
   description: string;
   originalTransactionId?: number;
   idempotencyKey?: string;
+  tenantId?: string;
   metadata?: Record<string, any>;
   sourceType?: CreditSourceType;
   conversationId?: number;
   skillSlug?: string;
+  /** Fixed-credit skill settlement to reverse atomically with owner revenue. */
+  skillRunId?: string;
 }) {
   const { userId, amount, description, originalTransactionId, metadata } = params;
+
+  // Reverse a fixed skill settlement before touching the user's balance. The
+  // settlement transaction checks for an existing auto-refund under the row
+  // lock, then reverses both owner allocations exactly once.
+  if (params.sourceType === "skill" || params.skillRunId || params.skillSlug) {
+    let runId = params.skillRunId;
+    if (!runId && originalTransactionId) {
+      const [settlement] = await db
+        .select({ runId: skillRevenueSettlements.runId })
+        .from(skillRevenueSettlements)
+        .where(eq(skillRevenueSettlements.userTransactionId, originalTransactionId))
+        .limit(1);
+      runId = settlement?.runId;
+    }
+    if (runId) {
+      const { refundSkillRun } = await import("./skillRevenueBilling");
+      const reversed = await refundSkillRun({ runId, reason: description });
+      return {
+        success: true,
+        creditsUsed: 0,
+        newBalance: 0,
+        transactionId: 0,
+        revenueCreditsReversed: reversed.revenueCredits,
+        revenueDebtCredits: reversed.revenueDebtCredits,
+        duplicate: !reversed.refunded,
+      };
+    }
+    if (params.sourceType === "skill") {
+      throw new Error("Skill refund requires a settled skillRunId");
+    }
+  }
 
   return addCredits({
     userId,
@@ -947,6 +1048,7 @@ export async function refundCredits(params: {
     description,
     referenceId: originalTransactionId ? `refund-${originalTransactionId}` : undefined,
     idempotencyKey: params.idempotencyKey,
+    tenantId: params.tenantId,
     metadata: {
       ...metadata,
       originalTransactionId,
@@ -1098,6 +1200,8 @@ export async function deductCreditsForModel(params: {
   description?: string;
   tenantId?: string;
   idempotencyKey?: string;
+  /** Stable fixed-credit settlement id for a skill-run model usage charge. */
+  skillRunId?: string;
   conversationId?: number;
   skillSlug?: string;
   sourceType?: CreditSourceType;
@@ -1124,6 +1228,7 @@ export async function deductCreditsForModel(params: {
     description: params.description ?? `LLM usage: ${params.model}`,
     tenantId: params.tenantId,
     idempotencyKey: params.idempotencyKey,
+    skillRunId: params.skillRunId,
     conversationId: params.conversationId,
     skillSlug: params.skillSlug,
     sourceType: params.sourceType ?? "chat",

@@ -104,6 +104,8 @@ interface Skill {
   enabledByDefault: boolean;
   visibleByDefault: boolean;
   creditMultiplier: number;
+  tenantCreditCost: number;
+  skillOwnerCreditCost: number;
   priority: number;
   availableModels: string[] | null;
   defaultModel: string | null;
@@ -138,6 +140,11 @@ interface Skill {
   nativeBundlePath?: string | null;
   nativeBundleLockPath?: string | null;
 }
+
+type SkillPricingDraft = {
+  tenantCreditCost?: string;
+  skillOwnerCreditCost?: string;
+};
 
 interface FolderInfo {
   slug: string;
@@ -872,6 +879,12 @@ export default function AdminSkills() {
   const [legacyUpgradeIncludeApplied, setLegacyUpgradeIncludeApplied] = useState(false);
   const [legacyUpgradeQueueFilter, setLegacyUpgradeQueueFilter] = useState<"all" | "critical" | "high" | "parallel" | "eligible">("all");
   const [selectedLegacyUpgradeIds, setSelectedLegacyUpgradeIds] = useState<number[]>([]);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
+  const [revenueStartDate, setRevenueStartDate] = useState("");
+  const [revenueEndDate, setRevenueEndDate] = useState("");
+  const [skillPricingDrafts, setSkillPricingDrafts] = useState<Record<number, SkillPricingDraft>>({});
+  const [bulkTenantCreditCost, setBulkTenantCreditCost] = useState("");
+  const [bulkSkillOwnerCreditCost, setBulkSkillOwnerCreditCost] = useState("");
   const [expandedLegacyUpgradeIds, setExpandedLegacyUpgradeIds] = useState<number[]>([]);
   const [selectedRecommendationId, setSelectedRecommendationId] = useState<number | null>(null);
   const [selectedRecommendationViewMode, setSelectedRecommendationViewMode] = useState<"advice" | "reasoning">("advice");
@@ -919,6 +932,8 @@ export default function AdminSkills() {
     enabledByDefault: true,
     visibleByDefault: true,
     creditMultiplier: 1.0,
+    tenantCreditCost: 2,
+    skillOwnerCreditCost: 0,
     priority: 50,
     executionMode: "llm-only" as SkillExecutionMode,
     sandboxProfileSlug: null as string | null,
@@ -1003,11 +1018,32 @@ export default function AdminSkills() {
   }, [authLoading, isAdmin, setLocation, user]);
 
   // Fetch skills from database
-  const { data: skills, isLoading } = trpc.skills.listFromDb.useQuery({
+  const { data: skills, isLoading, isError: isSkillsError, error: skillsError, refetch: refetchSkills } = trpc.skills.listFromDb.useQuery({
     category: filterCategory !== "all" ? filterCategory : undefined,
     search: searchQuery || undefined,
     enabledOnly: showEnabledOnly || undefined,
   });
+  const { data: billingReconciliation, refetch: refetchBillingReconciliation } = trpc.skills.getBillingReconciliation.useQuery(undefined, {
+    enabled: isAdmin,
+    staleTime: 30_000,
+  });
+  const { data: revenueReport, refetch: refetchRevenueReport } = trpc.skills.getRevenueReport.useQuery({
+    startDate: revenueStartDate || undefined,
+    endDate: revenueEndDate || undefined,
+    limit: 100,
+  }, {
+    enabled: isAdmin,
+    staleTime: 30_000,
+  });
+
+  const visibleSkillIds = useMemo(() => (skills ?? []).map((skill) => skill.id), [skills]);
+  const allVisibleSkillsSelected = visibleSkillIds.length > 0 && visibleSkillIds.every((id) => selectedSkillIds.includes(id));
+  const someVisibleSkillsSelected = visibleSkillIds.some((id) => selectedSkillIds.includes(id));
+
+  useEffect(() => {
+    const visibleIds = new Set(visibleSkillIds);
+    setSelectedSkillIds((current) => current.filter((id) => visibleIds.has(id)));
+  }, [visibleSkillIds]);
 
   const createSkillBasicIssues = useMemo(() => {
     const issues: string[] = [];
@@ -2581,6 +2617,126 @@ export default function AdminSkills() {
     },
   });
 
+  const bulkUpdatePricingMutation = trpc.skills.bulkUpdatePricing.useMutation({
+    onSuccess: (result) => {
+      utils.skills.listFromDb.invalidate();
+      setSkillPricingDrafts({});
+      setSelectedSkillIds([]);
+      setBulkTenantCreditCost("");
+      setBulkSkillOwnerCreditCost("");
+      toast({
+        title: "Pricing updated",
+        description: result.updatedCount === result.requestedCount
+          ? `${result.updatedCount} skill${result.updatedCount === 1 ? "" : "s"} updated successfully.`
+          : `${result.updatedCount} of ${result.requestedCount} skills updated.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to update pricing",
+        description: error.message || "Failed to update skill pricing",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateSkillPricingDraft = (skillId: number, field: keyof SkillPricingDraft, value: string) => {
+    setSkillPricingDrafts((current) => ({
+      ...current,
+      [skillId]: {
+        ...current[skillId],
+        [field]: value,
+      },
+    }));
+  };
+
+  const applyBulkPricingDraft = () => {
+    const tenantValue = bulkTenantCreditCost.trim();
+    const skillOwnerValue = bulkSkillOwnerCreditCost.trim();
+    if (selectedSkillIds.length === 0) {
+      toast({ title: "Select skills first", description: "Select one or more skills before applying bulk pricing." });
+      return;
+    }
+    if (!tenantValue && !skillOwnerValue) {
+      toast({
+        title: "No pricing value",
+        description: "Enter at least one credit value. Leave a field blank to keep its current value.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSkillPricingDrafts((current) => {
+      const next = { ...current };
+      for (const skillId of selectedSkillIds) {
+        next[skillId] = {
+          ...next[skillId],
+          ...(tenantValue ? { tenantCreditCost: tenantValue } : {}),
+          ...(skillOwnerValue ? { skillOwnerCreditCost: skillOwnerValue } : {}),
+        };
+      }
+      return next;
+    });
+  };
+
+  const savePricingDrafts = () => {
+    const skillsById = new Map((skills ?? []).map((skill) => [skill.id, skill]));
+    const updates: Array<{
+      id: number;
+      tenantCreditCost?: number;
+      skillOwnerCreditCost?: number;
+    }> = [];
+
+    for (const [idText, draft] of Object.entries(skillPricingDrafts)) {
+      const id = Number(idText);
+      const skill = skillsById.get(id);
+      if (!skill) continue;
+
+      const update: (typeof updates)[number] = { id };
+      for (const [field, rawValue] of Object.entries(draft) as Array<[keyof SkillPricingDraft, string | undefined]>) {
+        const trimmedValue = rawValue?.trim() ?? "";
+        if (!trimmedValue) continue;
+        const value = Number(trimmedValue);
+        if (!Number.isInteger(value) || value < 0 || value > 100000) {
+          toast({
+            title: "Invalid credit value",
+            description: `${field === "tenantCreditCost" ? "Tenant owner" : "Skill owner"} credits must be an integer from 0 to 100,000.`,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const currentValue = field === "tenantCreditCost"
+          ? (skill.tenantCreditCost ?? 2)
+          : (skill.skillOwnerCreditCost ?? 0);
+        if (value !== currentValue) {
+          update[field] = value;
+        }
+      }
+
+      if (update.tenantCreditCost !== undefined || update.skillOwnerCreditCost !== undefined) {
+        updates.push(update);
+      }
+    }
+
+    if (updates.length === 0) {
+      toast({ title: "No changes to save", description: "Change at least one pricing value before saving." });
+      return;
+    }
+
+    bulkUpdatePricingMutation.mutate({ updates });
+  };
+
+  const pendingPricingDraftCount = useMemo(() => {
+    const skillsById = new Map((skills ?? []).map((skill) => [skill.id, skill]));
+    return Object.entries(skillPricingDrafts).filter(([idText, draft]) => {
+      const skill = skillsById.get(Number(idText));
+      if (!skill) return false;
+      return (draft.tenantCreditCost !== undefined && draft.tenantCreditCost.trim() !== String(skill.tenantCreditCost ?? 2))
+        || (draft.skillOwnerCreditCost !== undefined && draft.skillOwnerCreditCost.trim() !== String(skill.skillOwnerCreditCost ?? 0));
+    }).length;
+  }, [skillPricingDrafts, skills]);
+
   const toggleEnabledMutation = trpc.skills.toggleEnabled.useMutation({
     onSuccess: (updatedSkill) => {
       utils.skills.listFromDb.invalidate();
@@ -2975,6 +3131,8 @@ export default function AdminSkills() {
       enabledByDefault: true,
       visibleByDefault: true,
       creditMultiplier: 1.0,
+      tenantCreditCost: 2,
+      skillOwnerCreditCost: 0,
       priority: 50,
       executionMode: "llm-only" as SkillExecutionMode,
       sandboxProfileSlug: null,
@@ -3135,6 +3293,8 @@ export default function AdminSkills() {
       enabledByDefault: editingSkill.enabledByDefault,
       visibleByDefault: editingSkill.visibleByDefault,
       creditMultiplier: editingSkill.creditMultiplier,
+      tenantCreditCost: editingSkill.tenantCreditCost ?? 2,
+      skillOwnerCreditCost: editingSkill.skillOwnerCreditCost ?? 0,
       priority: editingSkill.priority,
       defaultModel: editingSkill.defaultModel,
       llmModelId: editingSkill.llmModelId ?? editingSkill.defaultModel,
@@ -3419,6 +3579,102 @@ export default function AdminSkills() {
             </div>
           </DashboardCard>
 
+          <DashboardCard
+            title="Skill billing integrity"
+            description="รายการเก่าที่ระบบยังจับคู่กับ skill registry ไม่ได้จะไม่ถูกนำไปสร้างรายได้อัตโนมัติ"
+          >
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Unmapped legacy usage</div>
+                  <div className="text-xl font-semibold">{billingReconciliation?.unmappedUsageCount ?? "—"}</div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Unknown skill slug</div>
+                  <div className="text-xl font-semibold">{billingReconciliation?.unknownSkillSlugCount ?? "—"}</div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Incomplete settlements</div>
+                  <div className="text-xl font-semibold">{billingReconciliation?.incompleteSettlementCount ?? "—"}</div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">Open refund debt</div>
+                  <div className="text-xl font-semibold">
+                    {billingReconciliation ? `${billingReconciliation.openDebtCount} รายการ / ${billingReconciliation.openDebtCredits} เครดิต` : "—"}
+                  </div>
+                </div>
+              </div>
+              {billingReconciliation && (billingReconciliation.unmappedUsageCount > 0 || billingReconciliation.unknownSkillSlugCount > 0) && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                  รายการ legacy เหล่านี้ต้อง register/จับคู่แบบตรวจสอบได้ก่อน จึงจะนับรายได้ได้ เพื่อป้องกันการสร้างรายได้เกินจริง
+                  {billingReconciliation.unknownSkillSlugSamples.length > 0 && (
+                    <div className="mt-1 break-words">Unknown slugs: {billingReconciliation.unknownSkillSlugSamples.join(", ")}</div>
+                  )}
+                </div>
+              )}
+              <Button type="button" variant="outline" size="sm" onClick={() => void refetchBillingReconciliation()}>
+                <RefreshCw className="mr-2 h-4 w-4" /> ตรวจสอบ ledger อีกครั้ง
+              </Button>
+            </div>
+          </DashboardCard>
+
+          <DashboardCard
+            title="Skill revenue report"
+            description="สรุปจาก skill_revenue_settlements เท่านั้น รวมรายการ refund เป็นยอดติดลบ"
+          >
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="revenue-start-date">ตั้งแต่</Label>
+                  <Input id="revenue-start-date" type="date" value={revenueStartDate} onChange={(event) => setRevenueStartDate(event.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="revenue-end-date">ถึง</Label>
+                  <Input id="revenue-end-date" type="date" value={revenueEndDate} onChange={(event) => setRevenueEndDate(event.target.value)} />
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => void refetchRevenueReport()}>
+                  <RefreshCw className="mr-2 h-4 w-4" /> รีเฟรชรายงาน
+                </Button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Tenant revenue</div><div className="text-xl font-semibold">{revenueReport?.summary.tenantCredits ?? "—"}</div></div>
+                <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Skill owner revenue</div><div className="text-xl font-semibold">{revenueReport?.summary.skillOwnerCredits ?? "—"}</div></div>
+                <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Net skill revenue</div><div className="text-xl font-semibold">{revenueReport?.summary.totalCredits ?? "—"}</div></div>
+              </div>
+              <div className="overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>เวลา</TableHead>
+                      <TableHead>Skill</TableHead>
+                      <TableHead>Tenant</TableHead>
+                      <TableHead>Skill owner</TableHead>
+                      <TableHead>รวม</TableHead>
+                      <TableHead>สถานะ</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {revenueReport?.rows.length ? revenueReport.rows.slice(0, 20).map((row) => {
+                      const sign = row.status === "reversed" ? -1 : 1;
+                      return (
+                        <TableRow key={row.id}>
+                          <TableCell className="whitespace-nowrap text-xs">{new Date(row.createdAt).toLocaleString()}</TableCell>
+                          <TableCell><div className="font-medium">{row.skillName || row.skillSlug}</div><div className="text-xs text-muted-foreground">{row.skillSlug}</div></TableCell>
+                          <TableCell>{sign * row.tenantCredits}</TableCell>
+                          <TableCell>{sign * row.skillOwnerCredits}</TableCell>
+                          <TableCell className="font-medium">{sign * row.totalCredits}</TableCell>
+                          <TableCell><Badge variant={row.status === "reversed" ? "destructive" : "outline"}>{row.status}</Badge></TableCell>
+                        </TableRow>
+                      );
+                    }) : (
+                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">ยังไม่มี settlement ตามช่วงเวลาที่เลือก</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </DashboardCard>
+
           {/* Skills List */}
           <DashboardCard
             title={t("admin.skillsPage.library.title")}
@@ -3428,16 +3684,107 @@ export default function AdminSkills() {
                 <div className="flex items-center justify-center py-8">
                   <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
+              ) : isSkillsError ? (
+                <div className="flex flex-col items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-8 text-center" role="alert">
+                  <XCircle className="h-8 w-8 text-destructive" />
+                  <div>
+                    <p className="font-medium">Unable to load skills</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{skillsError?.message || "Please try again."}</p>
+                  </div>
+                  <Button variant="outline" onClick={() => refetchSkills()}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Retry
+                  </Button>
+                </div>
               ) : (
+                <>
+                  {(skills?.length ?? 0) > 0 && (
+                    <div className="mb-4 space-y-3 rounded-lg border border-border/70 bg-muted/20 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium">แก้ไขเครดิตหลายรายการ</p>
+                          <p className="text-sm text-muted-foreground">
+                            เลือก {selectedSkillIds.length} จาก {skills?.length ?? 0} รายการที่กำลังแสดง
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedSkillIds(allVisibleSkillsSelected ? [] : visibleSkillIds)}
+                          >
+                            {allVisibleSkillsSelected ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมดที่แสดง"}
+                          </Button>
+                          {pendingPricingDraftCount > 0 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={savePricingDrafts}
+                              disabled={bulkUpdatePricingMutation.isPending}
+                            >
+                              {bulkUpdatePricingMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              บันทึก {pendingPricingDraftCount} รายการ
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {selectedSkillIds.length > 0 && (
+                        <div className="grid gap-3 border-t border-border/60 pt-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="bulk-tenant-credit-cost">Tenant owner credits / run</Label>
+                            <Input
+                              id="bulk-tenant-credit-cost"
+                              type="number"
+                              min={0}
+                              max={100000}
+                              step={1}
+                              inputMode="numeric"
+                              placeholder="ไม่เปลี่ยนค่าเดิม"
+                              value={bulkTenantCreditCost}
+                              onChange={(event) => setBulkTenantCreditCost(event.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="bulk-skill-owner-credit-cost">Skill owner credits / run</Label>
+                            <Input
+                              id="bulk-skill-owner-credit-cost"
+                              type="number"
+                              min={0}
+                              max={100000}
+                              step={1}
+                              inputMode="numeric"
+                              placeholder="ไม่เปลี่ยนค่าเดิม"
+                              value={bulkSkillOwnerCreditCost}
+                              onChange={(event) => setBulkSkillOwnerCreditCost(event.target.value)}
+                            />
+                          </div>
+                          <Button type="button" variant="secondary" onClick={applyBulkPricingDraft}>
+                            ใช้กับรายการที่เลือก
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={allVisibleSkillsSelected ? true : someVisibleSkillsSelected ? "indeterminate" : false}
+                          onCheckedChange={(checked) => setSelectedSkillIds(checked === true ? visibleSkillIds : [])}
+                          aria-label="Select all visible skills"
+                        />
+                      </TableHead>
                       <TableHead>{t("admin.skillsPage.library.headers.name")}</TableHead>
                       <TableHead>{t("admin.skillsPage.library.headers.owner")}</TableHead>
                       <TableHead>{t("admin.skillsPage.library.headers.visibility")}</TableHead>
                       <TableHead>{t("admin.skillsPage.library.headers.category")}</TableHead>
                       <TableHead>{t("admin.skillsPage.library.headers.autoTrigger")}</TableHead>
                       <TableHead>{t("admin.skillsPage.library.headers.credits")}</TableHead>
+                      <TableHead>Revenue / run</TableHead>
                       <TableHead>{t("admin.skillsPage.library.headers.priority")}</TableHead>
                       <TableHead>{t("admin.skillsPage.library.headers.status")}</TableHead>
                       <TableHead>{t("admin.skillsPage.library.headers.source")}</TableHead>
@@ -3448,15 +3795,34 @@ export default function AdminSkills() {
                   <TableBody>
                     {skills?.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={11} className="text-center text-muted-foreground">
+                        <TableCell colSpan={13} className="text-center text-muted-foreground">
                           {t("admin.skillsPage.library.empty")}
                         </TableCell>
                       </TableRow>
                     ) : (
                       skills?.map((skill) => {
                         const productionReferenceStoryboard = getProductionReferenceStoryboardConfig((skill as any).configJson ?? null);
+                        const pricingDraft = skillPricingDrafts[skill.id];
+                        const tenantCreditValue = pricingDraft?.tenantCreditCost ?? String(skill.tenantCreditCost ?? 2);
+                        const skillOwnerCreditValue = pricingDraft?.skillOwnerCreditCost ?? String(skill.skillOwnerCreditCost ?? 0);
+                        const tenantCreditNumber = tenantCreditValue.trim() === "" ? (skill.tenantCreditCost ?? 2) : Number(tenantCreditValue);
+                        const skillOwnerCreditNumber = skillOwnerCreditValue.trim() === "" ? (skill.skillOwnerCreditCost ?? 0) : Number(skillOwnerCreditValue);
+                        const totalCreditValue = Number.isFinite(tenantCreditNumber) && Number.isFinite(skillOwnerCreditNumber)
+                          ? tenantCreditNumber + skillOwnerCreditNumber
+                          : "—";
                         return (
                         <TableRow key={skill.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedSkillIds.includes(skill.id)}
+                              onCheckedChange={(checked) => setSelectedSkillIds((current) => (
+                                checked === true
+                                  ? [...new Set([...current, skill.id])]
+                                  : current.filter((id) => id !== skill.id)
+                              ))}
+                              aria-label={`Select ${skill.name}`}
+                            />
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               {getCategoryIcon(skill.category)}
@@ -3527,6 +3893,41 @@ export default function AdminSkills() {
                             <span className={skill.creditMultiplier > 1 ? "text-orange-600 font-medium" : ""}>
                               {skill.creditMultiplier}x
                             </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="min-w-[170px] space-y-1.5 text-xs">
+                              <div className="flex items-center gap-2">
+                                <label htmlFor={`tenant-credit-${skill.id}`} className="w-14 shrink-0 text-muted-foreground">Tenant</label>
+                                <Input
+                                  id={`tenant-credit-${skill.id}`}
+                                  type="number"
+                                  min={0}
+                                  max={100000}
+                                  step={1}
+                                  inputMode="numeric"
+                                  value={tenantCreditValue}
+                                  onChange={(event) => updateSkillPricingDraft(skill.id, "tenantCreditCost", event.target.value)}
+                                  className={cn("h-7 w-24 px-2 text-right", pricingDraft?.tenantCreditCost !== undefined && "border-amber-400 bg-amber-50/50")}
+                                  aria-label={`Tenant owner credits per run for ${skill.name}`}
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <label htmlFor={`skill-owner-credit-${skill.id}`} className="w-14 shrink-0 text-muted-foreground">Skill</label>
+                                <Input
+                                  id={`skill-owner-credit-${skill.id}`}
+                                  type="number"
+                                  min={0}
+                                  max={100000}
+                                  step={1}
+                                  inputMode="numeric"
+                                  value={skillOwnerCreditValue}
+                                  onChange={(event) => updateSkillPricingDraft(skill.id, "skillOwnerCreditCost", event.target.value)}
+                                  className={cn("h-7 w-24 px-2 text-right", pricingDraft?.skillOwnerCreditCost !== undefined && "border-amber-400 bg-amber-50/50")}
+                                  aria-label={`Skill owner credits per run for ${skill.name}`}
+                                />
+                              </div>
+                              <div className="font-semibold">Total: {totalCreditValue}</div>
+                            </div>
                           </TableCell>
                           <TableCell>{skill.priority}</TableCell>
                           <TableCell>
@@ -3725,6 +4126,7 @@ export default function AdminSkills() {
                     )}
                   </TableBody>
                 </Table>
+                </>
               )}
           </DashboardCard>
         </TabsContent>
@@ -6235,6 +6637,30 @@ export default function AdminSkills() {
                         }
                       />
                     </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="tenantCreditCost">Tenant owner credits / run</Label>
+                      <Input
+                        id="tenantCreditCost"
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={newSkillData.tenantCreditCost}
+                        onChange={(e) => setNewSkillData({ ...newSkillData, tenantCreditCost: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="skillOwnerCreditCost">Skill owner credits / run</Label>
+                      <Input
+                        id="skillOwnerCreditCost"
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={newSkillData.skillOwnerCreditCost}
+                        onChange={(e) => setNewSkillData({ ...newSkillData, skillOwnerCreditCost: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                      />
+                    </div>
                   </div>
 
                   {newSkillData.bundleType === "native" ? (
@@ -6832,6 +7258,30 @@ export default function AdminSkills() {
                     onChange={(e) =>
                       setEditingSkill({ ...editingSkill, creditMultiplier: parseFloat(e.target.value) || 1 })
                     }
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-tenantCreditCost">Tenant owner credits / run</Label>
+                  <Input
+                    id="edit-tenantCreditCost"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={editingSkill.tenantCreditCost ?? 2}
+                    onChange={(e) => setEditingSkill({ ...editingSkill, tenantCreditCost: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-skillOwnerCreditCost">Skill owner credits / run</Label>
+                  <Input
+                    id="edit-skillOwnerCreditCost"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={editingSkill.skillOwnerCreditCost ?? 0}
+                    onChange={(e) => setEditingSkill({ ...editingSkill, skillOwnerCreditCost: Math.max(0, parseInt(e.target.value, 10) || 0) })}
                   />
                 </div>
               </div>

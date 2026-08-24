@@ -25,6 +25,7 @@ import {
   FileText,
   PenLine,
   BookOpen,
+  Coins,
 } from "lucide-react";
 import InviteCodeManager from "@/components/admin/InviteCodeManager";
 import InviteCodeDashboard from "@/components/admin/InviteCodeDashboard";
@@ -166,6 +167,13 @@ export default function DomainAdmin() {
               >
                 <PenLine className="w-4 h-4 mr-2" />
                 Manage Blog
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setLocation('/domain-admin/skill-revenue')}
+              >
+                <Coins className="w-4 h-4 mr-2" />
+                Skill Revenue
               </Button>
             </div>
           </div>

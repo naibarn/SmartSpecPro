@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
+import { router, protectedProcedure, adminProcedure, domainAdminProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import {
   autoSyncSkillsFromFolder,
@@ -36,14 +36,16 @@ import {
   skillImprovementRecommendations,
   skillImprovementRuns,
   skillMaintenanceSchedules,
+  skillRevenueSettlements,
   skillPermissions,
   userGroups,
   users as usersTable,
   type Skill,
   type InsertSkill,
 } from "../../drizzle/schema";
-import { eq, asc, desc, like, ilike, or, and, sql, inArray } from "drizzle-orm";
+import { aliasedTable, eq, asc, desc, gte, lte, like, ilike, or, and, sql, inArray } from "drizzle-orm";
 import { deductCredits, calculateCreditsForLLM, hasEnoughCredits } from "../services/creditService";
+import { getSkillBillingReconciliation, normalizeSkillRevenuePricing, resolveSkillRevenueReportTenantScope } from "../services/skillRevenueBilling";
 import { executeWithFallback, getProviderForModel } from "../services/llmRouter";
 import { buildModelLookupCandidates } from "../services/modelLookup";
 import { getUploadsDir } from "../storage";
@@ -3229,7 +3231,7 @@ export const skillsRouter = router({
         throw new TRPCError({ code: "UNAUTHORIZED", message: "User not authenticated" });
       }
 
-      const hasCredits = await hasEnoughCredits(userId, 1);
+      const hasCredits = await hasEnoughCredits(userId, normalizeSkillRevenuePricing({}).totalCredits);
       if (!hasCredits) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient credits" });
       }
@@ -3346,7 +3348,9 @@ export const skillsRouter = router({
           userId,
           amount: creditsUsed,
           description: "Storyboard video prompt from start/end frames",
+          skillSlug: "storyboard-video-customer-journey-prompt",
           sourceType: "skill",
+          tenantId: ctx.tenantId,
           metadata: {
             model: visionModel,
             llmModel: visionModel,
@@ -3407,7 +3411,7 @@ export const skillsRouter = router({
         throw new TRPCError({ code: "UNAUTHORIZED", message: "User not authenticated" });
       }
 
-      const hasCredits = await hasEnoughCredits(userId, 1);
+      const hasCredits = await hasEnoughCredits(userId, normalizeSkillRevenuePricing({}).totalCredits);
       if (!hasCredits) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient credits" });
       }
@@ -3796,6 +3800,7 @@ export const skillsRouter = router({
           description: "Storyboard customer journey video prompt plan",
           skillSlug,
           sourceType: "skill",
+          tenantId: ctx.tenantId,
           metadata: {
             model: visionModel,
             llmModel: visionModel,
@@ -3863,7 +3868,7 @@ export const skillsRouter = router({
         };
       }
 
-      const hasCredits = await hasEnoughCredits(userId, 1);
+      const hasCredits = await hasEnoughCredits(userId, normalizeSkillRevenuePricing({}).totalCredits);
       if (!hasCredits) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient credits" });
       }
@@ -3927,7 +3932,7 @@ export const skillsRouter = router({
       }
 
       // Check if user has enough credits
-      const hasCredits = await hasEnoughCredits(userId, 1);
+      const hasCredits = await hasEnoughCredits(userId, normalizeSkillRevenuePricing({}).totalCredits);
       if (!hasCredits) {
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -4037,6 +4042,7 @@ export const skillsRouter = router({
               description: `Auto Prompt enhancement (${skillName})`,
               skillSlug: resolvedSkillId,
               sourceType: "skill",
+              tenantId: ctx.tenantId,
               metadata: {
                 model: visionModel,
                 llmModel: visionModel,
@@ -4170,15 +4176,6 @@ export const skillsRouter = router({
         });
       }
 
-      // Check credits
-      const hasCredits = await hasEnoughCredits(userId, 1);
-      if (!hasCredits) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Insufficient credits",
-        });
-      }
-
       // Sync skill if contentHash changed (ensures latest skill.md is used)
       const syncResult = await syncSingleSkillIfChanged(input.skillId);
       if (syncResult.synced) {
@@ -4206,6 +4203,8 @@ export const skillsRouter = router({
           strictProviderPin: skills.strictProviderPin,
           executionMode: skills.executionMode,
           executionPolicyJson: skills.executionPolicyJson,
+          tenantCreditCost: skills.tenantCreditCost,
+          skillOwnerCreditCost: skills.skillOwnerCreditCost,
         })
         .from(skills)
         .where(and(eq(skills.slug, input.skillId), eq(skills.isEnabled, true)))
@@ -4215,6 +4214,15 @@ export const skillsRouter = router({
         throw new TRPCError({
           code: "NOT_FOUND",
           message: `Skill '${input.skillId}' not found`,
+        });
+      }
+
+      const fixedSkillCredits = normalizeSkillRevenuePricing(skill).totalCredits;
+      const hasCredits = await hasEnoughCredits(userId, fixedSkillCredits);
+      if (!hasCredits) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Insufficient credits. Need ${fixedSkillCredits} credits to run this skill.`,
         });
       }
 
@@ -4354,6 +4362,7 @@ export const skillsRouter = router({
           description: `Skill execution: ${skill.name}`,
           skillSlug: input.skillId,
           sourceType: "skill",
+          tenantId: ctx.tenantId,
           metadata: {
             skill: input.skillId,
             skillName: skill.name,
@@ -4567,6 +4576,7 @@ export const skillsRouter = router({
               description: `Skill execution: ${skill.name}`,
               skillSlug: input.skillId,
               sourceType: "skill",
+              tenantId: ctx.tenantId,
               metadata: {
                 model: visionModel,
                 llmModel: visionModel,
@@ -5158,6 +5168,8 @@ export const skillsRouter = router({
         author: sanitizeBrandText(skill.author || ""),
         marketplaceContent: skill.marketplaceContent ? sanitizeBrandText(skill.marketplaceContent) : null,
         creditMultiplier: Number(skill.creditMultiplier) || 1,
+        tenantCreditCost: Number.isInteger(skill.tenantCreditCost) ? skill.tenantCreditCost : 2,
+        skillOwnerCreditCost: Number.isInteger(skill.skillOwnerCreditCost) ? skill.skillOwnerCreditCost : 0,
         tags: skill.tags || [],
         triggerPatterns: skill.triggerPatterns || [],
         hasLocalFolder: hasRelativeSkillManifest(path.join("skills", skill.slug)),
@@ -5169,6 +5181,93 @@ export const skillsRouter = router({
           (getSkillById(skill.slug) as Record<string, unknown> | undefined)?.nativeSubagentNames ??
           [],
       }));
+    }),
+
+  /** Admin-only, read-only view of unmapped and refund-debt billing gaps. */
+  getBillingReconciliation: adminProcedure.query(async () => {
+    try {
+      return await getSkillBillingReconciliation();
+    } catch (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: error instanceof Error ? error.message : "Failed to read skill billing reconciliation",
+      });
+    }
+  }),
+
+  /** Revenue ledger scoped to the current admin surface. */
+  getRevenueReport: domainAdminProcedure
+    .input(z.object({
+      startDate: z.string().date().optional(),
+      endDate: z.string().date().optional(),
+      limit: z.number().int().min(1).max(200).default(100),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const conditions = [];
+      const scopedTenantId = resolveSkillRevenueReportTenantScope({
+        role: ctx.user.role,
+        tenantId: ctx.tenantId,
+        currentTenantId: ctx.user.currentTenantId,
+      });
+      if (ctx.user.role === "domain_admin" && !scopedTenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      }
+      if (scopedTenantId) conditions.push(eq(skillRevenueSettlements.tenantId, scopedTenantId));
+      if (input?.startDate) conditions.push(gte(skillRevenueSettlements.createdAt, new Date(`${input.startDate}T00:00:00.000Z`)));
+      if (input?.endDate) conditions.push(lte(skillRevenueSettlements.createdAt, new Date(`${input.endDate}T23:59:59.999Z`)));
+      const tenantOwnerUsers = aliasedTable(usersTable, "skill_revenue_tenant_owner");
+      const skillOwnerUsers = aliasedTable(usersTable, "skill_revenue_skill_owner");
+      let query = dbInstance
+        .select({
+          id: skillRevenueSettlements.id,
+          runId: skillRevenueSettlements.runId,
+          skillSlug: skillRevenueSettlements.skillSlug,
+          skillName: skills.name,
+          tenantId: skillRevenueSettlements.tenantId,
+          userId: skillRevenueSettlements.userId,
+          tenantOwnerId: skillRevenueSettlements.tenantOwnerId,
+          skillOwnerId: skillRevenueSettlements.skillOwnerId,
+          tenantOwnerName: tenantOwnerUsers.name,
+          tenantOwnerEmail: tenantOwnerUsers.email,
+          skillOwnerName: skillOwnerUsers.name,
+          skillOwnerEmail: skillOwnerUsers.email,
+          tenantCredits: skillRevenueSettlements.tenantCredits,
+          skillOwnerCredits: skillRevenueSettlements.skillOwnerCredits,
+          totalCredits: skillRevenueSettlements.totalCredits,
+          status: skillRevenueSettlements.status,
+          createdAt: skillRevenueSettlements.createdAt,
+        })
+        .from(skillRevenueSettlements)
+        .leftJoin(skills, eq(skillRevenueSettlements.skillId, skills.id))
+        .leftJoin(tenantOwnerUsers, eq(skillRevenueSettlements.tenantOwnerId, tenantOwnerUsers.id))
+        .leftJoin(skillOwnerUsers, eq(skillRevenueSettlements.skillOwnerId, skillOwnerUsers.id));
+      if (conditions.length > 0) query = query.where(and(...conditions)) as typeof query;
+      query = query.orderBy(desc(skillRevenueSettlements.createdAt)).limit(input?.limit ?? 100) as typeof query;
+      const rows = await query;
+      let summaryQuery = dbInstance
+        .select({
+          runCount: sql<number>`COUNT(*)`,
+          tenantCredits: sql<number>`COALESCE(SUM(CASE WHEN ${skillRevenueSettlements.status} = 'reversed' THEN -${skillRevenueSettlements.tenantCredits} ELSE ${skillRevenueSettlements.tenantCredits} END), 0)`,
+          skillOwnerCredits: sql<number>`COALESCE(SUM(CASE WHEN ${skillRevenueSettlements.status} = 'reversed' THEN -${skillRevenueSettlements.skillOwnerCredits} ELSE ${skillRevenueSettlements.skillOwnerCredits} END), 0)`,
+          totalCredits: sql<number>`COALESCE(SUM(CASE WHEN ${skillRevenueSettlements.status} = 'reversed' THEN -${skillRevenueSettlements.totalCredits} ELSE ${skillRevenueSettlements.totalCredits} END), 0)`,
+        })
+        .from(skillRevenueSettlements);
+      if (conditions.length > 0) summaryQuery = summaryQuery.where(and(...conditions)) as typeof summaryQuery;
+      const [summaryRow] = await summaryQuery;
+      const summary = {
+        runCount: Number(summaryRow?.runCount) || 0,
+        tenantCredits: Number(summaryRow?.tenantCredits) || 0,
+        skillOwnerCredits: Number(summaryRow?.skillOwnerCredits) || 0,
+        totalCredits: Number(summaryRow?.totalCredits) || 0,
+      };
+      return {
+        scope: scopedTenantId ? "tenant" as const : "system" as const,
+        tenantId: scopedTenantId,
+        rows,
+        summary,
+      };
     }),
 
   /**
@@ -5201,6 +5300,8 @@ export const skillsRouter = router({
         author: sanitizeBrandText(skill.author || ""),
         marketplaceContent: skill.marketplaceContent ? sanitizeBrandText(skill.marketplaceContent) : null,
         creditMultiplier: Number(skill.creditMultiplier) || 1,
+        tenantCreditCost: Number.isInteger(skill.tenantCreditCost) ? skill.tenantCreditCost : 2,
+        skillOwnerCreditCost: Number.isInteger(skill.skillOwnerCreditCost) ? skill.skillOwnerCreditCost : 0,
         tags: skill.tags || [],
         triggerPatterns: skill.triggerPatterns || [],
         nativeBundleReady: getSkillById(skill.slug)?.nativeBundleReady ?? false,
@@ -5239,6 +5340,8 @@ export const skillsRouter = router({
           enabledByDefault: skills.enabledByDefault,
           visibleByDefault: skills.visibleByDefault,
           creditMultiplier: skills.creditMultiplier,
+          tenantCreditCost: skills.tenantCreditCost,
+          skillOwnerCreditCost: skills.skillOwnerCreditCost,
           priority: skills.priority,
           availableModels: skills.availableModels,
           defaultModel: skills.defaultModel,
@@ -5277,6 +5380,8 @@ export const skillsRouter = router({
         marketplaceContent: skill.marketplaceContent ? sanitizeBrandText(skill.marketplaceContent) : null,
         ownerName: skill.ownerName ? sanitizeBrandText(skill.ownerName) : null,
         creditMultiplier: Number(skill.creditMultiplier) || 1,
+        tenantCreditCost: Number.isInteger(skill.tenantCreditCost) ? skill.tenantCreditCost : 2,
+        skillOwnerCreditCost: Number.isInteger(skill.skillOwnerCreditCost) ? skill.skillOwnerCreditCost : 0,
         tags: skill.tags || [],
         triggerPatterns: skill.triggerPatterns || [],
       }));
@@ -5559,6 +5664,8 @@ export const skillsRouter = router({
         enabledByDefault: z.boolean().optional(),
         visibleByDefault: z.boolean().optional(),
         creditMultiplier: z.number().min(0).max(100).optional(),
+        tenantCreditCost: z.number().int().min(0).max(100000).optional(),
+        skillOwnerCreditCost: z.number().int().min(0).max(100000).optional(),
         priority: z.number().min(0).max(100).optional(),
         systemPrompt: z.string().optional(),
         skillContent: z.string().optional(),
@@ -5694,6 +5801,9 @@ export const skillsRouter = router({
             enabledByDefault: input.enabledByDefault ?? true,
             visibleByDefault: input.visibleByDefault ?? true,
             creditMultiplier: String(input.creditMultiplier ?? 1.0),
+            tenantCreditCost: input.tenantCreditCost ?? 2,
+            tenantCreditPricingSource: input.tenantCreditCost !== undefined ? "admin_override" : "default",
+            skillOwnerCreditCost: input.skillOwnerCreditCost ?? 0,
             priority: input.priority ?? 50,
             systemPrompt: input.systemPrompt,
             skillContent: input.skillContent,
@@ -5790,6 +5900,8 @@ export const skillsRouter = router({
         enabledByDefault: z.boolean().optional(),
         visibleByDefault: z.boolean().optional(),
         creditMultiplier: z.number().min(0).max(100).optional(),
+        tenantCreditCost: z.number().int().min(0).max(100000).optional(),
+        skillOwnerCreditCost: z.number().int().min(0).max(100000).optional(),
         priority: z.number().min(0).max(100).optional(),
         defaultModel: z.string().nullable().optional(),
         llmModelId: z.string().nullable().optional(),
@@ -5935,6 +6047,11 @@ export const skillsRouter = router({
       if (updateData.enabledByDefault !== undefined) updateObj.enabledByDefault = updateData.enabledByDefault;
       if (updateData.visibleByDefault !== undefined) updateObj.visibleByDefault = updateData.visibleByDefault;
       if (updateData.creditMultiplier !== undefined) updateObj.creditMultiplier = String(updateData.creditMultiplier);
+      if (updateData.tenantCreditCost !== undefined) {
+        updateObj.tenantCreditCost = updateData.tenantCreditCost;
+        updateObj.tenantCreditPricingSource = "admin_override";
+      }
+      if (updateData.skillOwnerCreditCost !== undefined) updateObj.skillOwnerCreditCost = updateData.skillOwnerCreditCost;
       if (updateData.priority !== undefined) updateObj.priority = updateData.priority;
       if (updateData.defaultModel !== undefined) updateObj.defaultModel = updateData.defaultModel;
       if (updateData.llmModelId !== undefined) updateObj.llmModelId = updateData.llmModelId;
@@ -6105,6 +6222,69 @@ export const skillsRouter = router({
       await refreshSkillCache();
 
       return updated;
+    }),
+
+  /**
+   * Update pricing for multiple skills in one atomic request (admin only).
+   * Each row may provide either pricing field independently.
+   */
+  bulkUpdatePricing: adminProcedure
+    .input(
+      z.object({
+        updates: z.array(
+          z.object({
+            id: z.number().int().positive(),
+            tenantCreditCost: z.number().int().min(0).max(100000).optional(),
+            skillOwnerCreditCost: z.number().int().min(0).max(100000).optional(),
+          }).refine(
+            (value) => value.tenantCreditCost !== undefined || value.skillOwnerCreditCost !== undefined,
+            { message: "Each skill update must include at least one pricing field" },
+          ),
+        ).min(1).max(500),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const updatesById = new Map(input.updates.map((update) => [update.id, update]));
+      const updates = [...updatesById.values()];
+      const ids = updates.map((update) => update.id);
+      const tenantUpdates = updates.filter((update) => update.tenantCreditCost !== undefined);
+      const skillOwnerUpdates = updates.filter((update) => update.skillOwnerCreditCost !== undefined);
+      const updateSet: Record<string, any> = { updatedAt: new Date() };
+
+      if (tenantUpdates.length > 0) {
+        updateSet.tenantCreditPricingSource = "admin_override";
+      }
+
+      if (tenantUpdates.length > 0) {
+        updateSet.tenantCreditCost = sql`case ${sql.join(
+          tenantUpdates.map((update) => sql`when ${skills.id} = ${update.id} then ${update.tenantCreditCost}`),
+          sql.raw(" "),
+        )} else ${skills.tenantCreditCost} end`;
+      }
+
+      if (skillOwnerUpdates.length > 0) {
+        updateSet.skillOwnerCreditCost = sql`case ${sql.join(
+          skillOwnerUpdates.map((update) => sql`when ${skills.id} = ${update.id} then ${update.skillOwnerCreditCost}`),
+          sql.raw(" "),
+        )} else ${skills.skillOwnerCreditCost} end`;
+      }
+
+      const updated = await dbInstance.transaction(async (tx) => tx
+        .update(skills)
+        .set(updateSet)
+        .where(inArray(skills.id, ids))
+        .returning({ id: skills.id }));
+
+      await refreshSkillCache();
+
+      return {
+        requestedCount: ids.length,
+        updatedCount: updated.length,
+        missingSkillIds: ids.filter((id) => !updated.some((row) => row.id === id)),
+      };
     }),
 
   /**

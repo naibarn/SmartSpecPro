@@ -30,6 +30,17 @@ describe("useMenuItems", () => {
     expect(workOs?.label).toBe("Work OS");
   });
 
+  it("routes skill revenue to the system report for system admins", () => {
+    const items = getResolvedMenuItems("admin", "admin");
+    expect(items.find((item) => item.id === "admin-skill-revenue")?.path).toBe("/admin/skill-revenue");
+  });
+
+  it("routes tenant admins to the tenant-scoped skill revenue report", () => {
+    const items = getResolvedMenuItems("domain_admin", "domain-admin");
+    expect(items.find((item) => item.id === "domain-skill-revenue")?.path).toBe("/domain-admin/skill-revenue");
+    expect(getResolvedMenuItems("user", "domain-admin").find((item) => item.id === "domain-skill-revenue")).toBeUndefined();
+  });
+
   it("shows Start Work in the main sidebar for regular users", () => {
     const items = getResolvedMenuItems("user", "main");
     const workRequest = items.find((item) => item.id === "work-request");

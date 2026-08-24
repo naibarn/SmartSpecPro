@@ -110,6 +110,7 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'admin-media-models',   label: 'Media AI Models',   icon: 'Sparkles',    path: '/admin/media-models',       platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 27 },
   { id: 'admin-voice-agents',   label: 'Voice Agents',      icon: 'Bot',         path: '/admin/voice-agents',       platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 27.5, requiresFeature: 'voiceAgents' },
   { id: 'admin-skills',         label: 'Skills',            icon: 'Wand2',       path: '/admin/skills',             platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 28 },
+  { id: 'admin-skill-revenue', label: 'Skill Revenue', labelTh: 'รายได้จาก Skill', icon: 'Coins', path: '/admin/skill-revenue', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 28.5 },
   { id: 'admin-skill-repos',    label: 'Skill Repos',       icon: 'GitBranch',   path: '/admin/skill-repositories', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 29 },
   { id: 'admin-personas',       label: 'Personas',          icon: 'UserCircle',  path: '/admin/personas',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 30.5, requiresFeature: 'personaSystem' },
   { id: 'admin-agencies',       label: 'Agencies',          icon: 'Bot',         path: '/admin/agencies',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 30 },
@@ -133,6 +134,7 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'domain-theme',    label: 'Edit Theme',      labelTh: 'แก้ไขธีม',      icon: 'Palette',   path: '/domain-admin/theme',    platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 43 },
   { id: 'domain-blog',     label: 'Manage Blog',     labelTh: 'จัดการบล็อก',   icon: 'PenLine',   path: '/domain-admin/blog',     platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 44 },
   { id: 'domain-settings', label: 'Tenant Settings', labelTh: 'ตั้งค่าโดเมน', icon: 'FileText',  path: '/domain-admin/settings', platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 45 },
+  { id: 'domain-skill-revenue', label: 'Skill Revenue', labelTh: 'รายได้จาก Skill', icon: 'Coins', path: '/domain-admin/skill-revenue', platforms: ['web', 'desktop'], roles: ['domain_admin'], group: 'domain-admin', sortOrder: 45.5 },
 ];
 
 /**

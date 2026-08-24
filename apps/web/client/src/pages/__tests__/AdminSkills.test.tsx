@@ -18,6 +18,7 @@ const mockClipboardWriteText = vi.fn();
 const mockRetryLegacyApplyRunsMutation = vi.fn();
 const mockApplyLegacyUpgradeRecommendationsMutation = vi.fn();
 const mockRecoverStaleLegacyApplyRunsMutation = vi.fn();
+const mockBulkUpdatePricingMutation = vi.fn();
 
 const mockUseQuery = vi.fn(() => ({
   data: [],
@@ -86,6 +87,13 @@ vi.mock("@/lib/trpc", () => ({
         scanFolders: { useQuery: () => ({ data: [], refetch: vi.fn() }) },
         create: { useMutation: () => makeMutation() },
         update: { useMutation: () => makeMutation() },
+        bulkUpdatePricing: {
+          useMutation: () => ({
+            mutate: mockBulkUpdatePricingMutation,
+            mutateAsync: vi.fn(),
+            isPending: false,
+          }),
+        },
         delete: { useMutation: () => makeMutation() },
         regenerateMarketplaceContent: { useMutation: () => makeMutation() },
         importFolder: { useMutation: () => makeMutation() },
@@ -398,6 +406,7 @@ vi.mock("sonner", () => ({
 describe("AdminSkills", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockBulkUpdatePricingMutation.mockReset();
     mockRecommendationDetailUseQuery.mockImplementation(() => ({
       data: null,
       isLoading: false,
@@ -511,6 +520,21 @@ describe("AdminSkills", () => {
     mockMaintenanceRecommendationsUseQuery.mockReturnValue({
       data: [],
       isLoading: false,
+    });
+  });
+
+  it("supports inline and bulk pricing edits from the skill list", async () => {
+    const { default: AdminSkills } = await import("@/pages/AdminSkills");
+    render(createElement(AdminSkills));
+
+    fireEvent.click(screen.getByLabelText("Select Graph Assistant"));
+    fireEvent.change(screen.getByLabelText("Tenant", { exact: true }), { target: { value: "4" } });
+    fireEvent.change(screen.getByLabelText("Skill", { exact: true }), { target: { value: "1" } });
+
+    fireEvent.click(screen.getByText("บันทึก 1 รายการ"));
+
+    expect(mockBulkUpdatePricingMutation).toHaveBeenCalledWith({
+      updates: [{ id: 99, tenantCreditCost: 4, skillOwnerCreditCost: 1 }],
     });
   });
 

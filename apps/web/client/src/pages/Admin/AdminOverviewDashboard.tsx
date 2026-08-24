@@ -486,6 +486,7 @@ export default function AdminOverviewDashboard() {
   // --- Quick links ---
 
   const quickLinks = [
+    { label: "Skill Revenue", icon: DollarSign, path: "/admin/skill-revenue" },
     { label: "Ops Dashboard", icon: Activity, path: "/admin/ops" },
     { label: "Queue Dashboard", icon: Gauge, path: "/admin/queues" },
     { label: "LLM Monitor", icon: Brain, path: "/admin/queues/llm" },

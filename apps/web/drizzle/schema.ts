@@ -5964,196 +5964,377 @@ export type InsertSkillRepository = typeof skillRepositories.$inferInsert;
  * Each skill maps to a folder structure: skills/<skill_slug>/
  * Contains skill.md, python/, js/, tests/ directories
  */
-export const skills = pgTable("skills", {
-  id: serial("id").primaryKey(),
+export const skills = pgTable(
+  "skills",
+  {
+    id: serial("id").primaryKey(),
 
-  /** Unique identifier/slug (folder name, e.g., "create-image-prompt") */
-  slug: varchar("slug", { length: 100 }).notNull().unique(),
+    /** Unique identifier/slug (folder name, e.g., "create-image-prompt") */
+    slug: varchar("slug", { length: 100 }).notNull().unique(),
 
-  /** Display name */
-  name: varchar("name", { length: 255 }).notNull(),
+    /** Display name */
+    name: varchar("name", { length: 255 }).notNull(),
 
-  /** Detailed description */
-  description: text("description"),
+    /** Detailed description */
+    description: text("description"),
 
-  /** Skill category for filtering */
-  category: skillCategoryEnum("category").notNull().default("other"),
+    /** Skill category for filtering */
+    category: skillCategoryEnum("category").notNull().default("other"),
 
-  /** Version string (semantic versioning) */
-  version: varchar("version", { length: 20 }).default("1.0.0"),
+    /** Version string (semantic versioning) */
+    version: varchar("version", { length: 20 }).default("1.0.0"),
 
-  /** Author name or email */
-  author: varchar("author", { length: 255 }),
+    /** Author name or email */
+    author: varchar("author", { length: 255 }),
 
-  /** Icon identifier (lucide icon name) */
-  icon: varchar("icon", { length: 50 }).default("sparkles"),
+    /** Icon identifier (lucide icon name) */
+    icon: varchar("icon", { length: 50 }).default("sparkles"),
 
-  /** Tags for additional filtering (JSON array) */
-  tags: json("tags").$type<string[]>().default([]),
+    /** Tags for additional filtering (JSON array) */
+    tags: json("tags").$type<string[]>().default([]),
 
-  /** Folder path relative to skills/ directory */
-  folderPath: varchar("folderPath", { length: 512 }),
+    /** Folder path relative to skills/ directory */
+    folderPath: varchar("folderPath", { length: 512 }),
 
-  /** Whether skill can auto-trigger on intent detection */
-  isAutoTrigger: boolean("isAutoTrigger").default(false).notNull(),
+    /** Whether skill can auto-trigger on intent detection */
+    isAutoTrigger: boolean("isAutoTrigger").default(false).notNull(),
 
-  /** Regex patterns for auto-detection
-   * Supports two formats:
-   * 1. Legacy: string[] - array of pattern strings
-   * 2. New: PatternRule[] - array of objects with pattern, chainTo, label
-   * Both can be mixed in the same array for backward compatibility
-   */
-  triggerPatterns: json("triggerPatterns")
-    .$type<
-      Array<
-        | string
-        | {
-            pattern: string;
-            chainTo?: string | null;
-            label?: string;
-          }
-      >
-    >()
-    .default([]),
+    /** Regex patterns for auto-detection
+     * Supports two formats:
+     * 1. Legacy: string[] - array of pattern strings
+     * 2. New: PatternRule[] - array of objects with pattern, chainTo, label
+     * Both can be mixed in the same array for backward compatibility
+     */
+    triggerPatterns: json("triggerPatterns")
+      .$type<
+        Array<
+          | string
+          | {
+              pattern: string;
+              chainTo?: string | null;
+              label?: string;
+            }
+        >
+      >()
+      .default([]),
 
-  /** Whether skill is enabled globally */
-  isEnabled: boolean("isEnabled").default(true).notNull(),
+    /** Whether skill is enabled globally */
+    isEnabled: boolean("isEnabled").default(true).notNull(),
 
-  /** Whether skill is enabled by default for new conversations */
-  enabledByDefault: boolean("enabledByDefault").default(true).notNull(),
+    /** Whether skill is enabled by default for new conversations */
+    enabledByDefault: boolean("enabledByDefault").default(true).notNull(),
 
-  /** Whether skill is visible by default for new users (admin-controlled) */
-  visibleByDefault: boolean("visibleByDefault").default(true).notNull(),
+    /** Whether skill is visible by default for new users (admin-controlled) */
+    visibleByDefault: boolean("visibleByDefault").default(true).notNull(),
 
-  /** Credit cost multiplier (1.0 = standard rate) */
-  creditMultiplier: numeric("creditMultiplier", {
-    precision: 5,
-    scale: 2,
-  }).default("1.0"),
+    /** Credit cost multiplier (1.0 = standard rate) */
+    creditMultiplier: numeric("creditMultiplier", {
+      precision: 5,
+      scale: 2,
+    }).default("1.0"),
 
-  /** Priority for detection (higher = checked first) */
-  priority: integer("priority").default(50).notNull(),
+    /** Fixed credits charged per successful skill run for the tenant owner. */
+    tenantCreditCost: integer("tenantCreditCost").default(2).notNull(),
 
-  /** Available models for this skill (if media-related) */
-  availableModels: json("availableModels").$type<string[]>(),
+    /** How the tenant price was chosen; admin overrides are never auto-repriced. */
+    tenantCreditPricingSource: varchar("tenantCreditPricingSource", {
+      length: 32,
+    })
+      .default("default")
+      .notNull(),
 
-  /** Default model for this skill */
-  defaultModel: varchar("defaultModel", { length: 128 }),
+    /** Fixed credits charged per successful skill run for the skill owner. */
+    skillOwnerCreditCost: integer("skillOwnerCreditCost").default(0).notNull(),
 
-  /** Canonical routed LLM model id for text-generation skills */
-  llmModelId: varchar("llmModelId", { length: 128 }),
+    /** Priority for detection (higher = checked first) */
+    priority: integer("priority").default(50).notNull(),
 
-  /** Preferred provider pin for this skill (optional) */
-  preferredProviderId: integer("preferredProviderId").references(
-    () => llmProviders.id
-  ),
+    /** Available models for this skill (if media-related) */
+    availableModels: json("availableModels").$type<string[]>(),
 
-  /** Enforce provider pin without fallback when true */
-  strictProviderPin: boolean("strictProviderPin").default(false).notNull(),
+    /** Default model for this skill */
+    defaultModel: varchar("defaultModel", { length: 128 }),
 
-  /** Execution mode: llm-only (text response), media-generate (LLM→prompt→media API) */
-  executionMode: varchar("executionMode", { length: 50 })
-    .default("llm-only")
-    .notNull(),
+    /** Canonical routed LLM model id for text-generation skills */
+    llmModelId: varchar("llmModelId", { length: 128 }),
 
-  /** Chain to another skill after this skill completes (skill slug) */
-  chainTo: varchar("chainTo", { length: 100 }),
+    /** Preferred provider pin for this skill (optional) */
+    preferredProviderId: integer("preferredProviderId").references(
+      () => llmProviders.id
+    ),
 
-  /** System prompt override (optional) */
-  systemPrompt: text("systemPrompt"),
+    /** Enforce provider pin without fallback when true */
+    strictProviderPin: boolean("strictProviderPin").default(false).notNull(),
 
-  /** Skill content/instructions from skill.md (cached) */
-  skillContent: text("skillContent"),
+    /** Execution mode: llm-only (text response), media-generate (LLM→prompt→media API) */
+    executionMode: varchar("executionMode", { length: 50 })
+      .default("llm-only")
+      .notNull(),
 
-  /** Public-facing marketplace documentation (curated, safe to display) */
-  marketplaceContent: text("marketplaceContent"),
+    /** Chain to another skill after this skill completes (skill slug) */
+    chainTo: varchar("chainTo", { length: 100 }),
 
-  /** Knowledgebase content (for imported Custom GPTs) */
-  knowledgebase: text("knowledgebase"),
+    /** System prompt override (optional) */
+    systemPrompt: text("systemPrompt"),
 
-  /** Additional configuration */
-  configJson: json("configJson").$type<{
-    requiresExplicit?: boolean;
-    maxInputLength?: number;
-    maxOutputLength?: number;
-    supportedLanguages?: string[];
-    pythonEntry?: string; // python/tool.py
-    jsEntry?: string; // js/index.js
-    [key: string]: any;
-  }>(),
+    /** Skill content/instructions from skill.md (cached) */
+    skillContent: text("skillContent"),
 
-  /** Import source (manual, folder, zip, custom-gpt) */
-  importSource: varchar("importSource", { length: 50 }).default("manual"),
+    /** Public-facing marketplace documentation (curated, safe to display) */
+    marketplaceContent: text("marketplaceContent"),
 
-  /** Original ZIP file path (if imported from ZIP) */
-  importedFromZip: varchar("importedFromZip", { length: 512 }),
+    /** Knowledgebase content (for imported Custom GPTs) */
+    knowledgebase: text("knowledgebase"),
 
-  /** Repository that this skill was fetched from */
-  repositoryId: integer("repositoryId").references(() => skillRepositories.id),
+    /** Additional configuration */
+    configJson: json("configJson").$type<{
+      requiresExplicit?: boolean;
+      maxInputLength?: number;
+      maxOutputLength?: number;
+      supportedLanguages?: string[];
+      pythonEntry?: string; // python/tool.py
+      jsEntry?: string; // js/index.js
+      [key: string]: any;
+    }>(),
 
-  /** Original folder name in the repository (e.g. "react-developer") */
-  repositorySlug: varchar("repositorySlug", { length: 200 }),
+    /** Import source (manual, folder, zip, custom-gpt) */
+    importSource: varchar("importSource", { length: 50 }).default("manual"),
 
-  /** MD5 hash of skill.md content for sync/upgrade detection */
-  contentHash: varchar("contentHash", { length: 64 }),
+    /** Original ZIP file path (if imported from ZIP) */
+    importedFromZip: varchar("importedFromZip", { length: 512 }),
 
-  /** User who created/imported this skill */
-  createdBy: integer("createdBy").references(() => users.id),
+    /** Repository that this skill was fetched from */
+    repositoryId: integer("repositoryId").references(
+      () => skillRepositories.id
+    ),
 
-  /** Tenant that owns this skill */
-  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id),
+    /** Original folder name in the repository (e.g. "react-developer") */
+    repositorySlug: varchar("repositorySlug", { length: 200 }),
 
-  /** Skill visibility: private, pending_approval, public, rejected */
-  visibility: skillVisibilityEnum("visibility").default("private").notNull(),
+    /** MD5 hash of skill.md content for sync/upgrade detection */
+    contentHash: varchar("contentHash", { length: 64 }),
 
-  /** Admin who approved the skill for public visibility */
-  approvedBy: integer("approvedBy").references(() => users.id),
+    /** User who created/imported this skill */
+    createdBy: integer("createdBy").references(() => users.id),
 
-  /** When the skill was approved */
-  approvedAt: timestamp("approvedAt", { withTimezone: true }),
+    /** Tenant that owns this skill */
+    tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id),
 
-  /** Reason for rejection (if visibility = 'rejected') */
-  rejectionReason: text("rejectionReason"),
+    /** Skill visibility: private, pending_approval, public, rejected */
+    visibility: skillVisibilityEnum("visibility").default("private").notNull(),
 
-  /** When an admin set this skill to pending_approval (for admin review queue ordering) */
-  requestedPublishAt: timestamp("requestedPublishAt", { withTimezone: true }),
+    /** Admin who approved the skill for public visibility */
+    approvedBy: integer("approvedBy").references(() => users.id),
 
-  /** Sandbox profile slug for skills that require sandbox execution */
-  sandboxProfileSlug: varchar("sandboxProfileSlug", { length: 64 }),
-  /** Whether this skill needs network access in sandbox */
-  requiresNetwork: boolean("requiresNetwork"),
-  /** Whether this skill needs browser automation in sandbox */
-  requiresBrowser: boolean("requiresBrowser"),
-  /** Maximum runtime for this skill in seconds (overrides profile default) */
-  maxRuntimeSeconds: integer("maxRuntimeSeconds"),
-  /** Maximum input file size in MB (overrides profile default) */
-  maxInputMb: integer("maxInputMb"),
+    /** When the skill was approved */
+    approvedAt: timestamp("approvedAt", { withTimezone: true }),
 
-  /** Capability-first execution policy (parsed from skill.md frontmatter) */
-  executionPolicyJson: json("executionPolicyJson").$type<{
-    mode?: "requirements" | "fixed" | "hybrid";
-    requirements?: Record<string, boolean | number>;
-    fixedModel?: string;
-    allowConversationOverride?: boolean;
-    preferredStrategy?: string;
-    preferredProfiles?: string[];
-    allowedFallbackProfiles?: string[];
-    disallowedModels?: string[];
-    budgetClass?: string;
-    overrideableByTenant?: boolean;
-    fallbackPolicy?: string;
-  }>(),
+    /** Reason for rejection (if visibility = 'rejected') */
+    rejectionReason: text("rejectionReason"),
 
-  createdAt: timestamp("createdAt", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp("updatedAt", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
+    /** When an admin set this skill to pending_approval (for admin review queue ordering) */
+    requestedPublishAt: timestamp("requestedPublishAt", { withTimezone: true }),
+
+    /** Sandbox profile slug for skills that require sandbox execution */
+    sandboxProfileSlug: varchar("sandboxProfileSlug", { length: 64 }),
+    /** Whether this skill needs network access in sandbox */
+    requiresNetwork: boolean("requiresNetwork"),
+    /** Whether this skill needs browser automation in sandbox */
+    requiresBrowser: boolean("requiresBrowser"),
+    /** Maximum runtime for this skill in seconds (overrides profile default) */
+    maxRuntimeSeconds: integer("maxRuntimeSeconds"),
+    /** Maximum input file size in MB (overrides profile default) */
+    maxInputMb: integer("maxInputMb"),
+
+    /** Capability-first execution policy (parsed from skill.md frontmatter) */
+    executionPolicyJson: json("executionPolicyJson").$type<{
+      mode?: "requirements" | "fixed" | "hybrid";
+      requirements?: Record<string, boolean | number>;
+      fixedModel?: string;
+      allowConversationOverride?: boolean;
+      preferredStrategy?: string;
+      preferredProfiles?: string[];
+      allowedFallbackProfiles?: string[];
+      disallowedModels?: string[];
+      budgetClass?: string;
+      overrideableByTenant?: boolean;
+      fallbackPolicy?: string;
+    }>(),
+
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    check(
+      "skills_tenant_credit_cost_non_negative",
+      sql`${t.tenantCreditCost} >= 0`
+    ),
+    check(
+      "skills_skill_owner_credit_cost_non_negative",
+      sql`${t.skillOwnerCreditCost} >= 0`
+    ),
+  ]
+);
 
 export type Skill = typeof skills.$inferSelect;
 export type InsertSkill = typeof skills.$inferInsert;
+
+export const skillRevenueSettlementStatusEnum = pgEnum(
+  "skill_revenue_settlement_status",
+  ["settled", "reversed"]
+);
+
+export const skillRevenueDebtStatusEnum = pgEnum("skill_revenue_debt_status", [
+  "open",
+  "settled",
+]);
+
+/**
+ * One durable fixed-credit settlement per skill run. The row is the source of
+ * truth for idempotency and for reversing both the user charge and revenue
+ * grants when a completed run is later refunded.
+ */
+export const skillRevenueSettlements = pgTable(
+  "skill_revenue_settlements",
+  {
+    id: serial("id").primaryKey(),
+    runId: varchar("runId", { length: 191 }).notNull(),
+    skillId: integer("skillId").references(() => skills.id, {
+      onDelete: "set null",
+    }),
+    skillSlug: varchar("skillSlug", { length: 128 }).notNull(),
+    tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, {
+      onDelete: "set null",
+    }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id),
+    tenantOwnerId: integer("tenantOwnerId").references(() => users.id, {
+      onDelete: "restrict",
+    }),
+    skillOwnerId: integer("skillOwnerId").references(() => users.id, {
+      onDelete: "restrict",
+    }),
+    tenantCredits: integer("tenantCredits").notNull().default(0),
+    skillOwnerCredits: integer("skillOwnerCredits").notNull().default(0),
+    totalCredits: integer("totalCredits").notNull().default(0),
+    configuredTotalCredits: integer("configuredTotalCredits")
+      .notNull()
+      .default(0),
+    actualWorkCredits: integer("actualWorkCredits"),
+    chargedTotalCredits: integer("chargedTotalCredits").notNull().default(0),
+    pricingSource: varchar("pricingSource", { length: 64 })
+      .notNull()
+      .default("skill_config"),
+    capApplied: boolean("capApplied").notNull().default(false),
+    userTransactionId: integer("userTransactionId").references(
+      () => creditTransactions.id,
+      { onDelete: "set null" }
+    ),
+    tenantRevenueTransactionId: integer(
+      "tenantRevenueTransactionId"
+    ).references(() => creditTransactions.id, { onDelete: "set null" }),
+    skillRevenueTransactionId: integer("skillRevenueTransactionId").references(
+      () => creditTransactions.id,
+      { onDelete: "set null" }
+    ),
+    status: skillRevenueSettlementStatusEnum("status")
+      .notNull()
+      .default("settled"),
+    reversedAt: timestamp("reversedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("skill_revenue_settlements_run_id_unique").on(t.runId),
+    index("skill_revenue_settlements_user_created_idx").on(
+      t.userId,
+      t.createdAt
+    ),
+    index("skill_revenue_settlements_tenant_created_idx").on(
+      t.tenantId,
+      t.createdAt
+    ),
+    check(
+      "skill_revenue_settlements_amounts_non_negative",
+      sql`${t.tenantCredits} >= 0 AND ${t.skillOwnerCredits} >= 0 AND ${t.totalCredits} >= 0`
+    ),
+    check(
+      "skill_revenue_settlements_total_matches_split",
+      sql`${t.totalCredits} = ${t.tenantCredits} + ${t.skillOwnerCredits}`
+    ),
+    check(
+      "skill_revenue_settlements_charge_audit_non_negative",
+      sql`${t.configuredTotalCredits} >= 0 AND ${t.chargedTotalCredits} >= 0 AND (${t.actualWorkCredits} IS NULL OR ${t.actualWorkCredits} >= 0)`
+    ),
+    check(
+      "skill_revenue_settlements_charge_does_not_exceed_config",
+      sql`${t.chargedTotalCredits} <= ${t.configuredTotalCredits}`
+    ),
+    check(
+      "skill_revenue_settlements_charge_does_not_exceed_work",
+      sql`${t.actualWorkCredits} IS NULL OR ${t.chargedTotalCredits} <= ${t.actualWorkCredits}`
+    ),
+    check(
+      "skill_revenue_settlements_charge_matches_total",
+      sql`${t.chargedTotalCredits} = ${t.totalCredits}`
+    ),
+  ]
+);
+
+export type SkillRevenueSettlement =
+  typeof skillRevenueSettlements.$inferSelect;
+export type InsertSkillRevenueSettlement =
+  typeof skillRevenueSettlements.$inferInsert;
+
+/** A refund shortfall is recorded instead of making a recipient balance negative. */
+export const skillRevenueDebts = pgTable(
+  "skill_revenue_debts",
+  {
+    id: serial("id").primaryKey(),
+    settlementId: integer("settlementId")
+      .notNull()
+      .references(() => skillRevenueSettlements.id, { onDelete: "cascade" }),
+    recipientId: integer("recipientId")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    amount: integer("amount").notNull(),
+    recoveredCredits: integer("recoveredCredits").notNull().default(0),
+    status: skillRevenueDebtStatusEnum("status").notNull().default("open"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    settledAt: timestamp("settledAt", { withTimezone: true }),
+  },
+  t => [
+    uniqueIndex("skill_revenue_debts_settlement_recipient_unique").on(
+      t.settlementId,
+      t.recipientId
+    ),
+    index("skill_revenue_debts_recipient_status_idx").on(
+      t.recipientId,
+      t.status
+    ),
+    check(
+      "skill_revenue_debts_amounts_valid",
+      sql`${t.amount} >= 0 AND ${t.recoveredCredits} >= 0 AND ${t.recoveredCredits} <= ${t.amount}`
+    ),
+  ]
+);
+
+export type SkillRevenueDebt = typeof skillRevenueDebts.$inferSelect;
+export type InsertSkillRevenueDebt = typeof skillRevenueDebts.$inferInsert;
 
 export const skillMaintenanceSchedules = pgTable(
   "skill_maintenance_schedules",
