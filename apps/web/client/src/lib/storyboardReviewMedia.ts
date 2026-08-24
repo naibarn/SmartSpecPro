@@ -1,4 +1,12 @@
+import {
+  getMediaTaskArtifactStatus,
+  selectMediaTaskPlaybackUrl,
+  type MediaTaskArtifactStatus,
+} from "./mediaTaskArtifacts";
+
 export type StoryboardReviewMediaKind = "audio" | "video";
+
+export type StoryboardReviewMediaState = MediaTaskArtifactStatus | null;
 
 const AUDIO_KEYS = [
   "audio_url",
@@ -125,6 +133,11 @@ function findMediaUrl(
   }
 
   const record = value as Record<string, unknown>;
+  if (Array.isArray(record.artifacts)) {
+    const playbackUrl = selectMediaTaskPlaybackUrl(record);
+    if (playbackUrl) return normalizeStoryboardMediaUrl(playbackUrl);
+    return null;
+  }
   const preferredKeys = kind === "audio" ? AUDIO_KEYS : VIDEO_KEYS;
   for (const key of [...preferredKeys, ...GENERIC_MEDIA_KEYS]) {
     const found = findMediaUrl(record[key], kind, visited);
@@ -145,4 +158,14 @@ export function extractStoryboardMediaUrl(
   kind: StoryboardReviewMediaKind,
 ): string | null {
   return findMediaUrl(item, kind);
+}
+
+export function getStoryboardReviewMediaState(
+  item: unknown,
+  isThai = true,
+): StoryboardReviewMediaState {
+  if (!item || typeof item !== "object" || !Array.isArray((item as Record<string, unknown>).artifacts)) {
+    return null;
+  }
+  return getMediaTaskArtifactStatus(item, isThai);
 }

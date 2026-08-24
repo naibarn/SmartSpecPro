@@ -72,8 +72,92 @@ function getTaskId(task: unknown): string | null {
 
 function getTaskUrl(task: unknown): string {
   if (!task || typeof task !== "object") return "";
-  const url = (task as { url?: unknown }).url;
+  const record = task as Record<string, unknown>;
+  const artifacts = Array.isArray(record.artifacts)
+    ? record.artifacts.filter(value => value && typeof value === "object") as Array<Record<string, unknown>>
+    : [];
+  if (artifacts.length > 0) {
+    const primary = [...artifacts].sort(
+      (left, right) => Number(left.outputIndex ?? 0) - Number(right.outputIndex ?? 0),
+    )[0];
+    if (primary?.r2Status === "ready" && typeof primary.r2Url === "string") {
+      return primary.r2Url.trim();
+    }
+    if (
+      primary &&
+      (primary.availabilityStatus === "provider_fallback" ||
+        primary.providerStatus === "unknown" ||
+        primary.providerStatus === "available")
+    ) {
+      for (const key of ["playbackUrl", "fallbackUrl", "providerOriginalUrl"]) {
+        if (typeof primary[key] === "string" && primary[key].trim()) {
+          return primary[key].trim();
+        }
+      }
+    }
+    return "";
+  }
+  const url = record.url;
   return typeof url === "string" ? url : "";
+}
+
+function normalizeStoryboardReviewMediaList(value: unknown): unknown {
+  if (!Array.isArray(value)) return value;
+  let changed = false;
+  const next = value.map(item => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return item;
+    const record = item as Record<string, unknown>;
+    if (!Array.isArray(record.artifacts)) return item;
+    const playbackUrl = getTaskUrl(record);
+    const primary = [...record.artifacts]
+      .filter(artifact => artifact && typeof artifact === "object")
+      .sort((left, right) => Number((left as Record<string, unknown>).outputIndex ?? 0) - Number((right as Record<string, unknown>).outputIndex ?? 0))[0] as Record<string, unknown> | undefined;
+    const nextItem = {
+      ...record,
+      url: playbackUrl || undefined,
+      ...(primary?.availabilityStatus ? { mediaAvailability: primary.availabilityStatus } : {}),
+      ...(primary?.availabilityReason ? { mediaAvailabilityReason: primary.availabilityReason } : {}),
+    };
+    if (
+      record.url !== nextItem.url ||
+      record.mediaAvailability !== nextItem.mediaAvailability ||
+      record.mediaAvailabilityReason !== nextItem.mediaAvailabilityReason
+    ) {
+      changed = true;
+    }
+    return changed ? nextItem : item;
+  });
+  return changed ? next : value;
+}
+
+export function normalizeStoryboardReviewMediaProjection(reviewData: unknown): unknown {
+  if (!isStoryboardReviewRecord(reviewData)) return reviewData;
+  let changed = false;
+  const normalizeList = (value: unknown) => {
+    const next = normalizeStoryboardReviewMediaList(value);
+    if (next !== value) changed = true;
+    return next;
+  };
+  const next: Record<string, unknown> = { ...reviewData };
+  next.tasks = normalizeList(reviewData.tasks);
+  next.clips = normalizeList(reviewData.clips);
+  if (isStoryboardReviewRecord(reviewData.output)) {
+    const outputClips = normalizeList(reviewData.output.clips);
+    if (outputClips !== reviewData.output.clips) {
+      next.output = { ...reviewData.output, clips: outputClips };
+    }
+  }
+  next.companionAudio = normalizeList(reviewData.companionAudio);
+  if (isStoryboardReviewRecord(reviewData.hyperframesFinalComposite)) {
+    const assignments = normalizeList(reviewData.hyperframesFinalComposite.shotMediaAssignments);
+    if (assignments !== reviewData.hyperframesFinalComposite.shotMediaAssignments) {
+      next.hyperframesFinalComposite = {
+        ...reviewData.hyperframesFinalComposite,
+        shotMediaAssignments: assignments,
+      };
+    }
+  }
+  return changed ? next : reviewData;
 }
 
 function isStoryboardReviewRecord(value: unknown): value is Record<string, unknown> {
@@ -1024,10 +1108,15 @@ function getReviewThumbnailUrl(reviewData: unknown, fallback: string | null | un
   if (reviewData && typeof reviewData === "object") {
     const tasks = (reviewData as { tasks?: unknown }).tasks;
     if (Array.isArray(tasks)) {
+      let hasDurableArtifactProjection = false;
       for (const task of tasks) {
+        if (task && typeof task === "object" && Array.isArray((task as Record<string, unknown>).artifacts)) {
+          hasDurableArtifactProjection = true;
+        }
         const url = getTaskUrl(task).trim();
         if (url) return url;
       }
+      if (hasDurableArtifactProjection) return undefined;
     }
   }
   return fallback ?? undefined;
@@ -1347,10 +1436,11 @@ export const videoEditorProjectsRouter = router({
         reviewDataWithMarketplaceContext,
         autoReviewProduct ?? null,
       );
+      const projectedReviewData = normalizeStoryboardReviewMediaProjection(repairedReviewData);
       const repairDurationMs = Date.now() - repairStartedAt;
       const repairedReviewDataRecord =
-        repairedReviewData && typeof repairedReviewData === "object"
-          ? (repairedReviewData as Record<string, unknown>)
+        projectedReviewData && typeof projectedReviewData === "object"
+          ? (projectedReviewData as Record<string, unknown>)
           : {};
       const repairedTasks = Array.isArray(repairedReviewDataRecord.tasks)
         ? repairedReviewDataRecord.tasks
@@ -1378,7 +1468,7 @@ export const videoEditorProjectsRouter = router({
 
       return {
         ...review,
-        reviewData: repairedReviewData,
+        reviewData: projectedReviewData,
         autoReview: autoReviewProduct
           ? {
               runId: autoReviewProduct.runId,
@@ -1875,7 +1965,9 @@ export const videoEditorProjectsRouter = router({
         const reviewData = await normalizeStoryboardReviewCanonicalLinks({
           db,
           userId: ctx.user.id,
-          reviewData: mergeFresherExistingReviewTasks(existing.reviewData, input.reviewData),
+          reviewData: normalizeStoryboardReviewMediaProjection(
+            mergeFresherExistingReviewTasks(existing.reviewData, input.reviewData),
+          ),
         });
         writeStoryboardReviewDebugLog({
           event: "saveStoryboardReview.update",
@@ -1908,7 +2000,9 @@ export const videoEditorProjectsRouter = router({
       const reviewData = await normalizeStoryboardReviewCanonicalLinks({
         db,
         userId: ctx.user.id,
-        reviewData: stripClientOwnedHyperframesFinalComposite(input.reviewData),
+        reviewData: normalizeStoryboardReviewMediaProjection(
+          stripClientOwnedHyperframesFinalComposite(input.reviewData),
+        ),
       });
       const [inserted] = await db
         .insert(mediaStudioStoryboardReviews)

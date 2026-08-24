@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LocaleToggle } from "@/components/LocaleToggle";
+import { AuthenticatedMediaImage, AuthenticatedMediaVideo } from "@/components/media/AuthenticatedMediaImage";
 import { StoryboardBatchReviewPanel, type StoryboardPromptPlannerOptions, type StoryboardSourceTrimRange } from "@/components/media/StoryboardBatchReviewDialog";
 import { RenderProgressDialog } from "@/components/videoeditor/RenderProgressDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
@@ -790,6 +791,11 @@ function findFirstStoryboardReviewThumbnail(value: unknown, visited = new WeakSe
   }
 
   const record = value as Record<string, unknown>;
+  if (Array.isArray(record.artifacts)) {
+    const durableUrl = extractStoryboardMediaUrl(record, "video");
+    if (durableUrl) return durableUrl;
+    return null;
+  }
   for (const key of [
     "thumbnailUrl",
     "thumbnail_url",
@@ -854,8 +860,12 @@ function findFirstStoryboardReviewImageUrl(value: unknown, visited = new WeakSet
 function getStoryboardReviewProjectThumbnail(item: unknown): string | null {
   if (!item || typeof item !== "object") return null;
   const record = item as Record<string, unknown>;
-  return findFirstStoryboardReviewThumbnail(record.thumbnailUrl)
-    ?? findFirstStoryboardReviewThumbnail(record.reviewData);
+  const reviewThumbnail = findFirstStoryboardReviewThumbnail(record.reviewData);
+  if (reviewThumbnail) return reviewThumbnail;
+  const directThumbnail = findFirstStoryboardReviewThumbnail(record.thumbnailUrl);
+  return directThumbnail && isManagedStoryboardAssetUrl(directThumbnail)
+    ? directThumbnail
+    : null;
 }
 
 function getStoryboardClipPosterUrl(clip: StoryboardClipCandidate | null | undefined): string | undefined {
@@ -9747,18 +9757,23 @@ export default function StoryboardReviewPage() {
         const status = normalizeStoryboardProviderTaskStatus((currentTask as Record<string, unknown> | null)?.status);
         if (status === "completed") {
           const completedUrl = extractStoryboardMediaUrl(currentTask, "video");
+          const taskArtifacts = Array.isArray((currentTask as Record<string, unknown> | null)?.artifacts)
+            ? (currentTask as Record<string, unknown>).artifacts
+            : undefined;
           if (!completedUrl) {
             const message = t("mediaStudio.storyboardReviewNoOutputUrl");
             setAndSaveDraft((current) => updateTrackedStoryboardGenerationTask(current, taskId, normalizedPollId, {
               status: "error",
               error: message,
               statusDetail: message,
+              ...(taskArtifacts ? { artifacts: taskArtifacts as StoryboardGenerationTask["artifacts"] } : {}),
             }));
             return true;
           }
           setAndSaveDraft((current) => updateTrackedStoryboardGenerationTask(current, taskId, normalizedPollId, {
             status: "completed",
             url: completedUrl,
+            ...(taskArtifacts ? { artifacts: taskArtifacts as StoryboardGenerationTask["artifacts"] } : {}),
             error: undefined,
             statusDetail: t("mediaStudio.storyboardReviewCompletedStatus"),
           }));
@@ -10158,6 +10173,9 @@ export default function StoryboardReviewPage() {
         ...(context.useReferenceVideoUrlFallback && context.referenceVideoUrl ? { referenceVideoUrl: context.referenceVideoUrl } : {}),
       } as any);
       const immediateUrl = extractStoryboardMediaUrl(taskResult as any, "video");
+      const immediateArtifacts = Array.isArray((taskResult as unknown as Record<string, unknown>)?.artifacts)
+        ? (taskResult as unknown as Record<string, unknown>).artifacts
+        : undefined;
       const pollId = (taskResult as any)?.taskId || (taskResult as any)?.id;
       if (pollId) {
         activeGenerationTaskIdRef.current = String(pollId);
@@ -10186,6 +10204,7 @@ export default function StoryboardReviewPage() {
       setAndSaveDraft((current) => updateDraftTask(current, taskId, {
         status: "completed",
         url: completedUrl ?? undefined,
+        ...(immediateArtifacts ? { artifacts: immediateArtifacts as StoryboardGenerationTask["artifacts"] } : {}),
         error: undefined,
         statusDetail: t("mediaStudio.storyboardReviewCompletedStatus"),
       }));
@@ -10786,7 +10805,7 @@ export default function StoryboardReviewPage() {
                     )}
                     {locale === "th" ? "Render ใหม่" : "Render again"}
                   </Button>
-                  {hyperframesFinalVideoUrl ? (
+                  {hyperframesFinalVideoUrl && isManagedStoryboardAssetUrl(hyperframesFinalVideoUrl) ? (
                     <>
                       <Button
                         asChild
@@ -10925,7 +10944,7 @@ export default function StoryboardReviewPage() {
                       )}
                       {locale === "th" ? "ยกเลิก" : "Cancel"}
                     </Button>
-                  ) : previewMatchCaptureProjection.outputUrl ? (
+                    ) : previewMatchCaptureProjection.outputUrl && isManagedStoryboardAssetUrl(previewMatchCaptureProjection.outputUrl) ? (
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
                       <Button
                         type="button"
@@ -11361,7 +11380,7 @@ export default function StoryboardReviewPage() {
 		                            data-has-overlay-copy={shotHasOverlayLayer ? "true" : "false"}
 		                            data-subtitle-preset={hyperframesFinalSubtitlePreset}
 		                          >
-	                            <video
+	                            <AuthenticatedMediaVideo
 	                              key={`hf-shot-map-preview-media-${clip.id}`}
 	                              src={clip.url}
 	                              poster={shotPosterUrl}
@@ -11369,6 +11388,7 @@ export default function StoryboardReviewPage() {
 	                              playsInline
 	                              preload="metadata"
 	                              className="hf-preview-media"
+	                              errorLabel={locale === "th" ? "โหลดวีดีโอของ shot นี้ไม่สำเร็จ" : "Shot video unavailable"}
 	                              aria-hidden="true"
 	                            />
 		                            {shotHasOverlayLayer ? (
@@ -11845,7 +11865,7 @@ export default function StoryboardReviewPage() {
                               data-subtitle-preset={hyperframesFinalSubtitlePreset}
                               data-preview-mode={hyperframesFinalSelectedShotPreviewMode}
 	                          >
-                            <video
+                            <AuthenticatedMediaVideo
                               key={`hf-compact-preview-media-${selectedClip.id}-${hyperframesFinalSelectedShotPreviewMode}`}
 	                              src={selectedClip.url}
 	                              poster={selectedPreviewPosterUrl}
@@ -11863,6 +11883,7 @@ export default function StoryboardReviewPage() {
                                 hyperframesFinalSelectedShotPreviewMode === "video" ? "hf-preview-media--interactive" : "",
                                 "opacity-100",
                               )}
+	                              errorLabel={locale === "th" ? "โหลดวีดีโอของ shot นี้ไม่สำเร็จ" : "Shot video unavailable"}
 	                              onLoadedMetadata={() => {
 	                                const video = hyperframesFinalSelectedShotVideoRef.current;
 	                                if (video && hyperframesFinalSelectedShotPreviewMode === "video") {
@@ -11973,13 +11994,14 @@ export default function StoryboardReviewPage() {
                               hyperframesFinalSelectedShotPreviewMode === "design" ||
                               (hyperframesFinalSelectedShotPreviewMode === "video" && !selectedVideoIsReady)
                             ) ? (
-                              <img
+                              <AuthenticatedMediaImage
                                 src={selectedPreviewPosterUrl}
                                 alt=""
                                 aria-hidden="true"
                                 className={cn(
                                   "pointer-events-none absolute inset-0 z-[5] h-full w-full object-cover opacity-95 transition-opacity duration-200",
                                 )}
+                                errorLabel={locale === "th" ? "ไม่พบ poster ของ shot นี้" : "Shot poster unavailable"}
                               />
                             ) : null}
                             {hyperframesFinalSelectedShotPreviewMode === "video" &&
@@ -12471,7 +12493,7 @@ export default function StoryboardReviewPage() {
 	                                  </div>
 	                                ) : null}
 	                                <div className="relative mt-1.5 aspect-[9/16] overflow-hidden rounded-md bg-slate-900">
-                                  <video
+                                  <AuthenticatedMediaVideo
                                     key={`hf-shot-rail-media-${railClip.id}`}
                                     src={railClip.url}
                                     poster={railPosterUrl}
@@ -12479,6 +12501,7 @@ export default function StoryboardReviewPage() {
                                     playsInline
                                     preload="metadata"
                                     className="absolute inset-0 h-full w-full object-cover opacity-90"
+                                    errorLabel={locale === "th" ? "โหลดวีดีโอของ shot นี้ไม่สำเร็จ" : "Shot video unavailable"}
                                     aria-hidden="true"
                                   />
 	                                  {railHasOverlayLayer ? (
@@ -13509,7 +13532,7 @@ export default function StoryboardReviewPage() {
                         data-subtitle-preset={hyperframesFinalSubtitlePreset}
 	                    >
                       {selectedPreviewClip?.url ? (
-                        <video
+                        <AuthenticatedMediaVideo
                           key={`hf-preview-media-${selectedPreviewClip.id}`}
                           src={selectedPreviewClip.url}
                           poster={selectedPreviewPosterUrl}
@@ -13517,6 +13540,7 @@ export default function StoryboardReviewPage() {
                           playsInline
                           preload="auto"
                           className="hf-preview-media"
+                          errorLabel={locale === "th" ? "โหลดวีดีโอของ shot นี้ไม่สำเร็จ" : "Shot video unavailable"}
                           aria-hidden="true"
                         />
                       ) : null}
@@ -13596,7 +13620,7 @@ export default function StoryboardReviewPage() {
                       data-subtitle-preset={hyperframesFinalSubtitlePreset}
                     >
                       {subtitlePreviewClip?.url ? (
-                        <video
+                        <AuthenticatedMediaVideo
                           key={`hf-sub-preview-media-${subtitlePreviewClip.id}`}
                           src={subtitlePreviewClip.url}
                           poster={subtitlePreviewPosterUrl}
@@ -13604,6 +13628,7 @@ export default function StoryboardReviewPage() {
                           playsInline
                           preload="auto"
                           className="hf-preview-media"
+                          errorLabel={locale === "th" ? "โหลดวีดีโอของ shot นี้ไม่สำเร็จ" : "Shot video unavailable"}
                           aria-hidden="true"
                         />
                       ) : null}
@@ -13922,9 +13947,9 @@ export default function StoryboardReviewPage() {
                               activeDraft ? "h-14 w-20 xl:h-24 xl:w-full 2xl:h-14 2xl:w-20" : "h-12 w-16",
                             )}>
                               {showVideoThumbnail && thumbnailUrl ? (
-                                <video src={thumbnailUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                                <AuthenticatedMediaVideo src={thumbnailUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" aria-label={locale === "th" ? "ตัวอย่างวิดีโอโปรเจกต์" : "Project video thumbnail"} errorLabel={locale === "th" ? "วิดีโอไม่พร้อมใช้งาน" : "Video unavailable"} />
                               ) : showImageThumbnail && thumbnailUrl ? (
-                                <img src={thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                                <AuthenticatedMediaImage src={thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" errorLabel={locale === "th" ? "ภาพไม่พร้อมใช้งาน" : "Image unavailable"} />
                               ) : (
                                 <div className="flex h-full w-full items-center justify-center text-slate-400">
                                   <Video className="h-5 w-5" />
@@ -14667,7 +14692,7 @@ export default function StoryboardReviewPage() {
                                 >
                                   {mediaPickerKind === "video" && resultUrl ? (
                                     <>
-                                      <video src={resultUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                                      <AuthenticatedMediaVideo src={resultUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" aria-label={locale === "th" ? "ตัวอย่างวิดีโอจากประวัติ" : "History video preview"} errorLabel={locale === "th" ? "วิดีโอหมดอายุหรือไม่พร้อมใช้งาน" : "Video expired or unavailable"} />
                                       <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
                                         <Maximize2 className="h-4 w-4 text-white" />
                                       </span>
@@ -14858,7 +14883,7 @@ export default function StoryboardReviewPage() {
                                 style={{ aspectRatio: "1 / 1" }}
                                 onClick={() => setGalleryLightbox({ url, title })}
                               >
-                                <img src={url} alt={title} className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" draggable={false} />
+                                <AuthenticatedMediaImage src={url} alt={title} className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" draggable={false} errorLabel={locale === "th" ? "ภาพหมดอายุหรือไม่พร้อมใช้งาน" : "Image expired or unavailable"} />
                                 <span className="absolute left-2 top-2 rounded-full bg-white/90 p-1 text-slate-700 shadow">
                                   <History className="h-3.5 w-3.5" />
                                 </span>
@@ -15370,10 +15395,11 @@ export default function StoryboardReviewPage() {
               </div>
             </div>
             <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg bg-black">
-              <img
+              <AuthenticatedMediaImage
                 src={galleryLightbox.url}
                 alt={galleryLightbox.title}
                 className="max-h-[calc(100dvh-8rem)] max-w-full object-contain"
+                errorLabel={locale === "th" ? "ไม่พบภาพนี้แล้ว" : "Image unavailable"}
                 draggable
                 onDragStart={(event) => startStoryboardImageDrag(event, {
                   url: galleryLightbox.url,
@@ -15463,14 +15489,15 @@ export default function StoryboardReviewPage() {
                     data-preview-mode="video"
                   >
                     {overlay?.posterUrl && !videoPreviewPlaybackReady ? (
-                      <img
+                      <AuthenticatedMediaImage
                         src={overlay.posterUrl}
                         alt=""
                         aria-hidden="true"
                         className="pointer-events-none absolute inset-0 z-[5] h-full w-full object-cover opacity-95"
+                        errorLabel={locale === "th" ? "ไม่พบ poster ของวีดีโอนี้" : "Video poster unavailable"}
                       />
                     ) : null}
-                    <video
+                    <AuthenticatedMediaVideo
                       key={videoPreview.url}
                       ref={videoPreviewVideoRef}
                       src={videoPreview.url}
@@ -15483,6 +15510,7 @@ export default function StoryboardReviewPage() {
                         "absolute inset-0 z-10 h-full w-full bg-transparent object-cover transition-opacity duration-200",
                         "opacity-100",
                       )}
+                      errorLabel={locale === "th" ? "ไม่พบวีดีโอนี้แล้ว" : "Video unavailable"}
                       onLoadStart={() => {
                         setVideoPreviewError("");
                       }}

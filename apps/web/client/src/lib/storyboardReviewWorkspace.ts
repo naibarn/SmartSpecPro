@@ -1,3 +1,4 @@
+import type { MediaTaskArtifactLite } from "@/lib/mediaTaskArtifacts";
 import type {
   StoryboardClipMediaType,
   StoryboardClipTransition,
@@ -64,6 +65,7 @@ export interface StoryboardGenerationTask {
   createdAt: number;
   updatedAt: number;
   url?: string;
+  artifacts?: MediaTaskArtifactLite[];
   error?: string;
   backendTaskId?: string;
   providerTaskId?: string;

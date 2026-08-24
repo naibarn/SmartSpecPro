@@ -8,6 +8,7 @@ import {
   mergeFresherExistingReviewTasks,
   optimizeStoryboardReviewSegmentPromptIfNeededForTest,
   repairStoryboardReviewMarketplacePromptLocks,
+  normalizeStoryboardReviewMediaProjection,
   regenerateVideoSegmentPromptFromReviewDataForTest,
   sanitizeStoryboardReviewClientDebugPayload,
   summarizeStoryboardReviewListRows,
@@ -128,6 +129,86 @@ describe("summarizeStoryboardReviewListRows", () => {
       updatedAt,
     });
     expect("reviewData" in summary).toBe(false);
+  });
+
+  it("uses the ready R2 artifact for the sidebar thumbnail", () => {
+    const [summary] = summarizeStoryboardReviewListRows([
+      {
+        id: 93,
+        name: "R2 storyboard",
+        status: "active",
+        clipCount: 1,
+        completedClipCount: 1,
+        thumbnailUrl: "https://provider.example/expired.png",
+        reviewData: {
+          tasks: [{
+            id: "shot-1",
+            url: "https://provider.example/expired.png",
+            artifacts: [{
+              outputIndex: 0,
+              r2Status: "ready",
+              r2Url: "/api/storage/files/media-studio/shot.png",
+              providerStatus: "expired",
+              availabilityStatus: "ready",
+            }],
+          }],
+        },
+        videoEditorProjectId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+
+    expect(summary.thumbnailUrl).toBe("/api/storage/files/media-studio/shot.png");
+  });
+
+  it("does not use a stale top-level thumbnail when durable task media is unavailable", () => {
+    const [summary] = summarizeStoryboardReviewListRows([
+      {
+        id: 94,
+        name: "Expired storyboard",
+        status: "active",
+        clipCount: 1,
+        completedClipCount: 1,
+        thumbnailUrl: "https://provider.example/expired.png",
+        reviewData: {
+          tasks: [{
+            id: "shot-expired",
+            artifacts: [{
+              outputIndex: 0,
+              r2Status: "failed",
+              providerStatus: "expired",
+              availabilityStatus: "provider_expired",
+            }],
+          }],
+        },
+        videoEditorProjectId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+
+    expect(summary.thumbnailUrl).toBeNull();
+  });
+
+  it("removes playback when the durable projection reports an expired provider URL", () => {
+    const projected = normalizeStoryboardReviewMediaProjection({
+      tasks: [{
+        id: "shot-1",
+        url: "https://provider.example/expired.mp4",
+        artifacts: [{
+          outputIndex: 0,
+          r2Status: "failed",
+          providerStatus: "expired",
+          availabilityStatus: "provider_expired",
+          availabilityReason: "The provider result URL has expired.",
+        }],
+      }],
+    }) as { tasks: Array<Record<string, unknown>> };
+
+    expect(projected.tasks[0]?.url).toBeUndefined();
+    expect(projected.tasks[0]?.mediaAvailability).toBe("provider_expired");
+    expect(projected.tasks[0]?.mediaAvailabilityReason).toContain("expired");
   });
 });
 
