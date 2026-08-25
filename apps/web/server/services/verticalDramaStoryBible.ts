@@ -4838,6 +4838,8 @@ export interface GenerateStoryBibleDeepParams {
    * same-jobId BullMQ redelivery. Supported by BOTH modes.
    */
   onChunkComplete?: (chunkDraftedItems: DeepDraftedEpisodeItem[]) => void;
+  /** Internal guard for the single background recovery pass. */
+  recoveryDepth?: number;
 }
 
 /**
@@ -5515,12 +5517,13 @@ export async function generateStoryBibleDeep(
   const draftedItems: DeepDraftedEpisodeItem[] = [...resumedDraftedItems];
   const warnings: VdDeepDraftWarning[] = [];
   const completedChunkSizes: number[] = [];
-  const missingEpisodes: number[] = [];
+  const pendingRepairEpisodeNumbers = new Set<number>();
   let recapItems = [...(params.priorRecap?.items ?? [])];
   let openThreads = [...(params.priorRecap?.openThreads ?? [])];
   const openThreadIds = new Set(
     params.openThreadIds ?? params.priorRecap?.openThreadIds ?? []
   );
+  const openThreadsByEpisode = new Map<number, string[]>();
   let totalCreditsUsed = 0;
   let cursor = 0;
   let partial = false;
@@ -5549,6 +5552,11 @@ export async function generateStoryBibleDeep(
     chunkIndex += 1;
     const chunkEpisodes = episodesToProcess.slice(cursor, cursor + size);
     cursor += size;
+    if (chunkEpisodes[0]) {
+      openThreadsByEpisode.set(chunkEpisodes[0].episodeNumber, [
+        ...openThreads,
+      ]);
+    }
     const requestedEpisodeNumbers = chunkEpisodes.map(ep => ep.episodeNumber);
 
     // Async story jobs (#28) — additive, no-op when `onProgress` is absent.
@@ -5917,11 +5925,18 @@ export async function generateStoryBibleDeep(
         }),
       ];
       openThreads = chunkOpenThreads;
-      // Actual number of episodes this chunk actually persisted — NOT the
-      // originally-requested `size` (live-bug fix: this is what the client
-      // success toast sums via `sumDeepDraftChunkSizes`, so it must never
-      // overstate how many episodes were really drafted).
-      completedChunkSizes.push(chunkDrafted.length);
+      // Count only episodes that satisfy the full 9-shot + speakable-dialogue
+      // contract. A retry can revisit an episode, so raw output rows must not
+      // inflate the client progress count.
+      completedChunkSizes.push(
+        chunkDrafted.filter(
+          item =>
+            inspectVerticalDramaEpisodeCompletion({
+              episodeNumber: item.episodeNumber,
+              shotDrafts: item.shotDrafts,
+            }) === null
+        ).length
+      );
 
       const unresolvedEpisodeNumbers = [
         ...new Set([
@@ -5931,7 +5946,7 @@ export async function generateStoryBibleDeep(
       ];
       if (unresolvedEpisodeNumbers.length > 0) {
         for (const missingEpisodeNumber of unresolvedEpisodeNumbers) {
-          missingEpisodes.push(missingEpisodeNumber);
+          pendingRepairEpisodeNumbers.add(missingEpisodeNumber);
           if (!dialogueMissingEpisodeNumbers.includes(missingEpisodeNumber)) {
             warnings.push({
               episodeNumber: missingEpisodeNumber,
@@ -5940,26 +5955,84 @@ export async function generateStoryBibleDeep(
             });
           }
         }
-        partial = true;
         failureMessage = `Deep story draft chunk (episodes ${requestedEpisodeNumbers[0]}-${requestedEpisodeNumbers[requestedEpisodeNumbers.length - 1]}) still needs repair for episode(s) ${unresolvedEpisodeNumbers.join(", ")} after the corrective retry`;
-        // Stop here — do NOT let a later chunk run on top of this gap: that
-        // would push `horizonEndEpisode` (computed by the router as
-        // `max(draftedItems[].episodeNumber)`) past episodes that were
-        // never actually drafted, exactly the "9/10 reported as done"
-        // dishonesty this fix exists to close.
-        break;
       }
     } catch (error) {
-      if (draftedItems.length === 0) {
-        // Nothing succeeded yet — nothing to persist, so fail exactly like a
-        // single-call `generateStoryBible` failure (no partial result).
-        throw error;
+      for (const episode of chunkEpisodes) {
+        pendingRepairEpisodeNumbers.add(episode.episodeNumber);
       }
-      partial = true;
       failureMessage = error instanceof Error ? error.message : String(error);
-      break;
     }
   }
+
+  // One bounded second pass gives the background worker a fresh provider call
+  // for every episode that was missing or silent in its normal chunk. The
+  // depth guard prevents recursive recovery from multiplying work forever.
+  if (pendingRepairEpisodeNumbers.size > 0 && (params.recoveryDepth ?? 0) < 1) {
+    const pendingEpisodes = episodesToProcess.filter(item =>
+      pendingRepairEpisodeNumbers.has(item.episodeNumber)
+    );
+    try {
+      const recovery = await generateStoryBibleDeep({
+        ...params,
+        episodes: pendingEpisodes,
+        priorRecap: {
+          items: recapItems.filter(
+            item =>
+              item.episodeNumber <
+              (pendingEpisodes[0]?.episodeNumber ?? Number.MAX_SAFE_INTEGER)
+          ),
+          openThreads:
+            openThreadsByEpisode.get(pendingEpisodes[0]?.episodeNumber ?? 0) ??
+            openThreads,
+          openThreadIds: [...openThreadIds],
+        },
+        resumeDraftedItems: [],
+        alreadyDraftedEpisodeNumbers: [],
+        idempotencyKey: `${logicalRunKey}:background-recovery`,
+        recoveryDepth: (params.recoveryDepth ?? 0) + 1,
+      });
+      const recoveredByEpisode = new Map(
+        recovery.draftedItems.map(item => [item.episodeNumber, item])
+      );
+      for (const episode of pendingEpisodes) {
+        const recovered = recoveredByEpisode.get(episode.episodeNumber);
+        if (!recovered) continue;
+        const existingIndex = draftedItems.findIndex(
+          item => item.episodeNumber === episode.episodeNumber
+        );
+        if (existingIndex >= 0) draftedItems[existingIndex] = recovered;
+        else draftedItems.push(recovered);
+        if (
+          inspectVerticalDramaEpisodeCompletion({
+            episodeNumber: episode.episodeNumber,
+            shotDrafts: recovered.shotDrafts,
+          }) === null
+        ) {
+          pendingRepairEpisodeNumbers.delete(episode.episodeNumber);
+        }
+      }
+      completedChunkSizes.push(...recovery.chunkSizes);
+      totalCreditsUsed += recovery.creditsUsed;
+      warnings.push(...recovery.warnings);
+      openThreads = recovery.finalOpenThreads;
+      collectedNewLocations.push(...recovery.newLocations);
+      failureMessage = recovery.error ?? failureMessage;
+    } catch (recoveryError) {
+      failureMessage =
+        recoveryError instanceof Error
+          ? recoveryError.message
+          : String(recoveryError);
+    }
+  }
+  partial = pendingRepairEpisodeNumbers.size > 0;
+  const finalMissingEpisodes = [...pendingRepairEpisodeNumbers].sort(
+    (a, b) => a - b
+  );
+  if (partial) {
+    failureMessage = `Deep story draft still needs repair for episode(s) ${finalMissingEpisodes.join(", ")}${failureMessage ? `: ${failureMessage}` : ""}`;
+  }
+  draftedItems.sort((a, b) => a.episodeNumber - b.episodeNumber);
 
   // Task #22 — deterministic tie-in placement/draft-marking reconciliation,
   // run ONCE over every episode drafted this run (see
@@ -6003,7 +6076,7 @@ export async function generateStoryBibleDeep(
     model,
     warnings: warningsWithPremiseCoverage,
     finalOpenThreads: openThreads,
-    missingEpisodes,
+    missingEpisodes: finalMissingEpisodes,
     newLocations: dedupedNewLocations,
     continuityIssues,
     ...(partial && failureMessage ? { error: failureMessage } : {}),
@@ -8546,7 +8619,6 @@ async function generateStoryBibleDeepPremium(
   const completedChunkSizes: number[] = [];
   const roundsUsedPerChunk: number[] = [];
   const firstPassGateFlags: boolean[] = [];
-  const missingEpisodes: number[] = [];
   const missingEpisodeWarnings: VdDeepDraftWarning[] = [];
   const allDraftedByEpisode = new Map<number, PremiumEpisodeState>();
   let recapItems = [...(params.priorRecap?.items ?? [])];
@@ -8554,6 +8626,7 @@ async function generateStoryBibleDeepPremium(
   const openThreadIds = new Set(
     params.openThreadIds ?? params.priorRecap?.openThreadIds ?? []
   );
+  const openThreadsByEpisode = new Map<number, string[]>();
   const updateOpenThreadIds = (memory: VdEpisodeMemory | undefined) => {
     for (const thread of memory?.threadsOpened ?? []) {
       if (thread.threadId.trim()) openThreadIds.add(thread.threadId.trim());
@@ -8568,7 +8641,7 @@ async function generateStoryBibleDeepPremium(
   let totalCreditsUsed = 0;
   let callsMade = 0;
   let cursor = 0;
-  let partial = false;
+  const pendingRepairEpisodeNumbers = new Set<number>();
   let failureMessage: string | undefined;
   let chunkIndex = 0;
 
@@ -8614,10 +8687,18 @@ async function generateStoryBibleDeepPremium(
     }
     recapItems = [...recapItems, ...chunkResult.recapDelta];
     openThreads = chunkResult.openThreads;
-    // Actual number of episodes this chunk actually persisted — NOT the
-    // originally-requested size (same live-bug fix as standard mode: the
-    // client success toast sums this via `sumDeepDraftChunkSizes`).
-    completedChunkSizes.push(chunkResult.episodeStates.length);
+    // Count only episodes that satisfy the full 9-shot + speakable-dialogue
+    // contract. Recovery may revisit the same episode, so counting raw state
+    // rows here would make the UI report more completed episodes than exist.
+    completedChunkSizes.push(
+      chunkResult.episodeStates.filter(
+        state =>
+          inspectVerticalDramaEpisodeCompletion({
+            episodeNumber: state.episodeNumber,
+            shotDrafts: state.shotDrafts,
+          }) === null
+      ).length
+    );
     roundsUsedPerChunk.push(chunkResult.roundsUsed);
     firstPassGateFlags.push(...chunkResult.firstPassGatePassFlags);
 
@@ -8639,19 +8720,27 @@ async function generateStoryBibleDeepPremium(
         : undefined;
     }
 
-    if (chunkResult.missingEpisodeNumbers.length === 0) {
+    const unresolvedEpisodeNumbers = new Set(
+      chunkResult.missingEpisodeNumbers
+    );
+    for (const episode of sourceEpisodes) {
+      if (unresolvedEpisodeNumbers.has(episode.episodeNumber)) {
+        pendingRepairEpisodeNumbers.add(episode.episodeNumber);
+      } else {
+        pendingRepairEpisodeNumbers.delete(episode.episodeNumber);
+      }
+    }
+    if (unresolvedEpisodeNumbers.size === 0) {
       return true;
     }
 
-    for (const missingEpisodeNumber of chunkResult.missingEpisodeNumbers) {
-      missingEpisodes.push(missingEpisodeNumber);
+    for (const missingEpisodeNumber of unresolvedEpisodeNumbers) {
       missingEpisodeWarnings.push({
         episodeNumber: missingEpisodeNumber,
         shotNumber: 0,
         reason: "episode_missing_after_retry",
       });
     }
-    partial = true;
     failureMessage = `Premium deep story draft chunk (${sourceEpisodes[0]?.episodeNumber}-${sourceEpisodes[sourceEpisodes.length - 1]?.episodeNumber}) is still missing episode(s) ${chunkResult.missingEpisodeNumbers.join(", ")} after a corrective retry`;
     return false;
   };
@@ -8660,6 +8749,12 @@ async function generateStoryBibleDeepPremium(
     chunkIndex += 1;
     const chunkEpisodes = episodesToProcess.slice(cursor, cursor + size);
     cursor += size;
+
+    if (chunkEpisodes[0]) {
+      openThreadsByEpisode.set(chunkEpisodes[0].episodeNumber, [
+        ...openThreads,
+      ]);
+    }
 
     try {
       const chunkResult = await runPremiumChunk(
@@ -8699,15 +8794,13 @@ async function generateStoryBibleDeepPremium(
         callAccounting
       );
 
-      if (!applyChunkResult(chunkResult, chunkEpisodes)) {
-        // Stop here — same "never let a later chunk push horizonEndEpisode
-        // past an actual gap" reasoning as standard mode's loop.
-        break;
-      }
+      // A damaged chunk is queued for targeted recovery, but must not stop
+      // later chunks in the same background run.
+      applyChunkResult(chunkResult, chunkEpisodes);
       // Resilient resume — fire-and-forget checkpoint hook, THIS chunk's
-      // items only (never the resumed ones), fired only after a SUCCESSFUL
-      // `applyChunkResult` (never for the missing-episode/failing branch).
-      // Mirrors standard mode's identical `onChunkComplete` call.
+      // items only (never the resumed ones). Incomplete items are also
+      // checkpointed; the resume filter will not treat silent episodes as
+      // complete on the next worker attempt.
       params.onChunkComplete?.(
         chunkResult.episodeStates.map(premiumStateToDraftedItem)
       );
@@ -8754,10 +8847,7 @@ async function generateStoryBibleDeepPremium(
               },
               callAccounting
             );
-            if (!applyChunkResult(singleResult, [singleEpisode])) {
-              splitFailure = new Error(failureMessage);
-              break;
-            }
+            applyChunkResult(singleResult, [singleEpisode]);
             // Resilient resume — same per-chunk checkpoint hook as the main
             // fan-out call site above, for the split-retry (per-episode)
             // path.
@@ -8766,31 +8856,126 @@ async function generateStoryBibleDeepPremium(
             );
           } catch (singleError) {
             splitFailure = singleError;
-            break;
+            pendingRepairEpisodeNumbers.add(singleEpisode.episodeNumber);
           }
         }
         if (splitFailure == null) {
           continue;
         }
-        if (allDraftedByEpisode.size > 0) {
-          partial = true;
+        if (splitFailure != null) {
           failureMessage =
             splitFailure instanceof Error
               ? splitFailure.message
               : String(splitFailure);
-          break;
         }
-        throw splitFailure;
+        continue;
       }
-      if (allDraftedByEpisode.size === 0) {
-        // Nothing succeeded yet — nothing to persist, so fail exactly like a
-        // single-call `generateStoryBible` failure (no partial result).
-        throw error;
+      // Keep later chunks moving after a transient provider/schema failure;
+      // the failed chunk is repaired in the bounded recovery pass below.
+      for (const episode of chunkEpisodes) {
+        pendingRepairEpisodeNumbers.add(episode.episodeNumber);
       }
-      partial = true;
       failureMessage = error instanceof Error ? error.message : String(error);
-      break;
     }
+  }
+
+  // Adaptive recovery keeps one background job responsible for the whole
+  // requested horizon. It retries only the episodes that are still missing
+  // or silent, in premium-sized batches, and never loops indefinitely.
+  const maxRecoveryRounds = 3;
+  for (
+    let recoveryRound = 1;
+    recoveryRound <= maxRecoveryRounds && pendingRepairEpisodeNumbers.size > 0;
+    recoveryRound += 1
+  ) {
+    const pendingEpisodes = episodesToProcess.filter(item =>
+      pendingRepairEpisodeNumbers.has(item.episodeNumber)
+    );
+    if (pendingEpisodes.length === 0) break;
+    const recoveryChunkSizes = computePremiumDeepDraftChunkSizes(
+      pendingEpisodes.length
+    );
+    let recoveryCursor = 0;
+    let recoveredAny = false;
+    for (const recoverySize of recoveryChunkSizes) {
+      const recoveryEpisodes = pendingEpisodes.slice(
+        recoveryCursor,
+        recoveryCursor + recoverySize
+      );
+      recoveryCursor += recoverySize;
+      const pendingBefore = pendingRepairEpisodeNumbers.size;
+      try {
+        const recoveryResult = await runPremiumChunk(
+          ctx,
+          {
+            title: params.title,
+            locale: params.locale,
+            dialogueLanguageProfile: params.dialogueLanguageProfile,
+            genre: params.genre,
+            tone: params.tone,
+            chunkEpisodes: recoveryEpisodes,
+            recapItems: recapItems.filter(
+              item =>
+                item.episodeNumber <
+                (recoveryEpisodes[0]?.episodeNumber ?? Number.MAX_SAFE_INTEGER)
+            ),
+            openThreads:
+              openThreadsByEpisode.get(
+                recoveryEpisodes[0]?.episodeNumber ?? 0
+              ) ?? openThreads,
+            openThreadIds: [...openThreadIds],
+            durationPlan: params.durationPlan,
+            storyControlSeed: params.storyControlSeed,
+            storyContext: params.storyContext,
+            storyDesign: params.storyDesign,
+            storyContract: params.storyContract,
+            visualNarrativeProfile: params.visualNarrativeProfile,
+            visualNarrativeIdentity: params.visualNarrativeIdentity,
+            seriesFormat: params.seriesFormat,
+            visualGroundingContract: params.visualGroundingContract,
+            sourcePackDigest: params.sourcePackDigest,
+            totalEpisodeCount: params.totalEpisodeCount,
+            formatProfile,
+            chunkIndex: chunkSizes.length + recoveryRound,
+            chunkCount: chunkSizes.length + maxRecoveryRounds,
+            retrying: true,
+            retryEpisodeNumbers: recoveryEpisodes.map(
+              episode => episode.episodeNumber
+            ),
+            tieInDraftContext: params.tieInDraftContext,
+            userPremise: params.userPremise,
+            sceneContractsEnabled: params.sceneContractsEnabled,
+            motionContractsEnabled: params.motionContractsEnabled,
+            knownLocations: knownLocationsForPrompt,
+            characterBibleNames: params.characterBibleNames,
+            knownCharacters: params.knownCharacters,
+            seasonLineage: params.seasonLineage,
+          },
+          callAccounting
+        );
+        applyChunkResult(recoveryResult, recoveryEpisodes);
+        params.onChunkComplete?.(
+          recoveryResult.episodeStates.map(premiumStateToDraftedItem)
+        );
+        if (pendingRepairEpisodeNumbers.size < pendingBefore) {
+          recoveredAny = true;
+        }
+      } catch (recoveryError) {
+        failureMessage =
+          recoveryError instanceof Error
+            ? recoveryError.message
+            : String(recoveryError);
+      }
+    }
+    if (!recoveredAny) break;
+  }
+
+  const partial = pendingRepairEpisodeNumbers.size > 0;
+  const finalMissingEpisodes = [...pendingRepairEpisodeNumbers].sort(
+    (a, b) => a - b
+  );
+  if (partial) {
+    failureMessage = `Premium deep story draft still needs repair for episode(s) ${finalMissingEpisodes.join(", ")} after ${maxRecoveryRounds} background recovery rounds${failureMessage ? `: ${failureMessage}` : ""}`;
   }
 
   const episodesBelowFloorAfter = [...allDraftedByEpisode.values()].filter(
@@ -8927,7 +9112,7 @@ async function generateStoryBibleDeepPremium(
     warnings: warningsWithPremiseCoverage,
     finalOpenThreads: openThreads,
     premiumMetrics,
-    missingEpisodes,
+    missingEpisodes: finalMissingEpisodes,
     newLocations: dedupedNewLocations,
     continuityIssues,
     ...(partial && failureMessage ? { error: failureMessage } : {}),

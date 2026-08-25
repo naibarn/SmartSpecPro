@@ -27,13 +27,15 @@ vi.mock("../enabledLlmModels", () => ({
   loadEnabledLlmModelRows: mockLoadEnabledLlmModelRows,
 }));
 
-const { mockResolveVerticalDramaSeriesModel } = vi.hoisted(() => ({
+const { mockResolveVerticalDramaSeriesModel, mockResolveVerticalDramaRecommendedDraftModel } = vi.hoisted(() => ({
   mockResolveVerticalDramaSeriesModel: vi.fn(
     async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
   ),
+  mockResolveVerticalDramaRecommendedDraftModel: vi.fn(async () => "active-llm-model"),
 }));
 vi.mock("../verticalDramaLlmModelPolicy", () => ({
   resolveVerticalDramaSeriesModel: mockResolveVerticalDramaSeriesModel,
+  resolveVerticalDramaRecommendedDraftModel: mockResolveVerticalDramaRecommendedDraftModel,
 }));
 
 vi.mock("../intelligentModelSelector", () => ({
@@ -263,24 +265,12 @@ describe("computePremiumDeepDraftChunkSizes", () => {
 });
 
 describe("resolveDeepStoryDraftModel", () => {
-  it("selects by capability policy instead of a hardcoded model id", async () => {
+  it("uses the centralized recommended draft model policy", async () => {
     mockLoadEnabledLlmModelRows.mockResolvedValue([
       { modelId: "small-fast-model", priority: 0 } as any,
       { modelId: "large-structured-model", priority: 10 } as any,
     ]);
-    mockSelectBestLlmModel.mockReturnValue("large-structured-model");
-
-    await expect(resolveDeepStoryDraftModel()).resolves.toBe("large-structured-model");
-
-    expect(mockSelectBestLlmModel).toHaveBeenCalledWith(
-      {
-        supportsThinking: true,
-        supportsStructuredOutputs: true,
-        supportsResponses: true,
-        contextLength: 1_000_000,
-      },
-      expect.any(Array),
-    );
+    await expect(resolveDeepStoryDraftModel()).resolves.toBe("active-llm-model");
   });
 });
 
@@ -421,15 +411,17 @@ describe("premium — fan-out", () => {
     });
   });
 
-  it("fails the whole chunk (throws, since it's the first chunk) when ANY of the 3 fan-out candidates fails without deducting the unusable fan-out set", async () => {
+  it("returns a resumable partial result when every recovery attempt fails", async () => {
     mockLlmResponseOnce(candidateChunkPayload("c0", [1]));
     mockExecuteWithFallback.mockResolvedValueOnce({ type: "error", error: "provider exploded" });
     mockLlmResponseOnce(candidateChunkPayload("c2", [1]));
 
-    await expect(generateStoryBibleDeep(baseDeepParams())).rejects.toThrow();
+    const result = await generateStoryBibleDeep(baseDeepParams());
 
-    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(3); // no judge/sweep call — chunk failed before that
-    expect(mockDeductCredits).not.toHaveBeenCalled(); // no persisted/usable chunk, so no partial fan-out charge
+    expect(result.partial).toBe(true);
+    expect(result.missingEpisodes).toEqual([1]);
+    expect(mockExecuteWithFallback.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(2); // successful candidates were real provider calls
   });
 
   it("carries exact open thread IDs from one premium chunk into the next chunk", async () => {
@@ -760,9 +752,9 @@ describe("premium — credits", () => {
     expect(result.draftedItems.map((i) => i.episodeNumber)).toEqual([1, 2]);
     expect(result.error).toBeTruthy();
 
-    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(7); // 4 (chunk1) + 3 attempted (chunk2)
-    expect(mockDeductCredits).toHaveBeenCalledTimes(4); // chunk2 produced no usable persisted result, so no partial fan-out charge
-    expect(result.premiumMetrics?.callsMade).toBe(4);
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(10); // 4 (chunk1) + 3 attempted (chunk2) + 3 recovery candidates
+    expect(mockDeductCredits).toHaveBeenCalledTimes(6); // successful chunk2 candidates were real provider calls too
+    expect(result.premiumMetrics?.callsMade).toBe(6);
     expect(result.premiumMetrics?.sweepIssuesFound).toBe(0); // sweep never runs on a partial result
   });
 });
@@ -962,8 +954,43 @@ describe("premium — missing-episode corrective retry (shared chunk under-count
     expect(result.warnings).toContainEqual({ episodeNumber: 2, shotNumber: 0, reason: "episode_missing_after_retry" });
     // Sweep never runs on a partial result (same rule as any other chunk failure).
     expect(result.premiumMetrics?.sweepIssuesFound).toBe(0);
-    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(5); // 3 fanout + 1 judge + 1 missing-episode retry, no sweep
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(8); // 3 fanout + 1 judge + 1 missing-episode retry + 3 background recovery candidates
     expect(mockDeductCredits).toHaveBeenCalledTimes(5);
+  });
+});
+
+describe("premium — silent episode is returned for automatic dialogue repair", () => {
+  it("does not throw before persistence when a structurally valid episode has no dialogue", async () => {
+    const silentShots = () =>
+      nineShotDrafts().map(shot => ({ ...shot, dialogue_lines: [] }));
+    mockLlmResponseOnce(
+      candidateChunkPayload("c0", [1], { shotDraftsFor: silentShots }),
+    );
+    mockLlmResponseOnce(
+      candidateChunkPayload("c1", [1], { shotDraftsFor: silentShots }),
+    );
+    mockLlmResponseOnce(
+      candidateChunkPayload("c2", [1], { shotDraftsFor: silentShots }),
+    );
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 1 },
+        { candidateIndex: 1, episodeNumber: 1 },
+        { candidateIndex: 2, episodeNumber: 1 },
+      ]),
+    );
+
+    const result = await generateStoryBibleDeep(baseDeepParams());
+
+    expect(result.partial).toBe(true);
+    expect(result.missingEpisodes).toEqual([1]);
+    expect(result.draftedItems).toHaveLength(1);
+    expect(result.warnings).toContainEqual({
+      episodeNumber: 1,
+      shotNumber: 0,
+      reason: "missing_dialogue_after_retry",
+    });
+    expect(mockDeductCredits).toHaveBeenCalledTimes(4);
   });
 });
 

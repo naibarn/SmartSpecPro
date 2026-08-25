@@ -876,7 +876,26 @@ describe("generateStoryBibleDeep — format profiles (task #23)", () => {
 /* -------------------------------------------------------------------------- */
 
 describe("generateStoryBibleDeep — partial failure", () => {
-  it("stops after a later chunk fails but returns the earlier chunk's drafted items with partial: true", async () => {
+  it("continues later chunks and repairs the failed chunk inside the same background run", async () => {
+    const episodes = Array.from({ length: 10 }, (_, i) => existingItem(i + 1));
+    mockExecuteWithFallback.mockResolvedValueOnce({
+      type: "error",
+      error: "first chunk provider hiccup",
+    });
+    mockLlmResponseOnce(chunkResponsePayload([6, 7, 8, 9, 10]));
+    mockLlmResponseOnce(chunkResponsePayload([1, 2, 3, 4, 5]));
+
+    const result = await generateStoryBibleDeep(baseDeepParams({ episodes }));
+
+    expect(result.partial).toBe(false);
+    expect(result.missingEpisodes).toEqual([]);
+    expect(result.draftedItems.map(item => item.episodeNumber)).toEqual(
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    );
+    expect(result.chunkSizes).toEqual([5, 5]);
+  });
+
+  it("continues in the background and reports only the failed chunk's episodes", async () => {
     const episodes = Array.from({ length: 10 }, (_, i) => existingItem(i + 1)); // -> chunks [5, 5]
     mockLlmResponseOnce(chunkResponsePayload([1, 2, 3, 4, 5]));
     mockExecuteWithFallback.mockResolvedValueOnce({ type: "error", error: "provider exploded" });
@@ -888,17 +907,16 @@ describe("generateStoryBibleDeep — partial failure", () => {
     expect(result.draftedItems.map((i) => i.episodeNumber)).toEqual([1, 2, 3, 4, 5]);
     expect(result.error).toBeTruthy();
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
-    // A chunk-level provider failure is unrelated to the episode-count
-    // reconciliation fix below — missingEpisodes stays empty (always
-    // present, never undefined).
-    expect(result.missingEpisodes).toEqual([]);
+    expect(result.missingEpisodes).toEqual([6, 7, 8, 9, 10]);
   });
 
-  it("throws (does not return a partial result) when the VERY FIRST chunk fails — nothing to persist", async () => {
+  it("returns a background-recoverable partial result when the VERY FIRST chunk fails", async () => {
     const episodes = Array.from({ length: 10 }, (_, i) => existingItem(i + 1));
     mockExecuteWithFallback.mockResolvedValueOnce({ type: "error", error: "provider exploded" });
 
-    await expect(generateStoryBibleDeep(baseDeepParams({ episodes }))).rejects.toThrow();
+    const result = await generateStoryBibleDeep(baseDeepParams({ episodes }));
+    expect(result.partial).toBe(true);
+    expect(result.missingEpisodes).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 });
@@ -939,9 +957,9 @@ describe("generateStoryBibleDeep — chunk episode-count mismatch (missing-episo
 
     const result = await generateStoryBibleDeep(baseDeepParams({ episodes }));
 
-    // Only 3 calls total — a 3rd chunk is never attempted once chunk 2 is
-    // still incomplete after its retry (never overstate coverage past a gap).
-    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(3);
+    // The final background recovery pass gets one additional call for the
+    // remaining episode, then leaves it marked for a later durable retry.
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(4);
 
     expect(result.partial).toBe(true);
     expect(result.missingEpisodes).toEqual([10]);
@@ -1021,7 +1039,7 @@ describe("generateStoryBibleDeep — spoken-dialogue safety gate", () => {
     expect(result.partial).toBe(true);
     expect(result.missingEpisodes).toEqual([1]);
     expect(result.warnings.some(warning => warning.reason === "missing_dialogue_after_retry")).toBe(true);
-    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(2);
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(3);
     expect(mockDeductCredits).toHaveBeenCalledTimes(2);
   });
 
