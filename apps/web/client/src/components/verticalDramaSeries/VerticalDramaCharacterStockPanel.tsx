@@ -90,7 +90,7 @@ import {
   VD_SPEECH_PROFILE_METAPHOR_USAGE,
   type VerticalDramaSpeechProfile,
 } from "@shared/verticalDramaSeries/speechProfile";
-import {
+import ImageSourcePicker, {
   readDroppedImageInput,
   readFileAsDataUrl,
 } from "@/components/media/ImageSourcePicker";
@@ -990,7 +990,21 @@ export interface VdPreviewCharacterPromptInput {
   selectedImageModelId?: string;
   customInstruction?: string;
   portraitCandidateCount?: number;
+  castingReferenceAssetLinkIds?: string[];
+  castingLockClothing?: boolean;
+  castingPoseMode?: "auto_natural" | "lock_reference";
+  castingCameraFraming?:
+    | "full_body"
+    | "three_quarter"
+    | "half_body"
+    | "medium_close_up"
+    | "close_up"
+    | "extreme_close_up"
+    | "wide_environmental";
 }
+
+/** Candidate counts exposed by both the first-casting and reference-area flows. */
+export const VD_PORTRAIT_CANDIDATE_COUNTS = [1, 2, 3, 4, 5] as const;
 
 /** Builds the `previewCharacterPrompt` mutation payload from the optional
  *  per-character "additional details" hint (roster-card compact input +
@@ -1004,8 +1018,19 @@ export function buildPreviewCharacterPromptInput(params: {
   selectedImageModelId?: string;
   customInstruction: string;
   portraitCandidateCount?: number;
+  castingReferenceAssetLinkIds?: string[];
+  castingLockClothing?: boolean;
+  castingPoseMode?: VdPreviewCharacterPromptInput["castingPoseMode"];
+  castingCameraFraming?: VdPreviewCharacterPromptInput["castingCameraFraming"];
 }): VdPreviewCharacterPromptInput {
   const customInstruction = params.customInstruction.trim();
+  const referenceAssetLinkIds = Array.from(
+    new Set(
+      (params.castingReferenceAssetLinkIds ?? [])
+        .map(id => id.trim())
+        .filter(Boolean)
+    )
+  ).slice(0, 6);
   return {
     seriesId: params.seriesId,
     characterId: params.characterId,
@@ -1015,6 +1040,14 @@ export function buildPreviewCharacterPromptInput(params: {
     ...(customInstruction ? { customInstruction } : {}),
     ...(params.portraitCandidateCount
       ? { portraitCandidateCount: params.portraitCandidateCount }
+      : {}),
+    ...(referenceAssetLinkIds.length
+      ? {
+          castingReferenceAssetLinkIds: referenceAssetLinkIds,
+          castingLockClothing: params.castingLockClothing ?? false,
+          castingPoseMode: params.castingPoseMode ?? "auto_natural",
+          castingCameraFraming: params.castingCameraFraming ?? "half_body",
+        }
       : {}),
   };
 }
@@ -1029,6 +1062,10 @@ export function buildPortraitCandidateRetryPreviewInput(params: {
   characterId: string;
   selectedImageModelId?: string;
   customInstruction: string;
+  castingReferenceAssetLinkIds?: string[];
+  castingLockClothing?: boolean;
+  castingPoseMode?: VdPreviewCharacterPromptInput["castingPoseMode"];
+  castingCameraFraming?: VdPreviewCharacterPromptInput["castingCameraFraming"];
 }): VdPreviewCharacterPromptInput {
   return buildPreviewCharacterPromptInput({
     seriesId: params.seriesId,
@@ -1036,6 +1073,10 @@ export function buildPortraitCandidateRetryPreviewInput(params: {
     selectedImageModelId: params.selectedImageModelId,
     customInstruction: params.customInstruction,
     portraitCandidateCount: 1,
+    castingReferenceAssetLinkIds: params.castingReferenceAssetLinkIds,
+    castingLockClothing: params.castingLockClothing,
+    castingPoseMode: params.castingPoseMode,
+    castingCameraFraming: params.castingCameraFraming,
   });
 }
 
@@ -1087,6 +1128,7 @@ interface VdPortraitCandidateUiBatch {
   characterId: string;
   sharedVisualLanguage?: string;
   model?: string;
+  referenceGuided?: boolean;
   candidates: VdPortraitCandidateUiItem[];
   /** Non-fatal lead-beauty graceful-degradation warnings from the server
    * (FIX A) — batch-level, shown above the candidate grid. */
@@ -1269,9 +1311,33 @@ export function resolveVdCharacterMutationErrorMessage(
 ): string {
   const presentation = presentHermesError(err ?? null);
   if (presentation) return formatHermesErrorForToast(presentation, lang);
+  const creditCapacityMessage = resolveCharacterCreditCapacityMessage(err, lang);
+  if (creditCapacityMessage) return creditCapacityMessage;
   const roleTierMismatch = resolveCharacterRoleTierMismatchMessage(err, lang);
   if (roleTierMismatch) return roleTierMismatch;
   return err?.message ?? t(lang, "เกิดข้อผิดพลาด", "Something went wrong");
+}
+
+/**
+ * Provider account capacity is temporary when another request is still
+ * running.  The durable prompt job now retries this condition, but keep the
+ * terminal fallback actionable if the provider remains saturated after the
+ * bounded retry window.
+ */
+export function resolveCharacterCreditCapacityMessage(
+  err: { message?: string } | null | undefined,
+  lang: Lang,
+): string | null {
+  const message = (err?.message ?? "").toLowerCase().replace(/\s+/g, " ");
+  if (
+    !message.includes("would exceed your available credits") ||
+    !message.includes("in-flight")
+  ) {
+    return null;
+  }
+  return lang === "th"
+    ? "ระบบส่งงานสร้างตัวละครแล้ว แต่ผู้ให้บริการกำลังใช้เครดิตกับงานอื่นอยู่ ระบบรอและลองให้อัตโนมัติแล้ว หากยังไม่สำเร็จให้รอให้งานเดิมเสร็จ แล้วกดสร้างใหม่ได้โดยไม่ต้องสร้างข้อมูลตัวละครซ้ำ"
+    : "The character job was submitted, but the provider is using credits for other in-flight work. The system waited and retried automatically. If it still fails, wait for the existing jobs to finish and retry; the character data does not need to be recreated.";
 }
 
 /**
@@ -1997,6 +2063,14 @@ function sheetTypeLabelFromMetadata(
 /* Props                                                                       */
 /* -------------------------------------------------------------------------- */
 
+type VariantAnalysisSummary = {
+  variantsCreated: number;
+  variantsUpdated: number;
+  twinsCreated: number;
+  createdCharacters?: unknown[];
+  updatedCharacters?: unknown[];
+};
+
 export interface VerticalDramaCharacterStockPanelProps {
   seriesId: string;
   /** When true (archived series), all mutating controls are disabled. */
@@ -2034,6 +2108,38 @@ export function VerticalDramaCharacterStockPanel({
 }: VerticalDramaCharacterStockPanelProps) {
   const lang = useVerticalDramaLang();
   const utils = trpc.useUtils();
+  const [variantAnalysisJobId, setVariantAnalysisJobId] = useState<
+    string | null
+  >(null);
+  const [variantAnalysisResult, setVariantAnalysisResult] =
+    useState<VariantAnalysisSummary | null>(null);
+  const interactiveJobStatusProcedure =
+    trpc.verticalDramaSeries.getInteractiveJobStatus;
+  const variantAnalysisJobQuery = interactiveJobStatusProcedure?.useQuery(
+    {
+      jobId: variantAnalysisJobId ?? "00000000-0000-0000-0000-000000000000",
+      scopeKey: `series:${seriesId}`,
+    },
+    {
+      enabled: Boolean(variantAnalysisJobId),
+      refetchInterval: variantAnalysisJobId ? 2000 : false,
+      staleTime: 0,
+    }
+  ) ?? { data: undefined };
+  useEffect(() => {
+    const job = variantAnalysisJobQuery.data;
+    if (!job || !variantAnalysisJobId) return;
+    if (job.status === "succeeded") {
+      const result = job.result as VariantAnalysisSummary;
+      setVariantAnalysisResult(result);
+      setVariantAnalysisJobId(null);
+      invalidate();
+      toast.success(buildDetectCharacterVariantsSummaryMessage(lang, result));
+    } else if (job.status === "failed") {
+      setVariantAnalysisJobId(null);
+      onError({ message: job.error ?? "Character analysis failed" });
+    }
+  }, [lang, variantAnalysisJobId, variantAnalysisJobQuery.data]);
   const { requestConfirmation, creditConfirmDialog } =
     useVerticalDramaCreditConfirmation();
   const confirmCharacterCreditAction = (
@@ -2190,6 +2296,22 @@ export function VerticalDramaCharacterStockPanel({
     portraitCandidateCountByCharacter,
     setPortraitCandidateCountByCharacter,
   ] = useState<Record<string, number>>({});
+  const [castingLockClothingByCharacter, setCastingLockClothingByCharacter] =
+    useState<Record<string, boolean>>({});
+  const [castingPoseModeByCharacter, setCastingPoseModeByCharacter] = useState<
+    Record<string, "auto_natural" | "lock_reference">
+  >({});
+  const [castingCameraFramingByCharacter, setCastingCameraFramingByCharacter] =
+    useState<
+      Record<
+        string,
+        NonNullable<VdPreviewCharacterPromptInput["castingCameraFraming"]>
+      >
+    >({});
+  const [castingReferencePickerUrlsByCharacter, setCastingReferencePickerUrlsByCharacter] =
+    useState<Record<string, string[]>>({});
+  const [castingReferenceSyncingCharacterId, setCastingReferenceSyncingCharacterId] =
+    useState<string | null>(null);
   const [portraitCandidateBatches, setPortraitCandidateBatches] = useState<
     Record<string, VdPortraitCandidateUiBatch>
   >({});
@@ -3059,8 +3181,16 @@ export function VerticalDramaCharacterStockPanel({
   const detectVariantsMutation =
     trpc.verticalDramaCharacters.detectCharacterVariantsNow.useMutation({
       onSuccess: res => {
+        if ("jobId" in res) {
+          setVariantAnalysisJobId(res.jobId);
+          return;
+        }
+        const completed = res as VariantAnalysisSummary;
+        setVariantAnalysisResult(completed);
         invalidate();
-        toast.success(buildDetectCharacterVariantsSummaryMessage(lang, res));
+        toast.success(
+          buildDetectCharacterVariantsSummaryMessage(lang, completed)
+        );
       },
       onError,
     });
@@ -3710,11 +3840,20 @@ export function VerticalDramaCharacterStockPanel({
           };
         });
         await invalidate();
+        const selectedBatch = portraitCandidateBatches[variables.characterId];
+        const referenceGuided =
+          result.asset.portraitCandidate?.referenceGuided ??
+          selectedBatch?.referenceGuided ??
+          false;
         toast.success(
           t(
             lang,
-            "เลือกภาพหลักและล็อก Character DNA แล้ว",
-            "Primary portrait selected and Character DNA locked."
+            referenceGuided
+              ? "เลือกภาพหลักแล้ว ภาพนี้เป็นคนใหม่และยังไม่ล็อก Character DNA เดิม"
+              : "เลือกภาพหลักและล็อก Character DNA แล้ว",
+            referenceGuided
+              ? "Primary portrait selected. This is a new person and the existing Character DNA remains unchanged."
+              : "Primary portrait selected and Character DNA locked."
           )
         );
       },
@@ -3810,6 +3949,7 @@ export function VerticalDramaCharacterStockPanel({
         candidateCount: number;
         sharedVisualLanguage?: string;
         model?: string;
+        referenceGuided?: boolean;
         warnings?: string[];
         candidates: Array<{
           assetLinkId: string;
@@ -3840,6 +3980,7 @@ export function VerticalDramaCharacterStockPanel({
     setPendingPreviewTarget(null);
     setCharacterPromptJob(null);
     if (res.mode === "candidate_batch") {
+      setRetryingPortraitCandidateAssetIds(new Set());
       setPendingCharacterPromptPreview(null);
       setPortraitCandidateBatches(prev => ({
         ...prev,
@@ -3848,6 +3989,7 @@ export function VerticalDramaCharacterStockPanel({
           characterId,
           sharedVisualLanguage: res.sharedVisualLanguage,
           model: res.model,
+          referenceGuided: res.referenceGuided,
           warnings: res.warnings,
           candidates: res.candidates.map(candidate => ({
             assetLinkId: candidate.assetLinkId,
@@ -3908,6 +4050,7 @@ export function VerticalDramaCharacterStockPanel({
   useEffect(() => {
     const job = characterPromptJobQuery.data;
     if (characterPromptJobQuery.error) {
+      setRetryingPortraitCandidateAssetIds(new Set());
       setPendingPreviewTarget(null);
       setCharacterPromptJob(null);
       return;
@@ -3918,13 +4061,17 @@ export function VerticalDramaCharacterStockPanel({
         job.result as CharacterPromptPreviewResult
       );
     } else if (job.status === "failed") {
+      setRetryingPortraitCandidateAssetIds(new Set());
       setPendingPreviewTarget(null);
       setCharacterPromptJob(null);
       toast.error(
-        t(
-          lang,
-          `สร้าง prompt ตัวละครไม่สำเร็จ: ${job.error ?? "ไม่ทราบสาเหตุ"}`,
-          `Character prompt preview failed: ${job.error ?? "Unknown error"}`
+        resolveVdCharacterMutationErrorMessage(
+          {
+            message: job.error
+              ? `สร้าง prompt ตัวละครไม่สำเร็จ: ${job.error}`
+              : "สร้าง prompt ตัวละครไม่สำเร็จ",
+          },
+          lang
         )
       );
     }
@@ -3940,16 +4087,22 @@ export function VerticalDramaCharacterStockPanel({
    *  `generateImageMutation` call. Still gates on `requireModelSelected()`
    *  exactly as before; only inserts the preview fetch in between "click"
    *  and "real mutation fires". */
-  const startCharacterPromptPreview = (characterId: string) => {
+  const startCharacterPromptPreview = (
+    characterId: string,
+    options: {
+      forceCandidateBatch?: boolean;
+      castingReferenceAssetLinkIds?: string[];
+    } = {}
+  ) => {
     if (!requireModelSelected()) return;
     if (!requireMcpConnectionOrToast()) return;
     if (!requireHermesConnectionOrToast()) return;
     const character = characters.find(
       (candidate: VdCharacterListItem) => candidate.characterId === characterId
     );
-    const useCandidateBatch = Boolean(
-      character && isFirstPortraitCandidateEligible(character, assets)
-    );
+    const useCandidateBatch =
+      options.forceCandidateBatch === true ||
+      Boolean(character && isFirstPortraitCandidateEligible(character, assets));
     if (useCandidateBatch) setSelectedCharacterId(characterId);
     requestConfirmation({
       title: t(
@@ -3967,6 +4120,21 @@ export function VerticalDramaCharacterStockPanel({
       testId: `vd-credit-confirm-character-prompt-${characterId}`,
       onConfirm: () => {
         setPendingPreviewTarget({ characterId });
+        const castingReferenceAssetLinkIds = Array.from(
+          new Set(
+            (
+              options.castingReferenceAssetLinkIds ??
+              assets
+                .filter(
+                  asset =>
+                    asset.characterId === characterId &&
+                    asset.role === "primary_portrait" &&
+                    Boolean(asset.assetLinkId)
+                )
+                .map(asset => asset.assetLinkId)
+            ).filter(Boolean)
+          )
+        ).slice(0, 6);
         previewCharacterPromptMutation.mutate(
           buildPreviewCharacterPromptInput({
             seriesId,
@@ -3977,6 +4145,17 @@ export function VerticalDramaCharacterStockPanel({
               ? {
                   portraitCandidateCount:
                     portraitCandidateCountByCharacter[characterId] ?? 3,
+                }
+              : {}),
+            ...(castingReferenceAssetLinkIds.length
+              ? {
+                  castingReferenceAssetLinkIds,
+                  castingLockClothing:
+                    castingLockClothingByCharacter[characterId] ?? false,
+                  castingPoseMode:
+                    castingPoseModeByCharacter[characterId] ?? "auto_natural",
+                  castingCameraFraming:
+                    castingCameraFramingByCharacter[characterId] ?? "half_body",
                 }
               : {}),
           }),
@@ -4176,7 +4355,12 @@ export function VerticalDramaCharacterStockPanel({
    * couple a delete into the resubmit, so a resubmit failure never loses the
    * user's only record of what happened.
    */
-  const retryPortraitCandidate = (characterId: string, assetLinkId: string) => {
+  const retryPortraitCandidate = (
+    characterId: string,
+    assetLinkId: string,
+    referenceGuided = portraitCandidateBatches[characterId]?.referenceGuided ===
+      true
+  ) => {
     if (!requireModelSelected()) return;
     if (!requireMcpConnectionOrToast()) return;
     if (!requireHermesConnectionOrToast()) return;
@@ -4206,6 +4390,23 @@ export function VerticalDramaCharacterStockPanel({
             characterId,
             selectedImageModelId,
             customInstruction: customInstructionByCharacter[characterId] ?? "",
+            ...(referenceGuided
+              ? {
+                  castingReferenceAssetLinkIds: assets
+                    .filter(
+                      asset =>
+                        asset.characterId === characterId &&
+                        asset.role === "primary_portrait"
+                    )
+                    .map(asset => asset.assetLinkId),
+                  castingLockClothing:
+                    castingLockClothingByCharacter[characterId] ?? false,
+                  castingPoseMode:
+                    castingPoseModeByCharacter[characterId] ?? "auto_natural",
+                  castingCameraFraming:
+                    castingCameraFramingByCharacter[characterId] ?? "half_body",
+                }
+              : {}),
           }),
           {
             onSuccess: res => {
@@ -4227,12 +4428,16 @@ export function VerticalDramaCharacterStockPanel({
                   characterId,
                   sharedVisualLanguage: res.sharedVisualLanguage,
                   model: res.model,
+                  referenceGuided: res.referenceGuided,
                   candidates: res.candidates.map(candidate => ({
                     assetLinkId: candidate.assetLinkId,
                     candidateId: candidate.candidateId,
                     index: candidate.index,
                     portraitPrompt: candidate.portraitPrompt,
-                    negativePrompt: candidate.negativePrompt,
+                    negativePrompt:
+                      "negativePrompt" in candidate
+                        ? candidate.negativePrompt
+                        : undefined,
                     visualIdentitySummary: candidate.visualIdentitySummary,
                     status: "submitting",
                   })),
@@ -4362,6 +4567,104 @@ export function VerticalDramaCharacterStockPanel({
       mimeType: "image/jpeg",
     });
     return resolved.mediaAssetId;
+  };
+
+  /** Upload files selected through the inline casting picker using the same
+   * canonical upload path as the existing character reference panel. The
+   * picker deliberately returns URLs to its controlled value; the change
+   * handler below resolves those URLs into tenant-scoped media assets before
+   * linking them to the character. */
+  const uploadCastingReferenceFiles = async (
+    files: FileList | File[]
+  ): Promise<string[]> => {
+    try {
+      const uploadedUrls: string[] = [];
+      for (const file of Array.from(files).slice(0, 6)) {
+        const dataUrl = await readFileAsDataUrl(file);
+        const result = await cardUploadMutation.mutateAsync({
+          fileName: file.name || `character-reference-${Date.now()}.jpg`,
+          fileType: file.type || "image/jpeg",
+          fileBase64: dataUrl,
+        });
+        uploadedUrls.push(result.url);
+      }
+      return uploadedUrls;
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : t(lang, "อัปโหลดภาพไม่สำเร็จ", "Image upload failed")
+      );
+      throw err;
+    }
+  };
+
+  const handleCastingReferencePickerChange = async (
+    characterId: string,
+    urls: string[]
+  ) => {
+    const nextUrls = Array.from(
+      new Set(urls.map(url => url.trim()).filter(Boolean))
+    ).slice(0, 6);
+    setCastingReferencePickerUrlsByCharacter(prev => ({
+      ...prev,
+      [characterId]: nextUrls,
+    }));
+
+    const currentAssets = selectedAssets.filter(
+      asset => asset.role === "primary_portrait" && Boolean(asset.thumbnailUrl)
+    );
+    const currentByUrl = new Map(
+      currentAssets.map(asset => [asset.thumbnailUrl as string, asset])
+    );
+    const nextUrlSet = new Set(nextUrls);
+    const removedAssets = currentAssets.filter(
+      asset => !nextUrlSet.has(asset.thumbnailUrl as string)
+    );
+    const addedUrls = nextUrls.filter(url => !currentByUrl.has(url));
+
+    if (removedAssets.length === 0 && addedUrls.length === 0) return;
+
+    setCastingReferenceSyncingCharacterId(characterId);
+    try {
+      for (const asset of removedAssets) {
+        await deleteAssetMutation.mutateAsync({
+          seriesId,
+          assetLinkId: asset.assetLinkId,
+        });
+      }
+      for (const url of addedUrls) {
+        const mediaAssetId = await resolveReferenceImageToMediaAssetId(url);
+        await linkMutation.mutateAsync({
+          seriesId,
+          characterId,
+          mediaAssetId,
+          assetType: "character_reference",
+          role: "primary_portrait",
+          source: "imported",
+        });
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : t(
+              lang,
+              "บันทึกภาพอ้างอิงไม่สำเร็จ",
+              "Failed to save the reference image"
+            )
+      );
+      setCastingReferencePickerUrlsByCharacter(prev => ({
+        ...prev,
+        [characterId]: currentAssets
+          .map(asset => asset.thumbnailUrl)
+          .filter((url): url is string => Boolean(url)),
+      }));
+    } finally {
+      setCastingReferenceSyncingCharacterId(current =>
+        current === characterId ? null : current
+      );
+    }
   };
 
   const assignDroppedReference = async (characterId: string, url: string) => {
@@ -4707,6 +5010,26 @@ export function VerticalDramaCharacterStockPanel({
       a => effectiveSelectedId != null && a.characterId === effectiveSelectedId
     )
   );
+  const selectedCastingReferenceAssets = selectedAssets.filter(
+    asset => asset.role === "primary_portrait" && Boolean(asset.thumbnailUrl)
+  );
+  const selectedCastingReferenceUrls = selectedCastingReferenceAssets
+    .map(asset => asset.thumbnailUrl)
+    .filter((url): url is string => Boolean(url));
+  const castingReferencePickerUrls = selectedCharacter
+    ? (castingReferencePickerUrlsByCharacter[selectedCharacter.characterId] ??
+      selectedCastingReferenceUrls)
+    : [];
+  useEffect(() => {
+    if (!selectedCharacter) return;
+    setCastingReferencePickerUrlsByCharacter(prev => ({
+      ...prev,
+      [selectedCharacter.characterId]: selectedCastingReferenceUrls,
+    }));
+  }, [
+    selectedCharacter?.characterId,
+    selectedCastingReferenceUrls.join("\u0000"),
+  ]);
   const selectedCharacterSupportsCandidateBatch = Boolean(
     selectedCharacter &&
     isFirstPortraitCandidateEligible(selectedCharacter, assets)
@@ -4732,6 +5055,7 @@ export function VerticalDramaCharacterStockPanel({
       ) ?? {
         batchId: candidate.batchId,
         characterId,
+        referenceGuided: candidate.referenceGuided,
         candidates: [],
       };
       batch.candidates.push({
@@ -6906,7 +7230,7 @@ export function VerticalDramaCharacterStockPanel({
                         data-testid="vd-character-reference-disclosure-content"
                         className="flex flex-col gap-3"
                       >
-                          {/* Reference-image picker (vertical-drama-reference-
+                        {/* Reference-image picker (vertical-drama-reference-
                     picker-outfit-lock plan, Phase D3) — shows which
                     `primary_portrait` asset(s) are available as the
                     identity-lock reference for the NEXT generate call, and
@@ -6917,111 +7241,110 @@ export function VerticalDramaCharacterStockPanel({
                     transparency — only the click-to-select interaction is
                     disabled when `readOnly`. Renders nothing when there are
                     no candidates at all (nothing to show/pick). */}
-                          {(() => {
-                            const referenceCandidates =
-                              buildReferenceCandidates(
-                                assets,
-                                selectedCharacter,
-                                charactersById
-                              );
-                            if (referenceCandidates.length === 0) return null;
-                            const defaultReferenceAssetLinkId =
-                              resolveDefaultReferenceAssetLinkId(
-                                assets,
-                                selectedCharacter.characterId
-                              );
-                            const selectedReferenceAssetLinkId =
-                              referenceOverrideByCharacter[
-                                selectedCharacter.characterId
-                              ] ??
-                              defaultReferenceAssetLinkId ??
-                              undefined;
-                            // Read the MAIN image from the same resolver the card
-                            // thumbnail uses, so the "ภาพหลัก" badge always marks the
-                            // picture actually on screen rather than a second guess
-                            // at it.
-                            const mainPortraitAssetLinkId =
-                              resolveCharacterCardPortraitAsset(
-                                assets,
-                                selectedCharacter.characterId
-                              )?.assetLinkId ?? null;
-                            return (
-                              <div className="mt-1 flex flex-col gap-1">
-                                <span className="text-[11px] font-medium text-foreground/80">
-                                  {t(
-                                    lang,
-                                    "ภาพอ้างอิงตัวตน",
-                                    "Identity reference"
-                                  )}
-                                </span>
-                                <div className="flex flex-wrap items-start gap-2">
-                                  {referenceCandidates.map(candidate => {
-                                    const isSelected =
-                                      candidate.assetLinkId ===
-                                      selectedReferenceAssetLinkId;
-                                    // The MAIN image is whichever asset the card
-                                    // thumbnail resolves to — same function, so the
-                                    // badge can never disagree with the picture the
-                                    // user is looking at. Distinct from
-                                    // `isSelected`, which is only the identity-lock
-                                    // reference for the NEXT generation.
-                                    const isMainImage =
-                                      candidate.sourceLabel === "own" &&
-                                      mainPortraitAssetLinkId != null &&
-                                      candidate.assetLinkId ===
-                                        mainPortraitAssetLinkId;
-                                    return (
-                                      <div
-                                        key={candidate.assetLinkId}
-                                        className="flex flex-col items-center gap-0.5"
+                        {(() => {
+                          const referenceCandidates = buildReferenceCandidates(
+                            assets,
+                            selectedCharacter,
+                            charactersById
+                          );
+                          if (referenceCandidates.length === 0) return null;
+                          const defaultReferenceAssetLinkId =
+                            resolveDefaultReferenceAssetLinkId(
+                              assets,
+                              selectedCharacter.characterId
+                            );
+                          const selectedReferenceAssetLinkId =
+                            referenceOverrideByCharacter[
+                              selectedCharacter.characterId
+                            ] ??
+                            defaultReferenceAssetLinkId ??
+                            undefined;
+                          // Read the MAIN image from the same resolver the card
+                          // thumbnail uses, so the "ภาพหลัก" badge always marks the
+                          // picture actually on screen rather than a second guess
+                          // at it.
+                          const mainPortraitAssetLinkId =
+                            resolveCharacterCardPortraitAsset(
+                              assets,
+                              selectedCharacter.characterId
+                            )?.assetLinkId ?? null;
+                          return (
+                            <div className="mt-1 flex flex-col gap-1">
+                              <span className="text-[11px] font-medium text-foreground/80">
+                                {t(
+                                  lang,
+                                  "ภาพอ้างอิงตัวตน",
+                                  "Identity reference"
+                                )}
+                              </span>
+                              <div className="flex flex-wrap items-start gap-2">
+                                {referenceCandidates.map(candidate => {
+                                  const isSelected =
+                                    candidate.assetLinkId ===
+                                    selectedReferenceAssetLinkId;
+                                  // The MAIN image is whichever asset the card
+                                  // thumbnail resolves to — same function, so the
+                                  // badge can never disagree with the picture the
+                                  // user is looking at. Distinct from
+                                  // `isSelected`, which is only the identity-lock
+                                  // reference for the NEXT generation.
+                                  const isMainImage =
+                                    candidate.sourceLabel === "own" &&
+                                    mainPortraitAssetLinkId != null &&
+                                    candidate.assetLinkId ===
+                                      mainPortraitAssetLinkId;
+                                  return (
+                                    <div
+                                      key={candidate.assetLinkId}
+                                      className="flex flex-col items-center gap-0.5"
+                                    >
+                                      <button
+                                        type="button"
+                                        disabled={readOnly}
+                                        aria-pressed={isSelected}
+                                        aria-label={t(
+                                          lang,
+                                          "เลือกภาพนี้เป็นภาพอ้างอิงตัวตน",
+                                          "Select this identity reference image"
+                                        )}
+                                        className={cn(
+                                          "flex flex-col items-center gap-0.5",
+                                          readOnly
+                                            ? "cursor-default"
+                                            : "cursor-pointer"
+                                        )}
+                                        onClick={() => {
+                                          if (readOnly) return;
+                                          setReferenceOverrideByCharacter(
+                                            prev => ({
+                                              ...prev,
+                                              [selectedCharacter.characterId]:
+                                                candidate.assetLinkId,
+                                            })
+                                          );
+                                        }}
                                       >
-                                        <button
-                                          type="button"
-                                          disabled={readOnly}
-                                          aria-pressed={isSelected}
-                                          aria-label={t(
-                                            lang,
-                                            "เลือกภาพนี้เป็นภาพอ้างอิงตัวตน",
-                                            "Select this identity reference image"
-                                          )}
+                                        <AuthenticatedMediaImage
+                                          src={candidate.thumbnailUrl}
+                                          alt=""
                                           className={cn(
-                                            "flex flex-col items-center gap-0.5",
-                                            readOnly
-                                              ? "cursor-default"
-                                              : "cursor-pointer"
+                                            "h-10 w-10 rounded border border-border object-cover",
+                                            isSelected &&
+                                              "border-primary ring-2 ring-primary"
                                           )}
-                                          onClick={() => {
-                                            if (readOnly) return;
-                                            setReferenceOverrideByCharacter(
-                                              prev => ({
-                                                ...prev,
-                                                [selectedCharacter.characterId]:
-                                                  candidate.assetLinkId,
-                                              })
-                                            );
-                                          }}
-                                        >
-                                          <AuthenticatedMediaImage
-                                            src={candidate.thumbnailUrl}
-                                            alt=""
-                                            className={cn(
-                                              "h-10 w-10 rounded border border-border object-cover",
-                                              isSelected &&
-                                                "border-primary ring-2 ring-primary"
-                                            )}
-                                          />
-                                          {candidate.sourceLabel !== "own" &&
-                                            candidate.sourceName && (
-                                              <span className="max-w-[48px] truncate text-center text-[9px] text-muted-foreground">
-                                                {t(
-                                                  lang,
-                                                  `จาก ${candidate.sourceName}`,
-                                                  `from ${candidate.sourceName}`
-                                                )}
-                                              </span>
-                                            )}
-                                        </button>
-                                        {/* The control that was missing entirely
+                                        />
+                                        {candidate.sourceLabel !== "own" &&
+                                          candidate.sourceName && (
+                                            <span className="max-w-[48px] truncate text-center text-[9px] text-muted-foreground">
+                                              {t(
+                                                lang,
+                                                `จาก ${candidate.sourceName}`,
+                                                `from ${candidate.sourceName}`
+                                              )}
+                                            </span>
+                                          )}
+                                      </button>
+                                      {/* The control that was missing entirely
                                   (`planning/vd-character-primary-portrait-
                                   control/plan.md`): every one of these tiles is
                                   stored as a `primary_portrait`, so without an
@@ -7030,53 +7353,53 @@ export function VerticalDramaCharacterStockPanel({
                                   on this character's OWN images — promoting
                                   another character's portrait would be a
                                   different (and wrong) operation. */}
-                                        {isMainImage ? (
-                                          <span className="rounded bg-primary/10 px-1 text-[9px] font-medium text-primary">
-                                            {t(lang, "ภาพหลัก", "Main")}
-                                          </span>
-                                        ) : (
-                                          !readOnly &&
-                                          candidate.sourceLabel === "own" && (
-                                            <button
-                                              type="button"
-                                              disabled={
-                                                setPrimaryPortraitMutation.isPending
-                                              }
-                                              className="rounded px-1 text-[9px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
-                                              title={t(
-                                                lang,
-                                                "ใช้ภาพนี้เป็นภาพหลักของตัวละคร",
-                                                "Use this as the character's main image"
-                                              )}
-                                              onClick={() =>
-                                                setPrimaryPortraitMutation.mutate(
-                                                  {
-                                                    seriesId,
-                                                    characterId:
-                                                      selectedCharacter.characterId,
-                                                    assetLinkId:
-                                                      candidate.assetLinkId,
-                                                  }
-                                                )
-                                              }
-                                            >
-                                              {t(
-                                                lang,
-                                                "ตั้งเป็นหลัก",
-                                                "Set main"
-                                              )}
-                                            </button>
-                                          )
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
+                                      {isMainImage ? (
+                                        <span className="rounded bg-primary/10 px-1 text-[9px] font-medium text-primary">
+                                          {t(lang, "ภาพหลัก", "Main")}
+                                        </span>
+                                      ) : (
+                                        !readOnly &&
+                                        candidate.sourceLabel === "own" && (
+                                          <button
+                                            type="button"
+                                            disabled={
+                                              setPrimaryPortraitMutation.isPending
+                                            }
+                                            className="rounded px-1 text-[9px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
+                                            title={t(
+                                              lang,
+                                              "ใช้ภาพนี้เป็นภาพหลักของตัวละคร",
+                                              "Use this as the character's main image"
+                                            )}
+                                            onClick={() =>
+                                              setPrimaryPortraitMutation.mutate(
+                                                {
+                                                  seriesId,
+                                                  characterId:
+                                                    selectedCharacter.characterId,
+                                                  assetLinkId:
+                                                    candidate.assetLinkId,
+                                                }
+                                              )
+                                            }
+                                          >
+                                            {t(
+                                              lang,
+                                              "ตั้งเป็นหลัก",
+                                              "Set main"
+                                            )}
+                                          </button>
+                                        )
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
-                            );
-                          })()}
+                            </div>
+                          );
+                        })()}
 
-                          {/* Optional "additional details" hint for the portrait
+                        {/* Optional "additional details" hint for the portrait
                     generate button below — sent as `customInstruction` on
                     `previewCharacterPrompt` so repeated clicks vary the
                     generated prompt instead of producing near-identical
@@ -7084,98 +7407,97 @@ export function VerticalDramaCharacterStockPanel({
                     custom-instruction/plan.md). Shares
                     `customInstructionByCharacter` state, keyed by
                     characterId, with the roster-card compact input above. */}
-                          {!readOnly && (
-                            <div className="mt-1 flex flex-col gap-1">
-                              <Label
-                                htmlFor="vd-character-custom-instruction"
-                                className="text-xs"
+                        {!readOnly && (
+                          <div className="mt-1 flex flex-col gap-1">
+                            <Label
+                              htmlFor="vd-character-custom-instruction"
+                              className="text-xs"
+                            >
+                              {t(
+                                lang,
+                                VD_COPY.th.characterCustomInstructionLabel,
+                                VD_COPY.en.characterCustomInstructionLabel
+                              )}
+                            </Label>
+                            <Textarea
+                              id="vd-character-custom-instruction"
+                              value={
+                                customInstructionByCharacter[
+                                  selectedCharacter.characterId
+                                ] ?? ""
+                              }
+                              onChange={e =>
+                                setCustomInstructionByCharacter(prev => ({
+                                  ...prev,
+                                  [selectedCharacter.characterId]:
+                                    e.target.value,
+                                }))
+                              }
+                              maxLength={500}
+                              rows={2}
+                              placeholder={t(
+                                lang,
+                                VD_COPY.th
+                                  .characterCustomInstructionPlaceholder,
+                                VD_COPY.en.characterCustomInstructionPlaceholder
+                              )}
+                            />
+                          </div>
+                        )}
+
+                        {!readOnly &&
+                          selectedCharacterSupportsCandidateBatch && (
+                            <section
+                              className="rounded-lg border bg-muted/30 p-3"
+                              role="radiogroup"
+                              aria-labelledby="vd-portrait-candidate-count-label"
+                            >
+                              <p
+                                id="vd-portrait-candidate-count-label"
+                                className="mb-2 text-sm font-medium"
                               >
                                 {t(
                                   lang,
-                                  VD_COPY.th.characterCustomInstructionLabel,
-                                  VD_COPY.en.characterCustomInstructionLabel
+                                  "เลือกจำนวนใบหน้าให้ระบบสร้างพร้อมกัน",
+                                  "Choose how many different faces to generate together"
                                 )}
-                              </Label>
-                              <Textarea
-                                id="vd-character-custom-instruction"
-                                value={
-                                  customInstructionByCharacter[
-                                    selectedCharacter.characterId
-                                  ] ?? ""
-                                }
-                                onChange={e =>
-                                  setCustomInstructionByCharacter(prev => ({
-                                    ...prev,
-                                    [selectedCharacter.characterId]:
-                                      e.target.value,
-                                  }))
-                                }
-                                maxLength={500}
-                                rows={2}
-                                placeholder={t(
-                                  lang,
-                                  VD_COPY.th
-                                    .characterCustomInstructionPlaceholder,
-                                  VD_COPY.en
-                                    .characterCustomInstructionPlaceholder
-                                )}
-                              />
-                            </div>
-                          )}
-
-                          {!readOnly &&
-                            selectedCharacterSupportsCandidateBatch && (
-                              <section
-                                className="rounded-lg border bg-muted/30 p-3"
-                                role="radiogroup"
-                                aria-labelledby="vd-portrait-candidate-count-label"
+                              </p>
+                              <Grid
+                                columns={{
+                                  minWidth: 108,
+                                  max: 5,
+                                  repeat: "fit",
+                                }}
+                                gap={2}
                               >
-                                <p
-                                  id="vd-portrait-candidate-count-label"
-                                  className="mb-2 text-sm font-medium"
-                                >
-                                  {t(
-                                    lang,
-                                    "เลือกจำนวนใบหน้าให้ระบบสร้างพร้อมกัน",
-                                    "Choose how many different faces to generate together"
-                                  )}
-                                </p>
-                                <Grid
-                                  columns={{
-                                    minWidth: 108,
-                                    max: 5,
-                                    repeat: "fit",
-                                  }}
-                                  gap={2}
-                                >
-                                  {[1, 2, 3, 4, 5].map(count => {
-                                    const selected =
-                                      (portraitCandidateCountByCharacter[
-                                        selectedCharacter.characterId
-                                      ] ?? 3) === count;
-                                    return (
-                                      <SelectableCard
-                                        key={count}
-                                        label={t(
-                                          lang,
-                                          `${count} ภาพ`,
-                                          `${count} image${count > 1 ? "s" : ""}`
-                                        )}
-                                        isSelected={selected}
-                                        onChange={isSelected => {
-                                          if (!isSelected) return;
-                                          setPortraitCandidateCountByCharacter(
-                                            prev => ({
-                                              ...prev,
-                                              [selectedCharacter.characterId]:
-                                                count,
-                                            })
-                                          );
-                                        }}
-                                        padding={2}
-                                        variant={selected ? "blue" : "muted"}
-                                      >
-                                        {/* Plain display span — MUST NOT carry an
+                                {VD_PORTRAIT_CANDIDATE_COUNTS.map(count => {
+                                  const selected =
+                                    (portraitCandidateCountByCharacter[
+                                      selectedCharacter.characterId
+                                    ] ?? 3) === count;
+                                  return (
+                                    <SelectableCard
+                                      key={count}
+                                      label={t(
+                                        lang,
+                                        `${count} ภาพ`,
+                                        `${count} image${count > 1 ? "s" : ""}`
+                                      )}
+                                      isSelected={selected}
+                                      onChange={isSelected => {
+                                        if (!isSelected) return;
+                                        setPortraitCandidateCountByCharacter(
+                                          prev => ({
+                                            ...prev,
+                                            [selectedCharacter.characterId]:
+                                              count,
+                                          })
+                                        );
+                                      }}
+                                      padding={2}
+                                      variant={selected ? "blue" : "muted"}
+                                    >
+                                      {/* Plain display span — MUST NOT carry an
                                   interactive role. `SelectableCard` makes the
                                   whole card clickable via `useClickableContainer`,
                                   which treats any child matching
@@ -7188,84 +7510,84 @@ export function VerticalDramaCharacterStockPanel({
                                   only hit the thin card padding around it.
                                   Accessibility is already provided by the
                                   card's own hidden checkbox (`aria-label`). */}
-                                        <span className="block text-center text-sm font-semibold">
-                                          {count}
-                                        </span>
-                                      </SelectableCard>
-                                    );
-                                  })}
-                                </Grid>
-                                <p className="mt-2 text-xs text-muted-foreground">
-                                  {t(
-                                    lang,
-                                    "แต่ละภาพเป็นคนละใบหน้า คุณภาพและเสน่ห์ระดับเดียวกัน ค่าเริ่มต้น 3 ภาพ",
-                                    "Each option is a different person with the same casting quality. Default: 3."
-                                  )}
-                                </p>
-                              </section>
-                            )}
+                                      <span className="block text-center text-sm font-semibold">
+                                        {count}
+                                      </span>
+                                    </SelectableCard>
+                                  );
+                                })}
+                              </Grid>
+                              <p className="mt-2 text-xs text-muted-foreground">
+                                {t(
+                                  lang,
+                                  "แต่ละภาพเป็นคนละใบหน้า คุณภาพและเสน่ห์ระดับเดียวกัน ค่าเริ่มต้น 3 ภาพ",
+                                  "Each option is a different person with the same casting quality. Default: 3."
+                                )}
+                              </p>
+                            </section>
+                          )}
 
-                          {!readOnly && !selectedImageModelId && (
-                            /* Explicit "you must pick a model" notice — the
+                        {!readOnly && !selectedImageModelId && (
+                          /* Explicit "you must pick a model" notice — the
                         generate button below is already disabled with a
                         hover tooltip, but that alone was too subtle
                         (product feedback 2026-07-15). Additive, not a
                         replacement for the disabled-button guard. */
-                            <div
-                              className="mt-1 flex flex-wrap items-center gap-2 rounded-md border border-amber-400/60 bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
-                              data-testid="vd-character-image-model-required-notice"
+                          <div
+                            className="mt-1 flex flex-wrap items-center gap-2 rounded-md border border-amber-400/60 bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                            data-testid="vd-character-image-model-required-notice"
+                          >
+                            <AlertTriangle
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
+                            <span>
+                              {t(
+                                lang,
+                                "ยังไม่ได้เลือกโมเดลภาพ — กรุณาเลือกโมเดลก่อนจึงจะสร้างภาพได้",
+                                "No image model selected — choose a model before you can generate."
+                              )}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setIsModelDialogOpen(true)}
+                              className="ml-auto rounded-md border border-amber-400/60 bg-background px-2 py-1 text-[11px] font-medium hover:bg-amber-100 dark:hover:bg-amber-950/60"
                             >
-                              <AlertTriangle
+                              {t(lang, "เลือกโมเดล", "Select model")}
+                            </button>
+                          </div>
+                        )}
+                        {!readOnly && (
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                              onClick={() => setModelDialogTarget("create")}
+                              title={t(
+                                lang,
+                                "ใช้ตอนสร้างภาพใหม่ที่ยังไม่มีภาพอ้างอิง (text-to-image)",
+                                "Used for a new image with no reference yet (text-to-image)"
+                              )}
+                            >
+                              <Sparkles
                                 aria-hidden="true"
                                 className="h-3.5 w-3.5"
                               />
-                              <span>
-                                {t(
-                                  lang,
-                                  "ยังไม่ได้เลือกโมเดลภาพ — กรุณาเลือกโมเดลก่อนจึงจะสร้างภาพได้",
-                                  "No image model selected — choose a model before you can generate."
-                                )}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setIsModelDialogOpen(true)}
-                                className="ml-auto rounded-md border border-amber-400/60 bg-background px-2 py-1 text-[11px] font-medium hover:bg-amber-100 dark:hover:bg-amber-950/60"
-                              >
-                                {t(lang, "เลือกโมเดล", "Select model")}
-                              </button>
-                            </div>
-                          )}
-                          {!readOnly && (
-                            <div className="mt-1 flex flex-wrap items-center gap-2">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="gap-2"
-                                onClick={() => setModelDialogTarget("create")}
-                                title={t(
-                                  lang,
-                                  "ใช้ตอนสร้างภาพใหม่ที่ยังไม่มีภาพอ้างอิง (text-to-image)",
-                                  "Used for a new image with no reference yet (text-to-image)"
-                                )}
-                              >
-                                <Sparkles
-                                  aria-hidden="true"
-                                  className="h-3.5 w-3.5"
-                                />
-                                {selectedImageModelId
-                                  ? `${t(lang, "โมเดลสร้างภาพใหม่", "New image")}: ${
-                                      imageModels.find(
-                                        m => m.modelId === selectedImageModelId
-                                      )?.name ?? selectedImageModelId
-                                    }`
-                                  : t(
-                                      lang,
-                                      "เลือกโมเดลสร้างภาพใหม่",
-                                      "Choose new-image model"
-                                    )}
-                              </Button>
-                              {/* Second slot — `planning/vd-character-image-edit-
+                              {selectedImageModelId
+                                ? `${t(lang, "โมเดลสร้างภาพใหม่", "New image")}: ${
+                                    imageModels.find(
+                                      m => m.modelId === selectedImageModelId
+                                    )?.name ?? selectedImageModelId
+                                  }`
+                                : t(
+                                    lang,
+                                    "เลือกโมเดลสร้างภาพใหม่",
+                                    "Choose new-image model"
+                                  )}
+                            </Button>
+                            {/* Second slot — `planning/vd-character-image-edit-
                         model/plan.md`. A model that is excellent at
                         text-to-image (gpt-image-2) can be poor at
                         image-to-image, which is what every look/twin/
@@ -7273,85 +7595,85 @@ export function VerticalDramaCharacterStockPanel({
                         the two based on whether a reference is really
                         attached; leaving this empty keeps the single-model
                         behavior. */}
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="gap-2"
-                                onClick={() => setModelDialogTarget("edit")}
-                                title={t(
-                                  lang,
-                                  "ใช้ตอนแก้ไข/ต่อยอดจากภาพเดิม เช่น เพิ่มลุคใหม่ หรือสร้างซ้ำ (image-to-image)",
-                                  "Used when editing from an existing image — new looks, regenerations (image-to-image)"
-                                )}
-                              >
-                                <ImagePlus
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                              onClick={() => setModelDialogTarget("edit")}
+                              title={t(
+                                lang,
+                                "ใช้ตอนแก้ไข/ต่อยอดจากภาพเดิม เช่น เพิ่มลุคใหม่ หรือสร้างซ้ำ (image-to-image)",
+                                "Used when editing from an existing image — new looks, regenerations (image-to-image)"
+                              )}
+                            >
+                              <ImagePlus
+                                aria-hidden="true"
+                                className="h-3.5 w-3.5"
+                              />
+                              {selectedEditImageModelId
+                                ? `${t(lang, "โมเดลแก้ไขภาพ", "Edit image")}: ${
+                                    imageModels.find(
+                                      m =>
+                                        m.modelId === selectedEditImageModelId
+                                    )?.name ?? selectedEditImageModelId
+                                  }`
+                                : t(
+                                    lang,
+                                    "เลือกโมเดลแก้ไขภาพ (ไม่บังคับ)",
+                                    "Choose edit model (optional)"
+                                  )}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="gap-2"
+                              disabled={
+                                mutating ||
+                                isImageGeneratingFor(
+                                  selectedCharacter.characterId
+                                ) ||
+                                !selectedImageModelId
+                              }
+                              title={
+                                selectedImageModelId
+                                  ? undefined
+                                  : t(
+                                      lang,
+                                      "เลือกโมเดลภาพก่อนสร้าง",
+                                      "Select an image model first"
+                                    )
+                              }
+                              onClick={() =>
+                                startCharacterPromptPreview(
+                                  selectedCharacter.characterId
+                                )
+                              }
+                            >
+                              {isImageGeneratingFor(
+                                selectedCharacter.characterId
+                              ) ? (
+                                <Loader2
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5 animate-spin"
+                                />
+                              ) : (
+                                <Sparkles
                                   aria-hidden="true"
                                   className="h-3.5 w-3.5"
                                 />
-                                {selectedEditImageModelId
-                                  ? `${t(lang, "โมเดลแก้ไขภาพ", "Edit image")}: ${
-                                      imageModels.find(
-                                        m =>
-                                          m.modelId === selectedEditImageModelId
-                                      )?.name ?? selectedEditImageModelId
-                                    }`
-                                  : t(
-                                      lang,
-                                      "เลือกโมเดลแก้ไขภาพ (ไม่บังคับ)",
-                                      "Choose edit model (optional)"
-                                    )}
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                className="gap-2"
-                                disabled={
-                                  mutating ||
-                                  isImageGeneratingFor(
-                                    selectedCharacter.characterId
-                                  ) ||
-                                  !selectedImageModelId
-                                }
-                                title={
-                                  selectedImageModelId
-                                    ? undefined
-                                    : t(
-                                        lang,
-                                        "เลือกโมเดลภาพก่อนสร้าง",
-                                        "Select an image model first"
-                                      )
-                                }
-                                onClick={() =>
-                                  startCharacterPromptPreview(
-                                    selectedCharacter.characterId
-                                  )
-                                }
-                              >
-                                {isImageGeneratingFor(
-                                  selectedCharacter.characterId
-                                ) ? (
-                                  <Loader2
-                                    aria-hidden="true"
-                                    className="h-3.5 w-3.5 animate-spin"
-                                  />
-                                ) : (
-                                  <Sparkles
-                                    aria-hidden="true"
-                                    className="h-3.5 w-3.5"
-                                  />
-                                )}
-                                {t(
-                                  lang,
-                                  selectedCharacterSupportsCandidateBatch
-                                    ? `สร้างตัวเลือก ${portraitCandidateCountByCharacter[selectedCharacter.characterId] ?? 3} ภาพ`
-                                    : "สร้างภาพตัวละคร",
-                                  selectedCharacterSupportsCandidateBatch
-                                    ? `Generate ${portraitCandidateCountByCharacter[selectedCharacter.characterId] ?? 3} candidates`
-                                    : "Generate character image"
-                                )}
-                              </Button>
-                              {/* Unified sheet-format select + single generate
+                              )}
+                              {t(
+                                lang,
+                                selectedCharacterSupportsCandidateBatch
+                                  ? `สร้างตัวเลือก ${portraitCandidateCountByCharacter[selectedCharacter.characterId] ?? 3} ภาพ`
+                                  : "สร้างภาพตัวละคร",
+                                selectedCharacterSupportsCandidateBatch
+                                  ? `Generate ${portraitCandidateCountByCharacter[selectedCharacter.characterId] ?? 3} candidates`
+                                  : "Generate character image"
+                              )}
+                            </Button>
+                            {/* Unified sheet-format select + single generate
                         button (vertical-drama-character-sheet-consolidation
                         plan, Phase C) — replaces the previous two buttons
                         ("สร้างชีทตัวละคร"/turnaround and "Character Sheet
@@ -7362,53 +7684,168 @@ export function VerticalDramaCharacterStockPanel({
                         behavior). No preview step, matching how "Character
                         Sheet แบบเต็ม" already worked (direct-confirm) — kept
                         simple across all 14 possible formats. */}
-                              <Select
-                                value={selectedSheetType}
-                                onValueChange={value =>
-                                  setSelectedSheetType(
-                                    value as VdCharacterSheetType
-                                  )
-                                }
-                                disabled={readOnly}
+                            <Select
+                              value={selectedSheetType}
+                              onValueChange={value =>
+                                setSelectedSheetType(
+                                  value as VdCharacterSheetType
+                                )
+                              }
+                              disabled={readOnly}
+                            >
+                              <SelectTrigger
+                                className="h-8 w-[210px] text-xs"
+                                data-testid="vd-sheet-type-select"
                               >
-                                <SelectTrigger
-                                  className="h-8 w-[210px] text-xs"
-                                  data-testid="vd-sheet-type-select"
-                                >
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {SHEET_TYPE_OPTIONS.map(opt => (
-                                    <SelectItem
-                                      key={opt.value}
-                                      value={opt.value}
-                                    >
-                                      {t(lang, opt.labelTh, opt.labelEn)}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SHEET_TYPE_OPTIONS.map(opt => (
+                                  <SelectItem key={opt.value} value={opt.value}>
+                                    {t(lang, opt.labelTh, opt.labelEn)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              className="gap-2"
+                              disabled={
+                                mutating ||
+                                isSheetGeneratingFor(
+                                  selectedCharacter.characterId
+                                ) ||
+                                !selectedImageModelId
+                              }
+                              title={
+                                selectedImageModelId
+                                  ? undefined
+                                  : t(
+                                      lang,
+                                      "เลือกโมเดลภาพก่อนสร้าง",
+                                      "Select an image model first"
+                                    )
+                              }
+                              onClick={() => {
+                                if (!requireModelSelected()) return;
+                                if (!requireMcpConnectionOrToast()) return;
+                                if (!requireHermesConnectionOrToast()) return;
+                                confirmCharacterCreditAction(
+                                  selectedCharacter.characterId,
+                                  t(
+                                    lang,
+                                    "ยืนยันสร้างชีทตัวละคร",
+                                    "Confirm character sheet generation"
+                                  ),
+                                  t(
+                                    lang,
+                                    "การสร้างชีทตัวละครใช้ AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                                    "Generating a character sheet uses AI and may spend credits. Continue?"
+                                  ),
+                                  t(lang, "สร้างชีท", "Generate sheet"),
+                                  () =>
+                                    generateSheetMutation.mutate({
+                                      seriesId,
+                                      characterId:
+                                        selectedCharacter.characterId,
+                                      sheetType: selectedSheetType,
+                                      sheetLanguage,
+                                      ...(selectedEditImageModelId
+                                        ? { selectedEditImageModelId }
+                                        : {}),
+                                      // Same "รายละเอียดเพิ่มเติม" textarea the
+                                      // portrait button reads — a sheet is just as
+                                      // valid a target for a framing/composition brief
+                                      // (`planning/vd-character-full-body-framing/
+                                      // plan.md` C5; it used to be dropped here).
+                                      ...((
+                                        customInstructionByCharacter[
+                                          selectedCharacter.characterId
+                                        ] ?? ""
+                                      ).trim()
+                                        ? {
+                                            customInstruction: (
+                                              customInstructionByCharacter[
+                                                selectedCharacter.characterId
+                                              ] ?? ""
+                                            ).trim(),
+                                          }
+                                        : {}),
+                                      // Always sent — see the matching comment on
+                                      // `generatePortraitCandidateBatchMutation.mutate` above.
+                                      selectedImageModelId,
+                                      ...(imageModelUsesMcp && mcpConnectionId
+                                        ? { mcpConnectionId }
+                                        : {}),
+                                      ...(imageModelUsesMcp &&
+                                      mcpConnectionId &&
+                                      mcpSharedGroupId != null
+                                        ? { sharedGroupId: mcpSharedGroupId }
+                                        : {}),
+                                      ...(imageModelUsesHermes &&
+                                      hermesConnectionId
+                                        ? { hermesConnectionId }
+                                        : {}),
+                                      // Reference-image-picker (Phase D3) — same
+                                      // override/omit rule as `generateImageMutation`
+                                      // above.
+                                      ...(referenceOverrideByCharacter[
+                                        selectedCharacter.characterId
+                                      ]
+                                        ? {
+                                            referenceAssetLinkId:
+                                              referenceOverrideByCharacter[
+                                                selectedCharacter.characterId
+                                              ],
+                                          }
+                                        : {}),
+                                    })
+                                );
+                              }}
+                              data-testid="vd-generate-character-sheet"
+                            >
+                              {isSheetGeneratingFor(
+                                selectedCharacter.characterId
+                              ) ? (
+                                <Loader2
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5 animate-spin"
+                                />
+                              ) : (
+                                <Grid3x3
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
+                              )}
+                              {t(
+                                lang,
+                                "สร้างชีทตัวละคร",
+                                "Generate character sheet"
+                              )}
+                            </Button>
+                            {videoSafeStartFramesEnabled && (
                               <Button
                                 type="button"
                                 size="sm"
-                                variant="secondary"
+                                variant="outline"
                                 className="gap-2"
                                 disabled={
                                   mutating ||
+                                  isAnglePackGeneratingFor(
+                                    selectedCharacter.characterId
+                                  ) ||
                                   isSheetGeneratingFor(
                                     selectedCharacter.characterId
                                   ) ||
                                   !selectedImageModelId
                                 }
-                                title={
-                                  selectedImageModelId
-                                    ? undefined
-                                    : t(
-                                        lang,
-                                        "เลือกโมเดลภาพก่อนสร้าง",
-                                        "Select an image model first"
-                                      )
-                                }
+                                title={t(
+                                  lang,
+                                  "สร้างภาพอ้างอิงหน้า/ซ้ายสามส่วน/ขวาสามส่วน แล้วอนุมัติแยกแต่ละช่อง",
+                                  "Generate front, left 3/4, and right 3/4 identity references for separate approval."
+                                )}
                                 onClick={() => {
                                   if (!requireModelSelected()) return;
                                   if (!requireMcpConnectionOrToast()) return;
@@ -7417,61 +7854,42 @@ export function VerticalDramaCharacterStockPanel({
                                     selectedCharacter.characterId,
                                     t(
                                       lang,
-                                      "ยืนยันสร้างชีทตัวละคร",
-                                      "Confirm character sheet generation"
+                                      "ยืนยันสร้างชุดมุมตัวละคร",
+                                      "Confirm character angle-pack generation"
                                     ),
                                     t(
                                       lang,
-                                      "การสร้างชีทตัวละครใช้ AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
-                                      "Generating a character sheet uses AI and may spend credits. Continue?"
+                                      "การสร้างชุดมุมตัวละครใช้ AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                                      "Generating character reference angles uses AI and may spend credits. Continue?"
                                     ),
-                                    t(lang, "สร้างชีท", "Generate sheet"),
+                                    t(
+                                      lang,
+                                      "สร้างชุดมุม",
+                                      "Generate angle pack"
+                                    ),
                                     () =>
-                                      generateSheetMutation.mutate({
+                                      generateAnglePackMutation.mutate({
                                         seriesId,
                                         characterId:
                                           selectedCharacter.characterId,
-                                        sheetType: selectedSheetType,
-                                        sheetLanguage,
+                                        selectedImageModelId,
                                         ...(selectedEditImageModelId
                                           ? { selectedEditImageModelId }
                                           : {}),
-                                        // Same "รายละเอียดเพิ่มเติม" textarea the
-                                        // portrait button reads — a sheet is just as
-                                        // valid a target for a framing/composition brief
-                                        // (`planning/vd-character-full-body-framing/
-                                        // plan.md` C5; it used to be dropped here).
-                                        ...((
-                                          customInstructionByCharacter[
-                                            selectedCharacter.characterId
-                                          ] ?? ""
-                                        ).trim()
-                                          ? {
-                                              customInstruction: (
-                                                customInstructionByCharacter[
-                                                  selectedCharacter.characterId
-                                                ] ?? ""
-                                              ).trim(),
-                                            }
-                                          : {}),
-                                        // Always sent — see the matching comment on
-                                        // `generatePortraitCandidateBatchMutation.mutate` above.
-                                        selectedImageModelId,
                                         ...(imageModelUsesMcp && mcpConnectionId
                                           ? { mcpConnectionId }
                                           : {}),
                                         ...(imageModelUsesMcp &&
                                         mcpConnectionId &&
                                         mcpSharedGroupId != null
-                                          ? { sharedGroupId: mcpSharedGroupId }
+                                          ? {
+                                              sharedGroupId: mcpSharedGroupId,
+                                            }
                                           : {}),
                                         ...(imageModelUsesHermes &&
                                         hermesConnectionId
                                           ? { hermesConnectionId }
                                           : {}),
-                                        // Reference-image-picker (Phase D3) — same
-                                        // override/omit rule as `generateImageMutation`
-                                        // above.
                                         ...(referenceOverrideByCharacter[
                                           selectedCharacter.characterId
                                         ]
@@ -7485,9 +7903,9 @@ export function VerticalDramaCharacterStockPanel({
                                       })
                                   );
                                 }}
-                                data-testid="vd-generate-character-sheet"
+                                data-testid="vd-generate-character-angle-pack"
                               >
-                                {isSheetGeneratingFor(
+                                {isAnglePackGeneratingFor(
                                   selectedCharacter.characterId
                                 ) ? (
                                   <Loader2
@@ -7495,478 +7913,402 @@ export function VerticalDramaCharacterStockPanel({
                                     className="h-3.5 w-3.5 animate-spin"
                                   />
                                 ) : (
-                                  <Grid3x3
+                                  <ScanFace
                                     aria-hidden="true"
                                     className="h-3.5 w-3.5"
                                   />
                                 )}
                                 {t(
                                   lang,
-                                  "สร้างชีทตัวละคร",
-                                  "Generate character sheet"
+                                  "สร้างชุดมุม 3 มุม",
+                                  "Generate 3-angle pack"
                                 )}
                               </Button>
-                              {videoSafeStartFramesEnabled && (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  className="gap-2"
-                                  disabled={
-                                    mutating ||
-                                    isAnglePackGeneratingFor(
-                                      selectedCharacter.characterId
-                                    ) ||
-                                    isSheetGeneratingFor(
-                                      selectedCharacter.characterId
-                                    ) ||
-                                    !selectedImageModelId
-                                  }
-                                  title={t(
-                                    lang,
-                                    "สร้างภาพอ้างอิงหน้า/ซ้ายสามส่วน/ขวาสามส่วน แล้วอนุมัติแยกแต่ละช่อง",
-                                    "Generate front, left 3/4, and right 3/4 identity references for separate approval."
-                                  )}
-                                  onClick={() => {
-                                    if (!requireModelSelected()) return;
-                                    if (!requireMcpConnectionOrToast()) return;
-                                    if (!requireHermesConnectionOrToast())
-                                      return;
-                                    confirmCharacterCreditAction(
-                                      selectedCharacter.characterId,
-                                      t(
-                                        lang,
-                                        "ยืนยันสร้างชุดมุมตัวละคร",
-                                        "Confirm character angle-pack generation"
-                                      ),
-                                      t(
-                                        lang,
-                                        "การสร้างชุดมุมตัวละครใช้ AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
-                                        "Generating character reference angles uses AI and may spend credits. Continue?"
-                                      ),
-                                      t(
-                                        lang,
-                                        "สร้างชุดมุม",
-                                        "Generate angle pack"
-                                      ),
-                                      () =>
-                                        generateAnglePackMutation.mutate({
-                                          seriesId,
-                                          characterId:
-                                            selectedCharacter.characterId,
-                                          selectedImageModelId,
-                                          ...(selectedEditImageModelId
-                                            ? { selectedEditImageModelId }
-                                            : {}),
-                                          ...(imageModelUsesMcp &&
-                                          mcpConnectionId
-                                            ? { mcpConnectionId }
-                                            : {}),
-                                          ...(imageModelUsesMcp &&
-                                          mcpConnectionId &&
-                                          mcpSharedGroupId != null
-                                            ? {
-                                                sharedGroupId: mcpSharedGroupId,
-                                              }
-                                            : {}),
-                                          ...(imageModelUsesHermes &&
-                                          hermesConnectionId
-                                            ? { hermesConnectionId }
-                                            : {}),
-                                          ...(referenceOverrideByCharacter[
-                                            selectedCharacter.characterId
-                                          ]
-                                            ? {
-                                                referenceAssetLinkId:
-                                                  referenceOverrideByCharacter[
-                                                    selectedCharacter
-                                                      .characterId
-                                                  ],
-                                              }
-                                            : {}),
-                                        })
-                                    );
-                                  }}
-                                  data-testid="vd-generate-character-angle-pack"
-                                >
-                                  {isAnglePackGeneratingFor(
-                                    selectedCharacter.characterId
-                                  ) ? (
-                                    <Loader2
-                                      aria-hidden="true"
-                                      className="h-3.5 w-3.5 animate-spin"
-                                    />
-                                  ) : (
-                                    <ScanFace
-                                      aria-hidden="true"
-                                      className="h-3.5 w-3.5"
-                                    />
-                                  )}
-                                  {t(
-                                    lang,
-                                    "สร้างชุดมุม 3 มุม",
-                                    "Generate 3-angle pack"
-                                  )}
-                                </Button>
-                              )}
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <span>{t(lang, "ภาษา:", "Language:")}</span>
-                                <button
-                                  type="button"
-                                  className={cn(
-                                    "rounded px-1.5 py-0.5",
-                                    sheetLanguage === "en"
-                                      ? "bg-primary text-primary-foreground"
-                                      : "hover:bg-muted"
-                                  )}
-                                  onClick={() => setSheetLanguage("en")}
-                                  data-testid="vd-sheet-language-en"
-                                >
-                                  EN
-                                </button>
-                                <button
-                                  type="button"
-                                  className={cn(
-                                    "rounded px-1.5 py-0.5",
-                                    sheetLanguage === "th"
-                                      ? "bg-primary text-primary-foreground"
-                                      : "hover:bg-muted"
-                                  )}
-                                  onClick={() => setSheetLanguage("th")}
-                                  data-testid="vd-sheet-language-th"
-                                >
-                                  TH
-                                </button>
-                              </div>
+                            )}
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <span>{t(lang, "ภาษา:", "Language:")}</span>
+                              <button
+                                type="button"
+                                className={cn(
+                                  "rounded px-1.5 py-0.5",
+                                  sheetLanguage === "en"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "hover:bg-muted"
+                                )}
+                                onClick={() => setSheetLanguage("en")}
+                                data-testid="vd-sheet-language-en"
+                              >
+                                EN
+                              </button>
+                              <button
+                                type="button"
+                                className={cn(
+                                  "rounded px-1.5 py-0.5",
+                                  sheetLanguage === "th"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "hover:bg-muted"
+                                )}
+                                onClick={() => setSheetLanguage("th")}
+                                data-testid="vd-sheet-language-th"
+                              >
+                                TH
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {characterPromptJobQuery.data?.waitingReason ===
+                          "provider_capacity" &&
+                          characterPromptJob?.characterId ===
+                            selectedCharacter.characterId && (
+                            <div
+                              className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+                              role="status"
+                              aria-live="polite"
+                              data-testid="vd-character-prompt-capacity-waiting"
+                            >
+                              <Clock
+                                aria-hidden="true"
+                                className="mt-0.5 h-4 w-4 shrink-0"
+                              />
+                              <span>
+                                {t(
+                                  lang,
+                                  "งาน prompt อยู่ในคิวและกำลังรอ capacity ของผู้ให้บริการ ระบบจะทำต่ออัตโนมัติ ไม่ต้องกดสร้างซ้ำ",
+                                  "The prompt job is queued while the provider capacity is busy. It will continue automatically; do not submit it again."
+                                )}
+                              </span>
                             </div>
                           )}
 
-                          {/* Prompt-preview confirmation (fix-round-3, Section C) — also
+                        {/* Prompt-preview confirmation (fix-round-3, Section C) — also
                       rendered here (not just in the roster card grid) since this
                       action button set lives in the detail column and the
                       matching card may be scrolled out of view. */}
-                          {pendingCharacterPromptPreview &&
-                            pendingCharacterPromptPreview.characterId ===
-                              selectedCharacter.characterId && (
-                              <MediaPromptPreview
-                                prompt={
-                                  pendingCharacterPromptPreview.portraitPrompt
-                                }
-                                skillName={t(
-                                  lang,
-                                  "สร้างภาพตัวละคร",
-                                  "Generate character image"
-                                )}
-                                skillCategory="image_generation"
-                                mediaParams={{
-                                  ...(pendingCharacterPromptPreview.model
-                                    ? {
-                                        model:
-                                          pendingCharacterPromptPreview.model,
-                                      }
-                                    : {}),
-                                  ...(pendingCharacterPromptPreview.negativePrompt
-                                    ? {
-                                        negativePrompt:
-                                          pendingCharacterPromptPreview.negativePrompt,
-                                      }
-                                    : {}),
-                                }}
-                                isExecuting={generateImageMutation.isPending}
-                                onConfirm={handleCharacterPromptConfirm}
-                                onCancel={handleCharacterPromptCancel}
-                              />
-                            )}
-
-                          {pendingCharacterPromptPreview &&
-                            pendingCharacterPromptPreview.characterId ===
-                              selectedCharacter.characterId && (
-                              <PortraitLeadBeautyWarnings
-                                warnings={
-                                  pendingCharacterPromptPreview.warnings
-                                }
-                                heading={t(
-                                  lang,
-                                  "AI ยอมรับ prompt นี้แม้ตัวนำยังดูธรรมดาไปหน่อย — แก้ prompt หรือสร้างใหม่ได้ถ้าอยากให้เด่นกว่านี้",
-                                  "AI accepted this prompt even though the lead reads a little plain — edit the prompt or regenerate for a more camera-ready look."
-                                )}
-                              />
-                            )}
-
-                          {selectedPortraitCandidateBatches.length > 0 && (
-                            <section
-                              className="rounded-xl border bg-card p-3"
-                              aria-label={t(
+                        {pendingCharacterPromptPreview &&
+                          pendingCharacterPromptPreview.characterId ===
+                            selectedCharacter.characterId && (
+                            <MediaPromptPreview
+                              prompt={
+                                pendingCharacterPromptPreview.portraitPrompt
+                              }
+                              skillName={t(
                                 lang,
-                                "ตัวเลือกภาพหลักของตัวละคร",
-                                "Character primary portrait candidates"
+                                "สร้างภาพตัวละคร",
+                                "Generate character image"
                               )}
-                              aria-live="polite"
-                            >
-                              <header className="mb-3">
-                                <h3 className="text-sm font-semibold">
-                                  {t(
-                                    lang,
-                                    "เลือกใบหน้าที่จะใช้เป็นตัวละครหลัก",
-                                    "Choose the face to become this character"
-                                  )}
-                                </h3>
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  {t(
-                                    lang,
-                                    "ทุกภาพเป็นคนละใบหน้า แต่รักษาคุณภาพ เสน่ห์ และภาษาภาพระดับเดียวกัน การเลือกจะมีผลกับงานสร้างครั้งถัดไปเท่านั้น",
-                                    "Every option is a different person with the same visual quality and magnetism. Your choice affects future generations only."
-                                  )}
-                                </p>
-                              </header>
+                              skillCategory="image_generation"
+                              mediaParams={{
+                                ...(pendingCharacterPromptPreview.model
+                                  ? {
+                                      model:
+                                        pendingCharacterPromptPreview.model,
+                                    }
+                                  : {}),
+                                ...(pendingCharacterPromptPreview.negativePrompt
+                                  ? {
+                                      negativePrompt:
+                                        pendingCharacterPromptPreview.negativePrompt,
+                                    }
+                                  : {}),
+                              }}
+                              isExecuting={generateImageMutation.isPending}
+                              onConfirm={handleCharacterPromptConfirm}
+                              onCancel={handleCharacterPromptCancel}
+                            />
+                          )}
 
-                              {selectedPortraitCandidateBatches.map(
-                                (batch, batchIndex) => {
-                                  const activeBatch =
-                                    portraitCandidateBatches[
-                                      selectedCharacter.characterId
-                                    ];
-                                  const isActive =
-                                    activeBatch?.batchId === batch.batchId;
-                                  const isPreviewOnly =
-                                    isActive &&
-                                    batch.candidates.every(
-                                      candidate =>
-                                        candidate.status === "previewed"
-                                    );
-                                  // Once this batch has a winner, the faces the user
-                                  // did NOT pick collapse behind a toggle — they were
-                                  // showing up next to the chosen one everywhere and
-                                  // made "which face is this character?" genuinely hard
-                                  // to answer at a glance.
-                                  const candidateVisibility =
-                                    resolvePortraitCandidateVisibility({
-                                      candidates: batch.candidates,
-                                      expanded: expandedCandidateBatchIds.has(
-                                        batch.batchId
-                                      ),
-                                    });
-                                  return (
-                                    <section
-                                      key={batch.batchId}
-                                      className={cn(
-                                        "py-3",
-                                        batchIndex > 0 && "border-t"
-                                      )}
-                                      aria-label={
-                                        isActive
-                                          ? t(
-                                              lang,
-                                              "ชุดตัวเลือกล่าสุด",
-                                              "Newest candidate batch"
-                                            )
+                        {pendingCharacterPromptPreview &&
+                          pendingCharacterPromptPreview.characterId ===
+                            selectedCharacter.characterId && (
+                            <PortraitLeadBeautyWarnings
+                              warnings={pendingCharacterPromptPreview.warnings}
+                              heading={t(
+                                lang,
+                                "AI ยอมรับ prompt นี้แม้ตัวนำยังดูธรรมดาไปหน่อย — แก้ prompt หรือสร้างใหม่ได้ถ้าอยากให้เด่นกว่านี้",
+                                "AI accepted this prompt even though the lead reads a little plain — edit the prompt or regenerate for a more camera-ready look."
+                              )}
+                            />
+                          )}
+
+                        {selectedPortraitCandidateBatches.length > 0 && (
+                          <section
+                            className="rounded-xl border bg-card p-3"
+                            aria-label={t(
+                              lang,
+                              "ตัวเลือกภาพหลักของตัวละคร",
+                              "Character primary portrait candidates"
+                            )}
+                            aria-live="polite"
+                          >
+                            <header className="mb-3">
+                              <h3 className="text-sm font-semibold">
+                                {t(
+                                  lang,
+                                  "เลือกใบหน้าที่จะใช้เป็นตัวละครหลัก",
+                                  "Choose the face to become this character"
+                                )}
+                              </h3>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {t(
+                                  lang,
+                                  selectedPortraitCandidateBatches.some(
+                                    batch => batch.referenceGuided
+                                  )
+                                    ? "ทุกภาพเป็นคนใหม่สำหรับ casting ไม่ใช่บุคคลในภาพอ้างอิง การเลือกมีผลเฉพาะการตั้งภาพหลักของตัวละครนี้"
+                                    : "ทุกภาพเป็นคนละใบหน้า แต่รักษาคุณภาพ เสน่ห์ และภาษาภาพระดับเดียวกัน การเลือกจะมีผลกับงานสร้างครั้งถัดไปเท่านั้น",
+                                  selectedPortraitCandidateBatches.some(
+                                    batch => batch.referenceGuided
+                                  )
+                                    ? "Every option is a new fictional casting person, not anyone in the references. Choosing one only sets this character's primary portrait."
+                                    : "Every option is a different person with the same visual quality and magnetism. Your choice affects future generations only."
+                                )}
+                              </p>
+                            </header>
+
+                            {selectedPortraitCandidateBatches.map(
+                              (batch, batchIndex) => {
+                                const activeBatch =
+                                  portraitCandidateBatches[
+                                    selectedCharacter.characterId
+                                  ];
+                                const isActive =
+                                  activeBatch?.batchId === batch.batchId;
+                                const isPreviewOnly =
+                                  isActive &&
+                                  batch.candidates.every(
+                                    candidate =>
+                                      candidate.status === "previewed"
+                                  );
+                                // Once this batch has a winner, the faces the user
+                                // did NOT pick collapse behind a toggle — they were
+                                // showing up next to the chosen one everywhere and
+                                // made "which face is this character?" genuinely hard
+                                // to answer at a glance.
+                                const candidateVisibility =
+                                  resolvePortraitCandidateVisibility({
+                                    candidates: batch.candidates,
+                                    expanded: expandedCandidateBatchIds.has(
+                                      batch.batchId
+                                    ),
+                                  });
+                                return (
+                                  <section
+                                    key={batch.batchId}
+                                    className={cn(
+                                      "py-3",
+                                      batchIndex > 0 && "border-t"
+                                    )}
+                                    aria-label={
+                                      isActive
+                                        ? t(
+                                            lang,
+                                            "ชุดตัวเลือกล่าสุด",
+                                            "Newest candidate batch"
+                                          )
+                                        : t(
+                                            lang,
+                                            "ตัวเลือกที่บันทึกไว้",
+                                            "Saved alternatives"
+                                          )
+                                    }
+                                  >
+                                    <header className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                                      <span className="text-xs font-medium">
+                                        {isActive
+                                          ? t(lang, "ชุดล่าสุด", "Newest batch")
                                           : t(
                                               lang,
-                                              "ตัวเลือกที่บันทึกไว้",
-                                              "Saved alternatives"
-                                            )
-                                      }
-                                    >
-                                      <header className="mb-2 flex flex-wrap items-start justify-between gap-2">
-                                        <span className="text-xs font-medium">
-                                          {isActive
-                                            ? t(
-                                                lang,
-                                                "ชุดล่าสุด",
-                                                "Newest batch"
-                                              )
-                                            : t(
-                                                lang,
-                                                "ตัวเลือกก่อนหน้า",
-                                                "Earlier alternatives"
-                                              )}
-                                        </span>
-                                        {batch.model && (
-                                          <Badge variant="outline">
-                                            {batch.model}
-                                          </Badge>
+                                              "ตัวเลือกก่อนหน้า",
+                                              "Earlier alternatives"
+                                            )}
+                                      </span>
+                                      {batch.model && (
+                                        <Badge variant="outline">
+                                          {batch.model}
+                                        </Badge>
+                                      )}
+                                    </header>
+                                    {batch.sharedVisualLanguage && (
+                                      <p className="mb-3 text-xs text-muted-foreground">
+                                        {batch.sharedVisualLanguage}
+                                      </p>
+                                    )}
+
+                                    {isActive && (
+                                      <PortraitLeadBeautyWarnings
+                                        warnings={batch.warnings}
+                                        heading={t(
+                                          lang,
+                                          "AI ยอมรับภาพชุดนี้แม้ prompt ตัวนำยังดูธรรมดาไปหน่อย — สร้างใหม่หรือแก้ prompt ได้ถ้าอยากให้เด่นกว่านี้",
+                                          "AI accepted this batch even though the lead prompt reads a little plain — regenerate or edit the prompt for a more camera-ready look."
                                         )}
-                                      </header>
-                                      {batch.sharedVisualLanguage && (
-                                        <p className="mb-3 text-xs text-muted-foreground">
-                                          {batch.sharedVisualLanguage}
-                                        </p>
-                                      )}
+                                      />
+                                    )}
 
-                                      {isActive && (
-                                        <PortraitLeadBeautyWarnings
-                                          warnings={batch.warnings}
-                                          heading={t(
-                                            lang,
-                                            "AI ยอมรับภาพชุดนี้แม้ prompt ตัวนำยังดูธรรมดาไปหน่อย — สร้างใหม่หรือแก้ prompt ได้ถ้าอยากให้เด่นกว่านี้",
-                                            "AI accepted this batch even though the lead prompt reads a little plain — regenerate or edit the prompt for a more camera-ready look."
-                                          )}
-                                        />
-                                      )}
-
-                                      <Grid
-                                        columns={{
-                                          minWidth: 142,
-                                          max: 5,
-                                          repeat: "fit",
-                                        }}
-                                        gap={3}
-                                      >
-                                        {candidateVisibility.visible.map(
-                                          candidate => {
-                                            const isSelected =
-                                              candidate.status === "selected";
-                                            const canSelect =
-                                              Boolean(candidate.imageUrl) &&
-                                              [
-                                                "completed",
-                                                "selected",
-                                                "superseded",
-                                              ].includes(candidate.status);
-                                            return (
-                                              <Card
-                                                key={candidate.assetLinkId}
-                                                className={cn(
-                                                  "overflow-hidden",
-                                                  isSelected &&
-                                                    "ring-2 ring-primary"
-                                                )}
-                                              >
-                                                <AspectRatio ratio={9 / 16}>
-                                                  {candidate.imageUrl ? (
-                                                    <button
-                                                      type="button"
-                                                      className="h-full w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
-                                                      onClick={() =>
-                                                        setLightboxImage({
-                                                          src: candidate.imageUrl!,
-                                                          alt: t(
-                                                            lang,
-                                                            `ตัวเลือกใบหน้าที่ ${candidate.index + 1}`,
-                                                            `Face candidate ${candidate.index + 1}`
-                                                          ),
-                                                        })
-                                                      }
-                                                      aria-label={t(
-                                                        lang,
-                                                        `ดูตัวเลือกที่ ${candidate.index + 1} แบบขยาย`,
-                                                        `View candidate ${candidate.index + 1} full size`
-                                                      )}
-                                                    >
-                                                      <AuthenticatedMediaImage
-                                                        src={candidate.imageUrl}
-                                                        alt={t(
+                                    <Grid
+                                      columns={{
+                                        minWidth: 142,
+                                        max: 5,
+                                        repeat: "fit",
+                                      }}
+                                      gap={3}
+                                    >
+                                      {candidateVisibility.visible.map(
+                                        candidate => {
+                                          const isSelected =
+                                            candidate.status === "selected";
+                                          const canSelect =
+                                            Boolean(candidate.imageUrl) &&
+                                            [
+                                              "completed",
+                                              "selected",
+                                              "superseded",
+                                            ].includes(candidate.status);
+                                          return (
+                                            <Card
+                                              key={candidate.assetLinkId}
+                                              className={cn(
+                                                "overflow-hidden",
+                                                isSelected &&
+                                                  "ring-2 ring-primary"
+                                              )}
+                                            >
+                                              <AspectRatio ratio={9 / 16}>
+                                                {candidate.imageUrl ? (
+                                                  <button
+                                                    type="button"
+                                                    className="h-full w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
+                                                    onClick={() =>
+                                                      setLightboxImage({
+                                                        src: candidate.imageUrl!,
+                                                        alt: t(
                                                           lang,
                                                           `ตัวเลือกใบหน้าที่ ${candidate.index + 1}`,
                                                           `Face candidate ${candidate.index + 1}`
-                                                        )}
-                                                        className="h-full w-full object-cover"
-                                                      />
-                                                    </button>
-                                                  ) : (
-                                                    <section
-                                                      className="flex h-full items-center justify-center bg-muted p-3 text-center"
-                                                      aria-busy={
-                                                        candidate.status ===
-                                                          "queued" ||
-                                                        candidate.status ===
-                                                          "submitting"
-                                                      }
-                                                    >
-                                                      {candidate.status ===
-                                                      "failed" ? (
-                                                        <p
-                                                          role="alert"
-                                                          className="text-xs text-destructive"
-                                                        >
-                                                          {candidate.errorMessage ??
-                                                            t(
-                                                              lang,
-                                                              "สร้างภาพไม่สำเร็จ",
-                                                              "Generation failed"
-                                                            )}
-                                                        </p>
-                                                      ) : candidate.status ===
-                                                        "previewed" ? (
-                                                        <p className="text-xs text-muted-foreground">
-                                                          {candidate.visualIdentitySummary ??
-                                                            t(
-                                                              lang,
-                                                              "พร้อมสร้างภาพ",
-                                                              "Ready to render"
-                                                            )}
-                                                        </p>
-                                                      ) : (
-                                                        <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-                                                          <Loader2
-                                                            aria-hidden="true"
-                                                            className="h-4 w-4 animate-spin"
-                                                          />
-                                                          {t(
-                                                            lang,
-                                                            "กำลังสร้าง…",
-                                                            "Generating…"
-                                                          )}
-                                                        </span>
-                                                      )}
-                                                    </section>
-                                                  )}
-                                                </AspectRatio>
-                                                <CardContent className="space-y-2 p-3">
-                                                  <header className="flex items-center justify-between gap-2">
-                                                    <span className="text-xs font-semibold">
-                                                      {t(
+                                                        ),
+                                                      })
+                                                    }
+                                                    aria-label={t(
+                                                      lang,
+                                                      `ดูตัวเลือกที่ ${candidate.index + 1} แบบขยาย`,
+                                                      `View candidate ${candidate.index + 1} full size`
+                                                    )}
+                                                  >
+                                                    <AuthenticatedMediaImage
+                                                      src={candidate.imageUrl}
+                                                      alt={t(
                                                         lang,
-                                                        `ตัวเลือก ${candidate.index + 1}`,
-                                                        `Option ${candidate.index + 1}`
+                                                        `ตัวเลือกใบหน้าที่ ${candidate.index + 1}`,
+                                                        `Face candidate ${candidate.index + 1}`
                                                       )}
-                                                    </span>
-                                                    <Badge
-                                                      variant={
-                                                        isSelected
-                                                          ? "default"
-                                                          : "secondary"
-                                                      }
-                                                    >
-                                                      {isSelected
+                                                      className="h-full w-full object-cover"
+                                                    />
+                                                  </button>
+                                                ) : (
+                                                  <section
+                                                    className="flex h-full items-center justify-center bg-muted p-3 text-center"
+                                                    aria-busy={
+                                                      candidate.status ===
+                                                        "queued" ||
+                                                      candidate.status ===
+                                                        "submitting"
+                                                    }
+                                                  >
+                                                    {candidate.status ===
+                                                    "failed" ? (
+                                                      <p
+                                                        role="alert"
+                                                        className="text-xs text-destructive"
+                                                      >
+                                                        {candidate.errorMessage ??
+                                                          t(
+                                                            lang,
+                                                            "สร้างภาพไม่สำเร็จ",
+                                                            "Generation failed"
+                                                          )}
+                                                      </p>
+                                                    ) : candidate.status ===
+                                                      "previewed" ? (
+                                                      <p className="text-xs text-muted-foreground">
+                                                        {candidate.visualIdentitySummary ??
+                                                          t(
+                                                            lang,
+                                                            "พร้อมสร้างภาพ",
+                                                            "Ready to render"
+                                                          )}
+                                                      </p>
+                                                    ) : (
+                                                      <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                                                        <Loader2
+                                                          aria-hidden="true"
+                                                          className="h-4 w-4 animate-spin"
+                                                        />
+                                                        {t(
+                                                          lang,
+                                                          "กำลังสร้าง…",
+                                                          "Generating…"
+                                                        )}
+                                                      </span>
+                                                    )}
+                                                  </section>
+                                                )}
+                                              </AspectRatio>
+                                              <CardContent className="space-y-2 p-3">
+                                                <header className="flex items-center justify-between gap-2">
+                                                  <span className="text-xs font-semibold">
+                                                    {t(
+                                                      lang,
+                                                      `ตัวเลือก ${candidate.index + 1}`,
+                                                      `Option ${candidate.index + 1}`
+                                                    )}
+                                                  </span>
+                                                  <Badge
+                                                    variant={
+                                                      isSelected
+                                                        ? "default"
+                                                        : "secondary"
+                                                    }
+                                                  >
+                                                    {isSelected
+                                                      ? t(
+                                                          lang,
+                                                          "ภาพหลัก",
+                                                          "Primary"
+                                                        )
+                                                      : candidate.status ===
+                                                          "failed"
                                                         ? t(
                                                             lang,
-                                                            "ภาพหลัก",
-                                                            "Primary"
+                                                            "ล้มเหลว",
+                                                            "Failed"
                                                           )
                                                         : candidate.status ===
-                                                            "failed"
+                                                            "previewed"
                                                           ? t(
                                                               lang,
-                                                              "ล้มเหลว",
-                                                              "Failed"
+                                                              "พร้อมสร้าง",
+                                                              "Ready"
                                                             )
                                                           : candidate.status ===
-                                                              "previewed"
+                                                                "queued" ||
+                                                              candidate.status ===
+                                                                "submitting"
                                                             ? t(
                                                                 lang,
-                                                                "พร้อมสร้าง",
-                                                                "Ready"
+                                                                "กำลังสร้าง",
+                                                                "Generating"
                                                               )
-                                                            : candidate.status ===
-                                                                  "queued" ||
-                                                                candidate.status ===
-                                                                  "submitting"
-                                                              ? t(
-                                                                  lang,
-                                                                  "กำลังสร้าง",
-                                                                  "Generating"
-                                                                )
-                                                              : t(
-                                                                  lang,
-                                                                  "เลือกได้",
-                                                                  "Available"
-                                                                )}
-                                                    </Badge>
-                                                  </header>
-                                                  {candidate.portraitPrompt && (
-                                                    <div className="space-y-1">
-                                                      {/* `portraitPrompt` is the FULL prompt
+                                                            : t(
+                                                                lang,
+                                                                "เลือกได้",
+                                                                "Available"
+                                                              )}
+                                                  </Badge>
+                                                </header>
+                                                {candidate.portraitPrompt && (
+                                                  <div className="space-y-1">
+                                                    {/* `portraitPrompt` is the FULL prompt
                                               actually sent to the image model (the
                                               router submits it verbatim); the text
                                               in the card body above is only the
@@ -7976,137 +8318,177 @@ export function VerticalDramaCharacterStockPanel({
                                               string, and stays available even after
                                               generation so the prompt can be reused
                                               in another tool. */}
-                                                      {isPreviewOnly && (
-                                                        <p className="line-clamp-4 text-[11px] text-muted-foreground">
-                                                          {
-                                                            candidate.portraitPrompt
-                                                          }
-                                                        </p>
-                                                      )}
-                                                      <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        className="h-6 w-full gap-1 text-[11px] text-muted-foreground"
-                                                        onClick={async () => {
-                                                          try {
-                                                            await navigator.clipboard.writeText(
-                                                              candidate.portraitPrompt ??
-                                                                ""
-                                                            );
-                                                            toast.success(
-                                                              t(
-                                                                lang,
-                                                                "คัดลอก prompt เต็มแล้ว",
-                                                                "Full prompt copied"
-                                                              )
-                                                            );
-                                                          } catch {
-                                                            toast.error(
-                                                              t(
-                                                                lang,
-                                                                "คัดลอกไม่สำเร็จ",
-                                                                "Copy failed"
-                                                              )
-                                                            );
-                                                          }
-                                                        }}
-                                                      >
-                                                        <Copy
-                                                          aria-hidden="true"
-                                                          className="h-3 w-3"
-                                                        />
-                                                        {t(
-                                                          lang,
-                                                          "คัดลอก prompt เต็ม",
-                                                          "Copy full prompt"
-                                                        )}
-                                                      </Button>
-                                                    </div>
-                                                  )}
-                                                  <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant={
-                                                      isSelected
-                                                        ? "secondary"
-                                                        : "default"
-                                                    }
-                                                    className="w-full"
-                                                    role="radio"
-                                                    aria-checked={isSelected}
-                                                    aria-pressed={isSelected}
-                                                    disabled={
-                                                      !canSelect ||
-                                                      isSelected ||
-                                                      selectPortraitCandidateMutation.isPending
-                                                    }
-                                                    onClick={() =>
-                                                      selectPortraitCandidateMutation.mutate(
+                                                    {isPreviewOnly && (
+                                                      <p className="line-clamp-4 text-[11px] text-muted-foreground">
                                                         {
-                                                          seriesId,
-                                                          characterId:
-                                                            selectedCharacter.characterId,
-                                                          assetLinkId:
-                                                            candidate.assetLinkId,
+                                                          candidate.portraitPrompt
                                                         }
+                                                      </p>
+                                                    )}
+                                                    <Button
+                                                      type="button"
+                                                      size="sm"
+                                                      variant="ghost"
+                                                      className="h-6 w-full gap-1 text-[11px] text-muted-foreground"
+                                                      onClick={async () => {
+                                                        try {
+                                                          await navigator.clipboard.writeText(
+                                                            candidate.portraitPrompt ??
+                                                              ""
+                                                          );
+                                                          toast.success(
+                                                            t(
+                                                              lang,
+                                                              "คัดลอก prompt เต็มแล้ว",
+                                                              "Full prompt copied"
+                                                            )
+                                                          );
+                                                        } catch {
+                                                          toast.error(
+                                                            t(
+                                                              lang,
+                                                              "คัดลอกไม่สำเร็จ",
+                                                              "Copy failed"
+                                                            )
+                                                          );
+                                                        }
+                                                      }}
+                                                    >
+                                                      <Copy
+                                                        aria-hidden="true"
+                                                        className="h-3 w-3"
+                                                      />
+                                                      {t(
+                                                        lang,
+                                                        "คัดลอก prompt เต็ม",
+                                                        "Copy full prompt"
+                                                      )}
+                                                    </Button>
+                                                  </div>
+                                                )}
+                                                <Button
+                                                  type="button"
+                                                  size="sm"
+                                                  variant={
+                                                    isSelected
+                                                      ? "secondary"
+                                                      : "default"
+                                                  }
+                                                  className="w-full"
+                                                  role="radio"
+                                                  aria-checked={isSelected}
+                                                  aria-pressed={isSelected}
+                                                  disabled={
+                                                    !canSelect ||
+                                                    isSelected ||
+                                                    selectPortraitCandidateMutation.isPending
+                                                  }
+                                                  onClick={() =>
+                                                    selectPortraitCandidateMutation.mutate(
+                                                      {
+                                                        seriesId,
+                                                        characterId:
+                                                          selectedCharacter.characterId,
+                                                        assetLinkId:
+                                                          candidate.assetLinkId,
+                                                      }
+                                                    )
+                                                  }
+                                                >
+                                                  {isSelected
+                                                    ? t(
+                                                        lang,
+                                                        "ใช้อยู่เป็นภาพหลัก",
+                                                        "Current primary"
                                                       )
-                                                    }
-                                                  >
-                                                    {isSelected
-                                                      ? t(
-                                                          lang,
-                                                          "ใช้อยู่เป็นภาพหลัก",
-                                                          "Current primary"
-                                                        )
-                                                      : t(
-                                                          lang,
-                                                          "ใช้ภาพนี้เป็นภาพหลัก",
-                                                          "Use as primary"
-                                                        )}
-                                                  </Button>
-                                                  {/* Set A fix #3: per-candidate
+                                                    : t(
+                                                        lang,
+                                                        "ใช้ภาพนี้เป็นภาพหลัก",
+                                                        "Use as primary"
+                                                      )}
+                                                </Button>
+                                                {/* Set A fix #3: per-candidate
                                             Cancel/Retry for a stuck
                                             queued/submitting or a terminal
                                             failed candidate — the batch
                                             footer below only covers the
                                             pre-submission (`isPreviewOnly`)
                                             state. */}
-                                                  {[
-                                                    "queued",
-                                                    "submitting",
-                                                    "failed",
-                                                  ].includes(
-                                                    candidate.status
-                                                  ) && (
-                                                    <div className="flex gap-2">
+                                                {[
+                                                  "queued",
+                                                  "submitting",
+                                                  "failed",
+                                                ].includes(
+                                                  candidate.status
+                                                ) && (
+                                                  <div className="flex gap-2">
+                                                    <Button
+                                                      type="button"
+                                                      size="sm"
+                                                      variant="outline"
+                                                      className="flex-1"
+                                                      disabled={
+                                                        (deleteAssetMutation.isPending &&
+                                                          deleteAssetMutation
+                                                            .variables
+                                                            ?.assetLinkId ===
+                                                            candidate.assetLinkId) ||
+                                                        retryingPortraitCandidateAssetIds.has(
+                                                          candidate.assetLinkId
+                                                        )
+                                                      }
+                                                      onClick={() =>
+                                                        cancelPortraitCandidate(
+                                                          selectedCharacter.characterId,
+                                                          candidate.assetLinkId
+                                                        )
+                                                      }
+                                                    >
+                                                      {deleteAssetMutation.isPending &&
+                                                      deleteAssetMutation
+                                                        .variables
+                                                        ?.assetLinkId ===
+                                                        candidate.assetLinkId ? (
+                                                        <Loader2
+                                                          aria-hidden="true"
+                                                          className="h-3.5 w-3.5 animate-spin"
+                                                        />
+                                                      ) : (
+                                                        t(
+                                                          lang,
+                                                          "ยกเลิก",
+                                                          "Cancel"
+                                                        )
+                                                      )}
+                                                    </Button>
+                                                    {candidate.status ===
+                                                      "failed" && (
                                                       <Button
                                                         type="button"
                                                         size="sm"
-                                                        variant="outline"
+                                                        variant="secondary"
                                                         className="flex-1"
                                                         disabled={
+                                                          retryingPortraitCandidateAssetIds.has(
+                                                            candidate.assetLinkId
+                                                          ) ||
                                                           (deleteAssetMutation.isPending &&
                                                             deleteAssetMutation
                                                               .variables
                                                               ?.assetLinkId ===
-                                                              candidate.assetLinkId) ||
-                                                          retryingPortraitCandidateAssetIds.has(
-                                                            candidate.assetLinkId
-                                                          )
+                                                              candidate.assetLinkId)
                                                         }
                                                         onClick={() =>
-                                                          cancelPortraitCandidate(
+                                                          retryPortraitCandidate(
                                                             selectedCharacter.characterId,
-                                                            candidate.assetLinkId
+                                                            candidate.assetLinkId,
+                                                            batch.referenceGuided
                                                           )
                                                         }
                                                       >
-                                                        {deleteAssetMutation.isPending &&
-                                                        deleteAssetMutation
-                                                          .variables
-                                                          ?.assetLinkId ===
-                                                          candidate.assetLinkId ? (
+                                                        {retryingPortraitCandidateAssetIds.has(
+                                                          candidate.assetLinkId
+                                                        ) ? (
                                                           <Loader2
                                                             aria-hidden="true"
                                                             className="h-3.5 w-3.5 animate-spin"
@@ -8114,415 +8496,376 @@ export function VerticalDramaCharacterStockPanel({
                                                         ) : (
                                                           t(
                                                             lang,
-                                                            "ยกเลิก",
-                                                            "Cancel"
+                                                            "ลองใหม่",
+                                                            "Retry"
                                                           )
                                                         )}
                                                       </Button>
-                                                      {candidate.status ===
-                                                        "failed" && (
-                                                        <Button
-                                                          type="button"
-                                                          size="sm"
-                                                          variant="secondary"
-                                                          className="flex-1"
-                                                          disabled={
-                                                            retryingPortraitCandidateAssetIds.has(
-                                                              candidate.assetLinkId
-                                                            ) ||
-                                                            (deleteAssetMutation.isPending &&
-                                                              deleteAssetMutation
-                                                                .variables
-                                                                ?.assetLinkId ===
-                                                                candidate.assetLinkId)
-                                                          }
-                                                          onClick={() =>
-                                                            retryPortraitCandidate(
-                                                              selectedCharacter.characterId,
-                                                              candidate.assetLinkId
-                                                            )
-                                                          }
-                                                        >
-                                                          {retryingPortraitCandidateAssetIds.has(
-                                                            candidate.assetLinkId
-                                                          ) ? (
-                                                            <Loader2
-                                                              aria-hidden="true"
-                                                              className="h-3.5 w-3.5 animate-spin"
-                                                            />
-                                                          ) : (
-                                                            t(
-                                                              lang,
-                                                              "ลองใหม่",
-                                                              "Retry"
-                                                            )
-                                                          )}
-                                                        </Button>
-                                                      )}
-                                                    </div>
-                                                  )}
-                                                </CardContent>
-                                              </Card>
-                                            );
-                                          }
-                                        )}
-                                      </Grid>
+                                                    )}
+                                                  </div>
+                                                )}
+                                              </CardContent>
+                                            </Card>
+                                          );
+                                        }
+                                      )}
+                                    </Grid>
 
-                                      {candidateVisibility.isResolved &&
-                                        batch.candidates.length > 1 && (
-                                          <button
-                                            type="button"
-                                            className="mt-2 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                                            onClick={() =>
-                                              toggleCandidateBatchExpanded(
-                                                batch.batchId
+                                    {candidateVisibility.isResolved &&
+                                      batch.candidates.length > 1 && (
+                                        <button
+                                          type="button"
+                                          className="mt-2 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                                          onClick={() =>
+                                            toggleCandidateBatchExpanded(
+                                              batch.batchId
+                                            )
+                                          }
+                                        >
+                                          {candidateVisibility.hiddenCount > 0
+                                            ? t(
+                                                lang,
+                                                `แสดงตัวเลือกที่ไม่ได้เลือก (${candidateVisibility.hiddenCount})`,
+                                                `Show ${candidateVisibility.hiddenCount} unpicked option${
+                                                  candidateVisibility.hiddenCount ===
+                                                  1
+                                                    ? ""
+                                                    : "s"
+                                                }`
                                               )
-                                            }
-                                          >
-                                            {candidateVisibility.hiddenCount > 0
-                                              ? t(
-                                                  lang,
-                                                  `แสดงตัวเลือกที่ไม่ได้เลือก (${candidateVisibility.hiddenCount})`,
-                                                  `Show ${candidateVisibility.hiddenCount} unpicked option${
-                                                    candidateVisibility.hiddenCount ===
-                                                    1
-                                                      ? ""
-                                                      : "s"
-                                                  }`
-                                                )
+                                            : t(
+                                                lang,
+                                                "ซ่อนตัวเลือกที่ไม่ได้เลือก",
+                                                "Hide unpicked options"
+                                              )}
+                                        </button>
+                                      )}
+
+                                    {isPreviewOnly && (
+                                      <footer className="mt-3 flex flex-wrap items-center gap-2">
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          onClick={() =>
+                                            handlePortraitCandidateBatchConfirm(
+                                              selectedCharacter.characterId
+                                            )
+                                          }
+                                          disabled={
+                                            generatePortraitCandidateBatchMutation.isPending ||
+                                            !selectedImageModelId
+                                          }
+                                          title={
+                                            selectedImageModelId
+                                              ? undefined
                                               : t(
                                                   lang,
-                                                  "ซ่อนตัวเลือกที่ไม่ได้เลือก",
-                                                  "Hide unpicked options"
-                                                )}
-                                          </button>
-                                        )}
-
-                                      {isPreviewOnly && (
-                                        <footer className="mt-3 flex flex-wrap items-center gap-2">
-                                          <Button
-                                            type="button"
-                                            size="sm"
-                                            onClick={() =>
-                                              handlePortraitCandidateBatchConfirm(
-                                                selectedCharacter.characterId
-                                              )
-                                            }
-                                            disabled={
-                                              generatePortraitCandidateBatchMutation.isPending ||
-                                              !selectedImageModelId
-                                            }
-                                            title={
-                                              selectedImageModelId
-                                                ? undefined
-                                                : t(
-                                                    lang,
-                                                    "เลือกโมเดลภาพก่อนสร้าง",
-                                                    "Select an image model first"
-                                                  )
-                                            }
-                                          >
-                                            {generatePortraitCandidateBatchMutation.isPending && (
-                                              <Loader2
-                                                aria-hidden="true"
-                                                className="mr-2 h-4 w-4 animate-spin"
-                                              />
-                                            )}
-                                            {t(
-                                              lang,
-                                              `สร้างทั้ง ${batch.candidates.length} ภาพ`,
-                                              `Generate all ${batch.candidates.length} images`
-                                            )}
-                                          </Button>
-                                          <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() =>
-                                              handlePortraitCandidateBatchCancel(
-                                                selectedCharacter.characterId
-                                              )
-                                            }
-                                          >
-                                            {t(lang, "ยกเลิก", "Cancel")}
-                                          </Button>
-                                          <span className="text-xs text-muted-foreground">
-                                            {t(
-                                              lang,
-                                              "Prompt และ DNA ชุดนี้อ่านอย่างเดียว หากต้องการเปลี่ยนรายละเอียด ให้แก้ช่องคำอธิบายแล้วสร้าง Preview ใหม่",
-                                              "This prompt and DNA batch is read-only. Change the brief and generate a new preview to revise it."
-                                            )}
-                                          </span>
-                                        </footer>
-                                      )}
-                                    </section>
-                                  );
-                                }
-                              )}
-                            </section>
-                          )}
-
-                          {(() => {
-                            const portrait =
-                              generatedImageUrls[selectedCharacter.characterId];
-                            const turnaround =
-                              generatedTurnaroundUrls[
-                                selectedCharacter.characterId
-                              ];
-                            const sheet =
-                              generatedSheetUrls[selectedCharacter.characterId];
-                            if (!portrait && !turnaround && !sheet) return null;
-                            return (
-                              <div className="mt-2 flex flex-wrap gap-4">
-                                {portrait && (
-                                  <div className="flex flex-col items-center gap-1">
-                                    <button
-                                      type="button"
-                                      aria-label={t(
-                                        lang,
-                                        "ดูภาพขยาย",
-                                        "View full-size image"
-                                      )}
-                                      onClick={() =>
-                                        setLightboxImage({
-                                          src: portrait.imageUrl,
-                                          alt: t(
+                                                  "เลือกโมเดลภาพก่อนสร้าง",
+                                                  "Select an image model first"
+                                                )
+                                          }
+                                        >
+                                          {generatePortraitCandidateBatchMutation.isPending && (
+                                            <Loader2
+                                              aria-hidden="true"
+                                              className="mr-2 h-4 w-4 animate-spin"
+                                            />
+                                          )}
+                                          {t(
                                             lang,
-                                            "ภาพตัวละครที่สร้างขึ้น",
-                                            "Generated character portrait"
-                                          ),
-                                        })
-                                      }
-                                      className="rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
-                                    >
-                                      {/* Portrait is a known 9:16 vertical render (the
-                                    prompt always requests "9:16") — a fixed
-                                    aspect box lets it display bigger without
-                                    layout jump before it loads. */}
-                                      <AuthenticatedMediaImage
-                                        src={portrait.imageUrl}
-                                        alt={t(
+                                            `สร้างทั้ง ${batch.candidates.length} ภาพ`,
+                                            `Generate all ${batch.candidates.length} images`
+                                          )}
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() =>
+                                            handlePortraitCandidateBatchCancel(
+                                              selectedCharacter.characterId
+                                            )
+                                          }
+                                        >
+                                          {t(lang, "ยกเลิก", "Cancel")}
+                                        </Button>
+                                        <span className="text-xs text-muted-foreground">
+                                          {t(
+                                            lang,
+                                            "Prompt และ DNA ชุดนี้อ่านอย่างเดียว หากต้องการเปลี่ยนรายละเอียด ให้แก้ช่องคำอธิบายแล้วสร้าง Preview ใหม่",
+                                            "This prompt and DNA batch is read-only. Change the brief and generate a new preview to revise it."
+                                          )}
+                                        </span>
+                                      </footer>
+                                    )}
+                                  </section>
+                                );
+                              }
+                            )}
+                          </section>
+                        )}
+
+                        {(() => {
+                          const portrait =
+                            generatedImageUrls[selectedCharacter.characterId];
+                          const turnaround =
+                            generatedTurnaroundUrls[
+                              selectedCharacter.characterId
+                            ];
+                          const sheet =
+                            generatedSheetUrls[selectedCharacter.characterId];
+                          if (!portrait && !turnaround && !sheet) return null;
+                          return (
+                            <div className="mt-2 flex flex-wrap gap-4">
+                              {portrait && (
+                                <div className="flex flex-col items-center gap-1">
+                                  <button
+                                    type="button"
+                                    aria-label={t(
+                                      lang,
+                                      "ดูภาพขยาย",
+                                      "View full-size image"
+                                    )}
+                                    onClick={() =>
+                                      setLightboxImage({
+                                        src: portrait.imageUrl,
+                                        alt: t(
                                           lang,
                                           "ภาพตัวละครที่สร้างขึ้น",
                                           "Generated character portrait"
-                                        )}
-                                        className="aspect-[9/16] w-36 rounded-md border border-border object-cover"
-                                      />
-                                    </button>
-                                    <span className="text-[10px]">
-                                      {t(lang, "ภาพตัวละคร", "Portrait")}
-                                    </span>
-                                  </div>
-                                )}
-                                {turnaround && (
-                                  <div className="flex flex-col items-center gap-1">
-                                    <button
-                                      type="button"
-                                      aria-label={t(
+                                        ),
+                                      })
+                                    }
+                                    className="rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+                                  >
+                                    {/* Portrait is a known 9:16 vertical render (the
+                                    prompt always requests "9:16") — a fixed
+                                    aspect box lets it display bigger without
+                                    layout jump before it loads. */}
+                                    <AuthenticatedMediaImage
+                                      src={portrait.imageUrl}
+                                      alt={t(
                                         lang,
-                                        "ดูภาพขยาย",
-                                        "View full-size image"
+                                        "ภาพตัวละครที่สร้างขึ้น",
+                                        "Generated character portrait"
                                       )}
-                                      onClick={() =>
-                                        setLightboxImage({
-                                          src: turnaround.imageUrl,
-                                          alt: t(
-                                            lang,
-                                            "ชีทตัวละคร (มุมมองหลายด้าน)",
-                                            "Character sheet (multi-angle turnaround)"
-                                          ),
-                                        })
-                                      }
-                                      className="rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
-                                    >
-                                      {/* Turnaround/character-sheet is a multi-angle
-                                    composite, not 9:16 — let it keep its own
-                                    aspect ratio (`object-contain`) instead of
-                                    force-cropping it into a portrait box. */}
-                                      <AuthenticatedMediaImage
-                                        src={turnaround.imageUrl}
-                                        alt={t(
+                                      className="aspect-[9/16] w-36 rounded-md border border-border object-cover"
+                                    />
+                                  </button>
+                                  <span className="text-[10px]">
+                                    {t(lang, "ภาพตัวละคร", "Portrait")}
+                                  </span>
+                                </div>
+                              )}
+                              {turnaround && (
+                                <div className="flex flex-col items-center gap-1">
+                                  <button
+                                    type="button"
+                                    aria-label={t(
+                                      lang,
+                                      "ดูภาพขยาย",
+                                      "View full-size image"
+                                    )}
+                                    onClick={() =>
+                                      setLightboxImage({
+                                        src: turnaround.imageUrl,
+                                        alt: t(
                                           lang,
                                           "ชีทตัวละคร (มุมมองหลายด้าน)",
                                           "Character sheet (multi-angle turnaround)"
-                                        )}
-                                        className="max-h-56 max-w-56 rounded-md border border-border object-contain"
-                                      />
-                                    </button>
-                                    <span className="text-[10px]">
-                                      {t(lang, "ชีทตัวละคร", "Character sheet")}
-                                    </span>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-6 gap-1 px-2 text-[10px]"
-                                      disabled={
-                                        splittingResultKey ===
-                                        `turnaround::${selectedCharacter.characterId}`
-                                      }
-                                      onClick={() =>
-                                        void splitGeneratedResultIntoTiles(
-                                          selectedCharacter.characterId,
-                                          "turnaround",
-                                          turnaround.imageUrl
-                                        )
-                                      }
-                                    >
-                                      {splittingResultKey ===
-                                      `turnaround::${selectedCharacter.characterId}` ? (
-                                        <Loader2
-                                          aria-hidden="true"
-                                          className="h-3 w-3 animate-spin"
-                                        />
-                                      ) : (
-                                        <Grid3x3
-                                          aria-hidden="true"
-                                          className="h-3 w-3"
-                                        />
-                                      )}
-                                      {t(lang, "ตัดภาพ 3x3", "Split 3x3")}
-                                    </Button>
-                                    {turnaroundSplitTiles[
-                                      selectedCharacter.characterId
-                                    ] && (
-                                      <div className="mt-1 grid grid-cols-3 gap-1">
-                                        {turnaroundSplitTiles[
-                                          selectedCharacter.characterId
-                                        ].map(tile => (
-                                          <button
-                                            key={tile.index}
-                                            type="button"
-                                            aria-label={t(
-                                              lang,
-                                              `ดูภาพขยายช่องที่ ${tile.index + 1}`,
-                                              `View full-size tile ${tile.index + 1}`
-                                            )}
-                                            onClick={() =>
-                                              setLightboxImage({
-                                                src: tile.dataUrl,
-                                                alt: `Tile ${tile.index + 1}`,
-                                              })
-                                            }
-                                            className="rounded border border-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
-                                          >
-                                            <AuthenticatedMediaImage
-                                              src={tile.dataUrl}
-                                              alt=""
-                                              className="h-10 w-10 rounded object-cover"
-                                            />
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                                {sheet && (
-                                  <div className="flex flex-col items-center gap-1">
-                                    <button
-                                      type="button"
-                                      aria-label={t(
+                                        ),
+                                      })
+                                    }
+                                    className="rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+                                  >
+                                    {/* Turnaround/character-sheet is a multi-angle
+                                    composite, not 9:16 — let it keep its own
+                                    aspect ratio (`object-contain`) instead of
+                                    force-cropping it into a portrait box. */}
+                                    <AuthenticatedMediaImage
+                                      src={turnaround.imageUrl}
+                                      alt={t(
                                         lang,
-                                        "ดูภาพขยาย",
-                                        "View full-size image"
+                                        "ชีทตัวละคร (มุมมองหลายด้าน)",
+                                        "Character sheet (multi-angle turnaround)"
                                       )}
-                                      onClick={() =>
-                                        setLightboxImage({
-                                          src: sheet.imageUrl,
-                                          alt: t(
+                                      className="max-h-56 max-w-56 rounded-md border border-border object-contain"
+                                    />
+                                  </button>
+                                  <span className="text-[10px]">
+                                    {t(lang, "ชีทตัวละคร", "Character sheet")}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 gap-1 px-2 text-[10px]"
+                                    disabled={
+                                      splittingResultKey ===
+                                      `turnaround::${selectedCharacter.characterId}`
+                                    }
+                                    onClick={() =>
+                                      void splitGeneratedResultIntoTiles(
+                                        selectedCharacter.characterId,
+                                        "turnaround",
+                                        turnaround.imageUrl
+                                      )
+                                    }
+                                  >
+                                    {splittingResultKey ===
+                                    `turnaround::${selectedCharacter.characterId}` ? (
+                                      <Loader2
+                                        aria-hidden="true"
+                                        className="h-3 w-3 animate-spin"
+                                      />
+                                    ) : (
+                                      <Grid3x3
+                                        aria-hidden="true"
+                                        className="h-3 w-3"
+                                      />
+                                    )}
+                                    {t(lang, "ตัดภาพ 3x3", "Split 3x3")}
+                                  </Button>
+                                  {turnaroundSplitTiles[
+                                    selectedCharacter.characterId
+                                  ] && (
+                                    <div className="mt-1 grid grid-cols-3 gap-1">
+                                      {turnaroundSplitTiles[
+                                        selectedCharacter.characterId
+                                      ].map(tile => (
+                                        <button
+                                          key={tile.index}
+                                          type="button"
+                                          aria-label={t(
                                             lang,
-                                            "ชีทตัวละคร (Design Bible)",
-                                            "Character sheet (Design Bible)"
-                                          ),
-                                        })
-                                      }
-                                      className="rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
-                                    >
-                                      <AuthenticatedMediaImage
-                                        src={sheet.imageUrl}
-                                        alt={t(
+                                            `ดูภาพขยายช่องที่ ${tile.index + 1}`,
+                                            `View full-size tile ${tile.index + 1}`
+                                          )}
+                                          onClick={() =>
+                                            setLightboxImage({
+                                              src: tile.dataUrl,
+                                              alt: `Tile ${tile.index + 1}`,
+                                            })
+                                          }
+                                          className="rounded border border-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+                                        >
+                                          <AuthenticatedMediaImage
+                                            src={tile.dataUrl}
+                                            alt=""
+                                            className="h-10 w-10 rounded object-cover"
+                                          />
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {sheet && (
+                                <div className="flex flex-col items-center gap-1">
+                                  <button
+                                    type="button"
+                                    aria-label={t(
+                                      lang,
+                                      "ดูภาพขยาย",
+                                      "View full-size image"
+                                    )}
+                                    onClick={() =>
+                                      setLightboxImage({
+                                        src: sheet.imageUrl,
+                                        alt: t(
                                           lang,
                                           "ชีทตัวละคร (Design Bible)",
                                           "Character sheet (Design Bible)"
-                                        )}
-                                        className="max-h-56 max-w-56 rounded-md border border-border object-contain"
-                                      />
-                                    </button>
-                                    <span className="text-[10px]">
-                                      {t(
+                                        ),
+                                      })
+                                    }
+                                    className="rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+                                  >
+                                    <AuthenticatedMediaImage
+                                      src={sheet.imageUrl}
+                                      alt={t(
                                         lang,
                                         "ชีทตัวละคร (Design Bible)",
                                         "Character sheet (Design Bible)"
                                       )}
-                                    </span>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="outline"
-                                      className="h-6 gap-1 px-2 text-[10px]"
-                                      disabled={
-                                        splittingResultKey ===
-                                        `sheet::${selectedCharacter.characterId}`
-                                      }
-                                      onClick={() =>
-                                        void splitGeneratedResultIntoTiles(
-                                          selectedCharacter.characterId,
-                                          "sheet",
-                                          sheet.imageUrl
-                                        )
-                                      }
-                                    >
-                                      {splittingResultKey ===
-                                      `sheet::${selectedCharacter.characterId}` ? (
-                                        <Loader2
-                                          aria-hidden="true"
-                                          className="h-3 w-3 animate-spin"
-                                        />
-                                      ) : (
-                                        <Grid3x3
-                                          aria-hidden="true"
-                                          className="h-3 w-3"
-                                        />
-                                      )}
-                                      {t(lang, "ตัดภาพ 3x3", "Split 3x3")}
-                                    </Button>
-                                    {sheetSplitTiles[
-                                      selectedCharacter.characterId
-                                    ] && (
-                                      <div className="mt-1 grid grid-cols-3 gap-1">
-                                        {sheetSplitTiles[
-                                          selectedCharacter.characterId
-                                        ].map(tile => (
-                                          <button
-                                            key={tile.index}
-                                            type="button"
-                                            aria-label={t(
-                                              lang,
-                                              `ดูภาพขยายช่องที่ ${tile.index + 1}`,
-                                              `View full-size tile ${tile.index + 1}`
-                                            )}
-                                            onClick={() =>
-                                              setLightboxImage({
-                                                src: tile.dataUrl,
-                                                alt: `Tile ${tile.index + 1}`,
-                                              })
-                                            }
-                                            className="rounded border border-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
-                                          >
-                                            <AuthenticatedMediaImage
-                                              src={tile.dataUrl}
-                                              alt=""
-                                              className="h-10 w-10 rounded object-cover"
-                                            />
-                                          </button>
-                                        ))}
-                                      </div>
+                                      className="max-h-56 max-w-56 rounded-md border border-border object-contain"
+                                    />
+                                  </button>
+                                  <span className="text-[10px]">
+                                    {t(
+                                      lang,
+                                      "ชีทตัวละคร (Design Bible)",
+                                      "Character sheet (Design Bible)"
                                     )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 gap-1 px-2 text-[10px]"
+                                    disabled={
+                                      splittingResultKey ===
+                                      `sheet::${selectedCharacter.characterId}`
+                                    }
+                                    onClick={() =>
+                                      void splitGeneratedResultIntoTiles(
+                                        selectedCharacter.characterId,
+                                        "sheet",
+                                        sheet.imageUrl
+                                      )
+                                    }
+                                  >
+                                    {splittingResultKey ===
+                                    `sheet::${selectedCharacter.characterId}` ? (
+                                      <Loader2
+                                        aria-hidden="true"
+                                        className="h-3 w-3 animate-spin"
+                                      />
+                                    ) : (
+                                      <Grid3x3
+                                        aria-hidden="true"
+                                        className="h-3 w-3"
+                                      />
+                                    )}
+                                    {t(lang, "ตัดภาพ 3x3", "Split 3x3")}
+                                  </Button>
+                                  {sheetSplitTiles[
+                                    selectedCharacter.characterId
+                                  ] && (
+                                    <div className="mt-1 grid grid-cols-3 gap-1">
+                                      {sheetSplitTiles[
+                                        selectedCharacter.characterId
+                                      ].map(tile => (
+                                        <button
+                                          key={tile.index}
+                                          type="button"
+                                          aria-label={t(
+                                            lang,
+                                            `ดูภาพขยายช่องที่ ${tile.index + 1}`,
+                                            `View full-size tile ${tile.index + 1}`
+                                          )}
+                                          onClick={() =>
+                                            setLightboxImage({
+                                              src: tile.dataUrl,
+                                              alt: `Tile ${tile.index + 1}`,
+                                            })
+                                          }
+                                          className="rounded border border-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+                                        >
+                                          <AuthenticatedMediaImage
+                                            src={tile.dataUrl}
+                                            alt=""
+                                            className="h-10 w-10 rounded object-cover"
+                                          />
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </CardContent>
@@ -9000,230 +9343,690 @@ export function VerticalDramaCharacterStockPanel({
                     />
                   </Button>
                   {isCharacterReferenceDisclosureExpanded && (
-                    <Card
-                      id="vd-character-reference-assets"
-                      className="mt-3"
-                    >
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">
-                      {t(lang, "อ้างอิงของตัวละคร", "Character references")} (
-                      {selectedAssets.length})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-2">
-                    {selectedAssets.length === 0 ? (
-                      <p className="px-2 py-6 text-center text-sm text-muted-foreground">
-                        {t(
-                          lang,
-                          "ยังไม่มีอ้างอิงสำหรับตัวละครนี้",
-                          "No references for this character yet."
-                        )}
-                      </p>
-                    ) : (
-                      <ul className="flex flex-col gap-2">
-                        {selectedAssets.map(asset => {
-                          const busyThis =
-                            deleteAssetMutation.isPending &&
-                            deleteAssetMutation.variables?.assetLinkId ===
-                              asset.assetLinkId;
-                          // Only the freshly-generated asset from this session has a
-                          // resolvable URL — matched by characterId + mediaAssetId.
-                          // Older/imported assets fall back to the plain-text label.
-                          // Checks both the portrait cache and the character-sheet
-                          // cache, since both mutations link into the same asset
-                          // list, distinguished by `asset.role`.
-                          const generatedForCharacter =
-                            generatedImageUrls[asset.characterId];
-                          const turnaroundForCharacter =
-                            generatedTurnaroundUrls[asset.characterId];
-                          const sheetForCharacter =
-                            generatedSheetUrls[asset.characterId];
-                          const isTurnaroundRoleAsset =
-                            asset.role === "character_sheet_turnaround";
-                          // `"character_sheet_full"` (the pre-existing full-
-                          // combined sheet) and `"character_design_bible"`
-                          // (the 11 new Character Design Bible formats, e.g.
-                          // color_palette / material_fabric — several of
-                          // which carry no face at all) are ALSO multi-panel
-                          // infographic pages, not 9:16 portrait crops —
-                          // widened from turnaround-only (vertical-drama-
-                          // character-sheet-consolidation plan, Phase C).
-                          const isSheetRoleAsset =
-                            asset.role === "character_sheet_full" ||
-                            asset.role === "character_design_bible";
-                          const isMultiPanelSheetAsset =
-                            isTurnaroundRoleAsset || isSheetRoleAsset;
-                          // Prefer the durable, server-joined `thumbnailUrl`
-                          // (survives reload) — the session-local generate
-                          // caches are only a fallback for the brief window
-                          // before a refetch has picked it up.
-                          const sessionCachedUrl = isTurnaroundRoleAsset
-                            ? turnaroundForCharacter &&
-                              String(asset.mediaAssetId) ===
-                                turnaroundForCharacter.mediaAssetId
-                              ? turnaroundForCharacter.imageUrl
-                              : null
-                            : isSheetRoleAsset
-                              ? sheetForCharacter &&
-                                String(asset.mediaAssetId) ===
-                                  sheetForCharacter.mediaAssetId
-                                ? sheetForCharacter.imageUrl
-                                : null
-                              : generatedForCharacter &&
-                                  String(asset.mediaAssetId) ===
-                                    generatedForCharacter.mediaAssetId
-                                ? generatedForCharacter.imageUrl
-                                : null;
-                          const thumbnailUrl =
-                            asset.thumbnailUrl ?? sessionCachedUrl;
-                          const thumbnailAlt = isMultiPanelSheetAsset
-                            ? t(
-                                lang,
-                                "ชีทตัวละคร (มุมมองหลายด้าน)",
-                                "Character sheet (multi-angle turnaround)"
-                              )
-                            : t(
-                                lang,
-                                "ภาพตัวละครที่สร้างขึ้น",
-                                "Generated character portrait"
-                              );
-                          return (
-                            <li
-                              key={asset.assetLinkId}
-                              className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-border p-2"
-                            >
-                              {thumbnailUrl && (
-                                <button
-                                  type="button"
-                                  aria-label={t(
-                                    lang,
-                                    "ดูภาพขยาย",
-                                    "View full-size image"
-                                  )}
-                                  onClick={() =>
-                                    setLightboxImage({
-                                      src: thumbnailUrl,
-                                      alt: thumbnailAlt,
-                                    })
-                                  }
-                                  className="shrink-0 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+                    <Card id="vd-character-reference-assets" className="mt-3">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">
+                          {t(lang, "อ้างอิงของตัวละคร", "Character references")}{" "}
+                          ({selectedAssets.length})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-2">
+                        {!readOnly && selectedCharacter && (
+                          <section
+                            className="mb-3 rounded-lg border border-dashed bg-muted/20 p-3"
+                            aria-labelledby="vd-reference-generate-label"
+                            data-testid="vd-reference-generate-section"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <p
+                                  id="vd-reference-generate-label"
+                                  className="text-sm font-medium"
                                 >
-                                  <AuthenticatedMediaImage
-                                    src={thumbnailUrl}
-                                    alt={thumbnailAlt}
-                                    className={cn(
-                                      "rounded-md border border-border",
-                                      isMultiPanelSheetAsset
-                                        ? "max-h-24 max-w-24 object-contain"
-                                        : "aspect-[9/16] w-16 object-cover"
-                                    )}
-                                  />
-                                </button>
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium">
-                                  {asset.assetType}
-                                  {asset.role ? ` · ${asset.role}` : ""}
+                                  {t(
+                                    lang,
+                                    "สร้างภาพอ้างอิงใหม่ (Text to image)",
+                                    "Generate new reference images (Text to image)"
+                                  )}
                                 </p>
-                                {thumbnailUrl ? (
-                                  <p className="truncate text-xs text-muted-foreground">
-                                    {t(lang, "ที่มา", "Source")}: {asset.source}
-                                    {asset.containsHumanFace
-                                      ? ` · ${t(lang, "มีใบหน้า", "Has face")}`
-                                      : ""}
-                                  </p>
-                                ) : (
-                                  <p className="truncate text-xs text-muted-foreground">
-                                    {t(lang, "มีเดีย", "Media")} #
-                                    {asset.mediaAssetId ?? "—"} ·{" "}
-                                    {t(lang, "ที่มา", "Source")}: {asset.source}
-                                    {asset.containsHumanFace
-                                      ? ` · ${t(lang, "มีใบหน้า", "Has face")}`
-                                      : ""}
-                                  </p>
-                                )}
-                                {asset.rejectionReason && (
-                                  <p className="mt-0.5 text-xs text-destructive">
-                                    {t(lang, "เหตุผล", "Reason")}:{" "}
-                                    {asset.rejectionReason}
-                                  </p>
-                                )}
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                  {t(
+                                    lang,
+                                    "ถ้ามีภาพอ้างอิง ระบบจะใช้เป็น guideline เพื่อสร้างคนใหม่สำหรับ casting เท่านั้น ไม่ clone บุคคลในภาพ และคุณเลือกภาพหลักได้ภายหลัง",
+                                    "When references are attached, they are guideline-only: the result is a new person for casting, not a clone of anyone in the images. Choose one result as primary afterward."
+                                  )}
+                                </p>
                               </div>
-                              {!readOnly &&
-                                (confirmingDeleteAssetLinkId ===
-                                asset.assetLinkId ? (
-                                  <div className="flex items-center gap-1">
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-7 px-2 text-xs"
-                                      disabled={mutating}
-                                      onClick={() =>
-                                        setConfirmingDeleteAssetLinkId(null)
-                                      }
+                              {!selectedImageModelId && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setIsModelDialogOpen(true)}
+                                  data-testid="vd-reference-select-image-model"
+                                >
+                                  {t(
+                                    lang,
+                                    "เลือกโมเดลภาพ",
+                                    "Select image model"
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+                            <div
+                              className="mt-3 rounded-md border border-sky-200 bg-sky-50 p-3 text-xs text-sky-950 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100"
+                              data-testid="vd-reference-casting-options"
+                            >
+                              <p className="font-medium">
+                                {t(
+                                  lang,
+                                  "ตัวเลือกสร้างคนใหม่จากภาพอ้างอิง (ไม่บังคับ)",
+                                  "Optional new-person casting options"
+                                )}
+                              </p>
+                              <p className="mt-1">
+                                {t(
+                                  lang,
+                                  "ภาพที่แนบไม่จำเป็นต้องมี (ใช้ได้สูงสุด 6 ภาพ) ระบบจะใช้เฉพาะแนวโครงหน้า/ความยาวผมตามที่เหมาะสม และจะไม่สร้างบุคคลให้เหมือนภาพอ้างอิง",
+                                  "References are optional (up to 6). The skill uses them only as visual guidance such as face shape or hair length; it will not recreate the person."
+                                )}
+                              </p>
+                              <p className="mt-1 font-medium">
+                                {t(
+                                  lang,
+                                  "ตัวเลือก lock/ท่าทาง/ระยะกล้องจะมีผลเมื่อมีภาพอ้างอิงเท่านั้น หากไม่มีภาพ ระบบจะใช้ flow เดิม",
+                                  "Lock, pose, and framing options apply only when references are attached. Without references, the existing flow is used."
+                                )}
+                              </p>
+                              <section
+                                className="mt-3 rounded-md border border-dashed bg-background/70 p-3"
+                                aria-label={t(
+                                  lang,
+                                  "เพิ่มภาพอ้างอิงสำหรับ Casting",
+                                  "Add casting reference images"
+                                )}
+                                data-testid="vd-reference-casting-image-picker"
+                              >
+                                <ImageSourcePicker
+                                  value={castingReferencePickerUrls}
+                                  onChange={urls =>
+                                    void handleCastingReferencePickerChange(
+                                      selectedCharacter.characterId,
+                                      urls
+                                    )
+                                  }
+                                  maxImages={6}
+                                  isUploading={
+                                    cardUploadMutation.isPending ||
+                                    castingReferenceSyncingCharacterId ===
+                                      selectedCharacter.characterId
+                                  }
+                                  onUpload={uploadCastingReferenceFiles}
+                                  label={t(
+                                    lang,
+                                    "ภาพอ้างอิงสำหรับ Casting (ไม่บังคับ)",
+                                    "Casting reference images (optional)"
+                                  )}
+                                  helpText={t(
+                                    lang,
+                                    "ลากไฟล์จากเครื่อง หรือเลือกรูปจาก Library/Media History ได้สูงสุด 6 ภาพ",
+                                    "Drop files from your device or choose images from Library/Media History, up to 6 images."
+                                  )}
+                                  language={lang}
+                                  disabled={
+                                    mutating ||
+                                    castingReferenceSyncingCharacterId ===
+                                      selectedCharacter.characterId
+                                  }
+                                />
+                              </section>
+                              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                                <label className="flex items-center gap-2 sm:col-span-3">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-input"
+                                    checked={
+                                      castingLockClothingByCharacter[
+                                        selectedCharacter.characterId
+                                      ] ?? false
+                                    }
+                                    onChange={event =>
+                                      setCastingLockClothingByCharacter(
+                                        prev => ({
+                                          ...prev,
+                                          [selectedCharacter.characterId]:
+                                            event.target.checked,
+                                        })
+                                      )
+                                    }
+                                    data-testid="vd-reference-lock-clothing"
+                                  />
+                                  <span>
+                                    {t(
+                                      lang,
+                                      "ล็อกเสื้อผ้าตามภาพอ้างอิง",
+                                      "Lock clothing to the references"
+                                    )}
+                                  </span>
+                                </label>
+                                <div>
+                                  <Label
+                                    htmlFor="vd-reference-pose-mode"
+                                    className="text-xs"
+                                  >
+                                    {t(lang, "ท่าทาง", "Pose")}
+                                  </Label>
+                                  <Select
+                                    value={
+                                      castingPoseModeByCharacter[
+                                        selectedCharacter.characterId
+                                      ] ?? "auto_natural"
+                                    }
+                                    onValueChange={value =>
+                                      setCastingPoseModeByCharacter(prev => ({
+                                        ...prev,
+                                        [selectedCharacter.characterId]:
+                                          value as
+                                            | "auto_natural"
+                                            | "lock_reference",
+                                      }))
+                                    }
+                                  >
+                                    <SelectTrigger
+                                      id="vd-reference-pose-mode"
+                                      className="mt-1 h-8 bg-background"
                                     >
-                                      {t(lang, "ยกเลิก", "Cancel")}
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="destructive"
-                                      className="h-7 gap-1 px-2 text-xs"
-                                      disabled={mutating}
-                                      onClick={() => {
-                                        setConfirmingDeleteAssetLinkId(null);
-                                        deleteAssetMutation.mutate({
-                                          seriesId,
-                                          assetLinkId: asset.assetLinkId,
-                                        });
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="auto_natural">
+                                        {t(lang, "ท่าธรรมชาติ", "Natural pose")}
+                                      </SelectItem>
+                                      <SelectItem value="lock_reference">
+                                        {t(
+                                          lang,
+                                          "ล็อกท่าตามภาพ",
+                                          "Lock reference pose"
+                                        )}
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="sm:col-span-2">
+                                  <Label
+                                    htmlFor="vd-reference-camera-framing"
+                                    className="text-xs"
+                                  >
+                                    {t(lang, "ระยะ/มุมกล้อง", "Camera framing")}
+                                  </Label>
+                                  <Select
+                                    value={
+                                      castingCameraFramingByCharacter[
+                                        selectedCharacter.characterId
+                                      ] ?? "half_body"
+                                    }
+                                    onValueChange={value =>
+                                      setCastingCameraFramingByCharacter(
+                                        prev => ({
+                                          ...prev,
+                                          [selectedCharacter.characterId]:
+                                            value as NonNullable<
+                                              VdPreviewCharacterPromptInput["castingCameraFraming"]
+                                            >,
+                                        })
+                                      )
+                                    }
+                                  >
+                                    <SelectTrigger
+                                      id="vd-reference-camera-framing"
+                                      className="mt-1 h-8 bg-background"
+                                    >
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="full_body">
+                                        {t(lang, "เต็มตัว", "Full body")}
+                                      </SelectItem>
+                                      <SelectItem value="three_quarter">
+                                        {t(lang, "สามส่วน", "Three-quarter")}
+                                      </SelectItem>
+                                      <SelectItem value="half_body">
+                                        {t(lang, "ครึ่งตัว", "Half body")}
+                                      </SelectItem>
+                                      <SelectItem value="medium_close_up">
+                                        {t(
+                                          lang,
+                                          "ใกล้ระดับกลาง",
+                                          "Medium close-up"
+                                        )}
+                                      </SelectItem>
+                                      <SelectItem value="close_up">
+                                        {t(lang, "ใกล้ใบหน้า", "Close-up")}
+                                      </SelectItem>
+                                      <SelectItem value="extreme_close_up">
+                                        {t(lang, "ใกล้มาก", "Extreme close-up")}
+                                      </SelectItem>
+                                      <SelectItem value="wide_environmental">
+                                        {t(
+                                          lang,
+                                          "กว้างเห็นสภาพแวดล้อม",
+                                          "Wide environmental"
+                                        )}
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="mt-3 flex flex-col gap-2">
+                              <Label
+                                htmlFor="vd-reference-custom-instruction"
+                                className="text-xs"
+                              >
+                                {t(
+                                  lang,
+                                  VD_COPY.th.characterCustomInstructionLabel,
+                                  VD_COPY.en.characterCustomInstructionLabel
+                                )}
+                              </Label>
+                              <Textarea
+                                id="vd-reference-custom-instruction"
+                                value={
+                                  customInstructionByCharacter[
+                                    selectedCharacter.characterId
+                                  ] ?? ""
+                                }
+                                onChange={event =>
+                                  setCustomInstructionByCharacter(prev => ({
+                                    ...prev,
+                                    [selectedCharacter.characterId]:
+                                      event.target.value,
+                                  }))
+                                }
+                                maxLength={500}
+                                rows={2}
+                                placeholder={t(
+                                  lang,
+                                  "เช่น ใส่ชุดนักศึกษามัธยมปลายของไทย, เสื้อผ้าลำลองแนวสาวชนบท, ยืนเห็นเต็มตัวถึงรองเท้า",
+                                  "e.g. Thai high-school uniform, rural casual clothing, full-body stance down to the shoes"
+                                )}
+                              />
+                            </div>
+                            <div
+                              className="mt-3"
+                              role="radiogroup"
+                              aria-labelledby="vd-reference-candidate-count-label"
+                            >
+                              <p
+                                id="vd-reference-candidate-count-label"
+                                className="mb-2 text-xs font-medium"
+                              >
+                                {t(
+                                  lang,
+                                  "จำนวนภาพใหม่",
+                                  "Number of new images"
+                                )}
+                              </p>
+                              <Grid
+                                columns={{
+                                  minWidth: 64,
+                                  max: 5,
+                                  repeat: "fit",
+                                }}
+                                gap={2}
+                              >
+                                {VD_PORTRAIT_CANDIDATE_COUNTS.map(count => {
+                                  const selected =
+                                    (portraitCandidateCountByCharacter[
+                                      selectedCharacter.characterId
+                                    ] ?? 3) === count;
+                                  return (
+                                    <SelectableCard
+                                      key={count}
+                                      label={t(
+                                        lang,
+                                        `${count} ภาพ`,
+                                        `${count} image${count > 1 ? "s" : ""}`
+                                      )}
+                                      isSelected={selected}
+                                      onChange={isSelected => {
+                                        if (!isSelected) return;
+                                        setPortraitCandidateCountByCharacter(
+                                          prev => ({
+                                            ...prev,
+                                            [selectedCharacter.characterId]:
+                                              count,
+                                          })
+                                        );
                                       }}
+                                      padding={2}
+                                      variant={selected ? "blue" : "muted"}
                                     >
-                                      {busyThis ? (
-                                        <Loader2
-                                          aria-hidden="true"
-                                          className="h-3.5 w-3.5 animate-spin"
-                                        />
-                                      ) : (
+                                      <span className="block text-center text-xs font-semibold">
+                                        {count}
+                                      </span>
+                                    </SelectableCard>
+                                  );
+                                })}
+                              </Grid>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="mt-3 gap-2"
+                              disabled={
+                                mutating ||
+                                isImageGeneratingFor(
+                                  selectedCharacter.characterId
+                                ) ||
+                                !selectedImageModelId
+                              }
+                              onClick={() =>
+                                startCharacterPromptPreview(
+                                  selectedCharacter.characterId,
+                                  {
+                                    forceCandidateBatch: true,
+                                    castingReferenceAssetLinkIds: selectedAssets
+                                      .filter(
+                                        asset =>
+                                          asset.role === "primary_portrait"
+                                      )
+                                      .map(asset => asset.assetLinkId),
+                                  }
+                                )
+                              }
+                              data-testid="vd-reference-generate-candidates"
+                            >
+                              {isImageGeneratingFor(
+                                selectedCharacter.characterId
+                              ) ? (
+                                <Loader2
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5 animate-spin"
+                                />
+                              ) : (
+                                <Sparkles
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
+                              )}
+                              {t(
+                                lang,
+                                `สร้าง ${portraitCandidateCountByCharacter[selectedCharacter.characterId] ?? 3} ภาพใหม่`,
+                                `Generate ${portraitCandidateCountByCharacter[selectedCharacter.characterId] ?? 3} new images`
+                              )}
+                            </Button>
+                          </section>
+                        )}
+                        {selectedAssets.length === 0 ? (
+                          <p className="px-2 py-6 text-center text-sm text-muted-foreground">
+                            {t(
+                              lang,
+                              "ยังไม่มีอ้างอิงสำหรับตัวละครนี้",
+                              "No references for this character yet."
+                            )}
+                          </p>
+                        ) : (
+                          <ul className="flex flex-col gap-2">
+                            {selectedAssets.map(asset => {
+                              const busyThis =
+                                deleteAssetMutation.isPending &&
+                                deleteAssetMutation.variables?.assetLinkId ===
+                                  asset.assetLinkId;
+                              // Only the freshly-generated asset from this session has a
+                              // resolvable URL — matched by characterId + mediaAssetId.
+                              // Older/imported assets fall back to the plain-text label.
+                              // Checks both the portrait cache and the character-sheet
+                              // cache, since both mutations link into the same asset
+                              // list, distinguished by `asset.role`.
+                              const generatedForCharacter =
+                                generatedImageUrls[asset.characterId];
+                              const turnaroundForCharacter =
+                                generatedTurnaroundUrls[asset.characterId];
+                              const sheetForCharacter =
+                                generatedSheetUrls[asset.characterId];
+                              const isTurnaroundRoleAsset =
+                                asset.role === "character_sheet_turnaround";
+                              // `"character_sheet_full"` (the pre-existing full-
+                              // combined sheet) and `"character_design_bible"`
+                              // (the 11 new Character Design Bible formats, e.g.
+                              // color_palette / material_fabric — several of
+                              // which carry no face at all) are ALSO multi-panel
+                              // infographic pages, not 9:16 portrait crops —
+                              // widened from turnaround-only (vertical-drama-
+                              // character-sheet-consolidation plan, Phase C).
+                              const isSheetRoleAsset =
+                                asset.role === "character_sheet_full" ||
+                                asset.role === "character_design_bible";
+                              const isMultiPanelSheetAsset =
+                                isTurnaroundRoleAsset || isSheetRoleAsset;
+                              // Prefer the durable, server-joined `thumbnailUrl`
+                              // (survives reload) — the session-local generate
+                              // caches are only a fallback for the brief window
+                              // before a refetch has picked it up.
+                              const sessionCachedUrl = isTurnaroundRoleAsset
+                                ? turnaroundForCharacter &&
+                                  String(asset.mediaAssetId) ===
+                                    turnaroundForCharacter.mediaAssetId
+                                  ? turnaroundForCharacter.imageUrl
+                                  : null
+                                : isSheetRoleAsset
+                                  ? sheetForCharacter &&
+                                    String(asset.mediaAssetId) ===
+                                      sheetForCharacter.mediaAssetId
+                                    ? sheetForCharacter.imageUrl
+                                    : null
+                                  : generatedForCharacter &&
+                                      String(asset.mediaAssetId) ===
+                                        generatedForCharacter.mediaAssetId
+                                    ? generatedForCharacter.imageUrl
+                                    : null;
+                              const thumbnailUrl =
+                                asset.thumbnailUrl ?? sessionCachedUrl;
+                              const mainPortraitAssetLinkId = selectedCharacter
+                                ? (resolveCharacterCardPortraitAsset(
+                                    assets,
+                                    selectedCharacter.characterId
+                                  )?.assetLinkId ?? null)
+                                : null;
+                              const isMainImage =
+                                asset.role === "primary_portrait" &&
+                                asset.assetLinkId === mainPortraitAssetLinkId;
+                              const candidateStatus =
+                                asset.portraitCandidate?.status;
+                              const canPromoteToPrimary =
+                                Boolean(asset.mediaAssetId) &&
+                                (asset.role === "primary_portrait" ||
+                                  (Boolean(asset.portraitCandidate) &&
+                                    [
+                                      "completed",
+                                      "selected",
+                                      "superseded",
+                                    ].includes(candidateStatus ?? "")));
+                              const thumbnailAlt = isMultiPanelSheetAsset
+                                ? t(
+                                    lang,
+                                    "ชีทตัวละคร (มุมมองหลายด้าน)",
+                                    "Character sheet (multi-angle turnaround)"
+                                  )
+                                : t(
+                                    lang,
+                                    "ภาพตัวละครที่สร้างขึ้น",
+                                    "Generated character portrait"
+                                  );
+                              return (
+                                <li
+                                  key={asset.assetLinkId}
+                                  className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-border p-2"
+                                >
+                                  {thumbnailUrl && (
+                                    <button
+                                      type="button"
+                                      aria-label={t(
+                                        lang,
+                                        "ดูภาพขยาย",
+                                        "View full-size image"
+                                      )}
+                                      onClick={() =>
+                                        setLightboxImage({
+                                          src: thumbnailUrl,
+                                          alt: thumbnailAlt,
+                                        })
+                                      }
+                                      className="shrink-0 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+                                    >
+                                      <AuthenticatedMediaImage
+                                        src={thumbnailUrl}
+                                        alt={thumbnailAlt}
+                                        className={cn(
+                                          "rounded-md border border-border",
+                                          isMultiPanelSheetAsset
+                                            ? "max-h-24 max-w-24 object-contain"
+                                            : "aspect-[9/16] w-16 object-cover"
+                                        )}
+                                      />
+                                    </button>
+                                  )}
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-medium">
+                                      {asset.assetType}
+                                      {asset.role ? ` · ${asset.role}` : ""}
+                                    </p>
+                                    {thumbnailUrl ? (
+                                      <p className="truncate text-xs text-muted-foreground">
+                                        {t(lang, "ที่มา", "Source")}:{" "}
+                                        {asset.source}
+                                        {asset.containsHumanFace
+                                          ? ` · ${t(lang, "มีใบหน้า", "Has face")}`
+                                          : ""}
+                                      </p>
+                                    ) : (
+                                      <p className="truncate text-xs text-muted-foreground">
+                                        {t(lang, "มีเดีย", "Media")} #
+                                        {asset.mediaAssetId ?? "—"} ·{" "}
+                                        {t(lang, "ที่มา", "Source")}:{" "}
+                                        {asset.source}
+                                        {asset.containsHumanFace
+                                          ? ` · ${t(lang, "มีใบหน้า", "Has face")}`
+                                          : ""}
+                                      </p>
+                                    )}
+                                    {asset.rejectionReason && (
+                                      <p className="mt-0.5 text-xs text-destructive">
+                                        {t(lang, "เหตุผล", "Reason")}:{" "}
+                                        {asset.rejectionReason}
+                                      </p>
+                                    )}
+                                  </div>
+                                  {!readOnly &&
+                                    (isMainImage ? (
+                                      <Badge
+                                        variant="secondary"
+                                        className="shrink-0 text-xs"
+                                      >
+                                        {t(lang, "ภาพหลัก", "Main image")}
+                                      </Badge>
+                                    ) : canPromoteToPrimary ? (
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 shrink-0 px-2 text-xs"
+                                        disabled={
+                                          setPrimaryPortraitMutation.isPending
+                                        }
+                                        title={t(
+                                          lang,
+                                          "ใช้ภาพนี้แทนภาพหลัก โดยเก็บภาพหลักเดิมไว้เป็นภาพอ้างอิง",
+                                          "Use this as the main image and keep the previous main image as a reference"
+                                        )}
+                                        onClick={() =>
+                                          setPrimaryPortraitMutation.mutate({
+                                            seriesId,
+                                            characterId:
+                                              selectedCharacter.characterId,
+                                            assetLinkId: asset.assetLinkId,
+                                          })
+                                        }
+                                        data-testid={`vd-reference-set-primary-${asset.assetLinkId}`}
+                                      >
+                                        {setPrimaryPortraitMutation.isPending &&
+                                        setPrimaryPortraitMutation.variables
+                                          ?.assetLinkId ===
+                                          asset.assetLinkId ? (
+                                          <Loader2
+                                            aria-hidden="true"
+                                            className="mr-1 h-3.5 w-3.5 animate-spin"
+                                          />
+                                        ) : null}
+                                        {t(
+                                          lang,
+                                          "ตั้งเป็นภาพหลัก",
+                                          "Set as main"
+                                        )}
+                                      </Button>
+                                    ) : null)}
+                                  {!readOnly &&
+                                    (confirmingDeleteAssetLinkId ===
+                                    asset.assetLinkId ? (
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-7 px-2 text-xs"
+                                          disabled={mutating}
+                                          onClick={() =>
+                                            setConfirmingDeleteAssetLinkId(null)
+                                          }
+                                        >
+                                          {t(lang, "ยกเลิก", "Cancel")}
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="destructive"
+                                          className="h-7 gap-1 px-2 text-xs"
+                                          disabled={mutating}
+                                          onClick={() => {
+                                            setConfirmingDeleteAssetLinkId(
+                                              null
+                                            );
+                                            deleteAssetMutation.mutate({
+                                              seriesId,
+                                              assetLinkId: asset.assetLinkId,
+                                            });
+                                          }}
+                                        >
+                                          {busyThis ? (
+                                            <Loader2
+                                              aria-hidden="true"
+                                              className="h-3.5 w-3.5 animate-spin"
+                                            />
+                                          ) : (
+                                            <Trash2
+                                              aria-hidden="true"
+                                              className="h-3.5 w-3.5"
+                                            />
+                                          )}
+                                          {t(
+                                            lang,
+                                            "ยืนยันลบ",
+                                            "Confirm delete"
+                                          )}
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 gap-1 px-2 text-muted-foreground hover:text-destructive"
+                                        disabled={mutating}
+                                        aria-label={t(
+                                          lang,
+                                          "ลบภาพอ้างอิงนี้",
+                                          "Delete this reference"
+                                        )}
+                                        onClick={() =>
+                                          setConfirmingDeleteAssetLinkId(
+                                            asset.assetLinkId
+                                          )
+                                        }
+                                      >
                                         <Trash2
                                           aria-hidden="true"
                                           className="h-3.5 w-3.5"
                                         />
-                                      )}
-                                      {t(lang, "ยืนยันลบ", "Confirm delete")}
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-7 gap-1 px-2 text-muted-foreground hover:text-destructive"
-                                    disabled={mutating}
-                                    aria-label={t(
-                                      lang,
-                                      "ลบภาพอ้างอิงนี้",
-                                      "Delete this reference"
-                                    )}
-                                    onClick={() =>
-                                      setConfirmingDeleteAssetLinkId(
-                                        asset.assetLinkId
-                                      )
-                                    }
-                                  >
-                                    <Trash2
-                                      aria-hidden="true"
-                                      className="h-3.5 w-3.5"
-                                    />
-                                    {t(lang, "ลบ", "Delete")}
-                                  </Button>
-                                ))}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </CardContent>
+                                        {t(lang, "ลบ", "Delete")}
+                                      </Button>
+                                    ))}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </CardContent>
                     </Card>
                   )}
                 </section>
