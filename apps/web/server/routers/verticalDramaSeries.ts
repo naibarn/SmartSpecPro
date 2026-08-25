@@ -373,6 +373,7 @@ import {
    * below), matching `mergeDeepDraftItems`'s own draftedItems shape.
    */
   type DeepDraftedEpisodeItem,
+  type GenerateStoryBibleDeepResult,
   /**
    * Stage 2.4 threading (`planning/vd-series-memory-and-lineage/plan.md`,
    * added 2026-07-17) — the bounded fact set `resolveSeasonLineageContext`
@@ -404,6 +405,12 @@ import {
   type VerticalDramaStoryJobResumeContext,
   type VerticalDramaStoryJobCheckpoint,
 } from "../services/verticalDramaStoryJobs";
+import {
+  enqueueVerticalDramaInteractiveJob,
+  getActiveVerticalDramaInteractiveJob,
+  getVerticalDramaInteractiveJobStatus,
+  type VerticalDramaInteractiveJobPayload,
+} from "../services/verticalDramaInteractiveJobs";
 import {
   admitStoryGenerationRun,
   getStoryGenerationRunSummary,
@@ -474,6 +481,7 @@ function recoveredDraftCompositionStatus(ledger: {
   id: string;
   currentVersion: number;
   currentJson: unknown;
+  requestJson?: unknown;
 }) {
   const draft = (ledger.currentJson ?? {}) as Record<string, unknown>;
   const hasDraftPayload = [
@@ -503,6 +511,7 @@ function recoveredDraftCompositionStatus(ledger: {
       },
       jobId: ledger.id,
       requestFingerprint: `ledger:${ledger.id}:${ledger.currentVersion}`,
+      requestJson: ledger.requestJson,
     };
   }
   if (!completion.ready) {
@@ -533,6 +542,7 @@ function recoveredDraftCompositionStatus(ledger: {
       },
       jobId: ledger.id,
       requestFingerprint: `ledger:${ledger.id}:${ledger.currentVersion}`,
+      requestJson: ledger.requestJson,
     };
   }
   return {
@@ -555,6 +565,7 @@ function recoveredDraftCompositionStatus(ledger: {
     failure: undefined,
     jobId: ledger.id,
     requestFingerprint: `ledger:${ledger.id}:${ledger.currentVersion}`,
+    requestJson: ledger.requestJson,
     recoveredAt: now,
   };
 }
@@ -629,6 +640,10 @@ import {
   refundCredits,
 } from "../services/creditService";
 import { renderCriteriaVersionMarker } from "../services/verticalDramaQualityCriteria";
+import {
+  inspectVerticalDramaCompletionSet,
+  inspectVerticalDramaEpisodeCompletion,
+} from "../services/verticalDramaCompletionContract";
 /**
  * Manual dialogue edits (W10.5, added 2026-07-08) — `updateEpisodeDraftDialogue`
  * mutation below. Kept as its OWN import block (rather than folded into the
@@ -763,11 +778,15 @@ import {
 } from "../services/verticalDramaSourceIngestionService";
 import {
   applyPromptExpansion,
-  buildDeterministicPromptExpansionPreview,
+  assertPromptExpansionSchemaReady,
+  getPromptExpansionByIdempotencyKey,
+  runRealPromptExpansion,
   savePromptExpansionPreview,
+  PROMPT_EXPANSION_SKILL_ID,
 } from "../services/verticalDramaPromptExpansionService";
 import {
   buildSlotPrompt,
+  PROMPT_EXPANSION_PREMISE_LIMIT,
   promptExpansionPreviewSchema,
 } from "@shared/verticalDramaSeries/promptExpansion";
 import { newsClaimSchema } from "@shared/verticalDramaSeries/newsReport";
@@ -822,6 +841,7 @@ import { persistDeepDraftEpisodeMemories } from "../services/verticalDramaSeries
 import {
   attachRelationshipGraphToBible,
   materializeCompatibilityRelationshipGraph,
+  normalizeStrictRelationshipGraphDeltas,
 } from "../services/verticalDramaLongFormGraph";
 /**
  * Auto-register story-introduced characters (`planning/vd-auto-register-story-characters/plan.md`)
@@ -1426,6 +1446,23 @@ async function ensureLongFormRelationshipGraph(
   return nextBible;
 }
 
+function buildDeepStoryJobLogicalRunKey(params: {
+  prefix: "deep" | "extend";
+  seriesId: number;
+  bible: Record<string, unknown>;
+  horizon: number;
+  mode: VerticalDramaDeepStoryDraftMode;
+  suppliedKey?: string;
+}): string {
+  if (params.suppliedKey) return params.suppliedKey;
+  const activeVersion =
+    typeof params.bible.activeBreakdownVersionId === "string" ||
+    typeof params.bible.activeBreakdownVersionId === "number"
+      ? String(params.bible.activeBreakdownVersionId)
+      : "legacy";
+  return `${params.prefix}:${params.seriesId}:${activeVersion}:${params.horizon}:${params.mode}`;
+}
+
 function createLongFormExtensionForBible(
   seriesId: number,
   targetEpisodeCount: number,
@@ -1877,6 +1914,72 @@ function mergeDeepDraftItems(
 }
 
 /**
+ * Keep already-materialized episode rows aligned with the active bible after
+ * an async deep-draft job completes.  `getEpisodeDetail` reads the canonical
+ * plan from the bible, but downstream production tools and older clients also
+ * read `vertical_drama_episodes.script`; writing only the plan therefore made
+ * a successfully generated dialogue draft look empty on the real episode.
+ */
+async function syncDeepDraftsToMaterializedEpisodes(params: {
+  tenantId: string;
+  userId: number;
+  seriesId: number;
+  draftedItems: DeepDraftedEpisodeItem[];
+}): Promise<void> {
+  if (params.draftedItems.length === 0) return;
+  const rows = (await db
+    .select({
+      id: verticalDramaEpisodes.id,
+      episodeNumber: verticalDramaEpisodes.episodeNumber,
+      script: verticalDramaEpisodes.script,
+    })
+    .from(verticalDramaEpisodes)
+    .where(
+      and(
+        eq(verticalDramaEpisodes.tenantId, params.tenantId),
+        eq(verticalDramaEpisodes.userId, params.userId),
+        eq(verticalDramaEpisodes.seriesId, params.seriesId)
+      )
+    )) as Array<{
+    id: number;
+    episodeNumber: number;
+    script: unknown;
+  }>;
+  const rowByEpisode = new Map(rows.map(row => [row.episodeNumber, row]));
+  for (const item of params.draftedItems) {
+    const row = rowByEpisode.get(item.episodeNumber);
+    if (!row) continue;
+    const currentScript =
+      row.script && typeof row.script === "object"
+        ? (row.script as Record<string, unknown>)
+        : {};
+    await db
+      .update(verticalDramaEpisodes)
+      .set({
+        script: {
+          ...currentScript,
+          _deepDraft: {
+            shotDrafts: item.shotDrafts,
+            cliffhangerLine: item.cliffhanger_line ?? null,
+            draftCompleteness: item.draftCompleteness,
+            syncedFrom: "vertical_drama_series.active_breakdown",
+            syncedAt: new Date().toISOString(),
+          },
+        },
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(verticalDramaEpisodes.id, row.id),
+          eq(verticalDramaEpisodes.tenantId, params.tenantId),
+          eq(verticalDramaEpisodes.userId, params.userId),
+          eq(verticalDramaEpisodes.seriesId, params.seriesId)
+        )
+      );
+  }
+}
+
+/**
  * Resilient resume (added 2026-07-14,
  * `planning/vertical-drama-deep-story-resilient-resume/plan.md`) — computes
  * what `generateStoryBibleDeep`'s new `resumeDraftedItems`/
@@ -1933,17 +2036,42 @@ function resolveDeepDraftResumeState(
 } {
   const alreadyDraftedFromBible = new Set(
     activeBreakdownItems
-      .filter(item => readItemShotDrafts(item) !== null)
+      // A 9-shot payload without a single speakable line is not an accepted
+      // deep draft.  It must be regenerated after refresh/resume instead of
+      // being silently treated as complete and skipped without a new result.
+      .filter(item => {
+        const shots = readItemShotDrafts(item);
+        return (
+          shots !== null &&
+          shots.some(shot =>
+            (shot.dialogue_lines ?? []).some(
+              line => line.line.trim().length > 0
+            )
+          )
+        );
+      })
       .map(item => item.episodeNumber)
   );
   const alreadyDraftedFromCheckpoint = new Set(
-    resume.checkpoint?.completedEpisodeNumbers ?? []
+    (resume.checkpoint?.draftedItems ?? [])
+      .filter(item => {
+        const shots = (item as DeepDraftedEpisodeItem).shotDrafts;
+        return shots.some(shot =>
+          (shot.dialogue_lines ?? []).some(line => line.line.trim().length > 0)
+        );
+      })
+      .map(item => (item as DeepDraftedEpisodeItem).episodeNumber)
   );
   const alreadyDraftedEpisodeNumbers = [
     ...new Set([...alreadyDraftedFromBible, ...alreadyDraftedFromCheckpoint]),
   ];
-  const resumeDraftedItems = (resume.checkpoint?.draftedItems ??
-    []) as DeepDraftedEpisodeItem[];
+  const resumeDraftedItems = (
+    (resume.checkpoint?.draftedItems ?? []) as DeepDraftedEpisodeItem[]
+  ).filter(item =>
+    item.shotDrafts.some(shot =>
+      (shot.dialogue_lines ?? []).some(line => line.line.trim().length > 0)
+    )
+  );
   return { alreadyDraftedEpisodeNumbers, resumeDraftedItems };
 }
 
@@ -2667,6 +2795,15 @@ export async function runGenerateStoryBibleDeepJob(
     });
   }
 
+  const logicalRunKey = buildDeepStoryJobLogicalRunKey({
+    prefix: "deep",
+    seriesId,
+    bible,
+    horizon,
+    mode,
+    suppliedKey: params.idempotencyKey,
+  });
+
   // Production-grade full-story generation — the series' known location
   // roster + character-bible names, threaded into the deep-draft prompt
   // ("EXISTING LOCATIONS" FACT block) and the deterministic completeness
@@ -2745,7 +2882,7 @@ export async function runGenerateStoryBibleDeepJob(
     ledgers: VerticalDramaQualityLedgers;
     creditsUsed: number;
   } | null = null;
-  let result;
+  let result: GenerateStoryBibleDeepResult;
   try {
     if (params.repairContinuityOnly) {
       const checkpointItems = (resolvedResume.checkpoint?.draftedItems ??
@@ -2773,6 +2910,7 @@ export async function runGenerateStoryBibleDeepJob(
         userId,
         tenantId,
         seriesId,
+        idempotencyKey: `${logicalRunKey}:continuity-repair`,
         title: row.title,
         totalEpisodeCount,
         draftedItems: checkpointItems,
@@ -2814,13 +2952,14 @@ export async function runGenerateStoryBibleDeepJob(
         totalEpisodeCount: row.targetEpisodeCount,
         durationPlan: durationPlan ?? undefined,
         storyControlSeed,
-        idempotencyKey: params.idempotencyKey,
+        idempotencyKey: logicalRunKey,
         onProgress,
       });
       result = await generateStoryBibleDeep({
         userId,
         tenantId,
         seriesId,
+        idempotencyKey: logicalRunKey,
         title: row.title,
         locale: normalizeVerticalDramaSeriesLocale(row.locale),
         dialogueLanguageProfile:
@@ -2893,6 +3032,164 @@ export async function runGenerateStoryBibleDeepJob(
     });
   }
 
+  // Automatic completeness repair: a successful provider response is not a
+  // successful story result until every requested episode has the complete
+  // shot/dialogue contract. Repair only the failing episodes, charge each
+  // distinct pass through generateStoryBibleDeep, and keep bounded failure
+  // visible instead of requiring another browser click.
+  if (!params.repairContinuityOnly) {
+    const targetEpisodeNumbers = episodesToDraft.map(
+      item => item.episodeNumber
+    );
+    const maxCompletionRepairRounds = 2;
+    const declaredMissingEpisodes = Array.isArray(result.missingEpisodes)
+      ? result.missingEpisodes
+      : [];
+    const hasCompletionRepairSignal =
+      declaredMissingEpisodes.length > 0 ||
+      result.warnings.some(
+        warning => warning.reason === "missing_dialogue_after_retry"
+      );
+    let previousRepairSignature: string | null = null;
+    for (
+      let repairRound = 1;
+      repairRound <= maxCompletionRepairRounds && hasCompletionRepairSignal;
+      repairRound += 1
+    ) {
+      const completionReport = inspectVerticalDramaCompletionSet({
+        targetEpisodeNumbers,
+        items: result.draftedItems.map(item => ({
+          episodeNumber: item.episodeNumber,
+          shotDrafts: item.shotDrafts,
+        })),
+      });
+      if (completionReport.missingEpisodeNumbers.length === 0) break;
+      const repairSignature = JSON.stringify({
+        missingEpisodeNumbers: completionReport.missingEpisodeNumbers,
+        violations: completionReport.violations.map(violation => [
+          violation.episodeNumber,
+          violation.codes.join(","),
+        ]),
+      });
+      if (repairSignature === previousRepairSignature) break;
+      previousRepairSignature = repairSignature;
+
+      const repairEpisodes = episodesToDraft.filter(item =>
+        completionReport.missingEpisodeNumbers.includes(item.episodeNumber)
+      );
+      if (repairEpisodes.length === 0) break;
+
+      try {
+        const repair = await generateStoryBibleDeep({
+          userId,
+          tenantId,
+          seriesId,
+          idempotencyKey: logicalRunKey + ":completion-repair:" + repairRound,
+          title: row.title,
+          locale: normalizeVerticalDramaSeriesLocale(row.locale),
+          dialogueLanguageProfile:
+            buildVerticalDramaDialogueLanguageProfileFromBible(bible),
+          genre: row.genre,
+          tone: row.tone,
+          episodeDurationSeconds: row.defaultEpisodeDurationSeconds,
+          durationPlan: durationPlan ?? undefined,
+          storyControlSeed,
+          ...resolveStoryVisualNarrativeInputs(bible),
+          ...resolveStoryPlanningInputs(bible),
+          episodes: repairEpisodes,
+          openThreadIds: resolveOpenThreadIdsFromSeriesMemory(row.memory),
+          mode,
+          totalEpisodeCount: row.targetEpisodeCount ?? undefined,
+          formatProfilesEnabled,
+          motionContractsEnabled,
+          tieInDraftContext: tieInBootstrap.context,
+          userPremise:
+            typeof bible.userPremise === "string"
+              ? bible.userPremise
+              : undefined,
+          audienceAgeRating: resolveAudienceAgeRating(bible.audienceAgeRating),
+          existingLocations,
+          characterBibleNames,
+          knownCharacters: characterBibleProfiles,
+          seasonLineage,
+          onProgress,
+          onChunkComplete,
+        });
+        const repairedByEpisode = new Map(
+          repair.draftedItems.map(item => [item.episodeNumber, item])
+        );
+        result = {
+          ...result,
+          draftedItems: result.draftedItems
+            .map(item => repairedByEpisode.get(item.episodeNumber) ?? item)
+            .concat(
+              repair.draftedItems.filter(
+                item =>
+                  !result.draftedItems.some(
+                    existing => existing.episodeNumber === item.episodeNumber
+                  )
+              )
+            )
+            .sort((a, b) => a.episodeNumber - b.episodeNumber),
+          chunkSizes: [...result.chunkSizes, ...repair.chunkSizes],
+          creditsUsed: result.creditsUsed + repair.creditsUsed,
+          warnings: [
+            ...new Map(
+              [...result.warnings, ...repair.warnings].map(warning => [
+                `${warning.episodeNumber}:${warning.shotNumber}:${warning.reason}`,
+                warning,
+              ])
+            ).values(),
+          ],
+          missingEpisodes: [
+            ...new Set([
+              ...(Array.isArray(result.missingEpisodes)
+                ? result.missingEpisodes
+                : []),
+              ...(Array.isArray(repair.missingEpisodes)
+                ? repair.missingEpisodes
+                : []),
+            ]),
+          ],
+          partial: repair.partial,
+          ...(repair.error ? { error: repair.error } : {}),
+          model: repair.model || result.model,
+        };
+      } catch (error) {
+        result = {
+          ...result,
+          partial: true,
+          error: error instanceof Error ? error.message : String(error),
+          missingEpisodes: completionReport.missingEpisodeNumbers,
+        };
+        break;
+      }
+    }
+    if (hasCompletionRepairSignal) {
+      const finalCompletionReport = inspectVerticalDramaCompletionSet({
+        targetEpisodeNumbers,
+        items: result.draftedItems.map(item => ({
+          episodeNumber: item.episodeNumber,
+          shotDrafts: item.shotDrafts,
+        })),
+      });
+      if (finalCompletionReport.missingEpisodeNumbers.length > 0) {
+        result.partial = true;
+        result.missingEpisodes = finalCompletionReport.missingEpisodeNumbers;
+        result.error =
+          result.error ??
+          "Automatic story completion stopped after " +
+            maxCompletionRepairRounds +
+            " repair rounds; missing episode(s): " +
+            finalCompletionReport.missingEpisodeNumbers.join(", ");
+      } else {
+        result.partial = false;
+        result.missingEpisodes = [];
+        result.error = undefined;
+      }
+    }
+  }
+
   // Continuity gate: a complete-season draft is never persisted when a
   // structured thread is left unresolved. Existing/partial horizons remain
   // readable and are not retroactively rejected; only a newly generated full
@@ -2905,6 +3202,7 @@ export async function runGenerateStoryBibleDeepJob(
           userId,
           tenantId,
           seriesId,
+          idempotencyKey: `${logicalRunKey}:continuity-repair`,
           title: row.title,
           totalEpisodeCount: row.targetEpisodeCount ?? episodesToDraft.length,
           draftedItems: result.draftedItems,
@@ -2964,6 +3262,14 @@ export async function runGenerateStoryBibleDeepJob(
     }
   }
 
+  const hasStrictLongFormContract =
+    bible.longForm !== null && typeof bible.longForm === "object";
+  if (!params.repairContinuityOnly && hasStrictLongFormContract) {
+    result = {
+      ...result,
+      draftedItems: normalizeStrictRelationshipGraphDeltas(result.draftedItems),
+    };
+  }
   const mergedItems = mergeDeepDraftItems(existingItems, result.draftedItems);
   if (!params.repairContinuityOnly) {
     assertStrictRelationshipGraphDeltaCoverage(result.draftedItems, bible);
@@ -2985,7 +3291,9 @@ export async function runGenerateStoryBibleDeepJob(
   // the highest episode number that actually has shot drafts right now.
   const horizonEndEpisode = mergedItems.reduce(
     (max, item) =>
-      readItemShotDrafts(item) !== null
+      readItemShotDrafts(item)?.some(shot =>
+        (shot.dialogue_lines ?? []).some(line => line.line.trim().length > 0)
+      )
         ? Math.max(max, item.episodeNumber)
         : max,
     0
@@ -3051,6 +3359,24 @@ export async function runGenerateStoryBibleDeepJob(
     .set({ bible: nextBible, updatedAt: new Date() })
     .where(seriesOwnershipWhere(tenantId, userId, seriesId))
     .returning();
+
+  try {
+    await syncDeepDraftsToMaterializedEpisodes({
+      tenantId,
+      userId,
+      seriesId,
+      draftedItems: result.draftedItems,
+    });
+  } catch (error) {
+    // The bible remains the canonical source and getEpisodeDetail projects it
+    // directly.  Keep this compatibility mirror best-effort, but make a
+    // failed mirror observable instead of silently losing the dialogue path.
+    debugError(
+      "verticalDramaSeries.deepStoryDraft",
+      "Failed to sync deep draft dialogue to materialized episode rows",
+      error
+    );
+  }
 
   // Production-grade full-story generation — persist any NEW locations this
   // run declared into the durable `vertical_drama_locations` roster (Tab
@@ -3157,7 +3483,7 @@ export async function runGenerateStoryBibleDeepJob(
     horizonEndEpisode,
     partial: result.partial,
     creditsUsed: totalCreditsUsed,
-    idempotencyKey: params.idempotencyKey,
+    idempotencyKey: logicalRunKey,
     mode,
     missingEpisodes: result.missingEpisodes,
     createdLocationCount,
@@ -3426,6 +3752,15 @@ export async function runExtendStoryDraftHorizonJob(
     });
   }
 
+  const logicalRunKey = buildDeepStoryJobLogicalRunKey({
+    prefix: "extend",
+    seriesId,
+    bible,
+    horizon: horizonEnd,
+    mode,
+    suppliedKey: params.idempotencyKey,
+  });
+
   // Full prior recap (owner-approved design): every episode already
   // deep-drafted before this run's horizon start.
   const recapItems: DeepDraftRecapEpisode[] = existingItems
@@ -3515,13 +3850,14 @@ export async function runExtendStoryDraftHorizonJob(
       totalEpisodeCount: row.targetEpisodeCount,
       durationPlan: durationPlan ?? undefined,
       storyControlSeed,
-      idempotencyKey: params.idempotencyKey,
+      idempotencyKey: logicalRunKey,
       onProgress,
     });
     result = await generateStoryBibleDeep({
       userId,
       tenantId,
       seriesId,
+      idempotencyKey: logicalRunKey,
       title: row.title,
       locale: normalizeVerticalDramaSeriesLocale(row.locale),
       dialogueLanguageProfile:
@@ -3615,6 +3951,12 @@ export async function runExtendStoryDraftHorizonJob(
     }
   }
 
+  if (bible.longForm !== null && typeof bible.longForm === "object") {
+    result = {
+      ...result,
+      draftedItems: normalizeStrictRelationshipGraphDeltas(result.draftedItems),
+    };
+  }
   const mergedItems = mergeDeepDraftItems(existingItems, result.draftedItems);
   assertStrictRelationshipGraphDeltaCoverage(result.draftedItems, bible);
   const relationshipGraphMaterialization =
@@ -3731,7 +4073,7 @@ export async function runExtendStoryDraftHorizonJob(
     horizonEndEpisode: newHorizonEndEpisode,
     partial: result.partial,
     creditsUsed: totalCreditsUsed,
-    idempotencyKey: params.idempotencyKey,
+    idempotencyKey: logicalRunKey,
     mode,
     missingEpisodes: result.missingEpisodes,
     createdLocationCount,
@@ -3841,6 +4183,193 @@ export async function runExtendStoryDraftHorizonJob(
   };
 }
 
+/** Worker-only story-plan executor.  It owns the former generateStoryBible
+ * body so the public mutation can return after enqueueing. */
+export async function runGenerateStoryBiblePlanJob(
+  input: {
+    tenantId: string;
+    userId: number;
+    seriesId: number;
+    idempotencyKey?: string;
+  },
+  onProgress?: (progress: VerticalDramaStoryJobProgress) => void
+): Promise<unknown> {
+  const { tenantId, userId, seriesId } = input;
+  const row = await loadOwnedSeries(tenantId, userId, seriesId);
+  let bible = (row.bible as Record<string, unknown> | null) ?? {};
+  const sourcePack = await enforceSeriesSourcePackDraftGate(
+    tenantId,
+    userId,
+    seriesId,
+    bible
+  );
+  if (sourcePack) {
+    bible = {
+      ...bible,
+      sourcePackDigest: await buildStoredSourcePackDigest(
+        { tenantId, userId },
+        Number(sourcePack.pack.id)
+      ),
+      sourcePackBrollManifest: await buildStoredSourcePackBrollManifest(
+        { tenantId, userId },
+        Number(sourcePack.pack.id)
+      ),
+    };
+  }
+  bible = await ensureLongFormRelationshipGraph(
+    tenantId,
+    userId,
+    seriesId,
+    row,
+    bible
+  );
+  const durationPlan = resolveVerticalDramaDurationPlan(
+    bible,
+    row.defaultEpisodeDurationSeconds
+  );
+  let assuranceRunId: string | null = null;
+  if (isStoryGenerationAssuranceEnabled()) {
+    const visualSourceSnapshot = await captureSeriesVisualSourceSnapshot(
+      { tenantId, userId },
+      seriesId
+    );
+    const assuranceRun = await admitStoryGenerationRun({
+      tenantId,
+      userId,
+      seriesId,
+      taskKind: "plan",
+      runKey: `plan:${seriesId}:${String(row.updatedAt)}`,
+      idempotencyKey: `plan:${seriesId}:${String(row.updatedAt)}`,
+      sourceRevision: String(row.updatedAt),
+      sourceSnapshotKind: "plan",
+      sourcePayload: { bible },
+      targetEpisodes: Array.from(
+        { length: row.targetEpisodeCount },
+        (_, index) => index + 1
+      ),
+      objective: "Create an accepted story plan before deep generation",
+      mode: "premium",
+      ...(visualSourceSnapshot ? { visualSourceSnapshot } : {}),
+    });
+    assuranceRunId = assuranceRun.runId;
+  }
+  onProgress?.({ phase: "outline", chunkIndex: 1, chunkCount: 1 });
+  const result = await generateStoryBible({
+    userId,
+    tenantId,
+    seriesId,
+    idempotencyKey: input.idempotencyKey,
+    title: row.title,
+    locale: normalizeVerticalDramaSeriesLocale(row.locale),
+    dialogueLanguageProfile:
+      buildVerticalDramaDialogueLanguageProfileFromBible(bible),
+    genre: row.genre,
+    tone: row.tone,
+    targetEpisodeCount: row.targetEpisodeCount,
+    bible,
+    ...resolveStoryVisualNarrativeInputs(bible),
+    durationPlan: durationPlan ?? undefined,
+  });
+
+  if (assuranceRunId) {
+    const durableRun = await getStoryGenerationRun(tenantId, assuranceRunId);
+    const contract = durableRun?.contractJson as
+      | import("../services/verticalDramaStoryGenerationContracts").StoryGenerationRunContract
+      | undefined;
+    if (!contract)
+      throw new Error("Durable story-plan contract is unavailable");
+    const report = validateStoryGenerationOutput({
+      contract,
+      output: result.expanded,
+    });
+    await updateStoryGenerationCheckpoint(tenantId, assuranceRunId, {
+      status: "validating",
+      stage: "validation",
+      report,
+      checkpoint: { planCandidate: result.expanded },
+    });
+    if (!report.passed) {
+      await transitionStoryGenerationRun({
+        tenantId,
+        runId: assuranceRunId,
+        to: "needs_repair",
+        stage: "repair",
+        checkpoint: { planCandidate: result.expanded },
+        errorCode: "STORY_PLAN_FINAL_GATE_FAILED",
+      });
+      throw new Error("Story plan did not pass the durable final gate");
+    }
+  }
+
+  await reconcileCharactersFromStoryBible(
+    tenantId,
+    userId,
+    seriesId,
+    result.expanded.refinedCharacters
+  );
+  const updatedBible = {
+    ...bible,
+    expandedSeasonArc: result.expanded.expandedSeasonArc,
+    refinedCharacters: result.expanded.refinedCharacters,
+    episodeBreakdown: result.expanded.episodeBreakdown,
+    expandedAt: new Date().toISOString(),
+    ...(result.expanded.storyControlSeed
+      ? { storyControlSeed: result.expanded.storyControlSeed }
+      : {}),
+  };
+  const compatibilityGraph = materializeCompatibilityRelationshipGraph({
+    seriesId,
+    characterKeys: result.expanded.refinedCharacters.map(
+      character => character.name
+    ),
+    episodeMemories: (() => {
+      const memory =
+        row.memory && typeof row.memory === "object"
+          ? (row.memory as { episodes?: unknown[] })
+          : null;
+      return memory && Array.isArray(memory.episodes) ? memory.episodes : [];
+    })(),
+  });
+  const bibleWithRelationshipGraph = attachRelationshipGraphToBible(
+    updatedBible,
+    compatibilityGraph
+  );
+  const [updatedRow] = await db
+    .update(verticalDramaSeries)
+    .set({ bible: bibleWithRelationshipGraph, updatedAt: new Date() })
+    .where(seriesOwnershipWhere(tenantId, userId, seriesId))
+    .returning();
+  if (!updatedRow) throw new Error("Story plan series was not persisted");
+  if (assuranceRunId) {
+    await finalizeStoryGeneration(
+      tenantId,
+      assuranceRunId,
+      `finalize:${assuranceRunId}`
+    );
+  }
+  // A story plan without scene-level drafting is not a complete user action.
+  // Chain the real deep-draft job from the worker so a browser refresh or a
+  // lost client connection cannot strand the series between the two phases.
+  const deepJob = await enqueueVerticalDramaStoryJob({
+    kind: "deep_generate",
+    tenantId,
+    userId,
+    seriesId,
+    input: {
+      horizonEpisodes: row.targetEpisodeCount,
+      mode: "premium",
+      idempotencyKey: `deep-after-plan:${seriesId}:${input.idempotencyKey ?? row.updatedAt.toISOString()}`,
+    },
+  });
+  return {
+    series: { ...updatedRow, id: String(updatedRow.id) },
+    creditsUsed: result.creditsUsed,
+    model: result.model,
+    runId: assuranceRunId,
+    deepJobId: deepJob.jobId,
+  };
+}
+
 /**
  * Generic dispatch point for `vertical_drama_story_jobs` BullMQ jobs (#28) —
  * the ONLY symbol `services/verticalDramaStoryJobs.ts`'s worker imports (via
@@ -3870,6 +4399,16 @@ export async function runVerticalDramaStoryJobExecutor(
     seriesId: payload.seriesId,
   };
   switch (payload.kind) {
+    case "plan":
+      return runGenerateStoryBiblePlanJob(
+        {
+          ...owner,
+          ...(payload.input as {
+            idempotencyKey?: string;
+          }),
+        },
+        onProgress
+      );
     case "deep_generate":
       return runGenerateStoryBibleDeepJob(
         {
@@ -4876,15 +5415,23 @@ function resolveStoryVisualNarrativeInputs(bible: Record<string, unknown>): {
   visualNarrativeIdentity?: VerticalDramaPresetVisualIdentity;
   seriesFormat?: VdSeriesFormatConfig;
   visualGroundingContract?: VdVisualGroundingContract;
+  sourcePackDigest?: Record<string, unknown>;
 } {
   const seriesFormat = resolveSeriesFormatConfig(bible.seriesFormat);
+  const sourcePackDigest =
+    bible.sourcePackDigest && typeof bible.sourcePackDigest === "object"
+      ? (bible.sourcePackDigest as Record<string, unknown>)
+      : undefined;
   const control = readSeriesLookLockControl(bible.lookLockControl);
   if (
     !control ||
     control.mode === "none" ||
     control.visualNarrativeEnabled !== true
   ) {
-    return seriesFormat.kind === "fiction_drama" ? {} : { seriesFormat };
+    return {
+      ...(seriesFormat.kind !== "fiction_drama" ? { seriesFormat } : {}),
+      ...(sourcePackDigest ? { sourcePackDigest } : {}),
+    };
   }
 
   const profile = verticalDramaVisualNarrativeProfileSchema.safeParse(
@@ -4908,6 +5455,7 @@ function resolveStoryVisualNarrativeInputs(bible: Record<string, unknown>): {
     ...(identity.success ? { visualNarrativeIdentity: identity.data } : {}),
     ...(seriesFormat.kind !== "fiction_drama" ? { seriesFormat } : {}),
     visualGroundingContract,
+    ...(sourcePackDigest ? { sourcePackDigest } : {}),
   };
 }
 
@@ -5258,6 +5806,15 @@ export const proposeSpecialEditionBriefInput = z.object({
   uploadedSummary: z.string().trim().max(4000).optional(),
 });
 
+const promptExpansionInteractiveInput = z.object({
+  prompt: z.string().trim().min(1).max(PROMPT_EXPANSION_PREMISE_LIMIT),
+  locale: z.enum(["th", "en"]),
+  draftSessionId: z.string().trim().min(1).max(128).optional(),
+  seriesId: z.number().int().positive().optional(),
+  modelId: z.string().trim().min(1).max(256).nullable().optional(),
+  idempotencyKey: z.string().trim().min(1).max(256),
+});
+
 /**
  * Edit an owned series' metadata. Every field is optional so callers can patch
  * just what changed; ownership is re-checked so a cross-tenant/user id can never
@@ -5546,6 +6103,248 @@ export function extractEpisodeCompiledVideoSummary(
 /* -------------------------------------------------------------------------- */
 /* Router                                                                     */
 /* -------------------------------------------------------------------------- */
+
+/** Worker-only prompt expansion executor. The public mutation below only
+ * validates and submits this payload; it never calls the LLM service. */
+export async function runPromptExpansionInteractiveJob(
+  payload: VerticalDramaInteractiveJobPayload,
+  execution: { jobId: string; traceId: string }
+): Promise<unknown> {
+  const input = promptExpansionInteractiveInput.parse(payload.input);
+  await assertPromptExpansionSchemaReady();
+  const preview = await runRealPromptExpansion(
+    { tenantId: payload.tenantId, userId: payload.userId },
+    {
+      prompt: input.prompt,
+      locale: input.locale,
+      idempotencyKey: input.idempotencyKey,
+      seriesId: input.seriesId,
+      modelId: input.modelId,
+    }
+  );
+  const run = await savePromptExpansionPreview(
+    { tenantId: payload.tenantId, userId: payload.userId },
+    {
+      draftSessionId: input.draftSessionId,
+      seriesId: input.seriesId,
+      idempotencyKey: input.idempotencyKey,
+      preview,
+    }
+  );
+  return {
+    runId: Number(run.id),
+    preview,
+    jobId: execution.jobId,
+    traceId: execution.traceId,
+    skillSlug: PROMPT_EXPANSION_SKILL_ID,
+    model: preview.execution?.model,
+  };
+}
+
+export async function runSeasonCarryOverInteractiveJob(
+  payload: VerticalDramaInteractiveJobPayload,
+  execution: { jobId: string; traceId: string }
+): Promise<unknown> {
+  const input = proposeSeasonCarryOverInput.parse(payload.input);
+  const flags = await getTenantFeatureFlags(payload.tenantId);
+  if (flags.verticalDramaSeriesLineage !== true) {
+    throw new Error(
+      "Season carry-over planning is not enabled for this tenant"
+    );
+  }
+  const parentSeriesId = Number(input.parentSeriesId);
+  if (!Number.isFinite(parentSeriesId))
+    throw new Error("Invalid parentSeriesId");
+  const parentRow = await loadOwnedSeries(
+    payload.tenantId,
+    payload.userId,
+    parentSeriesId
+  );
+  const lineageContext = await loadLineageContext(
+    parentRow,
+    { tenantId: payload.tenantId, userId: payload.userId },
+    {
+      presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+      lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
+    }
+  );
+  const result = await synthesizeSeasonCarryOver({
+    userId: payload.userId,
+    tenantId: payload.tenantId,
+    locale: normalizeVerticalDramaSeriesLocale(parentRow.locale),
+    premise: input.premise,
+    lineageContext,
+  });
+  return {
+    ...result,
+    hasMemory: lineageContext.hasMemory,
+    memoryEpisodesRecorded: lineageContext.memoryEpisodesRecorded,
+    parentEpisodeCount: lineageContext.parentEpisodeCount,
+    jobId: execution.jobId,
+    traceId: execution.traceId,
+  };
+}
+
+export async function runSpecialEditionBriefInteractiveJob(
+  payload: VerticalDramaInteractiveJobPayload,
+  execution: { jobId: string; traceId: string }
+): Promise<unknown> {
+  const input = proposeSpecialEditionBriefInput.parse(payload.input);
+  const flags = await getTenantFeatureFlags(payload.tenantId);
+  if (flags.verticalDramaSeriesLineage !== true) {
+    throw new Error("Special edition planning is not enabled for this tenant");
+  }
+  const parentSeriesId = Number(input.parentSeriesId);
+  if (!Number.isFinite(parentSeriesId))
+    throw new Error("Invalid parentSeriesId");
+  const parentRow = await loadOwnedSeries(
+    payload.tenantId,
+    payload.userId,
+    parentSeriesId
+  );
+  const lineageContext = await loadLineageContext(
+    parentRow,
+    { tenantId: payload.tenantId, userId: payload.userId },
+    {
+      presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+      lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
+    }
+  );
+  const result = await synthesizeSpecialEditionBrief({
+    userId: payload.userId,
+    tenantId: payload.tenantId,
+    locale: normalizeVerticalDramaSeriesLocale(parentRow.locale),
+    targetEpisodeCount: input.targetEpisodeCount,
+    storyFunctionChoice: input.storyFunctionChoice,
+    source: {
+      marketplaceProductName: input.marketplaceProductName,
+      marketplaceProductDescription: input.marketplaceProductDescription,
+      uploadedSummary: input.uploadedSummary,
+    },
+    lineageContext,
+  });
+  return {
+    ...result,
+    hasMemory: lineageContext.hasMemory,
+    memoryEpisodesRecorded: lineageContext.memoryEpisodesRecorded,
+    parentEpisodeCount: lineageContext.parentEpisodeCount,
+    jobId: execution.jobId,
+    traceId: execution.traceId,
+  };
+}
+
+/** Worker-only legacy preset synthesis executor. */
+export async function runPresetSynthesisInteractiveJob(
+  payload: VerticalDramaInteractiveJobPayload,
+  execution: { jobId: string; traceId: string }
+): Promise<unknown> {
+  const input = synthesizeGenrePresetInput.parse(payload.input);
+  const locale = input.locale ?? "th";
+  const flags = await getTenantFeatureFlags(payload.tenantId);
+  const selectedPresetIds = Array.from(new Set(input.selectedPresetIds ?? []));
+  const selectedCategories = Array.from(
+    new Set(
+      (input.selectedCategories ?? [])
+        .map(category => category.trim())
+        .filter(Boolean)
+    )
+  );
+  const visualNarrativeEnabled =
+    flags.verticalDramaSeriesLookLock === true &&
+    input.visualNarrativeEnabled === true &&
+    input.lookLockMode !== "none";
+  const visualNarrativeIdentity =
+    visualNarrativeEnabled &&
+    input.lookLockMode === "genre" &&
+    input.lookLockGenreKey
+      ? getSeriesLookLockGenreIdentity(input.lookLockGenreKey)
+      : undefined;
+  const basicsOnlyContext =
+    selectedPresetIds.length === 0 &&
+    (input.selections?.length ?? 0) === 0 &&
+    !input.userPremise?.trim()
+      ? {
+          seriesTitleHint: input.seriesTitleHint,
+          genreHint: input.genreHint,
+          audienceAgeRating: input.audienceAgeRating,
+        }
+      : {};
+  const lineageContext = input.lineageContext
+    ? { lineageContext: input.lineageContext as VerticalDramaSeriesLineage }
+    : {};
+  const selectionIds = Array.from(
+    new Set((input.selections ?? []).map(selection => selection.presetId))
+  );
+  const allPresetIds = Array.from(
+    new Set([...selectedPresetIds, ...selectionIds])
+  );
+  const numericIds = allPresetIds.map(Number);
+  if (numericIds.some(id => !Number.isFinite(id)))
+    throw new Error("Invalid preset id");
+  const visibleRows: VerticalDramaGenrePresetRow[] = await db
+    .select()
+    .from(verticalDramaGenrePresets)
+    .where(
+      and(
+        eq(verticalDramaGenrePresets.locale, locale),
+        or(
+          eq(verticalDramaGenrePresets.scope, "global"),
+          and(
+            eq(verticalDramaGenrePresets.scope, "private"),
+            eq(verticalDramaGenrePresets.tenantId, payload.tenantId),
+            eq(verticalDramaGenrePresets.userId, payload.userId)
+          )
+        )
+      )
+    )
+    .orderBy(asc(verticalDramaGenrePresets.sortOrder));
+  const rowsById = new Map(visibleRows.map(row => [String(row.id), row]));
+  const selectedRows = allPresetIds
+    .map(id => rowsById.get(id))
+    .filter((row): row is VerticalDramaGenrePresetRow => Boolean(row));
+  if (selectedRows.length !== allPresetIds.length)
+    throw new Error("Preset not found");
+  const shared = {
+    userId: payload.userId,
+    tenantId: payload.tenantId,
+    locale: normalizeVerticalDramaSeriesLocale(locale),
+    selectedPresetIds,
+    selectedPresets: selectedRows.map(row => ({
+      ...toGenrePresetDto(row),
+      visualIdentityJson:
+        row.visualIdentityJson as VerticalDramaPresetVisualIdentity | null,
+    })),
+    selectedCategories,
+    primarySelectionId: input.primarySelectionId,
+    businessContext: input.businessContext,
+    productContext: input.productContext,
+    targetEpisodeCount: input.targetEpisodeCount,
+    toneHint: input.toneHint,
+    ...basicsOnlyContext,
+    ...lineageContext,
+    userPremise:
+      flags.verticalDramaUserPremise === true ? input.userPremise : undefined,
+    dialogueLanguageProfile: input.spokenLocale
+      ? buildVerticalDramaSpokenLanguageProfile(input.spokenLocale)
+      : undefined,
+    visualNarrativeEnabled,
+    visualNarrativeIdentity,
+  };
+  const model = await resolveVerticalDramaRecommendedDraftModel();
+  const result =
+    flags.verticalDramaSeriesPresetMixV2 === true
+      ? await synthesizeVerticalDramaPresetV2({
+          ...shared,
+          selections: input.selections,
+        })
+      : await synthesizeVerticalDramaPreset(shared);
+  return {
+    ...result,
+    jobId: execution.jobId,
+    traceId: execution.traceId,
+    model,
+  };
+}
 
 export const verticalDramaSeriesRouter = router({
   setSeriesLookLock: verticalDramaSeriesLookLockProcedure
@@ -5946,6 +6745,7 @@ export const verticalDramaSeriesRouter = router({
       return {
         seriesId: input.seriesId,
         title: row.title,
+        targetEpisodeCount: row.targetEpisodeCount,
         planningState: state,
         pointer: state?.sourcePackPointer ?? null,
       };
@@ -6375,60 +7175,90 @@ export const verticalDramaSeriesRouter = router({
    * mutates the premise; the client must show/edit/apply the returned preview. */
   previewPromptExpansion: verticalDramaProcedure
     .input(
-      z.object({
-        prompt: z.string().trim().min(1).max(12000),
-        draftSessionId: z.string().trim().min(1).max(128).optional(),
-        seriesId: z.number().int().positive().optional(),
-        idempotencyKey: z.string().trim().min(1).max(256),
+      promptExpansionInteractiveInput.extend({
+        locale: z.enum(["th", "en"]).default("th"),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
-      let modelOutput: string | null = null;
-      let aiWarning: string | null = null;
-      try {
-        const execution = await executeUnified({
-          channel: "chat",
-          userId: ctx.user.id,
-          tenantId,
-          userMessage: [
-            "Interpret the following creator premise and return JSON only with this exact shape:",
-            '{"brief":{"title":"","oneLineSummary":"","profile":"review|documentary|news_report|software_review|story","angle":"","audience":"","scope":[],"factualClaims":[],"creativeAssumptions":[],"exclusions":[]},"expandedPrompt":"","sources":[],"slots":[],"warnings":[]}',
-            "Do not invent factual claims. If the premise names a real place, product, system, or current event, use web search when available and include URL/title/publisher/publishedAt/accessedAt/supports in sources. Broad topics must remain illustrative.",
-            `Creator premise:\n${input.prompt}`,
-          ].join("\n\n"),
-          routeHint: {
-            route: "skill",
-            reason: "auto_web_search",
-            selectedSkillId: "general-article-writer",
-            confidence: 0.9,
-          },
-          creditMode: "deduct",
-        });
-        if (execution.result.type === "text")
-          modelOutput = execution.result.content;
-      } catch (error) {
-        aiWarning =
-          error instanceof Error
-            ? `AI preview ใช้งานไม่ได้ชั่วคราว: ${error.message}`
-            : "AI preview ใช้งานไม่ได้ชั่วคราว";
-      }
-      const preview = buildDeterministicPromptExpansionPreview({
-        prompt: input.prompt,
-        locale: "th",
-        modelOutput,
-      });
-      if (aiWarning) preview.warnings.push(aiWarning);
-      const run = await savePromptExpansionPreview(
+      await assertPromptExpansionSchemaReady();
+      const existing = await getPromptExpansionByIdempotencyKey(
         { tenantId, userId: ctx.user.id },
-        {
-          draftSessionId: input.draftSessionId,
-          seriesId: input.seriesId,
-          idempotencyKey: input.idempotencyKey,
-          preview,
-        }
+        input.idempotencyKey
       );
-      return { runId: Number(run.id), preview };
+      if (existing) {
+        return {
+          jobId: null,
+          status: "succeeded" as const,
+          deduped: true,
+          runId: Number(existing.row.id),
+          preview: existing.preview,
+        };
+      }
+
+      const scopeKey = input.seriesId
+        ? `series:${input.seriesId}`
+        : `prompt:${input.draftSessionId ?? input.idempotencyKey}`;
+      const job = await enqueueVerticalDramaInteractiveJob({
+        kind: "prompt_expansion",
+        tenantId,
+        userId: ctx.user.id,
+        scopeKey,
+        skillSlug: PROMPT_EXPANSION_SKILL_ID,
+        modelId: input.modelId,
+        idempotencyKey: input.idempotencyKey,
+        input,
+      });
+      return { ...job, preview: undefined };
+    }),
+
+  getInteractiveJobStatus: verticalDramaProcedure
+    .input(
+      z.object({
+        jobId: z.string().uuid(),
+        scopeKey: z.string().trim().min(1).max(256),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const record = await getVerticalDramaInteractiveJobStatus(input.jobId, {
+        tenantId,
+        userId: ctx.user.id,
+        scopeKey: input.scopeKey,
+      });
+      if (!record)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Interactive job not found",
+        });
+      return {
+        kind: record.kind,
+        status: record.status,
+        progress: record.progress,
+        result: record.status === "succeeded" ? record.result : undefined,
+        error:
+          record.status === "failed" ? (record.error ?? undefined) : undefined,
+        traceId: record.traceId,
+      };
+    }),
+
+  getActiveInteractiveJob: verticalDramaProcedure
+    .input(z.object({ scopeKey: z.string().trim().min(1).max(256) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const record = await getActiveVerticalDramaInteractiveJob({
+        tenantId,
+        userId: ctx.user.id,
+        scopeKey: input.scopeKey,
+      });
+      if (!record) return null;
+      return {
+        jobId: record.jobId,
+        kind: record.kind,
+        status: record.status,
+        progress: record.progress,
+        traceId: record.traceId,
+      };
     }),
 
   applyPromptExpansion: verticalDramaProcedure
@@ -7047,11 +7877,27 @@ export const verticalDramaSeriesRouter = router({
             .slice(0, CREATE_SERIES_FIELD_LIMITS.userPremise);
 
           let repairResult: VerticalDramaStoryArchitecturePlannerResult;
+          const repairIdempotencySeed =
+            input.draftQualityQcReceipt?.candidateFingerprint ??
+            createHash("sha256")
+              .update(
+                JSON.stringify({
+                  userId,
+                  tenantId,
+                  title: input.title,
+                  genre: input.genre,
+                  targetEpisodeCount: input.targetEpisodeCount,
+                  candidateStoryContract,
+                })
+              )
+              .digest("hex");
           try {
             const { planVerticalDramaStoryArchitecture } =
               await import("../services/verticalDramaStoryArchitecturePlanner");
             repairResult = await planVerticalDramaStoryArchitecture({
               userId,
+              tenantId,
+              billingRunKey: `vd-story-architecture-repair:${userId}:${repairIdempotencySeed}`,
               model: input.defaultModelId ?? undefined,
               locale: input.locale === "en" ? "en" : "th",
               userPremise: premise || input.title,
@@ -7095,42 +7941,7 @@ export const verticalDramaSeriesRouter = router({
           }
 
           repairedStoryContract = repairedArchitecture.contract;
-          const repairCreditAmount = calculateCreditsForLLM(
-            repairResult.promptTokens,
-            repairResult.completionTokens,
-            repairResult.model
-          );
-          const repairIdempotencySeed =
-            input.draftQualityQcReceipt?.candidateFingerprint ??
-            createHash("sha256")
-              .update(
-                JSON.stringify({
-                  userId,
-                  tenantId,
-                  title: input.title,
-                  genre: input.genre,
-                  targetEpisodeCount: input.targetEpisodeCount,
-                  candidateStoryContract,
-                })
-              )
-              .digest("hex");
-          await deductCredits({
-            userId,
-            tenantId,
-            amount: repairCreditAmount,
-            description: `Vertical Drama — automatic Story Architecture repair for ${input.title}`,
-            idempotencyKey: `vd-story-architecture-repair:${userId}:${repairIdempotencySeed}`,
-            skillSlug: "vertical-drama-story-architecture-planner",
-            sourceType: "skill",
-            metadata: {
-              feature: "vertical_drama_series_create",
-              stage: "story_architecture_auto_repair",
-              model: repairResult.model,
-              promptTokens: repairResult.promptTokens,
-              completionTokens: repairResult.completionTokens,
-              repairRounds: repairResult.repairRounds,
-            },
-          });
+          const repairCreditAmount = repairResult.creditsUsed;
           storyArchitectureRepairAudit = {
             applied: true,
             model: repairResult.model,
@@ -8523,6 +9334,11 @@ export const verticalDramaSeriesRouter = router({
           .optional(),
         activeStep: z.string().trim().max(64).optional(),
         draftSessionId: z.string().trim().min(1).max(128).optional(),
+        targetEpisodeCount: z.number().int().positive().max(1000).optional(),
+        userPremise: z
+          .string()
+          .max(CREATE_SERIES_FIELD_LIMITS.userPremise)
+          .optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -8570,12 +9386,18 @@ export const verticalDramaSeriesRouter = router({
           ...(input.draftSessionId
             ? { draftSessionId: input.draftSessionId }
             : {}),
+          ...(input.userPremise !== undefined
+            ? { userPremise: input.userPremise }
+            : {}),
           lastSavedAt: now,
         };
         const [row] = await tx
           .update(verticalDramaSeries)
           .set({
             ...(input.title !== undefined ? { title: input.title } : {}),
+            ...(input.targetEpisodeCount !== undefined
+              ? { targetEpisodeCount: input.targetEpisodeCount }
+              : {}),
             bible: { ...currentBible, planningState: nextState },
             updatedAt: new Date(),
           })
@@ -9329,7 +10151,7 @@ export const verticalDramaSeriesRouter = router({
     .input(z.object({ locale: z.enum(["th", "en"]).optional() }).optional())
     .query(async ({ ctx, input }) => {
       const locale = input?.locale ?? "th";
-      const tenantId = ctx.tenantId;
+      const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const rows: VerticalDramaGenrePresetRow[] = await db
         .select()
@@ -9414,6 +10236,12 @@ export const verticalDramaSeriesRouter = router({
           message: "Draft does not belong to the selected Series",
         });
       }
+      // The Draft ledger is the authoritative identity after refresh. The
+      // client may still hold the planning/browser session from before the
+      // Series-owned ledger was restored, so never pass that stale value into
+      // append/enqueue validation. Ownership and Series checks above still
+      // prevent a cross-Series Draft from being accepted.
+      const ledgerDraftSessionId = draftLedger.draftSessionId;
       const constraints = input.immutableConstraints ?? {};
       const targetEpisodeCount =
         typeof constraints.targetEpisodeCount === "number"
@@ -9478,7 +10306,7 @@ export const verticalDramaSeriesRouter = router({
           userId: ctx.user.id,
           seriesId,
           draftId: input.draftId,
-          draftSessionId: input.draftSessionId,
+          draftSessionId: ledgerDraftSessionId,
           stage: "completion",
           content: draftForQc,
           changedPaths: [
@@ -9498,7 +10326,7 @@ export const verticalDramaSeriesRouter = router({
           userId: ctx.user.id,
           seriesId,
           model,
-          draftSessionId: input.draftSessionId,
+          draftSessionId: ledgerDraftSessionId,
           draftId: input.draftId,
           draft: draftForQc,
           immutableConstraints: qcImmutableConstraints,
@@ -9510,6 +10338,7 @@ export const verticalDramaSeriesRouter = router({
       );
       return {
         ...result,
+        draftSessionId: ledgerDraftSessionId,
         candidateFingerprint: fingerprintDraftQualityQcCandidate(draftForQc),
         repaired: repaired.repaired,
         repairRound: repaired.report.repairRound,
@@ -9841,12 +10670,11 @@ export const verticalDramaSeriesRouter = router({
    */
   getDraftWorkspaceStatus: verticalDramaProcedure
     .input(
-      z
-        .object({
-          seriesId: z.string().trim().min(1),
-          /** Historical QC candidates are fetched only from an explicit viewer. */
-          includeHistory: z.boolean().optional().default(false),
-        })
+      z.object({
+        seriesId: z.string().trim().min(1),
+        /** Historical QC candidates are fetched only from an explicit viewer. */
+        includeHistory: z.boolean().optional().default(false),
+      })
     )
     .query(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
@@ -9975,6 +10803,7 @@ export const verticalDramaSeriesRouter = router({
                   ? recoveredComposition.failure
                   : undefined,
               requestFingerprint: recoveredComposition.requestFingerprint,
+              requestJson: recoveredComposition.requestJson,
             }
           : null,
         qc: recoveredQc
@@ -10233,11 +11062,7 @@ export const verticalDramaSeriesRouter = router({
         );
       }
       if (job.qcRunId) {
-        await cancelVerticalDramaDraftQualityQc(
-          job.qcRunId,
-          owner,
-          seriesId
-        );
+        await cancelVerticalDramaDraftQualityQc(job.qcRunId, owner, seriesId);
       }
       await updateVerticalDramaDraftJob(input.jobId, owner, {
         jobStatus: "cancelled",
@@ -10306,11 +11131,7 @@ export const verticalDramaSeriesRouter = router({
           message: "Invalid planning series id",
         });
       }
-      await loadActiveOwnedSeries(
-        tenantId,
-        ctx.user.id,
-        planningSeriesNumber
-      );
+      await loadActiveOwnedSeries(tenantId, ctx.user.id, planningSeriesNumber);
       const flags = await getTenantFeatureFlags(tenantId);
       const useV2 = flags.verticalDramaSeriesPresetMixV2 === true;
       const selectedProfile = input.seriesProfileId
@@ -10603,8 +11424,16 @@ export const verticalDramaSeriesRouter = router({
     .input(synthesizeGenrePresetInput)
     .mutation(async ({ ctx, input }) => {
       const locale = input.locale ?? "th";
-      const tenantId = ctx.tenantId;
+      const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
+      return enqueueVerticalDramaInteractiveJob({
+        kind: "preset_synthesis",
+        tenantId,
+        userId,
+        scopeKey: `preset:${userId}`,
+        skillSlug: "vertical-drama-preset-synthesizer",
+        input,
+      });
       const selectedPresetIds = Array.from(
         new Set(input.selectedPresetIds ?? [])
       );
@@ -10635,7 +11464,7 @@ export const verticalDramaSeriesRouter = router({
         visualNarrativeEnabled &&
         input.lookLockMode === "genre" &&
         input.lookLockGenreKey
-          ? getSeriesLookLockGenreIdentity(input.lookLockGenreKey)
+          ? getSeriesLookLockGenreIdentity(input.lookLockGenreKey!)
           : undefined;
       // Feature 132 §4 (F132A, user-premise-preset-mix) — independent of
       // Preset Mix v2; gates whether `input.userPremise` is honored by
@@ -10740,24 +11569,21 @@ export const verticalDramaSeriesRouter = router({
           if (error instanceof PresetSynthesisInputError) {
             throw new TRPCError({
               code: "BAD_REQUEST",
-              message: error.message,
+              message: String(error),
             });
           }
           if (error instanceof InsufficientCreditsError) {
-            throw new TRPCError({ code: "FORBIDDEN", message: error.message });
+            throw new TRPCError({ code: "FORBIDDEN", message: String(error) });
           }
           if (error instanceof VdSchemaValidationError) {
             throw new TRPCError({
               code: "UNPROCESSABLE_CONTENT",
-              message: error.message,
+              message: String(error),
             });
           }
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message:
-              error instanceof Error
-                ? error.message
-                : "Preset synthesis failed",
+            message: String(error),
           });
         }
       }
@@ -10844,21 +11670,20 @@ export const verticalDramaSeriesRouter = router({
         return result;
       } catch (error) {
         if (error instanceof PresetSynthesisInputError) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+          throw new TRPCError({ code: "BAD_REQUEST", message: String(error) });
         }
         if (error instanceof InsufficientCreditsError) {
-          throw new TRPCError({ code: "FORBIDDEN", message: error.message });
+          throw new TRPCError({ code: "FORBIDDEN", message: String(error) });
         }
         if (error instanceof VdSchemaValidationError) {
           throw new TRPCError({
             code: "UNPROCESSABLE_CONTENT",
-            message: error.message,
+            message: String(error),
           });
         }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message:
-            error instanceof Error ? error.message : "Preset synthesis failed",
+          message: String(error),
         });
       }
     }),
@@ -10900,61 +11725,15 @@ export const verticalDramaSeriesRouter = router({
           message: "Invalid parentSeriesId",
         });
       }
-      // HARD THROW on a cross-tenant/cross-user parent — see `create`'s own
-      // doc comment on why this specific check is never best-effort.
-      const parentRow = await loadOwnedSeries(
+      return enqueueVerticalDramaInteractiveJob({
+        kind: "lineage_carry_over",
         tenantId,
         userId,
-        parentSeriesIdNum
-      );
-
-      const lineageContext = await loadLineageContext(
-        parentRow,
-        {
-          tenantId,
-          userId,
-        },
-        {
-          presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
-          lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
-        }
-      );
-
-      try {
-        const result = await synthesizeSeasonCarryOver({
-          userId,
-          tenantId,
-          locale: normalizeVerticalDramaSeriesLocale(parentRow.locale),
-          premise: input.premise,
-          lineageContext,
-        });
-        return {
-          ...result,
-          hasMemory: lineageContext.hasMemory,
-          memoryEpisodesRecorded: lineageContext.memoryEpisodesRecorded,
-          parentEpisodeCount: lineageContext.parentEpisodeCount,
-        };
-      } catch (error) {
-        if (error instanceof SeasonCarryOverInputError) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
-        }
-        if (error instanceof InsufficientCreditsError) {
-          throw new TRPCError({ code: "FORBIDDEN", message: error.message });
-        }
-        if (error instanceof VdSchemaValidationError) {
-          throw new TRPCError({
-            code: "UNPROCESSABLE_CONTENT",
-            message: error.message,
-          });
-        }
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Season carry-over planning failed",
-        });
-      }
+        scopeKey: `lineage:${parentSeriesIdNum}`,
+        skillSlug: "vertical-drama-season-carry-over-planner",
+        idempotencyKey: `carry-over:${parentSeriesIdNum}:${input.premise ?? ""}`,
+        input,
+      });
     }),
 
   /**
@@ -10997,67 +11776,15 @@ export const verticalDramaSeriesRouter = router({
           message: "Invalid parentSeriesId",
         });
       }
-      // HARD THROW on a cross-tenant/cross-user parent — see `create`'s own
-      // doc comment on why this specific check is never best-effort.
-      const parentRow = await loadOwnedSeries(
+      return enqueueVerticalDramaInteractiveJob({
+        kind: "special_edition_brief",
         tenantId,
         userId,
-        parentSeriesIdNum
-      );
-
-      const lineageContext = await loadLineageContext(
-        parentRow,
-        {
-          tenantId,
-          userId,
-        },
-        {
-          presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
-          lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
-        }
-      );
-
-      try {
-        const result = await synthesizeSpecialEditionBrief({
-          userId,
-          tenantId,
-          locale: normalizeVerticalDramaSeriesLocale(parentRow.locale),
-          targetEpisodeCount: input.targetEpisodeCount,
-          storyFunctionChoice: input.storyFunctionChoice,
-          source: {
-            marketplaceProductName: input.marketplaceProductName,
-            marketplaceProductDescription: input.marketplaceProductDescription,
-            uploadedSummary: input.uploadedSummary,
-          },
-          lineageContext,
-        });
-        return {
-          ...result,
-          hasMemory: lineageContext.hasMemory,
-          memoryEpisodesRecorded: lineageContext.memoryEpisodesRecorded,
-          parentEpisodeCount: lineageContext.parentEpisodeCount,
-        };
-      } catch (error) {
-        if (error instanceof SpecialEditionInputError) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
-        }
-        if (error instanceof InsufficientCreditsError) {
-          throw new TRPCError({ code: "FORBIDDEN", message: error.message });
-        }
-        if (error instanceof VdSchemaValidationError) {
-          throw new TRPCError({
-            code: "UNPROCESSABLE_CONTENT",
-            message: error.message,
-          });
-        }
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Special edition planning failed",
-        });
-      }
+        scopeKey: `special:${parentSeriesIdNum}`,
+        skillSlug: "vertical-drama-special-edition-planner",
+        idempotencyKey: `special:${parentSeriesIdNum}:${input.targetEpisodeCount}:${input.storyFunctionChoice}:${input.marketplaceProductName ?? ""}:${input.uploadedSummary ?? ""}`,
+        input,
+      });
     }),
 
   /**
@@ -11068,7 +11795,12 @@ export const verticalDramaSeriesRouter = router({
    * the existing `bible` jsonb column (no schema change needed).
    */
   generateStoryBible: verticalDramaProcedure
-    .input(z.object({ seriesId: z.string().min(1) }))
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        idempotencyKey: z.string().trim().min(1).max(128).optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
@@ -11080,199 +11812,17 @@ export const verticalDramaSeriesRouter = router({
         });
       }
 
-      const row = await loadOwnedSeries(tenantId, userId, seriesId);
-      let bible = (row.bible as Record<string, unknown> | null) ?? {};
-      const sourcePack = await enforceSeriesSourcePackDraftGate(
+      // The story plan is a paid, provider-bound LLM operation. Submit it to
+      // the durable story queue and return immediately; the worker owns the
+      // generation, persistence, assurance validation and billing.
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      return enqueueVerticalDramaStoryJob({
+        kind: "plan",
         tenantId,
         userId,
         seriesId,
-        bible
-      );
-      if (sourcePack) {
-        bible = {
-          ...bible,
-          sourcePackDigest: await buildStoredSourcePackDigest(
-            { tenantId, userId },
-            Number(sourcePack.pack.id)
-          ),
-          sourcePackBrollManifest: await buildStoredSourcePackBrollManifest(
-            { tenantId, userId },
-            Number(sourcePack.pack.id)
-          ),
-        };
-      }
-      bible = await ensureLongFormRelationshipGraph(
-        tenantId,
-        userId,
-        seriesId,
-        row,
-        bible
-      );
-      const durationPlan = resolveVerticalDramaDurationPlan(
-        bible,
-        row.defaultEpisodeDurationSeconds
-      );
-
-      let assuranceRunId: string | null = null;
-      if (isStoryGenerationAssuranceEnabled()) {
-        const visualSourceSnapshot = await captureSeriesVisualSourceSnapshot(
-          { tenantId, userId },
-          seriesId
-        );
-        const assuranceRun = await admitStoryGenerationRun({
-          tenantId,
-          userId,
-          seriesId,
-          taskKind: "plan",
-          runKey: `plan:${seriesId}:${String(row.updatedAt)}`,
-          idempotencyKey: `plan:${seriesId}:${String(row.updatedAt)}`,
-          sourceRevision: String(row.updatedAt),
-          sourceSnapshotKind: "plan",
-          sourcePayload: { bible },
-          targetEpisodes: Array.from(
-            { length: row.targetEpisodeCount },
-            (_, index) => index + 1
-          ),
-          objective: "Create an accepted story plan before deep generation",
-          mode: "premium",
-          ...(visualSourceSnapshot ? { visualSourceSnapshot } : {}),
-        });
-        assuranceRunId = assuranceRun.runId;
-      }
-
-      let result;
-      try {
-        result = await generateStoryBible({
-          userId,
-          tenantId,
-          seriesId,
-          title: row.title,
-          locale: normalizeVerticalDramaSeriesLocale(row.locale),
-          dialogueLanguageProfile:
-            buildVerticalDramaDialogueLanguageProfileFromBible(bible),
-          genre: row.genre,
-          tone: row.tone,
-          targetEpisodeCount: row.targetEpisodeCount,
-          bible,
-          ...resolveStoryVisualNarrativeInputs(bible),
-          durationPlan: durationPlan ?? undefined,
-        });
-      } catch (error) {
-        if (error instanceof InsufficientCreditsError) {
-          throw new TRPCError({ code: "FORBIDDEN", message: error.message });
-        }
-        if (error instanceof VdSchemaValidationError) {
-          throw new TRPCError({
-            code: "UNPROCESSABLE_CONTENT",
-            message: error.message,
-          });
-        }
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Story bible generation failed",
-        });
-      }
-
-      if (assuranceRunId) {
-        const durableRun = await getStoryGenerationRun(
-          tenantId,
-          assuranceRunId
-        );
-        const contract = durableRun?.contractJson as
-          | import("../services/verticalDramaStoryGenerationContracts").StoryGenerationRunContract
-          | undefined;
-        if (!contract) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Durable story-plan contract is unavailable",
-          });
-        }
-        const report = validateStoryGenerationOutput({
-          contract,
-          output: result.expanded,
-        });
-        await updateStoryGenerationCheckpoint(tenantId, assuranceRunId, {
-          status: "validating",
-          stage: "validation",
-          report,
-          checkpoint: { planCandidate: result.expanded },
-        });
-        if (!report.passed) {
-          await transitionStoryGenerationRun({
-            tenantId,
-            runId: assuranceRunId,
-            to: "needs_repair",
-            stage: "repair",
-            checkpoint: { planCandidate: result.expanded },
-            errorCode: "STORY_PLAN_FINAL_GATE_FAILED",
-          });
-          throw new TRPCError({
-            code: "UNPROCESSABLE_CONTENT",
-            message: "Story plan did not pass the durable final gate",
-          });
-        }
-      }
-
-      await reconcileCharactersFromStoryBible(
-        tenantId,
-        userId,
-        seriesId,
-        result.expanded.refinedCharacters
-      );
-
-      const updatedBible = {
-        ...bible,
-        expandedSeasonArc: result.expanded.expandedSeasonArc,
-        refinedCharacters: result.expanded.refinedCharacters,
-        episodeBreakdown: result.expanded.episodeBreakdown,
-        expandedAt: new Date().toISOString(),
-        ...(result.expanded.storyControlSeed
-          ? { storyControlSeed: result.expanded.storyControlSeed }
-          : {}),
-      };
-      const compatibilityGraph = materializeCompatibilityRelationshipGraph({
-        seriesId,
-        characterKeys: result.expanded.refinedCharacters.map(
-          character => character.name
-        ),
-        episodeMemories: (() => {
-          const memory =
-            row.memory && typeof row.memory === "object"
-              ? (row.memory as { episodes?: unknown[] })
-              : null;
-          return memory && Array.isArray(memory.episodes)
-            ? memory.episodes
-            : [];
-        })(),
+        input: { idempotencyKey: input.idempotencyKey },
       });
-      const bibleWithRelationshipGraph = attachRelationshipGraphToBible(
-        updatedBible,
-        compatibilityGraph
-      );
-
-      const [updatedRow] = await db
-        .update(verticalDramaSeries)
-        .set({ bible: bibleWithRelationshipGraph, updatedAt: new Date() })
-        .where(seriesOwnershipWhere(tenantId, userId, seriesId))
-        .returning();
-
-      if (assuranceRunId) {
-        await finalizeStoryGeneration(
-          tenantId,
-          assuranceRunId,
-          `finalize:${assuranceRunId}`
-        );
-      }
-
-      return {
-        series: { ...updatedRow, id: String(updatedRow.id) },
-        creditsUsed: result.creditsUsed,
-        model: result.model,
-        runId: assuranceRunId,
-      };
     }),
 
   /* ------------------------------------------------------------------------ */
@@ -11391,7 +11941,11 @@ export const verticalDramaSeriesRouter = router({
       // root-cause section). Filter to episodes that are still undrafted and
       // short-circuit BEFORE enqueuing/charging when there's nothing left.
       const remainingToDraft = episodesToDraft.filter(
-        item => readItemShotDrafts(item) === null
+        item =>
+          inspectVerticalDramaEpisodeCompletion({
+            episodeNumber: item.episodeNumber,
+            shotDrafts: readItemShotDrafts(item),
+          }) !== null
       );
       if (remainingToDraft.length === 0) {
         // Pinned contract: this mutation's return type is now a union of
@@ -11418,9 +11972,14 @@ export const verticalDramaSeriesRouter = router({
       );
 
       let assuranceRunId: string | null = null;
-      const assuranceIdempotencyKey =
-        input.idempotencyKey ??
-        `deep:${seriesId}:${row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt)}:${horizon}:${mode}`;
+      const assuranceIdempotencyKey = buildDeepStoryJobLogicalRunKey({
+        prefix: "deep",
+        seriesId,
+        bible,
+        horizon,
+        mode,
+        suppliedKey: input.idempotencyKey,
+      });
       if (isStoryGenerationAssuranceEnabled()) {
         const visualSourceSnapshot = await captureSeriesVisualSourceSnapshot(
           { tenantId, userId },
@@ -11459,7 +12018,7 @@ export const verticalDramaSeriesRouter = router({
         input: {
           horizonEpisodes: input.horizonEpisodes,
           mode,
-          idempotencyKey: input.idempotencyKey,
+          idempotencyKey: assuranceIdempotencyKey,
           ...(assuranceRunId ? { runId: assuranceRunId } : {}),
         },
       });
@@ -11471,7 +12030,7 @@ export const verticalDramaSeriesRouter = router({
             input: {
               horizonEpisodes: input.horizonEpisodes,
               mode,
-              idempotencyKey: input.idempotencyKey,
+              idempotencyKey: assuranceIdempotencyKey,
             },
           },
         });
@@ -11590,9 +12149,14 @@ export const verticalDramaSeriesRouter = router({
       );
 
       let assuranceRunId: string | null = null;
-      const assuranceIdempotencyKey =
-        input.idempotencyKey ??
-        `extend:${seriesId}:${row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt)}:${horizonEnd}:${mode}`;
+      const assuranceIdempotencyKey = buildDeepStoryJobLogicalRunKey({
+        prefix: "extend",
+        seriesId,
+        bible,
+        horizon: horizonEnd,
+        mode,
+        suppliedKey: input.idempotencyKey,
+      });
       if (isStoryGenerationAssuranceEnabled()) {
         const visualSourceSnapshot = await captureSeriesVisualSourceSnapshot(
           { tenantId, userId },
@@ -11631,7 +12195,7 @@ export const verticalDramaSeriesRouter = router({
         input: {
           additionalEpisodes: input.additionalEpisodes,
           mode,
-          idempotencyKey: input.idempotencyKey,
+          idempotencyKey: assuranceIdempotencyKey,
           ...(assuranceRunId ? { runId: assuranceRunId } : {}),
         },
       });
@@ -11643,7 +12207,7 @@ export const verticalDramaSeriesRouter = router({
             input: {
               additionalEpisodes: input.additionalEpisodes,
               mode,
-              idempotencyKey: input.idempotencyKey,
+              idempotencyKey: assuranceIdempotencyKey,
             },
           },
         });

@@ -109,6 +109,17 @@ describe("deepStoryDraftsSummaryText", () => {
       "Drafted in detail: 5/10 Sub-episodes (through Sub-episode 5) · Premium mode"
     );
   });
+
+  it("shows the server-authoritative repair count when incomplete episodes remain", () => {
+    expect(
+      deepStoryDraftsSummaryText("th", {
+        episodesWithDrafts: 20,
+        totalEpisodes: 50,
+        horizonEndEpisode: 50,
+        episodesNeedingRepair: 30,
+      })
+    ).toBe("ร่างละเอียดแล้ว 20/50 ตอนย่อย (ถึงตอนย่อยที่ 50) · ต้องซ่อมอีก 30 ตอนย่อย");
+  });
 });
 
 describe("deepStoryDraftsHorizonCountText / deepStoryDraftsCallRoundsText", () => {
@@ -283,7 +294,7 @@ describe("Consolidated primary action copy", () => {
       "อัปเดตเนื้อเรื่องละเอียดทุกตอนย่อย (9 ช็อต + บทพูด)"
     );
     expect(verticalDramaCopy.deepStoryDraftsScopeKeepLabel.th).toBe(
-      "เก็บโครงเรื่องเดิม แล้วเติม/อัปเดตร่างละเอียด"
+      "เก็บโครงเรื่องเดิม — ซ่อม/เติมเฉพาะตอนที่ยังไม่ครบ"
     );
     expect(verticalDramaCopy.deepStoryDraftsScopeRewriteLabel.th).toBe(
       "คิดโครงเรื่องใหม่ทั้งหมด แล้วร่างละเอียดต่อ"
@@ -303,10 +314,10 @@ describe("Consolidated primary action copy", () => {
 describe("deepStoryDraftsScopeKeepHintText", () => {
   it("interpolates the real episode count rather than a hardcoded example number", () => {
     expect(deepStoryDraftsScopeKeepHintText("th", 10)).toBe(
-      "โครง 10 ตอนย่อยยังเหมือนเดิม เพิ่มบทละเอียดให้ทุกตอนย่อย"
+      "โครง 10 ตอนย่อยยังเหมือนเดิม ระบบจะซ่อมเฉพาะตอนที่ยังไม่ครบ และไม่สร้างซ้ำตอนที่ผ่านแล้ว"
     );
     expect(deepStoryDraftsScopeKeepHintText("th", 6)).toBe(
-      "โครง 6 ตอนย่อยยังเหมือนเดิม เพิ่มบทละเอียดให้ทุกตอนย่อย"
+      "โครง 6 ตอนย่อยยังเหมือนเดิม ระบบจะซ่อมเฉพาะตอนที่ยังไม่ครบ และไม่สร้างซ้ำตอนที่ผ่านแล้ว"
     );
   });
 
@@ -686,6 +697,38 @@ describe("storyJobProgressText", () => {
         episodesDone: [3, 4],
       })
     ).toBe("รอบเรียก 1/2 · กำลังซ่อมตอนย่อย 3, 4");
+  });
+
+  it("keeps the planned chunk ratio and labels split per-episode recovery explicitly", () => {
+    expect(
+      storyJobProgressText("th", {
+        phase: "draft",
+        chunkIndex: 25,
+        chunkCount: 25,
+        retrying: true,
+        retryEpisodeNumbers: [46],
+      })
+    ).toBe("รอบเรียก 25/25 · กำลังลองใหม่แบบแยกตอนย่อย 46");
+    expect(
+      storyJobProgressText("en", {
+        phase: "review",
+        chunkIndex: 4,
+        chunkCount: 4,
+        retrying: true,
+        retryEpisodeNumbers: [12, 10, 12],
+      })
+    ).toBe("Call 4/4 · Retrying individual Sub-episodes 10, 12");
+  });
+
+  it("hides an overrun ratio from legacy progress snapshots and keeps the recovery context", () => {
+    expect(
+      storyJobProgressText("th", {
+        phase: "fix",
+        chunkIndex: 27,
+        chunkCount: 25,
+        episodesDone: [46],
+      })
+    ).toBe("กำลังเก็บงานเพิ่มเติม · กำลังซ่อมตอนย่อย 46");
   });
 });
 

@@ -108,6 +108,7 @@ vi.mock("@/lib/trpc", () => ({
     useUtils: () => ({
       verticalDramaSeries: {
         get: { invalidate: mockInvalidateSeriesGet },
+        getStoryGenerationRun: { invalidate: vi.fn() },
         getStoryJobStatus: { fetch: mockGetStoryJobStatusFetch },
       },
     }),
@@ -122,6 +123,26 @@ vi.mock("@/lib/trpc", () => ({
         // No active job to resume in this file's tests by default — resume
         // behavior has its own dedicated coverage below.
         useQuery: () => ({ data: activeStoryJobData }),
+      },
+      getStoryGenerationRun: {
+        useQuery: () => ({
+          data: null,
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }),
+      },
+      resumeStoryGeneration: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      repairStoryGeneration: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      cancelStoryGeneration: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      approveStoryGenerationRepair: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
       generateStoryBibleDeep: {
         useMutation: (opts: {
@@ -501,6 +522,34 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
       await waitFor(() =>
         expect(toast.success).toHaveBeenCalledWith("ร่างแล้ว 10 ตอนย่อย")
       );
+    });
+
+    it("shows the server-authoritative repair count instead of the full season count", () => {
+      render(
+        <VerticalDramaDeepStoryDraftsActions
+          lang="th"
+          seriesId="10"
+          readOnly={false}
+          targetEpisodeCount={50}
+          hasPlan={true}
+          deepDraftSummary={{
+            horizonEndEpisode: 50,
+            episodesWithDrafts: 20,
+            episodesNeedingRepair: 2,
+            totalEpisodes: 50,
+          }}
+          onGenerateStoryBible={resolvedOnGenerateStoryBible()}
+        />
+      );
+
+      fireEvent.click(
+        screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ })
+      );
+
+      expect(
+        screen.getByText("จำนวนตอนย่อยที่จะร่าง: 2 ตอนย่อย")
+      ).toBeInTheDocument();
+      expect(screen.queryByText("จำนวนตอนย่อยที่จะร่าง: 50 ตอนย่อย")).toBeNull();
     });
 
     it("selecting 'rewrite everything' then confirming chains onGenerateStoryBible THEN generateStoryBibleDeep, in order", async () => {
@@ -1345,9 +1394,7 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
     it("does NOT show the sequel continuity hint line for a non-lineage series", () => {
       renderExtend(false);
       expect(
-        screen.queryByTestId(
-          "vd-deep-story-drafts-extend-premium-lineage-hint"
-        )
+        screen.queryByTestId("vd-deep-story-drafts-extend-premium-lineage-hint")
       ).not.toBeInTheDocument();
     });
   });

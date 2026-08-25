@@ -470,8 +470,8 @@ export const verticalDramaCopy = {
     en: "Generation scope",
   },
   deepStoryDraftsScopeKeepLabel: {
-    th: "เก็บโครงเรื่องเดิม แล้วเติม/อัปเดตร่างละเอียด",
-    en: "Keep the current plot, then fill in/update the detailed drafts",
+    th: "เก็บโครงเรื่องเดิม — ซ่อม/เติมเฉพาะตอนที่ยังไม่ครบ",
+    en: "Keep the current plot — repair/fill only incomplete Sub-episodes",
   },
   deepStoryDraftsScopeRewriteLabel: {
     th: "คิดโครงเรื่องใหม่ทั้งหมด แล้วร่างละเอียดต่อ",
@@ -817,6 +817,7 @@ function formatUtcMinutes(iso: string): string | null {
 export type VerticalDramaSeriesStatus =
   | "draft"
   | "planning"
+  | "story_ready"
   | "active"
   | "paused"
   | "completed"
@@ -828,6 +829,7 @@ export const seriesStatusCopy: Record<
 > = {
   draft: { th: "ฉบับร่าง", en: "Draft" },
   planning: { th: "กำลังวางแผน", en: "Planning" },
+  story_ready: { th: "เนื้อเรื่องพร้อม", en: "Story ready" },
   active: { th: "กำลังผลิต", en: "Active" },
   paused: { th: "หยุดชั่วคราว", en: "Paused" },
   completed: { th: "เสร็จสิ้น", en: "Completed" },
@@ -1318,6 +1320,7 @@ export function deepStoryDraftsSummaryText(
     episodesWithDrafts: number;
     totalEpisodes: number;
     horizonEndEpisode: number;
+    episodesNeedingRepair?: number;
     premium?: true;
   }
 ): string {
@@ -1325,9 +1328,16 @@ export function deepStoryDraftsSummaryText(
     lang === "th"
       ? `ร่างละเอียดแล้ว ${summary.episodesWithDrafts}/${summary.totalEpisodes} ตอนย่อย (ถึงตอนย่อยที่ ${summary.horizonEndEpisode})`
       : `Drafted in detail: ${summary.episodesWithDrafts}/${summary.totalEpisodes} Sub-episodes (through Sub-episode ${summary.horizonEndEpisode})`;
-  return summary.premium
-    ? `${base} ${pickCopy(lang, verticalDramaCopy.deepStoryDraftsSummaryPremiumSuffix)}`
-    : base;
+  const repairSuffix =
+    summary.episodesNeedingRepair != null && summary.episodesNeedingRepair > 0
+      ? lang === "th"
+        ? ` · ต้องซ่อมอีก ${summary.episodesNeedingRepair} ตอนย่อย`
+        : ` · ${summary.episodesNeedingRepair} Sub-episodes need repair`
+      : "";
+  const premiumSuffix = summary.premium
+    ? ` ${pickCopy(lang, verticalDramaCopy.deepStoryDraftsSummaryPremiumSuffix)}`
+    : "";
+  return `${base}${repairSuffix}${premiumSuffix}`;
 }
 
 /** Copy Contract: "จำนวนตอนย่อยที่จะร่าง: {horizon} ตอนย่อย". */
@@ -1448,8 +1458,8 @@ export function deepStoryDraftsScopeKeepHintText(
   totalEpisodes: number
 ): string {
   return lang === "th"
-    ? `โครง ${totalEpisodes} ตอนย่อยยังเหมือนเดิม เพิ่มบทละเอียดให้ทุกตอนย่อย`
-    : `The ${totalEpisodes}-Sub-episode plot stays the same — detailed drafts are added/updated for every Sub-episode.`;
+    ? `โครง ${totalEpisodes} ตอนย่อยยังเหมือนเดิม ระบบจะซ่อมเฉพาะตอนที่ยังไม่ครบ และไม่สร้างซ้ำตอนที่ผ่านแล้ว`
+    : `The ${totalEpisodes}-Sub-episode plot stays the same — only incomplete Sub-episodes are repaired; completed ones are skipped.`;
 }
 
 /** Bilingual labels for the 4 canonical silence-intent codes (spec §7.7.2 Layer 3). */
@@ -1925,6 +1935,8 @@ export interface VerticalDramaStoryJobProgressCopyInput {
   chunkIndex?: number;
   chunkCount?: number;
   episodesDone?: number[];
+  retrying?: boolean;
+  retryEpisodeNumbers?: number[];
 }
 
 /** Copy Contract: "กำลังซ่อมตอน {eps}" — episode numbers ascending, comma-joined; falls back to the bare prefix when no episode numbers are known yet. */
@@ -1947,6 +1959,19 @@ function storyJobRoundText(
   return `${pickCopy(lang, verticalDramaCopy.storyJobRoundLabel)} ${chunkIndex}/${chunkCount}`;
 }
 
+function storyJobRetryText(
+  lang: VerticalDramaLang,
+  episodeNumbers: number[] | undefined
+): string {
+  const prefix =
+    lang === "th"
+      ? "กำลังลองใหม่แบบแยกตอนย่อย"
+      : "Retrying individual Sub-episodes";
+  if (!episodeNumbers || episodeNumbers.length === 0) return prefix;
+  const list = [...new Set(episodeNumbers)].sort((a, b) => a - b).join(", ");
+  return `${prefix} ${list}`;
+}
+
 /**
  * Copy Contract: "รอบเรียก {i}/{n} · {phase-thai}" (`chunkIndex`/`chunkCount`
  * omitted when the phase isn't chunk-scoped, e.g. the premium pipeline's
@@ -1954,7 +1979,9 @@ function storyJobRoundText(
  * `services/verticalDramaStoryBible.ts`'s `VdStoryDraftProgressEvent` doc
  * comment). `progress: null | undefined` reads as "queued" (submitted, no
  * progress event yet — covers both a freshly-enqueued job and a resumed job
- * whose first poll hasn't returned a `progress` snapshot yet).
+ * whose first poll hasn't returned a `progress` snapshot yet). A split
+ * recovery attempt keeps the logical chunk ratio and appends an explicit
+ * retry label, so it can never render misleading values such as `27/25`.
  */
 export function storyJobProgressText(
   lang: VerticalDramaLang,
@@ -1975,8 +2002,22 @@ export function storyJobProgressText(
               ? pickCopy(lang, verticalDramaCopy.storyJobPhaseReading)
               : storyJobPhaseFixText(lang, progress.episodesDone);
 
+  const visiblePhase = progress.retrying
+    ? storyJobRetryText(lang, progress.retryEpisodeNumbers)
+    : phaseLabel;
+
   if (progress.chunkIndex == null || progress.chunkCount == null) {
-    return phaseLabel;
+    return visiblePhase;
   }
-  return `${storyJobRoundText(lang, progress.chunkIndex, progress.chunkCount)} · ${phaseLabel}`;
+
+  // Backward compatibility for jobs persisted before split-retry metadata
+  // existed: never expose an impossible ratio such as 27/25. The phase and
+  // episode context still tell the user what the worker is doing.
+  if (progress.chunkIndex > progress.chunkCount) {
+    const recoveryPrefix =
+      lang === "th" ? "กำลังเก็บงานเพิ่มเติม" : "Finishing recovery";
+    return `${recoveryPrefix} · ${visiblePhase}`;
+  }
+
+  return `${storyJobRoundText(lang, progress.chunkIndex, progress.chunkCount)} · ${visiblePhase}`;
 }

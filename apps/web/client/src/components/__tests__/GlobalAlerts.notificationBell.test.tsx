@@ -662,6 +662,35 @@ describe("GlobalNotificationBell occurrence badge", () => {
     expect(screen.queryByText("Queue backlog is rising")).toBeNull();
   });
 
+  it("gives actionable guidance for a strict story-job relationship contract failure", async () => {
+    mockLocale = "th";
+    urgentRemindersData = [
+      {
+        id: 122,
+        title: "สร้างร่างละเอียดเนื้อเรื่อง ไม่สำเร็จ",
+        content:
+          "Strict relationship graph delta contract failed: episode:1:relationship_graph_delta_missing",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        actionUrl: "/drama-series/53",
+        actionLabel: "เปิดซีรีย์",
+        relatedResourceType: "system_failure",
+        metadata: { source: "vertical_drama_story_jobs" },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    expect(
+      await screen.findByText(/ข้อมูลตอนที่สร้างไว้เดิมยังไม่หาย/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/อัปเดตเนื้อเรื่องละเอียดทุกตอนย่อย/),
+    ).toBeTruthy();
+    expect(screen.queryByText(/relationship_graph_delta_missing/)).toBeNull();
+  });
+
   it("does not replace an open urgent reminder while a new one arrives", async () => {
     urgentRemindersData = [
       {

@@ -663,6 +663,11 @@ function GlobalUrgentReminders({
   const isCreditReminder =
     modalReminder.relatedResourceType === "credits" ||
     modalReminder.groupKey?.startsWith("credit-failure:");
+  const isVerticalDramaStoryJobFailure =
+    metadataSource === "vertical_drama_story_jobs" &&
+    /strict relationship graph delta contract failed:/i.test(
+      modalReminder.content,
+    );
   const creditItems = isCreditReminder && metadata?.relatedItems && typeof metadata.relatedItems === "object"
     ? metadata.relatedItems
     : null;
@@ -712,9 +717,13 @@ function GlobalUrgentReminders({
     : billingNotificationType === "invoice_due_reminder" && locale === "th"
       ? `ใบแจ้งหนี้ค้างชำระ${invoiceNumber ? `: ${invoiceNumber}` : ""}`
       : modalReminder.title;
-  const summary = isOpsIncidentReminder
-    ? guidance.summary
-    : isCreditReminder
+  const summary = isVerticalDramaStoryJobFailure
+    ? locale === "th"
+      ? "ระบบพบว่าข้อมูลความสัมพันธ์ของบางตอนยังไม่ครบ จึงหยุดงานเพื่อป้องกันการบันทึกข้อมูลผิดพลาด ข้อมูลตอนที่สร้างไว้เดิมยังไม่หาย ให้ปิดแจ้งเตือนแล้วกลับไปที่ซีรีย์ จากนั้นกด “อัปเดตเนื้อเรื่องละเอียดทุกตอนย่อย” อีกครั้ง ระบบจะทำต่อจากตอนที่มีอยู่"
+      : "Some episode relationship data was incomplete, so the job stopped before saving an unsafe result. Existing episode drafts are preserved. Close this alert, return to the series, and click “Update detailed story for all sub-episodes” to continue from the episodes already available."
+    : isOpsIncidentReminder
+      ? guidance.summary
+      : isCreditReminder
       ? [
           modalReminder.content,
           creditModelLabel

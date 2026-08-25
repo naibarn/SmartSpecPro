@@ -21,13 +21,15 @@ vi.mock("../enabledLlmModels", () => ({
   loadEnabledLlmModelRows: mockLoadEnabledLlmModelRows,
 }));
 
-const { mockResolveVerticalDramaSeriesModel } = vi.hoisted(() => ({
+const { mockResolveVerticalDramaSeriesModel, mockResolveVerticalDramaRecommendedDraftModel } = vi.hoisted(() => ({
   mockResolveVerticalDramaSeriesModel: vi.fn(
     async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
   ),
+  mockResolveVerticalDramaRecommendedDraftModel: vi.fn(async () => "active-llm-model"),
 }));
 vi.mock("../verticalDramaLlmModelPolicy", () => ({
   resolveVerticalDramaSeriesModel: mockResolveVerticalDramaSeriesModel,
+  resolveVerticalDramaRecommendedDraftModel: mockResolveVerticalDramaRecommendedDraftModel,
 }));
 
 vi.mock("../intelligentModelSelector", () => ({
@@ -64,6 +66,7 @@ import {
   resolveDeepDraftHorizon,
   enforceEpisodeShotDraftSpeakability,
   computeDraftCompleteness,
+  computeEpisodeDialogueCompletenessViolation,
   reconcileDeepDraftChunkEpisodes,
   buildDeepDraftMissingEpisodesRetryInstruction,
   readItemShotDrafts,
@@ -1000,6 +1003,37 @@ describe("generateStoryBibleDeep — chunk episode-count mismatch (missing-episo
   });
 });
 
+describe("generateStoryBibleDeep — spoken-dialogue safety gate", () => {
+  it("returns a resumable partial result when the corrective retry is still silent", async () => {
+    const silentPayload = chunkResponsePayload([1], {
+      shotDraftsFor: () =>
+        nineShotDrafts().map(shot => ({
+          ...shot,
+          dialogue_lines: [],
+          silence_intent: "establishing",
+        })),
+    });
+    mockLlmResponseOnce(silentPayload);
+    mockLlmResponseOnce(silentPayload);
+
+    const result = await generateStoryBibleDeep(baseDeepParams());
+
+    expect(result.partial).toBe(true);
+    expect(result.missingEpisodes).toEqual([1]);
+    expect(result.warnings.some(warning => warning.reason === "missing_dialogue_after_retry")).toBe(true);
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(2);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(2);
+  });
+
+  it("allows individual silent shots when another shot contains a real dialogue line", () => {
+    const drafts = nineShotDrafts().map((shot, index) =>
+      index === 0 ? shot : { ...shot, dialogue_lines: [] },
+    );
+
+    expect(computeEpisodeDialogueCompletenessViolation(1, drafts)).toEqual([]);
+  });
+});
+
 /* -------------------------------------------------------------------------- */
 /* appendBreakdownVersion — deepDraft metadata (W10-A)                        */
 /* -------------------------------------------------------------------------- */
@@ -1140,6 +1174,7 @@ describe("computeDeepDraftSummary", () => {
       horizonEndEpisode: 2,
       episodesWithDrafts: 2,
       totalEpisodes: 10,
+      episodesNeedingRepair: 8,
     });
   });
 
@@ -1155,6 +1190,28 @@ describe("computeDeepDraftSummary", () => {
       horizonEndEpisode: 2,
       episodesWithDrafts: 2,
       totalEpisodes: 5,
+      episodesNeedingRepair: 3,
+    });
+  });
+
+  it("counts incomplete stored drafts separately so repair UI can show the real work", () => {
+    const bible = {
+      episodeBreakdown: [
+        existingItem(1, { shotDrafts: nineShotDrafts() }),
+        existingItem(2, {
+          shotDrafts: nineShotDrafts().map(shot => ({
+            ...shot,
+            dialogue_lines: [],
+          })),
+        }),
+      ],
+    };
+
+    expect(computeDeepDraftSummary(bible, 5)).toEqual({
+      horizonEndEpisode: 2,
+      episodesWithDrafts: 2,
+      totalEpisodes: 5,
+      episodesNeedingRepair: 4,
     });
   });
 });
