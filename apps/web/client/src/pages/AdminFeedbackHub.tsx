@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
@@ -235,11 +235,32 @@ export default function AdminFeedbackHub() {
     Boolean(ticket.isRead) ||
     optimisticallyReadTicketIds.has(ticket.id);
 
+  // A notification can deep-link to a ticket outside the current source
+  // filter (for example, an auto-filed system report while "User Feedback" is
+  // selected). Keep the opened ticket visible in the left list so the detail
+  // view and navigation context never disagree.
+  const ticketsForDisplay = useMemo(() => {
+    if (
+      selectedTicketId == null ||
+      detail?.id !== selectedTicketId ||
+      tickets.some(ticket => ticket.id === selectedTicketId)
+    ) {
+      return tickets;
+    }
+    return [
+      {
+        ...detail,
+        reporterEmail: reporter?.email ?? null,
+      },
+      ...tickets,
+    ];
+  }, [detail, reporter?.email, selectedTicketId, tickets]);
+
   // Keep the server's order stable during the current session. A refetch can
   // add new tickets, but reading a ticket must not make every existing row
   // jump around underneath the admin. Changing a filter starts a new list.
   useEffect(() => {
-    const incomingIds = tickets.map(ticket => ticket.id);
+    const incomingIds = ticketsForDisplay.map(ticket => ticket.id);
     setTicketOrderIds(previousIds => {
       if (previousTicketFilterKeyRef.current !== ticketFilterKey) {
         previousTicketFilterKeyRef.current = ticketFilterKey;
@@ -251,16 +272,18 @@ export default function AdminFeedbackHub() {
       const newIds = incomingIds.filter(id => !knownIds.has(id));
       return [...newIds, ...retainedIds];
     });
-  }, [tickets, ticketFilterKey]);
+  }, [ticketFilterKey, ticketsForDisplay]);
 
-  const ticketsById = new Map(tickets.map(ticket => [ticket.id, ticket]));
+  const ticketsById = new Map(
+    ticketsForDisplay.map(ticket => [ticket.id, ticket])
+  );
   const orderedTickets = ticketOrderIds
     .map(ticketId => ticketsById.get(ticketId))
     .filter((ticket): ticket is (typeof tickets)[number] => Boolean(ticket));
   const visibleTickets =
-    orderedTickets.length > 0 || tickets.length === 0
+    orderedTickets.length > 0 || ticketsForDisplay.length === 0
       ? orderedTickets
-      : tickets;
+      : ticketsForDisplay;
 
   const uploadReplyFiles = async (ticketId: number): Promise<number[]> => {
     if (replyFiles.length === 0) return [];
