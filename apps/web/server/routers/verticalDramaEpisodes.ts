@@ -321,6 +321,7 @@ import {
   type VerticalDramaEpisodeDialogueQuality,
 } from "@shared/verticalDramaSeries/dialogueQuality";
 import { resolveEffectiveImagePromptLanguage } from "@shared/verticalDramaSeries/imagePromptLanguage";
+import { normalizeVerticalDramaCharacterLookImageBrief } from "@shared/verticalDramaSeries/characterLookSelection";
 // Wave-4A/W4-B integration (spec §8.8, section-12) — the guided Production
 // Wizard state resolver. TYPE-ONLY here (pure/shared, no runtime import) —
 // the resolver FUNCTION itself is loaded via a runtime `import()` inside
@@ -2168,6 +2169,9 @@ async function resolveSeriesCharacterPortraits(
       variantLabel?: string;
       variantType?: "outfit" | "age_stage";
       sharesFaceWithCharacterId?: string;
+      /** A portrait-less look materialized from a shot context. */
+      isSystemSuggestedLook?: boolean;
+      lookImageBrief?: string;
     }
   >
 > {
@@ -2209,6 +2213,8 @@ async function resolveSeriesCharacterPortraits(
       variantLabel?: string;
       variantType?: "outfit" | "age_stage";
       sharesFaceWithCharacterId?: string;
+      isSystemSuggestedLook?: boolean;
+      lookImageBrief?: string;
     }
   > = {};
   characterRows.forEach(
@@ -2233,6 +2239,14 @@ async function resolveSeriesCharacterPortraits(
         variantLabel: c.variantLabel ?? undefined,
         variantType:
           (c.variantType as "outfit" | "age_stage" | null) ?? undefined,
+        isSystemSuggestedLook:
+          (c.data as Record<string, unknown> | null)?.source ===
+          "system_suggested_look"
+            ? true
+            : undefined,
+        lookImageBrief: normalizeVerticalDramaCharacterLookImageBrief(
+          (c.data as Record<string, unknown> | null)?.lookImageBrief
+        ),
         sharesFaceWithCharacterId:
           c.sharesFaceWithCharacterId != null
             ? String(c.sharesFaceWithCharacterId)

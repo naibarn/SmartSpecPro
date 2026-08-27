@@ -3057,6 +3057,10 @@ describe("getEpisodeDetail — qualityReview field", () => {
             variantLabel: "Formal outfit",
             variantType: "outfit",
             sharesFaceWithCharacterId: null,
+            data: {
+              source: "system_suggested_look",
+              lookImageBrief: "preserve identity and use a formal outfit",
+            },
           },
           {
             id: 3,
@@ -3095,6 +3099,8 @@ describe("getEpisodeDetail — qualityReview field", () => {
       parentCharacterId: "1",
       variantLabel: "Formal outfit",
       variantType: "outfit",
+      isSystemSuggestedLook: true,
+      lookImageBrief: "preserve identity and use a formal outfit",
     });
     expect(
       result.characterPortraits["hero-formal"].sharesFaceWithCharacterId

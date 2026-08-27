@@ -40,6 +40,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: unknown) => routes,
     protectedProcedure: proc,
+    adminProcedure: proc,
   };
 });
 
@@ -131,5 +132,15 @@ describe("extractCharacterDescription", () => {
     expect(result).toBe(
       "Personality: brave | Backstory: grew up in the city | Identity lock: scar on left cheek | Wardrobe rules: always wears a red scarf",
     );
+  });
+
+  it("keeps a long reusable look brief bounded at the shared 2,000-character contract", () => {
+    const longBrief = "รายละเอียดชุดและการจัดแสง ".repeat(200);
+    const result = extractCharacterDescription({ lookImageBrief: longBrief });
+
+    expect(result).toContain("Look image brief:");
+    const briefInPrompt = result!.replace("Look image brief: ", "");
+    expect(briefInPrompt.length).toBeLessThanOrEqual(2000);
+    expect(briefInPrompt).toMatch(/…$/);
   });
 });

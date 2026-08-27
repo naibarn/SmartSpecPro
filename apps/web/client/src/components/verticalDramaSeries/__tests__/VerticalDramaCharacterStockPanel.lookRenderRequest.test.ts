@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildLookRenderRequestFields } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
+import {
+  buildLookRenderRequestFields,
+  fitCharacterLookInstruction,
+} from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
 
 /**
  * `planning/vd-look-image-not-replace-primary/plan.md` §4C — the per-look
@@ -91,5 +94,33 @@ describe("buildLookRenderRequestFields", () => {
         referenceChoice: "auto",
       })
     ).not.toHaveProperty("customInstruction");
+  });
+
+  it("caps a generated long brief at the server's 500-character contract", () => {
+    const longBrief =
+      "Character identity: Pimpchanok, a young Thai woman with long dark hair. " +
+      "Required look: elegant black evening gown with subtle jewelry. " +
+      "Full-body cinematic portrait, realistic skin texture, natural anatomy, " +
+      "soft practical night lighting, refined fabric detail, neutral expression, " +
+      "clean background, no text, no watermark. " +
+      "Additional continuity guidance that should not make the API reject the request.";
+    const request = buildLookRenderRequestFields({
+      ...base,
+      instruction: longBrief.repeat(4),
+      referenceChoice: "auto",
+    });
+
+    expect(request.customInstruction).toBeDefined();
+    expect(request.customInstruction!.length).toBeLessThanOrEqual(500);
+    expect(request.customInstruction).toContain("Character identity");
+    expect(request.customInstruction).toContain("Required look");
+  });
+
+  it("returns a bounded prompt for the dialog prefill as well", () => {
+    const result = fitCharacterLookInstruction("รายละเอียดภาพ. ".repeat(200));
+
+    expect(result).toBeDefined();
+    expect(result!.length).toBeLessThanOrEqual(500);
+    expect(result).toMatch(/…$/);
   });
 });

@@ -194,6 +194,15 @@ import {
   type VerticalDramaCharacterDescriptorSource,
 } from "@shared/verticalDramaSeries/characterIdentityMap";
 import {
+  detectVerticalDramaCharacterLookIntent,
+  getVerticalDramaCharacterLookSemanticKey,
+  normalizeVerticalDramaCharacterLookImageBrief,
+  selectVerticalDramaCharacterLooks,
+  type VerticalDramaCharacterLookAssignment,
+  type VerticalDramaCharacterLookCatalogEntry,
+  type VerticalDramaLookSelectionShot,
+} from "@shared/verticalDramaSeries/characterLookSelection";
+import {
   extractShotProductPlacements,
   findPlacementForShot,
   appendProductPresenceDirective,
@@ -1117,6 +1126,498 @@ export interface EpisodeRunOwner {
   userId: number;
   seriesId: number;
   episodeId: number;
+}
+
+type PipelineCharacterLookRow = {
+  id: number;
+  characterKey: string;
+  name: string;
+  role: string | null;
+  narrativeRole: string | null;
+  roleTier: string | null;
+  occupation: string | null;
+  roleVisualIntent: unknown;
+  roleProvenance: string | null;
+  roleReviewStatus: string | null;
+  parentCharacterId: number | null;
+  variantLabel: string | null;
+  variantType: string | null;
+  data: unknown;
+};
+
+/**
+ * Resolve and persist per-shot looks before the paid image stage. This is
+ * deliberately idempotent: a semantic key (parent + canonical intent) wins
+ * over spelling, so "ชุดนอน", "ชุดใส่นอน" and "sleepwear" reuse one slot.
+ * A missing look is materialized without a portrait; the frame remains useful
+ * and the UI can ask the user to generate or replace it later.
+ */
+async function resolvePipelineCharacterLooks(params: {
+  owner: EpisodeRunOwner;
+  rows: PipelineCharacterLookRow[];
+  shots: readonly Record<string, unknown>[];
+  locationByShotNumber: ReadonlyMap<number, { key?: string; name: string }>;
+  canonicalShotSummaryByShotNumber: ReadonlyMap<number, string>;
+  previousFramesByShotNumber: ReadonlyMap<number, VerticalDramaStartFramePlanFrame>;
+}): Promise<{
+  rows: PipelineCharacterLookRow[];
+  characterKeysByShotNumber: Map<number, string[]>;
+  assignmentsByShotNumber: Map<number, VerticalDramaCharacterLookAssignment[]>;
+}> {
+  if (params.rows.length === 0 || params.shots.length === 0) {
+    return {
+      rows: params.rows,
+      characterKeysByShotNumber: new Map(),
+      assignmentsByShotNumber: new Map(),
+    };
+  }
+
+  const parentKeyById = new Map(
+    params.rows.map(row => [row.id, row.characterKey])
+  );
+  const portraitResults = await Promise.all(
+    params.rows.map(async row => {
+      try {
+        return Boolean(
+          await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
+            params.owner,
+            row.id
+          )
+        );
+      } catch {
+        return false;
+      }
+    })
+  );
+  const catalog: VerticalDramaCharacterLookCatalogEntry[] = params.rows.map(
+    (row, index) => {
+      const data =
+        row.data && typeof row.data === "object" && !Array.isArray(row.data)
+          ? (row.data as Record<string, unknown>)
+          : {};
+      return {
+        characterKey: row.characterKey,
+        name: row.name,
+        ...(row.parentCharacterId != null
+          ? { parentCharacterKey: parentKeyById.get(row.parentCharacterId) }
+          : {}),
+        ...(row.variantLabel ? { variantLabel: row.variantLabel } : {}),
+        ...(row.variantType === "outfit" || row.variantType === "age_stage"
+          ? { variantType: row.variantType }
+          : {}),
+        ...(typeof data.description === "string"
+          ? { description: data.description }
+          : {}),
+        ...(Array.isArray(data.wardrobeRules)
+          ? {
+              wardrobeRules: data.wardrobeRules.filter(
+                (value): value is string => typeof value === "string"
+              ),
+            }
+          : {}),
+        hasPortrait: portraitResults[index],
+      };
+    }
+  );
+  const selectionShots: VerticalDramaLookSelectionShot[] = params.shots.map(
+    shot => {
+      const shotNumber = Number(shot.shotNumber ?? shot.shot_number ?? 0);
+      const previous = params.previousFramesByShotNumber.get(shotNumber);
+      const storedKeys = Array.isArray(shot.required_character_refs)
+        ? shot.required_character_refs
+        : Array.isArray(shot.characters)
+          ? shot.characters
+          : Array.isArray(shot.characterIds)
+            ? shot.characterIds
+            : [];
+      const characterKeys =
+        previous?.characterRefsCustomized === true
+          ? previous.requiredCharacterRefs ?? []
+          : storedKeys.map(String);
+      const location = params.locationByShotNumber.get(shotNumber);
+      const text = [
+        params.canonicalShotSummaryByShotNumber.get(shotNumber),
+        shot.description,
+        shot.visual_description,
+        shot.action,
+        shot.narrative_purpose,
+        shot.time_of_day,
+        location?.name,
+      ]
+        .filter((value): value is string => typeof value === "string")
+        .join(" ");
+      const sceneKey =
+        typeof shot.scene_key === "string"
+          ? shot.scene_key
+          : typeof shot.scene_id === "string"
+            ? shot.scene_id
+            : undefined;
+      const timeKey =
+        typeof shot.time_of_day === "string"
+          ? shot.time_of_day
+          : typeof shot.lighting === "string"
+            ? shot.lighting
+            : undefined;
+      return {
+        shotNumber,
+        characterKeys,
+        text,
+        ...(sceneKey ? { sceneKey } : {}),
+        ...(location?.key ? { locationKey: location.key } : {}),
+        ...(timeKey ? { timeKey } : {}),
+      };
+    }
+  );
+  const manualShotNumbers = new Set(
+    [...params.previousFramesByShotNumber.entries()]
+      .filter(
+        ([, frame]) =>
+          frame.characterRefsCustomized === true ||
+          frame.characterLookAssignments?.some(
+            assignment => assignment.mode === "manual_override"
+          ) === true
+      )
+      .map(([shotNumber]) => shotNumber)
+  );
+  const selection = selectVerticalDramaCharacterLooks({
+    shots: selectionShots,
+    catalog,
+    manualShotNumbers,
+  });
+  const rows = params.rows.slice();
+  const rowsByKey = new Map(rows.map(row => [row.characterKey, row]));
+  const semanticKeyBySuggestion = new Map<string, string>();
+
+  for (const suggestion of selection.suggestions) {
+    const parent = rowsByKey.get(suggestion.parentCharacterKey);
+    if (!parent) continue;
+    const semanticKey = getVerticalDramaCharacterLookSemanticKey({
+      parentCharacterKey: suggestion.parentCharacterKey,
+      canonicalIntent: suggestion.canonicalIntent,
+      variantType: suggestion.variantType,
+    });
+    const existing = rows.find(row => {
+      if (row.parentCharacterId !== parent.id) return false;
+      const data =
+        row.data && typeof row.data === "object" && !Array.isArray(row.data)
+          ? (row.data as Record<string, unknown>)
+          : {};
+      if (data.lookSemanticKey === semanticKey) return true;
+      const intent = detectVerticalDramaCharacterLookIntent(
+        [row.variantLabel, data.description].filter(Boolean).join(" ")
+      );
+      return intent?.key === suggestion.canonicalIntent;
+    });
+    let selectedKey = existing?.characterKey;
+    if (existing) {
+      const existingData =
+        existing.data &&
+        typeof existing.data === "object" &&
+        !Array.isArray(existing.data)
+          ? (existing.data as Record<string, unknown>)
+          : {};
+      const existingIsSystemSuggestion =
+        existingData.source === "system_suggested_look" &&
+        existingData.lookSemanticKey === semanticKey;
+      if (existingIsSystemSuggestion) {
+        const priorShotNumbers = Array.isArray(
+          existingData.suggestedFromShotNumbers
+        )
+          ? existingData.suggestedFromShotNumbers.filter(
+              (value): value is number =>
+                typeof value === "number" && Number.isInteger(value)
+            )
+          : [];
+        const suggestedFromShotNumbers = Array.from(
+          new Set([...priorShotNumbers, ...suggestion.sourceShotNumbers])
+        ).sort((a, b) => a - b);
+        const lookImageBrief =
+          normalizeVerticalDramaCharacterLookImageBrief(
+            existingData.lookImageBrief
+          ) ??
+          normalizeVerticalDramaCharacterLookImageBrief(suggestion.imageBrief) ??
+          suggestion.imageBrief;
+        const nextData = {
+          ...existingData,
+          lookSemanticKey: semanticKey,
+          lookImageBrief,
+          suggestedFromShotNumbers,
+        };
+        const metadataChanged =
+          JSON.stringify(existingData.suggestedFromShotNumbers ?? []) !==
+            JSON.stringify(suggestedFromShotNumbers) ||
+          existingData.lookImageBrief !== lookImageBrief;
+        if (metadataChanged) {
+          await db
+            .update(verticalDramaCharacters)
+            .set({ data: nextData, updatedAt: new Date() })
+            .where(
+              and(
+                eq(verticalDramaCharacters.id, existing.id),
+                eq(verticalDramaCharacters.tenantId, params.owner.tenantId),
+                eq(verticalDramaCharacters.userId, params.owner.userId),
+                eq(verticalDramaCharacters.seriesId, params.owner.seriesId)
+              )
+            );
+          existing.data = nextData;
+        }
+      }
+    }
+    if (!selectedKey) {
+      const baseKey = `${parent.characterKey}-look-${suggestion.canonicalIntent}`.slice(
+        0,
+        64
+      );
+      selectedKey = baseKey;
+      let suffix = 2;
+      while (rowsByKey.has(selectedKey)) {
+        const suffixText = `-${suffix++}`;
+        selectedKey = `${baseKey.slice(0, 64 - suffixText.length)}${suffixText}`;
+      }
+      const data = {
+        description: suggestion.description,
+        ...(suggestion.variantType === "outfit"
+          ? { wardrobeRules: [suggestion.description] }
+          : {}),
+        source: "system_suggested_look",
+        lookSemanticKey: semanticKey,
+        lookImageBrief:
+          normalizeVerticalDramaCharacterLookImageBrief(
+            suggestion.imageBrief
+          ) ?? suggestion.imageBrief,
+        suggestedFromShotNumbers: suggestion.sourceShotNumbers,
+      };
+      let inserted: PipelineCharacterLookRow | undefined;
+      try {
+        [inserted] = await db
+          .insert(verticalDramaCharacters)
+          .values({
+            tenantId: params.owner.tenantId,
+            userId: params.owner.userId,
+            seriesId: params.owner.seriesId,
+            characterKey: selectedKey,
+            name: parent.name,
+            role: parent.role,
+            narrativeRole: parent.narrativeRole,
+            roleTier: parent.roleTier,
+            occupation: parent.occupation ?? parent.role,
+            roleVisualIntent: parent.roleVisualIntent,
+            roleProvenance: parent.roleProvenance,
+            roleReviewStatus: parent.roleReviewStatus,
+            parentCharacterId: parent.id,
+            variantLabel: suggestion.variantLabel,
+            variantType: suggestion.variantType,
+            data,
+          } as typeof verticalDramaCharacters.$inferInsert)
+          .onConflictDoNothing()
+          .returning({
+            id: verticalDramaCharacters.id,
+            characterKey: verticalDramaCharacters.characterKey,
+            name: verticalDramaCharacters.name,
+            role: verticalDramaCharacters.role,
+            narrativeRole: verticalDramaCharacters.narrativeRole,
+            roleTier: verticalDramaCharacters.roleTier,
+            occupation: verticalDramaCharacters.occupation,
+            roleVisualIntent: verticalDramaCharacters.roleVisualIntent,
+            roleProvenance: verticalDramaCharacters.roleProvenance,
+            roleReviewStatus: verticalDramaCharacters.roleReviewStatus,
+            parentCharacterId: verticalDramaCharacters.parentCharacterId,
+            variantLabel: verticalDramaCharacters.variantLabel,
+            variantType: verticalDramaCharacters.variantType,
+            data: verticalDramaCharacters.data,
+          });
+      } catch {
+        // A concurrent retry may have won the unique key. The follow-up read
+        // below makes the operation recoverable instead of failing the run.
+      }
+      if (!inserted) {
+        inserted = rows.find(row => row.characterKey === selectedKey);
+        if (!inserted) {
+          const [concurrent] = await db
+            .select({
+              id: verticalDramaCharacters.id,
+              characterKey: verticalDramaCharacters.characterKey,
+              name: verticalDramaCharacters.name,
+              role: verticalDramaCharacters.role,
+              narrativeRole: verticalDramaCharacters.narrativeRole,
+              roleTier: verticalDramaCharacters.roleTier,
+              occupation: verticalDramaCharacters.occupation,
+              roleVisualIntent: verticalDramaCharacters.roleVisualIntent,
+              roleProvenance: verticalDramaCharacters.roleProvenance,
+              roleReviewStatus: verticalDramaCharacters.roleReviewStatus,
+              parentCharacterId: verticalDramaCharacters.parentCharacterId,
+              variantLabel: verticalDramaCharacters.variantLabel,
+              variantType: verticalDramaCharacters.variantType,
+              data: verticalDramaCharacters.data,
+            })
+            .from(verticalDramaCharacters)
+            .where(
+              and(
+                eq(verticalDramaCharacters.tenantId, params.owner.tenantId),
+                eq(verticalDramaCharacters.userId, params.owner.userId),
+                eq(verticalDramaCharacters.seriesId, params.owner.seriesId),
+                eq(verticalDramaCharacters.characterKey, selectedKey)
+              )
+            )
+            .limit(1);
+          inserted = concurrent as PipelineCharacterLookRow | undefined;
+        }
+      }
+      if (inserted && !rowsByKey.has(inserted.characterKey)) {
+        rows.push(inserted);
+        rowsByKey.set(inserted.characterKey, inserted);
+      }
+      if (!inserted) {
+        throw new Error(
+          `Unable to materialize suggested character look: ${semanticKey}`
+        );
+      }
+    }
+    if (selectedKey) semanticKeyBySuggestion.set(semanticKey, selectedKey);
+  }
+
+  const assignmentsByShotNumber = new Map(
+    [...selection.assignmentsByShotNumber.entries()].map(
+      ([shotNumber, assignments]) => [
+        shotNumber,
+        assignments.map(assignment => {
+          if (assignment.mode !== "needs_new_look") return assignment;
+          const semanticKey = getVerticalDramaCharacterLookSemanticKey({
+            parentCharacterKey: assignment.baseCharacterKey,
+            canonicalIntent: assignment.canonicalIntent ?? "",
+            variantType:
+              assignment.canonicalIntent === "newborn" ? "age_stage" : "outfit",
+          });
+          const selectedKey = semanticKeyBySuggestion.get(semanticKey);
+          return selectedKey
+            ? { ...assignment, selectedLookKey: selectedKey }
+            : assignment;
+        }),
+      ] as const
+    )
+  );
+  const characterKeysByShotNumber = new Map(
+    [...selection.characterKeysByShotNumber.entries()].map(
+      ([shotNumber, keys]) => {
+        const assignments = assignmentsByShotNumber.get(shotNumber) ?? [];
+        const replacements = new Map(
+          assignments.map(assignment => [
+            assignment.baseCharacterKey,
+            assignment.selectedLookKey,
+          ])
+        );
+        return [
+          shotNumber,
+          keys.map(key => {
+            const entry = catalog.find(item => item.characterKey === key);
+            const family = entry?.parentCharacterKey ?? key;
+            return replacements.get(family) ?? key;
+          }),
+        ] as const;
+      }
+    )
+  );
+  return { rows, characterKeysByShotNumber, assignmentsByShotNumber };
+}
+
+/**
+ * Apply the same look resolver at the storyboard boundary. The storyboard is
+ * persisted before start-frame planning, and the UI reads it immediately;
+ * waiting until `generateRealStartFramePlan` made the LLM's raw variant choice
+ * visible and prevented portrait-less suggestions from appearing in the
+ * Characters tab. This is best-effort enrichment: a catalog/DB problem must
+ * never turn a valid paid storyboard generation into a user-facing error.
+ */
+async function applyAutomaticCharacterLooksToStoryboard(params: {
+  owner: EpisodeRunOwner;
+  episode: VerticalDramaEpisodeRow;
+  storyboard: StoryboardShotgridOutput;
+  rows: PipelineCharacterLookRow[];
+}): Promise<StoryboardShotgridOutput> {
+  const shots = params.storyboard.shots as unknown as Array<
+    Record<string, unknown>
+  >;
+  if (shots.length === 0 || params.rows.length === 0) {
+    return params.storyboard;
+  }
+
+  const distinctLocations = Array.isArray(params.storyboard.distinct_locations)
+    ? params.storyboard.distinct_locations
+    : [];
+  const locationByShotNumber = new Map<
+    number,
+    { key?: string; name: string }
+  >();
+  for (const group of distinctLocations) {
+    const name =
+      typeof group.location_name === "string" ? group.location_name : "";
+    if (!name || !Array.isArray(group.shot_numbers)) continue;
+    const key =
+      typeof group.location_key === "string" ? group.location_key : undefined;
+    for (const rawShotNumber of group.shot_numbers) {
+      const shotNumber = Number(rawShotNumber);
+      if (Number.isInteger(shotNumber)) {
+        locationByShotNumber.set(shotNumber, { key, name });
+      }
+    }
+  }
+  const previousFrames = (
+    params.episode.startFramePlan as {
+      frames?: VerticalDramaStartFramePlanFrame[];
+    } | null
+  )?.frames;
+  const previousFramesByShotNumber = new Map<
+    number,
+    VerticalDramaStartFramePlanFrame
+  >((previousFrames ?? []).map(frame => [frame.shotNumber, frame]));
+  const canonicalShotSummaryByShotNumber = new Map<number, string>();
+  for (const shot of shots) {
+    const shotNumber = Number(shot.shot_number ?? shot.shotNumber ?? 0);
+    const summary = [
+      shot.narrative_purpose,
+      shot.description,
+      shot.visual_description,
+      shot.action,
+    ]
+      .filter((value): value is string => typeof value === "string")
+      .join(" ")
+      .trim();
+    if (Number.isInteger(shotNumber) && summary) {
+      canonicalShotSummaryByShotNumber.set(shotNumber, summary);
+    }
+  }
+
+  try {
+    const resolution = await resolvePipelineCharacterLooks({
+      owner: params.owner,
+      rows: params.rows,
+      shots,
+      locationByShotNumber,
+      canonicalShotSummaryByShotNumber,
+      previousFramesByShotNumber,
+    });
+    const resolvedShots = params.storyboard.shots.map(shot => {
+      const selected = resolution.characterKeysByShotNumber.get(
+        shot.shot_number
+      );
+      if (!selected) return shot;
+      // Keep virtual screen callers separate; only physical character refs
+      // participate in outfit/age-stage look selection.
+      return {
+        ...shot,
+        characters: selected,
+        required_character_refs: selected,
+      };
+    });
+    return { ...params.storyboard, shots: resolvedShots };
+  } catch (error) {
+    debugError(
+      "vd_storyboard_character_look_resolution",
+      `Automatic look resolution degraded for episode #${params.owner.episodeId}`,
+      error
+    );
+    return params.storyboard;
+  }
 }
 
 /**
@@ -3223,6 +3724,13 @@ export class VerticalDramaEpisodePipeline {
           }
         : undefined,
     });
+    const storyboard = await applyAutomaticCharacterLooksToStoryboard({
+      owner,
+      episode,
+      storyboard: generated.storyboard,
+      rows: allCharacterRows as PipelineCharacterLookRow[],
+    });
+    return { ...generated, storyboard };
   }
 
   /**
@@ -3616,9 +4124,19 @@ export class VerticalDramaEpisodePipeline {
     // `characterKey`. See `@shared/verticalDramaSeries/characterIdentityMap.ts`.
     const characterIdentityRows = await db
       .select({
+        id: verticalDramaCharacters.id,
         characterKey: verticalDramaCharacters.characterKey,
         name: verticalDramaCharacters.name,
         role: verticalDramaCharacters.role,
+        narrativeRole: verticalDramaCharacters.narrativeRole,
+        roleTier: verticalDramaCharacters.roleTier,
+        occupation: verticalDramaCharacters.occupation,
+        roleVisualIntent: verticalDramaCharacters.roleVisualIntent,
+        roleProvenance: verticalDramaCharacters.roleProvenance,
+        roleReviewStatus: verticalDramaCharacters.roleReviewStatus,
+        parentCharacterId: verticalDramaCharacters.parentCharacterId,
+        variantLabel: verticalDramaCharacters.variantLabel,
+        variantType: verticalDramaCharacters.variantType,
         data: verticalDramaCharacters.data,
       })
       .from(verticalDramaCharacters)
@@ -3628,20 +4146,6 @@ export class VerticalDramaEpisodePipeline {
           eq(verticalDramaCharacters.seriesId, owner.seriesId)
         )
       );
-    const characterIdentitySources: VerticalDramaCharacterDescriptorSource[] =
-      characterIdentityRows.map(
-        (row: (typeof characterIdentityRows)[number]) => ({
-          characterKey: row.characterKey,
-          name: row.name,
-          role: row.role,
-          description:
-            typeof (row.data as Record<string, unknown> | null)?.description ===
-            "string"
-              ? ((row.data as Record<string, unknown>).description as string)
-              : undefined,
-        })
-      );
-
     // Phase 1 of `planning/polished-toasting-gadget.md` (location visual
     // bible) — build a shot-number -> location lookup from the storyboard's
     // own `distinct_locations[]` (server-validated for full 1-9 coverage by
@@ -3723,6 +4227,65 @@ export class VerticalDramaEpisodePipeline {
           });
       }
     }
+
+    // Per-shot look assignment (2026-08-27): resolve the complete roster,
+    // including portrait-less variants, before the start-frame LLM call. A
+    // missing semantic look is persisted as one stable, reusable slot; it is
+    // never allowed to become a provider/render error at this stage.
+    let lookResolution: Awaited<
+      ReturnType<typeof resolvePipelineCharacterLooks>
+    >;
+    try {
+      lookResolution = await resolvePipelineCharacterLooks({
+        owner,
+        rows: characterIdentityRows as PipelineCharacterLookRow[],
+        shots,
+        locationByShotNumber,
+        canonicalShotSummaryByShotNumber,
+        previousFramesByShotNumber,
+      });
+    } catch (error) {
+      // Look enrichment is additive. If a legacy/malformed roster row or a
+      // transient catalog write fails, preserve the original shot refs and
+      // allow the normal start-frame plan to finish; the user can still
+      // choose a look manually from the picker.
+      debugError(
+        "vd_character_look_resolution",
+        `Automatic look resolution degraded for episode #${owner.episodeId}`,
+        error
+      );
+      const fallbackCharacterKeysByShotNumber = new Map<number, string[]>();
+      for (const shot of shots) {
+        const shotNumber = Number(shot.shotNumber ?? shot.shot_number ?? 0);
+        const rawKeys = Array.isArray(shot.required_character_refs)
+          ? shot.required_character_refs
+          : Array.isArray(shot.characters)
+            ? shot.characters
+            : Array.isArray(shot.characterIds)
+              ? shot.characterIds
+              : [];
+        fallbackCharacterKeysByShotNumber.set(shotNumber, rawKeys.map(String));
+      }
+      lookResolution = {
+        rows: characterIdentityRows as PipelineCharacterLookRow[],
+        characterKeysByShotNumber: fallbackCharacterKeysByShotNumber,
+        assignmentsByShotNumber: new Map(),
+      };
+    }
+    const characterIdentitySources: VerticalDramaCharacterDescriptorSource[] =
+      lookResolution.rows.map(row => {
+        const data =
+          row.data && typeof row.data === "object" && !Array.isArray(row.data)
+            ? (row.data as Record<string, unknown>)
+            : {};
+        return {
+          characterKey: row.characterKey,
+          name: row.name,
+          role: row.role,
+          description:
+            typeof data.description === "string" ? data.description : undefined,
+        };
+      });
 
     const sceneContinuityFlags =
       sceneShotGroups.length > 0
@@ -3849,9 +4412,13 @@ export class VerticalDramaEpisodePipeline {
         // A user-edited role assignment is the durable source of truth. Do
         // not re-run synopsis analysis or let a fresh storyboard LLM response
         // replace it during a start-frame-plan regeneration.
+        const automaticallySelectedCharacterIds =
+          lookResolution.characterKeysByShotNumber.get(shotNumber);
         const characterIds = characterRefsCustomized
           ? [...(previousFrame?.requiredCharacterRefs ?? [])]
-          : storedCharacterIds;
+          : (automaticallySelectedCharacterIds ?? storedCharacterIds);
+        const characterLookAssignments =
+          lookResolution.assignmentsByShotNumber.get(shotNumber);
         const screenCallerCharacterIds = characterRefsCustomized
           ? [...(previousFrame?.screenCallerCharacterRefs ?? [])]
           : storyboardScreenCallerCharacterIds;
@@ -4019,6 +4586,9 @@ export class VerticalDramaEpisodePipeline {
           description: String(s.description ?? s.visual_description ?? ""),
           cameraSetup,
           characterIds: spokenCallerPolicy.physicalSceneCharacterRefs,
+          ...(characterLookAssignments?.length
+            ? { characterLookAssignments }
+            : {}),
           ...(characterRefsCustomized ||
           (barrierMultiView && barrierMultiView.activationSource !== "auto")
             ? { characterRefsCustomized: true }

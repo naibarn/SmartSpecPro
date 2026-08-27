@@ -670,6 +670,7 @@ export function resolveDefaultReferenceAssetLinkId(
 export interface VdRosterCharacterFields {
   characterId: string;
   name: string;
+  data?: Record<string, unknown> | null;
   parentCharacterId?: string;
   variantLabel?: string;
   sharesFaceWithCharacterId?: string;
@@ -873,6 +874,36 @@ export function decideVariantAutoGenerateImage(params: {
  */
 export type VdLookRenderReferenceChoice = "auto" | "primary" | "look";
 
+/** Keep only the ephemeral per-render customInstruction within its server
+ * contract while retaining as much of the high-signal opening as possible.
+ * The reusable persisted `lookImageBrief` has its own 2,000-character
+ * contract and is also supplied by the server from character data; this
+ * client-side cap must not be confused with that durable brief's size. */
+export const VD_CHARACTER_CUSTOM_INSTRUCTION_MAX_LENGTH = 500;
+
+export function fitCharacterLookInstruction(
+  value: string,
+  maxLength = VD_CHARACTER_CUSTOM_INSTRUCTION_MAX_LENGTH
+): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.length <= maxLength) return trimmed;
+
+  const ellipsis = "…";
+  const contentLimit = Math.max(1, maxLength - ellipsis.length);
+  const sentences = trimmed.split(/(?<=[.!?])\s+/);
+  let compact = "";
+  for (const sentence of sentences) {
+    const candidate = compact ? `${compact} ${sentence}` : sentence;
+    if (candidate.length > contentLimit) break;
+    compact = candidate;
+  }
+  if (compact.length < Math.min(120, contentLimit)) {
+    compact = trimmed.slice(0, contentLimit).trimEnd();
+  }
+  return `${compact}${ellipsis}`;
+}
+
 /** The subset of `generateCharacterImage`'s input this dialog decides. The
  *  caller merges the model/transport fields it already sends everywhere else. */
 export interface VdLookRenderRequestFields {
@@ -898,7 +929,7 @@ export function buildLookRenderRequestFields(params: {
   primaryAssetLinkId: string | null;
   lookAssetLinkId: string | null;
 }): VdLookRenderRequestFields {
-  const instruction = params.instruction.trim();
+  const instruction = fitCharacterLookInstruction(params.instruction);
   const referenceAssetLinkId =
     params.referenceChoice === "primary"
       ? params.primaryAssetLinkId
@@ -976,6 +1007,28 @@ export function resolveDirectCharacterImageInstruction(params: {
     ""
   ).trim();
   return resolved || undefined;
+}
+
+/**
+ * Resolve the instruction for a look render. System-suggested looks persist a
+ * detailed `lookImageBrief` in their character data; use it when the user has
+ * not already typed a per-character instruction, so clicking "generate look"
+ * cannot silently discard the context that created the slot.
+ */
+export function resolveLookRenderInstruction(params: {
+  characterId: string;
+  instructionByCharacter: Record<string, string>;
+  lookImageBrief?: string | null;
+}): string | undefined {
+  const typedInstruction = params.instructionByCharacter[
+    params.characterId
+  ]?.trim();
+  const resolved = resolveDirectCharacterImageInstruction({
+    characterId: params.characterId,
+    instructionByCharacter: params.instructionByCharacter,
+    override: typedInstruction || params.lookImageBrief || undefined,
+  });
+  return resolved ? fitCharacterLookInstruction(resolved) : undefined;
 }
 
 /** Exact payload shape `verticalDramaCharacters.previewCharacterPrompt`
@@ -5689,6 +5742,31 @@ export function VerticalDramaCharacterStockPanel({
                                     )}
                                   </Badge>
                                 )}
+                                {(
+                                  c.data?.source === "system_suggested_look"
+                                ) && (
+                                  <Badge
+                                    variant="outline"
+                                    className="w-fit max-w-full whitespace-normal break-words text-left border-amber-300 bg-amber-50 text-[10px] text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                                  >
+                                    {t(
+                                      lang,
+                                      "ลุคใหม่ที่ระบบแนะนำจากช็อต",
+                                      "Look suggested from a shot"
+                                    )}
+                                  </Badge>
+                                )}
+                                {c.data?.source === "system_suggested_look" &&
+                                Array.isArray(c.data.suggestedFromShotNumbers) &&
+                                c.data.suggestedFromShotNumbers.length > 0 ? (
+                                  <span className="text-[10px] text-amber-700 dark:text-amber-300">
+                                    {t(
+                                      lang,
+                                      `จากช็อต ${c.data.suggestedFromShotNumbers.join(", ")}`,
+                                      `From shot(s) ${c.data.suggestedFromShotNumbers.join(", ")}`
+                                    )}
+                                  </span>
+                                ) : null}
                                 {/* Phase E — twin annotation: a character that
                               shares its face reference with another
                               (independent) character in the roster, e.g.
@@ -5822,9 +5900,16 @@ export function VerticalDramaCharacterStockPanel({
                                         c.characterId
                                       );
                                     setLookRenderInstruction(
-                                      customInstructionByCharacter[
-                                        v.characterId
-                                      ] ?? ""
+                                      resolveLookRenderInstruction({
+                                        characterId: v.characterId,
+                                        instructionByCharacter:
+                                          customInstructionByCharacter,
+                                        lookImageBrief:
+                                          typeof v.data?.lookImageBrief ===
+                                          "string"
+                                            ? v.data.lookImageBrief
+                                            : undefined,
+                                      }) ?? ""
                                     );
                                     setLookRenderReferenceChoice("auto");
                                     setLookRenderDialog({

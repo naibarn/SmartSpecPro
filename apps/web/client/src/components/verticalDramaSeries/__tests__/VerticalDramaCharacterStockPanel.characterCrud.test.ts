@@ -5,18 +5,24 @@ import {
   buildDetectCharacterVariantsSummaryMessage,
   buildPortraitCandidateRetryPreviewInput,
   buildPreviewCharacterPromptInput,
+  projectCastingReferenceAssetLinkIds,
+  VD_PORTRAIT_CANDIDATE_COUNTS,
   decideVariantAutoGenerateImage,
   isFirstPortraitCandidateEligible,
   resolveCharacterReferenceDisclosureDefault,
   resolveDirectCharacterImageInstruction,
+  resolveLookRenderInstruction,
   resolvePortraitCandidateVisibility,
+  resolvePortraitCandidateResultsPlacement,
   resolveCharacterRoleTierMismatchMessage,
+  resolveCharacterCreditCapacityMessage,
   resolveVdCharacterMutationErrorMessage,
 } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
 import {
   AGE_STAGE_VARIANT_REQUIRED_MARKER,
   parseAgeStageVariantRequiredMessage,
 } from "@shared/verticalDramaSeries/ageStageVariant";
+import type { VerticalDramaCharacterAsset } from "@shared/verticalDramaSeries/characterAssets";
 
 /**
  * Coverage for W2 manual CRUD
@@ -486,6 +492,28 @@ describe("resolveDirectCharacterImageInstruction", () => {
         instructionByCharacter: { "7": "ภาพเต็มตัว" },
       })
     ).toBeUndefined();
+  });
+});
+
+describe("resolveLookRenderInstruction", () => {
+  it("uses a persisted system look brief when no custom instruction exists", () => {
+    expect(
+      resolveLookRenderInstruction({
+        characterId: "look-1",
+        instructionByCharacter: {},
+        lookImageBrief: "Preserve the same face; use a complete evening gown.",
+      })
+    ).toBe("Preserve the same face; use a complete evening gown.");
+  });
+
+  it("keeps the user's typed instruction authoritative", () => {
+    expect(
+      resolveLookRenderInstruction({
+        characterId: "look-1",
+        instructionByCharacter: { "look-1": "ชุดสีเขียวเข้ม" },
+        lookImageBrief: "Use the system-generated brief.",
+      })
+    ).toBe("ชุดสีเขียวเข้ม");
   });
 });
 

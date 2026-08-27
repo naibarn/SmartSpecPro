@@ -1096,9 +1096,20 @@ export function extractCharacterDescription(data: Record<string, unknown> | null
   }
   if (Array.isArray(data.wardrobeRules)) {
     const rules = data.wardrobeRules.filter(
-      (rule): rule is string => typeof rule === "string" && rule.trim().length > 0,
+      (rule): rule is string =>
+        typeof rule === "string" && rule.trim().length > 0
     );
     if (rules.length > 0) parts.push(`Wardrobe rules: ${rules.join("; ")}`);
+  }
+  // System-suggested look slots carry a bounded, concrete image brief so a
+  // one-line label such as "ชุดนอน" does not leave the portrait model free to
+  // invent the wardrobe, crop, lighting, or identity. User-authored fields
+  // above remain first and therefore retain precedence.
+  const lookImageBrief = normalizeVerticalDramaCharacterLookImageBrief(
+    data.lookImageBrief
+  );
+  if (lookImageBrief) {
+    parts.push(`Look image brief: ${lookImageBrief}`);
   }
   return parts.length > 0 ? parts.join(" | ") : undefined;
 }
