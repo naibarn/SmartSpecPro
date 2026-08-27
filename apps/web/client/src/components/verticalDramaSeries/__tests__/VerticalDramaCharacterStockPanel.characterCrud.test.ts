@@ -10,6 +10,7 @@ import {
   decideVariantAutoGenerateImage,
   isFirstPortraitCandidateEligible,
   resolveCharacterReferenceDisclosureDefault,
+  resolveCharacterLookDescription,
   resolveDirectCharacterImageInstruction,
   resolveLookRenderInstruction,
   resolvePortraitCandidateVisibility,
@@ -572,5 +573,41 @@ describe("resolvePortraitCandidateVisibility", () => {
     expect(result.isResolved).toBe(false);
     expect(result.visible).toEqual([]);
     expect(result.hiddenCount).toBe(0);
+  });
+});
+
+describe("resolveCharacterLookDescription", () => {
+  it("prefers an explicit description over the image brief", () => {
+    expect(
+      resolveCharacterLookDescription({
+        variantLabel: "ชุดราตรีสีดำ",
+        data: {
+          description: "เดรสกำมะหยี่สีดำพร้อมเครื่องประดับเงิน",
+          lookImageBrief: "ภาพเต็มตัวในงานเลี้ยงกลางคืน",
+        },
+      })
+    ).toBe("เดรสกำมะหยี่สีดำพร้อมเครื่องประดับเงิน");
+  });
+
+  it("falls back to the image brief when the generated description only repeats the label", () => {
+    expect(
+      resolveCharacterLookDescription({
+        variantLabel: "ชุดลำลอง",
+        data: {
+          description: " ชุดลำลอง ",
+          lookImageBrief: "เสื้อเชิ้ตสีฟ้าอ่อนกับกางเกงยีนส์ รองเท้าผ้าใบ",
+        },
+      })
+    ).toBe("เสื้อเชิ้ตสีฟ้าอ่อนกับกางเกงยีนส์ รองเท้าผ้าใบ");
+  });
+
+  it("returns no detail for missing, blank, or duplicate values", () => {
+    expect(
+      resolveCharacterLookDescription({
+        variantLabel: "ชุดนอน",
+        data: { description: "ชุดนอน", lookImageBrief: "  " },
+      })
+    ).toBeUndefined();
+    expect(resolveCharacterLookDescription({ data: null })).toBeUndefined();
   });
 });

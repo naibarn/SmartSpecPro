@@ -682,6 +682,27 @@ export interface VdRosterCharacterFields {
   needsSetupReasons?: VdCharacterNeedsSetupReason[];
 }
 
+/**
+ * Picks the most useful human-readable detail for a look card. New variants
+ * without an explicit description inherit `variantLabel` into
+ * `data.description`; suppress that duplicate and use the generated image
+ * brief when it contains additional information instead.
+ */
+export function resolveCharacterLookDescription(params: {
+  data?: Record<string, unknown> | null;
+  variantLabel?: string | null;
+}): string | undefined {
+  const label = params.variantLabel?.trim() ?? "";
+  const candidates = [params.data?.description, params.data?.lookImageBrief];
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string") continue;
+    const trimmed = candidate.trim();
+    if (!trimmed || trimmed === label) continue;
+    return trimmed;
+  }
+  return undefined;
+}
+
 export interface VdRosterEntry<T extends VdRosterCharacterFields> {
   character: T;
   /** Variant rows (`parentCharacterId` === this entry's `characterId`), in
@@ -5874,6 +5895,11 @@ export function VerticalDramaCharacterStockPanel({
                                   const variantLabel =
                                     v.variantLabel ??
                                     t(lang, "ตัวแปร", "Variant");
+                                  const variantDescription =
+                                    resolveCharacterLookDescription({
+                                      data: v.data,
+                                      variantLabel,
+                                    });
                                   const isVariantDropTarget =
                                     dragOverCharacterId === v.characterId;
                                   const confirmingThisVariantCharacterDelete =
@@ -5947,7 +5973,7 @@ export function VerticalDramaCharacterStockPanel({
                                     <div
                                       key={v.characterId}
                                       className={cn(
-                                        "group/variant relative flex max-w-[10rem] items-center gap-1.5 rounded-md border px-1.5 py-1 transition-colors",
+                                        "group/variant relative flex min-w-0 max-w-[18rem] items-start gap-1.5 rounded-md border px-1.5 py-1 transition-colors",
                                         variantActive
                                           ? "border-purple-400 bg-purple-50/60 ring-1 ring-purple-100"
                                           : "border-border hover:border-muted-foreground/40",
@@ -6226,11 +6252,11 @@ export function VerticalDramaCharacterStockPanel({
                                           event.stopPropagation();
                                           setSelectedCharacterId(v.characterId);
                                         }}
-                                        className="min-w-0 flex-1 truncate rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+                                        className="min-w-0 flex-1 rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
                                       >
                                         <span
                                           className={cn(
-                                            "truncate text-xs",
+                                            "block whitespace-normal break-words text-xs leading-snug",
                                             variantActive
                                               ? "font-semibold"
                                               : "font-medium"
@@ -6238,6 +6264,14 @@ export function VerticalDramaCharacterStockPanel({
                                         >
                                           {variantLabel}
                                         </span>
+                                        {variantDescription ? (
+                                          <span
+                                            className="mt-0.5 block line-clamp-3 break-words text-[10px] leading-snug text-muted-foreground"
+                                            title={variantDescription}
+                                          >
+                                            {variantDescription}
+                                          </span>
+                                        ) : null}
                                       </button>
                                       {/* `planning/vd-character-look-one-step-
                                     flow/plan.md` (2026-07-17) — per-look
