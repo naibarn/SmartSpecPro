@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, isNull, or, sql } from "drizzle-orm";
+import { eq, and, desc, isNull, or, sql, inArray } from "drizzle-orm";
 import {
   router,
   publicProcedure,
@@ -12,6 +12,7 @@ import {
   feedbackTickets,
   feedbackTicketComments,
   feedbackTicketAttachments,
+  feedbackTicketReads,
   users,
 } from "../../drizzle/schema";
 import { processTicket } from "../services/virtualAdmin/feedbackProcessor";
@@ -41,6 +42,18 @@ import { getPublicContactProtectionConfig } from "../services/publicContactProte
 
 type TenantRequest = Request & { tenantId?: string };
 
+export const FEEDBACK_MAX_FILES = 5;
+export const FEEDBACK_MAX_FILE_SIZE = 5 * 1024 * 1024;
+const FEEDBACK_ALLOWED_EXTS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "pdf",
+  "md",
+]);
+const FEEDBACK_ALLOWED_IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "webp"]);
+
 function adminTicketTenantCondition(tenantId: string | null) {
   if (!tenantId) return null;
   // Keep legacy unscoped system diagnostics visible to admins. Human tickets
@@ -52,6 +65,58 @@ function adminTicketTenantCondition(tenantId: string | null) {
       isNull(feedbackTickets.tenantId)
     )
   );
+}
+
+function ownerTicketCondition(userId: number, tenantId: string | null) {
+  return and(
+    eq(feedbackTickets.submittedBy, userId),
+    ...(tenantId ? [eq(feedbackTickets.tenantId, tenantId)] : [])
+  );
+}
+
+function isClosedTicket(status: string | null | undefined): boolean {
+  return status === "closed";
+}
+
+/**
+ * Feedback 0262 is additive, so rolling deployments can briefly run against
+ * a database that does not have the read-receipt table or commentId column.
+ * Keep the legacy ticket path usable until that migration is applied, while
+ * rethrowing every unrelated database error.
+ */
+function isFeedbackSchemaCompatibilityError(error: unknown): boolean {
+  let current: unknown = error;
+  for (let depth = 0; depth < 4 && current; depth += 1) {
+    const candidate = current as {
+      code?: unknown;
+      message?: unknown;
+      cause?: unknown;
+    };
+    const code = typeof candidate.code === "string" ? candidate.code : "";
+    const message =
+      typeof candidate.message === "string" ? candidate.message : "";
+    if (
+      (code === "42P01" || code === "42703") &&
+      /feedback_ticket_reads|feedback_ticket_attachments|commentId/i.test(
+        message
+      )
+    ) {
+      return true;
+    }
+    if (
+      /relation ["']feedback_ticket_reads["'] does not exist|column ["']commentId["'] does not exist/i.test(
+        message
+      )
+    ) {
+      return true;
+    }
+    current = candidate.cause;
+  }
+  return false;
+}
+
+function uniqueIds(ids: number[]): number[] {
+  return [...new Set(ids)];
 }
 
 // Rate-limited procedure for feedback submission: max 10 per hour per IP.
@@ -391,7 +456,23 @@ export const feedbackRouter = router({
         })
       );
 
-      return { ...tickets[0], comments, attachments: resolvedAttachments };
+      const visibleAttachments = resolvedAttachments.filter(
+        attachment =>
+          attachment.commentId == null ||
+          comments.some(comment => comment.id === attachment.commentId)
+      );
+      const commentsWithAttachments = comments.map(comment => ({
+        ...comment,
+        attachments: visibleAttachments.filter(
+          attachment => attachment.commentId === comment.id
+        ),
+      }));
+
+      return {
+        ...tickets[0],
+        comments: commentsWithAttachments,
+        attachments: visibleAttachments,
+      };
     }),
 
   // ─── Admin Endpoints ────────────────────────────────────
@@ -417,6 +498,7 @@ export const feedbackRouter = router({
         // error reports ("system"). Defaults to no filter so existing callers
         // keep seeing everything.
         submittedByType: z.enum(["human", "system"]).optional(),
+        unreadOnly: z.boolean().default(false),
         limit: z.number().min(1).max(100).default(50),
         offset: z.number().min(0).default(0),
       })
@@ -436,17 +518,52 @@ export const feedbackRouter = router({
         conditions.push(
           eq(feedbackTickets.submittedByType, input.submittedByType)
         );
+      const unreadCondition = sql`${feedbackTickets.status} <> 'closed'
+        AND NOT EXISTS (
+        SELECT 1 FROM feedback_ticket_reads ftr
+        WHERE ftr."ticketId" = ${feedbackTickets.id}
+          AND ftr."userId" = ${ctx.user.id}
+      )`;
+      if (input.unreadOnly) conditions.push(unreadCondition);
 
       const query = db
         .select()
         .from(feedbackTickets)
-        .orderBy(desc(feedbackTickets.createdAt))
+        .orderBy(
+          sql`CASE WHEN ${unreadCondition} THEN 0 ELSE 1 END`,
+          sql`CASE WHEN ${unreadCondition}
+            AND ${feedbackTickets.updatedAt} < NOW() - INTERVAL '2 hours'
+            THEN 0 ELSE 1 END`,
+          desc(feedbackTickets.createdAt)
+        )
         .limit(input.limit)
         .offset(input.offset);
 
-      const tickets = await (conditions.length > 0
-        ? query.where(and(...conditions))
-        : query);
+      let readsUnavailable = false;
+      let tickets;
+      try {
+        tickets = await (conditions.length > 0
+          ? query.where(and(...conditions))
+          : query);
+      } catch (error) {
+        if (!isFeedbackSchemaCompatibilityError(error)) throw error;
+        readsUnavailable = true;
+        const fallbackConditions = conditions.filter(
+          condition => condition !== unreadCondition
+        );
+        if (input.unreadOnly) {
+          fallbackConditions.push(sql`${feedbackTickets.status} <> 'closed'`);
+        }
+        const fallbackQuery = db
+          .select()
+          .from(feedbackTickets)
+          .orderBy(desc(feedbackTickets.createdAt))
+          .limit(input.limit)
+          .offset(input.offset);
+        tickets = await (fallbackConditions.length > 0
+          ? fallbackQuery.where(and(...fallbackConditions))
+          : fallbackQuery);
+      }
       const reporterIds = tickets
         .map(ticket => ticket.submittedBy)
         .filter((id): id is number => typeof id === "number");
@@ -466,8 +583,41 @@ export const feedbackRouter = router({
       const reporterById = new Map(
         reporters.map(reporter => [reporter.id, reporter.email])
       );
+      let readRows: Array<{ ticketId: number }> = [];
+      if (!readsUnavailable && tickets.length > 0) {
+        try {
+          readRows = await db
+            .select({ ticketId: feedbackTicketReads.ticketId })
+            .from(feedbackTicketReads)
+            .where(
+              and(
+                eq(feedbackTicketReads.userId, ctx.user.id),
+                inArray(
+                  feedbackTicketReads.ticketId,
+                  tickets.map(ticket => ticket.id)
+                )
+              )
+            );
+        } catch (error) {
+          if (!isFeedbackSchemaCompatibilityError(error)) throw error;
+          readsUnavailable = true;
+        }
+      }
+      const readIds = new Set(readRows.map(row => row.ticketId));
       return tickets.map(ticket => ({
         ...ticket,
+        // Until 0262 is applied, active legacy tickets are conservatively
+        // treated as unread so they remain visible in the pending queue.
+        isRead:
+          ticket.status === "closed" ||
+          (readsUnavailable ? false : readIds.has(ticket.id)),
+        isOverdueUnread:
+          (readsUnavailable
+            ? ticket.status !== "closed"
+            : !readIds.has(ticket.id)) &&
+          ticket.status !== "closed" &&
+          new Date(ticket.updatedAt).getTime() <
+            Date.now() - 2 * 60 * 60 * 1000,
         reporterEmail:
           ticket.submittedBy != null
             ? (reporterById.get(ticket.submittedBy) ?? null)
@@ -545,11 +695,34 @@ export const feedbackRouter = router({
         .where(eq(feedbackTicketComments.ticketId, input.id))
         .orderBy(feedbackTicketComments.createdAt);
 
-      const attachments = await db
-        .select()
-        .from(feedbackTicketAttachments)
-        .where(eq(feedbackTicketAttachments.ticketId, input.id))
-        .orderBy(feedbackTicketAttachments.createdAt);
+      let attachments: Array<typeof feedbackTicketAttachments.$inferSelect>;
+      try {
+        attachments = await db
+          .select()
+          .from(feedbackTicketAttachments)
+          .where(eq(feedbackTicketAttachments.ticketId, input.id))
+          .orderBy(feedbackTicketAttachments.createdAt);
+      } catch (error) {
+        if (!isFeedbackSchemaCompatibilityError(error)) throw error;
+        const legacyAttachments = await db
+          .select({
+            id: feedbackTicketAttachments.id,
+            ticketId: feedbackTicketAttachments.ticketId,
+            fileName: feedbackTicketAttachments.fileName,
+            fileUrl: feedbackTicketAttachments.fileUrl,
+            fileSize: feedbackTicketAttachments.fileSize,
+            mimeType: feedbackTicketAttachments.mimeType,
+            uploadedBy: feedbackTicketAttachments.uploadedBy,
+            createdAt: feedbackTicketAttachments.createdAt,
+          })
+          .from(feedbackTicketAttachments)
+          .where(eq(feedbackTicketAttachments.ticketId, input.id))
+          .orderBy(feedbackTicketAttachments.createdAt);
+        attachments = legacyAttachments.map(attachment => ({
+          ...attachment,
+          commentId: null,
+        }));
+      }
 
       const resolvedAttachments = await Promise.all(
         attachments.map(async a => {
@@ -557,6 +730,13 @@ export const feedbackRouter = router({
           return { ...a, resolvedUrl: url ?? a.fileUrl };
         })
       );
+
+      const commentsWithAttachments = comments.map(comment => ({
+        ...comment,
+        attachments: resolvedAttachments.filter(
+          attachment => attachment.commentId === comment.id
+        ),
+      }));
 
       const description =
         reporter?.email && !/^Reporter:/m.test(ticket.description ?? "")
@@ -568,7 +748,7 @@ export const feedbackRouter = router({
         description,
         reporter,
         affectedUsers,
-        comments,
+        comments: commentsWithAttachments,
         attachments: resolvedAttachments,
       };
     }),
@@ -577,35 +757,98 @@ export const feedbackRouter = router({
     .input(
       z.object({
         ticketId: z.number(),
-        content: z.string().min(1).max(5000),
+        content: z.string().max(5000),
         isInternal: z.boolean().default(false),
+        attachmentIds: z
+          .array(z.number().int())
+          .max(FEEDBACK_MAX_FILES)
+          .default([]),
       })
     )
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const [comment] = await db
-        .insert(feedbackTicketComments)
-        .values({
-          ticketId: input.ticketId,
-          authorId: ctx.user.id,
-          authorType: "human",
-          content: sanitizeHtml(input.content),
-          isInternal: input.isInternal,
-        })
-        .returning({ id: feedbackTicketComments.id });
+      if (!input.content.trim() && input.attachmentIds.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Reply text or at least one image is required",
+        });
+      }
 
-      // Update ticket respondedAt
-      await db
-        .update(feedbackTickets)
-        .set({ respondedAt: new Date(), updatedAt: new Date() })
-        .where(
-          and(
-            eq(feedbackTickets.id, input.ticketId),
-            adminTicketTenantCondition(ctx.tenantId) ?? sql`true`
-          )
-        );
+      const ticketConditions = [eq(feedbackTickets.id, input.ticketId)];
+      const tenantCondition = adminTicketTenantCondition(ctx.tenantId);
+      if (tenantCondition) ticketConditions.push(tenantCondition);
+      const [ticket] = await db
+        .select({ status: feedbackTickets.status })
+        .from(feedbackTickets)
+        .where(and(...ticketConditions))
+        .limit(1);
+      if (!ticket) throw new TRPCError({ code: "NOT_FOUND" });
+      if (isClosedTicket(ticket.status)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "This feedback ticket is closed and cannot receive replies",
+        });
+      }
+
+      const attachmentIds = uniqueIds(input.attachmentIds);
+      const now = new Date();
+      const comment = await db.transaction(async tx => {
+        if (attachmentIds.length > 0) {
+          const rows = await tx
+            .select()
+            .from(feedbackTicketAttachments)
+            .where(inArray(feedbackTicketAttachments.id, attachmentIds));
+          const valid =
+            rows.length === attachmentIds.length &&
+            rows.every(
+              row =>
+                row.ticketId === input.ticketId &&
+                row.commentId == null &&
+                row.uploadedBy === ctx.user.id &&
+                row.mimeType?.startsWith("image/") === true
+            );
+          if (!valid) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Reply attachments are invalid or no longer available",
+            });
+          }
+        }
+
+        const [createdComment] = await tx
+          .insert(feedbackTicketComments)
+          .values({
+            ticketId: input.ticketId,
+            authorId: ctx.user.id,
+            authorType: "human",
+            content: sanitizeHtml(input.content.trim()),
+            isInternal: input.isInternal,
+            createdAt: now,
+          })
+          .returning({ id: feedbackTicketComments.id });
+
+        if (attachmentIds.length > 0) {
+          await tx
+            .update(feedbackTicketAttachments)
+            .set({ commentId: createdComment.id })
+            .where(
+              and(
+                inArray(feedbackTicketAttachments.id, attachmentIds),
+                eq(feedbackTicketAttachments.ticketId, input.ticketId),
+                isNull(feedbackTicketAttachments.commentId),
+                eq(feedbackTicketAttachments.uploadedBy, ctx.user.id)
+              )
+            );
+        }
+
+        await tx
+          .update(feedbackTickets)
+          .set({ respondedAt: now, updatedAt: now })
+          .where(and(...ticketConditions));
+        return createdComment;
+      });
 
       // Notify the ticket submitter (non-internal comments only)
       if (!input.isInternal) {
@@ -642,7 +885,108 @@ export const feedbackRouter = router({
         }
       }
 
-      return { id: comment.id };
+      return { id: comment.id, attachmentIds };
+    }),
+
+  markRead: adminProcedure
+    .input(z.object({ ticketId: z.number().int() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const conditions = [eq(feedbackTickets.id, input.ticketId)];
+      const tenantCondition = adminTicketTenantCondition(ctx.tenantId);
+      if (tenantCondition) conditions.push(tenantCondition);
+      const [ticket] = await db
+        .select({ id: feedbackTickets.id })
+        .from(feedbackTickets)
+        .where(and(...conditions))
+        .limit(1);
+      if (!ticket) throw new TRPCError({ code: "NOT_FOUND" });
+
+      try {
+        await db
+          .insert(feedbackTicketReads)
+          .values({ ticketId: input.ticketId, userId: ctx.user.id })
+          .onConflictDoUpdate({
+            target: [feedbackTicketReads.ticketId, feedbackTicketReads.userId],
+            set: { readAt: new Date() },
+          });
+        return { success: true, persisted: true };
+      } catch (error) {
+        if (!isFeedbackSchemaCompatibilityError(error)) throw error;
+        // Opening a ticket must not turn a missing additive migration into a
+        // client auto-feedback loop. The next list treats active tickets as
+        // unread until the read-receipt table is available.
+        return { success: true, persisted: false };
+      }
+    }),
+
+  markAllRead: adminProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+    // Deliberately derive visibility from the authenticated context instead
+    // of accepting ticket IDs from the client. This also covers tickets that
+    // are outside the current 50-row page or active UI filters.
+    const visibility = ctx.tenantId
+      ? sql`(
+          ft."tenantId" = ${ctx.tenantId}
+          OR (ft."submittedByType" = 'system' AND ft."tenantId" IS NULL)
+        )`
+      : sql`TRUE`;
+    const result = await db.execute(sql`
+      WITH unread_tickets AS (
+        SELECT ft.id
+        FROM feedback_tickets ft
+        WHERE ${visibility}
+          AND ft.status <> 'closed'
+          AND NOT EXISTS (
+            SELECT 1
+            FROM feedback_ticket_reads ftr
+            WHERE ftr."ticketId" = ft.id
+              AND ftr."userId" = ${ctx.user.id}
+          )
+      )
+      INSERT INTO feedback_ticket_reads ("ticketId", "userId")
+      SELECT id, ${ctx.user.id}
+      FROM unread_tickets
+      ON CONFLICT ("ticketId", "userId")
+      DO UPDATE SET "readAt" = NOW()
+      RETURNING "ticketId"
+    `);
+
+    return {
+      success: true,
+      marked: (result as unknown as Array<{ ticketId: number }>).length,
+    };
+  }),
+
+  closeTicket: protectedProcedure
+    .input(z.object({ ticketId: z.number().int() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const isAdmin =
+        ctx.user.role === "admin" || ctx.user.role === "domain_admin";
+      const conditions = [eq(feedbackTickets.id, input.ticketId)];
+      const tenantCondition = isAdmin
+        ? adminTicketTenantCondition(ctx.tenantId)
+        : ownerTicketCondition(ctx.user.id, ctx.tenantId);
+      if (tenantCondition) conditions.push(tenantCondition);
+      const [ticket] = await db
+        .select({ id: feedbackTickets.id, status: feedbackTickets.status })
+        .from(feedbackTickets)
+        .where(and(...conditions))
+        .limit(1);
+      if (!ticket) throw new TRPCError({ code: "NOT_FOUND" });
+      if (isClosedTicket(ticket.status))
+        return { success: true, alreadyClosed: true };
+
+      await db
+        .update(feedbackTickets)
+        .set({ status: "closed", closedAt: new Date(), updatedAt: new Date() })
+        .where(and(...conditions));
+      return { success: true, alreadyClosed: false };
     }),
 
   updateStatus: adminProcedure
@@ -692,6 +1036,9 @@ export const feedbackRouter = router({
       const tenantCondition = adminTicketTenantCondition(ctx.tenantId);
       const updateConditions = [eq(feedbackTickets.id, input.ticketId)];
       if (tenantCondition) updateConditions.push(tenantCondition);
+      if (input.status !== "closed") {
+        updateConditions.push(sql`${feedbackTickets.status} <> 'closed'`);
+      }
 
       const updated = await db
         .update(feedbackTickets)
@@ -699,7 +1046,12 @@ export const feedbackRouter = router({
         .where(and(...updateConditions))
         .returning({ id: feedbackTickets.id });
 
-      if (updated.length === 0) throw new TRPCError({ code: "NOT_FOUND" });
+      if (updated.length === 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Closed feedback tickets cannot be reopened",
+        });
+      }
 
       // Notify user on meaningful status changes
       if (["resolved", "closed", "in_progress"].includes(input.status)) {
@@ -775,9 +1127,30 @@ export const feedbackRouter = router({
         .where(eq(feedbackTicketAttachments.ticketId, input.ticketId))
         .orderBy(feedbackTicketAttachments.createdAt);
 
+      let visibleAttachments = attachments;
+      if (!isAdmin) {
+        const visibleComments = await db
+          .select({ id: feedbackTicketComments.id })
+          .from(feedbackTicketComments)
+          .where(
+            and(
+              eq(feedbackTicketComments.ticketId, input.ticketId),
+              eq(feedbackTicketComments.isInternal, false)
+            )
+          );
+        const visibleCommentIds = new Set(
+          visibleComments.map(comment => comment.id)
+        );
+        visibleAttachments = attachments.filter(
+          attachment =>
+            attachment.commentId == null ||
+            visibleCommentIds.has(attachment.commentId)
+        );
+      }
+
       // Resolve URLs for each attachment
       const resolved = await Promise.all(
-        attachments.map(async a => {
+        visibleAttachments.map(async a => {
           const url = await storageResolveUrl(a.fileUrl).catch(() => a.fileUrl);
           return { ...a, resolvedUrl: url ?? a.fileUrl };
         })
@@ -852,18 +1225,55 @@ export const feedbackRouter = router({
       ? sql`("tenantId" = ${ctx.tenantId} OR ("submittedByType" = 'system' AND "tenantId" IS NULL))`
       : sql`1=1`;
 
-    const result = await db.execute(sql`
-      SELECT
-        COUNT(*) as total,
-        COUNT(*) FILTER (WHERE status = 'new') as new_count,
-        COUNT(*) FILTER (WHERE status = 'triaged') as triaged_count,
-        COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress_count,
-        COUNT(*) FILTER (WHERE status = 'resolved') as resolved_count,
-        COUNT(*) FILTER (WHERE "submittedByType" = 'human') as human_count,
-        COUNT(*) FILTER (WHERE "submittedByType" = 'system') as system_count
-      FROM feedback_tickets
-      WHERE ${conditions}
-    `);
+    let result;
+    try {
+      result = await db.execute(sql`
+        SELECT
+          COUNT(*) as total,
+          COUNT(*) FILTER (WHERE status = 'new') as new_count,
+          COUNT(*) FILTER (WHERE status = 'triaged') as triaged_count,
+          COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress_count,
+          COUNT(*) FILTER (WHERE status = 'resolved') as resolved_count,
+          COUNT(*) FILTER (WHERE "submittedByType" = 'human') as human_count,
+          COUNT(*) FILTER (
+            WHERE status <> 'closed'
+              AND NOT EXISTS (
+                SELECT 1 FROM feedback_ticket_reads ftr
+                WHERE ftr."ticketId" = feedback_tickets.id
+                  AND ftr."userId" = ${ctx.user.id}
+              )
+          ) as unread_count,
+          COUNT(*) FILTER (
+            WHERE status <> 'closed'
+              AND "updatedAt" < NOW() - INTERVAL '2 hours'
+              AND NOT EXISTS (
+                SELECT 1 FROM feedback_ticket_reads ftr
+                WHERE ftr."ticketId" = feedback_tickets.id
+                  AND ftr."userId" = ${ctx.user.id}
+              )
+          ) as overdue_unread_count
+        FROM feedback_tickets
+        WHERE ${conditions}
+      `);
+    } catch (error) {
+      if (!isFeedbackSchemaCompatibilityError(error)) throw error;
+      result = await db.execute(sql`
+        SELECT
+          COUNT(*) as total,
+          COUNT(*) FILTER (WHERE status = 'new') as new_count,
+          COUNT(*) FILTER (WHERE status = 'triaged') as triaged_count,
+          COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress_count,
+          COUNT(*) FILTER (WHERE status = 'resolved') as resolved_count,
+          COUNT(*) FILTER (WHERE "submittedByType" = 'human') as human_count,
+          COUNT(*) FILTER (WHERE status <> 'closed') as unread_count,
+          COUNT(*) FILTER (
+            WHERE status <> 'closed'
+              AND "updatedAt" < NOW() - INTERVAL '2 hours'
+          ) as overdue_unread_count
+        FROM feedback_tickets
+        WHERE ${conditions}
+      `);
+    }
 
     const [row] = result as any[];
     return {
@@ -874,23 +1284,14 @@ export const feedbackRouter = router({
       resolved: Number(row?.resolved_count ?? 0),
       human: Number(row?.human_count ?? 0),
       system: Number(row?.system_count ?? 0),
+      unread: Number(row?.unread_count ?? 0),
+      overdueUnread: Number(row?.overdue_unread_count ?? 0),
     };
   }),
 });
 
 // ─── Express Upload Route ────────────────────────────────────
 // Separate from tRPC because multer multipart handling requires Express middleware.
-
-const FEEDBACK_MAX_FILES = 5;
-const FEEDBACK_MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB per file
-const FEEDBACK_ALLOWED_EXTS = new Set([
-  "jpg",
-  "jpeg",
-  "png",
-  "webp",
-  "pdf",
-  "md",
-]);
 
 /** Strip path traversal and special chars from filename, keep extension */
 function sanitizeFileName(original: string): string {
@@ -983,7 +1384,10 @@ export function registerFeedbackUploadRoutes(app: Express) {
           ticketConditions.push(eq(feedbackTickets.tenantId, tenantId));
 
         const [ticket] = await db
-          .select({ submittedBy: feedbackTickets.submittedBy })
+          .select({
+            submittedBy: feedbackTickets.submittedBy,
+            status: feedbackTickets.status,
+          })
           .from(feedbackTickets)
           .where(and(...ticketConditions))
           .limit(1);
@@ -991,6 +1395,14 @@ export function registerFeedbackUploadRoutes(app: Express) {
         if (!ticket) {
           cleanupTempFiles(req);
           return res.status(404).json({ error: "Ticket not found" });
+        }
+
+        if (isClosedTicket(ticket.status)) {
+          cleanupTempFiles(req);
+          return res.status(409).json({
+            error:
+              "This feedback ticket is closed and cannot receive attachments",
+          });
         }
 
         if (ticket.submittedBy !== userId && !isAdmin) {
@@ -1004,6 +1416,22 @@ export function registerFeedbackUploadRoutes(app: Express) {
         if (!files || files.length === 0) {
           cleanupTempFiles(req);
           return res.status(400).json({ error: "No files provided" });
+        }
+
+        if (
+          req.body?.purpose === "reply" &&
+          files.some(file => {
+            const ext = file.originalname.split(".").pop()?.toLowerCase() ?? "";
+            return (
+              !file.mimetype.toLowerCase().startsWith("image/") ||
+              !FEEDBACK_ALLOWED_IMAGE_EXTS.has(ext)
+            );
+          })
+        ) {
+          cleanupTempFiles(req);
+          return res
+            .status(400)
+            .json({ error: "Replies can only include image files" });
         }
 
         // Use transaction for atomic count check + insert

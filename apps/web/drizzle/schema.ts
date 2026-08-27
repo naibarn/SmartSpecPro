@@ -13737,6 +13737,141 @@ export const mediaAssets = pgTable(
 export type MediaAsset = typeof mediaAssets.$inferSelect;
 export type InsertMediaAsset = typeof mediaAssets.$inferInsert;
 
+/** Durable provider provenance and R2 state for completed media tasks. */
+export const mediaTaskArtifacts = pgTable(
+  "media_task_artifacts",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    sourceKind: varchar("source_kind", { length: 32 }).notNull(),
+    sourceTaskId: varchar("source_task_id", { length: 256 }).notNull(),
+    outputIndex: integer("output_index").notNull().default(0),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mediaType: varchar("media_type", { length: 16 }).notNull(),
+    provider: varchar("provider", { length: 64 }),
+    model: varchar("model", { length: 255 }),
+    providerOriginalUrl: text("provider_original_url"),
+    providerStatus: varchar("provider_status", { length: 24 })
+      .notNull()
+      .default("unknown"),
+    providerCheckedAt: timestamp("provider_checked_at", {
+      withTimezone: true,
+    }),
+    providerError: text("provider_error"),
+    mediaAssetId: bigint("media_asset_id", { mode: "number" }).references(
+      () => mediaAssets.id,
+      { onDelete: "set null" },
+    ),
+    r2StorageKey: text("r2_storage_key"),
+    r2Status: varchar("r2_status", { length: 24 })
+      .notNull()
+      .default("pending"),
+    r2Error: text("r2_error"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("media_task_artifacts_owner_source_output_unique").on(
+      t.tenantId,
+      t.userId,
+      t.sourceKind,
+      t.sourceTaskId,
+      t.outputIndex,
+    ),
+    index("media_task_artifacts_tenant_user_created_idx").on(
+      t.tenantId,
+      t.userId,
+      t.createdAt,
+    ),
+    index("media_task_artifacts_status_retry_idx").on(
+      t.r2Status,
+      t.nextRetryAt,
+    ),
+  ],
+);
+
+export type MediaTaskArtifact = typeof mediaTaskArtifacts.$inferSelect;
+export type InsertMediaTaskArtifact = typeof mediaTaskArtifacts.$inferInsert;
+
+export const backupJobs = pgTable(
+  "backup_jobs",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    createdByUserId: integer("createdByUserId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    mode: varchar("mode", { length: 16 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("queued"),
+    databaseZipPath: text("databaseZipPath"),
+    databaseZipBytes: bigint("databaseZipBytes", { mode: "number" }),
+    databaseZipSha256: varchar("databaseZipSha256", { length: 64 }),
+    applicationZipPath: text("applicationZipPath"),
+    applicationZipBytes: bigint("applicationZipBytes", { mode: "number" }),
+    applicationZipSha256: varchar("applicationZipSha256", { length: 64 }),
+    startedAt: timestamp("startedAt", { withTimezone: true }),
+    completedAt: timestamp("completedAt", { withTimezone: true }),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    errorMessage: text("errorMessage"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    index("backup_jobs_status_created_idx").on(t.status, t.createdAt),
+    index("backup_jobs_expires_idx").on(t.expiresAt),
+  ],
+);
+
+export type BackupJobRow = typeof backupJobs.$inferSelect;
+export type InsertBackupJobRow = typeof backupJobs.$inferInsert;
+
+export const capacityAssessments = pgTable(
+  "capacity_assessments",
+  {
+    id: serial("id").primaryKey(),
+    status: text("status").notNull(),
+    trigger: text("trigger").notNull(),
+    requestedByUserId: integer("requestedByUserId").references(
+      () => users.id,
+      { onDelete: "set null" },
+    ),
+    snapshot: jsonb("snapshot").notNull(),
+    assessment: jsonb("assessment"),
+    errorMessage: text("errorMessage"),
+    startedAt: timestamp("startedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp("completedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    phase: text("phase").notNull().default("requested"),
+    policyVersion: text("policyVersion"),
+    deterministicAssessment: jsonb("deterministicAssessment"),
+    coverage: jsonb("coverage"),
+    durationMs: integer("durationMs"),
+  },
+  t => [
+    index("idx_capacity_assessments_status").on(t.status),
+    index("idx_capacity_assessments_created_at").on(t.createdAt),
+    index("idx_capacity_assessments_phase").on(t.phase),
+  ],
+);
+
+export type CapacityAssessment = typeof capacityAssessments.$inferSelect;
+export type InsertCapacityAssessment = typeof capacityAssessments.$inferInsert;
+
 /**
  * media_provider_assets — reusable provider-side assets such as Gemini Omni
  * character IDs and audio IDs. These IDs are not media task IDs.
@@ -14496,6 +14631,8 @@ export const workerJobs = pgTable(
     workerId: varchar("workerId", { length: 36 }).references(() => workers.id, {
       onDelete: "set null",
     }),
+    workerSeriesBindingId: varchar("workerSeriesBindingId", { length: 36 }),
+    workerSeriesBindingRevision: integer("workerSeriesBindingRevision"),
     runtimeType: workerRuntimeTypeEnum("runtimeType").notNull(),
     workflowRunId: varchar("workflowRunId", { length: 36 }),
     requestedByUserId: integer("requestedByUserId").references(() => users.id, {
@@ -14552,6 +14689,11 @@ export const workerJobs = pgTable(
     ),
     index("worker_jobs_worker_status_idx").on(t.workerId, t.status),
     index("worker_jobs_lease_expires_idx").on(t.leaseExpiresAt),
+    index("worker_jobs_series_binding_idx").on(
+      t.workerSeriesBindingId,
+      t.workerSeriesBindingRevision,
+      t.status,
+    ),
   ]
 );
 
@@ -15119,6 +15261,9 @@ export const feedbackTicketAttachments = pgTable(
     ticketId: integer("ticketId")
       .notNull()
       .references(() => feedbackTickets.id, { onDelete: "cascade" }),
+    commentId: integer("commentId").references(() => feedbackTicketComments.id, {
+      onDelete: "set null",
+    }),
     fileName: varchar("fileName", { length: 255 }).notNull(),
     fileUrl: varchar("fileUrl", { length: 500 }).notNull(),
     fileSize: integer("fileSize"),
@@ -15132,6 +15277,31 @@ export const feedbackTicketAttachments = pgTable(
 
 export type FeedbackTicketAttachment =
   typeof feedbackTicketAttachments.$inferSelect;
+
+export const feedbackTicketReads = pgTable(
+  "feedback_ticket_reads",
+  {
+    id: serial("id").primaryKey(),
+    ticketId: integer("ticketId")
+      .notNull()
+      .references(() => feedbackTickets.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    readAt: timestamp("readAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("feedback_ticket_reads_ticket_user_unique").on(
+      t.ticketId,
+      t.userId,
+    ),
+    index("feedback_ticket_reads_user_read_idx").on(t.userId, t.readAt),
+  ],
+);
+
+export type FeedbackTicketRead = typeof feedbackTicketReads.$inferSelect;
 
 // ==========================================
 // Virtual AI Office Orchestrator — Rooms, Runs, Monitoring (Section 02)
@@ -21077,6 +21247,720 @@ export type VerticalDramaSeriesRow = typeof verticalDramaSeries.$inferSelect;
 export type InsertVerticalDramaSeriesRow =
   typeof verticalDramaSeries.$inferInsert;
 
+/** Durable story-generation execution and assurance state. */
+export const verticalDramaStoryGenerationRuns = pgTable(
+  "vertical_drama_story_generation_runs",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    runId: varchar("runId", { length: 64 }).notNull(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" }).references(
+      () => verticalDramaSeries.id,
+      { onDelete: "cascade" },
+    ),
+    runKey: varchar("runKey", { length: 256 }).notNull(),
+    idempotencyKey: varchar("idempotencyKey", { length: 256 }).notNull(),
+    taskKind: varchar("taskKind", { length: 32 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("queued"),
+    stage: varchar("stage", { length: 32 }).notNull().default("admission"),
+    contractVersion: varchar("contractVersion", { length: 64 }).notNull(),
+    contractHash: varchar("contractHash", { length: 64 }).notNull(),
+    sourceRevision: varchar("sourceRevision", { length: 256 }).notNull(),
+    sourceFingerprint: varchar("sourceFingerprint", { length: 64 }).notNull(),
+    sourceSnapshotJson: jsonb("sourceSnapshotJson").notNull(),
+    contractJson: jsonb("contractJson").notNull(),
+    checkpointJson: jsonb("checkpointJson"),
+    validationReportJson: jsonb("validationReportJson"),
+    eventCursor: integer("eventCursor").notNull().default(0),
+    activeAttemptId: varchar("activeAttemptId", { length: 64 }),
+    leaseOwner: varchar("leaseOwner", { length: 128 }),
+    leaseExpiresAt: timestamp("leaseExpiresAt", { withTimezone: true }),
+    fenceToken: integer("fenceToken").notNull().default(0),
+    finalArtifactId: bigint("finalArtifactId", { mode: "number" }),
+    finalizationKey: varchar("finalizationKey", { length: 256 }),
+    acceptedPlanVersionId: varchar("acceptedPlanVersionId", { length: 128 }),
+    sourcePlanCandidateArtifactId: bigint("sourcePlanCandidateArtifactId", {
+      mode: "number",
+    }),
+    reservedCredits: integer("reservedCredits").notNull().default(0),
+    drawnCredits: integer("drawnCredits").notNull().default(0),
+    cancellationRequestedAt: timestamp("cancellationRequestedAt", {
+      withTimezone: true,
+    }),
+    errorCode: varchar("errorCode", { length: 96 }),
+    errorJson: jsonb("errorJson"),
+    surface: varchar("surface", { length: 64 }),
+    domainOwnerType: varchar("domainOwnerType", { length: 64 }),
+    domainOwnerId: varchar("domainOwnerId", { length: 128 }),
+    contextSnapshotId: varchar("contextSnapshotId", { length: 128 }),
+    contextSnapshotRevision: integer("contextSnapshotRevision"),
+    contextFingerprint: varchar("contextFingerprint", { length: 64 }),
+    assuranceState: varchar("assuranceState", { length: 32 }),
+    disposition: varchar("disposition", { length: 40 }),
+    readiness: varchar("readiness", { length: 32 }),
+    nextAction: varchar("nextAction", { length: 96 }),
+    stateVersion: integer("stateVersion").notNull().default(0),
+    heartbeatAt: timestamp("heartbeatAt", { withTimezone: true }),
+    acceptedAttemptId: varchar("acceptedAttemptId", { length: 64 }),
+    reconciliationState: varchar("reconciliationState", { length: 40 }),
+    projectionSchemaVersion: integer("projectionSchemaVersion"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp("completedAt", { withTimezone: true }),
+  },
+  t => [
+    uniqueIndex("vd_story_generation_run_key_unique").on(t.tenantId, t.runKey),
+    uniqueIndex("vd_story_generation_idempotency_unique").on(
+      t.tenantId,
+      t.idempotencyKey,
+    ),
+    index("vd_story_generation_lookup_idx").on(
+      t.tenantId,
+      t.seriesId,
+      t.createdAt,
+    ),
+    index("vd_story_generation_status_idx").on(
+      t.tenantId,
+      t.status,
+      t.updatedAt,
+    ),
+  ],
+);
+
+export type VerticalDramaStoryGenerationRunRow =
+  typeof verticalDramaStoryGenerationRuns.$inferSelect;
+export type InsertVerticalDramaStoryGenerationRunRow =
+  typeof verticalDramaStoryGenerationRuns.$inferInsert;
+
+export const verticalDramaAssuranceAttempts = pgTable(
+  "vertical_drama_assurance_attempts",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    executionRowId: bigint("executionRowId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaStoryGenerationRuns.id, {
+        onDelete: "cascade",
+      }),
+    executionId: varchar("executionId", { length: 64 }).notNull(),
+    attemptId: varchar("attemptId", { length: 64 }).notNull(),
+    ordinal: integer("ordinal").notNull(),
+    parentAttemptId: varchar("parentAttemptId", { length: 64 }),
+    domainTaskKind: varchar("domainTaskKind", { length: 64 }).notNull(),
+    runtimeTaskKind: varchar("runtimeTaskKind", { length: 64 }),
+    sourceRevision: varchar("sourceRevision", { length: 256 }),
+    sourceFingerprint: varchar("sourceFingerprint", { length: 64 }).notNull(),
+    contextSnapshotId: varchar("contextSnapshotId", { length: 128 }),
+    contextSnapshotRevision: integer("contextSnapshotRevision"),
+    contextFingerprint: varchar("contextFingerprint", { length: 64 }),
+    contractVersion: varchar("contractVersion", { length: 64 }),
+    contractHash: varchar("contractHash", { length: 64 }).notNull(),
+    outputContractVersion: varchar("outputContractVersion", { length: 64 }),
+    rulePackIdsJson: jsonb("rulePackIdsJson").notNull().default([]),
+    modelHash: varchar("modelHash", { length: 64 }),
+    policyHash: varchar("policyHash", { length: 64 }).notNull(),
+    compatibilityMode: varchar("compatibilityMode", { length: 32 }),
+    assuranceMode: varchar("assuranceMode", { length: 32 }),
+    budgetJson: jsonb("budgetJson"),
+    sideEffectPolicy: varchar("sideEffectPolicy", { length: 32 })
+      .notNull()
+      .default("none"),
+    state: varchar("state", { length: 32 }).notNull().default("queued"),
+    disposition: varchar("disposition", { length: 40 })
+      .notNull()
+      .default("retryable"),
+    readiness: varchar("readiness", { length: 32 }).notNull().default("draft"),
+    nextAction: varchar("nextAction", { length: 96 }),
+    errorCode: varchar("errorCode", { length: 96 }),
+    heartbeatAt: timestamp("heartbeatAt", { withTimezone: true }),
+    leaseGenerationObserved: integer("leaseGenerationObserved")
+      .notNull()
+      .default(0),
+    acceptedDomainRef: varchar("acceptedDomainRef", { length: 256 }),
+    recoveredDomainRef: varchar("recoveredDomainRef", { length: 256 }),
+    finalOutputHash: varchar("finalOutputHash", { length: 64 }),
+    traceRef: varchar("traceRef", { length: 128 }),
+    reconciliationState: varchar("reconciliationState", { length: 40 }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp("completedAt", { withTimezone: true }),
+  },
+  t => [
+    uniqueIndex("vd_assurance_attempt_identity_unique").on(
+      t.tenantId,
+      t.executionRowId,
+      t.attemptId,
+    ),
+    uniqueIndex("vd_assurance_attempt_ordinal_unique").on(
+      t.tenantId,
+      t.executionRowId,
+      t.ordinal,
+    ),
+    index("vd_assurance_attempt_reconcile_idx").on(
+      t.tenantId,
+      t.state,
+      t.heartbeatAt,
+      t.updatedAt,
+    ),
+  ],
+);
+
+export type VerticalDramaAssuranceAttemptRow =
+  typeof verticalDramaAssuranceAttempts.$inferSelect;
+
+export const verticalDramaAssuranceEvents = pgTable(
+  "vertical_drama_assurance_events",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    executionRowId: bigint("executionRowId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaStoryGenerationRuns.id, {
+        onDelete: "cascade",
+      }),
+    executionId: varchar("executionId", { length: 64 }).notNull(),
+    attemptId: varchar("attemptId", { length: 64 }).notNull(),
+    sequence: integer("sequence").notNull(),
+    eventIdempotencyKey: varchar("eventIdempotencyKey", {
+      length: 256,
+    }).notNull(),
+    previousState: varchar("previousState", { length: 32 }),
+    nextState: varchar("nextState", { length: 32 }).notNull(),
+    actorClass: varchar("actorClass", { length: 32 }).notNull(),
+    reasonCode: varchar("reasonCode", { length: 96 }).notNull(),
+    contractHash: varchar("contractHash", { length: 64 }),
+    outputHash: varchar("outputHash", { length: 64 }),
+    traceRef: varchar("traceRef", { length: 128 }),
+    metadataJson: jsonb("metadataJson").notNull().default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    uniqueIndex("vd_assurance_event_sequence_unique").on(
+      t.tenantId,
+      t.executionRowId,
+      t.sequence,
+    ),
+    uniqueIndex("vd_assurance_event_idempotency_unique").on(
+      t.tenantId,
+      t.executionRowId,
+      t.eventIdempotencyKey,
+    ),
+    index("vd_assurance_event_replay_idx").on(
+      t.tenantId,
+      t.executionRowId,
+      t.sequence,
+    ),
+  ],
+);
+
+export type VerticalDramaAssuranceEventRow =
+  typeof verticalDramaAssuranceEvents.$inferSelect;
+
+export const verticalDramaAssuranceCalls = pgTable(
+  "vertical_drama_assurance_calls",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    executionRowId: bigint("executionRowId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaStoryGenerationRuns.id, {
+        onDelete: "cascade",
+      }),
+    executionId: varchar("executionId", { length: 64 }).notNull(),
+    attemptId: varchar("attemptId", { length: 64 }).notNull(),
+    providerCallId: varchar("providerCallId", { length: 96 }).notNull(),
+    callKey: varchar("callKey", { length: 256 }).notNull(),
+    ordinal: integer("ordinal").notNull(),
+    purpose: varchar("purpose", { length: 64 }).notNull(),
+    payer: varchar("payer", { length: 24 }).notNull(),
+    billingOwner: varchar("billingOwner", { length: 96 }).notNull(),
+    provider: varchar("provider", { length: 96 }),
+    model: varchar("model", { length: 160 }),
+    inputHash: varchar("inputHash", { length: 64 }).notNull(),
+    reservationId: varchar("reservationId", { length: 128 }),
+    settlementKey: varchar("settlementKey", { length: 256 }),
+    estimatedCredits: integer("estimatedCredits").notNull().default(0),
+    actualCredits: integer("actualCredits"),
+    status: varchar("status", { length: 32 }).notNull().default("registered"),
+    usageKnown: boolean("usageKnown").notNull().default(false),
+    providerRequestId: varchar("providerRequestId", { length: 256 }),
+    providerTaskId: varchar("providerTaskId", { length: 256 }),
+    metadataJson: jsonb("metadataJson").notNull().default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    startedAt: timestamp("startedAt", { withTimezone: true }),
+    finishedAt: timestamp("finishedAt", { withTimezone: true }),
+  },
+  t => [
+    uniqueIndex("vd_assurance_call_provider_id_unique").on(
+      t.tenantId,
+      t.providerCallId,
+    ),
+    uniqueIndex("vd_assurance_call_key_unique").on(t.tenantId, t.callKey),
+    index("vd_assurance_call_reconcile_idx").on(
+      t.tenantId,
+      t.status,
+      t.createdAt,
+    ),
+  ],
+);
+
+export const verticalDramaSourcePackSessions = pgTable(
+  "vertical_drama_source_pack_sessions",
+  {
+    draftSessionId: varchar("draftSessionId", { length: 128 }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    claimedAt: timestamp("claimedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    index("vds_source_pack_sessions_owner_idx").on(
+      t.tenantId,
+      t.userId,
+      t.status,
+      t.expiresAt,
+    ),
+  ],
+);
+
+export type VerticalDramaSourcePackSession =
+  typeof verticalDramaSourcePackSessions.$inferSelect;
+export type InsertVerticalDramaSourcePackSession =
+  typeof verticalDramaSourcePackSessions.$inferInsert;
+
+export const verticalDramaSourcePacks = pgTable(
+  "vertical_drama_source_packs",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" }).references(
+      () => verticalDramaSeries.id,
+      { onDelete: "cascade" },
+    ),
+    draftSessionId: varchar("draftSessionId", { length: 128 }).references(
+      () => verticalDramaSourcePackSessions.draftSessionId,
+      { onDelete: "set null" },
+    ),
+    profileId: varchar("profileId", { length: 64 }).notNull(),
+    profileVersion: integer("profileVersion").notNull().default(1),
+    visualVersion: integer("visualVersion").notNull().default(1),
+    status: varchar("status", { length: 32 }).notNull().default("draft"),
+    version: integer("version").notNull().default(1),
+    attachIdempotencyKey: varchar("attachIdempotencyKey", { length: 256 }),
+    digestVersion: integer("digestVersion").notNull().default(0),
+    attachedAt: timestamp("attachedAt", { withTimezone: true }),
+    deletedAt: timestamp("deletedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    index("vds_source_packs_series_idx").on(t.tenantId, t.seriesId),
+  ],
+);
+
+export type VerticalDramaSourcePack = typeof verticalDramaSourcePacks.$inferSelect;
+export type InsertVerticalDramaSourcePack =
+  typeof verticalDramaSourcePacks.$inferInsert;
+
+export const verticalDramaSourceAssets = pgTable(
+  "vertical_drama_source_assets",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    packId: bigint("packId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSourcePacks.id, { onDelete: "cascade" }),
+    mediaAssetId: bigint("mediaAssetId", { mode: "number" }).references(
+      () => mediaAssets.id,
+      { onDelete: "set null" },
+    ),
+    clientMutationKey: varchar("clientMutationKey", { length: 128 }),
+    sourceKind: varchar("sourceKind", { length: 32 }).notNull(),
+    title: varchar("title", { length: 180 }).notNull(),
+    description: text("description"),
+    provenanceJson: jsonb("provenanceJson"),
+    rightsStatus: varchar("rightsStatus", { length: 32 })
+      .notNull()
+      .default("pending"),
+    disclosureStatus: varchar("disclosureStatus", { length: 32 })
+      .notNull()
+      .default("not_required"),
+    analysisStatus: varchar("analysisStatus", { length: 32 })
+      .notNull()
+      .default("not_requested"),
+    analysisVersion: integer("analysisVersion").notNull().default(0),
+    deletedAt: timestamp("deletedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    index("vds_source_assets_pack_idx").on(t.tenantId, t.packId, t.deletedAt),
+  ],
+);
+
+export type VerticalDramaSourceAsset = typeof verticalDramaSourceAssets.$inferSelect;
+export type InsertVerticalDramaSourceAsset =
+  typeof verticalDramaSourceAssets.$inferInsert;
+
+export const verticalDramaSourceSlots = pgTable(
+  "vertical_drama_source_slots",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    packId: bigint("packId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSourcePacks.id, { onDelete: "cascade" }),
+    sourceAssetId: bigint("sourceAssetId", { mode: "number" }).references(
+      () => verticalDramaSourceAssets.id,
+      { onDelete: "set null" },
+    ),
+    slotKey: varchar("slotKey", { length: 96 }).notNull(),
+    title: varchar("title", { length: 180 }).notNull(),
+    narrativeDescription: text("narrativeDescription"),
+    sourceKind: varchar("sourceKind", { length: 32 }).notNull().default("custom"),
+    required: boolean("required").notNull().default(false),
+    usagePolicy: varchar("usagePolicy", { length: 32 })
+      .notNull()
+      .default("reference"),
+    status: varchar("status", { length: 32 }).notNull().default("draft"),
+    version: integer("version").notNull().default(1),
+    sortOrder: integer("sortOrder").notNull().default(0),
+    deletedAt: timestamp("deletedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    uniqueIndex("vds_source_slots_pack_key_unique").on(t.packId, t.slotKey),
+    index("vds_source_slots_pack_order_idx").on(
+      t.tenantId,
+      t.packId,
+      t.sortOrder,
+    ),
+  ],
+);
+
+export type VerticalDramaSourceSlot = typeof verticalDramaSourceSlots.$inferSelect;
+export type InsertVerticalDramaSourceSlot =
+  typeof verticalDramaSourceSlots.$inferInsert;
+
+export const verticalDramaSourceAnalyses = pgTable(
+  "vertical_drama_source_analyses",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    packId: bigint("packId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSourcePacks.id, { onDelete: "cascade" }),
+    sourceAssetId: bigint("sourceAssetId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSourceAssets.id, { onDelete: "cascade" }),
+    policyVersion: varchar("policyVersion", { length: 64 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("queued"),
+    suggestion: text("suggestion"),
+    evidenceJson: jsonb("evidenceJson"),
+    errorCode: varchar("errorCode", { length: 96 }),
+    attemptCount: integer("attemptCount").notNull().default(0),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    uniqueIndex("vds_source_analysis_policy_unique").on(
+      t.tenantId,
+      t.sourceAssetId,
+      t.policyVersion,
+    ),
+  ],
+);
+
+export type VerticalDramaSourceAnalysis =
+  typeof verticalDramaSourceAnalyses.$inferSelect;
+export type InsertVerticalDramaSourceAnalysis =
+  typeof verticalDramaSourceAnalyses.$inferInsert;
+
+export const verticalDramaSourcePackAuditEvents = pgTable(
+  "vertical_drama_source_pack_audit_events",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    packId: bigint("packId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSourcePacks.id, { onDelete: "cascade" }),
+    eventType: varchar("eventType", { length: 64 }).notNull(),
+    metadataJson: jsonb("metadataJson"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    index("vds_source_pack_events_lookup_idx").on(
+      t.tenantId,
+      t.packId,
+      t.createdAt,
+    ),
+  ],
+);
+
+export type VerticalDramaSourcePackAuditEvent =
+  typeof verticalDramaSourcePackAuditEvents.$inferSelect;
+export type InsertVerticalDramaSourcePackAuditEvent =
+  typeof verticalDramaSourcePackAuditEvents.$inferInsert;
+
+export const workerSeriesBindings = pgTable(
+  "worker_series_bindings",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    workerId: varchar("workerId", { length: 36 })
+      .notNull()
+      .references(() => workers.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    rootId: varchar("rootId", { length: 128 }).notNull(),
+    rootFingerprint: varchar("rootFingerprint", { length: 128 }).notNull(),
+    workspaceMode: varchar("workspaceMode", { length: 32 })
+      .notNull()
+      .default("local_only"),
+    status: varchar("status", { length: 24 }).notNull().default("pending"),
+    bindingRevision: integer("bindingRevision").notNull().default(1),
+    policySnapshotJson: jsonb("policySnapshotJson").notNull().default({}),
+    lastValidatedAt: timestamp("lastValidatedAt", { withTimezone: true }),
+    lastScanAt: timestamp("lastScanAt", { withTimezone: true }),
+    revokedAt: timestamp("revokedAt", { withTimezone: true }),
+    revokedByUserId: integer("revokedByUserId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    revocationReason: varchar("revocationReason", { length: 255 }),
+    createdByUserId: integer("createdByUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    index("worker_series_bindings_worker_idx").on(
+      t.tenantId,
+      t.workerId,
+      t.status,
+    ),
+    index("worker_series_bindings_series_idx").on(
+      t.tenantId,
+      t.seriesId,
+      t.status,
+    ),
+    uniqueIndex("worker_series_bindings_active_root_unique").on(
+      t.tenantId,
+      t.workerId,
+      t.seriesId,
+      t.rootId,
+    ),
+  ],
+);
+
+export type WorkerSeriesBinding = typeof workerSeriesBindings.$inferSelect;
+export type InsertWorkerSeriesBinding = typeof workerSeriesBindings.$inferInsert;
+
+export const workerSeriesControlPlaneIdempotency = pgTable(
+  "worker_series_control_plane_idempotency",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    workerId: varchar("workerId", { length: 36 })
+      .notNull()
+      .references(() => workers.id, { onDelete: "cascade" }),
+    idempotencyKey: varchar("idempotencyKey", { length: 160 }).notNull(),
+    requestHash: varchar("requestHash", { length: 64 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("accepted"),
+    responseJson: jsonb("responseJson"),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    uniqueIndex("worker_series_idempotency_identity_unique").on(
+      t.tenantId,
+      t.workerId,
+      t.idempotencyKey,
+    ),
+    index("worker_series_idempotency_expiry_idx").on(t.expiresAt),
+  ],
+);
+
+export type WorkerSeriesControlPlaneIdempotency =
+  typeof workerSeriesControlPlaneIdempotency.$inferSelect;
+export type InsertWorkerSeriesControlPlaneIdempotency =
+  typeof workerSeriesControlPlaneIdempotency.$inferInsert;
+
+export const verticalDramaMediaAssets = pgTable(
+  "vertical_drama_media_assets",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    bindingId: varchar("bindingId", { length: 36 }).references(
+      () => workerSeriesBindings.id,
+      { onDelete: "set null" },
+    ),
+    sourceAssetId: varchar("sourceAssetId", { length: 160 }).notNull(),
+    sourceRevision: varchar("sourceRevision", { length: 160 }).notNull(),
+    sourceFingerprint: varchar("sourceFingerprint", { length: 64 }).notNull(),
+    assetKind: varchar("assetKind", { length: 24 }).notNull(),
+    pipelineState: varchar("pipelineState", { length: 24 })
+      .notNull()
+      .default("discovered"),
+    sourceMetadataJson: jsonb("sourceMetadataJson").notNull().default({}),
+    derivedArtifactJson: jsonb("derivedArtifactJson"),
+    qcReportJson: jsonb("qcReportJson"),
+    provenanceJson: jsonb("provenanceJson").notNull().default({}),
+    vectorIndexStatus: varchar("vectorIndexStatus", { length: 24 })
+      .notNull()
+      .default("not_requested"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    uniqueIndex("vds_media_assets_identity_unique").on(
+      t.tenantId,
+      t.seriesId,
+      t.sourceAssetId,
+      t.sourceRevision,
+    ),
+    index("vds_media_assets_series_state_idx").on(
+      t.tenantId,
+      t.seriesId,
+      t.pipelineState,
+    ),
+    index("vds_media_assets_vector_status_idx").on(
+      t.tenantId,
+      t.seriesId,
+      t.vectorIndexStatus,
+    ),
+  ],
+);
+
+export type VerticalDramaMediaAsset = typeof verticalDramaMediaAssets.$inferSelect;
+export type InsertVerticalDramaMediaAsset =
+  typeof verticalDramaMediaAssets.$inferInsert;
+
+export const verticalDramaMediaIndexRecords = pgTable(
+  "vertical_drama_media_index_records",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    mediaAssetId: varchar("mediaAssetId", { length: 36 })
+      .notNull()
+      .references(() => verticalDramaMediaAssets.id, { onDelete: "cascade" }),
+    artifactRevision: varchar("artifactRevision", { length: 160 }).notNull(),
+    searchableText: text("searchableText").notNull().default(""),
+    tagsJson: jsonb("tagsJson").notNull().default([]),
+    embeddingRef: varchar("embeddingRef", { length: 255 }),
+    status: varchar("status", { length: 24 }).notNull().default("queued"),
+    attemptCount: integer("attemptCount").notNull().default(0),
+    lastError: text("lastError"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    uniqueIndex("vds_media_index_identity_unique").on(
+      t.tenantId,
+      t.seriesId,
+      t.mediaAssetId,
+      t.artifactRevision,
+    ),
+    index("vds_media_index_series_status_idx").on(
+      t.tenantId,
+      t.seriesId,
+      t.status,
+    ),
+  ],
+);
+
+export type VerticalDramaMediaIndexRecord =
+  typeof verticalDramaMediaIndexRecords.$inferSelect;
+export type InsertVerticalDramaMediaIndexRecord =
+  typeof verticalDramaMediaIndexRecords.$inferInsert;
+
 /** Series characters — character stock with identity lock and reference assets (spec §7.2/§7.3). */
 export const verticalDramaCharacters = pgTable(
   "vertical_drama_characters",
@@ -22382,4 +23266,3 @@ export const verticalDramaPromptExpansionRuns = pgTable(
 );
 export type VerticalDramaPromptExpansionRun = typeof verticalDramaPromptExpansionRuns.$inferSelect;
 export type InsertVerticalDramaPromptExpansionRun = typeof verticalDramaPromptExpansionRuns.$inferInsert;
-

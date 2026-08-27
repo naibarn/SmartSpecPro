@@ -348,4 +348,99 @@ describe("feedback admin tenant scope", () => {
       "Reporter: user119@example.com (user #119)\nUser ID: 119\nError: Insufficient credits"
     );
   });
+
+  it("keeps legacy tickets visible while the read-receipt migration is pending", async () => {
+    const schemaError = Object.assign(
+      new Error("Failed query: feedback_ticket_reads"),
+      {
+        cause: {
+          code: "42P01",
+          message: 'relation "feedback_ticket_reads" does not exist',
+        },
+      }
+    );
+    const ticket = {
+      id: 481,
+      submittedBy: null,
+      status: "new",
+      updatedAt: new Date("2026-08-27T00:00:00.000Z"),
+      createdAt: new Date("2026-08-26T00:00:00.000Z"),
+    };
+    const brokenListQuery = {
+      from: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      offset: vi.fn().mockReturnThis(),
+      where: vi.fn().mockRejectedValue(schemaError),
+    };
+    const fallbackListQuery = {
+      from: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      offset: vi.fn().mockReturnThis(),
+      where: vi.fn().mockResolvedValue([ticket]),
+    };
+    const queries = [brokenListQuery, fallbackListQuery];
+    mockGetDb.mockResolvedValue({
+      select: vi.fn(() => queries.shift()),
+    });
+
+    const result = await createCaller().list({});
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual(
+      expect.objectContaining({ id: 481, isRead: false })
+    );
+  });
+
+  it("does not report an automatic client error when markRead is unavailable", async () => {
+    const schemaError = Object.assign(
+      new Error("Failed query: feedback_ticket_reads"),
+      {
+        cause: {
+          code: "42P01",
+          message: 'relation "feedback_ticket_reads" does not exist',
+        },
+      }
+    );
+    const ticketQuery = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue([{ id: 481 }]),
+    };
+    const insertQuery = {
+      values: vi.fn().mockReturnThis(),
+      onConflictDoUpdate: vi.fn().mockRejectedValue(schemaError),
+    };
+    const queries = [ticketQuery];
+    mockGetDb.mockResolvedValue({
+      select: vi.fn(() => queries.shift()),
+      insert: vi.fn(() => insertQuery),
+    });
+
+    await expect(createCaller().markRead({ ticketId: 481 })).resolves.toEqual({
+      success: true,
+      persisted: false,
+    });
+  });
+
+  it("marks all visible open tickets as read in one scoped operation", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValue([{ ticketId: 481 }, { ticketId: 482 }]);
+    mockGetDb.mockResolvedValue({ execute });
+
+    await expect(createCaller().markAllRead()).resolves.toEqual({
+      success: true,
+      marked: 2,
+    });
+
+    const query = execute.mock.calls[0]?.[0];
+    const chunks = query.queryChunks as Array<unknown>;
+    const textChunks = chunks
+      .flatMap(chunk => (chunk as { value?: string[] }).value ?? [])
+      .join("");
+    expect(textChunks).toContain("feedback_ticket_reads");
+    expect(textChunks).toContain("ft.status <> 'closed'");
+  });
 });

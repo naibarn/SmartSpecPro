@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
@@ -21,10 +21,7 @@ import {
   SelectValue,
 } from "@smartspec/ui/src/components/ui/select";
 import { ScrollArea } from "@smartspec/ui/src/components/ui/scroll-area";
-import {
-  Dialog,
-  DialogContent,
-} from "@smartspec/ui/src/components/ui/dialog";
+import { Dialog, DialogContent } from "@smartspec/ui/src/components/ui/dialog";
 import {
   Collapsible,
   CollapsibleContent,
@@ -53,12 +50,15 @@ import {
   Stethoscope,
 } from "lucide-react";
 
+const EMPTY_TICKETS: never[] = [];
+
 function formatTicketTitle(
   title: string,
   reporterEmail?: string | null,
-  reporterId?: number | null,
+  reporterId?: number | null
 ): string {
-  const label = reporterEmail || (reporterId != null ? `user #${reporterId}` : "");
+  const label =
+    reporterEmail || (reporterId != null ? `user #${reporterId}` : "");
   if (!label || title.startsWith(`[${label}]`)) return title;
   return `[${label}] ${title}`;
 }
@@ -78,6 +78,17 @@ export default function AdminFeedbackHub() {
     "human" | "system" | undefined
   >("human");
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
+  const [optimisticallyReadTicketIds, setOptimisticallyReadTicketIds] =
+    useState<Set<number>>(() => new Set());
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [ticketOrderIds, setTicketOrderIds] = useState<number[]>([]);
+  const ticketFilterKey = [
+    statusFilter ?? "",
+    typeFilter ?? "",
+    sourceFilter ?? "all",
+    unreadOnly ? "unread" : "all",
+  ].join("|");
+  const previousTicketFilterKeyRef = useRef(ticketFilterKey);
 
   // Deep-link: auto-select ticket from ?ticketId=X
   useEffect(() => {
@@ -94,17 +105,30 @@ export default function AdminFeedbackHub() {
     setLocation(`/admin/feedback-hub?ticketId=${ticketId}`);
   };
   const [commentText, setCommentText] = useState("");
+  const [replyFiles, setReplyFiles] = useState<File[]>([]);
+  const [replyUploading, setReplyUploading] = useState(false);
   const [isInternal, setIsInternal] = useState(false);
+  const [overdueAlertOpen, setOverdueAlertOpen] = useState(false);
+  const lastOverdueAlertAtRef = useRef<number | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
-  const statsQuery = trpc.feedback.stats.useQuery();
-  const ticketsQuery = trpc.feedback.list.useQuery({
-    status: statusFilter as any,
-    ticketType: typeFilter as any,
-    submittedByType: sourceFilter,
-    limit: 50,
+  const statsQuery = trpc.feedback.stats.useQuery(undefined, {
+    refetchInterval: 60_000,
   });
+  const ticketsQuery = trpc.feedback.list.useQuery(
+    {
+      status: statusFilter as any,
+      ticketType: typeFilter as any,
+      submittedByType: sourceFilter,
+      unreadOnly,
+      // Load the full human-feedback queue (currently under 100 tickets) so
+      // the left-hand scroll can reach older reports instead of silently
+      // truncating the list at the first 50 rows.
+      limit: 100,
+    },
+    { refetchInterval: 60_000 }
+  );
   const ticketDetailQuery = trpc.feedback.getTicket.useQuery(
     { id: selectedTicketId! },
     { enabled: !!selectedTicketId }
@@ -119,6 +143,7 @@ export default function AdminFeedbackHub() {
   const addCommentMutation = trpc.feedback.addComment.useMutation({
     onSuccess: () => {
       setCommentText("");
+      setReplyFiles([]);
       ticketDetailQuery.refetch();
       toast.success(
         isInternal
@@ -130,6 +155,48 @@ export default function AdminFeedbackHub() {
       toast.error(err.message || "Failed to send comment");
     },
   });
+  const markReadMutation = trpc.feedback.markRead.useMutation({
+    onSuccess: () => {
+      ticketsQuery.refetch();
+      statsQuery.refetch();
+    },
+    onError: (err, variables) => {
+      if (variables?.ticketId != null) {
+        setOptimisticallyReadTicketIds(current => {
+          const next = new Set(current);
+          next.delete(variables.ticketId);
+          return next;
+        });
+      }
+      toast.error(err.message || "Failed to mark ticket as read");
+    },
+  });
+  const markAllReadMutation = trpc.feedback.markAllRead.useMutation({
+    onSuccess: result => {
+      setOptimisticallyReadTicketIds(current => {
+        const next = new Set(current);
+        (ticketsQuery.data ?? []).forEach(ticket => next.add(ticket.id));
+        return next;
+      });
+      ticketsQuery.refetch();
+      statsQuery.refetch();
+      toast.success(
+        result.marked > 0
+          ? `อ่านแล้ว ${result.marked} รายการ`
+          : "ไม่มีรายการค้างที่ยังไม่ได้อ่าน"
+      );
+    },
+    onError: err => toast.error(err.message || "Failed to mark all as read"),
+  });
+  const closeTicketMutation = trpc.feedback.closeTicket.useMutation({
+    onSuccess: () => {
+      ticketsQuery.refetch();
+      ticketDetailQuery.refetch();
+      statsQuery.refetch();
+      toast.success("Ticket closed");
+    },
+    onError: err => toast.error(err.message || "Failed to close ticket"),
+  });
   const updateStatusMutation = trpc.feedback.updateStatus.useMutation({
     onSuccess: () => {
       ticketsQuery.refetch();
@@ -140,17 +207,19 @@ export default function AdminFeedbackHub() {
   });
 
   const stats = statsQuery.data;
-  const tickets = ticketsQuery.data ?? [];
+  // Keep the empty fallback referentially stable. When the query is still
+  // loading or fails (for example, an unrelated 402 from a browser
+  // extension), a fresh [] here would retrigger the ordering effect forever
+  // and crash React with error #185.
+  const tickets = ticketsQuery.data ?? EMPTY_TICKETS;
   const detail = ticketDetailQuery.data;
   const detailError = ticketDetailQuery.error;
 
   const attachmentsList = ((detail as any)?.attachments ?? []) as any[];
-  const affectedUsers = (
-    ((detail as any)?.affectedUsers ?? []) as Array<{
-      id: number;
-      email: string | null;
-    }>
-  );
+  const affectedUsers = ((detail as any)?.affectedUsers ?? []) as Array<{
+    id: number;
+    email: string | null;
+  }>;
   const reporter = ((detail as any)?.reporter ?? null) as {
     id: number;
     email: string | null;
@@ -158,11 +227,105 @@ export default function AdminFeedbackHub() {
   const imageAttachments = attachmentsList.filter((att: any) =>
     att.mimeType?.startsWith("image/")
   );
+  const ticketAttachments = attachmentsList.filter(
+    (att: any) => !att.commentId
+  );
+  const isTicketRead = (ticket: any) =>
+    ticket.status === "closed" ||
+    Boolean(ticket.isRead) ||
+    optimisticallyReadTicketIds.has(ticket.id);
+
+  // Keep the server's order stable during the current session. A refetch can
+  // add new tickets, but reading a ticket must not make every existing row
+  // jump around underneath the admin. Changing a filter starts a new list.
+  useEffect(() => {
+    const incomingIds = tickets.map(ticket => ticket.id);
+    setTicketOrderIds(previousIds => {
+      if (previousTicketFilterKeyRef.current !== ticketFilterKey) {
+        previousTicketFilterKeyRef.current = ticketFilterKey;
+        return incomingIds;
+      }
+      const incomingIdSet = new Set(incomingIds);
+      const retainedIds = previousIds.filter(id => incomingIdSet.has(id));
+      const knownIds = new Set(previousIds);
+      const newIds = incomingIds.filter(id => !knownIds.has(id));
+      return [...newIds, ...retainedIds];
+    });
+  }, [tickets, ticketFilterKey]);
+
+  const ticketsById = new Map(tickets.map(ticket => [ticket.id, ticket]));
+  const orderedTickets = ticketOrderIds
+    .map(ticketId => ticketsById.get(ticketId))
+    .filter((ticket): ticket is (typeof tickets)[number] => Boolean(ticket));
+  const visibleTickets =
+    orderedTickets.length > 0 || tickets.length === 0
+      ? orderedTickets
+      : tickets;
+
+  const uploadReplyFiles = async (ticketId: number): Promise<number[]> => {
+    if (replyFiles.length === 0) return [];
+    setReplyUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("ticketId", String(ticketId));
+      formData.append("purpose", "reply");
+      replyFiles.forEach(file => formData.append("files", file));
+      const csrfToken =
+        document.cookie
+          .split("; ")
+          .find(cookie => cookie.startsWith("csrf_token="))
+          ?.split("=")[1] ?? "";
+      const response = await fetch("/api/feedback/upload", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+        headers: { "x-csrf-token": csrfToken },
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error || "Image upload failed");
+      }
+      return (payload?.attachments ?? [])
+        .map((attachment: any) => attachment.id)
+        .filter((id: unknown): id is number => typeof id === "number");
+    } finally {
+      setReplyUploading(false);
+    }
+  };
+
+  const handleSendComment = async () => {
+    if (
+      !selectedTicketId ||
+      (!commentText.trim() && replyFiles.length === 0) ||
+      addCommentMutation.isPending ||
+      replyUploading
+    )
+      return;
+    let attachmentIds: number[] = [];
+    try {
+      attachmentIds = await uploadReplyFiles(selectedTicketId);
+      await addCommentMutation.mutateAsync({
+        ticketId: selectedTicketId,
+        content: commentText,
+        isInternal,
+        attachmentIds,
+      });
+    } catch (error) {
+      if (attachmentIds.length > 0) {
+        await Promise.allSettled(
+          attachmentIds.map(attachmentId =>
+            deleteAttachmentMutation.mutateAsync({ attachmentId })
+          )
+        );
+      }
+      if (error instanceof Error && !addCommentMutation.error) {
+        toast.error(error.message || "Failed to send comment");
+      }
+    }
+  };
 
   const openLightbox = (attachmentId: number) => {
-    const idx = imageAttachments.findIndex(
-      (a: any) => a.id === attachmentId
-    );
+    const idx = imageAttachments.findIndex((a: any) => a.id === attachmentId);
     setLightboxIndex(idx >= 0 ? idx : 0);
     setLightboxOpen(true);
   };
@@ -190,6 +353,36 @@ export default function AdminFeedbackHub() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lightboxOpen, imageAttachments.length]);
 
+  useEffect(() => {
+    if (!selectedTicketId) return;
+    setOptimisticallyReadTicketIds(current => {
+      if (current.has(selectedTicketId)) return current;
+      const next = new Set(current);
+      next.add(selectedTicketId);
+      return next;
+    });
+    markReadMutation.mutate({ ticketId: selectedTicketId });
+    // Marking a ticket read is intentionally tied to opening its detail view.
+    // The local state changes immediately; the server re-checks admin scope
+    // before persisting the receipt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTicketId]);
+
+  useEffect(() => {
+    const checkOverdueUnread = () => {
+      if ((stats?.overdueUnread ?? 0) <= 0) return;
+      const now = Date.now();
+      const lastShown = lastOverdueAlertAtRef.current;
+      if (lastShown == null || now - lastShown >= 30 * 60 * 1000) {
+        lastOverdueAlertAtRef.current = now;
+        setOverdueAlertOpen(true);
+      }
+    };
+    checkOverdueUnread();
+    const interval = window.setInterval(checkOverdueUnread, 30_000);
+    return () => window.clearInterval(interval);
+  }, [stats?.overdueUnread]);
+
   // `contextJson` is a loosely-typed json column — it may be a full
   // DiagnosticsBundle (see client/src/lib/systemErrorMonitor.ts), an older
   // ad-hoc shape, or null. Extract known fields defensively; never throw.
@@ -206,12 +399,8 @@ export default function AdminFeedbackHub() {
           traceId: (contextJson as any).primaryError?.traceId as
             | string
             | undefined,
-          path: (contextJson as any).primaryError?.path as
-            | string
-            | undefined,
-          code: (contextJson as any).primaryError?.code as
-            | string
-            | undefined,
+          path: (contextJson as any).primaryError?.path as string | undefined,
+          code: (contextJson as any).primaryError?.code as string | undefined,
           httpStatus: (contextJson as any).primaryError?.httpStatus as
             | number
             | undefined,
@@ -232,19 +421,13 @@ export default function AdminFeedbackHub() {
   const autoReportDiagnostics = isAutoReport
     ? {
         source: (contextJson as any)?.source as string | undefined,
-        occurrences: (contextJson as any)?.occurrences as
-          | number
-          | undefined,
-        firstSeenAt: (contextJson as any)?.firstSeenAt as
-          | string
-          | undefined,
+        occurrences: (contextJson as any)?.occurrences as number | undefined,
+        firstSeenAt: (contextJson as any)?.firstSeenAt as string | undefined,
         lastSeenAt: (contextJson as any)?.lastSeenAt as string | undefined,
         traceId: (contextJson as any)?.traceId as string | undefined,
         path: (contextJson as any)?.path as string | undefined,
         jobId: (contextJson as any)?.jobId as string | undefined,
-        errorMessage: (contextJson as any)?.errorMessage as
-          | string
-          | undefined,
+        errorMessage: (contextJson as any)?.errorMessage as string | undefined,
         stack: (contextJson as any)?.stack as string | undefined,
         affectedUserIds: Array.isArray((contextJson as any)?.affectedUserIds)
           ? ((contextJson as any).affectedUserIds as unknown[])
@@ -264,7 +447,7 @@ export default function AdminFeedbackHub() {
     const d = detail as any;
     const lines: string[] = [];
     lines.push(
-      `# Error Report: ${formatTicketTitle(d.title, d.reporter?.email, d.reporter?.id ?? d.submittedBy)}`,
+      `# Error Report: ${formatTicketTitle(d.title, d.reporter?.email, d.reporter?.id ?? d.submittedBy)}`
     );
     lines.push(
       `- Ticket: #${d.id} | Type: ${d.ticketType} | Status: ${d.status} | Created: ${
@@ -386,9 +569,9 @@ export default function AdminFeedbackHub() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
       {/* Header */}
-      <header className="bg-white/70 backdrop-blur-xl border-b sticky top-0 z-10">
+      <header className="shrink-0 bg-white/70 backdrop-blur-xl border-b sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap items-center gap-3">
@@ -434,9 +617,9 @@ export default function AdminFeedbackHub() {
       </header>
 
       {/* Main content */}
-      <div className="flex h-[calc(100vh-65px)]">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Left: Ticket list */}
-        <div className="w-[400px] border-r bg-white/50 flex flex-col">
+        <div className="flex w-[400px] min-h-0 flex-col border-r bg-white/50">
           {/* Source tabs — separate genuine user feedback from auto system reports */}
           <div className="p-3 pb-0 flex gap-1">
             {(
@@ -465,6 +648,50 @@ export default function AdminFeedbackHub() {
                 </button>
               );
             })}
+          </div>
+
+          <div
+            className="mx-3 mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-950"
+            aria-live="polite"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <span>ยังไม่ได้อ่าน</span>
+                <span className="rounded-full bg-amber-600 px-2 py-0.5 text-xs text-white">
+                  {stats?.unread ?? 0}
+                </span>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant={unreadOnly ? "default" : "outline"}
+                className="h-7 text-xs"
+                onClick={() => setUnreadOnly(current => !current)}
+              >
+                {unreadOnly ? "ทั้งหมด" : "รายการค้าง"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                disabled={
+                  markAllReadMutation.isPending || (stats?.unread ?? 0) === 0
+                }
+                onClick={() => markAllReadMutation.mutate()}
+              >
+                {markAllReadMutation.isPending ? (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                ) : null}
+                อ่านทั้งหมด
+              </Button>
+            </div>
+            {(stats?.overdueUnread ?? 0) > 0 && (
+              <p className="mt-1 text-xs font-medium text-red-700">
+                ค้างเกิน 2 ชั่วโมง {stats?.overdueUnread} รายการ
+              </p>
+            )}
           </div>
 
           {/* Filters */}
@@ -503,14 +730,15 @@ export default function AdminFeedbackHub() {
           </div>
 
           {/* Ticket list */}
-          <ScrollArea className="flex-1">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <div className="p-2 space-y-1">
-              {tickets.length === 0 && (
+              {visibleTickets.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground text-sm">
                   No tickets found
                 </div>
               )}
-              {tickets.map((ticket: any) => {
+              {visibleTickets.map((ticket: any) => {
+                const ticketIsRead = isTicketRead(ticket);
                 const ticketIsAutoReport =
                   ticket.title?.startsWith("[Auto]") ||
                   ticket.contextJson?.kind === "system_auto_report";
@@ -520,12 +748,23 @@ export default function AdminFeedbackHub() {
                 return (
                   <div
                     key={ticket.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`เปิด ticket ${ticket.id}${ticketIsRead ? "" : " ยังไม่ได้อ่าน"}`}
                     className={`p-3 rounded-lg cursor-pointer transition-colors ${
                       selectedTicketId === ticket.id
                         ? "bg-blue-50 border border-blue-200"
-                        : "hover:bg-gray-50 border border-transparent"
+                        : !ticketIsRead
+                          ? "border border-amber-200 bg-amber-50/70 hover:bg-amber-100/70"
+                          : "hover:bg-gray-50 border border-transparent"
                     }`}
                     onClick={() => selectTicket(ticket.id)}
+                    onKeyDown={event => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        selectTicket(ticket.id);
+                      }
+                    }}
                   >
                     <div className="flex items-center gap-1.5 mb-1">
                       <Badge
@@ -540,6 +779,16 @@ export default function AdminFeedbackHub() {
                       >
                         {statusLabel[ticket.status] ?? ticket.status}
                       </Badge>
+                      {!ticketIsRead && (
+                        <Badge className="bg-amber-600 px-1.5 py-0 text-[10px] text-white hover:bg-amber-700">
+                          ยังไม่ได้อ่าน
+                        </Badge>
+                      )}
+                      {ticket.priority === "critical" && (
+                        <Badge className="text-[10px] px-1.5 py-0 bg-red-100 text-red-800 hover:bg-red-200">
+                          Urgent
+                        </Badge>
+                      )}
                       <span className="text-[10px] text-muted-foreground ml-auto">
                         #{ticket.id}
                       </span>
@@ -557,7 +806,11 @@ export default function AdminFeedbackHub() {
                         </Badge>
                       )}
                       <span className="truncate">
-                        {formatTicketTitle(ticket.title, ticket.reporterEmail, ticket.submittedBy)}
+                        {formatTicketTitle(
+                          ticket.title,
+                          ticket.reporterEmail,
+                          ticket.submittedBy
+                        )}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
@@ -575,11 +828,11 @@ export default function AdminFeedbackHub() {
                 );
               })}
             </div>
-          </ScrollArea>
+          </div>
         </div>
 
         {/* Right: Ticket detail */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex min-h-0 flex-1 flex-col">
           {selectedTicketId && ticketDetailQuery.isLoading ? (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
@@ -595,7 +848,8 @@ export default function AdminFeedbackHub() {
                   Unable to load ticket #{selectedTicketId}
                 </p>
                 <p className="text-xs mt-2 break-words">
-                  {detailError.message || "The ticket may no longer exist or you may not have access to it."}
+                  {detailError.message ||
+                    "The ticket may no longer exist or you may not have access to it."}
                 </p>
                 <Button
                   variant="outline"
@@ -633,6 +887,11 @@ export default function AdminFeedbackHub() {
                       >
                         {statusLabel[detail.status] ?? detail.status}
                       </Badge>
+                      {detail.priority === "critical" && (
+                        <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
+                          Urgent
+                        </Badge>
+                      )}
                       <span className="text-xs text-muted-foreground">
                         #{detail.id}
                       </span>
@@ -641,7 +900,11 @@ export default function AdminFeedbackHub() {
                       </span>
                     </div>
                     <h2 className="text-lg font-semibold">
-                      {formatTicketTitle(detail.title, reporter?.email, reporter?.id ?? detail.submittedBy)}
+                      {formatTicketTitle(
+                        detail.title,
+                        reporter?.email,
+                        reporter?.id ?? detail.submittedBy
+                      )}
                     </h2>
                     <div className="text-xs text-muted-foreground mt-1 flex items-center gap-3">
                       <span>Created {formatDate(detail.createdAt)}</span>
@@ -661,6 +924,30 @@ export default function AdminFeedbackHub() {
 
                   {/* Status actions */}
                   <div className="flex flex-col items-end gap-1.5">
+                    {detail.status !== "closed" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs border-rose-300 text-rose-700 hover:bg-rose-50"
+                        disabled={closeTicketMutation.isPending}
+                        onClick={async () => {
+                          const confirmed = await confirm({
+                            title: "Close this ticket?",
+                            description:
+                              "Closed tickets cannot receive replies or new attachments.",
+                            confirmText: "Close ticket",
+                            cancelText: "Cancel",
+                            tone: "danger",
+                          });
+                          if (confirmed)
+                            closeTicketMutation.mutate({
+                              ticketId: detail.id,
+                            });
+                        }}
+                      >
+                        ปิดงาน
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
@@ -672,7 +959,12 @@ export default function AdminFeedbackHub() {
                     </Button>
                     <div className="flex gap-1.5 flex-wrap justify-end">
                       {(
-                        ["triaged", "in_progress", "resolved", "closed"] as const
+                        [
+                          "triaged",
+                          "in_progress",
+                          "resolved",
+                          "closed",
+                        ] as const
                       ).map(s => (
                         <Button
                           key={s}
@@ -696,7 +988,7 @@ export default function AdminFeedbackHub() {
               </div>
 
               {/* Detail body + comments */}
-              <ScrollArea className="flex-1">
+              <ScrollArea className="min-h-0 flex-1">
                 <div className="p-4 space-y-4">
                   {/* Description */}
                   {detail.description && (
@@ -784,9 +1076,7 @@ export default function AdminFeedbackHub() {
                         <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1.5 text-xs mb-3">
                           {diagnostics.traceId && (
                             <>
-                              <dt className="text-muted-foreground">
-                                traceId
-                              </dt>
+                              <dt className="text-muted-foreground">traceId</dt>
                               <dd className="flex items-center gap-1.5 min-w-0">
                                 <span className="font-mono truncate">
                                   {diagnostics.traceId}
@@ -827,9 +1117,7 @@ export default function AdminFeedbackHub() {
                           )}
                           {diagnostics.message && (
                             <>
-                              <dt className="text-muted-foreground">
-                                message
-                              </dt>
+                              <dt className="text-muted-foreground">message</dt>
                               <dd className="whitespace-pre-wrap break-words">
                                 {diagnostics.message}
                               </dd>
@@ -869,9 +1157,7 @@ export default function AdminFeedbackHub() {
                         <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1.5 text-xs mb-3">
                           {autoReportDiagnostics.source && (
                             <>
-                              <dt className="text-muted-foreground">
-                                source
-                              </dt>
+                              <dt className="text-muted-foreground">source</dt>
                               <dd className="font-mono truncate">
                                 {autoReportDiagnostics.source}
                               </dd>
@@ -911,9 +1197,7 @@ export default function AdminFeedbackHub() {
                           )}
                           {autoReportDiagnostics.traceId && (
                             <>
-                              <dt className="text-muted-foreground">
-                                traceId
-                              </dt>
+                              <dt className="text-muted-foreground">traceId</dt>
                               <dd className="flex items-center gap-1.5 min-w-0">
                                 <span className="font-mono truncate">
                                   {autoReportDiagnostics.traceId}
@@ -942,9 +1226,7 @@ export default function AdminFeedbackHub() {
                           )}
                           {autoReportDiagnostics.jobId && (
                             <>
-                              <dt className="text-muted-foreground">
-                                jobId
-                              </dt>
+                              <dt className="text-muted-foreground">jobId</dt>
                               <dd className="font-mono truncate">
                                 {autoReportDiagnostics.jobId}
                               </dd>
@@ -968,9 +1250,13 @@ export default function AdminFeedbackHub() {
                               <dd className="min-w-0">
                                 {affectedUsers.length > 0 ? (
                                   <div className="space-y-0.5">
-                                    {affectedUsers.map((affectedUser) => (
-                                      <div key={affectedUser.id} className="break-all">
-                                        {affectedUser.email ?? `user #${affectedUser.id}`}
+                                    {affectedUsers.map(affectedUser => (
+                                      <div
+                                        key={affectedUser.id}
+                                        className="break-all"
+                                      >
+                                        {affectedUser.email ??
+                                          `user #${affectedUser.id}`}
                                         {affectedUser.email && (
                                           <span className="text-muted-foreground">
                                             {` (user #${affectedUser.id})`}
@@ -1017,14 +1303,14 @@ export default function AdminFeedbackHub() {
                   )}
 
                   {/* Attachments */}
-                  {((detail as any).attachments?.length ?? 0) > 0 && (
+                  {ticketAttachments.length > 0 && (
                     <div className="bg-white rounded-lg p-4 border">
                       <h3 className="text-sm font-medium mb-2 flex items-center gap-1.5">
                         <Paperclip className="h-3.5 w-3.5" />
-                        Attachments ({(detail as any).attachments.length})
+                        Attachments ({ticketAttachments.length})
                       </h3>
                       <div className="grid grid-cols-2 gap-2">
-                        {(detail as any).attachments.map((att: any) => {
+                        {ticketAttachments.map((att: any) => {
                           const isImage = att.mimeType?.startsWith("image/");
                           return (
                             <div
@@ -1037,11 +1323,11 @@ export default function AdminFeedbackHub() {
                                   onClick={() => openLightbox(att.id)}
                                   className="flex items-center gap-2 flex-1 min-w-0 text-left"
                                 >
-                                  <div className="w-10 h-10 rounded overflow-hidden bg-muted shrink-0">
+                                  <div className="h-[120px] w-[120px] rounded overflow-hidden bg-muted shrink-0">
                                     <AuthenticatedAttachmentImage
                                       src={att.resolvedUrl ?? att.fileUrl}
                                       alt={att.fileName}
-                                      className="w-full h-full object-cover"
+                                      className="w-full h-full object-contain"
                                     />
                                   </div>
                                   <div className="flex-1 min-w-0">
@@ -1058,12 +1344,18 @@ export default function AdminFeedbackHub() {
                                 </button>
                               ) : (
                                 <a
-                                  href={getAuthenticatedAttachmentUrl(att.resolvedUrl ?? att.fileUrl) ?? "#"}
+                                  href={
+                                    getAuthenticatedAttachmentUrl(
+                                      att.resolvedUrl ?? att.fileUrl
+                                    ) ?? "#"
+                                  }
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={event => {
                                     event.preventDefault();
-                                    void openAuthenticatedAttachment(att.resolvedUrl ?? att.fileUrl).catch(() => undefined);
+                                    void openAuthenticatedAttachment(
+                                      att.resolvedUrl ?? att.fileUrl
+                                    ).catch(() => undefined);
                                   }}
                                   className="flex items-center gap-2 flex-1 min-w-0"
                                 >
@@ -1084,6 +1376,7 @@ export default function AdminFeedbackHub() {
                                 </a>
                               )}
                               <button
+                                type="button"
                                 onClick={async () => {
                                   const confirmed = await confirm({
                                     title: "Delete this attachment?",
@@ -1143,6 +1436,37 @@ export default function AdminFeedbackHub() {
                             </span>
                           </div>
                           <p className="whitespace-pre-wrap">{c.content}</p>
+                          {c.attachments?.filter((attachment: any) =>
+                            attachment.mimeType?.startsWith("image/")
+                          ).length > 0 && (
+                            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                              {c.attachments
+                                .filter((attachment: any) =>
+                                  attachment.mimeType?.startsWith("image/")
+                                )
+                                .map((attachment: any) => (
+                                  <button
+                                    key={attachment.id}
+                                    type="button"
+                                    className="group overflow-hidden rounded-lg border bg-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    onClick={() => openLightbox(attachment.id)}
+                                    aria-label={`เปิดภาพแนบ ${attachment.fileName}`}
+                                  >
+                                    <AuthenticatedAttachmentImage
+                                      src={
+                                        attachment.resolvedUrl ??
+                                        attachment.fileUrl
+                                      }
+                                      alt={attachment.fileName}
+                                      className="h-32 w-full object-contain transition-transform group-hover:scale-105"
+                                    />
+                                    <span className="block truncate px-2 py-1 text-[10px] text-muted-foreground">
+                                      {attachment.fileName}
+                                    </span>
+                                  </button>
+                                ))}
+                            </div>
+                          )}
                         </div>
                       ))}
                       {((detail as any).comments?.length ?? 0) === 0 && (
@@ -1156,57 +1480,137 @@ export default function AdminFeedbackHub() {
               </ScrollArea>
 
               {/* Comment input */}
-              <div className="border-t bg-white/50 p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isInternal}
-                      onChange={e => setIsInternal(e.target.checked)}
-                      className="rounded border-gray-300"
+              {detail.status === "closed" ? (
+                <div className="border-t bg-slate-100 p-4 text-center text-sm font-medium text-slate-600">
+                  งานนี้ปิดแล้ว ไม่สามารถ reply หรือแนบไฟล์เพิ่มได้
+                </div>
+              ) : (
+                <div className="border-t bg-white/50 p-3">
+                  <div className="mb-2 flex flex-wrap items-center gap-3">
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isInternal}
+                        onChange={e => setIsInternal(e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      <Lock className="h-3 w-3 text-yellow-600" />
+                      Internal note (not visible to user)
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-1.5 text-xs text-blue-700 hover:text-blue-900">
+                      <Paperclip className="h-3.5 w-3.5" />
+                      แนบภาพ ({replyFiles.length}/{5})
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        multiple
+                        className="sr-only"
+                        disabled={replyUploading || replyFiles.length >= 5}
+                        onChange={event => {
+                          const selected = Array.from(event.target.files ?? [])
+                            .filter(file => file.type.startsWith("image/"))
+                            .slice(0, 5 - replyFiles.length);
+                          setReplyFiles(current => [...current, ...selected]);
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {replyFiles.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      {replyFiles.map((file, index) => (
+                        <span
+                          key={`${file.name}-${index}`}
+                          className="flex max-w-full items-center gap-1 rounded-md border bg-blue-50 px-2 py-1 text-xs text-blue-900"
+                        >
+                          <span className="max-w-[220px] truncate">
+                            {file.name}
+                          </span>
+                          <button
+                            type="button"
+                            className="rounded p-0.5 hover:bg-blue-100"
+                            aria-label={`ลบภาพ ${file.name}`}
+                            onClick={() =>
+                              setReplyFiles(current =>
+                                current.filter(
+                                  (_, fileIndex) => fileIndex !== index
+                                )
+                              )
+                            }
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Textarea
+                      value={commentText}
+                      onChange={e => setCommentText(e.target.value)}
+                      placeholder={
+                        isInternal
+                          ? "Add internal note..."
+                          : "Reply to user (they will be notified)..."
+                      }
+                      className="min-h-[60px] resize-none text-sm"
+                      rows={2}
                     />
-                    <Lock className="h-3 w-3 text-yellow-600" />
-                    Internal note (not visible to user)
-                  </label>
+                    <Button
+                      size="sm"
+                      className="self-end"
+                      disabled={
+                        (!commentText.trim() && replyFiles.length === 0) ||
+                        addCommentMutation.isPending ||
+                        replyUploading
+                      }
+                      onClick={() => void handleSendComment()}
+                    >
+                      {addCommentMutation.isPending || replyUploading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Textarea
-                    value={commentText}
-                    onChange={e => setCommentText(e.target.value)}
-                    placeholder={
-                      isInternal
-                        ? "Add internal note..."
-                        : "Reply to user (they will be notified)..."
-                    }
-                    className="min-h-[60px] resize-none text-sm"
-                    rows={2}
-                  />
+              )}
+
+              {/* Generic overdue unread alert — intentionally omits ticket titles. */}
+              <Dialog
+                open={overdueAlertOpen}
+                onOpenChange={setOverdueAlertOpen}
+              >
+                <DialogContent className="max-w-md">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="mt-0.5 h-6 w-6 shrink-0 text-amber-600" />
+                    <div>
+                      <h2 className="text-lg font-semibold">
+                        มีรายการค้างที่ยังไม่ได้อ่าน
+                      </h2>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        มีรายการ feedback ค้างที่ยังไม่ได้อ่านเกิน 2 ชั่วโมง
+                        กรุณาเข้าไปอ่านรายการที่ค้าง
+                      </p>
+                    </div>
+                  </div>
                   <Button
-                    size="sm"
-                    className="self-end"
-                    disabled={
-                      !commentText.trim() || addCommentMutation.isPending
-                    }
-                    onClick={() =>
-                      addCommentMutation.mutate({
-                        ticketId: selectedTicketId,
-                        content: commentText,
-                        isInternal,
-                      })
-                    }
+                    type="button"
+                    className="mt-4 w-full"
+                    onClick={() => {
+                      setUnreadOnly(true);
+                      setSourceFilter(undefined);
+                      setOverdueAlertOpen(false);
+                    }}
                   >
-                    {addCommentMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
+                    ไปอ่านรายการค้าง
                   </Button>
-                </div>
-              </div>
+                </DialogContent>
+              </Dialog>
 
               {/* Image attachment lightbox */}
               <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
-                <DialogContent className="sm:max-w-6xl w-[95vw] h-[92vh] p-0 overflow-hidden flex flex-col">
+                <DialogContent className="h-[100dvh] w-[100vw] max-w-none rounded-none p-0 overflow-hidden flex flex-col">
                   {imageAttachments[lightboxIndex] && (
                     <>
                       <div className="relative flex-1 min-h-0 bg-black flex items-center justify-center overflow-hidden">
@@ -1255,7 +1659,7 @@ export default function AdminFeedbackHub() {
                           href={
                             getAuthenticatedAttachmentUrl(
                               imageAttachments[lightboxIndex].resolvedUrl ??
-                                imageAttachments[lightboxIndex].fileUrl,
+                                imageAttachments[lightboxIndex].fileUrl
                             ) ?? "#"
                           }
                           target="_blank"
@@ -1264,7 +1668,7 @@ export default function AdminFeedbackHub() {
                             event.preventDefault();
                             void openAuthenticatedAttachment(
                               imageAttachments[lightboxIndex].resolvedUrl ??
-                                imageAttachments[lightboxIndex].fileUrl,
+                                imageAttachments[lightboxIndex].fileUrl
                             ).catch(() => undefined);
                           }}
                           className="text-xs text-blue-600 hover:underline shrink-0"
