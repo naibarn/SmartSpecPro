@@ -5,7 +5,12 @@ import { and, count, desc, eq, gt, inArray, isNotNull, isNull, ne, or, sql } fro
 import { debugLog } from "../_core/logger";
 import { getDb } from "../db";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
-import { storagePut, storageGet, storageDelete } from "../storage";
+import { assertR2StorageActive, storagePut, storageGet, storageDelete } from "../storage";
+import { ensureExternalMediaAssetDurable } from "./durableMediaAssetService";
+import {
+  normalizeManagedMediaKey,
+  parseManagedMediaUrl,
+} from "./managedMediaAccessService";
 import { encrypt as encryptSecret, decrypt as decryptSecret } from "./crypto";
 import {
   validateLibraryUrl,
@@ -169,6 +174,7 @@ export interface PublishLibraryItemToGalleryResult {
   success: true;
   galleryItemId: number;
   created: boolean;
+  publicUrl: string;
 }
 
 export interface PublicShareDocumentResult {
@@ -2097,6 +2103,25 @@ async function removeGalleryPublicationLink(
   await db.delete(libraryLinks).where(eq(libraryLinks.id, galleryLink.id));
 }
 
+function resolveLibraryGalleryMediaKey(
+  item: Pick<LibraryItemRow, "metadata" | "sourceUrl" | "thumbnailUrl">,
+  variant: "file" | "thumbnail" = "file",
+): string | null {
+  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+  const metadataKey = variant === "thumbnail"
+    ? metadata.thumbnail_key ?? metadata.thumbnailKey
+    : metadata.source_key ?? metadata.sourceKey;
+  if (typeof metadataKey === "string") {
+    const normalized = normalizeManagedMediaKey(metadataKey);
+    if (normalized) return normalized;
+  }
+
+  const source = variant === "thumbnail"
+    ? item.thumbnailUrl || item.sourceUrl
+    : item.sourceUrl;
+  return parseManagedMediaUrl(source)?.key ?? null;
+}
+
 function buildGalleryPayloadFromLibraryItem(
   item: LibraryItemRow,
 ): typeof galleryItems.$inferInsert {
@@ -2105,11 +2130,14 @@ function buildGalleryPayloadFromLibraryItem(
   if (!galleryType) {
     throw new Error("Only image and video files can be published to the Gallery");
   }
-  if (!item.sourceUrl) {
-    throw new Error("This file does not have a public source URL yet");
+  const fileKey = resolveLibraryGalleryMediaKey(item);
+  if (!fileKey) {
+    throw new Error("This file does not have a durable managed media key yet");
   }
+  const thumbnailKey = resolveLibraryGalleryMediaKey(item, "thumbnail") || fileKey;
+  const durableFileUrl = `/api/storage/files/${encodeURI(fileKey)}`;
+  const durableThumbnailUrl = `/api/storage/files/${encodeURI(thumbnailKey)}`;
 
-  const numericTenantId = Number.parseInt(String(item.tenantId), 10);
   const model = typeof metadata.model === "string"
     ? metadata.model
     : typeof metadata.model_name === "string"
@@ -2121,13 +2149,15 @@ function buildGalleryPayloadFromLibraryItem(
     || null;
 
   return {
-    tenantId: Number.isFinite(numericTenantId) ? numericTenantId : undefined,
+    tenantId: item.tenantId != null ? String(item.tenantId) : undefined,
     type: galleryType,
     title: item.title,
     description,
     aspectRatio: resolveGalleryAspectRatio(galleryType, metadata),
-    fileUrl: item.sourceUrl,
-    thumbnailUrl: item.thumbnailUrl || item.sourceUrl,
+    fileKey,
+    fileUrl: durableFileUrl,
+    thumbnailKey,
+    thumbnailUrl: durableThumbnailUrl,
     model,
     tags,
     isPublished: true,
@@ -2157,10 +2187,9 @@ async function getLibraryItemRowById(
 }
 
 function canActorPublishLibraryItem(
-  item: LibraryItemRow,
   actor: LibraryActor,
 ): boolean {
-  return actor.role === "admin" || item.ownerUserId === actor.userId;
+  return actor.role === "admin";
 }
 
 export async function getLibraryGalleryPublicationState(
@@ -2184,14 +2213,14 @@ export async function getLibraryGalleryPublicationState(
   let reason: string | null = null;
   if (!canManage) {
     reason = "Only users who can manage this file can publish it";
-  } else if (!canActorPublishLibraryItem(item, actor)) {
-    reason = "Only the file owner or an admin can publish to the Gallery";
+  } else if (!canActorPublishLibraryItem(actor)) {
+    reason = "Only admins can publish Library media to the Gallery";
   } else if (isPrivateVaultLibraryItem(item)) {
     reason = "Private vault files cannot be published to the Gallery";
   } else if (!galleryType) {
     reason = "Only image and video files can be published to the Gallery";
-  } else if (!item.sourceUrl) {
-    reason = "This file is missing a public source URL";
+  } else if (!resolveLibraryGalleryMediaKey(item)) {
+    reason = "This file is missing a durable managed media key";
   }
 
   return {
@@ -2221,8 +2250,8 @@ export async function publishLibraryItemToGallery(
   if (!canManageLibraryItem(item, actor, permission)) {
     throw new Error("You do not have permission to manage this file");
   }
-  if (!canActorPublishLibraryItem(item, actor)) {
-    throw new Error("Only the file owner or an admin can publish to the Gallery");
+  if (!canActorPublishLibraryItem(actor)) {
+    throw new Error("Only admins can publish Library media to the Gallery");
   }
   if (isPrivateVaultLibraryItem(item)) {
     throw new Error("Private vault files cannot be published to the Gallery");
@@ -2246,6 +2275,7 @@ export async function publishLibraryItemToGallery(
         success: true as const,
         galleryItemId: galleryLink.galleryItemId,
         created: false,
+        publicUrl: `/api/gallery/media/${galleryLink.galleryItemId}/file`,
       };
     }
 
@@ -2282,6 +2312,7 @@ export async function publishLibraryItemToGallery(
       success: true as const,
       galleryItemId: createdGalleryItemId,
       created: true,
+      publicUrl: `/api/gallery/media/${createdGalleryItemId}/file`,
     };
   });
   return result;
@@ -2304,8 +2335,8 @@ export async function unpublishLibraryItemFromGallery(
   if (!canManageLibraryItem(item, actor, permission)) {
     throw new Error("You do not have permission to manage this file");
   }
-  if (!canActorPublishLibraryItem(item, actor)) {
-    throw new Error("Only the file owner or an admin can unpublish from the Gallery");
+  if (!canActorPublishLibraryItem(actor)) {
+    throw new Error("Only admins can unpublish from the Gallery");
   }
 
   await db.transaction(async (tx) => {
@@ -2324,8 +2355,37 @@ export async function createLibraryItem(
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
   const now = new Date();
 
-  const validatedSourceUrl = validateLibraryItemUrlField("sourceUrl", input.sourceUrl);
-  const validatedThumbnailUrl = validateLibraryItemUrlField("thumbnailUrl", input.thumbnailUrl);
+  let validatedSourceUrl = validateLibraryItemUrlField("sourceUrl", input.sourceUrl);
+  let validatedThumbnailUrl = validateLibraryItemUrlField("thumbnailUrl", input.thumbnailUrl);
+  let libraryMetadata = normalizeLibraryMetadata(input.metadata);
+
+  const mediaType = input.itemType === "video"
+    ? "video"
+    : input.itemType === "audio"
+      ? "audio"
+      : input.itemType === "image"
+        ? "image"
+        : null;
+  if (mediaType && validatedSourceUrl && /^https?:\/\//i.test(validatedSourceUrl)) {
+    const durable = await ensureExternalMediaAssetDurable({
+      tenantId: actorTenantId,
+      userId: actor.userId,
+      mediaType,
+      sourceType: "library_migrated",
+      sourceUrl: validatedSourceUrl,
+      originalUrl: validatedSourceUrl,
+      mimeType: mediaType === "video" ? "video/mp4" : mediaType === "audio" ? "audio/mpeg" : "image/png",
+    });
+    libraryMetadata = {
+      ...libraryMetadata,
+      provider_original_url: validatedSourceUrl,
+      media_asset_id: durable.assetId,
+      source_key: durable.copy.storageKey,
+      media_availability: "r2_ready",
+    };
+    validatedSourceUrl = durable.copy.url;
+    if (mediaType === "image") validatedThumbnailUrl = durable.copy.url;
+  }
 
   if (isPrivateVaultMetadata(input.metadata) && !hasPrivateVaultAccess(actor)) {
     throw new Error("Private vault is locked");
@@ -2373,7 +2433,7 @@ export async function createLibraryItem(
       description: input.description ?? null,
       status: input.status ?? "ready",
       visibility: input.visibility ?? "private",
-      metadata: normalizeLibraryMetadata(input.metadata),
+      metadata: libraryMetadata,
       sourceUrl: validatedSourceUrl,
       thumbnailUrl: validatedThumbnailUrl,
       createdAt: now,
@@ -2609,6 +2669,9 @@ export async function uploadLibraryFile(
 
   const fileId = crypto.randomUUID().replace(/-/g, "");
   const key = `library/uploads/${tenantId}/${actor.userId}/${fileId}${ext ? `.${ext}` : ""}`;
+  if (/^(image|video|audio)\//i.test(effectiveFileType)) {
+    await assertR2StorageActive();
+  }
   const storage = await storagePut(key, fileBuffer, effectiveFileType);
   let enrichment: LibraryUploadEnrichmentResult | null = null;
   let extractedText: string | null = null;
@@ -3061,6 +3124,9 @@ export async function replaceLibraryFile(
     // 5. Upload new file
     const fileId = crypto.randomUUID().replace(/-/g, "");
     newKey = `library/uploads/${tenantId}/${actor.userId}/${fileId}${ext ? `.${ext}` : ""}`;
+    if (/^(image|video|audio)\//i.test(effectiveFileType)) {
+      await assertR2StorageActive();
+    }
     const storage = await storagePut(newKey, fileBuffer, effectiveFileType);
     const inferredItemType = inferLibraryItemType(effectiveFileType, ext);
     const featureFlags = await getTenantFeatureFlags(String(tenantId));

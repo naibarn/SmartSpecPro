@@ -833,6 +833,11 @@ export default function DocumentManagement() {
   const previewType = selectedItem
     ? resolveDocumentPreviewType(selectedItem)
     : "fallback";
+  const canAddSelectedItemToGallery = Boolean(
+    isAdmin &&
+      selectedItem &&
+      (selectedItem.item_type === "image" || selectedItem.item_type === "video"),
+  );
   const selectedMarkdownItem =
     selectedItem && isMarkdownLibraryItem(selectedItem) ? selectedItem : null;
   const autoOpenedKnowledgeNoteIdRef = useRef<number | null>(null);
@@ -1093,6 +1098,7 @@ export default function DocumentManagement() {
   const updateItemMutation = trpc.library.updateItem.useMutation();
   const deleteItemMutation = trpc.library.deleteItem.useMutation();
   const deleteItemsMutation = trpc.library.deleteItems.useMutation();
+  const publishToGalleryMutation = trpc.library.publishToGallery.useMutation();
   const importDriveFileMutation =
     trpc.googleDrive.importDriveFile.useMutation();
   const triggerReindexMutation = trpc.systemSettings.triggerReindex.useMutation(
@@ -2201,6 +2207,25 @@ export default function DocumentManagement() {
       cancelled = true;
     };
   }, [previewType, selectedItem?.id, selectedItem?.source_url]);
+
+  async function handleAddSelectedItemToGallery() {
+    if (!selectedItem || !canAddSelectedItemToGallery) return;
+
+    try {
+      const result = await publishToGalleryMutation.mutateAsync({
+        id: selectedItem.id,
+      });
+      toast.success(t("documentManagement.addToGallerySuccess"), {
+        description: result.publicUrl,
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("documentManagement.addToGalleryError"),
+      );
+    }
+  }
 
   async function handleSaveMarkdown(contentOverride?: string) {
     if (!selectedItem || previewType !== "markdown") return;
@@ -3810,6 +3835,9 @@ export default function DocumentManagement() {
                           : undefined
                       }
                       isReplacingFile={replaceFileMutation.isPending}
+                      canAddToGallery={canAddSelectedItemToGallery}
+                      onAddToGallery={handleAddSelectedItemToGallery}
+                      isAddingToGallery={publishToGalleryMutation.isPending}
                       onOpenWikiLink={handleOpenWikiLink}
                       knowledgeBacklinks={selectedKnowledgeBacklinks}
                       onOpenKnowledgeItem={openKnowledgeItem}
@@ -4381,6 +4409,9 @@ export default function DocumentManagement() {
                           : undefined
                       }
                       isReplacingFile={replaceFileMutation.isPending}
+                      canAddToGallery={canAddSelectedItemToGallery}
+                      onAddToGallery={handleAddSelectedItemToGallery}
+                      isAddingToGallery={publishToGalleryMutation.isPending}
                       onOpenWikiLink={handleOpenWikiLink}
                       knowledgeBacklinks={selectedKnowledgeBacklinks}
                       onOpenKnowledgeItem={openKnowledgeItem}

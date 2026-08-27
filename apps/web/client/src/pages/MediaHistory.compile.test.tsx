@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import MediaHistory, {
   buildFallbackApiUrl,
+  canAddTaskToGallery,
   getVideoEditorLibraryItemIdForTask,
   parseMediaHistoryQueryState,
+  resolveMediaHistoryGalleryAspectRatio,
 } from "./MediaHistory";
 
 describe("MediaHistory module", () => {
@@ -69,5 +71,42 @@ describe("MediaHistory module", () => {
     expect(
       getVideoEditorLibraryItemIdForTask({ mediaType: "video" }, { itemId: 0 })
     ).toBeNull();
+  });
+
+  it("exposes Add to Gallery only to admins with completed media results", () => {
+    expect(
+      canAddTaskToGallery({ status: "completed", resultUrl: "/api/storage/files/gallery/1" }, true),
+    ).toBe(true);
+    expect(
+      canAddTaskToGallery({ status: "completed", resultUrl: "/api/storage/files/gallery/1" }, false),
+    ).toBe(false);
+    expect(
+      canAddTaskToGallery({ status: "processing", resultUrl: "/api/storage/files/gallery/1" }, true),
+    ).toBe(false);
+    expect(canAddTaskToGallery({ status: "completed" }, true)).toBe(false);
+  });
+
+  it("resolves Gallery orientation from media dimensions before defaults", () => {
+    expect(
+      resolveMediaHistoryGalleryAspectRatio({
+        mediaType: "image",
+        parameters: { aspectRatio: "1:1" },
+        resultData: { width: 1080, height: 1920 },
+      }),
+    ).toBe("9:16");
+    expect(
+      resolveMediaHistoryGalleryAspectRatio({
+        mediaType: "image",
+        parameters: { aspectRatio: "9:16" },
+        resultData: undefined,
+      }),
+    ).toBe("9:16");
+    expect(
+      resolveMediaHistoryGalleryAspectRatio({
+        mediaType: "video",
+        parameters: undefined,
+        resultData: undefined,
+      }),
+    ).toBe("16:9");
   });
 });

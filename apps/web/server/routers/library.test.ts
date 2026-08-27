@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockCreateLibraryItem,
   mockGetLibraryItemById,
+  mockGetLibraryGalleryPublicationState,
   mockGetLibraryMarkdownContent,
   mockGetUserEffectivePermission,
   mockGetLibraryUploadStatuses,
@@ -10,6 +11,7 @@ const {
   mockSaveLibraryMarkdown,
   mockSearchLibraryItems,
   mockUploadLibraryFile,
+  mockPublishLibraryItemToGallery,
   mockUpdateLibraryItem,
   mockSoftDeleteLibraryItem,
   mockShareLibraryItem,
@@ -22,6 +24,7 @@ const {
 } = vi.hoisted(() => ({
   mockCreateLibraryItem: vi.fn(),
   mockGetLibraryItemById: vi.fn(),
+  mockGetLibraryGalleryPublicationState: vi.fn(),
   mockGetLibraryMarkdownContent: vi.fn(),
   mockGetUserEffectivePermission: vi.fn(),
   mockGetLibraryUploadStatuses: vi.fn(),
@@ -29,6 +32,7 @@ const {
   mockSaveLibraryMarkdown: vi.fn(),
   mockSearchLibraryItems: vi.fn(),
   mockUploadLibraryFile: vi.fn(),
+  mockPublishLibraryItemToGallery: vi.fn(),
   mockUpdateLibraryItem: vi.fn(),
   mockSoftDeleteLibraryItem: vi.fn(),
   mockShareLibraryItem: vi.fn(),
@@ -55,6 +59,7 @@ vi.mock("../db", () => ({
 vi.mock("../services/libraryService", () => ({
   createLibraryItem: mockCreateLibraryItem,
   getLibraryItemById: mockGetLibraryItemById,
+  getLibraryGalleryPublicationState: mockGetLibraryGalleryPublicationState,
   getLibraryMarkdownContent: mockGetLibraryMarkdownContent,
   getUserEffectivePermission: mockGetUserEffectivePermission,
   getLibraryUploadStatuses: mockGetLibraryUploadStatuses,
@@ -62,6 +67,7 @@ vi.mock("../services/libraryService", () => ({
   saveLibraryMarkdown: mockSaveLibraryMarkdown,
   searchLibraryItems: mockSearchLibraryItems,
   uploadLibraryFile: mockUploadLibraryFile,
+  publishLibraryItemToGallery: mockPublishLibraryItemToGallery,
   updateLibraryItem: mockUpdateLibraryItem,
   softDeleteLibraryItem: mockSoftDeleteLibraryItem,
   shareLibraryItem: mockShareLibraryItem,
@@ -637,6 +643,47 @@ describe("libraryRouter.getItem", () => {
       canDelete: false,
       isOwner: false,
     });
+  });
+});
+
+describe("libraryRouter.publishToGallery", () => {
+  it("publishes media with the tenant-scoped admin actor", async () => {
+    mockPublishLibraryItemToGallery.mockResolvedValue({
+      success: true,
+      galleryItemId: 77,
+      created: true,
+      publicUrl: "/api/gallery/media/77/file",
+    });
+
+    const fn = libraryRouter.publishToGallery as Function;
+    const result = await fn({
+      ctx: {
+        user: { id: 1, role: "admin", currentTenantId: "tenant-a" },
+        tenantId: "tenant-a",
+      },
+      input: { id: 42 },
+    });
+
+    expect(result.publicUrl).toBe("/api/gallery/media/77/file");
+    expect(mockPublishLibraryItemToGallery).toHaveBeenCalledWith(
+      42,
+      expect.objectContaining({ userId: 1, tenantId: "tenant-a", role: "admin" }),
+    );
+  });
+
+  it("rejects non-admin users before invoking the publication service", async () => {
+    const fn = libraryRouter.publishToGallery as Function;
+
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 2, role: "user", currentTenantId: "tenant-a" },
+          tenantId: "tenant-a",
+        },
+        input: { id: 42 },
+      }),
+    ).rejects.toThrow("Only admins can publish");
+    expect(mockPublishLibraryItemToGallery).not.toHaveBeenCalled();
   });
 });
 

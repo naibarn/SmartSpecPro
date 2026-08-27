@@ -97,6 +97,7 @@ import {
   getLibraryFolderAncestors,
   getLibraryFolderChildCount,
   getLibraryMarkdownContent,
+  getLibraryGalleryPublicationState,
   getLibraryItemById,
   getLibraryItemShares,
   getLibraryUploadStatuses,
@@ -106,6 +107,7 @@ import {
   listLibraryDocuments,
   listLibraryTrash,
   permanentDeleteLibraryItem,
+  publishLibraryItemToGallery,
   removeLibraryShare,
   restoreContentVersion,
   restoreFromLibraryTrash,
@@ -1367,6 +1369,48 @@ export const libraryRouter = router({
           isOwner: rank >= 4,
         },
       };
+    }),
+
+  getGalleryPublicationState: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+      return getLibraryGalleryPublicationState(input.id, actor);
+    }),
+
+  publishToGallery: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      if (actor.role !== "admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins can publish Library media to the Gallery",
+        });
+      }
+
+      const result = await publishLibraryItemToGallery(input.id, actor);
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.publishToGallery",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          itemId: input.id,
+        },
+        responsePayload: {
+          galleryItemId: result.galleryItemId,
+          created: result.created,
+          publicUrl: result.publicUrl,
+        },
+      });
+      return result;
     }),
 
   updateItem: protectedProcedure

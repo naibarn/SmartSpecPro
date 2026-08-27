@@ -114,6 +114,16 @@ import {
   setMediaHistoryRateLimit,
 } from "@/lib/mediaHistoryPolling";
 import { cn } from "@/lib/utils";
+import {
+  getMediaTaskArtifactStatus,
+  selectMediaTaskPlaybackUrl,
+  type MediaTaskArtifactLite,
+} from "@/lib/mediaTaskArtifacts";
+import {
+  inferMediaAspectRatio,
+  parseMediaAspectRatio,
+  type MediaAspectRatio,
+} from "@/lib/mediaAspectRatio";
 
 type MediaType = "image" | "video" | "audio";
 type TaskStatus =
@@ -148,6 +158,7 @@ interface MediaTask {
   prompt: string;
   parameters?: Record<string, unknown>;
   resultUrl?: string;
+  artifacts?: MediaTaskArtifactLite[] | null;
   resultData?: Record<string, unknown>;
   creditsUsed?: number;
   errorMessage?: string;
@@ -196,7 +207,7 @@ export function parseMediaHistoryQueryState(search: string): MediaHistoryQuerySt
 
 const statusConfig: Record<
   TaskStatus,
-  { labelKey: string; color: string; icon: React.ElementType }
+  { labelKey: string; color: string; icon: React.ComponentType<{ className?: string }> }
 > = {
   pending: {
     labelKey: "pending",
@@ -227,7 +238,7 @@ const statusConfig: Record<
 
 const mediaTypeConfig: Record<
   MediaType,
-  { labelKey: string; icon: React.ElementType; color: string }
+  { labelKey: string; icon: React.ComponentType<{ className?: string }>; color: string }
 > = {
   image: { labelKey: "image", icon: Image, color: "text-purple-600" },
   video: { labelKey: "video", icon: Video, color: "text-blue-600" },
@@ -269,6 +280,51 @@ function canManuallyFetchTaskResult(
   return Boolean(
     task?.taskId && !task?.resultUrl && task?.status !== "cancelled"
   );
+}
+
+export function canAddTaskToGallery(
+  task: Pick<MediaTask, "status" | "resultUrl"> | null | undefined,
+  isAdmin: boolean,
+): boolean {
+  return Boolean(
+    isAdmin && task?.status === "completed" && task?.resultUrl,
+  );
+}
+
+export function resolveMediaHistoryGalleryAspectRatio(
+  task: Pick<MediaTask, "mediaType" | "parameters" | "resultData">,
+): MediaAspectRatio {
+  const width = findFirstNumber(task.resultData, [
+    "width",
+    "image_width",
+    "video_width",
+  ]);
+  const height = findFirstNumber(task.resultData, [
+    "height",
+    "image_height",
+    "video_height",
+  ]);
+  const detected =
+    width !== null && height !== null
+      ? inferMediaAspectRatio(width, height)
+      : null;
+  if (detected) return detected;
+
+  const requested = parseMediaAspectRatio(
+    findFirstScalarString(task.parameters, [
+      "aspectRatio",
+      "aspect_ratio",
+      "ratio",
+    ]) ??
+      findFirstScalarString(task.resultData, [
+        "aspectRatio",
+        "aspect_ratio",
+        "ratio",
+      ]),
+  );
+  if (requested) return requested;
+
+  return task.mediaType === "video" ? "16:9" : "1:1";
 }
 
 function getTaskFetchResultLabel(
@@ -635,7 +691,11 @@ function findFirstNumber(
 }
 
 function extractMediaHistoryResultUrl(task: MediaTask): string | null {
-  const resultUrl = (
+  const durableUrl = selectMediaTaskPlaybackUrl(task);
+  if (durableUrl) return normalizeGeneratedStorageUrl(durableUrl);
+  if (task.artifacts?.length) return null;
+
+  const legacyCandidate = (
     (typeof task.resultUrl === "string" && task.resultUrl.trim() ? task.resultUrl.trim() : null) ||
     readFirstHttpUrl(task.resultData?.resultUrl) ||
     readFirstHttpUrl(task.resultData?.result_url) ||
@@ -654,7 +714,18 @@ function extractMediaHistoryResultUrl(task: MediaTask): string | null {
     readFirstHttpUrl(task.resultData?.resultJson) ||
     null
   );
-  return resultUrl ? normalizeGeneratedStorageUrl(resultUrl) : null;
+  if (!legacyCandidate) return null;
+
+  // A completed task without an artifact row may still carry an older direct
+  // R2 URL. Normalize that legacy form, but never promote a provider URL to
+  // playback; providerOriginalUrl remains diagnostic/fallback provenance only.
+  const normalized = normalizeGeneratedStorageUrl(legacyCandidate);
+  try {
+    const parsed = new URL(normalized, window.location.origin);
+    return parsed.pathname.startsWith("/api/storage/files/") ? normalized : null;
+  } catch {
+    return normalized.startsWith("/api/storage/files/") ? normalized : null;
+  }
 }
 
 function normalizeGeneratedStorageUrl(value: string): string {
@@ -1652,11 +1723,9 @@ export default function MediaHistory() {
         folder: folder as "images" | "videos" | "thumbnails" | "websites",
       });
 
-      // Determine aspect ratio based on media type
-      let aspectRatio: "1:1" | "9:16" | "16:9" = "1:1";
-      if (task.mediaType === "video") {
-        aspectRatio = "16:9";
-      }
+      // Prefer the real dimensions from the provider result, then the
+      // requested ratio, and only fall back to the media type default.
+      const aspectRatio = resolveMediaHistoryGalleryAspectRatio(task);
 
       // Create gallery item with permanent URL
       await addToGalleryMutation.mutateAsync({
@@ -2846,14 +2915,15 @@ export default function MediaHistory() {
                 {visibleTasks.map(task => {
                   const typeConfig = getMediaTypeMeta(task.mediaType, t);
                   const status = getStatusMeta(task.status, t);
+                  const artifactStatus = getMediaTaskArtifactStatus(
+                    task,
+                    locale.startsWith("th"),
+                  );
                   const StatusIcon = status?.icon || AlertCircle;
                   const TypeIcon = typeConfig?.icon || FileImage;
                   const canAddToLibrary =
                     isMediaTaskEligibleForLibraryAdd(task);
-                  const canAddToGallery =
-                    isAdmin &&
-                    task.status === "completed" &&
-                    Boolean(task.resultUrl);
+                  const canAddToGallery = canAddTaskToGallery(task, isAdmin);
                   const canFetchResult = canManuallyFetchTaskResult(task);
                   const isFetchPending =
                     fetchResultMutation.isPending &&
@@ -2896,6 +2966,19 @@ export default function MediaHistory() {
                             />
                             {status.label}
                           </Badge>
+                          {artifactStatus && (
+                            <Badge
+                              variant="outline"
+                              title={artifactStatus.detail}
+                              className={cn(
+                                "bg-white/90 shadow-sm",
+                                artifactStatus.tone === "expired" &&
+                                  "border-amber-300 text-amber-700",
+                              )}
+                            >
+                              {artifactStatus.label}
+                            </Badge>
+                          )}
                         </div>
                         {canAddToLibrary && (
                           <div className="absolute right-3 top-3 z-10">
@@ -3137,6 +3220,24 @@ export default function MediaHistory() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
+                        {canAddToGallery && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleAddToGallery(task)}
+                            disabled={importingTaskId === task.id}
+                            className="w-full gap-2 bg-purple-600 text-white hover:bg-purple-700"
+                          >
+                            {importingTaskId === task.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <ImagePlus className="h-4 w-4" />
+                            )}
+                            {importingTaskId === task.id
+                              ? t("historyPage.actions.importing")
+                              : t("historyPage.actions.addToGallery")}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );
@@ -3150,6 +3251,10 @@ export default function MediaHistory() {
                 {visibleTasks.map(task => {
                   const typeConfig = getMediaTypeMeta(task.mediaType, t);
                   const status = getStatusMeta(task.status, t);
+                  const artifactStatus = getMediaTaskArtifactStatus(
+                    task,
+                    locale.startsWith("th"),
+                  );
                   const StatusIcon = status?.icon || AlertCircle;
                   const TypeIcon = typeConfig?.icon || FileImage;
                   const canAddToLibrary =
@@ -3234,6 +3339,19 @@ export default function MediaHistory() {
                             />
                             {status.label}
                           </Badge>
+                          {artifactStatus && (
+                            <Badge
+                              variant="outline"
+                              title={artifactStatus.detail}
+                              className={cn(
+                                "text-xs",
+                                artifactStatus.tone === "expired" &&
+                                  "border-amber-300 text-amber-700",
+                              )}
+                            >
+                              {artifactStatus.label}
+                            </Badge>
+                          )}
                           {canAddToLibrary &&
                             libraryState?.action !== "adding" &&
                             libraryState?.action !== "error" && (
@@ -3435,6 +3553,10 @@ export default function MediaHistory() {
                     {visibleTasks.map(task => {
                       const typeConfig = getMediaTypeMeta(task.mediaType, t);
                       const status = getStatusMeta(task.status, t);
+                      const artifactStatus = getMediaTaskArtifactStatus(
+                        task,
+                        locale.startsWith("th"),
+                      );
                       const StatusIcon = status?.icon || AlertCircle;
                       const TypeIcon = typeConfig?.icon || FileImage;
                       const externalTaskId = extractMediaHistoryExternalTaskId(task);
@@ -3560,6 +3682,19 @@ export default function MediaHistory() {
                               />
                               {status.label}
                             </Badge>
+                            {artifactStatus && (
+                              <Badge
+                                variant="outline"
+                                title={artifactStatus.detail}
+                                className={cn(
+                                  "ml-2",
+                                  artifactStatus.tone === "expired" &&
+                                    "border-amber-300 text-amber-700",
+                                )}
+                              >
+                                {artifactStatus.label}
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell>
                             {externalTaskId ? (
@@ -4095,6 +4230,61 @@ export default function MediaHistory() {
                     </p>
                   </div>
                 )}
+                {selectedTask.artifacts?.length ? (
+                  <div className="sm:col-span-2 rounded-lg border border-slate-200 bg-white p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-slate-700">
+                        {locale.startsWith("th")
+                          ? "แหล่งจัดเก็บผลลัพธ์"
+                          : "Result storage provenance"}
+                      </span>
+                      {(() => {
+                        const artifactStatus = getMediaTaskArtifactStatus(
+                          selectedTask,
+                          locale.startsWith("th"),
+                        );
+                        return artifactStatus ? (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              artifactStatus.tone === "expired" &&
+                                "border-amber-300 text-amber-700",
+                            )}
+                          >
+                            {artifactStatus.label}
+                          </Badge>
+                        ) : null;
+                      })()}
+                    </div>
+                    <div className="mt-2 space-y-2 text-xs">
+                      {selectedTask.artifacts.map(artifact => (
+                        <div
+                          key={`${selectedTask.id}-${artifact.outputIndex ?? 0}`}
+                          className="rounded border bg-slate-50 p-2"
+                        >
+                          <p className="font-medium text-slate-600">
+                            {locale.startsWith("th")
+                              ? `ผลลัพธ์ที่ ${(artifact.outputIndex ?? 0) + 1}`
+                              : `Output ${(artifact.outputIndex ?? 0) + 1}`}
+                          </p>
+                          <p className="mt-1 break-all font-mono text-emerald-700">
+                            R2: {artifact.r2Url ??
+                              (locale.startsWith("th")
+                                ? "ยังไม่มีไฟล์ถาวร"
+                                : "No durable object yet")}
+                          </p>
+                          <p className="mt-1 break-all font-mono text-slate-600">
+                            Provider: {artifact.providerStatus === "expired"
+                              ? locale.startsWith("th")
+                                ? "หมดอายุ / เรียกดูไม่ได้แล้ว"
+                                : "Expired / no longer viewable"
+                              : artifact.providerOriginalUrl ?? "-"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 {selectedTask.celeryTaskId && (
                   <div className="sm:col-span-2">
                     <span className="text-sm text-gray-500">
