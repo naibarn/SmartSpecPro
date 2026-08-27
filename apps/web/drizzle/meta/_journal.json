@@ -1688,6 +1688,13 @@
       "when": 1787575173477,
       "tag": "0254_vertical_drama_legacy_draft_cleanup",
       "breakpoints": true
+    },
+    {
+      "idx": 249,
+      "version": "7",
+      "when": 1787770337001,
+      "tag": "0263_free_plan_assignment",
+      "breakpoints": true
     }
   ]
 }

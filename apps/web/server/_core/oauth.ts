@@ -1,7 +1,7 @@
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
-import { giveSignupBonus } from "../services/creditService";
+import { ensureFreePlanForUser } from "../services/freePlanService";
 import { analyzeEmail } from "../services/emailAnalysis";
 import { ENABLE_FUNNEL_TRACKING, trackSignupCompleted } from "../services/funnelMilestones";
 import {
@@ -15,27 +15,6 @@ import { registrationLimiter } from "../services/rateLimiter";
 import { evaluateRegistration, logRegistrationEvent, recordDeviceFingerprint } from "../services/trustScoring";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
-
-// Default credits (overridden by system settings if configured)
-const DEFAULT_FIRST_USER_BONUS = 10000;
-const DEFAULT_NORMAL_USER_BONUS = 100;
-
-async function getRegistrationBonusCredits(isFirstUser: boolean): Promise<number> {
-  try {
-    const { getDb } = await import("../db");
-    const { systemSettings } = await import("../../drizzle/schema");
-    const { eq, and } = await import("drizzle-orm");
-    const dbInst = await getDb();
-    if (!dbInst) return isFirstUser ? DEFAULT_FIRST_USER_BONUS : DEFAULT_NORMAL_USER_BONUS;
-
-    const key = isFirstUser ? "first_user_bonus_credits" : "signup_bonus_credits";
-    const [setting] = await dbInst.select().from(systemSettings)
-      .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, key)))
-      .limit(1);
-    if (setting?.value) return parseInt(setting.value, 10) || (isFirstUser ? DEFAULT_FIRST_USER_BONUS : DEFAULT_NORMAL_USER_BONUS);
-  } catch { /* fallback */ }
-  return isFirstUser ? DEFAULT_FIRST_USER_BONUS : DEFAULT_NORMAL_USER_BONUS;
-}
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
@@ -153,7 +132,8 @@ export function registerOAuthRoutes(app: Express) {
         trustScore: isNewUser ? trustScore : undefined,
       });
 
-      // Give signup bonus to new users (only if trust score allows)
+      // Assign the configured monthly Free package to every new user. The
+      // assignment service excludes the first system admin automatically.
       if (isNewUser) {
         const newUser = await db.getUserByOpenId(userInfo.openId);
         if (newUser) {
@@ -177,18 +157,10 @@ export function registerOAuthRoutes(app: Express) {
             console.error(`[OAuth] Failed to log registration event:`, err);
           }
 
-          // Only give bonus if trust score >= 70
-          if (trustScore >= 70) {
-            try {
-              const bonusCredits = await getRegistrationBonusCredits(isFirstUser);
-              await giveSignupBonus(newUser.id, bonusCredits);
-              console.log(`[OAuth] Gave signup bonus (${bonusCredits} credits) to new user: ${newUser.id}${isFirstUser ? ' (ADMIN)' : ''}`);
-            } catch (err) {
-              console.error(`[OAuth] Failed to give signup bonus:`, err);
-            }
-          } else {
-            console.log(`[OAuth] Withheld signup bonus for user ${newUser.id} (trust score: ${trustScore})`);
-          }
+          const freePlanResult = await ensureFreePlanForUser(newUser.id, {
+            reason: "oauth_signup",
+          });
+          console.log(`[OAuth] Free plan assignment for user ${newUser.id}: ${freePlanResult.status}`);
 
           // Process invite code if provided
           if (inviteCodeId) {

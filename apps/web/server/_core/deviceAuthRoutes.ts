@@ -13,7 +13,7 @@ import { authorizeRequest } from "./authz";
 import { rateLimit } from "./limits";
 import { revokeJti } from "./revocation";
 import { getUserByOpenId, getDb } from "../db";
-import { getCreditBalance, giveSignupBonus } from "../services/creditService";
+import { getCreditBalance } from "../services/creditService";
 import { getRedisClient } from "../services/redis";
 import { normalizeAuthEmail } from "../services/emailNormalization";
 

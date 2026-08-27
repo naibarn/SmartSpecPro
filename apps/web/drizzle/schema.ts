@@ -753,6 +753,9 @@ export type InsertCreditTransaction = typeof creditTransactions.$inferInsert;
 export const creditPackages = pgTable("credit_packages", {
   id: serial("id").primaryKey(),
 
+  /** Stable machine-readable package identifier (display name may change). */
+  code: varchar("code", { length: 64 }),
+
   /** Package name */
   name: varchar("name", { length: 128 }).notNull(),
 
@@ -7362,6 +7365,9 @@ export const billingSubscriptions = pgTable(
     userId: integer("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    packageId: integer("packageId").references(() => creditPackages.id, {
+      onDelete: "set null",
+    }),
     planCode: varchar("planCode", { length: 64 }).notNull(),
     status: billingSubscriptionStatusEnum("status")
       .notNull()

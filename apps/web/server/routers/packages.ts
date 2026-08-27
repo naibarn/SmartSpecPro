@@ -29,6 +29,7 @@ const stripePriceIdsSchema = z.object({
 }).optional();
 
 const createPackageSchema = z.object({
+  code: z.string().trim().min(1).max(64).regex(/^[a-z0-9][a-z0-9_-]*$/).optional(),
   name: z.string().min(1).max(128),
   description: z.string().optional(),
   credits: z.number().min(1),
@@ -74,6 +75,7 @@ export const packagesRouter = router({
 
       return {
         id: p.id,
+        code: p.code,
         name: p.name,
         description: p.description,
         credits: p.credits,
@@ -115,6 +117,7 @@ export const packagesRouter = router({
 
       return {
         id: p.id,
+        code: p.code,
         name: p.name,
         description: p.description,
         credits: p.credits,
@@ -169,6 +172,7 @@ export const packagesRouter = router({
 
       return {
         id: pkg.id,
+        code: pkg.code,
         name: pkg.name,
         description: pkg.description,
         credits: pkg.credits,
@@ -206,6 +210,7 @@ export const packagesRouter = router({
       if (!db) throw new Error("Database not available");
 
       const [created] = await db.insert(creditPackages).values({
+        code: input.code || null,
         name: input.name,
         description: input.description || null,
         credits: input.credits,
@@ -243,6 +248,7 @@ export const packagesRouter = router({
 
       const updateData: Record<string, any> = {};
 
+      if (input.data.code !== undefined) updateData.code = input.data.code;
       if (input.data.name !== undefined) updateData.name = input.data.name;
       if (input.data.description !== undefined) updateData.description = input.data.description;
       if (input.data.credits !== undefined) updateData.credits = input.data.credits;

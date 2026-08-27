@@ -815,6 +815,8 @@ const authRouter = router({
       email: authEmailSchema,
       password: strongPasswordSchema,
       company: z.string().max(255).optional(),
+      // Kept for clients that still send this field; new accounts always use
+      // the server-managed monthly Free package below.
       plan: z.enum(['free', 'pro']).default('free'),
       inviteCode: z.string().min(1).max(32).regex(/^[A-Za-z0-9-]+$/).optional(),
     }))
@@ -825,7 +827,7 @@ const authRouter = router({
       const { users, emailVerificationTokens, systemSettings, tenants } = await import("../drizzle/schema");
       const { eq, and } = await import("drizzle-orm");
       const { checkRegistrationAllowed, checkDeviceFraudLimit, processInviteCodeUsage, giveInviteCodeBonuses, getAuthMethodsConfig } = await import("./services/inviteCodeService");
-      const { giveSignupBonus } = await import("./services/creditService");
+      const { ensureFreePlanForUser } = await import("./services/freePlanService");
 
       // Check if email auth method is allowed
       const authMethods = await getAuthMethodsConfig();
@@ -861,20 +863,6 @@ const authRouter = router({
       const db = await getDb();
       if (!db) throw new Error('Database not available');
 
-      // Read configurable signup bonus from system settings
-      let signupBonus = 100;
-      try {
-        const [bonusSetting] = await db.select().from(systemSettings)
-          .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, "signup_bonus_credits")))
-          .limit(1);
-        if (bonusSetting?.value) {
-          const configuredBonus = parseInt(bonusSetting.value, 10);
-          if (Number.isFinite(configuredBonus) && configuredBonus >= 0) {
-            signupBonus = configuredBonus;
-          }
-        }
-      } catch { /* use default */ }
-
       // Get hostname for registeredDomain
       const hostname = ctx.req.hostname || ctx.req.get("host")?.split(":")[0] || "localhost";
 
@@ -898,7 +886,6 @@ const authRouter = router({
         await db.update(users).set({
           password: passwordHash,
           name: input.name,
-          plan: input.plan,
           loginMethod: 'email',
         }).where(eq(users.id, existing.id));
       } else {
@@ -909,7 +896,7 @@ const authRouter = router({
           password: passwordHash,
           loginMethod: 'email',
           role: 'user',
-          plan: input.plan,
+          plan: 'free',
           credits: 0,
           isDisabled: true,
           registeredDomain: hostname,
@@ -921,15 +908,9 @@ const authRouter = router({
       const user = await getUserByEmail(input.email);
       if (!user) throw new Error('Failed to create account');
 
-      // Route all signup grants through the credit ledger so free-credit
-      // inactivity eligibility is recorded consistently with OAuth signup.
-      if (!existing && signupBonus > 0) {
-        try {
-          await giveSignupBonus(user.id, signupBonus);
-        } catch (err) {
-          console.error("[Register] Failed to give signup bonus:", err);
-        }
-      }
+      await ensureFreePlanForUser(user.id, {
+        reason: existing ? "email_completion" : "signup",
+      });
 
       // Record device fingerprint for fraud detection (matching OAuth path)
       if (fingerprintHash) {
@@ -1928,7 +1909,7 @@ const authRouter = router({
             processInviteCodeUsage,
             giveInviteCodeBonuses,
           } = await import("./services/inviteCodeService");
-          const { addCredits } = await import("./services/creditService");
+          const { ensureFreePlanForUser } = await import("./services/freePlanService");
 
           const registrationCheck = await checkRegistrationAllowed(
             oauthInviteCode,
@@ -1995,19 +1976,9 @@ const authRouter = router({
             .set(onboardingUpdate)
             .where(eq(users.id, existing.id));
 
-          // The idempotency key makes a replayed OAuth callback safe while
-          // still recording the configured signup bonus in credit history.
-          if (signupBonus > 0) {
-            await addCredits({
-              userId: existing.id,
-              amount: signupBonus,
-              type: "bonus",
-              description: "Welcome bonus credits",
-              metadata: { reason: "signup", provider: input.provider },
-              idempotencyKey: `oauth-signup-${existing.id}`,
-              freeCreditGrant: true,
-            });
-          }
+          await ensureFreePlanForUser(existing.id, {
+            reason: "oauth_signup",
+          });
 
           if (registrationCheck.codeId) {
             const usageResult = await processInviteCodeUsage(
@@ -2098,7 +2069,7 @@ const authRouter = router({
         processInviteCodeUsage,
         giveInviteCodeBonuses,
       } = await import("./services/inviteCodeService");
-      const { addCredits } = await import("./services/creditService");
+      const { ensureFreePlanForUser } = await import("./services/freePlanService");
 
       const registrationCheck = await checkRegistrationAllowed(
         oauthInviteCode,
@@ -2119,20 +2090,6 @@ const authRouter = router({
         clearOAuthInviteCookie(ctx.res);
         throw new Error(fraudCheck.reason || "Registration blocked");
       }
-
-      // Read signup bonus from system settings (same as register)
-      let signupBonus = 100;
-      try {
-        const [bonusSetting] = await db.select().from(systemSettings)
-          .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, "signup_bonus_credits")))
-          .limit(1);
-        if (bonusSetting?.value) {
-          const configuredBonus = parseInt(bonusSetting.value, 10);
-          if (Number.isFinite(configuredBonus) && configuredBonus >= 0) {
-            signupBonus = configuredBonus;
-          }
-        }
-      } catch { /* use default */ }
 
       // Auto-assign tenant by domain (same as register)
       const hostname = ctx.req.hostname || ctx.req.get("host")?.split(":")[0] || "localhost";
@@ -2167,17 +2124,9 @@ const authRouter = router({
       const createdUser = await getUserByEmail(normalizedEmail);
       if (!createdUser) throw new Error("Failed to create OAuth user");
 
-      if (signupBonus > 0) {
-        await addCredits({
-          userId: createdUser.id,
-          amount: signupBonus,
-          type: "bonus",
-          description: "Welcome bonus credits",
-          metadata: { reason: "signup", provider: input.provider },
-          idempotencyKey: `oauth-signup-${createdUser.id}`,
-          freeCreditGrant: true,
-        });
-      }
+      await ensureFreePlanForUser(createdUser.id, {
+        reason: "oauth_signup",
+      });
 
       if (registrationCheck.codeId) {
         try {
