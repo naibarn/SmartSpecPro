@@ -129,6 +129,33 @@ const selectedInvoiceAuditData = {
     },
   ],
 };
+const promptPayReviewQueueData = [
+  {
+    payment: {
+      id: 902,
+      invoiceId: 302,
+      paymentChannel: "promptpay_direct_manual",
+      status: "manual_review_required",
+      expectedAmount: "413.01",
+    },
+    invoice: { id: 302, invoiceNumber: "TH-INV-2026-000302", userId: 42 },
+    user: { email: "customer@example.com" },
+  },
+];
+const promptPayReviewData = {
+  payment: promptPayReviewQueueData[0].payment,
+  invoice: promptPayReviewQueueData[0].invoice,
+  user: promptPayReviewQueueData[0].user,
+  slips: [
+    {
+      id: 78,
+      originalFileName: "review-slip.png",
+      mimeType: "image/png",
+      status: "submitted",
+      uploadedAt: "2026-03-30T00:20:00.000Z",
+    },
+  ],
+};
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/admin/billing", mockSetLocation],
@@ -185,14 +212,14 @@ vi.mock("@/lib/trpc", () => ({
       },
       listPromptPayReviewQueue: {
         useQuery: () => ({
-          data: [],
+          data: promptPayReviewQueueData,
           refetch: vi.fn().mockResolvedValue(undefined),
           isFetching: false,
         }),
       },
       getPromptPayReview: {
-        useQuery: () => ({
-          data: null,
+        useQuery: ({ paymentId }: { paymentId: number }) => ({
+          data: paymentId ? promptPayReviewData : null,
           refetch: vi.fn().mockResolvedValue(undefined),
         }),
       },
@@ -585,6 +612,7 @@ describe("AdminBillingCenter", () => {
     await waitFor(() => {
       expect(screen.getAllByText("promptpay-slip.png").length).toBeGreaterThan(0);
       expect(screen.getByRole("button", { name: "Expand invoice slip preview" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Approve & add credits" })).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole("button", { name: "Expand invoice slip preview" }));
     expect(screen.getByRole("dialog", { name: "Full-screen invoice slip preview: promptpay-slip.png" })).toBeInTheDocument();

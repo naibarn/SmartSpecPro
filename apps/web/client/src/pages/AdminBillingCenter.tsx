@@ -789,6 +789,17 @@ export default function AdminBillingCenter() {
   }, [invoiceListQuery.data, selectedInvoiceId]);
 
   useEffect(() => {
+    const queue = promptPayReviewQueueQuery.data ?? [];
+    if (queue.length === 0) {
+      if (selectedPromptPayPaymentId !== null) setSelectedPromptPayPaymentId(null);
+      return;
+    }
+    if (!queue.some((item) => item.payment.id === selectedPromptPayPaymentId)) {
+      setSelectedPromptPayPaymentId(queue[0].payment.id);
+    }
+  }, [promptPayReviewQueueQuery.data, selectedPromptPayPaymentId]);
+
+  useEffect(() => {
     const cases = recoveryCasesQuery.data ?? [];
     if (!selectedRecoveryCaseId && cases.length > 0) {
       setSelectedRecoveryCaseId(cases[0].id);
