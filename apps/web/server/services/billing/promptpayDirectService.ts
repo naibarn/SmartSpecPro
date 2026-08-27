@@ -27,7 +27,7 @@ import {
   getActiveTaxPolicy,
   reserveNextInvoiceNumber,
 } from "./invoiceDomain";
-import { renderInvoiceDocument } from "./documentRendering";
+import { renderInvoiceDocumentWithFailureAudit } from "./documentRendering";
 import { fetchFrankfurterUsdThbRate, calculatePromptPayThb, type FrankfurterRateQuote } from "./frankfurterRateService";
 import { buildPromptPayPayload, normalizePromptPayRecipient } from "./promptpayQr";
 
@@ -393,13 +393,13 @@ export async function createPromptPayDirectTopup(params: {
         return { invoice, payment };
       });
 
-      await renderInvoiceDocument({
+      await renderInvoiceDocumentWithFailureAudit({
         invoiceId: created.invoice.id,
         language: "th",
         reason: "initial_issue",
         renderedByType: "system",
         renderedById: null,
-      }).catch(() => {});
+      });
 
       return {
         invoice: created.invoice,
@@ -661,7 +661,7 @@ export async function approvePromptPayPayment(params: {
     return { invoice: { ...row.invoice, status: "paid", paidAt: now }, payment: { ...row.payment, status: "paid", businessEffectStatus: "applied", paidAt: now }, alreadyApplied: false };
   });
   if (!result.alreadyApplied) {
-    await renderInvoiceDocument({ invoiceId: result.invoice.id, language: "th", reason: "manual_regeneration", renderedByType: "admin", renderedById: params.actorUserId }).catch(() => {});
+    await renderInvoiceDocumentWithFailureAudit({ invoiceId: result.invoice.id, language: "th", reason: "manual_regeneration", renderedByType: "admin", renderedById: params.actorUserId });
   }
   return result;
 }

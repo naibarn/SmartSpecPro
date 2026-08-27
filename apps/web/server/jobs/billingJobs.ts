@@ -4,7 +4,7 @@ import { getDb } from "../db";
 import { billingSubscriptions, invoiceAuditLogs, invoiceDocuments, invoices, paymentAttempts, payments, promptpayAmountReservations, supportRecoveryCases } from "../../drizzle/schema";
 import { applyPaidBusinessEffects, markSubscriptionDowngraded } from "../services/billing/businessEffects";
 import { createBeamProvider } from "../services/billing/beamProvider";
-import { renderInvoiceDocument } from "../services/billing/documentRendering";
+import { renderInvoiceDocumentWithFailureAudit } from "../services/billing/documentRendering";
 import { sendInvoiceNotification } from "../services/billing/notifications";
 import { createAutoRenewalAttempt, runRenewalRetryScheduler } from "../services/billing/autoRenew";
 import { markExpiredPaymentMethodSetupSessionsAbandoned } from "../services/billing/paymentMethodSetup";
@@ -359,6 +359,7 @@ export async function runDocumentRecoveryJob() {
       invoiceId: invoices.id,
       language: invoices.defaultDocumentLanguage,
       documentId: invoiceDocuments.id,
+      pdfFileUrl: invoiceDocuments.pdfFileUrl,
     })
     .from(invoices)
     .leftJoin(invoiceDocuments, and(eq(invoiceDocuments.invoiceId, invoices.id), eq(invoiceDocuments.isLatestForLanguage, true)))
@@ -370,16 +371,21 @@ export async function runDocumentRecoveryJob() {
     )
     .limit(100);
 
-  const missing = rows.filter((row) => !row.documentId);
+  const missing = rows.filter((row) => !row.documentId || !row.pdfFileUrl);
   const results = [];
   for (const row of missing) {
-    results.push(await renderInvoiceDocument({
+    const rendered = await renderInvoiceDocumentWithFailureAudit({
       invoiceId: row.invoiceId,
       language: (row.language ?? "th") as "th" | "en" | "bilingual",
       reason: "manual_regeneration",
       renderedByType: "system",
       renderedById: null,
-    }));
+    });
+    results.push({
+      invoiceId: row.invoiceId,
+      rendered: Boolean(rendered),
+      documentVersion: rendered?.documentVersion ?? null,
+    });
   }
   return results;
 }

@@ -2,12 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockGetDb,
+  mockInsert,
   mockStoragePut,
   mockRenderPdfFromHtml,
   resetHarness,
 } = vi.hoisted(() => {
   const selectRowsQueue: any[][] = [];
   const db = {
+    insert: vi.fn().mockImplementation(() => ({
+      values: vi.fn().mockResolvedValue(undefined),
+    })),
     select: vi.fn().mockImplementation(() => ({
       from: vi.fn().mockImplementation(() => {
         const query: any = {};
@@ -46,8 +50,10 @@ const {
     resetHarness: () => {
       selectRowsQueue.length = 0;
       db.select.mockClear();
+      db.insert.mockClear();
       db.transaction.mockClear();
     },
+    mockInsert: db.insert,
   };
 });
 
@@ -155,5 +161,66 @@ describe("documentRendering", () => {
       documentVersion: 1,
       language: "th",
     });
+  });
+
+  it("records a safe audit event when PDF rendering fails", async () => {
+    mockGetDb().select
+      .mockImplementationOnce(() => ({
+        from: vi.fn().mockImplementation(() => {
+          const query: any = {};
+          query.where = vi.fn().mockReturnValue(query);
+          query.limit = vi.fn().mockResolvedValue([{ id: 13, status: "paid", defaultDocumentLanguage: "th" }]);
+          return query;
+        }),
+      }))
+      .mockImplementationOnce(() => ({
+        from: vi.fn().mockImplementation(() => {
+          const query: any = {};
+          query.where = vi.fn().mockReturnValue(query);
+          query.orderBy = vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+            then: (resolve: (value: any[]) => void) => resolve([]),
+          });
+          return query;
+        }),
+      }))
+      .mockImplementationOnce(() => ({
+        from: vi.fn().mockImplementation(() => {
+          const query: any = {};
+          query.where = vi.fn().mockReturnValue(query);
+          query.limit = vi.fn().mockResolvedValue([]);
+          return query;
+        }),
+      }))
+      .mockImplementationOnce(() => ({
+        from: vi.fn().mockImplementation(() => {
+          const query: any = {};
+          query.where = vi.fn().mockReturnValue(query);
+          query.orderBy = vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+            then: (resolve: (value: any[]) => void) => resolve([]),
+          });
+          return query;
+        }),
+      }));
+    mockRenderPdfFromHtml.mockRejectedValueOnce(new Error("PDF render failed with status 503; token=secret"));
+
+    const { renderInvoiceDocumentWithFailureAudit } = await import("./documentRendering");
+    const result = await renderInvoiceDocumentWithFailureAudit({
+      invoiceId: 13,
+      language: "th",
+      reason: "manual_regeneration",
+      renderedByType: "system",
+    });
+
+    expect(result).toBeNull();
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    const auditPayload = mockInsert.mock.results[0]?.value.values.mock.calls[0]?.[0];
+    expect(auditPayload).toMatchObject({
+      invoiceId: 13,
+      action: "invoice_document_render_failed",
+      reason: "PDF render failed with status 503; token=[REDACTED]",
+    });
+    expect(auditPayload.afterJson).toMatchObject({ retryable: true });
   });
 });
