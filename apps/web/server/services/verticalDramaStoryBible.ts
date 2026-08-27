@@ -22,6 +22,7 @@ import {
 import { executeWithFallback, type PhysicalLlmAttemptEvent } from "./llmRouter";
 import { isAvailable } from "./providerHealth";
 import { resolveExternalMediaReferenceUrls } from "./mediaGenerationService";
+import { ensureExternalMediaAssetDurable } from "./durableMediaAssetService";
 import {
   loadEnabledLlmModelRows,
   type EnabledLlmModelRow,
@@ -54,6 +55,7 @@ import {
 } from "./creditService";
 import { debugLog, debugError } from "../_core/logger";
 import { inspectVerticalDramaEpisodeCompletion } from "./verticalDramaCompletionContract";
+import type { StoryConsistencyFinding } from "@shared/verticalDramaSeries/storyConsistency";
 import {
   verticalDramaLocaleEnglishName,
   type VerticalDramaSeriesLocale,
@@ -478,6 +480,9 @@ export type VdDeepDraftWarning = {
    * `computeShotCompletenessViolations`/`computeNewLocationDeclarationViolations`.
    * Chunk-level violations (e.g. a bad `new_locations` entry) use
    * `episodeNumber: 0, shotNumber: 0`.
+   * `"continuity_repair_exhausted"` — automatic continuity repair used its
+   * available pass but a non-structural thread finding remained; the best
+   * complete draft is published with this warning.
    */
   reason:
     | "nonverbal_line"
@@ -489,7 +494,9 @@ export type VdDeepDraftWarning = {
     | "premise_coverage_low"
     | "shot_completeness_violation"
     | "genre_grounding_missing"
-    | "format_evidence_missing";
+    | "format_evidence_missing"
+    | "automatic_completion_fallback"
+    | "continuity_repair_exhausted";
 };
 
 /* -------------------------------------------------------------------------- */
@@ -869,6 +876,19 @@ const expandedStoryBibleSchema = z.object({
 export type ExpandedVerticalDramaStoryBible = z.infer<
   typeof expandedStoryBibleSchema
 >;
+
+/**
+ * Resilient plan resume — validates a candidate loaded from the story-job
+ * checkpoint before it is allowed back into the local finalization stages.
+ * Redis is durable recovery state, not a trust boundary; malformed/legacy
+ * checkpoints simply fall back to a fresh provider call.
+ */
+export function parseExpandedStoryBibleCandidate(
+  value: unknown,
+): ExpandedVerticalDramaStoryBible | null {
+  const parsed = expandedStoryBibleSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
 
 // `planning/vd-character-identity-repair/plan.md` Phase 2.1 — `aliases`
 // (when the LLM supplied it) passes through untouched via the `...character`
@@ -1374,6 +1394,11 @@ const VD_TRANSIENT_LLM_ERROR_PATTERNS: RegExp[] = [
   /\b429\b/,
   /\b5\d{2}\b/,
   /rate limit/,
+  // Some providers return HTTP 400 for a temporary account-level capacity
+  // guard instead of HTTP 429.  It is safe to retry because no provider
+  // request was admitted and no application credit was deducted.
+  /would exceed your available credits/,
+  /in-flight requests/,
   /invalid_argument/,
   /invalid argument/,
 ];
@@ -1959,6 +1984,74 @@ function isProviderUnavailableError(error: unknown): boolean {
   );
 }
 
+function isVisionProviderResponseFailure(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /empty_response|no assistant text|vision reference image unavailable|error while downloading (?:file|image)|upstream status code(?: of)?\s*:?\s*404/i.test(
+    message,
+  );
+}
+
+function isVolatileVisionReferenceUrl(value: string): boolean {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname === "tempfile.aiquickdraw.com" || hostname.endsWith(".tempfile.aiquickdraw.com");
+  } catch {
+    return false;
+  }
+}
+
+async function prepareVisionReferenceUrls(args: {
+  images: VisionAwareImageInput[];
+  userId: number;
+  tenantId?: string;
+  publicUrl?: string | null;
+}): Promise<VisionAwareImageInput[]> {
+  const resolvedUrls = await resolveExternalMediaReferenceUrls(
+    args.images.map(image => image.url),
+    args.tenantId
+      ? { userId: args.userId, tenantId: args.tenantId }
+      : undefined,
+    args.publicUrl,
+  );
+  const resolvedImages = args.images.map((image, index) => ({
+    ...image,
+    url: resolvedUrls?.[index] ?? image.url,
+  }));
+
+  // Provider result URLs such as tempfile.aiquickdraw.com are temporary and
+  // have already produced upstream 404s when OpenRouter fetched them later.
+  // Copy those references into owner-scoped durable storage before the LLM
+  // call, then expose them through the existing signed broker URL path.
+  return Promise.all(resolvedImages.map(async image => {
+    if (!isVolatileVisionReferenceUrl(image.url)) return image;
+    if (!args.tenantId) {
+      throw new Error(
+        "Vision reference image requires tenant-scoped storage before provider submission",
+      );
+    }
+    try {
+      const durable = await ensureExternalMediaAssetDurable({
+        tenantId: args.tenantId,
+        userId: args.userId,
+        mediaType: "image",
+        sourceType: "vertical_drama_reference",
+        sourceUrl: image.url,
+        originalUrl: image.url,
+        identity: image.url,
+      });
+      const [brokeredUrl] = await resolveExternalMediaReferenceUrls(
+        [durable.copy.url],
+        { userId: args.userId, tenantId: args.tenantId },
+        args.publicUrl,
+      ) ?? [];
+      return { ...image, url: brokeredUrl ?? durable.copy.url };
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`Vision reference image could not be made durable: ${detail}`);
+    }
+  }));
+}
+
 export interface VisionAwareImageInput {
   url: string;
   label?: string;
@@ -2033,9 +2126,8 @@ export async function runVisionAwareJsonAttempt<T>(args: {
 
   const responseContent = result.response.choices?.[0]?.message?.content ?? "";
   if (!responseContent.trim()) {
-    throw new VdSchemaValidationError(
-      "LLM response was empty; expected one complete JSON object",
-      { rawResponse: responseContent }
+    throw new Error(
+      "Vision provider returned an empty response; no assistant text was produced",
     );
   }
   const parsed = extractJson(responseContent);
@@ -2091,18 +2183,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
   usedVision: boolean;
 }> {
   const images = args.hasVision
-    ? await resolveExternalMediaReferenceUrls(
-        args.images.map(image => image.url),
-        args.tenantId
-          ? { userId: args.userId, tenantId: args.tenantId }
-          : undefined,
-        args.publicUrl
-      ).then(resolvedUrls =>
-        args.images.map((image, index) => ({
-          ...image,
-          url: resolvedUrls?.[index] ?? image.url,
-        }))
-      )
+    ? await prepareVisionReferenceUrls(args)
     : args.images;
   try {
     const result = await runVisionAwareJsonAttempt<T>({
@@ -2125,6 +2206,43 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
     );
     if (isProviderUnavailableError(firstError) && !args.modelFallbackPolicy)
       throw firstError;
+
+    // A provider that returned HTTP 200 with no assistant text, or could not
+    // download one of the attached references, did not produce a schema
+    // candidate. Do not send the same broken vision request back to the same
+    // model; rotate directly to the curated vision fallback. Text-only
+    // degradation is intentionally skipped for this class because it would
+    // silently discard the identity/frame evidence the caller attached.
+    if (isVisionProviderResponseFailure(firstError)) {
+      const fallbackModel =
+        args.modelFallbackPolicy === "recommended"
+          ? await resolveRecommendedModelFallback(args.model, {
+              supportsVision: args.hasVision,
+              supportsStructuredOutputs: true,
+            })
+          : null;
+      if (!fallbackModel) throw firstError;
+      try {
+        const result = await runVisionAwareJsonAttempt<T>({
+          model: fallbackModel,
+          systemPrompt: args.systemPrompt,
+          content: buildVisionAwareContent(
+            args.userPromptText,
+            args.hasVision,
+            images,
+          ),
+          userId: args.userId,
+          maxTokens: args.retryMaxTokens,
+          schema: args.schema,
+          modelFallbackFrom: args.model,
+          modelFallbackReason: "vision_provider_response_failure",
+        });
+        return { ...result, usedVision: args.hasVision };
+      } catch (fallbackError) {
+        throw fallbackError;
+      }
+    }
+
     const retryText = `${args.userPromptText}\n\nYour previous response was truncated or was not valid JSON. Return ONLY complete, valid, compact JSON (no markdown fences, no commentary, no trailing text).`;
     try {
       const result = await runVisionAwareJsonAttempt<T>({
@@ -2754,8 +2872,16 @@ export type StoredDeepDraftMetadata = {
   horizonEndEpisode: number;
   chunkSizes: number[];
   generatedAt: string;
+  /** Stable marker for an intermediate per-chunk checkpoint version. */
+  checkpointKey?: string;
+  /** Intermediate checkpoint versions are visible while a job is still running. */
+  checkpointStatus?: "running" | "completed";
   /** Premium multi-round drafts (W11-A) — present only when this version's deep draft run used `mode: "premium"`. */
   premium?: VdPremiumDeepDraftMetrics;
+  /** Non-structural consistency findings retained after autonomous repair. */
+  semanticFindings?: StoryConsistencyFinding[];
+  /** Number of paid semantic repair passes attempted for this version. */
+  qualityRepairRounds?: number;
 };
 
 export interface AppendBreakdownVersionInput {
@@ -4355,6 +4481,8 @@ function buildDeepDraftPrompts(params: {
    * guarantee).
    */
   seasonLineage?: VdSeasonLineageContext;
+  /** Deterministic semantic findings to repair in this paid retry pass. */
+  qualityRepairInstructions?: string[];
 }): { systemPrompt: string; userPrompt: string } {
   const langInstruction =
     params.locale === "th"
@@ -4550,6 +4678,15 @@ function buildDeepDraftPrompts(params: {
   const seasonLineageBlock = buildSeasonLineagePromptBlock(
     params.seasonLineage
   );
+  const qualityRepairBlock = params.qualityRepairInstructions?.length
+    ? [
+        "STORY CONSISTENCY REPAIR — apply these findings before returning the draft:",
+        ...params.qualityRepairInstructions.map(
+          instruction => `- ${instruction}`
+        ),
+        "Preserve the approved premise, character identities, episode count, and intended reveal order. Return a complete draft, not a repair report.",
+      ].join("\n")
+    : "";
 
   const userPrompt = [
     userPremiseBlockForDeepDraft,
@@ -4562,6 +4699,7 @@ function buildDeepDraftPrompts(params: {
     knownCharactersBlock,
     knownLocationsBlock,
     seasonLineageBlock,
+    qualityRepairBlock,
     storyContextBlock,
     storyDesignBlock,
     storyArchitectureBlock,
@@ -4797,6 +4935,8 @@ export interface GenerateStoryBibleDeepParams {
    * `prior_season_continuity` judging, no floor-check/feedback text for it.
    */
   seasonLineage?: VdSeasonLineageContext;
+  /** Deterministic semantic findings to repair in this paid retry pass. */
+  qualityRepairInstructions?: string[];
   /**
    * Resilient resume (added 2026-07-14, `planning/vertical-drama-deep-story-
    * resilient-resume/plan.md`) — episodes already drafted by an EARLIER
@@ -4887,6 +5027,13 @@ export interface VdStoryDraftProgressEvent {
   retrying?: boolean;
   /** Episode numbers currently being retried after a chunk split. */
   retryEpisodeNumbers?: number[];
+  /** Number of fully speakable episodes already persisted to the series. */
+  episodesCompleted?: number;
+  /** Total episodes requested by this deep-draft run. */
+  episodesTotal?: number;
+  /** Inclusive episode range currently being processed. */
+  currentEpisodeStart?: number;
+  currentEpisodeEnd?: number;
 }
 
 export type VdStoryDraftProgressCallback = (
@@ -5189,6 +5336,10 @@ export interface GenerateStoryBibleDeepResult {
   newLocations: VdDeclaredLocation[];
   /** Deterministic blocking issues when this run covered the entire season. */
   continuityIssues: VerticalDramaContinuityIssue[];
+  /** Non-structural story findings retained after autonomous repair passes. */
+  semanticFindings?: StoryConsistencyFinding[];
+  /** Number of paid semantic repair passes attempted by the caller. */
+  qualityRepairRounds?: number;
 }
 
 function validateCompletedDeepDraftContinuity(
@@ -5565,6 +5716,14 @@ export async function generateStoryBibleDeep(
       chunkIndex,
       chunkCount: chunkSizes.length,
       callsDone: completedChunkSizes.length,
+      episodesCompleted: completedChunkSizes.reduce(
+        (total, count) => total + count,
+        alreadyDraftedEpisodeSet.size
+      ),
+      episodesTotal: episodes.length,
+      currentEpisodeStart: chunkEpisodes[0]?.episodeNumber,
+      currentEpisodeEnd:
+        chunkEpisodes[chunkEpisodes.length - 1]?.episodeNumber,
     });
 
     const { systemPrompt, userPrompt } = buildDeepDraftPrompts({
@@ -5597,6 +5756,7 @@ export async function generateStoryBibleDeep(
       knownLocations: knownLocationsForPrompt,
       knownCharacters: params.knownCharacters,
       seasonLineage: params.seasonLineage,
+      qualityRepairInstructions: params.qualityRepairInstructions,
     });
 
     try {
@@ -5937,6 +6097,20 @@ export async function generateStoryBibleDeep(
             }) === null
         ).length
       );
+      params.onProgress?.({
+        phase: "draft",
+        chunkIndex,
+        chunkCount: chunkSizes.length,
+        callsDone: completedChunkSizes.length,
+        episodesCompleted: completedChunkSizes.reduce(
+          (total, count) => total + count,
+          alreadyDraftedEpisodeSet.size
+        ),
+        episodesTotal: episodes.length,
+        currentEpisodeStart: chunkEpisodes[0]?.episodeNumber,
+        currentEpisodeEnd:
+          chunkEpisodes[chunkEpisodes.length - 1]?.episodeNumber,
+      });
 
       const unresolvedEpisodeNumbers = [
         ...new Set([
@@ -6453,7 +6627,24 @@ type PremiumRunContext = {
   idempotencyKey?: string;
   /** Async story jobs (#28) — see `GenerateStoryBibleDeepParams.onProgress`'s own doc comment; additive, no-op when absent. */
   onProgress?: VdStoryDraftProgressCallback;
+  episodesCompleted?: number;
+  episodesTotal?: number;
+  currentEpisodeStart?: number;
+  currentEpisodeEnd?: number;
 };
+
+function emitPremiumProgress(
+  ctx: PremiumRunContext,
+  event: VdStoryDraftProgressEvent
+): void {
+  ctx.onProgress?.({
+    ...event,
+    episodesCompleted: ctx.episodesCompleted,
+    episodesTotal: ctx.episodesTotal,
+    currentEpisodeStart: ctx.currentEpisodeStart,
+    currentEpisodeEnd: ctx.currentEpisodeEnd,
+  });
+}
 
 type PremiumCallAccounting = {
   addCredits: (amount: number) => void;
@@ -7437,6 +7628,8 @@ async function callPremiumFanoutCandidate(
     knownCharacters?: VdBibleRefinedCharacter[];
     /** Stage 2.4 — see `buildDeepDraftPrompts`'s own `seasonLineage` doc comment; threaded straight through. */
     seasonLineage?: VdSeasonLineageContext;
+    /** Deterministic semantic findings to repair in this paid retry pass. */
+    qualityRepairInstructions?: string[];
   }
 ) {
   const base = buildDeepDraftPrompts(params);
@@ -7612,6 +7805,8 @@ async function runPremiumChunk(
     knownCharacters?: VdBibleRefinedCharacter[];
     /** Stage 2.4/2.4b — see `GenerateStoryBibleDeepParams.seasonLineage`'s own doc comment; threaded to the fan-out candidates, the judge/re-judge/revise calls (Stage 2.4b's `prior_season_continuity` dimension), and the missing-episode recovery retry below. */
     seasonLineage?: VdSeasonLineageContext;
+    /** Deterministic semantic findings to repair in this paid retry pass. */
+    qualityRepairInstructions?: string[];
   },
   callAccounting: PremiumCallAccounting
 ): Promise<PremiumChunkResult> {
@@ -7667,7 +7862,7 @@ async function runPremiumChunk(
       ?.planned === true;
 
   // Async story jobs (#28) — additive, no-op when `ctx.onProgress` is absent.
-  ctx.onProgress?.({
+  emitPremiumProgress(ctx, {
     phase: "draft",
     chunkIndex: params.chunkIndex,
     chunkCount: params.chunkCount,
@@ -7765,7 +7960,7 @@ async function runPremiumChunk(
 
   // 3. JUDGE — ONE inline call scoring every candidate's every episode.
   // Async story jobs (#28) — additive, no-op when `ctx.onProgress` is absent.
-  ctx.onProgress?.({
+  emitPremiumProgress(ctx, {
     phase: "review",
     chunkIndex: params.chunkIndex,
     chunkCount: params.chunkCount,
@@ -7901,7 +8096,7 @@ async function runPremiumChunk(
       .join(",");
 
     // Async story jobs (#28) — additive, no-op when `ctx.onProgress` is absent.
-    ctx.onProgress?.({
+    emitPremiumProgress(ctx, {
       phase: "fix",
       chunkIndex: params.chunkIndex,
       chunkCount: params.chunkCount,
@@ -8302,7 +8497,7 @@ async function runPremiumSeasonSweep(
   // Async story jobs (#28) — additive, no-op when `ctx.onProgress` is absent.
   // The sweep runs ONCE after every chunk, so it deliberately omits
   // `chunkIndex`/`chunkCount` (not chunk-scoped).
-  ctx.onProgress?.({ phase: "outline" });
+  emitPremiumProgress(ctx, { phase: "outline" });
 
   let sweepResult;
   try {
@@ -8359,7 +8554,7 @@ async function runPremiumSeasonSweep(
   const affectedEpisodeNumbersLabel = affectedEpisodeNumbers.join(",");
 
   // Async story jobs (#28) — additive, no-op when `ctx.onProgress` is absent.
-  ctx.onProgress?.({ phase: "fix", episodesDone: affectedEpisodeNumbers });
+  emitPremiumProgress(ctx, { phase: "fix", episodesDone: affectedEpisodeNumbers });
 
   let reviseResult;
   try {
@@ -8606,6 +8801,8 @@ async function generateStoryBibleDeepPremium(
     seriesId: params.seriesId,
     idempotencyKey: params.idempotencyKey,
     onProgress: params.onProgress,
+    episodesCompleted: alreadyDraftedEpisodeSet.size,
+    episodesTotal: episodes.length,
   };
 
   // Format profiles (task #23) — see `generateStoryBibleDeep`'s (standard
@@ -8755,6 +8952,9 @@ async function generateStoryBibleDeepPremium(
         ...openThreads,
       ]);
     }
+    ctx.currentEpisodeStart = chunkEpisodes[0]?.episodeNumber;
+    ctx.currentEpisodeEnd =
+      chunkEpisodes[chunkEpisodes.length - 1]?.episodeNumber;
 
     try {
       const chunkResult = await runPremiumChunk(
@@ -8790,6 +8990,7 @@ async function generateStoryBibleDeepPremium(
           characterBibleNames: params.characterBibleNames,
           knownCharacters: params.knownCharacters,
           seasonLineage: params.seasonLineage,
+          qualityRepairInstructions: params.qualityRepairInstructions,
         },
         callAccounting
       );
@@ -8804,11 +9005,22 @@ async function generateStoryBibleDeepPremium(
       params.onChunkComplete?.(
         chunkResult.episodeStates.map(premiumStateToDraftedItem)
       );
+      ctx.episodesCompleted = completedChunkSizes.reduce(
+        (total, count) => total + count,
+        0
+      );
+      emitPremiumProgress(ctx, {
+        phase: "draft",
+        chunkIndex,
+        chunkCount: chunkSizes.length,
+      });
     } catch (error) {
       if (chunkEpisodes.length > 1) {
         let splitFailure: unknown = null;
         for (const singleEpisode of chunkEpisodes) {
           try {
+            ctx.currentEpisodeStart = singleEpisode.episodeNumber;
+            ctx.currentEpisodeEnd = singleEpisode.episodeNumber;
             const singleResult = await runPremiumChunk(
               ctx,
               {
@@ -8844,6 +9056,7 @@ async function generateStoryBibleDeepPremium(
                 characterBibleNames: params.characterBibleNames,
                 knownCharacters: params.knownCharacters,
                 seasonLineage: params.seasonLineage,
+                qualityRepairInstructions: params.qualityRepairInstructions,
               },
               callAccounting
             );
@@ -8854,6 +9067,17 @@ async function generateStoryBibleDeepPremium(
             params.onChunkComplete?.(
               singleResult.episodeStates.map(premiumStateToDraftedItem)
             );
+            ctx.episodesCompleted = completedChunkSizes.reduce(
+              (total, count) => total + count,
+              0
+            );
+            emitPremiumProgress(ctx, {
+              phase: "draft",
+              chunkIndex,
+              chunkCount: chunkSizes.length,
+              retrying: true,
+              retryEpisodeNumbers: [singleEpisode.episodeNumber],
+            });
           } catch (singleError) {
             splitFailure = singleError;
             pendingRepairEpisodeNumbers.add(singleEpisode.episodeNumber);
@@ -8904,6 +9128,9 @@ async function generateStoryBibleDeepPremium(
       );
       recoveryCursor += recoverySize;
       const pendingBefore = pendingRepairEpisodeNumbers.size;
+      ctx.currentEpisodeStart = recoveryEpisodes[0]?.episodeNumber;
+      ctx.currentEpisodeEnd =
+        recoveryEpisodes[recoveryEpisodes.length - 1]?.episodeNumber;
       try {
         const recoveryResult = await runPremiumChunk(
           ctx,
@@ -8950,6 +9177,7 @@ async function generateStoryBibleDeepPremium(
             characterBibleNames: params.characterBibleNames,
             knownCharacters: params.knownCharacters,
             seasonLineage: params.seasonLineage,
+            qualityRepairInstructions: params.qualityRepairInstructions,
           },
           callAccounting
         );
@@ -8957,6 +9185,19 @@ async function generateStoryBibleDeepPremium(
         params.onChunkComplete?.(
           recoveryResult.episodeStates.map(premiumStateToDraftedItem)
         );
+        ctx.episodesCompleted = completedChunkSizes.reduce(
+          (total, count) => total + count,
+          0
+        );
+        emitPremiumProgress(ctx, {
+          phase: "draft",
+          chunkIndex: chunkSizes.length + recoveryRound,
+          chunkCount: chunkSizes.length + maxRecoveryRounds,
+          retrying: true,
+          retryEpisodeNumbers: recoveryEpisodes.map(
+            episode => episode.episodeNumber
+          ),
+        });
         if (pendingRepairEpisodeNumbers.size < pendingBefore) {
           recoveredAny = true;
         }

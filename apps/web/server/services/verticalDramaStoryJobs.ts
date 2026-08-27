@@ -74,6 +74,27 @@ import {
   resolveAffectedUsers,
 } from "./feedbackAffectedUsers";
 import type { DrizzleDB } from "../db";
+import {
+  finalizeStoryGeneration,
+  StoryGenerationFenceLostError,
+  transitionStoryGenerationRun,
+} from "./verticalDramaStoryGenerationRuntime";
+import {
+  claimStoryGenerationLease,
+  getStoryGenerationRun,
+  updateStoryGenerationCheckpoint,
+} from "./verticalDramaStoryGenerationRepository";
+import {
+  mergeStoryPlanFieldsIntoCandidate,
+  validateStoryGenerationOutput,
+} from "./verticalDramaStoryGenerationValidation";
+import type { StoryGenerationRunContract } from "./verticalDramaStoryGenerationContracts";
+import { visualSourceSnapshotSchema } from "@shared/verticalDramaSeries/visualSource";
+import {
+  captureSeriesVisualSourceSnapshot,
+  validateSnapshotForRun,
+} from "./verticalDramaVisualSourceSnapshotService";
+
 
 export const VERTICAL_DRAMA_STORY_JOBS_QUEUE = "vertical_drama_story_jobs";
 
@@ -107,6 +128,7 @@ const ACTIVE_POINTER_TTL_SECONDS = 6 * 60 * 60; // 6h
 /* -------------------------------------------------------------------------- */
 
 export type VerticalDramaStoryJobKind =
+  | "plan"
   | "deep_generate"
   | "extend"
   /**
@@ -139,6 +161,13 @@ export type VerticalDramaStoryJobProgressPhase =
 
 export interface VerticalDramaStoryJobProgress {
   phase: VerticalDramaStoryJobProgressPhase;
+  /** Initial plan lifecycle stage; absent for legacy/deep jobs. */
+  stage?:
+    | "generating"
+    | "candidate_saved"
+    | "validating"
+    | "saving"
+    | "handoff";
   /**
    * 1-based index of the current call-round (chunk / revise-round) within
    * this job, when applicable. For `improve_script` jobs (2026-07-10
@@ -153,6 +182,17 @@ export interface VerticalDramaStoryJobProgress {
   callsDone?: number;
   /** Episode numbers this progress event's "fix" work targets (mainly meaningful for phase "fix"). */
   episodesDone?: number[];
+  /** True when a failed multi-episode chunk is being retried one episode at a time. */
+  retrying?: boolean;
+  /** Episode numbers currently being retried after a chunk split. */
+  retryEpisodeNumbers?: number[];
+  /** Number of fully speakable episodes already persisted to the series. */
+  episodesCompleted?: number;
+  /** Total episodes requested by this deep-draft run. */
+  episodesTotal?: number;
+  /** Inclusive episode range currently being processed. */
+  currentEpisodeStart?: number;
+  currentEpisodeEnd?: number;
   /**
    * 1-based index of the episode currently being processed within this job
    * (added 2026-07-10 for `improve_script`'s per-episode generation loop —
@@ -191,6 +231,8 @@ export interface VerticalDramaStoryJobOwner {
 }
 
 export interface VerticalDramaStoryJobPayload extends VerticalDramaStoryJobOwner {
+  /** Present only inside the worker executor; public enqueue payloads omit it. */
+  jobId?: string;
   kind: VerticalDramaStoryJobKind;
   /** Kind-specific light input (validated by the router BEFORE enqueueing) — e.g. `{ mode, horizonEpisodes, idempotencyKey }`. */
   input: Record<string, unknown>;
@@ -212,6 +254,12 @@ export interface VerticalDramaStoryJobCheckpoint {
   completedEpisodeNumbers: number[];
   chunkSizesDone: number[];
   creditsUsed: number;
+  /** Initial story-plan recovery state; absent for deep/extend jobs. */
+  planStage?: "candidate_ready" | "finalizing" | "completed";
+  /** Schema-validated `generateStoryBible` result, kept for local resume. */
+  planCandidate?: unknown;
+  planCreditsUsed?: number;
+  planModel?: string;
   updatedAt: string;
 }
 
@@ -228,13 +276,19 @@ export interface VerticalDramaStoryJobRecord extends VerticalDramaStoryJobPayloa
   /**
    * Resilient resume — this job's own incremental progress, written via
    * `persistCheckpoint` (see `VerticalDramaStoryJobExecutor`/
-   * `runVerticalDramaStoryJob`). Optional/absent for every job kind that
-   * never checkpoints (`improve_script`) and for any job started before this
+   * `runVerticalDramaStoryJob`). Optional/absent for the job kind that never
+   * checkpoints (`improve_script`) and for any job started before this
    * field existed — omitting it is BYTE-IDENTICAL to before this feature
    * existed (a fresh run with no checkpoint drafts everything, exactly like
    * today).
    */
   checkpoint?: VerticalDramaStoryJobCheckpoint;
+  /**
+   * Number of background recovery attempts already spent by this job. This
+   * is persisted so a worker redelivery cannot reset the safety budget and
+   * spin forever on a provider/schema response that makes no progress.
+   */
+  recoveryAttempts?: number;
 }
 
 /**
@@ -242,9 +296,9 @@ export interface VerticalDramaStoryJobRecord extends VerticalDramaStoryJobPayloa
  * (re)start of `runVerticalDramaStoryJob`, INCLUDING a same-jobId BullMQ
  * redelivery after a mid-run crash. `checkpoint` is the record's checkpoint
  * AS OF THIS RUN'S START (`null` for a fresh job or one with no checkpoint
- * yet) — a kind-specific executor (`runGenerateStoryBibleDeepJob`/
- * `runExtendStoryDraftHorizonJob`) reads it to seed
- * `generateStoryBibleDeep`'s `resumeDraftedItems`/`alreadyDraftedEpisodeNumbers`.
+ * yet) — kind-specific executors read it to seed either the initial plan
+ * candidate or `generateStoryBibleDeep`'s `resumeDraftedItems`/
+ * `alreadyDraftedEpisodeNumbers`.
  * `persistCheckpoint` is fire-and-forget (never awaited by the executor),
  * mirroring `onProgress`'s exact contract — a slow/failing checkpoint write
  * must never block or fail the real generation work.
@@ -252,6 +306,10 @@ export interface VerticalDramaStoryJobRecord extends VerticalDramaStoryJobPayloa
 export interface VerticalDramaStoryJobResumeContext {
   checkpoint: VerticalDramaStoryJobCheckpoint | null;
   persistCheckpoint: (checkpoint: VerticalDramaStoryJobCheckpoint) => void;
+  /** Awaitable variant for critical plan checkpoints that must survive before the next stage starts. */
+  persistCheckpointAndWait?: (
+    checkpoint: VerticalDramaStoryJobCheckpoint,
+  ) => Promise<void>;
 }
 
 /** Generic executor signature — dispatches a job payload to kind-specific
@@ -281,6 +339,8 @@ export interface VerticalDramaStoryJobRedisAdapter {
 export interface VerticalDramaStoryJobStoreDependencies {
   redis: VerticalDramaStoryJobRedisAdapter;
   now: () => number;
+  /** Injectable only for tests; production waits without blocking a request. */
+  sleep: (milliseconds: number) => Promise<void>;
 }
 
 function defaultRedisAdapter(): VerticalDramaStoryJobRedisAdapter {
@@ -298,6 +358,10 @@ function resolveDeps(
   return {
     redis: dependencies?.redis ?? defaultRedisAdapter(),
     now: dependencies?.now ?? Date.now,
+    sleep:
+      dependencies?.sleep ??
+      ((milliseconds: number) =>
+        new Promise(resolve => setTimeout(resolve, milliseconds))),
   };
 }
 
@@ -411,6 +475,18 @@ export async function updateVerticalDramaStoryJobCheckpoint(
         patch.completedEpisodeNumbers ?? priorCheckpoint?.completedEpisodeNumbers ?? [],
       chunkSizesDone: patch.chunkSizesDone ?? priorCheckpoint?.chunkSizesDone ?? [],
       creditsUsed: patch.creditsUsed ?? priorCheckpoint?.creditsUsed ?? 0,
+      ...(patch.planStage !== undefined || priorCheckpoint?.planStage !== undefined
+        ? { planStage: patch.planStage ?? priorCheckpoint?.planStage }
+        : {}),
+      ...(patch.planCandidate !== undefined || priorCheckpoint?.planCandidate !== undefined
+        ? { planCandidate: patch.planCandidate ?? priorCheckpoint?.planCandidate }
+        : {}),
+      ...(patch.planCreditsUsed !== undefined || priorCheckpoint?.planCreditsUsed !== undefined
+        ? { planCreditsUsed: patch.planCreditsUsed ?? priorCheckpoint?.planCreditsUsed }
+        : {}),
+      ...(patch.planModel !== undefined || priorCheckpoint?.planModel !== undefined
+        ? { planModel: patch.planModel ?? priorCheckpoint?.planModel }
+        : {}),
       updatedAt: new Date(deps.now()).toISOString(),
     };
     await writeRecord(
@@ -423,6 +499,27 @@ export async function updateVerticalDramaStoryJobCheckpoint(
       deps,
     );
   });
+}
+
+/**
+ * Enqueue the next story stage while the current stage still owns the
+ * per-series pointer. The normal enqueue path intentionally dedupes every
+ * cross-kind submission; a server-owned plan -> deep handoff is the one
+ * legitimate exception. It atomically releases only the current job's
+ * pointer, then submits the next job through the same durable path.
+ */
+export async function enqueueVerticalDramaStoryJobHandoff(
+  previousJobId: string,
+  payload: VerticalDramaStoryJobPayload,
+  dependencies?: VerticalDramaStoryJobEnqueueDependencies,
+): Promise<{ jobId: string; deduped: boolean }> {
+  const deps = resolveDeps(dependencies);
+  const pointerKey = activePointerKey(payload.tenantId, payload.seriesId);
+  const currentPointer = await deps.redis.get(pointerKey);
+  if (currentPointer === previousJobId) {
+    await deps.redis.del(pointerKey);
+  }
+  return enqueueVerticalDramaStoryJob(payload, dependencies);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -539,6 +636,7 @@ export async function getActiveVerticalDramaStoryJob(
 
 /** Thai job-kind label used in the completion/failure notification below. */
 const STORY_JOB_KIND_LABEL_TH: Record<VerticalDramaStoryJobKind, string> = {
+  plan: "วางแผนเนื้อเรื่องหลัก",
   deep_generate: "สร้างร่างละเอียดเนื้อเรื่อง",
   extend: "ขยายร่างเนื้อเรื่อง",
   improve_script: "ปรับปรุงบทละครให้มีความสมบูรณ์",
@@ -780,6 +878,94 @@ async function notifyStoryJobTerminal(record: VerticalDramaStoryJobRecord): Prom
 /* like `jobAutomationService.ts`'s own `executeJob(jobId)`.                 */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * A partial deep draft is a recoverable intermediate state, not a terminal
+ * result. The kind guard is intentional: `improve_script` has its own
+ * per-episode partial-result contract and does not expose the deep-draft
+ * checkpoint/resume semantics used here.
+ */
+function isCheckpointResumableStoryJobKind(
+  kind: VerticalDramaStoryJobKind,
+): boolean {
+  return kind === "deep_generate" || kind === "extend";
+}
+
+function isPartialStoryJobResult(result: unknown): boolean {
+  return Boolean(
+    result &&
+      typeof result === "object" &&
+      (result as { partial?: unknown }).partial === true,
+  );
+}
+
+/**
+ * Executor errors are normally already retried by the LLM service. These
+ * patterns cover failures that can still escape that layer, especially the
+ * provider's HTTP-400 in-flight credit-capacity response. Permanent credit
+ * exhaustion is deliberately excluded: waiting cannot make a user's balance
+ * sufficient and should remain a clear terminal failure.
+ */
+function isRetryableStoryJobError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/insufficient[_ ]?(quota|credits?)|not enough credits|payment required/i.test(message)) {
+    return false;
+  }
+  return [
+    "would exceed your available credits",
+    "in-flight requests",
+    "rate limit",
+    "too many requests",
+    "temporarily unavailable",
+    "no healthy provider",
+    "all providers failed",
+    "timed out",
+    "timeout",
+    "etimedout",
+    "econnreset",
+    "econnrefused",
+    "fetch failed",
+    "network error",
+    "502",
+    "503",
+    "504",
+  ].some(pattern => message.toLowerCase().includes(pattern));
+}
+
+/**
+ * A validated initial-plan candidate is safe to replay through local
+ * finalization. Keep retrying bounded, non-credit failures after that
+ * checkpoint so a transient DB/queue/runtime blip does not turn into a
+ * terminal job that visibly lost the whole story. Durable validation and
+ * credit failures remain terminal by design.
+ */
+function isRetryablePlanCheckpointError(
+  kind: VerticalDramaStoryJobKind,
+  checkpoint: VerticalDramaStoryJobCheckpoint | null,
+  error: unknown,
+): boolean {
+  if (kind !== "plan" || checkpoint?.planCandidate === undefined) return false;
+  const message = error instanceof Error ? error.message : String(error);
+  return !/insufficient[_ ]?(quota|credits?)|not enough credits|payment required|STORY_PLAN_FINAL_GATE_FAILED|story plan did not pass|schema validation|forbidden|not found/i.test(message);
+}
+
+const STORY_JOB_MAX_RECOVERY_ATTEMPTS = 8;
+const STORY_JOB_RECOVERY_BACKOFF_MS = [
+  1_000,
+  5_000,
+  15_000,
+  30_000,
+  60_000,
+  120_000,
+  300_000,
+  300_000,
+] as const;
+
+function storyJobRecoveryDelay(attempt: number): number {
+  return STORY_JOB_RECOVERY_BACKOFF_MS[
+    Math.min(attempt, STORY_JOB_RECOVERY_BACKOFF_MS.length - 1)
+  ];
+}
+
 export async function runVerticalDramaStoryJob(
   jobId: string,
   executor: VerticalDramaStoryJobExecutor,
@@ -791,6 +977,20 @@ export async function runVerticalDramaStoryJob(
     debugError("verticalDramaStoryJobs", `runVerticalDramaStoryJob: job ${jobId} not found — nothing to run`, null);
     return;
   }
+
+  const assuranceRunId = typeof record.input.runId === "string"
+    ? record.input.runId
+    : null;
+  let assuranceFenceToken: number | undefined;
+  const syncAssuranceState = (operation: Promise<unknown>) => {
+    operation.catch((error) => {
+      debugError(
+        "verticalDramaStoryJobs",
+        `Failed to sync durable story-generation run for job ${jobId}`,
+        error,
+      );
+    });
+  };
 
   record.status = "running";
   record.updatedAt = new Date(deps.now()).toISOString();
@@ -811,6 +1011,7 @@ export async function runVerticalDramaStoryJob(
   // time any queued write's closure actually runs, `currentCheckpoint`
   // already reflects every `persistCheckpoint` call made before it.
   let currentCheckpoint: VerticalDramaStoryJobCheckpoint | null = record.checkpoint ?? null;
+  let recoveryAttempts = Math.max(0, record.recoveryAttempts ?? 0);
 
   const onProgress = (progress: VerticalDramaStoryJobProgress) => {
     enqueueWrite(jobId, () =>
@@ -839,34 +1040,247 @@ export async function runVerticalDramaStoryJob(
   // this run sees at least this value — see the doc comment above.
   const persistCheckpoint = (checkpoint: VerticalDramaStoryJobCheckpoint) => {
     currentCheckpoint = checkpoint;
-    updateVerticalDramaStoryJobCheckpoint(jobId, checkpoint, deps).catch((error) => {
+    return updateVerticalDramaStoryJobCheckpoint(jobId, checkpoint, deps).catch((error) => {
       debugError("verticalDramaStoryJobs", `Failed to persist checkpoint for story job ${jobId}`, error);
     });
   };
 
+  const persistCheckpointAndWait = async (
+    checkpoint: VerticalDramaStoryJobCheckpoint,
+  ): Promise<void> => {
+    currentCheckpoint = checkpoint;
+    await updateVerticalDramaStoryJobCheckpoint(jobId, checkpoint, deps);
+  };
+
   try {
-    const result = await executor(
-      {
-        kind: record.kind,
-        seriesId: record.seriesId,
+    if (assuranceRunId) {
+      const lease = await claimStoryGenerationLease({
         tenantId: record.tenantId,
-        userId: record.userId,
-        input: record.input,
-      },
-      onProgress,
-      { checkpoint: record.checkpoint ?? null, persistCheckpoint },
-    );
+        runId: assuranceRunId,
+        workerId: `story-job:${jobId}`,
+      });
+      if (!lease) throw new Error("STORY_GENERATION_LEASE_NOT_ACQUIRED");
+      assuranceFenceToken = lease.fenceToken;
+      await transitionStoryGenerationRun({
+        tenantId: record.tenantId,
+        runId: assuranceRunId,
+        to: "running",
+        stage: "generation",
+        expectedFenceToken: assuranceFenceToken,
+      });
+    }
+    let result: unknown;
+    while (true) {
+      try {
+        const executorInput =
+          recoveryAttempts > 0
+            ? {
+                ...record.input,
+                // Private worker metadata. Kind-specific executors use this
+                // only to make retry credit/idempotency keys unique; it is
+                // never accepted from the public mutation input.
+                __storyJobRecoveryAttempt: recoveryAttempts,
+              }
+            : record.input;
+        result = await executor(
+          {
+            kind: record.kind,
+            jobId,
+            seriesId: record.seriesId,
+            tenantId: record.tenantId,
+            userId: record.userId,
+            input: executorInput,
+          },
+          onProgress,
+          {
+            checkpoint: currentCheckpoint,
+            persistCheckpoint,
+            persistCheckpointAndWait,
+          },
+        );
+      } catch (error) {
+        const retryable =
+          isRetryableStoryJobError(error) ||
+          isRetryablePlanCheckpointError(record.kind, currentCheckpoint, error);
+        if (!retryable || recoveryAttempts >= STORY_JOB_MAX_RECOVERY_ATTEMPTS) {
+          throw error;
+        }
+        recoveryAttempts += 1;
+        record.recoveryAttempts = recoveryAttempts;
+        await enqueueWrite(jobId, () =>
+          writeRecord(
+            {
+              ...record,
+              status: "running",
+              result: null,
+              error: null,
+              checkpoint: currentCheckpoint ?? undefined,
+              updatedAt: new Date(deps.now()).toISOString(),
+            },
+            deps,
+          ),
+        );
+        await deps.sleep(storyJobRecoveryDelay(recoveryAttempts - 1));
+        continue;
+      }
+
+      if (
+        !isCheckpointResumableStoryJobKind(record.kind) ||
+        !isPartialStoryJobResult(result) ||
+        recoveryAttempts >= STORY_JOB_MAX_RECOVERY_ATTEMPTS
+      ) {
+        break;
+      }
+
+      // `generateStoryBibleDeep` intentionally returns partial after its own
+      // bounded in-process repair pass. Keep the SAME background job alive
+      // and re-enter it with the latest checkpoint so only missing/silent
+      // episodes are requested on the next pass. The active-series pointer
+      // remains set until the final non-partial result is persisted.
+      recoveryAttempts += 1;
+      record.recoveryAttempts = recoveryAttempts;
+      await enqueueWrite(jobId, () =>
+        writeRecord(
+          {
+            ...record,
+            status: "running",
+            result: null,
+            error: null,
+            checkpoint: currentCheckpoint ?? undefined,
+            updatedAt: new Date(deps.now()).toISOString(),
+          },
+          deps,
+        ),
+      );
+      await deps.sleep(storyJobRecoveryDelay(recoveryAttempts - 1));
+    }
+    let assuranceAccepted = true;
+    let assuranceError: string | null = null;
+    if (assuranceRunId) {
+      const isPartial = Boolean(
+        result && typeof result === "object" && (result as { partial?: boolean }).partial,
+      );
+      const resultRecord = result && typeof result === "object"
+        ? result as Record<string, unknown>
+        : null;
+      const candidateOutput = Array.isArray(resultRecord?.draftedItems)
+        ? resultRecord.draftedItems
+        : Array.isArray(resultRecord?.improvedItems)
+          ? resultRecord.improvedItems
+          : null;
+      const durableRun = await getStoryGenerationRun(record.tenantId, assuranceRunId);
+      const contract = durableRun?.contractJson as StoryGenerationRunContract | undefined;
+      if (!durableRun || !contract || !candidateOutput) {
+        assuranceAccepted = false;
+        assuranceError = "STORY_GENERATION_FINAL_GATE_INPUT_MISSING";
+        await transitionStoryGenerationRun({
+          tenantId: record.tenantId,
+          runId: assuranceRunId,
+          to: "failed",
+          stage: "finalization",
+          checkpoint: currentCheckpoint,
+          errorCode: assuranceError,
+          expectedFenceToken: assuranceFenceToken,
+        });
+      } else {
+        const sourceSnapshot = durableRun.sourceSnapshotJson as { payload?: unknown } | null;
+        const sourcePayload = sourceSnapshot?.payload as Record<string, unknown> | null;
+        const admittedVisualSnapshot = visualSourceSnapshotSchema.safeParse(sourceSnapshot?.payload);
+        if (admittedVisualSnapshot.success) {
+          const currentVisualSnapshot = await captureSeriesVisualSourceSnapshot(
+            { tenantId: record.tenantId, userId: record.userId },
+            record.seriesId,
+          );
+          const visualSnapshotGate = currentVisualSnapshot
+            ? validateSnapshotForRun(currentVisualSnapshot, {
+                revision: admittedVisualSnapshot.data.revision,
+                fingerprint: admittedVisualSnapshot.data.fingerprint,
+              })
+            : {
+                ok: false as const,
+                code: "STALE_SOURCE_SNAPSHOT" as const,
+                message: "Visual source pack is no longer available",
+              };
+          if (!visualSnapshotGate.ok) {
+            assuranceAccepted = false;
+            assuranceError = visualSnapshotGate.code;
+            await transitionStoryGenerationRun({
+              tenantId: record.tenantId,
+              runId: assuranceRunId,
+              to: "failed",
+              stage: "finalization",
+              checkpoint: currentCheckpoint,
+              errorCode: assuranceError,
+              expectedFenceToken: assuranceFenceToken,
+            });
+          }
+        }
+        if (!assuranceAccepted) {
+          // A changed source pack must fence the run before any candidate is
+          // validated or finalized. The creator must start a new run.
+        } else {
+        const plan = sourcePayload?.bible ?? sourcePayload?.plan;
+        const validationOutput = plan !== undefined
+          ? mergeStoryPlanFieldsIntoCandidate(candidateOutput, plan)
+          : candidateOutput;
+        const report = validateStoryGenerationOutput({
+          contract,
+          output: validationOutput,
+          ...(plan !== undefined ? { plan } : {}),
+          repairRound: Number((durableRun.checkpointJson as { repairRound?: unknown } | null)?.repairRound ?? 0),
+        });
+        await updateStoryGenerationCheckpoint(record.tenantId, assuranceRunId, {
+          status: "validating",
+          stage: "validation",
+          report,
+          checkpoint: currentCheckpoint,
+          expectedFenceToken: assuranceFenceToken,
+        });
+        if (isPartial) {
+          assuranceAccepted = false;
+          assuranceError = "STORY_GENERATION_PARTIAL";
+          await transitionStoryGenerationRun({
+            tenantId: record.tenantId,
+            runId: assuranceRunId,
+            to: "partial",
+            stage: "validation",
+            checkpoint: currentCheckpoint,
+            errorCode: assuranceError,
+            expectedFenceToken: assuranceFenceToken,
+          });
+        } else {
+          // The story executor already performed structural/semantic repair.
+          // Assurance findings are retained for observability, while a
+          // complete candidate is finalized automatically with no approval
+          // click or second user workflow.
+          const finalized = await finalizeStoryGeneration(
+            record.tenantId,
+            assuranceRunId,
+            `finalize:${assuranceRunId}`,
+            undefined,
+            assuranceFenceToken,
+          );
+          assuranceAccepted = finalized?.status === "succeeded";
+          assuranceError = assuranceAccepted ? null : "STORY_GENERATION_FINALIZATION_FAILED";
+        }
+        }
+      }
+    }
     const terminalRecord: VerticalDramaStoryJobRecord = {
       ...record,
-      status: "succeeded",
+      status: assuranceAccepted ? "succeeded" : "failed",
       result,
-      error: null,
+      error: assuranceAccepted ? null : assuranceError,
       checkpoint: currentCheckpoint ?? undefined,
       updatedAt: new Date(deps.now()).toISOString(),
     };
     await enqueueWrite(jobId, () => writeRecord(terminalRecord, deps));
     await notifyStoryJobTerminal(terminalRecord);
   } catch (error) {
+    // A stale worker must not publish a terminal Redis record after another
+    // worker has claimed the durable run. The durable fence is the authority;
+    // the next worker owns recovery and will publish the current result.
+    if (error instanceof StoryGenerationFenceLostError) return;
     const message = error instanceof Error ? error.message : String(error);
     const terminalRecord: VerticalDramaStoryJobRecord = {
       ...record,
@@ -880,6 +1294,17 @@ export async function runVerticalDramaStoryJob(
       updatedAt: new Date(deps.now()).toISOString(),
     };
     await enqueueWrite(jobId, () => writeRecord(terminalRecord, deps)).catch(() => {});
+    if (assuranceRunId && assuranceFenceToken !== undefined) {
+      syncAssuranceState(transitionStoryGenerationRun({
+        tenantId: record.tenantId,
+        runId: assuranceRunId,
+        to: "failed",
+        stage: "finalization",
+        checkpoint: currentCheckpoint,
+        errorCode: "STORY_JOB_FAILED",
+        expectedFenceToken: assuranceFenceToken,
+      }));
+    }
     await notifyStoryJobTerminal(terminalRecord);
   } finally {
     pendingWrites.delete(jobId);
@@ -924,17 +1349,10 @@ async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
       // re-drafts only what the PRIOR attempt hadn't already checkpointed,
       // never re-charging already-drafted episodes.
       //
-      // NOTE: this does NOT retry a LOGICAL failure (LLM/schema/insufficient-
-      // credits error) — `runVerticalDramaStoryJob`'s own try/catch swallows
-      // the executor's error, writes the terminal "failed" record, and
-      // returns normally, so the BullMQ processor callback in
-      // `initVerticalDramaStoryJobsQueue` below never rejects and BullMQ
-      // never sees a "failed" attempt to retry for that case. Extending
-      // retry to logical failures would require that callback to re-throw
-      // when the job ended "failed" — out of this task's scope (it would
-      // also mean the existing "failed" notification/auto-feedback-ticket
-      // fires prematurely before a retry might still recover it); flagged as
-      // a follow-up rather than implemented speculatively.
+      // Logical partial results and transient provider errors are retried by
+      // `runVerticalDramaStoryJob` itself, while the active pointer remains
+      // held. This BullMQ retry remains the separate crash/stall safety net
+      // for a worker that dies before the runner can write its terminal state.
       // `removeOnFail` is bounded (24h) rather than `true` so a job that
       // exhausts every attempt stays inspectable for a day instead of
       // vanishing immediately, but still doesn't accumulate forever.

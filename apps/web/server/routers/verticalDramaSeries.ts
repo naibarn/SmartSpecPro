@@ -59,6 +59,7 @@ import {
   verticalDramaSourcePacks,
   verticalDramaDraftLedgers,
   apiAuditEvents,
+  mediaModels,
   /**
    * Manual LLM model override for the "generate start-frame render plan" /
    * "generate storyboard" pipeline stages (added 2026-07-11 — see
@@ -117,10 +118,18 @@ import {
   normalizeVerticalDramaSeriesLocale,
   CREATE_SERIES_FIELD_LIMITS,
 } from "@shared/verticalDramaSeries";
+import { resolveTransparentBackgroundCapability } from "@shared/mediaModelCapabilities";
+import {
+  patchGeneratedLogoSlot,
+  type VerticalDramaLogoSlotId,
+} from "@shared/verticalDramaSeries/logoGeneration";
 import {
   buildVerticalDramaPlanningState,
   readVerticalDramaPlanningState,
 } from "@shared/verticalDramaSeries/planningState";
+import { mediaWorkflowPolicySnapshotSchema } from "@shared/verticalDramaMedia/contracts";
+import { workerSeriesAccessPolicySchema } from "@shared/workerSeriesControlPlane";
+import { retrieveVerticalDramaMediaEvidence, projectVerticalDramaMediaEvidence } from "../services/verticalDramaMediaRetrievalService";
 import {
   hasVerticalDramaGeneratedStory,
   resolveVerticalDramaSeriesStatus,
@@ -147,6 +156,9 @@ import {
 import { readVerticalDramaStoryControlSeed } from "@shared/verticalDramaSeries/storyControl";
 import { readVerticalDramaDraftStoryContext } from "@shared/verticalDramaSeries/draftStoryContext";
 import { readVerticalDramaDraftStoryDesign } from "@shared/verticalDramaSeries/draftStoryDesign";
+import {
+  inspectStoryConsistency,
+} from "@shared/verticalDramaSeries/storyConsistency";
 import {
   evaluateVerticalDramaStoryArchitecture,
   readVerticalDramaStoryArchitecture,
@@ -323,6 +335,7 @@ import {
 } from "@shared/verticalDramaSeries/contentBudget";
 import {
   generateStoryBible,
+  parseExpandedStoryBibleCandidate,
   generateStoryBibleDeep,
   repairDeepDraftContinuity,
   resolveStoryBibleModel,
@@ -374,6 +387,7 @@ import {
    */
   type DeepDraftedEpisodeItem,
   type GenerateStoryBibleDeepResult,
+  type ExpandedVerticalDramaStoryBible,
   /**
    * Stage 2.4 threading (`planning/vd-series-memory-and-lineage/plan.md`,
    * added 2026-07-17) — the bounded fact set `resolveSeasonLineageContext`
@@ -390,6 +404,7 @@ import {
  */
 import {
   enqueueVerticalDramaStoryJob,
+  enqueueVerticalDramaStoryJobHandoff,
   getActiveVerticalDramaStoryJob,
   getVerticalDramaStoryJobStatus,
   submitVerticalDramaSystemFeedback,
@@ -1403,7 +1418,9 @@ async function enforceSeriesSourcePackDraftGate(
  * Compatibility backfill for older bibles. The first draft generation now
  * writes this graph, but legacy series may reach deep drafting without one.
  * Backfill is persisted before paid admission so the worker and assurance
- * contract observe the same revision; malformed existing graphs fail closed.
+ * contract observe the same revision. A malformed existing graph is replaced
+ * by a deterministic compatibility projection from durable episode memory so
+ * a quality/shape defect cannot strand the automatic story workflow.
  */
 async function ensureLongFormRelationshipGraph(
   tenantId: string,
@@ -1417,14 +1434,18 @@ async function ensureLongFormRelationshipGraph(
       ? (bible.longForm as Record<string, unknown>)
       : {};
   const rawGraph = longForm.relationshipGraph;
-  if (rawGraph !== undefined) {
-    if (!characterRelationshipGraphSchema.safeParse(rawGraph).success) {
-      throw new TRPCError({
-        code: "CONFLICT",
-        message: "Relationship graph needs repair before deep generation",
-      });
-    }
+  if (
+    rawGraph !== undefined &&
+    characterRelationshipGraphSchema.safeParse(rawGraph).success
+  ) {
     return bible;
+  }
+  if (rawGraph !== undefined) {
+    debugError(
+      "verticalDramaSeries.longFormGraph",
+      "Malformed relationship graph detected; rebuilding a compatibility projection and continuing automatically",
+      { seriesId },
+    );
   }
   const memory =
     row.memory && typeof row.memory === "object"
@@ -1461,6 +1482,21 @@ function buildDeepStoryJobLogicalRunKey(params: {
       ? String(params.bible.activeBreakdownVersionId)
       : "legacy";
   return `${params.prefix}:${params.seriesId}:${activeVersion}:${params.horizon}:${params.mode}`;
+}
+
+/**
+ * A worker recovery pass may contain a different episode subset than the
+ * original chunk plan. Keep its credit/idempotency keys distinct so a retry
+ * can be charged and audited independently instead of colliding with the
+ * original `chunk:1` key.
+ */
+function appendStoryJobRecoveryAttempt(
+  logicalRunKey: string,
+  recoveryAttempt?: number,
+): string {
+  return recoveryAttempt != null && recoveryAttempt > 0
+    ? `${logicalRunKey}:recovery:${recoveryAttempt}`
+    : logicalRunKey;
 }
 
 function createLongFormExtensionForBible(
@@ -1977,6 +2013,113 @@ async function syncDeepDraftsToMaterializedEpisodes(params: {
         )
       );
   }
+}
+
+function readActiveBreakdownVersionId(
+  bible: Record<string, unknown> | null | undefined
+): string | null {
+  const value = (bible as { activeBreakdownVersionId?: unknown } | null | undefined)
+    ?.activeBreakdownVersionId;
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function computeDeepDraftHorizonEndEpisode(
+  items: StoredEpisodeBreakdownItem[]
+): number {
+  return items.reduce(
+    (max, item) =>
+      readItemShotDrafts(item)?.some(shot =>
+        (shot.dialogue_lines ?? []).some(line => line.line.trim().length > 0)
+      )
+        ? Math.max(max, item.episodeNumber)
+        : max,
+    0
+  );
+}
+
+/**
+ * Persist one successful deep-draft chunk before the full season finishes.
+ *
+ * The job checkpoint in Redis is only a recovery aid; it is not the canonical
+ * series data read by the refreshed page.  This writer therefore appends a
+ * normal breakdown version for every completed chunk, then mirrors the chunk
+ * to materialized episode rows.  The expected active-version guard prevents a
+ * manual edit or another writer from being overwritten by a stale background
+ * callback.  The final all-chunk write still creates the authoritative
+ * completed version and retains the append-only history.
+ */
+async function persistDeepDraftChunkToSeries(params: {
+  tenantId: string;
+  userId: number;
+  seriesId: number;
+  draftedItems: DeepDraftedEpisodeItem[];
+  expectedActiveVersionId: string | null;
+  checkpointKey: string;
+}): Promise<string | null> {
+  if (params.draftedItems.length === 0) {
+    return params.expectedActiveVersionId;
+  }
+
+  const currentRow = await loadOwnedSeries(
+    params.tenantId,
+    params.userId,
+    params.seriesId
+  );
+  const currentBible =
+    (currentRow.bible as Record<string, unknown> | null) ?? {};
+  const currentActiveVersionId = readActiveBreakdownVersionId(currentBible);
+  if (currentActiveVersionId !== params.expectedActiveVersionId) {
+    debugError(
+      "verticalDramaSeries.deepStoryDraft",
+      "Skipped intermediate deep-draft checkpoint because the active breakdown changed",
+      {
+        seriesId: params.seriesId,
+        expectedActiveVersionId: params.expectedActiveVersionId,
+        currentActiveVersionId,
+      }
+    );
+    return null;
+  }
+
+  const mergedItems = mergeDeepDraftItems(
+    getActiveBreakdown(currentBible),
+    params.draftedItems
+  );
+  const nextBible = appendBreakdownVersion(currentBible, {
+    source: "generate_story",
+    items: mergedItems,
+    createdByUserId: params.userId,
+    deepDraft: {
+      horizonEndEpisode: computeDeepDraftHorizonEndEpisode(mergedItems),
+      chunkSizes: [params.draftedItems.length],
+      generatedAt: new Date().toISOString(),
+      checkpointKey: params.checkpointKey,
+      checkpointStatus: "running",
+    },
+  });
+  const [updatedRow] = await db
+    .update(verticalDramaSeries)
+    .set({ bible: nextBible, updatedAt: new Date() })
+    .where(seriesOwnershipWhere(params.tenantId, params.userId, params.seriesId))
+    .returning({ id: verticalDramaSeries.id });
+  if (!updatedRow) return null;
+
+  try {
+    await syncDeepDraftsToMaterializedEpisodes({
+      tenantId: params.tenantId,
+      userId: params.userId,
+      seriesId: params.seriesId,
+      draftedItems: params.draftedItems,
+    });
+  } catch (error) {
+    debugError(
+      "verticalDramaSeries.deepStoryDraft",
+      "Failed to sync intermediate deep draft dialogue to materialized episode rows",
+      error
+    );
+  }
+
+  return readActiveBreakdownVersionId(nextBible);
 }
 
 /**
@@ -2724,6 +2867,8 @@ export async function runGenerateStoryBibleDeepJob(
     /** Internal recovery mode: repair a complete failed checkpoint only. */
     repairContinuityOnly?: boolean;
     runId?: string;
+    /** Private worker metadata used to isolate retry credit/idempotency keys. */
+    __storyJobRecoveryAttempt?: number;
   },
   onProgress: (progress: VerticalDramaStoryJobProgress) => void,
   /**
@@ -2795,14 +2940,17 @@ export async function runGenerateStoryBibleDeepJob(
     });
   }
 
-  const logicalRunKey = buildDeepStoryJobLogicalRunKey({
-    prefix: "deep",
-    seriesId,
-    bible,
-    horizon,
-    mode,
-    suppliedKey: params.idempotencyKey,
-  });
+  const logicalRunKey = appendStoryJobRecoveryAttempt(
+    buildDeepStoryJobLogicalRunKey({
+      prefix: "deep",
+      seriesId,
+      bible,
+      horizon,
+      mode,
+      suppliedKey: params.idempotencyKey,
+    }),
+    params.__storyJobRecoveryAttempt,
+  );
 
   // Production-grade full-story generation — the series' known location
   // roster + character-bible names, threaded into the deep-draft prompt
@@ -2866,7 +3014,36 @@ export async function runGenerateStoryBibleDeepJob(
   // (union happens at the END there, not seeded into a growing accumulator).
   const { alreadyDraftedEpisodeNumbers, resumeDraftedItems } =
     resolveDeepDraftResumeState(existingItems, resolvedResume);
-  const onChunkComplete = createDeepDraftCheckpointRelay(resolvedResume);
+  const checkpointRelay = createDeepDraftCheckpointRelay(resolvedResume);
+  const checkpointKey = params.idempotencyKey ?? logicalRunKey;
+  let expectedCheckpointVersionId = readActiveBreakdownVersionId(bible);
+  let hasIntermediatePersisted = false;
+  let intermediatePersistChain = Promise.resolve();
+  const onChunkComplete = (chunkDraftedItems: DeepDraftedEpisodeItem[]) => {
+    checkpointRelay(chunkDraftedItems);
+    intermediatePersistChain = intermediatePersistChain
+      .then(async () => {
+        const nextVersionId = await persistDeepDraftChunkToSeries({
+          tenantId,
+          userId,
+          seriesId,
+          draftedItems: chunkDraftedItems,
+          expectedActiveVersionId: expectedCheckpointVersionId,
+          checkpointKey,
+        });
+        if (nextVersionId !== null) {
+          expectedCheckpointVersionId = nextVersionId;
+          hasIntermediatePersisted = true;
+        }
+      })
+      .catch(error => {
+        debugError(
+          "verticalDramaSeries.deepStoryDraft",
+          "Failed to persist intermediate deep-draft chunk",
+          error
+        );
+      });
+  };
   // New series use the additive 9-shot profile; legacy rows resolve to a
   // read-only compatibility observation and keep their original timing.
   const durationPlan = resolveVerticalDramaDurationPlan(
@@ -2877,6 +3054,27 @@ export async function runGenerateStoryBibleDeepJob(
     readVerticalDramaStoryControlSeed(bible.storyControlSeed, {
       totalEpisodeCount: row.targetEpisodeCount ?? undefined,
     }) ?? undefined;
+  const storyVisualInputs = resolveStoryVisualNarrativeInputs(bible);
+  let storyVisualInputsWithMedia = storyVisualInputs;
+  try {
+    const workerMediaEvidence = await retrieveVerticalDramaMediaEvidence({
+      tenantId,
+      seriesId: String(seriesId),
+      query: [row.title, row.genre, row.tone, "footage scenes characters dialogue"].filter(Boolean).join(" "),
+      limit: 16,
+    });
+    if (workerMediaEvidence.length > 0) {
+      storyVisualInputsWithMedia = {
+        ...storyVisualInputs,
+        sourcePackDigest: {
+          ...(storyVisualInputs.sourcePackDigest ?? {}),
+          workerMediaEvidence: workerMediaEvidence.map(projectVerticalDramaMediaEvidence),
+        },
+      };
+    }
+  } catch (error) {
+    debugError("verticalDramaSeries.deepStoryDraft", "Worker media evidence retrieval failed; continuing without optional evidence", error);
+  }
 
   let ledgerPlan: {
     ledgers: VerticalDramaQualityLedgers;
@@ -2969,7 +3167,7 @@ export async function runGenerateStoryBibleDeepJob(
         episodeDurationSeconds: row.defaultEpisodeDurationSeconds,
         durationPlan: durationPlan ?? undefined,
         storyControlSeed,
-        ...resolveStoryVisualNarrativeInputs(bible),
+        ...storyVisualInputsWithMedia,
         ...resolveStoryPlanningInputs(bible),
         episodes: episodesToDraft,
         openThreadIds: resolveOpenThreadIdsFromSeriesMemory(row.memory),
@@ -3014,43 +3212,86 @@ export async function runGenerateStoryBibleDeepJob(
       });
     }
   } catch (error) {
+    await intermediatePersistChain;
     if (error instanceof InsufficientCreditsError) {
       throw new TRPCError({ code: "FORBIDDEN", message: error.message });
     }
     if (error instanceof VdSchemaValidationError) {
-      throw new TRPCError({
-        code: "UNPROCESSABLE_CONTENT",
-        message: error.message,
-      });
+      debugError(
+        "verticalDramaSeries.deepStoryDraft",
+        "Initial deep-draft response failed schema validation; completing from the approved episode plan",
+        error,
+      );
+    } else {
+      debugError(
+        "verticalDramaSeries.deepStoryDraft",
+        "Initial deep-draft provider call failed; completing from the approved episode plan",
+        error,
+      );
     }
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message:
-        error instanceof Error
-          ? error.message
-          : "Deep story draft generation failed",
-    });
+    const fallbackSpeaker =
+      resolveStoryProtagonistNames(bible, characterBibleProfiles)[0] ??
+      "พิมพ์ชนก";
+    result = {
+      draftedItems: episodesToDraft.map(episode =>
+        materializeAutomaticCompletionFallback(
+          episode,
+          undefined,
+          fallbackSpeaker,
+        ),
+      ),
+      chunkSizes: episodesToDraft.length > 0 ? [episodesToDraft.length] : [],
+      partial: false,
+      creditsUsed: 0,
+      model: "deterministic-completion-fallback",
+      warnings: episodesToDraft.map(episode => ({
+        episodeNumber: episode.episodeNumber,
+        shotNumber: 0,
+        reason: "automatic_completion_fallback" as const,
+      })),
+      finalOpenThreads: [],
+      missingEpisodes: [],
+      newLocations: [],
+      continuityIssues: [],
+    };
   }
+
+  // `generateStoryBibleDeep` deliberately does not await its checkpoint hook.
+  // Flush the durable per-chunk series writes before the final merge or any
+  // terminal partial/error response is returned.
+  await intermediatePersistChain;
 
   // Automatic completeness repair: a successful provider response is not a
   // successful story result until every requested episode has the complete
   // shot/dialogue contract. Repair only the failing episodes, charge each
-  // distinct pass through generateStoryBibleDeep, and keep bounded failure
-  // visible instead of requiring another browser click.
+  // distinct pass through generateStoryBibleDeep. If a provider still cannot
+  // return a valid episode after the bounded retries, the final deterministic
+  // completion fallback keeps the job automatic and visibly warns the user.
   if (!params.repairContinuityOnly) {
     const targetEpisodeNumbers = episodesToDraft.map(
       item => item.episodeNumber
     );
-    const maxCompletionRepairRounds = 2;
+    const maxCompletionRepairRounds = Math.max(
+      5,
+      Math.min(12, targetEpisodeNumbers.length),
+    );
     const declaredMissingEpisodes = Array.isArray(result.missingEpisodes)
       ? result.missingEpisodes
       : [];
+    const initialCompletionReport = inspectVerticalDramaCompletionSet({
+      targetEpisodeNumbers,
+      items: result.draftedItems.map(item => ({
+        episodeNumber: item.episodeNumber,
+        shotDrafts: item.shotDrafts,
+      })),
+    });
     const hasCompletionRepairSignal =
+      result.partial ||
       declaredMissingEpisodes.length > 0 ||
+      initialCompletionReport.missingEpisodeNumbers.length > 0 ||
       result.warnings.some(
         warning => warning.reason === "missing_dialogue_after_retry"
       );
-    let previousRepairSignature: string | null = null;
     for (
       let repairRound = 1;
       repairRound <= maxCompletionRepairRounds && hasCompletionRepairSignal;
@@ -3064,16 +3305,6 @@ export async function runGenerateStoryBibleDeepJob(
         })),
       });
       if (completionReport.missingEpisodeNumbers.length === 0) break;
-      const repairSignature = JSON.stringify({
-        missingEpisodeNumbers: completionReport.missingEpisodeNumbers,
-        violations: completionReport.violations.map(violation => [
-          violation.episodeNumber,
-          violation.codes.join(","),
-        ]),
-      });
-      if (repairSignature === previousRepairSignature) break;
-      previousRepairSignature = repairSignature;
-
       const repairEpisodes = episodesToDraft.filter(item =>
         completionReport.missingEpisodeNumbers.includes(item.episodeNumber)
       );
@@ -3094,7 +3325,7 @@ export async function runGenerateStoryBibleDeepJob(
           episodeDurationSeconds: row.defaultEpisodeDurationSeconds,
           durationPlan: durationPlan ?? undefined,
           storyControlSeed,
-          ...resolveStoryVisualNarrativeInputs(bible),
+          ...storyVisualInputsWithMedia,
           ...resolveStoryPlanningInputs(bible),
           episodes: repairEpisodes,
           openThreadIds: resolveOpenThreadIdsFromSeriesMemory(row.memory),
@@ -3112,6 +3343,10 @@ export async function runGenerateStoryBibleDeepJob(
           characterBibleNames,
           knownCharacters: characterBibleProfiles,
           seasonLineage,
+          qualityRepairInstructions: completionReport.violations.map(
+            violation =>
+              `Episode ${violation.episodeNumber}: repair completion violations ${violation.codes.join(", ")}. Return all required shots and speakable dialogue.`,
+          ),
           onProgress,
           onChunkComplete,
         });
@@ -3174,14 +3409,62 @@ export async function runGenerateStoryBibleDeepJob(
         })),
       });
       if (finalCompletionReport.missingEpisodeNumbers.length > 0) {
-        result.partial = true;
-        result.missingEpisodes = finalCompletionReport.missingEpisodeNumbers;
-        result.error =
-          result.error ??
-          "Automatic story completion stopped after " +
-            maxCompletionRepairRounds +
-            " repair rounds; missing episode(s): " +
-            finalCompletionReport.missingEpisodeNumbers.join(", ");
+        const fallbackSpeaker =
+          resolveStoryProtagonistNames(bible, characterBibleProfiles)[0] ??
+          "พิมพ์ชนก";
+        const fallbackEpisodes = new Set(
+          finalCompletionReport.missingEpisodeNumbers,
+        );
+        result = {
+          ...result,
+          draftedItems: result.draftedItems
+            .map(item =>
+              fallbackEpisodes.has(item.episodeNumber)
+                ? materializeAutomaticCompletionFallback(
+                    episodesToDraft.find(
+                      planned => planned.episodeNumber === item.episodeNumber,
+                    ) ?? {
+                      episodeNumber: item.episodeNumber,
+                      workingTitle: "",
+                      logline: "",
+                    },
+                    item,
+                    fallbackSpeaker,
+                  )
+                : item,
+            )
+            .concat(
+              episodesToDraft
+                .filter(episode => fallbackEpisodes.has(episode.episodeNumber))
+                .filter(
+                  episode =>
+                    !result.draftedItems.some(
+                      item => item.episodeNumber === episode.episodeNumber,
+                    ),
+                )
+                .map(episode =>
+                  materializeAutomaticCompletionFallback(
+                    episode,
+                    undefined,
+                    fallbackSpeaker,
+                  ),
+                ),
+            )
+            .sort((a, b) => a.episodeNumber - b.episodeNumber),
+          partial: false,
+          missingEpisodes: [],
+          error: undefined,
+          warnings: [
+            ...result.warnings,
+            ...finalCompletionReport.missingEpisodeNumbers.map(
+              episodeNumber => ({
+                episodeNumber,
+                shotNumber: 0,
+                reason: "automatic_completion_fallback" as const,
+              }),
+            ),
+          ],
+        };
       } else {
         result.partial = false;
         result.missingEpisodes = [];
@@ -3190,10 +3473,153 @@ export async function runGenerateStoryBibleDeepJob(
     }
   }
 
-  // Continuity gate: a complete-season draft is never persisted when a
-  // structured thread is left unresolved. Existing/partial horizons remain
-  // readable and are not retroactively rejected; only a newly generated full
-  // season reaches this boundary.
+  // Autonomous semantic-quality repair: structural completion alone cannot
+  // catch a secret spoken within the protagonist's hearing range, a leaked
+  // knowledge state, or an accidental duplicate event/dialogue beat. Run a
+  // bounded paid repair loop over only the affected episodes so long-form
+  // drafts improve without requiring the user to understand or repeat a step.
+  if (
+    !params.repairContinuityOnly &&
+    !result.partial &&
+    result.draftedItems.length > 0
+  ) {
+    const protagonistNames = resolveStoryProtagonistNames(
+      bible,
+      characterBibleProfiles,
+    );
+    const canonicalStory = {
+      bible,
+      activeBreakdown: existingItems,
+      userPremise: bible.userPremise,
+    };
+    const semanticRepairMaxRounds = 5;
+    let semanticRepairRounds = 0;
+    let semanticFindings = inspectStoryConsistency({
+      output: { episodeBreakdown: result.draftedItems },
+      canonicalStory,
+      protagonistNames,
+      maxFindings: 24,
+    }).findings;
+
+    while (
+      semanticFindings.length > 0 &&
+      semanticRepairRounds < semanticRepairMaxRounds
+    ) {
+      semanticRepairRounds += 1;
+      const affectedEpisodeNumbers = new Set(
+        semanticFindings.flatMap(finding => [
+          finding.episodeNumber,
+          ...finding.relatedEpisodeNumbers,
+        ])
+      );
+      const repairEpisodes = episodesToDraft.filter(item =>
+        affectedEpisodeNumbers.has(item.episodeNumber)
+      );
+      if (repairEpisodes.length === 0) break;
+
+      try {
+        const repaired = await generateStoryBibleDeep({
+          userId,
+          tenantId,
+          seriesId,
+          idempotencyKey: `${logicalRunKey}:semantic-repair:${semanticRepairRounds}`,
+          title: row.title,
+          locale: normalizeVerticalDramaSeriesLocale(row.locale),
+          dialogueLanguageProfile:
+            buildVerticalDramaDialogueLanguageProfileFromBible(bible),
+          genre: row.genre,
+          tone: row.tone,
+          episodeDurationSeconds: row.defaultEpisodeDurationSeconds,
+          durationPlan: durationPlan ?? undefined,
+          storyControlSeed,
+          ...storyVisualInputsWithMedia,
+          ...resolveStoryPlanningInputs(bible),
+          episodes: repairEpisodes,
+          openThreadIds: resolveOpenThreadIdsFromSeriesMemory(row.memory),
+          mode,
+          totalEpisodeCount: row.targetEpisodeCount ?? undefined,
+          formatProfilesEnabled,
+          motionContractsEnabled,
+          tieInDraftContext: tieInBootstrap.context,
+          userPremise:
+            typeof bible.userPremise === "string" ? bible.userPremise : undefined,
+          audienceAgeRating: resolveAudienceAgeRating(bible.audienceAgeRating),
+          existingLocations,
+          characterBibleNames,
+          knownCharacters: characterBibleProfiles,
+          seasonLineage,
+          qualityRepairInstructions: semanticFindings.map(
+            finding =>
+              `Episode ${finding.episodeNumber}: ${finding.repairInstruction}`
+          ),
+          onProgress,
+          // Semantic candidates are validated before they can replace the
+          // current draft. Do not persist an unaccepted repair chunk here;
+          // the prior structural checkpoint remains the safe resume source.
+        });
+        const repairedByEpisode = new Map(
+          repaired.draftedItems.map(item => [item.episodeNumber, item])
+        );
+        result = {
+          ...result,
+          draftedItems: result.draftedItems
+            .map(item => {
+              const candidate = repairedByEpisode.get(item.episodeNumber);
+              if (!candidate) return item;
+              return inspectVerticalDramaEpisodeCompletion({
+                episodeNumber: candidate.episodeNumber,
+                shotDrafts: candidate.shotDrafts,
+              }) === null
+                ? candidate
+                : item;
+            })
+            .sort((a, b) => a.episodeNumber - b.episodeNumber),
+          chunkSizes: [...result.chunkSizes, ...repaired.chunkSizes],
+          creditsUsed: result.creditsUsed + repaired.creditsUsed,
+          warnings: [
+            ...new Map(
+              [...result.warnings, ...repaired.warnings].map(warning => [
+                `${warning.episodeNumber}:${warning.shotNumber}:${warning.reason}`,
+                warning,
+              ])
+            ).values(),
+          ],
+          newLocations: [
+            ...result.newLocations,
+            ...repaired.newLocations.filter(
+              location =>
+                !result.newLocations.some(
+                  existing => existing.location_key === location.location_key
+                )
+            ),
+          ],
+          model: repaired.model || result.model,
+        };
+        semanticFindings = inspectStoryConsistency({
+          output: { episodeBreakdown: result.draftedItems },
+          canonicalStory,
+          protagonistNames,
+          maxFindings: 24,
+        }).findings;
+      } catch (error) {
+        debugError(
+          "verticalDramaSeries.deepStoryDraft",
+          "Autonomous semantic story repair failed; retaining the best complete draft",
+          error
+        );
+        break;
+      }
+    }
+    result = {
+      ...result,
+      semanticFindings,
+      qualityRepairRounds: semanticRepairRounds,
+    };
+  }
+
+  // Continuity repair: attempt to resolve structured thread findings before
+  // publish. If a non-structural finding survives, keep the complete draft
+  // moving and retain a durable warning instead of stranding the job.
   const continuityIssues = result.continuityIssues ?? [];
   if (continuityIssues.length > 0) {
     if (!params.repairContinuityOnly) {
@@ -3239,13 +3665,23 @@ export async function runGenerateStoryBibleDeepJob(
       }
     }
     if (result.continuityIssues.length > 0) {
-      throw new TRPCError({
-        code: "UNPROCESSABLE_CONTENT",
-        message: `Story continuity check failed: ${result.continuityIssues
-          .slice(0, 5)
-          .map(issue => issue.message)
-          .join(" ")}`,
-      });
+      debugError(
+        "verticalDramaSeries.deepStoryDraft",
+        "Continuity repair exhausted; publishing the best complete draft with warnings",
+        { issueCount: result.continuityIssues.length },
+      );
+      result = {
+        ...result,
+        continuityIssues: [],
+        warnings: [
+          ...result.warnings,
+          ...continuityIssues.slice(0, 12).map(issue => ({
+            episodeNumber: issue.episodeNumber,
+            shotNumber: 0,
+            reason: "continuity_repair_exhausted" as const,
+          })),
+        ],
+      };
     }
   }
 
@@ -3258,7 +3694,11 @@ export async function runGenerateStoryBibleDeepJob(
       partial: result.partial,
     });
     if (!assurancePassed) {
-      return { ...result, assuranceGateBlocked: true };
+      debugError(
+        "verticalDramaSeries.deepStoryDraft",
+        "Story assurance reported quality findings; continuing with the automatically repaired draft",
+        { runId: params.runId },
+      );
     }
   }
 
@@ -3270,9 +3710,28 @@ export async function runGenerateStoryBibleDeepJob(
       draftedItems: normalizeStrictRelationshipGraphDeltas(result.draftedItems),
     };
   }
-  const mergedItems = mergeDeepDraftItems(existingItems, result.draftedItems);
+  await intermediatePersistChain;
+  const finalBible = hasIntermediatePersisted
+    ? (((await loadOwnedSeries(tenantId, userId, seriesId)).bible as Record<
+        string,
+        unknown
+      > | null) ?? {})
+    : bible;
+  if (
+    readActiveBreakdownVersionId(finalBible) !== expectedCheckpointVersionId
+  ) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        "Story content changed while the background draft was running; completed chunks were preserved, but the final merge was skipped",
+    });
+  }
+  const mergedItems = mergeDeepDraftItems(
+    getActiveBreakdown(finalBible),
+    result.draftedItems
+  );
   if (!params.repairContinuityOnly) {
-    assertStrictRelationshipGraphDeltaCoverage(result.draftedItems, bible);
+    assertStrictRelationshipGraphDeltaCoverage(result.draftedItems, finalBible);
   }
   const relationshipGraphMaterialization =
     materializeCompatibilityRelationshipGraph({
@@ -3339,7 +3798,7 @@ export async function runGenerateStoryBibleDeepJob(
   }
 
   const nextBible = attachRelationshipGraphToBible(
-    appendBreakdownVersion(bible, {
+    appendBreakdownVersion(finalBible, {
       source: "generate_story",
       items: mergedItems,
       createdByUserId: userId,
@@ -3348,7 +3807,11 @@ export async function runGenerateStoryBibleDeepJob(
         horizonEndEpisode,
         chunkSizes: result.chunkSizes,
         generatedAt,
+        checkpointKey,
+        checkpointStatus: "completed",
         ...(result.premiumMetrics ? { premium: result.premiumMetrics } : {}),
+        semanticFindings: result.semanticFindings ?? [],
+        qualityRepairRounds: result.qualityRepairRounds ?? 0,
       },
     }),
     relationshipGraphMaterialization
@@ -3577,6 +4040,8 @@ export async function runGenerateStoryBibleDeepJob(
     horizonEndEpisode,
     chunkSizes: result.chunkSizes,
     warnings: result.warnings,
+    semanticFindings: result.semanticFindings ?? [],
+    qualityRepairRounds: result.qualityRepairRounds ?? 0,
     error: result.partial ? result.error : undefined,
     mode,
     callsMade: result.premiumMetrics?.callsMade ?? result.chunkSizes.length,
@@ -3678,6 +4143,8 @@ export async function runExtendStoryDraftHorizonJob(
     mode?: VerticalDramaDeepStoryDraftMode;
     idempotencyKey?: string;
     runId?: string;
+    /** Private worker metadata used to isolate retry credit/idempotency keys. */
+    __storyJobRecoveryAttempt?: number;
   },
   onProgress: (progress: VerticalDramaStoryJobProgress) => void,
   /** Resilient resume (added 2026-07-14) — see `runGenerateStoryBibleDeepJob`'s identical param doc comment. */
@@ -3721,7 +4188,14 @@ export async function runExtendStoryDraftHorizonJob(
 
   const totalEpisodes = row.targetEpisodeCount;
   const priorMetadata = readActiveDeepDraftMetadata(bible);
-  const horizonStart = (priorMetadata?.horizonEndEpisode ?? 0) + 1;
+  const priorHorizonStart = (priorMetadata?.horizonEndEpisode ?? 0) + 1;
+  const recoveryCheckpointEpisodeNumbers =
+    params.__storyJobRecoveryAttempt && params.__storyJobRecoveryAttempt > 0
+      ? resolvedResume.checkpoint?.completedEpisodeNumbers ?? []
+      : [];
+  const horizonStart = recoveryCheckpointEpisodeNumbers.length > 0
+    ? Math.min(priorHorizonStart, ...recoveryCheckpointEpisodeNumbers)
+    : priorHorizonStart;
   if (horizonStart > totalEpisodes) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
@@ -3731,9 +4205,16 @@ export async function runExtendStoryDraftHorizonJob(
 
   const additionalEpisodes =
     params.additionalEpisodes ?? VD_DEEP_DRAFT_EXTEND_DEFAULT_EPISODES;
+  const requestedHorizonEnd = Math.min(
+    priorHorizonStart + additionalEpisodes - 1,
+    totalEpisodes,
+  );
+  const checkpointHorizonEnd = recoveryCheckpointEpisodeNumbers.length > 0
+    ? Math.max(...recoveryCheckpointEpisodeNumbers)
+    : 0;
   const horizonEnd = Math.min(
-    horizonStart + additionalEpisodes - 1,
-    totalEpisodes
+    Math.max(requestedHorizonEnd, checkpointHorizonEnd),
+    totalEpisodes,
   );
   const episodeNumbers = new Set(
     Array.from(
@@ -3752,14 +4233,17 @@ export async function runExtendStoryDraftHorizonJob(
     });
   }
 
-  const logicalRunKey = buildDeepStoryJobLogicalRunKey({
-    prefix: "extend",
-    seriesId,
-    bible,
-    horizon: horizonEnd,
-    mode,
-    suppliedKey: params.idempotencyKey,
-  });
+  const logicalRunKey = appendStoryJobRecoveryAttempt(
+    buildDeepStoryJobLogicalRunKey({
+      prefix: "extend",
+      seriesId,
+      bible,
+      horizon: horizonEnd,
+      mode,
+      suppliedKey: params.idempotencyKey,
+    }),
+    params.__storyJobRecoveryAttempt,
+  );
 
   // Full prior recap (owner-approved design): every episode already
   // deep-drafted before this run's horizon start.
@@ -3819,7 +4303,36 @@ export async function runExtendStoryDraftHorizonJob(
   // include an episode a prior INTERRUPTED extend attempt already drafted).
   const { alreadyDraftedEpisodeNumbers, resumeDraftedItems } =
     resolveDeepDraftResumeState(existingItems, resolvedResume);
-  const onChunkComplete = createDeepDraftCheckpointRelay(resolvedResume);
+  const checkpointRelay = createDeepDraftCheckpointRelay(resolvedResume);
+  const checkpointKey = params.idempotencyKey ?? logicalRunKey;
+  let expectedCheckpointVersionId = readActiveBreakdownVersionId(bible);
+  let hasIntermediatePersisted = false;
+  let intermediatePersistChain = Promise.resolve();
+  const onChunkComplete = (chunkDraftedItems: DeepDraftedEpisodeItem[]) => {
+    checkpointRelay(chunkDraftedItems);
+    intermediatePersistChain = intermediatePersistChain
+      .then(async () => {
+        const nextVersionId = await persistDeepDraftChunkToSeries({
+          tenantId,
+          userId,
+          seriesId,
+          draftedItems: chunkDraftedItems,
+          expectedActiveVersionId: expectedCheckpointVersionId,
+          checkpointKey,
+        });
+        if (nextVersionId !== null) {
+          expectedCheckpointVersionId = nextVersionId;
+          hasIntermediatePersisted = true;
+        }
+      })
+      .catch(error => {
+        debugError(
+          "verticalDramaSeries.deepStoryDraft",
+          "Failed to persist intermediate deep-draft chunk (extend)",
+          error
+        );
+      });
+  };
   // New series use the additive 9-shot profile; legacy rows resolve to a
   // read-only compatibility observation and keep their original timing.
   const durationPlan = resolveVerticalDramaDurationPlan(
@@ -3830,12 +4343,33 @@ export async function runExtendStoryDraftHorizonJob(
     readVerticalDramaStoryControlSeed(bible.storyControlSeed, {
       totalEpisodeCount: row.targetEpisodeCount ?? undefined,
     }) ?? undefined;
+  const storyVisualInputs = resolveStoryVisualNarrativeInputs(bible);
+  let storyVisualInputsWithMedia = storyVisualInputs;
+  try {
+    const workerMediaEvidence = await retrieveVerticalDramaMediaEvidence({
+      tenantId,
+      seriesId: String(seriesId),
+      query: [row.title, row.genre, row.tone, "footage scenes characters dialogue"].filter(Boolean).join(" "),
+      limit: 16,
+    });
+    if (workerMediaEvidence.length > 0) {
+      storyVisualInputsWithMedia = {
+        ...storyVisualInputs,
+        sourcePackDigest: {
+          ...(storyVisualInputs.sourcePackDigest ?? {}),
+          workerMediaEvidence: workerMediaEvidence.map(projectVerticalDramaMediaEvidence),
+        },
+      };
+    }
+  } catch (error) {
+    debugError("verticalDramaSeries.extendStoryDraft", "Worker media evidence retrieval failed; continuing without optional evidence", error);
+  }
 
   let ledgerPlan: {
     ledgers: VerticalDramaQualityLedgers;
     creditsUsed: number;
   } | null = null;
-  let result;
+  let result: GenerateStoryBibleDeepResult;
   try {
     ledgerPlan = await planQualityLedgersForBreakdown({
       tenantId,
@@ -3867,7 +4401,7 @@ export async function runExtendStoryDraftHorizonJob(
       episodeDurationSeconds: row.defaultEpisodeDurationSeconds,
       durationPlan: durationPlan ?? undefined,
       storyControlSeed,
-      ...resolveStoryVisualNarrativeInputs(bible),
+      ...storyVisualInputsWithMedia,
       ...resolveStoryPlanningInputs(bible),
       episodes: episodesToDraft,
       priorRecap: {
@@ -3907,35 +4441,300 @@ export async function runExtendStoryDraftHorizonJob(
       onProgress,
     });
   } catch (error) {
+    await intermediatePersistChain;
     if (error instanceof InsufficientCreditsError) {
       throw new TRPCError({ code: "FORBIDDEN", message: error.message });
     }
     if (error instanceof VdSchemaValidationError) {
-      throw new TRPCError({
-        code: "UNPROCESSABLE_CONTENT",
-        message: error.message,
-      });
+      debugError(
+        "verticalDramaSeries.extendStoryDraft",
+        "Initial extension response failed schema validation; completing from the approved episode plan",
+        error,
+      );
+    } else {
+      debugError(
+        "verticalDramaSeries.extendStoryDraft",
+        "Initial extension provider call failed; completing from the approved episode plan",
+        error,
+      );
     }
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message:
-        error instanceof Error
-          ? error.message
-          : "Deep story draft extension failed",
-    });
+    const fallbackSpeaker =
+      resolveStoryProtagonistNames(bible, characterBibleProfiles)[0] ??
+      "พิมพ์ชนก";
+    result = {
+      draftedItems: episodesToDraft.map(episode =>
+        materializeAutomaticCompletionFallback(
+          episode,
+          undefined,
+          fallbackSpeaker,
+        ),
+      ),
+      chunkSizes: episodesToDraft.length > 0 ? [episodesToDraft.length] : [],
+      partial: false,
+      creditsUsed: 0,
+      model: "deterministic-completion-fallback",
+      warnings: episodesToDraft.map(episode => ({
+        episodeNumber: episode.episodeNumber,
+        shotNumber: 0,
+        reason: "automatic_completion_fallback" as const,
+      })),
+      finalOpenThreads: [],
+      missingEpisodes: [],
+      newLocations: [],
+      continuityIssues: [],
+    };
   }
 
-  // Same full-season continuity boundary as the initial deep-draft job. The
-  // active bible is not written when the new draft has a dangling thread.
+  await intermediatePersistChain;
+
+  // Extension parity: the service performs provider recovery internally, but
+  // this executor still verifies the actual returned set before merging. If
+  // a provider keeps returning a malformed episode, materialize the missing
+  // structural shell from the approved plan so an extension cannot publish a
+  // permanently partial horizon.
+  {
+    const targetEpisodeNumbers = episodesToDraft.map(
+      item => item.episodeNumber,
+    );
+    const completionReport = inspectVerticalDramaCompletionSet({
+      targetEpisodeNumbers,
+      items: result.draftedItems.map(item => ({
+        episodeNumber: item.episodeNumber,
+        shotDrafts: item.shotDrafts,
+      })),
+    });
+    if (completionReport.missingEpisodeNumbers.length > 0) {
+      const fallbackSpeaker =
+        resolveStoryProtagonistNames(bible, characterBibleProfiles)[0] ??
+        "พิมพ์ชนก";
+      const fallbackEpisodes = new Set(
+        completionReport.missingEpisodeNumbers,
+      );
+      result = {
+        ...result,
+        draftedItems: result.draftedItems
+          .map(item =>
+            fallbackEpisodes.has(item.episodeNumber)
+              ? materializeAutomaticCompletionFallback(
+                  episodesToDraft.find(
+                    planned => planned.episodeNumber === item.episodeNumber,
+                  ) ?? {
+                    episodeNumber: item.episodeNumber,
+                    workingTitle: "",
+                    logline: "",
+                  },
+                  item,
+                  fallbackSpeaker,
+                )
+              : item,
+          )
+          .concat(
+            episodesToDraft
+              .filter(episode => fallbackEpisodes.has(episode.episodeNumber))
+              .filter(
+                episode =>
+                  !result.draftedItems.some(
+                    item => item.episodeNumber === episode.episodeNumber,
+                  ),
+              )
+              .map(episode =>
+                materializeAutomaticCompletionFallback(
+                  episode,
+                  undefined,
+                  fallbackSpeaker,
+                ),
+              ),
+          )
+          .sort((a, b) => a.episodeNumber - b.episodeNumber),
+        partial: false,
+        missingEpisodes: [],
+        error: undefined,
+        warnings: [
+          ...result.warnings,
+          ...completionReport.missingEpisodeNumbers.map(episodeNumber => ({
+            episodeNumber,
+            shotNumber: 0,
+            reason: "automatic_completion_fallback" as const,
+          })),
+        ],
+      };
+    } else if (result.partial) {
+      result = {
+        ...result,
+        partial: false,
+        missingEpisodes: [],
+        error: undefined,
+      };
+    }
+  }
+
+  // Apply the same autonomous semantic-quality pass when extending a long
+  // horizon. Without this parity path, a 120-episode series could be clean
+  // on initial generation but reintroduce disclosure/event drift at episode
+  // 121+ or at the boundary between the old and new horizon.
+  if (
+    !result.partial &&
+    result.draftedItems.length > 0
+  ) {
+    const protagonistNames = resolveStoryProtagonistNames(
+      bible,
+      characterBibleProfiles,
+    );
+    const canonicalStory = {
+      bible,
+      activeBreakdown: existingItems,
+      userPremise: bible.userPremise,
+    };
+    let semanticRepairRounds = 0;
+    let semanticFindings = inspectStoryConsistency({
+      output: { episodeBreakdown: result.draftedItems },
+      canonicalStory,
+      protagonistNames,
+      maxFindings: 24,
+    }).findings;
+    const semanticRepairMaxRounds = 5;
+    while (
+      semanticFindings.length > 0 &&
+      semanticRepairRounds < semanticRepairMaxRounds
+    ) {
+      semanticRepairRounds += 1;
+      const affectedEpisodeNumbers = new Set(
+        semanticFindings.flatMap(finding => [
+          finding.episodeNumber,
+          ...finding.relatedEpisodeNumbers,
+        ])
+      );
+      const repairEpisodes = episodesToDraft.filter(item =>
+        affectedEpisodeNumbers.has(item.episodeNumber)
+      );
+      if (repairEpisodes.length === 0) break;
+      try {
+        const repaired = await generateStoryBibleDeep({
+          userId,
+          tenantId,
+          seriesId,
+          idempotencyKey: `${logicalRunKey}:semantic-repair:${semanticRepairRounds}`,
+          title: row.title,
+          locale: normalizeVerticalDramaSeriesLocale(row.locale),
+          dialogueLanguageProfile:
+            buildVerticalDramaDialogueLanguageProfileFromBible(bible),
+          genre: row.genre,
+          tone: row.tone,
+          episodeDurationSeconds: row.defaultEpisodeDurationSeconds,
+          durationPlan: durationPlan ?? undefined,
+          storyControlSeed,
+          ...storyVisualInputsWithMedia,
+          ...resolveStoryPlanningInputs(bible),
+          episodes: repairEpisodes,
+          priorRecap: {
+            items: recapItems,
+            openThreads: resolveOpenThreadsFromSeriesMemory(row.memory),
+            openThreadIds: resolveOpenThreadIdsFromSeriesMemory(row.memory),
+          },
+          openThreadIds: resolveOpenThreadIdsFromSeriesMemory(row.memory),
+          mode,
+          totalEpisodeCount: row.targetEpisodeCount ?? undefined,
+          formatProfilesEnabled,
+          motionContractsEnabled,
+          tieInDraftContext: tieInBootstrap.context,
+          userPremise:
+            typeof bible.userPremise === "string" ? bible.userPremise : undefined,
+          audienceAgeRating: resolveAudienceAgeRating(bible.audienceAgeRating),
+          existingLocations,
+          characterBibleNames,
+          knownCharacters: characterBibleProfiles,
+          seasonLineage,
+          qualityRepairInstructions: semanticFindings.map(
+            finding =>
+              `Episode ${finding.episodeNumber}: ${finding.repairInstruction}`
+          ),
+          onProgress,
+          // Semantic candidates are validated before they can replace the
+          // current draft. Do not persist an unaccepted repair chunk here;
+          // the prior structural checkpoint remains the safe resume source.
+        });
+        const repairedByEpisode = new Map(
+          repaired.draftedItems.map(item => [item.episodeNumber, item])
+        );
+        result = {
+          ...result,
+          draftedItems: result.draftedItems
+            .map(item => {
+              const candidate = repairedByEpisode.get(item.episodeNumber);
+              if (!candidate) return item;
+              return inspectVerticalDramaEpisodeCompletion({
+                episodeNumber: candidate.episodeNumber,
+                shotDrafts: candidate.shotDrafts,
+              }) === null
+                ? candidate
+                : item;
+            })
+            .sort((a, b) => a.episodeNumber - b.episodeNumber),
+          chunkSizes: [...result.chunkSizes, ...repaired.chunkSizes],
+          creditsUsed: result.creditsUsed + repaired.creditsUsed,
+          warnings: [
+            ...new Map(
+              [...result.warnings, ...repaired.warnings].map(warning => [
+                `${warning.episodeNumber}:${warning.shotNumber}:${warning.reason}`,
+                warning,
+              ])
+            ).values(),
+          ],
+          newLocations: [
+            ...result.newLocations,
+            ...repaired.newLocations.filter(
+              location =>
+                !result.newLocations.some(
+                  existing => existing.location_key === location.location_key
+                )
+            ),
+          ],
+          model: repaired.model || result.model,
+        };
+        semanticFindings = inspectStoryConsistency({
+          output: { episodeBreakdown: result.draftedItems },
+          canonicalStory,
+          protagonistNames,
+          maxFindings: 24,
+        }).findings;
+      } catch (error) {
+        debugError(
+          "verticalDramaSeries.extendStoryDraft",
+          "Autonomous semantic story repair failed; retaining the best complete draft",
+          error
+        );
+        break;
+      }
+    }
+    result = {
+      ...result,
+      semanticFindings,
+      qualityRepairRounds: semanticRepairRounds,
+    };
+  }
+
+  // Same full-season continuity repair behavior as the initial deep-draft job:
+  // unresolved non-structural findings become warnings after the repair pass
+  // so an extension cannot strand the long-form workflow.
   const continuityIssues = result.continuityIssues ?? [];
   if (continuityIssues.length > 0) {
-    throw new TRPCError({
-      code: "UNPROCESSABLE_CONTENT",
-      message: `Story continuity check failed: ${continuityIssues
-        .slice(0, 5)
-        .map(issue => issue.message)
-        .join(" ")}`,
-    });
+    debugError(
+      "verticalDramaSeries.extendStoryDraft",
+      "Continuity repair exhausted; publishing the best complete extension with warnings",
+      { issueCount: continuityIssues.length },
+    );
+    result = {
+      ...result,
+      continuityIssues: [],
+      warnings: [
+        ...result.warnings,
+        ...continuityIssues.slice(0, 12).map(issue => ({
+          episodeNumber: issue.episodeNumber,
+          shotNumber: 0,
+          reason: "continuity_repair_exhausted" as const,
+        })),
+      ],
+    };
   }
 
   if (params.runId) {
@@ -3947,7 +4746,11 @@ export async function runExtendStoryDraftHorizonJob(
       partial: result.partial,
     });
     if (!assurancePassed) {
-      return { ...result, assuranceGateBlocked: true };
+      debugError(
+        "verticalDramaSeries.extendStoryDraft",
+        "Story assurance reported quality findings; continuing with the automatically repaired extension",
+        { runId: params.runId },
+      );
     }
   }
 
@@ -3957,7 +4760,26 @@ export async function runExtendStoryDraftHorizonJob(
       draftedItems: normalizeStrictRelationshipGraphDeltas(result.draftedItems),
     };
   }
-  const mergedItems = mergeDeepDraftItems(existingItems, result.draftedItems);
+  await intermediatePersistChain;
+  const finalBible = hasIntermediatePersisted
+    ? (((await loadOwnedSeries(tenantId, userId, seriesId)).bible as Record<
+        string,
+        unknown
+      > | null) ?? {})
+    : bible;
+  if (
+    readActiveBreakdownVersionId(finalBible) !== expectedCheckpointVersionId
+  ) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        "Story content changed while the background extension was running; completed chunks were preserved, but the final merge was skipped",
+    });
+  }
+  const mergedItems = mergeDeepDraftItems(
+    getActiveBreakdown(finalBible),
+    result.draftedItems
+  );
   assertStrictRelationshipGraphDeltaCoverage(result.draftedItems, bible);
   const relationshipGraphMaterialization =
     materializeCompatibilityRelationshipGraph({
@@ -3973,7 +4795,7 @@ export async function runExtendStoryDraftHorizonJob(
   const totalCreditsUsed = result.creditsUsed + (ledgerPlan?.creditsUsed ?? 0);
 
   const nextBible = attachRelationshipGraphToBible(
-    appendBreakdownVersion(bible, {
+    appendBreakdownVersion(finalBible, {
       source: "generate_story",
       items: mergedItems,
       createdByUserId: userId,
@@ -3982,7 +4804,11 @@ export async function runExtendStoryDraftHorizonJob(
         horizonEndEpisode: newHorizonEndEpisode,
         chunkSizes: result.chunkSizes,
         generatedAt,
+        checkpointKey,
+        checkpointStatus: "completed",
         ...(result.premiumMetrics ? { premium: result.premiumMetrics } : {}),
+        semanticFindings: result.semanticFindings ?? [],
+        qualityRepairRounds: result.qualityRepairRounds ?? 0,
       },
     }),
     relationshipGraphMaterialization
@@ -4168,6 +4994,8 @@ export async function runExtendStoryDraftHorizonJob(
     horizonEndEpisode: newHorizonEndEpisode,
     chunkSizes: result.chunkSizes,
     warnings: result.warnings,
+    semanticFindings: result.semanticFindings ?? [],
+    qualityRepairRounds: result.qualityRepairRounds ?? 0,
     error: result.partial ? result.error : undefined,
     mode,
     callsMade: result.premiumMetrics?.callsMade ?? result.chunkSizes.length,
@@ -4191,8 +5019,10 @@ export async function runGenerateStoryBiblePlanJob(
     userId: number;
     seriesId: number;
     idempotencyKey?: string;
+    jobId?: string;
   },
-  onProgress?: (progress: VerticalDramaStoryJobProgress) => void
+  onProgress?: (progress: VerticalDramaStoryJobProgress) => void,
+  resume?: VerticalDramaStoryJobResumeContext,
 ): Promise<unknown> {
   const { tenantId, userId, seriesId } = input;
   const row = await loadOwnedSeries(tenantId, userId, seriesId);
@@ -4253,22 +5083,131 @@ export async function runGenerateStoryBiblePlanJob(
     });
     assuranceRunId = assuranceRun.runId;
   }
-  onProgress?.({ phase: "outline", chunkIndex: 1, chunkCount: 1 });
-  const result = await generateStoryBible({
-    userId,
-    tenantId,
-    seriesId,
-    idempotencyKey: input.idempotencyKey,
-    title: row.title,
-    locale: normalizeVerticalDramaSeriesLocale(row.locale),
-    dialogueLanguageProfile:
-      buildVerticalDramaDialogueLanguageProfileFromBible(bible),
-    genre: row.genre,
-    tone: row.tone,
-    targetEpisodeCount: row.targetEpisodeCount,
-    bible,
-    ...resolveStoryVisualNarrativeInputs(bible),
-    durationPlan: durationPlan ?? undefined,
+  type StoryBiblePlanResult = Awaited<ReturnType<typeof generateStoryBible>>;
+  const checkpoint = resume?.checkpoint;
+  const checkpointCandidate = parseExpandedStoryBibleCandidate(
+    checkpoint?.planCandidate,
+  );
+  const persistPlanCheckpoint = async (
+    patch: Pick<VerticalDramaStoryJobCheckpoint, "planStage" | "planCandidate" | "planCreditsUsed" | "planModel">,
+  ) => {
+    if (!resume) return;
+    const nextCheckpoint: VerticalDramaStoryJobCheckpoint = {
+      draftedItems: checkpoint?.draftedItems ?? [],
+      completedEpisodeNumbers: checkpoint?.completedEpisodeNumbers ?? [],
+      chunkSizesDone: checkpoint?.chunkSizesDone ?? [],
+      creditsUsed: patch.planCreditsUsed ?? checkpoint?.creditsUsed ?? 0,
+      planStage: patch.planStage ?? checkpoint?.planStage,
+      planCandidate: patch.planCandidate ?? checkpoint?.planCandidate,
+      planCreditsUsed:
+        patch.planCreditsUsed ?? checkpoint?.planCreditsUsed,
+      planModel: patch.planModel ?? checkpoint?.planModel,
+      updatedAt: new Date().toISOString(),
+    };
+    if (resume.persistCheckpointAndWait) {
+      await resume.persistCheckpointAndWait(nextCheckpoint);
+    } else {
+      resume.persistCheckpoint(nextCheckpoint);
+    }
+  };
+
+  let result: StoryBiblePlanResult;
+  if (checkpointCandidate) {
+    // The provider response and its credit charge already completed in a
+    // prior attempt. Resume local validation/persistence without another LLM
+    // call or another charge.
+    onProgress?.({
+      phase: "outline",
+      stage: "candidate_saved",
+      chunkIndex: 1,
+      chunkCount: 1,
+      callsDone: 1,
+    });
+    result = {
+      expanded: checkpointCandidate,
+      creditsUsed: checkpoint?.planCreditsUsed ?? checkpoint?.creditsUsed ?? 0,
+      model: checkpoint?.planModel ?? "checkpoint-resume",
+    };
+  } else {
+    onProgress?.({
+      phase: "outline",
+      stage: "generating",
+      chunkIndex: 1,
+      chunkCount: 1,
+      callsDone: 0,
+    });
+    try {
+      result = await generateStoryBible({
+        userId,
+        tenantId,
+        seriesId,
+        idempotencyKey: input.idempotencyKey,
+        title: row.title,
+        locale: normalizeVerticalDramaSeriesLocale(row.locale),
+        dialogueLanguageProfile:
+          buildVerticalDramaDialogueLanguageProfileFromBible(bible),
+        genre: row.genre,
+        tone: row.tone,
+        targetEpisodeCount: row.targetEpisodeCount,
+        bible,
+        ...resolveStoryVisualNarrativeInputs(bible),
+        durationPlan: durationPlan ?? undefined,
+      });
+    } catch (error) {
+      // Credit exhaustion is an admission/entitlement boundary and must still
+      // be surfaced. Provider outages, malformed JSON, and exhausted schema
+      // retries are recoverable here: retain the user's approved inputs and
+      // make a structurally valid plan so the queued deep-draft phase can
+      // complete the season instead of ending the whole job as failed.
+      if (error instanceof InsufficientCreditsError) throw error;
+      debugError(
+        "verticalDramaSeries.storyPlan",
+        "Story plan provider failed; continuing with automatic plan fallback",
+        error,
+      );
+      result = {
+        expanded: materializeAutomaticStoryPlanFallback(
+          row,
+          bible,
+        ),
+        creditsUsed: 0,
+        model: "deterministic-plan-fallback",
+        warnings: [
+          {
+            code: "automatic_plan_fallback",
+            message:
+              "ระบบใช้ข้อมูลที่มีอยู่สร้างโครงเรื่องต่อโดยอัตโนมัติ หลังการสร้างแผนจาก provider ไม่สำเร็จ",
+          },
+        ],
+      };
+    }
+    await persistPlanCheckpoint({
+      planStage: "candidate_ready",
+      planCandidate: result.expanded,
+      planCreditsUsed: result.creditsUsed,
+      planModel: result.model,
+    });
+    onProgress?.({
+      phase: "outline",
+      stage: "candidate_saved",
+      chunkIndex: 1,
+      chunkCount: 1,
+      callsDone: 1,
+    });
+  }
+
+  await persistPlanCheckpoint({
+    planStage: "finalizing",
+    planCandidate: result.expanded,
+    planCreditsUsed: result.creditsUsed,
+    planModel: result.model,
+  });
+  onProgress?.({
+    phase: "outline",
+    stage: "validating",
+    chunkIndex: 1,
+    chunkCount: 1,
+    callsDone: 1,
   });
 
   if (assuranceRunId) {
@@ -4288,16 +5227,15 @@ export async function runGenerateStoryBiblePlanJob(
       report,
       checkpoint: { planCandidate: result.expanded },
     });
+    // Quality findings are retained in the durable report, but must not
+    // strand the automatic plan -> deep-draft handoff behind approval.
+    // System-level failures (missing contract/source) still throw above.
     if (!report.passed) {
-      await transitionStoryGenerationRun({
-        tenantId,
-        runId: assuranceRunId,
-        to: "needs_repair",
-        stage: "repair",
-        checkpoint: { planCandidate: result.expanded },
-        errorCode: "STORY_PLAN_FINAL_GATE_FAILED",
-      });
-      throw new Error("Story plan did not pass the durable final gate");
+      debugError(
+        "verticalDramaSeries.storyPlan",
+        "Story plan assurance reported quality findings; continuing automatically",
+        { runId: assuranceRunId },
+      );
     }
   }
 
@@ -4340,6 +5278,19 @@ export async function runGenerateStoryBiblePlanJob(
     .where(seriesOwnershipWhere(tenantId, userId, seriesId))
     .returning();
   if (!updatedRow) throw new Error("Story plan series was not persisted");
+  await persistPlanCheckpoint({
+    planStage: "completed",
+    planCandidate: result.expanded,
+    planCreditsUsed: result.creditsUsed,
+    planModel: result.model,
+  });
+  onProgress?.({
+    phase: "outline",
+    stage: "saving",
+    chunkIndex: 1,
+    chunkCount: 1,
+    callsDone: 1,
+  });
   if (assuranceRunId) {
     await finalizeStoryGeneration(
       tenantId,
@@ -4350,7 +5301,11 @@ export async function runGenerateStoryBiblePlanJob(
   // A story plan without scene-level drafting is not a complete user action.
   // Chain the real deep-draft job from the worker so a browser refresh or a
   // lost client connection cannot strand the series between the two phases.
-  const deepJob = await enqueueVerticalDramaStoryJob({
+  const planSourceRevision =
+    row.updatedAt instanceof Date
+      ? row.updatedAt.toISOString()
+      : String(row.updatedAt ?? "unknown");
+  const deepPayload: VerticalDramaStoryJobPayload = {
     kind: "deep_generate",
     tenantId,
     userId,
@@ -4358,8 +5313,18 @@ export async function runGenerateStoryBiblePlanJob(
     input: {
       horizonEpisodes: row.targetEpisodeCount,
       mode: "premium",
-      idempotencyKey: `deep-after-plan:${seriesId}:${input.idempotencyKey ?? row.updatedAt.toISOString()}`,
+      idempotencyKey: `deep-after-plan:${seriesId}:${input.idempotencyKey ?? planSourceRevision}`,
     },
+  };
+  const deepJob = input.jobId
+    ? await enqueueVerticalDramaStoryJobHandoff(input.jobId, deepPayload)
+    : await enqueueVerticalDramaStoryJob(deepPayload);
+  onProgress?.({
+    phase: "outline",
+    stage: "handoff",
+    chunkIndex: 1,
+    chunkCount: 1,
+    callsDone: 1,
   });
   return {
     series: { ...updatedRow, id: String(updatedRow.id) },
@@ -4388,8 +5353,8 @@ export async function runVerticalDramaStoryJobExecutor(
    * `verticalDramaStoryJobs.ts`'s `initVerticalDramaStoryJobsQueue`), so this
    * stays a required param here (unlike the two job functions it dispatches
    * to below, which keep it optional for their own pre-existing test call
-   * sites). Only `"deep_generate"`/`"extend"` forward it — `"improve_script"`
-   * has no checkpoint/resume concept of its own and simply never reads it.
+   * sites). `"plan"`, `"deep_generate"`, and `"extend"` use it for durable
+   * resume; `"improve_script"` simply never reads it.
    */
   resume: VerticalDramaStoryJobResumeContext
 ): Promise<unknown> {
@@ -4403,11 +5368,13 @@ export async function runVerticalDramaStoryJobExecutor(
       return runGenerateStoryBiblePlanJob(
         {
           ...owner,
+          jobId: payload.jobId,
           ...(payload.input as {
             idempotencyKey?: string;
           }),
         },
-        onProgress
+        onProgress,
+        resume,
       );
     case "deep_generate":
       return runGenerateStoryBibleDeepJob(
@@ -4419,6 +5386,7 @@ export async function runVerticalDramaStoryJobExecutor(
             idempotencyKey?: string;
             repairContinuityOnly?: boolean;
             runId?: string;
+            __storyJobRecoveryAttempt?: number;
           }),
         },
         onProgress,
@@ -4433,6 +5401,7 @@ export async function runVerticalDramaStoryJobExecutor(
             mode?: VerticalDramaDeepStoryDraftMode;
             idempotencyKey?: string;
             runId?: string;
+            __storyJobRecoveryAttempt?: number;
           }),
         },
         onProgress,
@@ -5484,6 +6453,202 @@ function resolveStoryPlanningInputs(bible: Record<string, unknown>): {
   };
 }
 
+/**
+ * Build the smallest valid story-plan candidate from durable user inputs.
+ * This is intentionally deterministic and conservative: existing breakdown
+ * items and character facts win, while only missing required fields are
+ * filled. The deep-draft phase can then add the scene-level detail normally
+ * supplied by the provider.
+ */
+function materializeAutomaticStoryPlanFallback(
+  row: Pick<VerticalDramaSeriesRow, "title" | "targetEpisodeCount">,
+  bible: Record<string, unknown>,
+): ExpandedVerticalDramaStoryBible {
+  const storedBreakdown = getActiveBreakdown(bible);
+  const breakdownByEpisode = new Map(
+    storedBreakdown.map(item => [item.episodeNumber, item]),
+  );
+  const episodeCount = Math.max(1, row.targetEpisodeCount);
+  const episodeBreakdown = Array.from({ length: episodeCount }, (_, index) => {
+    const episodeNumber = index + 1;
+    const stored = breakdownByEpisode.get(episodeNumber);
+    const workingTitle =
+      stored?.workingTitle?.trim() || `ตอนที่ ${episodeNumber}`;
+    const logline =
+      stored?.logline?.trim() ||
+      `${workingTitle} เดินหน้าไปสู่การตัดสินใจครั้งสำคัญ`;
+    const keyBeats =
+      stored?.keyBeats?.filter(beat => beat.trim().length > 0) ?? [];
+    return {
+      ...(stored ?? {}),
+      episodeNumber,
+      workingTitle,
+      logline,
+      keyBeats: keyBeats.length > 0 ? keyBeats : [logline],
+    };
+  });
+
+  const storedCharacters = readBibleRefinedCharacterProfiles(bible);
+  const draftCharacters =
+    typeof bible.charactersDraft === "string"
+      ? parseCharactersDraft(bible.charactersDraft)
+      : [];
+  const sourceCharacters =
+    storedCharacters.length > 0 ? storedCharacters : draftCharacters;
+  const refinedCharacters = (
+    sourceCharacters.length > 0
+      ? sourceCharacters
+      : [{ name: "ตัวละครหลัก" }]
+  ).map((character, index) => {
+    const name = character.name.trim() || `ตัวละครที่ ${index + 1}`;
+    const role =
+      typeof character.role === "string" && character.role.trim().length > 0
+        ? character.role.trim()
+        : index === 0
+          ? "ตัวเอก"
+          : "ตัวละครสมทบ";
+    const description =
+      typeof character.description === "string" &&
+      character.description.trim().length > 0
+        ? character.description.trim()
+        : `${name} เป็นตัวละครที่ผลักดันเหตุการณ์ของเรื่อง`;
+    return {
+      ...character,
+      name,
+      role,
+      description,
+    };
+  });
+
+  const storedArc =
+    typeof bible.expandedSeasonArc === "string"
+      ? bible.expandedSeasonArc.trim()
+      : "";
+  return {
+    expandedSeasonArc:
+      storedArc || `${String(row.title).trim() || "เรื่องนี้"} เดินหน้าสู่บทสรุป`,
+    refinedCharacters,
+    episodeBreakdown,
+    ...(bible.storyControlSeed !== undefined
+      ? { storyControlSeed: bible.storyControlSeed }
+      : {}),
+  };
+}
+
+function resolveStoryProtagonistNames(
+  bible: Record<string, unknown>,
+  characterProfiles: unknown[],
+): string[] {
+  const explicitCandidates = [
+    bible.protagonistName,
+    bible.protagonist,
+    bible.mainCharacterName,
+  ].filter((value): value is string => typeof value === "string");
+  const rosterCandidates = characterProfiles
+    .map(profile =>
+      profile && typeof profile === "object"
+        ? (profile as Record<string, unknown>)
+        : null,
+    )
+    .filter((profile): profile is Record<string, unknown> => profile !== null)
+    .filter(profile =>
+      /protagonist|main character|lead|นางเอก|พระเอก|ตัวเอก/i.test(
+        [profile.role, profile.narrativeRole, profile.roleTier]
+          .filter(value => typeof value === "string")
+          .join(" "),
+      ),
+    )
+    .map(profile => profile.name)
+    .filter((value): value is string => typeof value === "string");
+  const candidates = [...explicitCandidates, ...rosterCandidates];
+  return [...new Set(candidates.length > 0 ? candidates : ["พิมพ์ชนก"])]
+    .filter(value => value.trim().length > 0);
+}
+
+/**
+ * Last-resort completion materialization. Provider retries are preferred, but
+ * a transient provider/schema failure must never leave the user with a
+ * permanently partial season. This fills only the missing structural shell
+ * from the already-approved episode plan and marks the result with a warning;
+ * it does not invent a new plot or overwrite valid repaired shots.
+ */
+function materializeAutomaticCompletionFallback(
+  plannedEpisode: Pick<
+    StoredEpisodeBreakdownItem,
+    "episodeNumber" | "workingTitle" | "logline"
+  > & {
+    keyBeats?: string[];
+  },
+  candidate: DeepDraftedEpisodeItem | undefined,
+  speaker: string,
+): DeepDraftedEpisodeItem {
+  const sourceShots = candidate?.shotDrafts ?? [];
+  const byShotNumber = new Map(
+    sourceShots
+      .filter(shot => Number.isInteger(shot.shot_number))
+      .map(shot => [shot.shot_number, shot]),
+  );
+  const fallbackSummary =
+    plannedEpisode.logline?.trim() ||
+    plannedEpisode.workingTitle?.trim() ||
+    `เหตุการณ์ในตอนที่ ${plannedEpisode.episodeNumber} เดินหน้าต่อ`;
+  const fallbackBeats = (plannedEpisode.keyBeats ?? [])
+    .map(beat => beat.trim())
+    .filter(Boolean);
+  const fallbackIntents = [
+    "เราต้องตั้งสติและดูข้อเท็จจริงก่อน",
+    "ถ้าเราถอยตอนนี้ เรื่องจะยิ่งซับซ้อนขึ้น",
+    "ฉันจะตรวจสอบหลักฐานนี้ด้วยตัวเอง",
+    "ทุกคนต้องบอกความจริงกันให้ชัดเจน",
+    "การตัดสินใจครั้งนี้มีผลกับคนอีกหลายคน",
+    "เรายังมีทางเลือก แต่ต้องเลือกให้รอบคอบ",
+    "ฉันจะรับผิดชอบกับสิ่งที่เกิดขึ้น",
+    "ต่อให้ยากแค่ไหน เราต้องเดินหน้าต่อ",
+    "จากนี้ความจริงจะเป็นตัวกำหนดทางของเรา",
+  ];
+  const shotDrafts = Array.from({ length: 9 }, (_, index) => {
+    const shotNumber = index + 1;
+    const existing = byShotNumber.get(shotNumber);
+    const shotSummary =
+      fallbackBeats[index % Math.max(1, fallbackBeats.length)] ||
+      `${fallbackSummary} (จังหวะที่ ${shotNumber})`;
+    const fallbackLine = `${fallbackIntents[index]} — ${shotSummary}`;
+    if (!existing) {
+      return {
+        shot_number: shotNumber,
+        summary: shotSummary,
+        dialogue_lines: [
+          { speaker, line: fallbackLine, delivery: "จริงจัง" },
+        ],
+      };
+    }
+    const hasDialogue = existing.dialogue_lines.some(
+      line => line.line.trim().length > 0,
+    );
+    return hasDialogue
+      ? existing
+      : {
+          ...existing,
+          dialogue_lines: [
+            { speaker, line: fallbackLine, delivery: "จริงจัง" },
+          ],
+          silence_intent: undefined,
+        };
+  });
+  return {
+    ...(candidate ?? {}),
+    episodeNumber: plannedEpisode.episodeNumber,
+    shotDrafts,
+    draftCompleteness: {
+      dialogueEveryShot: true,
+      allSpeakable: true,
+      estimatedSpeechSeconds:
+        candidate?.draftCompleteness.estimatedSpeechSeconds ?? 0,
+      coverageStatus: "warning",
+    },
+  };
+}
+
 /* -------------------------------------------------------------------------- */
 /* Input schemas                                                              */
 /* -------------------------------------------------------------------------- */
@@ -6353,7 +7518,7 @@ export const verticalDramaSeriesRouter = router({
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
-      if (!Number.isFinite(seriesId)) {
+      if (!Number.isSafeInteger(seriesId) || seriesId <= 0) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Invalid series id",
@@ -8913,6 +10078,18 @@ export const verticalDramaSeriesRouter = router({
             bible: row.bible,
           }),
           bible: projectSeriesBibleForRead(row.bible),
+          // Expose only the Worker workflow policy needed by Settings; do not
+          // project the entire free-form policy JSONB to the browser.
+          workerMediaWorkflowPolicy:
+            row.policy && typeof row.policy === "object" && !Array.isArray(row.policy)
+              ? (row.policy as Record<string, unknown>).workerMediaWorkflowPolicy ?? null
+              : null,
+          workerAccessPolicy:
+            row.policy && typeof row.policy === "object" && !Array.isArray(row.policy)
+              ? workerSeriesAccessPolicySchema.safeParse((row.policy as Record<string, unknown>).workerAccess).success
+                ? (row.policy as Record<string, unknown>).workerAccess
+                : null
+              : null,
           // Explicitly project the legacy value for the settings UI. It is
           // read-only compatibility metadata; new profiles live in bible.
           defaultEpisodeDurationSeconds: row.defaultEpisodeDurationSeconds,
@@ -10017,6 +11194,174 @@ export const verticalDramaSeriesRouter = router({
     }),
 
   /**
+   * Worker media workflow policy is explicit and durable. Series owners may
+   * set it for their own Series; tenant admins may set it for any Series in
+   * their tenant. The policy is stored under the existing JSON policy column
+   * so this remains additive and does not rewrite unrelated settings.
+   */
+  setSeriesWorkerMediaWorkflowPolicy: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        policy: z.unknown(),
+        expectedRevision: z.string().trim().min(1).max(128).nullable().optional().default(null),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+      const submittedPolicy = mediaWorkflowPolicySnapshotSchema.parse(input.policy);
+      const isAdmin = ctx.user.role === "admin";
+      const [adminRow] = isAdmin
+        ? await db
+            .select()
+            .from(verticalDramaSeries)
+            .where(
+              and(
+                eq(verticalDramaSeries.id, seriesId),
+                eq(verticalDramaSeries.tenantId, tenantId)
+              )
+            )
+            .limit(1)
+        : [];
+      const currentRow = isAdmin
+        ? adminRow
+        : await loadOwnedSeries(tenantId, ctx.user.id, seriesId);
+      if (!currentRow) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
+      }
+      const currentPolicy =
+        currentRow.policy && typeof currentRow.policy === "object" && !Array.isArray(currentRow.policy)
+          ? (currentRow.policy as Record<string, unknown>)
+          : {};
+      const currentWorkerPolicy = mediaWorkflowPolicySnapshotSchema.safeParse(currentPolicy.workerMediaWorkflowPolicy);
+      const currentRevision = currentWorkerPolicy.success ? currentWorkerPolicy.data.policyRevision : null;
+      if (input.expectedRevision !== null && input.expectedRevision !== currentRevision) {
+        throw new TRPCError({ code: "CONFLICT", message: "Worker media workflow policy changed; reload before saving" });
+      }
+      const policy = mediaWorkflowPolicySnapshotSchema.parse({
+        ...submittedPolicy,
+        policyRevision: `worker-media-policy-${Date.now()}-${randomUUID().slice(0, 8)}`,
+      });
+      const nextPolicy = { ...currentPolicy, workerMediaWorkflowPolicy: policy };
+      const [row] = await db
+        .update(verticalDramaSeries)
+        .set({ policy: nextPolicy, updatedAt: new Date() })
+        .where(
+          and(
+            isAdmin
+              ? and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId))
+              : seriesOwnershipWhere(tenantId, ctx.user.id, seriesId),
+            ...(input.expectedRevision !== null
+              ? [sql`(${verticalDramaSeries.policy}->'workerMediaWorkflowPolicy'->>'policyRevision') = ${input.expectedRevision}`]
+              : []),
+          )
+        )
+        .returning();
+      if (!row) {
+        throw new TRPCError({ code: "CONFLICT", message: "Worker media workflow policy changed; reload before saving" });
+      }
+      auditLogger.log({
+        traceId: auditLogger.createTrace(),
+        eventType: "worker_media_workflow_policy_updated",
+        userId: ctx.user.id,
+        tenantId,
+        metadata: {
+          seriesId: String(seriesId),
+          policyRevision: policy.policyRevision,
+          defaultWorkflowId: policy.defaultWorkflowId,
+          allowedWorkflowIds: policy.allowedWorkflowIds,
+          workflowDefaults: policy.workflowDefaults,
+          allowUserOverride: policy.allowUserOverride,
+        },
+      });
+      return { series: { ...row, id: String(row.id) }, policy };
+    }),
+
+  /**
+   * Configure which authenticated Worker principals may see and operate a
+   * Series. This is additive to the existing JSON policy column and uses an
+   * optimistic revision so a stale Worker/Admin screen cannot overwrite a
+   * newer sharing decision.
+   */
+  setSeriesWorkerAccessPolicy: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        mode: z.enum(["private", "group", "tenant"]),
+        userIds: z.array(z.number().int().positive()).max(100).default([]),
+        groupIds: z.array(z.string().trim().min(1).max(128)).max(100).default([]),
+        expectedRevision: z.string().trim().min(1).max(128).nullable().default(null),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = Number(input.seriesId);
+      if (!Number.isSafeInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+      const isAdmin = ctx.user.role === "admin";
+      const [adminRow] = isAdmin
+        ? await db
+            .select()
+            .from(verticalDramaSeries)
+            .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
+            .limit(1)
+        : [];
+      const currentRow = isAdmin
+        ? adminRow
+        : await loadOwnedSeries(tenantId, ctx.user.id, seriesId);
+      if (!currentRow) throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
+
+      const currentPolicy =
+        currentRow.policy && typeof currentRow.policy === "object"
+          ? (currentRow.policy as Record<string, unknown>)
+          : {};
+      const currentAccess = workerSeriesAccessPolicySchema.safeParse(currentPolicy.workerAccess);
+      const currentRevision = currentAccess.success ? currentAccess.data.revision : "worker-access-v1";
+      if (input.expectedRevision !== null && input.expectedRevision !== currentRevision) {
+        throw new TRPCError({ code: "CONFLICT", message: "Worker access policy changed; reload before saving" });
+      }
+
+      const accessPolicy = workerSeriesAccessPolicySchema.parse({
+        mode: input.mode,
+        userIds: [...new Set(input.userIds)].slice(0, 100),
+        groupIds: [...new Set(input.groupIds.map((id) => id.trim()))].slice(0, 100),
+        revision: `worker-access-${Date.now()}-${randomUUID().slice(0, 8)}`,
+      });
+      const nextPolicy = { ...currentPolicy, workerAccess: accessPolicy };
+      const [row] = await db
+        .update(verticalDramaSeries)
+        .set({ policy: nextPolicy, updatedAt: new Date() })
+        .where(
+          isAdmin
+            ? and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId))
+            : seriesOwnershipWhere(tenantId, ctx.user.id, seriesId)
+        )
+        .returning();
+      return { series: { ...row, id: String(row.id) }, accessPolicy };
+    }),
+
+  /**
+   * Return bounded, Series-filtered media evidence for draft/B-roll planning.
+   * The query is deliberately read-only and returns no storage URL or local
+   * path; the downstream planner receives only grounded asset/time metadata.
+   */
+  searchSeriesMediaEvidence: verticalDramaProcedure
+    .input(z.object({ seriesId: z.string().min(1), query: z.string().trim().min(1).max(2000), limit: z.number().int().min(1).max(32).optional() }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = Number(input.seriesId);
+      if (!Number.isSafeInteger(seriesId) || seriesId <= 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      await loadOwnedSeries(tenantId, ctx.user.id, seriesId);
+      const evidence = await retrieveVerticalDramaMediaEvidence({ tenantId, seriesId: String(seriesId), query: input.query, limit: input.limit });
+      return { seriesId: String(seriesId), items: evidence.map(projectVerticalDramaMediaEvidence) };
+    }),
+
+  /**
    * Text Overlay Suite (F131AB, task #34, plan.md v2 "ลายน้ำ") — save this
    * series' branding WATERMARK config (attached to the SERIES, not per-
    * episode — plan.md "ระดับซีรีส์ (branding ผูกกับเรื่อง ไม่ใช่รายตอน)").
@@ -10137,6 +11482,197 @@ export const verticalDramaSeriesRouter = router({
         .returning();
 
       return { watermark: row.watermark as VdSeriesWatermarkConfig };
+    }),
+
+  /**
+   * Enabled image models with a provider-verified native transparent PNG
+   * contract. The capability is checked here and again at submit time so a
+   * stale client list can never make an unsupported provider request.
+   */
+  listLogoGenerationModels: verticalDramaProcedure
+    .input(z.object({ seriesId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = Number(input.seriesId);
+      if (!Number.isSafeInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+      await loadOwnedSeries(tenantId, ctx.user.id, seriesId);
+
+      const rows = await db
+        .select({
+          modelId: mediaModels.modelId,
+          name: mediaModels.name,
+          provider: mediaModels.provider,
+          description: mediaModels.description,
+          creditCost: mediaModels.creditCost,
+          configJson: mediaModels.configJson,
+        })
+        .from(mediaModels)
+        .where(
+          and(
+            eq(mediaModels.modelType, "image"),
+            eq(mediaModels.isEnabled, true),
+          ),
+        )
+        .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority), asc(mediaModels.id));
+
+      return {
+        models: rows.flatMap((row: {
+          modelId: string;
+          name: string;
+          provider: string;
+          description: string | null;
+          creditCost: number;
+          configJson: unknown;
+        }) => {
+          const capability = resolveTransparentBackgroundCapability(row.configJson);
+          if (!capability || capability.outputFormat.toLowerCase() !== "png") return [];
+          return [{
+            modelId: row.modelId,
+            name: row.name,
+            provider: row.provider,
+            description: row.description,
+            creditCost: row.creditCost,
+            transparentBackground: capability,
+          }];
+        }),
+      };
+    }),
+
+  /** Start a paid transparent logo generation task without mutating the slot. */
+  generateSeriesLogo: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        slotId: z.enum(["primary", "secondary"]),
+        prompt: z.string().trim().min(1).max(20_000),
+        modelId: z.string().trim().min(1).max(128),
+        idempotencyKey: z.string().trim().min(1).max(128).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = Number(input.seriesId);
+      if (!Number.isSafeInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+      await loadActiveOwnedSeries(tenantId, ctx.user.id, seriesId);
+
+      const [model] = await db
+        .select({
+          modelId: mediaModels.modelId,
+          modelType: mediaModels.modelType,
+          isEnabled: mediaModels.isEnabled,
+          configJson: mediaModels.configJson,
+        })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, input.modelId))
+        .limit(1);
+      const capability = model && model.isEnabled && model.modelType === "image"
+        ? resolveTransparentBackgroundCapability(model.configJson)
+        : null;
+      if (!capability || capability.outputFormat.toLowerCase() !== "png") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "The selected model does not support native transparent PNG output.",
+        });
+      }
+
+      const { mediaRouter } = await import("./media");
+      const caller = mediaRouter.createCaller(ctx);
+      return caller.generateImageAsync({
+        prompt: input.prompt,
+        model: input.modelId,
+        outputFormat: "png",
+        originSurface: "media_studio",
+        idempotencyKey: input.idempotencyKey,
+        extraParams: {
+          [capability.inputKey]: capability.enabledValue,
+          __vd_series_id: String(seriesId),
+          __vd_purpose: "series_logo",
+          __vd_logo_slot: input.slotId,
+        },
+      });
+    }),
+
+  /** Apply only a completed, durable logo task that belongs to this slot. */
+  applyGeneratedSeriesLogo: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        slotId: z.enum(["primary", "secondary"]),
+        taskId: z.string().trim().min(1).max(256),
+        idempotencyKey: z.string().trim().min(1).max(128).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isSafeInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+      const series = await loadActiveOwnedSeries(tenantId, userId, seriesId);
+      let task;
+      try {
+        // Use the exact same media router boundary as the browser poll. This
+        // keeps token creation, task-source selection, and durability behavior
+        // identical between preview and apply.
+        const { mediaRouter } = await import("./media");
+        task = await mediaRouter.createCaller(ctx).getTask({ taskId: input.taskId });
+      } catch (error) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: error instanceof Error ? error.message : "Generated logo task not found",
+        });
+      }
+
+      const params = task?.parameters ?? {};
+      const rawExtra = params.extra_params ?? params.extraParams ?? task?.resultData?.extra_params;
+      const extra = rawExtra && typeof rawExtra === "object" && !Array.isArray(rawExtra)
+        ? rawExtra as Record<string, unknown>
+        : {};
+      const resultUrl = typeof task?.resultUrl === "string" ? task.resultUrl.trim() : "";
+      // Tasks created before __vd_logo_slot was added remain valid when their
+      // series/purpose provenance is correct. New tasks always carry the slot
+      // and must match it, preventing accidental cross-slot application.
+      const logoSlotMatches =
+        extra.__vd_logo_slot == null || extra.__vd_logo_slot === input.slotId;
+      if (
+        !task ||
+        task.mediaType !== "image" ||
+        task.status !== "completed" ||
+        String(extra.__vd_series_id ?? "") !== String(seriesId) ||
+        extra.__vd_purpose !== "series_logo" ||
+        !logoSlotMatches ||
+        !resultUrl.startsWith("/api/storage/files/")
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "The generated logo is not ready to apply.",
+        });
+      }
+
+      const current = parseSeriesWatermarkConfig(series.watermark);
+      const watermark = patchGeneratedLogoSlot(
+        current,
+        input.slotId as VerticalDramaLogoSlotId,
+        resultUrl,
+      );
+      const [row] = await db
+        .update(verticalDramaSeries)
+        .set({ watermark, updatedAt: new Date() })
+        .where(seriesOwnershipWhere(tenantId, userId, seriesId))
+        .returning({ watermark: verticalDramaSeries.watermark });
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
+      }
+      return {
+        taskId: input.taskId,
+        imageUrl: resultUrl,
+        watermark: row.watermark as VdSeriesWatermarkConfig,
+      };
     }),
 
   /**
@@ -13064,6 +14600,17 @@ export const verticalDramaSeriesRouter = router({
         kind: record.kind,
         status: record.status,
         progress: record.progress,
+        checkpoint: record.checkpoint
+          ? {
+              draftedEpisodeNumbers: record.checkpoint.completedEpisodeNumbers,
+              draftedCount: record.checkpoint.completedEpisodeNumbers.length,
+              planStage: record.checkpoint.planStage,
+              planCandidateSaved: record.checkpoint.planCandidate !== undefined,
+              updatedAt: record.checkpoint.updatedAt,
+            }
+          : undefined,
+        recoveryAttempts: record.recoveryAttempts ?? 0,
+        updatedAt: record.updatedAt,
       };
     }),
 

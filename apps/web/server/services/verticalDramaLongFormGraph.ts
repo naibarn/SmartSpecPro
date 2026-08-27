@@ -22,10 +22,13 @@ type EpisodeMemoryLike = {
 };
 
 /**
- * Makes the strict long-form contract explicit for the only safe omission:
- * an episode that has no relationship state to apply. This intentionally does
- * not synthesize typed deltas from legacy relationshipChanges; those entries
- * need a real edge id, evidence, and affected-character provenance.
+ * Makes the strict long-form contract explicit for safe deterministic repairs:
+ * an episode with no usable typed relationship delta gets an empty array, and
+ * malformed/duplicate/future deltas are removed. This intentionally does not
+ * synthesize typed deltas from legacy relationshipChanges; those entries need
+ * a real edge id, evidence, and affected-character provenance. The legacy
+ * changes remain intact so a strict run can complete without inventing graph
+ * facts or allowing one malformed delta to strand the whole season.
  */
 export function normalizeStrictRelationshipGraphDeltas<T extends object>(
   draftedItems: readonly T[]
@@ -33,16 +36,46 @@ export function normalizeStrictRelationshipGraphDeltas<T extends object>(
   return draftedItems.map(item => {
     if (!item || typeof item !== "object") return item;
     const candidate = item as T & {
+      episodeNumber?: unknown;
       episodeMemory?: EpisodeMemoryLike;
     };
     const memory = candidate.episodeMemory;
-    if (!memory || typeof memory !== "object") return item;
-    if (Array.isArray(memory.relationshipGraphDeltas)) return item;
-    if (
-      Array.isArray(memory.relationshipChanges) &&
-      memory.relationshipChanges.length > 0
-    ) {
-      return item;
+    if (!memory || typeof memory !== "object") {
+      // A deterministic/provider fallback may have no memory block at all.
+      // For a strict long-form run that is an explicit "no relationship
+      // change" state, not a reason to reject an otherwise complete episode.
+      const episodeNumber = Number(candidate.episodeNumber);
+      return Number.isInteger(episodeNumber) && episodeNumber > 0
+        ? ({
+            ...item,
+            episodeMemory: {
+              episodeNumber,
+              relationshipGraphDeltas: [],
+            },
+          } as T)
+        : item;
+    }
+    if (Array.isArray(memory.relationshipGraphDeltas)) {
+      const episodeNumber = Number(candidate.episodeNumber);
+      const seenEdgeIds = new Set<string>();
+      const usableDeltas = memory.relationshipGraphDeltas.filter(delta => {
+        const parsed = relationshipGraphDeltaSchema.safeParse(delta);
+        if (!parsed.success || parsed.data.validFromEpisode > episodeNumber)
+          return false;
+        if (seenEdgeIds.has(parsed.data.edgeId)) return false;
+        seenEdgeIds.add(parsed.data.edgeId);
+        return true;
+      });
+      // Keep a valid array reference untouched to avoid needless rewrites.
+      if (usableDeltas.length === memory.relationshipGraphDeltas.length)
+        return item;
+      return {
+        ...item,
+        episodeMemory: {
+          ...memory,
+          relationshipGraphDeltas: usableDeltas,
+        },
+      } as T;
     }
     return {
       ...item,
