@@ -18,6 +18,8 @@ import {
   type SpecialTieInInput,
 } from "../../shared/verticalDramaSeries/specialTieInContracts";
 import type { VerticalDramaInteractiveJobPayload as JobPayload } from "./verticalDramaInteractiveJobs";
+import { reconcileSpecialLocationSlot } from "./verticalDramaSpecialReferences";
+import { listSpecialTieInModels } from "./verticalDramaSpecialModelCatalog";
 
 export const SPECIAL_TIE_IN_FEATURE_FLAG = "verticalDramaSpecialEpisodes";
 export const SPECIAL_TIE_IN_SKILL_SLUG = "idea-to-video-prompt";
@@ -83,6 +85,10 @@ export async function createSpecialTieInEpisode(input: {
 }): Promise<{ episodeId: number; episodeNumber: number; specialSequence: number; skillJobId: string; skillRunStatus: string; deduped: boolean }> {
   await assertSpecialTieInEnabled(input.actor.tenantId);
   const parsed = specialTieInInputSchema.parse(input.input);
+  const catalog = await listSpecialTieInModels({ durationSeconds: parsed.durationSeconds, dialogueMode: parsed.dialogueMode, referenceImageCount: parsed.referenceImages.length });
+  if (!catalog.imageModels.some(model => model.modelId === parsed.imageModelId) || !catalog.videoModels.some(model => model.modelId === parsed.videoModelId)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Selected special tie-in models are not compatible with the requested references, duration, or dialogue mode" });
+  }
   if (!/^[A-Za-z0-9_-]{8,128}$/.test(input.createIntentId)) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid create intent" });
   await assertSeriesAndCharacters(input.actor, input.seriesId, parsed);
   const data = initialSpecialData(parsed, input.createIntentId);
@@ -102,6 +108,15 @@ export async function createSpecialTieInEpisode(input: {
       ? await enqueueSpecialPromptJob(input.actor, input.seriesId, Number(created.row.id), existingData.input ?? parsed, existingData.createIntentId ?? input.createIntentId, Number(existingData.inputVersion ?? 1))
       : { jobId: "", status: existingData.skillRun?.status ?? "failed" };
     return { episodeId: Number(created.row.id), episodeNumber: Number(created.row.episodeNumber), specialSequence: Number(created.row.specialSequence), skillJobId: job.jobId, skillRunStatus: job.status, deduped: true };
+  }
+  if (parsed.referenceType === "location" || parsed.referenceType === "store") {
+    await reconcileSpecialLocationSlot({
+      actor: input.actor,
+      seriesId: input.seriesId,
+      referenceType: parsed.referenceType,
+      label: parsed.referenceImages[0]?.label || parsed.referenceType,
+      mediaAssetIds: parsed.referenceImages.map(reference => reference.mediaAssetId),
+    });
   }
   const job = await enqueueSpecialPromptJob(input.actor, input.seriesId, Number(created.row.id), parsed, input.createIntentId, 1);
   return { episodeId: Number(created.row.id), episodeNumber: Number(created.row.episodeNumber), specialSequence: Number(created.row.specialSequence), skillJobId: job.jobId, skillRunStatus: job.status, deduped: false };

@@ -17,8 +17,8 @@ export const specialTieInInputSchema = z.object({
   schemaVersion: z.literal(1).default(1),
   idea: z.string().trim().min(1).max(5_000),
   referenceType: z.enum(["product", "location", "store", "mixed"]),
-  referenceImages: z.array(referenceImageSchema).min(1).max(3),
-  characterIds: z.array(z.string().min(1).max(128)).max(4).default([]),
+  referenceImages: z.array(referenceImageSchema).min(1).max(3).refine(values => new Set(values.map(value => value.mediaAssetId)).size === values.length, "Reference images must be unique"),
+  characterIds: z.array(z.string().min(1).max(128)).max(4).refine(values => new Set(values).size === values.length, "Characters must be unique").default([]),
   durationSeconds: z.union([z.literal(8), z.literal(10), z.literal(12), z.literal(15), z.literal(20), z.literal(24), z.literal(30)]).default(10),
   aspectRatio: z.literal("9:16").default("9:16"),
   imageModelId: z.string().trim().min(1).max(160),
@@ -41,7 +41,7 @@ export const specialTieInInputSchema = z.object({
 
 export type SpecialTieInInput = z.infer<typeof specialTieInInputSchema>;
 export type SpecialModelSnapshot = {
-  modelId: string; provider: string; providerModel: string; catalogVersion: string;
+  modelId: string; label?: string; provider: string; providerModel: string; catalogVersion: string;
   supportedDurationsSeconds: number[]; supportedAspectRatios: string[];
   supportsReferenceConditioning: boolean; supportsDialogueAudio: boolean;
 };

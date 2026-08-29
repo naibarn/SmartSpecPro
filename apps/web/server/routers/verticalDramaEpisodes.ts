@@ -9484,6 +9484,7 @@ export const verticalDramaEpisodesRouter = router({
     .input(z.object({
       durationSeconds: z.union([z.literal(8), z.literal(10), z.literal(12), z.literal(15), z.literal(20), z.literal(24), z.literal(30)]),
       dialogueMode: z.enum(["none", "character_dialogue"]),
+      referenceImageCount: z.number().int().min(1).max(3).default(1),
     }))
     .query(async ({ ctx, input }) => {
       await assertSpecialTieInEnabled(requireTenantId(ctx.tenantId));
