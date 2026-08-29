@@ -87,3 +87,26 @@ explicit age-conflict review remaining.
 - Regression proof: focused character-look/selector tests 30/30, skill verifier
   passed, and owned-file Prettier check passed. Full web typecheck remains
   baseline/OOM-noisy and is not claimed as passing.
+
+## Current Task Round 4 — Legacy visibility and production repair path
+
+Status: code complete; production rollout is blocked by missing deployment
+credentials, not by the character-look implementation.
+
+- The Characters UI now suppresses known story-evidence leakage from visual
+  fields, so an old row cannot continue presenting episode prose as wardrobe
+  details after the new client is deployed.
+- An owner-scoped `repairLegacyCharacterLook` mutation and per-look “ซ่อมด้วย
+  AI” action now call the real LLM-only skill. User-edited/approved rows,
+  ambiguous evidence, and age conflicts remain protected; conflicts become
+  review state instead of guessed output.
+- A production `workflow_dispatch` backfill workflow was added with series,
+  row, force, and limit controls. It uses the production database and
+  encryption secret only through the protected GitHub environment.
+- Commit `80e3236db` was pushed to `main`. Production deploy run
+  `33260555739` reached no build/deploy step and failed at GCP auth because the
+  production environment has neither `GCP_WORKLOAD_IDENTITY_PROVIDER` nor
+  `credentials_json` available to the workflow. No production rows changed.
+- Required external gate: configure one valid GCP credential secret, rerun the
+  production deploy, then run the backfill workflow for series 53. Until that
+  happens, the live site is expected to show its previous client/data.
