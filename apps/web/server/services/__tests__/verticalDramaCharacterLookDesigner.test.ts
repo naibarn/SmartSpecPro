@@ -169,6 +169,51 @@ describe("vertical drama character look designer", () => {
     expect(capturedUserPrompt).toContain("never copy that prose");
   });
 
+  it("accepts a pre-provenance repair without fabricating a storyboard shot", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockResolveModel.mockResolvedValue("test-model");
+    const legacyOutput = structuredClone(fixture);
+    legacyOutput.designs[0].evidence_refs = [
+      {
+        shot_number: 0,
+        evidence_type: "legacy_visual_context",
+        evidence_span: "old visual field supplied for repair",
+      },
+    ];
+    mockExecute.mockResolvedValue({
+      data: legacyOutput,
+      response: { usage: { prompt_tokens: 100, completion_tokens: 80 } },
+    });
+
+    const result = await designVerticalDramaCharacterLooks({
+      ...params,
+      requests: [
+        {
+          ...params.requests[0],
+          legacyVisualOnly: true,
+          evidence: [
+            {
+              shotNumber: 0,
+              evidenceType: "legacy_visual_context",
+              text: "Legacy visual fields supplied for explicit repair; no storyboard evidence is available.",
+            },
+          ],
+          sourceShotNumbers: [0],
+        },
+      ],
+    });
+
+    expect(
+      result.designs.get(params.requests[0].requestKey)?.evidenceRefs
+    ).toEqual([
+      {
+        shotNumber: 0,
+        evidenceType: "legacy_visual_context",
+        evidenceSpan: "old visual field supplied for repair",
+      },
+    ]);
+  });
+
   it("rejects an LLM design that copies story evidence into visual fields", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockResolveModel.mockResolvedValue("test-model");

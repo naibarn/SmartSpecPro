@@ -1902,12 +1902,12 @@ export const verticalDramaCharactersRouter = router({
     }),
 
   /**
-   * Repair one legacy system-suggested look whose visual fields contain
-   * episode/story prose. The repair is intentionally user-triggered and
+   * Repair one legacy look whose visual fields contain episode/story prose or
+   * pre-standard data. The repair is intentionally user-triggered and
    * owner-scoped: it calls the real LLM-only character-look skill, preserves
-   * the character's canonical face/body facts, and leaves user-authored rows
-   * untouched. Ambiguous evidence or an age conflict returns a review state;
-   * it never fabricates a wardrobe or silently overwrites the old row.
+   * the character's canonical face/body facts, and leaves edited/approved
+   * rows untouched. Rows without storyboard provenance use an explicit
+   * legacy-source sentinel and never receive a fabricated shot reference.
    */
   repairLegacyCharacterLook: verticalDramaProcedure
     .input(

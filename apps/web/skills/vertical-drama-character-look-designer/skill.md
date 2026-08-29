@@ -48,6 +48,12 @@ field. A label such as “ชุดลำลองอยู่บ้าน” is
 not a substitute for specifying the actual top, lower garment, fit, colors,
 hair, makeup, footwear, and accessories.
 
+For an explicit repair of a pre-provenance look, `legacy_visual_only` may be
+true. In that case `evidence_refs` must use `shot_number: 0` and
+`evidence_type: "legacy_visual_context"`; zero is a sentinel for the old
+visual field, not a real storyboard shot. Never invent an episode fact or a
+storyboard reference.
+
 For an outfit variant preserve the same face geometry, skin tone, body
 proportions, apparent age anchor supplied in the identity facts, defining marks,
 natural hair color/texture, and recognizable signature features. Hair

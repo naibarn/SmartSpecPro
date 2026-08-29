@@ -56,6 +56,8 @@ export interface VerticalDramaCharacterLookSelectionResult {
 export interface VerticalDramaCharacterLookDesignEvidence {
   shotNumber: number;
   text: string;
+  /** `legacy_visual_context` is a user-triggered repair source, not a storyboard shot. */
+  evidenceType?: "storyboard" | "legacy_visual_context";
   sceneKey?: string;
   locationKey?: string;
   timeKey?: string;
@@ -71,6 +73,8 @@ export interface VerticalDramaCharacterLookSuggestion {
   requestKey: string;
   evidence: VerticalDramaCharacterLookDesignEvidence[];
   sourceShotNumbers: number[];
+  /** Allows an explicit repair of pre-provenance look rows without inventing storyboard refs. */
+  legacyVisualOnly?: boolean;
   /**
    * Optional legacy visual-field content supplied only during repair. It is
    * labeled source context for the LLM to transform into a visual package;

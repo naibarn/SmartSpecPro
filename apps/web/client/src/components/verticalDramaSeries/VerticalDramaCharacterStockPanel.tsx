@@ -1654,7 +1654,12 @@ function extractCharacterDescriptionForDisplay(
 function canRepairLegacyCharacterLook(
   data: Record<string, unknown> | null | undefined
 ): boolean {
-  if (!data || data.source !== "system_suggested_look") return false;
+  // Pre-provenance variants created by the old generator have no `source`
+  // marker. They are still repairable when the row is a child look (the
+  // caller only invokes this predicate for variants) and has not been edited
+  // or approved by a user. The server re-checks this boundary and only allows
+  // the explicit per-row repair path for such legacy rows.
+  if (!data) return false;
   if (data.userEditedAt || data.manualApproved) return false;
   const provenance =
     data.provenance &&

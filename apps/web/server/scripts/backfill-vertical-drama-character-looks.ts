@@ -8,7 +8,9 @@
  *
  * Dry-run is the default. Apply mode calls the real
  * vertical-drama-character-look-designer skill and is deliberately limited to
- * unedited `system_suggested_look` rows with unambiguous episode evidence.
+ * unedited system-generated rows with unambiguous episode evidence. An
+ * explicit per-row repair may also repair a pre-provenance variant using a
+ * sentinel legacy source; it never invents a storyboard reference.
  */
 
 import { and, eq } from "drizzle-orm";
@@ -43,6 +45,7 @@ type BackfillCandidate = {
   canonicalIntent: string;
   variantType: "outfit" | "age_stage";
   ageStage?: VerticalDramaCharacterAgeStage;
+  legacyVisualOnly: boolean;
   requestKey: string;
   evidence: VerticalDramaCharacterLookSuggestion["evidence"];
 };
@@ -312,6 +315,7 @@ function repairRequest(
     requestKey: candidate.requestKey,
     evidence: candidate.evidence,
     sourceShotNumbers: candidate.sourceShotNumbers,
+    ...(candidate.legacyVisualOnly ? { legacyVisualOnly: true } : {}),
     legacyVisualContext: {
       variantLabel: candidate.row.variantLabel ?? candidate.canonicalIntent,
       ...(description ? { description } : {}),
@@ -362,8 +366,12 @@ function clearedForRepair(
         source: VERTICAL_DRAMA_CHARACTER_LOOK_DESIGNER_SKILL_SLUG,
         beforeDataHash: stableCharacterLookDesignFingerprint(data),
         beforeDerivedFields: capturedBeforeFields,
-        sourceEpisodeId: candidate.episode.id,
-        sourceShotNumbers: candidate.sourceShotNumbers,
+        ...(candidate.legacyVisualOnly
+          ? { legacyVisualOnly: true }
+          : {
+              sourceEpisodeId: candidate.episode.id,
+              sourceShotNumbers: candidate.sourceShotNumbers,
+            }),
         requestKey: candidate.requestKey,
         detectedAt:
           typeof priorRepair.detectedAt === "string"
@@ -518,7 +526,11 @@ async function discoverCandidates(
     stats.scanned += 1;
     if (options.rowIds && !options.rowIds.has(row.id)) continue;
     const data = objectValue(row.data);
-    if (data.source !== "system_suggested_look") {
+    const explicitLegacyRepair =
+      options.rowIds?.has(row.id) === true &&
+      options.forceRowIds?.has(row.id) === true;
+    const hasSystemProvenance = data.source === "system_suggested_look";
+    if (!hasSystemProvenance && !explicitLegacyRepair) {
       stats.skipped.push({
         rowId: row.id,
         characterKey: row.characterKey,
@@ -546,7 +558,9 @@ async function discoverCandidates(
     const sourceShotNumbers = positiveShotNumbers(
       data.suggestedFromShotNumbers
     );
-    if (sourceShotNumbers.length === 0) {
+    const legacyVisualOnly =
+      explicitLegacyRepair && sourceShotNumbers.length === 0;
+    if (sourceShotNumbers.length === 0 && !legacyVisualOnly) {
       stats.skipped.push({
         rowId: row.id,
         characterKey: row.characterKey,
@@ -554,7 +568,9 @@ async function discoverCandidates(
       });
       continue;
     }
-    const intent = canonicalIntent(row, data);
+    const intent =
+      canonicalIntent(row, data) ??
+      (explicitLegacyRepair ? "legacy_visual_repair" : null);
     if (!intent) {
       stats.skipped.push({
         rowId: row.id,
@@ -577,17 +593,17 @@ async function discoverCandidates(
       });
       continue;
     }
-    const episodeMatch = findEpisodeForRow(
-      row,
-      data,
-      episodes.filter(
-        episode =>
-          episode.seriesId === row.seriesId &&
-          episode.tenantId === row.tenantId &&
-          episode.userId === row.userId
-      ),
-      sourceShotNumbers
+    const ownedEpisodes = episodes.filter(
+      episode =>
+        episode.seriesId === row.seriesId &&
+        episode.tenantId === row.tenantId &&
+        episode.userId === row.userId
     );
+    const episodeMatch = legacyVisualOnly
+      ? ownedEpisodes[0]
+        ? { episode: ownedEpisodes[0], shots: [] }
+        : null
+      : findEpisodeForRow(row, data, ownedEpisodes, sourceShotNumbers);
     if (!episodeMatch) {
       stats.skipped.push({
         rowId: row.id,
@@ -596,15 +612,27 @@ async function discoverCandidates(
       });
       continue;
     }
-    const evidence = sourceShotNumbers
-      .map(number =>
-        episodeMatch.shots.find(shot => shotNumber(shot) === number)
-      )
-      .map(shot => (shot ? buildEvidence(shot) : null))
-      .filter((item): item is NonNullable<ReturnType<typeof buildEvidence>> =>
-        Boolean(item)
-      );
-    if (evidence.length !== sourceShotNumbers.length) {
+    const effectiveSourceShotNumbers = legacyVisualOnly
+      ? [0]
+      : sourceShotNumbers;
+    const evidence = legacyVisualOnly
+      ? [
+          {
+            shotNumber: 0,
+            evidenceType: "legacy_visual_context" as const,
+            text: "Legacy visual fields supplied for explicit repair; no storyboard evidence is available.",
+          },
+        ]
+      : sourceShotNumbers
+          .map(number =>
+            episodeMatch.shots.find(shot => shotNumber(shot) === number)
+          )
+          .map(shot => (shot ? buildEvidence(shot) : null))
+          .filter(
+            (item): item is NonNullable<ReturnType<typeof buildEvidence>> =>
+              Boolean(item)
+          );
+    if (evidence.length !== effectiveSourceShotNumbers.length) {
       stats.skipped.push({
         rowId: row.id,
         characterKey: row.characterKey,
@@ -621,9 +649,10 @@ async function discoverCandidates(
       data,
       parent: rowsById.get(row.parentCharacterId)!,
       episode: episodeMatch.episode,
-      sourceShotNumbers,
+      sourceShotNumbers: effectiveSourceShotNumbers,
       canonicalIntent: intent,
       variantType,
+      legacyVisualOnly,
       ...(ageStage ? { ageStage } : {}),
       requestKey,
       evidence,
@@ -684,6 +713,7 @@ export async function backfillVerticalDramaCharacterLooks(
         sourceShotNumbers: candidate.sourceShotNumbers,
         canonicalIntent: candidate.canonicalIntent,
         variantType: candidate.variantType,
+        legacyVisualOnly: candidate.legacyVisualOnly,
         ageStage: candidate.ageStage,
         requestKey: candidate.requestKey,
       })),
@@ -796,7 +826,9 @@ export async function backfillVerticalDramaCharacterLooks(
             requestKey: candidate.requestKey,
           }),
           lookRequestKey: candidate.requestKey,
-          suggestedFromShotNumbers: candidate.sourceShotNumbers,
+          suggestedFromShotNumbers: candidate.legacyVisualOnly
+            ? []
+            : candidate.sourceShotNumbers,
           provenance: {
             ...provenance,
             createdBySkill: VERTICAL_DRAMA_CHARACTER_LOOK_DESIGNER_SKILL_SLUG,
@@ -805,8 +837,12 @@ export async function backfillVerticalDramaCharacterLooks(
             generatedFingerprint: stableCharacterLookDesignFingerprint(
               designed.lookDesign
             ),
-            sourceEpisodeId: candidate.episode.id,
-            sourceShotNumbers: candidate.sourceShotNumbers,
+            ...(candidate.legacyVisualOnly
+              ? { legacyVisualOnly: true }
+              : {
+                  sourceEpisodeId: candidate.episode.id,
+                  sourceShotNumbers: candidate.sourceShotNumbers,
+                }),
             evidenceRefs: designed.evidenceRefs,
             requestKey: candidate.requestKey,
             designRun: {

@@ -258,7 +258,10 @@ continuity; otherwise it remains shot-level styling guidance.
    stored under versioned provenance metadata with `sourceEpisodeId`, shot
    numbers, request key, skill slug, model, attempt, and contract version.
    Legacy source text is never copied into those fields; it is bounded before
-   prompt submission and remains repair/audit context only.
+   prompt submission and remains repair/audit context only. A user-triggered
+   pre-provenance repair uses `legacyVisualOnly` plus evidence sentinel
+   `shot_number=0`/`evidence_type=legacy_visual_context`, never a fabricated
+   storyboard reference.
 6. The row is materialized only after valid LLM output. The stable semantic key
    and current roster read make retries converge on the same row. A concurrent
    insert must re-read and reuse the winner rather than call the LLM again.
@@ -294,39 +297,45 @@ reviewable `waiting_for_look_design` assignment, show a retryable status, and do
 not spend image credits. Never fall back to a hardcoded wardrobe or raw story
 text.
 
-Repair existing data only where `data.source=system_suggested_look` and the
-versioned visual contract is missing or the description contains the known
-story-leak marker. Preserve the old derived text in repair audit metadata,
-reconstruct source evidence from the recorded episode/shot references (or make
-the row explicitly review-pending when those references cannot be resolved),
-and leave user-created/user-edited variants untouched. Current rows that lack
-`sourceEpisodeId` must be matched by searching the series' storyboard
-references before any repair is applied; ambiguous matches are not silently
-overwritten.
+Automatic backfill repairs only rows where `data.source=system_suggested_look`
+and the versioned visual contract is missing or the description contains the
+known story-leak marker. An explicit per-look user action may additionally
+repair a pre-provenance child variant when it has no manual edit/approval
+marker and lacks the standard visual contract. That path passes the old visual
+fields as `legacy_visual_context`, uses `legacyVisualOnly` with
+`shot_number=0`/`evidence_type=legacy_visual_context`, and records that no
+storyboard evidence was available; it must never invent a storyboard shot.
+Preserve the old derived text in repair audit metadata and leave edited or
+approved variants untouched. Rows with ambiguous age or identity evidence
+remain review-pending rather than being silently overwritten.
 
 User-edit protection is explicit: every materialized system row receives a
 `provenance.generatedFingerprint`, `provenance.designVersion`, and
 `provenance.createdBySkill` marker. The editor must stamp
 `provenance.userEditedAt`, `provenance.userEditedBy`, and an incremented
 `provenance.editVersion` on any manual change to description, wardrobe rules,
-identity lock, image brief, or assignment. Repair may update only rows whose
-source is still `system_suggested_look`, whose generated fingerprint is
-unchanged, and whose portrait is not manually approved. Any manual marker,
-fingerprint mismatch, explicit user approval, or unresolved provenance makes
-the row `review` and skips automatic mutation. Each repair records before/after
-hashes, the reason, the matched source refs, the LLM request key, and a
-rollback payload; rollback restores derived fields only and never changes the
-parent character, stable look key, assets, or shot assignment.
+identity lock, image brief, or assignment. Automatic repair may update only
+rows whose source is still `system_suggested_look`, whose generated fingerprint
+is unchanged, and whose portrait is not manually approved. The explicit
+pre-provenance action may update only an unedited child variant selected by the
+owner and records `legacyVisualOnly=true` when no source marker exists. Any
+manual marker, fingerprint mismatch, explicit user approval, or unresolved
+age/identity evidence makes the row `review` and skips mutation. Each repair
+records before/after hashes, the reason, the matched source refs or legacy
+sentinel, the LLM request key, and a rollback payload; rollback restores
+derived fields only and never changes the parent character, stable look key,
+assets, or shot assignment.
 
 The legacy repair runner is `server/scripts/backfill-vertical-drama-character-looks.ts`.
 It is dry-run by default and supports `--series-id`, `--row-id`, `--limit`, and
 `--apply`; apply mode calls this same skill service and never contains a
-hardcoded wardrobe. It groups rows by source episode, supplies all parent
-identity facts in the batch, uses the admin-curated model policy plus the
-versioned output schema, and restores the prior derived payload when the LLM
-fails. Rows with unresolved episode evidence, user edits, or an explicit age
-conflict remain review-pending. This runner is an operational backfill tool,
-not a replacement for the normal episode pipeline.
+hardcoded wardrobe. It groups storyboard-backed rows by source episode and
+allows an explicit pre-provenance row repair to use the legacy-only sentinel,
+supplies all parent identity facts in the batch, uses the admin-curated model
+policy plus the versioned output schema, and restores the prior derived
+payload when the LLM fails. Rows with unresolved episode evidence, user edits,
+or an explicit age conflict remain review-pending. This runner is an
+operational backfill tool, not a replacement for the normal episode pipeline.
 
 ## Testing and proof
 
@@ -339,9 +348,11 @@ not a replacement for the normal episode pipeline.
   preservation.
 - Pipeline tests: real skill runner wiring, skill slug billing, no insert on
   LLM failure, retry reuse, and no image-credit charge.
-- Database repair tests: only corrupted system rows change; user-authored rows
-  do not; manual edits, approved portraits, fingerprint mismatches, ambiguous
-  source matches, rollback, and repeated repair are covered.
+- Database repair tests: corrupted system rows and explicitly selected
+  pre-provenance child variants change only through the correct path;
+  unselected user-authored rows do not; manual edits, approved portraits,
+  fingerprint mismatches, ambiguous source matches, legacy sentinel refs,
+  rollback, and repeated repair are covered.
 - Admin proof: authenticated Skills search returns the exact new skill.
 - Provider proof: one configured LLM smoke run records a valid structured output,
   credit transaction, audit entry, and persisted visual-only row. Local fixture

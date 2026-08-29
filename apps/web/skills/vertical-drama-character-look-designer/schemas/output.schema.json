@@ -14,7 +14,12 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["request_key", "review_required", "look_design", "evidence_refs"],
+        "required": [
+          "request_key",
+          "review_required",
+          "look_design",
+          "evidence_refs"
+        ],
         "allOf": [
           {
             "if": { "properties": { "review_required": { "const": true } } },
@@ -28,79 +33,246 @@
           "look_design": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["look_label", "variant_type", "confidence", "outfit", "hair", "makeup", "footwear", "accessories", "palette", "continuity_notes", "negative_constraints", "identity_lock", "quality_checks"],
+            "required": [
+              "look_label",
+              "variant_type",
+              "confidence",
+              "outfit",
+              "hair",
+              "makeup",
+              "footwear",
+              "accessories",
+              "palette",
+              "continuity_notes",
+              "negative_constraints",
+              "identity_lock",
+              "quality_checks"
+            ],
             "allOf": [
               {
-                "if": { "properties": { "variant_type": { "const": "age_stage" } } },
+                "if": {
+                  "properties": { "variant_type": { "const": "age_stage" } }
+                },
                 "then": { "required": ["age_stage", "age_stage_description"] }
               },
               {
-                "if": { "properties": { "variant_type": { "const": "outfit" } } },
-                "then": { "not": { "anyOf": [
-                  { "required": ["age_stage"] },
-                  { "required": ["age_stage_description"] }
-                ] } }
+                "if": {
+                  "properties": { "variant_type": { "const": "outfit" } }
+                },
+                "then": {
+                  "not": {
+                    "anyOf": [
+                      { "required": ["age_stage"] },
+                      { "required": ["age_stage_description"] }
+                    ]
+                  }
+                }
               }
             ],
             "properties": {
-              "look_label": { "type": "string", "minLength": 1, "maxLength": 240 },
-              "variant_type": { "type": "string", "enum": ["outfit", "age_stage"] },
-              "age_stage": { "type": "string", "enum": ["infant", "early_childhood", "school_age", "university_student", "adult", "older_adult"] },
-              "age_stage_description": { "type": "string", "minLength": 1, "maxLength": 500 },
+              "look_label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "variant_type": {
+                "type": "string",
+                "enum": ["outfit", "age_stage"]
+              },
+              "age_stage": {
+                "type": "string",
+                "enum": [
+                  "infant",
+                  "early_childhood",
+                  "school_age",
+                  "university_student",
+                  "adult",
+                  "older_adult"
+                ]
+              },
+              "age_stage_description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
               "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
               "outfit": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["top", "outerwear", "materials", "colors", "fit", "condition", "silhouette"],
+                "required": [
+                  "top",
+                  "outerwear",
+                  "materials",
+                  "colors",
+                  "fit",
+                  "condition",
+                  "silhouette"
+                ],
                 "oneOf": [
-                  { "required": ["bottom"], "not": { "required": ["one_piece"] } },
-                  { "required": ["one_piece"], "not": { "required": ["bottom"] } }
+                  {
+                    "required": ["bottom"],
+                    "not": { "required": ["one_piece"] }
+                  },
+                  {
+                    "required": ["one_piece"],
+                    "not": { "required": ["bottom"] }
+                  }
                 ],
                 "properties": {
                   "top": { "type": "string", "minLength": 1, "maxLength": 240 },
-                  "bottom": { "type": "string", "minLength": 1, "maxLength": 240 },
-                  "one_piece": { "type": "string", "minLength": 1, "maxLength": 240 },
-                  "outerwear": { "type": "string", "minLength": 1, "maxLength": 240 },
-                  "materials": { "type": "array", "maxItems": 8, "items": { "type": "string", "minLength": 1, "maxLength": 80 } },
-                  "colors": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "type": "string", "minLength": 1, "maxLength": 80 } },
+                  "bottom": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 240
+                  },
+                  "one_piece": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 240
+                  },
+                  "outerwear": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 240
+                  },
+                  "materials": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  },
+                  "colors": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 8,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  },
                   "fit": { "type": "string", "minLength": 1, "maxLength": 240 },
-                  "condition": { "type": "string", "minLength": 1, "maxLength": 240 },
-                  "silhouette": { "type": "string", "minLength": 1, "maxLength": 240 }
+                  "condition": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 240
+                  },
+                  "silhouette": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 240
+                  }
                 }
               },
               "hair": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["style", "arrangement", "finish", "identity_preservation"],
+                "required": [
+                  "style",
+                  "arrangement",
+                  "finish",
+                  "identity_preservation"
+                ],
                 "properties": {
-                  "style": { "type": "string", "minLength": 1, "maxLength": 240 },
-                  "arrangement": { "type": "string", "minLength": 1, "maxLength": 240 },
-                  "finish": { "type": "string", "minLength": 1, "maxLength": 240 },
-                  "identity_preservation": { "type": "string", "minLength": 1, "maxLength": 500 }
+                  "style": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 240
+                  },
+                  "arrangement": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 240
+                  },
+                  "finish": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 240
+                  },
+                  "identity_preservation": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
                 }
               },
               "makeup": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["level", "complexion", "eyes", "lips", "age_safety"],
+                "required": [
+                  "level",
+                  "complexion",
+                  "eyes",
+                  "lips",
+                  "age_safety"
+                ],
                 "properties": {
-                  "level": { "type": "string", "minLength": 1, "maxLength": 160 },
-                  "complexion": { "type": "string", "minLength": 1, "maxLength": 160 },
-                  "eyes": { "type": "string", "minLength": 1, "maxLength": 160 },
-                  "lips": { "type": "string", "minLength": 1, "maxLength": 160 },
-                  "age_safety": { "type": "string", "minLength": 1, "maxLength": 500 }
+                  "level": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "complexion": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "eyes": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "lips": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "age_safety": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
                 }
               },
               "footwear": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["type", "material", "color", "formality", "scene_suitability"],
+                "required": [
+                  "type",
+                  "material",
+                  "color",
+                  "formality",
+                  "scene_suitability"
+                ],
                 "properties": {
-                  "type": { "type": "string", "minLength": 1, "maxLength": 160 },
-                  "material": { "type": "string", "minLength": 1, "maxLength": 160 },
-                  "color": { "type": "string", "minLength": 1, "maxLength": 160 },
-                  "formality": { "type": "string", "minLength": 1, "maxLength": 160 },
-                  "scene_suitability": { "type": "string", "minLength": 1, "maxLength": 240 }
+                  "type": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "material": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "color": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "formality": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "scene_suitability": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 240
+                  }
                 }
               },
               "accessories": {
@@ -109,24 +281,73 @@
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": ["item", "material_or_finish", "color", "visibility", "rationale"],
+                  "required": [
+                    "item",
+                    "material_or_finish",
+                    "color",
+                    "visibility",
+                    "rationale"
+                  ],
                   "properties": {
-                    "item": { "type": "string", "minLength": 1, "maxLength": 160 },
-                    "material_or_finish": { "type": "string", "minLength": 1, "maxLength": 160 },
-                    "color": { "type": "string", "minLength": 1, "maxLength": 160 },
-                    "visibility": { "type": "string", "minLength": 1, "maxLength": 160 },
-                    "rationale": { "type": "string", "minLength": 1, "maxLength": 240 }
+                    "item": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    "material_or_finish": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    "color": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    "visibility": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    },
+                    "rationale": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 240
+                    }
                   }
                 }
               },
-              "palette": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "type": "string", "minLength": 1, "maxLength": 160 } },
-              "continuity_notes": { "type": "array", "maxItems": 12, "items": { "type": "string", "minLength": 1, "maxLength": 160 } },
-              "negative_constraints": { "type": "array", "maxItems": 12, "items": { "type": "string", "minLength": 1, "maxLength": 160 } },
-              "identity_lock": { "type": "string", "minLength": 1, "maxLength": 500 },
+              "palette": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 12,
+                "items": { "type": "string", "minLength": 1, "maxLength": 160 }
+              },
+              "continuity_notes": {
+                "type": "array",
+                "maxItems": 12,
+                "items": { "type": "string", "minLength": 1, "maxLength": 160 }
+              },
+              "negative_constraints": {
+                "type": "array",
+                "maxItems": 12,
+                "items": { "type": "string", "minLength": 1, "maxLength": 160 }
+              },
+              "identity_lock": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
               "quality_checks": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["same_person_preserved", "age_appropriate", "scene_coherent", "wardrobe_complete", "story_evidence_separated"],
+                "required": [
+                  "same_person_preserved",
+                  "age_appropriate",
+                  "scene_coherent",
+                  "wardrobe_complete",
+                  "story_evidence_separated"
+                ],
                 "properties": {
                   "same_person_preserved": { "const": true },
                   "age_appropriate": { "const": true },
@@ -148,8 +369,16 @@
               "additionalProperties": false,
               "required": ["shot_number", "evidence_span"],
               "properties": {
-                "shot_number": { "type": "integer", "minimum": 1 },
-                "evidence_span": { "type": "string", "minLength": 1, "maxLength": 240 }
+                "shot_number": { "type": "integer", "minimum": 0 },
+                "evidence_span": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 240
+                },
+                "evidence_type": {
+                  "type": "string",
+                  "enum": ["storyboard", "legacy_visual_context"]
+                }
               }
             }
           }

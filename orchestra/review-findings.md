@@ -127,3 +127,21 @@ Status: local Debian path verified; GCP intentionally deferred.
   the LLM as repair input, final persisted text is visual-only, identity and
   age locks are preserved, unsafe/ambiguous rows remain review-protected, and
   the action is discoverable from Characters.
+
+## Current Task Round 6 — Pre-provenance child-look repair visibility
+
+Status: gap closed; explicit legacy repair path verified locally.
+
+- Root cause of the missing Mayuree action: the old child-look row had no
+  `data.source` marker and no recorded shot list, so the UI and backfill
+  incorrectly treated it as non-repairable even though it was a legacy look.
+- The per-look action now covers unedited pre-provenance child variants. The
+  server permits only an explicit owner-selected row, passes the old visual
+  fields to the real LLM skill, and records `legacyVisualOnly` with
+  `shot_number=0`/`evidence_type=legacy_visual_context`; it never fabricates a
+  storyboard reference or changes the parent portrait.
+- Real local DB dry-run proof: series 53 rows 199 and 200 are now eligible on
+  explicit repair (`legacyVisualOnly: true`); row 199's previously unknown
+  generic label is delegated to LLM intent inference instead of being hidden.
+- Regression proof: focused tests 40/40, skill verifier passed, atomic build
+  completed, Debian service restarted, and `/healthz` returned HTTP 200.
