@@ -177,6 +177,11 @@ export interface TenantFeatureFlags {
   ageSafetyProtectedSurfaceUnlock: boolean; // F128E — Security PIN protected-surface unlock
   ageSafetyGeneratedAssetViewerPolicy: boolean; // F128F — Viewer-time generated asset policy
   ageSafetyEmergencyChildSafeMode: boolean; // F128G — Force child-safe behavior across protected surfaces
+  verticalDramaAssuranceShadow: boolean; // F157 — observe assurance adapters without activation
+  verticalDramaDraftQcOrchestraActive: boolean; // F157 — Draft QC assurance activation
+  verticalDramaPromptQcOrchestraActive: boolean; // F157 — prompt/QC assurance activation
+  verticalDramaStoryAssuranceActive: boolean; // F157 — story assurance activation
+  verticalDramaAssuranceKillSwitch: boolean; // F157 — force legacy deterministic behavior
   verticalDramaSeries: boolean; // F131 — Vertical Drama Series master gate (Dashboard workspace)
   verticalDramaSeriesDashboardMenu: boolean; // F131A — Gated Dashboard menu entry for Vertical Drama Series
   verticalDramaSeriesSkillChain: boolean; // F131B — Vertical drama skill-chain execution
@@ -224,7 +229,8 @@ export interface TenantFeatureFlags {
   verticalDramaCharacterVisualQuality: boolean; // F132G — spec 132 §10.2-10.7 persisted bible, expression set, image QC, consistency ledger (fail-closed)
   verticalDramaContinuityContracts: boolean; // F132H — spec 132 §8.2 causal chain / hook-to-opening enforcement (fail-closed)
   verticalDramaAngleGridQuality: boolean; // F132I — spec 132 §19 structured 9-angle schema, diversity/coverage rules, best-angle scoring rubric (fail-closed)
-  verticalDramaRetentionHooks: boolean; // planning/vertical-drama-retention-hooks/plan.md — 12-principle hook/open-loop/retention-loop upgrade: genre-conditional retention-loop guidance in script-builder + shotgrid (W1-W3), deterministic retention facts fed to quality-review (W4/W6, scorecard v4/contract_version 4), and hook/retention-ending motion energy in the video-prompt layer (W7) (fail-closed)
+  verticalDramaRetentionHooks: boolean; // planning/vertical-drama-retention-hooks/plan.md — retention-loop guidance
+  verticalDramaSpecialEpisodes: boolean; // Special tie-in episode workflow; fail closed until rollout
   marketplaceRemotionRendererEnabled: boolean; // F132J — planning/remotion-migration/plan.md — Marketplace Auto-Review render engine: opt in to the Remotion renderer instead of HyperFrames (default off, per-tenant rollout). Now redundant since Remotion is the default engine, but left in place for backward compat — harmless if left on.
   marketplaceHyperframesRendererForced: boolean; // F132K — planning/remotion-migration/plan.md §7 (Phase 6) — Marketplace Auto-Review render engine: per-tenant rollback lever that forces HyperFrames even though Remotion is now the default engine (default off, independent of the global RENDERER_ENGINE env var kill-switch)
   videoIntelligencePlatformEnabled: boolean; // F133A — specs/feature/133-content-video-intelligence-platform — Video Intelligence Platform entry point (Catalog/Motion Video Studio routes + videoProjects router gate), default off
@@ -232,6 +238,15 @@ export interface TenantFeatureFlags {
   videoIntelligenceCatalogStudioEnabled: boolean; // F133C — specs/feature/133-content-video-intelligence-platform §10 — Catalog Video Studio surface (product-seeded video projects), default off
   videoIntelligenceMotionStudioEnabled: boolean; // F133-motion — specs/feature/133-content-video-intelligence-platform §10 — Motion Studio surface (blank/template-seeded video projects), default off
 }
+
+/** Canonical Feature 157 domain flags. Keep this list closed and versioned. */
+export const VERTICAL_DRAMA_ASSURANCE_FEATURE_FLAG_KEYS = [
+  "verticalDramaAssuranceShadow",
+  "verticalDramaDraftQcOrchestraActive",
+  "verticalDramaPromptQcOrchestraActive",
+  "verticalDramaStoryAssuranceActive",
+  "verticalDramaAssuranceKillSwitch",
+] as const;
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
 
@@ -417,6 +432,11 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "ageSafetyProtectedSurfaceUnlock",
   "ageSafetyGeneratedAssetViewerPolicy",
   "ageSafetyEmergencyChildSafeMode",
+  "verticalDramaAssuranceShadow",
+  "verticalDramaDraftQcOrchestraActive",
+  "verticalDramaPromptQcOrchestraActive",
+  "verticalDramaStoryAssuranceActive",
+  "verticalDramaAssuranceKillSwitch",
   "verticalDramaSeries",
   "verticalDramaSeriesDashboardMenu",
   "verticalDramaSeriesSkillChain",
@@ -465,6 +485,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "verticalDramaContinuityContracts",
   "verticalDramaAngleGridQuality",
   "verticalDramaRetentionHooks",
+  "verticalDramaSpecialEpisodes",
 ]);
 
 /**
@@ -650,6 +671,11 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   ageSafetyProtectedSurfaceUnlock: false,
   ageSafetyGeneratedAssetViewerPolicy: false,
   ageSafetyEmergencyChildSafeMode: false,
+  verticalDramaAssuranceShadow: false,
+  verticalDramaDraftQcOrchestraActive: false,
+  verticalDramaPromptQcOrchestraActive: false,
+  verticalDramaStoryAssuranceActive: false,
+  verticalDramaAssuranceKillSwitch: false,
   // Vertical Drama Series (F131) — unfinished capabilities remain rollout-gated;
   // completed Feature 137/138/139 consistency paths are enabled below.
   verticalDramaSeries: false,
@@ -700,6 +726,7 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   verticalDramaContinuityContracts: false,
   verticalDramaAngleGridQuality: false,
   verticalDramaRetentionHooks: false,
+  verticalDramaSpecialEpisodes: false,
 };
 
 export const AGE_SAFETY_FEATURE_FLAG_KEYS = [

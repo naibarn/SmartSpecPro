@@ -10,6 +10,7 @@ import {
   boolean,
   numeric,
   serial,
+  uuid,
   uniqueIndex,
   index,
   foreignKey,
@@ -728,6 +729,18 @@ export const creditTransactions = pgTable(
     /** Source type categorizing what generated this transaction */
     sourceType: creditSourceTypeEnum("sourceType"),
 
+    /** Tenant at the time of the financial event; null is legacy/system only. */
+    tenantId: varchar("tenantId", { length: 36 }).references(
+      (): AnyPgColumn => tenants.id,
+      { onDelete: "restrict" }
+    ),
+
+    /** Structured reversal relationship; the original row is immutable. */
+    reversalOfTransactionId: integer("reversalOfTransactionId").references(
+      (): AnyPgColumn => creditTransactions.id,
+      { onDelete: "restrict" }
+    ),
+
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -740,11 +753,225 @@ export const creditTransactions = pgTable(
     index("credit_transactions_trace_id_idx").on(t.traceId),
     index("credit_transactions_conversation_id_idx").on(t.conversationId),
     index("credit_transactions_source_type_idx").on(t.sourceType),
+    index("credit_transactions_tenant_id_idx").on(t.tenantId),
+    index("credit_transactions_reversal_of_idx").on(t.reversalOfTransactionId),
+    index("credit_transactions_tenant_type_created_idx").on(
+      t.tenantId,
+      t.type,
+      t.createdAt,
+      t.id
+    ),
+    index("credit_transactions_user_tenant_created_idx").on(
+      t.userId,
+      t.tenantId,
+      t.createdAt,
+      t.id
+    ),
   ]
 );
 
 export type CreditTransaction = typeof creditTransactions.$inferSelect;
 export type InsertCreditTransaction = typeof creditTransactions.$inferInsert;
+
+/**
+ * Canonical polymorphic work registry for credit attribution. Source identity
+ * is namespaced and resolved by the server registry; it is never a free-form
+ * client label.
+ */
+export const creditContexts = pgTable(
+  "credit_contexts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references((): AnyPgColumn => tenants.id, { onDelete: "restrict" }),
+    ownerUserId: integer("ownerUserId").references(
+      (): AnyPgColumn => users.id,
+      { onDelete: "set null" }
+    ),
+    contextType: varchar("contextType", { length: 32 }).notNull(),
+    sourceType: varchar("sourceType", { length: 96 }).notNull(),
+    sourceId: varchar("sourceId", { length: 191 }).notNull(),
+    contextKey: varchar("contextKey", { length: 300 }).notNull(),
+    parentContextId: uuid("parentContextId").references(
+      (): AnyPgColumn => creditContexts.id,
+      { onDelete: "set null" }
+    ),
+    rootContextId: uuid("rootContextId").references(
+      (): AnyPgColumn => creditContexts.id,
+      { onDelete: "set null" }
+    ),
+    displayNameSnapshot: varchar("displayNameSnapshot", { length: 255 }),
+    displayTypeSnapshot: varchar("displayTypeSnapshot", { length: 64 }),
+    resolutionState: varchar("resolutionState", { length: 32 })
+      .notNull()
+      .default("unresolved"),
+    attributionStatus: varchar("attributionStatus", { length: 32 })
+      .notNull()
+      .default("unattributed"),
+    sourceRevision: varchar("sourceRevision", { length: 128 }),
+    snapshotJson: jsonb("snapshotJson"),
+    resolverVersion: varchar("resolverVersion", { length: 32 })
+      .notNull()
+      .default("1"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    archivedAt: timestamp("archivedAt", { withTimezone: true }),
+  },
+  t => [
+    uniqueIndex("credit_contexts_tenant_context_key_unique").on(
+      t.tenantId,
+      t.contextKey
+    ),
+    index("credit_contexts_tenant_root_created_idx").on(
+      t.tenantId,
+      t.rootContextId,
+      t.createdAt
+    ),
+    index("credit_contexts_tenant_type_source_idx").on(
+      t.tenantId,
+      t.contextType,
+      t.sourceType,
+      t.sourceId
+    ),
+    index("credit_contexts_tenant_owner_updated_idx").on(
+      t.tenantId,
+      t.ownerUserId,
+      t.updatedAt
+    ),
+    index("credit_contexts_parent_idx").on(t.parentContextId),
+    check(
+      "credit_contexts_non_empty_keys_check",
+      sql`length(btrim(${t.contextType})) > 0 AND length(btrim(${t.sourceType})) > 0 AND length(btrim(${t.sourceId})) > 0 AND length(btrim(${t.contextKey})) > 0`
+    ),
+    check(
+      "credit_contexts_not_self_parent_check",
+      sql`${t.parentContextId} IS NULL OR ${t.parentContextId} <> ${t.id}`
+    ),
+  ]
+);
+
+export type CreditContext = typeof creditContexts.$inferSelect;
+export type InsertCreditContext = typeof creditContexts.$inferInsert;
+
+/** Explanatory lineage links; only one primary link may carry cost attribution. */
+export const creditTransactionContexts = pgTable(
+  "credit_transaction_contexts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    transactionId: integer("transactionId")
+      .notNull()
+      .references((): AnyPgColumn => creditTransactions.id, {
+        onDelete: "restrict",
+      }),
+    contextId: uuid("contextId")
+      .notNull()
+      .references((): AnyPgColumn => creditContexts.id, {
+        onDelete: "restrict",
+      }),
+    relationType: varchar("relationType", { length: 32 }).notNull(),
+    isPrimary: boolean("isPrimary").notNull().default(false),
+    provenance: varchar("provenance", { length: 32 }).notNull(),
+    confidence: real("confidence"),
+    reasonCode: varchar("reasonCode", { length: 64 }),
+    displayNameSnapshot: varchar("displayNameSnapshot", { length: 255 }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("credit_transaction_contexts_transaction_context_relation_unique").on(
+      t.transactionId,
+      t.contextId,
+      t.relationType
+    ),
+    uniqueIndex("credit_transaction_contexts_one_primary_unique")
+      .on(t.transactionId)
+      .where(sql`${t.isPrimary} = true`),
+    index("credit_transaction_contexts_context_transaction_idx").on(
+      t.contextId,
+      t.transactionId
+    ),
+    index("credit_transaction_contexts_transaction_context_idx").on(
+      t.transactionId,
+      t.contextId
+    ),
+    index("credit_transaction_contexts_relation_transaction_idx").on(
+      t.relationType,
+      t.transactionId
+    ),
+    index("credit_transaction_contexts_relation_context_transaction_idx").on(
+      t.relationType,
+      t.contextId,
+      t.transactionId
+    ),
+    check(
+      "credit_transaction_contexts_primary_relation_check",
+      sql`${t.isPrimary} = false OR ${t.relationType} IN ('primary_work', 'reversal', 'work_adjustment')`
+    ),
+    check(
+      "credit_transaction_contexts_confidence_check",
+      sql`${t.confidence} IS NULL OR (${t.confidence} >= 0 AND ${t.confidence} <= 1)`
+    ),
+  ]
+);
+
+export type CreditTransactionContext =
+  typeof creditTransactionContexts.$inferSelect;
+export type InsertCreditTransactionContext =
+  typeof creditTransactionContexts.$inferInsert;
+
+/** Durable operational checkpoint for dry-run/apply/audit lineage jobs. */
+export const creditContextBackfillRuns = pgTable(
+  "credit_context_backfill_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    mode: varchar("mode", { length: 16 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull(),
+    schemaVersion: varchar("schemaVersion", { length: 32 }).notNull(),
+    resolverVersion: varchar("resolverVersion", { length: 32 }).notNull(),
+    lastTransactionId: integer("lastTransactionId"),
+    scanThroughTransactionId: integer("scanThroughTransactionId").notNull(),
+    tenantId: varchar("tenantId", { length: 36 }),
+    userId: integer("userId").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    batchSize: integer("batchSize").notNull().default(100),
+    countersJson: jsonb("countersJson").notNull().default(sql`'{}'::jsonb`),
+    operatorId: varchar("operatorId", { length: 128 }).notNull(),
+    leaseOwner: varchar("leaseOwner", { length: 128 }),
+    leaseExpiresAt: timestamp("leaseExpiresAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    completedAt: timestamp("completedAt", { withTimezone: true }),
+  },
+  t => [
+    index("credit_context_backfill_runs_status_mode_updated_idx").on(
+      t.status,
+      t.mode,
+      t.updatedAt
+    ),
+    index("credit_context_backfill_runs_scope_status_updated_idx").on(
+      t.tenantId,
+      t.userId,
+      t.status,
+      t.updatedAt
+    ),
+  ]
+);
+
+export type CreditContextBackfillRun =
+  typeof creditContextBackfillRuns.$inferSelect;
+export type InsertCreditContextBackfillRun =
+  typeof creditContextBackfillRuns.$inferInsert;
 
 /**
  * Credit packages available for purchase
@@ -819,7 +1046,7 @@ export const galleryItems = pgTable("gallery_items", {
   id: serial("id").primaryKey(),
 
   /** Tenant ID - for multi-tenant isolation */
-  tenantId: integer("tenantId").references(() => tenants.id, {
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, {
     onDelete: "cascade",
   }),
 
@@ -22279,7 +22506,10 @@ export const verticalDramaEpisodes = pgTable(
     seriesId: bigint("seriesId", { mode: "number" })
       .notNull()
       .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    episodeKind: varchar("episodeKind", { length: 24 }).notNull().default("normal"),
     episodeNumber: integer("episodeNumber").notNull(),
+    specialSequence: integer("specialSequence"),
+    specialData: jsonb("specialData"),
     title: varchar("title", { length: 255 }),
     status: varchar("status", { length: 30 }).default("draft").notNull(),
     targetDurationSeconds: integer("targetDurationSeconds")
@@ -22353,12 +22583,118 @@ export const verticalDramaEpisodes = pgTable(
       t.episodeNumber
     ),
     index("vds_episode_status_idx").on(t.tenantId, t.seriesId, t.status),
+    uniqueIndex("vds_episode_special_sequence_unique")
+      .on(t.tenantId, t.seriesId, t.specialSequence)
+      .where(sql`"episodeKind" = 'special_tie_in'`),
   ]
 );
 
 export type VerticalDramaEpisodeRow = typeof verticalDramaEpisodes.$inferSelect;
 export type InsertVerticalDramaEpisodeRow =
   typeof verticalDramaEpisodes.$inferInsert;
+
+export const verticalDramaSpecialSequenceCounters = pgTable(
+  "vertical_drama_special_sequence_counters",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" }).notNull().references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    nextSequence: integer("nextSequence").notNull().default(1),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [uniqueIndex("vds_special_sequence_counter_series_unique").on(t.tenantId, t.seriesId), index("vds_special_sequence_counter_lookup_idx").on(t.tenantId, t.userId, t.seriesId)],
+);
+export type VerticalDramaSpecialSequenceCounterRow = typeof verticalDramaSpecialSequenceCounters.$inferSelect;
+
+/** Immutable text/storyboard candidates created by an episode-scoped repair. */
+export const verticalDramaEpisodeRevisions = pgTable(
+  "vertical_drama_episode_revisions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" }).notNull().references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    episodeId: bigint("episodeId", { mode: "number" }).notNull().references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+    revisionNumber: integer("revisionNumber").notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("queued"),
+    jobId: varchar("jobId", { length: 64 }),
+    idempotencyKey: varchar("idempotencyKey", { length: 160 }).notNull(),
+    sourceUpdatedAt: timestamp("sourceUpdatedAt", { withTimezone: true }).notNull(),
+    sourceFingerprint: varchar("sourceFingerprint", { length: 64 }).notNull(),
+    contextSummary: jsonb("contextSummary"),
+    script: jsonb("script"),
+    storyboard: jsonb("storyboard"),
+    safetyFindings: jsonb("safetyFindings"),
+    errorCode: varchar("errorCode", { length: 80 }),
+    errorMessage: text("errorMessage"),
+    promotedAt: timestamp("promotedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    index("vds_episode_revision_lookup_idx").on(t.tenantId, t.seriesId, t.episodeId, t.createdAt),
+    uniqueIndex("vds_episode_revision_idempotency_idx").on(t.tenantId, t.userId, t.episodeId, t.idempotencyKey),
+  ],
+);
+
+export type VerticalDramaEpisodeRevisionRow = typeof verticalDramaEpisodeRevisions.$inferSelect;
+export type InsertVerticalDramaEpisodeRevisionRow = typeof verticalDramaEpisodeRevisions.$inferInsert;
+
+/**
+ * Restricted forensic record for each logical LLM attempt made by the
+ * episode-scoped repair pipeline. Raw output is intentionally kept separate
+ * from the candidate revision so a failed attempt remains inspectable without
+ * ever becoming live episode content.
+ */
+export const verticalDramaEpisodeRepairAttempts = pgTable(
+  "vertical_drama_episode_repair_attempts",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" }).notNull().references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    episodeId: bigint("episodeId", { mode: "number" }).notNull().references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+    revisionId: bigint("revisionId", { mode: "number" }).notNull().references(() => verticalDramaEpisodeRevisions.id, { onDelete: "cascade" }),
+    jobId: varchar("jobId", { length: 64 }),
+    attemptNumber: integer("attemptNumber").notNull(),
+    stage: varchar("stage", { length: 32 }).notNull(),
+    skillSlug: varchar("skillSlug", { length: 160 }).notNull(),
+    planningAttemptNumber: integer("planningAttemptNumber").notNull(),
+    model: varchar("model", { length: 255 }),
+    providerId: integer("providerId"),
+    providerName: varchar("providerName", { length: 120 }),
+    providerCallId: varchar("providerCallId", { length: 64 }),
+    outcome: varchar("outcome", { length: 32 }).notNull(),
+    rawOutput: text("rawOutput"),
+    rawOutputHash: varchar("rawOutputHash", { length: 64 }),
+    rawOutputTruncated: boolean("rawOutputTruncated").notNull().default(false),
+    parsedOutput: jsonb("parsedOutput"),
+    responseMetadata: jsonb("responseMetadata"),
+    physicalAttempts: jsonb("physicalAttempts"),
+    promptHash: varchar("promptHash", { length: 64 }),
+    systemPromptLength: integer("systemPromptLength"),
+    userPromptLength: integer("userPromptLength"),
+    inputTokens: integer("inputTokens"),
+    outputTokens: integer("outputTokens"),
+    finishReason: varchar("finishReason", { length: 80 }),
+    errorCode: varchar("errorCode", { length: 100 }),
+    errorMessage: text("errorMessage"),
+    safetyFindings: jsonb("safetyFindings"),
+    schemaIssues: jsonb("schemaIssues"),
+    startedAt: timestamp("startedAt", { withTimezone: true }),
+    completedAt: timestamp("completedAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    index("vds_episode_repair_attempt_lookup_idx").on(t.tenantId, t.userId, t.episodeId, t.revisionId, t.createdAt),
+    index("vds_episode_repair_attempt_job_idx").on(t.tenantId, t.jobId, t.createdAt),
+  ],
+);
+
+export type VerticalDramaEpisodeRepairAttemptRow = typeof verticalDramaEpisodeRepairAttempts.$inferSelect;
+export type InsertVerticalDramaEpisodeRepairAttemptRow = typeof verticalDramaEpisodeRepairAttempts.$inferInsert;
 
 /**
  * Read-only series share links (Collab-lite L1, task #32, F131AA,
@@ -22824,6 +23160,13 @@ export const verticalDramaDraftLedgers = pgTable(
     lastQcScore: integer("lastQcScore"),
     lastQcPassed: boolean("lastQcPassed"),
     archivedAt: timestamp("archivedAt", { withTimezone: true }),
+    /** Series-first owner link added by migration 0240. */
+    seriesId: bigint("seriesId", { mode: "number" }).references(
+      () => verticalDramaSeries.id,
+      { onDelete: "set null" },
+    ),
+    /** Tombstone for a deleted Series; retained Draft/QC history stays immutable. */
+    seriesDeletedAt: timestamp("seriesDeletedAt", { withTimezone: true }),
     currentVersion: integer("currentVersion").notNull().default(0),
     currentStage: varchar("currentStage", { length: 40 }).notNull().default("created"),
     currentJson: jsonb("currentJson").notNull().default({}),
@@ -22839,6 +23182,18 @@ export const verticalDramaDraftLedgers = pgTable(
   t => [
     index("vdd_ledger_owner_session_idx").on(t.tenantId, t.userId, t.draftSessionId),
     index("vdd_ledger_owner_updated_idx").on(t.tenantId, t.userId, t.updatedAt),
+    index("vdd_ledger_owner_series_idx").on(t.tenantId, t.userId, t.seriesId),
+    index("vdd_ledger_owner_series_delete_idx").on(
+      t.tenantId,
+      t.userId,
+      t.seriesId,
+      t.seriesDeletedAt,
+    ),
+    uniqueIndex("vdd_active_series_unique")
+      .on(t.seriesId)
+      .where(
+        sql`${t.seriesId} IS NOT NULL AND ${t.seriesDeletedAt} IS NULL AND ${t.archivedAt} IS NULL`,
+      ),
   ],
 );
 
