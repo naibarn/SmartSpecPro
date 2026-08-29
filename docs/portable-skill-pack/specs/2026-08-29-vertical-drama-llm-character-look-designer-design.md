@@ -236,7 +236,11 @@ continuity; otherwise it remains shot-level styling guidance.
    The call happens before any paid start-frame/image work. The same stable key
    is checked before both `storyboard_shotgrid` and `start_frame_plan`, so a
    retry or downstream stage reuses the stored design and cannot issue a second
-   charge for the same request.
+   charge for the same request. During legacy repair, each request may also
+   carry `legacy_visual_context`: the old displayed look text and label are
+   sent as explicitly labeled source material so the LLM can extract useful
+   garment/style cues and transform them into visual fields instead of losing
+   the original intent.
 3. The stable request identity is
    `(tenantId, userId, seriesId, episodeId, parentCharacterKey, requestKey)`.
    When an upstream plan revision is available it must be included in the
@@ -253,6 +257,8 @@ continuity; otherwise it remains shot-level styling guidance.
    `lookImageBrief` only from validated visual fields. The full story evidence is
    stored under versioned provenance metadata with `sourceEpisodeId`, shot
    numbers, request key, skill slug, model, attempt, and contract version.
+   Legacy source text is never copied into those fields; it is bounded before
+   prompt submission and remains repair/audit context only.
 6. The row is materialized only after valid LLM output. The stable semantic key
    and current roster read make retries converge on the same row. A concurrent
    insert must re-read and reuse the winner rather than call the LLM again.

@@ -288,6 +288,20 @@ function findEpisodeForRow(
 function repairRequest(
   candidate: BackfillCandidate
 ): VerticalDramaCharacterLookSuggestion {
+  const description =
+    typeof candidate.data.description === "string"
+      ? candidate.data.description.trim()
+      : undefined;
+  const wardrobeRules = Array.isArray(candidate.data.wardrobeRules)
+    ? candidate.data.wardrobeRules.filter(
+        (value): value is string =>
+          typeof value === "string" && value.trim().length > 0
+      )
+    : undefined;
+  const lookImageBrief =
+    typeof candidate.data.lookImageBrief === "string"
+      ? candidate.data.lookImageBrief.trim()
+      : undefined;
   return {
     baseCharacterKey: candidate.parent.characterKey,
     parentCharacterKey: candidate.parent.characterKey,
@@ -298,6 +312,12 @@ function repairRequest(
     requestKey: candidate.requestKey,
     evidence: candidate.evidence,
     sourceShotNumbers: candidate.sourceShotNumbers,
+    legacyVisualContext: {
+      variantLabel: candidate.row.variantLabel ?? candidate.canonicalIntent,
+      ...(description ? { description } : {}),
+      ...(wardrobeRules?.length ? { wardrobeRules } : {}),
+      ...(lookImageBrief ? { lookImageBrief } : {}),
+    },
   };
 }
 

@@ -71,6 +71,17 @@ export interface VerticalDramaCharacterLookSuggestion {
   requestKey: string;
   evidence: VerticalDramaCharacterLookDesignEvidence[];
   sourceShotNumbers: number[];
+  /**
+   * Optional legacy visual-field content supplied only during repair. It is
+   * labeled source context for the LLM to transform into a visual package;
+   * it is never persisted as the new description or treated as instructions.
+   */
+  legacyVisualContext?: {
+    variantLabel?: string;
+    description?: string;
+    wardrobeRules?: string[];
+    lookImageBrief?: string;
+  };
 }
 
 /**

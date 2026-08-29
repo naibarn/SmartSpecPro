@@ -1340,6 +1340,27 @@ async function resolvePipelineCharacterLooks(params: {
     row.data && typeof row.data === "object" && !Array.isArray(row.data)
       ? (row.data as Record<string, unknown>)
       : {};
+  const readLegacyVisualContext = (
+    data: Record<string, unknown>,
+    variantLabel: string | null
+  ) => {
+    const description =
+      typeof data.description === "string" ? data.description.trim() : "";
+    const wardrobeRules = Array.isArray(data.wardrobeRules)
+      ? data.wardrobeRules.filter(
+          (value): value is string =>
+            typeof value === "string" && value.trim().length > 0
+        )
+      : [];
+    const lookImageBrief =
+      typeof data.lookImageBrief === "string" ? data.lookImageBrief.trim() : "";
+    return {
+      ...(variantLabel ? { variantLabel } : {}),
+      ...(description ? { description } : {}),
+      ...(wardrobeRules.length ? { wardrobeRules } : {}),
+      ...(lookImageBrief ? { lookImageBrief } : {}),
+    };
+  };
   const updateCharacterData = async (
     row: PipelineCharacterLookRow,
     data: Record<string, unknown>
@@ -1493,7 +1514,15 @@ async function resolvePipelineCharacterLooks(params: {
         if (metadataChanged && !hasUserEdit) {
           await updateCharacterData(existing, nextData);
         }
-        if (repairable) pendingSuggestions.push(suggestion);
+        if (repairable) {
+          pendingSuggestions.push({
+            ...suggestion,
+            legacyVisualContext: readLegacyVisualContext(
+              existingData,
+              row.variantLabel
+            ),
+          });
+        }
         requestState.set(suggestion.requestKey, {
           selectedKey: existing.characterKey,
           semanticKey,

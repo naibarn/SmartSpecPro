@@ -6,6 +6,7 @@ import {
   normalizeVerticalDramaCharacterLookImageBrief,
   selectVerticalDramaCharacterLooks,
   VERTICAL_DRAMA_LOOK_IMAGE_BRIEF_MAX_LENGTH,
+  looksLikeCharacterLookStoryLeak,
 } from "./characterLookSelection";
 
 const base = {
@@ -16,6 +17,17 @@ const base = {
 };
 
 describe("vertical drama automatic character look selection", () => {
+  it("recognizes story leakage without treating ordinary wardrobe cues as leakage", () => {
+    expect(
+      looksLikeCharacterLookStoryLeak(
+        "มยุรีเตรียมอาหารกับครอบครัว Story evidence: episode 8"
+      )
+    ).toBe(true);
+    expect(looksLikeCharacterLookStoryLeak("เสื้อผ้าสบาย ๆ ในบ้าน")).toBe(
+      false
+    );
+  });
+
   it("supports a reusable look brief up to 2,000 characters and trims oversized input recoverably", () => {
     const accepted = "x".repeat(2000);
     expect(normalizeVerticalDramaCharacterLookImageBrief(accepted)).toBe(
@@ -35,7 +47,14 @@ describe("vertical drama automatic character look selection", () => {
   it("keeps story evidence out of the pure selector contract", () => {
     const result = selectVerticalDramaCharacterLooks({
       catalog: [base],
-      shots: [{ shotNumber: 1, characterKeys: ["mali"], text: "พิมพ์ชนกไปร่วมงานกลางคืนในโรงแรม", sceneKey: "gala" }],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "พิมพ์ชนกไปร่วมงานกลางคืนในโรงแรม",
+          sceneKey: "gala",
+        },
+      ],
     });
 
     expect(result.suggestions[0]).not.toHaveProperty("description");
@@ -141,11 +160,11 @@ describe("vertical drama automatic character look selection", () => {
 
   it("lets sleepwear win over a compatible home cue", () => {
     expect(
-      detectVerticalDramaCharacterLookConflict(
-        "กำลังเข้านอนในห้องนอนที่บ้าน"
-      )
+      detectVerticalDramaCharacterLookConflict("กำลังเข้านอนในห้องนอนที่บ้าน")
     ).toEqual([]);
-    expect(detectVerticalDramaCharacterLookIntent("กำลังเข้านอนในบ้าน")).toEqual({
+    expect(
+      detectVerticalDramaCharacterLookIntent("กำลังเข้านอนในบ้าน")
+    ).toEqual({
       key: "sleepwear",
       label: "ชุดนอน",
       variantType: "outfit",
@@ -213,14 +232,18 @@ describe("vertical drama automatic character look selection", () => {
           hasPortrait: true,
         },
       ],
-      shots: [{
-        shotNumber: 1,
-        characterKeys: ["mali"],
-        text: "มะลิอยู่ในช่วงวัยนักศึกษา",
-      }],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "มะลิอยู่ในช่วงวัยนักศึกษา",
+        },
+      ],
     });
 
-    expect(result.characterKeysByShotNumber.get(1)).toEqual(["mali-university"]);
+    expect(result.characterKeysByShotNumber.get(1)).toEqual([
+      "mali-university",
+    ]);
     expect(result.suggestions).toHaveLength(0);
   });
 
@@ -239,9 +262,24 @@ describe("vertical drama automatic character look selection", () => {
         },
       ],
       shots: [
-        { shotNumber: 1, characterKeys: ["mali"], text: "คุยในบ้าน", sceneKey: "home" },
-        { shotNumber: 2, characterKeys: ["mali"], text: "เดินเข้าสถานที่ใหม่", sceneKey: "gala" },
-        { shotNumber: 3, characterKeys: ["mali"], text: "ยืนคุยต่อในงาน", sceneKey: "gala" },
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "คุยในบ้าน",
+          sceneKey: "home",
+        },
+        {
+          shotNumber: 2,
+          characterKeys: ["mali"],
+          text: "เดินเข้าสถานที่ใหม่",
+          sceneKey: "gala",
+        },
+        {
+          shotNumber: 3,
+          characterKeys: ["mali"],
+          text: "ยืนคุยต่อในงาน",
+          sceneKey: "gala",
+        },
       ],
     });
 
@@ -363,7 +401,9 @@ describe("vertical drama automatic character look selection", () => {
   });
 
   it("normalizes look identity instead of using the visible label as a key", () => {
-    expect(detectVerticalDramaCharacterLookIntent("sleepwear for bedtime")).toEqual({
+    expect(
+      detectVerticalDramaCharacterLookIntent("sleepwear for bedtime")
+    ).toEqual({
       key: "sleepwear",
       label: "ชุดนอน",
       variantType: "outfit",
@@ -377,14 +417,23 @@ describe("vertical drama automatic character look selection", () => {
     ).toBe("mali::outfit::sleepwear");
     const formal = selectVerticalDramaCharacterLooks({
       catalog: [base],
-      shots: [{ shotNumber: 1, characterKeys: ["mali"], text: "มะลิไปร่วมงานกาลา", sceneKey: "gala" }],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "มะลิไปร่วมงานกาลา",
+          sceneKey: "gala",
+        },
+      ],
     });
     expect(formal.suggestions[0].requestKey).toContain("eveningformal");
   });
 
   it("does not silently choose the first look when story cues conflict", () => {
     expect(
-      detectVerticalDramaCharacterLookConflict("เด็กทารกใส่ชุดนักเรียนไปโรงเรียน")
+      detectVerticalDramaCharacterLookConflict(
+        "เด็กทารกใส่ชุดนักเรียนไปโรงเรียน"
+      )
     ).toEqual(["วัยทารกแรกเกิด", "ชุดนักเรียน"]);
 
     const result = selectVerticalDramaCharacterLooks({
@@ -405,6 +454,8 @@ describe("vertical drama automatic character look selection", () => {
   });
 
   it("does not treat night-time alone as formalwear", () => {
-    expect(detectVerticalDramaCharacterLookIntent("เดินกลับบ้านตอนกลางคืน")).toBeNull();
+    expect(
+      detectVerticalDramaCharacterLookIntent("เดินกลับบ้านตอนกลางคืน")
+    ).toBeNull();
   });
 });

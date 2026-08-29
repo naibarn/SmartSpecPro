@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockExecute, mockHasEnoughCredits, mockDeductCredits, mockResolveModel } = vi.hoisted(() => ({
+const {
+  mockExecute,
+  mockHasEnoughCredits,
+  mockDeductCredits,
+  mockResolveModel,
+} = vi.hoisted(() => ({
   mockExecute: vi.fn(),
   mockHasEnoughCredits: vi.fn(),
   mockDeductCredits: vi.fn(),
@@ -24,13 +29,19 @@ import {
   designVerticalDramaCharacterLooks,
   VERTICAL_DRAMA_CHARACTER_LOOK_DESIGNER_SKILL_SLUG,
 } from "../verticalDramaCharacterLookDesigner";
-import { resolveSkillDirCandidates, resolveSkillManifestPath } from "../skillFiles";
+import {
+  resolveSkillDirCandidates,
+  resolveSkillManifestPath,
+} from "../skillFiles";
 
 const fixture = JSON.parse(
   readFileSync(
-    new URL("../../../skills/vertical-drama-character-look-designer/fixtures/pass.output.json", import.meta.url),
-    "utf8",
-  ),
+    new URL(
+      "../../../skills/vertical-drama-character-look-designer/fixtures/pass.output.json",
+      import.meta.url
+    ),
+    "utf8"
+  )
 );
 
 const params = {
@@ -41,33 +52,40 @@ const params = {
   episodeNumber: 2,
   idempotencyKey: "vd-look:test-request",
   seriesContext: { locale: "th" as const, genre: "family drama", tone: "warm" },
-  characters: [{
-    characterKey: "mali",
-    name: "มะลิ",
-    role: "lead",
-    identityFacts: "same face, body proportions, black hair, mole under left eye",
-  }],
-  requests: [{
-    baseCharacterKey: "mali",
-    parentCharacterKey: "mali",
-    variantLabel: "ลุคอยู่บ้าน",
-    variantType: "outfit" as const,
-    canonicalIntent: "casual_home",
-    requestKey: "mali::outfit::home",
-    evidence: [{ shotNumber: 1, text: "อยู่บ้านตอนเช้า", sceneKey: "home" }],
-    sourceShotNumbers: [1],
-  }],
+  characters: [
+    {
+      characterKey: "mali",
+      name: "มะลิ",
+      role: "lead",
+      identityFacts:
+        "same face, body proportions, black hair, mole under left eye",
+    },
+  ],
+  requests: [
+    {
+      baseCharacterKey: "mali",
+      parentCharacterKey: "mali",
+      variantLabel: "ลุคอยู่บ้าน",
+      variantType: "outfit" as const,
+      canonicalIntent: "casual_home",
+      requestKey: "mali::outfit::home",
+      evidence: [{ shotNumber: 1, text: "อยู่บ้านตอนเช้า", sceneKey: "home" }],
+      sourceShotNumbers: [1],
+    },
+  ],
 };
 
 const ageStageParams = {
   ...params,
-  requests: [{
-    ...params.requests[0],
-    variantLabel: "วัยนักศึกษา",
-    variantType: "age_stage" as const,
-    ageStage: "university_student" as const,
-    canonicalIntent: "university_student",
-  }],
+  requests: [
+    {
+      ...params.requests[0],
+      variantLabel: "วัยนักศึกษา",
+      variantType: "age_stage" as const,
+      ageStage: "university_student" as const,
+      canonicalIntent: "university_student",
+    },
+  ],
 };
 
 describe("vertical drama character look designer", () => {
@@ -75,23 +93,25 @@ describe("vertical drama character look designer", () => {
 
   it("is discoverable through the Admin skill-folder manifest resolver", () => {
     const skillDir = resolveSkillDirCandidates(
-      `skills/${VERTICAL_DRAMA_CHARACTER_LOOK_DESIGNER_SKILL_SLUG}`,
+      `skills/${VERTICAL_DRAMA_CHARACTER_LOOK_DESIGNER_SKILL_SLUG}`
     ).find(candidate => Boolean(resolveSkillManifestPath(candidate)));
     expect(skillDir).toBeTruthy();
     expect(resolveSkillManifestPath(skillDir!)).toMatch(/(?:SKILL|skill)\.md$/);
-    expect(readFileSync(resolveSkillManifestPath(skillDir!)!, "utf8")).toContain(
-      "name: Vertical Drama Character Look Designer",
-    );
+    expect(
+      readFileSync(resolveSkillManifestPath(skillDir!)!, "utf8")
+    ).toContain("name: Vertical Drama Character Look Designer");
   });
 
   it("uses the real skill prompt boundary, renders visual-only fields, and bills the skill slug", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockResolveModel.mockResolvedValue("test-model");
-    mockExecute.mockImplementation(async ({ systemPrompt }: { systemPrompt: string }) => ({
-      data: fixture,
-      response: { usage: { prompt_tokens: 100, completion_tokens: 80 } },
-      systemPrompt,
-    }));
+    mockExecute.mockImplementation(
+      async ({ systemPrompt }: { systemPrompt: string }) => ({
+        data: fixture,
+        response: { usage: { prompt_tokens: 100, completion_tokens: 80 } },
+        systemPrompt,
+      })
+    );
 
     const result = await designVerticalDramaCharacterLooks(params);
     const designed = result.designs.get(params.requests[0].requestKey);
@@ -101,29 +121,67 @@ describe("vertical drama character look designer", () => {
     expect(designed?.imageBrief).not.toContain("evidence");
     expect(result.skillContentHash).toMatch(/^[a-f0-9]{32}$/);
     expect(mockExecute.mock.calls[0][0].systemPrompt).toContain("untrusted");
-    expect(mockDeductCredits).toHaveBeenCalledWith(expect.objectContaining({
-      skillSlug: VERTICAL_DRAMA_CHARACTER_LOOK_DESIGNER_SKILL_SLUG,
-      sourceType: "skill",
-      idempotencyKey: params.idempotencyKey,
-      metadata: expect.objectContaining({
-        skillContentHash: result.skillContentHash,
-        validation: "passed",
-      }),
-    }));
+    expect(mockDeductCredits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skillSlug: VERTICAL_DRAMA_CHARACTER_LOOK_DESIGNER_SKILL_SLUG,
+        sourceType: "skill",
+        idempotencyKey: params.idempotencyKey,
+        metadata: expect.objectContaining({
+          skillContentHash: result.skillContentHash,
+          validation: "passed",
+        }),
+      })
+    );
+  });
+
+  it("passes legacy visual details as transformation context, not as final prose", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockResolveModel.mockResolvedValue("test-model");
+    let capturedUserPrompt = "";
+    mockExecute.mockImplementation(
+      async ({ userPrompt }: { userPrompt: string }) => {
+        capturedUserPrompt = userPrompt;
+        return {
+          data: fixture,
+          response: { usage: { prompt_tokens: 100, completion_tokens: 80 } },
+        };
+      }
+    );
+
+    await designVerticalDramaCharacterLooks({
+      ...params,
+      requests: [
+        {
+          ...params.requests[0],
+          legacyVisualContext: {
+            variantLabel: "ชุดลำลองอยู่บ้าน",
+            description:
+              "มยุรีอยู่บ้านเตรียมอาหารและคุยกับครอบครัว Story evidence: episode 8",
+            wardrobeRules: ["เสื้อผ้าสบาย ๆ ในบ้าน"],
+          },
+        },
+      ],
+    });
+
+    expect(capturedUserPrompt).toContain("legacy_visual_context");
+    expect(capturedUserPrompt).toContain("ชุดลำลองอยู่บ้าน");
+    expect(capturedUserPrompt).toContain("extract useful visual cues");
+    expect(capturedUserPrompt).toContain("never copy that prose");
   });
 
   it("rejects an LLM design that copies story evidence into visual fields", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockResolveModel.mockResolvedValue("test-model");
     const leaked = structuredClone(fixture);
-    leaked.designs[0].look_design.outfit.top = "Story evidence: อยู่บ้านตอนเช้า";
+    leaked.designs[0].look_design.outfit.top =
+      "Story evidence: อยู่บ้านตอนเช้า";
     mockExecute.mockResolvedValue({
       data: leaked,
       response: { usage: { prompt_tokens: 100, completion_tokens: 80 } },
     });
 
     await expect(designVerticalDramaCharacterLooks(params)).rejects.toThrow(
-      /story\/provenance/,
+      /story\/provenance/
     );
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
@@ -139,23 +197,33 @@ describe("vertical drama character look designer", () => {
     });
 
     await expect(designVerticalDramaCharacterLooks(params)).rejects.toThrow(
-      /ungrounded evidence reference/,
+      /ungrounded evidence reference/
     );
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
   it.each([
-    ["age_stage without canonical age_stage", (output: any) => {
-      output.designs[0].look_design.variant_type = "age_stage";
-      output.designs[0].look_design.age_stage_description = "ช่วงวัยมหาวิทยาลัยที่โตขึ้นอย่างเป็นธรรมชาติ";
-    }],
-    ["age_stage without age_stage_description", (output: any) => {
-      output.designs[0].look_design.variant_type = "age_stage";
-      output.designs[0].look_design.age_stage = "university_student";
-    }],
-    ["review_required without conflict_reason", (output: any) => {
-      output.designs[0].review_required = true;
-    }],
+    [
+      "age_stage without canonical age_stage",
+      (output: any) => {
+        output.designs[0].look_design.variant_type = "age_stage";
+        output.designs[0].look_design.age_stage_description =
+          "ช่วงวัยมหาวิทยาลัยที่โตขึ้นอย่างเป็นธรรมชาติ";
+      },
+    ],
+    [
+      "age_stage without age_stage_description",
+      (output: any) => {
+        output.designs[0].look_design.variant_type = "age_stage";
+        output.designs[0].look_design.age_stage = "university_student";
+      },
+    ],
+    [
+      "review_required without conflict_reason",
+      (output: any) => {
+        output.designs[0].review_required = true;
+      },
+    ],
   ])("rejects invalid structured contract: %s", async (_label, mutate) => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockResolveModel.mockResolvedValue("test-model");
@@ -166,10 +234,13 @@ describe("vertical drama character look designer", () => {
       response: { usage: { prompt_tokens: 100, completion_tokens: 80 } },
     });
 
-    const requestParams = invalid.designs[0].look_design.variant_type === "age_stage"
-      ? ageStageParams
-      : params;
-    await expect(designVerticalDramaCharacterLooks(requestParams)).rejects.toThrow();
+    const requestParams =
+      invalid.designs[0].look_design.variant_type === "age_stage"
+        ? ageStageParams
+        : params;
+    await expect(
+      designVerticalDramaCharacterLooks(requestParams)
+    ).rejects.toThrow();
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
@@ -185,9 +256,9 @@ describe("vertical drama character look designer", () => {
       response: { usage: { prompt_tokens: 100, completion_tokens: 80 } },
     });
 
-    await expect(designVerticalDramaCharacterLooks(ageStageParams)).rejects.toThrow(
-      /target age stage/,
-    );
+    await expect(
+      designVerticalDramaCharacterLooks(ageStageParams)
+    ).rejects.toThrow(/target age stage/);
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 });
