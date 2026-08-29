@@ -339,6 +339,13 @@ payload when the LLM fails. Rows with unresolved episode evidence, user edits,
 or an explicit age conflict remain review-pending. This runner is an
 operational backfill tool, not a replacement for the normal episode pipeline.
 
+If a provider returns a structurally valid design but emits an evidence
+reference outside the bounded request set, the service keeps the LLM-generated
+visual package and reconciles provenance to the exact caller-supplied evidence.
+This prevents one hallucinated shot number from discarding an otherwise usable
+look, while still guaranteeing that no invented storyboard reference is
+persisted.
+
 ## Testing and proof
 
 - Skill bundle verification: manifest, discoverability metadata, schemas,

@@ -1940,6 +1940,11 @@ export const verticalDramaCharactersRouter = router({
         limit: 1,
       });
       if (result.stats.errors.length > 0) {
+        const failure = result.stats.errors[0];
+        debugError(
+          "verticalDramaCharacters.repairLegacyCharacterLook",
+          `Character-look repair failed for row ${failure.rowId}: ${failure.message}`
+        );
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "ซ่อมรายละเอียดลุคไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",

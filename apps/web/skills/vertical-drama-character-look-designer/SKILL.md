@@ -54,6 +54,10 @@ true. In that case `evidence_refs` must use `shot_number: 0` and
 visual field, not a real storyboard shot. Never invent an episode fact or a
 storyboard reference.
 
+For every `evidence_refs` item, copy the exact `shot_number` and
+`evidence_type` from the supplied request evidence. Do not infer, renumber, or
+invent evidence references.
+
 For an outfit variant preserve the same face geometry, skin tone, body
 proportions, apparent age anchor supplied in the identity facts, defining marks, natural hair color/texture, and
 recognizable signature features. Hair arrangement and makeup may change, but

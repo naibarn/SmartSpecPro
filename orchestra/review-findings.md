@@ -145,6 +145,22 @@ Status: gap closed; explicit legacy repair path verified locally.
 - Regression proof: focused tests 40/40, skill verifier passed, atomic build
   completed, Debian service restarted, and `/healthz` returned HTTP 200.
 
+## Current Task Round 8 — LLM evidence-reference reconciliation
+
+Status: fixed and locally verified.
+
+- The reported repair failure was reproduced from Debian logs and persisted
+  row 203: the provider returned an evidence shot outside the supplied `[3, 7]`
+  set, so the router rolled the row back and exposed only a generic error.
+- The designer now preserves the valid LLM wardrobe result but replaces invalid
+  provenance with the exact caller-supplied evidence; it never invents a shot.
+  The prompt and skill docs also require exact evidence copying, and the router
+  logs the bounded failure detail for future diagnosis.
+- Focused designer tests pass, including the invalid-reference regression. The
+  background billing `transaction_type=subscription` error seen in the same
+  journal window is unrelated to this repair route and remains outside this
+  fix.
+
 ## Current Task Round 7 — Explicit repair for every character row
 
 Status: complete; all-row explicit repair is active on Debian.

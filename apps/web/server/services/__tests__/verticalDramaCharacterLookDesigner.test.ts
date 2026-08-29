@@ -231,7 +231,7 @@ describe("vertical drama character look designer", () => {
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
-  it("rejects evidence references outside the requesting shot set", async () => {
+  it("reconciles an invalid LLM evidence reference to caller-supplied evidence", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockResolveModel.mockResolvedValue("test-model");
     const ungrounded = structuredClone(fixture);
@@ -241,10 +241,17 @@ describe("vertical drama character look designer", () => {
       response: { usage: { prompt_tokens: 100, completion_tokens: 80 } },
     });
 
-    await expect(designVerticalDramaCharacterLooks(params)).rejects.toThrow(
-      /ungrounded evidence reference/
-    );
-    expect(mockDeductCredits).not.toHaveBeenCalled();
+    const result = await designVerticalDramaCharacterLooks(params);
+
+    expect(
+      result.designs.get(params.requests[0].requestKey)?.evidenceRefs
+    ).toEqual([
+      {
+        shotNumber: 1,
+        evidenceSpan: "อยู่บ้านตอนเช้า",
+      },
+    ]);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
   it.each([
