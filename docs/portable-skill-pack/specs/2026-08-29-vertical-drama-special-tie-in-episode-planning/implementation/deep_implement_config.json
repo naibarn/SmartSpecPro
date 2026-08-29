@@ -44,6 +44,10 @@
     "section-07-episode-storyboard-ops.md": {
       "status": "complete",
       "commit_hash": "4124c8ae5"
+    },
+    "section-08-integration-gap-verification": {
+      "status": "complete",
+      "commit_hash": "a4ed325e9"
     }
   },
   "pre_commit": {
