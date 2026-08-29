@@ -1,0 +1,316 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/skills/idea-to-video-prompt/schemas/input.schema.json",
+  "title": "Idea to Video Prompt input",
+  "description": "ข้อความไอเดีย ภาพอ้างอิง และตัวเลือกสำหรับสร้าง prompt วิดีโอแบบต่อเนื่อง",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "idea",
+    "reference_images",
+    "shot_duration_seconds"
+  ],
+  "properties": {
+    "idea": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 12000,
+      "description": "ข้อความบรรยายไอเดียหรือการกระทำที่ต้องการให้เกิดในวิดีโอ"
+    },
+    "reference_images": {
+      "type": "array",
+      "maxItems": 50,
+      "description": "ภาพอ้างอิงของคน สินค้า ฉาก พร็อพ หรือสไตล์ จำนวนภาพไม่จำกัดตายตัว",
+      "items": {
+        "$ref": "#/$defs/referenceImage"
+      },
+      "default": []
+    },
+    "shot_duration_seconds": {
+      "type": "integer",
+      "enum": [
+        8,
+        10,
+        12,
+        15,
+        20,
+        24,
+        30
+      ],
+      "description": "ความยาวของทุกช็อตที่ต้องสร้าง"
+    },
+    "prompt_language": {
+      "type": "string",
+      "enum": [
+        "th",
+        "en",
+        "bilingual"
+      ],
+      "description": "ภาษาของ prompt; bilingual ใช้คำสั่งการผลิตภาษาอังกฤษและคงบทพูด/ข้อความตามภาษาที่กำหนด",
+      "default": "bilingual"
+    },
+    "dialogue_language": {
+      "type": "string",
+      "enum": [
+        "th",
+        "en",
+        "same_as_prompt",
+        "none"
+      ],
+      "description": "ภาษาบทพูดของตัวละครเมื่อเปิด character_dialogue; skill จะไม่สร้าง voice-over แยก",
+      "default": "th"
+    },
+    "dialogue_mode": {
+      "type": "string",
+      "enum": [
+        "none",
+        "character_dialogue"
+      ],
+      "description": "เลือกว่าจะสร้างบทพูดจากตัวละครในภาพอ้างอิงหรือไม่; none จะไม่มีบทพูด เสียงบรรยาย หรือเสียงพูดจากตัวละคร",
+      "default": "none"
+    },
+    "speaker_count": {
+      "description": "จำนวนผู้พูดที่ต้องการ; auto ให้ skill เลือกตามจำนวนคนและความเหมาะสมของเรื่อง โดยไม่เกิน 3 คน",
+      "oneOf": [
+        {
+          "type": "string",
+          "const": "auto"
+        },
+        {
+          "type": "integer",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        }
+      ],
+      "default": "auto"
+    },
+    "speaker_reference_ids": {
+      "type": "array",
+      "maxItems": 3,
+      "uniqueItems": true,
+      "description": "รหัสภาพคนที่อนุญาตให้เป็นผู้พูด เช่น person_01, person_02; ถ้าว่างให้เลือกจากภาพคนที่แนบโดยอัตโนมัติ",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_-]{1,64}$"
+      },
+      "default": []
+    },
+    "dialogue_style": {
+      "type": "string",
+      "enum": [
+        "natural",
+        "conversational",
+        "dramatic",
+        "commercial"
+      ],
+      "description": "สไตล์การพูดของตัวละคร",
+      "default": "natural"
+    },
+    "dialogue_constraints": {
+      "type": "string",
+      "maxLength": 3000,
+      "description": "ข้อกำหนดบทพูดเพิ่มเติม เช่น คำที่ต้องใช้ โทนเสียง หรือข้อมูลที่ห้ามพูด"
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "enum": [
+        "9:16",
+        "16:9",
+        "1:1",
+        "4:5"
+      ],
+      "description": "สัดส่วนภาพวิดีโอ",
+      "default": "9:16"
+    },
+    "target_platform": {
+      "type": "string",
+      "enum": [
+        "generic",
+        "facebook_reels",
+        "instagram_reels",
+        "youtube_shorts",
+        "tiktok",
+        "advertising"
+      ],
+      "description": "แพลตฟอร์มเป้าหมายเพื่อปรับ hook, safe area, CTA และคำแนะนำการเผยแพร่",
+      "default": "generic"
+    },
+    "max_shots": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "จำนวนช็อตสูงสุดที่อนุญาต; skill จะใช้เท่าที่จำเป็นและไม่เกิน 5",
+      "default": 5
+    },
+    "research_mode": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "no_web",
+        "web_if_needed"
+      ],
+      "description": "วิธีทำ research เมื่อจำเป็นต้องยืนยันข้อมูลสินค้า/ตลาด",
+      "default": "auto"
+    },
+    "customer_journey_depth": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "compact",
+        "standard",
+        "detailed"
+      ],
+      "description": "ระดับการขยาย customer journey เมื่อไอเดียสั้น",
+      "default": "standard"
+    },
+    "product_priority": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "standard",
+        "hero"
+      ],
+      "description": "ระดับความเด่นของสินค้าในภาพ; hero เน้น packshot และช่วงการใช้มากขึ้นแต่ยังลดการเคลื่อนไหวของบรรจุภัณฑ์",
+      "default": "auto"
+    },
+    "audience": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "กลุ่มผู้ชม ถ้าทราบ"
+    },
+    "visual_style": {
+      "type": "string",
+      "maxLength": 3000,
+      "description": "สไตล์ภาพ อารมณ์ สี แสง หรือ reference ทางศิลป์เพิ่มเติม"
+    },
+    "brand_constraints": {
+      "type": "string",
+      "maxLength": 4000,
+      "description": "ข้อกำหนดแบรนด์ คำที่อนุญาต/ห้ามใช้ claim หรือกฎการแสดงสินค้า"
+    },
+    "cta": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "คำกระตุ้นการกระทำที่ต้องการ ถ้ามี"
+    },
+    "avoid": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500
+      },
+      "description": "สิ่งที่ไม่ต้องการให้ปรากฏหรือเกิดขึ้น"
+    },
+    "show_workflow_summary": {
+      "type": "boolean",
+      "description": "แสดงสรุปการวิเคราะห์ workflow นอกเหนือจาก prompt รายช็อตหรือไม่",
+      "default": true
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "dialogue_mode": {
+            "const": "character_dialogue"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "dialogue_language": {
+            "not": {
+              "const": "none"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "referenceImage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "source"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "description": "รหัสอ้างอิงที่ต้องใช้ซ้ำในทุกช็อต เช่น person_01 หรือ product_01"
+        },
+        "source": {
+          "description": "ที่อยู่ไฟล์, attachment id, URL หรือ path ของภาพ",
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "minProperties": 1,
+              "properties": {
+                "uri": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "attachment_id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          ]
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "person",
+            "product",
+            "location",
+            "prop",
+            "style",
+            "unknown"
+          ],
+          "default": "unknown"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "ชื่อที่มนุษย์อ่านเข้าใจ เช่น นางแบบ A หรือขวดแชมพู"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "รายละเอียดที่ผู้ใช้ต้องการย้ำเกี่ยวกับภาพ"
+        },
+        "lock_identity": {
+          "type": "boolean",
+          "description": "ล็อกอัตลักษณ์ของคนหรือรูปลักษณ์หลักของ reference",
+          "default": true
+        },
+        "lock_wardrobe": {
+          "type": "boolean",
+          "description": "ล็อกเสื้อผ้าและเครื่องประดับตามภาพ",
+          "default": true
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      }
+    }
+  }
+}
