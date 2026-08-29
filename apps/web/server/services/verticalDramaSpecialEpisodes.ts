@@ -98,11 +98,39 @@ export async function createSpecialTieInEpisode(input: {
   });
   if (created.deduped) {
     const existingData = (created.row.specialData ?? {}) as Partial<SpecialEpisodeData>;
-    const job = existingData.skillRun?.idempotencyKey ? await enqueueSpecialPromptJob(input.actor, input.seriesId, Number(created.row.id), existingData.input ?? parsed, existingData.createIntentId ?? input.createIntentId, Number(existingData.inputVersion ?? 1)) : { jobId: "deduped", status: "succeeded" as const };
+    const job = existingData.skillRun?.status === "queued" || existingData.skillRun?.status === "running"
+      ? await enqueueSpecialPromptJob(input.actor, input.seriesId, Number(created.row.id), existingData.input ?? parsed, existingData.createIntentId ?? input.createIntentId, Number(existingData.inputVersion ?? 1))
+      : { jobId: "", status: existingData.skillRun?.status ?? "failed" };
     return { episodeId: Number(created.row.id), episodeNumber: Number(created.row.episodeNumber), specialSequence: Number(created.row.specialSequence), skillJobId: job.jobId, skillRunStatus: job.status, deduped: true };
   }
   const job = await enqueueSpecialPromptJob(input.actor, input.seriesId, Number(created.row.id), parsed, input.createIntentId, 1);
   return { episodeId: Number(created.row.id), episodeNumber: Number(created.row.episodeNumber), specialSequence: Number(created.row.specialSequence), skillJobId: job.jobId, skillRunStatus: job.status, deduped: false };
+}
+
+export async function getSpecialTieInEpisode(actor: SpecialEpisodeActor, episodeId: number) {
+  const [row] = await db.select().from(verticalDramaEpisodes).where(and(eq(verticalDramaEpisodes.id, episodeId), eq(verticalDramaEpisodes.tenantId, actor.tenantId), eq(verticalDramaEpisodes.userId, actor.userId))).limit(1);
+  if (!row || row.episodeKind !== "special_tie_in") throw new TRPCError({ code: "NOT_FOUND", message: "Special episode not found" });
+  return row;
+}
+
+export async function updateSpecialTieInInput(input: { actor: SpecialEpisodeActor; episodeId: number; inputVersion: number; input: SpecialTieInInput }) {
+  await assertSpecialTieInEnabled(input.actor.tenantId);
+  const parsed = specialTieInInputSchema.parse(input.input);
+  const current = await getSpecialTieInEpisode(input.actor, input.episodeId);
+  const data = current.specialData as SpecialEpisodeData;
+  if (!data || data.inputVersion !== input.inputVersion) throw new TRPCError({ code: "CONFLICT", message: "Special episode input is stale; refresh before saving" });
+  const nextData: SpecialEpisodeData = { ...data, input: parsed, inputVersion: data.inputVersion + 1, outputVersion: data.outputVersion, skillRun: { ...data.skillRun, status: "queued", idempotencyKey: specialEpisodeIdempotencyKey(data.createIntentId, data.inputVersion + 1), errorCode: undefined, errorMessage: undefined, attempt: 0 } };
+  await db.update(verticalDramaEpisodes).set({ specialData: nextData, startFramePlan: null, motionPromptPack: null, updatedAt: new Date() }).where(and(eq(verticalDramaEpisodes.id, input.episodeId), eq(verticalDramaEpisodes.tenantId, input.actor.tenantId), eq(verticalDramaEpisodes.userId, input.actor.userId))).returning({ id: verticalDramaEpisodes.id });
+  const job = await enqueueSpecialPromptJob(input.actor, Number(current.seriesId), input.episodeId, parsed, data.createIntentId, nextData.inputVersion);
+  return { inputVersion: nextData.inputVersion, jobId: job.jobId, skillRunStatus: job.status };
+}
+
+export async function retrySpecialTieInEpisode(input: { actor: SpecialEpisodeActor; episodeId: number; inputVersion: number }) {
+  const row = await getSpecialTieInEpisode(input.actor, input.episodeId);
+  const data = row.specialData as SpecialEpisodeData;
+  if (!data || data.inputVersion !== input.inputVersion) throw new TRPCError({ code: "CONFLICT", message: "Special episode input is stale; refresh before retrying" });
+  const job = await enqueueSpecialPromptJob(input.actor, Number(row.seriesId), input.episodeId, data.input, data.createIntentId, data.inputVersion);
+  return { inputVersion: data.inputVersion, jobId: job.jobId, skillRunStatus: job.status };
 }
 
 async function enqueueSpecialPromptJob(actor: SpecialEpisodeActor, seriesId: number, episodeId: number, input: SpecialTieInInput, createIntentId: string, inputVersion: number) {
