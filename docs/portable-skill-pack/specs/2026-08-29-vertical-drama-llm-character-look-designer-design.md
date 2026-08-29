@@ -304,9 +304,10 @@ character row and child-look row; it sends the complete stored data to the
 skill even when the old row has no source marker or standard contract. Such a
 request uses `legacyVisualOnly` with a legacy source sentinel rather than
 inventing storyboard evidence. Preserve the old derived text in repair audit
-metadata and leave edited or approved rows untouched. Ambiguous age or
-identity evidence remains review-pending rather than being silently
-overwritten.
+metadata. Because the action is explicit, it may replace derived visual fields
+on a manually edited row, while the automatic pipeline remains
+non-destructive. Ambiguous age or identity evidence remains review-pending
+rather than being silently overwritten.
 
 User-edit protection is explicit: every materialized system row receives a
 `provenance.generatedFingerprint`, `provenance.designVersion`, and
@@ -316,11 +317,12 @@ User-edit protection is explicit: every materialized system row receives a
 identity lock, image brief, or assignment. Automatic repair may update only
 rows whose source is still `system_suggested_look`, whose generated fingerprint
 is unchanged, and whose portrait is not manually approved. The explicit
-pre-provenance action may update only an unedited character or child-look row
-selected by the owner and records `legacyVisualOnly=true` when no source marker
-exists. Any
-manual marker, fingerprint mismatch, explicit user approval, or unresolved
-age/identity evidence makes the row `review` and skips mutation. Each repair
+pre-provenance action may update a character or child-look row selected by the
+owner and records `legacyVisualOnly=true` when no source marker exists.
+Automatic repair still skips manual markers and fingerprint mismatches; an
+explicit selected-row action is the intentional override and is recorded in
+repair provenance. Unresolved age/identity evidence makes the row `review` and
+skips mutation. Each repair
 records before/after hashes, the reason, the matched source refs or legacy
 sentinel, the LLM request key, and a rollback payload; rollback restores
 derived fields only and never changes the parent character, stable look key,
@@ -348,10 +350,10 @@ operational backfill tool, not a replacement for the normal episode pipeline.
   preservation.
 - Pipeline tests: real skill runner wiring, skill slug billing, no insert on
   LLM failure, retry reuse, and no image-credit charge.
-- Database repair tests: corrupted system rows and explicitly selected
-  pre-provenance child variants change only through the correct path;
-  unselected user-authored rows do not; manual edits, approved portraits,
-  fingerprint mismatches, ambiguous source matches, legacy sentinel refs,
+- Database repair tests: every explicitly selected character/look row changes
+  only through the correct path; unselected user-authored rows do not;
+  automatic repair still protects manual edits, approved portraits, and
+  fingerprint mismatches; ambiguous source matches, legacy sentinel refs,
   rollback, and repeated repair are covered.
 - Admin proof: authenticated Skills search returns the exact new skill.
 - Provider proof: one configured LLM smoke run records a valid structured output,

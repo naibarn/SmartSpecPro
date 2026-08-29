@@ -1654,41 +1654,12 @@ function extractCharacterDescriptionForDisplay(
 function canRepairLegacyCharacterLook(
   data: Record<string, unknown> | null | undefined
 ): boolean {
-  // Pre-provenance variants created by the old generator have no `source`
-  // marker. They are still repairable when the row is a child look (the
-  // caller only invokes this predicate for variants) and has not been edited
-  // or approved by a user. The server re-checks this boundary and only allows
-  // the explicit per-row repair path for such legacy rows.
-  if (!data) return false;
-  if (data.userEditedAt || data.manualApproved) return false;
-  const provenance =
-    data.provenance &&
-    typeof data.provenance === "object" &&
-    !Array.isArray(data.provenance)
-      ? (data.provenance as Record<string, unknown>)
-      : null;
-  if (provenance?.userEditedAt || provenance?.manualApproved) return false;
-  if (looksLikeCharacterLookStoryLeak(data.description)) return true;
-  if (looksLikeCharacterLookStoryLeak(data.lookImageBrief)) return true;
-  if (Array.isArray(data.wardrobeRules)) {
-    if (data.wardrobeRules.some(looksLikeCharacterLookStoryLeak)) return true;
-  }
-  return !data.lookDesign || data.lookDesignContractVersion !== 1;
-}
-
-function canRedesignCharacterLook(
-  data: Record<string, unknown> | null | undefined
-): boolean {
-  if (!data || data.lookDesignContractVersion !== 1 || !data.lookDesign)
-    return false;
-  if (data.userEditedAt || data.manualApproved) return false;
-  const provenance =
-    data.provenance &&
-    typeof data.provenance === "object" &&
-    !Array.isArray(data.provenance)
-      ? (data.provenance as Record<string, unknown>)
-      : null;
-  return !provenance?.userEditedAt && !provenance?.manualApproved;
+  // The repair action is deliberately available for every persisted row. A
+  // click is an explicit request to let the skill reinterpret the complete
+  // record, including rows that already look standard or have old metadata.
+  // The server remains the authorization boundary for this user-triggered
+  // overwrite; automatic episode repair still protects manual rows.
+  return Boolean(data);
 }
 
 /**
@@ -5851,15 +5822,15 @@ export function VerticalDramaCharacterStockPanel({
                     }}
                     title={t(
                       lang,
-                      "แสดงลุคเก่าที่สามารถซ่อมรายละเอียดด้วย AI ได้",
-                      "Show legacy looks that can be repaired with AI"
+                      "แสดงตัวละครและลุคทั้งหมดที่สามารถส่งให้ AI จัดมาตรฐานใหม่ได้",
+                      "Show all characters and looks that can be standardized by AI"
                     )}
                   >
                     <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
                     {t(
                       lang,
-                      `ซ่อมลุคเก่าด้วย AI (${repairableLegacyLookCount})`,
-                      `Repair legacy looks with AI (${repairableLegacyLookCount})`
+                      `ส่งให้ AI จัดมาตรฐาน (${repairableLegacyLookCount})`,
+                      `Standardize with AI (${repairableLegacyLookCount})`
                     )}
                   </Button>
                 )}
@@ -6314,8 +6285,7 @@ export function VerticalDramaCharacterStockPanel({
                             </div>
 
                             {!readOnly &&
-                            (canRepairLegacyCharacterLook(c.data) ||
-                              canRedesignCharacterLook(c.data)) ? (
+                            canRepairLegacyCharacterLook(c.data) ? (
                               <Button
                                 type="button"
                                 size="sm"
@@ -6785,8 +6755,7 @@ export function VerticalDramaCharacterStockPanel({
                                         ) : null}
                                       </button>
                                       {!readOnly &&
-                                      (canRepairLegacyCharacterLook(v.data) ||
-                                        canRedesignCharacterLook(v.data)) ? (
+                                      canRepairLegacyCharacterLook(v.data) ? (
                                         <Button
                                           type="button"
                                           size="sm"

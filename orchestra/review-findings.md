@@ -147,7 +147,7 @@ Status: gap closed; explicit legacy repair path verified locally.
 
 ## Current Task Round 7 — Explicit repair for every character row
 
-Status: design simplified; implementation in progress on Debian.
+Status: complete; all-row explicit repair is active on Debian.
 
 - The repair action is now intentionally user-triggered for every character
   row, including primary characters and nested looks. It sends the complete
@@ -156,7 +156,7 @@ Status: design simplified; implementation in progress on Debian.
 - Existing identity, apparent-age, manual-edit, and approval protections remain
   active. Rows with no storyboard provenance use the legacy sentinel and never
   receive an invented shot reference.
-- A standard-contract row may be explicitly redesigned with
-  `จัดมาตรฐานใหม่ด้วย AI`; a legacy/incomplete row uses
-  `ซ่อมรายละเอียดด้วย AI`, making the action visible without misclassifying
-  already-standard data.
+- All rows use the same explicit LLM repair action; the previous distinction
+  between legacy and standard rows no longer hides the button. Automatic
+  episode repair remains non-destructive, while a user-selected repair may
+  intentionally replace derived visual fields.

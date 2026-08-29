@@ -539,7 +539,11 @@ async function discoverCandidates(
       });
       continue;
     }
-    if (hasUserEdit(data)) {
+    // Automatic backfill protects user-authored rows. The explicit UI action
+    // is the one intentional override: the owner asked the LLM to
+    // reinterpret this exact row, so it may replace derived visual fields
+    // while preserving the row identity and recording the repair provenance.
+    if (hasUserEdit(data) && !explicitLegacyRepair) {
       stats.skipped.push({
         rowId: row.id,
         characterKey: row.characterKey,
