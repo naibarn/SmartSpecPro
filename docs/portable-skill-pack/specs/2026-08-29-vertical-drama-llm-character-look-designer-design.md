@@ -299,15 +299,14 @@ text.
 
 Automatic backfill repairs only rows where `data.source=system_suggested_look`
 and the versioned visual contract is missing or the description contains the
-known story-leak marker. An explicit per-look user action may additionally
-repair a pre-provenance child variant when it has no manual edit/approval
-marker and lacks the standard visual contract. That path passes the old visual
-fields as `legacy_visual_context`, uses `legacyVisualOnly` with
-`shot_number=0`/`evidence_type=legacy_visual_context`, and records that no
-storyboard evidence was available; it must never invent a storyboard shot.
-Preserve the old derived text in repair audit metadata and leave edited or
-approved variants untouched. Rows with ambiguous age or identity evidence
-remain review-pending rather than being silently overwritten.
+known story-leak marker. The explicit UI action is available on every
+character row and child-look row; it sends the complete stored data to the
+skill even when the old row has no source marker or standard contract. Such a
+request uses `legacyVisualOnly` with a legacy source sentinel rather than
+inventing storyboard evidence. Preserve the old derived text in repair audit
+metadata and leave edited or approved rows untouched. Ambiguous age or
+identity evidence remains review-pending rather than being silently
+overwritten.
 
 User-edit protection is explicit: every materialized system row receives a
 `provenance.generatedFingerprint`, `provenance.designVersion`, and
@@ -317,8 +316,9 @@ User-edit protection is explicit: every materialized system row receives a
 identity lock, image brief, or assignment. Automatic repair may update only
 rows whose source is still `system_suggested_look`, whose generated fingerprint
 is unchanged, and whose portrait is not manually approved. The explicit
-pre-provenance action may update only an unedited child variant selected by the
-owner and records `legacyVisualOnly=true` when no source marker exists. Any
+pre-provenance action may update only an unedited character or child-look row
+selected by the owner and records `legacyVisualOnly=true` when no source marker
+exists. Any
 manual marker, fingerprint mismatch, explicit user approval, or unresolved
 age/identity evidence makes the row `review` and skips mutation. Each repair
 records before/after hashes, the reason, the matched source refs or legacy

@@ -1359,6 +1359,7 @@ async function resolvePipelineCharacterLooks(params: {
       ...(description ? { description } : {}),
       ...(wardrobeRules.length ? { wardrobeRules } : {}),
       ...(lookImageBrief ? { lookImageBrief } : {}),
+      rawData: data,
     };
   };
   const updateCharacterData = async (

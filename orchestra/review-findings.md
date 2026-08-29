@@ -120,8 +120,7 @@ Status: local Debian path verified; GCP intentionally deferred.
   is required for this path.
 - Atomic frontend build completed and the live bundle contains both
   `ซ่อมลุคเก่าด้วย AI` and per-row `ซ่อมด้วย AI` controls.
-- The Debian service was restarted successfully and `/healthz` returned HTTP
-  200. Authenticated browser rendering and live production rows remain an
+- The Debian service was restarted successfully and `/healthz` returned HTTP 200. Authenticated browser rendering and live production rows remain an
   external verification boundary.
 - The five-pass design review remains closed: legacy source context is sent to
   the LLM as repair input, final persisted text is visual-only, identity and
@@ -145,3 +144,19 @@ Status: gap closed; explicit legacy repair path verified locally.
   generic label is delegated to LLM intent inference instead of being hidden.
 - Regression proof: focused tests 40/40, skill verifier passed, atomic build
   completed, Debian service restarted, and `/healthz` returned HTTP 200.
+
+## Current Task Round 7 — Explicit repair for every character row
+
+Status: design simplified; implementation in progress on Debian.
+
+- The repair action is now intentionally user-triggered for every character
+  row, including primary characters and nested looks. It sends the complete
+  stored row data as labeled LLM context, so the skill—not a client-side
+  legacy-format heuristic—decides the visual transformation.
+- Existing identity, apparent-age, manual-edit, and approval protections remain
+  active. Rows with no storyboard provenance use the legacy sentinel and never
+  receive an invented shot reference.
+- A standard-contract row may be explicitly redesigned with
+  `จัดมาตรฐานใหม่ด้วย AI`; a legacy/incomplete row uses
+  `ซ่อมรายละเอียดด้วย AI`, making the action visible without misclassifying
+  already-standard data.

@@ -321,6 +321,7 @@ function repairRequest(
       ...(description ? { description } : {}),
       ...(wardrobeRules?.length ? { wardrobeRules } : {}),
       ...(lookImageBrief ? { lookImageBrief } : {}),
+      rawData: candidate.data,
     },
   };
 }
@@ -547,7 +548,13 @@ async function discoverCandidates(
       continue;
     }
     if (!isContaminated(data) && !options.forceRowIds?.has(row.id)) continue;
-    if (row.parentCharacterId == null || !rowsById.has(row.parentCharacterId)) {
+    const parent =
+      row.parentCharacterId == null
+        ? explicitLegacyRepair
+          ? row
+          : null
+        : (rowsById.get(row.parentCharacterId) ?? null);
+    if (!parent) {
       stats.skipped.push({
         rowId: row.id,
         characterKey: row.characterKey,
@@ -647,7 +654,7 @@ async function discoverCandidates(
     candidates.push({
       row,
       data,
-      parent: rowsById.get(row.parentCharacterId)!,
+      parent,
       episode: episodeMatch.episode,
       sourceShotNumbers: effectiveSourceShotNumbers,
       canonicalIntent: intent,

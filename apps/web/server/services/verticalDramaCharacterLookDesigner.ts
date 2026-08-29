@@ -416,6 +416,11 @@ function serializeLegacyVisualContext(
     ...(context.lookImageBrief
       ? { look_image_brief: clean(context.lookImageBrief, 1200) }
       : {}),
+    ...(context.rawData
+      ? {
+          raw_legacy_data_json: JSON.stringify(context.rawData).slice(0, 6000),
+        }
+      : {}),
   };
 }
 

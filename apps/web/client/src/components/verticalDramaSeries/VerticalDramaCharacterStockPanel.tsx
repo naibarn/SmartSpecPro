@@ -1676,6 +1676,21 @@ function canRepairLegacyCharacterLook(
   return !data.lookDesign || data.lookDesignContractVersion !== 1;
 }
 
+function canRedesignCharacterLook(
+  data: Record<string, unknown> | null | undefined
+): boolean {
+  if (!data || data.lookDesignContractVersion !== 1 || !data.lookDesign)
+    return false;
+  if (data.userEditedAt || data.manualApproved) return false;
+  const provenance =
+    data.provenance &&
+    typeof data.provenance === "object" &&
+    !Array.isArray(data.provenance)
+      ? (data.provenance as Record<string, unknown>)
+      : null;
+  return !provenance?.userEditedAt && !provenance?.manualApproved;
+}
+
 /**
  * Fallback source for the character description: the series bible's own
  * character roster (`bible.refinedCharacters`, falling back to
@@ -5304,10 +5319,8 @@ export function VerticalDramaCharacterStockPanel({
   );
   const repairableLegacyLookCount = useMemo(
     () =>
-      (characters as VdCharacterListItem[]).filter(
-        character =>
-          character.parentCharacterId != null &&
-          canRepairLegacyCharacterLook(character.data)
+      (characters as VdCharacterListItem[]).filter(character =>
+        canRepairLegacyCharacterLook(character.data)
       ).length,
     [characters]
   );
@@ -5319,10 +5332,12 @@ export function VerticalDramaCharacterStockPanel({
   const [isMergeReviewOpen, setIsMergeReviewOpen] = useState(false);
   const visibleRosterEntries = useMemo(() => {
     if (showOnlyLegacyLookRepairs) {
-      return rosterEntries.filter(entry =>
-        entry.variants.some(variant =>
-          canRepairLegacyCharacterLook(variant.data)
-        )
+      return rosterEntries.filter(
+        entry =>
+          canRepairLegacyCharacterLook(entry.character.data) ||
+          entry.variants.some(variant =>
+            canRepairLegacyCharacterLook(variant.data)
+          )
       );
     }
     return showOnlyNeedsSetup
@@ -6298,6 +6313,59 @@ export function VerticalDramaCharacterStockPanel({
                               </button>
                             </div>
 
+                            {!readOnly &&
+                            (canRepairLegacyCharacterLook(c.data) ||
+                              canRedesignCharacterLook(c.data)) ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="w-full gap-1.5 text-[11px]"
+                                disabled={repairLegacyLookMutation.isPending}
+                                aria-label={t(
+                                  lang,
+                                  `จัดมาตรฐานรายละเอียดของ ${c.name} ด้วย AI`,
+                                  `Standardize ${c.name}'s look details with AI`
+                                )}
+                                title={t(
+                                  lang,
+                                  "ส่งข้อมูลตัวละครทั้งหมดให้ LLM ออกแบบรายละเอียดภาพใหม่ โดยคงใบหน้า รูปร่าง และอายุเดิม",
+                                  "Send the complete character data to the LLM to redesign visual details while preserving face, body, and age"
+                                )}
+                                onClick={event => {
+                                  event.stopPropagation();
+                                  repairLegacyLookMutation.mutate({
+                                    seriesId,
+                                    characterId: c.characterId,
+                                  });
+                                }}
+                                data-testid={`vd-repair-character-${c.characterId}`}
+                              >
+                                {repairLegacyLookMutation.isPending &&
+                                repairLegacyLookMutation.variables
+                                  ?.characterId === c.characterId ? (
+                                  <Loader2
+                                    aria-hidden="true"
+                                    className="h-3 w-3 animate-spin"
+                                  />
+                                ) : (
+                                  <Sparkles
+                                    aria-hidden="true"
+                                    className="h-3 w-3"
+                                  />
+                                )}
+                                {t(
+                                  lang,
+                                  canRepairLegacyCharacterLook(c.data)
+                                    ? "ซ่อมรายละเอียดด้วย AI"
+                                    : "จัดมาตรฐานใหม่ด้วย AI",
+                                  canRepairLegacyCharacterLook(c.data)
+                                    ? "Repair details with AI"
+                                    : "Redesign with AI"
+                                )}
+                              </Button>
+                            ) : null}
+
                             {/* Phase E — variant chips: each row shares this
                           same person's identity but has its own portrait
                           (different outfit/age-stage look). Nested under the
@@ -6717,7 +6785,8 @@ export function VerticalDramaCharacterStockPanel({
                                         ) : null}
                                       </button>
                                       {!readOnly &&
-                                      canRepairLegacyCharacterLook(v.data) ? (
+                                      (canRepairLegacyCharacterLook(v.data) ||
+                                        canRedesignCharacterLook(v.data)) ? (
                                         <Button
                                           type="button"
                                           size="sm"
@@ -6733,8 +6802,12 @@ export function VerticalDramaCharacterStockPanel({
                                           )}
                                           title={t(
                                             lang,
-                                            "แปลงข้อความจากบทให้เป็นรายละเอียดเสื้อผ้า ผม รองเท้า และเครื่องประดับ โดยคงตัวละครเดิม",
-                                            "Convert episode evidence into outfit, hair, footwear, and accessory details while preserving the same character"
+                                            canRepairLegacyCharacterLook(v.data)
+                                              ? "แปลงข้อความจากบทให้เป็นรายละเอียดเสื้อผ้า ผม รองเท้า และเครื่องประดับ โดยคงตัวละครเดิม"
+                                              : "เรียก LLM ใหม่เพื่อจัดมาตรฐานชุด ผม รองเท้า และเครื่องประดับ โดยคงตัวละครเดิม",
+                                            canRepairLegacyCharacterLook(v.data)
+                                              ? "Convert episode evidence into outfit, hair, footwear, and accessory details while preserving the same character"
+                                              : "Ask the LLM to redesign the outfit, hair, footwear, and accessories while preserving the same character"
                                           )}
                                           onClick={event => {
                                             event.stopPropagation();
@@ -6760,8 +6833,12 @@ export function VerticalDramaCharacterStockPanel({
                                           )}
                                           {t(
                                             lang,
-                                            "ซ่อมด้วย AI",
-                                            "Repair with AI"
+                                            canRepairLegacyCharacterLook(v.data)
+                                              ? "ซ่อมด้วย AI"
+                                              : "จัดมาตรฐานใหม่ด้วย AI",
+                                            canRepairLegacyCharacterLook(v.data)
+                                              ? "Repair with AI"
+                                              : "Redesign with AI"
                                           )}
                                         </Button>
                                       ) : null}

@@ -1926,13 +1926,6 @@ export const verticalDramaCharactersRouter = router({
         seriesId,
         characterId
       );
-      if (character.parentCharacterId == null || !character.variantLabel) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "เลือกได้เฉพาะลุคย่อยที่สร้างจากตัวละครหลัก",
-        });
-      }
-
       const { backfillVerticalDramaCharacterLooks } =
         await import("../scripts/backfill-vertical-drama-character-looks");
       const result = await backfillVerticalDramaCharacterLooks({

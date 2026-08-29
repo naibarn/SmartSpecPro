@@ -85,6 +85,7 @@ export interface VerticalDramaCharacterLookSuggestion {
     description?: string;
     wardrobeRules?: string[];
     lookImageBrief?: string;
+    rawData?: Record<string, unknown>;
   };
 }
 
