@@ -5297,17 +5297,33 @@ export function VerticalDramaCharacterStockPanel({
     () => countCharactersNeedingSetup(characters as VdCharacterListItem[]),
     [characters]
   );
+  const repairableLegacyLookCount = useMemo(
+    () =>
+      (characters as VdCharacterListItem[]).filter(
+        character =>
+          character.parentCharacterId != null &&
+          canRepairLegacyCharacterLook(character.data)
+      ).length,
+    [characters]
+  );
+  const [showOnlyLegacyLookRepairs, setShowOnlyLegacyLookRepairs] =
+    useState(false);
   /** `vd-character-identity-repair` plan, Phase 3.4 — "รวมตัวละครซ้ำ" review
    *  dialog visibility. The dialog owns its own analyze/merge mutations;
    *  this panel only needs to know whether it's open. */
   const [isMergeReviewOpen, setIsMergeReviewOpen] = useState(false);
-  const visibleRosterEntries = useMemo(
-    () =>
-      showOnlyNeedsSetup
-        ? filterRosterEntriesNeedingSetup(rosterEntries)
-        : rosterEntries,
-    [showOnlyNeedsSetup, rosterEntries]
-  );
+  const visibleRosterEntries = useMemo(() => {
+    if (showOnlyLegacyLookRepairs) {
+      return rosterEntries.filter(entry =>
+        entry.variants.some(variant =>
+          canRepairLegacyCharacterLook(variant.data)
+        )
+      );
+    }
+    return showOnlyNeedsSetup
+      ? filterRosterEntriesNeedingSetup(rosterEntries)
+      : rosterEntries;
+  }, [rosterEntries, showOnlyLegacyLookRepairs, showOnlyNeedsSetup]);
   const effectiveSelectedId = useMemo(() => {
     if (
       selectedCharacterId &&
@@ -5799,6 +5815,31 @@ export function VerticalDramaCharacterStockPanel({
                       lang,
                       `เฉพาะที่ต้องตั้งค่า (${needsSetupCount})`,
                       `Needs setup only (${needsSetupCount})`
+                    )}
+                  </Button>
+                )}
+                {!readOnly && repairableLegacyLookCount > 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={showOnlyLegacyLookRepairs ? "default" : "outline"}
+                    className="gap-1.5 text-xs"
+                    aria-pressed={showOnlyLegacyLookRepairs}
+                    onClick={() => {
+                      setShowOnlyLegacyLookRepairs(value => !value);
+                      setShowOnlyNeedsSetup(false);
+                    }}
+                    title={t(
+                      lang,
+                      "แสดงลุคเก่าที่สามารถซ่อมรายละเอียดด้วย AI ได้",
+                      "Show legacy looks that can be repaired with AI"
+                    )}
+                  >
+                    <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+                    {t(
+                      lang,
+                      `ซ่อมลุคเก่าด้วย AI (${repairableLegacyLookCount})`,
+                      `Repair legacy looks with AI (${repairableLegacyLookCount})`
                     )}
                   </Button>
                 )}
