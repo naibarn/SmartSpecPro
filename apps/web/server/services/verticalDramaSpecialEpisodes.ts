@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { db } from "../db";
@@ -41,6 +42,7 @@ export async function assertSpecialTieInEnabled(tenantId: string): Promise<void>
 }
 
 function initialSpecialData(input: SpecialTieInInput, createIntentId: string): SpecialEpisodeData {
+  const inputFingerprint = crypto.createHash("sha256").update(JSON.stringify(input)).digest("hex");
   return {
     schemaVersion: 1,
     createIntentId,
@@ -52,7 +54,7 @@ function initialSpecialData(input: SpecialTieInInput, createIntentId: string): S
       skillId: "idea-to-video-prompt",
       status: "queued",
       idempotencyKey: specialEpisodeIdempotencyKey(createIntentId),
-      inputFingerprint: "pending",
+      inputFingerprint,
       attempt: 0,
     },
     referenceBindings: input.referenceImages.map((reference, index) => ({
@@ -92,16 +94,31 @@ export async function createSpecialTieInEpisode(input: {
   if (!/^[A-Za-z0-9_-]{8,128}$/.test(input.createIntentId)) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid create intent" });
   await assertSeriesAndCharacters(input.actor, input.seriesId, parsed);
   const data = initialSpecialData(parsed, input.createIntentId);
-  const created = await db.transaction(async tx => {
-    const [existing] = await tx.select({ id: verticalDramaEpisodes.id, episodeNumber: verticalDramaEpisodes.episodeNumber, specialSequence: verticalDramaEpisodes.specialSequence, specialData: verticalDramaEpisodes.specialData }).from(verticalDramaEpisodes).where(and(eq(verticalDramaEpisodes.tenantId, input.actor.tenantId), eq(verticalDramaEpisodes.userId, input.actor.userId), eq(verticalDramaEpisodes.seriesId, input.seriesId), sql`${verticalDramaEpisodes.episodeKind} = 'special_tie_in'`, sql`${verticalDramaEpisodes.specialData}->>'createIntentId' = ${input.createIntentId}`)).limit(1);
+  let created: Awaited<ReturnType<typeof allocateSpecialEpisode>> | undefined;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      created = await allocateSpecialEpisode(input, parsed, data);
+      break;
+    } catch (error) {
+      if ((error as { code?: string })?.code !== "23505" || attempt === 2) throw error;
+    }
+  }
+  if (!created) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not allocate special episode" });
+  /* Allocation is retried on the episode-number/special-sequence unique
+   * constraints. This keeps a concurrent normal episode or special create
+   * from leaking a counter increment into a failed user action. */
+  async function allocateSpecialEpisode(actorInput: typeof input, parsedInput: SpecialTieInInput, specialData: SpecialEpisodeData) {
+    return db.transaction(async tx => {
+    const [existing] = await tx.select({ id: verticalDramaEpisodes.id, episodeNumber: verticalDramaEpisodes.episodeNumber, specialSequence: verticalDramaEpisodes.specialSequence, specialData: verticalDramaEpisodes.specialData }).from(verticalDramaEpisodes).where(and(eq(verticalDramaEpisodes.tenantId, actorInput.actor.tenantId), eq(verticalDramaEpisodes.userId, actorInput.actor.userId), eq(verticalDramaEpisodes.seriesId, actorInput.seriesId), sql`${verticalDramaEpisodes.episodeKind} = 'special_tie_in'`, sql`${verticalDramaEpisodes.specialData}->>'createIntentId' = ${actorInput.createIntentId}`)).limit(1);
     if (existing) return { row: existing, deduped: true };
-    const [counter] = await tx.insert(verticalDramaSpecialSequenceCounters).values({ tenantId: input.actor.tenantId, userId: input.actor.userId, seriesId: input.seriesId, nextSequence: 2 }).onConflictDoUpdate({ target: [verticalDramaSpecialSequenceCounters.tenantId, verticalDramaSpecialSequenceCounters.seriesId], set: { nextSequence: sql`${verticalDramaSpecialSequenceCounters.nextSequence} + 1`, updatedAt: new Date() } }).returning({ nextSequence: verticalDramaSpecialSequenceCounters.nextSequence });
+    const [counter] = await tx.insert(verticalDramaSpecialSequenceCounters).values({ tenantId: actorInput.actor.tenantId, userId: actorInput.actor.userId, seriesId: actorInput.seriesId, nextSequence: 2 }).onConflictDoUpdate({ target: [verticalDramaSpecialSequenceCounters.tenantId, verticalDramaSpecialSequenceCounters.seriesId], set: { nextSequence: sql`${verticalDramaSpecialSequenceCounters.nextSequence} + 1`, updatedAt: new Date() } }).returning({ nextSequence: verticalDramaSpecialSequenceCounters.nextSequence });
     const specialSequence = Math.max(1, Number(counter?.nextSequence ?? 2) - 1);
-    const [max] = await tx.select({ value: sql<number>`coalesce(max(${verticalDramaEpisodes.episodeNumber}), 0)` }).from(verticalDramaEpisodes).where(and(eq(verticalDramaEpisodes.tenantId, input.actor.tenantId), eq(verticalDramaEpisodes.seriesId, input.seriesId)));
-    const [row] = await tx.insert(verticalDramaEpisodes).values({ tenantId: input.actor.tenantId, userId: input.actor.userId, seriesId: input.seriesId, episodeKind: "special_tie_in", episodeNumber: Number(max?.value ?? 0) + 1, specialSequence, specialData: data, title: `SPECIAL ${String(specialSequence).padStart(2, "0")}`, status: "draft", targetDurationSeconds: parsed.durationSeconds, durationProfileId: `vertical_drama_special_${parsed.durationSeconds}s_variable_shots` }).returning({ id: verticalDramaEpisodes.id, episodeNumber: verticalDramaEpisodes.episodeNumber, specialSequence: verticalDramaEpisodes.specialSequence, specialData: verticalDramaEpisodes.specialData });
+    const [max] = await tx.select({ value: sql<number>`coalesce(max(${verticalDramaEpisodes.episodeNumber}), 0)` }).from(verticalDramaEpisodes).where(and(eq(verticalDramaEpisodes.tenantId, actorInput.actor.tenantId), eq(verticalDramaEpisodes.seriesId, actorInput.seriesId)));
+    const [row] = await tx.insert(verticalDramaEpisodes).values({ tenantId: actorInput.actor.tenantId, userId: actorInput.actor.userId, seriesId: actorInput.seriesId, episodeKind: "special_tie_in", episodeNumber: Number(max?.value ?? 0) + 1, specialSequence, specialData, title: `SPECIAL ${String(specialSequence).padStart(2, "0")}`, status: "draft", targetDurationSeconds: parsedInput.durationSeconds, durationProfileId: `vertical_drama_special_${parsedInput.durationSeconds}s_variable_shots` }).returning({ id: verticalDramaEpisodes.id, episodeNumber: verticalDramaEpisodes.episodeNumber, specialSequence: verticalDramaEpisodes.specialSequence, specialData: verticalDramaEpisodes.specialData });
     if (!row) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not create special episode" });
-    return { row: { ...row, specialData: data }, deduped: false };
-  });
+    return { row: { ...row, specialData: specialData }, deduped: false };
+    });
+  }
   if (created.deduped) {
     const existingData = (created.row.specialData ?? {}) as Partial<SpecialEpisodeData>;
     const job = existingData.skillRun?.status === "queued" || existingData.skillRun?.status === "running"

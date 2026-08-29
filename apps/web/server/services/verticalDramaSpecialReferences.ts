@@ -71,7 +71,10 @@ export async function reconcileSpecialLocationSlot(input: {
   const [location] = await db.insert(verticalDramaLocations).values({ tenantId: input.actor.tenantId, userId: input.actor.userId, seriesId: input.seriesId, locationKey, name: input.label.trim().slice(0, 255), data: { source: "special_tie_in", referenceType: input.referenceType, fingerprint } }).onConflictDoUpdate({ target: [verticalDramaLocations.seriesId, verticalDramaLocations.locationKey], set: { updatedAt: new Date() } }).returning({ id: verticalDramaLocations.id, locationKey: verticalDramaLocations.locationKey });
   if (!location) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not create Scenes slot" });
   for (const mediaAssetId of input.mediaAssetIds) {
-    await db.insert(verticalDramaLocationAssets).values({ tenantId: input.actor.tenantId, userId: input.actor.userId, seriesId: input.seriesId, locationId: location.id, mediaAssetId: Number(mediaAssetId), assetType: "location_reference", role: "establishing_plate", approved: false, qcStatus: "pending", metadata: { source: "special_tie_in", fingerprint } }).onConflictDoNothing();
+    const [existingAsset] = await db.select({ id: verticalDramaLocationAssets.id }).from(verticalDramaLocationAssets).where(and(eq(verticalDramaLocationAssets.tenantId, input.actor.tenantId), eq(verticalDramaLocationAssets.userId, input.actor.userId), eq(verticalDramaLocationAssets.seriesId, input.seriesId), eq(verticalDramaLocationAssets.locationId, location.id), eq(verticalDramaLocationAssets.mediaAssetId, Number(mediaAssetId)), eq(verticalDramaLocationAssets.assetType, "location_reference"))).limit(1);
+    if (!existingAsset) {
+      await db.insert(verticalDramaLocationAssets).values({ tenantId: input.actor.tenantId, userId: input.actor.userId, seriesId: input.seriesId, locationId: location.id, mediaAssetId: Number(mediaAssetId), assetType: "location_reference", role: "establishing_plate", approved: false, qcStatus: "pending", metadata: { source: "special_tie_in", fingerprint } });
+    }
   }
   return { locationId: Number(location.id), locationKey: location.locationKey };
 }

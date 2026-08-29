@@ -121,6 +121,10 @@ export async function generateSpecialSkillOutput(input: {
         ? await input.execute({ ...prompts, model, schema: specialSkillOutputSchema })
         : (await executeJsonPlanningCallWithRetry({ model, ...prompts, temperature: 0.45, userId: input.actor.userId, maxTokens: 8_000, schema: specialSkillOutputSchema, label: "special tie-in idea-to-video-prompt" })).data;
       const output = validateSpecialSkillOutput(candidate);
+      const knownReferenceIds = new Set(resolved.map(binding => binding.skillReferenceId));
+      if (output.shots.some(shot => shot.reference_ids.some(referenceId => !knownReferenceIds.has(referenceId)))) {
+        throw new Error("SPECIAL_OUTPUT_INVALID: output referenced an unknown asset");
+      }
       if (output.shot_duration_seconds !== parsed.durationSeconds) throw new Error("SPECIAL_OUTPUT_INVALID: duration mismatch");
       if (output.aspect_ratio !== "9:16") throw new Error("SPECIAL_OUTPUT_INVALID: aspect ratio mismatch");
       return output;
@@ -142,13 +146,22 @@ export async function executeSpecialTieInSkill(payload: VerticalDramaInteractive
   if (!row || row.episodeKind !== "special_tie_in") throw new Error("SPECIAL_REFERENCE_UNAUTHORIZED: special episode not found");
   const specialData = row.specialData as SpecialEpisodeData;
   if (!specialData || specialData.inputVersion !== raw.inputVersion) return { shotCount: 0, outputVersion: specialData?.outputVersion ?? 0, promptReady: false };
-  const output = await generateSpecialSkillOutput({ actor: { tenantId: payload.tenantId, userId: payload.userId }, seriesId: raw.seriesId, specialData, bindings: specialData.referenceBindings });
+  const attempt = specialData.skillRun.attempt + 1;
+  const startedAt = new Date().toISOString();
+  await db.update(verticalDramaEpisodes).set({ specialData: { ...specialData, skillRun: { ...specialData.skillRun, status: "running", attempt, startedAt, errorCode: undefined, errorMessage: undefined } }, updatedAt: new Date() }).where(and(eq(verticalDramaEpisodes.id, raw.episodeId), eq(verticalDramaEpisodes.tenantId, payload.tenantId), eq(verticalDramaEpisodes.userId, payload.userId), sql`${verticalDramaEpisodes.specialData}->>'createIntentId' = ${specialData.createIntentId}`, sql`${verticalDramaEpisodes.specialData}->>'inputVersion' = ${String(raw.inputVersion)}`));
+  let output: SpecialSkillOutput;
+  try {
+    output = await generateSpecialSkillOutput({ actor: { tenantId: payload.tenantId, userId: payload.userId }, seriesId: raw.seriesId, specialData, bindings: specialData.referenceBindings });
+  } catch (error) {
+    await db.update(verticalDramaEpisodes).set({ specialData: { ...specialData, skillRun: { ...specialData.skillRun, status: "failed", attempt, startedAt, completedAt: new Date().toISOString(), errorCode: "SPECIAL_SKILL_FAILED", errorMessage: error instanceof Error ? error.message.slice(0, 1000) : "Special skill failed" } }, updatedAt: new Date() }).where(and(eq(verticalDramaEpisodes.id, raw.episodeId), eq(verticalDramaEpisodes.tenantId, payload.tenantId), eq(verticalDramaEpisodes.userId, payload.userId), sql`${verticalDramaEpisodes.specialData}->>'createIntentId' = ${specialData.createIntentId}`, sql`${verticalDramaEpisodes.specialData}->>'inputVersion' = ${String(raw.inputVersion)}`));
+    throw error;
+  }
   const nextOutputVersion = specialData.outputVersion + 1;
   const personBindings = await resolveSpecialCharacterBindings({ actor: { tenantId: payload.tenantId, userId: payload.userId }, seriesId: raw.seriesId, characterIds: specialData.input.characterIds });
   const productReferenceAssetIds = specialData.referenceBindings.map(binding => binding.mediaAssetId);
   const startFramePlan = { mode: "single_frame_per_shot", selectedImageModelId: specialData.input.imageModelId, aspectRatio: "9:16", frames: output.shots.map(shot => ({ shotNumber: shot.shot_number, imagePrompt: shot.image_prompt, negativePrompt: "", requiredCharacterRefs: personBindings.map(binding => String(binding.provenance.characterKey ?? binding.skillReferenceId)), productReferenceAssetIds, referenceAssetIds: shot.reference_ids })) };
   const motionPromptPack = { selectedVideoModelId: specialData.input.videoModelId, durationProfileId: `vertical_drama_special_${output.shot_duration_seconds}s_variable_shots`, motionMode: "image_to_video", aspectRatio: "9:16", clips: output.shots.map(shot => ({ clipNumber: shot.shot_number, sourceShotNumbers: [shot.shot_number], prompt: shot.video_prompt, durationSeconds: output.shot_duration_seconds, referenceIds: shot.reference_ids })) };
-  const nextData: SpecialEpisodeData = { ...specialData, outputVersion: nextOutputVersion, skillRun: { ...specialData.skillRun, status: output.status === "needs_clarification" ? "needs_clarification" : "succeeded", attempt: specialData.skillRun.attempt + 1, completedAt: new Date().toISOString(), errorCode: undefined, errorMessage: undefined }, output: { shotCount: output.shot_count, assumptions: output.assumptions } };
+  const nextData: SpecialEpisodeData = { ...specialData, outputVersion: nextOutputVersion, skillRun: { ...specialData.skillRun, status: output.status === "needs_clarification" ? "needs_clarification" : "succeeded", attempt, startedAt, completedAt: new Date().toISOString(), errorCode: undefined, errorMessage: undefined }, output: { shotCount: output.shot_count, assumptions: output.assumptions } };
   const updated = await db.update(verticalDramaEpisodes).set({ specialData: nextData, startFramePlan, motionPromptPack, updatedAt: new Date() }).where(and(eq(verticalDramaEpisodes.id, raw.episodeId), eq(verticalDramaEpisodes.tenantId, payload.tenantId), eq(verticalDramaEpisodes.userId, payload.userId), sql`${verticalDramaEpisodes.specialData}->>'createIntentId' = ${specialData.createIntentId}`, sql`${verticalDramaEpisodes.specialData}->>'inputVersion' = ${String(raw.inputVersion)}`)).returning({ id: verticalDramaEpisodes.id });
   if (!updated.length) return { shotCount: 0, outputVersion: specialData.outputVersion, promptReady: false };
   return { shotCount: output.shot_count, outputVersion: nextOutputVersion, promptReady: output.status !== "needs_clarification" };
