@@ -23,19 +23,19 @@
     },
     "section-02-special-creation-jobs": {
       "status": "complete",
-      "commit_hash": "HEAD"
+      "commit_hash": "58cd47297"
     },
     "section-03-marketplace-managed-references": {
       "status": "complete",
-      "commit_hash": "HEAD"
+      "commit_hash": "89dd3faa1"
     },
     "section-04-skill-adapter-prompts": {
       "status": "complete",
-      "commit_hash": "HEAD"
+      "commit_hash": "1b8aa49ad"
     },
     "section-05-api-model-isolation": {
       "status": "complete",
-      "commit_hash": "HEAD"
+      "commit_hash": "e6c37e281"
     },
     "section-06-special-dialog-ui.md": {
       "status": "complete",
