@@ -1,0 +1,58 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-plan",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/docs/portable-skill-pack/specs/2026-08-29-vertical-drama-special-tie-in-episode-planning/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/docs/portable-skill-pack/specs/2026-08-29-vertical-drama-special-tie-in-episode-planning/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contract-migration",
+    "section-02-special-creation-jobs",
+    "section-03-marketplace-managed-references",
+    "section-04-skill-adapter-prompts",
+    "section-05-api-model-isolation",
+    "section-06-special-dialog-ui",
+    "section-07-episode-storyboard-ops",
+    "section-08-integration-gap-verification"
+  ],
+  "sections_state": {
+    "section-01-contract-migration": {
+      "status": "complete",
+      "commit_hash": "e64b890fc"
+    },
+    "section-02-special-creation-jobs": {
+      "status": "complete",
+      "commit_hash": "HEAD"
+    },
+    "section-03-marketplace-managed-references": {
+      "status": "complete",
+      "commit_hash": "HEAD"
+    },
+    "section-04-skill-adapter-prompts": {
+      "status": "complete",
+      "commit_hash": "HEAD"
+    },
+    "section-05-api-model-isolation": {
+      "status": "complete",
+      "commit_hash": "HEAD"
+    },
+    "section-06-special-dialog-ui.md": {
+      "status": "complete",
+      "commit_hash": "4124c8ae5"
+    },
+    "section-07-episode-storyboard-ops.md": {
+      "status": "complete",
+      "commit_hash": "4124c8ae5"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-29T08:40:26.479191+00:00"
+}

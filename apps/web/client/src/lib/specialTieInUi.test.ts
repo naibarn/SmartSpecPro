@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { canAddSpecialReferences, specialEpisodeLabel, toggleBoundedSelection } from "./specialTieInUi";
+import {
+  canAddSpecialReferences,
+  specialEpisodeLabel,
+  toggleBoundedSelection,
+} from "./specialTieInUi";
 
 describe("special tie-in UI constraints", () => {
   it("enforces the aggregate three-reference cap", () => {
