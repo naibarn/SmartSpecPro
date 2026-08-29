@@ -1,0 +1,23 @@
+{
+  "contract_version": 1,
+  "designs": [{
+    "request_key": "mali::outfit::home",
+    "review_required": false,
+    "look_design": {
+      "look_label": "ลุคอยู่บ้าน",
+      "variant_type": "outfit",
+      "confidence": 0.8,
+      "outfit": {"top": "เสื้อแขนสั้น", "bottom": "กางเกงผ้านุ่ม", "outerwear": "ไม่มี", "materials": ["ผ้าฝ้าย"], "colors": ["ครีม"], "fit": "หลวมสบาย", "condition": "เรียบร้อย", "silhouette": "ลำลอง"},
+      "hair": {"style": "ผมยาวเดิม", "arrangement": "ปล่อยธรรมชาติ", "finish": "สะอาด", "identity_preservation": "คงผมเดิม"},
+      "makeup": {"level": "น้อย", "complexion": "ธรรมชาติ", "eyes": "ไม่เน้น", "lips": "สีธรรมชาติ", "age_safety": "เหมาะสม"},
+      "footwear": {"type": "รองเท้าแตะในบ้าน", "material": "ผ้า", "color": "เบจ", "formality": "casual", "scene_suitability": "เหมาะกับบ้าน"},
+      "accessories": [],
+      "palette": ["ครีม"],
+      "continuity_notes": ["คงใบหน้าเดิม"],
+      "negative_constraints": ["ไม่มีชุดราตรี"],
+      "identity_lock": "คงใบหน้าและรูปร่างเดิม",
+      "quality_checks": {"same_person_preserved": true, "age_appropriate": true, "scene_coherent": true, "wardrobe_complete": true, "story_evidence_separated": true}
+    },
+    "evidence_refs": [{"shot_number": 1, "evidence_span": "อยู่บ้าน"}]
+  }]
+}

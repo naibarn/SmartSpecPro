@@ -5,9 +5,11 @@ export interface VerticalDramaCharacterLookCatalogEntry {
   parentCharacterKey?: string;
   variantLabel?: string;
   variantType?: "outfit" | "age_stage";
+  ageStage?: VerticalDramaCharacterAgeStage;
   description?: string;
   wardrobeRules?: string[];
   hasPortrait?: boolean;
+  lookDesignStatus?: "waiting_for_look_design" | "ready" | "review";
 }
 
 export interface VerticalDramaLookSelectionShot {
@@ -27,6 +29,7 @@ export type VerticalDramaCharacterLookAssignmentMode =
 
 export type VerticalDramaCharacterLookAssignmentStatus =
   | "ready"
+  | "waiting_for_look_design"
   | "waiting_for_portrait"
   | "review";
 
@@ -38,18 +41,24 @@ export interface VerticalDramaCharacterLookAssignment {
   status: VerticalDramaCharacterLookAssignmentStatus;
   canonicalIntent?: string;
   requestedLabel?: string;
+  requestedRequestKey?: string;
   imageBrief?: string;
   reason: string;
   confidence: number;
 }
 
 export interface VerticalDramaCharacterLookSelectionResult {
-  assignmentsByShotNumber: Map<
-    number,
-    VerticalDramaCharacterLookAssignment[]
-  >;
+  assignmentsByShotNumber: Map<number, VerticalDramaCharacterLookAssignment[]>;
   characterKeysByShotNumber: Map<number, string[]>;
   suggestions: VerticalDramaCharacterLookSuggestion[];
+}
+
+export interface VerticalDramaCharacterLookDesignEvidence {
+  shotNumber: number;
+  text: string;
+  sceneKey?: string;
+  locationKey?: string;
+  timeKey?: string;
 }
 
 export interface VerticalDramaCharacterLookSuggestion {
@@ -57,9 +66,10 @@ export interface VerticalDramaCharacterLookSuggestion {
   parentCharacterKey: string;
   variantLabel: string;
   variantType: "outfit" | "age_stage";
+  ageStage?: VerticalDramaCharacterAgeStage;
   canonicalIntent: string;
-  description: string;
-  imageBrief: string;
+  requestKey: string;
+  evidence: VerticalDramaCharacterLookDesignEvidence[];
   sourceShotNumbers: number[];
 }
 
@@ -95,14 +105,53 @@ type LookIntent = {
   key: string;
   label: string;
   variantType: "outfit" | "age_stage";
+  ageStage?: VerticalDramaCharacterAgeStage;
   phrases: readonly string[];
 };
+
+/** Canonical life-stage signal passed to the LLM for age-stage looks. */
+export type VerticalDramaCharacterAgeStage =
+  | "infant"
+  | "early_childhood"
+  | "school_age"
+  | "university_student"
+  | "adult"
+  | "older_adult";
+
+/**
+ * Legacy look rows sometimes stored the episode/story explanation in a
+ * visual field. Keep this detector deliberately narrow: it is only a safety
+ * signal for hiding/repairing known contaminated text, never an attempt to
+ * infer wardrobe from prose in the client.
+ */
+export function looksLikeCharacterLookStoryLeak(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  const text = value.trim();
+  if (!text) return false;
+  return /story\s*evidence|source\s*(shot|context)|หลักฐานจากเรื่อง|ฉากที่\s*\d+|เหตุการณ์ในตอน|ในตอนนี้|episode\s*\d+/i.test(
+    text
+  );
+}
+
+export function isVerticalDramaCharacterAgeStage(
+  value: unknown
+): value is VerticalDramaCharacterAgeStage {
+  return [
+    "infant",
+    "early_childhood",
+    "school_age",
+    "university_student",
+    "adult",
+    "older_adult",
+  ].includes(value as VerticalDramaCharacterAgeStage);
+}
 
 const LOOK_INTENTS: readonly LookIntent[] = [
   {
     key: "newborn",
     label: "วัยทารกแรกเกิด",
     variantType: "age_stage",
+    ageStage: "infant",
     phrases: [
       "เด็กทารก",
       "ทารก",
@@ -115,6 +164,88 @@ const LOOK_INTENTS: readonly LookIntent[] = [
       "newborn",
       "infant",
       "baby",
+    ],
+  },
+  {
+    key: "early_childhood",
+    label: "วัยเด็กเล็ก",
+    variantType: "age_stage",
+    ageStage: "early_childhood",
+    phrases: [
+      "วัยเด็กเล็ก",
+      "เด็กเล็ก",
+      "เด็กก่อนวัยเรียน",
+      "วัยอนุบาล",
+      "เด็กอนุบาล",
+      "เด็กหัดเดิน",
+      "toddler",
+      "preschool",
+      "kindergarten",
+      "early childhood",
+    ],
+  },
+  {
+    key: "school_age",
+    label: "วัยเด็กมัธยม",
+    variantType: "age_stage",
+    ageStage: "school_age",
+    phrases: [
+      "วัยเด็กมัธยม",
+      "วัยมัธยม",
+      "เด็กมัธยม",
+      "นักเรียนมัธยม",
+      "มัธยมต้น",
+      "มัธยมปลาย",
+      "วัยรุ่น",
+      "teenager",
+      "adolescent",
+      "high school",
+      "secondary school",
+    ],
+  },
+  {
+    key: "university_student",
+    label: "วัยนักศึกษา",
+    variantType: "age_stage",
+    ageStage: "university_student",
+    phrases: [
+      "วัยนักศึกษา",
+      "นักศึกษา",
+      "วัยมหาวิทยาลัย",
+      "มหาวิทยาลัย",
+      "university student",
+      "college student",
+      "university age",
+    ],
+  },
+  {
+    key: "adult",
+    label: "วัยผู้ใหญ่",
+    variantType: "age_stage",
+    ageStage: "adult",
+    phrases: [
+      "วัยผู้ใหญ่",
+      "ผู้ใหญ่",
+      "วัยทำงาน",
+      "ผู้ใหญ่วัยทำงาน",
+      "adult",
+      "working age",
+    ],
+  },
+  {
+    key: "older_adult",
+    label: "วัยชรา",
+    variantType: "age_stage",
+    ageStage: "older_adult",
+    phrases: [
+      "วัยชรา",
+      "ผู้สูงวัย",
+      "ผู้สูงอายุ",
+      "คนชรา",
+      "วัยเกษียณ",
+      "elderly",
+      "older adult",
+      "senior",
     ],
   },
   {
@@ -222,7 +353,9 @@ function readableText(value: string | undefined): string {
 function findIntentMatches(text: string): LookIntent[] {
   const normalized = normalizeLookText(text);
   return LOOK_INTENTS.filter(intent =>
-    intent.phrases.some(phrase => normalized.includes(normalizeLookText(phrase)))
+    intent.phrases.some(phrase =>
+      normalized.includes(normalizeLookText(phrase))
+    )
   );
 }
 
@@ -235,7 +368,9 @@ function findConflictingIntents(text: string): LookIntent[] {
   const ageStageMatches = matches.filter(
     intent => intent.variantType === "age_stage"
   );
-  const outfitMatches = matches.filter(intent => intent.variantType === "outfit");
+  const outfitMatches = matches.filter(
+    intent => intent.variantType === "outfit"
+  );
   const incompatibleAgeAndOutfit =
     ageStageMatches.some(intent => intent.key === "newborn") &&
     outfitMatches.some(intent =>
@@ -280,13 +415,25 @@ const TEXT_TIME_BUCKETS = [
   { key: "morning", phrases: ["ตอนเช้า", "ยามเช้า", "รุ่งเช้า", "morning"] },
   { key: "day", phrases: ["ตอนกลางวัน", "ช่วงกลางวัน", "กลางวัน", "daytime"] },
   { key: "evening", phrases: ["ตอนเย็น", "ยามเย็น", "ช่วงเย็น", "evening"] },
-  { key: "night", phrases: ["ตอนกลางคืน", "กลางคืน", "ยามค่ำ", "ค่ำคืน", "at night", "nighttime"] },
+  {
+    key: "night",
+    phrases: [
+      "ตอนกลางคืน",
+      "กลางคืน",
+      "ยามค่ำ",
+      "ค่ำคืน",
+      "at night",
+      "nighttime",
+    ],
+  },
 ] as const;
 
 function findTextTimeBucket(text: string): string | undefined {
   const normalized = normalizeLookText(text);
   return TEXT_TIME_BUCKETS.find(bucket =>
-    bucket.phrases.some(phrase => normalized.includes(normalizeLookText(phrase)))
+    bucket.phrases.some(phrase =>
+      normalized.includes(normalizeLookText(phrase))
+    )
   )?.key;
 }
 
@@ -324,11 +471,7 @@ function resolveShotIntent(text: string): {
 }
 
 function catalogText(entry: VerticalDramaCharacterLookCatalogEntry): string {
-  return [
-    entry.variantLabel,
-    entry.description,
-    ...(entry.wardrobeRules ?? []),
-  ]
+  return [entry.variantLabel, entry.description, ...(entry.wardrobeRules ?? [])]
     .map(readableText)
     .filter(Boolean)
     .join(" ");
@@ -337,7 +480,23 @@ function catalogText(entry: VerticalDramaCharacterLookCatalogEntry): string {
 function intentForEntry(
   entry: VerticalDramaCharacterLookCatalogEntry
 ): LookIntent | undefined {
-  return findIntent(catalogText(entry));
+  if (entry.ageStage) {
+    const structuredAgeIntent = LOOK_INTENTS.find(
+      intent => intent.ageStage === entry.ageStage
+    );
+    if (structuredAgeIntent) return structuredAgeIntent;
+  }
+  // A base character's description is identity/narrative evidence, not a
+  // durable wardrobe label. Reading it as an intent can make story prose
+  // masquerade as an already-existing look. Variant rows may use their own
+  // visual description because that description belongs to the look slot.
+  const text = entry.parentCharacterKey
+    ? catalogText(entry)
+    : [entry.variantLabel, ...(entry.wardrobeRules ?? [])]
+        .map(readableText)
+        .filter(Boolean)
+        .join(" ");
+  return findIntent(text);
 }
 
 function getFamilyKey(entry: VerticalDramaCharacterLookCatalogEntry): string {
@@ -348,42 +507,15 @@ function uniqueStrings(values: readonly string[]): string[] {
   return Array.from(new Set(values.map(value => value.trim()).filter(Boolean)));
 }
 
-function canonicalDescription(
+function buildLookRequestKey(
+  familyKey: string,
   intent: LookIntent,
-  shotText: string,
-  base: VerticalDramaCharacterLookCatalogEntry
+  shot: VerticalDramaLookSelectionShot
 ): string {
-  const identity = readableText(base.description) || readableText(base.name);
-  const context = readableText(shotText).slice(0, 700);
-  if (intent.key === "newborn") {
-    return `${identity}; same character identity represented as a newborn/infant, with age-appropriate proportions and safe neutral baby clothing, suitable for a reusable character reference portrait. Story evidence: ${context}`;
-  }
-  return `${identity}; ${intent.label}, age and identity unchanged, with clothing and styling appropriate to the requested context. Story evidence: ${context}`;
-}
-
-/**
- * Expand a short story cue into a reusable image brief. This is intentionally
- * deterministic and free: the subsequent character-image flow can still use
- * its own prompt skill, but it now receives enough concrete facts to avoid
- * inventing an unrelated wardrobe from a one-line label.
- */
-export function buildVerticalDramaCharacterLookImageBrief(params: {
-  base: VerticalDramaCharacterLookCatalogEntry;
-  intent: string;
-  label: string;
-  shotText: string;
-}): string {
-  const identity = readableText(params.base.description) || params.base.name;
-  const context = readableText(params.shotText).slice(0, 700);
-  return normalizeVerticalDramaCharacterLookImageBrief([
-    `Reusable character reference portrait for ${params.base.name}.`,
-    `Preserve the same person's identity, face structure, signature hair and defining features from the base character facts: ${identity}.`,
-    `Required look: ${params.label} (canonical intent: ${params.intent}).`,
-    `Design the complete age-appropriate wardrobe: garment pieces, material, fit, color palette, footwear or safe accessories, hair and makeup/styling. Keep the requested look clearly readable and internally consistent.`,
-    `Use a clean portrait-oriented composition with the full upper body visible, neutral studio-like background, flattering soft light, realistic anatomy, natural skin texture, and no text, watermark, logos, extra people, or distracting props.`,
-    `Do not change the person's identity except for the requested age-stage or wardrobe change. Do not merge this look with another look.`,
-    `Source shot context (use only to explain the requested look): ${context}`,
-  ].join(" ")) ?? "";
+  const context = [shot.sceneKey, shot.locationKey, shot.timeKey]
+    .map(value => normalizeLookText(value ?? "") || "unknown")
+    .join("|");
+  return `${familyKey}::${intent.variantType}::${normalizeLookText(intent.key)}::${context}`;
 }
 
 function scoreCandidate(params: {
@@ -408,6 +540,16 @@ function scoreCandidate(params: {
   return score;
 }
 
+function statusForLookEntry(
+  entry: VerticalDramaCharacterLookCatalogEntry
+): VerticalDramaCharacterLookAssignmentStatus {
+  if (entry.lookDesignStatus === "waiting_for_look_design") {
+    return "waiting_for_look_design";
+  }
+  if (entry.lookDesignStatus === "review") return "review";
+  return entry.hasPortrait === false ? "waiting_for_portrait" : "ready";
+}
+
 /**
  * Select looks in shot order. It deliberately returns a proposal instead of
  * throwing for a missing/ambiguous look; the caller can materialize the
@@ -421,7 +563,10 @@ export function selectVerticalDramaCharacterLooks(params: {
   const catalogByKey = new Map(
     params.catalog.map(entry => [entry.characterKey, entry])
   );
-  const familyEntries = new Map<string, VerticalDramaCharacterLookCatalogEntry[]>();
+  const familyEntries = new Map<
+    string,
+    VerticalDramaCharacterLookCatalogEntry[]
+  >();
   for (const entry of params.catalog) {
     const family = getFamilyKey(entry);
     const list = familyEntries.get(family) ?? [];
@@ -434,11 +579,16 @@ export function selectVerticalDramaCharacterLooks(params: {
     VerticalDramaCharacterLookAssignment[]
   >();
   const characterKeysByShotNumber = new Map<number, string[]>();
-  const suggestionsByIdentity = new Map<string, VerticalDramaCharacterLookSuggestion>();
+  const suggestionsByIdentity = new Map<
+    string,
+    VerticalDramaCharacterLookSuggestion
+  >();
   const recentByFamily = new Map<string, string[]>();
   const priorShot = new Map<string, VerticalDramaLookSelectionShot>();
 
-  for (const shot of [...params.shots].sort((a, b) => a.shotNumber - b.shotNumber)) {
+  for (const shot of [...params.shots].sort(
+    (a, b) => a.shotNumber - b.shotNumber
+  )) {
     const manual = params.manualShotNumbers?.has(shot.shotNumber) === true;
     const assignments: VerticalDramaCharacterLookAssignment[] = [];
     const nextKeys: string[] = [];
@@ -454,15 +604,14 @@ export function selectVerticalDramaCharacterLooks(params: {
       if (currentFamilies.has(familyKey)) continue;
       currentFamilies.add(familyKey);
       const family = familyEntries.get(familyKey) ?? [currentEntry];
-      const base = family.find(entry => !entry.parentCharacterKey) ?? currentEntry;
       const { intent, conflicts } = resolveShotIntent(shot.text);
       const prior = priorShot.get(familyKey);
       const transition = Boolean(
         prior &&
-          (prior.sceneKey !== shot.sceneKey ||
-            prior.locationKey !== shot.locationKey ||
-            prior.timeKey !== shot.timeKey ||
-            hasMeaningfulTextContextTransition(prior.text, shot.text))
+        (prior.sceneKey !== shot.sceneKey ||
+          prior.locationKey !== shot.locationKey ||
+          prior.timeKey !== shot.timeKey ||
+          hasMeaningfulTextContextTransition(prior.text, shot.text))
       );
       const recentKeys = recentByFamily.get(familyKey) ?? [];
       const carriedLookKey = recentKeys[recentKeys.length - 1] ?? rawKey;
@@ -474,7 +623,7 @@ export function selectVerticalDramaCharacterLooks(params: {
           baseCharacterKey: familyKey,
           selectedLookKey: rawKey,
           mode: "manual_override",
-          status: currentEntry.hasPortrait === false ? "waiting_for_portrait" : "ready",
+          status: statusForLookEntry(currentEntry),
           reason: "ผู้ใช้เลือก reference ของช็อตนี้เอง",
           confidence: 1,
         });
@@ -484,7 +633,9 @@ export function selectVerticalDramaCharacterLooks(params: {
       }
 
       if (conflicts.length > 0) {
-        const conflictLabels = uniqueStrings(conflicts.map(match => match.label));
+        const conflictLabels = uniqueStrings(
+          conflicts.map(match => match.label)
+        );
         const selected = carriedLookEntry;
         const status: VerticalDramaCharacterLookAssignmentStatus = "review";
         nextKeys.push(selected.characterKey);
@@ -499,10 +650,10 @@ export function selectVerticalDramaCharacterLooks(params: {
             ") จึงรักษาลุคปัจจุบันและรอการตรวจสอบ",
           confidence: 0.2,
         });
-        recentByFamily.set(familyKey, [
-          ...recentKeys,
-          selected.characterKey,
-        ].slice(-4));
+        recentByFamily.set(
+          familyKey,
+          [...recentKeys, selected.characterKey].slice(-4)
+        );
         priorShot.set(familyKey, shot);
         continue;
       }
@@ -525,60 +676,60 @@ export function selectVerticalDramaCharacterLooks(params: {
       const currentIntent = intentForEntry(carriedLookEntry);
       const currentFits = Boolean(intent && currentIntent?.key === intent.key);
       const clearRequirement = Boolean(intent);
-      const transitionNeedsLook = Boolean(
-        !intent &&
-          transition &&
-          family.length === 1 &&
-          !carriedLookEntry.parentCharacterKey
-      );
+      // A scene/time transition by itself is not enough evidence to create a
+      // durable look. The LLM may complete missing garment details, but it
+      // must not invent a new wardrobe slot without a character-scoped cue.
       const requestedIntent = intent
         ? {
             key: intent.key,
             label: intent.label,
             variantType: intent.variantType,
+            ...(intent.ageStage ? { ageStage: intent.ageStage } : {}),
           }
-        : transitionNeedsLook
-          ? {
-              key: "scene_transition",
-              label: "ลุคเปลี่ยนฉาก",
-              variantType: "outfit" as const,
-            }
-          : undefined;
+        : undefined;
       let selected = best;
       let mode: VerticalDramaCharacterLookAssignmentMode = "base";
       let status: VerticalDramaCharacterLookAssignmentStatus = "ready";
-      let reason = "ไม่มีสัญญาณเปลี่ยนลุคที่ชัดเจน จึงรักษาความต่อเนื่องของลุคเดิม";
+      let reason =
+        "ไม่มีสัญญาณเปลี่ยนลุคที่ชัดเจน จึงรักษาความต่อเนื่องของลุคเดิม";
       let confidence = 0.62;
 
-      if (
-        (clearRequirement && !explicitMatch && !currentFits) ||
-        transitionNeedsLook
-      ) {
+      if (clearRequirement && !explicitMatch && !currentFits) {
         const canonicalIntent = requestedIntent!.key;
-        const identity = `${familyKey}::${canonicalIntent}`;
-        const description = intent
-          ? canonicalDescription(intent, shot.text, base)
-          : `${readableText(base.description) || readableText(base.name)}; refreshed wardrobe for a meaningful scene/location/time transition, identity unchanged, coordinated with the new story context. Story evidence: ${readableText(shot.text).slice(0, 700)}`;
-        const imageBrief = buildVerticalDramaCharacterLookImageBrief({
-          base,
-          intent: canonicalIntent,
-          label: requestedIntent!.label,
-          shotText: shot.text,
-        });
+        const requestKey = buildLookRequestKey(familyKey, intent!, shot);
+        const identity = `${familyKey}::${requestKey}`;
         const suggestion = suggestionsByIdentity.get(identity);
         if (suggestion) {
           if (!suggestion.sourceShotNumbers.includes(shot.shotNumber)) {
             suggestion.sourceShotNumbers.push(shot.shotNumber);
           }
+          suggestion.evidence.push({
+            shotNumber: shot.shotNumber,
+            text: shot.text,
+            ...(shot.sceneKey ? { sceneKey: shot.sceneKey } : {}),
+            ...(shot.locationKey ? { locationKey: shot.locationKey } : {}),
+            ...(shot.timeKey ? { timeKey: shot.timeKey } : {}),
+          });
         } else {
           suggestionsByIdentity.set(identity, {
             baseCharacterKey: familyKey,
             parentCharacterKey: familyKey,
             variantLabel: requestedIntent!.label,
             variantType: requestedIntent!.variantType,
+            ...(requestedIntent!.ageStage
+              ? { ageStage: requestedIntent!.ageStage }
+              : {}),
             canonicalIntent,
-            description,
-            imageBrief,
+            requestKey,
+            evidence: [
+              {
+                shotNumber: shot.shotNumber,
+                text: shot.text,
+                ...(shot.sceneKey ? { sceneKey: shot.sceneKey } : {}),
+                ...(shot.locationKey ? { locationKey: shot.locationKey } : {}),
+                ...(shot.timeKey ? { timeKey: shot.timeKey } : {}),
+              },
+            ],
             sourceShotNumbers: [shot.shotNumber],
           });
         }
@@ -588,15 +739,13 @@ export function selectVerticalDramaCharacterLooks(params: {
         // the render contract.
         selected = currentEntry;
         mode = "needs_new_look";
-        status = "waiting_for_portrait";
-        reason = intent
-          ? `ช็อตนี้ระบุลุค${intent.label} แต่ยังไม่มีลุคที่ตรงกันในตัวละคร`
-          : "เวลา/ฉากเปลี่ยนและตัวละครยังมีลุคเดียว จึงเสนอ slot ลุคใหม่แบบใช้ซ้ำได้";
+        status = "waiting_for_look_design";
+        reason = `ช็อตนี้ระบุลุค${intent!.label} แต่ยังไม่มีลุคที่ตรงกันในตัวละคร`;
         confidence = 0.9;
       } else if (explicitMatch && best.characterKey !== rawKey) {
         selected = best;
         mode = "matched_existing";
-        status = best.hasPortrait === false ? "waiting_for_portrait" : "ready";
+        status = statusForLookEntry(best);
         reason = `เลือกลุค${intent!.label} ให้ตรงกับบริบทของช็อต`;
         confidence = best.hasPortrait === false ? 0.88 : 0.96;
       } else if (
@@ -608,15 +757,19 @@ export function selectVerticalDramaCharacterLooks(params: {
       ) {
         selected = best;
         mode = "matched_existing";
-        status = best.hasPortrait === false ? "waiting_for_portrait" : "ready";
-        reason = "เปลี่ยนฉาก/สถานที่ จึงหมุนไปใช้ลุคเดิมที่เหมาะสมและไม่ได้เพิ่งใช้";
+        status = statusForLookEntry(best);
+        reason =
+          "เปลี่ยนฉาก/สถานที่ จึงหมุนไปใช้ลุคเดิมที่เหมาะสมและไม่ได้เพิ่งใช้";
         confidence = 0.78;
       } else {
         selected = carriedLookEntry;
-        mode = carriedLookEntry.parentCharacterKey ? "matched_existing" : "base";
-        status = carriedLookEntry.hasPortrait === false ? "waiting_for_portrait" : "ready";
+        mode = carriedLookEntry.parentCharacterKey
+          ? "matched_existing"
+          : "base";
+        status = statusForLookEntry(carriedLookEntry);
         if (carriedLookEntry.parentCharacterKey) {
-          reason = "ไม่พบเหตุผลชัดเจนให้เปลี่ยน จึงรักษาลุคปัจจุบันเพื่อความต่อเนื่อง";
+          reason =
+            "ไม่พบเหตุผลชัดเจนให้เปลี่ยน จึงรักษาลุคปัจจุบันเพื่อความต่อเนื่อง";
         }
       }
 
@@ -630,13 +783,20 @@ export function selectVerticalDramaCharacterLooks(params: {
         ...(mode === "needs_new_look"
           ? {
               requestedLabel: requestedIntent!.label,
-              imageBrief: suggestionsByIdentity.get(`${familyKey}::${requestedIntent!.key}`)?.imageBrief,
+              requestedRequestKey: buildLookRequestKey(
+                familyKey,
+                intent!,
+                shot
+              ),
             }
           : {}),
         reason,
         confidence,
       });
-      recentByFamily.set(familyKey, [...recentKeys, selected.characterKey].slice(-4));
+      recentByFamily.set(
+        familyKey,
+        [...recentKeys, selected.characterKey].slice(-4)
+      );
       priorShot.set(familyKey, shot);
     }
 
@@ -656,17 +816,28 @@ export function getVerticalDramaCharacterLookSemanticKey(params: {
   parentCharacterKey: string;
   canonicalIntent: string;
   variantType: "outfit" | "age_stage";
+  requestKey?: string;
 }): string {
-  return `${params.parentCharacterKey.trim()}::${params.variantType}::${normalizeLookText(params.canonicalIntent)}`;
+  const intentKey = normalizeLookText(params.canonicalIntent);
+  const requestKey = normalizeLookText(params.requestKey ?? "");
+  return `${params.parentCharacterKey.trim()}::${params.variantType}::${intentKey}${requestKey ? `::${requestKey}` : ""}`;
 }
 
 /** Exposed for tests and future vocabulary expansion. */
-export function detectVerticalDramaCharacterLookIntent(
-  text: string
-): { key: string; label: string; variantType: "outfit" | "age_stage" } | null {
+export function detectVerticalDramaCharacterLookIntent(text: string): {
+  key: string;
+  label: string;
+  variantType: "outfit" | "age_stage";
+  ageStage?: VerticalDramaCharacterAgeStage;
+} | null {
   const intent = findIntent(text);
   return intent
-    ? { key: intent.key, label: intent.label, variantType: intent.variantType }
+    ? {
+        key: intent.key,
+        label: intent.label,
+        variantType: intent.variantType,
+        ...(intent.ageStage ? { ageStage: intent.ageStage } : {}),
+      }
     : null;
 }
 
@@ -674,5 +845,7 @@ export function detectVerticalDramaCharacterLookIntent(
 export function detectVerticalDramaCharacterLookConflict(
   text: string
 ): string[] {
-  return uniqueStrings(findConflictingIntents(text).map(intent => intent.label));
+  return uniqueStrings(
+    findConflictingIntents(text).map(intent => intent.label)
+  );
 }

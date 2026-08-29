@@ -1,0 +1,15 @@
+{
+  "skill": "vertical-drama-character-look-designer",
+  "pinned_metadata": {
+    "category": "other",
+    "execution_mode": "llm-only",
+    "auto_trigger": false,
+    "enabled_by_default": false,
+    "contract_version": 1
+  },
+  "required_top_level_output_fields": ["contract_version", "designs"],
+  "fixtures": {
+    "pass_output": "fixtures/pass.output.json",
+    "fail_output": "fixtures/fail.output.json"
+  }
+}

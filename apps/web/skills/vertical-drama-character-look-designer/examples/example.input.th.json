@@ -1,0 +1,26 @@
+{
+  "contract_version": 1,
+  "locale": "th",
+  "series_context": {
+    "genre": "family drama",
+    "tone": "grounded and warm",
+    "visual_culture": "contemporary Thai home and hotel gala",
+    "palette": ["warm neutrals", "deep navy"]
+  },
+  "characters": [{
+    "character_key": "mali",
+    "name": "มะลิ",
+    "role": "lead",
+    "occupation": "architect",
+    "identity_facts": "หญิงไทยวัยผู้ใหญ่ ใบหน้ารูปไข่ ไฝใต้ตาซ้าย ผมดำยาวเป็นเอกลักษณ์",
+    "existing_look_facts": ["base look is not formalwear"]
+  }],
+  "requests": [{
+    "request_key": "mali::outfit::evening_formal::gala|hotel|night",
+    "parent_character_key": "mali",
+    "variant_label": "ชุดราตรีงานกาลา",
+    "variant_type": "outfit",
+    "canonical_intent": "evening_formal",
+    "evidence": [{"shot_number": 3, "text": "มะลิเข้าร่วมงานกาลาที่โรงแรมตอนกลางคืน", "scene_key": "gala", "location_key": "hotel", "time_key": "night"}]
+  }]
+}

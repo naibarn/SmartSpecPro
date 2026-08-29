@@ -1,0 +1,76 @@
+name: Backfill Vertical Drama Character Looks
+
+on:
+  workflow_dispatch:
+    inputs:
+      series_id:
+        description: "Production Vertical Drama series id to repair"
+        required: true
+        type: string
+      row_id:
+        description: "Optional single character-look row id; leave blank for the whole series"
+        required: false
+        type: string
+      force:
+        description: "Recheck an otherwise clean system-suggested row"
+        required: false
+        default: false
+        type: boolean
+      limit:
+        description: "Maximum rows to process (1-200)"
+        required: false
+        default: "50"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://smartaihub.app
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.3"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm ci --legacy-peer-deps
+
+      - name: Validate production backfill inputs
+        env:
+          SERIES_ID: ${{ inputs.series_id }}
+          ROW_ID: ${{ inputs.row_id }}
+          LIMIT: ${{ inputs.limit }}
+        run: |
+          [[ "$SERIES_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ -z "$ROW_ID" || "$ROW_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$LIMIT" =~ ^[1-9][0-9]*$ ]]
+          (( LIMIT <= 200 ))
+          test -n "${{ secrets.NEON_PROD_DB_URL }}"
+          test -n "${{ secrets.LLM_ENCRYPTION_KEY }}"
+
+      - name: Run real LLM character-look repair
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
+          LLM_ENCRYPTION_KEY: ${{ secrets.LLM_ENCRYPTION_KEY }}
+          NODE_ENV: production
+          SERIES_ID: ${{ inputs.series_id }}
+          ROW_ID: ${{ inputs.row_id }}
+          FORCE: ${{ inputs.force }}
+          LIMIT: ${{ inputs.limit }}
+        run: |
+          args=(--apply --series-id "$SERIES_ID" --limit "$LIMIT")
+          if [[ -n "$ROW_ID" ]]; then args+=(--row-id "$ROW_ID"); fi
+          if [[ "$FORCE" == "true" ]]; then args+=(--force); fi
+          npx tsx server/scripts/backfill-vertical-drama-character-looks.ts "${args[@]}"

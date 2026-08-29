@@ -1,0 +1,32 @@
+{
+  "contract_version": 1,
+  "designs": [{
+    "request_key": "mali::outfit::evening_formal::gala|hotel|night",
+    "review_required": false,
+    "look_design": {
+      "look_label": "ชุดราตรีงานกาลาโทนกรมท่า",
+      "variant_type": "outfit",
+      "confidence": 0.94,
+      "outfit": {
+        "top": "เดรสคอวีแขนสั้นเข้ารูปช่วงเอว",
+        "one_piece": "เดรสยาวทรงเอสีกรมท่า",
+        "outerwear": "ไม่มีเสื้อคลุม",
+        "materials": ["ผ้าไหมด้าน"],
+        "colors": ["กรมท่า", "เงินหม่น"],
+        "fit": "พอดีตัว เคลื่อนไหวสะดวก",
+        "condition": "เรียบร้อยพร้อมงานกลางคืน",
+        "silhouette": "สง่างามต่อเนื่องจากไหล่ถึงชายกระโปรง"
+      },
+      "hair": {"style": "ผมยาวดำรวบต่ำ", "arrangement": "แสกข้างและเก็บผมด้านหน้า", "finish": "เรียบเงาเป็นธรรมชาติ", "identity_preservation": "คงสีดำ ความยาว และกรอบผมเดิม"},
+      "makeup": {"level": "กลางแบบงานเย็น", "complexion": "ผิวกึ่งแมตต์เป็นธรรมชาติ", "eyes": "อายไลเนอร์บาง", "lips": "ชมพูกุหลาบหม่น", "age_safety": "เหมาะกับผู้ใหญ่ ไม่เปลี่ยนอายุ"},
+      "footwear": {"type": "รองเท้าส้นสูงหัวปิด", "material": "หนังซาติน", "color": "กรมท่า", "formality": "formal", "scene_suitability": "เหมาะกับพื้นโรงแรมและงานกาลา"},
+      "accessories": [{"item": "ต่างหูเม็ดเล็ก", "material_or_finish": "เงินด้าน", "color": "เงิน", "visibility": "เห็นได้ระดับใบหน้า", "rationale": "เสริมลุคงานเย็นโดยไม่กลบตัวละคร"}],
+      "palette": ["กรมท่า", "เงินหม่น"],
+      "continuity_notes": ["คงไฝใต้ตาซ้ายและใบหน้าเดิม"],
+      "negative_constraints": ["ห้ามเปลี่ยนรูปหน้า", "ห้ามเพิ่มโลโก้หรือลวดลายฉูดฉาด"],
+      "identity_lock": "ตัวละครเดิม ใบหน้า รูปร่าง อายุ สีผิว และไฝใต้ตาซ้ายคงเดิม",
+      "quality_checks": {"same_person_preserved": true, "age_appropriate": true, "scene_coherent": true, "wardrobe_complete": true, "story_evidence_separated": true}
+    },
+    "evidence_refs": [{"shot_number": 3, "evidence_span": "เข้าร่วมงานกาลาที่โรงแรมตอนกลางคืน"}]
+  }]
+}

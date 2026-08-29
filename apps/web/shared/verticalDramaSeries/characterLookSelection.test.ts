@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildVerticalDramaCharacterLookImageBrief,
   detectVerticalDramaCharacterLookConflict,
   detectVerticalDramaCharacterLookIntent,
   getVerticalDramaCharacterLookSemanticKey,
@@ -33,22 +32,16 @@ describe("vertical drama automatic character look selection", () => {
     expect(oversized).toMatch(/…$/);
   });
 
-  it("keeps the generated look brief within the reusable brief contract", () => {
-    const brief = buildVerticalDramaCharacterLookImageBrief({
-      base: {
-        ...base,
-        description: "หญิงสาวไทยผมยาวสีดำ มีไฝใต้ตาซ้าย ใบหน้าอ่อนโยน",
-      },
-      intent: "evening_formal",
-      label: "ชุดราตรี",
-      shotText: "พิมพ์ชนกไปร่วมงานกลางคืนในโรงแรม",
+  it("keeps story evidence out of the pure selector contract", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [base],
+      shots: [{ shotNumber: 1, characterKeys: ["mali"], text: "พิมพ์ชนกไปร่วมงานกลางคืนในโรงแรม", sceneKey: "gala" }],
     });
 
-    expect(brief.length).toBeLessThanOrEqual(
-      VERTICAL_DRAMA_LOOK_IMAGE_BRIEF_MAX_LENGTH
-    );
-    expect(brief).toContain("Required look: ชุดราตรี");
-    expect(brief).toContain("Source shot context");
+    expect(result.suggestions[0]).not.toHaveProperty("description");
+    expect(result.suggestions[0]).not.toHaveProperty("imageBrief");
+    expect(result.suggestions[0].evidence[0].text).toContain("ร่วมงานกลางคืน");
+    expect(result.suggestions[0].requestKey).toContain("gala");
   });
 
   it("matches equivalent Thai/English cues to an existing look", () => {
@@ -142,7 +135,7 @@ describe("vertical drama automatic character look selection", () => {
     });
     expect(result.assignmentsByShotNumber.get(1)?.[0]).toMatchObject({
       mode: "needs_new_look",
-      status: "waiting_for_portrait",
+      status: "waiting_for_look_design",
     });
   });
 
@@ -184,13 +177,51 @@ describe("vertical drama automatic character look selection", () => {
       variantType: "age_stage",
       sourceShotNumbers: [1, 2],
     });
-    expect(result.suggestions[0].imageBrief).toContain("Preserve the same person's identity");
-    expect(result.suggestions[0].imageBrief).toContain("age-appropriate wardrobe");
     expect(result.assignmentsByShotNumber.get(1)?.[0]).toMatchObject({
       mode: "needs_new_look",
-      status: "waiting_for_portrait",
+      status: "waiting_for_look_design",
       requestedLabel: "วัยทารกแรกเกิด",
     });
+  });
+
+  it.each([
+    ["วัยทารก", "infant"],
+    ["วัยเด็กเล็ก", "early_childhood"],
+    ["วัยเด็กมัธยม", "school_age"],
+    ["วัยนักศึกษา", "university_student"],
+    ["วัยผู้ใหญ่", "adult"],
+    ["วัยชรา", "older_adult"],
+  ])("canonicalizes %s as an explicit age-stage request", (text, ageStage) => {
+    expect(detectVerticalDramaCharacterLookIntent(text)).toMatchObject({
+      variantType: "age_stage",
+      ageStage,
+    });
+  });
+
+  it("uses the stored structured age stage even when a look label is generic", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        base,
+        {
+          characterKey: "mali-university",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "Look 02",
+          variantType: "age_stage",
+          ageStage: "university_student",
+          description: "ลุคตัวละครแบบต่อเนื่อง",
+          hasPortrait: true,
+        },
+      ],
+      shots: [{
+        shotNumber: 1,
+        characterKeys: ["mali"],
+        text: "มะลิอยู่ในช่วงวัยนักศึกษา",
+      }],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual(["mali-university"]);
+    expect(result.suggestions).toHaveLength(0);
   });
 
   it("rotates an existing look after a meaningful scene transition, then keeps continuity", () => {
@@ -239,11 +270,10 @@ describe("vertical drama automatic character look selection", () => {
       ],
     });
 
-    expect(result.suggestions).toHaveLength(1);
-    expect(result.suggestions[0].canonicalIntent).toBe("scene_transition");
+    expect(result.suggestions).toHaveLength(0);
     expect(result.assignmentsByShotNumber.get(2)?.[0]).toMatchObject({
-      mode: "needs_new_look",
-      status: "waiting_for_portrait",
+      mode: "base",
+      status: "ready",
     });
   });
 
@@ -264,11 +294,10 @@ describe("vertical drama automatic character look selection", () => {
       ],
     });
 
-    expect(result.suggestions).toHaveLength(1);
-    expect(result.suggestions[0].canonicalIntent).toBe("scene_transition");
+    expect(result.suggestions).toHaveLength(0);
     expect(result.assignmentsByShotNumber.get(2)?.[0]).toMatchObject({
-      mode: "needs_new_look",
-      status: "waiting_for_portrait",
+      mode: "base",
+      status: "ready",
     });
   });
 
@@ -346,14 +375,11 @@ describe("vertical drama automatic character look selection", () => {
         variantType: "outfit",
       })
     ).toBe("mali::outfit::sleepwear");
-    expect(
-      buildVerticalDramaCharacterLookImageBrief({
-        base,
-        intent: "evening_formal",
-        label: "ชุดราตรี",
-        shotText: "งานกลางคืนในโรงแรม",
-      })
-    ).toContain("no text, watermark, logos");
+    const formal = selectVerticalDramaCharacterLooks({
+      catalog: [base],
+      shots: [{ shotNumber: 1, characterKeys: ["mali"], text: "มะลิไปร่วมงานกาลา", sceneKey: "gala" }],
+    });
+    expect(formal.suggestions[0].requestKey).toContain("eveningformal");
   });
 
   it("does not silently choose the first look when story cues conflict", () => {
