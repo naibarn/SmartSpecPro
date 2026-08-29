@@ -625,10 +625,14 @@ function reconcileEvidenceRefs(
   evidenceSpan: string;
   evidenceType?: "storyboard" | "legacy_visual_context";
 }> {
-  const allowedShotNumbers = new Set(request.sourceShotNumbers);
-  const refsAreGrounded = refs.every(item =>
-    allowedShotNumbers.has(item.shot_number)
+  const requestEvidenceByShot = new Map(
+    request.evidence.map(evidence => [evidence.shotNumber, evidence])
   );
+  const refsAreGrounded = refs.every(item => {
+    const sourceEvidence = requestEvidenceByShot.get(item.shot_number);
+    return Boolean(sourceEvidence) &&
+      sourceEvidence?.evidenceType === item.evidence_type;
+  });
   if (refsAreGrounded) {
     return refs.map(item => ({
       shotNumber: item.shot_number,

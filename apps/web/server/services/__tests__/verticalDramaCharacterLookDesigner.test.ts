@@ -214,6 +214,51 @@ describe("vertical drama character look designer", () => {
     ]);
   });
 
+  it("reconciles a legacy evidence type mismatch to the legacy sentinel", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockResolveModel.mockResolvedValue("test-model");
+    const legacyOutput = structuredClone(fixture);
+    legacyOutput.designs[0].evidence_refs = [
+      {
+        shot_number: 0,
+        evidence_span: "model omitted the required legacy evidence type",
+      },
+    ];
+    mockExecute.mockResolvedValue({
+      data: legacyOutput,
+      response: { usage: { prompt_tokens: 100, completion_tokens: 80 } },
+    });
+
+    const result = await designVerticalDramaCharacterLooks({
+      ...params,
+      requests: [
+        {
+          ...params.requests[0],
+          legacyVisualOnly: true,
+          evidence: [
+            {
+              shotNumber: 0,
+              evidenceType: "legacy_visual_context",
+              text: "Legacy visual fields supplied for explicit repair; no storyboard evidence is available.",
+            },
+          ],
+          sourceShotNumbers: [0],
+        },
+      ],
+    });
+
+    expect(
+      result.designs.get(params.requests[0].requestKey)?.evidenceRefs
+    ).toEqual([
+      {
+        shotNumber: 0,
+        evidenceType: "legacy_visual_context",
+        evidenceSpan:
+          "Legacy visual fields supplied for explicit repair; no storyboard evidence is available.",
+      },
+    ]);
+  });
+
   it("rejects an LLM design that copies story evidence into visual fields", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockResolveModel.mockResolvedValue("test-model");
