@@ -110,3 +110,20 @@ credentials, not by the character-look implementation.
 - Required external gate: configure one valid GCP credential secret, rerun the
   production deploy, then run the backfill workflow for series 53. Until that
   happens, the live site is expected to show its previous client/data.
+
+## Current Task Round 5 — Debian runtime activation
+
+Status: local Debian path verified; GCP intentionally deferred.
+
+- The current supported runtime is the Debian `smartspec-web.service`, using
+  the local Node/tsx server and local `.env`; no GCP credential or deployment
+  is required for this path.
+- Atomic frontend build completed and the live bundle contains both
+  `ซ่อมลุคเก่าด้วย AI` and per-row `ซ่อมด้วย AI` controls.
+- The Debian service was restarted successfully and `/healthz` returned HTTP
+  200. Authenticated browser rendering and live production rows remain an
+  external verification boundary.
+- The five-pass design review remains closed: legacy source context is sent to
+  the LLM as repair input, final persisted text is visual-only, identity and
+  age locks are preserved, unsafe/ambiguous rows remain review-protected, and
+  the action is discoverable from Characters.
