@@ -14,3 +14,7 @@
   Context: `main` and `origin/main` were both `42a8b303a`; the worktree contained 917 tracked changes plus 2,396 untracked files, including about 22.5 GB of cache/build/release output that cannot be published to GitHub.
   Alternatives considered: stage every filesystem path (rejected because it would include generated caches, multi-GB release archives, and an unexplained zero-byte root file).
   Boundary: stage tracked changes and reviewed source/spec/doc/test/config/evidence paths; ignore generated outputs and leave `=.*new` untouched.
+
+[2026-08-30T20:10:00Z] DECISION: Mark repository reconciliation complete after remote parity verification.
+  Evidence: commits `13a313d47` and `a1cd6a4ad` pushed successfully; local HEAD and `origin/main` are identical and `git status --short --branch` is clean.
+  Residuals: ignored local build/cache/release outputs remain on disk; aggregate typecheck is red and Python lint is unavailable, both reported as verification limitations.

@@ -52,3 +52,20 @@ local. `git diff --check HEAD` now passes. Targeted secret scan of the full
 worktree exceeded 120 seconds; added-line pattern review found no credential
 match, with test/package `sk-` matches classified as false positives from words
 such as task/ask.
+
+[COMPLETED] repository-reconciliation — committed eligible repository changes
+as `13a313d47` and the exact scratch ignore follow-up as `a1cd6a4ad`; both were
+pushed to `origin/main`. Final local and remote SHA match is verified and the
+working tree is clean. Generated cache/build/release payloads remain local and
+ignored; the zero-byte `=.*new` scratch file is ignored by an exact root rule.
+
+Final verification ledger:
+  git parity: local HEAD == origin/main == a1cd6a4ad25f6cf31ff5606cec907db29408fea0
+  git status: clean; ahead/behind 0/0
+  diff check: code diff clean; pre-existing Markdown trailing-space warnings
+    remain in committed documentation line-break metadata
+  typecheck: failed with existing aggregate TypeScript errors in the broad
+    accumulated worktree; no repair was requested for this publication task
+  Python lint: not run because `ruff` is not installed in the environment
+  secret scan: full scanner exceeded 120 seconds; targeted added-line scan
+    found no high-confidence credential pattern
