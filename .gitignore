@@ -247,6 +247,7 @@ coverage.xml
 # ============================================================================
 # Ad-hoc local debug/scratch scripts (one-off, not part of the app)
 # ============================================================================
+/=.*new
 *.orig
 /composition.html
 /new_composition.html
