@@ -4,11 +4,12 @@
  * Enforces the legacy `VD_IMAGE_PROMPT_MAX` (3800 chars) / `VD_VIDEO_PROMPT_MAX`
  * (2000 chars) defaults, widened only by a selected provider's explicit
  * allowance (currently 390000 for Kie.ai image and 4096 for Kie.ai video), on any FINAL prompt string
- * allowance (currently 4096 for Kie.ai video), on any FINAL prompt string
  * BEFORE it is used for real generation or
  * persisted/displayed in the UI. When a prompt is already within its cap this
  * is a zero-cost, zero-LLM-call no-op (`refined: false`, `creditsUsed: 0`) —
- * every enforcement point below must stay free for the common case.
+ * unless the caller explicitly opts into the image finalizer. Provider-ready
+ * Vertical Drama image paths use that opt-in so the prompt optimizer is always
+ * the last prompt-authoring step.
  *
  * When a prompt is over its cap, refines it (never dumb-truncates first) via
  * the already-installed `cinematic-prompt-refiner-pro` skill
@@ -23,10 +24,10 @@
  * warning — this fallback NEVER throws / never blocks the user, since prompt
  * QC must not turn into a hard failure of the surrounding generation flow.
  *
- * There is no pre-existing "optimizer"/"refiner" skill used anywhere in the
- * Vertical Drama flow today (verified by search across
- * `verticalDrama*.ts`/`verticalDramaEpisodes.ts` router) — this module is a
- * NEW QC layer, not a replacement of an older skill usage.
+ * The image finalizer also canonicalizes the single prompt contract: image
+ * transports do not receive a separate negative field, so legacy embedded
+ * negative sections and newly supplied negative constraints are merged into
+ * one deduplicated block before the optimizer runs.
  */
 
 import fs from "fs";
@@ -124,6 +125,97 @@ export function promptCapForKind(kind: VerticalDramaPromptKind): number {
   return kind === "image" ? VD_IMAGE_PROMPT_MAX : VD_VIDEO_PROMPT_MAX;
 }
 
+const IMAGE_NEGATIVE_SECTION_RE =
+  /^\s*(?:NEGATIVE PROMPT|IMAGE NEGATIVE CONSTRAINTS(?:\s*\([^)]*\))?)\s*:\s*(.*)$/i;
+const IMAGE_NEGATIVE_SECTION_LABEL =
+  "IMAGE NEGATIVE CONSTRAINTS (MANDATORY — do not render):";
+
+function collectImageNegativeConstraints(value: string | undefined): string[] {
+  if (!value?.trim()) return [];
+  const markedValue = value.match(IMAGE_NEGATIVE_SECTION_RE)?.[1] ?? value;
+  return markedValue
+    .split(/[,;\n]+/)
+    .map(item => item.replace(/\s+/g, " ").trim().replace(/[.!]+$/, ""))
+    .filter(Boolean);
+}
+
+/**
+ * Merge an image prompt's positive and negative parts into the one prompt
+ * string accepted by the image transports. Existing legacy negative sections
+ * are removed from the positive body, their comma/semicolon-delimited
+ * constraints are preserved, and exact constraints are deduplicated
+ * case-insensitively while retaining their first-seen wording/order.
+ *
+ * This is intentionally conservative: it only treats a line beginning with a
+ * known negative-section marker as negative content. Ordinary positive prose
+ * containing words such as "negative" is never moved or rewritten.
+ */
+export function mergeImageNegativePromptIntoPrompt(
+  prompt: string,
+  negativePrompt?: string,
+): string {
+  const negativeConstraints: string[] = [];
+  const positiveLines = prompt.split(/\r?\n/).filter(line => {
+    const match = line.match(IMAGE_NEGATIVE_SECTION_RE);
+    if (!match) return true;
+    negativeConstraints.push(...collectImageNegativeConstraints(match[1]));
+    return false;
+  });
+  negativeConstraints.push(...collectImageNegativeConstraints(negativePrompt));
+
+  const seen = new Set<string>();
+  const uniqueNegativeConstraints = negativeConstraints.filter(constraint => {
+    const key = constraint.toLocaleLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const positive = positiveLines.join("\n").trim();
+  if (uniqueNegativeConstraints.length === 0) return positive;
+  const negativeSection = `${IMAGE_NEGATIVE_SECTION_LABEL} ${uniqueNegativeConstraints.join(", ")}`;
+  return positive ? `${positive}\n\n${negativeSection}` : negativeSection;
+}
+
+function countExactOccurrences(text: string, fragment: string): number {
+  if (!fragment) return 0;
+  let count = 0;
+  let fromIndex = 0;
+  while (fromIndex <= text.length) {
+    const index = text.indexOf(fragment, fromIndex);
+    if (index < 0) break;
+    count += 1;
+    fromIndex = index + Math.max(1, fragment.length);
+  }
+  return count;
+}
+
+function imageNegativeSectionFragments(prompt: string): string[] {
+  return prompt
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line.startsWith(IMAGE_NEGATIVE_SECTION_LABEL));
+}
+
+function isValidFinalImagePrompt(
+  prompt: string,
+  protectedFragments: string[] | undefined,
+  maxChars: number,
+): boolean {
+  const trimmed = prompt.trim();
+  if (!trimmed || trimmed.length > maxChars) return false;
+  if (
+    protectedFragments?.some(
+      fragment => countExactOccurrences(trimmed, fragment) !== 1,
+    )
+  ) {
+    return false;
+  }
+  // The optimizer must return the canonical one-prompt representation itself;
+  // no post-optimizer cleanup or negative-block append is allowed.
+  return mergeImageNegativePromptIntoPrompt(trimmed) === trimmed;
+}
+
 /** Resolve one call's cap while preserving the legacy floor and provider limit. */
 export function resolveEffectivePromptCap(
   kind: VerticalDramaPromptKind,
@@ -152,6 +244,12 @@ export interface EnsurePromptWithinLimitParams {
   maxChars?: number;
   /** Provider-ready paths must never silently truncate semantic clauses. */
   failClosed?: boolean;
+  /**
+   * Run `cinematic-prompt-refiner-pro` even when the prompt fits the selected
+   * provider cap. Provider-ready image paths use this so optimization is the
+   * final prompt-authoring step rather than a length-only fallback.
+   */
+  finalizeWithRefiner?: boolean;
   userId: number;
   tenantId?: string;
   seriesId: number;
@@ -300,12 +398,19 @@ function buildRefinerUserPrompt(params: {
   context?: string;
   maxChars: number;
   strict: boolean;
+  protectedFragments?: string[];
 }): string {
-  const { kind, prompt, context, maxChars, strict } = params;
+  const { kind, prompt, context, maxChars, strict, protectedFragments } = params;
   return [
     `Source prompt (${kind} generation, currently ${prompt.length} characters, target type = ${kind}):`,
     prompt,
     context ? `Additional context to preserve (do not drop): ${context}` : null,
+    protectedFragments?.length
+      ? [
+          "MANDATORY PROTECTED FRAGMENTS: preserve each fragment exactly in the optimized_prompt. Do not omit, paraphrase, duplicate, or move these fragments into a separate field:",
+          ...protectedFragments.map((fragment, index) => `${index + 1}. ${fragment}`),
+        ].join("\n")
+      : null,
     `HARD LIMIT: the "optimized_prompt" you return MUST be ${maxChars} characters or fewer (this is a hard cap enforced by the caller, not a soft target).`,
     "Preserve subject, emotion, lighting, and composition/camera direction; preserve any dialogue or spoken-line directives verbatim in meaning even while compressing.",
     "Achieve full cinematic quality within the limit — do not sacrifice clarity just to hit a shorter length than necessary, but never exceed the hard limit.",
@@ -333,6 +438,7 @@ async function refineOnce(params: {
   context?: string;
   maxChars: number;
   strict: boolean;
+  protectedFragments?: string[];
   userId: number;
   tenantId?: string;
   seriesId: number;
@@ -355,6 +461,7 @@ async function refineOnce(params: {
     context: params.context,
     maxChars: params.maxChars,
     strict: params.strict,
+    protectedFragments: params.protectedFragments,
   });
 
   const { data, response } = await executeJsonPlanningCallWithRetry({
@@ -402,9 +509,10 @@ async function refineOnce(params: {
 
 /**
  * Ensure a final prompt string is within its hard character cap BEFORE it is
- * used for real generation or persisted/displayed. Zero-cost fast path: a
- * prompt already within the cap is returned as-is with `refined: false` and
- * `creditsUsed: 0` — no LLM call, no credit deduction.
+ * used for real generation or persisted/displayed. By default a prompt already
+ * within the cap is returned with `refined: false` and no LLM call. Image
+ * provider paths opt into `finalizeWithRefiner`, which deliberately runs the
+ * optimizer even under the cap and accepts only its validated output.
  *
  * Over-cap path: refine via `cinematic-prompt-refiner-pro` (1 call). If the
  * refined result is STILL over the cap, retry once more with a stricter
@@ -416,13 +524,28 @@ async function refineOnce(params: {
 export async function ensurePromptWithinLimit(
   params: EnsurePromptWithinLimitParams,
 ): Promise<EnsurePromptWithinLimitResult> {
-  const { kind, prompt, context, userId, tenantId, seriesId, idempotencyKey } = params;
+  const { kind, context, userId, tenantId, seriesId, idempotencyKey } = params;
+  const prompt =
+    kind === "image"
+      ? mergeImageNegativePromptIntoPrompt(params.prompt)
+      : params.prompt;
   const maxChars = resolveEffectivePromptCap(kind, params.maxChars);
-  const failClosed = params.failClosed ?? kind === "video";
+  const failClosed =
+    params.failClosed ?? (kind === "video" || params.finalizeWithRefiner === true);
   const label = params.label ?? `${kind} prompt`;
   assertProtectedFragmentsFit(kind, params.protectedFragments, params.maxChars);
 
-  if (prompt.length <= maxChars) {
+  const finalProtectedFragments =
+    params.finalizeWithRefiner && kind === "image"
+      ? Array.from(
+          new Set([
+            ...(params.protectedFragments ?? []),
+            ...imageNegativeSectionFragments(prompt),
+          ]),
+        )
+      : params.protectedFragments;
+
+  if (prompt.length <= maxChars && !params.finalizeWithRefiner) {
     const finalized = finalizeProtectedFragments(prompt, params.protectedFragments, maxChars);
     return { prompt: finalized.prompt, refined: false, creditsUsed: 0, truncated: finalized.truncated };
   }
@@ -436,6 +559,7 @@ export async function ensurePromptWithinLimit(
       context,
       maxChars,
       strict: false,
+      protectedFragments: finalProtectedFragments,
       userId,
       tenantId,
       seriesId,
@@ -443,7 +567,23 @@ export async function ensurePromptWithinLimit(
       label,
     });
     creditsUsed += first.creditsUsed;
-    if (first.optimizedPrompt.length <= maxChars) {
+    if (
+      params.finalizeWithRefiner
+        ? isValidFinalImagePrompt(
+            first.optimizedPrompt,
+            finalProtectedFragments,
+            maxChars,
+          )
+        : first.optimizedPrompt.length <= maxChars
+    ) {
+      if (params.finalizeWithRefiner) {
+        return {
+          prompt: first.optimizedPrompt.trim(),
+          refined: true,
+          creditsUsed,
+          truncated: false,
+        };
+      }
       const finalized = finalizeProtectedFragments(
         first.optimizedPrompt,
         params.protectedFragments,
@@ -464,6 +604,7 @@ export async function ensurePromptWithinLimit(
       context,
       maxChars,
       strict: true,
+      protectedFragments: finalProtectedFragments,
       userId,
       tenantId,
       seriesId,
@@ -471,7 +612,23 @@ export async function ensurePromptWithinLimit(
       label,
     });
     creditsUsed += second.creditsUsed;
-    if (second.optimizedPrompt.length <= maxChars) {
+    if (
+      params.finalizeWithRefiner
+        ? isValidFinalImagePrompt(
+            second.optimizedPrompt,
+            finalProtectedFragments,
+            maxChars,
+          )
+        : second.optimizedPrompt.length <= maxChars
+    ) {
+      if (params.finalizeWithRefiner) {
+        return {
+          prompt: second.optimizedPrompt.trim(),
+          refined: true,
+          creditsUsed,
+          truncated: false,
+        };
+      }
       const finalized = finalizeProtectedFragments(
         second.optimizedPrompt,
         params.protectedFragments,

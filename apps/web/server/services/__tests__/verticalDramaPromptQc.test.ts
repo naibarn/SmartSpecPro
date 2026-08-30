@@ -65,6 +65,7 @@ import {
   assertProtectedFragmentsFit,
   resolveEffectivePromptCap,
   extractCustomCharacterIdentityLockFragments,
+  mergeImageNegativePromptIntoPrompt,
 } from "../verticalDramaPromptQc";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
 import { resolveSkillDirCandidates, resolveSkillManifestPath } from "../skillFiles";
@@ -131,11 +132,11 @@ describe("verticalDramaPromptQc", () => {
       expect(promptCapForKind("video")).toBe(VD_VIDEO_PROMPT_MAX);
     });
 
-    it("widens only image caps and clamps the override", () => {
+    it("widens image caps while preserving the provider ceiling", () => {
       expect(resolveEffectivePromptCap("image")).toBe(VD_IMAGE_PROMPT_MAX);
       expect(resolveEffectivePromptCap("image", 500)).toBe(VD_IMAGE_PROMPT_MAX);
       expect(resolveEffectivePromptCap("image", 5000)).toBe(5000);
-      expect(resolveEffectivePromptCap("image", 99_999)).toBe(20_000);
+      expect(resolveEffectivePromptCap("image", 99_999)).toBe(99_999);
       expect(resolveEffectivePromptCap("video", 20_000)).toBe(4096);
     });
   });
@@ -160,7 +161,68 @@ describe("verticalDramaPromptQc", () => {
     });
   });
 
+  describe("mergeImageNegativePromptIntoPrompt", () => {
+    it("keeps positive prose intact and emits one deduplicated negative block", () => {
+      const result = mergeImageNegativePromptIntoPrompt(
+        [
+          "A quiet family scene at a desk.",
+          "NEGATIVE PROMPT: extra phones, no gore, distorted hands",
+          "IMAGE NEGATIVE CONSTRAINTS (MANDATORY — do not render): no gore, extra tablets",
+        ].join("\n"),
+        "distorted hands, extra phones, no captions",
+      );
+
+      expect(result).toBe(
+        [
+          "A quiet family scene at a desk.",
+          "",
+          "IMAGE NEGATIVE CONSTRAINTS (MANDATORY — do not render): extra phones, no gore, distorted hands, extra tablets, no captions",
+        ].join("\n"),
+      );
+      expect(result.match(/IMAGE NEGATIVE CONSTRAINTS/g)).toHaveLength(1);
+      expect(result).not.toContain("NEGATIVE PROMPT:");
+    });
+
+    it("does not rewrite ordinary positive prose containing the word negative", () => {
+      const result = mergeImageNegativePromptIntoPrompt(
+        "The negative space on the left frames the character's gaze.",
+      );
+
+      expect(result).toBe(
+        "The negative space on the left frames the character's gaze.",
+      );
+    });
+  });
+
   describe("ensurePromptWithinLimit", () => {
+    it("runs the image refiner even under the provider cap and never appends after it", async () => {
+      const protectedFragment = "CURRENT SHOT COMPOSITION LOCK: medium shot";
+      const sourcePrompt = mergeImageNegativePromptIntoPrompt(
+        `A quiet family scene.\n${protectedFragment}\nNEGATIVE PROMPT: extra phones, extra phones`,
+      );
+      mockExecuteRetry.mockResolvedValueOnce(refinerResult(sourcePrompt));
+
+      const result = await ensurePromptWithinLimit({
+        kind: "image",
+        prompt: sourcePrompt,
+        protectedFragments: [protectedFragment],
+        maxChars: 10_000,
+        finalizeWithRefiner: true,
+        failClosed: true,
+        userId: 1,
+        seriesId: 6,
+      });
+
+      expect(result.prompt).toBe(sourcePrompt);
+      expect(result.refined).toBe(true);
+      expect(result.truncated).toBe(false);
+      expect(mockExecuteRetry).toHaveBeenCalledTimes(1);
+      expect(mockExecuteRetry.mock.calls[0][0].userPrompt).toContain(
+        "MANDATORY PROTECTED FRAGMENTS",
+      );
+      expect(result.prompt.match(/IMAGE NEGATIVE CONSTRAINTS/g)).toHaveLength(1);
+    });
+
     it("extracts and preserves custom identity locks as protected provider fragments", async () => {
       const lock =
         "CUSTOM CHARACTER IDENTITY LOCK (AUTHORITATIVE; use instead of screen position): ไอริณ [characterKey=character]: ผู้หญิงใส่ผ้ากันเปื้อน.";

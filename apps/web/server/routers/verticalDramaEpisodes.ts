@@ -262,6 +262,7 @@ import { VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL } from "@shared/verticalDramaSeries/
 import {
   ensurePromptWithinLimit,
   extractCustomCharacterIdentityLockFragments,
+  mergeImageNegativePromptIntoPrompt,
 } from "../services/verticalDramaPromptQc";
 import {
   VD_IMAGE_PROMPT_ABSOLUTE_MAX,
@@ -851,7 +852,10 @@ export async function runReferenceFramePromptInteractiveJob(
   });
   const prompt = await ensurePromptWithinLimit({
     kind: "image",
-    prompt: result.prompt,
+    prompt: mergeImageNegativePromptIntoPrompt(
+      result.prompt,
+      result.negativePrompt,
+    ),
     maxChars: promptMaxChars,
     userId,
     tenantId,
@@ -894,14 +898,14 @@ export async function runReferenceFramePromptInteractiveJob(
           referenceView: {
             ...freshBarrierView.referenceView,
             imagePrompt: prompt.prompt,
-            negativePrompt: result.negativePrompt,
+            negativePrompt: "",
           },
         },
       }
     : {
         ...freshFrame,
         imagePrompt: prompt.prompt,
-        negativePrompt: result.negativePrompt,
+        negativePrompt: "",
       };
   await db
     .update(verticalDramaEpisodes)
@@ -919,7 +923,7 @@ export async function runReferenceFramePromptInteractiveJob(
     );
   return {
     prompt: prompt.prompt,
-    negativePrompt: result.negativePrompt,
+    negativePrompt: "",
     creditsUsed: result.creditsUsed,
     model: result.model,
     characterKeys,
@@ -3470,15 +3474,6 @@ function assertRequiredCharacterReferenceCapacity(
     code: "PRECONDITION_FAILED",
     message: `โมเดลนี้รองรับภาพอ้างอิงสูงสุด ${maxReferenceImages} ภาพ แต่ช็อต ${shotNumber} ต้องใช้ตัวละคร ${requiredCount} คน กรุณาเลือกโมเดลที่รองรับอย่างน้อย ${requiredCount} ภาพ`,
   });
-}
-
-function mergeImageNegativePromptIntoPrompt(
-  prompt: string,
-  negativePrompt: string | undefined
-): string {
-  const positive = prompt.trim();
-  const negative = negativePrompt?.trim() ?? "";
-  return negative ? `${positive}\nNEGATIVE PROMPT: ${negative}` : positive;
 }
 
 /**
@@ -17957,8 +17952,9 @@ export const verticalDramaEpisodesRouter = router({
       renderStartFramePrompt = renderIdentityLock.prompt;
 
       // Final-prompt QC (hard length cap) — enforced right before the
-      // outgoing image render call. No-op (zero LLM calls / zero credits)
-      // when the stored prompt is already within the selected model's effective cap.
+      // outgoing image render call. Normal image prompts always pass through
+      // the cinematic refiner here, even when under the provider cap; the
+      // policy-safe mode is the intentional exact-replacement exception below.
       // `renderStartFramePrompt` is used UNMODIFIED for identity mapping (no
       // code-authored character mapping append — see the
       // `referenceMappingMismatches` guard above).
@@ -17969,6 +17965,11 @@ export const verticalDramaEpisodesRouter = router({
           ? [renderIdentityLock.identityLockBlock!]
           : undefined,
         maxChars: imagePromptMaxChars,
+        // `policy_safe_rewrite` is already a safety-constrained final skill;
+        // sending it through a creative refiner could reintroduce wording
+        // that the exact-replacement proof deliberately removed.
+        finalizeWithRefiner: frame.promptMode?.mode !== "policy_safe_rewrite",
+        failClosed: true,
         userId,
         tenantId,
         seriesId,
@@ -17977,6 +17978,10 @@ export const verticalDramaEpisodesRouter = router({
           : undefined,
         label: `start-frame image prompt (episode #${episodeId}, shot ${input.shotNumber})`,
       });
+      // This is the exact prompt that is persisted below when prompt QC
+      // rewrites the shot. Return the same fingerprint to the client so its
+      // durable task-attachment write cannot be rejected as stale.
+      const renderPromptHash = sha256Prompt(imagePromptQc.prompt);
 
       const currentRolePrompt =
         frameRole === "stop" ? frame.stopFramePrompt : frame.imagePrompt;
@@ -18110,7 +18115,7 @@ export const verticalDramaEpisodesRouter = router({
           taskId: hermesTask.id,
           modelId: resolvedImageModelId,
           creditCost: 0,
-          promptHash: sha256Prompt(sourcePrompt),
+          promptHash: renderPromptHash,
           trimmedProductReferenceCount,
           droppedReferenceCount,
         };
@@ -18168,7 +18173,7 @@ export const verticalDramaEpisodesRouter = router({
           taskId: task.id,
           modelId: resolvedImageModelId,
           creditCost: imageCreditCost,
-          promptHash: sha256Prompt(sourcePrompt),
+          promptHash: renderPromptHash,
           trimmedProductReferenceCount,
         };
       } catch (err) {
@@ -18696,6 +18701,8 @@ export const verticalDramaEpisodesRouter = router({
           ? [gridPromptWithIdentityLock.identityLockBlock!]
           : undefined,
         maxChars: gridPromptMaxChars,
+        finalizeWithRefiner: true,
+        failClosed: true,
         userId,
         tenantId,
         seriesId,
@@ -19255,6 +19262,8 @@ export const verticalDramaEpisodesRouter = router({
         kind: "image",
         prompt: softenedRepairPrompt,
         maxChars: repairPromptMaxChars,
+        finalizeWithRefiner: true,
+        failClosed: true,
         userId,
         tenantId,
         seriesId,
@@ -21659,6 +21668,11 @@ export const verticalDramaEpisodesRouter = router({
         }))
       );
       shotStartFramePromptResult.prompt = shotStartFrameIdentityLock.prompt;
+      shotStartFramePromptResult.prompt = mergeImageNegativePromptIntoPrompt(
+        shotStartFramePromptResult.prompt,
+        shotStartFramePromptResult.negativePrompt,
+      );
+      shotStartFramePromptResult.negativePrompt = "";
 
       // Final-prompt QC (hard length cap) — enforced BEFORE this prompt is
       // persisted onto `startFramePlan.frames[]` below, same convention as
@@ -21733,15 +21747,14 @@ export const verticalDramaEpisodesRouter = router({
             ...(frameRole === "stop"
               ? {
                   stopFramePrompt: shotStartFramePromptResult.prompt,
-                  stopFrameNegativePrompt:
-                    shotStartFramePromptResult.negativePrompt,
+                  stopFrameNegativePrompt: "",
                   stopFramePromptHash: sha256Prompt(
                     shotStartFramePromptResult.prompt
                   ),
               }
               : {
                   imagePrompt: shotStartFramePromptResult.prompt,
-                  negativePrompt: shotStartFramePromptResult.negativePrompt,
+                  negativePrompt: "",
                   imagePromptHash: sha256Prompt(
                     shotStartFramePromptResult.prompt
                   ),
@@ -21916,7 +21929,7 @@ export const verticalDramaEpisodesRouter = router({
 
       return {
         prompt: shotStartFramePromptResult.prompt,
-        negativePrompt: shotStartFramePromptResult.negativePrompt,
+        negativePrompt: "",
         creditsUsed: shotStartFramePromptResult.creditsUsed,
         usedVision: shotStartFramePromptResult.usedVision ?? false,
         promptMode: shotStartFramePromptResult.frameStamp,
@@ -22270,7 +22283,10 @@ export const verticalDramaEpisodesRouter = router({
       }
 
       const referenceFrameIdentityLock = ensureCharacterIdentityLockPrompt(
-        referenceFramePromptResult.prompt,
+        mergeImageNegativePromptIntoPrompt(
+          referenceFramePromptResult.prompt,
+          referenceFramePromptResult.negativePrompt,
+        ),
         referenceFrameCharacterRefEntries.map((entry, index) => ({
           imageIndex: index + 1,
           characterKey: entry.characterKey,
@@ -22278,6 +22294,7 @@ export const verticalDramaEpisodesRouter = router({
         }))
       );
       referenceFramePromptResult.prompt = referenceFrameIdentityLock.prompt;
+      referenceFramePromptResult.negativePrompt = "";
 
       // Final-prompt QC (hard length cap) — keeps this mutation's returned
       // prompt within `generateShotReferenceFrameImage`'s own `prompt` zod
@@ -22336,7 +22353,7 @@ export const verticalDramaEpisodesRouter = router({
               referenceView: {
                 ...freshView.referenceView,
                 imagePrompt: referenceFramePromptQc.prompt,
-                negativePrompt: referenceFramePromptResult.negativePrompt,
+                negativePrompt: "",
               },
             },
           };
@@ -22359,7 +22376,7 @@ export const verticalDramaEpisodesRouter = router({
 
       return {
         prompt: referenceFramePromptQc.prompt,
-        negativePrompt: referenceFramePromptResult.negativePrompt,
+        negativePrompt: "",
         creditsUsed: referenceFramePromptResult.creditsUsed,
         model: referenceFramePromptResult.model,
         characterKeys: referenceFrameCharacterKeys,
@@ -22592,6 +22609,33 @@ export const verticalDramaEpisodesRouter = router({
         finalReferenceNegativePrompt
       );
       finalReferenceNegativePrompt = undefined;
+
+      const finalReferenceIdentityLock = ensureCharacterIdentityLockPrompt(
+        finalReferencePrompt,
+        characterAttachmentManifest.primaryEntries.map((entry, index) => ({
+          imageIndex: index + 1,
+          characterKey: entry.characterKey,
+          characterName: entry.name,
+        })),
+      );
+      const finalReferencePromptQc = await ensurePromptWithinLimit({
+        kind: "image",
+        prompt: finalReferenceIdentityLock.prompt,
+        protectedFragments: finalReferenceIdentityLock.identityLockBlock
+          ? [finalReferenceIdentityLock.identityLockBlock]
+          : undefined,
+        maxChars: referenceFramePromptMaxChars,
+        finalizeWithRefiner: true,
+        failClosed: true,
+        userId,
+        tenantId,
+        seriesId,
+        idempotencyKey: input.idempotencyKey
+          ? `${input.idempotencyKey}:prompt-qc`
+          : undefined,
+        label: `reference-frame image prompt (episode #${episodeId}, shot ${input.shotNumber})`,
+      });
+      finalReferencePrompt = finalReferencePromptQc.prompt;
 
       // Feature 135 — Hermes Grok media worker (section 09, row 8): resolve
       // the transport-neutral decision BEFORE the credit reserve block below

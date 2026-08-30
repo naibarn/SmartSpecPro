@@ -140,20 +140,10 @@ import {
   normalizeRoleAwareFramePromptOutput,
   type VerticalDramaFrameRole,
 } from "./verticalDramaFrameRoles";
+import { mergeImageNegativePromptIntoPrompt } from "./verticalDramaPromptQc";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
-
-function mergeImageNegativePromptIntoPrompt(
-  prompt: string,
-  negativePrompt: string | undefined
-): string {
-  const positive = prompt.trim();
-  const negative = negativePrompt?.trim() ?? "";
-  return negative
-    ? `${positive}\n\nIMAGE NEGATIVE CONSTRAINTS (MANDATORY — do not render): ${negative}`
-    : positive;
-}
 
 /**
  * Thrown when the per-user `mediaGenerationLimiter` rejects a start-frame
