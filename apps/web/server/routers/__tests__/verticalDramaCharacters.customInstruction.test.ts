@@ -480,7 +480,44 @@ describe("previewCharacterPrompt — customInstruction flow-through", () => {
     );
   });
 
-  it("falls back to a single prompt when first-casting has no safe age profile", async () => {
+  it("keeps the requested candidate batch when first-casting has no safe age profile", async () => {
+    mockGenerateCharacterPortraitCandidates.mockResolvedValueOnce({
+      sharedVisualLanguage: "premium vertical drama",
+      model: "gpt-4o-mini",
+      creditsUsed: 8,
+      raw: {},
+      candidates: [
+        {
+          candidateId: "candidate-1",
+          portraitPrompt: "portrait one",
+          negativePrompt: "catalog model",
+          visualIdentitySummary: "identity one",
+          visualBibleSnapshot: { version: 1, private: "dna-one" },
+        },
+        {
+          candidateId: "candidate-2",
+          portraitPrompt: "portrait two",
+          negativePrompt: "catalog model",
+          visualIdentitySummary: "identity two",
+          visualBibleSnapshot: { version: 1, private: "dna-two" },
+        },
+        {
+          candidateId: "candidate-3",
+          portraitPrompt: "portrait three",
+          negativePrompt: "catalog model",
+          visualIdentitySummary: "identity three",
+          visualBibleSnapshot: { version: 1, private: "dna-three" },
+        },
+      ],
+    });
+    mockCreatePortraitCandidateDraftBatch.mockResolvedValueOnce({
+      batchId: "6cc9da31-8a44-4742-b9c9-0dc6558db621",
+      candidates: [
+        { assetLinkId: 71, candidateId: "candidate-1", index: 0 },
+        { assetLinkId: 72, candidateId: "candidate-2", index: 1 },
+        { assetLinkId: 73, candidateId: "candidate-3", index: 2 },
+      ],
+    });
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(
@@ -504,9 +541,19 @@ describe("previewCharacterPrompt — customInstruction flow-through", () => {
       },
     });
 
-    expect(result).toMatchObject({ mode: "single" });
-    expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledTimes(1);
-    expect(mockGenerateCharacterPortraitCandidates).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      mode: "candidate_batch",
+      candidateCount: 3,
+      candidates: [
+        expect.objectContaining({ portraitPrompt: "portrait one" }),
+        expect.objectContaining({ portraitPrompt: "portrait two" }),
+        expect.objectContaining({ portraitPrompt: "portrait three" }),
+      ],
+    });
+    expect(mockGenerateCharacterPortraitCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({ portraitCandidateCount: 3 })
+    );
+    expect(mockGenerateCharacterVisualPrompts).not.toHaveBeenCalled();
   });
 
   it("returns a browser-safe candidate batch for regeneration while persisting private DNA server-side", async () => {

@@ -4837,11 +4837,12 @@ export const verticalDramaCharactersRouter = router({
         };
       }
 
-      // Candidate casting needs a server-derived age contract. A first-time
-      // character without DNA/age is still valid input for the normal visual
-      // prompt flow, so fall through to single-prompt generation instead of
-      // blocking the creator with a misleading "missing DNA" precondition.
-      if (input.portraitCandidateCount && castingAgeProfile) {
+      // The selected candidate count is part of the user's preview contract.
+      // `castingAgeProfile` is an optional safety/consistency constraint for
+      // the skill, not a reason to silently downgrade a requested batch to a
+      // single prompt. The candidate generator validates age when the profile
+      // is available and remains tolerant of legacy characters without one.
+      if (input.portraitCandidateCount) {
         let candidateResult;
         try {
           candidateResult = await generateCharacterPortraitCandidates({
