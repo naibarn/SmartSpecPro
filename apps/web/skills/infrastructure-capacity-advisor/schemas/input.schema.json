@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "description": "Sanitized, versioned capacity snapshot produced by the SmartSpecPro server. Server deterministic fields are authoritative.",
+  "required": [
+    "snapshotVersion",
+    "policyVersion",
+    "capturedAt",
+    "policy",
+    "deterministic"
+  ],
+  "properties": {
+    "snapshotVersion": { "type": "string", "maxLength": 40 },
+    "policyVersion": { "type": "string", "maxLength": 80 },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "policy": { "type": "object" },
+    "deterministic": { "type": "object" },
+    "workload": { "type": ["object", "null"] },
+    "workerQueueOverview": { "type": ["object", "null"] }
+  },
+  "additionalProperties": true
+}

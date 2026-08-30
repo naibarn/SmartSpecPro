@@ -60,6 +60,44 @@ describe("CanvasObjects SVG rendering", () => {
     expect(image).toHaveAttribute("src", expect.stringContaining("/uploads/icons/logo.svg"));
   });
 
+  it("keeps a full-slide image flush with the canvas and supports wheel crop zoom", () => {
+    const onAdjustMediaCrop = vi.fn();
+    render(
+      <CanvasObjects
+        elements={[{
+          id: "full-slide-image",
+          type: "image",
+          x: 0,
+          y: 0,
+          width: 1920,
+          height: 1080,
+          src: "/uploads/images/full-slide.png",
+          alt: "Full slide",
+          imageFit: "contain",
+          imageZoom: 1,
+        }]}
+        selectedElementIds={[]}
+        onSelectElement={noop}
+        onMoveSelection={noop}
+        onResizeSelection={noop}
+        onRotateSelection={noop}
+        interactionScale={1}
+        canvasWidth={1920}
+        canvasHeight={1080}
+        cropModeElementId="full-slide-image"
+        cropModeTarget="content"
+        onAdjustMediaCrop={onAdjustMediaCrop}
+      />,
+    );
+
+    const image = screen.getByTestId("canvas-image-full-slide-image");
+    expect(image).toHaveStyle({ objectFit: "cover" });
+    expect(image.closest("button")).toHaveClass("p-0");
+
+    fireEvent.wheel(image, { deltaY: -100 });
+    expect(onAdjustMediaCrop).toHaveBeenCalledWith("full-slide-image", { imageZoom: 1.105 });
+  });
+
   it("keeps muted autoplay flow resilient when play() is blocked", async () => {
     const playSpy = vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(() => {
       return Promise.reject(new Error("autoplay blocked"));

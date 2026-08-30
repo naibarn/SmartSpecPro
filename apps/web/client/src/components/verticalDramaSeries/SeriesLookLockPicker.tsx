@@ -23,6 +23,7 @@ const GENRE_LABELS: Record<VdLookLockGenre, { th: string; en: string }> = {
   sci_fi_cyberpunk: { th: "ไซไฟ / ไซเบอร์พังก์", en: "Sci-fi / Cyberpunk" },
   action_epic: { th: "แอ็กชัน / มหากาพย์", en: "Action / Epic" },
   fantasy_fairytale: { th: "แฟนตาซี / เทพนิยาย", en: "Fantasy / Fairytale" },
+  animation_cartoon: { th: "แอนิเมชัน / การ์ตูน", en: "Animation / Cartoon" },
 };
 
 export function SeriesLookLockPicker(props: {
@@ -40,23 +41,30 @@ export function SeriesLookLockPicker(props: {
     disabled?: boolean;
   }> = [
     ...(props.value.mode === "manual"
-      ? [{
-          key: "manual",
-          value: { mode: "manual" as const },
-          title: props.lang === "th" ? "ลุคที่ปรับเอง" : "Custom look",
-          description: props.lang === "th"
-            ? "ลุคแบบกำหนดเองที่บันทึกไว้ กดตัวเลือกอื่นเพื่อเปลี่ยน"
-            : "The saved custom look. Choose another option to replace it.",
-          disabled: true,
-        }]
+      ? [
+          {
+            key: "manual",
+            value: { mode: "manual" as const },
+            title: props.lang === "th" ? "ลุคที่ปรับเอง" : "Custom look",
+            description:
+              props.lang === "th"
+                ? "ลุคแบบกำหนดเองที่บันทึกไว้ กดตัวเลือกอื่นเพื่อเปลี่ยน"
+                : "The saved custom look. Choose another option to replace it.",
+            disabled: true,
+          },
+        ]
       : []),
     {
       key: "inherit_source",
       value: { mode: "inherit_source" },
       title: props.lang === "th" ? "ใช้ลุคจากต้นทาง" : "Use source look",
       description: props.hasInheritedLook
-        ? (props.lang === "th" ? "คืนค่าลุคจาก preset หรือซีรีส์ต้นทาง" : "Restore the preset or parent-series look")
-        : (props.lang === "th" ? "ยังไม่มีลุคต้นทางให้ใช้" : "No source look is available"),
+        ? props.lang === "th"
+          ? "คืนค่าลุคจาก preset หรือซีรีส์ต้นทาง"
+          : "Restore the preset or parent-series look"
+        : props.lang === "th"
+          ? "ยังไม่มีลุคต้นทางให้ใช้"
+          : "No source look is available",
       disabled: !props.hasInheritedLook,
     },
     ...VD_LOOK_LOCK_GENRES.map(genreKey => {
@@ -72,9 +80,10 @@ export function SeriesLookLockPicker(props: {
       key: "none",
       value: { mode: "none" },
       title: props.lang === "th" ? "ไม่ล็อกลุค" : "No look lock",
-      description: props.lang === "th"
-        ? "ไม่เพิ่มลุคระดับซีรีส์ในการสร้างภาพครั้งถัดไป"
-        : "Do not add a series-wide look to future image generations",
+      description:
+        props.lang === "th"
+          ? "ไม่เพิ่มลุคระดับซีรีส์ในการสร้างภาพครั้งถัดไป"
+          : "Do not add a series-wide look to future image generations",
     },
   ];
 
@@ -90,8 +99,10 @@ export function SeriesLookLockPicker(props: {
       </Text>
       <Grid columns={{ minWidth: 180, max: 3, repeat: "fit" }} gap={2}>
         {options.map(option => {
-          const selected = props.value.mode === option.value.mode
-            && (option.value.mode !== "genre" || props.value.genreKey === option.value.genreKey);
+          const selected =
+            props.value.mode === option.value.mode &&
+            (option.value.mode !== "genre" ||
+              props.value.genreKey === option.value.genreKey);
           return (
             <SelectableCard
               key={option.key}
@@ -103,15 +114,23 @@ export function SeriesLookLockPicker(props: {
                 props.onChange({
                   ...option.value,
                   ...(props.value.visualNarrativeEnabled !== undefined
-                    ? { visualNarrativeEnabled: props.value.visualNarrativeEnabled }
+                    ? {
+                        visualNarrativeEnabled:
+                          props.value.visualNarrativeEnabled,
+                      }
                     : {}),
-                })}
+                })
+              }
               padding={3}
               variant={selected ? "blue" : "default"}
             >
               <VStack gap={1}>
-                <Text type="label" weight="semibold">{option.title}</Text>
-                <Text type="supporting" color="secondary">{option.description}</Text>
+                <Text type="label" weight="semibold">
+                  {option.title}
+                </Text>
+                <Text type="supporting" color="secondary">
+                  {option.description}
+                </Text>
               </VStack>
             </SelectableCard>
           );
@@ -119,7 +138,9 @@ export function SeriesLookLockPicker(props: {
       </Grid>
       <VStack gap={1}>
         <Text type="label">
-          {props.lang === "th" ? "การนำลุคไปใช้ตอนคิดเรื่อง" : "Use this look during story planning"}
+          {props.lang === "th"
+            ? "การนำลุคไปใช้ตอนคิดเรื่อง"
+            : "Use this look during story planning"}
         </Text>
         <Text type="supporting" color="secondary">
           {props.lang === "th"
@@ -131,21 +152,30 @@ export function SeriesLookLockPicker(props: {
             {
               key: "story",
               enabled: true,
-              title: props.lang === "th" ? "ใช้ช่วยคิดเรื่องและงานภาพ" : "Use for story direction and visuals",
-              description: props.lang === "th"
-                ? "AI จะสกัด Visual Narrative DNA เพื่อช่วยเลือกฉาก อารมณ์ motif และภาษาภาพของความสัมพันธ์ โดยไม่ล็อกพล็อต"
-                : "AI derives Visual Narrative DNA for scene texture, motifs, emotion, and relationship staging without locking the plot.",
+              title:
+                props.lang === "th"
+                  ? "ใช้ช่วยคิดเรื่องและงานภาพ"
+                  : "Use for story direction and visuals",
+              description:
+                props.lang === "th"
+                  ? "AI จะสกัด Visual Narrative DNA เพื่อช่วยเลือกฉาก อารมณ์ motif และภาษาภาพของความสัมพันธ์ โดยไม่ล็อกพล็อต"
+                  : "AI derives Visual Narrative DNA for scene texture, motifs, emotion, and relationship staging without locking the plot.",
             },
             {
               key: "visual-only",
               enabled: false,
-              title: props.lang === "th" ? "ใช้กับงานภาพเท่านั้น" : "Use for visuals only",
-              description: props.lang === "th"
-                ? "ลุคจะถูกใช้ตอนสร้างภาพตัวละคร ฉาก และเฟรมเท่านั้น เหมาะกับเรื่องเดิมที่ไม่ต้องการให้วางโครงใหม่"
-                : "The look is used for character, location, and frame generation only; story planning stays unchanged.",
+              title:
+                props.lang === "th"
+                  ? "ใช้กับงานภาพเท่านั้น"
+                  : "Use for visuals only",
+              description:
+                props.lang === "th"
+                  ? "ลุคจะถูกใช้ตอนสร้างภาพตัวละคร ฉาก และเฟรมเท่านั้น เหมาะกับเรื่องเดิมที่ไม่ต้องการให้วางโครงใหม่"
+                  : "The look is used for character, location, and frame generation only; story planning stays unchanged.",
             },
           ].map(option => {
-            const selected = props.value.visualNarrativeEnabled === option.enabled;
+            const selected =
+              props.value.visualNarrativeEnabled === option.enabled;
             return (
               <SelectableCard
                 key={option.key}
@@ -157,13 +187,18 @@ export function SeriesLookLockPicker(props: {
                   props.onChange({
                     ...props.value,
                     visualNarrativeEnabled: option.enabled,
-                  })}
+                  })
+                }
                 padding={3}
                 variant={selected ? "blue" : "default"}
               >
                 <VStack gap={1}>
-                  <Text type="label" weight="semibold">{option.title}</Text>
-                  <Text type="supporting" color="secondary">{option.description}</Text>
+                  <Text type="label" weight="semibold">
+                    {option.title}
+                  </Text>
+                  <Text type="supporting" color="secondary">
+                    {option.description}
+                  </Text>
                 </VStack>
               </SelectableCard>
             );

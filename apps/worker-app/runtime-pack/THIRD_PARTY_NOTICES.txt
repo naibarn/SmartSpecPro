@@ -10,6 +10,9 @@ render execution.
   builds. The bundled FFmpeg build includes NVIDIA NVENC encoders.
 - Noto/Liberation/Ubuntu-compatible fonts are bundled for Thai-capable text
   rendering.
+- whisper.cpp is bundled for local speech-to-text transcription.
+- The ggml-large-v3 model is distributed from the whisper.cpp model repository
+  and is loaded locally by the Worker; preserve its upstream model terms.
 
 Redistribution of this runtime pack must continue to preserve the applicable
 upstream licenses and notices for each bundled component.

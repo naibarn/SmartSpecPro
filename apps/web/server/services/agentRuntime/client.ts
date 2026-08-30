@@ -126,6 +126,7 @@ const AgentRuntimeHealthSchema = z.object({
   supportedCheckpointSchemaVersions: z
     .array(z.number().int())
     .default([CURRENT_CHECKPOINT_SCHEMA_VERSION]),
+  supportedAssuranceOutputSchemas: z.array(z.string().min(1)).optional(),
 });
 
 export type AgentRuntimeResumeRequest = z.infer<

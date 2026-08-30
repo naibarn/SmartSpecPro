@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildCharacterPromptConfirmPayload } from "../VerticalDramaCharacterStockPanel";
+import {
+  buildCharacterPromptConfirmPayload,
+  characterIdentityDnaFormFromData,
+  characterVisualBibleFromData,
+} from "../VerticalDramaCharacterStockPanel";
 
 const BASE = {
   seriesId: "10",
@@ -12,6 +16,66 @@ const BASE = {
   imageModelUsesMcp: false,
   mcpConnectionId: null,
   referenceAssetLinkId: "asset-5",
+};
+
+const FULL_DESIGN_DNA = {
+  version: 1,
+  designIntent: "A resilient lead",
+  seriesDnaAlignment: ["Contemporary drama"],
+  roleTier: "lead_female",
+  beautyArchetype: "Warm heroine",
+  ageRange: "early 30s",
+  faceIdentity: {
+    facialGeometry: "Long oval face",
+    eyesAndGaze: "Warm eyes",
+    brows: "Soft brows",
+    nose: "Straight nose",
+    lipsAndSmile: "Full lips",
+    skinAndTexture: "Honey skin",
+    hair: "Long dark hair",
+    distinctiveAsymmetry: "Beauty mark",
+  },
+  bodyLanguage: {
+    posture: "Upright",
+    gesturePattern: "Protective gesture",
+    movementRhythm: "Controlled",
+    tensionTell: "Thumb rubs earring",
+  },
+  recallStack: {
+    face: "Oval face",
+    silhouette: "Structured blazer",
+    color: "Navy cream",
+    behavior: "Protective gesture",
+    emotionalHook: "Hidden vulnerability",
+  },
+  costumeGrammar: "Contemporary tailoring",
+  publicMask: "Decisive executive",
+  hiddenTruth: "Afraid to trust",
+  narrativePromise: "Learns to trust",
+  attractiveContradiction: "Warmth with boundaries",
+  forbiddenDrift: ["Generic headshot"],
+  antiCloneChecks: {
+    distinctFacialDimensions: ["Oval face", "Warm eyes", "Straight nose"],
+    distinctHairDimensions: ["Long hair", "Dark hair"],
+    distinctBodyLanguageDimensions: ["Upright", "Protective gesture"],
+    signatureDifference: "Beauty mark",
+  },
+  scores: {
+    storyFit: 9,
+    screenPresence: 9,
+    emotionalReadability: 9,
+    ensembleContrast: 9,
+    crossSeriesUniqueness: 16,
+    thresholdStatus: "pass",
+    rationale: "Strong fit",
+  },
+  comparisonEvidence: {
+    candidateDirectionCount: 3,
+    currentCastCompared: 1,
+    recentSeriesCompared: 1,
+    priorLeadDnaCompared: 1,
+    historyCompleteness: "structured",
+  },
 };
 
 describe("buildCharacterPromptConfirmPayload", () => {
@@ -87,5 +151,35 @@ describe("buildCharacterPromptConfirmPayload", () => {
     const result = buildCharacterPromptConfirmPayload(BASE);
 
     expect(result.payload.selectedImageModelId).toBe(BASE.selectedImageModelId);
+  });
+
+  it("defaults main portrait generation to no reference while preserving an explicit user-selected asset", () => {
+    const result = buildCharacterPromptConfirmPayload(BASE);
+
+    expect(result.payload.referencePolicy).toBe("none");
+    expect(result.payload.referenceAssetLinkId).toBe(BASE.referenceAssetLinkId);
+  });
+});
+
+describe("characterIdentityDnaFormFromData", () => {
+  it("reads the canonical age and face identity fields from visualBible", () => {
+    const result = characterIdentityDnaFormFromData({
+      visualBible: {
+        ageRange: "early 30s",
+        designDna: FULL_DESIGN_DNA,
+      },
+    });
+
+    expect(result?.ageRange).toBe("early 30s");
+    expect(result?.faceIdentity.hair).toBe("Long dark hair");
+  });
+
+  it("shows the no-DNA state as null rather than inventing values", () => {
+    expect(
+      characterIdentityDnaFormFromData({ description: "Legacy" })
+    ).toBeNull();
+    expect(
+      characterVisualBibleFromData({ visualBible: "invalid" })
+    ).toBeUndefined();
   });
 });

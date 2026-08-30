@@ -201,9 +201,11 @@ async function resolveSignedUrl(
   resolve: typeof storageResolveUrl = storageResolveUrl,
   expiresInSeconds = 3600,
 ): Promise<string> {
+  // The canonical client URL is always the protected storage proxy. Keep the
+  // presign seam for worker/tests, but never expose an expiring URL to History.
+  void presign;
   const objectKey = normalizeHermesReferenceStorageObjectKey(storageKey);
-  const presigned = await presign(objectKey, expiresInSeconds);
-  if (presigned) return presigned.url;
+  void expiresInSeconds;
   const resolved = await resolve(objectKey);
   return resolved ?? `/api/storage/files/${objectKey}`;
 }

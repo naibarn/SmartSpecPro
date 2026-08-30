@@ -701,6 +701,7 @@ export function issueWorkerAccessTokens(
     "workers:heartbeat",
     "workers:claim",
     "workers:report",
+    "workers:jobs:read",
     "workers:diagnostics",
   ];
   const connectionId = input.connectionId ?? randomJti("worker_conn");
@@ -887,6 +888,7 @@ export async function verifyWorkerRegistrationToken(
           || claims.permissionPreset === "content_worker"
           || claims.permissionPreset === "knowledge_worker"
           || claims.permissionPreset === "work_os_worker"
+          || claims.permissionPreset === "vertical_drama_media_operator"
           || claims.permissionPreset === "full_personal_worker")
         ? claims.permissionPreset
         : "readonly",
@@ -899,6 +901,7 @@ export async function verifyWorkerRegistrationToken(
             || claims.permissionPreset === "content_worker"
             || claims.permissionPreset === "knowledge_worker"
             || claims.permissionPreset === "work_os_worker"
+            || claims.permissionPreset === "vertical_drama_media_operator"
             || claims.permissionPreset === "full_personal_worker")
           ? claims.permissionPreset
           : "readonly";

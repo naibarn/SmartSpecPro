@@ -69,6 +69,7 @@
   "sidebar.videoEditor": "Video Editor",
   "sidebar.admin-work-os": "Work OS",
   "sidebar.admin-billing": "Billing Review",
+  "sidebar.admin-database-backups": "Database Backups",
   "sidebar.webhookTriggers": "Webhook Triggers",
   "sidebar.workflows": "Workflows"
 }

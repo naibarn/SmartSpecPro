@@ -58,6 +58,42 @@ function addMissing(missing: string[], path: string, value: unknown): void {
 }
 
 /**
+ * Recover the same creator inputs that influence completion validation after
+ * the short-lived Redis composition record has expired. The request snapshot
+ * is untrusted legacy data, so only well-typed, non-empty values are used.
+ */
+export function readVerticalDramaDraftCompletionContext(requestJson: unknown): {
+  targetEpisodeCount?: number;
+  genre?: string;
+  userPremise?: string;
+} {
+  if (
+    !requestJson ||
+    typeof requestJson !== "object" ||
+    Array.isArray(requestJson)
+  ) {
+    return {};
+  }
+  const synthesis = (requestJson as Record<string, unknown>).synthesis;
+  if (!synthesis || typeof synthesis !== "object" || Array.isArray(synthesis)) {
+    return {};
+  }
+  const values = synthesis as Record<string, unknown>;
+  const targetEpisodeCount = values.targetEpisodeCount;
+  const genre = text(values.genreHint);
+  const userPremise = text(values.userPremise);
+  return {
+    ...(typeof targetEpisodeCount === "number" &&
+    Number.isInteger(targetEpisodeCount) &&
+    targetEpisodeCount > 0
+      ? { targetEpisodeCount }
+      : {}),
+    ...(genre ? { genre } : {}),
+    ...(userPremise ? { userPremise } : {}),
+  };
+}
+
+/**
  * Strict terminal validator for the create-series wizard. Legacy synthesis
  * remains tolerant; only a job marked ready_for_qc may enter Draft QC.
  */
@@ -71,7 +107,14 @@ export function inspectVerticalDramaDraftCompleteness(params: {
   report: Omit<VerticalDramaDraftCompletionReport, "fingerprint">;
   diagnostics: VerticalDramaDraftDiagnostic[];
 } {
-  const draft = params.draft;
+  // Draft JSON is persisted model/user data at this boundary. Treat malformed
+  // legacy payloads as incomplete rather than throwing while reading fields.
+  const draft =
+    params.draft &&
+    typeof params.draft === "object" &&
+    !Array.isArray(params.draft)
+      ? params.draft
+      : {};
   const missing: string[] = [];
   const contradictions: string[] = [];
   const diagnostics: VerticalDramaDraftDiagnostic[] = [];
@@ -106,7 +149,10 @@ export function inspectVerticalDramaDraftCompleteness(params: {
   const characters = Array.isArray(draft.characters) ? draft.characters : [];
   if (characters.length < 3) missing.push("characters");
   characters.forEach((character, index) => {
-    const row = character as Record<string, unknown>;
+    const row =
+      character && typeof character === "object" && !Array.isArray(character)
+        ? (character as Record<string, unknown>)
+        : {};
     for (const key of [
       "name",
       "role",
@@ -121,7 +167,10 @@ export function inspectVerticalDramaDraftCompleteness(params: {
   const locations = Array.isArray(draft.locations) ? draft.locations : [];
   if (locations.length < 3) missing.push("locations");
   locations.forEach((location, index) => {
-    const row = location as Record<string, unknown>;
+    const row =
+      location && typeof location === "object" && !Array.isArray(location)
+        ? (location as Record<string, unknown>)
+        : {};
     addMissing(missing, `locations[${index}].name`, row.name);
     addMissing(missing, `locations[${index}].description`, row.description);
   });
@@ -209,7 +258,11 @@ export function inspectVerticalDramaDraftCompleteness(params: {
   if (design?.storyControlSeed) {
     const names = new Set(
       characters
-        .map(row => text((row as Record<string, unknown>).name))
+        .map(row =>
+          row && typeof row === "object" && !Array.isArray(row)
+            ? text((row as Record<string, unknown>).name)
+            : ""
+        )
         .filter(Boolean)
     );
     for (const name of design.storyControlSeed.canonicalCharacterKeys) {
@@ -265,7 +318,11 @@ export function inspectVerticalDramaDraftCompleteness(params: {
     });
     for (const issue of controlConsistency.issues) {
       const issuePath = `storyDesign.${issue.path}`;
-      if (issue.code === "placeholder_control_text" || issue.code === "duplicate_pressure_thread" || issue.code === "duplicate_advantage_beat") {
+      if (
+        issue.code === "placeholder_control_text" ||
+        issue.code === "duplicate_pressure_thread" ||
+        issue.code === "duplicate_advantage_beat"
+      ) {
         missing.push(issuePath);
       } else {
         contradictions.push(issuePath);

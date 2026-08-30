@@ -70,6 +70,9 @@ vi.mock("../intelligentModelSelector", () => ({
 vi.mock("../modelRegistry", () => ({
   resolveVerticalDramaCapabilities: vi.fn(),
 }));
+vi.mock("../durableMediaAssetService", () => ({
+  ensureExternalMediaAssetDurable: vi.fn(),
+}));
 
 import fs from "fs";
 import { parseSkillFile } from "@smartspec/skills";
@@ -78,6 +81,7 @@ import {
   projectMotionPromptPack,
   syncDialogueOntoMotionPromptClips,
   syncStartFramesOntoMotionPromptClips,
+  syncStopFramesOntoMotionPromptClips,
   appendPresetVisualIdentityStyleTokensToMotionPrompt,
   generateVerticalDramaShotVideoPrompt,
   generateVerticalDramaShotVideoPromptSpeakerSwitch,
@@ -101,6 +105,7 @@ import {
 import { loadEnabledLlmModelRows } from "../enabledLlmModels";
 import { selectBestLlmModel } from "../intelligentModelSelector";
 import { resolveVerticalDramaCapabilities } from "../modelRegistry";
+import { ensureExternalMediaAssetDurable } from "../durableMediaAssetService";
 
 const mockExecute = vi.mocked(executeWithFallback);
 const mockHasEnoughCredits = vi.mocked(hasEnoughCredits);
@@ -117,6 +122,7 @@ const mockParseSkillFile = vi.mocked(parseSkillFile);
 const mockLoadEnabledLlmModelRows = vi.mocked(loadEnabledLlmModelRows);
 const mockSelectBestLlmModel = vi.mocked(selectBestLlmModel);
 const mockResolveVerticalDramaCapabilities = vi.mocked(resolveVerticalDramaCapabilities);
+const mockEnsureExternalMediaAssetDurable = vi.mocked(ensureExternalMediaAssetDurable);
 
 function baseParams(
   overrides: Partial<Parameters<typeof generateVideoMotionPromptPack>[0]> = {},
@@ -221,6 +227,31 @@ describe("generateVideoMotionPromptPack", () => {
     expect(result.pack.motionMode).toBe("first_frame_to_video");
     expect(result.creditsUsed).toBe(7);
     expect(mockIsAllowed).toHaveBeenCalledWith("user:1");
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a high-risk generated clip as a completed pack with an advisory", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const output = validOutput(1);
+    output.video_clip_requests[0].prompt =
+      "A child is physically restrained by an adult.";
+    mockExecute.mockResolvedValue(successResponse(output));
+
+    const result = await generateVideoMotionPromptPack(
+      baseParams({
+        storyboardShots: [
+          { shotNumber: 1, description: "A child is safely cared for.", durationSeconds: 10 },
+        ],
+      }),
+    );
+
+    expect(result.pack.clips[0].prompt).toContain("physically restrained");
+    expect(result.pack.warnings).toEqual([
+      expect.objectContaining({
+        code: "vd_video_prompt_policy_advisory",
+        severity: "warning",
+      }),
+    ]);
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
@@ -1193,14 +1224,14 @@ describe("syncStartFramesOntoMotionPromptClips (video MCP submission fix)", () =
     expect(result.clips[1].startFrameAssetId).toBe("61");
   });
 
-  it("never overwrites a clip's existing startFrameAssetId (upstream LLM already carried one)", () => {
+  it("replaces a stale LLM startFrameAssetId with the persisted approved asset", () => {
     const pack = basePack([
       { clipNumber: 1, sourceShotNumbers: [1], prompt: "p", durationSeconds: 8, startFrameAssetId: "existing-frame" },
     ]);
     const result = syncStartFramesOntoMotionPromptClips(pack, {
       frames: [{ shotNumber: 1, approvedMediaAssetId: "60" }],
     });
-    expect(result.clips[0].startFrameAssetId).toBe("existing-frame");
+    expect(result.clips[0].startFrameAssetId).toBe("60");
   });
 
   it("leaves a clip's startFrameAssetId unset when its primary shot has no approved frame yet", () => {
@@ -1220,6 +1251,39 @@ describe("syncStartFramesOntoMotionPromptClips (video MCP submission fix)", () =
       ],
     });
     expect(result.clips[0].startFrameAssetId).toBe("70");
+  });
+});
+
+describe("syncStopFramesOntoMotionPromptClips", () => {
+  function basePack(clips: VideoMotionPromptPackProjection["clips"]): VideoMotionPromptPackProjection {
+    return {
+      selectedVideoModelId: "higgsfield/grok_video",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips,
+    };
+  }
+
+  it("maps the approved stop frame from the last ordered source shot", () => {
+    const result = syncStopFramesOntoMotionPromptClips(
+      basePack([
+        { clipNumber: 1, sourceShotNumbers: [2, 3], prompt: "p", durationSeconds: 8, startFrameAssetId: "s" },
+      ]),
+      { frames: [{ shotNumber: 2, approvedStopFrameAssetId: "wrong" }, { shotNumber: 3, approvedStopFrameAssetId: "end-3" }] },
+    );
+    expect(result.clips[0].endFrameAssetId).toBe("end-3");
+    expect(result.motionMode).toBe("first_last_frame_bridge");
+  });
+
+  it("clears a stale end-frame claim when no stop frame is approved", () => {
+    const result = syncStopFramesOntoMotionPromptClips(
+      basePack([
+        { clipNumber: 1, sourceShotNumbers: [1], prompt: "p", durationSeconds: 8, startFrameAssetId: "s", endFrameAssetId: "stale" },
+      ]),
+      { frames: [{ shotNumber: 1 }] },
+    );
+    expect(result.clips[0].endFrameAssetId).toBeUndefined();
+    expect(result.motionMode).toBe("first_frame_to_video");
   });
 });
 
@@ -1262,6 +1326,35 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
     };
   }
 
+  it("persists a prompt and returns a policy advisory instead of blocking an approved-image shot", async () => {
+    mockExecute.mockResolvedValue(
+      successResponse(
+        shotVideoPromptOutput({
+          prompt:
+            "The child is physically restrained by an adult; the camera gently pushes in.",
+          dialogue: [],
+        }),
+      ),
+    );
+
+    const result = await generateVerticalDramaShotVideoPrompt(
+      baseShotVideoPromptParams({
+        shotContext: {
+          description: "A child is safely lifted from a cradle by the mother.",
+          camera: "medium close shot",
+          beatIsSilent: true,
+          dialogueLines: [],
+        },
+      }),
+    );
+
+    expect(result.prompt).toContain("physically restrained");
+    expect(result.safetyWarnings).toEqual([
+      expect.stringContaining("Shot 3: video prompt safety advisory [abuse_or_coercion]"),
+    ]);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockHasEnoughCredits.mockResolvedValue(true);
@@ -1288,6 +1381,104 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
       nativeAudioDialogue: false,
       supportsNativeAudio: false,
     } as any);
+    mockEnsureExternalMediaAssetDurable.mockResolvedValue({
+      assetId: 99,
+      copy: {
+        storageKey: "durable-media/tenant-1/1/vertical_drama_reference/reference.png",
+        url: "/api/storage/files/durable-media/tenant-1/1/vertical_drama_reference/reference.png",
+        mimeType: "image/png",
+        fileSize: 100,
+        checksumSha256: "checksum",
+        originalUrl: "https://tempfile.aiquickdraw.com/images/chatgpt/reference.png",
+      },
+    } as any);
+  });
+
+  it("durabilizes temporary provider reference URLs before sending the vision request", async () => {
+    mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+    await generateVerticalDramaShotVideoPrompt(baseShotVideoPromptParams({
+      imageUrl: "https://tempfile.aiquickdraw.com/images/chatgpt/reference.png",
+    }));
+
+    expect(mockEnsureExternalMediaAssetDurable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-1",
+        userId: 1,
+        sourceType: "vertical_drama_reference",
+        mediaType: "image",
+      }),
+    );
+    const userMessage = mockExecute.mock.calls[0][0].messages.find(
+      (message: any) => message.role === "user",
+    );
+    expect(userMessage.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "image_url",
+          image_url: expect.objectContaining({
+            url: expect.stringContaining("/api/storage/files/durable-media/"),
+          }),
+        }),
+      ]),
+    );
+  });
+
+  it("rotates immediately after an empty provider response instead of retrying the same model", async () => {
+    mockExecute.mockReset();
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      {
+        modelId: "vision-model",
+        providerId: 1,
+        supportsVision: true,
+        supportsStructuredOutputs: true,
+        isRecommended: true,
+        priority: 1,
+      } as any,
+      {
+        modelId: "vision-fallback-model",
+        providerId: 2,
+        supportsVision: true,
+        supportsStructuredOutputs: true,
+        isRecommended: true,
+        priority: 2,
+      } as any,
+    ]);
+    mockExecute
+      .mockResolvedValueOnce({
+        type: "error",
+        error:
+          "LLM request failed: All providers failed after 1 attempt(s): attempt 1 kie_ai(gpt-5-codex): empty_response - Provider returned HTTP 200 with no assistant text",
+        statusCode: 502,
+      } as any)
+      .mockResolvedValueOnce({
+        type: "success" as const,
+        response: {
+          choices: [
+            {
+              message: { content: JSON.stringify(shotVideoPromptOutput()) },
+              index: 0,
+              finish_reason: "stop",
+            },
+          ],
+          usage: { prompt_tokens: 220, completion_tokens: 110 },
+        },
+        providerName: "openai",
+        providerId: 2,
+      } as any);
+
+    await generateVerticalDramaShotVideoPrompt(baseShotVideoPromptParams({
+      characterReferenceImages: [
+        { url: "https://example.com/alice.png", characterKey: "alice", name: "Alice" },
+      ],
+    }));
+
+    const models = mockExecute.mock.calls.map(([request]) => request.model);
+    expect(models.slice(0, 2)).toEqual([
+      "vision-model",
+      "vision-fallback-model",
+    ]);
+    expect(models[1]).not.toBe(models[0]);
   });
 
   // Named speaker attribution (2026-07-15) — the dialogue fact must attribute

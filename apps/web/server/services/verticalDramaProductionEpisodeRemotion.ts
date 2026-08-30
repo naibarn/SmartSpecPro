@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import {
   verticalDramaEpisodes,
   verticalDramaSeries,
+  verticalDramaShotBrollBindings,
   workerJobs,
   type WorkerJob,
 } from "../../drizzle/schema";
@@ -64,6 +65,8 @@ export interface ProductionEpisodeSourceSubEpisode {
   episodeNumber: number;
   compiledVideoUrl: string | null;
   motionPromptPack: VerticalDramaMotionPromptPack | null;
+  /** The compiled Sub-Episode already contains its B-roll overlay. */
+  brollApplied?: boolean;
 }
 
 export function resolveProductionEpisodeSource(
@@ -330,6 +333,7 @@ export async function assembleProductionEpisodesWithRemotion(
           : null,
       motionPromptPack:
         row.motionPromptPack as VerticalDramaMotionPromptPack | null,
+      brollApplied: compiled?.brollApplied === true,
     });
   }
 
@@ -348,6 +352,33 @@ export async function assembleProductionEpisodesWithRemotion(
     const missing = sourceModeError(row, args.sourceMode);
     if (missing) throw new Error(missing);
     selectedRows.set(number, row);
+  }
+
+  const selectedEpisodeIds = [...selectedRows.values()].map(row => row.id);
+  const activeBrollRows = selectedEpisodeIds.length
+    ? await db.select({ episodeId: verticalDramaShotBrollBindings.episodeId })
+      .from(verticalDramaShotBrollBindings)
+      .where(and(
+        eq(verticalDramaShotBrollBindings.tenantId, args.tenantId),
+        eq(verticalDramaShotBrollBindings.userId, args.userId),
+        eq(verticalDramaShotBrollBindings.seriesId, args.seriesId),
+        inArray(verticalDramaShotBrollBindings.episodeId, selectedEpisodeIds),
+        eq(verticalDramaShotBrollBindings.active, true),
+      ))
+    : [];
+  const brollEpisodeIds = new Set(activeBrollRows.map((row: { episodeId: number }) => Number(row.episodeId)));
+  for (const row of selectedRows.values()) {
+    if (!brollEpisodeIds.has(row.id)) continue;
+    if (args.sourceMode === "shot_assembly") {
+      throw new Error(
+        `vertical_drama_production_broll_requires_compiled_sub_episode: Sub-Episode ${row.episodeNumber} has active B-roll; render the Sub-Episode through Remotion before using shot assembly`,
+      );
+    }
+    if (!row.brollApplied) {
+      throw new Error(
+        `vertical_drama_production_broll_stale_compiled_video: Sub-Episode ${row.episodeNumber} must be reassembled so its compiled video includes the current B-roll`,
+      );
+    }
   }
 
   const requestedGroups = rangeGroups.filter(

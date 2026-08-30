@@ -98,6 +98,17 @@ def test_resolve_api_model_maps_gemini_omni_alias_to_kie_model():
     assert stats["fallback_alias_map"] == 2
 
 
+def test_resolve_api_model_maps_gemini_omni_flash_1_1_aliases_to_exact_kie_model():
+    reset_model_resolution_stats()
+
+    assert resolve_api_model("gemini-omni-flash-1-1") == "google/gemini-omni-flash-1-1"
+    assert resolve_api_model("gemini_omni_flash_1_1") == "google/gemini-omni-flash-1-1"
+    assert resolve_api_model("google/gemini-omni-flash-1-1") == "google/gemini-omni-flash-1-1"
+
+    stats = get_model_resolution_stats()
+    assert stats["fallback_alias_map"] == 3
+
+
 def test_resolve_api_model_maps_grok_imagine_video_15_aliases_to_kie_model():
     reset_model_resolution_stats()
 
@@ -136,7 +147,7 @@ def test_resolve_grok_image_2_operation_uses_one_logical_model_for_t2i_and_edit(
         "grok-imagine-image-2-0/image-edit",
         "image-edit",
     )
-    assert "aspect_ratio" in edit_config["drop_params"]
+    assert "aspect_ratio" not in edit_config["drop_params"]
 
 
 @pytest.mark.asyncio
@@ -162,7 +173,7 @@ async def test_grok_image_2_text_to_image_payload_is_exact():
 
 
 @pytest.mark.asyncio
-async def test_grok_image_2_image_edit_payload_uses_task_id_and_mask_indexes():
+async def test_grok_image_2_image_edit_payload_uses_five_image_urls_and_aspect_ratio():
     provider = KieAIProvider(api_key="test-key")
     provider.wait_for_task = AsyncMock(return_value={"id": "task-2", "data": []})
     provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-2"}})
@@ -171,10 +182,18 @@ async def test_grok_image_2_image_edit_payload_uses_task_id_and_mask_indexes():
         model="grok-imagine-image-2",
         prompt="Change the background to a studio",
         callback_url="",
-        api_config={"kie_model_id": "grok-imagine-image-2-0/text-to-image"},
+        aspect_ratio="3:2",
+        reference_image_urls=[
+            f"https://cdn.example.com/ref-{index}.png"
+            for index in range(1, 6)
+        ],
+        api_config={
+            "kie_model_id": "grok-imagine-image-2-0/text-to-image",
+            "reference_image_input_key": "image_urls",
+            "reference_image_input_type": "array",
+        },
         extra_params={
             "grokOperation": "image-edit",
-            "task_id": "provider-source-task",
             "mask_indexs": [{"value": 2}, 3],
         },
     )
@@ -183,7 +202,11 @@ async def test_grok_image_2_image_edit_payload_uses_task_id_and_mask_indexes():
     assert args[0] == "grok-imagine-image-2-0/image-edit"
     assert args[1] == {
         "prompt": "Change the background to a studio",
-        "task_id": "provider-source-task",
+        "aspect_ratio": "3:2",
+        "image_urls": [
+            f"https://cdn.example.com/ref-{index}.png"
+            for index in range(1, 6)
+        ],
         "mask_indexs": [2, 3],
     }
 
@@ -753,6 +776,44 @@ async def test_generate_video_preserves_gemini_omni_video_list_trim_fields():
     assert args[1]["video_list"] == [
         {"url": "https://cdn.example.com/source.mp4", "start": 1, "ends": 7}
     ]
+
+
+@pytest.mark.asyncio
+async def test_generate_video_builds_gemini_omni_flash_1_1_frame_payload_with_kie_resolution():
+    provider = KieAIProvider(api_key="test-key")
+    provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-gemini-flash-11"}})
+
+    await provider.generate_video(
+        model="gemini-omni-flash-1-1",
+        prompt="A cinematic product reveal.",
+        wait_for_completion=False,
+        resolution="4K",
+        api_config={
+            "kie_model_id": "google/gemini-omni-flash-1-1",
+            "reference_image_input_key": "image_urls",
+            "reference_image_input_type": "array",
+            "reference_video_input_key": "video_list",
+            "reference_video_input_type": "object_array",
+        },
+        extra_params={
+            "first_frame_url": "https://cdn.example.com/start.png",
+            "last_frame_url": "https://cdn.example.com/end.png",
+            "resolution": "4K",
+        },
+    )
+
+    provider.create_task.assert_awaited_once()
+    args, kwargs = provider.create_task.await_args
+    assert kwargs == {}
+    assert args[0] == "google/gemini-omni-flash-1-1"
+    assert args[1] == {
+        "prompt": "A cinematic product reveal.",
+        "duration": "4",
+        "aspect_ratio": "16:9",
+        "resolution": "4k",
+        "first_frame_url": "https://cdn.example.com/start.png",
+        "last_frame_url": "https://cdn.example.com/end.png",
+    }
 
 
 @pytest.mark.asyncio

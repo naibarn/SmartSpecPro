@@ -48,6 +48,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -125,6 +126,7 @@ vi.mock("../../services/verticalDramaCharacterImageGeneration", () => ({
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
   readPresetVisualIdentityFromBible: vi.fn(() => undefined),
+  shouldRequireAgeStageVariantForRequest: vi.fn(() => false),
   resolveFaceSourceReferenceForCharacter: mockResolveFaceSourceReferenceForCharacter,
 }));
 
@@ -166,6 +168,7 @@ vi.mock("../media", () => ({
 }));
 
 import { verticalDramaCharactersRouter } from "../verticalDramaCharacters";
+import { verticalDramaCharacterDesignDnaSchema } from "@shared/verticalDramaSeries/characterProfile";
 
 const router = verticalDramaCharactersRouter as unknown as Record<string, Function>;
 
@@ -254,6 +257,66 @@ function visualPromptResult(overrides: Partial<Record<string, unknown>> = {}) {
     ...overrides,
   };
 }
+
+const VALID_DNA = verticalDramaCharacterDesignDnaSchema.parse({
+  version: 1,
+  designIntent: "A resilient lead",
+  seriesDnaAlignment: ["Thai contemporary drama"],
+  roleTier: "lead_female",
+  beautyArchetype: "Warm heroine",
+  ageRange: "early 30s",
+  faceIdentity: {
+    facialGeometry: "Long oval face",
+    eyesAndGaze: "Large almond eyes",
+    brows: "Softly arched brows",
+    nose: "Straight medium bridge",
+    lipsAndSmile: "Defined cupid's bow",
+    skinAndTexture: "Warm honey-beige skin",
+    hair: "Long dark hair",
+    distinctiveAsymmetry: "Beauty mark under left eye",
+  },
+  bodyLanguage: {
+    posture: "Upright",
+    gesturePattern: "Protective gesture",
+    movementRhythm: "Slow controlled movement",
+    tensionTell: "Thumb rubs earring",
+  },
+  recallStack: {
+    face: "Oval face",
+    silhouette: "Structured blazer",
+    color: "Navy and cream",
+    behavior: "Protective gesture",
+    emotionalHook: "Strength hiding vulnerability",
+  },
+  costumeGrammar: "Contemporary tailoring",
+  publicMask: "Decisive executive",
+  hiddenTruth: "Afraid to trust",
+  narrativePromise: "Learns to ask for love",
+  attractiveContradiction: "Warmth with boundaries",
+  forbiddenDrift: ["Generic corporate headshot"],
+  antiCloneChecks: {
+    distinctFacialDimensions: ["Oval face", "Almond eyes", "Medium nose"],
+    distinctHairDimensions: ["Long length", "Center part"],
+    distinctBodyLanguageDimensions: ["Protective shoulders", "Earring gesture"],
+    signatureDifference: "Beauty mark",
+  },
+  scores: {
+    storyFit: 9,
+    screenPresence: 9,
+    emotionalReadability: 9,
+    ensembleContrast: 9,
+    crossSeriesUniqueness: 16,
+    thresholdStatus: "pass",
+    rationale: "Strong fit",
+  },
+  comparisonEvidence: {
+    candidateDirectionCount: 3,
+    currentCastCompared: 1,
+    recentSeriesCompared: 1,
+    priorLeadDnaCompared: 1,
+    historyCompleteness: "structured",
+  },
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -670,5 +733,99 @@ describe("generateCharacterSheet — per-character region override", () => {
         resolvedCharacterRegion: expect.objectContaining({ isExplicit: true, region: "african" }),
       }),
     );
+  });
+});
+
+describe("updateCharacterIdentityDna", () => {
+  it("updates canonical identity fields without generation or unrelated-data loss", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(
+        selectChain([
+          characterRow({
+            data: {
+              description: "Keep this description",
+              identityLock: "Keep the approved face",
+              visualBible: {
+                ageRange: "early 30s",
+                identityDnaRevision: 4,
+                designDna: VALID_DNA,
+              },
+            },
+          }),
+        ])
+      );
+    const setSpy = vi.fn();
+    const chain = updateChain([characterRow()]);
+    const originalSet = chain.set;
+    chain.set = vi.fn((arg: unknown) => {
+      setSpy(arg);
+      return originalSet(arg);
+    });
+    mockDb.update.mockReturnValueOnce(chain);
+
+    await router.updateCharacterIdentityDna({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        characterId: "1",
+        expectedRevision: 4,
+        identityDna: {
+          ageRange: "20",
+          faceIdentity: {
+            ...VALID_DNA.faceIdentity,
+            hair: "Long straight black hair",
+          },
+        },
+      },
+    });
+
+    const saved = (setSpy.mock.calls[0][0] as Record<string, any>).data;
+    expect(saved.description).toBe("Keep this description");
+    expect(saved.identityLock).toBe("Keep the approved face");
+    expect(saved.visualBible.ageRange).toBe("20");
+    expect(saved.visualBible.designDna.ageRange).toBe("20");
+    expect(saved.visualBible.designDna.faceIdentity.hair).toBe(
+      "Long straight black hair"
+    );
+    expect(saved.visualBible.designDna.publicMask).toBe(VALID_DNA.publicMask);
+    expect(saved.visualBible.identityDnaRevision).toBe(5);
+    expect(mockGenerateCharacterVisualPrompts).not.toHaveBeenCalled();
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("rejects a stale revision before writing", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(
+        selectChain([
+          characterRow({
+            data: {
+              visualBible: {
+                ageRange: "early 30s",
+                identityDnaRevision: 5,
+                designDna: VALID_DNA,
+              },
+            },
+          }),
+        ])
+      );
+
+    await expect(
+      router.updateCharacterIdentityDna({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          characterId: "1",
+          expectedRevision: 4,
+          identityDna: {
+            ageRange: "20",
+            faceIdentity: VALID_DNA.faceIdentity,
+          },
+        },
+      })
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(mockDb.update).not.toHaveBeenCalled();
   });
 });

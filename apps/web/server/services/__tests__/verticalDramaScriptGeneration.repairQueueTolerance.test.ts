@@ -370,7 +370,7 @@ describe("story-control annotation transport hardening", () => {
     expect(result.script.warnings).toHaveLength(2);
   });
 
-  it("does not weaken the semantic gate for a resolve action after normalizing bad evidence transport", async () => {
+  it("drops a resolve action after normalizing bad evidence transport without blocking the episode", async () => {
     mockLlmResponse({
       ...BASE_SCRIPT,
       warnings: [],
@@ -384,28 +384,38 @@ describe("story-control annotation transport hardening", () => {
       ],
     });
 
-    await expect(
-      generateEpisodeScript(
-        baseParams({
-          storySource: {
-            storyControlSeed: {
-              ...STORY_CONTROL_SEED,
-              threadCandidates: [
-                {
-                  threadId: "clinic-collateral",
-                  label: "Clinic collateral",
-                  scope: "episode_thread",
-                  ownerCharacters: ["char_aria"],
-                  plantEpisode: 1,
-                  payoffWindow: { startEpisode: 1, endEpisode: 3 },
-                  expectedEvidence: ["the collateral clause is addressed"],
-                  resolutionCost: "Aria loses leverage over the merger.",
-                },
-              ],
-            },
+    const result = await generateEpisodeScript(
+      baseParams({
+        storySource: {
+          storyControlSeed: {
+            ...STORY_CONTROL_SEED,
+            threadCandidates: [
+              {
+                threadId: "clinic-collateral",
+                label: "Clinic collateral",
+                scope: "episode_thread",
+                ownerCharacters: ["char_aria"],
+                plantEpisode: 1,
+                payoffWindow: { startEpisode: 1, endEpisode: 3 },
+                expectedEvidence: ["the collateral clause is addressed"],
+                resolutionCost: "Aria loses leverage over the merger.",
+              },
+            ],
           },
-        })
-      )
-    ).rejects.toThrow(/resolution_without_evidence/);
+        },
+      })
+    );
+
+    expect(result.script.thread_actions).toEqual([]);
+    expect(result.script.warnings).toEqual(
+      expect.arrayContaining([
+        {
+          code: "VD_STORY_CONTROL_METADATA_NORMALIZED",
+          message: expect.stringContaining(
+            "resolve action without current-episode evidence was omitted"
+          ),
+        },
+      ])
+    );
   });
 });

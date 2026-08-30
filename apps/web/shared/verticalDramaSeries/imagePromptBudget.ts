@@ -3,7 +3,7 @@ import { VD_IMAGE_PROMPT_MAX } from "./contracts";
 export { VD_IMAGE_PROMPT_MAX };
 
 /** Absolute ceiling accepted by the Vertical Drama image-prompt pipeline. */
-export const VD_IMAGE_PROMPT_ABSOLUTE_MAX = 20_000;
+export const VD_IMAGE_PROMPT_ABSOLUTE_MAX = 390_000;
 
 /** Kie.ai provider aliases used by the model catalog and legacy routes. */
 export function isKieAiProvider(provider: unknown): boolean {
@@ -30,7 +30,7 @@ export function resolveConfiguredImagePromptMax(
 
 /**
  * Resolve the display/enforcement budget from a catalog model row.
- * Kie.ai's current image API allowance is 20,000 characters; the legacy
+ * Kie.ai's current image API allowance is 390,000 characters; the legacy
  * 3,800-character value remains the safe fallback for unknown providers.
  */
 export function resolveVdImagePromptBudgetForCatalogModel(params: {

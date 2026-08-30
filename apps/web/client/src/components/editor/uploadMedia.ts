@@ -2,7 +2,7 @@
  * Shared editor upload helper.
  * Uploads through the library pipeline so every inserted asset is indexed for RAG.
  */
-import { getLibraryUploadClient } from "@/services/libraryUploadClient";
+import { uploadLibraryFileDirect } from "@/services/libraryUploadClient";
 
 export type EditorUploadType = "image" | "video" | "audio" | "file";
 
@@ -213,15 +213,11 @@ export async function uploadMedia(
   },
 ): Promise<EditorAssetUploadResult> {
   const fileType = getMimeTypeForFile(file);
-  const fileBase64 = await readFileAsBase64(file);
-  const result = await getLibraryUploadClient().library.uploadFile.mutate({
-    fileName: file.name,
-    fileType,
-    fileBase64,
+  const result = await uploadLibraryFileDirect(file, {
     title: options?.title ?? file.name.replace(/\.[^.]+$/, ""),
     visibility: options?.visibility ?? "private",
     metadata: options?.metadata,
-  }) as any;
+  });
 
   const item = result?.item ?? {};
   const sourceUrl = String(item.sourceUrl ?? item.source_url ?? result?.sourceUrl ?? result?.source_url ?? "");

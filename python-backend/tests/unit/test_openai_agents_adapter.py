@@ -16,6 +16,7 @@ from app.services.openai_agents_adapter import (
     prepare_allowed_tools,
     validate_media_production_capability_manifest,
 )
+from app.services.agent_output_assurance import AssuranceRequest
 from app.services.openai_agents_contracts import AgentRuntimeRequest, AgentRuntimeResponse
 from app.services.openai_agents_gateway_model import GatewayTransportConfig
 
@@ -165,6 +166,41 @@ def test_health_reports_supported_contract_versions():
     assert health["supportedRuntimeContractVersions"] == [1, 2]
     assert health["supportedTraceSchemaVersions"] == [1, 2]
     assert health["supportedCheckpointSchemaVersions"] == [1, 2]
+    assert "vd.assurance.story-findings.v1" in health["supportedAssuranceOutputSchemas"]
+
+
+def test_vertical_drama_assurance_binds_trusted_output_type_and_guardrail(monkeypatch):
+    class FakeAgent:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    class FakeModel:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    class FakeRunConfig:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+    request = _request([]).model_copy(update={"assurance": AssuranceRequest.model_validate({
+        "contractVersion": 1, "contractId": "vd", "attemptId": "attempt_01", "taskKind": "structured_generation",
+        "contractHash": "a" * 64, "evidencePolicy": {"allowTextOnlyFallback": True},
+        "evidence": [{"ref": "context:1", "purpose": "context", "trusted": True}],
+        "outputContract": {"schemaRef": "vd.assurance.story-findings.v1"}, "budget": {"maxTurns": 2},
+    })})
+    adapter = OpenAIAgentsAdapter()
+    monkeypatch.setattr(adapter, "_sdk_symbols", lambda: {
+        "Agent": FakeAgent, "Runner": object, "RunConfig": FakeRunConfig,
+        "OpenAIResponsesModel": FakeModel, "OpenAIChatCompletionsModel": FakeModel, "RunState": object,
+    })
+    monkeypatch.setattr("app.services.openai_agents_adapter.create_gateway_async_openai_client", lambda _config: object())
+    agent, _runtime = adapter._build_sdk_agent(
+        request,
+        GatewayTransportConfig(surface="team", tenant_id="tenant_demo", provider_id="openai", model_id="gpt-4.1-mini", gateway_route_id="gateway_default", resolved_gateway_model_id="openai/gpt-4.1-mini", base_url="https://gateway.internal/v1", api_key="token"),
+        prepared_tools=[], prepared_handoffs=[],
+    )
+    assert agent.kwargs["output_type"].__name__ == "VerticalDramaStoryFindings"
+    assert agent.kwargs["output_guardrails"][0].name == "vertical_drama_assurance_output"
 
 
 def _media_request(plan_input: dict | None = None) -> AgentRuntimeRequest:

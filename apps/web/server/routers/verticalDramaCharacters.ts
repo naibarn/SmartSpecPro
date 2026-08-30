@@ -31,12 +31,15 @@ import { db } from "../db";
 import {
   verticalDramaSeries,
   verticalDramaCharacters,
+  verticalDramaEpisodes,
   mediaAssets,
   mediaModels,
   libraryItems,
   apiAuditEvents,
   type VerticalDramaCharacterRow,
 } from "../../drizzle/schema";
+import { repairStartFramePlanAfterLookDeletion } from "../services/verticalDramaCharacterLookDeletion";
+import type { VerticalDramaStartFramePlan } from "@shared/verticalDramaSeries/contracts";
 import {
   verticalDramaCharacterStockService,
   VerticalDramaCharacterStockError,
@@ -149,6 +152,7 @@ import { verticalDramaApprovedCharacterDesignSnapshotSchema } from "@shared/vert
 import { resolveCharacterCastingAgeProfile } from "@shared/verticalDramaSeries/characterCastingAge";
 import {
   mergeCharacterIdentityDnaData,
+  readCharacterIdentityDna,
   readCharacterVisualBibleAgeRange,
   readCharacterIdentityDnaRevision,
   verticalDramaCharacterIdentityDnaEditSchema,
@@ -653,10 +657,10 @@ function mapStockError(err: unknown): never {
  *    face-source's) -> `"inherited"`, since a borrowed image is not this
  *    character's own established likeness
  *    (`planning/vd-look-image-not-replace-primary/plan.md` §3).
- * 2. Otherwise falls back to the pre-existing auto-resolution — this
- *    character's own approved portrait via `getPrimaryPortraitUrl` —
- *    UNCHANGED.
- * 3. NEW: if tier 2 returns `null` (the character has no portrait of its
+ * 2. When `referencePolicy` is `"auto"`, fall back to the pre-existing
+ *    auto-resolution — this character's own approved portrait via
+ *    `getPrimaryPortraitUrl`.
+ * 3. If auto tier 2 returns `null` (the character has no portrait of its
  *    own yet — e.g. a brand-new variant/twin on its very first render) AND
  *    `fallbackSourceCharacterId` is supplied (callers pass the character's
  *    `parentCharacterId ?? sharesFaceWithCharacterId`), fall back to that
@@ -667,19 +671,29 @@ function mapStockError(err: unknown): never {
  *    `null` as before — nothing more to fall back to.
  *
  * Shared by `generateCharacterImage` and `generateCharacterSheet` so the
- * override contract can never drift between the two call sites.
+ * override contract can never drift between the two call sites. `none` is
+ * used by main portrait regeneration and exits before any auto lookup.
  */
+export const VERTICAL_DRAMA_CHARACTER_REFERENCE_POLICY_VALUES = [
+  "none",
+  "auto",
+] as const;
+export type VerticalDramaCharacterReferencePolicy =
+  (typeof VERTICAL_DRAMA_CHARACTER_REFERENCE_POLICY_VALUES)[number];
+
 export async function resolveReferencePortraitUrl(
   owner: { tenantId: string; userId: number; seriesId: number },
   characterId: number,
   referenceAssetLinkId: string | undefined,
-  fallbackSourceCharacterId?: number | null
+  fallbackSourceCharacterId?: number | null,
+  referencePolicy: VerticalDramaCharacterReferencePolicy = "auto"
 ): Promise<string | null> {
   const resolved = await resolveReferencePortraitSource(
     owner,
     characterId,
     referenceAssetLinkId,
-    fallbackSourceCharacterId
+    fallbackSourceCharacterId,
+    referencePolicy
   );
   return resolved.url;
 }
@@ -717,8 +731,17 @@ export async function resolveReferencePortraitSource(
   owner: { tenantId: string; userId: number; seriesId: number },
   characterId: number,
   referenceAssetLinkId: string | undefined,
-  fallbackSourceCharacterId?: number | null
+  fallbackSourceCharacterId?: number | null,
+  referencePolicy: VerticalDramaCharacterReferencePolicy = "auto"
 ): Promise<{ url: string | null; source: ReferencePortraitSource | null }> {
+  // An explicit asset is always user intent and therefore has precedence over
+  // the policy. This is especially important for main portrait generation,
+  // whose default policy is `none`: choosing/attaching a reference must still
+  // send that exact asset to the provider.
+  if (!referenceAssetLinkId && referencePolicy === "none") {
+    return { url: null, source: null };
+  }
+
   if (!referenceAssetLinkId) {
     const ownPortraitUrl =
       await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
@@ -1326,6 +1349,54 @@ export function extractCharacterDescription(
   if (lookImageBrief) {
     parts.push(`Look image brief: ${lookImageBrief}`);
   }
+  // A previous review-required repair could persist the visual bible while
+  // dropping the derived look fields. Keep those rows renderable until the
+  // repair is run again, but only use visual-only fields; never pull story
+  // relationship or narrative prose into an image prompt.
+  if (!lookImageBrief) {
+    const lookDesign =
+      data.lookDesign &&
+      typeof data.lookDesign === "object" &&
+      !Array.isArray(data.lookDesign)
+        ? (data.lookDesign as Record<string, unknown>)
+        : null;
+    const visualBible =
+      data.visualBible &&
+      typeof data.visualBible === "object" &&
+      !Array.isArray(data.visualBible)
+        ? (data.visualBible as Record<string, unknown>)
+        : null;
+    const visualBiblePrompt = [
+      visualBible?.visualIdentitySummary,
+      visualBible?.signatureWardrobe,
+      visualBible?.hairMakeupNotes,
+      visualBible?.consistencyStrategy,
+      visualBible?.colorPalette,
+      ...(Array.isArray(visualBible?.identityAnchors)
+        ? visualBible?.identityAnchors
+        : []),
+      ...(Array.isArray(visualBible?.forbiddenDrift)
+        ? visualBible.forbiddenDrift.map(value => `Avoid: ${value}`)
+        : []),
+    ]
+      .filter((value): value is string => typeof value === "string")
+      .map(value => value.trim())
+      .filter(Boolean)
+      .join(" ");
+    const derivedLookPrompt = [
+      lookDesign?.image_brief,
+      lookDesign?.visual_description,
+      visualBiblePrompt,
+    ].find(
+      (value): value is string =>
+        typeof value === "string" &&
+        value.trim().length > 0 &&
+        !looksLikeCharacterLookStoryLeak(value)
+    );
+    if (derivedLookPrompt) {
+      parts.push(`Look image brief: ${derivedLookPrompt.trim()}`);
+    }
+  }
   return parts.length > 0 ? parts.join(" | ") : undefined;
 }
 
@@ -1575,8 +1646,10 @@ export function computeCharacterNeedsSetupReasons(params: {
   if (params.hasApprovedOrGeneratedPortrait === false) {
     reasons.push("missing_portrait");
   }
-  const description = params.data?.description;
-  if (typeof description !== "string" || description.trim().length === 0) {
+  // `description` is story context, not canonical Character DNA. A roster row
+  // can legitimately have a description before its first prompt preview, so
+  // only the validated persisted `visualBible.designDna` counts as DNA here.
+  if (!readCharacterIdentityDna(params.data)) {
     reasons.push("missing_dna");
   }
   return reasons;
@@ -3425,7 +3498,12 @@ export const verticalDramaCharactersRouter = router({
       const seriesId = parseId(input.seriesId, "series id");
       const characterId = parseId(input.characterId, "character id");
       await loadOwnedSeries(tenantId, userId, seriesId);
-      await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+      const character = await loadOwnedCharacter(
+        tenantId,
+        userId,
+        seriesId,
+        characterId
+      );
 
       const dependents = await db
         .select({ id: verticalDramaCharacters.id })
@@ -3450,16 +3528,78 @@ export const verticalDramaCharactersRouter = router({
         });
       }
 
-      await db
-        .delete(verticalDramaCharacters)
-        .where(
-          and(
-            eq(verticalDramaCharacters.id, characterId),
-            eq(verticalDramaCharacters.tenantId, tenantId),
-            eq(verticalDramaCharacters.userId, userId),
-            eq(verticalDramaCharacters.seriesId, seriesId)
-          )
-        );
+      const deleteCharacterRow = async (tx: any) => {
+        if (character.parentCharacterId != null) {
+          const [parent] = await tx
+            .select({ characterKey: verticalDramaCharacters.characterKey })
+            .from(verticalDramaCharacters)
+            .where(
+              and(
+                eq(verticalDramaCharacters.id, character.parentCharacterId),
+                eq(verticalDramaCharacters.tenantId, tenantId),
+                eq(verticalDramaCharacters.userId, userId),
+                eq(verticalDramaCharacters.seriesId, seriesId)
+              )
+            )
+            .limit(1);
+          if (!parent) {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: "ไม่พบตัวละครหลักสำหรับลุคนี้ จึงยังลบลุคไม่ได้",
+            });
+          }
+
+          const episodes = await tx
+            .select({
+              id: verticalDramaEpisodes.id,
+              startFramePlan: verticalDramaEpisodes.startFramePlan,
+            })
+            .from(verticalDramaEpisodes)
+            .where(
+              and(
+                eq(verticalDramaEpisodes.tenantId, tenantId),
+                eq(verticalDramaEpisodes.userId, userId),
+                eq(verticalDramaEpisodes.seriesId, seriesId)
+              )
+            );
+
+          for (const episode of episodes) {
+            const existingPlan =
+              episode.startFramePlan as VerticalDramaStartFramePlan | null;
+            if (!existingPlan) continue;
+            const repaired = repairStartFramePlanAfterLookDeletion({
+              plan: existingPlan,
+              deletedLookKey: character.characterKey,
+              parentCharacterKey: parent.characterKey,
+            });
+            if (repaired.changedShots.length === 0) continue;
+            await tx
+              .update(verticalDramaEpisodes)
+              .set({ startFramePlan: repaired.plan, updatedAt: new Date() })
+              .where(
+                and(
+                  eq(verticalDramaEpisodes.id, episode.id),
+                  eq(verticalDramaEpisodes.tenantId, tenantId),
+                  eq(verticalDramaEpisodes.userId, userId),
+                  eq(verticalDramaEpisodes.seriesId, seriesId)
+                )
+              );
+          }
+        }
+
+        await tx
+          .delete(verticalDramaCharacters)
+          .where(
+            and(
+              eq(verticalDramaCharacters.id, characterId),
+              eq(verticalDramaCharacters.tenantId, tenantId),
+              eq(verticalDramaCharacters.userId, userId),
+              eq(verticalDramaCharacters.seriesId, seriesId)
+            )
+          );
+      };
+
+      await db.transaction(deleteCharacterRow);
 
       return { success: true };
     }),
@@ -4697,14 +4837,11 @@ export const verticalDramaCharactersRouter = router({
         };
       }
 
-      if (input.portraitCandidateCount) {
-        if (!castingAgeProfile) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message:
-              "ไม่สามารถกำหนดช่วงอายุสำหรับ casting ได้จาก DNA/บทบาทของตัวละคร กรุณาเติมรายละเอียดบทบาทหรือช่วงอายุในข้อมูลตัวละครก่อน",
-          });
-        }
+      // Candidate casting needs a server-derived age contract. A first-time
+      // character without DNA/age is still valid input for the normal visual
+      // prompt flow, so fall through to single-prompt generation instead of
+      // blocking the creator with a misleading "missing DNA" precondition.
+      if (input.portraitCandidateCount && castingAgeProfile) {
         let candidateResult;
         try {
           candidateResult = await generateCharacterPortraitCandidates({
@@ -5075,13 +5212,16 @@ export const verticalDramaCharactersRouter = router({
         // is Hermes-transport and the caller has no default Hermes
         // connection for images.
         hermesConnectionId: z.string().max(64).optional(),
-        // Optional explicit reference-image-picker override (Phase D1,
-        // `planning/vertical-drama-reference-picker-outfit-lock/plan.md`) —
-        // when present, pins the identity-lock reference image to this exact
-        // character-asset link instead of auto-resolving the newest approved
-        // `primary_portrait` via `getPrimaryPortraitUrl`. Absent: behavior is
-        // byte-identical to today's auto-resolution.
+        // Explicit reference-image-picker override. When present, it always
+        // wins over `referencePolicy`, including the main portrait's default
+        // `none` policy. User-selected/attached references must never be
+        // silently discarded.
         referenceAssetLinkId: z.string().min(1).optional(),
+        // Main portrait generation is deliberately text-to-image by default;
+        // callers for looks/variants/angle packs opt into `auto` explicitly.
+        referencePolicy: z
+          .enum(VERTICAL_DRAMA_CHARACTER_REFERENCE_POLICY_VALUES)
+          .default("none"),
         // Free-text visual brief for THIS generation only. It reaches the
         // planner on the fallback path and is enforced on the exact provider
         // prompt on BOTH fallback and approved-preview paths.
@@ -5213,7 +5353,8 @@ export const verticalDramaCharactersRouter = router({
           { tenantId, userId, seriesId },
           characterId,
           input.referenceAssetLinkId,
-          character.parentCharacterId ?? character.sharesFaceWithCharacterId
+          character.parentCharacterId ?? character.sharesFaceWithCharacterId,
+          input.referencePolicy ?? "none"
         );
       const resolvedImageModelId = await resolveCharacterImageModelId(
         pickCharacterRenderModelId({
@@ -5806,6 +5947,7 @@ export const verticalDramaCharactersRouter = router({
           ...(input.referenceAssetLinkId
             ? { referenceAssetLinkId: input.referenceAssetLinkId }
             : {}),
+          referencePolicy: "auto" as const,
           customInstruction:
             `Identity angle-pack slot: ${VERTICAL_DRAMA_CHARACTER_ANGLE_DIRECTIVES[role]}. ` +
             "Use the approved primary portrait as the same-person identity anchor. " +
@@ -5912,6 +6054,11 @@ export const verticalDramaCharactersRouter = router({
         // Optional explicit reference-image-picker override — see
         // `generateCharacterImage`'s identical field for the full contract.
         referenceAssetLinkId: z.string().min(1).optional(),
+        // Character sheets preserve the existing identity-lock behavior. Main
+        // portrait regeneration uses `generateCharacterImage` with `none`.
+        referencePolicy: z
+          .enum(VERTICAL_DRAMA_CHARACTER_REFERENCE_POLICY_VALUES)
+          .default("auto"),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -6033,7 +6180,8 @@ export const verticalDramaCharactersRouter = router({
           { tenantId, userId, seriesId },
           characterId,
           input.referenceAssetLinkId,
-          character.parentCharacterId ?? character.sharesFaceWithCharacterId
+          character.parentCharacterId ?? character.sharesFaceWithCharacterId,
+          input.referencePolicy ?? "auto"
         );
       const resolvedImageModelId = await resolveCharacterImageModelId(
         pickCharacterRenderModelId({

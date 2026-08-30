@@ -4325,7 +4325,7 @@ export async function getOpsIncidentTimeline(
 
   const tenantUserFilter = sql`"userId" IN (
     SELECT id FROM users
-    WHERE "currentTenantId" = (SELECT id FROM tenants WHERE id = ${tenantId} LIMIT 1)::integer
+    WHERE "currentTenantId" = ${tenantId}
   )`;
 
   const notificationRows =

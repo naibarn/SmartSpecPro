@@ -31,8 +31,7 @@ import {
 import { HERMES_MEDIA_VIDEO_JOB_TYPE } from "../../shared/workerRuntime";
 import { formatHermesErrorMessage, type HermesMediaErrorCode, type HermesMediaJobContract } from "../../shared/hermesMedia";
 import { createLibraryItem, type LibraryActor } from "./libraryService";
-import { generateSignedUrl } from "./mediaAssetService";
-import { getUploadsDir, storageStreamFile } from "../storage";
+import { getUploadsDir, storageResolveUrl, storageStreamFile } from "../storage";
 import { isActiveContentUpload, isSvgUpload, sanitizeUploadedSvg } from "./uploadContentSafety";
 import { debugError } from "../_core/logger";
 
@@ -271,7 +270,7 @@ export async function finalizeHermesMediaArtifact(
   const verifyStoredObject = deps.verifyStoredObject ?? defaultVerifyHermesStoredObject;
   const contentSafetyGate = deps.contentSafetyGate ?? defaultHermesContentSafetyGate;
   const createLibraryItemFn = deps.createLibraryItem ?? createLibraryItem;
-  const resolveStorageUrl = deps.resolveStorageUrl ?? ((key: string) => generateSignedUrl(key));
+  const resolveStorageUrl = deps.resolveStorageUrl ?? ((key: string) => storageResolveUrl(key));
   const resolveLibraryFolderOwner = deps.resolveLibraryFolderOwner ?? defaultResolveHermesLibraryFolderOwner;
 
   const { job, artifact } = params;

@@ -12,6 +12,14 @@ export interface VerticalDramaCharacterLookCatalogEntry {
   lookDesignStatus?: "waiting_for_look_design" | "ready" | "review";
 }
 
+/** Additional persisted facts used only while reusing an existing roster row. */
+export interface VerticalDramaCharacterLookReuseCandidate extends VerticalDramaCharacterLookCatalogEntry {
+  lookSemanticKey?: string;
+  lookRequestKey?: string;
+  isSystemSuggested?: boolean;
+  rowId?: number;
+}
+
 export interface VerticalDramaLookSelectionShot {
   shotNumber: number;
   characterKeys: string[];
@@ -362,6 +370,13 @@ function normalizeLookText(value: string): string {
     .replace(/[\s\p{P}\p{S}]+/gu, "");
 }
 
+/** Stable comparison form for visible labels and legacy look metadata. */
+export function normalizeVerticalDramaCharacterLookText(
+  value: unknown
+): string {
+  return typeof value === "string" ? normalizeLookText(value) : "";
+}
+
 function readableText(value: string | undefined): string {
   return (value ?? "").trim().replace(/\s+/g, " ");
 }
@@ -513,6 +528,87 @@ function intentForEntry(
         .filter(Boolean)
         .join(" ");
   return findIntent(text);
+}
+
+/**
+ * Resolves a catalog entry's canonical look intent without reading base
+ * character prose as wardrobe evidence. This is shared by persistence code so
+ * legacy rows can be reused even when they predate semantic look metadata.
+ */
+export function getVerticalDramaCharacterLookIntentForEntry(
+  entry: VerticalDramaCharacterLookCatalogEntry
+): Pick<LookIntent, "key" | "variantType" | "ageStage"> | undefined {
+  const intent = intentForEntry(entry);
+  return intent
+    ? {
+        key: intent.key,
+        variantType: intent.variantType,
+        ...(intent.ageStage ? { ageStage: intent.ageStage } : {}),
+      }
+    : undefined;
+}
+
+/**
+ * Finds one existing look that can satisfy a new suggestion. Request keys are
+ * intentionally only one matching signal: they include shot context and are
+ * therefore not the durable identity of a reusable look.
+ */
+export function findVerticalDramaCharacterLookReuseCandidate(params: {
+  candidates: readonly VerticalDramaCharacterLookReuseCandidate[];
+  parentCharacterKey: string;
+  variantType: "outfit" | "age_stage";
+  canonicalIntent: string;
+  variantLabel: string;
+  requestKey: string;
+  semanticKey: string;
+}): VerticalDramaCharacterLookReuseCandidate | undefined {
+  const normalizedIntent = normalizeLookText(params.canonicalIntent);
+  const normalizedLabel = normalizeLookText(params.variantLabel);
+  const matches = params.candidates.flatMap(candidate => {
+    if (
+      candidate.parentCharacterKey !== params.parentCharacterKey ||
+      candidate.variantType !== params.variantType
+    ) {
+      return [];
+    }
+    const intent = getVerticalDramaCharacterLookIntentForEntry(candidate);
+    const exactMetadata =
+      candidate.lookRequestKey === params.requestKey ||
+      candidate.lookSemanticKey === params.semanticKey ||
+      candidate.lookSemanticKey ===
+        getVerticalDramaCharacterLookSemanticKey({
+          parentCharacterKey: params.parentCharacterKey,
+          canonicalIntent: params.canonicalIntent,
+          variantType: params.variantType,
+        });
+    const exactLabel =
+      normalizeLookText(candidate.variantLabel ?? "") === normalizedLabel;
+    const sameIntent = intent?.key === normalizedIntent;
+    if (!exactMetadata && !exactLabel && !sameIntent) return [];
+    return [
+      {
+        candidate,
+        matchRank: exactMetadata ? 3 : exactLabel ? 2 : 1,
+      },
+    ];
+  });
+  return matches.sort((left, right) => {
+    const portraitDelta =
+      Number(right.candidate.hasPortrait === true) -
+      Number(left.candidate.hasPortrait === true);
+    if (portraitDelta !== 0) return portraitDelta;
+    if (right.matchRank !== left.matchRank) {
+      return right.matchRank - left.matchRank;
+    }
+    const systemDelta =
+      Number(right.candidate.isSystemSuggested === true) -
+      Number(left.candidate.isSystemSuggested === true);
+    if (systemDelta !== 0) return systemDelta;
+    return (
+      (left.candidate.rowId ?? Number.MAX_SAFE_INTEGER) -
+      (right.candidate.rowId ?? Number.MAX_SAFE_INTEGER)
+    );
+  })[0]?.candidate;
 }
 
 function getFamilyKey(entry: VerticalDramaCharacterLookCatalogEntry): string {

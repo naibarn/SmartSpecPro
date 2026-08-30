@@ -157,6 +157,7 @@ class PresentationExportStatusResponse(BaseModel):
     percent: int  # 0–100
     stage: Optional[str] = None
     output_url: Optional[str] = None
+    output_storage_key: Optional[str] = None
     error_message: Optional[str] = None
 
 
@@ -264,7 +265,13 @@ async def download_local_export_file(
     filename: str,
     token: str = Query(..., min_length=16),
 ):
-    """Serve a locally stored presentation export file (R2 fallback path)."""
+    """Serve a signed legacy export while old export records are being migrated.
+
+    New exports are stored in R2 and use the protected storage URL. Older
+    exports may still point at this route because they were created before the
+    durable output key was persisted. Keep the signed, deck-scoped route alive
+    for those files instead of showing a false "export ready" download error.
+    """
     if not settings.JWT_SECRET:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="JWT secret is not configured")
     try:
@@ -285,12 +292,17 @@ async def download_local_export_file(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid filename")
 
     media_storage = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-    base_dir = os.path.realpath(os.path.join(media_storage, "presentation_exports", str(deck_id)))
+    base_dir = os.path.realpath(
+        os.path.join(media_storage, "presentation_exports", str(deck_id))
+    )
     file_path = os.path.realpath(os.path.join(base_dir, filename))
     if not file_path.startswith(base_dir + os.sep):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid file path")
     if not os.path.isfile(file_path):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Export file not found")
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="This legacy export is no longer available; please export again",
+        )
 
     media_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
     return FileResponse(path=file_path, media_type=media_type, filename=filename)
@@ -316,6 +328,7 @@ async def get_export_status(
                 state="done",
                 percent=100,
                 output_url=result_data.get("output_url"),
+                output_storage_key=result_data.get("output_storage_key"),
             )
 
         if state == "FAILURE":

@@ -45,6 +45,22 @@ describe("gallery media URLs", () => {
     ).toBe("/api/gallery/media/18/file");
   });
 
+  it("marks file URLs as downloads without affecting playback URLs", () => {
+    expect(
+      getGalleryMediaUrl(
+        { id: 19, fileKey: "gallery/videos/19.mp4" },
+        "file",
+        { download: true },
+      ),
+    ).toBe("/api/gallery/media/19/file?download=1");
+    expect(
+      getGalleryMediaUrl(
+        { id: 19, fileKey: "gallery/videos/19.mp4" },
+        "file",
+      ),
+    ).toBe("/api/gallery/media/19/file");
+  });
+
   it("classifies image thumbnails without confusing storage API routes", () => {
     expect(isGalleryImageSource("gallery/images/17.jpg")).toBe(true);
     expect(isGalleryImageSource("/api/gallery/media/17/thumbnail")).toBe(false);

@@ -35,6 +35,8 @@ import crypto from "crypto";
 import { eq, and, isNull, like, sql } from "drizzle-orm";
 import { debugError, debugLog } from "../_core/logger";
 import type { DrizzleDB } from "../db";
+import { isTransientSafetyReviewError } from "../../shared/transientGenerationError";
+import { isStorageCapacityError } from "../../shared/storageCapacityError";
 import {
   classifyCreditFailure,
   type CreditFailureClassification,
@@ -219,6 +221,29 @@ async function notifyCreditFailureUser(params: {
 export async function reportSystemFailure(params: ReportSystemFailureParams): Promise<void> {
   try {
     const errorMessage = params.errorMessage || "Unknown error";
+    // Disk exhaustion is an operator-remediation condition, not an
+    // application defect. The render path persists a user-readable failure;
+    // do not create noisy Admin Feedback tickets for it.
+    if (isStorageCapacityError(errorMessage)) {
+      debugLog("SystemAutoReport", "Suppressed storage-capacity failure", {
+        source: params.source,
+        path: params.path,
+        traceId: params.traceId,
+      });
+      return;
+    }
+    // A sensitive prompt must fail closed when the safety-review dependency is
+    // unavailable, but that dependency outage is not evidence of an
+    // application bug. It is already retried at the safety boundary and the
+    // caller receives a retryable SERVICE_UNAVAILABLE response.
+    if (isTransientSafetyReviewError(errorMessage)) {
+      debugLog("SystemAutoReport", "Suppressed transient safety-review outage", {
+        source: params.source,
+        path: params.path,
+        traceId: params.traceId,
+      });
+      return;
+    }
     const { fingerprint, fp8 } = computeFingerprint(params.source, errorMessage);
     const numericUserId = resolveNumericUserId(params.userId);
     const creditClassification = classifyCreditFailure({

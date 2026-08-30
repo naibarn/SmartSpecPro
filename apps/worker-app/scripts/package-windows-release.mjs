@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -89,6 +89,14 @@ function run(command, args, options = {}) {
 }
 
 function assertReleaseRuntimePack() {
+  const comfyMcpManifestPath = join(appDir, "src-tauri/resources/comfy-mcp/manifest.json");
+  if (!existsSync(comfyMcpManifestPath)) {
+    throw new Error(`ComfyUI MCP installer manifest is missing: ${comfyMcpManifestPath}`);
+  }
+  const comfyMcpManifest = readJson(comfyMcpManifestPath);
+  if (comfyMcpManifest.command !== "comfy-mcp" || comfyMcpManifest.packageVersion !== "0.10.0" || comfyMcpManifest.comfyCliRequirement !== ">=1.14.0") {
+    throw new Error("ComfyUI MCP installer manifest is not pinned to the supported official package contract");
+  }
   const manifestPath = join(appDir, "runtime-pack/manifest.json");
   const manifest = readJson(manifestPath);
   const runtimeId = manifest.runtimeId || "hyperframes-wsl2";
@@ -181,6 +189,18 @@ function assertReleaseRuntimePack() {
   if (!existsSync(join(appDir, "runtime-pack/hyperframes-sidecar/render.mjs"))) {
     blockedReasons.push("bundled HyperFrames sidecar render script is missing");
   }
+  const transcription = manifest.transcription;
+  if (!transcription || transcription.engine !== "whisper.cpp") {
+    blockedReasons.push("bundled whisper.cpp transcription contract is missing");
+  } else {
+    const whisperPath = join(appDir, "runtime-pack", transcription.binaryPath || "");
+    const modelPath = join(appDir, "runtime-pack", transcription.modelPath || "");
+    if (!existsSync(whisperPath)) blockedReasons.push(`bundled whisper executable is missing: ${transcription.binaryPath || "(missing)"}`);
+    if (!existsSync(modelPath)) blockedReasons.push(`bundled whisper model is missing: ${transcription.modelPath || "(missing)"}`);
+    if (existsSync(modelPath) && statSync(modelPath).size < 100_000_000) {
+      blockedReasons.push("bundled whisper model is too small to be a production model");
+    }
+  }
   if (!Array.isArray(manifest.licenseNotices) || manifest.licenseNotices.length === 0) {
     blockedReasons.push("license notices are missing");
   }
@@ -207,6 +227,13 @@ function assertReleaseRuntimePack() {
     }
     if (!existsSync(join(appDir, "runtime-pack", fileName))) {
       blockedReasons.push(`${fileField} file does not exist: ${fileName}`);
+    }
+  }
+  const signaturePath = join(appDir, "runtime-pack", manifest.signatureFile || "");
+  if (existsSync(signaturePath)) {
+    const signatureContents = readFileSync(signaturePath, "utf8").trim();
+    if (!signatureContents || signatureContents.includes("placeholder-signature-required-before-release")) {
+      blockedReasons.push("runtime signature is a placeholder or empty");
     }
   }
   for (const notice of Array.isArray(manifest.licenseNotices) ? manifest.licenseNotices : []) {

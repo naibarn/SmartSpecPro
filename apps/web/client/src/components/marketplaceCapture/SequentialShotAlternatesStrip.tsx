@@ -26,6 +26,7 @@
  * case) — no layout shift, matching the rest of this feature.
  */
 import { Badge } from "@/components/ui/badge";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { cn } from "@/lib/utils";
 import type { SequentialShotAlternate } from "@/lib/marketplaceSequentialStoryboardUi";
 import {
@@ -150,7 +151,7 @@ export function SequentialShotAlternatesStrip({
                   : "border-slate-200 hover:border-sky-500 disabled:opacity-90"
               )}
             >
-              <img
+              <AuthenticatedMediaImage
                 src={alternate.imageUrl}
                 alt={attemptLabel}
                 className="h-full w-full object-cover"

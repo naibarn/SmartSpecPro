@@ -16,6 +16,7 @@ import {
 import { createMarketplaceId, getMarketplaceCaptureForUser } from "./marketplaceCaptureService";
 import { marketplaceCaptureError } from "./marketplaceCaptureConfig";
 import { getMarketplaceProductWithAccess } from "./marketplaceProductService";
+import { marketplaceOwnerTenantScope } from "./marketplaceTenantScope";
 import { executeSkillLlmWithFallback } from "./skillModelFallback";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectBestLlmModel } from "./intelligentModelSelector";
@@ -472,7 +473,11 @@ export async function enhanceMarketplaceProductDescription(
       },
       updatedAt,
     })
-    .where(eq(marketplaceProducts.id, productId));
+    .where(and(
+      eq(marketplaceProducts.id, productId),
+      eq(marketplaceProducts.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+    ));
   return {
     ok: true,
     productId,
@@ -674,11 +679,14 @@ async function canReadInsightThroughAccessibleProduct(
 
   const relatedProducts = await db.select({ id: marketplaceProducts.id })
     .from(marketplaceProducts)
-    .where(or(
-      insight.captureId ? eq(marketplaceProducts.captureId, insight.captureId) : undefined,
-      and(
-        eq(marketplaceProducts.platform, insight.platform),
-        eq(marketplaceProducts.sourceUrl, insight.sourceUrl),
+    .where(and(
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+      or(
+        insight.captureId ? eq(marketplaceProducts.captureId, insight.captureId) : undefined,
+        and(
+          eq(marketplaceProducts.platform, insight.platform),
+          eq(marketplaceProducts.sourceUrl, insight.sourceUrl),
+        ),
       ),
     ))
     .limit(10);

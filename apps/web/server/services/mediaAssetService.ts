@@ -5,6 +5,7 @@ import { getDb } from "../db";
 import { mediaAssets } from "../../drizzle/schema";
 import { storagePresignGet, storageResolveUrl } from "../storage";
 import { extractVerticalDramaManagedMediaKey } from "./verticalDramaMediaAssetService";
+import { copyMediaBufferToR2, copyMediaSourceToR2 } from "./durableMediaAssetService";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -145,12 +146,49 @@ export async function createAssetFromAttachment(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  // 2. Compute lightweight checksum from storageKey (for dedup)
+  // 2. External provider attachments are copied to R2 before registration.
   const managedStorageKey = extractVerticalDramaManagedMediaKey(attachment.url);
-  const durableUrl = managedStorageKey
+  const externalProviderUrl = /^https?:\/\//i.test(attachment.url.trim())
+    ? attachment.url.trim()
+    : null;
+  const dataImageMatch = attachment.url.match(
+    /^data:(image\/(?:jpeg|png|webp|gif));base64,([a-z0-9+/=\s]+)$/i,
+  );
+  const dataImageBuffer = dataImageMatch
+    ? Buffer.from(dataImageMatch[2].replace(/\s+/g, ""), "base64")
+    : null;
+  if (dataImageBuffer && dataImageBuffer.byteLength > MAX_FILE_SIZE) {
+    throw new Error("Image validation failed: inline image exceeds 20 MB limit.");
+  }
+  const durableCopy = externalProviderUrl
+    ? await copyMediaSourceToR2({
+        tenantId: context.tenantId,
+        userId: context.userId,
+        mediaType: "image",
+        sourceType: "chat_attachment",
+        sourceUrl: externalProviderUrl,
+        originalUrl: externalProviderUrl,
+        mimeType: attachment.mimeType,
+      })
+    : null;
+  const durableBufferCopy = dataImageBuffer
+    ? await copyMediaBufferToR2(
+        {
+          tenantId: context.tenantId,
+          userId: context.userId,
+          mediaType: "image",
+          sourceType: "chat_attachment",
+          originalUrl: attachment.url,
+          mimeType: dataImageMatch?.[1] ?? attachment.mimeType,
+        },
+        dataImageBuffer,
+      )
+    : null;
+  const durableStorageKey = durableCopy?.storageKey ?? durableBufferCopy?.storageKey ?? managedStorageKey;
+  const durableUrl = durableCopy?.url ?? (managedStorageKey
     ? `/api/storage/files/${encodeURI(managedStorageKey)}`
-    : attachment.url;
-  const checksumInput = managedStorageKey ?? attachment.key ?? attachment.url;
+    : durableBufferCopy?.url ?? attachment.url);
+  const checksumInput = durableStorageKey ?? attachment.key ?? attachment.url;
   const checksumSha256 = crypto.createHash("sha256").update(checksumInput).digest("hex");
 
   // 3. Check for duplicate (same checksum + tenant + user)
@@ -193,11 +231,11 @@ export async function createAssetFromAttachment(
       messageId: context.messageId,
       projectId: context.projectId,
       sourceType: "chat_attachment",
-      status: "pending",
-      storageKey: managedStorageKey ?? attachment.key ?? attachment.url,
-      originalUrl: durableUrl,
-      mimeType: attachment.mimeType!,
-      fileSize: attachment.size,
+      status: durableCopy || durableBufferCopy ? "ready" : "pending",
+      storageKey: durableStorageKey ?? attachment.key ?? attachment.url,
+      originalUrl: externalProviderUrl ?? durableBufferCopy?.originalUrl ?? durableUrl,
+      mimeType: durableCopy?.mimeType ?? durableBufferCopy?.mimeType ?? attachment.mimeType!,
+      fileSize: durableCopy?.fileSize || durableBufferCopy?.fileSize || attachment.size,
       checksumSha256,
       width,
       height,

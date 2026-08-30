@@ -87,13 +87,12 @@ def test_unconfigured_token_returns_500(client: TestClient):
 
 
 @pytest.mark.unit
-def test_proxy_token_header_accepted(client: TestClient, tmp_path: Path):
+def test_proxy_token_header_accepted(client: TestClient):
     """X-Proxy-Token is an accepted alias for X-Internal-Token."""
     mock_session = _make_mock_session()
     with (
         patch("app.api.help_screenshot.settings") as mock_settings,
         patch("app.api.help_screenshot.BrowserSession", return_value=mock_session),
-        patch.dict("os.environ", {"HELP_ASSETS_DIR": str(tmp_path)}),
     ):
         mock_settings.SMARTSPEC_PROXY_TOKEN = VALID_TOKEN
         resp = client.post(
@@ -144,12 +143,11 @@ def _make_mock_session() -> MagicMock:
 
 
 @pytest.mark.unit
-def test_successful_screenshot(client: TestClient, tmp_path: Path):
+def test_successful_screenshot(client: TestClient):
     mock_session = _make_mock_session()
     with (
         patch("app.api.help_screenshot.settings") as mock_settings,
         patch("app.api.help_screenshot.BrowserSession", return_value=mock_session),
-        patch.dict("os.environ", {"HELP_ASSETS_DIR": str(tmp_path)}),
     ):
         mock_settings.SMARTSPEC_PROXY_TOKEN = VALID_TOKEN
         resp = client.post(
@@ -161,24 +159,19 @@ def test_successful_screenshot(client: TestClient, tmp_path: Path):
     assert resp.status_code == 200
     body = resp.json()
     assert body["filename"] == "open-panel.png"
-    assert body["url"] == "/uploads/help-assets/chat/open-panel.png"
-    assert body["markdown"] == "![open-panel](/uploads/help-assets/chat/open-panel.png)"
-
-    # File must have been written to disk
-    saved = tmp_path / "help-assets" / "chat" / "open-panel.png"
-    assert saved.exists()
-    assert saved.read_bytes() == base64.b64decode(FAKE_PNG)
+    assert body["url"] == ""
+    assert body["markdown"] == ""
+    assert body["base64"] == FAKE_PNG
 
 
 @pytest.mark.unit
-def test_screenshot_creates_nested_directories(client: TestClient, tmp_path: Path):
-    """help-assets/{feature_name}/ directory is created if it does not exist."""
+def test_screenshot_returns_bytes_without_creating_server_media_directory(client: TestClient, tmp_path: Path):
+    """The Python backend does not persist help media on local disk."""
     mock_session = _make_mock_session()
     payload = {**VALID_PAYLOAD, "feature_name": "new-feature", "step": "step-01"}
     with (
         patch("app.api.help_screenshot.settings") as mock_settings,
         patch("app.api.help_screenshot.BrowserSession", return_value=mock_session),
-        patch.dict("os.environ", {"HELP_ASSETS_DIR": str(tmp_path)}),
     ):
         mock_settings.SMARTSPEC_PROXY_TOKEN = VALID_TOKEN
         resp = client.post(
@@ -188,7 +181,8 @@ def test_screenshot_creates_nested_directories(client: TestClient, tmp_path: Pat
         )
 
     assert resp.status_code == 200
-    assert (tmp_path / "help-assets" / "new-feature" / "step-01.png").exists()
+    assert resp.json()["base64"] == FAKE_PNG
+    assert not (tmp_path / "help-assets").exists()
 
 
 # ── Error-path tests ───────────────────────────────────────────────────────

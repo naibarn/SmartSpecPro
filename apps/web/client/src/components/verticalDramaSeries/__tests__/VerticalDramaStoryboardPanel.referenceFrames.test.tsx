@@ -43,6 +43,33 @@ function baseProps(overrides: Record<string, unknown> = {}) {
 }
 
 describe("VerticalDramaStoryboardPanel — supplementary reference frames (Phase 6c)", () => {
+  it("keeps the existing shot image visible after character references change", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          assetUrls: { start: { url: "https://cdn/start.jpg" } },
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "",
+                requiredCharacterRefs: ["hero"],
+                approvedMediaAssetId: "start",
+                imageStaleReason: "character_references_changed",
+              },
+            ],
+          },
+          onGeneratePromptAndImage: vi.fn(),
+        }) as any)}
+      />
+    );
+
+    expect(screen.getByAltText("เฟรมเริ่มต้น ช็อต 1")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-storyboard-retained-image-1")
+    ).toHaveTextContent("เก็บภาพเดิมไว้");
+  });
+
   it("does not render the generate button when neither callback is wired", () => {
     render(
       <VerticalDramaStoryboardPanel

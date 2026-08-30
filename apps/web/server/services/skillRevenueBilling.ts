@@ -1,6 +1,7 @@
 import { and, count, desc, eq, gte, gt, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { resolveSkillSlugAlias } from "./skillRegistry";
+import { SKILL_SLUG_ALIASES } from "../../shared/skillReferenceContracts";
 import {
   creditTransactions,
   skillRevenueDebts,
@@ -48,6 +49,14 @@ export type SkillRevenueCharge = SkillRevenuePricing & {
   capApplied: boolean;
   pricingSource: "skill_config";
 };
+
+function buildCanonicalSkillSlugSql(column: typeof creditTransactions.skillSlug) {
+  let expression = sql`${column}`;
+  for (const [legacySlug, canonicalSlug] of Object.entries(SKILL_SLUG_ALIASES).reverse()) {
+    expression = sql`CASE WHEN ${column} = ${legacySlug} THEN ${canonicalSlug} ELSE ${expression} END`;
+  }
+  return expression;
+}
 
 export type SkillRevenueSettlementResult = {
   runId: string;
@@ -144,7 +153,7 @@ export async function getSkillBillingReconciliation(): Promise<SkillBillingRecon
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const skillUsage = and(eq(creditTransactions.sourceType, "skill"), eq(creditTransactions.type, "usage"));
-  const canonicalSkillJoin = sql`${skills.slug} = CASE WHEN ${creditTransactions.skillSlug} = 'elevenlabs-beauty-dialogue' THEN 'elevenlabs-product-voiceover-dialogue' ELSE ${creditTransactions.skillSlug} END`;
+  const canonicalSkillJoin = sql`${skills.slug} = ${buildCanonicalSkillSlugSql(creditTransactions.skillSlug)}`;
   const [{ value: unmappedUsageCount }] = await db
     .select({ value: count(creditTransactions.id) })
     .from(creditTransactions)
@@ -416,6 +425,7 @@ export async function settleSkillRun(input: {
         .insert(creditTransactions)
         .values({
           userId: input.userId,
+          tenantId: effectiveTenantId,
           amount: -charge.chargedTotalCredits,
           type: "usage",
           description: input.description ?? `Skill run: ${skill.name}`,
@@ -460,6 +470,7 @@ export async function settleSkillRun(input: {
         .insert(creditTransactions)
         .values({
           userId: recipientId,
+          tenantId: effectiveTenantId,
           amount,
           type: "creator_fee",
           description: `Skill revenue: ${skill.name}`,
@@ -544,10 +555,12 @@ export async function refundSkillRun(input: {
       if (currentUser) balances.set(settlement.userId, { ...currentUser, credits: balance.balanceAfter });
       await tx.insert(creditTransactions).values({
         userId: settlement.userId,
+        tenantId: settlement.tenantId,
         amount: settlement.totalCredits,
         type: "refund",
         description: input.reason ?? `Skill run refund: ${settlement.skillSlug}`,
         referenceId: userRefundReference,
+        reversalOfTransactionId: settlement.userTransactionId,
         idempotencyKey: `skill-run:${input.runId}:refund:user`,
         balanceAfter: balance.balanceAfter,
         skillSlug: settlement.skillSlug,
@@ -582,6 +595,7 @@ export async function refundSkillRun(input: {
       if (reversibleAmount > 0) {
         await tx.insert(creditTransactions).values({
           userId: recipientId,
+          tenantId: settlement.tenantId,
           amount: -reversibleAmount,
           type: "refund",
           description: `Skill revenue reversal: ${settlement.skillSlug}`,

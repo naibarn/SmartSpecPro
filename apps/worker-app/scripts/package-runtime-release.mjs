@@ -30,8 +30,8 @@ function argValue(name) {
   return index >= 0 ? process.argv[index + 1] : "";
 }
 
-function requiredPath(name) {
-  const value = argValue(name);
+function requiredPath(name, fallback = "") {
+  const value = argValue(name) || fallback;
   if (!value) throw new Error(`${name} is required`);
   const absolute = resolve(value);
   if (!existsSync(absolute)) throw new Error(`${name} does not exist: ${absolute}`);
@@ -85,6 +85,45 @@ function assertMacArm64Executable(path, label) {
   }
   if (!description.includes("arm64") && !description.includes("aarch64")) {
     throw new Error(`${label} must contain an arm64 slice for Apple Silicon: ${description.trim()}`);
+  }
+}
+
+function assertBundledWhisperExecutable(path, label, isWsl2, isMac) {
+  if (isWsl2) {
+    const description = execFileSync("file", [path], { encoding: "utf8" }).toLowerCase();
+    if (!description.includes("elf") || !description.includes("x86-64")) {
+      throw new Error(`${label} must be a Linux x86-64 executable for WSL2: ${description.trim()}`);
+    }
+  } else if (isMac) {
+    assertMacArm64Executable(path, label);
+  } else {
+    assertWindowsExecutable(path, label);
+  }
+}
+
+function assertWhisperModel(path) {
+  const size = statSync(path).size;
+  if (size < 100_000_000) {
+    throw new Error(`Whisper model is too small to be a production model (${size} bytes): ${path}`);
+  }
+}
+
+function applyHyperframesWhisperCompatibilityPatch(cliPath) {
+  const source = readFileSync(cliPath, "utf8");
+  const unsupportedDtwArgs = '    "--dtw",\n    effectiveModel,\n';
+  if (source.includes(unsupportedDtwArgs)) {
+    writeFileSync(cliPath, source.replace(unsupportedDtwArgs, ""));
+    return;
+  }
+  // Packaging can be retried from an already staged CLI. Treat the expected
+  // post-patch shape as valid, while still refusing an unrelated/unknown CLI.
+  if (source.includes('function transcribeAudio') && source.includes('"--suppress-nst"')) {
+    return;
+  }
+  {
+    throw new Error(
+      `Cannot verify HyperFrames/whisper.cpp compatibility in ${cliPath}; expected unsupported DTW argument was not found.`,
+    );
   }
 }
 
@@ -370,9 +409,12 @@ Required arguments:
   --browser-dir PATH
   --ffmpeg PATH
   --ffprobe PATH
+  --whisper-cli PATH
+  --whisper-model PATH
   --thai-fonts-dir PATH
   --notices PATH
   --signature-file PATH
+  --comfy-mcp-manifest PATH
 
 Mac full-render arguments:
   --remotion-sidecar-script PATH
@@ -470,9 +512,17 @@ if (isMacRuntime) {
   assertWindowsExecutable(ffmpeg, "FFmpeg");
   assertWindowsExecutable(ffprobe, "ffprobe");
 }
+const whisperCli = requiredPath("--whisper-cli");
+assertBundledWhisperExecutable(whisperCli, "Bundled whisper.cpp executable", isWsl2Runtime, isMacRuntime);
+const whisperModel = requiredPath("--whisper-model");
+assertWhisperModel(whisperModel);
 const thaiFontsDir = requiredPath("--thai-fonts-dir");
 const notices = requiredPath("--notices");
 const signatureFile = requiredPath("--signature-file");
+const comfyMcpManifest = requiredPath(
+  "--comfy-mcp-manifest",
+  resolve(appRoot, "src-tauri/resources/comfy-mcp/manifest.json"),
+);
 const outputDir = resolve(argValue("--output-dir") || defaultOutputDir);
 const hyperframesVersion = argValue("--hyperframes-version") || "official";
 const browserVersion = argValue("--browser-version") || "managed";
@@ -493,11 +543,16 @@ mkdirSync(join(stagingRoot, "runtime-pack/fonts"), { recursive: true });
 mkdirSync(join(stagingRoot, "runtime-pack/node"), { recursive: true });
 mkdirSync(join(stagingRoot, "runtime-pack/hyperframes"), { recursive: true });
 mkdirSync(join(stagingRoot, "runtime-pack/hyperframes-sidecar"), { recursive: true });
+mkdirSync(join(stagingRoot, "runtime-pack/comfy-mcp"), { recursive: true });
+mkdirSync(join(stagingRoot, "runtime-pack/whisper/.cache/hyperframes/whisper/models"), { recursive: true });
 
 copyFileInto(hyperframesSidecar, join(stagingRoot, "sidecars"), isMacRuntime ? "hyperframes-render" : "hyperframes-render.exe");
 cpSync(nodeDir, join(stagingRoot, "runtime-pack/node"), { recursive: true });
 cpSync(hyperframesDir, join(stagingRoot, "runtime-pack/hyperframes"), { recursive: true });
 rmSync(join(stagingRoot, "runtime-pack/hyperframes/node_modules/.bin"), { recursive: true, force: true });
+applyHyperframesWhisperCompatibilityPatch(
+  join(stagingRoot, "runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js"),
+);
 if (isWsl2Runtime) {
   const sharpPackagePath = join(stagingRoot, "runtime-pack/hyperframes/node_modules/sharp/package.json");
   const sharpPackage = existsSync(sharpPackagePath) ? readJsonFile(sharpPackagePath) : null;
@@ -553,9 +608,20 @@ if (isWsl2Runtime) {
 }
 copyFileInto(ffmpeg, join(stagingRoot, "runtime-pack/bin"), isWsl2Runtime || isMacRuntime ? "ffmpeg" : "ffmpeg.exe");
 copyFileInto(ffprobe, join(stagingRoot, "runtime-pack/bin"), isWsl2Runtime || isMacRuntime ? "ffprobe" : "ffprobe.exe");
+copyFileInto(
+  whisperCli,
+  join(stagingRoot, "runtime-pack/whisper"),
+  isWsl2Runtime || isMacRuntime ? "whisper-cli" : "whisper-cli.exe",
+);
+copyFileInto(
+  whisperModel,
+  join(stagingRoot, "runtime-pack/whisper/.cache/hyperframes/whisper/models"),
+  "ggml-large-v3.bin",
+);
 cpSync(thaiFontsDir, join(stagingRoot, "runtime-pack/fonts"), { recursive: true });
 copyFileInto(notices, join(stagingRoot, "runtime-pack"), "THIRD_PARTY_NOTICES.txt");
 copyFileInto(signatureFile, join(stagingRoot, "runtime-pack"), "SHA256SUMS.sig");
+copyFileInto(comfyMcpManifest, join(stagingRoot, "runtime-pack/comfy-mcp"), "manifest.json");
 
 const sidecarSha256 = sha256File(
   join(stagingRoot, "sidecars", isMacRuntime ? "hyperframes-render" : "hyperframes-render.exe"),
@@ -576,6 +642,16 @@ const manifest = {
   browserVersion,
   ffmpegVersion,
   ffprobeVersion,
+  transcription: {
+    engine: "whisper.cpp",
+    version: argValue("--whisper-version") || "managed",
+    binaryPath: isWsl2Runtime || isMacRuntime ? "whisper/whisper-cli" : "whisper/whisper-cli.exe",
+    binarySha256: sha256File(join(stagingRoot, "runtime-pack/whisper", isWsl2Runtime || isMacRuntime ? "whisper-cli" : "whisper-cli.exe")),
+    model: "large-v3",
+    modelPath: "whisper/.cache/hyperframes/whisper/models/ggml-large-v3.bin",
+    modelSha256: sha256File(join(stagingRoot, "runtime-pack/whisper/.cache/hyperframes/whisper/models", "ggml-large-v3.bin")),
+    modelUrl: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin",
+  },
   thaiFontFamily,
   sidecarPath: isMacRuntime ? "hyperframes-render" : "hyperframes-render.exe",
   sidecarSha256,
@@ -605,6 +681,14 @@ const manifest = {
   allowed: true,
   denyReason: null,
   rollbackToVersion: null,
+  comfyMcp: {
+    command: "comfy-mcp",
+    package: "comfy-mcp",
+    packageVersion: "0.10.0",
+    comfyCliRequirement: ">=1.14.0",
+    pythonRequirement: ">=3.10",
+    installMode: "worker-managed-venv",
+  },
 };
 writeFileSync(join(stagingRoot, "runtime-pack/manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 

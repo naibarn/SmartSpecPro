@@ -19,10 +19,14 @@ import {
 // purely additive to `mockFrom`'s existing tests.
 // ---------------------------------------------------------------------------
 const mockLimit = vi.fn();
-const mockWhereSelect = vi.fn(() => ({ limit: mockLimit }));
+const mockFor = vi.fn().mockResolvedValue([]);
+const mockWhereSelect = vi.fn(() => ({ limit: mockLimit, for: mockFor }));
 const mockJoinWhere = vi.fn();
 const mockInnerJoin = vi.fn(() => ({ where: mockJoinWhere }));
-const mockFrom = vi.fn(() => ({ where: mockWhereSelect, innerJoin: mockInnerJoin }));
+const mockFrom = vi.fn(() => ({
+  where: mockWhereSelect,
+  innerJoin: mockInnerJoin,
+}));
 const mockSelect = vi.fn(() => ({ from: mockFrom }));
 
 const mockInsertReturning = vi.fn();
@@ -39,6 +43,12 @@ vi.mock("../../db", () => ({
     select: (...args: unknown[]) => mockSelect(...args),
     insert: (...args: unknown[]) => mockInsert(...args),
     update: (...args: unknown[]) => mockUpdate(...args),
+    transaction: async (callback: (tx: unknown) => unknown) =>
+      callback({
+        select: (...args: unknown[]) => mockSelect(...args),
+        insert: (...args: unknown[]) => mockInsert(...args),
+        update: (...args: unknown[]) => mockUpdate(...args),
+      }),
   },
 }));
 
@@ -46,6 +56,7 @@ import {
   buildCharacterAssetManifest,
   deriveCharacterAssetState,
   characterAssetRowToContract,
+  buildDemotedPrimaryPortraitPatch,
   characterRefChangeStaleTargets,
   pickBestCharacterSheetAsset,
   projectPortraitCandidateMetadata,
@@ -55,7 +66,9 @@ import {
   type CharacterSheetAssetCandidate,
 } from "../verticalDramaCharacterStock";
 
-function asset(over: Partial<VerticalDramaCharacterAsset>): VerticalDramaCharacterAsset {
+function asset(
+  over: Partial<VerticalDramaCharacterAsset>
+): VerticalDramaCharacterAsset {
   return {
     assetLinkId: "1",
     seriesId: "10",
@@ -75,10 +88,14 @@ function asset(over: Partial<VerticalDramaCharacterAsset>): VerticalDramaCharact
 describe("character asset state machine", () => {
   it("transitions through draft -> generated/imported -> approved -> stale", () => {
     expect(canTransitionCharacterAssetState("draft", "generated")).toBe(true);
-    expect(canTransitionCharacterAssetState("generated", "approved")).toBe(true);
+    expect(canTransitionCharacterAssetState("generated", "approved")).toBe(
+      true
+    );
     expect(canTransitionCharacterAssetState("imported", "approved")).toBe(true);
     expect(canTransitionCharacterAssetState("approved", "stale")).toBe(true);
-    expect(transitionCharacterAssetState("generated", "approved")).toBe("approved");
+    expect(transitionCharacterAssetState("generated", "approved")).toBe(
+      "approved"
+    );
   });
 
   it("forbids skipping review from draft straight to approved", () => {
@@ -87,22 +104,43 @@ describe("character asset state machine", () => {
   });
 
   it("supports rejection and re-work back into the pipeline", () => {
-    expect(canTransitionCharacterAssetState("generated", "rejected")).toBe(true);
-    expect(canTransitionCharacterAssetState("rejected", "generated")).toBe(true);
+    expect(canTransitionCharacterAssetState("generated", "rejected")).toBe(
+      true
+    );
+    expect(canTransitionCharacterAssetState("rejected", "generated")).toBe(
+      true
+    );
   });
 
   it("only an approved+approved-state asset is usable downstream", () => {
-    expect(isCharacterAssetUsable({ state: "approved", approved: true })).toBe(true);
-    expect(isCharacterAssetUsable({ state: "generated", approved: false })).toBe(false);
+    expect(isCharacterAssetUsable({ state: "approved", approved: true })).toBe(
+      true
+    );
+    expect(
+      isCharacterAssetUsable({ state: "generated", approved: false })
+    ).toBe(false);
   });
 });
 
 describe("buildCharacterAssetManifest", () => {
   it("counts approved / pending / stale and picks latest updatedAt", () => {
     const manifest = buildCharacterAssetManifest(10, [
-      asset({ assetLinkId: "1", state: "approved", approved: true, updatedAt: "2026-01-03T00:00:00.000Z" }),
-      asset({ assetLinkId: "2", state: "generated", updatedAt: "2026-01-02T00:00:00.000Z" }),
-      asset({ assetLinkId: "3", state: "stale", updatedAt: "2026-01-04T00:00:00.000Z" }),
+      asset({
+        assetLinkId: "1",
+        state: "approved",
+        approved: true,
+        updatedAt: "2026-01-03T00:00:00.000Z",
+      }),
+      asset({
+        assetLinkId: "2",
+        state: "generated",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      }),
+      asset({
+        assetLinkId: "3",
+        state: "stale",
+        updatedAt: "2026-01-04T00:00:00.000Z",
+      }),
     ]);
     expect(manifest.seriesId).toBe("10");
     expect(manifest.approvedCount).toBe(1);
@@ -114,13 +152,31 @@ describe("buildCharacterAssetManifest", () => {
 
 describe("deriveCharacterAssetState", () => {
   it("prefers explicit metadata state", () => {
-    expect(deriveCharacterAssetState({ approved: false, qcStatus: "pending", metadata: { state: "stale" } })).toBe("stale");
+    expect(
+      deriveCharacterAssetState({
+        approved: false,
+        qcStatus: "pending",
+        metadata: { state: "stale" },
+      })
+    ).toBe("stale");
   });
   it("derives approved when approved flag set", () => {
-    expect(deriveCharacterAssetState({ approved: true, qcStatus: "passed", metadata: null })).toBe("approved");
+    expect(
+      deriveCharacterAssetState({
+        approved: true,
+        qcStatus: "passed",
+        metadata: null,
+      })
+    ).toBe("approved");
   });
   it("derives rejected when qc failed", () => {
-    expect(deriveCharacterAssetState({ approved: false, qcStatus: "failed", metadata: null })).toBe("rejected");
+    expect(
+      deriveCharacterAssetState({
+        approved: false,
+        qcStatus: "failed",
+        metadata: null,
+      })
+    ).toBe("rejected");
   });
 });
 
@@ -139,7 +195,11 @@ describe("characterAssetRowToContract", () => {
       containsHumanFace: true,
       qcStatus: "passed",
       checksumSha256: "abc",
-      metadata: { state: "approved", source: "generated", characterKey: "hero" },
+      metadata: {
+        state: "approved",
+        source: "generated",
+        characterKey: "hero",
+      },
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       updatedAt: new Date("2026-01-02T00:00:00.000Z"),
     } as any);
@@ -195,7 +255,9 @@ describe("characterAssetRowToContract", () => {
     });
     expect(JSON.stringify(contract)).not.toContain("PRIVATE_PROMPT");
     expect(JSON.stringify(contract)).not.toContain("PRIVATE_DNA");
-    expect(projectPortraitCandidateMetadata(metadata)).toEqual(contract.portraitCandidate);
+    expect(projectPortraitCandidateMetadata(metadata)).toEqual(
+      contract.portraitCandidate
+    );
   });
 
   it("rejects out-of-range candidate indexes and counts from the browser projection", () => {
@@ -207,13 +269,37 @@ describe("characterAssetRowToContract", () => {
     expect(
       projectPortraitCandidateMetadata({
         portraitCandidate: { ...candidate, index: 0, count: 6 },
-      }),
+      })
     ).toBeUndefined();
     expect(
       projectPortraitCandidateMetadata({
         portraitCandidate: { ...candidate, index: 3, count: 3 },
-      }),
+      })
     ).toBeUndefined();
+  });
+
+  it("exposes only the bounded reference-guided marker, never reference IDs", () => {
+    const projected = projectPortraitCandidateMetadata({
+      portraitCandidate: {
+        batchId: "batch-ref",
+        candidateId: "candidate-ref",
+        index: 0,
+        count: 1,
+        status: "previewed",
+        referenceGuided: true,
+        referenceAssetLinkIds: [11, 12],
+        visualBibleSnapshot: { private: true },
+      },
+    });
+    expect(projected).toEqual({
+      batchId: "batch-ref",
+      candidateId: "candidate-ref",
+      index: 0,
+      count: 1,
+      status: "previewed",
+      referenceGuided: true,
+    });
+    expect(JSON.stringify(projected)).not.toContain("referenceAssetLinkIds");
   });
 });
 
@@ -227,6 +313,22 @@ describe("characterRefChangeStaleTargets", () => {
   });
 });
 
+describe("buildDemotedPrimaryPortraitPatch", () => {
+  it("keeps an ordinary old primary as a reusable reference", () => {
+    const patch = buildDemotedPrimaryPortraitPatch({
+      qcStatus: "passed",
+      metadata: { state: "approved", source: "imported" },
+    } as any);
+
+    expect(patch).toMatchObject({
+      approved: false,
+      qcStatus: "passed",
+      metadata: { state: "generated", source: "imported" },
+    });
+    expect(patch.role).toBeUndefined();
+  });
+});
+
 describe("VerticalDramaCharacterStockService.linkAsset — idempotency (bug repro 2026-07-06)", () => {
   const owner = { tenantId: "t1", userId: 42, seriesId: 10 };
   const baseParams = {
@@ -236,13 +338,20 @@ describe("VerticalDramaCharacterStockService.linkAsset — idempotency (bug repr
     assetType: "character_reference",
     source: "imported" as const,
   };
-  const mediaAssetRow = { id: 100, tenantId: "t1", userId: 42, status: "completed" };
+  const mediaAssetRow = {
+    id: 100,
+    tenantId: "t1",
+    userId: 42,
+    status: "completed",
+  };
 
   beforeEach(() => {
     mockSelect.mockClear();
     mockFrom.mockClear();
     mockWhereSelect.mockClear();
     mockLimit.mockClear();
+    mockFor.mockReset();
+    mockFor.mockResolvedValue([]);
     mockInsert.mockClear();
     mockInsertValues.mockClear();
     mockInsertReturning.mockClear();
@@ -254,9 +363,7 @@ describe("VerticalDramaCharacterStockService.linkAsset — idempotency (bug repr
 
   it("inserts a new row when no existing (characterId, mediaAssetId) link exists", async () => {
     // 1st select() call = media-asset attachability check, 2nd = existing-link lookup.
-    mockLimit
-      .mockResolvedValueOnce([mediaAssetRow])
-      .mockResolvedValueOnce([]); // no existing link
+    mockLimit.mockResolvedValueOnce([mediaAssetRow]).mockResolvedValueOnce([]); // no existing link
     mockInsertReturning.mockResolvedValueOnce([
       {
         id: 1,
@@ -278,7 +385,10 @@ describe("VerticalDramaCharacterStockService.linkAsset — idempotency (bug repr
     ]);
 
     const service = new VerticalDramaCharacterStockService();
-    const result = await service.linkAsset({ ...baseParams, role: "primary_portrait" });
+    const result = await service.linkAsset({
+      ...baseParams,
+      role: "primary_portrait",
+    });
 
     expect(mockInsert).toHaveBeenCalledTimes(1);
     expect(mockUpdate).not.toHaveBeenCalled();
@@ -317,7 +427,10 @@ describe("VerticalDramaCharacterStockService.linkAsset — idempotency (bug repr
     ]);
 
     const service = new VerticalDramaCharacterStockService();
-    const result = await service.linkAsset({ ...baseParams, role: "primary_portrait" });
+    const result = await service.linkAsset({
+      ...baseParams,
+      role: "primary_portrait",
+    });
 
     // No duplicate row inserted — the existing (characterId, mediaAssetId)
     // link is updated in place (this is the exact drag-onto-card repro: the
@@ -329,6 +442,67 @@ describe("VerticalDramaCharacterStockService.linkAsset — idempotency (bug repr
     expect(result.assetLinkId).toBe("7");
     expect(result.role).toBe("primary_portrait");
     expect(result.state).toBe("approved");
+  });
+
+  it("demotes the previous primary into history when a new generated primary is linked", async () => {
+    const oldPrimary = {
+      id: 8,
+      tenantId: "t1",
+      userId: 42,
+      seriesId: 10,
+      characterId: 5,
+      mediaAssetId: 99,
+      assetType: "character_reference",
+      role: "primary_portrait",
+      approved: true,
+      containsHumanFace: true,
+      qcStatus: "passed",
+      checksumSha256: null,
+      metadata: { state: "approved", source: "generated" },
+      createdAt: new Date("2026-07-05T00:00:00.000Z"),
+      updatedAt: new Date("2026-07-05T00:00:00.000Z"),
+    };
+    mockLimit
+      .mockResolvedValueOnce([mediaAssetRow]) // attachability check
+      .mockResolvedValueOnce([]); // new media link
+    mockFor.mockResolvedValueOnce([oldPrimary]);
+    mockInsertReturning.mockResolvedValueOnce([
+      {
+        id: 9,
+        tenantId: "t1",
+        userId: 42,
+        seriesId: 10,
+        characterId: 5,
+        mediaAssetId: 100,
+        assetType: "character_reference",
+        role: "primary_portrait",
+        approved: true,
+        containsHumanFace: true,
+        qcStatus: "pending",
+        checksumSha256: null,
+        metadata: { state: "approved", source: "generated" },
+        createdAt: new Date("2026-07-06T00:00:00.000Z"),
+        updatedAt: new Date("2026-07-06T00:00:00.000Z"),
+      },
+    ]);
+
+    const service = new VerticalDramaCharacterStockService();
+    const result = await service.linkAsset({
+      ...baseParams,
+      role: "primary_portrait",
+      source: "generated",
+    });
+
+    expect(result.assetLinkId).toBe("9");
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpdateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        approved: false,
+        metadata: expect.objectContaining({ state: "generated" }),
+      })
+    );
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    // The old row is demoted, not deleted; the service never calls delete.
   });
 
   it("does not attempt idempotent lookup when characterId or mediaAssetId is absent (browse-only / product-reference rows)", async () => {
@@ -372,7 +546,9 @@ describe("VerticalDramaCharacterStockService.linkAsset — idempotency (bug repr
 });
 
 describe("pickBestCharacterSheetAsset (F131Z sheet-selection preference matrix)", () => {
-  function candidate(over: Partial<CharacterSheetAssetCandidate>): CharacterSheetAssetCandidate {
+  function candidate(
+    over: Partial<CharacterSheetAssetCandidate>
+  ): CharacterSheetAssetCandidate {
     return {
       url: "https://cdn.example.com/sheet.png",
       role: "character_sheet_full",
@@ -400,23 +576,33 @@ describe("pickBestCharacterSheetAsset (F131Z sheet-selection preference matrix)"
       updatedAt: "2026-06-01T00:00:00.000Z", // newer AND turnaround — still loses to approved
     });
     expect(
-      pickBestCharacterSheetAsset([unapprovedTurnaroundNewer, approvedFull])?.url,
+      pickBestCharacterSheetAsset([unapprovedTurnaroundNewer, approvedFull])
+        ?.url
     ).toBe("approved-full");
     // Order-independent.
     expect(
-      pickBestCharacterSheetAsset([approvedFull, unapprovedTurnaroundNewer])?.url,
+      pickBestCharacterSheetAsset([approvedFull, unapprovedTurnaroundNewer])
+        ?.url
     ).toBe("approved-full");
   });
 
   it("prefers turnaround over full when approved status ties", () => {
-    const full = candidate({ url: "full", role: "character_sheet_full", approved: true });
+    const full = candidate({
+      url: "full",
+      role: "character_sheet_full",
+      approved: true,
+    });
     const turnaround = candidate({
       url: "turnaround",
       role: "character_sheet_turnaround",
       approved: true,
     });
-    expect(pickBestCharacterSheetAsset([full, turnaround])?.url).toBe("turnaround");
-    expect(pickBestCharacterSheetAsset([turnaround, full])?.url).toBe("turnaround");
+    expect(pickBestCharacterSheetAsset([full, turnaround])?.url).toBe(
+      "turnaround"
+    );
+    expect(pickBestCharacterSheetAsset([turnaround, full])?.url).toBe(
+      "turnaround"
+    );
   });
 
   it("falls back to newest updatedAt when approved and role both tie", () => {
@@ -468,7 +654,7 @@ describe("VerticalDramaCharacterStockService.getCharacterReferenceUrls (F131Z)",
   it("returns portrait only when includeSheet=true but the character has no sheet asset yet", async () => {
     const service = new VerticalDramaCharacterStockService();
     vi.spyOn(service, "getPrimaryPortraitUrl").mockResolvedValue(
-      "https://cdn.example.com/portrait.png",
+      "https://cdn.example.com/portrait.png"
     );
     mockJoinWhere.mockResolvedValueOnce([]);
 
@@ -482,7 +668,7 @@ describe("VerticalDramaCharacterStockService.getCharacterReferenceUrls (F131Z)",
   it("appends the best sheet asset after the portrait when includeSheet=true (turnaround beats full)", async () => {
     const service = new VerticalDramaCharacterStockService();
     vi.spyOn(service, "getPrimaryPortraitUrl").mockResolvedValue(
-      "https://cdn.example.com/portrait.png",
+      "https://cdn.example.com/portrait.png"
     );
     mockJoinWhere.mockResolvedValueOnce([
       {
@@ -524,7 +710,7 @@ describe("VerticalDramaCharacterStockService.getCharacterReferenceUrls (F131Z)",
   it("filters out sheet rows with a null resolved url before ranking", async () => {
     const service = new VerticalDramaCharacterStockService();
     vi.spyOn(service, "getPrimaryPortraitUrl").mockResolvedValue(
-      "https://cdn.example.com/portrait.png",
+      "https://cdn.example.com/portrait.png"
     );
     mockJoinWhere.mockResolvedValueOnce([
       {
@@ -600,7 +786,9 @@ describe("VerticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId (
     // exactly what proves the underlying query can never filter on it.
     mockLimit
       .mockResolvedValueOnce([portraitRow({ characterId: 9 })])
-      .mockResolvedValueOnce([{ url: "https://cdn.example.com/parent-portrait.png" }]);
+      .mockResolvedValueOnce([
+        { url: "https://cdn.example.com/parent-portrait.png" },
+      ]);
 
     const service = new VerticalDramaCharacterStockService();
     const url = await service.getReferenceImageUrlByAssetLinkId(owner, 55);
@@ -609,7 +797,9 @@ describe("VerticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId (
   });
 
   it("rejects a non-primary_portrait asset (asset_wrong_role) — e.g. a character sheet or color palette can never be smuggled in as an identity-lock reference", async () => {
-    mockLimit.mockResolvedValueOnce([portraitRow({ role: "character_sheet_full" })]);
+    mockLimit.mockResolvedValueOnce([
+      portraitRow({ role: "character_sheet_full" }),
+    ]);
 
     const service = new VerticalDramaCharacterStockService();
     let caught: unknown;
@@ -619,7 +809,31 @@ describe("VerticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId (
       caught = err;
     }
     expect(caught).toBeInstanceOf(VerticalDramaCharacterStockError);
-    expect((caught as VerticalDramaCharacterStockError).reason).toBe("asset_wrong_role");
+    expect((caught as VerticalDramaCharacterStockError).reason).toBe(
+      "asset_wrong_role"
+    );
+  });
+
+  it("accepts the dedicated casting_reference role only for casting-purpose resolution", async () => {
+    mockLimit.mockResolvedValueOnce([
+      portraitRow({ role: "casting_reference", characterId: 5 }),
+    ]);
+
+    const service = new VerticalDramaCharacterStockService();
+    await expect(
+      service.getReferenceImageByAssetLinkId(owner, 55)
+    ).rejects.toMatchObject({ reason: "asset_wrong_role" });
+    mockLimit
+      .mockResolvedValueOnce([
+        portraitRow({ role: "casting_reference", characterId: 5 }),
+      ])
+      .mockResolvedValueOnce([{ url: "https://cdn.example.com/casting.png" }]);
+    await expect(
+      service.getReferenceImageByAssetLinkId(owner, 55, "casting")
+    ).resolves.toEqual({
+      url: "https://cdn.example.com/casting.png",
+      characterId: 5,
+    });
   });
 
   it("rejects when the asset link does not exist / does not belong to the caller (asset_not_found — covers not-found AND cross-tenant/cross-user identically, since loadOwnedRow's ownership-scoped WHERE simply finds no row in either case)", async () => {
@@ -633,7 +847,9 @@ describe("VerticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId (
       caught = err;
     }
     expect(caught).toBeInstanceOf(VerticalDramaCharacterStockError);
-    expect((caught as VerticalDramaCharacterStockError).reason).toBe("asset_not_found");
+    expect((caught as VerticalDramaCharacterStockError).reason).toBe(
+      "asset_not_found"
+    );
   });
 
   it("rejects with asset_not_found when the row has no mediaAssetId linked", async () => {
@@ -647,11 +863,15 @@ describe("VerticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId (
       caught = err;
     }
     expect(caught).toBeInstanceOf(VerticalDramaCharacterStockError);
-    expect((caught as VerticalDramaCharacterStockError).reason).toBe("asset_not_found");
+    expect((caught as VerticalDramaCharacterStockError).reason).toBe(
+      "asset_not_found"
+    );
   });
 
   it("rejects with asset_not_found when the linked media_assets row has no originalUrl", async () => {
-    mockLimit.mockResolvedValueOnce([portraitRow()]).mockResolvedValueOnce([{ url: null }]);
+    mockLimit
+      .mockResolvedValueOnce([portraitRow()])
+      .mockResolvedValueOnce([{ url: null }]);
 
     const service = new VerticalDramaCharacterStockService();
     let caught: unknown;
@@ -661,7 +881,9 @@ describe("VerticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId (
       caught = err;
     }
     expect(caught).toBeInstanceOf(VerticalDramaCharacterStockError);
-    expect((caught as VerticalDramaCharacterStockError).reason).toBe("asset_not_found");
+    expect((caught as VerticalDramaCharacterStockError).reason).toBe(
+      "asset_not_found"
+    );
   });
 
   /* `planning/vd-look-image-not-replace-primary/plan.md` §4A — the URL-only
@@ -672,7 +894,9 @@ describe("VerticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId (
   it("getReferenceImageByAssetLinkId also reports the owning characterId", async () => {
     mockLimit
       .mockResolvedValueOnce([portraitRow({ characterId: 9 })])
-      .mockResolvedValueOnce([{ url: "https://cdn.example.com/parent-portrait.png" }]);
+      .mockResolvedValueOnce([
+        { url: "https://cdn.example.com/parent-portrait.png" },
+      ]);
 
     const service = new VerticalDramaCharacterStockService();
     const resolved = await service.getReferenceImageByAssetLinkId(owner, 55);
@@ -710,8 +934,12 @@ describe("VerticalDramaCharacterStockService.markPortraitCandidateSubmissionFail
 
   const DESIGN_DNA = {
     version: 1,
-    designIntent: "A reassuring public defender whose guarded eyes reveal private guilt.",
-    seriesDnaAlignment: ["grounded legal thriller", "restrained Bangkok old-money world"],
+    designIntent:
+      "A reassuring public defender whose guarded eyes reveal private guilt.",
+    seriesDnaAlignment: [
+      "grounded legal thriller",
+      "restrained Bangkok old-money world",
+    ],
     roleTier: "lead_female",
     beautyArchetype: "approachable authority",
     ageRange: "early 30s",
@@ -738,7 +966,8 @@ describe("VerticalDramaCharacterStockService.markPortraitCandidateSubmissionFail
       behavior: "still hands before decisive movement",
       emotionalHook: "competence shielding guilt",
     },
-    costumeGrammar: "precise professional layers softened by one inherited accessory",
+    costumeGrammar:
+      "precise professional layers softened by one inherited accessory",
     publicMask: "calm competence",
     hiddenTruth: "fears she protected the wrong client",
     narrativePromise: "will choose between reputation and justice",
@@ -757,7 +986,8 @@ describe("VerticalDramaCharacterStockService.markPortraitCandidateSubmissionFail
       ensembleContrast: 9,
       crossSeriesUniqueness: 17,
       thresholdStatus: "pass",
-      rationale: "The face, behavior, and costume all express the central moral conflict.",
+      rationale:
+        "The face, behavior, and costume all express the central moral conflict.",
     },
     comparisonEvidence: {
       candidateDirectionCount: 3,
@@ -827,6 +1057,26 @@ describe("VerticalDramaCharacterStockService.markPortraitCandidateSubmissionFail
     };
   }
 
+  it("marks an old candidate as superseded while preserving its private metadata", () => {
+    const patch = buildDemotedPrimaryPortraitPatch(
+      candidateRow({
+        role: "primary_portrait",
+        qcStatus: "passed",
+        candidateOverrides: { status: "selected" },
+      }) as any
+    );
+
+    expect(patch).toMatchObject({
+      role: "portrait_candidate",
+      approved: false,
+      qcStatus: "pending",
+      metadata: {
+        state: "generated",
+        portraitCandidate: { status: "superseded", batchId: "batch-1" },
+      },
+    });
+  });
+
   beforeEach(() => {
     mockSelect.mockClear();
     mockFrom.mockClear();
@@ -854,16 +1104,18 @@ describe("VerticalDramaCharacterStockService.markPortraitCandidateSubmissionFail
     expect(setArg.qcStatus).toBe("failed");
     expect(setArg.metadata.portraitCandidate.status).toBe("failed");
     expect(setArg.metadata.portraitCandidate.submissionError).toBe(
-      "Provider timed out after 30 minutes",
+      "Provider timed out after 30 minutes"
     );
     expect(setArg.metadata.portraitCandidate.errorMessage).toBe(
-      "Provider timed out after 30 minutes",
+      "Provider timed out after 30 minutes"
     );
     expect(setArg.metadata.portraitCandidate.policyRejected).toBe(false);
     expect(setArg.metadata.state).toBe("rejected");
     // The already-shipped A-client fix reads the asset-level `rejectionReason`
     // (`characterAssetRowToContract`) — kept in sync with the same display text.
-    expect(setArg.metadata.rejectionReason).toBe("Provider timed out after 30 minutes");
+    expect(setArg.metadata.rejectionReason).toBe(
+      "Provider timed out after 30 minutes"
+    );
   });
 
   it("classifies a content-policy provider rejection: clear Thai errorMessage, raw text still preserved in submissionError", async () => {
@@ -881,13 +1133,17 @@ describe("VerticalDramaCharacterStockService.markPortraitCandidateSubmissionFail
     const setArg = mockUpdateSet.mock.calls[0][0] as any;
     expect(setArg.metadata.portraitCandidate.policyRejected).toBe(true);
     expect(setArg.metadata.portraitCandidate.errorMessage).toBe(
-      VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE,
+      VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE
     );
     // Raw provider text is never lost — still the audit copy.
-    expect(setArg.metadata.portraitCandidate.submissionError).toBe(rawProviderError);
+    expect(setArg.metadata.portraitCandidate.submissionError).toBe(
+      rawProviderError
+    );
     // Already-shipped A-client fix reads `asset.rejectionReason` — must get
     // the CLASSIFIED text, not the raw provider string.
-    expect(setArg.metadata.rejectionReason).toBe(VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE);
+    expect(setArg.metadata.rejectionReason).toBe(
+      VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE
+    );
   });
 
   it("is idempotent: a candidate already in a terminal state (selected) is left untouched — no update, no re-fail", async () => {
@@ -922,7 +1178,10 @@ describe("VerticalDramaCharacterStockService.markPortraitCandidateSubmissionFail
 
   it("is idempotent: a completed candidate (image already attached, not yet selected) is never downgraded to failed", async () => {
     mockLimit.mockResolvedValueOnce([
-      candidateRow({ mediaAssetId: 900, candidateOverrides: { status: "completed" } }),
+      candidateRow({
+        mediaAssetId: 900,
+        candidateOverrides: { status: "completed" },
+      }),
     ]);
 
     const service = new VerticalDramaCharacterStockService();
@@ -955,7 +1214,7 @@ describe("deriveCharacterAssetState — metadata.state outranks the approved col
         approved: false,
         qcStatus: "passed",
         metadata: { state: "approved" },
-      } as never),
+      } as never)
     ).toBe("approved");
   });
 
@@ -965,7 +1224,7 @@ describe("deriveCharacterAssetState — metadata.state outranks the approved col
         approved: false,
         qcStatus: "passed",
         metadata: { state: "generated" },
-      } as never),
+      } as never)
     ).toBe("generated");
   });
 
@@ -975,7 +1234,7 @@ describe("deriveCharacterAssetState — metadata.state outranks the approved col
         approved: true,
         qcStatus: "passed",
         metadata: {},
-      } as never),
+      } as never)
     ).toBe("approved");
   });
 });

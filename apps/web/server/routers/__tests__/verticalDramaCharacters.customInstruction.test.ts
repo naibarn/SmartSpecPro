@@ -41,6 +41,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -58,6 +59,7 @@ vi.mock("../../services/tenantFeatureFlagService", () => ({
 const {
   mockGetPrimaryPortraitUrl,
   mockCreatePortraitCandidateDraftBatch,
+  mockGetPortraitCandidateBatchForPreflight,
   mockGetPortraitCandidateTaskInfo,
   mockAttachGeneratedPortraitCandidate,
   mockGetPortraitCandidateBatchCount,
@@ -67,6 +69,7 @@ const {
 } = vi.hoisted(() => ({
   mockGetPrimaryPortraitUrl: vi.fn(),
   mockCreatePortraitCandidateDraftBatch: vi.fn(),
+  mockGetPortraitCandidateBatchForPreflight: vi.fn(),
   mockGetPortraitCandidateTaskInfo: vi.fn(),
   mockAttachGeneratedPortraitCandidate: vi.fn(),
   mockGetPortraitCandidateBatchCount: vi.fn(),
@@ -80,32 +83,38 @@ const {
 // `../../services/verticalDramaCharacterStock`. `vi.hoisted` (not a plain
 // `const`) because `vi.mock` factories below are hoisted above module-scope
 // declarations.
-const { MOCK_VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE } = vi.hoisted(() => ({
-  MOCK_VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE:
-    "ภาพถูกปฏิเสธเนื่องจากติดนโยบายเนื้อหาของผู้ให้บริการ กรุณาลองสร้างใหม่อีกครั้ง " +
-    "หรือปรับลักษณะตัวละครก่อนสร้างซ้ำ",
-}));
+const { MOCK_VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE } = vi.hoisted(
+  () => ({
+    MOCK_VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE:
+      "ภาพถูกปฏิเสธเนื่องจากติดนโยบายเนื้อหาของผู้ให้บริการ กรุณาลองสร้างใหม่อีกครั้ง " +
+      "หรือปรับลักษณะตัวละครก่อนสร้างซ้ำ",
+  })
+);
 vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: {
     getPrimaryPortraitUrl: mockGetPrimaryPortraitUrl,
     getReferenceImageUrlByAssetLinkId: vi.fn(),
     createPortraitCandidateDraftBatch: mockCreatePortraitCandidateDraftBatch,
+    getPortraitCandidateBatchForPreflight:
+      mockGetPortraitCandidateBatchForPreflight,
     getPortraitCandidateTaskInfo: mockGetPortraitCandidateTaskInfo,
     attachGeneratedPortraitCandidate: mockAttachGeneratedPortraitCandidate,
     getPortraitCandidateBatchCount: mockGetPortraitCandidateBatchCount,
     claimPortraitCandidateBatch: mockClaimPortraitCandidateBatch,
     recordPortraitCandidateTask: mockRecordPortraitCandidateTask,
-    markPortraitCandidateSubmissionFailed: mockMarkPortraitCandidateSubmissionFailed,
+    markPortraitCandidateSubmissionFailed:
+      mockMarkPortraitCandidateSubmissionFailed,
   },
   VerticalDramaCharacterStockError: class extends Error {
     constructor(
       public readonly reason: string,
-      message: string,
+      message: string
     ) {
       super(message);
     }
   },
-  VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE: MOCK_VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE,
+  VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE:
+    MOCK_VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE,
 }));
 
 const { mockGenerateImageAsync, mockGetMediaTask } = vi.hoisted(() => ({
@@ -124,11 +133,12 @@ vi.mock("../../services/pricingCalculator", () => ({
   calculateCreditCost: vi.fn(() => 5),
 }));
 
-const { mockHasEnoughCredits, mockDeductCredits, mockRefundCredits } = vi.hoisted(() => ({
-  mockHasEnoughCredits: vi.fn(),
-  mockDeductCredits: vi.fn(),
-  mockRefundCredits: vi.fn(),
-}));
+const { mockHasEnoughCredits, mockDeductCredits, mockRefundCredits } =
+  vi.hoisted(() => ({
+    mockHasEnoughCredits: vi.fn(),
+    mockDeductCredits: vi.fn(),
+    mockRefundCredits: vi.fn(),
+  }));
 vi.mock("../../services/creditService", () => ({
   hasEnoughCredits: mockHasEnoughCredits,
   deductCredits: mockDeductCredits,
@@ -155,22 +165,25 @@ const {
 vi.mock("../../services/verticalDramaCharacterImageGeneration", () => ({
   generateCharacterVisualPrompts: mockGenerateCharacterVisualPrompts,
   generateCharacterPortraitCandidates: mockGenerateCharacterPortraitCandidates,
-  shouldRequireAgeStageVariantForRequest: mockShouldRequireAgeStageVariantForRequest,
+  shouldRequireAgeStageVariantForRequest:
+    mockShouldRequireAgeStageVariantForRequest,
   extractAgeFromDescription: mockExtractAgeFromDescription,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
   readPresetVisualIdentityFromBible: vi.fn(() => undefined),
-  resolveFaceSourceReferenceForCharacter: mockResolveFaceSourceReferenceForCharacter,
+  resolveFaceSourceReferenceForCharacter:
+    mockResolveFaceSourceReferenceForCharacter,
 }));
 
-const { mockLoadCharacterDesignContext, mockPersistCharacterVisualBible } = vi.hoisted(() => ({
-  mockLoadCharacterDesignContext: vi.fn(async () => ({
-    seriesDna: {},
-    currentCast: [],
-    recentLeadArchive: [],
-  })),
-  mockPersistCharacterVisualBible: vi.fn(async () => undefined),
-}));
+const { mockLoadCharacterDesignContext, mockPersistCharacterVisualBible } =
+  vi.hoisted(() => ({
+    mockLoadCharacterDesignContext: vi.fn(async () => ({
+      seriesDna: {},
+      currentCast: [],
+      recentLeadArchive: [],
+    })),
+    mockPersistCharacterVisualBible: vi.fn(async () => undefined),
+  }));
 vi.mock("../../services/verticalDramaCharacterDesignContext", () => ({
   loadCharacterDesignContext: mockLoadCharacterDesignContext,
 }));
@@ -180,7 +193,10 @@ vi.mock("../../services/verticalDramaCharacterDnaPersistence", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
-  mediaGenerationLimiter: { isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) },
+  mediaGenerationLimiter: {
+    isAllowed: vi.fn(() => true),
+    getResetTime: vi.fn(() => 0),
+  },
 }));
 
 const { mockCreateAssetFromAttachment } = vi.hoisted(() => ({
@@ -204,7 +220,9 @@ vi.mock("../../services/mediaTransportResolver", () => ({
 // to call `reconcileTaskCredits`; mocked here so the failed-branch tests
 // below don't load the real (heavy, adminProcedure-carrying) media router.
 const { mockReconcileTaskCredits } = vi.hoisted(() => ({
-  mockReconcileTaskCredits: vi.fn().mockResolvedValue({ adjusted: true, difference: -5, action: "refund" }),
+  mockReconcileTaskCredits: vi
+    .fn()
+    .mockResolvedValue({ adjusted: true, difference: -5, action: "refund" }),
 }));
 vi.mock("../media", () => ({
   reconcileTaskCredits: mockReconcileTaskCredits,
@@ -213,10 +231,21 @@ vi.mock("../media", () => ({
 import { verticalDramaCharactersRouter } from "../verticalDramaCharacters";
 import { AGE_STAGE_VARIANT_REQUIRED_MARKER } from "@shared/verticalDramaSeries/ageStageVariant";
 
-const router = verticalDramaCharactersRouter as unknown as Record<string, Function>;
+const router = verticalDramaCharactersRouter as unknown as Record<
+  string,
+  Function
+>;
 
-function ctx(overrides: Partial<{ tenantId: string | null; user: { id: number } }> = {}) {
-  return { tenantId: "tenant-1", user: { id: 42 }, userToken: "session-token", publicUrl: undefined, ...overrides };
+function ctx(
+  overrides: Partial<{ tenantId: string | null; user: { id: number } }> = {}
+) {
+  return {
+    tenantId: "tenant-1",
+    user: { id: 42 },
+    userToken: "session-token",
+    publicUrl: undefined,
+    ...overrides,
+  };
 }
 
 /** Thenable select-chain stub — resolves at ANY point in the chain (`.where()`,
@@ -282,7 +311,9 @@ function visualPromptResult(overrides: Partial<Record<string, unknown>> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesPresetMixV2: false });
+  mockGetTenantFeatureFlags.mockResolvedValue({
+    verticalDramaSeriesPresetMixV2: false,
+  });
   mockResolveFaceSourceReferenceForCharacter.mockResolvedValue(null);
   mockGetPrimaryPortraitUrl.mockResolvedValue(null);
   mockHasEnoughCredits.mockResolvedValue(true);
@@ -319,6 +350,21 @@ beforeEach(() => {
     ],
   });
   mockGetPortraitCandidateBatchCount.mockResolvedValue(1);
+  mockGetPortraitCandidateBatchForPreflight.mockResolvedValue([
+    {
+      assetLinkId: 71,
+      batchId: "6cc9da31-8a44-4742-b9c9-0dc6558db621",
+      candidateId: "candidate-1",
+      index: 0,
+      count: 1,
+      portraitPrompt: "portrait one",
+      negativePrompt: "catalog model",
+      promptContractVersion: undefined,
+      promptProfile: undefined,
+      castingPreferencesFingerprint: undefined,
+      semanticRetryCount: 0,
+    },
+  ]);
   mockClaimPortraitCandidateBatch.mockResolvedValue([
     {
       assetLinkId: 71,
@@ -349,11 +395,16 @@ beforeEach(() => {
 });
 
 describe("generatePortraitCandidateBatch — legacy DNA compatibility", () => {
-  it("submits an already-previewed candidate when legacy DNA exists but no primary portrait does", async () => {
+  it("submits an already-previewed candidate when legacy DNA exists and a primary portrait already exists", async () => {
+    mockGetPrimaryPortraitUrl.mockResolvedValueOnce(
+      "https://cdn.test/old-main.jpg"
+    );
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(
-        selectChain([{ ...CHARACTER_ROW, data: { visualBible: { version: 1 } } }]),
+        selectChain([
+          { ...CHARACTER_ROW, data: { visualBible: { version: 1 } } },
+        ])
       )
       .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
 
@@ -395,15 +446,17 @@ describe("previewCharacterPrompt — customInstruction flow-through", () => {
       expect.objectContaining({
         customInstruction,
         characterDesignContext: expect.any(Object),
-      }),
+      })
     );
     expect(mockLoadCharacterDesignContext).toHaveBeenCalledWith(
       { tenantId: "tenant-1", userId: 42 },
       SERIES_CONTEXT_ROW,
-      CHARACTER_ROW,
+      CHARACTER_ROW
     );
     expect(result.portraitPrompt).toBe("a portrait prompt");
-    expect(result.portraitPrompt).not.toContain("VD_CHARACTER_CUSTOM_REQUIREMENTS");
+    expect(result.portraitPrompt).not.toContain(
+      "VD_CHARACTER_CUSTOM_REQUIREMENTS"
+    );
     expect(result.approvedDesignSnapshot).toMatchObject({
       characterKey: "fai",
       portraitPrompt: result.portraitPrompt,
@@ -423,12 +476,44 @@ describe("previewCharacterPrompt — customInstruction flow-through", () => {
     });
 
     expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
-      expect.objectContaining({ customInstruction: undefined }),
+      expect.objectContaining({ customInstruction: undefined })
     );
   });
 
-  it("returns a browser-safe first-portrait batch while persisting private DNA server-side", async () => {
-    const legacyApprovedDesignDna = { version: 1, faceIdentity: { hair: "legacy bob" } };
+  it("falls back to a single prompt when first-casting has no safe age profile", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            ...CHARACTER_ROW,
+            role: "คู่แข่งผู้ซ่อนตัวอยู่ในเงา",
+            roleTier: "villain_male_hidden",
+            narrativeRole: "antagonist",
+          },
+        ])
+      )
+      .mockReturnValueOnce(selectChain([SERIES_CONTEXT_ROW]));
+
+    const result = await router.previewCharacterPrompt({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        characterId: "1",
+        portraitCandidateCount: 3,
+      },
+    });
+
+    expect(result).toMatchObject({ mode: "single" });
+    expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledTimes(1);
+    expect(mockGenerateCharacterPortraitCandidates).not.toHaveBeenCalled();
+  });
+
+  it("returns a browser-safe candidate batch for regeneration while persisting private DNA server-side", async () => {
+    const legacyApprovedDesignDna = {
+      version: 1,
+      faceIdentity: { hair: "legacy bob" },
+    };
     mockLoadCharacterDesignContext.mockResolvedValueOnce({
       seriesDna: {},
       currentCast: [],
@@ -439,6 +524,10 @@ describe("previewCharacterPrompt — customInstruction flow-through", () => {
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain([CHARACTER_ROW]))
       .mockReturnValueOnce(selectChain([SERIES_CONTEXT_ROW]));
+    // A prior primary portrait must no longer block this reference-area flow.
+    mockGetPrimaryPortraitUrl.mockResolvedValueOnce(
+      "https://cdn.test/old-main.jpg"
+    );
 
     const result = await router.previewCharacterPrompt({
       ctx: ctx(),
@@ -455,24 +544,32 @@ describe("previewCharacterPrompt — customInstruction flow-through", () => {
         portraitCandidateCount: 2,
         customInstruction: "warm morning light",
         allowLegacyApprovedDesignDnaReplacement: true,
-      }),
+      })
     );
     expect(mockCreatePortraitCandidateDraftBatch).toHaveBeenCalledWith(
       expect.objectContaining({
         candidates: expect.arrayContaining([
           expect.objectContaining({
             candidateId: "candidate-1",
-            visualBibleSnapshot: expect.objectContaining({ private: "dna-one" }),
+            visualBibleSnapshot: expect.objectContaining({
+              private: "dna-one",
+            }),
           }),
         ]),
-      }),
+      })
     );
     expect(result).toMatchObject({
       mode: "candidate_batch",
       candidateCount: 2,
       candidates: [
-        expect.objectContaining({ assetLinkId: "71", portraitPrompt: "portrait one" }),
-        expect.objectContaining({ assetLinkId: "72", portraitPrompt: "portrait two" }),
+        expect.objectContaining({
+          assetLinkId: "71",
+          portraitPrompt: "portrait one",
+        }),
+        expect.objectContaining({
+          assetLinkId: "72",
+          portraitPrompt: "portrait two",
+        }),
       ],
     });
     expect(JSON.stringify(result)).not.toContain("dna-one");
@@ -533,7 +630,7 @@ describe("settlePortraitCandidate — idempotent completed candidate", () => {
           assetLinkId: "71",
           taskId: "task-from-another-flow",
         },
-      }),
+      })
     ).rejects.toMatchObject({
       code: "BAD_REQUEST",
       message: "Task provenance does not match this portrait candidate.",
@@ -595,10 +692,10 @@ describe("settlePortraitCandidate — failed branch (Set A gap 7 policy classifi
       expect.objectContaining({
         assetLinkId: 71,
         errorMessage: "Provider timed out after 30 minutes",
-      }),
+      })
     );
     expect(mockReconcileTaskCredits).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 42 }),
+      expect.objectContaining({ userId: 42 })
     );
   });
 
@@ -632,8 +729,27 @@ describe("settlePortraitCandidate — failed branch (Set A gap 7 policy classifi
       expect.objectContaining({
         assetLinkId: 71,
         errorMessage: "Image blocked: content policy violation detected",
-      }),
+      })
     );
+  });
+
+  it("keeps a transient provider status-read 429 non-terminal and retryable", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW]));
+    mockGetMediaTask.mockRejectedValueOnce(new Error("Get task failed: 429"));
+
+    const result = await router.settlePortraitCandidate({
+      ctx: ctx(),
+      input: { seriesId: "10", assetLinkId: "71", taskId: "task-candidate-1" },
+    });
+
+    expect(result).toEqual({
+      assetLinkId: "71",
+      taskId: "task-candidate-1",
+      status: "queued",
+      retryAfterMs: 60_000,
+    });
+    expect(mockMarkPortraitCandidateSubmissionFailed).not.toHaveBeenCalled();
+    expect(mockReconcileTaskCredits).not.toHaveBeenCalled();
   });
 });
 
@@ -648,7 +764,7 @@ describe("generateCharacterImage — customInstruction flow-through (no-approved
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(
-        selectChain([{ ...CHARACTER_ROW, roleTier: "lead_male" }]),
+        selectChain([{ ...CHARACTER_ROW, roleTier: "lead_male" }])
       );
 
     await expect(
@@ -659,10 +775,12 @@ describe("generateCharacterImage — customInstruction flow-through (no-approved
           characterId: "1",
           customInstruction: "เด็กชายอายุ 6 ขวบ",
         },
-      }),
+      })
     ).rejects.toMatchObject({
       code: "PRECONDITION_FAILED",
-      message: expect.stringContaining(`${AGE_STAGE_VARIANT_REQUIRED_MARKER} age=6`),
+      message: expect.stringContaining(
+        `${AGE_STAGE_VARIANT_REQUIRED_MARKER} age=6`
+      ),
     });
     expect(mockGenerateCharacterVisualPrompts).not.toHaveBeenCalled();
   });
@@ -681,9 +799,10 @@ describe("generateCharacterImage — customInstruction flow-through (no-approved
     });
 
     expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
-      expect.objectContaining({ customInstruction }),
+      expect.objectContaining({ customInstruction })
     );
-    const submittedPrompt = mockGenerateImageAsync.mock.calls[0][0].prompt as string;
+    const submittedPrompt = mockGenerateImageAsync.mock.calls[0][0]
+      .prompt as string;
     expect(submittedPrompt).toContain("a portrait prompt");
     expect(submittedPrompt).not.toContain("VD_CHARACTER_CUSTOM_REQUIREMENTS");
   });
@@ -701,9 +820,11 @@ describe("generateCharacterImage — customInstruction flow-through (no-approved
     });
 
     expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
-      expect.objectContaining({ customInstruction: undefined }),
+      expect.objectContaining({ customInstruction: undefined })
     );
-    expect(mockGenerateImageAsync.mock.calls[0][0].prompt).toBe("a portrait prompt");
+    expect(mockGenerateImageAsync.mock.calls[0][0].prompt).toBe(
+      "a portrait prompt"
+    );
   });
 
   it("keeps an approved prompt byte-for-byte without rerunning the planner", async () => {
@@ -725,7 +846,8 @@ describe("generateCharacterImage — customInstruction flow-through (no-approved
 
     expect(mockGenerateCharacterVisualPrompts).not.toHaveBeenCalled();
     expect(mockPersistCharacterVisualBible).not.toHaveBeenCalled();
-    const submittedPrompt = mockGenerateImageAsync.mock.calls[0][0].prompt as string;
+    const submittedPrompt = mockGenerateImageAsync.mock.calls[0][0]
+      .prompt as string;
     expect(submittedPrompt).toContain("already-approved prompt text");
     expect(submittedPrompt).not.toContain("full-body, wider shot");
   });
@@ -748,7 +870,8 @@ describe("generateCharacterImage — customInstruction flow-through (no-approved
       },
     });
 
-    const submittedPrompt = mockGenerateImageAsync.mock.calls[0][0].prompt as string;
+    const submittedPrompt = mockGenerateImageAsync.mock.calls[0][0]
+      .prompt as string;
     expect(submittedPrompt).toBe(approvedPrompt);
     expect(submittedPrompt).not.toContain("VD_CHARACTER_CUSTOM_REQUIREMENTS");
   });
@@ -768,10 +891,10 @@ describe("generateCharacterImage — customInstruction flow-through (no-approved
     expect(mockPersistCharacterVisualBible).toHaveBeenCalledWith(
       { tenantId: "tenant-1", userId: 42, seriesId: 10 },
       1,
-      expect.objectContaining({ visualIdentitySummary: "story-grounded lead" }),
+      expect.objectContaining({ visualIdentitySummary: "story-grounded lead" })
     );
     expect(mockGenerateImageAsync.mock.invocationCallOrder[0]).toBeLessThan(
-      mockPersistCharacterVisualBible.mock.invocationCallOrder[0],
+      mockPersistCharacterVisualBible.mock.invocationCallOrder[0]
     );
     expect(result.dnaPersistenceStatus).toBe("persisted");
   });
@@ -802,7 +925,7 @@ describe("generateCharacterImage — customInstruction flow-through (no-approved
     expect(mockPersistCharacterVisualBible).toHaveBeenCalledWith(
       { tenantId: "tenant-1", userId: 42, seriesId: 10 },
       1,
-      visualBible,
+      visualBible
     );
     expect(result.dnaPersistenceStatus).toBe("persisted");
   });
@@ -851,7 +974,7 @@ describe("generateCharacterImage — customInstruction flow-through (no-approved
             visualBible: { visualIdentitySummary: "wrong character" },
           },
         },
-      }),
+      })
     ).rejects.toThrow(/another character/i);
 
     expect(mockGenerateImageAsync).not.toHaveBeenCalled();
@@ -864,7 +987,9 @@ describe("generateCharacterImage — customInstruction flow-through (no-approved
       .mockReturnValueOnce(selectChain([CHARACTER_ROW]))
       .mockReturnValueOnce(selectChain([SERIES_CONTEXT_ROW]))
       .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
-    mockPersistCharacterVisualBible.mockRejectedValueOnce(new Error("database unavailable"));
+    mockPersistCharacterVisualBible.mockRejectedValueOnce(
+      new Error("database unavailable")
+    );
 
     const result = await router.generateCharacterImage({
       ctx: ctx(),
@@ -889,7 +1014,7 @@ describe("generateCharacterImage — customInstruction flow-through (no-approved
       router.generateCharacterImage({
         ctx: ctx(),
         input: { seriesId: "10", characterId: "1" },
-      }),
+      })
     ).rejects.toThrow(/submit failed/i);
 
     expect(mockPersistCharacterVisualBible).not.toHaveBeenCalled();
@@ -910,11 +1035,11 @@ describe("generateCharacterSheet — Character DNA persistence", () => {
     });
 
     expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
-      expect.objectContaining({ characterDesignContext: expect.any(Object) }),
+      expect.objectContaining({ characterDesignContext: expect.any(Object) })
     );
     expect(mockPersistCharacterVisualBible).toHaveBeenCalledTimes(1);
     expect(mockGenerateImageAsync.mock.invocationCallOrder[0]).toBeLessThan(
-      mockPersistCharacterVisualBible.mock.invocationCallOrder[0],
+      mockPersistCharacterVisualBible.mock.invocationCallOrder[0]
     );
     expect(result.dnaPersistenceStatus).toBe("persisted");
   });

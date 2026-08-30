@@ -26,6 +26,7 @@ export interface VerticalDramaShotPromptJobInput {
   seriesId: string;
   episodeId: string;
   shotNumber: number;
+  frameRole?: "start" | "stop";
   instruction?: string;
   canonicalShotSummary?: string;
   attachShotImage?: boolean;
@@ -40,6 +41,7 @@ export interface VerticalDramaShotPromptJobOwner {
   seriesId: number;
   episodeId: number;
   shotNumber: number;
+  frameRole?: "start" | "stop";
 }
 
 export interface VerticalDramaShotPromptJobResult {
@@ -143,7 +145,10 @@ function recordKey(jobId: string): string {
   return `vd:shot-prompt-job:${jobId}`;
 }
 
-function activePointerKey(owner: VerticalDramaShotPromptJobOwner): string {
+function activePointerKey(
+  owner: VerticalDramaShotPromptJobOwner,
+  frameRole: "start" | "stop" = "start",
+): string {
   return [
     "vd:shot-prompt-job:active",
     owner.tenantId,
@@ -151,6 +156,7 @@ function activePointerKey(owner: VerticalDramaShotPromptJobOwner): string {
     owner.seriesId,
     owner.episodeId,
     owner.shotNumber,
+    frameRole,
   ].join(":");
 }
 
@@ -166,8 +172,15 @@ function idempotencyPointerKey(
     owner.seriesId,
     owner.episodeId,
     owner.shotNumber,
+    payloadRole(owner),
     digest,
   ].join(":");
+}
+
+function payloadRole(
+  value: Pick<VerticalDramaShotPromptJobPayload, "input"> | VerticalDramaShotPromptJobOwner,
+): "start" | "stop" {
+  return "input" in value ? value.input.frameRole ?? "start" : value.frameRole ?? "start";
 }
 
 function ownerMatches(
@@ -179,7 +192,8 @@ function ownerMatches(
     record.userId === owner.userId &&
     record.seriesId === owner.seriesId &&
     record.episodeId === owner.episodeId &&
-    record.shotNumber === owner.shotNumber
+    record.shotNumber === owner.shotNumber &&
+    payloadRole(record) === payloadRole(owner)
   );
 }
 
@@ -249,7 +263,7 @@ export async function getActiveVerticalDramaShotPromptJob(
   dependencies?: Partial<VerticalDramaShotPromptJobStoreDependencies>,
 ): Promise<VerticalDramaShotPromptJobRecord | null> {
   const deps = resolveDependencies(dependencies);
-  const pointer = activePointerKey(owner);
+  const pointer = activePointerKey(owner, payloadRole(owner));
   const jobId = await deps.redis.get(pointer);
   if (!jobId) return null;
   const record = await readRecord(jobId, deps);
@@ -280,7 +294,7 @@ export async function enqueueVerticalDramaShotPromptJob(
     }
   }
 
-  const activePointer = activePointerKey(payload);
+  const activePointer = activePointerKey(payload, payloadRole(payload));
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const existingJobId = await deps.redis.get(activePointer);
     if (existingJobId) {

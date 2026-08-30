@@ -18,6 +18,13 @@ export function toggleBoundedSelection(
   return current.length >= max ? [...current] : [...current, id];
 }
 
+export function resolveSpecialTieInCharacterId(character: {
+  characterId?: string | number;
+  id?: string | number;
+}): string {
+  return String(character.characterId ?? character.id ?? "");
+}
+
 export function specialEpisodeLabel(
   sequence: number | null | undefined,
   lang: "th" | "en"

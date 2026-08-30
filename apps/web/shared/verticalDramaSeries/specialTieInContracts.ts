@@ -1,4 +1,10 @@
 import { z } from "zod";
+import { marketplaceReviewIdeaSchema } from "../marketplaceReviewIdeas/contracts";
+import { footageGuideSchema } from "../verticalDramaMedia/contracts";
+import {
+  footageBrollPlacementSchema,
+  mediaSourceManifestSchema,
+} from "../verticalDramaMedia/contracts";
 
 export const verticalDramaEpisodeKindSchema = z.enum([
   "normal",
@@ -17,6 +23,7 @@ export type SpecialTieInDurationSeconds =
 const referenceImageSchema = z.object({
   mediaAssetId: z.string().min(1).max(128),
   source: z.enum(["upload", "marketplace_capture", "series_asset"]),
+  role: z.enum(["product", "location", "store"]).optional(),
   label: z.string().trim().max(255).optional(),
   provenance: z.record(z.string(), z.unknown()).optional(),
 });
@@ -24,7 +31,7 @@ const referenceImageSchema = z.object({
 export const specialTieInInputSchema = z
   .object({
     schemaVersion: z.literal(1).default(1),
-    idea: z.string().trim().min(1).max(5_000),
+    idea: z.string().trim().min(1).max(12_000),
     referenceType: z.enum(["product", "location", "store", "mixed"]),
     referenceImages: z
       .array(referenceImageSchema)
@@ -59,11 +66,32 @@ export const specialTieInInputSchema = z
     imageModelId: z.string().trim().min(1).max(160),
     videoModelId: z.string().trim().min(1).max(160),
     dialogueMode: z.enum(["none", "character_dialogue"]),
-    dialogueBrief: z.string().trim().max(3_000).optional(),
+    dialogueBrief: z.string().trim().max(12_000).optional(),
     speakerCharacterIds: z.array(z.string().min(1).max(128)).max(3).default([]),
     allowAdditionalCharacters: z.boolean().default(false),
     lockCharacterReferences: z.boolean().default(true),
     lockReferenceImages: z.boolean().default(true),
+    marketplaceReviewIdea: marketplaceReviewIdeaSchema.optional(),
+    footage: z
+      .object({
+        sourceMediaAssetId: z.string().min(1).max(160),
+        analysisJobId: z.string().min(1).max(160),
+        prepareJobId: z.string().min(1).max(160),
+        sourceRevision: z.string().min(1).max(160),
+        guide: footageGuideSchema,
+      })
+      .strict()
+      .optional(),
+    broll: z.object({
+      preparedSource: mediaSourceManifestSchema,
+      preparedRevision: z.string().min(1).max(160),
+      baseDurationMs: z.number().int().positive().max(90_000),
+      placements: z.array(footageBrollPlacementSchema).max(32),
+      storyRevisionId: z.string().min(1).max(160),
+      shotPlanRevisionId: z.string().min(1).max(160),
+      assetManifest: z.array(mediaSourceManifestSchema).max(64),
+      renderJobId: z.string().min(1).max(128).optional(),
+    }).strict().optional(),
   })
   .superRefine((value, ctx) => {
     const characterIds = new Set(value.characterIds);
@@ -81,6 +109,16 @@ export const specialTieInInputSchema = z
         message: "Speakers are not allowed when dialogue is disabled",
       });
     }
+    if (
+      value.dialogueMode === "character_dialogue" &&
+      value.speakerCharacterIds.length === 0
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["speakerCharacterIds"],
+        message: "At least one speaker is required when dialogue is enabled",
+      });
+    }
   });
 
 export type SpecialTieInInput = z.infer<typeof specialTieInInputSchema>;
@@ -93,6 +131,7 @@ export type SpecialModelSnapshot = {
   supportedDurationsSeconds: number[];
   supportedAspectRatios: string[];
   supportsReferenceConditioning: boolean;
+  maxReferenceImages?: number;
   supportsDialogueAudio: boolean;
 };
 export type SpecialSkillRun = {
@@ -146,11 +185,10 @@ export function resolveVerticalDramaEpisodeShotContract(
   shotCount?: number
 ): VerticalDramaEpisodeShotContract {
   if (kind === "special_tie_in") {
-    const count = Math.max(1, Math.min(5, Math.trunc(shotCount ?? 1)));
     return {
       kind,
-      shotCount: count,
-      clipCount: count,
+      shotCount: 9,
+      clipCount: 9,
       fixedNormalShape: false,
     };
   }

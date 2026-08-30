@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import sharp from "sharp";
 import { getDb } from "../db";
-import { storagePut } from "../storage";
+import { assertR2StorageActive, storagePut } from "../storage";
 
 import {
   marketplaceAutoReviewRuns,
@@ -278,6 +278,7 @@ async function convertReferenceImageForKieAi(params: {
     }
     const converted = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
     const key = `marketplace-auto-review/${params.runId}/reference-uploads/${nanoid(12)}.jpg`;
+    await assertR2StorageActive();
     const stored = await storagePut(key, converted, "image/jpeg");
     return stored.url;
   } catch (error) {
@@ -1878,6 +1879,7 @@ async function handleImageProvider(params: {
       },
       auditContext: {
         userId: params.auth.userId,
+        tenantId: params.auth.tenantId ?? params.run.tenantId ?? undefined,
         traceId: operationId,
         source: "marketplace_auto_review_staged",
         stage: "image_generation",
@@ -1966,6 +1968,7 @@ async function reconcileImageProvider(params: {
     tenantId: params.run.tenantId,
     auditContext: {
       userId: params.auth.userId,
+      tenantId: params.auth.tenantId ?? params.run.tenantId ?? undefined,
       traceId: `staged-image-poll:${params.run.id}:${params.shotId}`,
       source: "marketplace_auto_review_staged",
       stage: "image_generation",
@@ -2206,6 +2209,7 @@ async function handleVideoProvider(params: {
       },
       auditContext: {
         userId: params.auth.userId,
+        tenantId: params.auth.tenantId ?? params.run.tenantId ?? undefined,
         traceId: operationId,
         source: "marketplace_auto_review_staged",
         stage: "video_generation",
@@ -2281,6 +2285,7 @@ async function reconcileVideoProvider(params: {
     tenantId: params.run.tenantId,
     auditContext: {
       userId: params.auth.userId,
+      tenantId: params.auth.tenantId ?? params.run.tenantId ?? undefined,
       traceId: `staged-video-poll:${params.run.id}:${params.shotId}`,
       source: "marketplace_auto_review_staged",
       stage: "video_generation",
@@ -3159,6 +3164,7 @@ export async function advanceStagedMarketplaceAutoReviewRun(params: {
             speed: 1,
             auditContext: {
               userId: params.auth.userId,
+              tenantId: params.auth.tenantId ?? params.run.tenantId ?? undefined,
               traceId: operationId,
               source: "marketplace_auto_review_staged",
               stage: "audio_generation",

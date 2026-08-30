@@ -39,7 +39,7 @@ import {
   readStoredChatModelSelectionState,
   writeStoredChatModelSelectionState,
 } from "../services/chatModelSelection";
-import { hasEnoughCredits, calculateCreditsForLLM, deductCredits } from "../services/creditService";
+import { hasEnoughCredits, calculateCreditsForLLM } from "../services/creditService";
 import { TRPCError } from "@trpc/server";
 import { getAvailableSkills, getSkillById, getSkillByIdOrType, getDefaultEnabledSkills, syncSingleSkillIfChanged } from "../services/skillRegistry";
 import { detectSkill, extractSkillParams, getSkillDetectionSummary } from "../services/skillDetector";
@@ -63,6 +63,7 @@ import { updateTaskRunArtifact } from "../services/taskRunStore";
 import type { UnifiedExecutionRequest } from "../services/executors/types";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import { normalizeSkillRevenuePricing, settleSkillRun } from "../services/skillRevenueBilling";
 import { clientMessageRuntimeMetadataInputSchema } from "../services/localAiRuntimeMetadata";
 import { resolveEffectiveLocalSkillExecutionPolicy } from "../services/localAiSkillPolicy";
 import { getRequesterLocalAiSurfaceContext } from "../services/localAiUserContext";
@@ -2279,6 +2280,7 @@ export const chatRouter = router({
       // Python-mode skills are always executable (they handle their own subprocess)
       // LLM-based skills are handled below via executeWithFallback
       const isPythonMode = executionMode === "python";
+      const skillRunId = crypto.randomUUID();
       if (!isPythonMode && !isLLMSkill && !canAutoExecute(skill)) {
         return {
           success: false,
@@ -2347,7 +2349,10 @@ export const chatRouter = router({
                 route: "skill",
                 reason: "chat_execute_skill",
               },
-              creditMode: "deduct",
+              // Skill billing is settled atomically below from the fixed
+              // tenant/skill-owner price; the unified model estimate is only
+              // an execution detail and must not create a second charge.
+              creditMode: "skip",
             };
 
             const result = await executeUnified(request);
@@ -2382,6 +2387,19 @@ export const chatRouter = router({
               };
             }
 
+            const settlement = await settleSkillRun({
+              runId: skillRunId,
+              userId: ctx.user.id,
+              tenantId,
+              skillSlug: input.skillId,
+              description: `Skill run: ${skill.name}`,
+              metadata: {
+                runtimeKind: "llm",
+                originSurface: "chat",
+                model: result.modelUsed ?? undefined,
+              },
+            });
+
             // Persist as assistant message (chat owns persistence during rollout)
             if (input.conversationId && result.result.type === "text") {
               try {
@@ -2391,7 +2409,7 @@ export const chatRouter = router({
                   content: textContent,
                   inputTokens: result.tokens.input,
                   outputTokens: result.tokens.output,
-                  creditsUsed: String(result.creditsDeducted ?? 0),
+                  creditsUsed: String(settlement.totalCredits),
                   modelUsed: result.modelUsed ?? undefined,
                   skillUsed: input.skillId,
                 });
@@ -2405,7 +2423,7 @@ export const chatRouter = router({
               skillId: input.skillId,
               type: "text" as const,
               message: result.result.type === "text" ? textContent : undefined,
-              creditsUsed: result.creditsDeducted ?? 0,
+              creditsUsed: settlement.totalCredits,
               resultUrl: undefined as string | undefined,
               resultUrls: undefined as string[] | undefined,
               error: undefined as string | undefined,
@@ -2429,7 +2447,6 @@ export const chatRouter = router({
         // ── END Unified Orchestrator Path ───────────────────────────────
 
         const { getProviderForModel } = await import("../services/llmRouter");
-        const { deductCreditsForModel } = await import("../services/creditService");
         const { executeSkillLlmWithFallback } = await import("../services/skillModelFallback");
 
         // Load skill's systemPrompt and knowledgebase from DB
@@ -2902,28 +2919,25 @@ export const chatRouter = router({
           );
         }
 
-        // Deduct credits for the successful model
+        // Settle the fixed skill price once the model result is successful.
         const usageCost = (fallbackResult.rawData?.usage as { cost?: number } | undefined)?.cost;
-        const { creditsUsed } = await deductCreditsForModel({
+        const settlement = await settleSkillRun({
+          runId: skillRunId,
           userId: ctx.user.id,
-          model: usedModel,
-          provider: provider.providerName,
-          inputTokens,
-          outputTokens,
-          costUsd: usageCost,
-          conversationId: input.conversationId,
+          tenantId: skillTenantId,
           skillSlug: input.skillId,
-          sourceType: "skill",
+          description: `Skill run: ${skill.name}`,
           metadata: {
-            skill: input.skillId,
-            skillName: skill.name,
-            executionMode,
             runtimeKind: "llm",
             llmModel: usedModel,
             providerName: provider.providerName,
             originSurface: "chat",
+            inputTokens,
+            outputTokens,
+            providerCostUsd: usageCost,
           },
         });
+        const creditsUsed = settlement.totalCredits;
 
         // Record step attempt for planner tracking
         if (plannerResult) {
@@ -2985,7 +2999,7 @@ export const chatRouter = router({
       // Python skills: run asynchronously to prevent HTTP timeout (Cloudflare 100s limit).
       // We return a taskId immediately; the client polls chat.getSkillTaskResult until done.
       if (isPythonMode) {
-        const skillCreditCost = Math.max(0, Math.ceil(Number(skill.creditMultiplier ?? 1)));
+        const skillCreditCost = normalizeSkillRevenuePricing(skill).totalCredits;
         if (skillCreditCost > 0) {
           const hasCredits = await hasEnoughCredits(ctx.user.id, skillCreditCost);
           if (!hasCredits) {
@@ -3016,6 +3030,7 @@ export const chatRouter = router({
           apiConfig: input.apiConfig,
           extraParams: mergedExtraParams,
           publicUrl: ctx.publicUrl ?? undefined,
+          runId: skillRunId,
         };
 
         const userId = ctx.user.id;
@@ -3039,28 +3054,22 @@ export const chatRouter = router({
               };
             }
 
-            if (finalResult.success && skillCreditCost > 0) {
+            if (finalResult.success) {
               try {
-                await deductCredits({
+                const settlement = await settleSkillRun({
+                  runId: skillRunId,
                   userId: ctx.user.id,
-                  amount: skillCreditCost,
-                  description: `Skill execution: ${skill.name}`,
-                  tenantId: ctx.tenantId ?? undefined,
-                  conversationId: input.conversationId ?? undefined,
+                  tenantId: ctx.tenantId,
                   skillSlug: input.skillId,
-                  sourceType: "skill",
+                  description: `Skill run: ${skill.name}`,
                   metadata: {
-                    skill: input.skillId,
-                    skillName: skill.name,
-                    executionMode: skill.executionMode,
                     runtimeKind: "python",
-                    llmModel: "none",
                     originSurface: "chat",
                   },
                 });
                 finalResult = {
                   ...finalResult,
-                  creditsUsed: (finalResult.creditsUsed ?? 0) + skillCreditCost,
+                  creditsUsed: settlement.totalCredits,
                 };
               } catch (err) {
                 console.error("[executeSkill] Failed to deduct async Python skill credits:", err);
@@ -3131,6 +3140,7 @@ export const chatRouter = router({
           apiConfig: input.apiConfig,
           extraParams: mergedExtraParams,
           publicUrl: ctx.publicUrl ?? undefined,
+          runId: skillRunId,
         },
         ctx.user.id,
         userToken,

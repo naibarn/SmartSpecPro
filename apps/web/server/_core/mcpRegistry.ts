@@ -65,6 +65,7 @@ import {
 import { getRedisClient } from "../services/redis";
 import { getSkillByIdAsync, getAvailableSkillsAsync } from "../services/skillRegistry";
 import { executeSkill } from "../services/skillExecutor";
+import { normalizeSkillRevenuePricing } from "../services/skillRevenueBilling";
 import { detectSkill } from "../services/skillDetector";
 import { agencyBridge } from "../services/agencyBridge";
 import { mediaGenerationService } from "../services/mediaGenerationService";
@@ -733,6 +734,8 @@ async function searchOwnerLibrary(
 
 function safeMediaHistoryTask(task: any): Record<string, unknown> {
   const resultData = task?.resultData && typeof task.resultData === "object" ? task.resultData : {};
+  const durablePlayback = Array.isArray(task?.artifacts)
+    && task.artifacts.some((artifact: any) => artifact?.r2Status === "ready" && typeof artifact?.r2Url === "string");
   return {
     id: task.id,
     media_type: task.mediaType,
@@ -744,7 +747,7 @@ function safeMediaHistoryTask(task: any): Record<string, unknown> {
     completed_at: task.completedAt ?? null,
     error: task.errorMessage ?? null,
     credits_used: task.creditsUsed ?? null,
-    download_available: task.status === "completed" && Boolean(task.resultUrl || Object.keys(resultData).length),
+    download_available: task.status === "completed" && Boolean(durablePlayback || task.resultUrl?.startsWith?.("/api/storage/files/")),
   };
 }
 
@@ -752,6 +755,7 @@ function resolveMcpManagedDownloadTarget(rawTarget: unknown) {
   const target = resolveExportDownloadTarget(rawTarget);
   if (!target) return null;
   if (target.kind === "file") return target;
+  if (target.kind === "storage") return target;
   try {
     const parsed = new URL(target.url);
     if (parsed.pathname.startsWith("/api/storage/files/") || parsed.pathname.startsWith("/uploads/")) {
@@ -1313,30 +1317,18 @@ async function executeSkillViaMcp(
   }
   const model = typeof args.model === "string" ? args.model : undefined;
   const inputs = args.inputs && typeof args.inputs === "object" ? args.inputs as Record<string, unknown> : {};
-  const estimatedCost = Math.ceil((skill.creditMultiplier ?? 1) * 2);
+  const estimatedCost = normalizeSkillRevenuePricing(skill).totalCredits;
+  const skillRunId = ctx.idempotencyKey ?? crypto.randomUUID();
 
   return runWithDelegatedWorkerExecution({
     auth: ctx.session as any,
     actionClass: "compute",
     estimatedCredits: estimatedCost,
-    idempotencyKey: ctx.idempotencyKey,
+    idempotencyKey: skillRunId,
   }, async () => {
     if (!(await hasEnoughCredits(ctx.session.userId, estimatedCost))) {
       throw new Error("Your account has insufficient credits for this request");
     }
-    await deductCredits({
-      userId: ctx.session.userId,
-      amount: estimatedCost,
-      sourceType: "api_skill",
-      description: `Skill execution: ${skill.id}`,
-      idempotencyKey: ctx.idempotencyKey ?? undefined,
-      metadata: buildDelegatedWorkerOriginMetadata(ctx.session as any, "mcp.skills.execute", {
-        endpoint: "/v1/mcp",
-        toolName: "smartspec.skills.execute",
-        skillId: skill.id,
-      }),
-    } as any);
-
     const prompt = typeof inputs.prompt === "string" ? inputs.prompt : "";
     const { prompt: _prompt, ...rest } = inputs;
     const result = await executeSkill(
@@ -1345,6 +1337,7 @@ async function executeSkillViaMcp(
         prompt,
         model: model ?? skill.defaultModel,
         extraParams: rest,
+        runId: skillRunId,
       } as any,
       ctx.session.userId,
       createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }),
@@ -1353,7 +1346,7 @@ async function executeSkillViaMcp(
 
     return {
       result,
-      creditsUsed: estimatedCost,
+      creditsUsed: result.creditsUsed ?? estimatedCost,
     };
   });
 }
@@ -1609,7 +1602,7 @@ async function generateMedia(
         referenceImageUrls: Array.isArray(args.reference_image_urls)
           ? args.reference_image_urls.filter((item): item is string => typeof item === "string")
           : undefined,
-        auditContext: { userId: ctx.session.userId, source: "mcp" },
+        auditContext: { userId: ctx.session.userId, tenantId: ctx.session.tenantId, source: "mcp" },
       }, userToken);
 
       await deductCredits({
@@ -1647,7 +1640,7 @@ async function generateMedia(
         referenceImageUrls: Array.isArray(args.reference_image_urls)
           ? args.reference_image_urls.filter((item): item is string => typeof item === "string")
           : undefined,
-        auditContext: { userId: ctx.session.userId, source: "mcp" },
+        auditContext: { userId: ctx.session.userId, tenantId: ctx.session.tenantId, source: "mcp" },
       }, userToken);
 
       await deductCredits({
@@ -1681,7 +1674,7 @@ async function generateMedia(
       voice: typeof args.voice === "string" ? args.voice : undefined,
       model: typeof args.model === "string" ? args.model : undefined,
       speed: Number.isFinite(Number(args.speed)) ? Number(args.speed) : undefined,
-      auditContext: { userId: ctx.session.userId, source: "mcp" },
+      auditContext: { userId: ctx.session.userId, tenantId: ctx.session.tenantId, source: "mcp" },
     }, userToken);
 
     await deductCredits({

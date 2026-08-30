@@ -49,6 +49,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -255,7 +256,11 @@ function selectChain<T>(rows: T[]) {
 
 function updateChain<T>(rows: T[]) {
   const chain: any = {};
-  for (const method of ["set", "where", "returning"])
+  chain.set = vi.fn((value: unknown) => {
+    chain.setPayload = value;
+    return chain;
+  });
+  for (const method of ["where", "returning"])
     chain[method] = () => chain;
   chain.then = (
     resolve: (value: T[]) => unknown,
@@ -478,6 +483,78 @@ describe("verticalDramaEpisodes scene visual state mutations", () => {
     });
     expect(result.sceneVisualState.stale).toBeUndefined();
     expect(mockGenerateSceneVisualState).not.toHaveBeenCalled();
+  });
+
+  it("marks every member frame stale while retaining existing image anchors", async () => {
+    const existing = {
+      ...makePlan({
+        hall: {
+          locationKey: "hall",
+          revision: 4,
+          lightingState: "old",
+          memberShotNumbers: [1, 2],
+        },
+      }),
+      frames: [
+        {
+          shotNumber: 1,
+          imagePrompt: "old shot 1",
+          approvedMediaAssetId: "asset-1",
+          sceneContinuity: { lighting_match: "match" },
+          locationKey: "hall",
+        },
+        {
+          shotNumber: 2,
+          imagePrompt: "old shot 2",
+          videoStartMediaAssetId: "video-2",
+          sceneContinuity: { lighting_match: "match" },
+          locationKey: "hall",
+        },
+        {
+          shotNumber: 3,
+          imagePrompt: "unrelated shot",
+          approvedMediaAssetId: "asset-3",
+          locationKey: "other",
+        },
+      ],
+    };
+    const episode = makeEpisode(existing);
+    const tx = queuePlanReads(episode, existing);
+    await router.updateSceneVisualState({
+      ctx,
+      input: {
+        ...inputBase,
+        expectedRevision: 4,
+        patch: {
+          sleepSurface: {
+            type: "long_bed",
+            name: "เตียงนอนทรงยาวของภูมิ",
+            occupant: "ภูมิ",
+            placement: "ข้างโต๊ะเล็ก",
+          },
+        },
+      },
+    });
+
+    const persistedPlan = tx.update.mock.results[0]?.value?.setPayload
+      ?.startFramePlan;
+    expect(persistedPlan.frames[0]).toMatchObject({
+      approvedMediaAssetId: "asset-1",
+      imageStaleReason: "prompt_changed",
+      sceneContinuity: undefined,
+    });
+    expect(persistedPlan.frames[1]).toMatchObject({
+      videoStartMediaAssetId: "video-2",
+      imageStaleReason: "prompt_changed",
+      sceneContinuity: undefined,
+    });
+    expect(persistedPlan.frames[2]).toEqual(existing.frames[2]);
+    expect(persistedPlan.sceneVisualStates.hall.sleepSurface).toEqual({
+      type: "long_bed",
+      name: "เตียงนอนทรงยาวของภูมิ",
+      occupant: "ภูมิ",
+      placement: "ข้างโต๊ะเล็ก",
+    });
   });
 
   it("rejects stale expectedRevision before authoring or writing", async () => {

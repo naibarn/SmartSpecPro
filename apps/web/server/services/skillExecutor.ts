@@ -5,6 +5,7 @@
 
 import path from "path";
 import { spawnSync, spawn } from "child_process";
+import { randomUUID } from "crypto";
 import fs from "fs";
 import { SkillDefinition } from "./skillRegistry";
 import { getDb } from "../db";
@@ -25,7 +26,6 @@ import {
   mapToApiModelId,
   getModelsByTypeAsync,
 } from "./modelRegistry";
-import { calculateCreditCost } from "./pricingCalculator";
 import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
 import {
   isSandboxEnabled,
@@ -34,6 +34,8 @@ import {
   dispatchToSandbox as sandboxDispatch,
 } from "./sandbox";
 import { resolveSkillBundleDir } from "./skillFiles";
+import { durabilizeMediaGenerationResponse } from "./durableMediaAssetService";
+import { normalizeSkillRevenuePricing, settleSkillRun } from "./skillRevenueBilling";
 
 // Simple in-memory rate limiter per user per skill type
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -803,6 +805,8 @@ export interface SkillExecutionParams {
   extraParams?: Record<string, any>;
   /** Public URL for tenant domain (e.g., https://smartaihub.app) for external services */
   publicUrl?: string;
+  /** Stable id for fixed-credit settlement and provider charge suppression. */
+  runId?: string;
 }
 
 export interface SkillCreateAction {
@@ -865,6 +869,8 @@ export async function executeSkill(
   userToken: string,
   tenantId?: string,
 ): Promise<SkillExecutionResult> {
+  const runId = params.runId ?? randomUUID();
+  params = { ...params, runId };
   console.log(`[SkillExecutor] Executing skill:`, {
     id: skill.id,
     name: skill.name,
@@ -873,6 +879,23 @@ export async function executeSkill(
     userId,
     prompt: params.prompt?.substring(0, 100),
   });
+
+  if (skill.tenantId && skill.tenantId !== tenantId) {
+    return {
+      success: false,
+      skillId: skill.id,
+      type: "text",
+      error: "Skill is not available in the active tenant",
+    };
+  }
+  if (normalizeSkillRevenuePricing(skill).totalCredits > 0 && !tenantId?.trim()) {
+    return {
+      success: false,
+      skillId: skill.id,
+      type: "text",
+      error: "Tenant context required for skill revenue settlement",
+    };
+  }
 
   // Rate limit check
   if (!checkRateLimit(userId, skill.type)) {
@@ -890,11 +913,20 @@ export async function executeSkill(
   // core-text / llm-only / enhance-prompt: LLM text path (never uses sandbox)
   if (executionMode === "core-text" || executionMode === "llm-only" || executionMode === "enhance-prompt") {
     console.log(`[SkillExecutor] Skill '${skill.id}' has executionMode '${executionMode}' — returning text result for LLM processing`);
+    const settlement = await settleSkillRun({
+      runId,
+      userId,
+      tenantId,
+      skillSlug: skill.id,
+      description: `Skill run: ${skill.name}`,
+      metadata: { runtimeKind: "llm", originSurface: "skill_executor" },
+    });
     return {
       success: true,
       skillId: skill.id,
       type: "text",
       message: params.prompt || `Using skill: ${skill.name}`,
+      creditsUsed: settlement.totalCredits,
     };
   }
 
@@ -907,10 +939,11 @@ export async function executeSkill(
       executionMode === "python"
         ? "sandbox-python"
         : (executionMode || "sandbox-code");
+    let sandboxResult: SkillExecutionResult | null = null;
     try {
       if (shouldUseSandboxForFeature("skill", sandboxMode)) {
         console.log(`[SkillExecutor] Routing to sandbox dispatch (mode: ${sandboxMode})`);
-        return await executeSandboxSkill(
+        sandboxResult = await executeSandboxSkill(
           skill,
           params,
           userId,
@@ -932,12 +965,43 @@ export async function executeSkill(
       // optional mode: fall through to legacy paths
       console.warn(`[SkillExecutor] Sandbox check failed, falling back to legacy:`, err);
     }
+    if (sandboxResult) {
+      if (!sandboxResult.success) return sandboxResult;
+      try {
+        const settlement = await settleSkillRun({
+          runId,
+          userId,
+          tenantId,
+          skillSlug: skill.id,
+          description: `Skill run: ${skill.name}`,
+          metadata: { runtimeKind: "sandbox" },
+        });
+        return { ...sandboxResult, creditsUsed: settlement.totalCredits };
+      } catch (err) {
+        return {
+          success: false,
+          skillId: skill.id,
+          type: sandboxResult.type,
+          error: err instanceof Error ? err.message : "Skill billing settlement failed",
+        };
+      }
+    }
   }
 
   // Python skills: subprocess execution (legacy)
   if (executionMode === "python") {
     console.log(`[SkillExecutor] Routing to executePythonSkill (executionMode: python)`);
-    return await executePythonSkill(skill, params, userToken);
+    const pythonResult = await executePythonSkill(skill, params, userToken);
+    if (!pythonResult.success) return pythonResult;
+    const settlement = await settleSkillRun({
+      runId,
+      userId,
+      tenantId,
+      skillSlug: skill.id,
+      description: `Skill run: ${skill.name}`,
+      metadata: { runtimeKind: "python", originSurface: "skill_executor" },
+    });
+    return { ...pythonResult, creditsUsed: settlement.totalCredits };
   }
 
   // Media generation: route by type
@@ -956,7 +1020,7 @@ export async function executeSkill(
 
     case "audio-generation":
       console.log(`[SkillExecutor] Routing to executeAudioGeneration`);
-      return executeAudioGeneration(params, userId, userToken, tenantId);
+      return executeAudioGeneration(skill, params, userId, userToken, tenantId);
 
     case "automation":
     case "chat-assistant":
@@ -1029,11 +1093,7 @@ async function executeImageGeneration(
   }
 
   // Calculate credits using pricing tiers
-  const creditCost = calculateCreditCost(modelMeta, {
-    numImages: params.numImages,
-    resolution: (params as any).resolution,
-    quality: params.quality,
-  });
+  const creditCost = normalizeSkillRevenuePricing(skill).totalCredits;
 
   // Check credits
   const hasCredits = await hasEnoughCredits(userId, creditCost);
@@ -1068,6 +1128,8 @@ async function executeImageGeneration(
         ...(params.publicUrl ? { publicUrl: params.publicUrl } : {}),
         auditContext: {
           userId,
+          tenantId: tenantId || undefined,
+          skillRunId: params.runId,
           source: "skill_executor.executeImageGeneration",
           stage: "submission",
         },
@@ -1075,11 +1137,18 @@ async function executeImageGeneration(
       userToken
     );
 
+    const durableResult = await durabilizeMediaGenerationResponse(result, {
+      tenantId: tenantId || "",
+      userId,
+      mediaType: "image",
+      sourceType: "chat_generated",
+    });
+
     // Credits already deducted by Python backend via gateway_unified._deduct_credits()
     // Do NOT deduct again here to avoid double-charging
 
     // Extract URLs
-    const urls = result.data?.map((d) => d.url).filter((u): u is string => !!u) || [];
+    const urls = durableResult.data?.map((d) => d.url).filter((u): u is string => !!u) || [];
 
     // Record step attempt for planner tracking
     if (plannerResult) {
@@ -1090,19 +1159,27 @@ async function executeImageGeneration(
         inputTokens: 0,
         outputTokens: 0,
         snapshot: plannerResult.snapshot,
-        creditsUsed: result.creditsUsed || creditCost,
+        creditsUsed: durableResult.creditsUsed || creditCost,
       }).catch(() => {});
     }
 
+    const settlement = await settleSkillRun({
+      runId: params.runId!,
+      userId,
+      tenantId,
+      skillSlug: skill.id,
+      description: `Skill run: ${skill.name}`,
+      metadata: { runtimeKind: "media", mediaType: "image", model },
+    });
     return {
       success: true,
       skillId: skill.id,
       type: "image",
-      data: result,
+      data: durableResult,
       resultUrl: urls[0],
       resultUrls: urls,
       message: `Generated ${urls.length} image${urls.length > 1 ? "s" : ""} using ${modelMeta.name}`,
-      creditsUsed: result.creditsUsed || creditCost,
+      creditsUsed: settlement.totalCredits,
     };
   } catch (error) {
     return {
@@ -1161,11 +1238,7 @@ async function executeVideoGeneration(
 
   // Calculate credits using pricing tiers
   const duration = params.duration || 5;
-  const creditCost = calculateCreditCost(modelMeta, {
-    duration: String(duration),
-    resolution: (params as any).resolution,
-    quality: params.quality,
-  });
+  const creditCost = normalizeSkillRevenuePricing(skill).totalCredits;
 
   // Check credits
   const hasCredits = await hasEnoughCredits(userId, creditCost);
@@ -1208,6 +1281,8 @@ async function executeVideoGeneration(
         ...(params.publicUrl ? { publicUrl: params.publicUrl } : {}),
         auditContext: {
           userId,
+          tenantId: tenantId || undefined,
+          skillRunId: params.runId,
           source: "skill_executor.executeVideoGeneration",
           stage: "submission",
         },
@@ -1233,6 +1308,14 @@ async function executeVideoGeneration(
       }).catch(() => {});
     }
 
+    const settlement = await settleSkillRun({
+      runId: params.runId!,
+      userId,
+      tenantId,
+      skillSlug: skill.id,
+      description: `Skill run: ${skill.name}`,
+      metadata: { runtimeKind: "media", mediaType: "video", model },
+    });
     return {
       success: true,
       skillId: skill.id,
@@ -1240,7 +1323,7 @@ async function executeVideoGeneration(
       taskId: task.id,
       isAsync: true,
       message: `Video generation started using ${modelMeta.name}. Task ID: ${task.id}. You can check the status in the Media Generation panel.`,
-      creditsUsed: creditCost, // Credits will be deducted by backend when task completes
+      creditsUsed: settlement.totalCredits,
     };
   } catch (error) {
     console.error('[executeVideoGeneration] Error during video generation:', error);
@@ -1261,6 +1344,7 @@ async function executeVideoGeneration(
  * Execute audio generation skill
  */
 export async function executeAudioGeneration(
+  skill: SkillDefinition,
   params: SkillExecutionParams,
   userId: number,
   userToken: string,
@@ -1302,10 +1386,7 @@ export async function executeAudioGeneration(
   }
 
   // Calculate credits using pricing tiers
-  const audioCreditCost = calculateCreditCost(modelMeta, {
-    text: params.prompt,
-    ...(params.extraParams ?? {}),
-  });
+  const audioCreditCost = normalizeSkillRevenuePricing(skill).totalCredits;
   const hasCredits = await hasEnoughCredits(userId, audioCreditCost);
   if (!hasCredits) {
     return {
@@ -1332,6 +1413,8 @@ export async function executeAudioGeneration(
         ...(params.publicUrl ? { publicUrl: params.publicUrl } : {}),
         auditContext: {
           userId,
+          tenantId: tenantId || undefined,
+          skillRunId: params.runId,
           source: "skill_executor.executeAudioGeneration",
           stage: "submission",
         },
@@ -1339,11 +1422,15 @@ export async function executeAudioGeneration(
       userToken
     );
 
+    const durableResult = await durabilizeMediaGenerationResponse(result, {
+      tenantId: tenantId || "",
+      userId,
+      mediaType: "audio",
+      sourceType: "chat_generated",
+    });
+
     // Credits already deducted by Python backend via gateway_unified._deduct_credits()
     // Do NOT deduct again here to avoid double-charging
-
-    // Extract URL
-    const url = result.data?.[0]?.url;
 
     // Record step attempt for planner tracking
     if (plannerResult) {
@@ -1354,18 +1441,26 @@ export async function executeAudioGeneration(
         inputTokens: 0,
         outputTokens: 0,
         snapshot: plannerResult.snapshot,
-        creditsUsed: result.creditsUsed || audioCreditCost,
+        creditsUsed: durableResult.creditsUsed || audioCreditCost,
       }).catch(() => {});
     }
 
+    const settlement = await settleSkillRun({
+      runId: params.runId!,
+      userId,
+      tenantId,
+      skillSlug: skill.id,
+      description: `Skill run: ${skill.name}`,
+      metadata: { runtimeKind: "media", mediaType: "audio", model },
+    });
     return {
       success: true,
       skillId: "audio-generation",
       type: "audio",
-      data: result,
-      resultUrl: url,
+      data: durableResult,
+      resultUrl: durableResult.data?.[0]?.url,
       message: `Generated audio using ${modelMeta.name}`,
-      creditsUsed: result.creditsUsed || audioCreditCost,
+      creditsUsed: settlement.totalCredits,
     };
   } catch (error) {
     return {
@@ -1403,6 +1498,7 @@ async function executeSandboxSkill(
     const defaultMetadata: Record<string, unknown> = {
       skillSlug: skill.id,
       skillName: skill.name,
+      skillRunId: params.runId,
       prompt: params.prompt,
       extraParams: params.extraParams,
     };
@@ -1481,6 +1577,7 @@ async function executeSandboxSkill(
       userId,
       inputFiles: [],
       profileOverride,
+      idempotencyKey: params.runId,
       metadata: dispatchPayload.metadata,
     });
 
@@ -1504,7 +1601,17 @@ async function executeSandboxSkill(
       const hasPythonScript = resolvePythonSkillPaths(skill) !== null;
       if (hasPythonScript) {
         console.warn(`[SkillExecutor] Falling back to legacy python subprocess for '${skill.id}'`);
-        return await executePythonSkill(skill, params, userToken);
+        const pythonResult = await executePythonSkill(skill, params, userToken);
+        if (!pythonResult.success) return pythonResult;
+        const settlement = await settleSkillRun({
+          runId: params.runId ?? randomUUID(),
+          userId,
+          tenantId,
+          skillSlug: skill.id,
+          description: `Skill run: ${skill.name}`,
+          metadata: { runtimeKind: "python", originSurface: "sandbox_fallback" },
+        });
+        return { ...pythonResult, creditsUsed: settlement.totalCredits };
       }
       return {
         success: false,
@@ -1567,6 +1674,7 @@ async function executePythonSkill(
       publicUrl: params.publicUrl ?? "",
       userToken,
       commonParams: buildPythonSkillCommonParams(params),
+      skillRunId: params.runId,
     },
   });
 

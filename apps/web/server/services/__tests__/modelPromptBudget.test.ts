@@ -50,11 +50,11 @@ describe("model prompt budget", () => {
   });
 
   it("freezes the absolute ceiling and literal VD clamp", () => {
-    expect(VD_IMAGE_PROMPT_ABSOLUTE_MAX).toBe(20_000);
+    expect(VD_IMAGE_PROMPT_ABSOLUTE_MAX).toBe(390_000);
     expect(resolveVdImagePromptBudget(null)).toBe(3800);
     expect(resolveVdImagePromptBudget(500)).toBe(500);
     expect(resolveVdImagePromptBudget(5000)).toBe(5000);
-    expect(resolveVdImagePromptBudget(999_999)).toBe(20_000);
+    expect(resolveVdImagePromptBudget(999_999)).toBe(390_000);
   });
 
   it.each([
@@ -62,7 +62,7 @@ describe("model prompt budget", () => {
     ["google-banana-2", { maxPromptLength: 20_000 }, 20_000],
     ["z-image", { maxPromptLength: 500 }, 3800],
     ["missing", {}, 3800],
-    ["ceiling", { maxPromptLength: 999_999 }, 20_000],
+    ["ceiling", { maxPromptLength: 999_999 }, 390_000],
   ])("resolves widening-only budget for %s", (modelId, configJson, expected) => {
     mockGetStaticModelById.mockReturnValue(undefined);
     expect(resolveVdImagePromptBudgetForModel({ modelId, configJson })).toBe(expected);
@@ -73,7 +73,7 @@ describe("model prompt budget", () => {
     expect(resolveVdImagePromptBudgetForModel({ modelId: "missing" })).toBe(3800);
   });
 
-  it("uses Kie.ai's current 20,000-character image allowance even when catalog metadata is stale", () => {
+  it("uses Kie.ai's current 390,000-character image allowance even when catalog metadata is stale", () => {
     mockGetStaticModelById.mockReturnValue(undefined);
     expect(
       resolveVdImagePromptBudgetForModel({
@@ -81,14 +81,14 @@ describe("model prompt budget", () => {
         provider: "kie.ai",
         configJson: { maxPromptLength: 3800 },
       }),
-    ).toBe(20_000);
+    ).toBe(390_000);
     expect(
       resolveVdImagePromptBudgetForModel({
         modelId: "kie-image-model-legacy",
         provider: "kie_ai",
         configJson: {},
       }),
-    ).toBe(20_000);
+    ).toBe(390_000);
   });
 
   it("keeps a configured non-Kie provider at its catalog budget", () => {

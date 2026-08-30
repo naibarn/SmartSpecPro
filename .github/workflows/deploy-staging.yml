@@ -121,6 +121,8 @@ jobs:
             --image=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/node-api:${{ steps.tags.outputs.COMMIT_SHA }} \
             --platform=managed \
             --region=${{ secrets.GCP_REGION }} \
+            --min-instances=1 \
+            --no-cpu-throttling \
             --service-account=cloud-run-api@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
             --allow-unauthenticated \
             --tag=canary-${{ steps.tags.outputs.COMMIT_SHA }} \

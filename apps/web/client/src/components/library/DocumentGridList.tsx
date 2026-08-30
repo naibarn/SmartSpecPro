@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,50 @@ interface DocumentGridListProps {
   /** IDs currently selected for multi-select batch operations */
   selectedIds?: Set<number>;
   onSelectionChange?: (ids: Set<number>) => void;
+}
+
+function LazyVideoMetadataPreview({
+  src,
+  className,
+}: {
+  src: string;
+  className: string;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
+
+  useEffect(() => {
+    const target = videoRef.current;
+    if (!target) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      setShouldLoad(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries.some(entry => entry.isIntersecting)) {
+          setShouldLoad(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "400px" },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <video
+      ref={videoRef}
+      src={shouldLoad ? src : undefined}
+      preload={shouldLoad ? "metadata" : "none"}
+      muted
+      playsInline
+      className={className}
+    />
+  );
 }
 
 export default function DocumentGridList({
@@ -162,11 +206,8 @@ export default function DocumentGridList({
               className="h-full w-full object-cover opacity-90"
             />
           ) : (
-            <video
+            <LazyVideoMetadataPreview
               src={imageLikeUrl}
-              preload="metadata"
-              muted
-              playsInline
               className="h-full w-full object-cover opacity-90"
             />
           )}

@@ -41,6 +41,10 @@ import {
 } from "lucide-react";
 
 import DocumentGridList from "@/components/library/DocumentGridList";
+import {
+  replaceLibraryFileDirect,
+  uploadLibraryFileDirect,
+} from "@/services/libraryUploadClient";
 import ContextPackManager from "@/components/library/ContextPackManager";
 import DocumentLibraryTabs from "@/components/library/DocumentLibraryTabs";
 import KnowledgeNoteSpotlight from "@/components/library/KnowledgeNoteSpotlight";
@@ -150,6 +154,7 @@ const KNOWLEDGE_MINI_PANEL_HEADER_HEIGHT = 56;
 const KNOWLEDGE_MINI_PANEL_COLLAPSED_HEIGHT = 56;
 const KNOWLEDGE_MINI_PANEL_DRAG_THRESHOLD = 4;
 const MARKDOWN_SYNC_POLL_INTERVAL_MS = 15_000;
+const MAX_LIBRARY_UPLOAD_BYTES = 50 * 1024 * 1024;
 const QUICK_MEDIA_FILTERS = [
   { value: "all", labelKey: "documentManagement.fileType.all" },
   { value: "image", labelKey: "documentManagement.fileType.image" },
@@ -427,6 +432,7 @@ export default function DocumentManagement() {
     string | null
   >(null);
   const [uploadingCount, setUploadingCount] = useState(0);
+  const [isDirectReplacePending, setIsDirectReplacePending] = useState(false);
   const [trackedUploadIds, setTrackedUploadIds] = useState<number[]>([]);
   const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(
     new Set()
@@ -1079,8 +1085,6 @@ export default function DocumentManagement() {
   }, []);
 
   const saveMarkdownMutation = trpc.library.saveMarkdown.useMutation();
-  const uploadFileMutation = trpc.library.uploadFile.useMutation();
-  const replaceFileMutation = trpc.library.replaceFile.useMutation();
   const createItemMutation = trpc.library.createItem.useMutation();
   const unlockPrivateVaultMutation = trpc.users.unlockPrivateVault.useMutation({
     onSuccess: result => {
@@ -2330,17 +2334,13 @@ export default function DocumentManagement() {
 
   async function handleReplaceFile(file: File, changeDescription?: string) {
     if (!selectedItem) return;
-    if (file.size > 50 * 1024 * 1024) {
+    if (file.size > MAX_LIBRARY_UPLOAD_BYTES) {
       toast.error("File too large (max 50 MB)");
       throw new Error("File too large");
     }
+    setIsDirectReplacePending(true);
     try {
-      const fileBase64 = await fileToBase64(file);
-      const result = await replaceFileMutation.mutateAsync({
-        itemId: selectedItem.id,
-        fileName: file.name,
-        fileType: file.type || "application/octet-stream",
-        fileBase64,
+      const result = await replaceLibraryFileDirect(file, selectedItem.id, {
         changeDescription,
       });
       setTrackedUploadIds(prev =>
@@ -2361,6 +2361,8 @@ export default function DocumentManagement() {
         error instanceof Error ? error.message : "Failed to replace file"
       );
       throw error; // re-throw so the dialog stays open on failure
+    } finally {
+      setIsDirectReplacePending(false);
     }
   }
 
@@ -2379,15 +2381,6 @@ export default function DocumentManagement() {
         error instanceof Error ? error.message : "Failed to move item to trash"
       );
     }
-  }
-
-  async function fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
   }
 
   async function handleImportFromDrive(fileId: string) {
@@ -2493,6 +2486,14 @@ export default function DocumentManagement() {
       toast.error(t("documentManagement.privateVault.unlockBeforeUpload"));
       return;
     }
+    const oversizedFiles = files.filter(
+      file => file.size > MAX_LIBRARY_UPLOAD_BYTES,
+    );
+    if (oversizedFiles.length > 0) {
+      toast.error("File too large (max 50 MB)");
+      files = files.filter(file => file.size <= MAX_LIBRARY_UPLOAD_BYTES);
+      if (files.length === 0) return;
+    }
     setUploadingCount(n => n + files.length);
     const effectiveMetadata = {
       ...(metadata ?? {}),
@@ -2502,11 +2503,7 @@ export default function DocumentManagement() {
     const results = await Promise.allSettled(
       files.map(async file => {
         try {
-          const fileBase64 = await fileToBase64(file);
-          return await uploadFileMutation.mutateAsync({
-            fileName: file.name,
-            fileType: file.type || "application/octet-stream",
-            fileBase64,
+          return await uploadLibraryFileDirect(file, {
             title: file.name,
             parentId: currentFolderId,
             visibility:
@@ -2522,9 +2519,7 @@ export default function DocumentManagement() {
     const succeeded = results.filter(
       (
         r
-      ): r is PromiseFulfilledResult<
-        Awaited<ReturnType<typeof uploadFileMutation.mutateAsync>>
-      > => r.status === "fulfilled"
+      ): r is PromiseFulfilledResult<any> => r.status === "fulfilled"
     );
     const failedCount = results.length - succeeded.length;
 
@@ -3834,7 +3829,7 @@ export default function DocumentManagement() {
                           ? handleReplaceFile
                           : undefined
                       }
-                      isReplacingFile={replaceFileMutation.isPending}
+                      isReplacingFile={isDirectReplacePending}
                       canAddToGallery={canAddSelectedItemToGallery}
                       onAddToGallery={handleAddSelectedItemToGallery}
                       isAddingToGallery={publishToGalleryMutation.isPending}
@@ -4408,7 +4403,7 @@ export default function DocumentManagement() {
                           ? handleReplaceFile
                           : undefined
                       }
-                      isReplacingFile={replaceFileMutation.isPending}
+                      isReplacingFile={isDirectReplacePending}
                       canAddToGallery={canAddSelectedItemToGallery}
                       onAddToGallery={handleAddSelectedItemToGallery}
                       isAddingToGallery={publishToGalleryMutation.isPending}

@@ -30,6 +30,7 @@ import {
 } from "../services/marketplaceInsightService";
 import { getMarketplaceCaptureConfig, isAllowedMarketplaceOrigin } from "../services/marketplaceCaptureConfig";
 import { requireMarketplaceAuth } from "../services/marketplaceExtensionAuthService";
+import { marketplaceOwnerTenantScope } from "../services/marketplaceTenantScope";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { getProductionSpace, isProductionSpaceStorageUnavailable } from "../services/productionSpaceService";
 import {
@@ -515,7 +516,9 @@ function findAffiliateUrl(value: unknown, depth = 0): string {
   return "";
 }
 
-async function getStoryboardReviewMarketplaceMetadataForExtension(auth: { userId: number }, reviewId: number, reviewData: unknown) {
+async function getStoryboardReviewMarketplaceMetadataForExtension(auth: { userId: number; tenantId?: string }, reviewId: number, reviewData: unknown) {
+  const tenantId = auth.tenantId?.trim();
+  if (!tenantId) throw Object.assign(new Error("Tenant context is required"), { status: 400, code: "tenant_required" });
   const db = getDb();
   const [run] = await db
     .select({
@@ -530,10 +533,18 @@ async function getStoryboardReviewMarketplaceMetadataForExtension(auth: { userId
       libraryItemType: libraryItems.itemType,
     })
     .from(marketplaceAutoReviewRuns)
-    .leftJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceAutoReviewRuns.productId))
-    .leftJoin(libraryItems, eq(libraryItems.id, marketplaceAutoReviewRuns.resultLibraryItemId))
+    .leftJoin(marketplaceProducts, and(
+      eq(marketplaceProducts.id, marketplaceAutoReviewRuns.productId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, tenantId),
+    ))
+    .leftJoin(libraryItems, and(
+      eq(libraryItems.id, marketplaceAutoReviewRuns.resultLibraryItemId),
+      eq(libraryItems.tenantId, tenantId),
+      eq(libraryItems.ownerUserId, auth.userId),
+    ))
     .where(and(
       eq(marketplaceAutoReviewRuns.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceAutoReviewRuns.tenantId, tenantId),
       eq(marketplaceAutoReviewRuns.storyboardReviewId, String(reviewId)),
     ))
     .orderBy(desc(marketplaceAutoReviewRuns.updatedAt))
@@ -546,6 +557,7 @@ async function getStoryboardReviewMarketplaceMetadataForExtension(auth: { userId
     .from(storyboardPreviewMatchCaptureJobs)
     .where(and(
       eq(storyboardPreviewMatchCaptureJobs.userId, auth.userId),
+      eq(storyboardPreviewMatchCaptureJobs.tenantId, tenantId),
       eq(storyboardPreviewMatchCaptureJobs.storyboardReviewId, String(reviewId)),
     ))
     .orderBy(desc(storyboardPreviewMatchCaptureJobs.updatedAt))
@@ -561,6 +573,7 @@ async function getStoryboardReviewMarketplaceMetadataForExtension(auth: { userId
     .from(libraryItems)
     .where(and(
       eq(libraryItems.ownerUserId, auth.userId),
+      eq(libraryItems.tenantId, tenantId),
       eq(libraryItems.itemType, "video"),
       eq(libraryItems.source, "storyboard_preview_match_capture"),
     ))

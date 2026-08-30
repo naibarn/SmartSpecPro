@@ -55,7 +55,8 @@ export async function reactivateUser(
 
   // Tenant isolation: domain admins can only reactivate users in their own tenant
   // Super admins (adminTenantId = null) can reactivate any user
-  // Note: currentTenantId is integer but tenantId is varchar — compare as strings
+  // Keep the comparison string-based for compatibility with legacy rows while
+  // the canonical schema stores both tenant identifiers as varchar values.
   if (adminTenantId) {
     const userTenant = user.currentTenantId != null ? String(user.currentTenantId) : null;
     // Block if user has no tenant (null) or belongs to a different tenant

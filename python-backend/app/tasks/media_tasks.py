@@ -17,7 +17,6 @@ from app.services.library_indexing_service import (
 from app.services.library_backfill_service import run_library_backfill_batch
 from app.services.media_thumbnail_backfill_service import run_missing_media_thumbnail_backfill_batch
 from app.services.media_debug_trace import write_media_debug_event
-from app.services.media_task_service import MediaTaskService
 from app.services.kie_submission_rate_limiter import (
     KieSubmissionDeferred,
     KieSubmissionRateLimiter,
@@ -459,9 +458,24 @@ def _is_non_retryable_media_error(error: Exception) -> bool:
     if not message:
         return False
     permanent_markers = (
+        # Application-side safety contract failures are deterministic input
+        # errors. Retrying the same request cannot repair a stale/malformed
+        # marker and only keeps the cover task pending while consuming worker
+        # capacity.
+        "image prompt safety review is required",
+        "image prompt safety review marker is invalid",
+        "image prompt safety review skill is invalid",
+        "image prompt safety review mode is invalid",
+        "image prompt safety review skill and mode do not match",
+        "image prompt was blocked by the image safety skill",
         "content policy",
         "safety policy",
+        "safety filter",
+        "safety system",
+        "content was flagged",
+        "flagged by the safety",
         "moderation",
+        "content moderation",
         "prohibited",
         "disallowed",
         "not allowed",
@@ -494,6 +508,44 @@ def _is_non_retryable_media_error(error: Exception) -> bool:
     return ("we're so sorry" in message or "we are so sorry" in message) and "prompt" in message
 
 
+def _is_retryable_kie_image_fetch_failure(message: str) -> bool:
+    """Return true only for Kie reference-fetch failures that may recover later."""
+    normalized = str(message or "").lower()
+    return any(
+        marker in normalized
+        for marker in (
+            "image fetch failed",
+            "could not fetch image",
+            "failed to fetch image",
+        )
+    )
+
+
+KIE_IMAGE_PROVIDER_MAX_RETRIES = max(
+    0,
+    int(os.getenv("KIE_IMAGE_PROVIDER_MAX_RETRIES", "3")),
+)
+KIE_IMAGE_PROVIDER_RETRY_DELAYS_SECONDS = (15, 30, 60)
+KIE_IMAGE_RETRY_CLAIM_PREFIX = "kie-image-retry:"
+
+
+def _kie_image_provider_retry_delay(retry_number: int) -> int:
+    """Return the delay before retry number 1..N, capped at the last policy step."""
+    index = max(1, int(retry_number)) - 1
+    return KIE_IMAGE_PROVIDER_RETRY_DELAYS_SECONDS[
+        min(index, len(KIE_IMAGE_PROVIDER_RETRY_DELAYS_SECONDS) - 1)
+    ]
+
+
+def _is_kie_image_retry_claim(task: Any) -> bool:
+    """Identify a pending task reserved for a delayed provider retry."""
+    claim = getattr(task, "celery_task_id", None)
+    if not isinstance(claim, str) or not claim.startswith(KIE_IMAGE_RETRY_CLAIM_PREFIX):
+        return False
+    polling = _coerce_json_dict(getattr(task, "result_data", None)).get("polling")
+    return isinstance(polling, dict) and polling.get("state") == "retry_scheduled"
+
+
 def _is_openai_policy_media_error(error: Exception | str) -> bool:
     """Return true for user-input content-policy refusals, not system faults."""
     message = str(error).lower()
@@ -501,7 +553,12 @@ def _is_openai_policy_media_error(error: Exception | str) -> bool:
         "content policy",
         "content policies",
         "safety policy",
+        "safety filter",
+        "safety system",
+        "content was flagged",
+        "flagged by the safety",
         "moderation",
+        "content moderation",
         "prohibited",
         "disallowed",
         "not allowed",
@@ -560,31 +617,6 @@ def _normalize_kie_task_state(status_response: dict) -> tuple[str, str]:
                 return 0
         return value
 
-    result_url = _extract_first_kie_result_url(status_response)
-    if result_url:
-        return "success", "result_url"
-
-    success_flag = _normalize_success_flag(data.get("successFlag"))
-    if success_flag == 1:
-        return "success", "successflag_1"
-    if success_flag in (2, 3):
-        return "fail", f"successflag_{success_flag}"
-    if success_flag == 0:
-        error_code = data.get("errorCode")
-        error_message = data.get("errorMessage")
-        if error_code or error_message:
-            return "fail", "successflag_error"
-        return "processing", "successflag_0"
-
-    error_code = data.get("errorCode")
-    error_message = data.get("errorMessage")
-    if error_code or error_message:
-        return "fail", "provider_error"
-
-    complete_time = data.get("completeTime") or data.get("complete_time")
-    if complete_time:
-        return "success", "complete_time"
-
     raw_state = str(
         status_response.get("state", "")
         or data.get("state", "")
@@ -596,10 +628,33 @@ def _normalize_kie_task_state(status_response: dict) -> tuple[str, str]:
         or (data.get("taskResult", {}) if isinstance(data.get("taskResult"), dict) else {}).get("status", "")
     ).strip().lower()
 
-    if raw_state in {"success", "completed", "complete", "done", "finished", "finish"}:
-        return "success", raw_state
+    provider_failure_code = data.get("failCode") or data.get("errorCode")
+    provider_failure_message = data.get("failMsg") or data.get("errorMessage")
     if raw_state in {"fail", "failed", "error", "cancelled", "canceled"}:
         return "fail", raw_state
+    if provider_failure_code or provider_failure_message:
+        return "fail", "provider_error"
+
+    success_flag = _normalize_success_flag(data.get("successFlag"))
+    if success_flag == 1:
+        return "success", "successflag_1"
+    if success_flag in (2, 3):
+        return "fail", f"successflag_{success_flag}"
+    if success_flag == 0:
+        return "processing", "successflag_0"
+
+    if raw_state in {"success", "completed", "complete", "done", "finished", "finish"}:
+        result_url = _extract_first_kie_result_url(status_response)
+        return "success", "result_url" if result_url else raw_state
+
+    result_url = _extract_first_kie_result_url(status_response)
+    if result_url:
+        return "success", "result_url"
+
+    complete_time = data.get("completeTime") or data.get("complete_time")
+    if complete_time:
+        return "success", "complete_time"
+
     if raw_state in {"pending", "processing", "running", "created", "queued", "queueing", "in_progress", "in-progress"}:
         return "processing", raw_state
     if raw_state:
@@ -888,6 +943,71 @@ def _enqueue_kie_image_poll(task_id: str, delay_seconds: int) -> None:
     poll_kie_image_task.apply_async(args=[task_id], countdown=max(0, int(delay_seconds)))
 
 
+async def _release_kie_image_retry_claim_and_dispatch_async(
+    task_id: str,
+    user_id: int | str,
+    retry_claim: str,
+) -> dict[str, Any]:
+    """Release a delayed-retry claim, then admit the user's next image slot."""
+    released = False
+    async with AsyncSessionLocal() as db:
+        await db.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+            {"lock_key": f"kie-image-user:{user_id}"},
+        )
+        result = await db.execute(
+            select(MediaTask).where(MediaTask.id == task_id).with_for_update()
+        )
+        task = result.scalar_one_or_none()
+        if (
+            task is not None
+            and str(task.user_id) == str(user_id)
+            and task.status == TaskStatus.PENDING.value
+            and task.celery_task_id == retry_claim
+        ):
+            task.celery_task_id = None
+            task.error_message = None
+            result_data = _coerce_json_dict(task.result_data)
+            polling = result_data.get("polling")
+            if isinstance(polling, dict):
+                result_data["polling"] = {
+                    **polling,
+                    "state": "retry_ready",
+                    "retry_ready_at": datetime.now(timezone.utc).isoformat(),
+                }
+            task.result_data = _make_json_safe(result_data)
+            await db.commit()
+            released = True
+
+    if not released:
+        return {"status": "noop", "task_id": task_id}
+    return await _dispatch_pending_image_tasks_async(user_id)
+
+
+@celery_app.task
+def dispatch_kie_image_retry(task_id: str, user_id: int | str, retry_claim: str):
+    """Wake one delayed Kie image retry and pass it through the fair dispatcher."""
+    return _run_async(
+        _release_kie_image_retry_claim_and_dispatch_async(
+            task_id,
+            user_id,
+            retry_claim,
+        )
+    )
+
+
+def _enqueue_kie_image_retry(
+    task_id: str,
+    user_id: int | str,
+    retry_claim: str,
+    delay_seconds: int,
+) -> None:
+    dispatch_kie_image_retry.apply_async(
+        args=[task_id, user_id, retry_claim],
+        countdown=max(1, int(delay_seconds)),
+    )
+
+
 def _image_request_from_task(task: MediaTask) -> dict[str, Any]:
     parameters = _coerce_json_dict(task.parameters)
     return _make_json_safe({"model": task.model, "prompt": task.prompt, **parameters})
@@ -1008,6 +1128,8 @@ def _compact_kie_status(status_response: Any, state: str, raw_state: str) -> dic
     """Keep operational metadata without prompts, params, or signed result URLs."""
     payload = status_response if isinstance(status_response, dict) else {}
     data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    failure_code = data.get("failCode") or data.get("errorCode")
+    failure_message = _extract_kie_failure_message(payload) if state == "fail" else None
     return _make_json_safe(
         {
             "provider": "kie_ai",
@@ -1016,6 +1138,8 @@ def _compact_kie_status(status_response: Any, state: str, raw_state: str) -> dic
             "code": payload.get("code"),
             "provider_task_id": data.get("taskId") or payload.get("taskId"),
             "credits_consumed": data.get("creditsConsumed") or payload.get("creditsConsumed"),
+            "failure_code": failure_code,
+            "failure_message": failure_message[:500] if failure_message else None,
         }
     )
 
@@ -1066,7 +1190,12 @@ async def _poll_kie_image_task_async(
     terminal = False
     result_payload: dict[str, Any]
     async with AsyncSessionLocal() as db:
-        task_result = await db.execute(select(MediaTask).where(MediaTask.id == task_id))
+        # Serialize pollers for the same task. A webhook, recovery sweep, and
+        # scheduled poll can otherwise observe the same provider failure and
+        # schedule duplicate retries.
+        task_result = await db.execute(
+            select(MediaTask).where(MediaTask.id == task_id).with_for_update()
+        )
         task = task_result.scalar_one_or_none()
         if task is None:
             return {"status": "missing", "task_id": task_id}
@@ -1184,14 +1313,71 @@ async def _poll_kie_image_task_async(
                 result_payload = {"status": "completed", "task_id": task_id}
 
         if state == "fail":
+            failure_message = _extract_kie_failure_message(status_response)
+            provider_retry_count = int(polling.get("provider_retry_count") or 0)
+            if (
+                _is_retryable_kie_image_fetch_failure(failure_message)
+                and provider_retry_count < KIE_IMAGE_PROVIDER_MAX_RETRIES
+            ):
+                retry_number = provider_retry_count + 1
+                retry_delay = _kie_image_provider_retry_delay(retry_number)
+                retry_claim = f"{KIE_IMAGE_RETRY_CLAIM_PREFIX}{uuid4()}"
+                retry_at = now + timedelta(seconds=retry_delay)
+                task.status = TaskStatus.PENDING.value
+                task.task_id = None
+                task.celery_task_id = retry_claim
+                task.started_at = None
+                task.completed_at = None
+                task.error_message = (
+                    f"Retry scheduled in {retry_delay}s "
+                    f"(attempt {retry_number}/{KIE_IMAGE_PROVIDER_MAX_RETRIES}): "
+                    f"Provider failed: {failure_message}"
+                )
+                task.result_data = _merge_task_result_data(
+                    result_data,
+                    {
+                        "provider_status": compact_status,
+                        "polling": {
+                            **polling_metadata,
+                            "state": "retry_scheduled",
+                            "provider_retry_count": retry_number,
+                            "max_provider_retries": KIE_IMAGE_PROVIDER_MAX_RETRIES,
+                            "retry_delay_seconds": retry_delay,
+                            "next_retry_at": retry_at.isoformat(),
+                            "retry_claim": retry_claim,
+                            "last_failure_message": failure_message[:500],
+                        },
+                    },
+                    remove_keys=("retry",),
+                )
+                await db.commit()
+                _enqueue_kie_image_retry(
+                    task_id,
+                    owner_id,
+                    retry_claim,
+                    retry_delay,
+                )
+                return {
+                    "status": "retry_scheduled",
+                    "task_id": task_id,
+                    "retry_number": retry_number,
+                    "max_retries": KIE_IMAGE_PROVIDER_MAX_RETRIES,
+                    "next_retry_seconds": retry_delay,
+                }
+
             task.status = TaskStatus.FAILED.value
-            task.error_message = f"Provider failed: {_extract_kie_failure_message(status_response)}"
+            task.error_message = f"Provider failed: {failure_message}"
             task.completed_at = now
             task.result_data = _merge_task_result_data(
                 result_data,
                 {
                     "provider_status": compact_status,
-                    "polling": {**polling_metadata, "state": "failed"},
+                    "polling": {
+                        **polling_metadata,
+                        "state": "failed",
+                        "provider_retry_count": provider_retry_count,
+                        "max_provider_retries": KIE_IMAGE_PROVIDER_MAX_RETRIES,
+                    },
                 },
                 remove_keys=("retry",),
             )
@@ -2119,7 +2305,7 @@ async def _send_failure_notifications(task_id: str, user_id: str, media_type: st
             # Notify all admins
             await notify_admin_task_alert(
                 db=db,
-                title=f"Media task failed after max retries",
+                title="Media task failed after max retries",
                 message=f"User {user_id} — {media_type} task {task_id}: {error[:200]}",
                 data={"task_id": task_id, "user_id": user_id, "media_type": media_type},
                 send_email=True,
@@ -2280,10 +2466,17 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
                 # local task-processing timestamp. The latter can include
                 # queue/admission time and caused valid Kie jobs to be timed
                 # out before the provider finished them.
+                previous_polling = _coerce_json_dict(task.result_data).get("polling")
+                previous_retry_count = (
+                    int(previous_polling.get("provider_retry_count") or 0)
+                    if isinstance(previous_polling, dict)
+                    else 0
+                )
                 kie_polling_record = {
                     "provider": "kie_ai",
                     "state": "scheduled",
                     "attempts": 0,
+                    "provider_retry_count": previous_retry_count,
                     "raw_state": "created",
                     "started_at": datetime.now(timezone.utc).isoformat(),
                 }
@@ -2456,6 +2649,23 @@ def poll_kie_image_task(self, task_id: str):
             task_id=task_id,
             error_type=type(exc).__name__,
         )
+        # A policy/input refusal is terminal even when the provider surfaces
+        # it as an exception instead of a normal `state=fail` response. Do
+        # not spend Celery retries polling or resubmitting the same request.
+        if _is_non_retryable_media_error(exc):
+            try:
+                _run_async(_mark_task_failed_async(task_id, exc))
+                owner_id = _run_async(_get_media_task_owner_id_async(task_id))
+                if owner_id is not None:
+                    _run_async(_send_failure_notifications(task_id, owner_id, "image", str(exc)))
+                    _run_async(_dispatch_pending_image_tasks_async(owner_id))
+            except Exception as state_error:
+                logger.warning(
+                    "poll_kie_image_task_non_retryable_state_update_failed",
+                    task_id=task_id,
+                    error_type=type(state_error).__name__,
+                )
+            return {"status": "failed", "task_id": task_id, "error": str(exc), "retryable": False}
         if self.request.retries < self.max_retries:
             raise self.retry(exc=exc, countdown=15)
         try:
@@ -3019,7 +3229,16 @@ async def _retry_failed_tasks_async():
             failed_tasks = result.scalars().all()
 
             retried_count = 0
+            image_user_ids: set[int | str] = set()
             for task in failed_tasks:
+                # Keep the database query broad enough to recover transient
+                # failures, but never let a mixed error string (for example a
+                # provider policy refusal mentioning a timeout) re-enter the
+                # paid generation queue.
+                if _is_non_retryable_media_error(
+                    RuntimeError(task.error_message or "")
+                ):
+                    continue
                 # Reset task to pending
                 task.status = TaskStatus.PENDING
                 task.error_message = None
@@ -3027,7 +3246,13 @@ async def _retry_failed_tasks_async():
 
                 # Re-submit to Celery based on media type
                 if task.media_type == MediaType.IMAGE:
-                    generate_image_task.delay(task.id, task.user_id, task.parameters or {})
+                    # Re-arm through the same per-user dispatcher as new
+                    # requests. Direct `.delay()` bypasses the three-task
+                    # admission cap and can recreate the Kie rate-limit burst.
+                    task.task_id = None
+                    task.started_at = None
+                    task.celery_task_id = None
+                    image_user_ids.add(task.user_id)
                 elif task.media_type == MediaType.VIDEO:
                     generate_video_task.delay(task.id, task.user_id, task.parameters or {})
                 elif task.media_type == MediaType.AUDIO:
@@ -3036,6 +3261,9 @@ async def _retry_failed_tasks_async():
                 retried_count += 1
 
             await db.commit()
+
+            for image_user_id in image_user_ids:
+                await _dispatch_pending_image_tasks_async(image_user_id)
 
             logger.info("retry_failed_tasks_completed", retried_count=retried_count)
             return {"status": "success", "retried_count": retried_count}
@@ -3853,6 +4081,38 @@ async def _recover_stuck_pending_tasks_async():
             now = datetime.now(timezone.utc)
 
             for task in stuck_pending:
+                if _is_kie_image_retry_claim(task):
+                    retry_polling = _coerce_json_dict(task.result_data).get("polling")
+                    next_retry_at = (
+                        retry_polling.get("next_retry_at")
+                        if isinstance(retry_polling, dict)
+                        else None
+                    )
+                    try:
+                        retry_due = isinstance(next_retry_at, str) and datetime.fromisoformat(
+                            next_retry_at.replace("Z", "+00:00")
+                        ) <= now
+                    except ValueError:
+                        retry_due = True
+                    if not retry_due:
+                        logger.info(
+                            "recover_stuck_pending_waiting_for_kie_retry",
+                            task_id=task.id,
+                            next_retry_at=next_retry_at,
+                        )
+                        continue
+                    # The scheduled wake-up may have been lost. Clear the
+                    # placeholder and let the unclaimed-image recovery phase
+                    # dispatch it through the per-user cap below.
+                    task.celery_task_id = None
+                    task.error_message = None
+                    recovered += 1
+                    logger.warning(
+                        "recover_stuck_pending_kie_retry_rearmed",
+                        task_id=task.id,
+                    )
+                    continue
+
                 # Ensure created_at is timezone-aware for comparison
                 task_created = task.created_at
                 if task_created.tzinfo is None:

@@ -27,6 +27,7 @@ vi.mock("../verticalDramaStoryBible", () => ({
 
 import {
   designVerticalDramaCharacterLooks,
+  getDesignedCharacterLookSemanticKey,
   VERTICAL_DRAMA_CHARACTER_LOOK_DESIGNER_SKILL_SLUG,
 } from "../verticalDramaCharacterLookDesigner";
 import {
@@ -88,6 +89,14 @@ const ageStageParams = {
   ],
 };
 
+describe("character look semantic identity", () => {
+  it("does not include shot-context request keys in the reusable identity", () => {
+    expect(getDesignedCharacterLookSemanticKey(params.requests[0])).toBe(
+      "mali::outfit::casualhome"
+    );
+  });
+});
+
 describe("vertical drama character look designer", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -132,6 +141,28 @@ describe("vertical drama character look designer", () => {
         }),
       })
     );
+  });
+
+  it("materializes a review-required design so its prompt remains usable", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockResolveModel.mockResolvedValue("test-model");
+    const reviewOutput = structuredClone(fixture);
+    reviewOutput.designs[0].review_required = true;
+    reviewOutput.designs[0].conflict_reason =
+      "The apparent-age anchor needs human confirmation.";
+    mockExecute.mockResolvedValue({
+      data: reviewOutput,
+      response: { usage: { prompt_tokens: 100, completion_tokens: 80 } },
+    });
+
+    const result = await designVerticalDramaCharacterLooks(params);
+    const designed = result.designs.get(params.requests[0].requestKey);
+
+    expect(designed?.imageBrief).toContain("Use the same character reference");
+    expect(designed?.lookDesign.outfit.top).toContain("เสื้อแขนสั้น");
+    expect(designed?.reviewReason).toContain("apparent-age");
+    expect(result.reviewRequired).toContain(params.requests[0].requestKey);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
   it("passes legacy visual details as transformation context, not as final prose", async () => {

@@ -1,5 +1,6 @@
 use smart_ai_hub_worker_app_lib::runtime_manifest::{
     doctor_from_manifest, doctor_from_manifest_path, file_sha256, RuntimePackManifest,
+    RuntimeTranscriptionManifest,
 };
 use std::fs;
 
@@ -29,6 +30,16 @@ fn manifest(sidecar_sha256: String) -> RuntimePackManifest {
         sidecar_script_path: None,
         remotion_platform_contract_version: None,
         remotion_sidecar_script_path: None,
+        transcription: Some(RuntimeTranscriptionManifest {
+            engine: "whisper.cpp".into(),
+            version: "1.9.3-dev".into(),
+            binary_path: "whisper/whisper-cli.exe".into(),
+            binary_sha256: "binary-hash".into(),
+            model: "large-v3".into(),
+            model_path: "whisper/.cache/hyperframes/whisper/models/ggml-large-v3.bin".into(),
+            model_sha256: "model-hash".into(),
+            model_url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin".into(),
+        }),
     }
 }
 
@@ -56,6 +67,14 @@ fn write_minimal_official_renderer_files(root: &std::path::Path) {
     .unwrap();
     fs::write(root.join("bin/ffmpeg.exe"), b"MZ fake ffmpeg").unwrap();
     fs::write(root.join("bin/ffprobe.exe"), b"MZ fake ffprobe").unwrap();
+    fs::create_dir_all(root.join("whisper/.cache/hyperframes/whisper/models")).unwrap();
+    fs::write(root.join("whisper/whisper-cli.exe"), b"MZ fake whisper").unwrap();
+    let model = fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .open(root.join("whisper/.cache/hyperframes/whisper/models/ggml-large-v3.bin"))
+        .unwrap();
+    model.set_len(100_000_001).unwrap();
 }
 
 fn write_minimal_wsl2_renderer_files(root: &std::path::Path) {
@@ -115,6 +134,14 @@ fn write_minimal_wsl2_renderer_files(root: &std::path::Path) {
     fs::write(root.join("browser/chrome-linux64/chrome"), b"linux chrome").unwrap();
     fs::write(root.join("bin/ffmpeg"), b"linux ffmpeg").unwrap();
     fs::write(root.join("bin/ffprobe"), b"linux ffprobe").unwrap();
+    fs::create_dir_all(root.join("whisper/.cache/hyperframes/whisper/models")).unwrap();
+    fs::write(root.join("whisper/whisper-cli"), b"linux whisper").unwrap();
+    let model = fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .open(root.join("whisper/.cache/hyperframes/whisper/models/ggml-large-v3.bin"))
+        .unwrap();
+    model.set_len(100_000_001).unwrap();
 }
 
 #[test]
@@ -286,6 +313,46 @@ fn wsl2_runtime_blocks_when_linux_sharp_native_dependencies_are_missing() {
         .recommended_actions
         .iter()
         .any(|action| action.contains("@img/sharp-linux-x64")));
+}
+
+#[test]
+fn doctor_blocks_when_bundled_transcription_runtime_is_missing() {
+    let dir = tempfile::tempdir().unwrap();
+    let sidecar = dir.path().join("hyperframes-render.exe");
+    fs::write(&sidecar, b"fake-sidecar").unwrap();
+    fs::write(dir.path().join("SHA256SUMS"), b"fake checksums").unwrap();
+    fs::write(dir.path().join("SHA256SUMS.sig"), b"fake signature").unwrap();
+    write_minimal_official_renderer_files(dir.path());
+    fs::remove_file(dir.path().join("whisper/whisper-cli.exe")).unwrap();
+
+    let summary = doctor_from_manifest(&manifest(file_sha256(&sidecar).unwrap()), dir.path());
+
+    assert_eq!(summary.status, "blocked");
+    assert!(summary
+        .checks
+        .iter()
+        .any(|check| check.id == "transcription_runtime" && check.status == "error"));
+}
+
+#[test]
+fn doctor_blocks_placeholder_runtime_signature() {
+    let dir = tempfile::tempdir().unwrap();
+    let sidecar = dir.path().join("hyperframes-render.exe");
+    fs::write(&sidecar, b"fake-sidecar").unwrap();
+    fs::write(dir.path().join("SHA256SUMS"), b"fake checksums").unwrap();
+    fs::write(
+        dir.path().join("SHA256SUMS.sig"),
+        b"placeholder-signature-required-before-release",
+    )
+    .unwrap();
+    write_minimal_official_renderer_files(dir.path());
+
+    let summary = doctor_from_manifest(&manifest(file_sha256(&sidecar).unwrap()), dir.path());
+
+    assert_eq!(summary.status, "blocked");
+    assert!(summary.checks.iter().any(|check| {
+        check.id == "runtime_signature_bundle" && check.status == "error"
+    }));
 }
 
 #[test]

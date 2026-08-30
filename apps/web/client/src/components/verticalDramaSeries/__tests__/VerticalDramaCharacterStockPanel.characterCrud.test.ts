@@ -11,6 +11,10 @@ import {
   isFirstPortraitCandidateEligible,
   resolveCharacterReferenceDisclosureDefault,
   resolveCharacterLookDescription,
+  resolveCharacterLookSummary,
+  resolveCharacterLookPrompt,
+  resolveCharacterLookPromptSummary,
+  buildCharacterLookPromptData,
   resolveDirectCharacterImageInstruction,
   resolveLookRenderInstruction,
   resolvePortraitCandidateVisibility,
@@ -497,14 +501,13 @@ describe("resolveDirectCharacterImageInstruction", () => {
 });
 
 describe("resolveLookRenderInstruction", () => {
-  it("uses a persisted system look brief when no custom instruction exists", () => {
+  it("does not duplicate the persisted look prompt into the supplemental field", () => {
     expect(
       resolveLookRenderInstruction({
         characterId: "look-1",
         instructionByCharacter: {},
-        lookImageBrief: "Preserve the same face; use a complete evening gown.",
       })
-    ).toBe("Preserve the same face; use a complete evening gown.");
+    ).toBeUndefined();
   });
 
   it("keeps the user's typed instruction authoritative", () => {
@@ -512,9 +515,93 @@ describe("resolveLookRenderInstruction", () => {
       resolveLookRenderInstruction({
         characterId: "look-1",
         instructionByCharacter: { "look-1": "ชุดสีเขียวเข้ม" },
-        lookImageBrief: "Use the system-generated brief.",
       })
     ).toBe("ชุดสีเขียวเข้ม");
+  });
+});
+
+describe("compact character look display/editor helpers", () => {
+  it("prefers structured wardrobe data for the bounded card summary", () => {
+    const summary = resolveCharacterLookSummary({
+      variantLabel: "ชุดลำลองที่บ้าน",
+      data: {
+        description:
+          "เรื่องราวยาวมากที่ไม่ควรถูกแสดงเต็มในการ์ด และมีรายละเอียดอื่นอีกมาก",
+        lookDesign: {
+          outfit: {
+            top: "เสื้อยืดผ้าฝ้ายสีครีม",
+            bottom: "กางเกงผ้าทรงตรงสีน้ำตาลอ่อน",
+            outerwear: "none",
+          },
+          hair: { style: "ผมรวบต่ำ" },
+          makeup: { level: "natural" },
+          footwear: { type: "รองเท้าแตะหนัง" },
+        },
+      },
+    });
+    expect(summary).toContain("เสื้อยืดผ้าฝ้ายสีครีม");
+    expect(summary).not.toContain("เรื่องราวยาวมาก");
+  });
+
+  it("does not show an empty prompt for legacy review rows that only have visualBible", () => {
+    const data = {
+      lookDesignStatus: "review",
+      visualBible: {
+        visualIdentitySummary:
+          "เด็กชายวัยเรียนคงใบหน้าเดิมและสวมเสื้อผ้าลำลองอยู่บ้านที่เหมาะกับวัย",
+      },
+    };
+
+    expect(resolveCharacterLookPrompt(data)).toContain("เด็กชายวัยเรียน");
+    expect(resolveCharacterLookPromptSummary({ data })).toContain(
+      "เสื้อผ้าลำลองอยู่บ้าน"
+    );
+  });
+
+  it("bounds legacy prompt text and exposes the full value only through the editor helper", () => {
+    const prompt = "รายละเอียดชุดและทรงผม ".repeat(40);
+    const summary = resolveCharacterLookSummary({
+      data: { description: prompt },
+      maxLength: 120,
+    });
+    expect(summary?.length).toBeLessThanOrEqual(121);
+    expect(summary?.length).toBeGreaterThanOrEqual(110);
+    expect(summary?.endsWith("…")).toBe(true);
+    expect(resolveCharacterLookPrompt({ description: prompt })).toBe(
+      prompt.trim()
+    );
+    expect(
+      resolveCharacterLookPromptSummary({
+        data: { description: prompt },
+        maxLength: 120,
+      })
+    ).toBe(summary);
+  });
+
+  it("preserves unrelated look data while updating the two prompt fields", () => {
+    const result = buildCharacterLookPromptData({
+      currentData: {
+        identityLock: "same face",
+        lookDesign: { outfit: { top: "old" } },
+        provenance: { source: "skill" },
+      },
+      prompt: "  เสื้อเชิ้ตสีฟ้า กางเกงทรงตรง  ",
+    });
+    expect(result).toMatchObject({
+      identityLock: "same face",
+      lookDesign: { outfit: { top: "old" } },
+      provenance: { source: "skill" },
+      description: "เสื้อเชิ้ตสีฟ้า กางเกงทรงตรง",
+      lookImageBrief: "เสื้อเชิ้ตสีฟ้า กางเกงทรงตรง",
+      lookDesignStatus: "review",
+      lookPromptEdited: true,
+    });
+    expect(
+      resolveCharacterLookSummary({
+        data: result,
+        variantLabel: "ชุดทำงาน",
+      })
+    ).toContain("เสื้อเชิ้ตสีฟ้า");
   });
 });
 

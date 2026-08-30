@@ -15,9 +15,26 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockListTasks, mockListHermesMediaTasks } = vi.hoisted(() => ({
+const {
+  mockListTasks,
+  mockListDeferredMediaTasks,
+  mockListHermesMediaTasks,
+  mockCreateInternalTokenFromAuth,
+  mockDurabilizeMediaTaskHistory,
+  mockProjectMediaTaskArtifacts,
+} = vi.hoisted(() => ({
   mockListTasks: vi.fn(),
+  mockListDeferredMediaTasks: vi.fn().mockResolvedValue([]),
   mockListHermesMediaTasks: vi.fn().mockResolvedValue([]),
+  mockCreateInternalTokenFromAuth: vi
+    .fn()
+    .mockReturnValue("tenant-bound-media-token"),
+  mockDurabilizeMediaTaskHistory: vi.fn(
+    async ({ tasks }: { tasks: unknown[] }) => tasks
+  ),
+  mockProjectMediaTaskArtifacts: vi.fn(
+    async ({ tasks }: { tasks: unknown[] }) => tasks
+  ),
 }));
 
 vi.mock("../services/mediaGenerationService", () => ({
@@ -36,7 +53,7 @@ vi.mock("../services/mediaGenerationService", () => ({
 }));
 
 vi.mock("../services/deferredMediaRetryService", () => ({
-  listDeferredMediaTasks: vi.fn().mockResolvedValue([]),
+  listDeferredMediaTasks: mockListDeferredMediaTasks,
 }));
 
 vi.mock("../services/mcpMediaAdapter", () => ({
@@ -61,12 +78,22 @@ vi.mock("../services/mediaLibraryService", () => ({
   addMediaTaskToLibrary: vi.fn(),
 }));
 
+vi.mock("../services/mediaTaskArtifactService", () => ({
+  applyMediaArtifactProjection: vi.fn((task: unknown) => task),
+  durabilizeMediaTaskHistory: mockDurabilizeMediaTaskHistory,
+  ensureMediaTaskArtifactsForPolling: vi.fn(),
+  projectMediaTaskArtifacts: mockProjectMediaTaskArtifacts,
+  redactMediaTaskWithoutTenant: vi.fn((value: unknown) => value),
+}));
+
 vi.mock("../services/libraryFeatureFlags", () => ({
   isLibraryEnabledForTenant: vi.fn().mockResolvedValue(false),
 }));
 
 vi.mock("../services/tenantContext", () => ({
-  resolveTenantIdVarchar: vi.fn().mockReturnValue(null),
+  resolveTenantIdVarchar: vi.fn((ctxTenantId: unknown, userTenantId: unknown) =>
+    ctxTenantId || userTenantId || null,
+  ),
 }));
 
 vi.mock("../db", () => ({
@@ -185,7 +212,7 @@ vi.mock("../services/rateLimiter", () => ({
 }));
 
 vi.mock("../_core/tokens", () => ({
-  signBearerToken: vi.fn().mockReturnValue("fallback-token"),
+  createInternalTokenFromAuth: mockCreateInternalTokenFromAuth,
 }));
 
 vi.mock("../_core/trpc", () => {
@@ -230,7 +257,8 @@ function task(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-const CTX = { user: { id: 9, role: "user" }, userToken: "token-abc", tenantId: null, publicUrl: undefined };
+const CTX = { user: { id: 9, role: "user" }, userToken: "session-token", tenantId: "tenant-test", publicUrl: undefined };
+const NO_TENANT_CTX = { ...CTX, tenantId: null };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -259,6 +287,68 @@ describe("taskMatchesVerticalDramaSeries (pure helper)", () => {
 });
 
 describe("mediaRouter.listTasks — seriesId filter", () => {
+  it("starts the provider and deferred history reads concurrently", async () => {
+    const started: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    mockListTasks.mockImplementation(async () => {
+      started.push("provider");
+      await gate;
+      return { tasks: [], total: 0, limit: 50, offset: 0 };
+    });
+    mockListDeferredMediaTasks.mockImplementation(async () => {
+      started.push("deferred");
+      await gate;
+      return [];
+    });
+
+    const fn = mediaRouter.listTasks as Function;
+    const pending = fn({ ctx: CTX, input: { limit: 50 } });
+    await Promise.resolve();
+
+    expect(started).toEqual(["provider", "deferred"]);
+    release();
+    await pending;
+  });
+
+  it("hydrates completed tasks before projecting history playback URLs", async () => {
+    const completed = task({ id: "completed-without-artifact-row" });
+    const durable = {
+      ...completed,
+      resultUrl: "/api/storage/files/media-studio/tenant-test/9/image/task.png",
+      artifacts: [
+        {
+          outputIndex: 0,
+          r2Status: "ready",
+          r2Url: "/api/storage/files/media-studio/tenant-test/9/image/task.png",
+        },
+      ],
+    };
+    mockListTasks.mockResolvedValue({ tasks: [completed], total: 1 });
+    mockDurabilizeMediaTaskHistory.mockResolvedValueOnce([durable]);
+    mockProjectMediaTaskArtifacts.mockImplementationOnce(
+      async ({ tasks }: { tasks: unknown[] }) => tasks
+    );
+
+    const fn = mediaRouter.listTasks as Function;
+    const result = await fn({
+      ctx: CTX,
+      input: { mediaType: "image", status: "completed" },
+    });
+
+    expect(mockDurabilizeMediaTaskHistory).toHaveBeenCalledWith({
+      tasks: [completed],
+      tenantId: "tenant-test",
+      userId: 9,
+    });
+    expect(result.tasks[0]).toMatchObject({
+      resultUrl: "/api/storage/files/media-studio/tenant-test/9/image/task.png",
+      artifacts: [{ r2Status: "ready" }],
+    });
+  });
+
   it("is fully backward compatible when seriesId is omitted", async () => {
     const createdAt = "2026-07-20T09:00:00.000Z";
     mockListTasks.mockResolvedValue({
@@ -275,7 +365,45 @@ describe("mediaRouter.listTasks — seriesId filter", () => {
     expect(result.total).toBe(2);
     // No over-fetch multiplier applied when seriesId is absent.
     expect(mockListTasks).toHaveBeenCalledWith(
-      "token-abc",
+      "tenant-bound-media-token",
+      expect.objectContaining({ limit: 50 }),
+    );
+  });
+
+  it("rejects task history before calling Python when tenant context is missing", async () => {
+    const fn = mediaRouter.listTasks as Function;
+
+    await expect(fn({ ctx: NO_TENANT_CTX, input: { limit: 50 } })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: "Tenant context is required for generated media",
+    });
+    expect(mockListTasks).not.toHaveBeenCalled();
+  });
+
+  it("binds request tenant context into the media backend token", async () => {
+    mockListTasks.mockResolvedValue({
+      tasks: [],
+      total: 0,
+      limit: 50,
+      offset: 0,
+    });
+
+    const fn = mediaRouter.listTasks as Function;
+    await fn({
+      ctx: {
+        ...CTX,
+        userToken: "session-token-without-tenant",
+        tenantId: "tenant-ZCSKEM9s",
+      },
+      input: { limit: 50 },
+    });
+
+    expect(mockCreateInternalTokenFromAuth).toHaveBeenCalledWith(
+      { userId: 9, tenantId: "tenant-ZCSKEM9s" },
+      ["media:generate"],
+    );
+    expect(mockListTasks).toHaveBeenCalledWith(
+      "tenant-bound-media-token",
       expect.objectContaining({ limit: 50 }),
     );
   });
@@ -312,6 +440,7 @@ describe("mediaRouter.listTasks — seriesId filter", () => {
     expect(result.total).toBe(3);
     expect(mockListHermesMediaTasks).toHaveBeenCalledWith({
       userId: 9,
+      tenantId: "tenant-test",
       mediaType: undefined,
       status: undefined,
       limit: 50,

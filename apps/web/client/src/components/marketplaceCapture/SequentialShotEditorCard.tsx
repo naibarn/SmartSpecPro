@@ -28,6 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import type {
   SequentialCameraBeatModel,
   SequentialShotCardModel,
@@ -193,7 +194,7 @@ export function SequentialShotEditorCard({
           // Shot frames are 9:16 vertical — `aspect-[9/16]` + `object-cover`
           // keeps the full frame readable instead of squashing it into a
           // short wide strip (2026-07-23 user feedback on b661284a6).
-          <img
+          <AuthenticatedMediaImage
             src={shot.frameUrl}
             alt={thai ? `ภาพหลักช็อตที่ ${shot.shotId}` : `Shot ${shot.shotId} frame`}
             className="mx-auto aspect-[9/16] w-full max-w-[220px] rounded-md border object-cover dark:border-slate-700"
@@ -265,11 +266,11 @@ export function SequentialShotEditorCard({
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="rounded border bg-white p-2 dark:bg-slate-900">
                 <p className="mb-1 text-[11px] font-medium text-slate-500">{thai ? "ภาพเดิม" : "Before"}</p>
-                <img src={displayedImageEdit.beforeUrl} alt="" className="aspect-[9/16] w-full rounded object-cover" />
+                <AuthenticatedMediaImage src={displayedImageEdit.beforeUrl} alt="" className="aspect-[9/16] w-full rounded object-cover" />
               </div>
               <div className="rounded border border-fuchsia-300 bg-white p-2 dark:bg-slate-900">
                 <p className="mb-1 text-[11px] font-medium text-fuchsia-700">{thai ? "ภาพใหม่ · รออนุมัติ" : "New candidate · awaiting approval"}</p>
-                <img src={displayedImageEdit.afterUrl} alt="" className="aspect-[9/16] w-full rounded object-cover" />
+                <AuthenticatedMediaImage src={displayedImageEdit.afterUrl} alt="" className="aspect-[9/16] w-full rounded object-cover" />
               </div>
               <div className="flex flex-wrap gap-2 sm:col-span-2">
                 {onAcceptEditedImage ? (

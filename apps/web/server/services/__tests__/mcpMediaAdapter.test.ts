@@ -518,12 +518,8 @@ data: {"jsonrpc":"2.0","result":{"ok":true}}
    * identical row showed the image correctly.
    */
   it("normalizes a completed MCP task's top-level resultUrl to match rowToMediaTask's derivation", async () => {
-    // `withCompletedProviderResult` has no dependency-injection seam for
-    // storage/fetch (by design — it's an internal step of
-    // `refreshMcpMediaTaskStatus`, not meant to be called with test doubles
-    // in production), so this exercises the real `storagePut` local-storage
-    // fallback (no DATABASE_URL/S3 configured in this test env) with a
-    // throwaway taskId, then removes the file it writes.
+    // Inject the storage writer so this contract test does not depend on a
+    // local-disk fallback; production always uses the R2-backed default.
     const providerOutputUrl =
       "https://d8j0ntlcm91z4.cloudfront.net/generated/output-0.png";
     const fetchMock = vi.fn(
@@ -566,7 +562,13 @@ data: {"jsonrpc":"2.0","result":{"ok":true}}
     try {
       const result = await withCompletedProviderResultForTest(
         task,
-        providerStatusResult
+        providerStatusResult,
+        {
+          putObject: vi.fn(async (key) => ({
+            key,
+            url: `/api/storage/files/${key}`,
+          })),
+        },
       );
 
       expect(result.status).toBe("completed");
@@ -582,17 +584,7 @@ data: {"jsonrpc":"2.0","result":{"ok":true}}
       expect(result.resultData?.imageUrl).toBe(result.resultData?.resultUrl);
     } finally {
       vi.unstubAllGlobals();
-      const { getUploadsDir } = await import("../../storage");
-      const fs = await import("fs");
-      const path = await import("path");
-      const dir = path.join(
-        getUploadsDir(),
-        "mcp-media",
-        "tenant-ZCSKEM9s",
-        "1",
-        task.id
-      );
-      fs.rmSync(dir, { recursive: true, force: true });
+      // No local artifact is created because the storage writer is injected.
     }
   });
 

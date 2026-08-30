@@ -9,6 +9,7 @@ const invalidateMock = vi.fn();
 const createMutationMock = vi.fn();
 const revokeMutationMock = vi.fn();
 const updateConnectedWorkerSharingMock = vi.fn();
+const updateConnectedDevicePermissionsMock = vi.fn();
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
@@ -18,6 +19,11 @@ vi.mock("@/lib/trpc", () => ({
           invalidate: invalidateMock,
         },
         listConnectedWorkers: {
+          invalidate: invalidateMock,
+        },
+      },
+      connectedDevices: {
+        list: {
           invalidate: invalidateMock,
         },
       },
@@ -71,8 +77,17 @@ vi.mock("@/lib/trpc", () => ({
                 sharedGroups: [],
                 preferredProviderName: "SmartSpecPro Gateway",
                 permissionPreset: "operator_basic",
+                permissionScopes: ["workers:heartbeat", "series:read"],
                 permissionScopeCount: 5,
                 quotaDisplayLabel: "Unlimited",
+                capabilities: {
+                  hermesReady: true,
+                  hermesVersion: "0.4.0",
+                  hermesReason: null,
+                  localMediaReady: true,
+                  localMediaCapabilities: ["scan", "preprocess", "publish"],
+                  acceptJobs: true,
+                },
               },
             ],
           },
@@ -84,6 +99,63 @@ vi.mock("@/lib/trpc", () => ({
       updateConnectedWorkerSharing: {
         useMutation: () => ({
           mutate: updateConnectedWorkerSharingMock,
+          mutateAsync: vi.fn(),
+          isPending: false,
+          variables: undefined,
+        }),
+      },
+      updateConnectedWorkerPermissions: {
+        useMutation: () => ({
+          mutate: vi.fn(),
+          mutateAsync: vi.fn(),
+          isPending: false,
+          variables: undefined,
+        }),
+      },
+    },
+    connectedDevices: {
+      list: {
+        useQuery: () => ({
+          data: {
+            devices: [
+              {
+                deviceId: "device_1",
+                displayName: "Render worker 01",
+                runtimeType: "desktop_zeroclaw_managed",
+                authKind: "worker_executor",
+                connectionMethod: "worker_connect",
+                platform: "windows",
+                architecture: "x64",
+                scopes: ["workers:heartbeat", "series:read"],
+                allowedScopes: ["workers:heartbeat", "series:read"],
+                effectiveScopes: ["workers:heartbeat", "series:read"],
+                permissionPolicyCustomized: false,
+                status: "active",
+                workerId: "worker_1",
+                approvedAt: "2026-06-23T01:00:00.000Z",
+                lastSeenAt: "2026-06-23T01:02:03.000Z",
+                accessTokenExpiresAt: null,
+                refreshTokenExpiresAt: null,
+                revokedAt: null,
+                revokedByUserId: null,
+                revocationReason: null,
+                deviceFingerprint: null,
+                workerStatus: "online",
+                workerRuntimeVersion: "0.1.5",
+                workerLastSeenAt: "2026-06-23T01:02:03.000Z",
+                consentId: null,
+                tenantId: "tenant-a",
+              },
+            ],
+          },
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }),
+      },
+      updatePermissions: {
+        useMutation: () => ({
+          mutate: updateConnectedDevicePermissionsMock,
           mutateAsync: vi.fn(),
           isPending: false,
           variables: undefined,
@@ -194,6 +266,24 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
         "settings.workers.connectedWorkers.family": "Family:",
         "settings.workers.connectedWorkers.externalRef": "External reference:",
         "settings.workers.connectedWorkers.scopeCount": "Allowed scopes:",
+        "settings.workers.connectedWorkers.capabilitiesTitle":
+          "What this Worker App can do",
+        "settings.workers.connectedWorkers.hermesCapability": "Hermes runtime",
+        "settings.workers.connectedWorkers.localMediaCapability": "Local media",
+        "settings.workers.connectedWorkers.ready": "Ready",
+        "settings.workers.connectedWorkers.acceptJobs": "Accept jobs",
+        "settings.workers.connectedWorkers.enabled": "Enabled",
+        "settings.workers.connectedWorkers.devicePermissions":
+          "Effective device permissions",
+        "settings.workers.connectedWorkers.permissionsDescription":
+          "Uncheck an approved scope to revoke it on this device.",
+        "settings.workers.connectedWorkers.grantedCount": "Approved: 2",
+        "settings.workers.connectedWorkers.effectiveCount": "Effective: 2",
+        "settings.workers.connectedWorkers.cannotGrantMore":
+          "New scopes require reconnecting.",
+        "settings.workers.connectedWorkers.resetPermissions": "Reset permissions",
+        "settings.workers.connectedWorkers.savePermissions": "Save permissions",
+        "settings.workers.connectedWorkers.reconnectDevice": "Reconnect",
         "settings.workers.connectedWorkers.machine": "Machine",
         "settings.workers.connectedWorkers.version": "Version",
         "settings.workers.connectedWorkers.lastSeen": "Last seen",
@@ -271,6 +361,9 @@ describe("WorkerAccessKeysPanel", () => {
     expect(screen.getByText("How to connect the worker")).toBeTruthy();
     expect(screen.getByText("Connected workers (1)")).toBeTruthy();
     expect(screen.getByText("Render worker 01")).toBeTruthy();
+    expect(screen.getByText("What this Worker App can do")).toBeTruthy();
+    expect(screen.getByText(/Hermes runtime 0.4.0/)).toBeTruthy();
+    expect(screen.getByText("Save permissions")).toBeTruthy();
     expect(
       screen.getAllByText("Smart AI Hub Worker App").length
     ).toBeGreaterThan(0);

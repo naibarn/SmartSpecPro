@@ -249,7 +249,7 @@ function useT(lang: PanelLang) {
   return (entry: { th: string; en: string }) => (lang === "th" ? entry.th : entry.en);
 }
 
-function SectionHeading({ icon: Icon, children }: { icon?: React.ElementType; children: React.ReactNode }) {
+function SectionHeading({ icon: Icon, children }: { icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
   return (
     <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
       {Icon ? <Icon aria-hidden="true" className="h-4 w-4 opacity-70" /> : null}

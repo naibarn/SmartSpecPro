@@ -26,10 +26,8 @@ import {
   executeJsonPlanningCallWithRetry,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
-import {
-  assertVerticalDramaRecommendedDraftModel,
-  resolveVerticalDramaRecommendedDraftModel,
-} from "./verticalDramaLlmModelPolicy";
+import { resolveVerticalDramaRecommendedDraftModel } from "./verticalDramaLlmModelPolicy";
+import { chargeVerticalDramaLlmCall } from "./verticalDramaLlmBilling";
 
 const SKILL_FOLDER_PATH = path.join(
   "skills",
@@ -40,6 +38,10 @@ const MAX_PROMPT_BYTES = 120_000;
 
 export interface VerticalDramaStoryArchitecturePlannerInput {
   userId: number;
+  tenantId?: string;
+  seriesId?: number;
+  /** Production callers provide this so every successful physical call is billed separately. */
+  billingRunKey?: string;
   /** Server-approved LLM Recommend model for the Draft pipeline. */
   model?: string;
   locale: "th" | "en";
@@ -70,6 +72,7 @@ export interface VerticalDramaStoryArchitecturePlannerResult {
   repairRounds: number;
   promptTokens: number;
   completionTokens: number;
+  creditsUsed: number;
   model: string;
 }
 
@@ -362,11 +365,8 @@ function buildArchitecturePrompt(
 export async function planVerticalDramaStoryArchitecture(
   input: VerticalDramaStoryArchitecturePlannerInput
 ): Promise<VerticalDramaStoryArchitecturePlannerResult> {
-  const model =
+  let model =
     input.model ?? (await resolveVerticalDramaRecommendedDraftModel());
-  if (input.model) {
-    await assertVerticalDramaRecommendedDraftModel(model);
-  }
   const systemPrompt = loadSkillSystemPrompt();
   assertStoryArchitecturePlannerSkillSupportsContract(systemPrompt);
   const initialEvaluation =
@@ -385,6 +385,7 @@ export async function planVerticalDramaStoryArchitecture(
       repairRounds: 0,
       promptTokens: 0,
       completionTokens: 0,
+      creditsUsed: 0,
       model,
     };
   }
@@ -393,6 +394,7 @@ export async function planVerticalDramaStoryArchitecture(
   let repairRounds = 0;
   let promptTokens = 0;
   let completionTokens = 0;
+  let creditsUsed = 0;
 
   // A seeded contract is already a creator-visible draft. Repair it directly
   // instead of spending a fresh plan call first. Keep the same two-repair
@@ -409,6 +411,7 @@ export async function planVerticalDramaStoryArchitecture(
           completion_tokens?: number | null;
         } | null;
       };
+      model: string;
     } =
       await executeJsonPlanningCallWithRetry<VerticalDramaStoryArchitectureContract>(
         {
@@ -436,7 +439,9 @@ export async function planVerticalDramaStoryArchitecture(
             },
           },
           disableProviderFallbacks: true,
-          maxSchemaRetries: 1,
+          maxTransientRetries: 0,
+          maxSchemaRetries: 2,
+          schemaRetryContract: buildArchitectureOutputChecklist(),
           label:
             mode === "plan"
               ? "Vertical Drama story architecture"
@@ -445,6 +450,25 @@ export async function planVerticalDramaStoryArchitecture(
       );
     promptTokens += result.response.usage?.prompt_tokens ?? 0;
     completionTokens += result.response.usage?.completion_tokens ?? 0;
+    model = result.model ?? model;
+    if (input.billingRunKey) {
+      const call = await chargeVerticalDramaLlmCall({
+        userId: input.userId,
+        tenantId: input.tenantId,
+        seriesId: input.seriesId,
+        runId: input.billingRunKey,
+        attemptKey: `${input.billingRunKey}:architecture:${attempt}`,
+        skillSlug: "vertical-drama-story-architecture-planner",
+        stage: mode === "plan" ? "foundation" : "foundation_repair",
+        round: mode === "plan" ? 0 : repairRounds + 1,
+        attempt,
+        model,
+        inputTokens: result.response.usage?.prompt_tokens ?? 0,
+        outputTokens: result.response.usage?.completion_tokens ?? 0,
+        metadata: { feature: "vertical_drama_story_architecture" },
+      });
+      creditsUsed += call.creditsUsed;
+    }
     contract = result.data;
     const evaluated = evaluateVerticalDramaStoryArchitecture({
       contract,
@@ -463,6 +487,7 @@ export async function planVerticalDramaStoryArchitecture(
     repairRounds,
     promptTokens,
     completionTokens,
+    creditsUsed,
     model,
   };
 }

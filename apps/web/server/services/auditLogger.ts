@@ -182,6 +182,7 @@ export type AuditEventType =
   | "worker_fleet_action"
   | "worker_budget_updated"
   | "worker_callback_published"
+  | "worker_media_workflow_policy_updated"
   | "worker_legacy_data_redacted"
   | "hermes_connection_connect_started"
   | "hermes_connection_authorized"

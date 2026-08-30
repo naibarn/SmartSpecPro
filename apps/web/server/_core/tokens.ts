@@ -40,6 +40,12 @@ export interface TokenClaims {
   deviceIdHash?: string;
   origin?: string;
   extensionId?: string;
+  uploadKey?: string;
+  uploadSizeBytes?: number;
+  uploadMimeType?: string;
+  uploadFileName?: string;
+  uploadOperation?: "create" | "replace";
+  uploadItemId?: number;
   llmRoutingMode?: "auto" | "pinned_provider";
   preferredProviderId?: number;
   preferredProviderName?: string;

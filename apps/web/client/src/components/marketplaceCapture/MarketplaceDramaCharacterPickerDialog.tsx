@@ -30,6 +30,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import {
@@ -479,7 +480,7 @@ export function MarketplaceDramaCharacterPickerDialog({
                               }
                             />
                             {effectivePortraitUrl ? (
-                              <img
+                              <AuthenticatedMediaImage
                                 src={effectivePortraitUrl}
                                 alt=""
                                 className="h-8 w-8 shrink-0 rounded-full object-cover"

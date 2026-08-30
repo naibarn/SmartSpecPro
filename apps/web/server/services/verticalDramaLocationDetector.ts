@@ -252,7 +252,9 @@ export async function generateLocationDetectionPlan(
     userId: params.userId,
     tenantId: params.tenantId,
     amount: creditsUsed,
+    contextRef: params.tenantId ? { contextType: "series", sourceType: "vertical_drama_series", sourceId: String(params.seriesId) } : undefined,
     description: "Vertical Drama — location detection (whole-season)",
+    skillSlug: "vertical-drama-location-detector",
     sourceType: "skill",
     idempotencyKey: params.idempotencyKey
       ? `${params.idempotencyKey}:location-detector`

@@ -49,6 +49,7 @@ vi.mock("../../db", () => {
 });
 
 vi.mock("../../storage", () => ({
+  assertR2StorageActive: vi.fn(),
   storagePutFromPath: vi.fn(async (key: string) => ({
     key,
     url: `/api/storage/files/${key}`,
@@ -335,6 +336,16 @@ describe("compiledVideoFilename", () => {
       seriesTitle: "Test/../../etc",
     });
     expect(name).not.toMatch(/[\/\\]/);
+  });
+
+  it("preserves meaningful Thai series titles in the compiled filename", () => {
+    expect(
+      compiledVideoFilename({
+        seriesId: 42,
+        episodeNumber: 29,
+        seriesTitle: "คาเฟ่รักในเวทีพิเศษ",
+      }),
+    ).toBe("series-คาเฟ่รักในเวทีพิเศษ-ep-29-compiled.mp4");
   });
 });
 
@@ -632,6 +643,28 @@ describe("runAssemblyJob / submitAssemblyJob (mocked ffmpeg + db + storage)", ()
     const compiled = (dbState.episode.assemblyManifest as any)?.compiledVideo;
     expect(compiled.status).toBe("failed");
     expect(compiled.error).toMatch(/ffmpeg concat failed/);
+  });
+
+  it("persists a normalized capacity error when ffmpeg cannot write", async () => {
+    const failingRunner = vi.fn(async () => ({
+      code: 1,
+      stderr: "ENOSPC: no space left on device, write",
+    }));
+
+    await runAssemblyJob({
+      owner,
+      jobId: "job-storage-full-1",
+      clips,
+      internalBaseUrl: "http://localhost:3000",
+      filename: "out.mp4",
+      ffmpegRunner: failingRunner,
+    });
+
+    const compiled = (dbState.episode.assemblyManifest as any)?.compiledVideo;
+    expect(compiled.status).toBe("failed");
+    expect(compiled.error).toMatch(
+      /storage_capacity_exhausted \[mount=\/tmp; kind=/,
+    );
   });
 });
 

@@ -175,6 +175,7 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
       { key: "verticalDramaSeriesCharacterStock", label: "Character Stock", description: "Series character stock + visual bible surfaces" },
       { key: "verticalDramaSeriesMemory", label: "Series Memory", description: "Series memory summary/seed surfaces" },
       { key: "verticalDramaSeriesProductTieIn", label: "Product Tie-in", description: "Product tie-in configuration surfaces" },
+      { key: "verticalDramaSpecialEpisodes", label: "Special Tie-in Episodes", description: "Show and enable the special product/location/store tie-in episode workflow" },
       { key: "verticalDramaSeriesStartFrames", label: "Start Frames", description: "Start-frame render/plan surfaces" },
       { key: "verticalDramaSeriesFirstLastFrameBridge", label: "First/Last Frame Bridge", description: "First/last frame bridge motion mode" },
       { key: "verticalDramaSeriesStoryboardReviewHandoff", label: "Storyboard Review Handoff", description: "Storyboard Review project handoff" },

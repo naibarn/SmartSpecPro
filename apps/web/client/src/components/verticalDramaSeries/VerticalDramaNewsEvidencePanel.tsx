@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Clock3, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,20 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import type { NewsClaim } from "@shared/verticalDramaSeries/newsReport";
 
-export function VerticalDramaNewsEvidencePanel({ claims, lang = "th", onClaimsChange }: { claims: NewsClaim[]; lang?: "th" | "en"; onClaimsChange?: (claims: NewsClaim[]) => void }) {
+export function VerticalDramaNewsEvidencePanel({ claims, seriesId, lang = "th", onClaimsChange }: { claims: NewsClaim[]; seriesId?: string; lang?: "th" | "en"; onClaimsChange?: (claims: NewsClaim[]) => void }) {
   const [draft, setDraft] = useState("");
   const [evaluated, setEvaluated] = useState<NewsClaim[]>(claims);
+  const persistedQuery = trpc.verticalDramaSeries.listNewsClaims.useQuery(
+    { seriesId: seriesId ?? "" },
+    { enabled: Boolean(seriesId), staleTime: 0 },
+  );
+  const saveClaimMutation = trpc.verticalDramaSeries.saveNewsClaim.useMutation({
+    onError: error => toast.error(error.message),
+  });
   const evaluateMutation = trpc.verticalDramaSeries.evaluateNewsReport.useMutation({ onSuccess: result => setEvaluated(result.claims), onError: error => toast.error(error.message) });
+  useEffect(() => {
+    if (persistedQuery.data) setEvaluated(persistedQuery.data as NewsClaim[]);
+  }, [persistedQuery.data]);
   const readiness = useMemo(() => evaluated.length ? evaluated.every(claim => claim.status === "verified" && claim.freshness === "current" && claim.visualSlotIds.length > 0) : false, [evaluated]);
   const addClaim = () => {
     if (!draft.trim()) return;
@@ -18,6 +28,9 @@ export function VerticalDramaNewsEvidencePanel({ claims, lang = "th", onClaimsCh
     const nextClaims = [...evaluated, next];
     setEvaluated(nextClaims);
     onClaimsChange?.(nextClaims);
+    if (seriesId) {
+      saveClaimMutation.mutate({ seriesId, claim: next });
+    }
     setDraft("");
   };
   return (

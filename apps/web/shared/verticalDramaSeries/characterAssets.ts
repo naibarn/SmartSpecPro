@@ -8,6 +8,7 @@
  */
 
 import type { VerticalDramaPipelineStage } from "./contracts";
+import type { CharacterCastingAgeProfile } from "./characterCastingAge";
 
 /** Lifecycle state of a single character-stock asset (spec §7.1 asset ledger). */
 export type VerticalDramaCharacterAssetState =
@@ -34,6 +35,7 @@ export type VerticalDramaCharacterAssetSource = "generated" | "imported";
 export type VerticalDramaCharacterAssetRole =
   | "primary_reference"
   | "primary_portrait"
+  | "casting_reference"
   | "portrait_candidate"
   | "angle_front"
   | "angle_left_three_quarter"
@@ -97,6 +99,13 @@ export type VerticalDramaPortraitCandidateProjection = {
   errorMessage?: string;
   /** True when `errorMessage` reflects a provider content-policy rejection (vs. a generic/timeout failure). */
   policyRejected?: boolean;
+  /** True when this candidate was generated from optional casting references. */
+  referenceGuided?: boolean;
+  /** Server-derived apparent-age contract shared by every candidate in the batch. */
+  castingAgeProfile?: Pick<
+    CharacterCastingAgeProfile,
+    "min" | "max" | "label" | "source" | "confidence" | "rationale" | "isMinor"
+  >;
 };
 
 /**
@@ -229,10 +238,10 @@ export function isCharacterAssetUsable(asset: Pick<VerticalDramaCharacterAsset, 
  *    approved/generated/imported state is on file yet (same selection rule
  *    the roster card thumbnail uses — see
  *    `VerticalDramaCharacterStockPanel.tsx`'s `resolveCharacterCardPortraitAsset`).
- *  - `"missing_dna"` — `verticalDramaCharacters.data.description` (the
- *    authoritative physical/demographic description consumed by the
- *    visual-bible/portrait prompt builder — see `verticalDramaCharacters.ts`'s
- *    `extractCharacterDescription`) is empty or absent.
+ *  - `"missing_dna"` — the validated canonical identity at
+ *    `verticalDramaCharacters.data.visualBible.designDna` is absent or
+ *    malformed. A story description alone is not Character DNA; it is only
+ *    input context for the first prompt preview.
  * `characterRowToDto` computes this server-side; the client only reads it.
  */
 export type VdCharacterNeedsSetupReason =

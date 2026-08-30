@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  ensureVerticalDramaShotCompositionLock,
   findVerticalDramaShotGroundingIssues,
   normalizeVerticalDramaShotComposition,
+  replaceVerticalDramaShotCompositionCharacterKeys,
   renderVerticalDramaShotCompositionLock,
 } from "../shotComposition";
 
@@ -31,6 +33,67 @@ describe("vertical drama shot composition grounding", () => {
         composition,
       })
     ).toEqual(["missing_current_shot_composition_lock"]);
+  });
+
+  it("repairs a legacy prompt from the current shot composition", () => {
+    const repairedPrompt = ensureVerticalDramaShotCompositionLock({
+      prompt: "old prompt",
+      composition,
+    });
+
+    expect(repairedPrompt).toContain("old prompt");
+    expect(repairedPrompt).toContain("CURRENT SHOT COMPOSITION LOCK (MANDATORY)");
+    expect(repairedPrompt).toContain("both faces visible, phone low in foreground");
+    expect(
+      findVerticalDramaShotGroundingIssues({
+        prompt: repairedPrompt,
+        composition,
+      })
+    ).toEqual([]);
+  });
+
+  it("does not duplicate an existing current-shot lock", () => {
+    const prompt = renderVerticalDramaShotCompositionLock(composition)!;
+    expect(
+      ensureVerticalDramaShotCompositionLock({ prompt, composition })
+    ).toBe(prompt);
+  });
+
+  it("uses display names instead of internal character keys in composition facts", () => {
+    const block = renderVerticalDramaShotCompositionLock(
+      normalizeVerticalDramaShotComposition({
+        body_language: {
+          character: "reads the letter",
+          "character-5": "blocks the doorway",
+        },
+        gaze_direction: {
+          character: "toward the letter",
+          "character-5": "toward the reader",
+        },
+      }),
+      new Map([
+        ["character", "พิมพ์ชนก"],
+        ["character-5", "มยุรี"],
+      ])
+    );
+    expect(block).toContain("พิมพ์ชนก: reads the letter");
+    expect(block).toContain("มยุรี: blocks the doorway");
+    expect(block).not.toContain("character-5:");
+  });
+
+  it("repairs internal keys in a persisted legacy composition block", () => {
+    const prompt =
+      "scene\nCURRENT SHOT COMPOSITION LOCK (MANDATORY):\n- Body language: character: reads; character-5: blocks\nCURRENT SHOT PROP VISIBILITY RULE (MANDATORY): keep the letter.";
+    const repaired = replaceVerticalDramaShotCompositionCharacterKeys(
+      prompt,
+      new Map([
+        ["character", "พิมพ์ชนก"],
+        ["character-5", "มยุรี"],
+      ])
+    );
+    expect(repaired).toContain("พิมพ์ชนก: reads");
+    expect(repaired).toContain("มยุรี: blocks");
+    expect(repaired).toContain("CURRENT SHOT PROP VISIBILITY RULE");
   });
 
   it("accepts a prompt containing the current-shot lock", () => {

@@ -13,6 +13,7 @@ import structlog
 
 from app.core.database import get_db
 from app.core.auth import get_current_user
+from app.api.v1.media_generation import _require_authenticated_media_tenant
 from app.models.user import User
 from app.models.media_task import MediaTask, TaskStatus, MediaType
 from app.services.media_task_service import MediaTaskService
@@ -90,13 +91,14 @@ async def bulk_operation(
     - delete: Permanently delete tasks
     - cancel: Cancel pending/processing tasks
     """
+    tenant_id = _require_authenticated_media_tenant(current_user)
     success_count = 0
     failed_count = 0
     results = []
 
     for task_id in request.task_ids:
         try:
-            task = await MediaTaskService.get_task(db, task_id, current_user.id, current_user.currentTenantId)
+            task = await MediaTaskService.get_task(db, task_id, current_user.id, tenant_id)
 
             if not task:
                 results.append({"task_id": task_id, "status": "not_found"})
@@ -155,10 +157,11 @@ async def search_tasks(
     Search tasks by prompt text or model name.
     Full-text search with optional filters.
     """
+    tenant_id = _require_authenticated_media_tenant(current_user)
     # Build base query
     query_obj = select(MediaTask).where(
         MediaTask.user_id == current_user.id,
-        MediaTask.tenant_id == current_user.currentTenantId,
+        MediaTask.tenant_id == tenant_id,
     )
 
     # Apply search filter
@@ -215,11 +218,13 @@ async def get_analytics(
     - Breakdown by media type and model
     - Recent activity timeline
     """
+    tenant_id = _require_authenticated_media_tenant(current_user)
     cutoff_date = datetime.utcnow() - timedelta(days=days)
 
     # Get all user tasks within time range
     query = select(MediaTask).where(
         MediaTask.user_id == current_user.id,
+        MediaTask.tenant_id == tenant_id,
         MediaTask.created_at >= cutoff_date
     )
     result = await db.execute(query)

@@ -215,6 +215,20 @@ export function ConnectedDevicesPanel() {
       ["mcp_agent_pairing", "mcp_oauth"].includes(device.authKind) &&
       device.status !== "revoked"
   ).length;
+  const workerDevices = devices.filter(
+    device => device.authKind === "worker_executor",
+  );
+  const authorizedWorkerDevices = workerDevices.filter(
+    device => device.status !== "revoked",
+  );
+  const activeWorkerDeviceCount = workerDevices.filter(
+    device => device.status === "active",
+  ).length;
+  const workerIdentityCount = new Set(
+    authorizedWorkerDevices
+      .map(device => device.workerId)
+      .filter((workerId): workerId is string => Boolean(workerId)),
+  ).size;
   const featureFlags = featureFlagsQuery.data;
 
   async function refreshOAuthReadiness() {
@@ -374,6 +388,49 @@ export function ConnectedDevicesPanel() {
           </div>
         }
       >
+        <div className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50/70 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="font-semibold text-emerald-950">
+                {t("connectedDevices.workerSummaryTitle")}
+              </div>
+              <p className="mt-1 text-sm text-emerald-900/80">
+                {t("connectedDevices.workerSummaryDescription")}
+              </p>
+            </div>
+            <Button asChild type="button" size="sm" variant="outline">
+              <a href="/settings?tab=workers">
+                {t("connectedDevices.openWorkerBootstrap")}
+              </a>
+            </Button>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <div className="rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm">
+              <div className="text-xs text-slate-500">
+                {t("connectedDevices.workerCount")}
+              </div>
+              <div className="mt-1 font-semibold text-slate-900">
+                {workerIdentityCount}
+              </div>
+            </div>
+            <div className="rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm">
+              <div className="text-xs text-slate-500">
+                {t("connectedDevices.workerDeviceCount")}
+              </div>
+              <div className="mt-1 font-semibold text-slate-900">
+                {authorizedWorkerDevices.length}
+              </div>
+            </div>
+            <div className="rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm">
+              <div className="text-xs text-slate-500">
+                {t("connectedDevices.workerActiveDeviceCount")}
+              </div>
+              <div className="mt-1 font-semibold text-slate-900">
+                {activeWorkerDeviceCount}
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="rounded-xl border border-sky-100 bg-sky-50/70 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
@@ -946,7 +1003,12 @@ export function ConnectedDevicesPanel() {
                 JSON.stringify([...baselineAllowedScopes].sort());
               const canEditPermissions =
                 device.status !== "revoked" &&
-                ["mcp_oauth", "mcp_agent_pairing"].includes(device.authKind);
+                [
+                  "mcp_oauth",
+                  "mcp_agent_pairing",
+                  "worker_executor",
+                ].includes(device.authKind);
+              const isWorkerDevice = device.authKind === "worker_executor";
               const deniedScopes = grantedScopes.filter(
                 scope => !effectiveScopes.includes(scope)
               );
@@ -1124,7 +1186,9 @@ export function ConnectedDevicesPanel() {
                                 </div>
                                 <p className="mt-1 text-xs leading-5 text-violet-900/80">
                                   {t(
-                                    "connectedDevices.permissionPolicyDescription"
+                                    isWorkerDevice
+                                      ? "connectedDevices.workerPermissionPolicyDescription"
+                                      : "connectedDevices.permissionPolicyDescription",
                                   )}
                                 </p>
                               </div>

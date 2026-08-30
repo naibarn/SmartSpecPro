@@ -50,6 +50,14 @@ vi.mock("../mcpConnectionService", () => ({
   recordMcpUsageEvent: recordMcpUsageEventMock,
 }));
 
+vi.mock("../../storage", () => ({
+  assertR2StorageActive: vi.fn().mockResolvedValue(undefined),
+  storagePut: vi.fn().mockResolvedValue({
+    url: "/api/storage/files/test-output",
+    key: "test-output",
+  }),
+}));
+
 // Set A gap 5/6 (2026-07-16 stuck-candidate fix) — the VD portrait-candidate
 // cascade lazy-`import()`s both of these at the call site (see
 // `cascadeFailedVdPortraitCandidateTask` in `../mcpMediaAdapter`) precisely
@@ -508,6 +516,7 @@ describe("reconcileStaleMcpMediaTasks — VD portrait-candidate cascade (2026-07
     expect(mockReconcileTaskCredits).toHaveBeenCalledWith({
       task: expect.objectContaining({ id: "mcp_vd_candidate", status: "failed", userId: "1" }),
       userId: 1,
+      tenantId: "tenant-test",
     });
     expect(mockMarkPortraitCandidateSubmissionFailed).toHaveBeenCalledTimes(1);
     expect(mockMarkPortraitCandidateSubmissionFailed).toHaveBeenCalledWith({
@@ -537,6 +546,33 @@ describe("reconcileStaleMcpMediaTasks — VD portrait-candidate cascade (2026-07
 
     expect(summary.changed).toBe(1);
     expect(mockReconcileTaskCredits).not.toHaveBeenCalled();
+    expect(mockMarkPortraitCandidateSubmissionFailed).not.toHaveBeenCalled();
+  });
+
+  it("refunds a fixed-credit skill media task from the background sweep without a browser poll", async () => {
+    const skillMediaStaleRow = {
+      ...vdStaleRow,
+      id: "mcp_skill_media",
+      parameters: {
+        transportMetadata: vdStaleRow.parameters.transportMetadata,
+        extraParams: {
+          __origin_surface: "skill_executor",
+          skill_billing_run_id: "skill-run-1",
+        },
+      },
+    };
+    dbMock.select.mockImplementation(() => makeSelectChain([skillMediaStaleRow]));
+    vi.stubGlobal("fetch", vi.fn());
+
+    const { reconcileStaleMcpMediaTasks } = await import("../mcpMediaAdapter");
+    const summary = await reconcileStaleMcpMediaTasks();
+
+    expect(summary.changed).toBe(1);
+    expect(mockReconcileTaskCredits).toHaveBeenCalledWith({
+      task: expect.objectContaining({ id: "mcp_skill_media", status: "failed" }),
+      userId: 1,
+      tenantId: "tenant-test",
+    });
     expect(mockMarkPortraitCandidateSubmissionFailed).not.toHaveBeenCalled();
   });
 

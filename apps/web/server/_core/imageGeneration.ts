@@ -15,7 +15,7 @@
  *     }]
  *   });
  */
-import { storagePut } from "server/storage";
+import { assertR2StorageActive, storagePut } from "server/storage";
 import { ENV } from "./env";
 import { getCachedAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { prepareImagePromptSafety } from "../services/imagePromptSafetyService";
@@ -90,7 +90,8 @@ export async function generateImage(
   const base64Data = result.image.b64Json;
   const buffer = Buffer.from(base64Data, "base64");
 
-  // Save to S3
+  // Generated images are durable user media, never a local-disk fallback.
+  await assertR2StorageActive();
   const { url } = await storagePut(
     `generated/${Date.now()}.png`,
     buffer,

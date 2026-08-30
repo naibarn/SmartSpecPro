@@ -1,4 +1,5 @@
 import { AlertTriangle, ImageIcon } from "lucide-react";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { cn } from "@/lib/utils";
 import {
   getMarketplaceHyperframesUiCopy,
@@ -63,7 +64,7 @@ export function HyperframesSnapshotComparison({
               )}
             >
               {snapshot.url && snapshot.status === "ready" ? (
-                <img
+                <AuthenticatedMediaImage
                   src={snapshot.url}
                   alt={snapshot.label}
                   className="aspect-video w-full object-cover"

@@ -114,4 +114,34 @@ describe("systemAutoReportService credit routing", () => {
       }),
     }));
   });
+
+  it("does not create a bug ticket for a transient safety-review outage", async () => {
+    await reportSystemFailure({
+      source: "trpc",
+      userId: 24,
+      title: "tRPC media.generateImageAsync failed",
+      errorMessage: "Image prompt safety review was unavailable for a sensitive prompt.",
+      path: "media.generateImageAsync",
+      traceId: "safety-review-transient",
+    });
+
+    expect(mockDb.select).not.toHaveBeenCalled();
+    expect(mockDb.insert).not.toHaveBeenCalled();
+    expect(mockProcessTicket).not.toHaveBeenCalled();
+  });
+
+  it("suppresses storage-capacity failures before touching the feedback database", async () => {
+    await reportSystemFailure({
+      source: "trpc",
+      userId: 24,
+      title: "tRPC verticalDramaEpisodes.assembleEpisodeVideo failed",
+      errorMessage:
+        "storage_capacity_exhausted [mount=/tmp; kind=bytes; availableBytes=0]",
+      path: "verticalDramaEpisodes.assembleEpisodeVideo",
+    });
+
+    expect(mockDb.select).not.toHaveBeenCalled();
+    expect(mockDb.insert).not.toHaveBeenCalled();
+    expect(mockProcessTicket).not.toHaveBeenCalled();
+  });
 });

@@ -1235,6 +1235,7 @@ export const feedbackRouter = router({
           COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress_count,
           COUNT(*) FILTER (WHERE status = 'resolved') as resolved_count,
           COUNT(*) FILTER (WHERE "submittedByType" = 'human') as human_count,
+          COUNT(*) FILTER (WHERE "submittedByType" = 'system') as system_count,
           COUNT(*) FILTER (
             WHERE status <> 'closed'
               AND NOT EXISTS (
@@ -1265,6 +1266,7 @@ export const feedbackRouter = router({
           COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress_count,
           COUNT(*) FILTER (WHERE status = 'resolved') as resolved_count,
           COUNT(*) FILTER (WHERE "submittedByType" = 'human') as human_count,
+          COUNT(*) FILTER (WHERE "submittedByType" = 'system') as system_count,
           COUNT(*) FILTER (WHERE status <> 'closed') as unread_count,
           COUNT(*) FILTER (
             WHERE status <> 'closed'

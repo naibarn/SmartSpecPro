@@ -14,6 +14,7 @@ import { storageDelete } from "../storage";
 import { isBillingFeatureEnabled } from "../services/billing/featureFlags";
 import { getBillingRuntimeConfig } from "../services/billing/runtimeConfig";
 import { releasePromptPayReservationForPayment } from "../services/billing/promptpayDirectService";
+import { reconcileTerminalSkillSandboxJobs } from "../services/skillBillingReconciler";
 import { backfillFreePlanAssignments, runFreePlanMonthlyGrant } from "../services/freePlanService";
 
 const RECONCILIATION_INTERVAL_MS = 15 * 60 * 1000;
@@ -477,6 +478,7 @@ export async function initializeBillingJobs() {
       await runPaymentMethodSetupSessionCleanupJob();
       await runRecoveryEvidenceRetentionCleanupJob();
       await runInvoiceOverdueDowngradeJob();
+      await reconcileTerminalSkillSandboxJobs();
       await runFreePlanMaintenanceJob({ backfill: true });
     } catch (error) {
       console.error("[BillingJobs] initial run failed:", error);
@@ -495,6 +497,7 @@ export async function initializeBillingJobs() {
       await runDocumentRecoveryJob();
       await runPaymentMethodSetupSessionCleanupJob();
       await runRecoveryEvidenceRetentionCleanupJob();
+      await reconcileTerminalSkillSandboxJobs();
       await runFreePlanMaintenanceJob();
     } catch (error) {
       console.error("[BillingJobs] reconciliation run failed:", error);

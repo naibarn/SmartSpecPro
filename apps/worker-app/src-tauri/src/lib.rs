@@ -1,4 +1,11 @@
 pub mod comfy_executor;
+pub mod comfy_mcp_client;
+pub mod comfy_mcp_runtime;
+pub mod comfy_mcp_transport;
+pub mod comfy_profiles;
+pub mod comfy_execution_ledger;
+pub mod comfy_credentials;
+pub mod comfy_ssh_tunnel;
 pub mod commands;
 pub mod control_plane;
 pub mod credentials;
@@ -6,7 +13,9 @@ pub mod diagnostics;
 pub mod executor_state;
 pub mod hermes_executor;
 pub mod hermes_runtime;
+pub mod media_pipeline;
 pub mod runtime_manifest;
+pub mod series_workspace;
 pub mod settings;
 pub mod worker_control_plane;
 pub mod worker_executor;
@@ -16,6 +25,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex,
 };
+use std::collections::HashMap;
 
 use credentials::WorkerDeviceProofMaterial;
 use executor_state::ExecutorState;
@@ -30,6 +40,8 @@ pub struct WorkerAppState {
     pub pending_connect_device_proof: Arc<Mutex<Option<WorkerDeviceProofMaterial>>>,
     pub worker_loop: Arc<Mutex<Option<WorkerLoopHandle>>>,
     pub shutdown_in_progress: Arc<AtomicBool>,
+    pub series_workspace: Arc<Mutex<series_workspace::SeriesWorkspaceState>>,
+    pub comfy_interactive_runs: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>,
 }
 
 impl Default for WorkerAppState {
@@ -47,6 +59,10 @@ impl WorkerAppState {
             pending_connect_device_proof: Arc::new(Mutex::new(None)),
             worker_loop: Arc::new(Mutex::new(None)),
             shutdown_in_progress: Arc::new(AtomicBool::new(false)),
+            series_workspace: Arc::new(Mutex::new(
+                series_workspace::SeriesWorkspaceState::default(),
+            )),
+            comfy_interactive_runs: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -107,7 +123,18 @@ pub fn run() {
                     }),
                 );
             }
-            app.manage(WorkerAppState::new(settings));
+            let state = WorkerAppState::new(settings);
+            if let Some(dir) = data_dir.as_deref() {
+                if let Ok(Some(root)) = series_workspace::load_root_state(dir) {
+                    if let Ok(mut workspace) = state.series_workspace.lock() {
+                        let projection =
+                            series_workspace::redacted_projection(&root, None, "recovered");
+                        workspace.root = Some(root);
+                        workspace.projection = Some(projection);
+                    }
+                }
+            }
+            app.manage(state);
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -139,6 +166,19 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::worker_app_get_settings,
+            commands::worker_app_get_comfy_profiles,
+            commands::worker_app_save_comfy_profile,
+            commands::worker_app_activate_comfy_profile,
+            commands::worker_app_disable_comfy_profile,
+            commands::worker_app_set_comfy_credential,
+            commands::worker_app_delete_comfy_credential,
+            commands::worker_app_probe_comfy_profile,
+            commands::worker_app_inspect_comfy_workflow,
+            commands::worker_app_run_comfy_workflow,
+            commands::worker_app_cancel_comfy_workflow,
+            commands::worker_app_upload_comfy_file,
+            commands::worker_app_get_comfy_mcp_runtime,
+            commands::worker_app_install_comfy_mcp,
             commands::worker_app_save_settings,
             commands::worker_app_set_render_update_blocked,
             commands::worker_app_get_saved_connection,
@@ -149,6 +189,8 @@ pub fn run() {
             commands::worker_app_hermes_signin_xai,
             commands::worker_app_clear_saved_connection,
             commands::worker_app_get_executor_state,
+            commands::worker_app_get_worker_job_summary,
+            commands::worker_app_get_worker_policy,
             commands::worker_app_run_doctor,
             commands::worker_app_run_full_doctor,
             commands::worker_app_check_runtime_update,
@@ -173,6 +215,24 @@ pub fn run() {
             commands::worker_app_install_update,
             commands::worker_app_open_url,
             commands::worker_app_run_manual_command,
+            commands::worker_app_pick_local_root,
+            commands::worker_app_select_series_workspace,
+            commands::worker_app_create_series_folder,
+            commands::worker_app_validate_local_root,
+            commands::worker_app_scan_preview,
+            commands::worker_app_import_local_files,
+            commands::worker_app_analyze_media_asset,
+            commands::worker_app_get_local_workspace_status,
+            commands::worker_app_revoke_local_root,
+            commands::worker_app_list_series,
+            commands::worker_app_execute_series_quick_action,
+            commands::worker_app_get_series_media_workspace,
+            commands::worker_app_get_series_queue,
+            commands::worker_app_bind_series,
+            commands::worker_app_build_media_plan,
+            commands::worker_app_process_media_asset,
+            commands::worker_app_submit_media_job,
+            commands::worker_app_submit_media_ingest_job,
         ])
         .run(tauri::generate_context!())
         .expect("failed to run Smart AI Hub Worker App");

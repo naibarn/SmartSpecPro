@@ -290,7 +290,9 @@ export async function synthesizeSpecialEditionBrief(
     userId: params.userId,
     tenantId: params.tenantId,
     amount: creditsUsed,
+    contextRef: params.tenantId ? { contextType: "series", sourceType: "vertical_drama_series", sourceId: String(params.lineageContext.parentSeriesId) } : undefined,
     description: "Vertical Drama — special edition planning",
+    skillSlug: "vertical-drama-special-edition-planner",
     sourceType: "skill",
     metadata: {
       model,

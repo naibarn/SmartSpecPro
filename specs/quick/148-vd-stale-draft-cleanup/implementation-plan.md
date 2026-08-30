@@ -2,7 +2,7 @@
 
 ## Objective
 
-Offer a safe 5/7/10-day cleanup dialog for stale Draft Job Inbox rows without
+Offer a safe 7/10-day cleanup dialog for stale Draft Job Inbox rows without
 loading full Draft payloads or touching created series.
 
 ## Current-codebase fit
@@ -23,16 +23,16 @@ query.
 
 ## Implementation approach
 
-1. Add a fixed `5 | 7 | 10` threshold contract and pure cutoff/count helpers.
+1. Add a fixed `7 | 10` threshold contract and pure cutoff/count helpers.
 2. Query counts across every eligible unarchived owner row, independently of the
    50-row display limit.
 3. Bulk archive with one `UPDATE ... WHERE` containing tenant, user, eligible
    status, unarchived, and cutoff predicates. Return the affected count.
 4. Run the list and summary queries together in `listDraftJobs`; add a fixed-enum
    `archiveStaleDraftJobs` mutation.
-5. Render an AlertDialog with RadioGroup choices/counts. Open once per summary
-   signature, default 10 -> 7 -> 5, lock controls while pending, toast result,
-   and refresh on success.
+5. Render an AlertDialog with RadioGroup choices/counts. Expose it from a
+   non-blocking maintenance banner, default 10 -> 7, lock controls while
+   pending, toast result, and refresh on success.
 
 ## Risks and mitigations
 
@@ -40,13 +40,13 @@ query.
 - Cross-owner access: both predicates require tenant and user.
 - Created-series loss: `applied` is not in the eligible status allowlist and no
   series table is referenced.
-- Prompt spam: keep handled summary signatures in component state/ref.
+- Prompt spam: never open the maintenance dialog automatically.
 - Dirty worktree conflicts: inspect and preserve existing target-file hunks.
 
 ## Acceptance criteria
 
-- Dialog appears only when a 5-day stale eligible count is positive.
-- Choices show accurate 5/7/10 counts and cannot select an empty bucket.
+- Maintenance banner appears only when a 7-day stale eligible count is positive.
+- Choices show accurate 7/10 counts and cannot select an empty bucket.
 - Confirmation archives all and only rows still eligible for that owner/cutoff.
 - Active, applied, archived, other-user, and other-tenant rows remain unchanged.
 - Created series and full Draft snapshot/version data are untouched.

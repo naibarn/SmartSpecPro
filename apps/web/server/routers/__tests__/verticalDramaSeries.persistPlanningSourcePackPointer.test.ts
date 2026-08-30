@@ -1,25 +1,32 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockDb, mockTx } = vi.hoisted(() => {
-  const mockTx = {
-    select: vi.fn(),
-    update: vi.fn(),
-    insert: vi.fn(),
-    execute: vi.fn().mockResolvedValue([]),
-  };
-  const mockDb = {
-    select: vi.fn(),
-    update: vi.fn(),
-    insert: vi.fn(),
-    delete: vi.fn(),
-    transaction: vi
-      .fn()
-      .mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
-        callback(mockTx)
-      ),
-  };
-  return { mockDb, mockTx };
-});
+const { mockDb, mockTx, mockEnqueueDraftQc, mockGetDraftLedger } = vi.hoisted(
+  () => {
+    const mockTx = {
+      select: vi.fn(),
+      update: vi.fn(),
+      insert: vi.fn(),
+      execute: vi.fn().mockResolvedValue([]),
+    };
+    const mockDb = {
+      select: vi.fn(),
+      update: vi.fn(),
+      insert: vi.fn(),
+      delete: vi.fn(),
+      transaction: vi
+        .fn()
+        .mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
+          callback(mockTx)
+        ),
+    };
+    return {
+      mockDb,
+      mockTx,
+      mockEnqueueDraftQc: vi.fn(),
+      mockGetDraftLedger: vi.fn(),
+    };
+  }
+);
 
 vi.mock("../../db", () => ({ db: mockDb }));
 
@@ -45,9 +52,57 @@ vi.mock("../../middleware/requireFeatureFlag", () => ({
 }));
 
 vi.mock("../../services/verticalDramaStoryBible", () => ({
+  VD_COMPACT_JSON_INSTRUCTION: "",
   generateStoryBible: vi.fn(),
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+}));
+
+vi.mock("../../services/verticalDramaDraftQualityQcJobs", () => ({
+  cancelVerticalDramaDraftQualityQc: vi.fn(),
+  enqueueVerticalDramaDraftQualityQc: mockEnqueueDraftQc,
+  getVerticalDramaDraftQualityQcStatus: vi.fn(),
+  getVerticalDramaDraftQualityQcStatusBySession: vi.fn(),
+  getVerticalDramaDraftQualityQcRunIdBySession: vi.fn(),
+  clearVerticalDramaDraftQualityQcPointer: vi.fn(),
+  reconcileVerticalDramaDraftQualityQc: vi.fn(),
+  recoverVerticalDramaDraftQualityQcHistory: vi.fn(),
+  recoverVerticalDramaDraftQualityQcResultByRunId: vi.fn(),
+  recoverVerticalDramaDraftQualityQcResultFromFailure: vi.fn(),
+}));
+
+vi.mock("../../services/verticalDramaDraftLedger", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../services/verticalDramaDraftLedger")
+  >("../../services/verticalDramaDraftLedger");
+  return {
+    ...actual,
+    getVerticalDramaDraftLedger: mockGetDraftLedger,
+  };
+});
+
+vi.mock("../../services/verticalDramaDraftCompletion", () => ({
+  repairVerticalDramaDraftBeforeQc: vi.fn(async (input: any) => ({
+    draft: input.draft,
+    model: "test-model",
+    repaired: false,
+    creditsUsed: 0,
+    report: {
+      status: "complete",
+      repairRound: 0,
+      missingPaths: [],
+      contradictionPaths: [],
+      diagnostics: [],
+    },
+  })),
+  deductVerticalDramaDraftCompletionCredits: vi.fn(),
+}));
+
+vi.mock("../../services/verticalDramaLlmModelPolicy", () => ({
+  assertVerticalDramaRecommendedDraftModel: vi.fn(),
+  resolveVerticalDramaRecommendedDraftModel: vi
+    .fn()
+    .mockResolvedValue("test-model"),
 }));
 
 vi.mock("../../_core/logger", () => ({
@@ -175,6 +230,7 @@ describe("updatePlanningSeriesSnapshot", () => {
         title: "Chosen title",
         draftSessionId: "draft-session-1",
         activeStep: "story",
+        userPremise: "โจทย์ที่ต้องกลับมาได้ครบหลัง refresh",
       },
     });
 
@@ -183,8 +239,61 @@ describe("updatePlanningSeriesSnapshot", () => {
       revision: 4,
       draftSessionId: "draft-session-1",
       activeStep: "story",
+      userPremise: "โจทย์ที่ต้องกลับมาได้ครบหลัง refresh",
     });
     expect(mockDb.transaction).toHaveBeenCalled();
+  });
+});
+
+describe("startDraftQualityQc", () => {
+  it("uses the owner-scoped ledger session when the client session is stale", async () => {
+    mockDb.select.mockReturnValueOnce(
+      selectChain([{ id: 53, status: "planning" }])
+    );
+    mockGetDraftLedger.mockResolvedValueOnce({
+      id: "00000000-0000-4000-8000-000000000053",
+      seriesId: 53,
+      seriesDeletedAt: null,
+      draftSessionId: "ledger-session-53",
+      requestJson: {
+        synthesis: {
+          targetEpisodeCount: 12,
+          genreHint: "โรแมนติกดราม่า",
+          userPremise: "โจทย์ที่อยู่ใน ledger",
+        },
+      },
+    });
+    mockEnqueueDraftQc.mockResolvedValueOnce({
+      runId: "00000000-0000-4000-8000-000000000054",
+      deduped: false,
+    });
+
+    const result = await router.startDraftQualityQc({
+      ctx,
+      input: {
+        seriesId: "53",
+        draftSessionId: "stale-browser-session",
+        draftId: "00000000-0000-4000-8000-000000000053",
+        draft: { title: "Ledger identity test" },
+        maxImprovementRounds: 0,
+      },
+    });
+
+    expect(mockEnqueueDraftQc).toHaveBeenCalledWith(
+      expect.objectContaining({
+        draftSessionId: "ledger-session-53",
+        immutableConstraints: expect.objectContaining({
+          targetEpisodeCount: 12,
+          genre: "โรแมนติกดราม่า",
+          userPremise: "โจทย์ที่อยู่ใน ledger",
+        }),
+      }),
+      expect.anything()
+    );
+    expect(result).toMatchObject({
+      runId: "00000000-0000-4000-8000-000000000054",
+      draftSessionId: "ledger-session-53",
+    });
   });
 });
 

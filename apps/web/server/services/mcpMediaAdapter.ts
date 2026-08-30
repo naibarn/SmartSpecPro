@@ -15,7 +15,7 @@ import {
   logMcpObservabilityEvent,
 } from "./mcpObservability";
 import { decrypt } from "./crypto";
-import { storagePut } from "../storage";
+import { assertR2StorageActive, storagePut } from "../storage";
 import { normalizeMcpProviderModelIdForProvider } from "./mcpProviderModelAliases";
 
 export interface McpMediaGenerationRequest {
@@ -659,6 +659,9 @@ export async function internalizeMcpProviderOutputUrls(params: {
     (url, index, urls) => urls.indexOf(url) === index
   );
   const putObject = params.deps?.putObject ?? storagePut;
+  if (!params.deps?.putObject) {
+    await assertR2StorageActive();
+  }
   const storedUrls: string[] = [];
   const artifacts: Array<{
     sourceHost?: string;
@@ -788,7 +791,8 @@ function providerStatusArgumentCandidates(
 
 async function withCompletedProviderResult(
   task: MediaTask,
-  providerStatusResult: unknown
+  providerStatusResult: unknown,
+  deps?: InternalizeMcpProviderUrlsDeps,
 ): Promise<MediaTask> {
   const providerUrls = collectProviderUrls(providerStatusResult);
   const metadata = (task.parameters?.transportMetadata ??
@@ -799,6 +803,7 @@ async function withCompletedProviderResult(
     urls: providerUrls,
     task,
     metadata,
+    deps,
   });
   const resultUrl = urls[0];
   const mediaUrlKey =
@@ -1976,6 +1981,20 @@ function readVdPortraitCandidateTaskMarker(
   return undefined;
 }
 
+function readSkillBillingRunId(
+  parameters: Record<string, unknown> | undefined,
+): string | undefined {
+  if (!parameters) return undefined;
+  const direct = parameters.skill_billing_run_id;
+  if (typeof direct === "string" && direct.trim()) return direct;
+  const extra = parameters.extraParams;
+  if (extra && typeof extra === "object" && !Array.isArray(extra)) {
+    const value = (extra as Record<string, unknown>).skill_billing_run_id;
+    if (typeof value === "string" && value.trim()) return value;
+  }
+  return undefined;
+}
+
 /**
  * When the stale-task sweep force-fails an `mcp_media_tasks` row that is a
  * Vertical Drama character portrait-candidate submission, cascade the
@@ -2004,6 +2023,28 @@ function readVdPortraitCandidateTaskMarker(
 async function cascadeFailedVdPortraitCandidateTask(
   task: MediaTask
 ): Promise<void> {
+  const skillRunId = readSkillBillingRunId(task.parameters);
+  const taskTransportMetadata = (task.parameters?.transportMetadata ??
+    task.resultData?.transportMetadata) as MediaTaskTransportMetadata | undefined;
+  const taskTenantId = taskTransportMetadata?.tenantId;
+  let skillCreditsReconciled = false;
+  if (skillRunId) {
+    try {
+      const { reconcileTaskCredits } = await import("../routers/media");
+      await reconcileTaskCredits({
+        task: task as any,
+        userId: Number(task.userId),
+        tenantId: taskTenantId,
+      });
+      skillCreditsReconciled = true;
+    } catch (error) {
+      console.warn("[mcp-media] skill credit reconcile failed", {
+        taskId: task.id,
+        error: error instanceof Error ? error.message : error,
+      });
+    }
+  }
+
   const assetLinkIdRaw = readVdPortraitCandidateTaskMarker(
     task.parameters,
     "__vd_portrait_candidate_asset_link_id"
@@ -2014,10 +2055,7 @@ async function cascadeFailedVdPortraitCandidateTask(
     task.parameters,
     "__vd_series_id"
   );
-  const metadata = (task.parameters?.transportMetadata ??
-    task.resultData?.transportMetadata) as
-    | MediaTaskTransportMetadata
-    | undefined;
+  const metadata = taskTransportMetadata;
   const tenantId = metadata?.tenantId;
   const userId = Number(task.userId);
   const seriesId = seriesIdRaw ? Number(seriesIdRaw) : NaN;
@@ -2037,14 +2075,20 @@ async function cascadeFailedVdPortraitCandidateTask(
     return;
   }
 
-  try {
-    const { reconcileTaskCredits } = await import("../routers/media");
-    await reconcileTaskCredits({ task: task as any, userId });
-  } catch (error) {
-    console.warn("[mcp-media] VD portrait-candidate credit reconcile failed", {
-      taskId: task.id,
-      error: error instanceof Error ? error.message : error,
-    });
+  if (!skillCreditsReconciled) {
+    try {
+      const { reconcileTaskCredits } = await import("../routers/media");
+      await reconcileTaskCredits({
+        task: task as any,
+        userId,
+        tenantId: taskTenantId,
+      });
+    } catch (error) {
+      console.warn("[mcp-media] VD portrait-candidate credit reconcile failed", {
+        taskId: task.id,
+        error: error instanceof Error ? error.message : error,
+      });
+    }
   }
 
   try {

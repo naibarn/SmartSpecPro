@@ -867,7 +867,7 @@ class LLMGateway:
         )
         
         # Step 2: Check sufficient credits
-        await self._check_credits(user, estimated_cost)
+        await self._check_credits(user, estimated_cost, request)
         
         # Step 3: Call LLM
         if use_openrouter and self.unified_client.openrouter_client:
@@ -937,7 +937,7 @@ class LLMGateway:
         else:
             # Estimate cost via Web Gateway or use local estimate
             estimated_cost = await self._estimate_cost(request, False)
-            await self._check_credits(user, estimated_cost)
+            await self._check_credits(user, estimated_cost, request)
 
         # --- BytePlus ModelArk routing ---
         from app.llm_proxy.providers.byteplus_modelark_provider import BytePlusModelArkProvider
@@ -1560,7 +1560,7 @@ class LLMGateway:
         else:
             # Estimate cost via Web Gateway or use local estimate
             estimated_cost = await self._estimate_cost(request, False)
-            await self._check_credits(user, estimated_cost)
+            await self._check_credits(user, estimated_cost, request)
 
         # --- BytePlus ModelArk routing ---
         from app.llm_proxy.providers.byteplus_modelark_provider import BytePlusModelArkProvider
@@ -2028,7 +2028,7 @@ class LLMGateway:
 
         # Estimate cost via Web Gateway or use local estimate
         estimated_cost = await self._estimate_cost(normalized_request, False)
-        await self._check_credits(user, estimated_cost)
+        await self._check_credits(user, estimated_cost, normalized_request)
 
         resolved_provider = await self._resolve_media_provider(normalized_request.model, normalized_request.api_config)
         normalized_model = self._normalize_model_id(normalized_request.model)
@@ -2960,6 +2960,19 @@ class LLMGateway:
         that can occur when the original session becomes stale after long-running
         operations (like Kie.ai image generation which can take 40+ seconds).
         """
+        # Skill executions use the web ledger as the sole billing authority.
+        # The marker is only added by the trusted server-side media adapter;
+        # returning a zero transaction prevents provider/model billing from
+        # being charged in addition to the fixed skill price.
+        if getattr(request, "skill_billing_run_id", None):
+            from types import SimpleNamespace
+
+            return SimpleNamespace(
+                amount=Decimal("0"),
+                balance_after=getattr(user, "credits", 0),
+                transaction_id=None,
+            )
+
         request_type = request.__class__.__name__
 
         # Determine request type for gateway
@@ -3048,8 +3061,22 @@ class LLMGateway:
                 detail=f"Maximum {max_concurrent} concurrent fal.ai tasks. Please wait for existing tasks to complete.",
             )
 
-    async def _check_credits(self, user: User, estimated_cost: Decimal) -> None:
+    async def _check_credits(
+        self,
+        user: User,
+        estimated_cost: Decimal,
+        request: Optional[Union[LLMRequest, ImageGenerationRequest, VideoGenerationRequest, AudioGenerationRequest]] = None,
+    ) -> None:
         """Check if user has sufficient credits."""
+        # Fixed-credit skill runs are checked and charged by the web ledger.
+        # Provider/model estimates must not reject a valid skill-priced run.
+        # The request marker is trusted because it is only emitted by the
+        # server-side media adapter after tenant-scoped authentication.
+        # Callers pass the request separately at each generation entrypoint;
+        # this method remains intentionally unchanged for non-skill requests.
+        if request is not None and getattr(request, "skill_billing_run_id", None):
+            return
+
         has_credits = await self.credit_service.check_sufficient_credits(
             user_id=user.id,
             estimated_cost_usd=estimated_cost

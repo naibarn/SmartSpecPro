@@ -73,4 +73,73 @@ describe("systemErrorMonitor handleError toast class selection", () => {
     expect(title).toBe("ระบบขัดข้องชั่วคราว");
     expect(options?.description).toContain("เกิดข้อผิดพลาดฝั่งระบบ");
   });
+
+  it("does not open a system-error report for a provider status-poll 429 wrapped as 500", () => {
+    const error = TRPCClientError.from({
+      error: {
+        code: -32603,
+        message: "Get task failed: 429",
+        data: {
+          code: "INTERNAL_SERVER_ERROR",
+          httpStatus: 500,
+        },
+      },
+    });
+
+    handleError(error, "verticalDramaCharacters.settlePortraitCandidate");
+
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(toast.info).not.toHaveBeenCalled();
+  });
+
+  it("does not open a system-error report for a temporary provider 503", () => {
+    const error = TRPCClientError.from({
+      error: {
+        code: -32603,
+        message: "Provider status temporarily unavailable (503)",
+        data: {
+          code: "INTERNAL_SERVER_ERROR",
+          httpStatus: 500,
+        },
+      },
+    });
+
+    handleError(error, "verticalDramaCharacters.settlePortraitCandidate");
+
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(toast.info).not.toHaveBeenCalled();
+  });
+
+  it("does not open a system-error report for a temporary safety-review outage", () => {
+    const error = TRPCClientError.from({
+      error: {
+        code: -32603,
+        message: "Prompt safety review is temporarily unavailable. The request was not submitted; please try again shortly.",
+        data: {
+          code: "SERVICE_UNAVAILABLE",
+          httpStatus: 503,
+        },
+      },
+    });
+
+    handleError(error, "media.generateImageAsync");
+
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(toast.info).not.toHaveBeenCalled();
+  });
+
+  it("shows storage guidance without recording a report action", () => {
+    handleError(
+      new Error(
+        "storage_capacity_exhausted [mount=/tmp; kind=bytes; availableBytes=0]",
+      ),
+      "verticalDramaEpisodes.assembleEpisodeVideo",
+    );
+
+    expect(toast.error).toHaveBeenCalledTimes(1);
+    const [title, options] = vi.mocked(toast.error).mock.calls[0];
+    expect(title).toContain("พื้นที่จัดเก็บ");
+    expect(title).toContain("/tmp");
+    expect(options?.action).toBeUndefined();
+  });
 });

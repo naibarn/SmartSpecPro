@@ -18,7 +18,7 @@ import {
   type StoryboardPreviewMatchCaptureStatus,
 } from "../../shared/storyboardPreviewMatchCapture";
 import { getDb } from "../db";
-import { storageCopyToPath, storagePutFromPath } from "../storage";
+import { assertR2StorageActive, storageCopyToPath, storagePutFromPath } from "../storage";
 import { createLibraryItem } from "../services/libraryService";
 import {
   createPreviewMatchCaptureAttempt,
@@ -1072,6 +1072,7 @@ export async function runStoryboardPreviewMatchCaptureJob(input: {
       attemptId,
       "final.mp4",
     ].join("/");
+    await assertR2StorageActive();
     const stored = await storagePutFromPath(storageKey, mp4Path, "video/mp4");
     const artifact = {
       id: `${captureJobId}_${attemptId}_final`,

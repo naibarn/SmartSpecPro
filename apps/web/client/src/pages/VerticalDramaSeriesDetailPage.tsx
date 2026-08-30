@@ -55,6 +55,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
+import { isTransientGenerationError } from "@shared/transientGenerationError";
 import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
 import { ImageLightbox } from "@/components/chat/media/ImageLightbox";
 import { WebAssetResolver } from "@/services/webAssetResolver";
@@ -81,7 +82,9 @@ import { VerticalDramaAssetsTab } from "@/components/verticalDramaSeries/Vertica
 import { VerticalDramaSeriesMemoryTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryTab";
 import { VerticalDramaSeriesMemoryStateTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryStateTab";
 import { VerticalDramaSeriesShareDialog } from "@/components/verticalDramaSeries/VerticalDramaSeriesShareDialog";
+import { VerticalDramaSeriesCreditSummary } from "@/components/verticalDramaSeries/VerticalDramaSeriesCreditSummary";
 import { VerticalDramaEpisodeCoverSurface } from "@/components/verticalDramaSeries/VerticalDramaEpisodeCoverSurface";
+import { SpecialTieInEpisodeDialog } from "@/components/verticalDramaSeries/SpecialTieInEpisodeDialog";
 import { useVerticalDramaCreditConfirmation } from "@/components/verticalDramaSeries/VerticalDramaCreditConfirmDialog";
 import { getActiveBreakdownItemsForDisplay } from "@/components/verticalDramaSeries/VerticalDramaArcReplanCard";
 import {
@@ -327,6 +330,8 @@ export default function VerticalDramaSeriesDetailPage() {
          *  when unset (fully automatic). Passed through `get`'s full-row
          *  spread, no server-side change needed for this new column. */
         llmModelPolicy?: unknown;
+        workerMediaWorkflowPolicy?: unknown;
+        workerAccessPolicy?: unknown;
         /** Series lineage (Stage 2.6) — raw DB columns, passed through
          *  `get`'s full-row spread. `null`/absent for the overwhelming
          *  majority (original-mode series). Read here only to derive
@@ -338,6 +343,8 @@ export default function VerticalDramaSeriesDetailPage() {
   const episodes = (detailQuery.data?.episodes ?? []) as Array<{
     id: string;
     episodeNumber: number;
+    episodeKind?: "normal" | "special_tie_in";
+    specialSequence?: number | null;
     title?: string | null;
     status: string;
     thumbnailUrl?: string | null;
@@ -490,6 +497,13 @@ export default function VerticalDramaSeriesDetailPage() {
                   {pickCopy(lang, verticalDramaCopy.readOnly)}
                 </Badge>
               )}
+            </div>
+
+            <div className="mb-4">
+              <VerticalDramaSeriesCreditSummary
+                seriesId={seriesId}
+                lang={lang}
+              />
             </div>
 
             <Tabs
@@ -771,6 +785,7 @@ export default function VerticalDramaSeriesDetailPage() {
                       }
                       locale={series.locale}
                       bible={series.bible}
+                      policy={series.workerMediaWorkflowPolicy || series.workerAccessPolicy ? { workerMediaWorkflowPolicy: series.workerMediaWorkflowPolicy, workerAccess: series.workerAccessPolicy } : null}
                       llmModelPolicy={series.llmModelPolicy}
                       readOnly={isArchived}
                       onSaved={() => detailQuery.refetch()}
@@ -816,6 +831,15 @@ type EpisodeCoverModelOption = {
   modelId: string;
   name: string;
   isEnabled?: boolean;
+};
+type EpisodeCoverRetryRequest = {
+  seriesId: string;
+  episodeId: string;
+  modelId: string;
+  includeTitleLogo: boolean;
+  includeChannelLogo: boolean;
+  idempotencyKey: string;
+  retryAttempt: number;
 };
 
 function EpisodeCoverSurface({
@@ -1041,6 +1065,8 @@ export function EpisodesTab({
   episodes: Array<{
     id: string;
     episodeNumber: number;
+    episodeKind?: "normal" | "special_tie_in";
+    specialSequence?: number | null;
     title?: string | null;
     status: string;
     thumbnailUrl?: string | null;
@@ -1080,10 +1106,17 @@ export function EpisodesTab({
   const [uploadingCoverEpisodeId, setUploadingCoverEpisodeId] = useState<
     string | null
   >(null);
+  const coverRetryRequestsRef = useRef(
+    new Map<string, EpisodeCoverRetryRequest>()
+  );
+  const coverRetryAttemptsRef = useRef(new Map<string, number>());
+  const scheduledCoverRetriesRef = useRef(new Set<string>());
   const [lightboxImage, setLightboxImage] = useState<{
     src: string;
     alt: string;
   } | null>(null);
+  const [specialTieInDialogOpen, setSpecialTieInDialogOpen] = useState(false);
+  const specialTieInEnabled = useTenantFeatureFlag("verticalDramaSpecialEpisodes");
   const imageModelsQuery = trpc.mediaModels.list.useQuery({
     type: "image",
     verticalDramaReady: true,
@@ -1120,11 +1153,20 @@ export function EpisodesTab({
   };
   const generateCoverMutation =
     trpc.verticalDramaEpisodes.generateEpisodeCover.useMutation({
-      onSuccess: () => {
+      onSuccess: (_data, variables) => {
+        scheduledCoverRetriesRef.current.delete(variables.episodeId);
         void utils.verticalDramaSeries.get.invalidate();
         void utils.verticalDramaSeries.list.invalidate();
       },
       onError: (err: { message?: string }) => {
+        if (isTransientGenerationError(err)) {
+          toast.info(
+            lang === "th"
+              ? "ผู้ให้บริการภาพขัดข้องชั่วคราว ระบบจะลองสร้างหน้าปกใหม่"
+              : "The image provider is temporarily unavailable; the cover will be retried"
+          );
+          return;
+        }
         toast.error(
           err.message ||
             (lang === "th"
@@ -1134,6 +1176,23 @@ export function EpisodesTab({
         void utils.verticalDramaSeries.get.invalidate();
       },
     });
+  const scheduleCoverRetry = (episodeId: string) => {
+    const request = coverRetryRequestsRef.current.get(episodeId);
+    if (
+      !request ||
+      (coverRetryAttemptsRef.current.get(episodeId) ?? 0) >= 2 ||
+      scheduledCoverRetriesRef.current.has(episodeId)
+    ) {
+      return;
+    }
+    const nextAttempt = (coverRetryAttemptsRef.current.get(episodeId) ?? 0) + 1;
+    coverRetryAttemptsRef.current.set(episodeId, nextAttempt);
+    scheduledCoverRetriesRef.current.add(episodeId);
+    window.setTimeout(() => {
+      scheduledCoverRetriesRef.current.delete(episodeId);
+      generateCoverMutation.mutate({ ...request, retryAttempt: nextAttempt });
+    }, 2_000);
+  };
   const setCoverAssetMutation =
     trpc.verticalDramaEpisodes.setEpisodeCoverAsset.useMutation({
       onSuccess: () => {
@@ -1175,6 +1234,13 @@ export function EpisodesTab({
           ) {
             await utils.verticalDramaSeries.get.invalidate();
             await utils.verticalDramaSeries.list.invalidate();
+          }
+          if (
+            !disposed &&
+            result.coverImage?.status === "failed" &&
+            result.coverImage.retryable
+          ) {
+            scheduleCoverRetry(episode.id);
           }
         } catch {
           // The next poll retries; the current cover remains visible.
@@ -1230,7 +1296,7 @@ export function EpisodesTab({
       testId: `vd-credit-confirm-episode-cover-${episodeId}`,
       onConfirm: () => {
         if (!coverModelId || generateCoverMutation.isPending) return;
-        generateCoverMutation.mutate({
+        const request: EpisodeCoverRetryRequest = {
           seriesId,
           episodeId,
           modelId: coverModelId,
@@ -1240,7 +1306,11 @@ export function EpisodesTab({
             typeof crypto !== "undefined" && "randomUUID" in crypto
               ? crypto.randomUUID()
               : `${Date.now()}-${Math.random()}`,
-        });
+          retryAttempt: 0,
+        };
+        coverRetryRequestsRef.current.set(episodeId, request);
+        coverRetryAttemptsRef.current.set(episodeId, 0);
+        generateCoverMutation.mutate(request);
       },
     });
   };
@@ -1700,10 +1770,17 @@ export function EpisodesTab({
                           className="min-w-0 flex-1"
                         >
                           <p className="font-medium">
-                            SUB-EP {ep.episodeNumber}
+                            {ep.episodeKind === "special_tie_in"
+                              ? `SPECIAL ${String(ep.specialSequence ?? 0).padStart(2, "0")}`
+                              : `SUB-EP ${ep.episodeNumber}`}
                             {ep.title ? ` · ${ep.title}` : ""}
                           </p>
                           <p className="text-xs text-muted-foreground">
+                            {ep.episodeKind === "special_tie_in"
+                              ? lang === "th"
+                                ? "ตอนพิเศษ Tie-in · "
+                                : "Special tie-in · "
+                              : ""}
                             {ep.status}
                           </p>
                         </Link>
@@ -1767,6 +1844,16 @@ export function EpisodesTab({
         open={Boolean(lightboxImage)}
         onClose={() => setLightboxImage(null)}
       />
+      <SpecialTieInEpisodeDialog
+        lang={lang}
+        seriesId={seriesId}
+        open={specialTieInDialogOpen}
+        onOpenChange={setSpecialTieInDialogOpen}
+        onCreated={episodeId => {
+          void utils.verticalDramaSeries.get.invalidate({ seriesId });
+          window.location.assign(`/drama-series/${seriesId}/episodes/${episodeId}`);
+        }}
+      />
       <div className="flex flex-wrap items-center gap-2">
         {!readOnly && (
           <div className="flex flex-wrap items-center gap-2">
@@ -1809,6 +1896,20 @@ export function EpisodesTab({
               )}
               {lang === "th" ? "สร้างตอนย่อยใหม่" : "Generate new Sub-episodes"}
             </Button>
+            {specialTieInEnabled ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-2"
+                onClick={() => setSpecialTieInDialogOpen(true)}
+                data-testid="vd-create-special-tie-in"
+              >
+                <ImagePlus className="h-4 w-4" aria-hidden="true" />
+                {lang === "th"
+                  ? "สร้างตอนย่อยเพิ่มเติม (ตอนพิเศษ Tie-in)"
+                  : "Create additional special tie-in"}
+              </Button>
+            ) : null}
             {isAtPlannedTarget && (
               <span className="text-xs text-muted-foreground">
                 {lang === "th"
@@ -2826,11 +2927,17 @@ export function StoryBibleOverviewCard({
 
   const generateMutation =
     trpc.verticalDramaSeries.generateStoryBible.useMutation({
-      onSuccess: (data: { creditsUsed: number }) => {
+      onSuccess: data => {
+        if (data.jobId) {
+          toast.info(
+            lang === "th"
+              ? "ส่งงานสร้างเนื้อเรื่องเข้าคิวเบื้องหลังแล้ว ระบบจะแสดงผลเมื่อเสร็จ"
+              : "Story generation is running in the background and will appear when complete"
+          );
+          return;
+        }
         toast.success(
-          lang === "th"
-            ? `สร้างเนื้อเรื่องเต็มแล้ว (ใช้ ${data.creditsUsed} เครดิต)`
-            : `Full story generated (${data.creditsUsed} credits used)`
+          lang === "th" ? "สร้างเนื้อเรื่องเต็มแล้ว" : "Full story generated"
         );
         void utils.verticalDramaSeries.get.invalidate();
         // Materialize only the remaining planned episodes. Never let the
@@ -2865,8 +2972,45 @@ export function StoryBibleOverviewCard({
   // this mutation's input/output shape. Rejects on failure; `onError` above
   // already shows the error toast, so callers only need to know settlement,
   // not the reason.
-  const runGenerateStoryBible = async () => {
-    await generateMutation.mutateAsync({ seriesId });
+  const runGenerateStoryBible = async (): Promise<{
+    completed: boolean;
+    deepJobId?: string;
+  }> => {
+    const submitted = await generateMutation.mutateAsync({
+      seriesId,
+      idempotencyKey: crypto.randomUUID(),
+    });
+    if (!submitted.jobId) return { completed: true };
+    // The browser only polls short status reads; the provider work and the
+    // plan -> deep handoff stay in the background worker. Three hours matches
+    // the shared deep-story poll budget and avoids turning a long but healthy
+    // job into a false client-side failure.
+    for (let attempt = 0; attempt < 4320; attempt += 1) {
+      const status = await utils.verticalDramaSeries.getStoryJobStatus.fetch({
+        seriesId,
+        jobId: submitted.jobId,
+      });
+      if (status.status === "succeeded") {
+        void utils.verticalDramaSeries.get.invalidate();
+        const result = status.result as { deepJobId?: unknown } | undefined;
+        return {
+          completed: true,
+          ...(typeof result?.deepJobId === "string"
+            ? { deepJobId: result.deepJobId }
+            : {}),
+        };
+      }
+      if (status.status === "failed") {
+        throw new Error(status.error || "Story generation failed");
+      }
+      await new Promise(resolve => window.setTimeout(resolve, 2000));
+    }
+    toast.info(
+      lang === "th"
+        ? "งานยังทำงานอยู่เบื้องหลัง ระบบจะบันทึกผลต่อเอง เปิดหน้านี้ใหม่เพื่อติดตาม"
+        : "The story job is still running in the background; it will continue saving progress. Refresh to follow it"
+    );
+    return { completed: false };
   };
 
   const contextParts: string[] = [];
@@ -2927,7 +3071,12 @@ export function StoryBibleOverviewCard({
                 />
               ) : (
                 <Button
-                  onClick={() => generateMutation.mutate({ seriesId })}
+                  onClick={() =>
+                    generateMutation.mutate({
+                      seriesId,
+                      idempotencyKey: crypto.randomUUID(),
+                    })
+                  }
                   disabled={generateMutation.isPending}
                   className="gap-2"
                 >
@@ -3103,7 +3252,12 @@ export function StoryBibleOverviewCard({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => generateMutation.mutate({ seriesId })}
+                onClick={() =>
+                  generateMutation.mutate({
+                    seriesId,
+                    idempotencyKey: crypto.randomUUID(),
+                  })
+                }
                 disabled={generateMutation.isPending}
                 className="gap-2"
               >

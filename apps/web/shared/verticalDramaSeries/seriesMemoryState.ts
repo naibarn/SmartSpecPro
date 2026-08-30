@@ -38,6 +38,12 @@
  * service layer (Stage 1.2 for this feature). No DB, no LLM, no I/O.
  */
 
+import type { RelationshipGraphDelta } from "./longFormContracts";
+import type {
+  VdThreadClosureAnnotation,
+  VdThreadClosureIntent,
+} from "./closureAssurance";
+
 /**
  * How visible a relationship is to the story world — the axis that did not
  * exist anywhere in the codebase before this file (spec: plan Stage 1.1,
@@ -57,7 +63,10 @@
  *   (→ `"secret"`) happens.
  */
 export type VdRelationshipDisclosure =
-  "secret" | "known_to_some" | "public" | "undeclared";
+  | "secret"
+  | "known_to_some"
+  | "public"
+  | "undeclared";
 
 /**
  * The MATERIALIZED state of one character pair's relationship as of a given
@@ -98,7 +107,12 @@ export type VdRelationshipState = {
  * nowhere to live: the system only ever recorded plot hooks.
  */
 export type VdThreadClass =
-  "plot" | "domestic" | "career" | "financial" | "health" | "relationship";
+  | "plot"
+  | "domestic"
+  | "career"
+  | "financial"
+  | "health"
+  | "relationship";
 
 /**
  * An open (or since-resolved) story thread. Presence of `resolvedEpisode`
@@ -118,6 +132,10 @@ export type VdOpenThread = {
   expectedResolution?: "this_episode" | "future_episode" | "season";
   /** Optional explicit target when the author knows the planned payoff episode. */
   expectedResolutionEpisode?: number;
+  /** Explicit author intent prevents an open thread from being misclassified as a defect. */
+  closureIntent?: VdThreadClosureIntent;
+  /** Optional evidence the author expects to see at the payoff. */
+  expectedEvidence?: string[];
 };
 
 /**
@@ -141,6 +159,10 @@ export type VdEpisodeMemory = {
    * reflecting whatever happened in this episode.
    */
   relationshipChanges: VdRelationshipState[];
+  /** Strict Feature 153 graph mutations; legacy readers may omit this field. */
+  relationshipGraphDeltas?: RelationshipGraphDelta[];
+  /** User/author classification of a thread's intentional closure state. */
+  threadClosures?: VdThreadClosureAnnotation[];
   knowledgeChanges: Array<{ characterKey: string; learned: string }>;
 };
 
@@ -190,7 +212,7 @@ export type VdSeriesMemory = {
  * `foldSeriesMemory`'s "last state wins per pair" replay.
  */
 function pairKey(pair: readonly [string, string]): string {
-  return [...pair].sort().join(" ");
+  return [...pair].sort().join("\x00");
 }
 
 /**

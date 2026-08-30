@@ -22,7 +22,6 @@ vi.mock("../../services/skillDetector", () => ({
 
 vi.mock("../../services/creditService", () => ({
   hasEnoughCredits: vi.fn(),
-  deductCredits: vi.fn(),
   getCreditBalance: vi.fn(),
 }));
 
@@ -33,7 +32,7 @@ vi.mock("fs/promises", () => ({
 import { getAvailableSkillsAsync, getSkillByIdAsync } from "../../services/skillRegistry";
 import { executeSkill } from "../../services/skillExecutor";
 import { detectSkill } from "../../services/skillDetector";
-import { hasEnoughCredits, deductCredits, getCreditBalance } from "../../services/creditService";
+import { hasEnoughCredits, getCreditBalance } from "../../services/creditService";
 import { readFile } from "fs/promises";
 
 const mockGetAvailableSkillsAsync = vi.mocked(getAvailableSkillsAsync);
@@ -41,7 +40,6 @@ const mockGetSkillByIdAsync = vi.mocked(getSkillByIdAsync);
 const mockExecuteSkill = vi.mocked(executeSkill);
 const mockDetectSkill = vi.mocked(detectSkill);
 const mockHasEnoughCredits = vi.mocked(hasEnoughCredits);
-const mockDeductCredits = vi.mocked(deductCredits);
 const mockGetCreditBalance = vi.mocked(getCreditBalance);
 const mockReadFile = vi.mocked(readFile);
 
@@ -196,7 +194,6 @@ describe("POST /v1/skills/:skillId/execute", () => {
       message: "Enhanced prompt: beautiful sunset",
       creditsUsed: 2,
     } as any);
-    mockDeductCredits.mockResolvedValue({ success: true } as any);
     mockGetCreditBalance.mockResolvedValue({ credits: 998 } as any);
     mockReadFile.mockRejectedValue(new Error("not found"));
   });
@@ -227,12 +224,16 @@ describe("POST /v1/skills/:skillId/execute", () => {
     expect(res.body.error.code).toBe("insufficient_credits");
   });
 
-  it("deducts credits with source api_skill", async () => {
+  it("routes billing through executeSkill with a stable run id", async () => {
     await request(makeApp())
       .post("/v1/skills/image_prompt_engineer/execute")
       .send({ inputs: { prompt: "sunset" } });
-    expect(mockDeductCredits).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceType: "api_skill" }),
+    expect(mockExecuteSkill).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "image_prompt_engineer" }),
+      expect.objectContaining({ runId: expect.any(String) }),
+      1,
+      expect.any(String),
+      "tenant-1",
     );
   });
 

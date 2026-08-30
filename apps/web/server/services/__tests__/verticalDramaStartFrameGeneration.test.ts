@@ -385,6 +385,38 @@ describe("projectStartFramePlan — plan-level image prompt language", () => {
 });
 
 describe("projectStartFramePlan", () => {
+  it("persists one combined identity-lock block for every attached character", () => {
+    const raw = {
+      render_plan_summary: {},
+      start_frame_requests: [validRequest(1)],
+      plain_text_render_plan: "text",
+      downstream_video_input_manifest: {},
+    };
+    const plan = projectStartFramePlan(
+      raw as any,
+      "fallback-model",
+      new Map([[1, ["char-1", "char-2"]]]),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      [
+        { characterKey: "char-1", name: "Pimpchanok" },
+        { characterKey: "char-2", name: "Mayuree" },
+      ],
+    );
+
+    const prompt = plan.frames[0]?.imagePrompt ?? "";
+    expect(prompt).toContain("- Pimpchanok — Reference Image 1");
+    expect(prompt).toContain("- Mayuree — Reference Image 2");
+    expect(prompt.match(/facial proportions/g)).toHaveLength(1);
+  });
+
   it("persists the virtual-screen contract when a batch frame has a caller", () => {
     const raw = {
       render_plan_summary: {},

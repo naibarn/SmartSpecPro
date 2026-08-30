@@ -333,6 +333,71 @@ describe("updateEpisodeDraftSynopsis — feature flag gating", () => {
   });
 });
 
+describe("repairEpisode — terminal failure retry", () => {
+  it("does not reuse a historical failed jobId when the default key is retried", async () => {
+    const episodeUpdatedAt = new Date("2026-08-28T02:54:36.413Z");
+    const failedRevision = {
+      id: 2,
+      status: "failed",
+      jobId: "old-failed-job",
+      idempotencyKey: "episode-repair:232:2026-08-28T02:54:36.413Z",
+    };
+    const insertedRevision = {
+      id: 3,
+      status: "queued",
+      jobId: null,
+      revisionNumber: 2,
+      idempotencyKey: "episode-repair:232:retry:new-key",
+    };
+    const episode = {
+      id: 232,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      episodeNumber: 7,
+      title: "Episode 7",
+      script: {},
+      storyboard: {},
+      updatedAt: episodeUpdatedAt,
+    };
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([seriesRowForSynopsis({ id: 10 })]))
+      .mockReturnValueOnce(selectChain([episode]))
+      .mockReturnValueOnce(selectChain([failedRevision]))
+      .mockReturnValueOnce(selectChain([{ revisionNumber: 1 }]));
+    mockDb.insert.mockReturnValueOnce({
+      values: vi.fn(() => ({ returning: vi.fn(() => Promise.resolve([insertedRevision])) })),
+    });
+    mockEnqueueVerticalDramaStoryJob.mockResolvedValueOnce({
+      jobId: "new-repair-job",
+      deduped: false,
+    });
+    mockDb.update.mockReturnValue({
+      set: vi.fn(() => ({ where: vi.fn(() => Promise.resolve([])) })),
+    });
+
+    const result = await router.repairEpisode({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeNumber: 7 },
+    });
+
+    expect(result).toMatchObject({
+      jobId: "new-repair-job",
+      revisionId: 3,
+      deduped: false,
+    });
+    expect(mockEnqueueVerticalDramaStoryJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "episode_repair",
+        input: expect.objectContaining({ revisionId: 3, episodeId: 232 }),
+      }),
+    );
+    const insertedValues = mockDb.insert.mock.results[0].value.values.mock.calls[0][0];
+    expect(insertedValues.idempotencyKey).not.toBe(failedRevision.idempotencyKey);
+  });
+});
+
 /* -------------------------------------------------------------------------- */
 /* Ownership + no-draft guards                                                */
 /* -------------------------------------------------------------------------- */

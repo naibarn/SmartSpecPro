@@ -2,8 +2,11 @@ use rand::RngCore;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use std::fs::File;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+use tokio_util::io::ReaderStream;
 
 use crate::control_plane::{
     WorkerProtocolCompatibility, WORKER_APP_PROTOCOL_VERSION, WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
@@ -269,10 +272,21 @@ pub async fn upload_worker_artifact_file(
     metadata_json: Value,
 ) -> Result<WorkerArtifactCompleteResponse, String> {
     let absolute_path = require_file(file_path)?;
-    let file_bytes = std::fs::read(&absolute_path)
-        .map_err(|error| format!("failed to read artifact: {error}"))?;
-    let checksum_sha256 = sha256_hex(&file_bytes);
-    let size_bytes = file_bytes.len() as u64;
+    let size_bytes = std::fs::metadata(&absolute_path)
+        .map_err(|error| format!("failed to stat artifact: {error}"))?
+        .len();
+    let mut file = std::fs::File::open(&absolute_path)
+        .map_err(|error| format!("failed to open artifact: {error}"))?;
+    let mut digest = Sha256::new();
+    let mut buffer = [0_u8; 1024 * 1024];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .map_err(|error| format!("failed to read artifact: {error}"))?;
+        if read == 0 { break; }
+        digest.update(&buffer[..read]);
+    }
+    let checksum_sha256 = format!("{:x}", digest.finalize());
 
     let init: WorkerArtifactInitResponse = post_json(
         connection,
@@ -301,7 +315,7 @@ pub async fn upload_worker_artifact_file(
         .upload_url
         .clone()
         .ok_or_else(|| "presigned artifact upload is missing uploadUrl".to_string())?;
-    upload_presigned_artifact(&upload_url, content_type, file_bytes).await?;
+    upload_presigned_artifact(&upload_url, content_type, &absolute_path, size_bytes).await?;
 
     post_json(
         connection,
@@ -318,6 +332,28 @@ pub async fn upload_worker_artifact_file(
             lease_owner_token: lease_owner_token.into(),
             assignment_attempt: Some(assignment_attempt.into()),
         },
+    )
+    .await
+}
+
+/// Publishes a verified derived-media manifest through the worker-upload
+/// boundary. The server remains authoritative for binding, artifact and QC
+/// checks; this function never accepts a source path or uploads raw footage.
+pub async fn publish_vertical_drama_media(
+    connection: &WorkerLoopConnection,
+    series_id: &str,
+    payload: &Value,
+) -> Result<Value, String> {
+    let mut body = payload.clone();
+    body.as_object_mut()
+        .ok_or_else(|| "media publication payload must be an object".to_string())?
+        .insert("seriesId".into(), Value::String(series_id.to_string()));
+    post_json(
+        connection,
+        &connection.server_url,
+        &format!("/api/workers/{}/media-publications", connection.worker_id),
+        &connection.tokens.upload_token,
+        &body,
     )
     .await
 }
@@ -340,6 +376,32 @@ where
         bearer_token,
         payload,
         device_proof,
+        None,
+        CONTROL_PLANE_TIMEOUT_MS,
+    )
+    .await
+}
+
+pub async fn post_worker_json_with_if_match<T, P>(
+    server_url: &str,
+    path: &str,
+    bearer_token: &str,
+    payload: &P,
+    device_proof: &WorkerDeviceProofMaterial,
+    if_match: Option<&str>,
+) -> Result<T, String>
+where
+    T: DeserializeOwned,
+    P: Serialize + ?Sized,
+{
+    let url = join_url(server_url, path)?;
+    post_worker_json_url_with_timeout(
+        url,
+        path,
+        bearer_token,
+        payload,
+        device_proof,
+        if_match,
         CONTROL_PLANE_TIMEOUT_MS,
     )
     .await
@@ -397,12 +459,111 @@ where
     read_json_response(response).await
 }
 
+/// Device-proof-signed binary GET used only for approved media inputs. The
+/// server route performs the job/asset authorization; this helper keeps the
+/// execution token and proof on the native side and never exposes them to the
+/// webview or ComfyUI workflow arguments.
+pub async fn download_worker_bytes(
+    server_url: &str,
+    path: &str,
+    bearer_token: &str,
+    device_proof: &WorkerDeviceProofMaterial,
+) -> Result<Vec<u8>, String> {
+    let url = join_url(server_url, path)?;
+    let proof_headers = build_device_proof_headers(
+        "GET",
+        path,
+        bearer_token,
+        &serde_json::json!({}),
+        device_proof,
+    )?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_millis(ARTIFACT_UPLOAD_TIMEOUT_MS))
+        .build()
+        .map_err(|error| format!("failed to build worker media client: {error}"))?;
+    let mut request = client
+        .get(url)
+        .header("Accept", "video/mp4,video/webm,video/quicktime,image/jpeg,image/png,image/webp,application/octet-stream")
+        .header("User-Agent", "SmartAIHub-Worker-App/0.1")
+        .bearer_auth(bearer_token.trim());
+    for (name, value) in proof_headers {
+        request = request.header(name, value);
+    }
+    let response = request
+        .send()
+        .await
+        .map_err(|error| format!("worker media input request failed: {error}"))?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "worker media input returned HTTP {}",
+            response.status()
+        ));
+    }
+    response
+        .bytes()
+        .await
+        .map(|bytes| bytes.to_vec())
+        .map_err(|error| format!("worker media input body failed: {error}"))
+}
+
+/// Stream an authorized media input directly to the Worker workspace. Large
+/// user footage must not be materialized as a multi-gigabyte Vec in memory.
+pub async fn download_worker_file(
+    server_url: &str,
+    path: &str,
+    bearer_token: &str,
+    device_proof: &WorkerDeviceProofMaterial,
+    destination: &Path,
+    max_bytes: u64,
+) -> Result<(u64, String), String> {
+    let url = join_url(server_url, path)?;
+    let proof_headers = build_device_proof_headers(
+        "GET", path, bearer_token, &serde_json::json!({}), device_proof,
+    )?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_millis(ARTIFACT_UPLOAD_TIMEOUT_MS))
+        .build()
+        .map_err(|error| format!("failed to build worker media client: {error}"))?;
+    let mut request = client
+        .get(url)
+        .header("Accept", "video/mp4,video/webm,video/quicktime,application/octet-stream")
+        .header("User-Agent", "SmartAIHub-Worker-App/0.1")
+        .bearer_auth(bearer_token.trim());
+    for (name, value) in proof_headers {
+        request = request.header(name, value);
+    }
+    let mut response = request.send().await.map_err(|error| format!("worker media input request failed: {error}"))?;
+    if !response.status().is_success() {
+        return Err(format!("worker media input returned HTTP {}", response.status()));
+    }
+    if response.content_length().is_some_and(|length| length > max_bytes) {
+        return Err("unsupported_media".into());
+    }
+    if let Some(parent) = destination.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| format!("footage_workspace_failed: {error}"))?;
+    }
+    let mut file = File::create(destination).map_err(|error| format!("footage_source_write_failed: {error}"))?;
+    let mut digest = Sha256::new();
+    let mut total = 0u64;
+    while let Some(chunk) = response.chunk().await.map_err(|error| format!("worker media input body failed: {error}"))? {
+        total = total.saturating_add(chunk.len() as u64);
+        if total > max_bytes {
+            return Err("unsupported_media".into());
+        }
+        file.write_all(&chunk).map_err(|error| format!("footage_source_write_failed: {error}"))?;
+        digest.update(&chunk);
+    }
+    file.flush().map_err(|error| format!("footage_source_write_failed: {error}"))?;
+    Ok((total, format!("{:x}", digest.finalize())))
+}
+
 async fn post_worker_json_url_with_timeout<T, P>(
     url: reqwest::Url,
     path: &str,
     bearer_token: &str,
     payload: &P,
     device_proof: &WorkerDeviceProofMaterial,
+    if_match: Option<&str>,
     timeout_ms: u64,
 ) -> Result<T, String>
 where
@@ -425,6 +586,9 @@ where
         .bearer_auth(bearer_token.trim());
     for (name, value) in proof_headers {
         request = request.header(name, value);
+    }
+    if let Some(if_match) = if_match {
+        request = request.header("If-Match", if_match);
     }
     let response = request.json(&payload_value).send().await.map_err(|error| {
         if error.is_timeout() {
@@ -477,6 +641,7 @@ where
         bearer_token,
         payload,
         &connection.device_proof,
+        None,
         timeout_ms,
     )
     .await
@@ -531,7 +696,8 @@ pub fn build_device_proof_headers(
 async fn upload_presigned_artifact(
     upload_url: &str,
     content_type: &str,
-    file_bytes: Vec<u8>,
+    file_path: &Path,
+    size_bytes: u64,
 ) -> Result<(), String> {
     let url = validate_http_url(upload_url)?;
     let client = reqwest::Client::builder()
@@ -540,11 +706,16 @@ async fn upload_presigned_artifact(
         .map_err(|error| format!("failed to build artifact upload client: {error}"))?;
     let mut last_error = String::new();
     for attempt in 1..=ARTIFACT_UPLOAD_ATTEMPTS {
+        let file = tokio::fs::File::open(file_path)
+            .await
+            .map_err(|error| format!("failed to open artifact for upload: {error}"))?;
+        let body = reqwest::Body::wrap_stream(ReaderStream::new(file));
         let response = client
             .put(url.clone())
             .header("Content-Type", content_type)
+            .header("Content-Length", size_bytes)
             .header("User-Agent", "SmartAIHub-Worker-App/0.1")
-            .body(file_bytes.clone())
+            .body(body)
             .send()
             .await;
         match response {

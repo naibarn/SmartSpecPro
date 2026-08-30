@@ -14,11 +14,16 @@
 import { AI_STYLE_PRESET_IDS } from "@shared/presentation/aiTypes";
 import { detectSkill } from "./skillDetector";
 import { getAvailableSkillsAsync, getSkillByIdAsync } from "./skillRegistry";
-import { getModelsByTypeAsync, getDefaultModel } from "./modelRegistry";
+import {
+  filterModelsByMcpProviderAccess,
+  getModelsByTypeAsync,
+  getDefaultModel,
+} from "./modelRegistry";
 import { suggestModel } from "../routers/modelSuggestTool";
 import { loadEnabledModelsWithPricing } from "./capabilityRegistry";
 import { auditLogger } from "./auditLogger";
 import { resolveProviders } from "./llmRouter";
+import { listConnectedMcpProviderKeys } from "./mcpConnectionService";
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -163,6 +168,9 @@ export async function resolveAutoDraftParams(
 ): Promise<AutoDraftResolution> {
   const log: ResolutionStep[] = [];
   const traceId = options?.traceId ?? "auto-resolve";
+  const connectedMcpProviderKeys = options?.userId !== undefined && options.tenantId
+    ? await listConnectedMcpProviderKeys({ tenantId: options.tenantId, userId: options.userId })
+    : new Set<string>();
 
   const addStep = (step: string, result: string, source: string, fallbackUsed: boolean) => {
     log.push({ step, result, source, fallbackUsed, timestamp: new Date().toISOString() });
@@ -242,7 +250,7 @@ export async function resolveAutoDraftParams(
 
   // Try suggestModel (uses DB priority + quality heuristics)
   try {
-    const suggestion = await suggestModel("image", "balanced");
+    const suggestion = await suggestModel("image", "balanced", connectedMcpProviderKeys);
     if (suggestion.recommended?.model_id) {
       imageModel = suggestion.recommended.model_id;
       imageModelSource = "suggested";
@@ -255,7 +263,10 @@ export async function resolveAutoDraftParams(
   // Fallback: get highest-priority enabled image model
   if (!imageModel) {
     try {
-      const imageModels = await getModelsByTypeAsync("image");
+      const imageModels = filterModelsByMcpProviderAccess(
+        await getModelsByTypeAsync("image"),
+        connectedMcpProviderKeys,
+      );
       // Models are already sorted by priority
       if (imageModels.length > 0) {
         imageModel = imageModels[0].id;

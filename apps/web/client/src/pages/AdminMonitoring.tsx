@@ -22,6 +22,8 @@ import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { getOpsIncidentGuidance } from "@/lib/opsMonitoringGuidance";
 import { ContextEngineEvaluationDashboard } from "@/components/admin/ContextEngineEvaluationDashboard";
 import { KnowledgeVaultReadinessDashboard } from "@/components/admin/KnowledgeVaultReadinessDashboard";
+import { CapacityAdvisorPanel } from "@/components/admin/CapacityAdvisorPanel";
+import AdminCapacityAdvisor from "./AdminCapacityAdvisor";
 import { HermesFleetBadge, HermesWorkerAdminPanel } from "@/components/admin/HermesWorkerAdminPanel";
 import {
   ArrowLeft,
@@ -691,7 +693,8 @@ function parseMonitoringRoute(location: string): {
     rawTab === "checks" ||
     rawTab === "alerts" ||
     rawTab === "metrics" ||
-    rawTab === "context"
+    rawTab === "context" ||
+    rawTab === "capacity"
       ? rawTab
       : null;
   const userId = params.get("userId");
@@ -1918,7 +1921,7 @@ function MetricsTab() {
 // Main Page
 // ---------------------------------------------------------------------------
 
-type Tab = "checks" | "alerts" | "metrics" | "context";
+type Tab = "checks" | "alerts" | "metrics" | "context" | "capacity";
 
 type ContextEngineRouteScope = {
   teamId: string | null;
@@ -1949,7 +1952,7 @@ function copyWorkOsLink(path: string, successMessage: string): void {
     });
 }
 
-export default function AdminMonitoring() {
+function AdminMonitoringDashboard() {
   const { user, loading: authLoading } = useAuth();
   const hermesFlags = useTenantFeatureFlags();
   const { locale } = useScopedTranslation("admin");
@@ -2372,6 +2375,7 @@ export default function AdminMonitoring() {
     { id: "checks", label: "Checks" },
     { id: "alerts", label: `Alerts${criticalCount + warningCount > 0 ? ` (${criticalCount + warningCount})` : ""}` },
     { id: "metrics", label: "Metrics" },
+    { id: "capacity", label: "Capacity Advisor" },
     { id: "context", label: "Context & Knowledge" },
   ];
 
@@ -3728,6 +3732,7 @@ export default function AdminMonitoring() {
             />
           )}
           {activeTab === "metrics" && <MetricsTab />}
+          {activeTab === "capacity" && <CapacityAdvisorPanel />}
           {activeTab === "context" && (
             <div className="space-y-6">
               <KnowledgeVaultReadinessDashboard />
@@ -3750,4 +3755,15 @@ export default function AdminMonitoring() {
       </div>
     </div>
   );
+}
+
+/** Keep old bookmarked /admin/monitoring?tab=capacity links aligned with the
+ * dedicated Capacity Advisor surface instead of rendering it inside the dense
+ * operational monitoring dashboard. */
+export default function AdminMonitoring() {
+  const [location] = useLocation();
+  const query = location.includes("?") ? location.slice(location.indexOf("?")) : "";
+  const tab = new URLSearchParams(query).get("tab");
+  if (tab === "capacity") return <AdminCapacityAdvisor />;
+  return <AdminMonitoringDashboard />;
 }

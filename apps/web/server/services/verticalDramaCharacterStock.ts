@@ -47,6 +47,7 @@ import {
   VERTICAL_DRAMA_CHARACTER_ANGLE_ROLES,
   type VerticalDramaCharacterAngleRole,
 } from "@shared/verticalDramaSeries/characterAssets";
+import type { CharacterCastingAgeProfile } from "@shared/verticalDramaSeries/characterCastingAge";
 
 /* -------------------------------------------------------------------------- */
 /* Ownership / param types                                                    */
@@ -59,11 +60,8 @@ export interface VerticalDramaCharacterStockOwner {
 }
 
 /** Media-asset states that must never be attachable as a durable reference. */
-export const VERTICAL_DRAMA_UNATTACHABLE_MEDIA_ASSET_STATUSES: readonly string[] = [
-  "deleted",
-  "failed",
-  "purged",
-] as const;
+export const VERTICAL_DRAMA_UNATTACHABLE_MEDIA_ASSET_STATUSES: readonly string[] =
+  ["deleted", "failed", "purged"] as const;
 
 export type AttachMediaAssetRejectionReason =
   | "media_asset_not_found"
@@ -84,7 +82,7 @@ export class VerticalDramaCharacterStockError extends Error {
       | "candidate_not_ready"
       | "manual_primary_exists"
       | "candidate_integrity_error",
-    message: string,
+    message: string
   ) {
     super(message);
     this.name = "VerticalDramaCharacterStockError";
@@ -116,15 +114,17 @@ export interface PortraitCandidateDraftInput {
   portraitPrompt: string;
   negativePrompt?: string;
   visualIdentitySummary: string;
-  visualBibleSnapshot: VerticalDramaApprovedCharacterVisualBible;
+  visualBibleSnapshot?: VerticalDramaApprovedCharacterVisualBible;
 }
 
-export interface CreatePortraitCandidateDraftBatchParams
-  extends VerticalDramaCharacterStockOwner {
+export interface CreatePortraitCandidateDraftBatchParams extends VerticalDramaCharacterStockOwner {
   characterId: number;
   characterKey: string;
   sharedVisualLanguage: string;
   promptModel: string;
+  referenceGuided?: boolean;
+  referenceAssetLinkIds?: number[];
+  castingAgeProfile?: CharacterCastingAgeProfile;
   candidates: PortraitCandidateDraftInput[];
 }
 
@@ -140,21 +140,27 @@ export interface ClaimedPortraitCandidate {
   promptProfile?: "rich" | "compact" | "legacy";
   castingPreferencesFingerprint?: string;
   semanticRetryCount?: number;
+  referenceGuided?: boolean;
+  referenceAssetLinkIds?: number[];
+  castingAgeProfile?: CharacterCastingAgeProfile;
 }
 
-type PortraitCandidatePrivateMetadata = VerticalDramaPortraitCandidateProjection & {
-  characterKey: string;
-  portraitPrompt: string;
-  negativePrompt?: string;
-  visualIdentitySummary: string;
-  visualBibleSnapshot: VerticalDramaApprovedCharacterVisualBible;
-  sharedVisualLanguage: string;
-  promptModel: string;
-  expiresAt: string;
-  claimedAt?: string;
-  imageModel?: string;
-  submissionError?: string;
-};
+type PortraitCandidatePrivateMetadata =
+  VerticalDramaPortraitCandidateProjection & {
+    characterKey: string;
+    portraitPrompt: string;
+    negativePrompt?: string;
+    visualIdentitySummary: string;
+    visualBibleSnapshot?: VerticalDramaApprovedCharacterVisualBible;
+    sharedVisualLanguage: string;
+    promptModel: string;
+    referenceGuided?: boolean;
+    referenceAssetLinkIds?: number[];
+    expiresAt: string;
+    claimedAt?: string;
+    imageModel?: string;
+    submissionError?: string;
+  };
 
 /* -------------------------------------------------------------------------- */
 /* Pure row <-> contract mapping                                              */
@@ -162,16 +168,22 @@ type PortraitCandidatePrivateMetadata = VerticalDramaPortraitCandidateProjection
 
 /** Derive the coarse lifecycle state from the durable row's flags. */
 export function deriveCharacterAssetState(
-  row: Pick<VerticalDramaCharacterAssetRow, "approved" | "qcStatus" | "metadata">,
+  row: Pick<
+    VerticalDramaCharacterAssetRow,
+    "approved" | "qcStatus" | "metadata"
+  >
 ): VerticalDramaCharacterAssetState {
   const meta = (row.metadata as { state?: string } | null) ?? null;
   if (meta?.state && isCharacterAssetState(meta.state)) return meta.state;
   if (row.approved) return "approved";
-  if (row.qcStatus === "failed" || row.qcStatus === "needs_repair") return "rejected";
+  if (row.qcStatus === "failed" || row.qcStatus === "needs_repair")
+    return "rejected";
   return "draft";
 }
 
-function isCharacterAssetState(v: string): v is VerticalDramaCharacterAssetState {
+function isCharacterAssetState(
+  v: string
+): v is VerticalDramaCharacterAssetState {
   return (
     v === "draft" ||
     v === "generated" ||
@@ -182,27 +194,33 @@ function isCharacterAssetState(v: string): v is VerticalDramaCharacterAssetState
   );
 }
 
-const PORTRAIT_CANDIDATE_STATUSES: readonly VerticalDramaPortraitCandidateStatus[] = [
-  "previewed",
-  "submitting",
-  "queued",
-  "completed",
-  "failed",
-  "selected",
-  "superseded",
-] as const;
+const PORTRAIT_CANDIDATE_STATUSES: readonly VerticalDramaPortraitCandidateStatus[] =
+  [
+    "previewed",
+    "submitting",
+    "queued",
+    "completed",
+    "failed",
+    "selected",
+    "superseded",
+  ] as const;
 
-function isPortraitCandidateStatus(value: unknown): value is VerticalDramaPortraitCandidateStatus {
+function isPortraitCandidateStatus(
+  value: unknown
+): value is VerticalDramaPortraitCandidateStatus {
   return (
     typeof value === "string" &&
-    PORTRAIT_CANDIDATE_STATUSES.includes(value as VerticalDramaPortraitCandidateStatus)
+    PORTRAIT_CANDIDATE_STATUSES.includes(
+      value as VerticalDramaPortraitCandidateStatus
+    )
   );
 }
 
 function readPortraitCandidateMetadataRecord(
-  metadata: unknown,
+  metadata: unknown
 ): Record<string, unknown> | null {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata))
+    return null;
   const candidate = (metadata as Record<string, unknown>).portraitCandidate;
   return candidate && typeof candidate === "object" && !Array.isArray(candidate)
     ? (candidate as Record<string, unknown>)
@@ -211,9 +229,15 @@ function readPortraitCandidateMetadataRecord(
 
 /** Project only bounded lifecycle fields; prompts and DNA snapshots remain server-only. */
 export function projectPortraitCandidateMetadata(
-  metadata: unknown,
+  metadata: unknown
 ): VerticalDramaPortraitCandidateProjection | undefined {
   const candidate = readPortraitCandidateMetadataRecord(metadata);
+  const ageProfile =
+    candidate?.castingAgeProfile &&
+    typeof candidate.castingAgeProfile === "object" &&
+    !Array.isArray(candidate.castingAgeProfile)
+      ? (candidate.castingAgeProfile as Record<string, unknown>)
+      : undefined;
   if (!candidate) return undefined;
   if (
     typeof candidate.batchId !== "string" ||
@@ -236,7 +260,9 @@ export function projectPortraitCandidateMetadata(
     index: candidate.index as number,
     count: candidate.count as number,
     status: candidate.status,
-    ...(typeof candidate.taskId === "string" ? { taskId: candidate.taskId } : {}),
+    ...(typeof candidate.taskId === "string"
+      ? { taskId: candidate.taskId }
+      : {}),
     ...(typeof candidate.selectedAt === "string"
       ? { selectedAt: candidate.selectedAt }
       : {}),
@@ -250,11 +276,32 @@ export function projectPortraitCandidateMetadata(
     ...(typeof candidate.policyRejected === "boolean"
       ? { policyRejected: candidate.policyRejected }
       : {}),
+    ...(candidate.referenceGuided === true ? { referenceGuided: true } : {}),
+    ...(ageProfile &&
+    Number.isInteger(ageProfile.min) &&
+    Number.isInteger(ageProfile.max) &&
+    typeof ageProfile.label === "string"
+      ? {
+          castingAgeProfile: {
+            min: ageProfile.min as number,
+            max: ageProfile.max as number,
+            label: ageProfile.label,
+            source: ageProfile.source as CharacterCastingAgeProfile["source"],
+            confidence:
+              ageProfile.confidence as CharacterCastingAgeProfile["confidence"],
+            rationale:
+              typeof ageProfile.rationale === "string"
+                ? ageProfile.rationale.slice(0, 240)
+                : "",
+            isMinor: ageProfile.isMinor === true,
+          },
+        }
+      : {}),
   };
 }
 
 function readPortraitCandidatePrivateMetadata(
-  metadata: unknown,
+  metadata: unknown
 ): PortraitCandidatePrivateMetadata | null {
   const projected = projectPortraitCandidateMetadata(metadata);
   const candidate = readPortraitCandidateMetadataRecord(metadata);
@@ -270,9 +317,15 @@ function readPortraitCandidatePrivateMetadata(
     return null;
   }
   const snapshot = verticalDramaApprovedCharacterVisualBibleSchema.safeParse(
-    candidate.visualBibleSnapshot,
+    candidate.visualBibleSnapshot
   );
-  if (!snapshot.success) return null;
+  const referenceGuided = candidate.referenceGuided === true;
+  if (!snapshot.success && !referenceGuided) return null;
+  const referenceAssetLinkIds = Array.isArray(candidate.referenceAssetLinkIds)
+    ? candidate.referenceAssetLinkIds.filter(
+        (value): value is number => Number.isInteger(value) && value > 0
+      )
+    : [];
   return {
     ...projected,
     characterKey: candidate.characterKey,
@@ -281,12 +334,21 @@ function readPortraitCandidatePrivateMetadata(
       ? { negativePrompt: candidate.negativePrompt }
       : {}),
     visualIdentitySummary: candidate.visualIdentitySummary,
-    visualBibleSnapshot: snapshot.data,
+    ...(snapshot.success ? { visualBibleSnapshot: snapshot.data } : {}),
     sharedVisualLanguage: candidate.sharedVisualLanguage,
     promptModel: candidate.promptModel,
+    ...(referenceGuided ? { referenceGuided: true } : {}),
+    ...(referenceAssetLinkIds.length > 0 ? { referenceAssetLinkIds } : {}),
+    ...(projected.castingAgeProfile
+      ? { castingAgeProfile: projected.castingAgeProfile }
+      : {}),
     expiresAt: candidate.expiresAt,
-    ...(typeof candidate.claimedAt === "string" ? { claimedAt: candidate.claimedAt } : {}),
-    ...(typeof candidate.imageModel === "string" ? { imageModel: candidate.imageModel } : {}),
+    ...(typeof candidate.claimedAt === "string"
+      ? { claimedAt: candidate.claimedAt }
+      : {}),
+    ...(typeof candidate.imageModel === "string"
+      ? { imageModel: candidate.imageModel }
+      : {}),
     ...(typeof candidate.submissionError === "string"
       ? { submissionError: candidate.submissionError }
       : {}),
@@ -307,7 +369,7 @@ export const VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE =
 
 function mergePortraitCandidateMetadata(
   metadata: unknown,
-  patch: Record<string, unknown>,
+  patch: Record<string, unknown>
 ): Record<string, unknown> {
   const root =
     metadata && typeof metadata === "object" && !Array.isArray(metadata)
@@ -320,9 +382,41 @@ function mergePortraitCandidateMetadata(
   };
 }
 
+/**
+ * Demote an existing primary portrait while keeping its asset link available
+ * as a future reference. Candidate rows also retain their lifecycle metadata
+ * so the old casting result remains auditable and selectable later.
+ */
+export function buildDemotedPrimaryPortraitPatch(
+  row: Pick<VerticalDramaCharacterAssetRow, "metadata" | "qcStatus">
+): {
+  role?: "portrait_candidate";
+  approved: false;
+  qcStatus: typeof row.qcStatus;
+  metadata: Record<string, unknown>;
+} {
+  const previous = readPortraitCandidatePrivateMetadata(row.metadata);
+  return {
+    ...(previous ? { role: "portrait_candidate" as const } : {}),
+    approved: false,
+    qcStatus: previous ? "pending" : row.qcStatus,
+    metadata: previous
+      ? {
+          ...mergePortraitCandidateMetadata(row.metadata, {
+            status: "superseded" satisfies VerticalDramaPortraitCandidateStatus,
+          }),
+          state: "generated" satisfies VerticalDramaCharacterAssetState,
+        }
+      : {
+          ...((row.metadata as Record<string, unknown> | null) ?? {}),
+          state: "generated" satisfies VerticalDramaCharacterAssetState,
+        },
+  };
+}
+
 export function characterAssetRowToContract(
   row: VerticalDramaCharacterAssetRow,
-  thumbnailUrl?: string | null,
+  thumbnailUrl?: string | null
 ): VerticalDramaCharacterAsset {
   const meta = (row.metadata as Record<string, unknown> | null) ?? {};
   const state = deriveCharacterAssetState(row);
@@ -330,19 +424,26 @@ export function characterAssetRowToContract(
     assetLinkId: String(row.id),
     seriesId: String(row.seriesId),
     characterId: row.characterId != null ? String(row.characterId) : "",
-    characterKey: typeof meta.characterKey === "string" ? meta.characterKey : undefined,
-    mediaAssetId: row.mediaAssetId != null ? String(row.mediaAssetId) : undefined,
+    characterKey:
+      typeof meta.characterKey === "string" ? meta.characterKey : undefined,
+    mediaAssetId:
+      row.mediaAssetId != null ? String(row.mediaAssetId) : undefined,
     assetType: row.assetType,
     role: row.role ?? undefined,
     state,
     approved: row.approved,
     containsHumanFace: row.containsHumanFace ?? undefined,
-    qcStatus: (row.qcStatus as VerticalDramaCharacterAsset["qcStatus"]) ?? "pending",
+    qcStatus:
+      (row.qcStatus as VerticalDramaCharacterAsset["qcStatus"]) ?? "pending",
     checksumSha256: row.checksumSha256 ?? undefined,
-    source: (typeof meta.source === "string"
-      ? (meta.source as VerticalDramaCharacterAssetSource)
-      : "imported"),
-    rejectionReason: typeof meta.rejectionReason === "string" ? meta.rejectionReason : undefined,
+    source:
+      typeof meta.source === "string"
+        ? (meta.source as VerticalDramaCharacterAssetSource)
+        : "imported",
+    rejectionReason:
+      typeof meta.rejectionReason === "string"
+        ? meta.rejectionReason
+        : undefined,
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
     thumbnailUrl: thumbnailUrl ?? undefined,
@@ -357,7 +458,7 @@ function toIso(v: Date | string): string {
 /** Pure manifest projection — testable without a database (section-05 test). */
 export function buildCharacterAssetManifest(
   seriesId: number | string,
-  assets: VerticalDramaCharacterAsset[],
+  assets: VerticalDramaCharacterAsset[]
 ): VerticalDramaCharacterAssetManifest {
   let approvedCount = 0;
   let pendingCount = 0;
@@ -366,7 +467,12 @@ export function buildCharacterAssetManifest(
   for (const a of assets) {
     if (a.state === "approved") approvedCount += 1;
     else if (a.state === "stale") staleCount += 1;
-    else if (a.state === "draft" || a.state === "generated" || a.state === "imported") pendingCount += 1;
+    else if (
+      a.state === "draft" ||
+      a.state === "generated" ||
+      a.state === "imported"
+    )
+      pendingCount += 1;
     if (a.updatedAt > updatedAt) updatedAt = a.updatedAt;
   }
   return {
@@ -403,7 +509,10 @@ const CHARACTER_SHEET_ROLES = [
   "character_sheet_full",
 ];
 
-const CHARACTER_ANGLE_ROLE_BY_FACING: Record<string, VerticalDramaCharacterAngleRole> = {
+const CHARACTER_ANGLE_ROLE_BY_FACING: Record<
+  string,
+  VerticalDramaCharacterAngleRole
+> = {
   frontal: "angle_front",
   front: "angle_front",
   left_three_quarter: "angle_left_three_quarter",
@@ -446,9 +555,9 @@ interface CharacterSheetAssetRow {
  * candidate list — the caller falls back to portrait-only, which is
  * documented risk (not a bug): older characters may predate the sheet flow.
  */
-export function pickBestCharacterSheetAsset<T extends CharacterSheetAssetCandidate>(
-  candidates: readonly T[],
-): T | null {
+export function pickBestCharacterSheetAsset<
+  T extends CharacterSheetAssetCandidate,
+>(candidates: readonly T[]): T | null {
   if (candidates.length === 0) return null;
   let best = candidates[0];
   for (let i = 1; i < candidates.length; i++) {
@@ -461,7 +570,7 @@ export function pickBestCharacterSheetAsset<T extends CharacterSheetAssetCandida
 
 function compareCharacterSheetCandidates(
   a: CharacterSheetAssetCandidate,
-  b: CharacterSheetAssetCandidate,
+  b: CharacterSheetAssetCandidate
 ): number {
   if (a.approved !== b.approved) return a.approved ? -1 : 1;
   const aTurnaround = a.role === "character_sheet_turnaround" ? 0 : 1;
@@ -482,7 +591,7 @@ export class VerticalDramaCharacterStockService {
    */
   async assertMediaAssetAttachable(
     owner: VerticalDramaCharacterStockOwner,
-    mediaAssetId: number,
+    mediaAssetId: number
   ): Promise<void> {
     const [row] = await db
       .select({
@@ -497,7 +606,7 @@ export class VerticalDramaCharacterStockService {
     if (!row) {
       throw new VerticalDramaCharacterStockError(
         "media_asset_not_found",
-        "Referenced media asset does not exist",
+        "Referenced media asset does not exist"
       );
     }
     if (row.tenantId !== owner.tenantId) {
@@ -505,19 +614,22 @@ export class VerticalDramaCharacterStockService {
       // precise reason so callers never disclose cross-tenant existence.
       throw new VerticalDramaCharacterStockError(
         "media_asset_cross_tenant",
-        "Referenced media asset belongs to another tenant",
+        "Referenced media asset belongs to another tenant"
       );
     }
     if (row.userId !== owner.userId) {
       throw new VerticalDramaCharacterStockError(
         "media_asset_cross_user",
-        "Referenced media asset belongs to another user",
+        "Referenced media asset belongs to another user"
       );
     }
-    if (row.status && VERTICAL_DRAMA_UNATTACHABLE_MEDIA_ASSET_STATUSES.includes(row.status)) {
+    if (
+      row.status &&
+      VERTICAL_DRAMA_UNATTACHABLE_MEDIA_ASSET_STATUSES.includes(row.status)
+    ) {
       throw new VerticalDramaCharacterStockError(
         "media_asset_deleted",
-        `Referenced media asset is not attachable (status=${row.status})`,
+        `Referenced media asset is not attachable (status=${row.status})`
       );
     }
   }
@@ -529,8 +641,10 @@ export class VerticalDramaCharacterStockService {
    * time from the existing canonical `mediaAssetId` link).
    */
   async listRows(
-    owner: VerticalDramaCharacterStockOwner,
-  ): Promise<Array<VerticalDramaCharacterAssetRow & { thumbnailUrl: string | null }>> {
+    owner: VerticalDramaCharacterStockOwner
+  ): Promise<
+    Array<VerticalDramaCharacterAssetRow & { thumbnailUrl: string | null }>
+  > {
     const rows = await db
       .select({
         ...getTableColumns(verticalDramaCharacterAssets),
@@ -541,62 +655,73 @@ export class VerticalDramaCharacterStockService {
         mediaAssets,
         and(
           eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id),
-          ne(mediaAssets.status, "expired"),
-        ),
+          ne(mediaAssets.status, "expired")
+        )
       )
       .where(
         and(
           eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
           eq(verticalDramaCharacterAssets.userId, owner.userId),
-          eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
-        ),
+          eq(verticalDramaCharacterAssets.seriesId, owner.seriesId)
+        )
       );
-    return rows as Array<VerticalDramaCharacterAssetRow & { thumbnailUrl: string | null }>;
+    return rows as Array<
+      VerticalDramaCharacterAssetRow & { thumbnailUrl: string | null }
+    >;
   }
 
   /** Build the browser-safe per-series character-asset manifest. */
   async getManifest(
-    owner: VerticalDramaCharacterStockOwner,
+    owner: VerticalDramaCharacterStockOwner
   ): Promise<VerticalDramaCharacterAssetManifest> {
     const rows = await this.listRows(owner);
-    const visibleRows = rows.filter((row) => {
+    const visibleRows = rows.filter(row => {
       const candidate = projectPortraitCandidateMetadata(row.metadata);
       return !(
         row.mediaAssetId == null &&
-        (candidate?.status === "previewed" || candidate?.status === "superseded")
+        (candidate?.status === "previewed" ||
+          candidate?.status === "superseded")
       );
     });
     return buildCharacterAssetManifest(
       owner.seriesId,
-      visibleRows.map((row) => characterAssetRowToContract(row, row.thumbnailUrl)),
+      visibleRows.map(row => characterAssetRowToContract(row, row.thumbnailUrl))
     );
   }
 
   /** Persist private, expiring prompt/DNA drafts before any image task is submitted. */
   async createPortraitCandidateDraftBatch(
-    params: CreatePortraitCandidateDraftBatchParams,
+    params: CreatePortraitCandidateDraftBatchParams
   ): Promise<{
     batchId: string;
-    candidates: Array<{ assetLinkId: number; candidateId: string; index: number }>;
+    candidates: Array<{
+      assetLinkId: number;
+      candidateId: string;
+      index: number;
+    }>;
   }> {
     if (params.candidates.length < 1 || params.candidates.length > 5) {
       throw new VerticalDramaCharacterStockError(
         "candidate_integrity_error",
-        "Portrait candidate batch must contain 1-5 candidates.",
+        "Portrait candidate batch must contain 1-5 candidates."
       );
     }
-    const candidateIds = new Set(params.candidates.map((candidate) => candidate.candidateId));
+    const candidateIds = new Set(
+      params.candidates.map(candidate => candidate.candidateId)
+    );
     if (candidateIds.size !== params.candidates.length) {
       throw new VerticalDramaCharacterStockError(
         "candidate_integrity_error",
-        "Portrait candidate ids must be unique within the batch.",
+        "Portrait candidate ids must be unique within the batch."
       );
     }
 
     const batchId = crypto.randomUUID();
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
-    return db.transaction(async (tx) => {
+    const expiresAt = new Date(
+      now.getTime() + 24 * 60 * 60 * 1000
+    ).toISOString();
+    return db.transaction(async tx => {
       const priorDrafts = await tx
         .select()
         .from(verticalDramaCharacterAssets)
@@ -607,8 +732,8 @@ export class VerticalDramaCharacterStockService {
             eq(verticalDramaCharacterAssets.seriesId, params.seriesId),
             eq(verticalDramaCharacterAssets.characterId, params.characterId),
             eq(verticalDramaCharacterAssets.role, "portrait_candidate"),
-            sql`${verticalDramaCharacterAssets.mediaAssetId} IS NULL`,
-          ),
+            sql`${verticalDramaCharacterAssets.mediaAssetId} IS NULL`
+          )
         )
         .for("update");
       for (const prior of priorDrafts) {
@@ -618,7 +743,8 @@ export class VerticalDramaCharacterStockService {
           .update(verticalDramaCharacterAssets)
           .set({
             metadata: mergePortraitCandidateMetadata(prior.metadata, {
-              status: "superseded" satisfies VerticalDramaPortraitCandidateStatus,
+              status:
+                "superseded" satisfies VerticalDramaPortraitCandidateStatus,
               supersededAt: now.toISOString(),
             }),
             updatedAt: now,
@@ -649,30 +775,47 @@ export class VerticalDramaCharacterStockService {
                 candidateId: candidate.candidateId,
                 index,
                 count: params.candidates.length,
-                status: "previewed" satisfies VerticalDramaPortraitCandidateStatus,
+                status:
+                  "previewed" satisfies VerticalDramaPortraitCandidateStatus,
                 characterKey: params.characterKey,
                 portraitPrompt: candidate.portraitPrompt,
                 ...(candidate.negativePrompt
                   ? { negativePrompt: candidate.negativePrompt }
                   : {}),
                 visualIdentitySummary: candidate.visualIdentitySummary,
-                visualBibleSnapshot: candidate.visualBibleSnapshot,
+                ...(candidate.visualBibleSnapshot
+                  ? { visualBibleSnapshot: candidate.visualBibleSnapshot }
+                  : {}),
                 sharedVisualLanguage: params.sharedVisualLanguage,
                 promptModel: params.promptModel,
+                ...(params.referenceGuided ? { referenceGuided: true } : {}),
+                ...(params.referenceAssetLinkIds?.length
+                  ? { referenceAssetLinkIds: params.referenceAssetLinkIds }
+                  : {}),
+                ...(params.castingAgeProfile
+                  ? { castingAgeProfile: params.castingAgeProfile }
+                  : {}),
                 expiresAt,
               } satisfies PortraitCandidatePrivateMetadata,
             },
             createdAt: now,
             updatedAt: now,
-          })),
+          }))
         )
-        .returning({ id: verticalDramaCharacterAssets.id, metadata: verticalDramaCharacterAssets.metadata });
+        .returning({
+          id: verticalDramaCharacterAssets.id,
+          metadata: verticalDramaCharacterAssets.metadata,
+        });
 
       return {
         batchId,
-        candidates: rows.map((row) => {
+        candidates: rows.map(row => {
           const candidate = projectPortraitCandidateMetadata(row.metadata)!;
-          return { assetLinkId: row.id, candidateId: candidate.candidateId, index: candidate.index };
+          return {
+            assetLinkId: row.id,
+            candidateId: candidate.candidateId,
+            index: candidate.index,
+          };
         }),
       };
     });
@@ -682,9 +825,9 @@ export class VerticalDramaCharacterStockService {
   async claimPortraitCandidateBatch(
     owner: VerticalDramaCharacterStockOwner,
     characterId: number,
-    batchId: string,
+    batchId: string
   ): Promise<ClaimedPortraitCandidate[]> {
-    return db.transaction(async (tx) => {
+    return db.transaction(async tx => {
       const rows = await tx
         .select()
         .from(verticalDramaCharacterAssets)
@@ -695,31 +838,35 @@ export class VerticalDramaCharacterStockService {
             eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
             eq(verticalDramaCharacterAssets.characterId, characterId),
             eq(verticalDramaCharacterAssets.role, "portrait_candidate"),
-            sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'batchId' = ${batchId}`,
-          ),
+            sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'batchId' = ${batchId}`
+          )
         )
         .for("update");
       if (rows.length === 0) {
         throw new VerticalDramaCharacterStockError(
           "candidate_batch_not_found",
-          "Portrait candidate batch was not found.",
+          "Portrait candidate batch was not found."
         );
       }
 
-      const parsed = rows.map((row) => ({
+      const parsed = rows.map(row => ({
         row,
         candidate: readPortraitCandidatePrivateMetadata(row.metadata),
       }));
-      if (parsed.some((entry) => !entry.candidate)) {
+      if (parsed.some(entry => !entry.candidate)) {
         throw new VerticalDramaCharacterStockError(
           "candidate_integrity_error",
-          "Portrait candidate batch metadata failed integrity validation.",
+          "Portrait candidate batch metadata failed integrity validation."
         );
       }
-      const candidates = parsed.map((entry) => entry.candidate!);
+      const candidates = parsed.map(entry => entry.candidate!);
       const expectedCount = candidates[0]!.count;
-      const uniqueIndexes = new Set(candidates.map((candidate) => candidate.index));
-      const uniqueIds = new Set(candidates.map((candidate) => candidate.candidateId));
+      const uniqueIndexes = new Set(
+        candidates.map(candidate => candidate.index)
+      );
+      const uniqueIds = new Set(
+        candidates.map(candidate => candidate.candidateId)
+      );
       if (
         rows.length !== expectedCount ||
         uniqueIndexes.size !== expectedCount ||
@@ -727,19 +874,23 @@ export class VerticalDramaCharacterStockService {
       ) {
         throw new VerticalDramaCharacterStockError(
           "candidate_integrity_error",
-          "Portrait candidate batch is incomplete or contains duplicate candidates.",
+          "Portrait candidate batch is incomplete or contains duplicate candidates."
         );
       }
-      if (candidates.some((candidate) => new Date(candidate.expiresAt).getTime() <= Date.now())) {
+      if (
+        candidates.some(
+          candidate => new Date(candidate.expiresAt).getTime() <= Date.now()
+        )
+      ) {
         throw new VerticalDramaCharacterStockError(
           "candidate_batch_expired",
-          "Portrait candidate preview expired; generate a fresh batch.",
+          "Portrait candidate preview expired; generate a fresh batch."
         );
       }
-      if (candidates.some((candidate) => candidate.status !== "previewed")) {
+      if (candidates.some(candidate => candidate.status !== "previewed")) {
         throw new VerticalDramaCharacterStockError(
           "candidate_batch_claimed",
-          "Portrait candidate batch has already been submitted or superseded.",
+          "Portrait candidate batch has already been submitted or superseded."
         );
       }
 
@@ -749,7 +900,8 @@ export class VerticalDramaCharacterStockService {
           .update(verticalDramaCharacterAssets)
           .set({
             metadata: mergePortraitCandidateMetadata(row.metadata, {
-              status: "submitting" satisfies VerticalDramaPortraitCandidateStatus,
+              status:
+                "submitting" satisfies VerticalDramaPortraitCandidateStatus,
               claimedAt,
             }),
             updatedAt: new Date(claimedAt),
@@ -766,9 +918,18 @@ export class VerticalDramaCharacterStockService {
           count: candidate!.count,
           portraitPrompt: candidate!.portraitPrompt,
           negativePrompt: candidate!.negativePrompt,
-          promptContractVersion: candidate!.visualBibleSnapshot.promptContractVersion,
-          promptProfile: candidate!.visualBibleSnapshot.promptProfile,
-          semanticRetryCount: candidate!.visualBibleSnapshot.semanticRetryCount,
+          promptContractVersion:
+            candidate!.visualBibleSnapshot?.promptContractVersion,
+          promptProfile: candidate!.visualBibleSnapshot?.promptProfile,
+          semanticRetryCount:
+            candidate!.visualBibleSnapshot?.semanticRetryCount,
+          ...(candidate!.referenceGuided ? { referenceGuided: true } : {}),
+          ...(candidate!.referenceAssetLinkIds
+            ? { referenceAssetLinkIds: candidate!.referenceAssetLinkIds }
+            : {}),
+          ...(candidate!.castingAgeProfile
+            ? { castingAgeProfile: candidate!.castingAgeProfile }
+            : {}),
         }))
         .sort((left, right) => left.index - right.index);
     });
@@ -777,7 +938,7 @@ export class VerticalDramaCharacterStockService {
   async getPortraitCandidateBatchCount(
     owner: VerticalDramaCharacterStockOwner,
     characterId: number,
-    batchId: string,
+    batchId: string
   ): Promise<number> {
     const rows = (await db
       .select({ metadata: verticalDramaCharacterAssets.metadata })
@@ -789,24 +950,26 @@ export class VerticalDramaCharacterStockService {
           eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
           eq(verticalDramaCharacterAssets.characterId, characterId),
           eq(verticalDramaCharacterAssets.role, "portrait_candidate"),
-          sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'batchId' = ${batchId}`,
-        ),
+          sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'batchId' = ${batchId}`
+        )
       )) as Array<{ metadata: unknown }>;
     const candidates = rows
-      .map((row) => readPortraitCandidatePrivateMetadata(row.metadata))
-      .filter((candidate): candidate is PortraitCandidatePrivateMetadata => Boolean(candidate));
+      .map(row => readPortraitCandidatePrivateMetadata(row.metadata))
+      .filter((candidate): candidate is PortraitCandidatePrivateMetadata =>
+        Boolean(candidate)
+      );
     const expectedCount = candidates[0]?.count;
     if (
       !expectedCount ||
       candidates.length !== expectedCount ||
       candidates.some(
-        (candidate) =>
-          candidate.batchId !== batchId || candidate.status !== "previewed",
+        candidate =>
+          candidate.batchId !== batchId || candidate.status !== "previewed"
       )
     ) {
       throw new VerticalDramaCharacterStockError(
         "candidate_batch_not_found",
-        "Portrait candidate batch is unavailable for submission.",
+        "Portrait candidate batch is unavailable for submission."
       );
     }
     return expectedCount;
@@ -816,7 +979,7 @@ export class VerticalDramaCharacterStockService {
   async getPortraitCandidateBatchForPreflight(
     owner: VerticalDramaCharacterStockOwner,
     characterId: number,
-    batchId: string,
+    batchId: string
   ): Promise<ClaimedPortraitCandidate[]> {
     const rows: Array<{ metadata: unknown }> = await db
       .select({ metadata: verticalDramaCharacterAssets.metadata })
@@ -828,23 +991,29 @@ export class VerticalDramaCharacterStockService {
           eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
           eq(verticalDramaCharacterAssets.characterId, characterId),
           eq(verticalDramaCharacterAssets.role, "portrait_candidate"),
-          sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'batchId' = ${batchId}`,
-        ),
+          sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'batchId' = ${batchId}`
+        )
       );
-    const candidates = rows.map(row => readPortraitCandidatePrivateMetadata(row.metadata));
+    const candidates = rows.map(row =>
+      readPortraitCandidatePrivateMetadata(row.metadata)
+    );
     const expectedCount = candidates[0]?.count;
     if (
       !expectedCount ||
       candidates.length !== expectedCount ||
-      candidates.some(candidate => !candidate || candidate.status !== "previewed")
+      candidates.some(
+        candidate => !candidate || candidate.status !== "previewed"
+      )
     ) {
       throw new VerticalDramaCharacterStockError(
         "candidate_batch_not_found",
-        "Portrait candidate batch is unavailable for preflight.",
+        "Portrait candidate batch is unavailable for preflight."
       );
     }
     return candidates
-      .filter((candidate): candidate is PortraitCandidatePrivateMetadata => Boolean(candidate))
+      .filter((candidate): candidate is PortraitCandidatePrivateMetadata =>
+        Boolean(candidate)
+      )
       .map(candidate => ({
         assetLinkId: 0,
         batchId: candidate.batchId,
@@ -853,18 +1022,23 @@ export class VerticalDramaCharacterStockService {
         count: candidate.count,
         portraitPrompt: candidate.portraitPrompt,
         negativePrompt: candidate.negativePrompt,
-        promptContractVersion: candidate.visualBibleSnapshot.promptContractVersion,
-        promptProfile: candidate.visualBibleSnapshot.promptProfile,
+        promptContractVersion:
+          candidate.visualBibleSnapshot?.promptContractVersion,
+        promptProfile: candidate.visualBibleSnapshot?.promptProfile,
         castingPreferencesFingerprint:
-          candidate.visualBibleSnapshot.castingPreferencesFingerprint,
-        semanticRetryCount: candidate.visualBibleSnapshot.semanticRetryCount,
+          candidate.visualBibleSnapshot?.castingPreferencesFingerprint,
+        semanticRetryCount: candidate.visualBibleSnapshot?.semanticRetryCount,
+        ...(candidate.referenceGuided ? { referenceGuided: true } : {}),
+        ...(candidate.referenceAssetLinkIds
+          ? { referenceAssetLinkIds: candidate.referenceAssetLinkIds }
+          : {}),
       }))
       .sort((left, right) => left.index - right.index);
   }
 
   async getPortraitCandidateTaskInfo(
     owner: VerticalDramaCharacterStockOwner,
-    assetLinkId: number,
+    assetLinkId: number
   ): Promise<
     VerticalDramaPortraitCandidateProjection & {
       characterId: number;
@@ -877,7 +1051,7 @@ export class VerticalDramaCharacterStockService {
     if (!candidate || row.characterId == null) {
       throw new VerticalDramaCharacterStockError(
         "candidate_not_ready",
-        "Portrait candidate task metadata is unavailable.",
+        "Portrait candidate task metadata is unavailable."
       );
     }
     let imageUrl: string | null = null;
@@ -889,8 +1063,8 @@ export class VerticalDramaCharacterStockService {
           and(
             eq(mediaAssets.id, row.mediaAssetId),
             eq(mediaAssets.tenantId, owner.tenantId),
-            eq(mediaAssets.userId, owner.userId),
-          ),
+            eq(mediaAssets.userId, owner.userId)
+          )
         )
         .limit(1);
       imageUrl = mediaRow?.url ?? null;
@@ -903,17 +1077,23 @@ export class VerticalDramaCharacterStockService {
     };
   }
 
-  async recordPortraitCandidateTask(params: VerticalDramaCharacterStockOwner & {
-    assetLinkId: number;
-    taskId: string;
-    imageModel: string;
-  }): Promise<void> {
+  async recordPortraitCandidateTask(
+    params: VerticalDramaCharacterStockOwner & {
+      assetLinkId: number;
+      taskId: string;
+      imageModel: string;
+    }
+  ): Promise<void> {
     const row = await this.loadOwnedRow(params, params.assetLinkId);
     const candidate = readPortraitCandidatePrivateMetadata(row.metadata);
-    if (!candidate || row.role !== "portrait_candidate" || candidate.status !== "submitting") {
+    if (
+      !candidate ||
+      row.role !== "portrait_candidate" ||
+      candidate.status !== "submitting"
+    ) {
       throw new VerticalDramaCharacterStockError(
         "candidate_not_ready",
-        "Portrait candidate is not awaiting task submission.",
+        "Portrait candidate is not awaiting task submission."
       );
     }
     await db
@@ -931,8 +1111,8 @@ export class VerticalDramaCharacterStockService {
           eq(verticalDramaCharacterAssets.id, params.assetLinkId),
           eq(verticalDramaCharacterAssets.tenantId, params.tenantId),
           eq(verticalDramaCharacterAssets.userId, params.userId),
-          eq(verticalDramaCharacterAssets.seriesId, params.seriesId),
-        ),
+          eq(verticalDramaCharacterAssets.seriesId, params.seriesId)
+        )
       );
   }
 
@@ -958,16 +1138,21 @@ export class VerticalDramaCharacterStockService {
    * start-frame paths' `vertical-drama-shot-image-action` skill) — building
    * one is a real new feature, deliberately deferred; see plan.md Set A.
    */
-  async markPortraitCandidateSubmissionFailed(params: VerticalDramaCharacterStockOwner & {
-    assetLinkId: number;
-    errorMessage: string;
-  }): Promise<void> {
+  async markPortraitCandidateSubmissionFailed(
+    params: VerticalDramaCharacterStockOwner & {
+      assetLinkId: number;
+      errorMessage: string;
+    }
+  ): Promise<void> {
     const row = await this.loadOwnedRow(params, params.assetLinkId);
     const candidate = readPortraitCandidatePrivateMetadata(row.metadata);
     if (!candidate) return;
-    if (candidate.status !== "submitting" && candidate.status !== "queued") return;
+    if (candidate.status !== "submitting" && candidate.status !== "queued")
+      return;
     const rawErrorMessage = params.errorMessage.slice(0, 1000);
-    const policyRejected = isCharacterLockPolicyFailureMessage(params.errorMessage);
+    const policyRejected = isCharacterLockPolicyFailureMessage(
+      params.errorMessage
+    );
     const displayErrorMessage = policyRejected
       ? VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE
       : rawErrorMessage;
@@ -1000,10 +1185,12 @@ export class VerticalDramaCharacterStockService {
       .where(eq(verticalDramaCharacterAssets.id, params.assetLinkId));
   }
 
-  async attachGeneratedPortraitCandidate(params: VerticalDramaCharacterStockOwner & {
-    assetLinkId: number;
-    mediaAssetId: number;
-  }): Promise<VerticalDramaCharacterAsset> {
+  async attachGeneratedPortraitCandidate(
+    params: VerticalDramaCharacterStockOwner & {
+      assetLinkId: number;
+      mediaAssetId: number;
+    }
+  ): Promise<VerticalDramaCharacterAsset> {
     await this.assertMediaAssetAttachable(params, params.mediaAssetId);
     const row = await this.loadOwnedRow(params, params.assetLinkId);
     const candidate = readPortraitCandidatePrivateMetadata(row.metadata);
@@ -1021,7 +1208,7 @@ export class VerticalDramaCharacterStockService {
     ) {
       throw new VerticalDramaCharacterStockError(
         "candidate_not_ready",
-        "Portrait candidate is not ready to attach a generated image.",
+        "Portrait candidate is not ready to attach a generated image."
       );
     }
     const [updated] = await db
@@ -1044,22 +1231,33 @@ export class VerticalDramaCharacterStockService {
           eq(verticalDramaCharacterAssets.id, params.assetLinkId),
           eq(verticalDramaCharacterAssets.tenantId, params.tenantId),
           eq(verticalDramaCharacterAssets.userId, params.userId),
-          eq(verticalDramaCharacterAssets.seriesId, params.seriesId),
-        ),
+          eq(verticalDramaCharacterAssets.seriesId, params.seriesId)
+        )
       )
       .returning();
     if (!updated) {
-      throw new VerticalDramaCharacterStockError("asset_not_found", "Character asset not found");
+      throw new VerticalDramaCharacterStockError(
+        "asset_not_found",
+        "Character asset not found"
+      );
     }
-    return characterAssetRowToContract(updated as VerticalDramaCharacterAssetRow);
+    return characterAssetRowToContract(
+      updated as VerticalDramaCharacterAssetRow
+    );
   }
 
-  /** Promote one completed candidate and its private DNA snapshot atomically. */
-  async selectPortraitCandidate(params: VerticalDramaCharacterStockOwner & {
-    characterId: number;
-    assetLinkId: number;
-  }): Promise<VerticalDramaCharacterAsset> {
-    return db.transaction(async (tx) => {
+  /** Promote one completed candidate and its private DNA snapshot atomically.
+   *
+   * This also supports regeneration: an existing ordinary primary portrait is
+   * demoted to an approved=false reference row instead of blocking replacement.
+   */
+  async selectPortraitCandidate(
+    params: VerticalDramaCharacterStockOwner & {
+      characterId: number;
+      assetLinkId: number;
+    }
+  ): Promise<VerticalDramaCharacterAsset> {
+    return db.transaction(async tx => {
       const [chosen] = await tx
         .select()
         .from(verticalDramaCharacterAssets)
@@ -1069,22 +1267,22 @@ export class VerticalDramaCharacterStockService {
             eq(verticalDramaCharacterAssets.tenantId, params.tenantId),
             eq(verticalDramaCharacterAssets.userId, params.userId),
             eq(verticalDramaCharacterAssets.seriesId, params.seriesId),
-            eq(verticalDramaCharacterAssets.characterId, params.characterId),
-          ),
+            eq(verticalDramaCharacterAssets.characterId, params.characterId)
+          )
         )
         .for("update")
         .limit(1);
       if (!chosen) {
         throw new VerticalDramaCharacterStockError(
           "asset_not_found",
-          "Portrait candidate was not found.",
+          "Portrait candidate was not found."
         );
       }
       const candidate = readPortraitCandidatePrivateMetadata(chosen.metadata);
       if (!candidate || chosen.mediaAssetId == null) {
         throw new VerticalDramaCharacterStockError(
           "candidate_not_ready",
-          "Portrait candidate has not completed generation.",
+          "Portrait candidate has not completed generation."
         );
       }
       if (
@@ -1093,12 +1291,18 @@ export class VerticalDramaCharacterStockService {
       ) {
         throw new VerticalDramaCharacterStockError(
           "candidate_not_ready",
-          "Portrait candidate is not selectable in its current state.",
+          "Portrait candidate is not selectable in its current state."
         );
       }
 
-      if (candidate.status === "selected" && chosen.role === "primary_portrait" && chosen.approved) {
-        return characterAssetRowToContract(chosen as VerticalDramaCharacterAssetRow);
+      if (
+        candidate.status === "selected" &&
+        chosen.role === "primary_portrait" &&
+        chosen.approved
+      ) {
+        return characterAssetRowToContract(
+          chosen as VerticalDramaCharacterAssetRow
+        );
       }
 
       const existingPrimaries = await tx
@@ -1111,36 +1315,19 @@ export class VerticalDramaCharacterStockService {
             eq(verticalDramaCharacterAssets.seriesId, params.seriesId),
             eq(verticalDramaCharacterAssets.characterId, params.characterId),
             eq(verticalDramaCharacterAssets.role, "primary_portrait"),
-            ne(verticalDramaCharacterAssets.id, params.assetLinkId),
-          ),
+            ne(verticalDramaCharacterAssets.id, params.assetLinkId)
+          )
         )
         .for("update");
-      if (
-        existingPrimaries.some(
-          (row) => !readPortraitCandidatePrivateMetadata(row.metadata),
-        )
-      ) {
-        throw new VerticalDramaCharacterStockError(
-          "manual_primary_exists",
-          "A manually imported primary portrait already exists and was not replaced.",
-        );
-      }
-
       for (const row of existingPrimaries) {
-        const previous = readPortraitCandidatePrivateMetadata(row.metadata);
-        if (!previous) continue;
+        const demotedPatch = buildDemotedPrimaryPortraitPatch(row);
         await tx
           .update(verticalDramaCharacterAssets)
           .set({
-            role: "portrait_candidate",
-            approved: false,
-            qcStatus: "pending",
-            metadata: {
-              ...mergePortraitCandidateMetadata(row.metadata, {
-                status: "superseded" satisfies VerticalDramaPortraitCandidateStatus,
-              }),
-              state: "generated" satisfies VerticalDramaCharacterAssetState,
-            },
+            // Keep an old manually imported/generated portrait as a
+            // primary_portrait reference row. Only the approval/state winner
+            // changes, so it remains available for future promotion.
+            ...demotedPatch,
             updatedAt: new Date(),
           })
           .where(eq(verticalDramaCharacterAssets.id, row.id));
@@ -1164,30 +1351,40 @@ export class VerticalDramaCharacterStockService {
         })
         .where(eq(verticalDramaCharacterAssets.id, chosen.id))
         .returning();
-      const [updatedCharacter] = await tx
-        .update(verticalDramaCharacters)
-        .set({
-          data: sql`jsonb_set(COALESCE(${verticalDramaCharacters.data}, '{}'::jsonb), '{visualBible}', ${JSON.stringify(
-            candidate.visualBibleSnapshot,
-          )}::jsonb, true)`,
-          updatedAt: new Date(selectedAt),
-        })
-        .where(
-          and(
-            eq(verticalDramaCharacters.id, params.characterId),
-            eq(verticalDramaCharacters.tenantId, params.tenantId),
-            eq(verticalDramaCharacters.userId, params.userId),
-            eq(verticalDramaCharacters.seriesId, params.seriesId),
-          ),
-        )
-        .returning({ id: verticalDramaCharacters.id });
-      if (!updated || !updatedCharacter) {
+      if (!updated) {
         throw new VerticalDramaCharacterStockError(
           "candidate_integrity_error",
-          "Unable to atomically select portrait candidate and Character DNA.",
+          "Unable to select portrait candidate."
         );
       }
-      return characterAssetRowToContract(updated as VerticalDramaCharacterAssetRow);
+      if (candidate.visualBibleSnapshot) {
+        const [updatedCharacter] = await tx
+          .update(verticalDramaCharacters)
+          .set({
+            data: sql`jsonb_set(COALESCE(${verticalDramaCharacters.data}, '{}'::jsonb), '{visualBible}', ${JSON.stringify(
+              candidate.visualBibleSnapshot
+            )}::jsonb, true)`,
+            updatedAt: new Date(selectedAt),
+          })
+          .where(
+            and(
+              eq(verticalDramaCharacters.id, params.characterId),
+              eq(verticalDramaCharacters.tenantId, params.tenantId),
+              eq(verticalDramaCharacters.userId, params.userId),
+              eq(verticalDramaCharacters.seriesId, params.seriesId)
+            )
+          )
+          .returning({ id: verticalDramaCharacters.id });
+        if (!updatedCharacter) {
+          throw new VerticalDramaCharacterStockError(
+            "candidate_integrity_error",
+            "Unable to atomically select portrait candidate and Character DNA."
+          );
+        }
+      }
+      return characterAssetRowToContract(
+        updated as VerticalDramaCharacterAssetRow
+      );
     });
   }
 
@@ -1209,17 +1406,19 @@ export class VerticalDramaCharacterStockService {
    * chosen row, un-approve its siblings. No role churn, no new column, and
    * nothing downstream needs to learn a new concept.
    *
-   * For an asset that is a first-portrait BATCH candidate this is the wrong
-   * entry point — `selectPortraitCandidate` must run instead, because choosing
-   * a candidate also locks the character's DNA snapshot. The router routes
+   * For an asset that belongs to a candidate batch this is the wrong entry
+   * point — `selectPortraitCandidate` must run instead, because choosing a
+   * candidate also locks the character's DNA snapshot. The router routes
    * between the two; this method rejects candidates rather than silently
    * skipping the DNA write.
    */
-  async setPrimaryPortraitAsset(params: VerticalDramaCharacterStockOwner & {
-    characterId: number;
-    assetLinkId: number;
-  }): Promise<VerticalDramaCharacterAsset> {
-    return db.transaction(async (tx) => {
+  async setPrimaryPortraitAsset(
+    params: VerticalDramaCharacterStockOwner & {
+      characterId: number;
+      assetLinkId: number;
+    }
+  ): Promise<VerticalDramaCharacterAsset> {
+    return db.transaction(async tx => {
       const [chosen] = await tx
         .select()
         .from(verticalDramaCharacterAssets)
@@ -1229,27 +1428,27 @@ export class VerticalDramaCharacterStockService {
             eq(verticalDramaCharacterAssets.tenantId, params.tenantId),
             eq(verticalDramaCharacterAssets.userId, params.userId),
             eq(verticalDramaCharacterAssets.seriesId, params.seriesId),
-            eq(verticalDramaCharacterAssets.characterId, params.characterId),
-          ),
+            eq(verticalDramaCharacterAssets.characterId, params.characterId)
+          )
         )
         .for("update")
         .limit(1);
       if (!chosen) {
         throw new VerticalDramaCharacterStockError(
           "asset_not_found",
-          "Character asset not found.",
+          "Character asset not found."
         );
       }
       if (chosen.mediaAssetId == null) {
         throw new VerticalDramaCharacterStockError(
           "asset_not_found",
-          "Character asset has no attached media and cannot be the main image.",
+          "Character asset has no attached media and cannot be the main image."
         );
       }
       if (readPortraitCandidatePrivateMetadata(chosen.metadata)) {
         throw new VerticalDramaCharacterStockError(
           "asset_wrong_role",
-          "This image is a first-portrait candidate — select it through selectPortraitCandidate so the Character DNA is locked with it.",
+          "This image is a first-portrait candidate — select it through selectPortraitCandidate so the Character DNA is locked with it."
         );
       }
 
@@ -1263,8 +1462,8 @@ export class VerticalDramaCharacterStockService {
             eq(verticalDramaCharacterAssets.seriesId, params.seriesId),
             eq(verticalDramaCharacterAssets.characterId, params.characterId),
             eq(verticalDramaCharacterAssets.role, "primary_portrait"),
-            ne(verticalDramaCharacterAssets.id, params.assetLinkId),
-          ),
+            ne(verticalDramaCharacterAssets.id, params.assetLinkId)
+          )
         )
         .for("update");
 
@@ -1312,10 +1511,12 @@ export class VerticalDramaCharacterStockService {
       if (!updated) {
         throw new VerticalDramaCharacterStockError(
           "asset_not_found",
-          "Character asset not found.",
+          "Character asset not found."
         );
       }
-      return characterAssetRowToContract(updated as VerticalDramaCharacterAssetRow);
+      return characterAssetRowToContract(
+        updated as VerticalDramaCharacterAssetRow
+      );
     });
   }
 
@@ -1331,7 +1532,7 @@ export class VerticalDramaCharacterStockService {
    */
   async getPrimaryPortraitUrl(
     owner: VerticalDramaCharacterStockOwner,
-    characterId: number,
+    characterId: number
   ): Promise<string | null> {
     const [row] = await db
       .select({ url: mediaAssets.originalUrl })
@@ -1340,8 +1541,8 @@ export class VerticalDramaCharacterStockService {
         mediaAssets,
         and(
           eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id),
-          ne(mediaAssets.status, "expired"),
-        ),
+          ne(mediaAssets.status, "expired")
+        )
       )
       .where(
         and(
@@ -1349,10 +1550,13 @@ export class VerticalDramaCharacterStockService {
           eq(verticalDramaCharacterAssets.userId, owner.userId),
           eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
           eq(verticalDramaCharacterAssets.characterId, characterId),
-          eq(verticalDramaCharacterAssets.role, "primary_portrait"),
-        ),
+          eq(verticalDramaCharacterAssets.role, "primary_portrait")
+        )
       )
-      .orderBy(desc(verticalDramaCharacterAssets.approved), desc(verticalDramaCharacterAssets.updatedAt))
+      .orderBy(
+        desc(verticalDramaCharacterAssets.approved),
+        desc(verticalDramaCharacterAssets.updatedAt)
+      )
       .limit(1);
     return row?.url ?? null;
   }
@@ -1370,9 +1574,12 @@ export class VerticalDramaCharacterStockService {
    */
   async getReferenceImageUrlByAssetLinkId(
     owner: VerticalDramaCharacterStockOwner,
-    assetLinkId: number,
+    assetLinkId: number
   ): Promise<string> {
-    const resolved = await this.getReferenceImageByAssetLinkId(owner, assetLinkId);
+    const resolved = await this.getReferenceImageByAssetLinkId(
+      owner,
+      assetLinkId
+    );
     return resolved.url;
   }
 
@@ -1395,26 +1602,71 @@ export class VerticalDramaCharacterStockService {
   async getReferenceImageByAssetLinkId(
     owner: VerticalDramaCharacterStockOwner,
     assetLinkId: number,
+    purpose: "identity" | "casting" = "identity"
   ): Promise<{ url: string; characterId: number | null }> {
     const row = await this.loadOwnedRow(owner, assetLinkId);
-    if (row.role !== "primary_portrait") {
+    const allowedCastingReference =
+      purpose === "casting" && row.role === "casting_reference";
+    if (row.role !== "primary_portrait" && !allowedCastingReference) {
       throw new VerticalDramaCharacterStockError(
         "asset_wrong_role",
-        `Character asset ${assetLinkId} is not a primary_portrait (role=${row.role ?? "null"}) and cannot be used as an identity-lock reference image`,
+        `Character asset ${assetLinkId} is not a primary_portrait or casting_reference (role=${row.role ?? "null"}) and cannot be used as a casting reference image`
       );
     }
     if (row.mediaAssetId == null) {
-      throw new VerticalDramaCharacterStockError("asset_not_found", "Character asset has no attached media");
+      throw new VerticalDramaCharacterStockError(
+        "asset_not_found",
+        "Character asset has no attached media"
+      );
     }
     const [mediaRow] = await db
-      .select({ url: mediaAssets.originalUrl })
+      .select({
+        url: mediaAssets.originalUrl,
+        status: mediaAssets.status,
+      })
       .from(mediaAssets)
       .where(eq(mediaAssets.id, row.mediaAssetId))
       .limit(1);
-    if (!mediaRow?.url) {
-      throw new VerticalDramaCharacterStockError("asset_not_found", "Character asset has no attached media");
+    if (!mediaRow?.url || mediaRow.status === "expired") {
+      throw new VerticalDramaCharacterStockError(
+        "asset_not_found",
+        "Character asset has no attached media"
+      );
     }
     return { url: mediaRow.url, characterId: row.characterId ?? null };
+  }
+
+  /** Resolve only this character's own primary portraits for casting. */
+  async getCharacterReferenceImageUrls(
+    owner: VerticalDramaCharacterStockOwner,
+    characterId: number,
+    assetLinkIds: readonly number[]
+  ): Promise<string[]> {
+    const ids = Array.from(
+      new Set(assetLinkIds.filter(id => Number.isInteger(id) && id > 0))
+    );
+    if (ids.length < 1 || ids.length > 6) {
+      throw new VerticalDramaCharacterStockError(
+        "asset_not_found",
+        "Character casting accepts 1-6 reference images."
+      );
+    }
+    const resolved: string[] = [];
+    for (const assetLinkId of ids) {
+      const reference = await this.getReferenceImageByAssetLinkId(
+        owner,
+        assetLinkId,
+        "casting"
+      );
+      if (reference.characterId !== characterId) {
+        throw new VerticalDramaCharacterStockError(
+          "asset_not_found",
+          "Reference image does not belong to this character."
+        );
+      }
+      resolved.push(reference.url);
+    }
+    return resolved;
   }
 
   /**
@@ -1428,22 +1680,28 @@ export class VerticalDramaCharacterStockService {
    */
   async getPrimaryPortraitAssetId(
     owner: VerticalDramaCharacterStockOwner,
-    characterId: number,
+    characterId: number
   ): Promise<number | null> {
     const [row] = await db
       .select({ id: mediaAssets.id })
       .from(verticalDramaCharacterAssets)
-      .innerJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
+      .innerJoin(
+        mediaAssets,
+        eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id)
+      )
       .where(
         and(
           eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
           eq(verticalDramaCharacterAssets.userId, owner.userId),
           eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
           eq(verticalDramaCharacterAssets.characterId, characterId),
-          eq(verticalDramaCharacterAssets.role, "primary_portrait"),
-        ),
+          eq(verticalDramaCharacterAssets.role, "primary_portrait")
+        )
       )
-      .orderBy(desc(verticalDramaCharacterAssets.approved), desc(verticalDramaCharacterAssets.updatedAt))
+      .orderBy(
+        desc(verticalDramaCharacterAssets.approved),
+        desc(verticalDramaCharacterAssets.updatedAt)
+      )
       .limit(1);
     return row?.id ?? null;
   }
@@ -1452,24 +1710,34 @@ export class VerticalDramaCharacterStockService {
   async getApprovedAngleAssetId(
     owner: VerticalDramaCharacterStockOwner,
     characterId: number,
-    desiredFacing?: string,
+    desiredFacing?: string
   ): Promise<number | null> {
     const angleRole = desiredFacing
-      ? CHARACTER_ANGLE_ROLE_BY_FACING[desiredFacing.trim().toLowerCase().replace(/[\s-]+/g, "_")]
+      ? CHARACTER_ANGLE_ROLE_BY_FACING[
+          desiredFacing
+            .trim()
+            .toLowerCase()
+            .replace(/[\s-]+/g, "_")
+        ]
       : undefined;
     if (!angleRole) return null;
     const [row] = await db
       .select({ id: mediaAssets.id })
       .from(verticalDramaCharacterAssets)
-      .innerJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
-      .where(and(
-        eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
-        eq(verticalDramaCharacterAssets.userId, owner.userId),
-        eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
-        eq(verticalDramaCharacterAssets.characterId, characterId),
-        eq(verticalDramaCharacterAssets.role, angleRole),
-        eq(verticalDramaCharacterAssets.approved, true),
-      ))
+      .innerJoin(
+        mediaAssets,
+        eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id)
+      )
+      .where(
+        and(
+          eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
+          eq(verticalDramaCharacterAssets.userId, owner.userId),
+          eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
+          eq(verticalDramaCharacterAssets.characterId, characterId),
+          eq(verticalDramaCharacterAssets.role, angleRole),
+          eq(verticalDramaCharacterAssets.approved, true)
+        )
+      )
       .orderBy(desc(verticalDramaCharacterAssets.updatedAt))
       .limit(1);
     return row?.id ?? null;
@@ -1502,7 +1770,7 @@ export class VerticalDramaCharacterStockService {
   async getCharacterReferenceUrls(
     owner: VerticalDramaCharacterStockOwner,
     characterId: number,
-    opts: { includeSheet: boolean; desiredFacing?: string },
+    opts: { includeSheet: boolean; desiredFacing?: string }
   ): Promise<string[]> {
     const portraitUrl = await this.getPrimaryPortraitUrl(owner, characterId);
     const urls: string[] = portraitUrl ? [portraitUrl] : [];
@@ -1515,7 +1783,10 @@ export class VerticalDramaCharacterStockService {
       const [angleRow] = await db
         .select({ url: mediaAssets.originalUrl })
         .from(verticalDramaCharacterAssets)
-        .innerJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
+        .innerJoin(
+          mediaAssets,
+          eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id)
+        )
         .where(
           and(
             eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
@@ -1523,12 +1794,13 @@ export class VerticalDramaCharacterStockService {
             eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
             eq(verticalDramaCharacterAssets.characterId, characterId),
             eq(verticalDramaCharacterAssets.role, angleRole),
-            eq(verticalDramaCharacterAssets.approved, true),
-          ),
+            eq(verticalDramaCharacterAssets.approved, true)
+          )
         )
         .orderBy(desc(verticalDramaCharacterAssets.updatedAt))
         .limit(1);
-      if (angleRow?.url && !urls.includes(angleRow.url)) return [angleRow.url, ...urls];
+      if (angleRow?.url && !urls.includes(angleRow.url))
+        return [angleRow.url, ...urls];
     }
 
     const sheetRows: CharacterSheetAssetRow[] = await db
@@ -1539,20 +1811,23 @@ export class VerticalDramaCharacterStockService {
         updatedAt: verticalDramaCharacterAssets.updatedAt,
       })
       .from(verticalDramaCharacterAssets)
-      .innerJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
+      .innerJoin(
+        mediaAssets,
+        eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id)
+      )
       .where(
         and(
           eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
           eq(verticalDramaCharacterAssets.userId, owner.userId),
           eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
           eq(verticalDramaCharacterAssets.characterId, characterId),
-          inArray(verticalDramaCharacterAssets.role, CHARACTER_SHEET_ROLES),
-        ),
+          inArray(verticalDramaCharacterAssets.role, CHARACTER_SHEET_ROLES)
+        )
       );
     const bestSheet = pickBestCharacterSheetAsset(
-      sheetRows.filter(
-        (row): row is CharacterSheetAssetRow & { url: string } => Boolean(row.url),
-      ),
+      sheetRows.filter((row): row is CharacterSheetAssetRow & { url: string } =>
+        Boolean(row.url)
+      )
     );
     if (bestSheet && !urls.includes(bestSheet.url)) urls.push(bestSheet.url);
     return urls;
@@ -1588,27 +1863,78 @@ export class VerticalDramaCharacterStockService {
    * dedupes real character+asset pairs — never collapses distinct "browse
    * only" or product-reference rows that happen to share nulls.
    */
-  async linkAsset(params: LinkCharacterAssetParams): Promise<VerticalDramaCharacterAsset> {
+  async linkAsset(
+    params: LinkCharacterAssetParams
+  ): Promise<VerticalDramaCharacterAsset> {
     const approvalRequired = params.approvalRequired === true;
-    const nextState: VerticalDramaCharacterAssetState = approvalRequired ? "generated" : "approved";
+    const nextState: VerticalDramaCharacterAssetState = approvalRequired
+      ? "generated"
+      : "approved";
     if (params.mediaAssetId != null) {
       await this.assertMediaAssetAttachable(params, params.mediaAssetId);
     }
 
-    if (params.characterId != null && params.mediaAssetId != null) {
-      const [existing] = await db
-        .select()
-        .from(verticalDramaCharacterAssets)
-        .where(
-          and(
-            eq(verticalDramaCharacterAssets.tenantId, params.tenantId),
-            eq(verticalDramaCharacterAssets.userId, params.userId),
-            eq(verticalDramaCharacterAssets.seriesId, params.seriesId),
-            eq(verticalDramaCharacterAssets.characterId, params.characterId),
-            eq(verticalDramaCharacterAssets.mediaAssetId, params.mediaAssetId),
-          ),
-        )
-        .limit(1);
+    return db.transaction(async tx => {
+      let existing: VerticalDramaCharacterAssetRow | undefined;
+      if (params.characterId != null && params.mediaAssetId != null) {
+        [existing] = await tx
+          .select()
+          .from(verticalDramaCharacterAssets)
+          .where(
+            and(
+              eq(verticalDramaCharacterAssets.tenantId, params.tenantId),
+              eq(verticalDramaCharacterAssets.userId, params.userId),
+              eq(verticalDramaCharacterAssets.seriesId, params.seriesId),
+              eq(verticalDramaCharacterAssets.characterId, params.characterId),
+              eq(verticalDramaCharacterAssets.mediaAssetId, params.mediaAssetId)
+            )
+          )
+          .limit(1);
+      }
+
+      // A generated/imported portrait is linked only after its provider task
+      // has completed. At that point it becomes the new current primary, while
+      // every older primary remains in history but is no longer eligible for
+      // auto-reference resolution. Keep this transition in the same DB
+      // transaction as the insert/update so concurrent completions cannot
+      // leave multiple approved primary portraits behind.
+      if (
+        params.characterId != null &&
+        params.mediaAssetId != null &&
+        params.role === "primary_portrait" &&
+        !approvalRequired
+      ) {
+        const siblings = await tx
+          .select()
+          .from(verticalDramaCharacterAssets)
+          .where(
+            and(
+              eq(verticalDramaCharacterAssets.tenantId, params.tenantId),
+              eq(verticalDramaCharacterAssets.userId, params.userId),
+              eq(verticalDramaCharacterAssets.seriesId, params.seriesId),
+              eq(verticalDramaCharacterAssets.characterId, params.characterId),
+              eq(verticalDramaCharacterAssets.role, "primary_portrait")
+            )
+          )
+          .for("update");
+        const now = new Date();
+        for (const sibling of siblings) {
+          if (sibling.id === existing?.id) continue;
+          if (deriveCharacterAssetState(sibling) !== "approved") continue;
+          await tx
+            .update(verticalDramaCharacterAssets)
+            .set({
+              approved: false,
+              metadata: {
+                ...((sibling.metadata as Record<string, unknown> | null) ?? {}),
+                state: "generated" satisfies VerticalDramaCharacterAssetState,
+              },
+              updatedAt: now,
+            })
+            .where(eq(verticalDramaCharacterAssets.id, sibling.id));
+        }
+      }
+
       if (existing) {
         const meta: Record<string, unknown> = {
           ...((existing.metadata as Record<string, unknown> | null) ?? {}),
@@ -1616,50 +1942,53 @@ export class VerticalDramaCharacterStockService {
           state: nextState,
           source: params.source,
         };
-        const [updated] = await db
+        const [updated] = await tx
           .update(verticalDramaCharacterAssets)
           .set({
             assetType: params.assetType,
             role: params.role ?? existing.role,
             approved: !approvalRequired,
-            containsHumanFace: params.containsHumanFace ?? existing.containsHumanFace,
+            containsHumanFace:
+              params.containsHumanFace ?? existing.containsHumanFace,
             checksumSha256: params.checksumSha256 ?? existing.checksumSha256,
             metadata: meta,
             updatedAt: new Date(),
           })
           .where(eq(verticalDramaCharacterAssets.id, existing.id))
           .returning();
-        return characterAssetRowToContract(updated as VerticalDramaCharacterAssetRow);
+        return characterAssetRowToContract(
+          updated as VerticalDramaCharacterAssetRow
+        );
       }
-    }
 
-    const [row] = await db
-      .insert(verticalDramaCharacterAssets)
-      .values({
-        tenantId: params.tenantId,
-        userId: params.userId,
-        seriesId: params.seriesId,
-        characterId: params.characterId ?? null,
-        mediaAssetId: params.mediaAssetId ?? null,
-        assetType: params.assetType,
-        role: params.role ?? null,
-        approved: !approvalRequired,
-        containsHumanFace: params.containsHumanFace ?? null,
-        qcStatus: "pending",
-        checksumSha256: params.checksumSha256 ?? null,
-        metadata: {
-          ...(params.metadata ?? {}),
-          state: nextState,
-          source: params.source,
-        },
-      } as typeof verticalDramaCharacterAssets.$inferInsert)
-      .returning();
-    return characterAssetRowToContract(row as VerticalDramaCharacterAssetRow);
+      const [row] = await tx
+        .insert(verticalDramaCharacterAssets)
+        .values({
+          tenantId: params.tenantId,
+          userId: params.userId,
+          seriesId: params.seriesId,
+          characterId: params.characterId ?? null,
+          mediaAssetId: params.mediaAssetId ?? null,
+          assetType: params.assetType,
+          role: params.role ?? null,
+          approved: !approvalRequired,
+          containsHumanFace: params.containsHumanFace ?? null,
+          qcStatus: "pending",
+          checksumSha256: params.checksumSha256 ?? null,
+          metadata: {
+            ...(params.metadata ?? {}),
+            state: nextState,
+            source: params.source,
+          },
+        } as typeof verticalDramaCharacterAssets.$inferInsert)
+        .returning();
+      return characterAssetRowToContract(row as VerticalDramaCharacterAssetRow);
+    });
   }
 
   private async loadOwnedRow(
     owner: VerticalDramaCharacterStockOwner,
-    assetLinkId: number,
+    assetLinkId: number
   ): Promise<VerticalDramaCharacterAssetRow> {
     const [row] = await db
       .select()
@@ -1669,12 +1998,15 @@ export class VerticalDramaCharacterStockService {
           eq(verticalDramaCharacterAssets.id, assetLinkId),
           eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
           eq(verticalDramaCharacterAssets.userId, owner.userId),
-          eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
-        ),
+          eq(verticalDramaCharacterAssets.seriesId, owner.seriesId)
+        )
       )
       .limit(1);
     if (!row) {
-      throw new VerticalDramaCharacterStockError("asset_not_found", "Character asset not found");
+      throw new VerticalDramaCharacterStockError(
+        "asset_not_found",
+        "Character asset not found"
+      );
     }
     return row;
   }
@@ -1684,13 +2016,15 @@ export class VerticalDramaCharacterStockService {
    * rejected / stale). Illegal transitions throw. Approval requires an explicit
    * `to: "approved"` call — the state machine forbids skipping review.
    */
-  async transition(params: TransitionCharacterAssetParams): Promise<VerticalDramaCharacterAsset> {
+  async transition(
+    params: TransitionCharacterAssetParams
+  ): Promise<VerticalDramaCharacterAsset> {
     const row = await this.loadOwnedRow(params, params.assetLinkId);
     const from = deriveCharacterAssetState(row);
     if (!canTransitionCharacterAssetState(from, params.to)) {
       throw new VerticalDramaCharacterStockError(
         "illegal_state_transition",
-        `illegal_character_asset_transition: ${from} -> ${params.to}`,
+        `illegal_character_asset_transition: ${from} -> ${params.to}`
       );
     }
     const next = transitionCharacterAssetState(from, params.to);
@@ -1698,12 +2032,18 @@ export class VerticalDramaCharacterStockService {
       ...((row.metadata as Record<string, unknown> | null) ?? {}),
       state: next,
     };
-    if (params.rejectionReason != null) meta.rejectionReason = params.rejectionReason;
+    if (params.rejectionReason != null)
+      meta.rejectionReason = params.rejectionReason;
     const [updated] = await db
       .update(verticalDramaCharacterAssets)
       .set({
         approved: next === "approved",
-        qcStatus: next === "rejected" ? "failed" : next === "approved" ? "passed" : row.qcStatus,
+        qcStatus:
+          next === "rejected"
+            ? "failed"
+            : next === "approved"
+              ? "passed"
+              : row.qcStatus,
         metadata: meta,
         updatedAt: new Date(),
       })
@@ -1711,17 +2051,19 @@ export class VerticalDramaCharacterStockService {
         and(
           eq(verticalDramaCharacterAssets.id, params.assetLinkId),
           eq(verticalDramaCharacterAssets.tenantId, params.tenantId),
-          eq(verticalDramaCharacterAssets.userId, params.userId),
-        ),
+          eq(verticalDramaCharacterAssets.userId, params.userId)
+        )
       )
       .returning();
-    return characterAssetRowToContract(updated as VerticalDramaCharacterAssetRow);
+    return characterAssetRowToContract(
+      updated as VerticalDramaCharacterAssetRow
+    );
   }
 
   /** Mark a set of approved references stale (e.g. after an identity change). */
   async markStale(
     owner: VerticalDramaCharacterStockOwner,
-    assetLinkIds: number[],
+    assetLinkIds: number[]
   ): Promise<number> {
     if (assetLinkIds.length === 0) return 0;
     const rows = await db
@@ -1732,14 +2074,17 @@ export class VerticalDramaCharacterStockService {
           eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
           eq(verticalDramaCharacterAssets.userId, owner.userId),
           eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
-          inArray(verticalDramaCharacterAssets.id, assetLinkIds),
-        ),
+          inArray(verticalDramaCharacterAssets.id, assetLinkIds)
+        )
       );
     let count = 0;
     for (const row of rows) {
       const from = deriveCharacterAssetState(row);
       if (!canTransitionCharacterAssetState(from, "stale")) continue;
-      const meta = { ...((row.metadata as Record<string, unknown> | null) ?? {}), state: "stale" };
+      const meta = {
+        ...((row.metadata as Record<string, unknown> | null) ?? {}),
+        state: "stale",
+      };
       await db
         .update(verticalDramaCharacterAssets)
         .set({ metadata: meta, updatedAt: new Date() })
@@ -1761,7 +2106,7 @@ export class VerticalDramaCharacterStockService {
    */
   async deleteAsset(
     owner: VerticalDramaCharacterStockOwner,
-    assetLinkId: number,
+    assetLinkId: number
   ): Promise<void> {
     await this.loadOwnedRow(owner, assetLinkId);
     await db
@@ -1771,11 +2116,12 @@ export class VerticalDramaCharacterStockService {
           eq(verticalDramaCharacterAssets.id, assetLinkId),
           eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
           eq(verticalDramaCharacterAssets.userId, owner.userId),
-          eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
-        ),
+          eq(verticalDramaCharacterAssets.seriesId, owner.seriesId)
+        )
       );
   }
 }
 
 /** Shared singleton. */
-export const verticalDramaCharacterStockService = new VerticalDramaCharacterStockService();
+export const verticalDramaCharacterStockService =
+  new VerticalDramaCharacterStockService();

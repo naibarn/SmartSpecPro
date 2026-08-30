@@ -1,4 +1,6 @@
 export const GEMINI_OMNI_VIDEO_MODEL_ID = "gemini-omni-video";
+export const GEMINI_OMNI_FLASH_1_1_VIDEO_MODEL_ID = "gemini-omni-flash-1-1";
+export const GEMINI_OMNI_FLASH_1_1_PROVIDER_MODEL_ID = "google/gemini-omni-flash-1-1";
 export const GEMINI_OMNI_CHARACTER_CAPABILITY = "gemini_omni_character";
 export const GEMINI_OMNI_AUDIO_CAPABILITY = "gemini_omni_audio";
 export const GEMINI_OMNI_CONTRACT_VERSION = "1.0.0";
@@ -84,6 +86,7 @@ export type GeminiOmniReferenceVideoInput =
     };
 
 export interface GeminiOmniVideoValidationInput {
+  modelId?: unknown;
   prompt?: string | null;
   imageUrls?: unknown;
   videoList?: unknown;
@@ -93,6 +96,8 @@ export interface GeminiOmniVideoValidationInput {
   audioIds?: unknown;
   duration?: unknown;
   resolution?: unknown;
+  firstFrameUrl?: unknown;
+  lastFrameUrl?: unknown;
 }
 
 export interface GeminiOmniNormalizedVideoInput {
@@ -102,7 +107,9 @@ export interface GeminiOmniNormalizedVideoInput {
   characterIds: string[];
   audioIds: string[];
   duration: "4" | "6" | "8" | "10";
-  resolution: "720p" | "1080p" | "4K";
+  resolution: "360p" | "720p" | "1080p" | "4K";
+  firstFrameUrl?: string;
+  lastFrameUrl?: string;
   referenceUnitCount: number;
   hasSourceVideo: boolean;
   pricingPresenceLabel: "with-video" | "without-video";
@@ -122,7 +129,11 @@ export interface GeminiOmniValidationIssue {
     | "invalid_audio_id"
     | "reference_unit_limit"
     | "unsupported_duration"
-    | "unsupported_resolution";
+    | "unsupported_resolution"
+    | "invalid_first_frame_url"
+    | "invalid_last_frame_url"
+    | "last_frame_requires_first_frame"
+    | "first_last_frame_conflict";
   message: string;
   field?: string;
 }
@@ -150,7 +161,8 @@ export interface GeminiOmniProductionNodeCapabilityInput {
 }
 
 const SUPPORTED_DURATIONS = new Set(["4", "6", "8", "10"]);
-const SUPPORTED_RESOLUTIONS = new Set(["720p", "1080p", "4K"]);
+const LEGACY_SUPPORTED_RESOLUTIONS = new Set(["720p", "1080p", "4K"]);
+const FLASH_1_1_SUPPORTED_RESOLUTIONS = new Set(["360p", "720p", "1080p", "4K"]);
 const SAFE_RELATIVE_MEDIA_PREFIXES = ["/uploads/", "/api/storage/files/"] as const;
 
 function isUnsafeLocalHostname(hostname: string): boolean {
@@ -183,15 +195,32 @@ function normalizeStringList(value: unknown): string[] {
     .filter(Boolean);
 }
 
+export function isGeminiOmniVideoModelId(value: unknown): boolean {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return normalized === GEMINI_OMNI_VIDEO_MODEL_ID
+    || normalized === "gemini-omni"
+    || normalized === "gemini_omni_video"
+    || normalized === GEMINI_OMNI_FLASH_1_1_VIDEO_MODEL_ID
+    || normalized === GEMINI_OMNI_FLASH_1_1_PROVIDER_MODEL_ID
+    || normalized === "gemini_omni_flash_1_1";
+}
+
+export function isGeminiOmniFlash11VideoModelId(value: unknown): boolean {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return normalized === GEMINI_OMNI_FLASH_1_1_VIDEO_MODEL_ID
+    || normalized === GEMINI_OMNI_FLASH_1_1_PROVIDER_MODEL_ID
+    || normalized === "gemini_omni_flash_1_1";
+}
+
 export function normalizeGeminiOmniDuration(value: unknown): "4" | "6" | "8" | "10" {
   const normalized = String(value ?? "4").trim().replace(/s$/i, "");
   return SUPPORTED_DURATIONS.has(normalized) ? normalized as "4" | "6" | "8" | "10" : "4";
 }
 
-export function normalizeGeminiOmniResolution(value: unknown): "720p" | "1080p" | "4K" {
+export function normalizeGeminiOmniResolution(value: unknown): "360p" | "720p" | "1080p" | "4K" {
   const raw = String(value ?? "1080p").trim();
   const normalized = raw.toLowerCase() === "4k" ? "4K" : raw.toLowerCase();
-  if (normalized === "720p" || normalized === "1080p" || normalized === "4K") {
+  if (normalized === "360p" || normalized === "720p" || normalized === "1080p" || normalized === "4K") {
     return normalized;
   }
   return "1080p";
@@ -264,6 +293,9 @@ export function validateGeminiOmniVideoInput(input: GeminiOmniVideoValidationInp
   const videoList = normalizeGeminiOmniVideoList(input.videoList, input.referenceVideoUrls, input.referenceVideoUrl);
   const characterIds = normalizeStringList(input.characterIds);
   const audioIds = normalizeStringList(input.audioIds);
+  const firstFrameUrl = String(input.firstFrameUrl ?? "").trim() || undefined;
+  const lastFrameUrl = String(input.lastFrameUrl ?? "").trim() || undefined;
+  const isFlash11 = isGeminiOmniFlash11VideoModelId(input.modelId);
   const duration = normalizeGeminiOmniDuration(input.duration);
   const resolution = normalizeGeminiOmniResolution(input.resolution);
   const rawResolution = normalizeGeminiOmniResolutionForValidation(input.resolution);
@@ -277,6 +309,21 @@ export function validateGeminiOmniVideoInput(input: GeminiOmniVideoValidationInp
     if (!isGeminiOmniAllowedMediaReferenceUrl(url)) {
       issues.push({ code: "invalid_image_url", field: "image_urls", message: "Reference images must be public HTTP(S) URLs or tenant upload URLs." });
     }
+  }
+  if (firstFrameUrl && !isGeminiOmniAllowedMediaReferenceUrl(firstFrameUrl)) {
+    issues.push({ code: "invalid_first_frame_url", field: "first_frame_url", message: "First frame must be a public HTTP(S) URL or tenant upload URL." });
+  }
+  if (lastFrameUrl && !isGeminiOmniAllowedMediaReferenceUrl(lastFrameUrl)) {
+    issues.push({ code: "invalid_last_frame_url", field: "last_frame_url", message: "Last frame must be a public HTTP(S) URL or tenant upload URL." });
+  }
+  if (lastFrameUrl && !firstFrameUrl) {
+    issues.push({ code: "last_frame_requires_first_frame", field: "last_frame_url", message: "Last frame requires a first frame." });
+  }
+  if (firstFrameUrl && !isFlash11) {
+    issues.push({ code: "first_last_frame_conflict", field: "first_frame_url", message: "First and last frame inputs are supported only by Gemini Omni Flash 1.1." });
+  }
+  if ((firstFrameUrl || lastFrameUrl) && (imageUrls.length || videoList.length || characterIds.length || audioIds.length)) {
+    issues.push({ code: "first_last_frame_conflict", field: "first_frame_url", message: "Frame inputs cannot be combined with image, video, character, or audio references." });
   }
   if (videoList.length > GEMINI_OMNI_MAX_SOURCE_VIDEOS) {
     issues.push({ code: "too_many_videos", field: "video_list", message: "Gemini Omni Video supports at most one source video." });
@@ -318,8 +365,9 @@ export function validateGeminiOmniVideoInput(input: GeminiOmniVideoValidationInp
   if (!SUPPORTED_DURATIONS.has(String(input.duration ?? "4").replace(/s$/i, ""))) {
     issues.push({ code: "unsupported_duration", field: "duration", message: "Gemini Omni duration must be 4s, 6s, 8s, or 10s." });
   }
-  if (!SUPPORTED_RESOLUTIONS.has(rawResolution)) {
-    issues.push({ code: "unsupported_resolution", field: "resolution", message: "Gemini Omni resolution must be 720p, 1080p, or 4K." });
+  const supportedResolutions = isFlash11 ? FLASH_1_1_SUPPORTED_RESOLUTIONS : LEGACY_SUPPORTED_RESOLUTIONS;
+  if (!supportedResolutions.has(rawResolution)) {
+    issues.push({ code: "unsupported_resolution", field: "resolution", message: isFlash11 ? "Gemini Omni Flash 1.1 resolution must be 360p, 720p, 1080p, or 4K." : "Gemini Omni resolution must be 720p, 1080p, or 4K." });
   }
 
   return {
@@ -333,6 +381,8 @@ export function validateGeminiOmniVideoInput(input: GeminiOmniVideoValidationInp
       audioIds,
       duration,
       resolution,
+      ...(firstFrameUrl ? { firstFrameUrl } : {}),
+      ...(lastFrameUrl ? { lastFrameUrl } : {}),
       referenceUnitCount,
       hasSourceVideo: videoList.length > 0,
       pricingPresenceLabel: videoList.length > 0 ? "with-video" : "without-video",
@@ -348,11 +398,17 @@ export function buildGeminiOmniProviderExtraParams(input: GeminiOmniVideoValidat
     ...(start !== undefined ? { start } : {}),
     ...(ends !== undefined ? { ends } : {}),
   }));
+  const hasFrameInput = Boolean(validation.normalized.firstFrameUrl || validation.normalized.lastFrameUrl);
   return {
-    image_urls: validation.normalized.imageUrls,
-    video_list: providerVideoList,
-    character_ids: validation.normalized.characterIds,
-    audio_ids: validation.normalized.audioIds,
+    ...(hasFrameInput ? {
+      ...(validation.normalized.firstFrameUrl ? { first_frame_url: validation.normalized.firstFrameUrl } : {}),
+      ...(validation.normalized.lastFrameUrl ? { last_frame_url: validation.normalized.lastFrameUrl } : {}),
+    } : {
+      image_urls: validation.normalized.imageUrls,
+      video_list: providerVideoList,
+      character_ids: validation.normalized.characterIds,
+      audio_ids: validation.normalized.audioIds,
+    }),
     duration: validation.normalized.duration,
     resolution: validation.normalized.resolution,
     gemini_omni_contract_version: GEMINI_OMNI_CONTRACT_VERSION,

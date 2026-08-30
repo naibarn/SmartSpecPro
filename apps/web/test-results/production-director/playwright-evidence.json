@@ -10,18 +10,14 @@
     "grep": {},
     "grepInvert": null,
     "maxFailures": 0,
-    "metadata": {
-      "actualWorkers": 1
-    },
+    "metadata": {},
     "preserveOutput": "always",
     "projects": [
       {
         "outputDir": "/home/dev/projects/SmartSpecPro/apps/web/test-results/production-director",
         "repeatEach": 1,
         "retries": 0,
-        "metadata": {
-          "actualWorkers": 1
-        },
+        "metadata": {},
         "id": "chromium",
         "name": "chromium",
         "testDir": "/home/dev/projects/SmartSpecPro/apps/web/tests/e2e",
@@ -62,64 +58,21 @@
       "reuseExistingServer": true
     }
   },
-  "suites": [
+  "suites": [],
+  "errors": [
     {
-      "title": "marketplace-hyperframes-ui.spec.ts",
-      "file": "marketplace-hyperframes-ui.spec.ts",
-      "column": 0,
-      "line": 0,
-      "specs": [],
-      "suites": [
-        {
-          "title": "Marketplace HyperFrames Auto Review UI gate",
-          "file": "marketplace-hyperframes-ui.spec.ts",
-          "line": 934,
-          "column": 6,
-          "specs": [
-            {
-              "title": "authenticated Storyboard Review selected shot video preview keeps media visible under overlay layers",
-              "ok": true,
-              "tags": [],
-              "tests": [
-                {
-                  "timeout": 120000,
-                  "annotations": [],
-                  "expectedStatus": "passed",
-                  "projectId": "chromium",
-                  "projectName": "chromium",
-                  "results": [
-                    {
-                      "workerIndex": 0,
-                      "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 3521,
-                      "errors": [],
-                      "stdout": [],
-                      "stderr": [],
-                      "retry": 0,
-                      "startTime": "2026-06-17T14:28:18.859Z",
-                      "annotations": [],
-                      "attachments": []
-                    }
-                  ],
-                  "status": "expected"
-                }
-              ],
-              "id": "5a050f4a632e5693260d-b3c40bcc32550c928d9e",
-              "file": "marketplace-hyperframes-ui.spec.ts",
-              "line": 1575,
-              "column": 3
-            }
-          ]
-        }
-      ]
+      "message": "SyntaxError: The requested module './limits' does not provide an export named 'HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC'",
+      "stack": "SyntaxError: The requested module './limits' does not provide an export named 'HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC'"
+    },
+    {
+      "message": "Error: No tests found.\nMake sure that arguments are regular expressions matching test files.\nYou may need to escape symbols like \"$\" or \"*\" and quote the arguments.",
+      "stack": "Error: No tests found.\nMake sure that arguments are regular expressions matching test files.\nYou may need to escape symbols like \"$\" or \"*\" and quote the arguments."
     }
   ],
-  "errors": [],
   "stats": {
-    "startTime": "2026-06-17T14:28:12.921Z",
-    "duration": 9638.595,
-    "expected": 1,
+    "startTime": "2026-08-29T12:29:01.915Z",
+    "duration": 6274.984,
+    "expected": 0,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

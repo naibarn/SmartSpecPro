@@ -52,8 +52,29 @@ async function getSettingValue(
 }
 
 export async function getRegistrationMode(): Promise<"open" | "invite_only"> {
-  const mode = await getSettingValue("registration", "registration_mode", "open");
-  return mode === "invite_only" ? "invite_only" : "open";
+  try {
+    const db = await getDb();
+    // A missing setting means a fresh install and keeps the documented
+    // default (open). A DB outage must fail closed so Invite Only can never
+    // silently become Open Registration.
+    if (!db) return "invite_only";
+
+    const [setting] = await db
+      .select()
+      .from(systemSettings)
+      .where(
+        and(
+          eq(systemSettings.category, "registration"),
+          eq(systemSettings.key, "registration_mode"),
+        ),
+      )
+      .limit(1);
+
+    if (!setting) return "open";
+    return setting.value === "open" ? "open" : "invite_only";
+  } catch {
+    return "invite_only";
+  }
 }
 
 export async function getUserInviteEnabled(): Promise<boolean> {

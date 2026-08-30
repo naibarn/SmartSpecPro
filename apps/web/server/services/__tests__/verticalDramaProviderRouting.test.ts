@@ -30,6 +30,7 @@ const videoModels = staticModels.filter((m) => m.type === "video");
 const veoLite = staticModels.find((m) => m.id === "veo3/generate-veo-3-video-lite")!;
 const sora = staticModels.find((m) => m.id === "sora-2")!;
 const geminiOmni = staticModels.find((m) => m.id === "gemini-omni-video")!;
+const geminiOmniFlash11 = staticModels.find((m) => m.id === "gemini-omni-flash-1-1")!;
 
 describe("resolveVideoModels", () => {
   it("lists every enabled compatible video model with capability metadata", () => {
@@ -52,6 +53,8 @@ describe("alias resolution", () => {
   it("resolves aliases for Veo, Gemini Omni, and Grok Imagine", () => {
     expect(resolveVideoModelId("veo 3.1 lite")).toBe("veo3/generate-veo-3-video-lite");
     expect(resolveVideoModelId("gemini omni")).toBe("gemini-omni-video");
+    expect(resolveVideoModelId("gemini-omni-flash-1-1")).toBe("gemini-omni-flash-1-1");
+    expect(resolveVideoModelId("google/gemini-omni-flash-1-1")).toBe("gemini-omni-flash-1-1");
     expect(resolveVideoModelId("grok video 3")).toBeDefined();
   });
   it("defines Seedance + Grok Imagine 1.5 alias groups", () => {
@@ -80,6 +83,15 @@ describe("capability derivation", () => {
     const caps = deriveVideoCapabilities(sora);
     expect(caps.supportsHumanFaceInputReference).toBe(false);
     expect(caps.supportsFirstLastFrameVideo).toBe(false);
+  });
+
+  it("derives first/last-frame capability from Gemini Omni Flash 1.1 URL fields", () => {
+    expect(detectProviderFamily(geminiOmniFlash11)).toBe("gemini_omni");
+    const caps = deriveVideoCapabilities(geminiOmniFlash11);
+    expect(caps.supportsFirstLastFrameVideo).toBe(true);
+    expect(caps.allowedVideoSeconds).toEqual([4, 6, 8, 10]);
+    const resolved = resolveVideoModelsFromList([geminiOmniFlash11]);
+    expect(resolved.models[0]?.supportedMotionModes).toContain("first_last_frame_bridge");
   });
 
   it("enables OpenAI face bridge only under explicit policy opt-in", () => {

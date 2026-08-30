@@ -37,7 +37,7 @@ import {
 } from "./autoTeamSafetyService";
 import { assertPublicIp, sanitizeUri } from "./ssrfValidation";
 import * as monitoringService from "./monitoringService";
-import { getActiveStorageConfig, storagePut, storageStreamFile } from "../storage";
+import { assertR2StorageActive, getActiveStorageConfig, storagePut, storageStreamFile } from "../storage";
 import { isInternalUri } from "../../shared/types/mediaJobValidation";
 import {
   parseManagedMediaUrl,
@@ -1675,6 +1675,7 @@ async function internalizeFinalMediaUrl(input: {
   }
   const contentHash = crypto.createHash("sha256").update(bytes).digest("hex");
   const extension = extensionForMedia(contentType, finalUrl);
+  await assertR2StorageActive();
   const stored = await storagePut(
     `auto-team-media/${input.pipeline.tenantId}/${input.pipeline.runId}/final-${contentHash}.${extension}`,
     bytes,

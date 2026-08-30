@@ -6145,6 +6145,7 @@ async function generateFullSlideMediaAssetForRelayout(options: {
               ...(extraParams ? { extraParams } : {}),
               auditContext: {
                 userId: options.actor.userId,
+                tenantId: options.actor.tenantId,
                 traceId: `relayout-full-slide:${options.slideIndex}:${randomBytes(6).toString("hex")}`,
                 source: "ai_draft.relayoutExistingSlideAsync.full_slide_media",
               },
@@ -6161,6 +6162,7 @@ async function generateFullSlideMediaAssetForRelayout(options: {
           {
             auditContext: {
               userId: options.actor.userId,
+              tenantId: options.actor.tenantId,
               traceId: `relayout-full-slide:${options.slideIndex}:${mediaTask.id}`,
               source: "ai_draft.relayoutExistingSlideAsync.full_slide_media",
             },
@@ -6206,6 +6208,7 @@ async function generateFullSlideMediaAssetForRelayout(options: {
         ...(extraParams ? { extraParams } : {}),
         auditContext: {
           userId: options.actor.userId,
+          tenantId: options.actor.tenantId,
           traceId: `relayout-full-slide:${options.slideIndex}:${randomBytes(6).toString("hex")}`,
           source: "ai_draft.relayoutExistingSlideAsync.full_slide_media",
         },
@@ -6222,6 +6225,7 @@ async function generateFullSlideMediaAssetForRelayout(options: {
     {
       auditContext: {
         userId: options.actor.userId,
+        tenantId: options.actor.tenantId,
         traceId: `relayout-full-slide:${options.slideIndex}:${mediaTask.id}`,
         source: "ai_draft.relayoutExistingSlideAsync.full_slide_media",
       },
@@ -8535,7 +8539,9 @@ async function processLLMSuccess(
       outputTokens: Number.isFinite(outputTokens) ? outputTokens : 0,
       costUsd,
       description: billing?.description,
-      sourceType: "skill",
+      // Presentation LLM calls are not direct skill runs; direct skill
+      // execution uses an explicit skill slug and fixed settlement.
+      sourceType: "other",
       metadata: billing
         ? {
             operation: "ai_draft_llm",
@@ -9672,6 +9678,7 @@ export async function repairSlideFromSavedNote(
             ...(slideExtraParams ? { extraParams: slideExtraParams } : {}),
             auditContext: {
               userId: actor.userId,
+              tenantId: actor.tenantId,
               traceId: `${repairTaskId}:slide:${input.slideIndex}:variant:${variantIndex + 1}:image`,
               source: "ai_draft.repairSlideFromSavedNote",
               stage: "repair_slide_media_submit",
@@ -12398,6 +12405,7 @@ export async function generateAIDraft(
                         ...(slideExtraParams ? { extraParams: slideExtraParams } : {}),
                         auditContext: {
                           userId: actor.userId,
+                          tenantId: actor.tenantId,
                           traceId: `${taskId}:slide:${index + 1}:variant:${variantIndex + 1}:video`,
                           source: "ai_draft.generateAIDraft",
                           stage: "phase_4_media_submit",
@@ -12419,6 +12427,7 @@ export async function generateAIDraft(
                         ...(slideExtraParams ? { extraParams: slideExtraParams } : {}),
                         auditContext: {
                           userId: actor.userId,
+                          tenantId: actor.tenantId,
                           traceId: `${taskId}:slide:${index + 1}:variant:${variantIndex + 1}:image`,
                           source: "ai_draft.generateAIDraft",
                           stage: "phase_4_media_submit",
@@ -12438,6 +12447,7 @@ export async function generateAIDraft(
                 {
                   auditContext: {
                     userId: actor.userId,
+                    tenantId: actor.tenantId,
                     traceId: `${taskId}:slide:${index + 1}:variant:${variantIndex + 1}:${isVideoSkill ? "video" : "image"}:poll`,
                     source: "ai_draft.generateAIDraft",
                     stage: "phase_4_media_poll",
@@ -12581,6 +12591,7 @@ export async function generateAIDraft(
                 ...(audioExtraParamsForSlide ? { extraParams: audioExtraParamsForSlide } : {}),
                 auditContext: {
                   userId: actor.userId,
+                  tenantId: actor.tenantId,
                   traceId: `${taskId}:slide:${index + 1}:audio`,
                   source: "ai_draft.generateAIDraft",
                   stage: "phase_5_audio_submit",
@@ -12600,6 +12611,7 @@ export async function generateAIDraft(
             {
               auditContext: {
                 userId: actor.userId,
+                tenantId: actor.tenantId,
                 traceId: `${taskId}:slide:${index + 1}:audio:poll`,
                 source: "ai_draft.generateAIDraft",
                 stage: "phase_5_audio_poll",
@@ -13682,7 +13694,7 @@ export async function resolvePendingMediaForDeck(
               deckId: input.deckId,
               task,
               mediaType: job.mediaType,
-              slotId: job.slotId,
+              slotId: job.targetSlotId,
             });
             if (durable) {
               durableTask = durable.task;

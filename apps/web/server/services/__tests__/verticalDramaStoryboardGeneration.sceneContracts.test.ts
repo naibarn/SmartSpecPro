@@ -301,4 +301,17 @@ describe("generateStoryboardShotgrid — scene contracts (F132C)", () => {
 
     expect(withFlagFalse).toBe(withoutAnything);
   });
+
+  it("adds the shared policy contract and defers credit for repair candidates", async () => {
+    await generateStoryboardShotgrid(
+      baseParams({
+        policySafetyContext: "Keep the child safe and use neutral adult reactions.",
+        deferCreditDeduction: true,
+      }),
+    );
+
+    const userPrompt = mockExecute.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).toContain("policy_safety_contract");
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
 });

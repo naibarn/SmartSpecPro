@@ -62,6 +62,7 @@ RUN apk add --no-cache \
     tini \
     chromium \
     ffmpeg \
+    postgresql-client \
     fontconfig \
     font-noto \
     font-noto-thai \

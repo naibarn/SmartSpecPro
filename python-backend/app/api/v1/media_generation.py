@@ -6,7 +6,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -59,6 +59,42 @@ except ImportError:
 
 logger = structlog.get_logger()
 router = APIRouter()
+
+
+def _require_media_tenant_scope(request, current_user: User) -> str:
+    """Require a verified tenant before any provider task is persisted."""
+    requested_tenant = str(getattr(request, "tenant_id", None) or "").strip()
+    authenticated_tenant = str(getattr(current_user, "currentTenantId", None) or "").strip()
+    if requested_tenant and authenticated_tenant and requested_tenant != authenticated_tenant:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tenant scope does not match the authenticated user",
+        )
+    if requested_tenant and not authenticated_tenant:
+        if not getattr(current_user, "_media_internal_token", False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tenant scope requires an authorized internal request",
+            )
+        current_user.currentTenantId = requested_tenant
+        authenticated_tenant = requested_tenant
+    if not authenticated_tenant:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tenant context is required for media generation",
+        )
+    return authenticated_tenant
+
+
+def _require_authenticated_media_tenant(current_user: User) -> str:
+    """Require tenant scope for task reads and mutations as well as writes."""
+    tenant_id = str(getattr(current_user, "currentTenantId", None) or "").strip()
+    if not tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tenant context is required for media task access",
+        )
+    return tenant_id
 
 
 def _explicit_kie_model_id(api_config: dict) -> str | None:
@@ -636,6 +672,7 @@ async def generate_image_endpoint(
     gateway = LLMGateway(db)
     task = None
     external_task_id = None
+    _require_media_tenant_scope(request, current_user)
     try:
         validate_image_prompt_safety(request.extra_params)
     except ValueError as exc:
@@ -719,6 +756,7 @@ async def generate_video_endpoint(
     """
     gateway = LLMGateway(db)
     task = None
+    _require_media_tenant_scope(request, current_user)
     try:
         # Create task record before generation
         task = await MediaTaskService.create_task(
@@ -777,6 +815,7 @@ async def generate_audio_endpoint(
     """
     gateway = LLMGateway(db)
     task = None
+    _require_media_tenant_scope(request, current_user)
     try:
         # Create task record before generation
         task = await MediaTaskService.create_task(
@@ -843,6 +882,7 @@ async def list_all_tasks(
     """
     if not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    tenant_id = _require_authenticated_media_tenant(current_user)
 
     media_type_enum = MediaType(media_type) if media_type else None
     status_enum = TaskStatus(status_filter) if status_filter else None
@@ -853,12 +893,14 @@ async def list_all_tasks(
         status=status_enum,
         limit=limit,
         offset=offset,
+        tenant_id=tenant_id,
     )
 
     total = await MediaTaskService.count_all_tasks(
         db,
         media_type=media_type_enum,
         status=status_enum,
+        tenant_id=tenant_id,
     )
 
     return TaskListResponse(
@@ -883,6 +925,7 @@ async def list_tasks(
     List all media generation tasks for the current user.
     Supports filtering by media type, status, and days ago.
     """
+    tenant_id = _require_authenticated_media_tenant(current_user)
     # Convert string filters to enums
     media_type_enum = MediaType(media_type) if media_type else None
     status_enum = TaskStatus(status_filter) if status_filter else None
@@ -895,7 +938,7 @@ async def list_tasks(
         limit=limit,
         offset=offset,
         days_ago=days_ago,
-        tenant_id=current_user.currentTenantId,
+        tenant_id=tenant_id,
     )
 
     total = await MediaTaskService.get_task_count(
@@ -904,7 +947,7 @@ async def list_tasks(
         media_type=media_type_enum,
         status=status_enum,
         days_ago=days_ago,
-        tenant_id=current_user.currentTenantId,
+        tenant_id=tenant_id,
     )
 
     return TaskListResponse(
@@ -925,7 +968,8 @@ async def get_task_status(
     Get the status of a media generation task.
     Supports polling for async task completion.
     """
-    task = await MediaTaskService.get_task(db, task_id, current_user.id, current_user.currentTenantId)
+    tenant_id = _require_authenticated_media_tenant(current_user)
+    task = await MediaTaskService.get_task(db, task_id, current_user.id, tenant_id)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -945,7 +989,8 @@ async def cancel_task(
     Cancel a pending or processing task.
     Only the task owner can cancel it.
     """
-    task = await MediaTaskService.cancel_task(db, task_id, current_user.id, current_user.currentTenantId)
+    tenant_id = _require_authenticated_media_tenant(current_user)
+    task = await MediaTaskService.cancel_task(db, task_id, current_user.id, tenant_id)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -972,8 +1017,9 @@ async def delete_task(
     Delete a task from history.
     Only allows deletion of tasks that belong to the current user.
     """
+    tenant_id = _require_authenticated_media_tenant(current_user)
     # Get task to verify ownership
-    task = await MediaTaskService.get_task(db, task_id, current_user.id, current_user.currentTenantId)
+    task = await MediaTaskService.get_task(db, task_id, current_user.id, tenant_id)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -981,7 +1027,7 @@ async def delete_task(
         )
 
     # Delete the task
-    success = await MediaTaskService.delete_task(db, task_id, current_user.id, current_user.currentTenantId)
+    success = await MediaTaskService.delete_task(db, task_id, current_user.id, tenant_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1006,8 +1052,9 @@ async def fetch_task_result(
     - Task is stuck in "processing" status
     - User wants to manually check status
     """
+    tenant_id = _require_authenticated_media_tenant(current_user)
     # Get our task from database
-    task = await MediaTaskService.get_task(db, task_id, current_user.id, current_user.currentTenantId)
+    task = await MediaTaskService.get_task(db, task_id, current_user.id, tenant_id)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1713,7 +1760,8 @@ async def download_media(
     Download generated media file.
     Only the task owner can download.
     """
-    task = await MediaTaskService.get_task(db, task_id, current_user.id, current_user.currentTenantId)
+    tenant_id = _require_authenticated_media_tenant(current_user)
+    task = await MediaTaskService.get_task(db, task_id, current_user.id, tenant_id)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1732,17 +1780,13 @@ async def download_media(
             detail="No media file available for this task"
         )
 
-    # If result_url is a local file path
-    if os.path.exists(task.result_url):
-        return FileResponse(
-            task.result_url,
-            media_type="application/octet-stream",
-            filename=os.path.basename(task.result_url)
-        )
-
-    # If result_url is a remote URL, redirect
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url=task.result_url)
+    # Provider URLs are provenance only and may expire. Canonical playback is
+    # served by the Node/R2 protected storage boundary; never redirect a
+    # browser to a provider URL or serve a legacy local-server artifact here.
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Durable R2 media is not available for this task",
+    )
 
 
 # ==================== Render File Serving ====================
@@ -1755,30 +1799,17 @@ def _serve_media_file(
     current_user: User,
     tenant_id: str | None = None,
 ):
-    """Serve a media file while retaining compatibility with legacy paths."""
+    """Reject legacy local-media playback; canonical playback is Node/R2."""
     is_admin = getattr(current_user, "role", None) == "admin"
     if str(current_user.id) != user_id and not is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     if tenant_id and str(getattr(current_user, "currentTenantId", "")) != tenant_id and not is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tenant access denied")
 
-    safe_filename = os.path.basename(filename)
-    media_storage = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-    path_parts = [media_storage, media_kind]
-    if tenant_id:
-        path_parts.append(tenant_id)
-    path_parts.extend([user_id, job_id, safe_filename])
-    file_path = os.path.join(*path_parts)
-
-    real_path = os.path.realpath(file_path)
-    real_base = os.path.realpath(media_storage)
-    if not real_path.startswith(real_base + os.sep):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid path")
-    if not os.path.isfile(real_path):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
-
-    media_type = "audio/mpeg" if media_kind == "audio_extracts" else "video/mp4"
-    return FileResponse(real_path, media_type=media_type, filename=safe_filename)
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Legacy local media playback is disabled; durable R2 media is required",
+    )
 
 
 @router.get("/files/renders/{tenant_id}/{user_id}/{job_id}/{filename}")
@@ -1799,8 +1830,8 @@ async def serve_render_file(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Serve a rendered video file from media_storage/renders/.
-    Only the file owner (or admin) can access.
+    Legacy local-render endpoint retained only to return an explicit
+    retirement response. Canonical playback is served through Node/R2.
     """
     return _serve_media_file("renders", user_id, job_id, filename, current_user)
 
@@ -1824,8 +1855,8 @@ async def serve_transcoded_file(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Serve a transcoded video file from media_storage/transcoded/.
-    Only the file owner (or admin) can access.
+    Legacy local-transcode endpoint retained only to return an explicit
+    retirement response. Canonical playback is served through Node/R2.
     """
     return _serve_media_file("transcoded", user_id, job_id, filename, current_user)
 
@@ -1849,8 +1880,8 @@ async def serve_audio_extract_file(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Serve an extracted audio file from media_storage/audio_extracts/.
-    Only the file owner (or admin) can access.
+    Legacy local-audio endpoint retained only to return an explicit
+    retirement response. Canonical playback is served through Node/R2.
     """
     return _serve_media_file("audio_extracts", user_id, job_id, filename, current_user)
 
@@ -1868,6 +1899,7 @@ async def generate_image_async(
     Submit image generation to Celery queue (async processing).
     Returns immediately with task_id for status polling.
     """
+    _require_media_tenant_scope(request, current_user)
     try:
         validate_image_prompt_safety(request.extra_params)
     except ValueError as exc:
@@ -1902,7 +1934,11 @@ async def generate_image_async(
         request.dict(exclude={'model', 'prompt'})
     )
 
-    should_use_celery = CELERY_ENABLED and _has_responsive_celery_worker()
+    # Worker health is eventually consistent and must not select a second
+    # admission path. Once Celery is available, always enqueue through the
+    # per-user dispatcher so the three-image cap also holds during worker
+    # restarts or a transient inspect/ping failure.
+    should_use_celery = CELERY_ENABLED
 
     if should_use_celery:
         dispatch_result = await _dispatch_pending_image_tasks_async(current_user.id)
@@ -1946,6 +1982,7 @@ async def generate_video_async(
     Submit video generation to Celery queue (async processing).
     Returns immediately with task_id for status polling.
     """
+    _require_media_tenant_scope(request, current_user)
     if not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -2027,6 +2064,7 @@ async def generate_audio_async(
     Submit audio generation to Celery queue (async processing).
     Returns immediately with task_id for status polling.
     """
+    _require_media_tenant_scope(request, current_user)
     if not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -2305,6 +2343,7 @@ async def get_callback_status(
     Check if a callback has been received for a task.
     Used for polling when waiting for async task completion.
     """
+    _require_authenticated_media_tenant(current_user)
     callback_data = get_pending_callback(task_id)
 
     if callback_data:

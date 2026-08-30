@@ -59,12 +59,14 @@ import {
   type AssSubtitleLine,
   type ProductionEpisodeOverlayItem,
 } from "./verticalDramaFinalRenderGraph";
+import { projectBrollPlacements } from "./verticalDramaBrollService";
 import { fallbackAssetSourceHash } from "./videoProjectAssetResolver";
 import {
   queueRemotionRenderVideoJob,
   type QueueRemotionRenderVideoJobInput,
 } from "./workerSchedulerService";
 import { resolveExternalMediaReferenceUrls } from "./mediaGenerationService";
+import { normalizeStorageCapacityError } from "./storageCapacityError";
 import {
   getAdBannerPlacementPreset,
   resolvePlacementBox,
@@ -332,6 +334,37 @@ export interface VdRemotionResolvedClip {
   clipNumber: number;
   url: string;
   durationSec: number;
+  sourceShotNumbers?: number[];
+  parentShotNumber?: number;
+}
+
+/** A canonical still/footage source that is composited over the assembled
+ * episode timeline. `startSec/endSec` are destination coordinates; `inSec`
+ * is a coordinate inside the source video. The caller must provide a
+ * tenant-scoped managed-media URL, never a provider URL. */
+export interface VdRemotionBrollInput {
+  bindingId: string | number;
+  shotNumber: number;
+  order: number;
+  mediaType: "image" | "video";
+  mediaUrl: string;
+  inSeconds?: number | null;
+  outSeconds?: number | null;
+  displayDurationSeconds?: number | null;
+  fitMode?: "cover" | "contain" | "crop_safe";
+  audioPolicy?: "keep" | "mute" | "replace";
+  [key: string]: unknown;
+}
+
+export interface VdRemotionResolvedBrollLayer {
+  bindingId: string;
+  mediaType: "image" | "video";
+  resolvedMediaUrl: string;
+  startSec: number;
+  endSec: number;
+  sourceInSec?: number;
+  fitMode: "cover" | "contain" | "crop_safe";
+  audioPolicy: "keep" | "mute" | "replace";
 }
 
 export interface VdRemotionResolvedBanner extends RunAssemblyJobBannerInput {
@@ -346,6 +379,7 @@ export interface VdRemotionResolvedBanner extends RunAssemblyJobBannerInput {
 export interface BuildVdRemotionTemplateInput {
   clips: VdRemotionResolvedClip[];
   videoDurationSeconds: number;
+  brollLayers?: VdRemotionResolvedBrollLayer[];
   banners?: VdRemotionResolvedBanner[];
   overlays?: RunAssemblyJobTextOverlayEventInput[];
   dialogueAudio?:
@@ -599,7 +633,48 @@ export function buildVdRemotionTemplate(
     });
   }
 
-  // 3) Dialogue-audio segment layers (one per segment — no cross-fade/mix
+  // 3) B-roll layers. These are deliberately full-frame and sit above the
+  // base shot but below text/brand overlays. Their start/end frames are
+  // absolute episode coordinates, while sourceInSec remains source-media
+  // coordinates for footage trimming.
+  for (const [index, broll] of (input.brollLayers ?? []).entries()) {
+    const startFrame = Math.max(0, Math.round(broll.startSec * fps));
+    const endFrame = Math.min(
+      durationInFrames,
+      Math.max(startFrame + 1, Math.round(broll.endSec * fps)),
+    );
+    if (endFrame <= startFrame) continue;
+    const base = {
+      id: `broll-${broll.bindingId}-${index}`,
+      startFrame,
+      durationFrames: endFrame - startFrame,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      rotationDeg: 0,
+      opacity: 1,
+      zIndex: 6,
+      src: broll.resolvedMediaUrl,
+    };
+    if (broll.mediaType === "image") {
+      layers.push({
+        ...base,
+        type: "image",
+        fit: broll.fitMode === "contain" ? "contain" : "cover",
+      });
+    } else {
+      layers.push({
+        ...base,
+        type: "video",
+        trimStartSec: broll.sourceInSec ?? 0,
+        volume: broll.audioPolicy === "keep" ? 1 : 0,
+        muted: broll.audioPolicy !== "keep",
+      });
+    }
+  }
+
+  // 4) Dialogue-audio segment layers (one per segment — no cross-fade/mix
   //    machinery here, each segment is its own independent `audio` layer,
   //    same convention as `RunAssemblyJobDialogueAudioInput.segments`).
   if (input.dialogueAudio) {
@@ -630,7 +705,7 @@ export function buildVdRemotionTemplate(
     });
   }
 
-  // 4) Production Episode BGM layers. The orchestration layer slices each
+  // 5) Production Episode BGM layers. The orchestration layer slices each
   // track to this segment's local timeline, so a track can span segment
   // boundaries while remaining a normal Remotion audio layer here.
   for (const track of input.productionBgm ?? []) {
@@ -657,7 +732,7 @@ export function buildVdRemotionTemplate(
     });
   }
 
-  // 5) Production Episode timed overlays -> text layers. These use the same
+  // 6) Production Episode timed overlays -> text layers. These use the same
   // three fixed placement choices as the existing FFmpeg/ASS path.
   for (const [index, overlay] of (input.productionOverlays ?? []).entries()) {
     const startSec = Math.max(0, overlay.atSeconds);
@@ -688,7 +763,7 @@ export function buildVdRemotionTemplate(
     });
   }
 
-  // 6) Production Episode credits roll. It is deliberately layered over the
+  // 7) Production Episode credits roll. It is deliberately layered over the
   // tail of the final segment rather than appended as a separate segment, so
   // the segmented concat remains frame-accurate and the existing Production
   // Episode duration does not unexpectedly grow.
@@ -730,7 +805,7 @@ export function buildVdRemotionTemplate(
     });
   }
 
-  // 7) Text Overlay Suite events -> text layers (primary + optional
+  // 8) Text Overlay Suite events -> text layers (primary + optional
   //    secondary line, verbatim text/timing — see `resolveVdTextOverlayWindow`).
   for (const [index, overlay] of (input.overlays ?? []).entries()) {
     const window = resolveVdTextOverlayWindow(overlay, totalDurationSeconds);
@@ -779,7 +854,7 @@ export function buildVdRemotionTemplate(
     }
   }
 
-  // 8) Series IMAGE watermark(s) — full-timeline corner image(s). Dual
+  // 9) Series IMAGE watermark(s) — full-timeline corner image(s). Dual
   //    watermark (`planning/vd-dual-watermark/plan.md`): one layer per
   //    slot, each with an id derived from `slotId` so two watermarks never
   //    collide/overwrite one another, and each positioned fully
@@ -920,6 +995,17 @@ interface StagedAssetProbeResult {
   error?: string;
 }
 
+function throwIfStagedAssetFailed(
+  staged: StagedAssetProbeResult,
+  label: string,
+): void {
+  if (!staged.error) return;
+  throw new VdRemotionRenderError(
+    "asset_staging_failed",
+    `${label}: ${staged.error}`,
+  );
+}
+
 async function defaultStageAsset(
   url: string,
   internalBaseUrl: string,
@@ -928,33 +1014,42 @@ async function defaultStageAsset(
   const os = await import("os");
   const path = await import("path");
   const fsp = await import("fs/promises");
-  const workspace = await fsp.mkdtemp(
-    path.join(os.tmpdir(), "smartspec-vd-remotion-")
-  );
+  let workspace: string | undefined;
+  let dest: string | undefined;
   try {
-    const dest = path.join(
+    workspace = await fsp.mkdtemp(
+      path.join(os.tmpdir(), "smartspec-vd-remotion-")
+    );
+    dest = path.join(
       workspace,
       `asset${inferDownloadExtension(url, ".bin")}`
     );
-    try {
-      await downloadClipToFile(url, dest, internalBaseUrl);
-      const bytes = await fsp.readFile(dest);
-      const sha256 = createHash("sha256").update(bytes).digest("hex");
-      if (!wantDuration) return { sha256 };
-      const durationSec = await probeDurationSeconds(dest);
-      return { durationSec: durationSec ?? undefined, sha256 };
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.warn(
-        `[verticalDramaRemotionRender] failed to download/probe asset ${safeAssetUrlForDiagnostics(url)}: ${errorMessage}`
-      );
-      return { sha256: fallbackAssetSourceHash(url), error: errorMessage };
-    }
+    await downloadClipToFile(url, dest, internalBaseUrl);
+    const bytes = await fsp.readFile(dest);
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    if (!wantDuration) return { sha256 };
+    const durationSec = await probeDurationSeconds(dest);
+    return { durationSec: durationSec ?? undefined, sha256 };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
+    const normalizedCapacityError = normalizeStorageCapacityError(
+      error,
+      dest ?? workspace ?? os.tmpdir(),
+    );
+    console.warn(
+      `[verticalDramaRemotionRender] failed to download/probe asset ${safeAssetUrlForDiagnostics(url)}: ${errorMessage}`
+    );
+    return {
+      sha256: fallbackAssetSourceHash(url),
+      error: normalizedCapacityError ?? errorMessage,
+    };
   } finally {
-    await fsp
-      .rm(workspace, { recursive: true, force: true })
-      .catch(() => undefined);
+    if (workspace) {
+      await fsp
+        .rm(workspace, { recursive: true, force: true })
+        .catch(() => undefined);
+    }
   }
 }
 
@@ -1018,6 +1113,7 @@ export interface SubmitVdRemotionAssemblyInput {
   overlays?: RunAssemblyJobTextOverlayEventInput[];
   /** Dual watermark (`planning/vd-dual-watermark/plan.md`): up to 2 entries. */
   watermarkImages?: RunAssemblyJobWatermarkImageInput[];
+  broll?: VdRemotionBrollInput[];
   tenantId: string;
   requestedByUserId?: number | null;
   isAdminRequester?: boolean;
@@ -1172,6 +1268,8 @@ export async function submitVdRemotionAssembly(
       clipNumber: clip.clipNumber,
       url: workerClipUrls[index],
       durationSec: probedClips[index].durationSec!,
+      sourceShotNumbers: clip.sourceShotNumbers,
+      parentShotNumber: clip.parentShotNumber,
     })
   );
   const clipHashes: string[] = probedClips.map(c => c.sha256);
@@ -1179,6 +1277,71 @@ export async function submitVdRemotionAssembly(
     (sum, c) => sum + c.durationSec,
     0
   );
+
+  const projectedBroll = projectBrollPlacements(
+    input.broll ?? [],
+    resolvedClips.map(clip => ({
+      clipNumber: clip.clipNumber,
+      durationSeconds: clip.durationSec,
+      sourceShotNumbers: clip.sourceShotNumbers,
+      parentShotNumber: clip.parentShotNumber,
+    })),
+    videoDurationSeconds,
+  );
+  if (projectedBroll.errors.length > 0) {
+    throw new VdRemotionRenderError(
+      "broll_timeline_invalid",
+      `B-roll cannot be placed on the assembled timeline: ${projectedBroll.errors.join(", ")}`,
+    );
+  }
+  const resolvedBrollLayers: VdRemotionResolvedBrollLayer[] = [];
+  const brollHashes: string[] = [];
+  for (const item of projectedBroll.items) {
+    const source = item.source as VdRemotionBrollInput;
+    if (!source.mediaUrl.trim()) {
+      throw new VdRemotionRenderError(
+        "broll_media_missing",
+        `B-roll ${source.bindingId} has no managed media URL`,
+      );
+    }
+    const staged = await stageAsset(
+      source.mediaUrl,
+      input.internalBaseUrl,
+      source.mediaType === "video",
+    );
+    throwIfStagedAssetFailed(staged, `B-roll ${source.bindingId}`);
+    if (source.mediaType === "video" && (!staged.durationSec || staged.durationSec <= 0)) {
+      throw new VdRemotionRenderError(
+        "broll_duration_probe_failed",
+        `Could not determine duration of B-roll footage ${source.bindingId}${staged.error ? `: ${staged.error}` : ""}`,
+      );
+    }
+    brollHashes.push(staged.sha256);
+    resolvedBrollLayers.push({
+      bindingId: String(source.bindingId),
+      mediaType: source.mediaType,
+      resolvedMediaUrl: absoluteVdAssetUrl(source.mediaUrl, assetBaseUrl),
+      startSec: item.startSeconds,
+      endSec: item.endSeconds,
+      ...(source.mediaType === "video" && source.inSeconds != null
+        ? { sourceInSec: source.inSeconds }
+        : {}),
+      fitMode: source.fitMode ?? "cover",
+      audioPolicy: source.audioPolicy ?? "mute",
+    });
+  }
+  if (resolvedBrollLayers.length > 0) {
+    const workerBrollUrls = await resolveVdWorkerAssetUrls(
+      resolvedBrollLayers.map(layer => layer.resolvedMediaUrl),
+      resolveWorkerAssetUrls,
+      workerViewer,
+      assetBaseUrl,
+      "B-roll media",
+    );
+    resolvedBrollLayers.forEach((layer, index) => {
+      layer.resolvedMediaUrl = workerBrollUrls[index];
+    });
+  }
 
   let resolvedBanners: VdRemotionResolvedBanner[] = [];
   const bannerHashes: string[] = [];
@@ -1188,6 +1351,7 @@ export async function submitVdRemotionAssembly(
       input.internalBaseUrl,
       false
     );
+    throwIfStagedAssetFailed(staged, `Banner ${banner.placementId}`);
     bannerHashes.push(staged.sha256);
     resolvedBanners.push({
       ...banner,
@@ -1219,6 +1383,7 @@ export async function submitVdRemotionAssembly(
         input.internalBaseUrl,
         false
       );
+      throwIfStagedAssetFailed(staged, "Dialogue audio");
       dialogueAudioHashes.push(staged.sha256);
     }
     resolvedDialogueAudio = {
@@ -1250,6 +1415,7 @@ export async function submitVdRemotionAssembly(
       input.internalBaseUrl,
       false
     );
+    throwIfStagedAssetFailed(staged, `Watermark ${watermark.slotId}`);
     watermarkImageHashes.push(staged.sha256);
     resolvedWatermarkImages.push({
       ...watermark,
@@ -1275,6 +1441,7 @@ export async function submitVdRemotionAssembly(
   const { template, durationInFrames, layerCount } = buildVdRemotionTemplate({
     clips: resolvedClips,
     videoDurationSeconds,
+    brollLayers: resolvedBrollLayers.length > 0 ? resolvedBrollLayers : undefined,
     banners: resolvedBanners.length > 0 ? resolvedBanners : undefined,
     overlays: input.overlays ?? input.subtitles?.overlays,
     dialogueAudio: resolvedDialogueAudio,
@@ -1326,6 +1493,11 @@ export async function submitVdRemotionAssembly(
       sha256:
         watermarkImageHashes[index] ??
         fallbackAssetSourceHash(watermark.resolvedImageUrl),
+    })),
+    ...resolvedBrollLayers.map((layer, index) => ({
+      role: layer.mediaType,
+      url: layer.resolvedMediaUrl,
+      sha256: brollHashes[index] ?? fallbackAssetSourceHash(layer.resolvedMediaUrl),
     })),
   ];
 
@@ -1385,6 +1557,7 @@ export async function submitVdRemotionAssembly(
     // Additive on `CompiledVideoState` — the ONLY marker
     // `reconcileVdRemotionAssembly` needs to know which queue to poll.
     renderEngine: "remotion_queue",
+    brollApplied: (input.broll?.length ?? 0) > 0,
     // Stamped so the 60-minute queued-TTL fallback in `reconcileVdRemotionAssembly`
     // knows how long this job has been waiting for a Lane B claim.
     renderSubmittedAt: Date.now(),
@@ -2100,10 +2273,12 @@ export async function reconcileVdRemotionAssembly(
   }
 
   if (job.status === "failed") {
+    const rawFailureReason = job.failureReason || "Remotion render failed";
     await persistCompiledVideoState(owner, {
       pendingJobId: undefined,
       status: "failed",
-      error: job.failureReason || "Remotion render failed",
+      error:
+        normalizeStorageCapacityError(rawFailureReason) ?? rawFailureReason,
     });
     return { reconciled: true, status: "failed" };
   }

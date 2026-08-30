@@ -11,6 +11,7 @@
  * credit/LLM plumbing.
  */
 
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
   episodeBreakdownItemSchema,
@@ -47,6 +48,7 @@ interface GenerateNextEpisodesViaLlmParams {
   userId: number;
   tenantId?: string;
   seriesId: number;
+  idempotencyKey?: string;
   title: string;
   locale: VerticalDramaSeriesLocale;
   genre?: string | null;
@@ -153,6 +155,20 @@ function buildContinuationPrompts(
 export async function generateNextEpisodesViaLlm(
   params: GenerateNextEpisodesViaLlmParams,
 ): Promise<GenerateNextEpisodesViaLlmResult> {
+  const logicalRunKey =
+    params.idempotencyKey ??
+    `vd-episode-continuation:${params.seriesId}:${createHash("sha256")
+      .update(
+        JSON.stringify({
+          nextEpisodeNumber: params.nextEpisodeNumber,
+          count: params.count,
+          existingEpisodeNumbers: params.existingEpisodes.map(
+            episode => episode.episodeNumber,
+          ),
+        }),
+      )
+      .digest("hex")
+      .slice(0, 24)}`;
   const hasCredits = await hasEnoughCredits(params.userId, 1);
   if (!hasCredits) {
     throw new InsufficientCreditsError();
@@ -212,6 +228,9 @@ export async function generateNextEpisodesViaLlm(
     tenantId: params.tenantId,
     amount: creditsUsed,
     description: `Vertical Drama — generate next episodes (series #${params.seriesId})`,
+    idempotencyKey: logicalRunKey,
+    skillRunId: `vd-episode-continuation:${logicalRunKey}`,
+    skillSlug: "vertical-drama-deep-story-draft",
     sourceType: "skill",
     metadata: {
       model,
@@ -220,6 +239,7 @@ export async function generateNextEpisodesViaLlm(
       seriesId: params.seriesId,
       inputTokens: usage?.prompt_tokens ?? 0,
       outputTokens: usage?.completion_tokens ?? 0,
+      logicalRunKey,
     },
   });
 

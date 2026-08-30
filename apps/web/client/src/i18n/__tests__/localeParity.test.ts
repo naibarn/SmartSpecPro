@@ -16,13 +16,24 @@ const FULL_COVERAGE_NAMESPACES = ["nav", "auth", "common", "errors"];
 
 // Namespaces that may have partial TH coverage (Wave 2+ target)
 const PARTIAL_COVERAGE_NAMESPACES = [
-  "help", "chat", "settings", "media", "billing", "workflow",
-  "admin", "presentation", "agency", "dashboard",
+  "help",
+  "chat",
+  "settings",
+  "media",
+  "billing",
+  "workflow",
+  "admin",
+  "presentation",
+  "agency",
+  "dashboard",
 ];
 
 function readJson(filepath: string): Record<string, string> {
   try {
-    return JSON.parse(readFileSync(filepath, "utf-8")) as Record<string, string>;
+    return JSON.parse(readFileSync(filepath, "utf-8")) as Record<
+      string,
+      string
+    >;
   } catch {
     return {};
   }
@@ -37,14 +48,18 @@ describe("EN/TH locale parity — startup namespaces (must be complete)", () => 
       const enKeys = Object.keys(en).sort();
       const thKeys = Object.keys(th).sort();
 
-      const missingInTh = enKeys.filter((k) => !Object.prototype.hasOwnProperty.call(th, k));
+      const missingInTh = enKeys.filter(
+        k => !Object.prototype.hasOwnProperty.call(th, k)
+      );
       expect(
         missingInTh,
         `en/${ns}.json has keys missing in th/${ns}.json: ${missingInTh.slice(0, 5).join(", ")}${missingInTh.length > 5 ? " ..." : ""}`
       ).toHaveLength(0);
 
       // Also assert no extra TH keys (would indicate stale/orphaned translations)
-      const extraInTh = thKeys.filter((k) => !Object.prototype.hasOwnProperty.call(en, k));
+      const extraInTh = thKeys.filter(
+        k => !Object.prototype.hasOwnProperty.call(en, k)
+      );
       expect(
         extraInTh,
         `th/${ns}.json has orphaned keys not in en/${ns}.json: ${extraInTh.slice(0, 5).join(", ")}${extraInTh.length > 5 ? " ..." : ""}`
@@ -55,7 +70,7 @@ describe("EN/TH locale parity — startup namespaces (must be complete)", () => 
 
 describe("EN/TH locale parity — all namespaces exist in both langs", () => {
   it("every en/*.json file has a corresponding th/*.json file", () => {
-    const enFiles = readdirSync(EN_DIR).filter((f) => f.endsWith(".json"));
+    const enFiles = readdirSync(EN_DIR).filter(f => f.endsWith(".json"));
     for (const file of enFiles) {
       const thPath = join(TH_DIR, file);
       let thExists = false;
@@ -70,7 +85,7 @@ describe("EN/TH locale parity — all namespaces exist in both langs", () => {
   });
 
   it("no EN namespace has empty string values", () => {
-    const enFiles = readdirSync(EN_DIR).filter((f) => f.endsWith(".json"));
+    const enFiles = readdirSync(EN_DIR).filter(f => f.endsWith(".json"));
     for (const file of enFiles) {
       const data = readJson(join(EN_DIR, file));
       for (const [key, value] of Object.entries(data)) {
@@ -85,7 +100,9 @@ describe("EN/TH locale parity — partial coverage namespaces (TH keys must be s
     it(`every key in th/${ns}.json exists in en/${ns}.json (no orphaned TH keys)`, () => {
       const en = readJson(join(EN_DIR, `${ns}.json`));
       const th = readJson(join(TH_DIR, `${ns}.json`));
-      const orphaned = Object.keys(th).filter((k) => !Object.prototype.hasOwnProperty.call(en, k));
+      const orphaned = Object.keys(th).filter(
+        k => !Object.prototype.hasOwnProperty.call(en, k)
+      );
       expect(
         orphaned,
         `th/${ns}.json has orphaned keys: ${orphaned.slice(0, 5).join(", ")}`

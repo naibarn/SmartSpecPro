@@ -40,6 +40,19 @@ function updateChain(returningRows: unknown[]) {
   return chain;
 }
 
+function collectSqlText(value: unknown, seen = new Set<object>()): string {
+  if (typeof value === "string") return value;
+  if (!value || typeof value !== "object") return "";
+  if (seen.has(value)) return "";
+  seen.add(value);
+  if (Array.isArray(value)) {
+    return value.map(item => collectSqlText(item, seen)).join("");
+  }
+  return Object.values(value as Record<string, unknown>)
+    .map(item => collectSqlText(item, seen))
+    .join("");
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   captured.set = undefined;
@@ -60,12 +73,11 @@ describe("persistCharacterVisualBible", () => {
     const queryChunks =
       (captured.set?.data as { queryChunks?: Array<{ value?: unknown }> })
         ?.queryChunks ?? [];
-    const sqlText = queryChunks
-      .flatMap(chunk => (Array.isArray(chunk.value) ? chunk.value : []))
-      .filter((value): value is string => typeof value === "string")
-      .join("");
+    const sqlText = collectSqlText(queryChunks);
     expect(sqlText).toContain("jsonb_set");
     expect(sqlText).toContain("visualBible");
+    expect(sqlText).toContain("promptDnaRevision");
+    expect(sqlText).toContain("identityDnaRevision");
     expect(chain.where).toHaveBeenCalledTimes(1);
     expect(chain.returning).toHaveBeenCalledTimes(1);
   });

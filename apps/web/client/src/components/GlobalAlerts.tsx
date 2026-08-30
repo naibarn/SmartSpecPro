@@ -130,6 +130,24 @@ function safeOpenInNewTab(url: string) {
   }
 }
 
+function navigateNotificationAction(
+  url: string,
+  setLocation: (path: string) => void,
+) {
+  if (!isSafeNavigationUrl(url)) {
+    return;
+  }
+
+  // Keep internal actions in the current authenticated app context. A
+  // protocol-relative URL starts with `//` and must remain external.
+  if (url.startsWith("/") && !url.startsWith("//")) {
+    setLocation(url);
+    return;
+  }
+
+  safeOpenInNewTab(url);
+}
+
 /**
  * Compatibility for feedback notifications created before dedup updates
  * refreshed their structured action fields. New notifications already carry
@@ -498,6 +516,7 @@ function GlobalUrgentReminders({
   claimUrgentSurface: (surface: UrgentSurface) => boolean;
   releaseUrgentSurface: (surface: UrgentSurface) => void;
 }) {
+  const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const [shownIds, setShownIds] = useState<Set<number>>(new Set());
   const [dismissedId, setDismissedId] = useState<number | null>(null);
@@ -586,20 +605,34 @@ function GlobalUrgentReminders({
             onClick: () => {
               const actionUrl = resolveNotificationActionUrl(r);
               if (actionUrl) {
-                safeOpenInNewTab(actionUrl);
+                navigateNotificationAction(actionUrl, setLocation);
                 return;
               }
               if (r.conversationId) {
-                safeOpenInNewTab(`/chat?c=${r.conversationId}`);
+                navigateNotificationAction(
+                  `/chat?c=${r.conversationId}`,
+                  setLocation,
+                );
                 return;
               }
-              safeOpenInNewTab(`/chat?panel=schedule${aid}`);
+              navigateNotificationAction(
+                `/chat?panel=schedule${aid}`,
+                setLocation,
+              );
             },
           },
         });
       });
     }
-  }, [visibleUrgentReminders, shownIds, dismissedId, modalReminder, activeUrgentSurface, claimUrgentSurface]);
+  }, [
+    visibleUrgentReminders,
+    shownIds,
+    dismissedId,
+    modalReminder,
+    activeUrgentSurface,
+    claimUrgentSurface,
+    setLocation,
+  ]);
 
   const handleDismiss = useCallback(() => {
     if (modalReminder) {
@@ -620,13 +653,16 @@ function GlobalUrgentReminders({
     setModalReminder(null);
     releaseUrgentSurface("reminder");
     if (actionUrl) {
-      safeOpenInNewTab(actionUrl);
+      navigateNotificationAction(actionUrl, setLocation);
     } else if (conversationId) {
-      safeOpenInNewTab(`/chat?c=${conversationId}`);
+      navigateNotificationAction(`/chat?c=${conversationId}`, setLocation);
     } else {
-      safeOpenInNewTab(`/chat?panel=schedule${alertId ? `&alertId=${alertId}` : ""}`);
+      navigateNotificationAction(
+        `/chat?panel=schedule${alertId ? `&alertId=${alertId}` : ""}`,
+        setLocation,
+      );
     }
-  }, [modalReminder, markRead, releaseUrgentSurface]);
+  }, [modalReminder, markRead, releaseUrgentSurface, setLocation]);
 
   const reminderModalRef = useRef<HTMLDivElement>(null);
 
@@ -667,6 +703,11 @@ function GlobalUrgentReminders({
     metadataSource === "vertical_drama_story_jobs" &&
     /strict relationship graph delta contract failed:/i.test(
       modalReminder.content,
+    );
+  const isVerticalDramaPolicyFailure =
+    metadataSource === "vertical_drama_story_jobs" &&
+    /VD_STORY_POLICY_RISK|high-risk policy context/i.test(
+      `${modalReminder.content} ${JSON.stringify(metadata?.errorDetails ?? "")}`,
     );
   const creditItems = isCreditReminder && metadata?.relatedItems && typeof metadata.relatedItems === "object"
     ? metadata.relatedItems
@@ -712,12 +753,20 @@ function GlobalUrgentReminders({
       ? (locale === "th" ? "แจ้งเตือนสลิปโอนเงิน" : "Slip Review Alert")
       : (locale === "th" ? "การแจ้งเตือนใบแจ้งหนี้" : "Billing Reminder")
     : guidance.reminderLabel;
-  const title = isOpsIncidentReminder
-    ? guidance.headline
+  const title = isVerticalDramaPolicyFailure
+    ? locale === "th"
+      ? "สร้างเนื้อหาตอนใหม่ไม่สำเร็จ"
+      : "Episode content rebuild failed"
+    : isOpsIncidentReminder
+      ? guidance.headline
     : billingNotificationType === "invoice_due_reminder" && locale === "th"
       ? `ใบแจ้งหนี้ค้างชำระ${invoiceNumber ? `: ${invoiceNumber}` : ""}`
       : modalReminder.title;
-  const summary = isVerticalDramaStoryJobFailure
+  const summary = isVerticalDramaPolicyFailure
+    ? locale === "th"
+      ? "เนื้อหาที่สร้างใหม่ยังไม่ผ่านการตรวจสอบความปลอดภัย ระบบจึงยังไม่แทนที่เนื้อหาเดิม ให้ปิดแจ้งเตือนแล้วกลับไปที่ตอน จากนั้นเลือก “ซ่อมเนื้อหาใหม่และเขียนบทใหม่ทั้งตอน” หรือปรับเนื้อหาให้ปลอดภัยขึ้นก่อนลองอีกครั้ง"
+      : "The new content did not pass the safety check, so the current episode was not replaced. Return to the episode and choose “Repair and rewrite the episode,” or make the story safer before trying again."
+    : isVerticalDramaStoryJobFailure
     ? locale === "th"
       ? "ระบบพบว่าข้อมูลความสัมพันธ์ของบางตอนยังไม่ครบ จึงหยุดงานเพื่อป้องกันการบันทึกข้อมูลผิดพลาด ข้อมูลตอนที่สร้างไว้เดิมยังไม่หาย ให้ปิดแจ้งเตือนแล้วกลับไปที่ซีรีย์ จากนั้นกด “อัปเดตเนื้อเรื่องละเอียดทุกตอนย่อย” อีกครั้ง ระบบจะทำต่อจากตอนที่มีอยู่"
       : "Some episode relationship data was incomplete, so the job stopped before saving an unsafe result. Existing episode drafts are preserved. Close this alert, return to the series, and click “Update detailed story for all sub-episodes” to continue from the episodes already available."
@@ -1247,7 +1296,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
 }
 
 function GlobalNotificationBell() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const [showDropdown, setShowDropdown] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -1473,8 +1522,26 @@ function GlobalNotificationBell() {
   const handleOpenInNewTab = useCallback((url: string) => {
     setShowDropdown(false);
     setDetailNotification(null);
-    safeOpenInNewTab(url);
-  }, []);
+    navigateNotificationAction(url, setLocation);
+  }, [setLocation]);
+
+  const handleNotificationRowClick = (notification: any) => {
+    if (!notification.isRead) markRead.mutate({ id: notification.id });
+
+    const actionUrl = resolveNotificationActionUrl(notification);
+    const isFeedbackTarget = Boolean(
+      actionUrl?.match(/^\/admin\/feedback-hub\?ticketId=\d+\b/i),
+    );
+    if (isFeedbackTarget) {
+      setShowDropdown(false);
+      setDetailNotification(null);
+      navigateNotificationAction(actionUrl!, setLocation);
+      return;
+    }
+
+    setExpandedId(null);
+    setDetailNotification(notification);
+  };
 
   if (!hasUnread && !shouldShowWithoutUnread) {
     return null;
@@ -1681,9 +1748,7 @@ function GlobalNotificationBell() {
                     cursor: "pointer",
                   }}
                   onClick={() => {
-                    if (!n.isRead) markRead.mutate({ id: n.id });
-                    setExpandedId(null);
-                    setDetailNotification(n);
+                    handleNotificationRowClick(n);
                   }}
                 >
                   {/* Unread dot */}

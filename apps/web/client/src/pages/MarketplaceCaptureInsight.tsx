@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 
 function getInsightId(pathname: string) {
   return pathname.match(/\/marketplace-capture\/insights\/([^/]+)/)?.[1] ?? "";
@@ -174,7 +175,7 @@ export default function MarketplaceCaptureInsight() {
             <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
               {selectedImages.map((image, index) => (
                 <div className="rounded-md border p-2" key={`${image.url}-${index}`}>
-                  {image.url ? <img className="aspect-square w-full rounded object-cover" src={image.url} alt="" loading="lazy" /> : null}
+                  {image.url ? <AuthenticatedMediaImage className="aspect-square w-full rounded object-cover" src={image.url} alt="" loading="lazy" /> : null}
                   <div className="mt-2 text-xs text-slate-500">{image.role} | {image.fidelity}</div>
                 </div>
               ))}

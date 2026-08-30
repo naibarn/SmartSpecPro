@@ -45,7 +45,7 @@ import path from "path";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import { verticalDramaSeries } from "../../drizzle/schema";
-import { storagePutFromPath } from "../storage";
+import { assertR2StorageActive, storagePutFromPath } from "../storage";
 import { debugError } from "../_core/logger";
 import {
   buildConcatListFileContent,
@@ -555,6 +555,7 @@ export async function runTrailerJob(args: {
     // 6. Probe final duration, upload, persist completed state.
     const durationSeconds = await probeDurationSeconds(finalPath);
     const storageKey = `vertical-drama/trailer/${owner.seriesId}/${randomUUID()}-trailer.mp4`;
+    await assertR2StorageActive();
     const { url } = await storagePutFromPath(storageKey, finalPath, "video/mp4");
 
     const videoClipCountUsed = plan.filter((p) => p.kind === "video").length;

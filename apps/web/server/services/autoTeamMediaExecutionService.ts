@@ -6,6 +6,7 @@ import { buildAutoTeamBudgetKey, assessAutoTeamBudget, type AutoTeamBudgetDecisi
 import { buildAutoTeamProviderRequestHash, resolveAutoTeamProviderDecision, type AutoTeamProviderDecision } from "./autoTeamProviderPolicy";
 import { resolveEnabledMediaModelSelection } from "./enabledMediaModelSelection";
 import { buildCanonicalArtifactRef } from "./autoTeamArtifactRefService";
+import { ensureMediaTaskArtifactsForPolling } from "./mediaTaskArtifactService";
 import { sanitizeProviderPayload, validateAutoTeamMediaOutputSafety, redactSensitiveText } from "./autoTeamSafetyService";
 import { autoTeamArtifactRefs, autoTeamExecutionStages, autoTeamMediaJobRefs, type AutoTeamArtifactRefRow, type AutoTeamExecutionStageRow, type AutoTeamMediaJobRefRow, type AutoTeamRouteDecisionRow } from "../../drizzle/schema";
 
@@ -37,6 +38,20 @@ export interface AutoTeamMediaExecutionResult {
   budgetDecision: AutoTeamBudgetDecision;
   task: MediaTask | null;
   safetyStatus: "safe" | "needs_review" | "blocked" | "redacted" | "unknown";
+}
+
+function durableAutoTeamOutput(task: MediaTask): {
+  task: MediaTask;
+  storageRef: string | null;
+  playbackUrl: string | null;
+} {
+  const artifact = task.artifacts?.find(item => item.outputIndex === 0) ?? task.artifacts?.[0];
+  const playbackUrl = artifact?.playbackUrl ?? null;
+  const storageRef = artifact?.r2StorageKey ?? null;
+  if (!playbackUrl?.startsWith("/api/storage/files/") || !storageRef) {
+    return { task, storageRef: null, playbackUrl: null };
+  }
+  return { task, storageRef, playbackUrl };
 }
 
 export class AutoTeamMediaSubmitError extends Error {
@@ -363,6 +378,14 @@ export async function submitMediaJob(
     );
   }
 
+  const durableTask = task.status === "completed" && Number(task.userId) > 0
+    ? await ensureMediaTaskArtifactsForPolling({
+        task,
+        tenantId: effectiveInput.tenantId,
+        userId: Number(task.userId),
+      })
+    : task;
+  const durableOutput = durableAutoTeamOutput(durableTask);
   const status = task.status;
   const providerStatus = status === "completed" ? "succeeded" : status === "failed" ? "failed" : status === "pending" || status === "processing" ? "queued" : "unknown";
   const safety = validateAutoTeamMediaOutputSafety({
@@ -401,7 +424,7 @@ export async function submitMediaJob(
   if (!inserted) return reserved;
 
   let updatedJob = inserted;
-  if (safeResultUrl) {
+  if (safeResultUrl && durableOutput.storageRef) {
     const artifact = await buildCanonicalArtifactRef({
       tenantId: effectiveInput.tenantId,
       teamId: effectiveInput.teamId ?? null,
@@ -411,7 +434,8 @@ export async function submitMediaJob(
       workItemId: effectiveInput.workItemId ?? null,
       artifactType: effectiveInput.mediaType === "video" ? "media_result" : "media_result",
       artifactRole: "result",
-      externalRef: safeResultUrl,
+      storageRef: durableOutput.storageRef,
+      externalRef: null,
       contentHash: null,
       visibility: "tenant",
       retentionPolicyJson: { routeClass: effectiveInput.routeDecision.routeClass, mediaType: effectiveInput.mediaType },
@@ -451,6 +475,14 @@ export async function pollMediaJob(
     tenantId: jobRef.tenantId,
     source: "auto_team_media_execution",
   });
+  const durableTask = task.status === "completed" && Number(task.userId) > 0
+    ? await ensureMediaTaskArtifactsForPolling({
+        task,
+        tenantId: jobRef.tenantId,
+        userId: Number(task.userId),
+      })
+    : task;
+  const durableOutput = durableAutoTeamOutput(durableTask);
   const nextStatus =
     task.status === "completed" ? "succeeded" :
     task.status === "failed" ? "failed" :
@@ -472,7 +504,7 @@ export async function pollMediaJob(
   };
 
   let canonicalArtifactId: string | null = null;
-  if (effectiveNextStatus === "succeeded" && safeResultUrl && currentJob) {
+  if (effectiveNextStatus === "succeeded" && safeResultUrl && durableOutput.storageRef && currentJob) {
     const artifact = await buildCanonicalArtifactRef({
       tenantId: currentJob.tenantId,
       teamId: currentJob.teamId ?? null,
@@ -482,7 +514,8 @@ export async function pollMediaJob(
       workItemId: currentJob.workItemId ?? null,
       artifactType: "media_result",
       artifactRole: "result",
-      externalRef: safeResultUrl,
+      storageRef: durableOutput.storageRef,
+      externalRef: null,
       contentHash: null,
       visibility: "tenant",
       retentionPolicyJson: {

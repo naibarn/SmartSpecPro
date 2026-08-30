@@ -35,7 +35,7 @@ import { createHash } from "node:crypto";
 import { eq, and, inArray, or } from "drizzle-orm";
 import { getDb } from "../db";
 import { mediaAssets } from "../../drizzle/schema";
-import { storagePut, storageResolveUrl } from "../storage";
+import { assertR2StorageActive, storagePut, storageResolveUrl } from "../storage";
 import { getCachedInternalNodeUrl } from "./appRuntimeConfig";
 import { debugLog } from "../_core/logger";
 import type { HermesMediaJobContract } from "../../shared/hermesMedia";
@@ -196,6 +196,7 @@ export async function defaultIngestExternalHermesReferenceAsset(params: {
       : "application/octet-stream";
   const ext = urlExt ?? contentType.split("/")[1] ?? "bin";
   const objectKey = `hermes-references/${params.tenantId}/${params.assetId}/${sha256.slice(0, 16)}.${ext}`;
+  await assertR2StorageActive();
   await storagePut(objectKey, bytes, contentType);
   return { objectKey, sha256 };
 }

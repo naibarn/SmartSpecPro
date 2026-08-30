@@ -69,6 +69,7 @@ export interface VerticalDramaDraftQualityQcPanelProps {
   candidateSelectionPending?: boolean;
   onSelectCandidate?: (item: DraftQualityQcHistoryEntry) => void;
   onConfirmCandidate?: () => void;
+  /** Kept for caller compatibility; QC never controls Draft confirmation. */
   candidateCanBeConfirmed?: boolean;
   candidateAlreadyConfirmed?: boolean;
 }
@@ -126,20 +127,20 @@ const copy = {
     previousRound: "รอบที่ดีที่สุด",
     selectCandidate: "เลือก Draft รอบนี้",
     selectedCandidate: "เลือก Draft รอบนี้แล้ว",
-    candidateHint: "เลือกได้ทุกฉบับที่ถูกประเมิน แล้วระบบจะตรวจ receipt ของฉบับที่เลือกอีกครั้งก่อนสร้างเรื่อง",
+    candidateHint: "เลือกได้ทุกฉบับที่มีอยู่ และยืนยันใช้ได้โดยไม่ต้องรอผล QC",
     currentResult: "ผล QC รอบล่าสุด",
     currentResultHint: "ผลนี้เป็นผลหลักของการตรวจรอบปัจจุบัน",
     recoveredResult: "ผล QC ที่กู้คืนจากประวัติ",
     recoveredResultHint:
-      "รอบล่าสุดตรวจไม่สำเร็จ แต่ระบบกู้ผลรอบที่เสร็จสมบูรณ์แล้วให้เลือกยืนยันได้ตามเกณฑ์",
+      "รอบล่าสุดตรวจไม่สำเร็จ แต่ Draft เดิมยังยืนยันใช้ต่อได้",
     selectedDraft: "Draft ที่จะยืนยัน",
     selectedDraftHint: "ระบบเลือกฉบับที่ดีที่สุดของรอบล่าสุดเป็นค่าเริ่มต้น คุณสามารถเลือกฉบับอื่นจากประวัติได้",
     confirmDraft: "ยืนยันใช้ Draft รอบนี้",
     confirmedDraft: "ยืนยัน Draft รอบนี้แล้ว",
     recoveredConfirmHint:
-      "รอบล่าสุดหยุดเพราะ scorecard ไม่ครบ แต่ระบบกู้ผลที่ตรวจครบจาก ledger แล้ว — คุณยังเลือกยืนยัน Draft นี้ได้",
+      "รอบล่าสุดหยุดเพราะ scorecard ไม่ครบ แต่คุณยังยืนยัน Draft นี้ได้",
     previousCollapsed: "ดูผล QC รอบก่อนในประวัติ",
-    historicalBetter: "มีผล QC จากประวัติที่คะแนนสูงกว่า — ขยายประวัติเพื่อเลือก และระบบจะ QC ฉบับนั้นใหม่ก่อนใช้",
+    historicalBetter: "มีผล QC จากประวัติที่คะแนนสูงกว่า — ขยายประวัติเพื่อเปรียบเทียบหรือเลือกได้ แต่ QC ไม่บล็อกการยืนยัน",
   },
   en: {
     title: "Quality-check the draft before full story generation",
@@ -185,20 +186,20 @@ const copy = {
     previousRound: "Best round",
     selectCandidate: "Use this Draft version",
     selectedCandidate: "Selected Draft version",
-    candidateHint: "Every evaluated version can be selected; the selected version must pass the QC receipt check before creation.",
+    candidateHint: "Every available Draft version can be selected and confirmed; QC is optional.",
     currentResult: "Latest QC result",
     currentResultHint: "This is the primary result for the current QC run.",
     recoveredResult: "Recovered QC result",
     recoveredResultHint:
-      "The latest run failed, but a completed result was recovered and can be selected for confirmation subject to the normal gates.",
+      "The latest run failed, but the existing Draft remains available to confirm.",
     selectedDraft: "Draft to confirm",
     selectedDraftHint: "The best version from the current run is selected by default. You can choose another version from history.",
     confirmDraft: "Confirm this Draft",
     confirmedDraft: "Draft confirmed",
     recoveredConfirmHint:
-      "The latest run stopped because its scorecard was incomplete, but a completed result was recovered from the ledger — you can still confirm this Draft.",
+      "The latest run stopped because its scorecard was incomplete, but you can still confirm this Draft.",
     previousCollapsed: "View the previous QC result in history",
-    historicalBetter: "A historical QC result scored higher — expand history to select it; that Draft will be QC-checked again before use.",
+    historicalBetter: "A historical QC result scored higher — expand history to compare or select it; QC does not block confirmation.",
     repair: "Let AI repair from QC findings (1 round)",
     confirmStartTitle: "Confirm Draft QC",
     confirmRepairTitle: "Confirm AI Draft repair",
@@ -292,7 +293,6 @@ export function VerticalDramaDraftQualityQcPanel({
   candidateSelectionPending = false,
   onSelectCandidate,
   onConfirmCandidate,
-  candidateCanBeConfirmed = false,
   candidateAlreadyConfirmed = false,
   onRepair,
 }: VerticalDramaDraftQualityQcPanelProps) {
@@ -342,6 +342,7 @@ export function VerticalDramaDraftQualityQcPanel({
     : null;
   const canRepair = Boolean(
     onRepair &&
+      (status === "succeeded" || recoveredResult) &&
       visibleReport &&
       !visibleReport.pass &&
       repairPlan?.available &&
@@ -677,8 +678,7 @@ export function VerticalDramaDraftQualityQcPanel({
                   variant={candidateAlreadyConfirmed ? "secondary" : "default"}
                   disabled={
                     candidateSelectionPending ||
-                    candidateAlreadyConfirmed ||
-                    !candidateCanBeConfirmed
+                    candidateAlreadyConfirmed
                   }
                   onClick={onConfirmCandidate}
                 >
@@ -935,8 +935,7 @@ export function VerticalDramaDraftQualityQcPanel({
               variant={candidateAlreadyConfirmed ? "secondary" : "default"}
               disabled={
                 candidateSelectionPending ||
-                candidateAlreadyConfirmed ||
-                !candidateCanBeConfirmed
+                candidateAlreadyConfirmed
               }
               onClick={onConfirmCandidate}
             >

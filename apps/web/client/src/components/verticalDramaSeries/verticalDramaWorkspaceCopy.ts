@@ -206,11 +206,43 @@ export const VD_COPY = {
       "This uses real AI generation and spends credits.",
     generateRealScriptConfirmNote:
       "Continue only if you want the actual Sub-episode script, not the free placeholder.",
-    regenerateStage: "Regenerate (delete old)",
+    regenerateStage: "Rebuild this stage",
     regenerateConfirm:
-      "Deletes the current output and creates new — cannot be undone.",
-    regenerateConfirmButton: "Delete & regenerate",
-    regenerating: "Regenerating…",
+      "This stage result will be replaced. Existing media remains available in history.",
+    regenerateConfirmButton: "Rebuild & replace",
+    regenerating: "Rebuilding…",
+    regenerateStageFailed: "Stage rebuild failed",
+    regenerateStageSuccess: "Stage rebuilt successfully",
+    episodeContentRebuildTitle: "Create new episode content",
+    episodeContentRebuildDescription:
+      "Use this when the episode story or prompts have a problem. Choose whether to rebuild the 9-shot storyboard from the current script or rewrite the whole episode; the current version remains available in history.",
+    episodeContentRebuildButton: "Create new content (9 shots)",
+    episodeContentRebuildDialogTitle: "Choose how to rebuild this episode",
+    episodeContentRebuildModeSameStory: "Rebuild from the current story",
+    episodeContentRebuildModeSameStoryDescription:
+      "Keep the current synopsis and dialogue. Rebuild the 9-shot storyboard and downstream outputs from the existing story.",
+    episodeContentRebuildModeRewriteStory: "Repair and rewrite the episode",
+    episodeContentRebuildModeRewriteStoryDescription:
+      "Read prior memory and the next episode, then create a new synopsis, dialogue, and 9-shot storyboard with safer story context.",
+    episodeContentRebuildConfirmWarning:
+      "This is a long AI job and may spend credits. Review the selected mode before starting.",
+    episodeContentRebuildConfirmWarningSameStory:
+      "The current storyboard and downstream outputs will be replaced with a new set based on the existing script. Existing media remains in history where available.",
+    episodeContentRebuildConfirmWarningRewriteStory:
+      "The synopsis, dialogue, and 9-shot storyboard will be rewritten using memory and the next episode. The current version and media remain in history.",
+    episodeContentRebuildConfirmButton: "Confirm and start",
+    episodeContentRebuildCancel: "Cancel",
+    episodeContentRebuildQueued:
+      "New episode content request queued — the system will read memory and the next episode before rebuilding.",
+    episodeContentRebuildWorking:
+      "Reading memory and the next episode, then rebuilding episode content…",
+    episodeContentRebuildDeduped:
+      "Reusing the existing episode-content request.",
+    episodeContentRebuildSuccess:
+      "New episode content is ready — regenerate images and videos from the new prompts. The previous version is preserved.",
+    episodeContentRebuildNeedsReview:
+      "A new episode candidate needs safety or continuity review before use.",
+    episodeContentRebuildFailed: "Creating new episode content failed",
     generateEpisode: "Generate this Sub-episode (paid)",
     generateEpisodeExplain:
       "One click generates the Sub-episode script, syncs character data, checks references, and builds the 9-shot storyboard.",
@@ -937,10 +969,42 @@ export const VD_COPY = {
     generateRealScriptConfirmWarning: "การทำงานนี้ใช้ AI จริงและใช้เครดิต",
     generateRealScriptConfirmNote:
       "ดำเนินการต่อเฉพาะเมื่อต้องการบทตอนย่อยจริง ไม่ใช่ placeholder ฟรี",
-    regenerateStage: "สร้างใหม่ (ลบชุดเดิม)",
-    regenerateConfirm: "จะลบผลลัพธ์ปัจจุบันและสร้างใหม่ — ย้อนกลับไม่ได้",
-    regenerateConfirmButton: "ลบและสร้างใหม่",
-    regenerating: "กำลังสร้างใหม่…",
+    regenerateStage: "สร้างผลลัพธ์ขั้นตอนนี้ใหม่",
+    regenerateConfirm:
+      "ระบบจะสร้างผลลัพธ์ของขั้นตอนนี้ใหม่และแทนที่ชุดที่แสดงอยู่ โดยสื่อเดิมยังอยู่ในประวัติ",
+    regenerateConfirmButton: "สร้างใหม่และแทนที่",
+    regenerating: "กำลังสร้างผลลัพธ์ใหม่…",
+    regenerateStageFailed: "สร้างผลลัพธ์ขั้นตอนไม่สำเร็จ",
+    regenerateStageSuccess: "สร้างผลลัพธ์ขั้นตอนใหม่แล้ว",
+    episodeContentRebuildTitle: "สร้างเนื้อหาตอนใหม่",
+    episodeContentRebuildDescription:
+      "ใช้เมื่อตอนมีปัญหาเรื่องเนื้อเรื่องหรือพรอมต์ กดปุ่มเพื่อเลือกว่าจะสร้าง storyboard ใหม่ครบ 9 ช็อตจากบทเดิม หรือซ่อมเนื้อหาและเขียนบทใหม่ทั้งตอน โดยเก็บเวอร์ชันเดิมไว้ในประวัติ",
+    episodeContentRebuildButton: "สร้างเนื้อหาชุดใหม่ (9 ช็อต)",
+    episodeContentRebuildDialogTitle: "เลือกวิธีสร้างเนื้อหาตอนใหม่",
+    episodeContentRebuildModeSameStory: "สร้างใหม่ตามเนื้อหาเดิม",
+    episodeContentRebuildModeSameStoryDescription:
+      "คงเรื่องย่อและบทพูดเดิมไว้ แล้วสร้าง storyboard ครบ 9 ช็อตและผลลัพธ์ถัดไปใหม่จากเนื้อหาเดิม",
+    episodeContentRebuildModeRewriteStory: "ซ่อมเนื้อหาใหม่และเขียนบทใหม่ทั้งตอน",
+    episodeContentRebuildModeRewriteStoryDescription:
+      "อ่านความจำตอนก่อนหน้าและเงื่อนไขของตอนถัดไป แล้วสร้างเรื่องย่อ บทพูด และ storyboard ใหม่ โดยลดบริบทที่เสี่ยงต่อนโยบาย",
+    episodeContentRebuildConfirmWarning:
+      "งานนี้ใช้เวลานานและอาจใช้เครดิต กรุณาตรวจสอบโหมดที่เลือกก่อนเริ่ม",
+    episodeContentRebuildConfirmWarningSameStory:
+      "ระบบจะแทนที่ storyboard และผลลัพธ์ขั้นตอนถัดไปด้วยชุดใหม่ โดยยึดบทเดิมเป็นหลัก สื่อเดิมยังอยู่ในประวัติเท่าที่มี",
+    episodeContentRebuildConfirmWarningRewriteStory:
+      "ระบบจะอ่านความจำและตอนถัดไป แล้วเขียนเรื่องย่อ บทพูด และ storyboard ใหม่ครบ 9 ช็อต โดยเก็บเวอร์ชันและสื่อปัจจุบันไว้ในประวัติ",
+    episodeContentRebuildConfirmButton: "ยืนยันและเริ่มสร้าง",
+    episodeContentRebuildCancel: "ยกเลิก",
+    episodeContentRebuildQueued:
+      "ส่งคำขอสร้างเนื้อหาตอนใหม่แล้ว — ระบบจะอ่านความจำและตอนถัดไปก่อนสร้างใหม่",
+    episodeContentRebuildWorking:
+      "กำลังอ่านความจำและตอนถัดไป แล้วสร้างเนื้อหาตอนใหม่…",
+    episodeContentRebuildDeduped: "ใช้คำขอสร้างเนื้อหาตอนเดิมแล้ว",
+    episodeContentRebuildSuccess:
+      "สร้างเนื้อหาตอนใหม่สำเร็จ — กรุณาสร้างภาพและวิดีโอจากพรอมต์ชุดใหม่ โดยเวอร์ชันเดิมยังถูกเก็บไว้",
+    episodeContentRebuildNeedsReview:
+      "สร้าง candidate ตอนใหม่แล้ว แต่ต้องตรวจสอบความปลอดภัยหรือความต่อเนื่องก่อนใช้งาน",
+    episodeContentRebuildFailed: "สร้างเนื้อหาตอนใหม่ไม่สำเร็จ",
     generateEpisode: "สร้างตอนย่อยนี้ (มีค่าใช้จ่าย)",
     generateEpisodeExplain:
       "กดครั้งเดียว ระบบจะสร้างบทตอนย่อย ซิงก์ข้อมูลตัวละคร ตรวจภาพอ้างอิง และสร้างสตอรีบอร์ด 9 ช็อตให้ครบ",

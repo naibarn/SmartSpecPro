@@ -1690,10 +1690,115 @@
       "breakpoints": true
     },
     {
+      "idx": 241,
+      "version": "7",
+      "when": 1787575173478,
+      "tag": "0255_register_vertical_drama_draft_quality_controller_skill",
+      "breakpoints": true
+    },
+    {
+      "idx": 242,
+      "version": "7",
+      "when": 1787645467586,
+      "tag": "0256_worker_series_control_plane",
+      "breakpoints": true
+    },
+    {
+      "idx": 243,
+      "version": "7",
+      "when": 1787649067586,
+      "tag": "0257_worker_series_binding_single_active",
+      "breakpoints": true
+    },
+    {
+      "idx": 244,
+      "version": "7",
+      "when": 1787649067587,
+      "tag": "0258_worker_media_job_binding_pin",
+      "breakpoints": true
+    },
+    {
+      "idx": 245,
+      "version": "7",
+      "when": 1787649067588,
+      "tag": "0259_vertical_drama_media_index_retry",
+      "breakpoints": true
+    },
+    {
+      "idx": 246,
+      "version": "7",
+      "when": 1787650800000,
+      "tag": "0260_grok_imagine_image_2_reference_images",
+      "breakpoints": true
+    },
+    {
+      "idx": 247,
+      "version": "7",
+      "when": 1787737200000,
+      "tag": "0261_grok_imagine_image_2_prompt_length",
+      "breakpoints": true
+    },
+    {
+      "idx": 248,
+      "version": "7",
+      "when": 1787770337000,
+      "tag": "0262_feedback_reply_attachments_and_reads",
+      "breakpoints": true
+    },
+    {
       "idx": 249,
       "version": "7",
       "when": 1787770337001,
       "tag": "0263_free_plan_assignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 250,
+      "version": "7",
+      "when": 1787770337002,
+      "tag": "0264_credit_context_polymorphic_lineage",
+      "breakpoints": true
+    },
+    {
+      "idx": 251,
+      "version": "7",
+      "when": 1787770337003,
+      "tag": "0265_credit_context_legacy_identity_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 252,
+      "version": "7",
+      "when": 1787770337004,
+      "tag": "0266_vertical_drama_episode_revisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 253,
+      "version": "7",
+      "when": 1787770337005,
+      "tag": "0267_vertical_drama_episode_repair_attempts",
+      "breakpoints": true
+    },
+    {
+      "idx": 254,
+      "version": "7",
+      "when": 1787998587851,
+      "tag": "0268_vertical_drama_special_tie_in_episode",
+      "breakpoints": true
+    },
+    {
+      "idx": 255,
+      "version": "7",
+      "when": 1788051406619,
+      "tag": "0269_vertical_drama_marketplace_review_idea_runs",
+      "breakpoints": true
+    },
+    {
+      "idx": 256,
+      "version": "7",
+      "when": 1788080000000,
+      "tag": "0270_presentation_builder_image_jobs",
       "breakpoints": true
     }
   ]

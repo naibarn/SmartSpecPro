@@ -212,8 +212,22 @@ export function ensureSlideContent(input: unknown): PresentationSlideContent {
   const parsed = presentationSlideContentSchema.safeParse(input);
   if (parsed.success) {
     const normalizedCanvas = normalizeCanvasSize(parsed.data.canvas);
+    const normalizedElements = parsed.data.elements.map((element) => {
+      const isFullCanvasImage = element.type === "image"
+        && parsed.data.visualOnly === true
+        && Math.abs(element.width - normalizedCanvas.width) <= 1
+        && Math.abs(element.height - normalizedCanvas.height) <= 1;
+      if (!isFullCanvasImage || (Math.abs(element.x) <= 1 && Math.abs(element.y) <= 1)) {
+        return element;
+      }
+      // A full-canvas image is the slide surface. If an old editor session
+      // moved it as an object, repair only its frame position; keep crop
+      // zoom/focus values intact.
+      return { ...element, x: 0, y: 0 };
+    });
     return sortCollectionsByRenderOrder({
       ...parsed.data,
+      elements: normalizedElements,
       canvas: normalizedCanvas,
       components: refreshBuiltInComponents(parsed.data.components, normalizedCanvas),
       transition: parsed.data.transition,

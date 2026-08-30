@@ -1138,11 +1138,9 @@ describe("media router DB-first model contract", () => {
         }))
         .mockImplementationOnce(() => ({
           from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([
-                { providerName: "kie_ai", apiKeyEncrypted: "encrypted-key" },
-              ]),
-            }),
+            limit: vi.fn().mockResolvedValue([
+              { providerName: "kie_ai", apiKeyEncrypted: "encrypted-key" },
+            ]),
           }),
         })),
     };
@@ -1181,11 +1179,50 @@ describe("media router DB-first model contract", () => {
         }))
         .mockImplementationOnce(() => ({
           from: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              { providerName: "knplabai", hasApiKey: false, apiKeyEncrypted: null },
+            ]),
+          }),
+        })),
+    };
+    mockGetDb.mockResolvedValue(db as any);
+
+    const fn = mediaRouter.getModels as Function;
+    const result = await fn({ input: { type: "video" } });
+
+    expect(result.models).toEqual([]);
+    expect(result.defaults.video).toBeNull();
+  });
+
+  it("getModels hides enabled models whose provider is disabled", async () => {
+    const db = {
+      select: vi
+        .fn()
+        .mockImplementationOnce(() => ({
+          from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([
-                { providerName: "knplabai", hasApiKey: false, apiKeyEncrypted: null },
+              orderBy: vi.fn().mockResolvedValue([
+                {
+                  id: "disabled-provider-video",
+                  name: "Disabled Provider Video",
+                  description: "video",
+                  type: "video",
+                  provider: "knplabai",
+                  creditCost: 50,
+                  supportsAspectRatios: ["16:9"],
+                  supportsSizes: null,
+                  supportsDurations: [5],
+                  configJson: null,
+                },
               ]),
             }),
+          }),
+        }))
+        .mockImplementationOnce(() => ({
+          from: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              { providerName: "knplabai", isEnabled: false, hasApiKey: true, apiKeyEncrypted: "encrypted-key" },
+            ]),
           }),
         })),
     };

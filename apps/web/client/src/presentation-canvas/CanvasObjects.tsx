@@ -34,6 +34,7 @@ interface CanvasObjectsProps {
   showElementFrames?: boolean;
   autoPlayVideos?: boolean;
   showVideoPlaybackToggle?: boolean;
+  panMode?: boolean;
   clipTextToElementBounds?: boolean;
   cropModeElementId?: string | null;
   cropModeTarget?: "content" | "frame";
@@ -48,6 +49,11 @@ const THAI_TEXT_REGEX = /[\u0e00-\u0e7f]/;
 const THAI_TEXT_MIN_LINE_HEIGHT = 1.5;
 const THAI_TEXT_PADDING_TOP = "0.2em";
 const THAI_TEXT_PADDING_BOTTOM = "0.48em";
+const MIN_MEDIA_ZOOM = 0.5;
+const MAX_MEDIA_ZOOM = 3;
+const MEDIA_WHEEL_LINE_HEIGHT_PX = 16;
+const MEDIA_WHEEL_ZOOM_SENSITIVITY = 0.001;
+const MAX_MEDIA_WHEEL_DELTA_PX = 240;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -76,7 +82,21 @@ function buildMediaTransformStyle(
   };
 }
 
-function resolveImageRenderProps(element: PresentationElement): {
+function isFullCanvasImage(
+  element: PresentationElement,
+  canvasWidth: number,
+  canvasHeight: number,
+): boolean {
+  return element.type === "image"
+    && Math.abs(element.width - canvasWidth) <= 1
+    && Math.abs(element.height - canvasHeight) <= 1;
+}
+
+function resolveImageRenderProps(
+  element: PresentationElement,
+  canvasWidth: number,
+  canvasHeight: number,
+): {
   fit: "contain" | "cover" | "fill";
   positionX: number;
   positionY: number;
@@ -86,9 +106,13 @@ function resolveImageRenderProps(element: PresentationElement): {
     return { fit: "contain", positionX: 50, positionY: 50, zoom: 1 };
   }
 
-  const fit = (element.imageFit === "cover" || element.imageFit === "fill")
-    ? element.imageFit
-    : "contain";
+  // A full-slide render is the slide itself, not a photo floating above a
+  // white canvas. Cover keeps legacy `contain` records flush with the canvas.
+  const fit = isFullCanvasImage(element, canvasWidth, canvasHeight)
+    ? "cover"
+    : (element.imageFit === "cover" || element.imageFit === "fill")
+      ? element.imageFit
+      : "contain";
   const positionX = clamp(Number(element.imagePositionX ?? 50), 0, 100);
   const positionY = clamp(Number(element.imagePositionY ?? 50), 0, 100);
   const zoom = clamp(Number(element.imageZoom ?? 1), 0.5, 3);
@@ -209,6 +233,8 @@ interface RenderElementBodyOptions {
   showVideoPlaybackToggle: boolean;
   clipTextToElementBounds: boolean;
   mediaMotionTiming: CanvasMediaMotionTiming;
+  canvasWidth: number;
+  canvasHeight: number;
 }
 
 function renderElementBody(
@@ -259,7 +285,7 @@ function renderElementBody(
   if (element.type === "image") {
     const resolvedSource = normalizeMediaSourceUrl(element.src);
     const hasSource = Boolean(resolvedSource);
-    const imageRender = resolveImageRenderProps(element);
+    const imageRender = resolveImageRenderProps(element, options.canvasWidth, options.canvasHeight);
     const mediaShapeStyle = buildPresentationMediaShapeStyleForElement(element);
     const inlineSvg = typeof element.svgContent === "string" ? element.svgContent.trim() : "";
     // Inline SVG graphic — transparent background, color-tinted
@@ -306,7 +332,7 @@ function renderElementBody(
             data-testid={`canvas-image-${element.id}`}
             src={resolvedSource}
             alt={element.alt || "Image"}
-            className="h-full w-full"
+            className="block h-full w-full"
             style={{
               objectFit: imageRender.fit,
               objectPosition: `${imageRender.positionX}% ${imageRender.positionY}%`,
@@ -468,6 +494,7 @@ export function CanvasObjects({
   showElementFrames = true,
   autoPlayVideos = false,
   showVideoPlaybackToggle = true,
+  panMode = false,
   clipTextToElementBounds = false,
   cropModeElementId = null,
   cropModeTarget = "content",
@@ -760,6 +787,9 @@ export function CanvasObjects({
             if (event.button !== 0 || event.altKey) {
               return;
             }
+            if (panMode) {
+              return;
+            }
             event.stopPropagation();
             dragStateRef.current = {
               mode: "move",
@@ -782,7 +812,8 @@ export function CanvasObjects({
           key={element.id}
           type="button"
           data-canvas-object="true"
-          className={getBaseElementClass(interactionActiveIds.includes(element.id), showElementFrames)}
+          data-canvas-viewport-pan-target={isFullCanvasImage(element, canvasWidth, canvasHeight) ? "true" : undefined}
+          className={`p-0 ${getBaseElementClass(interactionActiveIds.includes(element.id), showElementFrames)}`}
           style={{
             left: `${(element.x / canvasWidth) * 100}%`,
             top: `${(element.y / canvasHeight) * 100}%`,
@@ -798,8 +829,53 @@ export function CanvasObjects({
             transform: `rotate(${element.rotation ?? 0}deg)`,
             transformOrigin: "center center",
           }}
+          onWheel={(event) => {
+            const isMediaElement = element.type === "image" || element.type === "video";
+            if (
+              !isMediaElement
+              || cropModeElementId !== element.id
+              || cropModeTarget !== "content"
+              || !onAdjustMediaCrop
+            ) {
+              return;
+            }
+
+            const modeMultiplier = event.deltaMode === 1
+              ? MEDIA_WHEEL_LINE_HEIGHT_PX
+              : event.deltaMode === 2
+                ? 680
+                : 1;
+            const normalizedDelta = clamp(
+              (Number.isFinite(event.deltaY) ? event.deltaY : 0) * modeMultiplier,
+              -MAX_MEDIA_WHEEL_DELTA_PX,
+              MAX_MEDIA_WHEEL_DELTA_PX,
+            );
+            const rawCurrentZoom = element.type === "image"
+              ? Number(element.imageZoom ?? 1)
+              : Number(element.videoZoom ?? 1);
+            const currentZoom = Number.isFinite(rawCurrentZoom) ? rawCurrentZoom : 1;
+            const nextZoom = clamp(
+              Number((currentZoom * Math.exp(-normalizedDelta * MEDIA_WHEEL_ZOOM_SENSITIVITY)).toFixed(3)),
+              MIN_MEDIA_ZOOM,
+              MAX_MEDIA_ZOOM,
+            );
+            event.preventDefault();
+            event.stopPropagation();
+            if (nextZoom === currentZoom) {
+              return;
+            }
+            onAdjustMediaCrop(element.id, element.type === "image"
+              ? { imageZoom: nextZoom }
+              : { videoZoom: nextZoom });
+          }}
           onPointerDown={(event) => {
             if (event.button !== 0) {
+              return;
+            }
+            const cropModeActive = cropModeElementId === element.id && (element.type === "image" || element.type === "video");
+            if ((panMode || isFullCanvasImage(element, canvasWidth, canvasHeight)) && !cropModeActive) {
+              // Full-canvas media is the slide surface. Let CanvasStage handle
+              // the drag as viewport pan instead of moving the surface itself.
               return;
             }
             event.stopPropagation();
@@ -813,7 +889,6 @@ export function CanvasObjects({
             } else {
               onFocusElement?.(element.id);
             }
-            const cropModeActive = cropModeElementId === element.id && (element.type === "image" || element.type === "video");
             dragStateRef.current = cropModeActive
               ? (cropModeTarget === "frame"
                 ? {
@@ -885,6 +960,8 @@ export function CanvasObjects({
               showVideoPlaybackToggle,
               clipTextToElementBounds,
               mediaMotionTiming,
+              canvasWidth,
+              canvasHeight,
             })}
           </span>
           {selectedElement?.id === element.id && cropModeElementId !== element.id ? (

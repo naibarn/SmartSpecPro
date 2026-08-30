@@ -47,7 +47,7 @@ describe("useVerticalDramaStaleDraftCleanupMutation", () => {
 
     act(() => mutationCallbacks.current?.onSuccess({ archivedCount: 3 }));
     expect(toastSuccess).toHaveBeenCalledWith(
-      "นำงาน Draft 3 งานออกจากรายการแล้ว"
+      "เก็บงาน Draft 3 งานเข้าประวัติแล้ว"
     );
     expect(onCompleted).toHaveBeenCalledOnce();
   });
@@ -73,7 +73,7 @@ describe("useVerticalDramaStaleDraftCleanupMutation", () => {
 
     act(() => mutationCallbacks.current?.onError({ message: "Database busy" }));
     expect(toastError).toHaveBeenCalledWith(
-      "Could not clean up Draft jobs. Please try again."
+      "Could not archive Draft jobs. Please try again."
     );
     expect(onCompleted).not.toHaveBeenCalled();
   });

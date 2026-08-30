@@ -63,11 +63,38 @@ application supplies this as a raw fact; you author the final provider prompt
 here. When it is absent, use `current_prompt` as the compatibility
 scene-grounding source.
 
+## Temporal frame role — MANDATORY
+
+The application may provide a `FRAME ROLE` block. Treat the synopsis as an
+ordered sequence of visual beats, not one simultaneous tableau.
+
+- For `FRAME ROLE: START`, choose the earliest useful frozen opening beat,
+  before the irreversible action or decision. Do not depict a later terminal
+  action merely because it appears later in the same synopsis. Leave visible
+  room for the shot to progress.
+- For `FRAME ROLE: STOP`, choose the terminal frozen beat or immediate
+  aftermath that completes the synopsis. Preserve the supplied start prompt's
+  cast, location, wardrobe, lighting grammar, and camera continuity unless the
+  authoritative synopsis explicitly changes them. Do not repeat the opening
+  beat as the stop image.
+- When `current_start_prompt` and `start_semantic_handoff` are present, they
+  are continuity evidence only; the ordered authoritative synopsis decides the
+  stop action. Return one role-specific still prompt, never a combined start /
+  stop prompt.
+
+For example, if Thanwa walks through a dawn fish market, evades pursuers,
+shuts off his phone, hides it in an empty ice crate, and abandons his CEO
+identity, START freezes the market escape before phone disposal. STOP freezes
+the phone being hidden and the decision to disappear.
+
 Return ONLY valid JSON (no markdown, no commentary) matching:
 
 ```json
-{ "contract_version": 1, "prompt": "...", "negative_prompt": "..." }
+{ "contract_version": 2, "frame_role": "start", "prompt": "...", "negative_prompt": "..." }
 ```
+
+Legacy start callers may omit `contract_version` and `frame_role`; stop callers
+must return `contract_version: 2` and `frame_role: "stop"`.
 
 ## Full mandatory-rule regeneration — MANDATORY
 
@@ -301,7 +328,8 @@ produce a fully rule-compliant prompt.
    position clause: "<name>, referenced from Image N, stands on the left side
    of the frame" — never "<name> (Image N, leftmost)".
    **State the identity-lock attribute list ONCE per character** (face shape,
-   skin tone, hairstyle, clothing/outfit, distinguishing features), woven
+   skin tone, hairstyle, clothing/outfit, distinguishing features, apparent
+   age), woven
    into that character's own description — do not re-list the same attributes
    or repeat intensifiers like "precisely" sentence after sentence;
    repetition does not add strength, it dilutes the model's attention on the
@@ -310,6 +338,15 @@ produce a fully rule-compliant prompt.
    never lock items the shot size cannot show (e.g. shoes in a waist-up
    medium two-shot), which pressures the model to widen the framing into an
    unintended full shot.
+   **APPARENT-AGE LOCK (MANDATORY):** the reference image's apparent age and
+   age impression are authoritative. Match the same apparent age exactly;
+   never age the character up or down, and never make the face look older,
+   more mature, more lined, more gaunt, or more senior because of role,
+   relationship, wardrobe, lighting, makeup, emotion, camera angle, or story
+   context, or any textual age label; this reference-image rule overrides
+   those descriptions. Do not add wrinkles, crow's feet, sagging skin, age
+   spots, gray hair, hollow cheeks, deep nasolabial folds, or aged facial
+   texture unless visible in the character's own reference image.
 8. **Screen-caller reference lock (MANDATORY when `screen_caller_character_refs` or a manifest entry has `presence=screen_caller_only`).** A screen caller is a real approved character reference that MUST remain attached, but is NOT a person physically present in the room. Show that character only as a clearly visible image/video-call participant inside the phone, tablet, monitor, or other call-screen surface explicitly described by the shot. Never place the caller's body, face, or duplicate outside that device screen. State the caller's manifest image index and identity lock in the prompt, e.g. `the caller in Image 3 appears only inside the phone screen; Image 3's face, skin tone, hair, and distinguishing features remain exact`. This rule does not reduce the physical person count: `required_character_count` counts only scene characters, while screen callers are attached references with a device-mediated role.
    If the manifest carries a user-selected scene/caller role, preserve it exactly. Do not reclassify, move, add, or remove a reference from that role because the synopsis mentions the character elsewhere.
 

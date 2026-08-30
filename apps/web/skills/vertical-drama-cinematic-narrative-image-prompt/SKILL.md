@@ -94,7 +94,15 @@ attached. Then, for the rest of the prompt:
   "ไอริณ, referenced from Image 1, sits nearest the window" — never
   "ไอริณ (Image 1, left)". Image NUMBER is identity; staging is staging.
 - State each character's identity lock ONCE, compactly (face shape, skin
-  tone, hairstyle, outfit locked to their image). Reference-image authority
+  tone, hairstyle, outfit, and apparent age locked to their image). The
+  reference image's apparent age is authoritative: do not age the character
+  up or down, and do not make the face look older, more mature, more lined,
+  more gaunt, or more senior because of role, relationship, wardrobe,
+  lighting, makeup, emotion, camera angle, story context, or any textual age
+  label; this reference-image rule overrides those descriptions. Do not add
+  wrinkles, crow's feet, sagging skin, age spots, gray hair, hollow cheeks,
+  deep nasolabial folds, or aged facial texture unless visible in the reference.
+  Reference-image authority
   order, highest first: character identity → wardrobe → location →
   supporting angle → your own text. A location or angle reference NEVER
   overrides a face.

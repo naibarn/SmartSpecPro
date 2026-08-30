@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import { getDb } from "../db";
 import {
+  assertR2StorageActive,
   storageExists,
   storagePut,
   storageReadText,
@@ -192,6 +193,10 @@ import {
 // rejection message. Pure, client-importable module (section 02 already
 // created this directory).
 import { buildSequentialShotOverrideRejectionMessage } from "../../shared/marketplaceCapture/sequentialShotBlockerCopy";
+import {
+  MARKETPLACE_AUTO_REVIEW_PLANNER_SKILL_SLUG,
+  MARKETPLACE_AUTO_REVIEW_VERIFIER_SKILL_SLUG,
+} from "../../shared/skillReferenceContracts";
 // Feature 136 section 13 (§4 deliverable 2) — the optional cinematic-prompt
 // style layer. SVC only threads the raw value through; the engine itself
 // lives entirely in the runner module above.
@@ -924,6 +929,9 @@ const MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS = 2;
 const MAX_CREATIVE_PLANNER_SHOT_COUNT_ATTEMPTS = 3;
 const DEFAULT_VISION_QA_MODEL = "gpt-4o-mini";
 const MARKETPLACE_AUTO_REVIEW_RULE_PACK_REF = "ad-policy:th-global:v1";
+export const MARKETPLACE_AUTO_REVIEW_SEQUENTIAL_IMAGE_EDIT_RECONCILIATION_JOB_TYPE =
+  "sequential_image_edit_reconciliation";
+const SEQUENTIAL_IMAGE_EDIT_RECONCILIATION_DELAY_MS = 60_000;
 
 const ACTIVE_RUN_STATUSES: MarketplaceAutoReviewStatus[] = [
   "queued",
@@ -4257,7 +4265,9 @@ function autoTenantId(auth: AuthContext): string {
 
 function tenantAccessClause(auth: AuthContext) {
   const tenantId = auth.tenantId?.trim();
-  if (!tenantId) return undefined;
+  // Auto Review reads and mutations are tenant-bound. Do not let Drizzle
+  // silently omit the predicate when a malformed caller lacks tenant context.
+  if (!tenantId) return sql`false`;
   return or(
     eq(marketplaceAutoReviewRuns.tenantId, tenantId),
     isNull(marketplaceAutoReviewRuns.tenantId)
@@ -4297,6 +4307,84 @@ function sequentialImageEditCandidateMap(
   );
 }
 
+const SEQUENTIAL_IMAGE_EDIT_PENDING_TASK_STATUSES = new Set([
+  "pending",
+  "processing",
+]);
+
+export function isMarketplaceAutoReviewSequentialImageEditTaskPendingForTest(
+  status: unknown
+): boolean {
+  return SEQUENTIAL_IMAGE_EDIT_PENDING_TASK_STATUSES.has(cleanText(status));
+}
+
+type SequentialImageEditCandidateTaskState = {
+  status: string;
+  resultUrl?: string;
+  errorMessage?: string;
+};
+
+/**
+ * Maps one provider observation to the persisted candidate state. This is
+ * deliberately pure so pending/completed/failed semantics stay testable
+ * without a provider or database. A completed task without a result URL is
+ * treated as pending: the background poll must not publish an unusable
+ * candidate or refund a successful provider task.
+ */
+function resolveMarketplaceAutoReviewSequentialImageEditCandidate(input: {
+  candidate: Record<string, unknown>;
+  task: SequentialImageEditCandidateTaskState;
+  now: string;
+}): {
+  outcome: "pending" | "completed" | "failed";
+  candidate: Record<string, unknown>;
+} {
+  const now = cleanText(input.now) || new Date().toISOString();
+  const resultUrl = cleanText(input.task.resultUrl);
+  if (input.task.status === "completed" && resultUrl) {
+    return {
+      outcome: "completed",
+      candidate: {
+        ...input.candidate,
+        status: "completed",
+        afterUrl: resultUrl,
+        completedAt: now,
+      },
+    };
+  }
+  if (["failed", "cancelled"].includes(input.task.status)) {
+    return {
+      outcome: "failed",
+      candidate: {
+        ...input.candidate,
+        status: "failed",
+        errorMessage:
+          cleanText(input.task.errorMessage) ||
+          (input.task.status === "cancelled"
+            ? "การแก้ภาพถูกยกเลิก"
+            : "การแก้ภาพจาก provider ไม่สำเร็จ"),
+        failedAt: now,
+      },
+    };
+  }
+  return {
+    outcome: "pending",
+    candidate: {
+      ...input.candidate,
+      status: "submitted",
+      lastPolledAt: now,
+    },
+  };
+}
+
+export function resolveMarketplaceAutoReviewSequentialImageEditCandidateForTest(
+  input: Parameters<
+    typeof resolveMarketplaceAutoReviewSequentialImageEditCandidate
+  >[0]
+) {
+  return resolveMarketplaceAutoReviewSequentialImageEditCandidate(input);
+}
+
 function compactRecord<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(
     Object.entries(value).filter(([, item]) => {
@@ -4320,7 +4408,7 @@ function normalizeMarketplaceMcpTransportMetadata(
   if (!connectionId) {
     return {
       transport: "mcp",
-      tenantId: params.tenantId,
+      tenantId: params.tenantId ?? undefined,
       actorUserId: params.actorUserId,
       originSurface: "marketplace_capture",
     };
@@ -8744,7 +8832,7 @@ async function applySequentialBestOfTwoSelections(params: {
       }) ?? null;
     const candidate1Qa = await runShotFrameVisionQa({
       db: params.db,
-      tenantId: params.tenantId,
+      tenantId: params.tenantId ?? undefined,
       auth: params.auth,
       run: params.run,
       plan: params.plan,
@@ -14274,7 +14362,7 @@ async function rewriteMarketplaceAutoReviewPlanVoiceoverWithSkill(params: {
       );
     }
     const execution = await executeSharedSkillTextRuntime({
-      tenantId: params.tenantId,
+      tenantId: params.tenantId ?? undefined,
       userId: params.auth.userId,
       objective:
         "Rewrite Marketplace Auto Review storyboard narration with the product voiceover skill.",
@@ -18723,7 +18811,7 @@ async function insertDirectProductionDirectorProject(params: {
       productionRunId: params.productionRunId,
       goalVersion: 1,
       version: 1,
-      plannerSkillId: "marketplace-auto-review-director",
+      plannerSkillId: MARKETPLACE_AUTO_REVIEW_PLANNER_SKILL_SLUG,
       plannerSkillVersion: AUTO_REVIEW_SCHEMA_VERSION,
       plan: planVersionPayload,
       inputHash: buildProductionStableHash(goal),
@@ -18742,7 +18830,7 @@ async function insertDirectProductionDirectorProject(params: {
       userId: params.auth.userId,
       productionRunId: params.productionRunId,
       planVersion: 1,
-      verifierSkillId: "marketplace-auto-review-verifier",
+      verifierSkillId: MARKETPLACE_AUTO_REVIEW_VERIFIER_SKILL_SLUG,
       verifierSkillVersion: AUTO_REVIEW_SCHEMA_VERSION,
       verdict: "pass",
       score: 96,
@@ -19004,7 +19092,10 @@ function buildMarketplaceDraftQcCandidate(
 } {
   const staged = isMarketplaceAutoReviewStagedMetadata(metadata);
   const pipeline = asRecord(metadata.stagedPipeline);
-  const plan = (staged ? pipeline.plan : metadata.concept) as Record<string, unknown>;
+  const plan = (staged ? pipeline.plan : metadata.concept) as Record<
+    string,
+    unknown
+  >;
   if (!plan || typeof plan !== "object") {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -19020,7 +19111,8 @@ function buildMarketplaceDraftQcCandidate(
   const uiLocale =
     cleanText(metadata.narrativeLocale) ||
     cleanText(metadata.summaryLanguage) ||
-    (cleanText(metadata.language) || "th");
+    cleanText(metadata.language) ||
+    "th";
   const spokenLanguageProfile =
     metadata.speechLanguage ?? metadata.dialogueLanguage ?? null;
   const productTruth =
@@ -19030,7 +19122,9 @@ function buildMarketplaceDraftQcCandidate(
     null;
   const shotContract = {
     count: shots.length,
-    durations: shots.map(shot => Number(asRecord(shot).durationSeconds) || null),
+    durations: shots.map(
+      shot => Number(asRecord(shot).durationSeconds) || null
+    ),
   };
   const draft: MarketplaceDraftQcDraft = {
     mode: staged ? "staged" : "legacy",
@@ -19103,7 +19197,8 @@ function applyMarketplaceDraftQcCandidate(
     expectedDurations.length !== plan.shots.length ||
     plan.shots.some(
       (item, index) =>
-        Number(asRecord(item).durationSeconds) !== Number(expectedDurations[index])
+        Number(asRecord(item).durationSeconds) !==
+        Number(expectedDurations[index])
     )
   ) {
     throw new Error("creative_qc_revised_shot_contract_changed");
@@ -19226,7 +19321,11 @@ export function assertMarketplaceAutoReviewCreativeQcApproved(
   // bypass QC for a newly-created run.
   if (!raw) return;
   const state = marketplaceDraftQcStateSchema.safeParse(raw);
-  if (!state.success || state.data.status !== "succeeded" || !state.data.report?.pass) {
+  if (
+    !state.success ||
+    state.data.status !== "succeeded" ||
+    !state.data.report?.pass
+  ) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message:
@@ -19243,12 +19342,18 @@ export async function startMarketplaceAutoReviewDraftQualityQc(
 ) {
   const db = await getDb();
   if (!db)
-    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
   const run = await reloadRun(db, input.runId, auth);
   const metadata = asRecord(run.metadataJson) as RunMetadata;
   if (isMarketplaceAutoReviewStagedMetadata(metadata)) {
     if (cleanText(asRecord(metadata.planReview).status) !== "awaiting") {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "creative_qc_not_awaiting_story_plan" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "creative_qc_not_awaiting_story_plan",
+      });
     }
   } else {
     await assertMarketplaceAutoReviewAwaitingPlanReview(db, run);
@@ -19266,7 +19371,9 @@ export async function startMarketplaceAutoReviewDraftQualityQc(
   const nextState: MarketplaceDraftQcState = {
     ...createMarketplaceDraftQcState(maxImprovementRounds),
     status: "queued",
-    candidateFingerprint: fingerprintMarketplaceDraftQcCandidate(candidate.draft),
+    candidateFingerprint: fingerprintMarketplaceDraftQcCandidate(
+      candidate.draft
+    ),
     startedAt: new Date().toISOString(),
   };
   const nextMetadata: RunMetadata = { ...metadata, creativeQc: nextState };
@@ -19290,7 +19397,7 @@ export async function startMarketplaceAutoReviewDraftQualityQc(
 
 export async function startMarketplaceAutoReviewDraftQualityQcRepair(
   input: { runId: string },
-  auth: AuthContext,
+  auth: AuthContext
 ) {
   const db = await getDb();
   if (!db) {
@@ -19312,13 +19419,20 @@ export async function startMarketplaceAutoReviewDraftQualityQcRepair(
     await assertMarketplaceAutoReviewAwaitingPlanReview(db, run);
   }
   const current = marketplaceDraftQcStateSchema.safeParse(metadata.creativeQc);
-  if (!current.success || current.data.status !== "succeeded" || !current.data.report) {
+  if (
+    !current.success ||
+    current.data.status !== "succeeded" ||
+    !current.data.report
+  ) {
     throw new TRPCError({
       code: "CONFLICT",
       message: "creative_qc_repair_requires_completed_qc",
     });
   }
-  if (current.data.repairStatus === "queued" || current.data.repairStatus === "running") {
+  if (
+    current.data.repairStatus === "queued" ||
+    current.data.repairStatus === "running"
+  ) {
     return getMarketplaceAutoReviewRun(run.id, auth);
   }
   if (current.data.report.pass || !current.data.report.repairPlan?.available) {
@@ -19328,7 +19442,9 @@ export async function startMarketplaceAutoReviewDraftQualityQcRepair(
     });
   }
   const candidate = buildMarketplaceDraftQcCandidate(run, metadata);
-  const sourceFingerprint = fingerprintMarketplaceDraftQcCandidate(candidate.draft);
+  const sourceFingerprint = fingerprintMarketplaceDraftQcCandidate(
+    candidate.draft
+  );
   if (
     current.data.candidateFingerprint &&
     current.data.candidateFingerprint !== sourceFingerprint
@@ -19391,13 +19507,17 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
 ) {
   const db = await getDb();
   if (!db)
-    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
   const run = await reloadRun(db, runId, auth);
   const metadata = asRecord(run.metadataJson) as RunMetadata;
   const rawState = marketplaceDraftQcStateSchema.safeParse(metadata.creativeQc);
   if (!rawState.success) return getMarketplaceAutoReviewRun(run.id, auth);
   const state = rawState.data;
-  const repairMode = state.repairStatus === "queued" || state.repairStatus === "running";
+  const repairMode =
+    state.repairStatus === "queued" || state.repairStatus === "running";
   if (!repairMode && state.status !== "queued" && state.status !== "running") {
     // A prior story edit/redraft invalidates the queued candidate. The old
     // outbox row may still be delivered once; it must not run QC against the
@@ -19405,7 +19525,9 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
     return getMarketplaceAutoReviewRun(run.id, auth);
   }
   const candidate = buildMarketplaceDraftQcCandidate(run, metadata);
-  const currentFingerprint = fingerprintMarketplaceDraftQcCandidate(candidate.draft);
+  const currentFingerprint = fingerprintMarketplaceDraftQcCandidate(
+    candidate.draft
+  );
   const expectedFingerprint = repairMode
     ? state.repairSourceFingerprint
     : state.candidateFingerprint;
@@ -19417,13 +19539,18 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
         ...metadata,
         creativeQc: {
           ...state,
-          ...(repairMode ? { repairStatus: "failed" as const } : { status: "failed" as const }),
+          ...(repairMode
+            ? { repairStatus: "failed" as const }
+            : { status: "failed" as const }),
           error: "creative_qc_candidate_stale",
           completedAt: new Date().toISOString(),
         },
       },
     });
-    throw new TRPCError({ code: "CONFLICT", message: "creative_qc_candidate_stale" });
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "creative_qc_candidate_stale",
+    });
   }
   const runningMetadata: RunMetadata = {
     ...metadata,
@@ -19453,7 +19580,7 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
             lastProgress = event;
           },
         },
-        {},
+        {}
       );
       const repairArtifact = await persistMarketplaceAutoReviewArtifactJson({
         db,
@@ -19486,13 +19613,12 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
         history: [
           ...state.history,
           {
-            round:
-              Math.max(
+            round: Math.max(
                 1,
                 state.history.reduce(
                   (max, item) => Math.max(max, item.round),
-                  0,
-                ) + 1,
+                0
+              ) + 1
               ),
             score: result.repaired.report.overallScore,
             status: result.repaired.report.status,
@@ -19532,7 +19658,10 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
       metadata,
       result.best.draft
     );
-    const appliedCandidate = buildMarketplaceDraftQcCandidate(run, appliedMetadata);
+    const appliedCandidate = buildMarketplaceDraftQcCandidate(
+      run,
+      appliedMetadata
+    );
     const sourceArtifact = await persistMarketplaceAutoReviewArtifactJson({
       db,
       run,
@@ -19551,7 +19680,9 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
     const nextQcState: MarketplaceDraftQcState = {
       ...state,
       status: "succeeded",
-      candidateFingerprint: fingerprintMarketplaceDraftQcCandidate(appliedCandidate.draft),
+      candidateFingerprint: fingerprintMarketplaceDraftQcCandidate(
+        appliedCandidate.draft
+      ),
       report: result.best.report,
       history: result.history,
       progress: lastProgress,
@@ -19598,7 +19729,7 @@ export async function processMarketplaceAutoReviewDraftQualityQc(
 
 export async function selectMarketplaceAutoReviewDraftQualityQcRepair(
   input: { runId: string },
-  auth: AuthContext,
+  auth: AuthContext
 ) {
   const db = await getDb();
   if (!db) {
@@ -19609,9 +19740,14 @@ export async function selectMarketplaceAutoReviewDraftQualityQcRepair(
   }
   const run = await reloadRun(db, input.runId, auth);
   const metadata = asRecord(run.metadataJson) as RunMetadata;
-  const parsedState = marketplaceDraftQcStateSchema.safeParse(metadata.creativeQc);
+  const parsedState = marketplaceDraftQcStateSchema.safeParse(
+    metadata.creativeQc
+  );
   if (!parsedState.success) {
-    throw new TRPCError({ code: "CONFLICT", message: "creative_qc_state_invalid" });
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "creative_qc_state_invalid",
+    });
   }
   const state = parsedState.data;
   if (
@@ -19642,12 +19778,15 @@ export async function selectMarketplaceAutoReviewDraftQualityQcRepair(
     .where(
       and(
         eq(marketplaceAutoReviewArtifacts.id, state.repairCandidateArtifactId),
-        eq(marketplaceAutoReviewArtifacts.runId, run.id),
-      ),
+        eq(marketplaceAutoReviewArtifacts.runId, run.id)
+      )
     )
     .limit(1);
   if (!artifact) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "creative_qc_repair_artifact_missing" });
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "creative_qc_repair_artifact_missing",
+    });
   }
   const raw = await storageReadText(artifact.storageKey);
   let payload: Record<string, unknown>;
@@ -19674,20 +19813,29 @@ export async function selectMarketplaceAutoReviewDraftQualityQcRepair(
       message: "creative_qc_repair_candidate_not_passed",
     });
   }
-  const appliedMetadata = applyMarketplaceDraftQcCandidate(run, metadata, draft);
-  const appliedCandidate = buildMarketplaceDraftQcCandidate(run, appliedMetadata);
+  const appliedMetadata = applyMarketplaceDraftQcCandidate(
+    run,
+    metadata,
+    draft
+  );
+  const appliedCandidate = buildMarketplaceDraftQcCandidate(
+    run,
+    appliedMetadata
+  );
   const history = state.history.map(item =>
     item.candidateFingerprint === fingerprint
       ? {
           ...item,
           candidateArtifactId: state.repairCandidateArtifactId ?? undefined,
         }
-      : item,
+      : item
   );
   const nextState: MarketplaceDraftQcState = {
     ...state,
     status: "succeeded",
-    candidateFingerprint: fingerprintMarketplaceDraftQcCandidate(appliedCandidate.draft),
+    candidateFingerprint: fingerprintMarketplaceDraftQcCandidate(
+      appliedCandidate.draft
+    ),
     report,
     history,
     bestRound: state.bestRound,
@@ -21907,9 +22055,14 @@ export async function regenerateMarketplaceAutoReviewSequentialShot(
 
   // Launch pipeline advancement in background (non-blocking async)
   // so tRPC HTTP request returns immediately without blocking Express thread.
-  void advanceMarketplaceAutoReviewRun(input.runId, auth, runtime).catch((err) => {
-    console.error("[marketplaceAutoReview] background advanceMarketplaceAutoReviewRun error", err);
-  });
+  void advanceMarketplaceAutoReviewRun(input.runId, auth, runtime).catch(
+    err => {
+      console.error(
+        "[marketplaceAutoReview] background advanceMarketplaceAutoReviewRun error",
+        err
+      );
+    }
+  );
 
   return {
     success: true,
@@ -21940,7 +22093,9 @@ async function generateMarketplaceSequentialShotTextWithSkill(input: {
       message: `ไม่สามารถโหลด skill สำหรับสร้าง${input.kind === "summary" ? "เรื่องย่อ" : "บทพูด"}`,
     });
   }
-  const skill = await getSkillByIdAsync(PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID);
+  const skill = await getSkillByIdAsync(
+    PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID
+  );
   if (!skill) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
@@ -22043,7 +22198,9 @@ async function generateMarketplaceSequentialShotTextWithSkill(input: {
         );
       }
       const usage = {
-        promptTokens: Number((result.response as any)?.usage?.prompt_tokens ?? 0),
+        promptTokens: Number(
+          (result.response as any)?.usage?.prompt_tokens ?? 0
+        ),
         completionTokens: Number(
           (result.response as any)?.usage?.completion_tokens ?? 0
         ),
@@ -22403,6 +22560,43 @@ export async function saveMarketplaceAutoReviewSequentialLanguagePlan(
  * appended only when the selected model can accept them. The result never
  * replaces the live frame until `acceptMarketplaceAutoReviewSequentialShotImageEdit`
  * is called. */
+async function enqueueMarketplaceAutoReviewSequentialImageEditReconciliation(params: {
+  db: Db;
+  run: MarketplaceAutoReviewRun;
+  shotId: number;
+  taskId: string;
+  pollAttempt: number;
+  delayMs?: number;
+}) {
+  const pollAttempt = Math.max(0, Math.floor(params.pollAttempt));
+  await upsertMarketplaceAutoReviewOutboxJob({
+    db: params.db,
+    run: params.run,
+    auth: {
+      userId: params.run.userId,
+      tenantId: params.run.tenantId ?? undefined,
+    },
+    jobType:
+      MARKETPLACE_AUTO_REVIEW_SEQUENTIAL_IMAGE_EDIT_RECONCILIATION_JOB_TYPE,
+    idempotencyKey: `marketplace-auto-review:${params.run.id}:image-edit:${params.shotId}:${params.taskId}:poll:${pollAttempt}`,
+    priority: 20,
+    maxAttempts: 5,
+    scheduledAt: new Date(
+      Date.now() +
+        Math.max(
+          0,
+          params.delayMs ?? SEQUENTIAL_IMAGE_EDIT_RECONCILIATION_DELAY_MS
+        )
+    ),
+    payload: {
+      runId: params.run.id,
+      shotId: params.shotId,
+      taskId: params.taskId,
+      pollAttempt,
+    },
+  });
+}
+
 export async function editMarketplaceAutoReviewSequentialShotImage(
   input: {
     runId: string;
@@ -22482,7 +22676,9 @@ export async function editMarketplaceAutoReviewSequentialShotImage(
     Math.min(8, Number(capabilities.maxReferenceImages ?? 1))
   );
   const manifestRefs = Array.isArray(sequential.referenceManifest)
-    ? (sequential.referenceManifest as unknown as SequentialReferenceManifestEntry[])
+    ? (
+        sequential.referenceManifest as unknown as SequentialReferenceManifestEntry[]
+      )
         .filter(entry => !entry.evidenceOnly)
         .map(entry => cleanText(entry.url))
         .filter(Boolean)
@@ -22526,6 +22722,7 @@ export async function editMarketplaceAutoReviewSequentialShotImage(
     `SHOT ${input.shotId} EDIT INSTRUCTION: ${instruction}`,
     "No captions, watermarks, marketplace UI, prices, ratings, or unsupported product claims.",
   ].join("\n");
+  let providerTaskSubmitted = false;
   try {
     const task = await mediaGenerationService.generateImageAsync(
       {
@@ -22546,6 +22743,7 @@ export async function editMarketplaceAutoReviewSequentialShotImage(
         },
         auditContext: {
           userId: auth.userId,
+          tenantId,
           traceId: `marketplace-auto-review-image-edit:${run.id}:${input.shotId}:${attempt}`,
           source: "marketplace_auto_review",
           stage: "image_generation",
@@ -22553,6 +22751,7 @@ export async function editMarketplaceAutoReviewSequentialShotImage(
       },
       cleanText(runtime.userToken)
     );
+    providerTaskSubmitted = true;
     const durableTask =
       task.status === "completed"
         ? await ensureMarketplaceAutoReviewTaskResultDurable({
@@ -22588,14 +22787,26 @@ export async function editMarketplaceAutoReviewSequentialShotImage(
         sequentialImageEditCandidates: nextCandidates,
       },
     });
+    await enqueueMarketplaceAutoReviewSequentialImageEditReconciliation({
+      db,
+      run,
+      shotId: input.shotId,
+      taskId: settledTask.id,
+      pollAttempt: 0,
+      delayMs: 0,
+    });
     return {
-      taskId: task.id,
+      taskId: settledTask.id,
       shotId: input.shotId,
       beforeUrl,
       estimatedCredits: credit.amount,
     };
   } catch (error) {
-    if (credit.amount > 0) {
+    // Once the provider accepted the task, never refund merely because the
+    // post-submit metadata/outbox write failed. The background reconciler (or
+    // the durable task record) is still the source of truth for the outcome;
+    // refunding here could create a free provider generation.
+    if (!providerTaskSubmitted && credit.amount > 0) {
       await refundCredits({
         userId: auth.userId,
         amount: credit.amount,
@@ -22612,10 +22823,150 @@ export async function editMarketplaceAutoReviewSequentialShotImage(
     }
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message:
-        error instanceof Error ? error.message : "ส่งงานแก้ภาพไม่สำเร็จ",
+      message: error instanceof Error ? error.message : "ส่งงานแก้ภาพไม่สำเร็จ",
     });
   }
+}
+
+/**
+ * Reconciles one already-submitted image-edit task from the Marketplace
+ * scheduler. This function performs one provider read only; pending work is
+ * re-enqueued so a slow provider never keeps an HTTP request or a worker lease
+ * open for the duration of the generation.
+ */
+export async function reconcileMarketplaceAutoReviewSequentialShotImageEdit(
+  input: {
+    runId: string;
+    shotId: number;
+    taskId: string;
+    pollAttempt?: number;
+  },
+  auth: AuthContext,
+  runtime: RuntimeContext = {}
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const run = await reloadRun(db, input.runId, auth);
+  const metadata = asRecord(run.metadataJson) as RunMetadata;
+  const candidates = sequentialImageEditCandidateMap(
+    metadata.sequentialImageEditCandidates
+  );
+  const candidate = asRecord(candidates[String(input.shotId)]);
+  if (
+    cleanText(candidate.taskId) !== cleanText(input.taskId) ||
+    ["accepted", "discarded", "failed"].includes(cleanText(candidate.status))
+  ) {
+    return { status: "ignored" as const };
+  }
+  const userToken = cleanText(runtime.userToken);
+  if (!userToken)
+    throw new Error(
+      "Provider status polling needs an authenticated media token"
+    );
+  const tenantId = tenantIdForRun(run, auth);
+  const pollAttempt = Math.max(0, Math.floor(toNumber(input.pollAttempt)));
+  const now = nowIso();
+  let task: MediaTask;
+  try {
+    task = await getUnifiedMediaTask({
+      taskId: input.taskId,
+      userId: auth.userId,
+      userToken,
+      tenantId,
+      auditContext: {
+        userId: auth.userId,
+        tenantId,
+        traceId: `marketplace-auto-review-image-edit:${run.id}:${input.shotId}:${pollAttempt}`,
+        source: "marketplace_auto_review",
+        stage: "sequential_image_edit_reconciliation",
+      },
+    });
+  } catch (error) {
+    const nextPollAttempt = pollAttempt + 1;
+    const nextCandidate = {
+      ...candidate,
+      status: "submitted",
+      lastPolledAt: now,
+      pollAttempt: nextPollAttempt,
+      lastPollError:
+        error instanceof Error
+          ? error.message.slice(0, 500)
+          : "task poll failed",
+    };
+    candidates[String(input.shotId)] = nextCandidate;
+    await updateRun({
+      db,
+      runId: run.id,
+      metadataJson: { ...metadata, sequentialImageEditCandidates: candidates },
+    });
+    await enqueueMarketplaceAutoReviewSequentialImageEditReconciliation({
+      db,
+      run,
+      shotId: input.shotId,
+      taskId: input.taskId,
+      pollAttempt: nextPollAttempt,
+    });
+    return { status: "pending" as const, pollError: true };
+  }
+
+  const taskResultUrl = mediaTaskResultUrl(task);
+  const durableTask =
+    task.status === "completed" && taskResultUrl
+      ? await ensureMarketplaceAutoReviewTaskResultDurable({
+          tenantId,
+          userId: auth.userId,
+          task: { ...task, resultUrl: taskResultUrl },
+        })
+      : null;
+  const resolved = resolveMarketplaceAutoReviewSequentialImageEditCandidate({
+    candidate,
+    task: {
+      status: task.status,
+      resultUrl: durableTask?.durableUrl ?? taskResultUrl,
+      errorMessage: task.errorMessage,
+    },
+    now,
+  });
+  const nextCandidate: Record<string, any> = {
+    ...resolved.candidate,
+    ...(resolved.outcome === "pending" ? { pollAttempt: pollAttempt + 1 } : {}),
+  };
+  if (resolved.outcome === "failed") {
+    const amount = toNumber(nextCandidate.creditAmount);
+    if (amount > 0 && !nextCandidate.refundTransactionId) {
+      const refund = await refundCredits({
+        userId: auth.userId,
+        amount,
+        originalTransactionId:
+          toNumber(nextCandidate.creditTransactionId) || undefined,
+        idempotencyKey: `${cleanText(nextCandidate.creditIdempotencyKey) || input.taskId}:failed-refund`,
+        description: `Refund marketplace auto review failed image edit shot ${input.shotId}`,
+        sourceType: "media_image",
+        metadata: {
+          runId: run.id,
+          shotId: input.shotId,
+          reason: "provider_failed_background_reconciliation",
+        },
+      });
+      nextCandidate.refundTransactionId = refund.transactionId;
+    }
+  }
+  candidates[String(input.shotId)] = nextCandidate;
+  await updateRun({
+    db,
+    runId: run.id,
+    metadataJson: { ...metadata, sequentialImageEditCandidates: candidates },
+  });
+  if (resolved.outcome === "pending") {
+    await enqueueMarketplaceAutoReviewSequentialImageEditReconciliation({
+      db,
+      run,
+      shotId: input.shotId,
+      taskId: input.taskId,
+      pollAttempt: pollAttempt + 1,
+    });
+  }
+  return { status: resolved.outcome };
 }
 
 export async function acceptMarketplaceAutoReviewSequentialShotImageEdit(
@@ -22644,7 +22995,10 @@ export async function acceptMarketplaceAutoReviewSequentialShotImageEdit(
   const candidate = asRecord(candidates[String(input.shotId)]);
   const taskId = cleanText(candidate.taskId);
   if (!taskId) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบผลภาพที่รออนุมัติ" });
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "ไม่พบผลภาพที่รออนุมัติ",
+    });
   }
   if (cleanText(candidate.status) === "accepted") {
     return getMarketplaceAutoReviewRun(run.id, auth);
@@ -22656,6 +23010,7 @@ export async function acceptMarketplaceAutoReviewSequentialShotImageEdit(
     tenantId,
     auditContext: {
       userId: auth.userId,
+      tenantId,
       source: "trpc.marketplaceCapture.acceptAutoReviewSequentialShotImageEdit",
       stage: "poll",
     },
@@ -22666,11 +23021,16 @@ export async function acceptMarketplaceAutoReviewSequentialShotImageEdit(
       const refund = await refundCredits({
         userId: auth.userId,
         amount,
-        originalTransactionId: toNumber(candidate.creditTransactionId) || undefined,
+        originalTransactionId:
+          toNumber(candidate.creditTransactionId) || undefined,
         idempotencyKey: `${cleanText(candidate.creditIdempotencyKey) || taskId}:failed-refund`,
         description: `Refund marketplace auto review failed image edit shot ${input.shotId}`,
         sourceType: "media_image",
-        metadata: { runId: run.id, shotId: input.shotId, reason: "provider_failed" },
+        metadata: {
+          runId: run.id,
+          shotId: input.shotId,
+          reason: "provider_failed",
+        },
       });
       candidate.refundTransactionId = refund.transactionId;
     }
@@ -22727,7 +23087,10 @@ export async function discardMarketplaceAutoReviewSequentialShotImageEdit(
   );
   const candidate = asRecord(candidates[String(input.shotId)]);
   if (!cleanText(candidate.taskId)) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบผลภาพที่รอเก็บไว้" });
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "ไม่พบผลภาพที่รอเก็บไว้",
+    });
   }
   candidates[String(input.shotId)] = {
     ...candidate,
@@ -23258,7 +23621,9 @@ async function buildSeededStagedCharacterCastManifest(params: {
   // twice against the 4-person ceiling.
   const anchorAlreadyInCast =
     !!uploadedCharacterAnchorUrl &&
-    characterCast.some(entry => entry.url?.trim() === uploadedCharacterAnchorUrl);
+    characterCast.some(
+      entry => entry.url?.trim() === uploadedCharacterAnchorUrl
+    );
   const castWithAnchor: MarketplaceCharacterCastEntryInput[] = [
     ...(uploadedCharacterAnchorUrl && !anchorAlreadyInCast
       ? [
@@ -23271,7 +23636,7 @@ async function buildSeededStagedCharacterCastManifest(params: {
     ...characterCast,
   ];
   const rolledCast = assignMarketplaceCastRoles(
-    castWithAnchor.slice(0, MARKETPLACE_CHARACTER_CAST_MAX),
+    castWithAnchor.slice(0, MARKETPLACE_CHARACTER_CAST_MAX)
   );
 
   const characterEntries: Array<Record<string, unknown>> = [];
@@ -23374,7 +23739,7 @@ export async function buildSeededStagedCharacterCastManifestForTest(params: {
  */
 export async function deleteMarketplaceAutoReviewRun(
   runId: string,
-  auth: { userId: number; tenantId?: string | null },
+  auth: { userId: number; tenantId?: string | null }
 ) {
   const db = await getDb();
   if (!db) {
@@ -23384,13 +23749,17 @@ export async function deleteMarketplaceAutoReviewRun(
     });
   }
   const [run] = await db
-    .select({ id: marketplaceAutoReviewRuns.id, status: marketplaceAutoReviewRuns.status })
+    .select({
+      id: marketplaceAutoReviewRuns.id,
+      status: marketplaceAutoReviewRuns.status,
+    })
     .from(marketplaceAutoReviewRuns)
     .where(
       and(
         eq(marketplaceAutoReviewRuns.id, runId),
         eq(marketplaceAutoReviewRuns.userId, auth.userId),
-      ),
+        tenantAccessClause(auth)
+      )
     )
     .limit(1);
   if (!run) {
@@ -23405,7 +23774,8 @@ export async function deleteMarketplaceAutoReviewRun(
       and(
         eq(marketplaceAutoReviewRuns.id, runId),
         eq(marketplaceAutoReviewRuns.userId, auth.userId),
-      ),
+        tenantAccessClause(auth)
+      )
     );
 
   return { runId, deleted: true as const, previousStatus: run.status };
@@ -25742,6 +26112,7 @@ async function scheduleImageAttempt(params: {
           transportMetadata,
           auditContext: {
             userId: params.auth.userId,
+            tenantId: params.tenantId,
             traceId: `marketplace-auto-review-image:${params.run.id}:${unit.unitId}:${attempt}`,
             source: "marketplace_auto_review",
             stage: "image_generation",
@@ -25970,6 +26341,7 @@ async function pollDirectTask(params: {
     tenantId: params.tenantId,
     auditContext: {
       userId: params.auth.userId,
+      tenantId: params.tenantId ?? undefined,
       traceId: `marketplace-auto-review-${params.stage}:${params.ref.unitId}:${params.ref.attempt}`,
       source: "marketplace_auto_review",
       stage: params.stage,
@@ -28780,6 +29152,7 @@ async function splitStoryboardGrid(params: {
       })
       .png()
       .toBuffer();
+    await assertR2StorageActive();
     const stored = await storagePut(
       storyboardGridFrameStorageKey({
         tenantId: params.tenantId,
@@ -30805,6 +31178,7 @@ async function scheduleVideoAttempt(params: {
           },
           auditContext: {
             userId: params.auth.userId,
+            tenantId: params.tenantId,
             traceId: `marketplace-auto-review-video:${params.run.id}:${unit.unitId}:${attempt}`,
             source: "marketplace_auto_review",
             stage: "video_generation",
@@ -31454,6 +31828,7 @@ async function ensureAudioForVideo(params: {
           },
           auditContext: {
             userId: params.auth.userId,
+            tenantId: params.tenantId,
             traceId: `marketplace-auto-review-audio:${params.run.id}`,
             source: "marketplace_auto_review",
             stage: "audio_generation",
@@ -34738,7 +35113,8 @@ function stagedContinuityQaEnvelopes(
       // separate voiceover track whose continuity could drift — so the
       // legacy "silent" skip status is the honest one. A separate TTS
       // voiceover was reviewed at its own audio checkpoint.
-      status: audioStrategy === "native_video_audio" ? "skipped_silent" : "accepted",
+      status:
+        audioStrategy === "native_video_audio" ? "skipped_silent" : "accepted",
       audioStrategy: audioStrategy || null,
       provenance,
     };
@@ -34759,8 +35135,9 @@ function stagedContinuityQaEnvelopes(
   // Refs must survive `usableAuditRefs`, which drops anything matching
   // /placeholder|synthetic|scaffold|fallback/ — real artifact hashes/URLs do.
   if (
-    Object.keys(asRecord((metadata as Record<string, unknown>).generatedVideoSampleRefs))
-      .length === 0
+    Object.keys(
+      asRecord((metadata as Record<string, unknown>).generatedVideoSampleRefs)
+    ).length === 0
   ) {
     const sampleRefs: Record<string, string[]> = {};
     for (const shot of shots) {
@@ -34769,7 +35146,9 @@ function stagedContinuityQaEnvelopes(
       const artifact =
         cleanText(entry.videoArtifactHash) || cleanText(entry.videoArtifactUrl);
       if (!Number.isInteger(shotId) || !artifact) continue;
-      sampleRefs[`shot-${shotId}`] = [`videoArtifact:shot-${shotId}:${artifact}`];
+      sampleRefs[`shot-${shotId}`] = [
+        `videoArtifact:shot-${shotId}:${artifact}`,
+      ];
     }
     if (Object.keys(sampleRefs).length === shots.length) {
       next.generatedVideoSampleRefs = sampleRefs;
@@ -34797,7 +35176,10 @@ function stagedContinuityQaEnvelopes(
   );
   if (
     everyImageApproved &&
-    !gateStatus(metadata, "generatedMediaAcceptanceEnvelope" as keyof RunMetadata)
+    !gateStatus(
+      metadata,
+      "generatedMediaAcceptanceEnvelope" as keyof RunMetadata
+    )
   ) {
     next.generatedMediaAcceptanceEnvelope = {
       acceptanceEnvelopeId: `acceptance:video:${runId}`,
@@ -34883,7 +35265,12 @@ async function reconcileStagedRemotionFinalRender(params: {
     // a flag so the next advance tick's `submitStagedRemotionFinalRenderOrFallback`
     // skips straight to the legacy `ensureRender` path instead of re-queuing
     // another Remotion job against the same (still offline) fleet.
-    if (!isTimedOutSince(params.metadata.renderSubmittedAt, STAGED_REMOTION_QUEUED_TTL_MS)) {
+    if (
+      !isTimedOutSince(
+        params.metadata.renderSubmittedAt,
+        STAGED_REMOTION_QUEUED_TTL_MS
+      )
+    ) {
       return;
     }
     await updateRun({
@@ -35026,7 +35413,10 @@ async function reconcileStagedRemotionFinalRender(params: {
     // disclosure was actually burned; a run that DID burn one keeps its real
     // verification evidence untouched.
     ...(asRecord(params.metadata.visualWarningPlan).required === true &&
-    !gateStatus(params.metadata, "warningOverlayVerification" as keyof RunMetadata) &&
+    !gateStatus(
+      params.metadata,
+      "warningOverlayVerification" as keyof RunMetadata
+    ) &&
     readStagedFinalRenderSettings(params.metadata).aiDisclosureEnabled !== true
       ? {
           visualWarningPlan: {
@@ -35058,7 +35448,10 @@ async function reconcileStagedRemotionFinalRender(params: {
     params.metadata.videoUnitIds.length > 0
       ? {}
       : {
-          videoUnitIds: stagedApprovedVideoUnitIds(params.metadata, params.plan),
+          videoUnitIds: stagedApprovedVideoUnitIds(
+            params.metadata,
+            params.plan
+          ),
         }),
   });
   const preLibraryFinalizedMetadata = buildRenderFinalizationMetadata({
@@ -35091,7 +35484,11 @@ async function reconcileStagedRemotionFinalRender(params: {
     stageKey: "render",
     stageOrder: stageIndex("render", FULL_VIDEO_STAGES),
     status: "completed",
-    output: { jobId, resultUrl: absoluteOutputUrl, renderEngine: "remotion_queue" },
+    output: {
+      jobId,
+      resultUrl: absoluteOutputUrl,
+      renderEngine: "remotion_queue",
+    },
     stageCompletionEvidence: {
       requiredRefs: [
         "renderResultUrl",
@@ -35101,14 +35498,23 @@ async function reconcileStagedRemotionFinalRender(params: {
       ],
       artifactRefs: [absoluteOutputUrl, `worker-job:${jobId}`],
       qaVerdictRefs: [
-        cleanText(asRecord(finalizedMetadata.finalRenderQaEnvelope).qaEnvelopeId),
-        cleanText(asRecord(finalizedMetadata.finalMediaQaEnvelope).qaEnvelopeId),
+        cleanText(
+          asRecord(finalizedMetadata.finalRenderQaEnvelope).qaEnvelopeId
+        ),
+        cleanText(
+          asRecord(finalizedMetadata.finalMediaQaEnvelope).qaEnvelopeId
+        ),
       ].filter(Boolean),
       lineageRefs: [`lineage:${params.run.id}:render`],
       creditRefs: renderCreditRefsFromMetadata(finalizedMetadata),
-      policyRefs: ["staged-remotion-render-queue", "distribution-profile-short-video-9x16"],
+      policyRefs: [
+        "staged-remotion-render-queue",
+        "distribution-profile-short-video-9x16",
+      ],
       acceptanceRefs: [
-        cleanText(asRecord(finalizedMetadata.publishableAssetPackage).packageId),
+        cleanText(
+          asRecord(finalizedMetadata.publishableAssetPackage).packageId
+        ),
       ],
     },
   });
@@ -35130,14 +35536,20 @@ async function reconcileStagedRemotionFinalRender(params: {
       ],
       artifactRefs: [`libraryItem:${libraryItemId}`, outputUrl],
       qaVerdictRefs: [
-        cleanText(asRecord(finalizedMetadata.finalRenderQaEnvelope).qaEnvelopeId),
-        cleanText(asRecord(finalizedMetadata.finalMediaQaEnvelope).qaEnvelopeId),
+        cleanText(
+          asRecord(finalizedMetadata.finalRenderQaEnvelope).qaEnvelopeId
+        ),
+        cleanText(
+          asRecord(finalizedMetadata.finalMediaQaEnvelope).qaEnvelopeId
+        ),
       ].filter(Boolean),
       lineageRefs: [`lineage:${params.run.id}:library_finalize`],
       creditRefs: creditRefsFromMetadata(finalizedMetadata),
       policyRefs: ["private-library-asset", "post-publish-governance"],
       acceptanceRefs: [
-        cleanText(asRecord(finalizedMetadata.publishableAssetPackage).packageId),
+        cleanText(
+          asRecord(finalizedMetadata.publishableAssetPackage).packageId
+        ),
       ],
     },
   });
@@ -35358,7 +35770,8 @@ async function submitStagedRemotionFinalRenderOrFallback(params: {
       submitted = await submitStagedRemotionFinalRender({
         runId: params.run.id,
         tenantId: params.tenantId,
-        planRevision: Number.isFinite(planRevision) && planRevision > 0 ? planRevision : 1,
+        planRevision:
+          Number.isFinite(planRevision) && planRevision > 0 ? planRevision : 1,
         requestedByUserId: params.auth.userId,
         videoClipUrls: params.metadata.videoClipUrls ?? [],
         shots: stagedRemotionFinalRenderShots(params.metadata),
@@ -35463,8 +35876,12 @@ async function advanceMarketplaceAutoReviewStagedArchitecture(params: {
     const metadata = asRecord(refreshed.metadataJson) as RunMetadata;
     const plan = extractPlanFromRun(refreshed);
     const tenantId = tenantIdForRun(refreshed, params.auth);
-    const renderEngine = cleanText((metadata as Record<string, unknown>).renderEngine);
-    const hasRenderJobId = Boolean(cleanText(metadata.renderJobId) || refreshed.renderJobId);
+    const renderEngine = cleanText(
+      (metadata as Record<string, unknown>).renderEngine
+    );
+    const hasRenderJobId = Boolean(
+      cleanText(metadata.renderJobId) || refreshed.renderJobId
+    );
 
     if (renderEngine === "remotion_queue" && hasRenderJobId) {
       await reconcileStagedRemotionFinalRender({

@@ -162,4 +162,20 @@ describe("extractCharacterDescription", () => {
 
     expect(result).toBe("Personality: quiet and observant");
   });
+
+  it("uses visual-bible look material when a prior review repair lost derived prompt fields", () => {
+    const result = extractCharacterDescription({
+      lookDesignStatus: "review",
+      visualBible: {
+        visualIdentitySummary:
+          "เด็กชายวัยเรียนคงใบหน้าเดิมและสวมเสื้อผ้าลำลองอยู่บ้านที่เหมาะกับวัย",
+        signatureWardrobe:
+          "เสื้อผ้าฝ้ายสีน้ำเงินหม่น กางเกงสีครีม และรองเท้าแตะในบ้าน",
+      },
+    });
+
+    expect(result).toContain("Look image brief:");
+    expect(result).toContain("เด็กชายวัยเรียนคงใบหน้าเดิม");
+    expect(result).not.toContain("lookDesignStatus");
+  });
 });

@@ -38,6 +38,7 @@ export function isGrokImagineImage2FamilyModel(modelId: unknown): boolean {
 export function resolveGrokImagineImage2Operation(params: {
   modelId: unknown;
   sourceMediaTaskId?: unknown;
+  referenceImageUrls?: unknown;
 }): GrokImagineImage2Operation | null {
   const modelId = String(params.modelId ?? "").trim().toLowerCase();
   if (modelId === GROK_IMAGINE_IMAGE_2_SEGMENT_MAP_MODEL_ID) {
@@ -46,7 +47,9 @@ export function resolveGrokImagineImage2Operation(params: {
   if (modelId !== GROK_IMAGINE_IMAGE_2_MODEL_ID) {
     return null;
   }
-  return String(params.sourceMediaTaskId ?? "").trim()
+  const hasReferenceImages = Array.isArray(params.referenceImageUrls)
+    && params.referenceImageUrls.some((url) => String(url ?? "").trim());
+  return String(params.sourceMediaTaskId ?? "").trim() || hasReferenceImages
     ? "image-edit"
     : "text-to-image";
 }

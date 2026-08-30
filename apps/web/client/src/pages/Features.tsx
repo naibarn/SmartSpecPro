@@ -187,6 +187,47 @@ export default function Features() {
           ))}
         </div>
       </section>
+      <section
+        id="harness-platform"
+        className="border-b border-border/60 bg-slate-950 py-20 text-white sm:py-28"
+      >
+        <div className="container relative mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[.95fr_1.05fr] lg:items-center lg:gap-16 lg:px-8">
+          <div>
+            <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-300/10 px-4 py-2 text-sm font-medium text-cyan-100">
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              {t("harness.eyebrow")}
+            </p>
+            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-5xl">
+              {t("harness.title")}
+            </h2>
+            <p className="mt-6 max-w-2xl text-base leading-8 text-slate-300 sm:text-lg">
+              {t("harness.body")}
+            </p>
+            <ul className="mt-7 grid gap-3 sm:grid-cols-2">
+              {[1, 2, 3, 4].map(point => (
+                <li
+                  key={point}
+                  className="flex gap-3 text-sm leading-6 text-slate-200 sm:text-base"
+                >
+                  <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-cyan-300" />
+                  {t(`harness.point.${point}`)}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/docs#domain-specific-harness"
+              className="mt-8 inline-flex items-center font-semibold text-cyan-200 hover:text-cyan-100"
+            >
+              {t("harness.cta")} <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </div>
+          <SafeImage
+            src="/images/smartaihub-domain-specific-harness.webp"
+            alt={t("harness.imageAlt")}
+            className="min-h-[20rem] rounded-[2rem] border border-white/15 shadow-2xl shadow-cyan-950/40 sm:min-h-[28rem]"
+          />
+        </div>
+      </section>
       <section className="container mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
         <div className="mb-14 max-w-2xl">
           <p className="text-sm font-semibold uppercase tracking-[.25em] text-primary">

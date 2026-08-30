@@ -32,6 +32,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: unknown) => routes,
     protectedProcedure: proc,
+    adminProcedure: proc,
   };
 });
 
@@ -78,6 +79,66 @@ vi.mock("../../services/mediaAssetService", () => ({
 }));
 
 import { computeCharacterNeedsSetupReasons } from "../verticalDramaCharacters";
+import { verticalDramaCharacterDesignDnaSchema } from "@shared/verticalDramaSeries/characterProfile";
+
+const VALID_DESIGN_DNA = verticalDramaCharacterDesignDnaSchema.parse({
+  designIntent: "quietly resilient",
+  seriesDnaAlignment: ["grounded family drama"],
+  roleTier: "support",
+  beautyArchetype: "natural warmth",
+  ageRange: "adult",
+  faceIdentity: {
+    facialGeometry: "soft oval",
+    eyesAndGaze: "steady gaze",
+    brows: "natural brows",
+    nose: "straight nose",
+    lipsAndSmile: "subtle smile",
+    skinAndTexture: "natural skin texture",
+    hair: "shoulder-length dark hair",
+    distinctiveAsymmetry: "slight left dimple",
+  },
+  bodyLanguage: {
+    posture: "upright",
+    gesturePattern: "measured gestures",
+    movementRhythm: "calm rhythm",
+    tensionTell: "tightens hands",
+  },
+  recallStack: {
+    face: "steady eyes",
+    silhouette: "slim silhouette",
+    color: "deep blue",
+    behavior: "observant stillness",
+    emotionalHook: "protective resolve",
+  },
+  costumeGrammar: "practical clothing",
+  publicMask: "composed helper",
+  hiddenTruth: "fears abandonment",
+  narrativePromise: "will choose herself",
+  attractiveContradiction: "gentle but firm",
+  forbiddenDrift: ["generic glamour"],
+  antiCloneChecks: {
+    distinctFacialDimensions: ["soft oval", "steady gaze", "left dimple"],
+    distinctHairDimensions: ["shoulder length", "dark natural hair"],
+    distinctBodyLanguageDimensions: ["upright posture", "measured gestures"],
+    signatureDifference: "protective resolve",
+  },
+  scores: {
+    storyFit: 7,
+    screenPresence: 7,
+    emotionalReadability: 7,
+    ensembleContrast: 7,
+    crossSeriesUniqueness: 10,
+    thresholdStatus: "provisional",
+    rationale: "fits the supporting role",
+  },
+  comparisonEvidence: {
+    candidateDirectionCount: 3,
+    currentCastCompared: 0,
+    recentSeriesCompared: 0,
+    priorLeadDnaCompared: 0,
+    historyCompleteness: "none",
+  },
+});
 
 describe("computeCharacterNeedsSetupReasons", () => {
   it("flags an auto-registered-from-story row with no portrait/description with all three reasons", () => {
@@ -87,14 +148,22 @@ describe("computeCharacterNeedsSetupReasons", () => {
     });
 
     expect(reasons).toEqual(
-      expect.arrayContaining(["auto_registered_from_story", "missing_portrait", "missing_dna"]),
+      expect.arrayContaining([
+        "auto_registered_from_story",
+        "missing_portrait",
+        "missing_dna",
+      ])
     );
     expect(reasons).toHaveLength(3);
   });
 
   it("returns an empty array (needsSetup: false) for a fully-built character", () => {
     const reasons = computeCharacterNeedsSetupReasons({
-      data: { source: "manual", description: "เด็กชายวัยสิบสองปีที่ฉลาดเกินวัย" },
+      data: {
+        source: "manual",
+        description: "เด็กชายวัยสิบสองปีที่ฉลาดเกินวัย",
+        visualBible: { designDna: VALID_DESIGN_DNA },
+      },
       hasApprovedOrGeneratedPortrait: true,
     });
 
@@ -110,6 +179,29 @@ describe("computeCharacterNeedsSetupReasons", () => {
     expect(reasons).not.toContain("missing_portrait");
   });
 
+  it("flags description-only rows as missing DNA", () => {
+    const reasons = computeCharacterNeedsSetupReasons({
+      data: { source: "manual", description: "มีคำอธิบายตัวละครแล้ว" },
+      hasApprovedOrGeneratedPortrait: true,
+    });
+
+    expect(reasons).toEqual(["missing_dna"]);
+  });
+
+  it("flags malformed persisted design DNA instead of treating it as canonical", () => {
+    const reasons = computeCharacterNeedsSetupReasons({
+      data: {
+        description: "มีคำอธิบายตัวละครแล้ว",
+        visualBible: {
+          designDna: { faceIdentity: { hair: "only one field" } },
+        },
+      },
+      hasApprovedOrGeneratedPortrait: true,
+    });
+
+    expect(reasons).toEqual(["missing_dna"]);
+  });
+
   it("flags missing_dna when description is an empty/whitespace string", () => {
     const reasons = computeCharacterNeedsSetupReasons({
       data: { description: "   " },
@@ -121,10 +213,16 @@ describe("computeCharacterNeedsSetupReasons", () => {
 
   it("flags missing_dna when data is null/undefined", () => {
     expect(
-      computeCharacterNeedsSetupReasons({ data: null, hasApprovedOrGeneratedPortrait: true }),
+      computeCharacterNeedsSetupReasons({
+        data: null,
+        hasApprovedOrGeneratedPortrait: true,
+      })
     ).toEqual(["missing_dna"]);
     expect(
-      computeCharacterNeedsSetupReasons({ data: undefined, hasApprovedOrGeneratedPortrait: true }),
+      computeCharacterNeedsSetupReasons({
+        data: undefined,
+        hasApprovedOrGeneratedPortrait: true,
+      })
     ).toEqual(["missing_dna"]);
   });
 

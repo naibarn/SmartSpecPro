@@ -11,6 +11,7 @@ import {
 } from "./llmRateLimiter";
 import { normalizeMediaPrompt } from "./mediaPromptNormalization";
 import {
+  isReusablePreparedEpisodeCoverSafety,
   isVerticalDramaImageRequest,
   prepareImagePromptSafety,
 } from "./imagePromptSafetyService";
@@ -54,7 +55,11 @@ import type {
   MediaOriginSurface,
   MediaTaskTransportMetadata,
 } from "../../shared/mcpConnectTypes";
-import { verifyBearerToken } from "../_core/tokens";
+import { createInternalTokenFromAuth, verifyBearerToken } from "../_core/tokens";
+import {
+  ensureMediaTaskArtifactsForPolling,
+  redactMediaTaskWithoutTenant,
+} from "./mediaTaskArtifactService";
 
 // ==================== Types ====================
 
@@ -513,6 +518,7 @@ const HAPPYHORSE_SEED_FIELD = {
 };
 const GEMINI_OMNI_DURATIONS = [4, 6, 8, 10];
 const GEMINI_OMNI_RESOLUTIONS = ["720p", "1080p", "4K"];
+const GEMINI_OMNI_FLASH_1_1_RESOLUTIONS = ["360p", ...GEMINI_OMNI_RESOLUTIONS];
 const GEMINI_OMNI_ASPECT_RATIOS = ["16:9", "9:16"];
 const GEMINI_OMNI_PRICING_TIERS = {
   default: 120,
@@ -540,6 +546,41 @@ const GEMINI_OMNI_PRICING_TIERS = {
   "4K-6s-with-video": 360,
   "4K-8s-with-video": 360,
   "4K-10s-with-video": 360,
+};
+const GEMINI_OMNI_FLASH_1_1_PRICING_TIERS = {
+  default: 420,
+  "360p-4s-without-video": 315,
+  "360p-6s-without-video": 420,
+  "360p-8s-without-video": 525,
+  "360p-10s-without-video": 630,
+  "720p-4s-without-video": 315,
+  "720p-6s-without-video": 420,
+  "720p-8s-without-video": 525,
+  "720p-10s-without-video": 630,
+  "1080p-4s-without-video": 315,
+  "1080p-6s-without-video": 420,
+  "1080p-8s-without-video": 525,
+  "1080p-10s-without-video": 630,
+  "4K-4s-without-video": 735,
+  "4K-6s-without-video": 840,
+  "4K-8s-without-video": 945,
+  "4K-10s-without-video": 1050,
+  "360p-4s-with-video": 840,
+  "360p-6s-with-video": 840,
+  "360p-8s-with-video": 840,
+  "360p-10s-with-video": 840,
+  "720p-4s-with-video": 840,
+  "720p-6s-with-video": 840,
+  "720p-8s-with-video": 840,
+  "720p-10s-with-video": 840,
+  "1080p-4s-with-video": 840,
+  "1080p-6s-with-video": 840,
+  "1080p-8s-with-video": 840,
+  "1080p-10s-with-video": 840,
+  "4K-4s-with-video": 1260,
+  "4K-6s-with-video": 1260,
+  "4K-8s-with-video": 1260,
+  "4K-10s-with-video": 1260,
 };
 const GEMINI_OMNI_INPUT_FIELDS = [
   {
@@ -645,6 +686,11 @@ const GEMINI_OMNI_INPUT_FIELDS = [
     required: false,
     advancedOnly: true,
   },
+];
+const GEMINI_OMNI_FLASH_1_1_INPUT_FIELDS = [
+  ...GEMINI_OMNI_INPUT_FIELDS,
+  { key: "first_frame_url", label: "First Frame URL", type: "text", required: false, advancedOnly: true, providerPayloadKey: "first_frame_url" },
+  { key: "last_frame_url", label: "Last Frame URL", type: "text", required: false, advancedOnly: true, providerPayloadKey: "last_frame_url" },
 ];
 
 // Model registry with metadata
@@ -1073,6 +1119,41 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
       pricingFormula: "matrix",
     },
   },
+  "gemini-omni-flash-1-1": {
+    id: "gemini-omni-flash-1-1",
+    type: "video",
+    name: "Gemini Omni Flash 1.1",
+    provider: "kie.ai",
+    description: "Google Gemini Omni Flash 1.1 multimodal video generation via Kie.ai",
+    supportsDurations: GEMINI_OMNI_DURATIONS,
+    supportsAspectRatios: GEMINI_OMNI_ASPECT_RATIOS,
+    creditCost: 315,
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+      apiPayloadFormat: "market",
+      kieModelId: "google/gemini-omni-flash-1-1",
+      generateType: "multimodal-video",
+      hasAudio: true,
+      maxDuration: 10,
+      maxPromptLength: 5000,
+      maxReferenceImages: 7,
+      maxReferenceVideos: 1,
+      maxReferenceAudios: 3,
+      supportedDurations: GEMINI_OMNI_DURATIONS,
+      supportedAspectRatios: GEMINI_OMNI_ASPECT_RATIOS,
+      supportedResolutions: GEMINI_OMNI_FLASH_1_1_RESOLUTIONS,
+      apiConfig: {
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        reference_video_input_key: "video_list",
+        reference_video_input_type: "object_array",
+      },
+      inputFields: GEMINI_OMNI_FLASH_1_1_INPUT_FIELDS,
+      pricingTiers: GEMINI_OMNI_FLASH_1_1_PRICING_TIERS,
+      pricingFormula: "matrix",
+    },
+  },
   "sora-2": {
     id: "sora-2",
     type: "video",
@@ -1355,6 +1436,8 @@ export interface MediaAuditContext {
   userId?: number;
   tenantId?: string;
   traceId?: string;
+  /** Fixed-credit skill billing marker consumed by the Python gateway. */
+  skillRunId?: string;
   source?: string;
   stage?: string;
   [key: string]: unknown;
@@ -1387,6 +1470,7 @@ export interface MediaTask {
   parameters?: Record<string, unknown>;
   resultUrl?: string;
   resultData?: Record<string, unknown>;
+  artifacts?: MediaTaskArtifactProjection[];
   errorMessage?: string;
   /** Section-06 amendment (Feature 135) — the typed `HermesMediaErrorCode`
    * (e.g. `HERMES_TIMEOUT`) for a failed/expired/canceled hermes_ task,
@@ -1402,6 +1486,54 @@ export interface MediaTask {
   createdAt: string;
   startedAt?: string;
   completedAt?: string;
+}
+
+export interface MediaTaskArtifactProjection {
+  artifactId: string;
+  outputIndex: number;
+  r2Url?: string;
+  r2StorageKey?: string;
+  r2Status: string;
+  providerOriginalUrl?: string;
+  providerStatus: string;
+  providerCheckedAt?: string;
+  playbackUrl?: string;
+  fallbackUrl?: string;
+  availabilityStatus: string;
+  availabilityReason?: string;
+}
+
+async function durabilizeCompletedMediaTask(
+  task: MediaTask,
+  auditContext?: MediaAuditContext,
+): Promise<MediaTask> {
+  if (task.status !== "completed") return task;
+  const internalParams = {
+    ...(task.parameters ?? {}),
+    ...((task.parameters?.extra_params as Record<string, unknown> | undefined) ?? {}),
+    ...((task.resultData?.extra_params as Record<string, unknown> | undefined) ?? {}),
+  };
+  const userId = auditContext?.userId;
+  const tenantId = auditContext?.tenantId;
+  // Vertical Drama and Marketplace Auto Review own separate asset ledgers;
+  // their unified polling boundary performs the domain-specific projection.
+  // A missing tenant must still fail closed even for those domain-owned tasks.
+  if (internalParams.__vd_series_id || internalParams.__auto_review_run_id) {
+    if (!Number.isInteger(userId) || (userId as number) <= 0 || !tenantId) {
+      if (NODE_ENV === "test") return task;
+      return redactMediaTaskWithoutTenant(task);
+    }
+    return task;
+  }
+  if (!Number.isInteger(userId) || (userId as number) <= 0 || !tenantId) {
+    if (NODE_ENV === "test") return task;
+    return redactMediaTaskWithoutTenant(task);
+  }
+  return ensureMediaTaskArtifactsForPolling({
+    task,
+    tenantId,
+    userId: userId as number,
+  });
 }
 
 function isMediaResultUrl(value: string): boolean {
@@ -1479,6 +1611,58 @@ export interface TaskListResponse {
 // ==================== Service Class ====================
 
 const NODE_ENV = process.env.NODE_ENV || "development";
+
+function resolveMediaRequestTenantContext(request: {
+  auditContext?: MediaAuditContext;
+  transportMetadata?: Partial<MediaTaskTransportMetadata>;
+}): { userId?: number; tenantId?: string } {
+  const audit = request.auditContext;
+  const transport = request.transportMetadata;
+  const userId =
+    typeof audit?.userId === "number"
+      ? audit.userId
+      : typeof transport?.actorUserId === "number"
+        ? transport.actorUserId
+        : undefined;
+  const tenantId =
+    typeof audit?.tenantId === "string" && audit.tenantId.trim()
+      ? audit.tenantId.trim()
+      : typeof transport?.tenantId === "string" && transport.tenantId.trim()
+        ? transport.tenantId.trim()
+        : undefined;
+  return { userId, tenantId };
+}
+
+function requireTenantScopedMediaRequest(request: {
+  auditContext?: MediaAuditContext;
+  transportMetadata?: Partial<MediaTaskTransportMetadata>;
+}): void {
+  if (NODE_ENV === "test") return;
+  const { userId, tenantId } = resolveMediaRequestTenantContext(request);
+  if (!Number.isInteger(userId) || (userId as number) <= 0 || !tenantId) {
+    throw new Error(
+      "Media generation requires an authenticated user and tenant scope"
+    );
+  }
+}
+
+function getPythonMediaToken(
+  request: {
+    auditContext?: MediaAuditContext;
+    transportMetadata?: Partial<MediaTaskTransportMetadata>;
+  },
+  userToken: string,
+): string {
+  if (NODE_ENV === "test") return userToken;
+  const { userId, tenantId } = resolveMediaRequestTenantContext(request);
+  if (!Number.isInteger(userId) || (userId as number) <= 0 || !tenantId) {
+    return userToken;
+  }
+  return createInternalTokenFromAuth(
+    { userId: userId as number, tenantId },
+    ["media:generate"],
+  );
+}
 
 /**
  * Convert relative public asset URLs (e.g., /uploads/xxx.png, /api/storage/files/xxx.png) to full URLs
@@ -1789,6 +1973,12 @@ const PROVIDER_INTERNAL_EXTRA_PARAM_KEYS = new Set([
 
 const PERSISTED_INTERNAL_EXTRA_PARAM_KEYS = new Set([
   "__prompt_safety",
+  // Credit reservation metadata for domain-owned async media tasks. These
+  // remain app-side task parameters so terminal polling can refund a failed
+  // reservation exactly once; they are never provider prompt semantics.
+  "__reserved_credits",
+  "__credit_source_type",
+  "__credit_reservation_key",
   "__origin_surface",
   "__execution_path",
   "__no_node_canvas_execution",
@@ -1820,6 +2010,16 @@ const PERSISTED_INTERNAL_EXTRA_PARAM_KEYS = new Set([
   // distinct from `__vd_shot_number` because a speaker-aware shot can have
   // multiple clips (301/302/303) for one source shot.
   "__vd_clip_number",
+  // User-facing media naming context. These values are app-side metadata used
+  // by Media History/Library/Gallery and are never part of provider prompts.
+  "__media_display_title",
+  "__media_series_title",
+  "__media_episode_number",
+  "__media_shot_number",
+  "__media_clip_number",
+  // Vertical Drama logo slot provenance — distinguishes the title logo from
+  // the channel/page logo when the generated task is applied back to Settings.
+  "__vd_logo_slot",
   "__vd_purpose",
 ]);
 
@@ -2438,8 +2638,13 @@ function isTrustedTargetCharacterPromptContext(
 async function prepareImageRequestForSafety(
   request: ImageGenerationRequest,
 ): Promise<ImageGenerationRequest> {
+  if (isReusablePreparedEpisodeCoverSafety(request)) {
+    return request;
+  }
   const mode = isVerticalDramaImageRequest(request)
-    ? "vertical_drama_managed"
+    ? request.extraParams?.__vd_purpose === "episode_cover"
+      ? "vertical_drama_cover"
+      : "vertical_drama_managed"
     : "standard";
   const safety = await prepareImagePromptSafety({
     prompt: request.prompt,
@@ -2776,7 +2981,11 @@ export class MediaGenerationService {
           params.provider,
           params.mediaType as RateLimiterMediaType,
           async () =>
-            this.postJson(params.userToken, params.endpoint, params.payload)
+            this.postJson(
+              getPythonMediaToken(params.request, params.userToken),
+              params.endpoint,
+              params.payload,
+            )
         );
       } catch (error) {
         const enrichedError = enrichMediaSubmitError(error, params.endpoint);
@@ -2961,6 +3170,7 @@ export class MediaGenerationService {
     request: ImageGenerationRequest,
     userToken: string
   ): Promise<MediaGenerationResponse> {
+    requireTenantScopedMediaRequest(request);
     request = await prepareImageRequestForSafety(request);
     const {
       modelId,
@@ -2988,6 +3198,9 @@ export class MediaGenerationService {
         ? {}
         : { negative_prompt: request.negativePrompt }),
     };
+    if (request.auditContext?.skillRunId) {
+      payload.skill_billing_run_id = request.auditContext.skillRunId;
+    }
 
     // Add resolution if provided (e.g., "1K", "2K", "4K")
     if ((request as any).resolution) {
@@ -3069,7 +3282,7 @@ export class MediaGenerationService {
         "image" as RateLimiterMediaType,
         async () => {
           const { data, status } = await this.postJson(
-            userToken,
+            getPythonMediaToken(request, userToken),
             "/api/v1/media/image",
             payload
           );
@@ -3140,6 +3353,7 @@ export class MediaGenerationService {
     request: VideoGenerationRequest,
     userToken: string
   ): Promise<MediaGenerationResponse> {
+    requireTenantScopedMediaRequest(request);
     const {
       modelId,
       provider,
@@ -3160,6 +3374,9 @@ export class MediaGenerationService {
       aspect_ratio: request.aspectRatio,
       fps: request.fps,
     };
+    if (request.auditContext?.skillRunId) {
+      payload.skill_billing_run_id = request.auditContext.skillRunId;
+    }
 
     // Add resolution if provided (e.g., "720p", "1080p")
     if (request.resolution) {
@@ -3252,7 +3469,7 @@ export class MediaGenerationService {
         "video" as RateLimiterMediaType,
         async () => {
           const { data, status } = await this.postJson(
-            userToken,
+            getPythonMediaToken(request, userToken),
             "/api/v1/media/video",
             payload
           );
@@ -3321,6 +3538,7 @@ export class MediaGenerationService {
     request: AudioGenerationRequest,
     userToken: string
   ): Promise<MediaGenerationResponse> {
+    requireTenantScopedMediaRequest(request);
     const {
       modelId,
       provider,
@@ -3344,6 +3562,9 @@ export class MediaGenerationService {
       voice: request.voice,
       speed: request.speed,
     };
+    if (request.auditContext?.skillRunId) {
+      payload.skill_billing_run_id = request.auditContext.skillRunId;
+    }
 
     // Add apiConfig for model-specific endpoints and payload formats
     if (effectiveApiConfig) {
@@ -3376,7 +3597,7 @@ export class MediaGenerationService {
         "audio" as RateLimiterMediaType,
         async () => {
           const { data, status } = await this.postJson(
-            userToken,
+            getPythonMediaToken(request, userToken),
             "/api/v1/media/audio",
             payload
           );
@@ -3445,6 +3666,7 @@ export class MediaGenerationService {
     request: ImageGenerationRequest,
     userToken: string
   ): Promise<MediaTask> {
+    requireTenantScopedMediaRequest(request);
     request = await prepareImageRequestForSafety(request);
     const {
       modelId,
@@ -3627,6 +3849,7 @@ export class MediaGenerationService {
     request: VideoGenerationRequest,
     userToken: string
   ): Promise<MediaTask> {
+    requireTenantScopedMediaRequest(request);
     const {
       modelId,
       provider,
@@ -3658,6 +3881,9 @@ export class MediaGenerationService {
       fps: request.fps,
       resolution: request.resolution,
     };
+    if (request.auditContext?.skillRunId) {
+      payload.skill_billing_run_id = request.auditContext.skillRunId;
+    }
 
     // Get publicUrl from request for resolving relative URLs to tenant domain
     const publicUrl = request.publicUrl;
@@ -3806,6 +4032,7 @@ export class MediaGenerationService {
     request: AudioGenerationRequest,
     userToken: string
   ): Promise<MediaTask> {
+    requireTenantScopedMediaRequest(request);
     const {
       modelId,
       provider,
@@ -3976,7 +4203,7 @@ export class MediaGenerationService {
           mediaType: task.mediaType,
         },
       });
-      return task;
+      return await durabilizeCompletedMediaTask(task, auditContext);
     }
 
     if (taskId.startsWith("mcp_")) {
@@ -4009,7 +4236,7 @@ export class MediaGenerationService {
           mediaType: task.mediaType,
         },
       });
-      return task;
+      return await durabilizeCompletedMediaTask(task, auditContext);
     }
 
     const response = await fetch(
@@ -4072,7 +4299,10 @@ export class MediaGenerationService {
     if (!parsed || typeof parsed !== "object") {
       throw new Error("Invalid task payload");
     }
-    return this.mapTask(parsed as Record<string, unknown>);
+    return await durabilizeCompletedMediaTask(
+      this.mapTask(parsed as Record<string, unknown>),
+      auditContext,
+    );
   }
 
   /**

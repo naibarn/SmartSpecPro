@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["expandedPrompt", "brief", "slots", "sources", "warnings"],
+  "additionalProperties": false,
+  "properties": {
+    "expandedPrompt": { "type": "string", "minLength": 1, "maxLength": 20000 },
+    "brief": { "$ref": "#/$defs/brief" },
+    "sources": { "type": "array", "maxItems": 30, "items": { "$ref": "#/$defs/source" } },
+    "warnings": { "type": "array", "maxItems": 30, "items": { "type": "string", "minLength": 1, "maxLength": 1000 } },
+    "slots": { "type": "array", "minItems": 1, "maxItems": 50, "items": { "$ref": "#/$defs/slot" } }
+  },
+  "$defs": {
+    "brief": {
+      "type": "object",
+      "required": ["title", "oneLineSummary", "profile", "angle", "scope", "factualClaims", "creativeAssumptions", "exclusions"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "oneLineSummary": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "profile": { "enum": ["review", "documentary", "news_report", "software_review", "story"] },
+        "angle": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "audience": { "type": "string", "maxLength": 500 },
+        "scope": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 2000 } },
+        "factualClaims": { "type": "array", "maxItems": 50, "items": { "type": "string", "minLength": 1, "maxLength": 1000 } },
+        "creativeAssumptions": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 1000 } },
+        "exclusions": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 500 } },
+        "storyTreatment": { "$ref": "#/$defs/storyTreatment" }
+      }
+    },
+    "storyTreatment": {
+      "type": "object",
+      "required": ["protagonists", "setting", "meetingAndIncitingEvent", "relationshipProgression", "obstacles", "opposingForces", "centralQuestion", "majorConflict", "turningPoints", "climax", "endingDirection", "unresolvedHooks", "tone", "audience", "assumptions", "exclusions"],
+      "additionalProperties": false,
+      "properties": {
+        "protagonists": { "type": "array", "minItems": 2, "maxItems": 6, "items": { "type": "object", "required": ["name", "role", "background", "goal", "need"], "additionalProperties": false, "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 160 }, "role": { "type": "string", "minLength": 1, "maxLength": 300 }, "background": { "type": "string", "minLength": 1, "maxLength": 800 }, "goal": { "type": "string", "minLength": 1, "maxLength": 600 }, "need": { "type": "string", "minLength": 1, "maxLength": 600 } } } },
+        "setting": { "type": "string", "minLength": 1, "maxLength": 1200 },
+        "meetingAndIncitingEvent": { "type": "string", "minLength": 1, "maxLength": 1600 },
+        "relationshipProgression": { "type": "array", "minItems": 2, "maxItems": 8, "items": { "type": "string", "minLength": 1, "maxLength": 800 } },
+        "obstacles": { "type": "array", "minItems": 2, "maxItems": 10, "items": { "type": "string", "minLength": 1, "maxLength": 800 } },
+        "opposingForces": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "type": "string", "minLength": 1, "maxLength": 800 } },
+        "centralQuestion": { "type": "string", "minLength": 1, "maxLength": 800 },
+        "majorConflict": { "type": "string", "minLength": 1, "maxLength": 1200 },
+        "turningPoints": { "type": "array", "minItems": 2, "maxItems": 8, "items": { "type": "string", "minLength": 1, "maxLength": 800 } },
+        "climax": { "type": "string", "minLength": 1, "maxLength": 1200 },
+        "endingDirection": { "type": "string", "minLength": 1, "maxLength": 1200 },
+        "unresolvedHooks": { "type": "array", "maxItems": 8, "items": { "type": "string", "minLength": 1, "maxLength": 600 } },
+        "tone": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "audience": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "assumptions": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 600 } },
+        "exclusions": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 600 } }
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": ["url", "title", "accessedAt", "supports"],
+      "additionalProperties": false,
+      "properties": {
+        "url": { "type": "string", "format": "uri", "maxLength": 2048 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "publisher": { "type": "string", "maxLength": 180 },
+        "publishedAt": { "type": "string", "format": "date-time" },
+        "accessedAt": { "type": "string", "format": "date-time" },
+        "supports": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 128 } }
+      }
+    },
+    "slot": {
+      "type": "object",
+      "required": ["slotKey", "title", "description", "semanticRole", "mediaType", "required", "evidenceStatus"],
+      "additionalProperties": false,
+      "properties": {
+        "slotKey": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{1,127}$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "semanticRole": { "enum": ["scene_anchor", "reference", "b_roll_still", "b_roll_footage"] },
+        "mediaType": { "enum": ["image", "video", "mixed"] },
+        "required": { "type": "boolean" },
+        "evidenceStatus": { "enum": ["not_applicable", "illustrative", "needs_verification", "verified"] },
+        "rationale": { "type": "string", "maxLength": 1000 }
+      }
+    }
+  }
+}

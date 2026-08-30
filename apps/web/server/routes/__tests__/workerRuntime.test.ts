@@ -22,6 +22,18 @@ const { mockAuthorizeRequest, mockGetUserById, mockGetDb } = vi.hoisted(() => ({
   mockGetDb: vi.fn(),
 }));
 
+const {
+  mockConnectedDeviceRevoked,
+  mockUpsertConnectedDevice,
+  mockUpdateConnectedDeviceTokenMetadata,
+  mockConnectedWorkerEffectiveScopes,
+} = vi.hoisted(() => ({
+  mockConnectedDeviceRevoked: vi.fn(),
+  mockUpsertConnectedDevice: vi.fn(),
+  mockUpdateConnectedDeviceTokenMetadata: vi.fn(),
+  mockConnectedWorkerEffectiveScopes: vi.fn(),
+}));
+
 vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: mockGetTenantFeatureFlags,
 }));
@@ -48,6 +60,19 @@ vi.mock("../../db", async () => {
   };
 });
 
+vi.mock("../../services/connectedDeviceService", async () => {
+  const actual = await vi.importActual<
+    typeof import("../../services/connectedDeviceService")
+  >("../../services/connectedDeviceService");
+  return {
+    ...actual,
+    getConnectedWorkerEffectiveScopes: mockConnectedWorkerEffectiveScopes,
+    isConnectedDeviceRevoked: mockConnectedDeviceRevoked,
+    upsertConnectedDevice: mockUpsertConnectedDevice,
+    updateConnectedDeviceTokenMetadata: mockUpdateConnectedDeviceTokenMetadata,
+  };
+});
+
 describe("workerRuntime routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -62,6 +87,10 @@ describe("workerRuntime routes", () => {
     mockAuthorizeRequest.mockResolvedValue({ ok: false, error: "Unauthorized" });
     mockGetUserById.mockResolvedValue(undefined);
     mockGetDb.mockReset();
+    mockConnectedDeviceRevoked.mockResolvedValue(false);
+    mockUpsertConnectedDevice.mockResolvedValue(null);
+    mockUpdateConnectedDeviceTokenMetadata.mockResolvedValue(true);
+    mockConnectedWorkerEffectiveScopes.mockResolvedValue(null);
   });
 
   async function makeApp(overrides: Partial<{
@@ -936,6 +965,14 @@ describe("workerRuntime routes", () => {
     expect(registerWorker).toHaveBeenCalledWith(expect.objectContaining({
       auth: expect.objectContaining({
         tenantId: "tenant-1",
+        permissionPreset: "vertical_drama_media_operator",
+        permissionScopes: expect.arrayContaining([
+          "series:read",
+          "series:bind",
+          "series:scan",
+          "series:media:process",
+          "series:media:publish",
+        ]),
       }),
       payload: expect.objectContaining({
         deviceBinding: {
@@ -945,6 +982,20 @@ describe("workerRuntime routes", () => {
         },
       }),
     }));
+
+    const tokenRes = await request(app)
+      .post("/api/workers/connect/token")
+      .send({ device_code: startRes.body.deviceCode });
+    expect(tokenRes.status).toBe(200);
+    const { verifyBearerToken } = await import("../../_core/tokens");
+    const executionClaims = await verifyBearerToken(tokenRes.body.tokens.executionToken);
+    expect(executionClaims.scopes).toEqual(expect.arrayContaining([
+      "series:read",
+      "series:bind",
+      "series:scan",
+      "series:media:process",
+      "series:media:publish",
+    ]));
   });
 
   it("approves worker connect sessions from the URL-resolved request tenant", async () => {
@@ -993,7 +1044,12 @@ describe("workerRuntime routes", () => {
     }));
     // Connected-device inventory is persisted during approval; tenant
     // resolution itself still comes from the URL-resolved request context.
-    expect(mockGetDb).toHaveBeenCalled();
+    expect(mockUpsertConnectedDevice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-from-url",
+        authKind: "worker_executor",
+      }),
+    );
   });
 
   it("reports runtime pack as not published until an official pack exists", async () => {

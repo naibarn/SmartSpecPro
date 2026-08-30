@@ -328,6 +328,7 @@ export async function runVerticalDramaGenreProposal(
       tenantId: params.tenantId,
       amount: creditsUsed,
       description: `Vertical Drama — genre proposal (series #${params.seriesId})`,
+      skillSlug: "vertical-drama-genre-normalizer",
       sourceType: "skill",
       idempotencyKey: params.idempotencyKey,
       metadata: {

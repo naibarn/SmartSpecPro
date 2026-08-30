@@ -300,6 +300,364 @@ async def test_kie_poller_completes_and_advances_same_user_without_storing_raw_p
     dispatch.assert_awaited_once_with(42)
 
 
+def test_kie_state_normalizer_prioritizes_provider_failure_over_complete_time():
+    from app.tasks.media_tasks import (
+        _compact_kie_status,
+        _extract_kie_failure_message,
+        _normalize_kie_task_state,
+    )
+
+    response = {
+        "code": 200,
+        "msg": "success",
+        "data": {
+            "taskId": "provider-policy-failure",
+            "state": "fail",
+            "failCode": "400",
+            "failMsg": "Sorry, but the image we created may violate OpenAI's content policies.",
+            "completeTime": 1787303374933,
+            "resultJson": "",
+        },
+    }
+
+    assert _normalize_kie_task_state(response) == ("fail", "fail")
+    assert "content policies" in _extract_kie_failure_message(response)
+    compact = _compact_kie_status(response, "fail", "fail")
+    assert compact["failure_code"] == "400"
+    assert "content policies" in compact["failure_message"]
+
+
+@pytest.mark.asyncio
+async def test_kie_policy_failure_is_terminal_and_does_not_schedule_another_poll():
+    from app.tasks.media_tasks import _poll_kie_image_task_async
+
+    task = SimpleNamespace(
+        id="task-policy-terminal",
+        user_id=42,
+        media_type="image",
+        model="nano-banana-2",
+        parameters={},
+        status=TaskStatus.PROCESSING.value,
+        task_id="provider-policy-terminal",
+        started_at=datetime.now(timezone.utc),
+        created_at=datetime.now(timezone.utc),
+        completed_at=None,
+        result_url=None,
+        result_data={"polling": {"provider": "kie_ai", "attempts": 0}},
+        error_message=None,
+    )
+    task_lookup = MagicMock()
+    task_lookup.scalar_one_or_none.return_value = task
+    model_lookup = MagicMock()
+    model_lookup.fetchone.return_value = None
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    session.execute = AsyncMock(side_effect=[task_lookup, model_lookup])
+    session.commit = AsyncMock()
+    provider = MagicMock()
+    provider.get_task_status = AsyncMock(
+        return_value={
+            "code": 200,
+            "data": {
+                "taskId": task.task_id,
+                "state": "fail",
+                "failCode": "400",
+                "failMsg": "Sorry, but the image we created may violate OpenAI's content policies.",
+            },
+        }
+    )
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), patch(
+        "app.services.media_provider_service.get_media_provider_key",
+        AsyncMock(return_value={"apiKey": "key"}),
+    ), patch(
+        "app.tasks.media_tasks._kie_image_poll_rate_limiter.acquire",
+        AsyncMock(
+            return_value=SimpleNamespace(
+                allowed=True,
+                retry_after_seconds=1,
+                redis_available=True,
+            )
+        ),
+    ), patch(
+        "app.llm_proxy.providers.kie_ai_provider.KieAIProvider", return_value=provider
+    ), patch(
+        "app.tasks.media_tasks._enqueue_kie_image_poll"
+    ) as enqueue_poll, patch(
+        "app.tasks.media_tasks._send_failure_notifications", AsyncMock()
+    ), patch(
+        "app.tasks.media_tasks._dispatch_pending_image_tasks_async", AsyncMock()
+    ) as dispatch:
+        result = await _poll_kie_image_task_async("task-policy-terminal")
+
+    assert result == {"status": "failed", "task_id": task.id}
+    assert task.status == TaskStatus.FAILED.value
+    assert "content policies" in task.error_message
+    enqueue_poll.assert_not_called()
+    dispatch.assert_awaited_once_with(42)
+
+
+@pytest.mark.asyncio
+async def test_kie_image_fetch_failure_is_delayed_and_requeued_through_dispatcher():
+    from app.tasks.media_tasks import _poll_kie_image_task_async
+
+    task = SimpleNamespace(
+        id="task-fetch-retry",
+        user_id=42,
+        media_type="image",
+        model="gpt-image-2-image-to-image",
+        parameters={"reference_image_urls": ["https://smartaihub.app/reference.png"]},
+        status=TaskStatus.PROCESSING.value,
+        task_id="provider-fetch-retry",
+        celery_task_id="celery-original",
+        started_at=datetime.now(timezone.utc),
+        created_at=datetime.now(timezone.utc),
+        completed_at=None,
+        result_url=None,
+        result_data={"polling": {"provider": "kie_ai", "attempts": 1}},
+        error_message=None,
+    )
+    task_lookup = MagicMock()
+    task_lookup.scalar_one_or_none.return_value = task
+    model_lookup = MagicMock()
+    model_lookup.fetchone.return_value = None
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    session.execute = AsyncMock(side_effect=[task_lookup, model_lookup])
+    session.commit = AsyncMock()
+    provider = MagicMock()
+    provider.get_task_status = AsyncMock(
+        return_value={
+            "code": 200,
+            "data": {
+                "taskId": task.task_id,
+                "state": "fail",
+                "failCode": "400",
+                "failMsg": "Image fetch failed. Check access settings or use our File Upload API instead.",
+            },
+        }
+    )
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), patch(
+        "app.services.media_provider_service.get_media_provider_key",
+        AsyncMock(return_value={"apiKey": "key"}),
+    ), patch(
+        "app.tasks.media_tasks._kie_image_poll_rate_limiter.acquire",
+        AsyncMock(
+            return_value=SimpleNamespace(
+                allowed=True,
+                retry_after_seconds=1,
+                redis_available=True,
+            )
+        ),
+    ), patch(
+        "app.llm_proxy.providers.kie_ai_provider.KieAIProvider", return_value=provider
+    ), patch(
+        "app.tasks.media_tasks._enqueue_kie_image_retry"
+    ) as enqueue_retry, patch(
+        "app.tasks.media_tasks._dispatch_pending_image_tasks_async", AsyncMock()
+    ) as dispatch:
+        result = await _poll_kie_image_task_async("task-fetch-retry")
+
+    assert result["status"] == "retry_scheduled"
+    assert result["retry_number"] == 1
+    assert task.status == TaskStatus.PENDING.value
+    assert task.task_id is None
+    assert task.celery_task_id.startswith("kie-image-retry:")
+    assert task.result_data["polling"]["provider_retry_count"] == 1
+    assert task.result_data["polling"]["retry_delay_seconds"] == 15
+    enqueue_retry.assert_called_once()
+    assert enqueue_retry.call_args.args[0:2] == (task.id, 42)
+    assert enqueue_retry.call_args.args[3] == 15
+    dispatch.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_kie_image_fetch_failure_becomes_terminal_after_three_retries():
+    from app.tasks.media_tasks import _poll_kie_image_task_async
+
+    task = SimpleNamespace(
+        id="task-fetch-exhausted",
+        user_id=42,
+        media_type="image",
+        model="gpt-image-2-image-to-image",
+        parameters={},
+        status=TaskStatus.PROCESSING.value,
+        task_id="provider-fetch-exhausted",
+        started_at=datetime.now(timezone.utc),
+        created_at=datetime.now(timezone.utc),
+        completed_at=None,
+        result_url=None,
+        result_data={
+            "polling": {
+                "provider": "kie_ai",
+                "attempts": 3,
+                "provider_retry_count": 3,
+            }
+        },
+        error_message=None,
+    )
+    task_lookup = MagicMock()
+    task_lookup.scalar_one_or_none.return_value = task
+    model_lookup = MagicMock()
+    model_lookup.fetchone.return_value = None
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    session.execute = AsyncMock(side_effect=[task_lookup, model_lookup])
+    session.commit = AsyncMock()
+    provider = MagicMock()
+    provider.get_task_status = AsyncMock(
+        return_value={
+            "code": 200,
+            "data": {
+                "taskId": task.task_id,
+                "state": "fail",
+                "failCode": "400",
+                "failMsg": "Image fetch failed. Check access settings or use our File Upload API instead.",
+            },
+        }
+    )
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), patch(
+        "app.services.media_provider_service.get_media_provider_key",
+        AsyncMock(return_value={"apiKey": "key"}),
+    ), patch(
+        "app.tasks.media_tasks._kie_image_poll_rate_limiter.acquire",
+        AsyncMock(
+            return_value=SimpleNamespace(
+                allowed=True,
+                retry_after_seconds=1,
+                redis_available=True,
+            )
+        ),
+    ), patch(
+        "app.llm_proxy.providers.kie_ai_provider.KieAIProvider", return_value=provider
+    ), patch(
+        "app.tasks.media_tasks._enqueue_kie_image_retry"
+    ) as enqueue_retry, patch(
+        "app.tasks.media_tasks._send_failure_notifications", AsyncMock()
+    ) as notify, patch(
+        "app.tasks.media_tasks._dispatch_pending_image_tasks_async", AsyncMock()
+    ) as dispatch:
+        result = await _poll_kie_image_task_async("task-fetch-exhausted")
+
+    assert result == {"status": "failed", "task_id": task.id}
+    assert task.status == TaskStatus.FAILED.value
+    assert "Image fetch failed" in task.error_message
+    enqueue_retry.assert_not_called()
+    notify.assert_awaited_once()
+    dispatch.assert_awaited_once_with(42)
+
+
+def test_kie_policy_exception_is_terminal_and_does_not_trigger_celery_retry():
+    from app.tasks.media_tasks import poll_kie_image_task
+
+    policy_error = RuntimeError(
+        "Provider failed: Sorry, but the image we created may violate OpenAI's content policies."
+    )
+    retry = MagicMock()
+
+    with patch(
+        "app.tasks.media_tasks._run_async",
+        side_effect=policy_error,
+    ), patch(
+        "app.tasks.media_tasks._mark_task_failed_async",
+        AsyncMock(),
+    ) as mark_failed, patch(
+        "app.tasks.media_tasks._get_media_task_owner_id_async",
+        AsyncMock(return_value=42),
+    ), patch(
+        "app.tasks.media_tasks._send_failure_notifications",
+        AsyncMock(),
+    ), patch(
+        "app.tasks.media_tasks._dispatch_pending_image_tasks_async",
+        AsyncMock(),
+    ), patch.object(poll_kie_image_task, "retry", retry):
+        result = poll_kie_image_task.run("task-policy-exception")
+
+    assert result["status"] == "failed"
+    assert result["retryable"] is False
+    assert "content policies" in result["error"]
+    retry.assert_not_called()
+    mark_failed.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_periodic_failed_task_sweep_does_not_requeue_mixed_policy_error():
+    from app.tasks.media_tasks import _retry_failed_tasks_async
+
+    task = SimpleNamespace(
+        id="task-policy-periodic",
+        user_id=42,
+        media_type="image",
+        status=TaskStatus.FAILED,
+        error_message=(
+            "Provider failed: Sorry, but the image we created may violate "
+            "OpenAI's content policies. timeout while recording provider status"
+        ),
+        completed_at=datetime.now(timezone.utc),
+        parameters={"model": "nano-banana-2"},
+    )
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = [task]
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    session.execute = AsyncMock(return_value=result)
+    session.commit = AsyncMock()
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), patch(
+        "app.tasks.media_tasks.generate_image_task.delay"
+    ) as submit:
+        outcome = await _retry_failed_tasks_async()
+
+    assert outcome["retried_count"] == 0
+    assert task.status == TaskStatus.FAILED
+    submit.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_periodic_image_retry_reenters_per_user_dispatcher():
+    from app.tasks.media_tasks import _retry_failed_tasks_async
+
+    task = SimpleNamespace(
+        id="task-transient-requeue",
+        user_id=42,
+        media_type="image",
+        status=TaskStatus.FAILED,
+        error_message="temporary provider connection failure",
+        completed_at=datetime.now(timezone.utc),
+        parameters={"model": "nano-banana-2"},
+        task_id="old-provider-task",
+        celery_task_id="old-celery-task",
+        started_at=datetime.now(timezone.utc),
+    )
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = [task]
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=False)
+    session.execute = AsyncMock(return_value=result)
+    session.commit = AsyncMock()
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), patch(
+        "app.tasks.media_tasks.generate_image_task.delay"
+    ) as submit, patch(
+        "app.tasks.media_tasks._dispatch_pending_image_tasks_async", AsyncMock()
+    ) as dispatch:
+        outcome = await _retry_failed_tasks_async()
+
+    assert outcome["retried_count"] == 1
+    assert task.status == TaskStatus.PENDING
+    assert task.task_id is None
+    assert task.celery_task_id is None
+    submit.assert_not_called()
+    dispatch.assert_awaited_once_with(42)
+
+
 @pytest.mark.asyncio
 async def test_kie_poller_never_revives_cancelled_task():
     from app.tasks.media_tasks import _poll_kie_image_task_async

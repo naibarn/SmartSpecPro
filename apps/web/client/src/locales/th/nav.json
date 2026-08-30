@@ -69,6 +69,7 @@
   "sidebar.videoEditor": "ตัดต่อวีดีโอ",
   "sidebar.admin-work-os": "เวิร์กโอเอส",
   "sidebar.admin-billing": "ตรวจสอบการชำระเงิน",
+  "sidebar.admin-database-backups": "สำรองฐานข้อมูล",
   "sidebar.webhookTriggers": "เว็บฮุก",
   "sidebar.workflows": "เวิร์กโฟลว์"
 }

@@ -367,19 +367,8 @@ export function StagedCheckpointReviewSurface(props: {
   const onSaveRenderSettings = (settings: {
     subtitlePresetId?: string;
     aiDisclosureEnabled?: boolean;
-    overlayText?: {
-      content: string;
-      position: "top" | "center" | "bottom";
-      fontSizePx: number;
-      color: string;
-      fontWeight: "normal" | "bold";
-    } | null;
-    overlayImage?: {
-      url: string;
-      position: "top_left" | "top_right" | "bottom_left" | "bottom_right";
-      widthPercent: number;
-      opacity: number;
-    } | null;
+    overlayText?: NonNullable<StagedReviewState["finalRender"]>["settings"]["overlayText"];
+    overlayImage?: NonNullable<StagedReviewState["finalRender"]>["settings"]["overlayImage"];
   }) => {
     if (!requireStateDigest()) return;
     saveRenderSettingsMutation.mutate({

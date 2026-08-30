@@ -26,6 +26,16 @@
       },
       "default": []
     },
+    "reference_type": {
+      "type": "string",
+      "enum": [
+        "product",
+        "location",
+        "store",
+        "mixed"
+      ],
+      "description": "ประเภทหลักของภาพอ้างอิงสำหรับงาน tie-in"
+    },
     "shot_duration_seconds": {
       "type": "integer",
       "enum": [
@@ -113,6 +123,18 @@
       "type": "string",
       "maxLength": 3000,
       "description": "ข้อกำหนดบทพูดเพิ่มเติม เช่น คำที่ต้องใช้ โทนเสียง หรือข้อมูลที่ห้ามพูด"
+    },
+    "allow_additional_characters": {
+      "type": "boolean",
+      "description": "อนุญาตตัวประกอบที่ไม่ใช่ผู้พูดเพิ่มในฉากหรือไม่"
+    },
+    "lock_character_references": {
+      "type": "boolean",
+      "description": "ล็อกตัวตน/รูปลักษณ์ตัวละครจากภาพอ้างอิง"
+    },
+    "lock_reference_images": {
+      "type": "boolean",
+      "description": "ล็อกสินค้า สถานที่ หรือร้านค้าตามภาพอ้างอิง"
     },
     "aspect_ratio": {
       "type": "string",

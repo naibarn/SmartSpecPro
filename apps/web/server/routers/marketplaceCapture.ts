@@ -16,7 +16,7 @@ import {
 } from "../../shared/geminiOmni";
 import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
 import { signBearerToken } from "../_core/tokens";
-import { storagePut } from "../storage";
+import { assertR2StorageActive, storagePut } from "../storage";
 import { STAGED_OVERLAY_ANCHORS } from "../services/marketplaceAutoReviewStagedRemotionRender";
 import { issueMarketplaceExtensionToken } from "../services/marketplaceExtensionAuthService";
 import {
@@ -1885,6 +1885,7 @@ export const marketplaceCaptureRouter = router({
       const auth = authFromCtx(ctx);
       const id = nanoid(10);
       const key = `marketplace-auto-review/${input.runId}/manual-uploads/${input.shotId}-${input.stage}-${id}${ext ? "." + ext : ""}`;
+      await assertR2StorageActive();
       const { url } = await storagePut(key, buf, input.fileType);
 
       return uploadStagedAutoReviewShotMedia({
@@ -2020,6 +2021,7 @@ export const marketplaceCaptureRouter = router({
         });
       }
       const key = `marketplace-auto-review/${input.runId}/overlay/${nanoid(10)}${ext ? "." + ext : ""}`;
+      await assertR2StorageActive();
       const { url } = await storagePut(key, buf, input.fileType);
       return { url };
     }),

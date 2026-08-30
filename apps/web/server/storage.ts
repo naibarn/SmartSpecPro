@@ -175,6 +175,20 @@ export async function assertR2StorageActive(): Promise<void> {
   }
 }
 
+function isDurableMediaContentType(contentType: string, relKey?: string): boolean {
+  const normalizedContentType = contentType.split(";", 1)[0].trim();
+  if (/^(image|video|audio)\//i.test(normalizedContentType)) return true;
+
+  // Legacy callers sometimes supplied application/octet-stream. Infer the
+  // invariant from the object key as a second line of defense.
+  const extension = path.extname(relKey ?? "").toLowerCase();
+  return new Set([
+    ".avif", ".gif", ".heic", ".heif", ".jpeg", ".jpg", ".m4a", ".mkv",
+    ".mov", ".mp3", ".mp4", ".oga", ".ogg", ".png", ".svg", ".wav",
+    ".webm", ".webp",
+  ]).has(extension);
+}
+
 // ─── Key normalization (security) ────────────────────────────────────────────
 
 function normalizeKey(relKey: string): string {
@@ -430,6 +444,12 @@ export async function storagePut(
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream",
 ): Promise<{ key: string; url: string }> {
+  // Enforce the invariant at the storage boundary too: persistent
+  // image/video/audio objects must never silently fall back to server-local
+  // uploads when R2 is unavailable.
+  if (isDurableMediaContentType(contentType, relKey)) {
+    await assertR2StorageActive();
+  }
   const config = await getActiveStorageConfig();
   switch (config.provider) {
     case "local":
@@ -450,6 +470,9 @@ export async function storagePutFromPath(
   sourcePath: string,
   contentType = "application/octet-stream",
 ): Promise<{ key: string; url: string }> {
+  if (isDurableMediaContentType(contentType, relKey)) {
+    await assertR2StorageActive();
+  }
   const config = await getActiveStorageConfig();
 
   switch (config.provider) {

@@ -394,9 +394,32 @@ export interface DramaShot {
   dialogueLines: DramaShotDialogueLine[];
   mainImageUrl: string | null;
   mainImageThumbnailUrl: string | null;
+  stopFrameUrl: string | null;
+  stopFrameThumbnailUrl: string | null;
   gridImageUrl: string | null;
   gridFrames: DramaShotGridFrame[];
   referenceImages: DramaShotReferenceImage[];
+}
+
+export function projectDramaShotFrameUrlsForExtension(input: {
+  startFrameAssetId: unknown;
+  stopFrameAssetId: unknown;
+  assetById: ReadonlyMap<number, { originalUrl: string | null; thumbnailUrl: string | null }>;
+}): Pick<DramaShot, "mainImageUrl" | "mainImageThumbnailUrl" | "stopFrameUrl" | "stopFrameThumbnailUrl"> {
+  const resolve = (rawAssetId: unknown) => {
+    if (typeof rawAssetId !== "string" && typeof rawAssetId !== "number") return null;
+    const assetId = Number(rawAssetId);
+    if (!Number.isFinite(assetId)) return null;
+    return input.assetById.get(assetId) ?? null;
+  };
+  const start = resolve(input.startFrameAssetId);
+  const stop = resolve(input.stopFrameAssetId);
+  return {
+    mainImageUrl: start?.originalUrl ?? null,
+    mainImageThumbnailUrl: start?.thumbnailUrl ?? null,
+    stopFrameUrl: stop?.originalUrl ?? null,
+    stopFrameThumbnailUrl: stop?.thumbnailUrl ?? null,
+  };
 }
 
 interface ExtensionShotReferenceRow {
@@ -701,10 +724,10 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       asc(verticalDramaShotReferences.createdAt),
     );
 
-  // Resolve approvedMediaAssetId values (frames[].approvedMediaAssetId, string in JSONB).
+  // Resolve approved Start/Stop asset ids from frames[] (JSONB) in one scoped lookup.
   const approvedAssetIds = frames
-    .map((frame) => {
-      const raw = frame.approvedMediaAssetId;
+    .flatMap((frame) => [frame.approvedMediaAssetId, frame.approvedStopFrameAssetId])
+    .map((raw) => {
       if (typeof raw !== "string" && typeof raw !== "number") return null;
       const numeric = Number(raw);
       return Number.isFinite(numeric) ? numeric : null;
@@ -850,19 +873,11 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       });
       const dialogue = dialogueLines.map((line) => `${line.speaker}: ${line.text}`).join("\n");
 
-      let mainImageUrl: string | null = null;
-      let mainImageThumbnailUrl: string | null = null;
-      const rawApprovedId = frame?.approvedMediaAssetId;
-      if (typeof rawApprovedId === "string" || typeof rawApprovedId === "number") {
-        const numeric = Number(rawApprovedId);
-        if (Number.isFinite(numeric)) {
-          const asset = approvedAssetById.get(numeric);
-          if (asset) {
-            mainImageUrl = asset.originalUrl;
-            mainImageThumbnailUrl = asset.thumbnailUrl;
-          }
-        }
-      }
+      const frameUrls = projectDramaShotFrameUrlsForExtension({
+        startFrameAssetId: frame?.approvedMediaAssetId,
+        stopFrameAssetId: frame?.approvedStopFrameAssetId,
+        assetById: approvedAssetById,
+      });
 
       const shotReferenceRows = referencesByShot.get(shotNumber) ?? [];
       const referenceImages = projectDramaShotReferenceImagesForExtension({
@@ -883,8 +898,7 @@ export async function getDramaSeriesEpisodeDetailForExtension(
         negativeVideoPrompt: clip?.negativeMotionPrompt ?? "",
         dialogue,
         dialogueLines,
-        mainImageUrl,
-        mainImageThumbnailUrl,
+        ...frameUrls,
         gridImageUrl: null,
         gridFrames: [],
         referenceImages,

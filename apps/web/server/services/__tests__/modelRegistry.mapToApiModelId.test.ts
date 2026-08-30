@@ -80,6 +80,26 @@ describe("mapToApiModelId", () => {
     });
   });
 
+  it("declares the documented five-image Grok Imagine Image 2 edit contract", () => {
+    const grok = getStaticModelById("grok-imagine-image-2");
+
+    expect(grok?.configJson).toMatchObject({
+      maxPromptLength: 390000,
+      maxReferenceImages: 5,
+      supportsReferenceImages: true,
+      apiConfig: {
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        operations: {
+          "image-edit": {
+            kie_model_id: "grok-imagine-image-2-0/image-edit",
+            drop_params: ["resolution", "output_format", "sourceMediaTaskId", "grokOperation"],
+          },
+        },
+      },
+    });
+  });
+
   it("keeps unknown model IDs unchanged", () => {
     expect(mapToApiModelId("custom-db-model")).toBe("custom-db-model");
   });

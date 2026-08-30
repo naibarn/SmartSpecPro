@@ -171,11 +171,12 @@ describe("MarketplaceCaptureProductDetail sequential UI wiring (Feature 136 sect
     );
 
     // The "selected" state must be obvious ON the image itself (an overlay
-    // inside the same wrapper as the <img>), not buried under the caption.
+    // inside the same wrapper as the AuthenticatedMediaImage), not buried under
+    // the caption.
     const relativeWrapperIndex = cardButtonRegion.indexOf(
       '<div className="relative">'
     );
-    const imgIndex = cardButtonRegion.indexOf("<img");
+    const imgIndex = cardButtonRegion.indexOf("<AuthenticatedMediaImage");
     const selectedBadgeIndex = cardButtonRegion.indexOf(
       "hyperframesCopy.referenceSelectedBadge"
     );

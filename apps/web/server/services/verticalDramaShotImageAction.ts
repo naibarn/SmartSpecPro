@@ -72,6 +72,10 @@ import {
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import {
+  analyzeVerticalDramaStorySafety,
+  VerticalDramaStorySafetyError,
+} from "./verticalDramaStorySafety";
 import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
 import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 
@@ -308,26 +312,6 @@ export async function generateShotImageAction(
     model,
   );
 
-  await deductCredits({
-    userId: params.userId,
-    tenantId: params.tenantId,
-    amount: creditsUsed,
-    description: `Vertical Drama — shot image action (${params.action}, shot ${params.shot.shotNumber})`,
-    sourceType: "skill",
-    idempotencyKey: params.idempotencyKey
-      ? `${params.idempotencyKey}:shot-image-action`
-      : undefined,
-    metadata: {
-      model,
-      llmModel: model,
-      feature: "vertical_drama_series",
-      action: params.action,
-      shotNumber: params.shot.shotNumber,
-      inputTokens: usage?.prompt_tokens ?? 0,
-      outputTokens: usage?.completion_tokens ?? 0,
-    },
-  });
-
   // Child-safety post-generation safety net — see this function's doc
   // comment. Only relevant when the input actually carried the directive;
   // otherwise this is a no-op on every call (including softenLevel 0).
@@ -348,6 +332,38 @@ export async function generateShotImageAction(
     outputPrompt = params.shot.currentPrompt;
     outputNegativePrompt = params.shot.currentNegativePrompt;
   }
+
+  // The negative prompt is intentionally excluded: exclusion text commonly
+  // contains policy terms and must not be mistaken for depicted content.
+  const outputSafety = analyzeVerticalDramaStorySafety(outputPrompt);
+  if (outputSafety.level === "high") {
+    throw new VerticalDramaStorySafetyError(
+      "Shot image action produced a high-risk prompt; rewrite it before image generation.",
+      outputSafety,
+    );
+  }
+
+  await deductCredits({
+    userId: params.userId,
+    tenantId: params.tenantId,
+    amount: creditsUsed,
+    contextRef: params.tenantId ? { contextType: "series", sourceType: "vertical_drama_series", sourceId: String(params.seriesId) } : undefined,
+    description: `Vertical Drama — shot image action (${params.action}, shot ${params.shot.shotNumber})`,
+    skillSlug: "vertical-drama-shot-image-action",
+    sourceType: "skill",
+    idempotencyKey: params.idempotencyKey
+      ? `${params.idempotencyKey}:shot-image-action`
+      : undefined,
+    metadata: {
+      model,
+      llmModel: model,
+      feature: "vertical_drama_series",
+      action: params.action,
+      shotNumber: params.shot.shotNumber,
+      inputTokens: usage?.prompt_tokens ?? 0,
+      outputTokens: usage?.completion_tokens ?? 0,
+    },
+  });
 
   return {
     prompt: outputPrompt,

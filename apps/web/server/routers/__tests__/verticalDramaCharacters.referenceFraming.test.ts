@@ -47,6 +47,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -79,7 +80,7 @@ const { MockStockError } = vi.hoisted(() => ({
   MockStockError: class extends Error {
     constructor(
       public readonly reason: string,
-      message: string,
+      message: string
     ) {
       super(message);
     }
@@ -118,11 +119,12 @@ vi.mock("../../services/pricingCalculator", () => ({
   calculateCreditCost: vi.fn(() => 5),
 }));
 
-const { mockHasEnoughCredits, mockDeductCredits, mockRefundCredits } = vi.hoisted(() => ({
-  mockHasEnoughCredits: vi.fn(),
-  mockDeductCredits: vi.fn(),
-  mockRefundCredits: vi.fn(),
-}));
+const { mockHasEnoughCredits, mockDeductCredits, mockRefundCredits } =
+  vi.hoisted(() => ({
+    mockHasEnoughCredits: vi.fn(),
+    mockDeductCredits: vi.fn(),
+    mockRefundCredits: vi.fn(),
+  }));
 vi.mock("../../services/creditService", () => ({
   hasEnoughCredits: mockHasEnoughCredits,
   deductCredits: mockDeductCredits,
@@ -136,24 +138,29 @@ vi.mock("../../_core/tokens", () => ({
   signBearerToken: mockSignBearerToken,
 }));
 
-const { mockGenerateCharacterVisualPrompts, mockResolveFaceSourceReferenceForCharacter } =
-  vi.hoisted(() => ({
-    mockGenerateCharacterVisualPrompts: vi.fn(),
-    mockResolveFaceSourceReferenceForCharacter: vi.fn(),
-  }));
+const {
+  mockGenerateCharacterVisualPrompts,
+  mockResolveFaceSourceReferenceForCharacter,
+} = vi.hoisted(() => ({
+  mockGenerateCharacterVisualPrompts: vi.fn(),
+  mockResolveFaceSourceReferenceForCharacter: vi.fn(),
+}));
 vi.mock("../../services/verticalDramaCharacterImageGeneration", () => ({
   generateCharacterVisualPrompts: mockGenerateCharacterVisualPrompts,
+  shouldRequireAgeStageVariantForRequest: vi.fn(() => false),
   generateCharacterPortraitCandidates: vi.fn(),
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
   readPresetVisualIdentityFromBible: vi.fn(() => undefined),
-  resolveFaceSourceReferenceForCharacter: mockResolveFaceSourceReferenceForCharacter,
+  resolveFaceSourceReferenceForCharacter:
+    mockResolveFaceSourceReferenceForCharacter,
 }));
 
-const { mockLoadCharacterDesignContext, mockPersistCharacterVisualBible } = vi.hoisted(() => ({
-  mockLoadCharacterDesignContext: vi.fn(),
-  mockPersistCharacterVisualBible: vi.fn(),
-}));
+const { mockLoadCharacterDesignContext, mockPersistCharacterVisualBible } =
+  vi.hoisted(() => ({
+    mockLoadCharacterDesignContext: vi.fn(),
+    mockPersistCharacterVisualBible: vi.fn(),
+  }));
 vi.mock("../../services/verticalDramaCharacterDesignContext", () => ({
   loadCharacterDesignContext: mockLoadCharacterDesignContext,
 }));
@@ -162,7 +169,10 @@ vi.mock("../../services/verticalDramaCharacterDnaPersistence", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
-  mediaGenerationLimiter: { isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) },
+  mediaGenerationLimiter: {
+    isAllowed: vi.fn(() => true),
+    getResetTime: vi.fn(() => 0),
+  },
 }));
 
 vi.mock("../../services/mediaAssetService", () => ({
@@ -190,10 +200,13 @@ import {
   verticalDramaCharactersRouter,
 } from "../verticalDramaCharacters";
 
-const router = verticalDramaCharactersRouter as unknown as Record<string, Function>;
+const router = verticalDramaCharactersRouter as unknown as Record<
+  string,
+  Function
+>;
 
 function ctx(
-  overrides: Partial<{ tenantId: string | null; userToken: string | null }> = {},
+  overrides: Partial<{ tenantId: string | null; userToken: string | null }> = {}
 ) {
   return {
     tenantId: "tenant-1",
@@ -289,10 +302,15 @@ function queueRenderSelects(characterRow: Record<string, unknown>) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesPresetMixV2: false });
+  mockGetTenantFeatureFlags.mockResolvedValue({
+    verticalDramaSeriesPresetMixV2: false,
+  });
   mockResolveFaceSourceReferenceForCharacter.mockResolvedValue(null);
   mockGetPrimaryPortraitUrl.mockResolvedValue(null);
-  mockGetReferenceImageByAssetLinkId.mockResolvedValue({ url: null, characterId: null });
+  mockGetReferenceImageByAssetLinkId.mockResolvedValue({
+    url: null,
+    characterId: null,
+  });
   mockHasEnoughCredits.mockResolvedValue(true);
   mockDeductCredits.mockResolvedValue(undefined);
   mockRefundCredits.mockResolvedValue(undefined);
@@ -317,12 +335,16 @@ describe("generateCharacterImage — has_own_reference_image reflects the refere
 
     await router.generateCharacterImage({
       ctx: ctx({ userToken: null }),
-      input: { seriesId: "10", characterId: "1", selectedImageModelId: "kie-gpt-image-2" },
+      input: {
+        seriesId: "10",
+        characterId: "1",
+        selectedImageModelId: "kie-gpt-image-2",
+      },
     });
 
     expect(mockSignBearerToken).toHaveBeenCalledWith(
       expect.objectContaining({ sub: "42", tenantId: "tenant-1" }),
-      "15m",
+      "15m"
     );
   });
 
@@ -335,11 +357,16 @@ describe("generateCharacterImage — has_own_reference_image reflects the refere
 
     await router.generateCharacterImage({
       ctx: ctx(),
-      input: { seriesId: "10", characterId: "2", selectedImageModelId: "kie-gpt-image-2" },
+      input: {
+        seriesId: "10",
+        characterId: "2",
+        selectedImageModelId: "kie-gpt-image-2",
+        referencePolicy: "auto",
+      },
     });
 
     expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
-      expect.objectContaining({ hasOwnReferenceImage: false }),
+      expect.objectContaining({ hasOwnReferenceImage: false })
     );
     // The borrowed portrait is still ATTACHED — it is the face anchor. Only
     // the "this is your own established look, wardrobe included" claim is
@@ -348,7 +375,7 @@ describe("generateCharacterImage — has_own_reference_image reflects the refere
       PARENT_PORTRAIT_URL,
     ]);
     expect(mockGenerateImageAsync.mock.calls[0][0].auditContext).toEqual(
-      expect.objectContaining({ userId: 42, tenantId: "tenant-1" }),
+      expect.objectContaining({ userId: 42, tenantId: "tenant-1" })
     );
   });
 
@@ -358,11 +385,16 @@ describe("generateCharacterImage — has_own_reference_image reflects the refere
 
     await router.generateCharacterImage({
       ctx: ctx(),
-      input: { seriesId: "10", characterId: "1", selectedImageModelId: "kie-gpt-image-2" },
+      input: {
+        seriesId: "10",
+        characterId: "1",
+        selectedImageModelId: "kie-gpt-image-2",
+        referencePolicy: "auto",
+      },
     });
 
     expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
-      expect.objectContaining({ hasOwnReferenceImage: true }),
+      expect.objectContaining({ hasOwnReferenceImage: true })
     );
   });
 
@@ -382,12 +414,13 @@ describe("generateCharacterImage — has_own_reference_image reflects the refere
         characterId: "2",
         referenceAssetLinkId: "77",
         selectedImageModelId: "kie-gpt-image-2",
+        referencePolicy: "none",
       },
     });
 
     expect(mockGetPrimaryPortraitUrl).not.toHaveBeenCalled();
     expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
-      expect.objectContaining({ hasOwnReferenceImage: true }),
+      expect.objectContaining({ hasOwnReferenceImage: true })
     );
   });
 
@@ -415,7 +448,7 @@ describe("generateCharacterImage — has_own_reference_image reflects the refere
     });
 
     expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
-      expect.objectContaining({ hasOwnReferenceImage: false }),
+      expect.objectContaining({ hasOwnReferenceImage: false })
     );
     // Still attached — the face anchor is the entire point of the choice.
     expect(mockGenerateImageAsync.mock.calls[0][0].referenceImageUrls).toEqual([
@@ -429,13 +462,41 @@ describe("generateCharacterImage — has_own_reference_image reflects the refere
 
     await router.generateCharacterImage({
       ctx: ctx(),
-      input: { seriesId: "10", characterId: "1", selectedImageModelId: "kie-gpt-image-2" },
+      input: {
+        seriesId: "10",
+        characterId: "1",
+        selectedImageModelId: "kie-gpt-image-2",
+      },
     });
 
     expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
-      expect.objectContaining({ hasOwnReferenceImage: false }),
+      expect.objectContaining({ hasOwnReferenceImage: false })
     );
-    expect(mockGenerateImageAsync.mock.calls[0][0].referenceImageUrls).toBeUndefined();
+    expect(
+      mockGenerateImageAsync.mock.calls[0][0].referenceImageUrls
+    ).toBeUndefined();
+  });
+
+  it("does not reuse an existing primary for main portrait regeneration when policy is omitted", async () => {
+    queueRenderSelects(BASE_CHARACTER_ROW);
+    mockGetPrimaryPortraitUrl.mockResolvedValue(OWN_PORTRAIT_URL);
+
+    await router.generateCharacterImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        characterId: "1",
+        selectedImageModelId: "kie-gpt-image-2",
+      },
+    });
+
+    expect(mockGetPrimaryPortraitUrl).not.toHaveBeenCalled();
+    expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
+      expect.objectContaining({ hasOwnReferenceImage: false })
+    );
+    expect(
+      mockGenerateImageAsync.mock.calls[0][0].referenceImageUrls
+    ).toBeUndefined();
   });
 });
 
@@ -468,10 +529,10 @@ describe("generateCharacterSheet — reference tier + customInstruction", () => 
         customInstruction,
         hasOwnReferenceImage: false,
         requestedSheetType: "pose_library",
-      }),
+      })
     );
     expect(mockGenerateImageAsync.mock.calls[0][0].auditContext).toEqual(
-      expect.objectContaining({ userId: 42, tenantId: "tenant-1" }),
+      expect.objectContaining({ userId: 42, tenantId: "tenant-1" })
     );
   });
 
@@ -490,7 +551,7 @@ describe("generateCharacterSheet — reference tier + customInstruction", () => 
     });
 
     expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
-      expect.objectContaining({ customInstruction: undefined }),
+      expect.objectContaining({ customInstruction: undefined })
     );
   });
 });
@@ -514,7 +575,7 @@ describe("pickCharacterRenderModelId", () => {
         hasReferenceImage: true,
         selectedImageModelId: "kie-gpt-image-2",
         selectedEditImageModelId: "seedream-5-pro",
-      }),
+      })
     ).toBe("seedream-5-pro");
   });
 
@@ -524,7 +585,7 @@ describe("pickCharacterRenderModelId", () => {
         hasReferenceImage: false,
         selectedImageModelId: "kie-gpt-image-2",
         selectedEditImageModelId: "seedream-5-pro",
-      }),
+      })
     ).toBe("kie-gpt-image-2");
   });
 
@@ -533,14 +594,14 @@ describe("pickCharacterRenderModelId", () => {
       pickCharacterRenderModelId({
         hasReferenceImage: true,
         selectedImageModelId: "kie-gpt-image-2",
-      }),
+      })
     ).toBe("kie-gpt-image-2");
     expect(
       pickCharacterRenderModelId({
         hasReferenceImage: true,
         selectedImageModelId: "kie-gpt-image-2",
         selectedEditImageModelId: "   ",
-      }),
+      })
     ).toBe("kie-gpt-image-2");
   });
 });
@@ -559,10 +620,13 @@ describe("generateCharacterImage — image-to-image model split", () => {
         characterId: "2",
         selectedImageModelId: "kie-gpt-image-2",
         selectedEditImageModelId: "seedream-5-pro",
+        referencePolicy: "auto",
       },
     });
 
-    expect(mockGenerateImageAsync.mock.calls[0][0].model).toBe("seedream-5-pro");
+    expect(mockGenerateImageAsync.mock.calls[0][0].model).toBe(
+      "seedream-5-pro"
+    );
   });
 
   it("renders a first portrait through the TEXT-TO-IMAGE model, because there is no reference", async () => {
@@ -575,11 +639,14 @@ describe("generateCharacterImage — image-to-image model split", () => {
         seriesId: "10",
         characterId: "1",
         selectedImageModelId: "kie-gpt-image-2",
+        referencePolicy: "auto",
         selectedEditImageModelId: "seedream-5-pro",
       },
     });
 
-    expect(mockGenerateImageAsync.mock.calls[0][0].model).toBe("kie-gpt-image-2");
+    expect(mockGenerateImageAsync.mock.calls[0][0].model).toBe(
+      "kie-gpt-image-2"
+    );
   });
 
   it("keeps the single-model behavior when the caller sends no edit model", async () => {
@@ -592,10 +659,13 @@ describe("generateCharacterImage — image-to-image model split", () => {
         seriesId: "10",
         characterId: "1",
         selectedImageModelId: "kie-gpt-image-2",
+        referencePolicy: "auto",
       },
     });
 
-    expect(mockGenerateImageAsync.mock.calls[0][0].model).toBe("kie-gpt-image-2");
+    expect(mockGenerateImageAsync.mock.calls[0][0].model).toBe(
+      "kie-gpt-image-2"
+    );
   });
 });
 
@@ -613,10 +683,13 @@ describe("generateCharacterSheet — image-to-image model split", () => {
         sheetLanguage: "en",
         selectedImageModelId: "kie-gpt-image-2",
         selectedEditImageModelId: "nano-banana-pro",
+        referencePolicy: "auto",
       },
     });
 
-    expect(mockGenerateImageAsync.mock.calls[0][0].model).toBe("nano-banana-pro");
+    expect(mockGenerateImageAsync.mock.calls[0][0].model).toBe(
+      "nano-banana-pro"
+    );
   });
 });
 
@@ -663,7 +736,7 @@ describe("setPrimaryPortrait", () => {
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain([BASE_CHARACTER_ROW]));
     mockSetPrimaryPortraitAsset.mockRejectedValue(
-      new MockStockError("asset_wrong_role", "candidate must lock DNA"),
+      new MockStockError("asset_wrong_role", "candidate must lock DNA")
     );
     mockSelectPortraitCandidate.mockResolvedValue({ assetLinkId: "264" });
 
@@ -674,7 +747,7 @@ describe("setPrimaryPortrait", () => {
 
     expect(result).toMatchObject({ via: "candidate" });
     expect(mockSelectPortraitCandidate).toHaveBeenCalledWith(
-      expect.objectContaining({ characterId: 1, assetLinkId: 264 }),
+      expect.objectContaining({ characterId: 1, assetLinkId: 264 })
     );
   });
 
@@ -683,14 +756,14 @@ describe("setPrimaryPortrait", () => {
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain([BASE_CHARACTER_ROW]));
     mockSetPrimaryPortraitAsset.mockRejectedValue(
-      new MockStockError("asset_not_found", "gone"),
+      new MockStockError("asset_not_found", "gone")
     );
 
     await expect(
       router.setPrimaryPortrait({
         ctx: ctx(),
         input: { seriesId: "10", characterId: "1", assetLinkId: "999" },
-      }),
+      })
     ).rejects.toBeTruthy();
     expect(mockSelectPortraitCandidate).not.toHaveBeenCalled();
   });

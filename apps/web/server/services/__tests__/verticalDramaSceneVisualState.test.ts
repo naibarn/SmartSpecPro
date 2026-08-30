@@ -270,6 +270,30 @@ describe("scene visual state schema and mapper", () => {
     expect(resolveSceneVisualState(mapped)).toEqual(mapped);
   });
 
+  it("maps the explicit sleep surface into the durable shared state", () => {
+    const parsed = sceneVisualStatePlanOutputSchema.parse(validOutput({
+      sleep_surface: {
+        type: "long_bed",
+        name: "Phum's long bed",
+        occupant: "Phum",
+        placement: "beside the small desk",
+      },
+    })) as SceneVisualStatePlan;
+    const mapped = toSceneVisualState(parsed, {
+      locationKey: "bedroom",
+      membershipHash: "hash",
+      revision: 1,
+      memberShotNumbers: [1],
+      plannedAt: "2026-08-01T00:00:00.000Z",
+    });
+    expect(mapped.sleepSurface).toEqual({
+      type: "long_bed",
+      name: "Phum's long bed",
+      occupant: "Phum",
+      placement: "beside the small desk",
+    });
+  });
+
   it("requires the scene_visual_state object", () => {
     expect(sceneVisualStatePlanOutputSchema.safeParse({ contract_version: 1 }).success).toBe(false);
   });

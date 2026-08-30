@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   detectVerticalDramaCharacterLookConflict,
   detectVerticalDramaCharacterLookIntent,
+  findVerticalDramaCharacterLookReuseCandidate,
+  getVerticalDramaCharacterLookIntentForEntry,
   getVerticalDramaCharacterLookSemanticKey,
   normalizeVerticalDramaCharacterLookImageBrief,
+  normalizeVerticalDramaCharacterLookText,
   selectVerticalDramaCharacterLooks,
   VERTICAL_DRAMA_LOOK_IMAGE_BRIEF_MAX_LENGTH,
   looksLikeCharacterLookStoryLeak,
@@ -427,6 +430,105 @@ describe("vertical drama automatic character look selection", () => {
       ],
     });
     expect(formal.suggestions[0].requestKey).toContain("eveningformal");
+  });
+
+  it("reuses a legacy equivalent look even when semantic metadata is missing", () => {
+    const candidate = findVerticalDramaCharacterLookReuseCandidate({
+      candidates: [
+        {
+          characterKey: "mali-sleep-old",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "ชุดใส่นอน",
+          variantType: "outfit",
+          description: "ชุดนอนผ้าฝ้ายสีฟ้าอ่อน",
+          hasPortrait: true,
+        },
+      ],
+      parentCharacterKey: "mali",
+      variantType: "outfit",
+      canonicalIntent: "sleepwear",
+      variantLabel: "ชุดนอน",
+      requestKey: "mali::outfit::sleepwear::new-scene",
+      semanticKey: "mali::outfit::sleepwear",
+    });
+
+    expect(candidate?.characterKey).toBe("mali-sleep-old");
+    expect(getVerticalDramaCharacterLookIntentForEntry(candidate!)).toEqual({
+      key: "sleepwear",
+      variantType: "outfit",
+    });
+    expect(normalizeVerticalDramaCharacterLookText(" ชุดใส่นอน ")).toBe(
+      "ชุดใส่นอน"
+    );
+  });
+
+  it("reuses one canonical look across different shot-context request keys", () => {
+    const candidate = findVerticalDramaCharacterLookReuseCandidate({
+      candidates: [
+        {
+          characterKey: "mali-home",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "ชุดลำลองอยู่บ้าน",
+          variantType: "outfit",
+          lookSemanticKey: "mali::outfit::casual_home",
+          hasPortrait: false,
+          rowId: 4,
+        },
+      ],
+      parentCharacterKey: "mali",
+      variantType: "outfit",
+      canonicalIntent: "casual_home",
+      variantLabel: "ชุดลำลองอยู่บ้าน",
+      requestKey: "mali::outfit::casual_home::gala|unknown|night",
+      semanticKey: "mali::outfit::casual_home",
+    });
+
+    expect(candidate?.characterKey).toBe("mali-home");
+  });
+
+  it("prefers a portrait-bearing candidate and never crosses variant types", () => {
+    const candidate = findVerticalDramaCharacterLookReuseCandidate({
+      candidates: [
+        {
+          characterKey: "mali-sleep-pending",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "ชุดนอน",
+          variantType: "outfit",
+          hasPortrait: false,
+          rowId: 1,
+        },
+        {
+          characterKey: "mali-sleep-ready",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "ชุดใส่นอน",
+          variantType: "outfit",
+          description: "ชุดนอนผ้าฝ้าย",
+          hasPortrait: true,
+          rowId: 2,
+        },
+        {
+          characterKey: "mali-sleep-age",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "วัยทารกแรกเกิด",
+          variantType: "age_stage",
+          hasPortrait: true,
+          rowId: 3,
+        },
+      ],
+      parentCharacterKey: "mali",
+      variantType: "outfit",
+      canonicalIntent: "sleepwear",
+      variantLabel: "ชุดนอน",
+      requestKey: "mali::outfit::sleepwear::bedroom",
+      semanticKey: "mali::outfit::sleepwear",
+    });
+
+    expect(candidate?.characterKey).toBe("mali-sleep-ready");
   });
 
   it("does not silently choose the first look when story cues conflict", () => {

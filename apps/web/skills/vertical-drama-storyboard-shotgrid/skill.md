@@ -571,6 +571,15 @@ NOT invent a divergent plot.**
 When `episode_draft` is absent, this section does not apply — build the 9
 shots from the script/scene beats as usual.
 
+## Whole-episode policy rebuild mode — MANDATORY WHEN PROVIDED
+
+When `episode_rebuild_context` is present, render exactly 9 replacement shots
+from the newly rebuilt script in the scene beats. Keep the same episode's
+canonical characters, facts, setting, relationship state, and continuity
+handoff. Treat the previous storyboard only as reference; do not copy unsafe
+visual wording or framing. Use neutral, non-graphic alternatives that carry
+the same story purpose and preserve the script's new dialogue/story movement.
+
 Output skeleton:
 
 ```json

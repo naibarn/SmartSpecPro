@@ -1,0 +1,8 @@
+interface:
+  display_name: "Idea to Video Prompt"
+  short_description: "แปลงไอเดียและภาพอ้างอิงเป็นพรอมต์วิดีโอ"
+  brand_color: "#6D28D9"
+  default_prompt: "ใช้ $idea-to-video-prompt เพื่อแปลงไอเดียและภาพอ้างอิงเป็นพรอมต์วิดีโอต่อเนื่อง พร้อมเลือกได้ว่าจะให้ตัวละครมีบทพูดและ lip-sync หรือไม่"
+
+policy:
+  allow_implicit_invocation: true

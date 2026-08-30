@@ -274,7 +274,9 @@ export async function synthesizeSeasonCarryOver(
     userId: params.userId,
     tenantId: params.tenantId,
     amount: creditsUsed,
+    contextRef: params.tenantId ? { contextType: "series", sourceType: "vertical_drama_series", sourceId: String(params.lineageContext.parentSeriesId) } : undefined,
     description: "Vertical Drama — season carry-over planning",
+    skillSlug: "vertical-drama-season-carry-over-planner",
     sourceType: "skill",
     metadata: {
       model,

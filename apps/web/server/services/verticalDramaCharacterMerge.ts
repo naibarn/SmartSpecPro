@@ -383,8 +383,10 @@ export async function generateCharacterDuplicateAnalysis(
     userId: params.userId,
     tenantId: params.tenantId,
     amount: creditsUsed,
+    contextRef: params.tenantId ? { contextType: "series", sourceType: "vertical_drama_series", sourceId: String(params.seriesId) } : undefined,
     description: "Vertical Drama — character identity reconciliation (duplicate analysis)",
-    sourceType: "skill",
+      skillSlug: "vertical-drama-character-identity-reconciler",
+      sourceType: "skill",
     idempotencyKey: params.idempotencyKey ? `${params.idempotencyKey}:character-identity-reconciler` : undefined,
     metadata: {
       model,

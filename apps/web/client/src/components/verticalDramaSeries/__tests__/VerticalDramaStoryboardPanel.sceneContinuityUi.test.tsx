@@ -102,6 +102,29 @@ describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
     );
   });
 
+  it("shows that a retained shot image needs regeneration after shared scene facts change", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...baseProps}
+        sceneContinuityEnabled
+        startFramePlan={{
+          ...baseProps.startFramePlan,
+          frames: [
+            {
+              ...baseProps.startFramePlan.frames[0],
+              imageStaleReason: "prompt_changed",
+              approvedMediaAssetId: "asset-1",
+            },
+          ],
+        }}
+      />
+    );
+
+    expect(screen.getByTestId("vd-storyboard-image-stale-1")).toHaveTextContent(
+      "ข้อมูลฉากเปลี่ยน — ควรสร้างภาพใหม่"
+    );
+  });
+
   it("lets a shot reuse an approved scene camera view from the location library", () => {
     const onSetShotLocation = vi.fn();
     const onSetShotLocationVariant = vi.fn();
@@ -168,7 +191,7 @@ describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
       screen.getByTestId("vd-storyboard-image-status-1")
     ).toHaveTextContent("สร้าง prompt แล้ว แต่สร้างภาพไม่สำเร็จ");
     fireEvent.click(screen.getByRole("button", { name: "สร้างภาพใหม่" }));
-    expect(onRetryStartFrameImage).toHaveBeenCalledWith(1);
+    expect(onRetryStartFrameImage).toHaveBeenCalledWith(1, "Provider timeout");
     expect(
       screen.queryByRole("button", { name: "ลองเชื่อมภาพอีกครั้ง" })
     ).not.toBeInTheDocument();

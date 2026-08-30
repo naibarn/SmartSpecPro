@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+const mockClearModelCache = vi.hoisted(() => vi.fn());
+
 // Hoist mocks before module imports
 vi.mock("../db", () => ({
   db: {
@@ -29,6 +31,10 @@ vi.mock("../_core/trpc", () => {
 vi.mock("../services/crypto", () => ({
   encrypt: vi.fn((v: string) => `encrypted:${v}`),
   decrypt: vi.fn((v: string) => v.replace("encrypted:", "")),
+}));
+
+vi.mock("../services/modelRegistry", () => ({
+  clearModelCache: mockClearModelCache,
 }));
 
 import {
@@ -450,6 +456,39 @@ describe("mediaProvidersRouter persistence hardening", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
+  });
+
+  it("clears the model registry cache after provider state mutations", async () => {
+    const updateWhere = vi.fn().mockResolvedValue(undefined);
+    const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
+    (db.update as any).mockReturnValue({ set: updateSet });
+
+    await (mediaProvidersRouter.update as Function)({
+      input: { id: 7, isEnabled: false },
+    });
+
+    const deleteWhere = vi.fn().mockResolvedValue(undefined);
+    (db.delete as any).mockReturnValue({ where: deleteWhere });
+    await (mediaProvidersRouter.delete as Function)({ input: { id: 7 } });
+
+    (db.select as any).mockReturnValue({
+      from: vi.fn().mockResolvedValue([{ max: 2 }]),
+    });
+    (db.insert as any).mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: 8 }]),
+      }),
+    });
+    await (mediaProvidersRouter.create as Function)({
+      input: {
+        providerName: "test-provider",
+        displayName: "Test Provider",
+        providerType: "multimodal",
+        isEnabled: true,
+      },
+    });
+
+    expect(mockClearModelCache).toHaveBeenCalledTimes(3);
   });
 
   it("rejects private provider base URLs before create persists them", async () => {

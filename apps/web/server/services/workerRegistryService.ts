@@ -25,10 +25,13 @@ import type {
   WorkerProtocolCompatibility,
   WorkerRegistrationPayload,
   WorkerRuntimeType,
+  WorkerScope,
 } from "../../shared/workerRuntime";
 import {
   COMFY_IMAGE_GENERATION_FAILURE_CODES,
   COMFY_IMAGE_GENERATION_PROGRESS_STAGES,
+  COMFY_VIDEO_GENERATION_FAILURE_CODES,
+  COMFY_VIDEO_GENERATION_PROGRESS_STAGES,
   COMFY_WORKFLOW_RUN_FAILURE_CODES,
   COMFY_WORKFLOW_RUN_PROGRESS_STAGES,
   HERMES_CONNECTION_AUTH_JOB_TYPE,
@@ -49,6 +52,7 @@ import {
   WORKER_RUNTIME_PROTOCOL_VERSION,
   evaluateWorkerCompatibility,
   getWorkerRuntimeDefinition,
+  workerScopeValues,
   workerHermesRuntimeMetadataSchema,
   remotionExecutorCapabilityProfileSchema,
   remotionExecutorReadinessSchema,
@@ -68,6 +72,7 @@ import type {
 } from "./workerAuthService";
 import { issueWorkerAccessTokens } from "./workerAuthService";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
+import { persistVerticalDramaMediaInventory } from "./verticalDramaMediaIngestService";
 import { getDb } from "../db";
 import {
   groupMembers,
@@ -494,9 +499,25 @@ function mergeRuntimeMetadata(
   if (Object.keys(sanitizedRuntimeMetadata).length === 0) {
     return capabilitiesWithHeartbeatPolicy;
   }
+  const existingRuntimeMetadata = isPlainObject(capabilitiesWithHeartbeatPolicy.runtimeMetadata)
+    ? capabilitiesWithHeartbeatPolicy.runtimeMetadata
+    : {};
+  const existingWorkerAccessPolicy = isPlainObject(existingRuntimeMetadata.workerAccessPolicy)
+    ? existingRuntimeMetadata.workerAccessPolicy
+    : null;
+  const mergedRuntimeMetadata = {
+    ...existingRuntimeMetadata,
+    ...sanitizedRuntimeMetadata,
+    // Worker access policy is server-owned. A heartbeat may report runtime
+    // health, but must not erase or replace the user's durable permission
+    // policy with a partial payload from the local app.
+    ...(existingWorkerAccessPolicy
+      ? { workerAccessPolicy: existingWorkerAccessPolicy }
+      : {}),
+  };
   return {
     ...capabilitiesWithHeartbeatPolicy,
-    runtimeMetadata: sanitizedRuntimeMetadata,
+    runtimeMetadata: mergedRuntimeMetadata,
   };
 }
 
@@ -883,6 +904,8 @@ function assertRuntimeSpecificJobEventContract(
       ? LOCAL_FOLDER_INGEST_PROGRESS_STAGES
       : job.jobType === "comfy_image_generation"
         ? COMFY_IMAGE_GENERATION_PROGRESS_STAGES
+        : job.jobType === "comfy_video_generation"
+        ? COMFY_VIDEO_GENERATION_PROGRESS_STAGES
         : job.jobType === "comfy_workflow_run"
         ? COMFY_WORKFLOW_RUN_PROGRESS_STAGES
         : job.jobType === "hyperframes_final_composite"
@@ -896,6 +919,8 @@ function assertRuntimeSpecificJobEventContract(
       ? LOCAL_FOLDER_INGEST_FAILURE_CODES
       : job.jobType === "comfy_image_generation"
         ? COMFY_IMAGE_GENERATION_FAILURE_CODES
+        : job.jobType === "comfy_video_generation"
+        ? COMFY_VIDEO_GENERATION_FAILURE_CODES
         : job.jobType === "comfy_workflow_run"
         ? COMFY_WORKFLOW_RUN_FAILURE_CODES
         : job.jobType === "hyperframes_final_composite"
@@ -1091,7 +1116,10 @@ const defaultRepo: WorkerRuntimeRepository = {
       eq(workerJobs.tenantId, tenantId),
       eq(workerJobs.runtimeType, runtimeType),
       or(
-        eq(workerJobs.status, "queued"),
+        and(
+          eq(workerJobs.status, "queued"),
+          sql`(${workerJobs.statusReason} IS NULL OR (${workerJobs.statusReason} NOT LIKE 'paused:%' AND ${workerJobs.statusReason} <> 'paused'))`,
+        ),
         and(
           inArray(workerJobs.status, RECLAIMABLE_JOB_STATUSES),
           isNotNull(workerJobs.leaseExpiresAt),
@@ -1164,6 +1192,13 @@ const defaultRepo: WorkerRuntimeRepository = {
         .limit(1);
       if (!current) return null;
       const currentJob = current.job;
+
+      if (
+        currentJob.status === "queued"
+        && (currentJob.statusReason === "paused" || currentJob.statusReason?.startsWith("paused:"))
+      ) {
+        return null;
+      }
 
       const currentLeaseExpiresAt = currentJob.leaseExpiresAt ? new Date(currentJob.leaseExpiresAt) : null;
       const isReclaimable =
@@ -1410,6 +1445,12 @@ export async function registerWorker(
     },
   });
 
+  const registeredExecutionScopes = Array.isArray(input.auth.permissionScopes)
+    ? input.auth.permissionScopes.filter(
+      (scope): scope is WorkerScope => workerScopeValues.includes(scope as WorkerScope),
+    )
+    : [];
+
   return {
     created: !existing,
     tokens: issueWorkerAccessTokens({
@@ -1418,6 +1459,10 @@ export async function registerWorker(
       runtimeType: worker.runtimeType,
       teamId: worker.teamId ?? null,
       deviceBinding: input.payload.deviceBinding ?? undefined,
+      // Registration policy is the source of truth for the execution token.
+      // Previously this was omitted, so issueWorkerAccessTokens fell back to
+      // the generic worker scopes and silently dropped series:* permissions.
+      scopes: registeredExecutionScopes.length > 0 ? registeredExecutionScopes : undefined,
     }),
     worker,
   };
@@ -1477,6 +1522,12 @@ export async function recordWorkerHeartbeat(
     : null;
   if (freshComfyUi) {
     mergedHeartbeatCapabilitiesJson.comfyUi = freshComfyUi;
+  }
+  const freshVerticalDramaMedia = isPlainObject(incomingHeartbeatRuntimeMetadata.verticalDramaMedia)
+    ? (incomingHeartbeatRuntimeMetadata.verticalDramaMedia as Record<string, unknown>)
+    : null;
+  if (freshVerticalDramaMedia) {
+    mergedHeartbeatCapabilitiesJson.verticalDramaMedia = freshVerticalDramaMedia;
   }
   // Feature 135 §11 — same rule as registration: a worker registered before
   // an admin raised `hermes_worker_min_version` gets demoted on its next
@@ -1792,6 +1843,13 @@ export async function recordWorkerJobEvent(
     sequenceNumber,
   });
 
+  if (repo === defaultRepo && nextStatus === "completed" && job.jobType === "media_ingest") {
+    const inventory = sanitizedPayloadJson.inventory;
+    const seriesId = Number(job.inputJson.seriesId);
+    if (!Number.isSafeInteger(seriesId) || seriesId <= 0) throw new WorkerRuntimeServiceError("invalid_request", 400, "Media ingest is missing a valid seriesId");
+    await persistVerticalDramaMediaInventory({ job: { tenantId: job.tenantId, workerSeriesBindingId: job.workerSeriesBindingId ?? null, workerSeriesBindingRevision: job.workerSeriesBindingRevision ?? null }, seriesId, inventory });
+  }
+
   if (repo === defaultRepo && nextStatus && isTerminalJobStatus(nextStatus)) {
     const billing = billingEnvelopeFromMetadata(job.instructionsJson?.workerBilling);
     const actualCreditsUsedRaw = sanitizedPayloadJson?.actualCreditsUsed
@@ -1842,6 +1900,26 @@ export async function recordWorkerJobEvent(
               : "Worker job post-processing failed",
           finishedAt: new Date(),
         });
+        // A terminal completion can fail after the job row has already moved
+        // to `completed` (for example, publication or credit settlement can
+        // be temporarily unavailable). Reconcile as failed so the reservation
+        // is not stranded and the retry/recovery path remains idempotent.
+        if (job.requestedByUserId) {
+          const billing = billingEnvelopeFromMetadata(job.instructionsJson?.workerBilling);
+          await reconcileWorkerJobCredits({
+            userId: job.requestedByUserId,
+            tenantId: job.tenantId,
+            jobId: job.id,
+            billing,
+            finalStatus: "failed",
+            metadata: {
+              eventType: input.payload.eventType,
+              workerId: job.workerId,
+              runtimeType: job.runtimeType,
+              recovery: "terminal_post_processing_failed",
+            },
+          }).catch(() => undefined);
+        }
       }
       throw error;
     }

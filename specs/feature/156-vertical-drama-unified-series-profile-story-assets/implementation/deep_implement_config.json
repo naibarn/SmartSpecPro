@@ -1,0 +1,30 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/156-vertical-drama-unified-series-profile-story-assets/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/156-vertical-drama-unified-series-profile-story-assets/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-profile-contracts",
+    "section-02-persistence-migrations",
+    "section-03-source-pack-api-gate",
+    "section-04-ingestion-vision",
+    "section-05-wizard-source-hub",
+    "section-06-draft-digest-integration",
+    "section-07-broll-production",
+    "section-08-legacy-rollout",
+    "section-09-convergence-proof"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-22T03:08:39.888557+00:00"
+}

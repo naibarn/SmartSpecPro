@@ -79,6 +79,10 @@ import {
   type VerticalDramaDurationPlan,
 } from "@shared/verticalDramaSeries/durationProfiles";
 import { renderSourcePackDigestPromptBlock } from "@shared/verticalDramaSeries/sourcePack";
+import {
+  analyzeVerticalDramaStorySafety,
+  isBlockingVerticalDramaStorySafety,
+} from "./verticalDramaStorySafety";
 /**
  * Genre pollution guard (Stage 1.5, `planning/vd-series-memory-and-lineage/
  * plan.md`) — see `buildGenrePromptLine` below (this file's ONE routing
@@ -714,96 +718,97 @@ const worldRuleSchema = z
 export type VdCharacterDecision = z.infer<typeof characterDecisionSchema>;
 export type VdWorldRule = z.infer<typeof worldRuleSchema>;
 
-export const episodeBreakdownItemSchema = z.object({
-  episodeNumber: z.number().int().positive(),
-  workingTitle: z.string().min(1),
-  logline: z.string().min(1),
-  keyBeats: z.array(z.string().min(1)).min(1),
-  /**
-   * Story-density reform (spec §7.7.2 Layer 1, section-13, added
-   * 2026-07-07) — OPTIONAL so this schema still validates a flag-off LLM
-   * response (byte-identical to before this change) and any legacy/partial
-   * response that omits it. Only REQUESTED in the prompt (see
-   * `buildPrompts`) when `opts.speechBudgetEnabled` is true; never
-   * hard-required here, since a model that omits it should not fail the
-   * whole story-bible generation.
-   */
-  contentBudget: verticalDramaEpisodeContentBudgetSchema.optional(),
-  /**
-   * Deep story drafts (W10-A, added 2026-07-08) — a full 9-shot breakdown
-   * with speakable dialogue for this episode. OPTIONAL/superset: absent for
-   * every response that predates this field (including `generateStoryBible`'s
-   * OWN unchanged response, which never requests it — see `buildPrompts`
-   * above, untouched) and for any legacy/partial response — so this schema
-   * stays byte-compatible with every existing caller. Only REQUIRED (via the
-   * stricter local `deepDraftChunkEpisodeItemSchema`) for a fresh deep-draft
-   * chunk LLM response.
-   */
-  shotDrafts: z
-    .array(shotDraftSchema)
-    .length(VD_DEEP_DRAFT_SHOTS_PER_EPISODE)
-    .optional(),
-  /** Deep story drafts (W10-A) — optional per-episode cliffhanger line/teaser. */
-  cliffhanger_line: z.string().min(1).optional(),
-  /** Deep story drafts (W10-A) — optional, see `draftCompletenessSchema` above. */
-  draftCompleteness: draftCompletenessSchema.optional(),
-  /** Premium multi-round drafts (W11-A) — optional, see `draftScorecardSchema` above. */
-  draftScorecard: draftScorecardSchema.optional(),
-  /**
-   * Dramaturgy critic (W11.5, added 2026-07-08) — short antagonist-tactic
-   * tags used THIS episode (e.g. "ขู่", "สลับเอกสาร", "ปิดปาก") — feeds
-   * `analyzeSeasonDramaturgy`'s `antagonist_tactic_repetition` check.
-   * OPTIONAL/superset, same "absent for every response that predates this
-   * field" convention as every sibling field above.
-   */
-  antagonist_tactics: z.array(z.string().min(1)).optional(),
-  /**
-   * Dramaturgy critic (W11.5) — named character decisions made THIS episode
-   * (an agency signal — feeds the `character_agency_zero_decisions` check).
-   */
-  character_decisions: z.array(characterDecisionSchema).optional(),
-  /**
-   * Dramaturgy critic (W11.5) — bible-level protagonist stake, requested
-   * ONCE (the chunk covering episode 1) and stored on episode 1's own item
-   * (see `buildDeepDraftPrompts`'s `includeBibleLevelFields` branch).
-   */
-  protagonist_stake: z.string().min(1).optional(),
-  /**
-   * Dramaturgy critic (W11.5) — bible-level fantasy/world rule system,
-   * requested ONCE alongside `protagonist_stake` and stored on episode 1.
-   */
-  world_rules: z.array(worldRuleSchema).optional(),
-  /** Feature 154 — structured evidence that the selected genre is observable in this episode. */
-  genre_evidence: z
-    .object({
-      observed_cues: z.array(z.string().min(1)).max(12).default([]),
-      world_mechanic: z.string().min(1).optional(),
-      causal_cost: z.string().min(1).optional(),
-      shot_numbers: z.array(z.number().int().positive()).max(32).default([]),
-    })
-    .passthrough()
-    .optional(),
-  /** Feature 154 — review/documentary evidence kept separate from plot facts. */
-  format_evidence: z.unknown().optional(),
-  /**
-   * Dramaturgy critic (W11.5) — finale-only: the concrete cost/price paid to
-   * resolve the season (feeds the `finale_no_price_paid` check).
-   */
-  price_paid: z.string().min(1).optional(),
-  /**
-   * Series memory (Stage 1.2/1.3, added 2026-07-17) — an OPTIONAL per-episode
-   * memory block (`recap`/`canonicalFacts`/relationship state/open threads/
-   * knowledge changes). Deliberately typed `z.unknown()` here, NOT a strict
-   * shape: this schema must stay byte-compatible with every legacy/partial
-   * response (same "optional/superset" convention as every sibling field
-   * above), and — per the documented weak-model JSON failure class — a
-   * malformed nested block must NEVER fail this whole episode item's parse.
-   * `resolveEpisodeMemoryBlock` (`verticalDramaSeriesMemoryProjection.ts`)
-   * owns the ACTUAL strict validation + deterministic fallback, applied once
-   * per episode inside `extractDramaturgyStructureFields` below.
-   */
-  episode_memory: z.unknown().optional(),
-})
+export const episodeBreakdownItemSchema = z
+  .object({
+    episodeNumber: z.number().int().positive(),
+    workingTitle: z.string().min(1),
+    logline: z.string().min(1),
+    keyBeats: z.array(z.string().min(1)).min(1),
+    /**
+     * Story-density reform (spec §7.7.2 Layer 1, section-13, added
+     * 2026-07-07) — OPTIONAL so this schema still validates a flag-off LLM
+     * response (byte-identical to before this change) and any legacy/partial
+     * response that omits it. Only REQUESTED in the prompt (see
+     * `buildPrompts`) when `opts.speechBudgetEnabled` is true; never
+     * hard-required here, since a model that omits it should not fail the
+     * whole story-bible generation.
+     */
+    contentBudget: verticalDramaEpisodeContentBudgetSchema.optional(),
+    /**
+     * Deep story drafts (W10-A, added 2026-07-08) — a full 9-shot breakdown
+     * with speakable dialogue for this episode. OPTIONAL/superset: absent for
+     * every response that predates this field (including `generateStoryBible`'s
+     * OWN unchanged response, which never requests it — see `buildPrompts`
+     * above, untouched) and for any legacy/partial response — so this schema
+     * stays byte-compatible with every existing caller. Only REQUIRED (via the
+     * stricter local `deepDraftChunkEpisodeItemSchema`) for a fresh deep-draft
+     * chunk LLM response.
+     */
+    shotDrafts: z
+      .array(shotDraftSchema)
+      .length(VD_DEEP_DRAFT_SHOTS_PER_EPISODE)
+      .optional(),
+    /** Deep story drafts (W10-A) — optional per-episode cliffhanger line/teaser. */
+    cliffhanger_line: z.string().min(1).optional(),
+    /** Deep story drafts (W10-A) — optional, see `draftCompletenessSchema` above. */
+    draftCompleteness: draftCompletenessSchema.optional(),
+    /** Premium multi-round drafts (W11-A) — optional, see `draftScorecardSchema` above. */
+    draftScorecard: draftScorecardSchema.optional(),
+    /**
+     * Dramaturgy critic (W11.5, added 2026-07-08) — short antagonist-tactic
+     * tags used THIS episode (e.g. "ขู่", "สลับเอกสาร", "ปิดปาก") — feeds
+     * `analyzeSeasonDramaturgy`'s `antagonist_tactic_repetition` check.
+     * OPTIONAL/superset, same "absent for every response that predates this
+     * field" convention as every sibling field above.
+     */
+    antagonist_tactics: z.array(z.string().min(1)).optional(),
+    /**
+     * Dramaturgy critic (W11.5) — named character decisions made THIS episode
+     * (an agency signal — feeds the `character_agency_zero_decisions` check).
+     */
+    character_decisions: z.array(characterDecisionSchema).optional(),
+    /**
+     * Dramaturgy critic (W11.5) — bible-level protagonist stake, requested
+     * ONCE (the chunk covering episode 1) and stored on episode 1's own item
+     * (see `buildDeepDraftPrompts`'s `includeBibleLevelFields` branch).
+     */
+    protagonist_stake: z.string().min(1).optional(),
+    /**
+     * Dramaturgy critic (W11.5) — bible-level fantasy/world rule system,
+     * requested ONCE alongside `protagonist_stake` and stored on episode 1.
+     */
+    world_rules: z.array(worldRuleSchema).optional(),
+    /** Feature 154 — structured evidence that the selected genre is observable in this episode. */
+    genre_evidence: z
+      .object({
+        observed_cues: z.array(z.string().min(1)).max(12).default([]),
+        world_mechanic: z.string().min(1).optional(),
+        causal_cost: z.string().min(1).optional(),
+        shot_numbers: z.array(z.number().int().positive()).max(32).default([]),
+      })
+      .passthrough()
+      .optional(),
+    /** Feature 154 — review/documentary evidence kept separate from plot facts. */
+    format_evidence: z.unknown().optional(),
+    /**
+     * Dramaturgy critic (W11.5) — finale-only: the concrete cost/price paid to
+     * resolve the season (feeds the `finale_no_price_paid` check).
+     */
+    price_paid: z.string().min(1).optional(),
+    /**
+     * Series memory (Stage 1.2/1.3, added 2026-07-17) — an OPTIONAL per-episode
+     * memory block (`recap`/`canonicalFacts`/relationship state/open threads/
+     * knowledge changes). Deliberately typed `z.unknown()` here, NOT a strict
+     * shape: this schema must stay byte-compatible with every legacy/partial
+     * response (same "optional/superset" convention as every sibling field
+     * above), and — per the documented weak-model JSON failure class — a
+     * malformed nested block must NEVER fail this whole episode item's parse.
+     * `resolveEpisodeMemoryBlock` (`verticalDramaSeriesMemoryProjection.ts`)
+     * owns the ACTUAL strict validation + deterministic fallback, applied once
+     * per episode inside `extractDramaturgyStructureFields` below.
+     */
+    episode_memory: z.unknown().optional(),
+  })
   // Preserve additive episode-level fields (including episode_memory and
   // newer dramaturgy contracts) for the projection/materialization stages.
   // The strict deep-draft schema still validates the fields it owns; this
@@ -884,7 +889,7 @@ export type ExpandedVerticalDramaStoryBible = z.infer<
  * checkpoints simply fall back to a fresh provider call.
  */
 export function parseExpandedStoryBibleCandidate(
-  value: unknown,
+  value: unknown
 ): ExpandedVerticalDramaStoryBible | null {
   const parsed = expandedStoryBibleSchema.safeParse(value);
   return parsed.success ? parsed.data : null;
@@ -939,6 +944,84 @@ export class VdSchemaValidationError extends Error {
     this.name = "VdSchemaValidationError";
     this.issueSummary = issueSummary;
   }
+}
+
+/** Forensic event emitted only by callers that explicitly opt into attempt auditing. */
+export type JsonPlanningAttemptEvent = {
+  phase: "success" | "failure";
+  planningAttemptNumber: number;
+  label: string;
+  model: string;
+  providerId?: number;
+  providerName?: string;
+  providerCallId?: string;
+  rawOutput?: string;
+  parsedOutput?: unknown;
+  responseMetadata?: Record<string, unknown>;
+  physicalAttempts: PhysicalLlmAttemptEvent[];
+  startedAt: Date;
+  completedAt: Date;
+  promptHash: string;
+  systemPromptLength: number;
+  userPromptLength: number;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  finishReason?: string | null;
+  errorCode?: string;
+  errorMessage?: string;
+  schemaIssues?: unknown;
+};
+
+function extractPlanningAssistantText(response: unknown): string {
+  const message =
+    response && typeof response === "object" && "choices" in response
+      ? (response as { choices?: Array<{ message?: { content?: unknown } }> })
+          .choices?.[0]?.message?.content
+      : undefined;
+  if (typeof message === "string") return message;
+  if (Array.isArray(message)) {
+    return message
+      .map(part => {
+        if (typeof part === "string") return part;
+        if (part && typeof part === "object" && "text" in part) {
+          const text = (part as { text?: unknown }).text;
+          return typeof text === "string" ? text : "";
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+  return "";
+}
+
+function summarizePlanningResponse(response: unknown): Record<string, unknown> {
+  if (!response || typeof response !== "object") return {};
+  const value = response as {
+    id?: unknown;
+    object?: unknown;
+    created?: unknown;
+    model?: unknown;
+    usage?: unknown;
+    choices?: Array<{ index?: unknown; finish_reason?: unknown }>;
+  };
+  return {
+    ...(typeof value.id === "string" ? { id: value.id } : {}),
+    ...(typeof value.object === "string" ? { object: value.object } : {}),
+    ...(typeof value.created === "number" ? { created: value.created } : {}),
+    ...(typeof value.model === "string" ? { model: value.model } : {}),
+    ...(value.usage && typeof value.usage === "object"
+      ? { usage: value.usage }
+      : {}),
+    choices: Array.isArray(value.choices)
+      ? value.choices.slice(0, 3).map(choice => ({
+          ...(typeof choice.index === "number" ? { index: choice.index } : {}),
+          ...(typeof choice.finish_reason === "string"
+            ? { finish_reason: choice.finish_reason }
+            : {}),
+        }))
+      : [],
+  };
 }
 
 function summarizeValidationIssues(issues: unknown): string | null {
@@ -1407,6 +1490,9 @@ export function classifyVerticalDramaLlmError(error: unknown): VdLlmErrorClass {
   if (error instanceof VdSchemaValidationError) {
     return "schema";
   }
+  if ((error as { code?: unknown } | null)?.code === "VD_JSON_PARSE_FAILED") {
+    return "schema";
+  }
   const message = (
     error instanceof Error ? error.message : String(error ?? "")
   ).toLowerCase();
@@ -1499,7 +1585,13 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
   /** Draft stages can opt out of provider fallback while retaining legacy defaults elsewhere. */
   disableProviderFallbacks?: boolean;
   /** Optional refs-only observer for each physical provider candidate. */
-  physicalAttemptObserver?: (event: PhysicalLlmAttemptEvent) => Promise<void> | void;
+  physicalAttemptObserver?: (
+    event: PhysicalLlmAttemptEvent
+  ) => Promise<void> | void;
+  /** Optional restricted observer for the parsed/raw result of each logical planning attempt. */
+  planningAttemptObserver?: (
+    event: JsonPlanningAttemptEvent
+  ) => Promise<void> | void;
   /** After transient retries, rotate into the admin-curated LLM Recommend set. */
   modelFallbackPolicy?: "recommended";
   /** Also rotate after schema retries; intended for quality-critical Draft planning. */
@@ -1606,13 +1698,32 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
   let activeModel = params.model;
   let modelFallbackAttempts = 0;
   const excludedFallbackModels = new Set([params.model]);
+  const notifyPlanningAttempt = async (event: JsonPlanningAttemptEvent) => {
+    try {
+      await params.planningAttemptObserver?.(event);
+    } catch (error) {
+      // Forensic persistence must never turn a valid generation into a failed
+      // paid job. Keep the diagnostic failure metadata-free and do not log raw
+      // prompt/output bodies here.
+      debugError(
+        "vd_planning_attempt_audit",
+        `${params.label}: observer failed`,
+        {
+          message: error instanceof Error ? error.message : String(error),
+        }
+      );
+    }
+  };
 
   const attempt = async (
     userPrompt: string,
     maxTokens: number,
     model: string,
-    modelFallbackFrom?: string
+    modelFallbackFrom: string | undefined,
+    planningAttemptNumber: number
   ) => {
+    const startedAt = new Date();
+    const physicalAttempts: PhysicalLlmAttemptEvent[] = [];
     const result = await executeWithFallback({
       model,
       messages: [
@@ -1626,7 +1737,10 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
       timeoutMs: params.timeoutMs,
       extraBodyParams: params.extraBodyParams,
       disableProviderFallbacks: params.disableProviderFallbacks,
-      physicalAttemptObserver: params.physicalAttemptObserver,
+      physicalAttemptObserver: async event => {
+        physicalAttempts.push(event);
+        await params.physicalAttemptObserver?.(event);
+      },
       modelFallbackFrom,
       modelFallbackReason: modelFallbackFrom
         ? "transient_retries_exhausted"
@@ -1634,6 +1748,32 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
     });
 
     if (result.type !== "success") {
+      const lastPhysicalAttempt = physicalAttempts.at(-1);
+      await notifyPlanningAttempt({
+        phase: "failure",
+        planningAttemptNumber,
+        label: params.label,
+        model,
+        providerId: lastPhysicalAttempt?.providerId,
+        providerName: lastPhysicalAttempt?.providerName,
+        providerCallId: lastPhysicalAttempt?.providerCallId,
+        physicalAttempts,
+        startedAt,
+        completedAt: new Date(),
+        promptHash: createHash("sha256")
+          .update(`${params.systemPrompt}\u0000${userPrompt}`)
+          .digest("hex"),
+        systemPromptLength: params.systemPrompt.length,
+        userPromptLength: userPrompt.length,
+        errorCode:
+          result.type === "error"
+            ? `LLM_HTTP_${result.statusCode}`
+            : "LLM_FALLBACK_REQUIRED",
+        errorMessage:
+          result.type === "error"
+            ? result.error
+            : "LLM provider fallback required",
+      });
       throw new Error(
         result.type === "error"
           ? `LLM request failed: ${result.error}`
@@ -1642,9 +1782,74 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
     }
 
     const content = result.response.choices?.[0]?.message?.content ?? "";
-    const parsed = extractJson(content);
+    let parsed: unknown;
+    try {
+      parsed = extractJson(content);
+    } catch (error) {
+      const parseError = (
+        error instanceof VdSchemaValidationError
+          ? error
+          : new VdSchemaValidationError(
+              `${params.label} response was not valid JSON: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+              { rawResponse: content }
+            )
+      ) as VdSchemaValidationError & { code?: string };
+      await notifyPlanningAttempt({
+        phase: "failure",
+        planningAttemptNumber,
+        label: params.label,
+        model,
+        providerId: result.providerId,
+        providerName: result.providerName,
+        providerCallId: physicalAttempts.at(-1)?.providerCallId,
+        rawOutput: extractPlanningAssistantText(result.response),
+        responseMetadata: summarizePlanningResponse(result.response),
+        physicalAttempts,
+        promptHash: createHash("sha256")
+          .update(`${params.systemPrompt}\u0000${userPrompt}`)
+          .digest("hex"),
+        systemPromptLength: params.systemPrompt.length,
+        userPromptLength: userPrompt.length,
+        inputTokens: result.response.usage?.prompt_tokens ?? null,
+        outputTokens: result.response.usage?.completion_tokens ?? null,
+        finishReason: result.response.choices?.[0]?.finish_reason ?? null,
+        errorCode: "VD_JSON_PARSE_FAILED",
+        errorMessage: parseError.message,
+        startedAt,
+        completedAt: new Date(),
+      });
+      throw parseError;
+    }
     const validation = params.schema.safeParse(parsed);
     if (!validation.success) {
+      await notifyPlanningAttempt({
+        phase: "failure",
+        planningAttemptNumber,
+        label: params.label,
+        model,
+        providerId: result.providerId,
+        providerName: result.providerName,
+        providerCallId: physicalAttempts.at(-1)?.providerCallId,
+        rawOutput: extractPlanningAssistantText(result.response),
+        parsedOutput: parsed,
+        responseMetadata: summarizePlanningResponse(result.response),
+        physicalAttempts,
+        promptHash: createHash("sha256")
+          .update(`${params.systemPrompt}\u0000${userPrompt}`)
+          .digest("hex"),
+        systemPromptLength: params.systemPrompt.length,
+        userPromptLength: userPrompt.length,
+        inputTokens: result.response.usage?.prompt_tokens ?? null,
+        outputTokens: result.response.usage?.completion_tokens ?? null,
+        finishReason: result.response.choices?.[0]?.finish_reason ?? null,
+        errorCode: "VD_SCHEMA_VALIDATION_FAILED",
+        errorMessage: `${params.label} response failed schema validation`,
+        schemaIssues: validation.error,
+        startedAt,
+        completedAt: new Date(),
+      });
       throw new VdSchemaValidationError(
         `${params.label} response failed schema validation`,
         validation.error,
@@ -1656,6 +1861,29 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
         result.response
       );
     }
+    await notifyPlanningAttempt({
+      phase: "success",
+      planningAttemptNumber,
+      label: params.label,
+      model,
+      providerId: result.providerId,
+      providerName: result.providerName,
+      providerCallId: physicalAttempts.at(-1)?.providerCallId,
+      rawOutput: extractPlanningAssistantText(result.response),
+      parsedOutput: validation.data,
+      responseMetadata: summarizePlanningResponse(result.response),
+      physicalAttempts,
+      promptHash: createHash("sha256")
+        .update(`${params.systemPrompt}\u0000${userPrompt}`)
+        .digest("hex"),
+      systemPromptLength: params.systemPrompt.length,
+      userPromptLength: userPrompt.length,
+      inputTokens: result.response.usage?.prompt_tokens ?? null,
+      outputTokens: result.response.usage?.completion_tokens ?? null,
+      finishReason: result.response.choices?.[0]?.finish_reason ?? null,
+      startedAt,
+      completedAt: new Date(),
+    });
     return { data: validation.data as T, response: result.response };
   };
 
@@ -1673,10 +1901,13 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
     params.maxTransientRetries ?? VD_TRANSIENT_RETRY_BACKOFFS_MS.length;
   const maxModelFallbackAttempts = Math.max(
     0,
-    Math.min(4, Math.floor(params.modelFallbackMaxAttempts ?? 1)),
+    Math.min(4, Math.floor(params.modelFallbackMaxAttempts ?? 1))
   );
   const planningMaxAttempts =
-    1 + effectiveMaxSchemaRetries + effectiveMaxTransientRetries + maxModelFallbackAttempts;
+    1 +
+    effectiveMaxSchemaRetries +
+    effectiveMaxTransientRetries +
+    maxModelFallbackAttempts;
   let transientRetriesUsed = 0;
   let attemptNumber = 0;
 
@@ -1687,7 +1918,8 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
         currentUserPrompt,
         currentMaxTokens,
         activeModel,
-        activeModel !== params.model ? params.model : undefined
+        activeModel !== params.model ? params.model : undefined,
+        attemptNumber
       );
       if (attemptNumber > 1) {
         debugLog(
@@ -1754,7 +1986,7 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
         const fallbackModel = await resolveRecommendedModelFallback(
           activeModel,
           { supportsStructuredOutputs: true },
-          excludedFallbackModels,
+          excludedFallbackModels
         );
         if (fallbackModel) {
           const previousModel = activeModel;
@@ -1773,7 +2005,7 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
               modelFallbackFrom: previousModel,
               modelFallbackTo: fallbackModel,
               reason: "schema_retries_exhausted",
-            },
+            }
           );
           continue;
         }
@@ -1811,7 +2043,7 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
           {
             supportsStructuredOutputs: true,
           },
-          excludedFallbackModels,
+          excludedFallbackModels
         );
         if (fallbackModel) {
           const previousModel = activeModel;
@@ -1934,7 +2166,7 @@ type RecommendedModelFallbackRequirements = {
 async function resolveRecommendedModelFallback(
   currentModel: string,
   requirements: RecommendedModelFallbackRequirements,
-  excludedModels: ReadonlySet<string> = new Set(),
+  excludedModels: ReadonlySet<string> = new Set()
 ): Promise<string | null> {
   try {
     const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
@@ -1987,14 +2219,17 @@ function isProviderUnavailableError(error: unknown): boolean {
 function isVisionProviderResponseFailure(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /empty_response|no assistant text|vision reference image unavailable|error while downloading (?:file|image)|upstream status code(?: of)?\s*:?\s*404/i.test(
-    message,
+    message
   );
 }
 
 function isVolatileVisionReferenceUrl(value: string): boolean {
   try {
     const hostname = new URL(value).hostname.toLowerCase();
-    return hostname === "tempfile.aiquickdraw.com" || hostname.endsWith(".tempfile.aiquickdraw.com");
+    return (
+      hostname === "tempfile.aiquickdraw.com" ||
+      hostname.endsWith(".tempfile.aiquickdraw.com")
+    );
   } catch {
     return false;
   }
@@ -2011,7 +2246,7 @@ async function prepareVisionReferenceUrls(args: {
     args.tenantId
       ? { userId: args.userId, tenantId: args.tenantId }
       : undefined,
-    args.publicUrl,
+    args.publicUrl
   );
   const resolvedImages = args.images.map((image, index) => ({
     ...image,
@@ -2022,34 +2257,39 @@ async function prepareVisionReferenceUrls(args: {
   // have already produced upstream 404s when OpenRouter fetched them later.
   // Copy those references into owner-scoped durable storage before the LLM
   // call, then expose them through the existing signed broker URL path.
-  return Promise.all(resolvedImages.map(async image => {
-    if (!isVolatileVisionReferenceUrl(image.url)) return image;
-    if (!args.tenantId) {
-      throw new Error(
-        "Vision reference image requires tenant-scoped storage before provider submission",
-      );
-    }
-    try {
-      const durable = await ensureExternalMediaAssetDurable({
-        tenantId: args.tenantId,
-        userId: args.userId,
-        mediaType: "image",
-        sourceType: "vertical_drama_reference",
-        sourceUrl: image.url,
-        originalUrl: image.url,
-        identity: image.url,
-      });
-      const [brokeredUrl] = await resolveExternalMediaReferenceUrls(
-        [durable.copy.url],
-        { userId: args.userId, tenantId: args.tenantId },
-        args.publicUrl,
-      ) ?? [];
-      return { ...image, url: brokeredUrl ?? durable.copy.url };
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : String(error);
-      throw new Error(`Vision reference image could not be made durable: ${detail}`);
-    }
-  }));
+  return Promise.all(
+    resolvedImages.map(async image => {
+      if (!isVolatileVisionReferenceUrl(image.url)) return image;
+      if (!args.tenantId) {
+        throw new Error(
+          "Vision reference image requires tenant-scoped storage before provider submission"
+        );
+      }
+      try {
+        const durable = await ensureExternalMediaAssetDurable({
+          tenantId: args.tenantId,
+          userId: args.userId,
+          mediaType: "image",
+          sourceType: "vertical_drama_reference",
+          sourceUrl: image.url,
+          originalUrl: image.url,
+          identity: image.url,
+        });
+        const [brokeredUrl] =
+          (await resolveExternalMediaReferenceUrls(
+            [durable.copy.url],
+            { userId: args.userId, tenantId: args.tenantId },
+            args.publicUrl
+          )) ?? [];
+        return { ...image, url: brokeredUrl ?? durable.copy.url };
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        throw new Error(
+          `Vision reference image could not be made durable: ${detail}`
+        );
+      }
+    })
+  );
 }
 
 export interface VisionAwareImageInput {
@@ -2127,7 +2367,7 @@ export async function runVisionAwareJsonAttempt<T>(args: {
   const responseContent = result.response.choices?.[0]?.message?.content ?? "";
   if (!responseContent.trim()) {
     throw new Error(
-      "Vision provider returned an empty response; no assistant text was produced",
+      "Vision provider returned an empty response; no assistant text was produced"
     );
   }
   const parsed = extractJson(responseContent);
@@ -2229,7 +2469,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
           content: buildVisionAwareContent(
             args.userPromptText,
             args.hasVision,
-            images,
+            images
           ),
           userId: args.userId,
           maxTokens: args.retryMaxTokens,
@@ -2521,6 +2761,7 @@ function buildPrompts(params: GenerateStoryBibleParams): {
     renderCriteriaVersionMarker(),
     "You are a vertical-drama (short-form mobile drama series) story bible writer.",
     "Given a series' basic setup, expand it into a fuller production-ready story bible.",
+    "Apply the POLICY-SAFE STORY FILTER as a hard constraint: do not generate sexual content, nudity, graphic violence, abuse, or coercive danger involving children/minors. If a dramatic premise contains a sensitive situation, preserve its narrative purpose with safe, non-graphic adult reactions, neutral objects, and unanswered questions.",
     langInstruction,
     dialogueLanguageProfilePrompt,
     buildVerticalDramaCharacterNamingContractPrompt({
@@ -2641,6 +2882,7 @@ function buildPrompts(params: GenerateStoryBibleParams): {
   const userPrompt = [
     userPremiseBlock,
     audienceAgeRatingBlock,
+    "POLICY-SAFE STORY FILTER (HARD CONSTRAINT): Keep every character fully clothed and every child/minor in ordinary, safe, non-graphic contexts. Do not combine a minor with crying/distress plus threat, surveillance, secret photography, helplessness, medical detail, abuse, or coercion. Rewrite risky beats into neutral cinematic tension while preserving the intended plot function.",
     `Series title: ${params.title}`,
     buildGenrePromptLine(params.genre, params.title),
     params.tone ? `Tone: ${params.tone}` : null,
@@ -2707,7 +2949,7 @@ export async function generateStoryBible(
           title: params.title,
           targetEpisodeCount: params.targetEpisodeCount,
           bible: params.bible,
-        }),
+        })
       )
       .digest("hex")
       .slice(0, 24)}`;
@@ -2720,18 +2962,31 @@ export async function generateStoryBible(
   // generators. Shares the same one-retry-on-truncated/invalid-JSON safety
   // net (`executeJsonPlanningCallWithRetry`, defined just above in this
   // file) as every other Vertical Drama planning call site.
-  const { data: validatedData, response, model: effectiveModel } =
-    await executeJsonPlanningCallWithRetry({
-      model,
-      systemPrompt,
-      userPrompt,
-      temperature: 0.8,
-      userId: params.userId,
-      maxTokens: 6000,
-      schema: expandedStoryBibleSchema,
-      disableProviderFallbacks: true,
-      label: "Story bible",
-    });
+  const {
+    data: validatedData,
+    response,
+    model: effectiveModel,
+  } = await executeJsonPlanningCallWithRetry({
+    model,
+    systemPrompt,
+    userPrompt,
+    temperature: 0.8,
+    userId: params.userId,
+    maxTokens: 6000,
+    schema: expandedStoryBibleSchema,
+    disableProviderFallbacks: true,
+    label: "Story bible",
+  });
+
+  const storySafety = analyzeVerticalDramaStorySafety(validatedData);
+  if (isBlockingVerticalDramaStorySafety(storySafety)) {
+    const error = new Error(
+      "Story bible contains a high-risk policy context; rewrite before episode media generation."
+    ) as Error & { code?: string; safety?: unknown };
+    error.code = "VD_STORY_POLICY_RISK";
+    error.safety = storySafety;
+    throw error;
+  }
 
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
@@ -4582,6 +4837,7 @@ function buildDeepDraftPrompts(params: {
     // instruction; the actual constraint block is rendered in the user
     // message below (see `audienceAgeRatingBlockForDeepDraft`).
     "Every shot, dialogue line, and situation you draft MUST honor the AUDIENCE AGE RATING (HARD CONSTRAINT) block given in the user message below — treat it as a non-negotiable content boundary, exactly like the JSON response shape.",
+    "Apply the POLICY-SAFE STORY FILTER as a hard constraint: do not combine a child/minor with distress, threat, surveillance, secret photography, helplessness, medical detail, abuse, or coercion. Keep all characters fully clothed and all dramatic tension non-graphic; preserve plot purpose through adult reactions, neutral objects, and unanswered questions.",
     'SPEAKABILITY RULES (hard requirement): every "line" must be literally speakable as written — no wrapping quote marks, no parenthetical stage direction, no symbols (~ * [ ] / ` < > _), no em-dash as a spoken beat (use a comma instead), at most one "…" per line, no emoji. Put delivery/emotion notes in the separate "delivery" field, NEVER inside "line" itself. A shot that is only an animal/ambient sound or otherwise wordless must set "silence_intent" instead of writing the sound as a dialogue line.',
     'A shot must NEVER set BOTH "silence_intent" and one or more "dialogue_lines" — pick exactly one: give it real speakable dialogue, or mark it "silence_intent" only if it truly has no speech at all.',
     durationProfileText,
@@ -4691,6 +4947,7 @@ function buildDeepDraftPrompts(params: {
   const userPrompt = [
     userPremiseBlockForDeepDraft,
     audienceAgeRatingBlockForDeepDraft,
+    "POLICY-SAFE STORY FILTER (HARD CONSTRAINT): Rewrite any risky beat into safe, non-graphic cinematic tension before returning JSON. Children/minors must remain fully clothed and in ordinary safe contexts; do not depict them as threatened, surveilled, helpless, abused, coerced, or the focus of concentrated distress.",
     `Series title: ${params.title}`,
     buildGenrePromptLine(params.genre, params.title),
     params.tone ? `Tone: ${params.tone}` : null,
@@ -5472,8 +5729,12 @@ export async function repairDeepDraftContinuity(params: {
     'Return {"patches":[{"episodeNumber":number,"threadsResolved":["exact-id"]}]}',
   ].join("\n\n");
 
-  const { data, response, model: effectiveModel } =
-    await executeJsonPlanningCallWithRetry<DeepDraftContinuityRepairResponse>({
+  const {
+    data,
+    response,
+    model: effectiveModel,
+  } = await executeJsonPlanningCallWithRetry<DeepDraftContinuityRepairResponse>(
+    {
       model,
       systemPrompt,
       userPrompt,
@@ -5483,7 +5744,8 @@ export async function repairDeepDraftContinuity(params: {
       schema: deepDraftContinuityRepairSchema,
       disableProviderFallbacks: true,
       label: `Vertical Drama continuity repair (series #${params.seriesId})`,
-    });
+    }
+  );
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
@@ -5560,13 +5822,13 @@ export async function generateStoryBibleDeep(
   const logicalRunKey =
     params.idempotencyKey ??
     `vd-deep-draft:${params.seriesId}:${params.mode ?? "standard"}:${createHash(
-      "sha256",
+      "sha256"
     )
       .update(
         JSON.stringify({
           episodeNumbers: params.episodes.map(episode => episode.episodeNumber),
           totalEpisodeCount: params.totalEpisodeCount ?? null,
-        }),
+        })
       )
       .digest("hex")
       .slice(0, 24)}`;
@@ -5576,7 +5838,10 @@ export async function generateStoryBibleDeep(
   // + flag-off byte-identical"). See `generateStoryBibleDeepPremium` near the
   // end of this file.
   if (params.mode === "premium") {
-    return generateStoryBibleDeepPremium({ ...params, idempotencyKey: logicalRunKey });
+    return generateStoryBibleDeepPremium({
+      ...params,
+      idempotencyKey: logicalRunKey,
+    });
   }
 
   const episodes = [...params.episodes].sort(
@@ -5722,8 +5987,7 @@ export async function generateStoryBibleDeep(
       ),
       episodesTotal: episodes.length,
       currentEpisodeStart: chunkEpisodes[0]?.episodeNumber,
-      currentEpisodeEnd:
-        chunkEpisodes[chunkEpisodes.length - 1]?.episodeNumber,
+      currentEpisodeEnd: chunkEpisodes[chunkEpisodes.length - 1]?.episodeNumber,
     });
 
     const { systemPrompt, userPrompt } = buildDeepDraftPrompts({
@@ -5765,12 +6029,19 @@ export async function generateStoryBibleDeep(
         systemPrompt,
         userPrompt,
         temperature: 0.8,
-      userId: params.userId,
-      maxTokens: 16000,
-      schema: deepDraftChunkResponseSchema,
-      disableProviderFallbacks: true,
-      label: "Deep story draft chunk",
+        userId: params.userId,
+        maxTokens: 16000,
+        schema: deepDraftChunkResponseSchema,
+        disableProviderFallbacks: true,
+        label: "Deep story draft chunk",
       });
+
+      const firstSafety = analyzeVerticalDramaStorySafety(first.data);
+      if (isBlockingVerticalDramaStorySafety(firstSafety)) {
+        const error = new Error("VD_STORY_POLICY_RISK");
+        (error as Error & { safety?: unknown }).safety = firstSafety;
+        throw error;
+      }
 
       const firstUsage = first.response.usage;
       const firstCreditsForChunk = calculateCreditsForLLM(
@@ -5890,6 +6161,13 @@ export async function generateStoryBibleDeep(
             disableProviderFallbacks: true,
             label: "Deep story draft chunk (missing-episode retry)",
           });
+
+          const retrySafety = analyzeVerticalDramaStorySafety(retry.data);
+          if (isBlockingVerticalDramaStorySafety(retrySafety)) {
+            const error = new Error("VD_STORY_POLICY_RISK");
+            (error as Error & { safety?: unknown }).safety = retrySafety;
+            throw error;
+          }
 
           const retryUsage = retry.response.usage;
           const retryCreditsForChunk = calculateCreditsForLLM(
@@ -6039,7 +6317,9 @@ export async function generateStoryBibleDeep(
       // here made a first-chunk silence failure abort before anything could
       // be persisted or repaired automatically.
       const dialogueMissingEpisodeNumbers = [
-        ...new Set(dialogueViolations.map(violation => violation.episodeNumber)),
+        ...new Set(
+          dialogueViolations.map(violation => violation.episodeNumber)
+        ),
       ];
       for (const episodeNumber of dialogueMissingEpisodeNumbers) {
         warnings.push({
@@ -8554,7 +8834,10 @@ async function runPremiumSeasonSweep(
   const affectedEpisodeNumbersLabel = affectedEpisodeNumbers.join(",");
 
   // Async story jobs (#28) — additive, no-op when `ctx.onProgress` is absent.
-  emitPremiumProgress(ctx, { phase: "fix", episodesDone: affectedEpisodeNumbers });
+  emitPremiumProgress(ctx, {
+    phase: "fix",
+    episodesDone: affectedEpisodeNumbers,
+  });
 
   let reviseResult;
   try {
@@ -8917,9 +9200,7 @@ async function generateStoryBibleDeepPremium(
         : undefined;
     }
 
-    const unresolvedEpisodeNumbers = new Set(
-      chunkResult.missingEpisodeNumbers
-    );
+    const unresolvedEpisodeNumbers = new Set(chunkResult.missingEpisodeNumbers);
     for (const episode of sourceEpisodes) {
       if (unresolvedEpisodeNumbers.has(episode.episodeNumber)) {
         pendingRepairEpisodeNumbers.add(episode.episodeNumber);

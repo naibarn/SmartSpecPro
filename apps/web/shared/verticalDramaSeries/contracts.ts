@@ -9,6 +9,7 @@
 import { z } from "zod";
 import type { VerticalDramaMemoryRetrievalPolicy } from "./memory";
 import type { VerticalDramaAssemblyManifest } from "./assembly";
+import type { VerticalDramaArtifactAssuranceLineage } from "./assurance";
 import { VERTICAL_DRAMA_DEFAULT_DURATION_PROFILE_ID } from "./assembly";
 import type {
   VerticalDramaDurationPlan,
@@ -36,6 +37,7 @@ import type {
 import type { VdSceneVisualState } from "./sceneContinuity";
 import type { VerticalDramaShotComposition } from "./shotComposition";
 import type { VerticalDramaSupportingPresence } from "./supportingPresence";
+import type { VerticalDramaCharacterLookAssignment } from "./characterLookSelection";
 
 /* -------------------------------------------------------------------------- */
 /* Pipeline stages & warnings (spec §11.5)                                    */
@@ -443,7 +445,14 @@ export type VerticalDramaSeriesProject = {
   title: string;
   locale: VerticalDramaSeriesLocale;
   aspectRatio: "9:16";
-  status: "draft" | "planning" | "active" | "paused" | "completed" | "archived";
+  status:
+    | "draft"
+    | "planning"
+    | "story_ready"
+    | "active"
+    | "paused"
+    | "completed"
+    | "archived";
   targetEpisodeCount: number;
   /** Legacy DB field; retained for old records and never used as the new UI source of truth. */
   defaultEpisodeDurationSeconds: number;
@@ -530,6 +539,8 @@ export type VerticalDramaStartFramePlan = {
     shotNumber: number;
     imagePrompt: string;
     negativePrompt: string;
+    /** Optional Feature 157 lineage; absent preserves every legacy plan payload. */
+    assuranceLineage?: VerticalDramaArtifactAssuranceLineage;
     /**
      * Durable state for the main start-frame image generation task. The
      * provider task can remain queued/processing after the browser request
@@ -552,8 +563,35 @@ export type VerticalDramaStartFramePlan = {
       updatedAt?: string;
       error?: string;
     };
+    /** Hash of the currently authored start prompt for stale-task/CAS checks. */
+    imagePromptHash?: string;
     /** Approved portrait references that must appear only inside a phone/video call screen. */
     screenCallerCharacterRefs?: string[];
+    /** Optional terminal image prompt authored independently from the opening start prompt. */
+    stopFramePrompt?: string;
+    stopFrameNegativePrompt?: string;
+    stopFramePromptHash?: string;
+    startFrameSemanticHandoff?: {
+      frame_role?: "start" | "stop";
+      opening_moment?: string;
+      terminal_moment?: string;
+      story_meaning?: string;
+      continuity_locks?: string[];
+      source_revision?: string;
+    };
+    approvedStopFrameAssetId?: string;
+    staleStopFrameAssetId?: string;
+    stopFrameStaleReason?: "start_prompt_changed" | "start_asset_changed" | "stop_prompt_changed";
+    stopFrameStaleAt?: string;
+    stopFrameTask?: {
+      pendingTaskId?: string;
+      lastTaskId?: string;
+      status: "submitted" | "queued" | "processing" | "completed" | "failed" | "expired";
+      failureStage?: "provider" | "sync" | "admission";
+      submittedAt?: string;
+      updatedAt?: string;
+      error?: string;
+    };
     /** Explicit physical dialogue through a closed barrier; distinct from phone callers. */
     barrierDialogue?: import("./barrierDialogue").VerticalDramaBarrierDialogue;
     /** Two physical views for a conversation across a closed barrier. */
@@ -567,6 +605,8 @@ export type VerticalDramaStartFramePlan = {
     characterDescriptionOverrides?: import("./castPositionLock").VerticalDramaCharacterDescriptionOverrides;
     /** True after the user explicitly assigns this shot's scene/caller references. */
     characterRefsCustomized?: boolean;
+    /** Automatic per-shot look choice/proposal; absent on legacy plans. */
+    characterLookAssignments?: VerticalDramaCharacterLookAssignment[];
     /** Generic visible people/groups, scoped only to this shot. */
     supportingPresence?: VerticalDramaSupportingPresence[];
     /** True after the user explicitly replaces this shot's supporting presence. */
@@ -581,7 +621,7 @@ export type VerticalDramaStartFramePlan = {
     canonicalShotSummary?: string;
     /** Durable current-shot camera/body-language facts used to ground image prompts. */
     shotComposition?: VerticalDramaShotComposition;
-    /** Set when the prompt changed after the previously approved image was created. */
+    /** Set when shared or shot-level prompt facts changed after image creation. */
     imageStaleReason?:
       | "prompt_changed"
     | "character_references_changed"
@@ -1010,6 +1050,8 @@ export const VERTICAL_DRAMA_THAI_ACCENT_LABELS: Record<
 export type VerticalDramaMotionPromptPack = {
   selectedVideoModelId: string;
   durationProfileId: string;
+  /** Optional Feature 157 lineage for the accepted motion-prompt pack. */
+  assuranceLineage?: VerticalDramaArtifactAssuranceLineage;
   /** The language the video-clip prompt TEXT is written in — see `VerticalDramaPromptLanguage`. Defaults to `"en"` when absent. */
   promptLanguage?: VerticalDramaPromptLanguage;
   /** The language the characters SPEAK in the video — see `VerticalDramaDialogueLanguage`. Defaults to `"th"` when absent. */
@@ -1570,7 +1612,7 @@ export type VerticalDramaEpisodeRun = {
 
 /**
  * Legacy/default character cap for an IMAGE prompt in the Vertical Drama flow.
- * Provider-aware callers may widen it up to the absolute 20,000-character
+ * Provider-aware callers may widen it up to the absolute 390,000-character
  * ceiling when the selected image model supports that budget. Enforced
  * server-side by `verticalDramaPromptQc.ts`'s `ensurePromptWithinLimit`.
  */

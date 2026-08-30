@@ -818,6 +818,9 @@ export async function backfillVerticalDramaCharacterLooks(
           continue;
         }
         const repair = objectValue(provenance.repair);
+        const reviewRequiredForCandidate = designResult.reviewRequired.has(
+          candidate.requestKey
+        );
         const nextDataBase: JsonObject = {
           ...currentData,
           description: designed.description,
@@ -829,12 +832,11 @@ export async function backfillVerticalDramaCharacterLooks(
           lookDesign: designed.lookDesign,
           lookDesignContractVersion:
             VERTICAL_DRAMA_CHARACTER_LOOK_DESIGN_CONTRACT_VERSION,
-          lookDesignStatus: "ready",
+          lookDesignStatus: reviewRequiredForCandidate ? "review" : "ready",
           lookSemanticKey: getVerticalDramaCharacterLookSemanticKey({
             parentCharacterKey: candidate.parent.characterKey,
             canonicalIntent: candidate.canonicalIntent,
             variantType: candidate.variantType,
-            requestKey: candidate.requestKey,
           }),
           lookRequestKey: candidate.requestKey,
           suggestedFromShotNumbers: candidate.legacyVisualOnly
@@ -877,11 +879,19 @@ export async function backfillVerticalDramaCharacterLooks(
               ...repair,
               repairedAt: new Date().toISOString(),
               afterDataHash: stableCharacterLookDesignFingerprint(nextDataBase),
+              ...(reviewRequiredForCandidate
+                ? {
+                    reviewedAt: new Date().toISOString(),
+                    reviewReason:
+                      designed.reviewReason ?? "llm_marked_review_required",
+                  }
+                : {}),
             },
           },
         };
         await updateRow(nextData, candidate.row);
         stats.applied += 1;
+        if (reviewRequiredForCandidate) stats.reviewed += 1;
       }
     } catch (error) {
       for (const candidate of group) {

@@ -80,6 +80,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -1228,7 +1229,12 @@ describe("setShotCharacterReference — manual per-shot character/variant overri
             shotNumber: 1,
             imagePrompt: "shot one prompt",
             requiredCharacterRefs: ["hero"],
-            ...(includeApprovedAsset ? { approvedMediaAssetId: "1840" } : {}),
+            ...(includeApprovedAsset
+              ? {
+                  approvedMediaAssetId: "1840",
+                  videoStartMediaAssetId: "1841",
+                }
+              : {}),
           },
           {
             shotNumber: 2,
@@ -1264,9 +1270,12 @@ describe("setShotCharacterReference — manual per-shot character/variant overri
       imagePrompt: "",
       imageStaleReason: "character_references_changed",
     });
-    expect(
-      result.startFramePlan.frames[0].approvedMediaAssetId
-    ).toBeUndefined();
+    // Changing character membership must not discard a generated image. The
+    // image may still be useful; the user can explicitly generate a new one.
+    expect(result.startFramePlan.frames[0]).toMatchObject({
+      approvedMediaAssetId: "1840",
+      videoStartMediaAssetId: "1841",
+    });
     // Shot 2 is byte-identical to before — this mutation never touches any
     // shot other than the one targeted by `shotNumber`.
     expect(result.startFramePlan.frames[1]).toMatchObject({

@@ -353,6 +353,7 @@ export async function generateLocationVisualPrompts(
     tenantId: params.tenantId,
     amount: creditsUsed,
     description: `Vertical Drama — generate location visual prompts (${params.locationKey})`,
+    skillSlug: "vertical-drama-location-visual-bible",
     sourceType: "skill",
     idempotencyKey: params.idempotencyKey,
     metadata: {

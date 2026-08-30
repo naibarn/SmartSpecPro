@@ -34,7 +34,11 @@ const mockInvalidateGetEpisodeDetail = vi.fn();
 let generateStoryBibleShouldFail = false;
 let generateStoryBibleDeepShouldFail = false;
 let generateStoryBibleResult: { creditsUsed: number } = { creditsUsed: 8 };
-let generateStoryBibleDeepResult: { partial: boolean; horizonEndEpisode: number; chunkSizes: number[] } = {
+let generateStoryBibleDeepResult: {
+  partial: boolean;
+  horizonEndEpisode: number;
+  chunkSizes: number[];
+} = {
   partial: false,
   horizonEndEpisode: 5,
   chunkSizes: [5],
@@ -49,20 +53,33 @@ let callOrder: string[] = [];
  * to completion — see `VerticalDramaDeepStoryDraftsPanel.actions.test.tsx`'s
  * identical mocking convention (this file mirrors it for page-level coverage).
  */
-const mockGetStoryJobStatusFetch = vi.fn(async ({ jobId }: { jobId: string }) => {
-  if (jobId === "gen-job") {
-    return generateStoryBibleDeepShouldFail
-      ? { kind: "deep_generate", status: "failed", progress: null, error: "deep boom" }
-      : { kind: "deep_generate", status: "succeeded", progress: null, result: generateStoryBibleDeepResult };
+const mockGetStoryJobStatusFetch = vi.fn(
+  async ({ jobId }: { jobId: string }) => {
+    if (jobId === "gen-job") {
+      return generateStoryBibleDeepShouldFail
+        ? {
+            kind: "deep_generate",
+            status: "failed",
+            progress: null,
+            error: "deep boom",
+          }
+        : {
+            kind: "deep_generate",
+            status: "succeeded",
+            progress: null,
+            result: generateStoryBibleDeepResult,
+          };
+    }
+    return null;
   }
-  return null;
-});
+);
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({
       verticalDramaSeries: {
         get: { invalidate: mockInvalidateSeriesGet },
+        getStoryGenerationRun: { invalidate: vi.fn() },
         getStoryJobStatus: { fetch: mockGetStoryJobStatusFetch },
       },
       verticalDramaEpisodes: {
@@ -71,7 +88,10 @@ vi.mock("@/lib/trpc", () => ({
     }),
     verticalDramaEpisodes: {
       generateNextEpisodes: {
-        useMutation: (_opts: unknown) => ({ mutate: mockGenerateNextEpisodesMutate, isPending: false }),
+        useMutation: (_opts: unknown) => ({
+          mutate: mockGenerateNextEpisodesMutate,
+          isPending: false,
+        }),
       },
     },
     verticalDramaSeries: {
@@ -82,7 +102,8 @@ vi.mock("@/lib/trpc", () => ({
         }) => ({
           mutate: (input: unknown) => {
             mockGenerateStoryBibleMutate(input);
-            if (generateStoryBibleShouldFail) opts?.onError?.({ message: "story boom" });
+            if (generateStoryBibleShouldFail)
+              opts?.onError?.({ message: "story boom" });
             else opts?.onSuccess?.(generateStoryBibleResult);
           },
           mutateAsync: async (input: unknown) => {
@@ -99,7 +120,9 @@ vi.mock("@/lib/trpc", () => ({
         }),
       },
       generateStoryBibleDeep: {
-        useMutation: (_opts: { onError?: (err: { message?: string }) => void }) => ({
+        useMutation: (_opts: {
+          onError?: (err: { message?: string }) => void;
+        }) => ({
           mutate: mockGenerateStoryBibleDeepMutate,
           mutateAsync: async (input: unknown) => {
             mockGenerateStoryBibleDeepMutateAsync(input);
@@ -123,6 +146,26 @@ vi.mock("@/lib/trpc", () => ({
         // No active job to resume in this file's tests — resume behavior has
         // its own dedicated coverage in `VerticalDramaDeepStoryDraftsPanel.actions.test.tsx`.
         useQuery: () => ({ data: null }),
+      },
+      getStoryGenerationRun: {
+        useQuery: () => ({
+          data: null,
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }),
+      },
+      resumeStoryGeneration: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      repairStoryGeneration: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      cancelStoryGeneration: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      approveStoryGenerationRepair: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
       updateEpisodeDraftSynopsis: {
         useMutation: (_opts: unknown) => ({
@@ -151,7 +194,9 @@ vi.mock("@/lib/trpc", () => ({
       startImproveScript: {
         useMutation: (_opts: unknown) => ({
           mutate: vi.fn(),
-          mutateAsync: vi.fn().mockResolvedValue({ jobId: "improve-script-job", deduped: false }),
+          mutateAsync: vi
+            .fn()
+            .mockResolvedValue({ jobId: "improve-script-job", deduped: false }),
           isPending: false,
         }),
       },
@@ -196,8 +241,18 @@ function nineShots() {
 const bibleWithStoryOnly = {
   expandedSeasonArc: "Season arc text",
   episodeBreakdown: [
-    { episodeNumber: 1, workingTitle: "EP1 title", logline: "EP1 logline", keyBeats: ["beat 1"] },
-    { episodeNumber: 2, workingTitle: "EP2 title", logline: "EP2 logline", keyBeats: ["beat 2"] },
+    {
+      episodeNumber: 1,
+      workingTitle: "EP1 title",
+      logline: "EP1 logline",
+      keyBeats: ["beat 1"],
+    },
+    {
+      episodeNumber: 2,
+      workingTitle: "EP2 title",
+      logline: "EP2 logline",
+      keyBeats: ["beat 2"],
+    },
   ],
 };
 
@@ -225,7 +280,12 @@ const bibleWithDeepDraft = {
             coverageStatus: "ok",
           },
         },
-        { episodeNumber: 2, workingTitle: "EP2 title", logline: "EP2 logline", keyBeats: ["beat 2"] },
+        {
+          episodeNumber: 2,
+          workingTitle: "EP2 title",
+          logline: "EP2 logline",
+          keyBeats: ["beat 2"],
+        },
       ],
     },
   ],
@@ -253,7 +313,11 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
     generateStoryBibleShouldFail = false;
     generateStoryBibleDeepShouldFail = false;
     generateStoryBibleResult = { creditsUsed: 8 };
-    generateStoryBibleDeepResult = { partial: false, horizonEndEpisode: 5, chunkSizes: [5] };
+    generateStoryBibleDeepResult = {
+      partial: false,
+      horizonEndEpisode: 5,
+      chunkSizes: [5],
+    };
     callOrder = [];
   });
 
@@ -296,15 +360,19 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
         seriesTitle="หนูน้อยช่างสงสัย"
         bible={bibleWithDeepDraft}
         deepDraftsFlagEnabled={true}
-      />,
+      />
     );
 
     fireEvent.click(screen.getByRole("button", { name: /คัดลอกเนื้อเรื่อง/ }));
-    expect(screen.getByRole("dialog", { name: /คัดลอกเนื้อเรื่องพร้อมบทพูด/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: /คัดลอกเนื้อเรื่องพร้อมบทพูด/ })
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /คัดลอกช่วงที่เลือก/ }));
 
-    await waitFor(() => expect(mockClipboardWriteText).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(mockClipboardWriteText).toHaveBeenCalledTimes(1)
+    );
     const copied = mockClipboardWriteText.mock.calls[0][0] as string;
     expect(copied).toContain("ซีรีส์: หนูน้อยช่างสงสัย");
     expect(copied).toContain("ตอนที่ 1: EP1 title");
@@ -314,12 +382,14 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
     expect(copied).toContain("ช็อต 9: Shot 9 summary");
     expect(copied).toContain("นางเอก: Line 9");
     expect(copied).toContain("ตอนที่ 2: EP2 title");
-    expect(toast.success).toHaveBeenCalledWith(expect.stringContaining("คัดลอกเนื้อเรื่องตอน"));
+    expect(toast.success).toHaveBeenCalledWith(
+      expect.stringContaining("คัดลอกเนื้อเรื่องตอน")
+    );
   });
 
   it("renders BYTE-IDENTICAL markup whether deepDraftsFlagEnabled is omitted or explicitly false", () => {
     const { container: withDefault } = render(
-      <StoryBibleOverviewCard {...baseProps} bible={bibleWithDeepDraft} />,
+      <StoryBibleOverviewCard {...baseProps} bible={bibleWithDeepDraft} />
     );
     const defaultHtml = withDefault.innerHTML;
 
@@ -328,8 +398,12 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
         {...baseProps}
         bible={bibleWithDeepDraft}
         deepDraftsFlagEnabled={false}
-        deepDraftSummary={{ horizonEndEpisode: 1, episodesWithDrafts: 1, totalEpisodes: 10 }}
-      />,
+        deepDraftSummary={{
+          horizonEndEpisode: 1,
+          episodesWithDrafts: 1,
+          totalEpisodes: 10,
+        }}
+      />
     );
     const explicitFalseHtml = withExplicitFalse.innerHTML;
 
@@ -342,16 +416,28 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
         {...baseProps}
         bible={bibleWithDeepDraft}
         deepDraftsFlagEnabled={false}
-        deepDraftSummary={{ horizonEndEpisode: 1, episodesWithDrafts: 1, totalEpisodes: 10 }}
-      />,
+        deepDraftSummary={{
+          horizonEndEpisode: 1,
+          episodesWithDrafts: 1,
+          totalEpisodes: 10,
+        }}
+      />
     );
 
-    expect(screen.queryByTestId("vd-deep-story-drafts-actions")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("vd-deep-story-draft-episode-1")).not.toBeInTheDocument();
-    expect(screen.queryByText(/สร้างเนื้อเรื่องละเอียดทุกตอน/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-deep-story-drafts-actions")
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-deep-story-draft-episode-1")
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/สร้างเนื้อเรื่องละเอียดทุกตอน/)
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("ดูร่าง 9 ช็อต + บทพูด")).not.toBeInTheDocument();
     // Pre-existing behavior is preserved.
-    expect(screen.getByRole("button", { name: /สร้างใหม่อีกครั้ง/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /สร้างใหม่อีกครั้ง/ })
+    ).toBeInTheDocument();
     expect(screen.getByText("EP1 title", { exact: false })).toBeInTheDocument();
   });
 
@@ -361,15 +447,23 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
         {...baseProps}
         bible={bibleWithDeepDraft}
         deepDraftsFlagEnabled={true}
-        deepDraftSummary={{ horizonEndEpisode: 1, episodesWithDrafts: 1, totalEpisodes: 10 }}
-      />,
+        deepDraftSummary={{
+          horizonEndEpisode: 1,
+          episodesWithDrafts: 1,
+          totalEpisodes: 10,
+        }}
+      />
     );
 
-    expect(screen.getByTestId("vd-deep-story-draft-episode-1")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-deep-story-draft-episode-1")
+    ).toBeInTheDocument();
     expect(screen.getByText("✓ บทพูดครบทุกช็อต")).toBeInTheDocument();
     expect(screen.getByText("✓ อ่านออกเสียงได้")).toBeInTheDocument();
     expect(screen.getByText("จุดค้าง: จุดค้างตอน 1")).toBeInTheDocument();
-    expect(screen.queryByTestId("vd-deep-story-draft-episode-2")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-deep-story-draft-episode-2")
+    ).not.toBeInTheDocument();
   });
 
   /**
@@ -389,14 +483,18 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
           {...baseProps}
           bible={bibleWithDeepDraft}
           deepDraftsFlagEnabled={true}
-          deepDraftSummary={{ horizonEndEpisode: 1, episodesWithDrafts: 1, totalEpisodes: 10 }}
+          deepDraftSummary={{
+            horizonEndEpisode: 1,
+            episodesWithDrafts: 1,
+            totalEpisodes: 10,
+          }}
           createdEpisodeNumbers={[1]}
-        />,
+        />
       );
       fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-cta-1-1"));
-      expect(screen.getByTestId("vd-deep-story-draft-edit-already-created-1-1")).toHaveTextContent(
-        "ตอนย่อยนี้ถูกสร้างแล้ว",
-      );
+      expect(
+        screen.getByTestId("vd-deep-story-draft-edit-already-created-1-1")
+      ).toHaveTextContent("ตอนย่อยนี้ถูกสร้างแล้ว");
     });
 
     it("omits the hint while editing a shot whose episode is NOT in createdEpisodeNumbers", () => {
@@ -405,12 +503,18 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
           {...baseProps}
           bible={bibleWithDeepDraft}
           deepDraftsFlagEnabled={true}
-          deepDraftSummary={{ horizonEndEpisode: 1, episodesWithDrafts: 1, totalEpisodes: 10 }}
+          deepDraftSummary={{
+            horizonEndEpisode: 1,
+            episodesWithDrafts: 1,
+            totalEpisodes: 10,
+          }}
           createdEpisodeNumbers={[]}
-        />,
+        />
       );
       fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-cta-1-1"));
-      expect(screen.queryByTestId("vd-deep-story-draft-edit-already-created-1-1")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("vd-deep-story-draft-edit-already-created-1-1")
+      ).not.toBeInTheDocument();
     });
 
     it("defaults to omitted (no hint) when createdEpisodeNumbers is not passed at all", () => {
@@ -419,38 +523,77 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
           {...baseProps}
           bible={bibleWithDeepDraft}
           deepDraftsFlagEnabled={true}
-          deepDraftSummary={{ horizonEndEpisode: 1, episodesWithDrafts: 1, totalEpisodes: 10 }}
-        />,
+          deepDraftSummary={{
+            horizonEndEpisode: 1,
+            episodesWithDrafts: 1,
+            totalEpisodes: 10,
+          }}
+        />
       );
       fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-cta-1-1"));
-      expect(screen.queryByTestId("vd-deep-story-draft-edit-already-created-1-1")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("vd-deep-story-draft-edit-already-created-1-1")
+      ).not.toBeInTheDocument();
     });
   });
 
   describe("Consolidated primary action (kills the two-competing-buttons confusion)", () => {
     it("flag on, no plan yet — shows the 'generate full + detailed' primary CTA (not the legacy 'Generate story' button)", () => {
-      render(<StoryBibleOverviewCard {...baseProps} bible={bibleEmpty} deepDraftsFlagEnabled={true} />);
+      render(
+        <StoryBibleOverviewCard
+          {...baseProps}
+          bible={bibleEmpty}
+          deepDraftsFlagEnabled={true}
+        />
+      );
       expect(
-        screen.getByRole("button", { name: /สร้างเนื้อเรื่องเต็ม \+ ร่างละเอียดทุกตอน/ }),
+        screen.getByRole("button", {
+          name: /สร้างเนื้อเรื่องเต็ม \+ ร่างละเอียดทุกตอน/,
+        })
       ).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: "สร้างเนื้อเรื่องเต็ม" })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "สร้างเนื้อเรื่องเต็ม" })
+      ).not.toBeInTheDocument();
     });
 
     it("flag off, no plan yet — the legacy 'Generate story' button is unchanged", () => {
-      render(<StoryBibleOverviewCard {...baseProps} bible={bibleEmpty} deepDraftsFlagEnabled={false} />);
-      expect(screen.getByRole("button", { name: "สร้างเนื้อเรื่องเต็ม" })).toBeInTheDocument();
+      render(
+        <StoryBibleOverviewCard
+          {...baseProps}
+          bible={bibleEmpty}
+          deepDraftsFlagEnabled={false}
+        />
+      );
+      expect(
+        screen.getByRole("button", { name: "สร้างเนื้อเรื่องเต็ม" })
+      ).toBeInTheDocument();
     });
 
     it("flag on, no plan yet — confirming chains generateStoryBible -> generateStoryBibleDeep, in order", async () => {
-      render(<StoryBibleOverviewCard {...baseProps} bible={bibleEmpty} deepDraftsFlagEnabled={true} />);
-      fireEvent.click(screen.getByRole("button", { name: /สร้างเนื้อเรื่องเต็ม \+ ร่างละเอียดทุกตอน/ }));
-      fireEvent.click(screen.getByTestId("vd-deep-story-drafts-confirm-submit"));
+      render(
+        <StoryBibleOverviewCard
+          {...baseProps}
+          bible={bibleEmpty}
+          deepDraftsFlagEnabled={true}
+        />
+      );
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: /สร้างเนื้อเรื่องเต็ม \+ ร่างละเอียดทุกตอน/,
+        })
+      );
+      fireEvent.click(
+        screen.getByTestId("vd-deep-story-drafts-confirm-submit")
+      );
 
-      await waitFor(() => expect(mockGenerateStoryBibleDeepMutateAsync).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(mockGenerateStoryBibleDeepMutateAsync).toHaveBeenCalledTimes(1)
+      );
       expect(mockGenerateStoryBibleMutateAsync).toHaveBeenCalledTimes(1);
       expect(callOrder).toEqual(["story", "deep"]);
 
-      const deepInput = mockGenerateStoryBibleDeepMutateAsync.mock.calls[0][0] as {
+      const deepInput = mockGenerateStoryBibleDeepMutateAsync.mock
+        .calls[0][0] as {
         seriesId: string;
         idempotencyKey: string;
       };
@@ -461,43 +604,85 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
 
     it("flag on, no plan yet — a generateStoryBible failure aborts the chain (deep never called), shows the story error toast", async () => {
       generateStoryBibleShouldFail = true;
-      render(<StoryBibleOverviewCard {...baseProps} bible={bibleEmpty} deepDraftsFlagEnabled={true} />);
-      fireEvent.click(screen.getByRole("button", { name: /สร้างเนื้อเรื่องเต็ม \+ ร่างละเอียดทุกตอน/ }));
-      fireEvent.click(screen.getByTestId("vd-deep-story-drafts-confirm-submit"));
+      render(
+        <StoryBibleOverviewCard
+          {...baseProps}
+          bible={bibleEmpty}
+          deepDraftsFlagEnabled={true}
+        />
+      );
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: /สร้างเนื้อเรื่องเต็ม \+ ร่างละเอียดทุกตอน/,
+        })
+      );
+      fireEvent.click(
+        screen.getByTestId("vd-deep-story-drafts-confirm-submit")
+      );
 
-      await waitFor(() => expect(mockGenerateStoryBibleMutateAsync).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(mockGenerateStoryBibleMutateAsync).toHaveBeenCalledTimes(1)
+      );
       expect(mockGenerateStoryBibleDeepMutateAsync).not.toHaveBeenCalled();
       expect(toast.error).toHaveBeenCalledWith("story boom");
     });
 
     it("flag on, plan exists — shows the 'update detailed story' primary CTA", () => {
       render(
-        <StoryBibleOverviewCard {...baseProps} bible={bibleWithStoryOnly} deepDraftsFlagEnabled={true} />,
+        <StoryBibleOverviewCard
+          {...baseProps}
+          bible={bibleWithStoryOnly}
+          deepDraftsFlagEnabled={true}
+        />
       );
-      expect(screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ })
+      ).toBeInTheDocument();
     });
 
     it("flag on, plan exists — default (keep) scope calls generateStoryBibleDeep only, generateStoryBible is never called", async () => {
       render(
-        <StoryBibleOverviewCard {...baseProps} bible={bibleWithStoryOnly} deepDraftsFlagEnabled={true} />,
+        <StoryBibleOverviewCard
+          {...baseProps}
+          bible={bibleWithStoryOnly}
+          deepDraftsFlagEnabled={true}
+        />
       );
-      fireEvent.click(screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ }));
-      fireEvent.click(screen.getByTestId("vd-deep-story-drafts-confirm-submit"));
+      fireEvent.click(
+        screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ })
+      );
+      fireEvent.click(
+        screen.getByTestId("vd-deep-story-drafts-confirm-submit")
+      );
 
-      await waitFor(() => expect(mockGenerateStoryBibleDeepMutateAsync).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(mockGenerateStoryBibleDeepMutateAsync).toHaveBeenCalledTimes(1)
+      );
       expect(mockGenerateStoryBibleMutate).not.toHaveBeenCalled();
       expect(mockGenerateStoryBibleMutateAsync).not.toHaveBeenCalled();
     });
 
     it("flag on, plan exists — selecting 'rewrite everything' chains generateStoryBible -> generateStoryBibleDeep, in order", async () => {
       render(
-        <StoryBibleOverviewCard {...baseProps} bible={bibleWithStoryOnly} deepDraftsFlagEnabled={true} />,
+        <StoryBibleOverviewCard
+          {...baseProps}
+          bible={bibleWithStoryOnly}
+          deepDraftsFlagEnabled={true}
+        />
       );
-      fireEvent.click(screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ }));
-      fireEvent.click(screen.getByRole("radio", { name: /คิดโครงเรื่องใหม่ทั้งหมด/ }));
-      fireEvent.click(screen.getByTestId("vd-deep-story-drafts-confirm-submit"));
+      fireEvent.click(
+        screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ })
+      );
+      fireEvent.click(
+        screen.getByRole("radio", { name: /คิดโครงเรื่องใหม่ทั้งหมด/ })
+      );
+      fireEvent.click(
+        screen.getByTestId("vd-deep-story-drafts-confirm-submit")
+      );
 
-      await waitFor(() => expect(mockGenerateStoryBibleDeepMutateAsync).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(mockGenerateStoryBibleDeepMutateAsync).toHaveBeenCalledTimes(1)
+      );
       expect(mockGenerateStoryBibleMutateAsync).toHaveBeenCalledTimes(1);
       expect(mockGenerateStoryBibleDeepMutate).not.toHaveBeenCalled();
       expect(mockGenerateStoryBibleMutate).not.toHaveBeenCalled();
@@ -506,17 +691,31 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
 
     it("flag on — the legacy standalone 'สร้างใหม่อีกครั้ง' (Regenerate) button is absent", () => {
       render(
-        <StoryBibleOverviewCard {...baseProps} bible={bibleWithStoryOnly} deepDraftsFlagEnabled={true} />,
+        <StoryBibleOverviewCard
+          {...baseProps}
+          bible={bibleWithStoryOnly}
+          deepDraftsFlagEnabled={true}
+        />
       );
-      expect(screen.queryByRole("button", { name: /สร้างใหม่อีกครั้ง/ })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /สร้างใหม่อีกครั้ง/ })
+      ).not.toBeInTheDocument();
     });
 
     it("flag off — the legacy standalone 'สร้างใหม่อีกครั้ง' (Regenerate) button is present and unchanged", () => {
       render(
-        <StoryBibleOverviewCard {...baseProps} bible={bibleWithStoryOnly} deepDraftsFlagEnabled={false} />,
+        <StoryBibleOverviewCard
+          {...baseProps}
+          bible={bibleWithStoryOnly}
+          deepDraftsFlagEnabled={false}
+        />
       );
-      expect(screen.getByRole("button", { name: /สร้างใหม่อีกครั้ง/ })).toBeInTheDocument();
-      expect(screen.queryByTestId("vd-deep-story-drafts-actions")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /สร้างใหม่อีกครั้ง/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("vd-deep-story-drafts-actions")
+      ).not.toBeInTheDocument();
     });
 
     it("flag on, plan exists with a deepDraftSummary — summary banner + extend CTA render alongside the primary CTA (not instead of it)", () => {
@@ -525,12 +724,22 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
           {...baseProps}
           bible={bibleWithDeepDraft}
           deepDraftsFlagEnabled={true}
-          deepDraftSummary={{ horizonEndEpisode: 1, episodesWithDrafts: 1, totalEpisodes: 10 }}
-        />,
+          deepDraftSummary={{
+            horizonEndEpisode: 1,
+            episodesWithDrafts: 1,
+            totalEpisodes: 10,
+          }}
+        />
       );
-      expect(screen.getByTestId("vd-deep-story-drafts-summary")).toBeInTheDocument();
-      expect(screen.getByText("ร่างละเอียดแล้ว 1/10 ตอนย่อย (ถึงตอนย่อยที่ 1)")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ })).toBeInTheDocument();
+      expect(
+        screen.getByTestId("vd-deep-story-drafts-summary")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("ร่างละเอียดแล้ว 1/10 ตอนย่อย (ถึงตอนย่อยที่ 1)")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ })
+      ).toBeInTheDocument();
     });
   });
 
@@ -570,7 +779,12 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
                 judgedAtRound: 1,
               },
             },
-            { episodeNumber: 2, workingTitle: "EP2 title", logline: "EP2 logline", keyBeats: ["beat 2"] },
+            {
+              episodeNumber: 2,
+              workingTitle: "EP2 title",
+              logline: "EP2 logline",
+              keyBeats: ["beat 2"],
+            },
           ],
         },
       ],
@@ -582,13 +796,19 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
           {...baseProps}
           bible={bibleWithPremiumScorecard}
           deepDraftsFlagEnabled={true}
-          deepDraftSummary={{ horizonEndEpisode: 1, episodesWithDrafts: 1, totalEpisodes: 10 }}
-        />,
+          deepDraftSummary={{
+            horizonEndEpisode: 1,
+            episodesWithDrafts: 1,
+            totalEpisodes: 10,
+          }}
+        />
       );
-      expect(screen.getByTestId("vd-deep-story-draft-scorecard-badge-1")).toHaveTextContent("คะแนน 3.5/5");
-      expect(screen.getByTestId("vd-deep-story-draft-scorecard-dim-1-pacing")).toHaveTextContent(
-        "จุดที่ยังต่ำ: จังหวะเรื่อง 2/5",
-      );
+      expect(
+        screen.getByTestId("vd-deep-story-draft-scorecard-badge-1")
+      ).toHaveTextContent("คะแนน 3.5/5");
+      expect(
+        screen.getByTestId("vd-deep-story-draft-scorecard-dim-1-pacing")
+      ).toHaveTextContent("จุดที่ยังต่ำ: จังหวะเรื่อง 2/5");
     });
 
     it("flag off — the scorecard badge never renders even when draftScorecard is present in the bible", () => {
@@ -597,10 +817,16 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
           {...baseProps}
           bible={bibleWithPremiumScorecard}
           deepDraftsFlagEnabled={false}
-          deepDraftSummary={{ horizonEndEpisode: 1, episodesWithDrafts: 1, totalEpisodes: 10 }}
-        />,
+          deepDraftSummary={{
+            horizonEndEpisode: 1,
+            episodesWithDrafts: 1,
+            totalEpisodes: 10,
+          }}
+        />
       );
-      expect(screen.queryByTestId("vd-deep-story-draft-scorecard-badge-1")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("vd-deep-story-draft-scorecard-badge-1")
+      ).not.toBeInTheDocument();
     });
 
     it("flag on — the summary banner appends '· โหมดพรีเมียม' when deepDraftSummary.premium is true", () => {
@@ -609,10 +835,19 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
           {...baseProps}
           bible={bibleWithDeepDraft}
           deepDraftsFlagEnabled={true}
-          deepDraftSummary={{ horizonEndEpisode: 1, episodesWithDrafts: 1, totalEpisodes: 10, premium: true }}
-        />,
+          deepDraftSummary={{
+            horizonEndEpisode: 1,
+            episodesWithDrafts: 1,
+            totalEpisodes: 10,
+            premium: true,
+          }}
+        />
       );
-      expect(screen.getByText("ร่างละเอียดแล้ว 1/10 ตอนย่อย (ถึงตอนย่อยที่ 1) · โหมดพรีเมียม")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "ร่างละเอียดแล้ว 1/10 ตอนย่อย (ถึงตอนย่อยที่ 1) · โหมดพรีเมียม"
+        )
+      ).toBeInTheDocument();
     });
 
     it("flag on — the summary banner omits the premium marker when deepDraftSummary.premium is absent (byte-identical)", () => {
@@ -621,17 +856,23 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
           {...baseProps}
           bible={bibleWithDeepDraft}
           deepDraftsFlagEnabled={true}
-          deepDraftSummary={{ horizonEndEpisode: 1, episodesWithDrafts: 1, totalEpisodes: 10 }}
-        />,
+          deepDraftSummary={{
+            horizonEndEpisode: 1,
+            episodesWithDrafts: 1,
+            totalEpisodes: 10,
+          }}
+        />
       );
       // Scoped to the summary paragraph itself — the page also renders an
       // unrelated "ใช้โหมดพรีเมียม..." extend checkbox label in this same
       // scenario (canExtend is true), which a page-wide text search would
       // false-match on the shared "โหมดพรีเมียม" substring.
-      expect(screen.getByTestId("vd-deep-story-drafts-summary")).toHaveTextContent(
-        "ร่างละเอียดแล้ว 1/10 ตอนย่อย (ถึงตอนย่อยที่ 1)",
-      );
-      expect(screen.getByTestId("vd-deep-story-drafts-summary")).not.toHaveTextContent("โหมดพรีเมียม");
+      expect(
+        screen.getByTestId("vd-deep-story-drafts-summary")
+      ).toHaveTextContent("ร่างละเอียดแล้ว 1/10 ตอนย่อย (ถึงตอนย่อยที่ 1)");
+      expect(
+        screen.getByTestId("vd-deep-story-drafts-summary")
+      ).not.toHaveTextContent("โหมดพรีเมียม");
     });
   });
 });
@@ -685,7 +926,10 @@ describe("StoryBibleOverviewCard — tie-in draft-awareness badge (task #22)", (
 
   it("planned + drafted + a shot marked has_product_moment:true — normal badge", () => {
     const shots = nineShots();
-    (shots[3] as Record<string, unknown>).tie_in = { has_product_moment: true, benefit_line: "ดีต่อผิว" };
+    (shots[3] as Record<string, unknown>).tie_in = {
+      has_product_moment: true,
+      benefit_line: "ดีต่อผิว",
+    };
     const bible = bibleWithTieIn([
       {
         episodeNumber: 1,
@@ -730,11 +974,17 @@ describe("StoryBibleOverviewCard — tie-in draft-awareness badge (task #22)", (
       },
     ]);
     render(<StoryBibleOverviewCard {...baseProps} bible={bible} />);
-    expect(screen.queryByTestId("vd-overview-tie-in-badge-1")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-overview-tie-in-badge-1")
+    ).not.toBeInTheDocument();
   });
 
   it("no tieIn field at all (legacy/grandfather series) — no badge, no crash", () => {
-    render(<StoryBibleOverviewCard {...baseProps} bible={bibleWithStoryOnly} />);
-    expect(screen.queryByTestId(/vd-overview-tie-in-badge-/)).not.toBeInTheDocument();
+    render(
+      <StoryBibleOverviewCard {...baseProps} bible={bibleWithStoryOnly} />
+    );
+    expect(
+      screen.queryByTestId(/vd-overview-tie-in-badge-/)
+    ).not.toBeInTheDocument();
   });
 });

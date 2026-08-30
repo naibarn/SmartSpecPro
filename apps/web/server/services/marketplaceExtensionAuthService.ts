@@ -6,6 +6,7 @@ import { authorizeRequest } from "../_core/authz";
 import { hasScope, signBearerToken } from "../_core/tokens";
 import { marketplaceExtensionPairings } from "../../drizzle/schema";
 import { getMarketplaceCaptureConfig, isAllowedMarketplaceOrigin, marketplaceCaptureError } from "./marketplaceCaptureConfig";
+import { resolveTenantIdVarchar } from "./tenantContext";
 
 export const MARKETPLACE_EXTENSION_SCOPES = [
   "marketplace:capture",
@@ -156,6 +157,14 @@ export async function requireMarketplaceAuth(
     throw marketplaceCaptureError("forbidden_scope", `Missing scope ${requiredScope}`, 403);
   }
 
+  const requestTenantId = resolveTenantIdVarchar(
+    (req as any).tenantId || (req as any).tenant?.id,
+    undefined,
+  );
+  if (!auth.tenantId || !requestTenantId || auth.tenantId !== requestTenantId) {
+    throw marketplaceCaptureError("tenant_mismatch", "Extension tenant does not match the current request tenant", 403);
+  }
+
   const claimsPairingId = String(auth.externalReference ?? "");
   if (!claimsPairingId) {
     throw marketplaceCaptureError("extension_pairing_required", "Extension pairing is required. Generate a new token from the extension.", 401);
@@ -174,6 +183,7 @@ export async function requireMarketplaceAuth(
     .where(and(
       eq(marketplaceExtensionPairings.id, claimsPairingId),
       eq(marketplaceExtensionPairings.userId, auth.userId),
+      eq(marketplaceExtensionPairings.tenantId, auth.tenantId),
     ))
     .limit(1);
   if (!pairing) {

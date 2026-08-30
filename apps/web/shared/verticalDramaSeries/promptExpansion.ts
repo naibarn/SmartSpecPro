@@ -19,6 +19,12 @@ export const PROMPT_EXPANSION_PROFILES = [
 ] as const;
 export type PromptExpansionProfile = (typeof PROMPT_EXPANSION_PROFILES)[number];
 
+/** Maximum length for one scope item returned by the prompt expansion model. */
+export const PROMPT_EXPANSION_SCOPE_ITEM_MAX_LENGTH = 2000;
+
+/** Prompt length supported by the optional AI expansion action in the wizard. */
+export const PROMPT_EXPANSION_PREMISE_LIMIT = 5_000;
+
 export const promptExpansionSourceSchema = z.object({
   url: z.string().url().max(2048),
   title: z.string().trim().min(1).max(240),
@@ -47,25 +53,124 @@ export const promptExpansionBriefSchema = z.object({
   profile: z.enum(PROMPT_EXPANSION_PROFILES),
   angle: z.string().trim().min(1).max(2000),
   audience: z.string().trim().max(500).optional(),
-  scope: z.array(z.string().trim().min(1).max(500)).max(20),
+  scope: z.array(z.string().trim().min(1).max(PROMPT_EXPANSION_SCOPE_ITEM_MAX_LENGTH)).max(20),
   factualClaims: z.array(z.string().trim().min(1).max(1000)).max(50),
   creativeAssumptions: z.array(z.string().trim().min(1).max(1000)).max(20),
   exclusions: z.array(z.string().trim().min(1).max(500)).max(20),
+  storyTreatment: z.lazy(() => promptExpansionStoryTreatmentSchema).optional(),
 });
 export type PromptExpansionBrief = z.infer<typeof promptExpansionBriefSchema>;
 
+/**
+ * Story-specific treatment fields are deliberately separate from the editable
+ * premise.  They make the expansion useful as a compact story treatment
+ * without silently turning it into the later episode/scene draft.
+ */
+export const promptExpansionStoryTreatmentSchema = z.object({
+  protagonists: z.array(z.object({
+    name: z.string().trim().min(1).max(160),
+    role: z.string().trim().min(1).max(300),
+    background: z.string().trim().min(1).max(800),
+    goal: z.string().trim().min(1).max(600),
+    need: z.string().trim().min(1).max(600),
+  })).min(2).max(6),
+  setting: z.string().trim().min(1).max(1200),
+  meetingAndIncitingEvent: z.string().trim().min(1).max(1600),
+  relationshipProgression: z.array(z.string().trim().min(1).max(800)).min(2).max(8),
+  obstacles: z.array(z.string().trim().min(1).max(800)).min(2).max(10),
+  opposingForces: z.array(z.string().trim().min(1).max(800)).min(1).max(8),
+  centralQuestion: z.string().trim().min(1).max(800),
+  majorConflict: z.string().trim().min(1).max(1200),
+  turningPoints: z.array(z.string().trim().min(1).max(800)).min(2).max(8),
+  climax: z.string().trim().min(1).max(1200),
+  endingDirection: z.string().trim().min(1).max(1200),
+  unresolvedHooks: z.array(z.string().trim().min(1).max(600)).max(8),
+  tone: z.string().trim().min(1).max(500),
+  audience: z.string().trim().min(1).max(500),
+  assumptions: z.array(z.string().trim().min(1).max(600)).max(20),
+  exclusions: z.array(z.string().trim().min(1).max(600)).max(20),
+});
+export type PromptExpansionStoryTreatment = z.infer<typeof promptExpansionStoryTreatmentSchema>;
+
+export const promptExpansionExecutionSchema = z.object({
+  skillId: z.literal("vertical-drama-prompt-expansion"),
+  skillVersion: z.string().trim().min(1).max(40),
+  executionMode: z.literal("llm-only"),
+  provider: z.string().trim().min(1).max(160),
+  providerCallId: z.string().trim().min(1).max(200),
+  model: z.string().trim().min(1).max(200),
+  attemptCount: z.number().int().positive().max(3),
+  inputTokens: z.number().int().nonnegative(),
+  outputTokens: z.number().int().nonnegative(),
+  mocked: z.literal(false),
+});
+export type PromptExpansionExecution = z.infer<typeof promptExpansionExecutionSchema>;
+
 export const promptExpansionPreviewSchema = z.object({
   revision: z.number().int().positive(),
-  originalPrompt: z.string().trim().min(1).max(12000),
+  originalPrompt: z.string().trim().min(1).max(PROMPT_EXPANSION_PREMISE_LIMIT),
   originalPromptHash: z.string().regex(/^[a-f0-9]{64}$/),
   status: z.enum(PROMPT_EXPANSION_STATUSES),
   brief: promptExpansionBriefSchema,
   expandedPrompt: z.string().trim().min(1).max(20000),
   sources: z.array(promptExpansionSourceSchema).max(30),
   warnings: z.array(z.string().trim().min(1).max(1000)).max(30),
-  slots: z.array(promptExpansionVisualSlotSchema).max(50),
+  slots: z.array(promptExpansionVisualSlotSchema).min(1).max(50),
+  execution: promptExpansionExecutionSchema.optional(),
 });
 export type PromptExpansionPreview = z.infer<typeof promptExpansionPreviewSchema>;
+
+export const promptExpansionModelOutputSchema = z.object({
+  brief: promptExpansionBriefSchema.extend({
+    storyTreatment: promptExpansionStoryTreatmentSchema.optional(),
+  }).strict(),
+  expandedPrompt: z.string().trim().min(1).max(20000),
+  sources: z.array(promptExpansionSourceSchema).max(30),
+  warnings: z.array(z.string().trim().min(1).max(1000)).max(30),
+  slots: z.array(promptExpansionVisualSlotSchema).min(1).max(50),
+}).strict();
+export type PromptExpansionModelOutput = z.infer<typeof promptExpansionModelOutputSchema>;
+
+export type PromptExpansionQualityResult = {
+  ok: boolean;
+  checks: string[];
+  failureReasons: string[];
+};
+
+function normalizePromptForComparison(value: string): string {
+  return value.toLocaleLowerCase().replace(/[\s\p{P}\p{S}]+/gu, "");
+}
+
+/** Rejects copied/generic output before anything is persisted or charged. */
+export function evaluatePromptExpansionQuality(input: {
+  originalPrompt: string;
+  output: PromptExpansionModelOutput;
+}): PromptExpansionQualityResult {
+  const original = input.originalPrompt.trim();
+  const expanded = input.output.expandedPrompt.trim();
+  const failures: string[] = [];
+  const checks: string[] = [];
+  if (!expanded || normalizePromptForComparison(expanded) === normalizePromptForComparison(original)) {
+    failures.push("expandedPrompt must add meaningful content beyond the original premise");
+  } else {
+    checks.push("expandedPrompt differs from original");
+  }
+  const minimumAddedCharacters = Math.max(120, Math.ceil(original.length * 0.2));
+  if (expanded.length - original.length < minimumAddedCharacters) {
+    failures.push(`expandedPrompt must add at least ${minimumAddedCharacters} characters`);
+  } else {
+    checks.push("expandedPrompt has meaningful additional detail");
+  }
+  if (input.output.brief.profile === "story") {
+    const treatment = input.output.brief.storyTreatment;
+    if (!treatment) {
+      failures.push("storyTreatment is required for story expansion");
+    } else {
+      checks.push("storyTreatment contains characters, relationship, conflict, climax, and ending");
+    }
+  }
+  return { ok: failures.length === 0, checks, failureReasons: failures };
+}
 
 export function hashPrompt(prompt: string): string {
   return sha256Hex(prompt.trim());
@@ -84,11 +189,66 @@ export function inferPromptExpansionProfile(prompt: string): PromptExpansionProf
 }
 
 export function deriveVisualSlots(prompt: string, profile = inferPromptExpansionProfile(prompt)): PromptExpansionVisualSlot[] {
+  const cafeLike = /ร้านกาแฟ|คาเฟ่|coffee\s*shop|cafe|คอฟฟี่/i.test(prompt);
+  const restaurantLike = /ร้านอาหาร|ร้าน|restaurant|เมนู|อาหาร|จาน/i.test(prompt);
   const locationLike = /หอไอเฟล|สถานที่|ร้าน|อ่างเก็บน้ำ|จังหวัด|อำเภอ|เมือง|ชายหาด|ปะการัง/i.test(prompt);
   const objectLike = /สินค้า|สิ่งของ|ระบบ|software|แอป|เว็บไซต์|smartaihub/i.test(prompt);
   const newsLike = profile === "news_report";
   const slots: PromptExpansionVisualSlot[] = [];
-  if (locationLike || newsLike) {
+  if (cafeLike) {
+    slots.push(
+      {
+        slotKey: "venue_exterior",
+        title: "หน้าร้านกาแฟ",
+        description: "ภาพภายนอกร้าน ป้าย และบรรยากาศรอบหน้าร้านในสถานที่จริง เพื่อใช้เป็นภาพฉากหลัก",
+        semanticRole: "scene_anchor",
+        mediaType: "mixed",
+        required: true,
+        evidenceStatus: "needs_verification",
+        rationale: "ร้านและทำเลเป็นบริบทของรีวิว จึงต้องเห็นตัวตนของสถานที่ก่อนใช้เป็นฉาก",
+      },
+      {
+        slotKey: "venue_surroundings",
+        title: "บรรยากาศรอบร้าน",
+        description: "ภาพพื้นที่โดยรอบ ทางเข้า วิว หรือจุดเด่นใกล้ร้านที่ช่วยบอกทำเลและประสบการณ์ก่อนเข้าร้าน",
+        semanticRole: "scene_anchor",
+        mediaType: "mixed",
+        required: true,
+        evidenceStatus: "needs_verification",
+        rationale: "ทำเลรอบร้านมีผลต่อคำรีวิวและควรแยกจากภาพภายในร้าน",
+      },
+      {
+        slotKey: "coffee_counter",
+        title: "เคาน์เตอร์ชงกาแฟ",
+        description: "ภาพเคาน์เตอร์ เครื่องชง และขั้นตอนเตรียมกาแฟที่ร้านอนุญาตให้บันทึกได้",
+        semanticRole: "scene_anchor",
+        mediaType: "mixed",
+        required: true,
+        evidenceStatus: "needs_verification",
+        rationale: "เป็นฉากการใช้งานจริงของร้าน ไม่ใช่ reference สินค้าแยกชิ้น",
+      },
+      {
+        slotKey: "cafe_seating",
+        title: "พื้นที่นั่งดื่มกาแฟ",
+        description: "ภาพโต๊ะนั่ง แสง บรรยากาศ และพื้นที่ใช้งานจริงภายในร้าน โดยหลีกเลี่ยงใบหน้าที่ไม่ได้รับอนุญาต",
+        semanticRole: "scene_anchor",
+        mediaType: "mixed",
+        required: true,
+        evidenceStatus: "needs_verification",
+        rationale: "ประสบการณ์นั่งดื่มเป็นส่วนหนึ่งของรีวิวร้าน จึงต้องเป็นภาพฉากที่ผูกกับสถานที่",
+      },
+      {
+        slotKey: "coffee_menu_detail",
+        title: "เมนูและแก้วกาแฟ",
+        description: "ภาพเมนู ราคา และเครื่องดื่มที่รีวิว ใช้เป็นภาพรายละเอียดหรือ B-roll โดยยืนยันข้อมูลจากร้านก่อนเผยแพร่",
+        semanticRole: "reference",
+        mediaType: "mixed",
+        required: true,
+        evidenceStatus: "needs_verification",
+        rationale: "เมนูและราคาเป็นข้อมูลอ้างอิง ไม่ควรถูกตีความเป็นฉากเต็มโดยอัตโนมัติ",
+      },
+    );
+  } else if (locationLike || newsLike) {
     slots.push({
       slotKey: "primary_location",
       title: newsLike ? "ภาพสถานการณ์หลัก" : "ภาพสถานที่/บรรยากาศหลัก",
@@ -153,43 +313,43 @@ export function buildSlotPrompt(slot: PromptExpansionVisualSlot, brief: PromptEx
   ].join(" ");
 }
 
-export function parsePromptExpansionModelOutput(raw: string, fallbackPrompt: string): {
-  brief: PromptExpansionBrief;
-  expandedPrompt: string;
-  slots: PromptExpansionVisualSlot[];
-  sources: PromptExpansionSource[];
-  warnings: string[];
-} {
-  const fallbackProfile = inferPromptExpansionProfile(fallbackPrompt);
-  const fallbackBrief: PromptExpansionBrief = {
-    title: fallbackPrompt.slice(0, 120),
-    oneLineSummary: fallbackPrompt,
-    profile: fallbackProfile,
-    angle: "อธิบายโจทย์ให้ชัดขึ้นโดยคงเจตนาของผู้ใช้",
-    scope: [fallbackPrompt],
-    factualClaims: [],
-    creativeAssumptions: ["รายละเอียดที่ไม่ได้ระบุจะต้องให้ผู้ใช้ตรวจและแก้ไขก่อนนำไปใช้"],
-    exclusions: [],
-  };
-  try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const brief = promptExpansionBriefSchema.parse(parsed.brief);
-    const slots = z.array(promptExpansionVisualSlotSchema).max(50).parse(parsed.slots ?? deriveVisualSlots(fallbackPrompt, brief.profile));
-    const expandedPrompt = typeof parsed.expandedPrompt === "string" && parsed.expandedPrompt.trim() ? parsed.expandedPrompt.trim() : fallbackPrompt;
-    return {
-      brief,
-      expandedPrompt,
-      slots,
-      sources: z.array(promptExpansionSourceSchema).max(30).parse(parsed.sources ?? []),
-      warnings: z.array(z.string()).parse(parsed.warnings ?? []),
-    };
-  } catch {
-    return {
-      brief: fallbackBrief,
-      expandedPrompt: fallbackPrompt,
-      slots: deriveVisualSlots(fallbackPrompt, fallbackProfile),
-      sources: [],
-      warnings: ["AI response ไม่อยู่ในรูปแบบที่ปลอดภัย จึงใช้โครงสร้างตั้งต้นให้ผู้ใช้ตรวจสอบก่อน"],
-    };
+export class PromptExpansionOutputError extends Error {
+  constructor(message: string, public readonly cause?: unknown) {
+    super(message);
+    this.name = "PromptExpansionOutputError";
   }
+}
+
+/** Parse only a real skill response. Invalid/empty/plain-text output is fatal. */
+export function parsePromptExpansionModelOutput(raw: string): PromptExpansionModelOutput {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    throw new PromptExpansionOutputError("Prompt expansion LLM returned an empty response");
+  }
+  const withoutFence = trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(withoutFence);
+  } catch (error) {
+    throw new PromptExpansionOutputError("Prompt expansion LLM returned non-JSON output", error);
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new PromptExpansionOutputError("Prompt expansion LLM returned an invalid JSON object");
+  }
+  let candidate = parsed as Record<string, unknown>;
+  for (const key of ["promptExpansion", "prompt_expansion", "data", "result"]) {
+    const nested = candidate[key];
+    if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+      candidate = nested as Record<string, unknown>;
+      break;
+    }
+  }
+  const validation = promptExpansionModelOutputSchema.safeParse(candidate);
+  if (!validation.success) {
+    throw new PromptExpansionOutputError(
+      "Prompt expansion LLM response failed the skill output schema",
+      validation.error,
+    );
+  }
+  return validation.data;
 }

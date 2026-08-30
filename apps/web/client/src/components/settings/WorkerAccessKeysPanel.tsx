@@ -48,6 +48,8 @@ type WorkerSharingDraft = {
   groupIds: number[];
 };
 
+type WorkerPermissionDraft = Record<string, string[]>;
+
 type WorkerAccessKeysPanelProps = {
   tenantName?: string | null;
 };
@@ -85,6 +87,19 @@ const WORKER_PERMISSION_GROUPS: Array<{
     titleKey: "settings.workers.permissions.groups.gateway.title",
     descriptionKey: "settings.workers.permissions.groups.gateway.description",
     scopes: ["llm:chat", "delegate:http", "delegate:mcp", "callbacks:publish"],
+  },
+  {
+    id: "drama_media",
+    titleKey: "settings.workers.permissions.groups.dramaMedia.title",
+    descriptionKey:
+      "settings.workers.permissions.groups.dramaMedia.description",
+    scopes: [
+      "series:read",
+      "series:bind",
+      "series:scan",
+      "series:media:process",
+      "series:media:publish",
+    ],
   },
   {
     id: "knowledge",
@@ -125,6 +140,13 @@ const WORKER_PERMISSION_SCOPE_LABEL_KEYS: Record<
   "workers:report": "settings.workers.permissions.scopes.workersReport",
   "workers:diagnostics":
     "settings.workers.permissions.scopes.workersDiagnostics",
+  "series:read": "settings.workers.permissions.scopes.seriesRead",
+  "series:bind": "settings.workers.permissions.scopes.seriesBind",
+  "series:scan": "settings.workers.permissions.scopes.seriesScan",
+  "series:media:process":
+    "settings.workers.permissions.scopes.seriesMediaProcess",
+  "series:media:publish":
+    "settings.workers.permissions.scopes.seriesMediaPublish",
   "llm:chat": "settings.workers.permissions.scopes.llmChat",
   "delegate:http": "settings.workers.permissions.scopes.delegateHttp",
   "delegate:mcp": "settings.workers.permissions.scopes.delegateMcp",
@@ -151,6 +173,8 @@ const WORKER_PERMISSION_PRESET_LABEL_KEYS: Record<
   content_worker: "settings.workers.permissions.presets.contentWorker",
   knowledge_worker: "settings.workers.permissions.presets.knowledgeWorker",
   work_os_worker: "settings.workers.permissions.presets.workOsWorker",
+  vertical_drama_media_operator:
+    "settings.workers.permissions.presets.verticalDramaMediaOperator",
   full_personal_worker:
     "settings.workers.permissions.presets.fullPersonalWorker",
   custom: "settings.workers.permissions.presets.custom",
@@ -169,6 +193,8 @@ const WORKER_PERMISSION_PRESET_DESCRIPTION_KEYS: Record<
     "settings.workers.permissions.presetDescriptions.knowledgeWorker",
   work_os_worker:
     "settings.workers.permissions.presetDescriptions.workOsWorker",
+  vertical_drama_media_operator:
+    "settings.workers.permissions.presetDescriptions.verticalDramaMediaOperator",
   full_personal_worker:
     "settings.workers.permissions.presetDescriptions.fullPersonalWorker",
   custom: "settings.workers.permissions.presetDescriptions.custom",
@@ -251,6 +277,10 @@ export function WorkerAccessKeysPanel({
     undefined,
     { retry: false }
   );
+  const connectedDevicesQuery = trpc.connectedDevices.list.useQuery(undefined, {
+    retry: false,
+    staleTime: 15_000,
+  });
   const providersQuery = trpc.llmProviders.list.useQuery();
   const groupsQuery = trpc.groups.list.useQuery(
     { scope: "all" },
@@ -279,6 +309,10 @@ export function WorkerAccessKeysPanel({
   const [sharingDrafts, setSharingDrafts] = useState<
     Record<string, WorkerSharingDraft>
   >({});
+  const [permissionDrafts, setPermissionDrafts] =
+    useState<WorkerPermissionDraft>({});
+  const [workerPolicyDrafts, setWorkerPolicyDrafts] =
+    useState<WorkerPermissionDraft>({});
 
   const providerOptions = useMemo<
     Array<{ id: number; label: string; name: string }>
@@ -353,8 +387,19 @@ export function WorkerAccessKeysPanel({
       onError: error => toast.error(error.message),
     });
 
+  const updateConnectedWorkerPermissionsMutation =
+    trpc.users.updateConnectedWorkerPermissions.useMutation({
+      onSuccess: async ({ deviceUpdated }) => {
+        await utils.users.listConnectedWorkers.invalidate();
+        if (deviceUpdated) await utils.connectedDevices.list.invalidate();
+        toast.success(t("settings.workers.connectedWorkers.permissionsSaved"));
+      },
+      onError: error => toast.error(error.message),
+    });
+
   const workerKeys = prefsQuery.data?.workerAccessKeys ?? [];
   const connectedWorkers = connectedWorkersQuery.data?.workers ?? [];
+  const workerDevices = connectedDevicesQuery.data?.devices ?? [];
   const activeWorkerKeys = workerKeys.filter(key => !key.revokedAt).length;
   const policySummary = useMemo(() => {
     const active = workerKeys.filter(key => !key.revokedAt);
@@ -402,6 +447,33 @@ export function WorkerAccessKeysPanel({
       return changed ? next : current;
     });
   }, [connectedWorkersQuery.data]);
+
+  useEffect(() => {
+    setPermissionDrafts(current => {
+      const next: WorkerPermissionDraft = {};
+      let changed = Object.keys(current).length !== workerDevices.length;
+      for (const device of workerDevices) {
+        const baseline = device.allowedScopes ?? device.scopes ?? [];
+        const existing = current[device.deviceId];
+        next[device.deviceId] = existing ?? [...baseline];
+        if (!existing) changed = true;
+      }
+      return changed ? next : current;
+    });
+  }, [workerDevices]);
+
+  useEffect(() => {
+    setWorkerPolicyDrafts(current => {
+      const next: WorkerPermissionDraft = {};
+      let changed = Object.keys(current).length !== connectedWorkers.length;
+      for (const worker of connectedWorkers) {
+        const existing = current[worker.workerId];
+        next[worker.workerId] = existing ?? [...worker.permissionScopes];
+        if (!existing) changed = true;
+      }
+      return changed ? next : current;
+    });
+  }, [connectedWorkers]);
 
   const canCreate =
     label.trim().length > 0 &&
@@ -568,6 +640,92 @@ export function WorkerAccessKeysPanel({
       draft.sharingMode !== worker.sharingMode ||
       JSON.stringify(draftIds) !== JSON.stringify(currentIds)
     );
+  }
+
+  function permissionDraftChanged(device: {
+    deviceId: string;
+    scopes: string[];
+    allowedScopes: string[];
+  }): boolean {
+    const baseline = device.allowedScopes ?? device.scopes;
+    const selected = permissionDrafts[device.deviceId] ?? baseline;
+    return JSON.stringify([...selected].sort()) !== JSON.stringify([...baseline].sort());
+  }
+
+  function toggleWorkerPermission(
+    deviceId: string,
+    scope: string,
+    checked: boolean,
+  ) {
+    setPermissionDrafts(current => {
+      const selected = new Set(current[deviceId] ?? []);
+      if (checked) selected.add(scope);
+      else selected.delete(scope);
+      return {
+        ...current,
+        [deviceId]: [...selected].sort(),
+      };
+    });
+  }
+
+  function resetWorkerPermissions(device: {
+    deviceId: string;
+    scopes: string[];
+    allowedScopes: string[];
+  }) {
+    setPermissionDrafts(current => ({
+      ...current,
+      [device.deviceId]: [...(device.allowedScopes ?? device.scopes)],
+    }));
+  }
+
+  function saveWorkerPermissions(
+    worker: ConnectedWorkerRecord,
+    device: {
+      deviceId: string;
+      scopes: string[];
+      allowedScopes: string[];
+    },
+  ) {
+    const allowedScopes = permissionDrafts[device.deviceId] ??
+      (device.allowedScopes ?? device.scopes);
+    updateConnectedWorkerPermissionsMutation.mutate({
+      workerId: worker.workerId,
+      permissionScopes: allowedScopes as WorkerAccessPermissionScope[],
+    });
+  }
+
+  function workerPolicyDraftChanged(worker: ConnectedWorkerRecord): boolean {
+    const baseline = worker.permissionScopes;
+    const selected = workerPolicyDrafts[worker.workerId] ?? baseline;
+    return JSON.stringify([...selected].sort()) !== JSON.stringify([...baseline].sort());
+  }
+
+  function toggleWorkerPolicyScope(
+    workerId: string,
+    scope: WorkerAccessPermissionScope,
+    checked: boolean,
+  ) {
+    setWorkerPolicyDrafts(current => {
+      const selected = new Set(current[workerId] ?? []);
+      if (checked) selected.add(scope);
+      else selected.delete(scope);
+      return { ...current, [workerId]: [...selected].sort() };
+    });
+  }
+
+  function resetWorkerPolicy(worker: ConnectedWorkerRecord) {
+    setWorkerPolicyDrafts(current => ({
+      ...current,
+      [worker.workerId]: [...worker.permissionScopes],
+    }));
+  }
+
+  function saveWorkerPolicy(worker: ConnectedWorkerRecord) {
+    updateConnectedWorkerPermissionsMutation.mutate({
+      workerId: worker.workerId,
+      permissionScopes: workerPolicyDrafts[worker.workerId] ?? worker.permissionScopes,
+    });
   }
 
   function saveConnectedWorkerSharing(worker: ConnectedWorkerRecord) {
@@ -1297,6 +1455,309 @@ export function WorkerAccessKeysPanel({
                             {worker.permissionScopeCount}
                           </span>
                         </div>
+                        <div className="rounded-lg border border-violet-100 bg-violet-50/70 p-3">
+                          <div className="font-medium text-slate-900">
+                            {t("settings.workers.connectedWorkers.capabilitiesTitle")}
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            <Badge
+                              variant="outline"
+                              className={worker.capabilities?.hermesReady
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                : "border-amber-200 bg-amber-50 text-amber-800"}
+                            >
+                              {worker.capabilities?.hermesReady
+                                ? `${t("settings.workers.connectedWorkers.hermesCapability")} ${worker.capabilities.hermesVersion ?? ""}`.trim()
+                                : t("settings.workers.connectedWorkers.hermesUnavailable")}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className={worker.capabilities?.localMediaReady
+                                ? "border-sky-200 bg-sky-50 text-sky-800"
+                                : "border-slate-200 bg-white text-slate-600"}
+                            >
+                              {t("settings.workers.connectedWorkers.localMediaCapability")} · {worker.capabilities?.localMediaReady
+                                ? worker.capabilities.localMediaCapabilities.join(", ") || t("settings.workers.connectedWorkers.ready")
+                                : t("settings.workers.connectedWorkers.unavailable")}
+                            </Badge>
+                            {worker.capabilities?.acceptJobs !== null && worker.capabilities?.acceptJobs !== undefined ? (
+                              <Badge variant="secondary">
+                                {t("settings.workers.connectedWorkers.acceptJobs")} · {worker.capabilities.acceptJobs
+                                  ? t("settings.workers.connectedWorkers.enabled")
+                                  : t("settings.workers.connectedWorkers.disabled")}
+                              </Badge>
+                            ) : null}
+                          </div>
+                          {!worker.capabilities?.hermesReady && worker.capabilities?.hermesReason ? (
+                            <p className="mt-2 text-xs text-amber-800">
+                              {worker.capabilities.hermesReason}
+                            </p>
+                          ) : null}
+                        </div>
+                        {(() => {
+                          const device = workerDevices.find(
+                            candidate =>
+                              candidate.workerId === worker.workerId &&
+                              candidate.authKind === "worker_executor",
+                          );
+                          if (!device) {
+                            const selectedScopes =
+                              workerPolicyDrafts[worker.workerId] ?? worker.permissionScopes;
+                            const isPolicyDirty = workerPolicyDraftChanged(worker);
+                            const isPolicySaving =
+                              updateConnectedWorkerPermissionsMutation.isPending &&
+                              updateConnectedWorkerPermissionsMutation.variables?.workerId ===
+                                worker.workerId;
+                            return (
+                              <div className="rounded-lg border border-amber-100 bg-amber-50/70 p-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <span className="font-medium text-slate-900">
+                                    {t("settings.workers.connectedWorkers.workerPermissionsTitle")}
+                                  </span>
+                                  <Badge variant="outline" className="border-amber-200 text-amber-800">
+                                    {t("settings.workers.connectedWorkers.nextConnection")}
+                                  </Badge>
+                                </div>
+                                <p className="mt-1 text-xs text-amber-900">
+                                  {t("settings.workers.connectedWorkers.workerPermissionsDescription")}
+                                </p>
+                                <div className="mt-3 space-y-3">
+                                  {WORKER_PERMISSION_GROUPS.map(group => (
+                                    <div key={group.id}>
+                                      <div className="text-xs font-semibold text-slate-800">
+                                        {t(group.titleKey)}
+                                      </div>
+                                      <p className="mt-0.5 text-[11px] text-slate-600">
+                                        {t(group.descriptionKey)}
+                                      </p>
+                                      <div className="mt-1 grid gap-2 sm:grid-cols-2">
+                                        {group.scopes.map(scope => (
+                                          <label
+                                            key={scope}
+                                            className="flex cursor-pointer items-start gap-2 rounded-lg border border-amber-100 bg-white px-2.5 py-2 text-xs"
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={selectedScopes.includes(scope)}
+                                              disabled={isPolicySaving}
+                                              onChange={event =>
+                                                toggleWorkerPolicyScope(
+                                                  worker.workerId,
+                                                  scope,
+                                                  event.target.checked,
+                                                )
+                                              }
+                                              className="mt-0.5 h-4 w-4"
+                                            />
+                                            <span className="text-slate-700">
+                                              {t(WORKER_PERMISSION_SCOPE_LABEL_KEYS[scope])}
+                                            </span>
+                                          </label>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="mt-3 flex flex-wrap justify-end gap-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => resetWorkerPolicy(worker)}
+                                    disabled={!isPolicyDirty || isPolicySaving}
+                                  >
+                                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                                    {t("settings.workers.connectedWorkers.resetPermissions")}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => saveWorkerPolicy(worker)}
+                                    disabled={!isPolicyDirty || isPolicySaving}
+                                  >
+                                    {isPolicySaving ? (
+                                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Save className="mr-1.5 h-3.5 w-3.5" />
+                                    )}
+                                    {t("settings.workers.connectedWorkers.savePermissions")}
+                                  </Button>
+                                </div>
+                                <a
+                                  className="mt-2 inline-flex text-xs font-medium text-amber-900 underline"
+                                  href="/settings?tab=mcpDevices"
+                                >
+                                  {t("settings.workers.connectedWorkers.reconnectDevice")}
+                                </a>
+                              </div>
+                            );
+                          }
+                          const grantedScopes = device.scopes ?? [];
+                          const baselineAllowedScopes =
+                            device.allowedScopes ?? grantedScopes;
+                          const selectedScopes =
+                            permissionDrafts[device.deviceId] ?? baselineAllowedScopes;
+                          const effectiveScopes = device.effectiveScopes ?? [];
+                          const deniedScopes = grantedScopes.filter(
+                            scope => !effectiveScopes.includes(scope),
+                          );
+                          const isPermissionDirty = permissionDraftChanged(device);
+                          const isPermissionSaving =
+                            updateConnectedWorkerPermissionsMutation.isPending &&
+                            updateConnectedWorkerPermissionsMutation.variables?.workerId ===
+                              worker.workerId;
+                          const canEditPermissions = device.status !== "revoked";
+                          return (
+                            <div className="rounded-lg border border-sky-100 bg-sky-50/70 p-3">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-medium text-slate-900">
+                                  {t(
+                                    "settings.workers.connectedWorkers.devicePermissions",
+                                  )}
+                                </span>
+                                <Badge variant="outline">
+                                  {t(
+                                    `settings.workers.connectedWorkers.deviceStatus.${device.status}`,
+                                  )}
+                                </Badge>
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {effectiveScopes.length > 0 ? (
+                                  effectiveScopes.map(scope => (
+                                    <Badge
+                                      key={scope}
+                                      variant="secondary"
+                                      className="text-xs"
+                                    >
+                                      {WORKER_PERMISSION_SCOPE_LABEL_KEYS[
+                                        scope as WorkerAccessPermissionScope
+                                      ]
+                                        ? t(
+                                            WORKER_PERMISSION_SCOPE_LABEL_KEYS[
+                                              scope as WorkerAccessPermissionScope
+                                            ],
+                                          )
+                                        : scope}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <span className="text-xs text-slate-500">
+                                    {t(
+                                      "settings.workers.connectedWorkers.noEffectivePermissions",
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                              <a
+                                className="mt-2 inline-flex text-xs font-medium text-sky-700 hover:underline"
+                                href="/settings?tab=mcpDevices"
+                              >
+                                {t(
+                                  "settings.workers.connectedWorkers.manageDevicePermissions",
+                                )}
+                              </a>
+                              <p className="mt-3 text-xs text-slate-600">
+                                {t("settings.workers.connectedWorkers.permissionsDescription")}
+                              </p>
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                <Badge variant="secondary">
+                                  {t("settings.workers.connectedWorkers.grantedCount", {
+                                    count: grantedScopes.length,
+                                  })}
+                                </Badge>
+                                <Badge variant="secondary">
+                                  {t("settings.workers.connectedWorkers.effectiveCount", {
+                                    count: effectiveScopes.length,
+                                  })}
+                                </Badge>
+                                {deniedScopes.length > 0 ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="border-amber-200 bg-amber-50 text-amber-800"
+                                  >
+                                    {t("settings.workers.connectedWorkers.blockedCount", {
+                                      count: deniedScopes.length,
+                                    })}
+                                  </Badge>
+                                ) : null}
+                              </div>
+                              <div className="mt-3 space-y-3">
+                                {WORKER_PERMISSION_GROUPS.map(group => {
+                                  const groupScopes = group.scopes.filter(scope =>
+                                    grantedScopes.includes(scope),
+                                  );
+                                  if (groupScopes.length === 0) return null;
+                                  return (
+                                    <div key={group.id}>
+                                      <div className="text-xs font-semibold text-slate-800">
+                                        {t(group.titleKey)}
+                                      </div>
+                                      <div className="mt-1 grid gap-2 sm:grid-cols-2">
+                                        {groupScopes.map(scope => (
+                                          <label
+                                            key={scope}
+                                            className="flex cursor-pointer items-start gap-2 rounded-lg border border-sky-100 bg-white px-2.5 py-2 text-xs"
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={selectedScopes.includes(scope)}
+                                              disabled={!canEditPermissions || isPermissionSaving}
+                                              onChange={event =>
+                                                toggleWorkerPermission(
+                                                  device.deviceId,
+                                                  scope,
+                                                  event.target.checked,
+                                                )
+                                              }
+                                              className="mt-0.5 h-4 w-4"
+                                            />
+                                            <span className="text-slate-700">
+                                              {WORKER_PERMISSION_SCOPE_LABEL_KEYS[scope]
+                                                ? t(WORKER_PERMISSION_SCOPE_LABEL_KEYS[scope])
+                                                : scope}
+                                            </span>
+                                          </label>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <p className="mt-3 text-xs text-slate-600">
+                                {t("settings.workers.connectedWorkers.cannotGrantMore")}
+                              </p>
+                              <div className="mt-3 flex flex-wrap justify-end gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => resetWorkerPermissions(device)}
+                                  disabled={!isPermissionDirty || isPermissionSaving}
+                                >
+                                  <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                                  {t("settings.workers.connectedWorkers.resetPermissions")}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => saveWorkerPermissions(worker, device)}
+                                  disabled={
+                                    !isPermissionDirty ||
+                                    !canEditPermissions ||
+                                    isPermissionSaving
+                                  }
+                                >
+                                  {isPermissionSaving ? (
+                                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Save className="mr-1.5 h-3.5 w-3.5" />
+                                  )}
+                                  {t("settings.workers.connectedWorkers.savePermissions")}
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
 

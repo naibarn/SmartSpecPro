@@ -70,6 +70,7 @@ import "../services/channelAdapters/discord"; // Register Discord adapter
 import { adapterRegistry } from "../services/channelAdapters/registry";
 import { createSlideRenderRouter } from "../routes/slideRender";
 import { createStoryboardFinalCaptureRouter } from "../routes/storyboardFinalCapture";
+import { createPublicGalleryMediaRouter } from "../routes/publicGalleryMedia";
 import { createGuardianSSERouter } from "../routes/guardianSSE";
 import agencyStreamRouter from "../routes/agencyStream";
 import orchestratorStreamRouter from "../routes/orchestratorStream";
@@ -89,12 +90,14 @@ import { tenantMiddleware } from "./tenant";
 import { ENV } from "./env";
 import { debugError } from "./logger";
 import { isCreditFailureMessage } from "../services/creditFailurePolicy";
+import { isStorageCapacityError } from "../../shared/storageCapacityError";
 import { sdk } from "./sdk";
 import { signBearerToken } from "./tokens";
 import { authorizeRequest } from "./authz";
 import { storageHeadFile, storageStreamFile } from "../storage";
 import { resolveUploadsManagedPath } from "../services/managedMediaAccessService";
 import { canReadManagedStorageKey } from "../services/managedStorageAuthorizationService";
+import { resolveTenantIdVarchar } from "../services/tenantContext";
 import {
   getProtectedMediaEtag,
   matchesIfNoneMatch,
@@ -119,6 +122,10 @@ import { initializeBillingJobs, shutdownBillingJobs } from "../jobs/billingJobs"
 import { initializeMemoryMaintenanceJobs, shutdownMemoryMaintenanceJobs } from "../jobs/memoryMaintenanceJobs";
 import { initializeContentRefreshJob } from "../jobs/contentRefreshJob";
 import { initializeInactiveUserJob } from "../jobs/inactiveUserJob";
+import {
+  initializeFeedbackAutoCloseJob,
+  shutdownFeedbackAutoCloseJob,
+} from "../jobs/feedbackAutoCloseJob";
 import {
   initializeSkillMaintenanceScheduleJob,
   shutdownSkillMaintenanceScheduleJob,
@@ -184,6 +191,10 @@ import {
   initVerticalDramaStoryJobsQueue,
   closeVerticalDramaStoryJobsQueue,
 } from "../services/verticalDramaStoryJobs";
+import {
+  initVerticalDramaInteractiveJobsQueue,
+  closeVerticalDramaInteractiveJobsQueue,
+} from "../services/verticalDramaInteractiveJobs";
 import {
   initVerticalDramaDraftQualityQcQueue,
   closeVerticalDramaDraftQualityQcQueue,
@@ -361,8 +372,14 @@ app.use(
   express.json({ limit: "16mb" }),
 );
 
+// Keep the legacy Base64 Library procedures large enough for their 50 MiB
+// decoded-file contract (~70 MB Base64 plus the JSON envelope). New clients
+// use direct R2 upload and do not pass file bytes through this JSON boundary.
+app.use("/trpc/library.uploadFile", express.json({ limit: "75mb" }));
+app.use("/trpc/library.replaceFile", express.json({ limit: "75mb" }));
+
 // Default JSON body limit — 10MB covers all normal API requests.
-// Upload routes use raw body or multipart, not JSON, so they're unaffected.
+// Other upload routes use raw body or multipart, not JSON, so they're unaffected.
 // Media/storage uploads bypass this via Nginx streaming (proxy_request_buffering off).
 app.use(express.json({ limit: "10mb" }));
 app.use((err: any, req: any, res: any, next: any) => {
@@ -604,12 +621,10 @@ app.get("/uploads/*", async (req, res) => {
       res.status(404).json({ error: "File not found" });
       return;
     }
-    const tenantId = String(
-      auth.tenantId ||
-        (auth as any).user?.currentTenantId ||
-        (req as any).tenantId ||
-        "",
-    ).trim();
+    const tenantId = resolveTenantIdVarchar(
+      (req as any).tenantId || (req as any).tenant?.id,
+      auth.tenantId || (auth as any).user?.currentTenantId,
+    ) ?? "";
     const userId = Number((auth as any).userId || (auth as any).user?.id || auth.sub);
     if (!tenantId || !Number.isInteger(userId) || userId <= 0) {
       res.status(404).json({ error: "File not found" });
@@ -670,12 +685,10 @@ app.get("/api/storage/files/*", async (req, res) => {
       res.status(404).json({ error: "File not found" });
       return;
     }
-    const tenantId = String(
-      auth.tenantId ||
-        (auth as any).user?.currentTenantId ||
-        (req as any).tenantId ||
-        "",
-    ).trim();
+    const tenantId = resolveTenantIdVarchar(
+      (req as any).tenantId || (req as any).tenant?.id,
+      auth.tenantId || (auth as any).user?.currentTenantId,
+    ) ?? "";
     const userId = Number((auth as any).userId || (auth as any).user?.id || auth.sub);
     if (!tenantId || !Number.isInteger(userId) || userId <= 0 || !(await canReadManagedStorageKey(rawKey, {
       tenantId,
@@ -883,14 +896,17 @@ registerMcpOAuthServerRoutes(app);
 registerMcpPublicRoutes(app);
 registerMediaJobRoutes(app);
 registerFeedbackUploadRoutes(app);
+// Published Gallery media is public by design. Keep it on its own route so
+// visitors do not need the session-bound /api/storage/files proxy.
+app.use("/api/gallery/media", createPublicGalleryMediaRouter());
 registerAgencyStreamRoutes(app);
 registerLiveBrowserStreamRoutes(app);
 registerWorkerRuntimeRoutes(app);
+registerWorkerSeriesControlPlaneRoutes(app);
 registerDesktopHostRoutes(app);
 registerDesktopReleaseRoutes(app);
 registerWorkflowNodeTypesRoute(app);
 registerWorkflowWorkerRuntimeRoutes(app);
-registerWorkerSeriesControlPlaneRoutes(app);
 registerContentAutomationRoutes(app);
 registerContentManifestImportRoutes(app);
 registerAutoDraftToolRoute(app);
@@ -1729,9 +1745,10 @@ app.use(
       // SYSTEM files the diagnostic ticket itself. Fire-and-forget: never
       // let a reporting failure affect the original tRPC error response.
       if (
-        error.code === "INTERNAL_SERVER_ERROR" ||
+        !isStorageCapacityError(error.message) &&
+        (error.code === "INTERNAL_SERVER_ERROR" ||
         error.code === "TIMEOUT" ||
-        isCreditFailureMessage(error.message)
+        isCreditFailureMessage(error.message))
       ) {
         void (async () => {
           try {
@@ -1949,6 +1966,14 @@ async function main() {
     await initVerticalDramaStoryJobsQueue();
   } catch (error) {
     console.error("[Startup] Failed to initialize vertical drama story jobs queue:", error);
+  }
+
+  // Initialize the shared Vertical Drama interactive LLM queue used by
+  // prompt expansion, preset synthesis, and source/character helpers.
+  try {
+    await initVerticalDramaInteractiveJobsQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize vertical drama interactive jobs queue:", error);
   }
 
   // Pre-create Draft QC queue — skill-first premise quality checks before a
@@ -2190,6 +2215,12 @@ async function main() {
     console.error("[Startup] Failed to initialize inactive user job:", error);
   }
 
+  try {
+    await initializeFeedbackAutoCloseJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize feedback auto-close job:", error);
+  }
+
   // Initialize skill maintenance scheduler (every 15m)
   try {
     await initializeSkillMaintenanceScheduleJob();
@@ -2291,6 +2322,12 @@ async function main() {
       console.error("[Startup] Failed to start pending media scheduler:", err);
     });
 
+    import("../services/presentationBuilderImageJobService").then(({ startPresentationBuilderImageJobScheduler }) => {
+      startPresentationBuilderImageJobScheduler();
+    }).catch((err) => {
+      console.error("[Startup] Failed to start Presentation Builder image scheduler:", err);
+    });
+
     // Start queue health monitor
     import("../services/queueHealthMonitor").then(({ startQueueHealthMonitor }) => {
       startQueueHealthMonitor();
@@ -2367,12 +2404,14 @@ process.on("SIGTERM", async () => {
   await shutdownFinanceOcrRetentionJob().catch(() => {});
   await shutdownUploadPostCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
+  shutdownFeedbackAutoCloseJob();
   await shutdownBillingJobs().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
   await closeVerticalDramaStoryJobsQueue().catch(() => {});
+  await closeVerticalDramaInteractiveJobsQueue().catch(() => {});
   await closeVerticalDramaDraftQualityQcQueue().catch(() => {});
   await closeVerticalDramaDraftCompositionQueue().catch(() => {});
   await closeVerticalDramaShotPromptJobsQueue().catch(() => {});
@@ -2447,6 +2486,7 @@ process.on("SIGINT", async () => {
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
   await closeVerticalDramaStoryJobsQueue().catch(() => {});
+  await closeVerticalDramaInteractiveJobsQueue().catch(() => {});
   await closeVerticalDramaDraftQualityQcQueue().catch(() => {});
   await closeVerticalDramaDraftCompositionQueue().catch(() => {});
   await closeVerticalDramaShotPromptJobsQueue().catch(() => {});

@@ -38,6 +38,25 @@ pub struct RuntimePackManifest {
     pub remotion_platform_contract_version: Option<String>,
     #[serde(default)]
     pub remotion_sidecar_script_path: Option<String>,
+    #[serde(default)]
+    pub transcription: Option<RuntimeTranscriptionManifest>,
+}
+
+/// The transcription runtime is deliberately part of the signed runtime-pack
+/// contract. HyperFrames' `transcribe` command discovers whisper.cpp through
+/// the process environment and otherwise downloads/builds it on first use;
+/// that is not deterministic or suitable for a managed Worker.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeTranscriptionManifest {
+    pub engine: String,
+    pub version: String,
+    pub binary_path: String,
+    pub binary_sha256: String,
+    pub model: String,
+    pub model_path: String,
+    pub model_sha256: String,
+    pub model_url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -512,6 +531,49 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
         );
     }
 
+    let transcription = manifest.transcription.as_ref();
+    let transcription_binary = transcription
+        .map(|item| safe_join(&runtime_pack_dir, &item.binary_path));
+    let transcription_model = transcription
+        .map(|item| safe_join(&runtime_pack_dir, &item.model_path));
+    let transcription_contract_ok = transcription.is_some_and(|item| {
+        item.engine == "whisper.cpp"
+            && !item.version.trim().is_empty()
+            && !item.binary_sha256.trim().is_empty()
+            && !item.model.trim().is_empty()
+            && !item.model_sha256.trim().is_empty()
+            && !item.model_url.trim().is_empty()
+    });
+    let transcription_files_ok = transcription_contract_ok
+        && transcription_binary.as_ref().is_some_and(|path| path.is_file())
+        && transcription_model.as_ref().is_some_and(|path| {
+            path.is_file() && fs::metadata(path).map(|metadata| metadata.len() > 100_000_000).unwrap_or(false)
+        });
+    checks.push(DoctorCheck {
+        id: "transcription_runtime".into(),
+        status: if transcription_files_ok { "ok" } else { "error" }.into(),
+        message: if transcription_files_ok {
+            "Bundled whisper.cpp binary and multilingual transcription model are present.".into()
+        } else {
+            "Bundled transcription runtime is missing or its manifest contract is incomplete.".into()
+        },
+        details_json: json!({
+            "engine": transcription.map(|item| item.engine.as_str()),
+            "version": transcription.map(|item| item.version.as_str()),
+            "binary": transcription_binary.as_ref().map(|path| path.to_string_lossy().to_string()),
+            "binarySha256": transcription.map(|item| item.binary_sha256.as_str()),
+            "model": transcription.map(|item| item.model.as_str()),
+            "modelPath": transcription_model.as_ref().map(|path| path.to_string_lossy().to_string()),
+            "modelSha256": transcription.map(|item| item.model_sha256.as_str()),
+            "modelUrl": transcription.map(|item| item.model_url.as_str()),
+        }),
+    });
+    if !transcription_files_ok {
+        recommended_actions.push(
+            "Install a complete signed runtime pack with whisper.cpp and ggml-large-v3.bin for HyperFrames transcription.".into(),
+        );
+    }
+
     checks.push(DoctorCheck {
         id: "hyperframes_sidecar".into(),
         status: if sidecar_exists { "ok" } else { "error" }.into(),
@@ -587,26 +649,31 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
 
     let checksum_exists = checksum_path.is_file();
     let signature_exists = signature_path.is_file();
+    let signature_is_placeholder = signature_exists
+        && file_contains_any(
+            &signature_path,
+            &[b"placeholder-signature-required-before-release"],
+        );
     checks.push(DoctorCheck {
         id: "runtime_signature_bundle".into(),
-        status: if checksum_exists && signature_exists {
+        status: if checksum_exists && signature_exists && !signature_is_placeholder {
             "ok"
         } else {
             "error"
         }
         .into(),
-        message: if checksum_exists && signature_exists {
+        message: if checksum_exists && signature_exists && !signature_is_placeholder {
             "Runtime checksum and signature files are present.".into()
         } else {
-            "Runtime checksum or signature file is missing.".into()
+            "Runtime checksum/signature is missing or the signature is a placeholder.".into()
         },
         details_json: json!({
             "checksumFile": checksum_path.to_string_lossy(),
             "signatureFile": signature_path.to_string_lossy(),
-            "cryptographicVerification": "pending_official_public_key",
+            "cryptographicVerification": if signature_is_placeholder { "blocked_placeholder" } else { "pending_official_public_key" },
         }),
     });
-    if !(checksum_exists && signature_exists) {
+    if !(checksum_exists && signature_exists && !signature_is_placeholder) {
         recommended_actions.push(
             "Install the signed official runtime pack with checksum and signature files".into(),
         );
@@ -761,7 +828,7 @@ fn safe_join(root: &Path, relative: &str) -> PathBuf {
     root.join(relative_path)
 }
 
-fn runtime_pack_root_for_sidecars(sidecar_root: &Path) -> PathBuf {
+pub fn runtime_pack_root_for_sidecars(sidecar_root: &Path) -> PathBuf {
     if sidecar_root
         .file_name()
         .and_then(|name| name.to_str())

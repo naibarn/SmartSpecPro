@@ -37,6 +37,7 @@ vi.mock("../auditLogger", () => ({
 }));
 
 vi.mock("../imagePromptSafetyService", () => ({
+  isReusablePreparedEpisodeCoverSafety: vi.fn(() => false),
   isVerticalDramaImageRequest: vi.fn(() => false),
   prepareImagePromptSafety: vi.fn(async (input: { prompt: string }) => ({
     prompt: input.prompt.trim(),

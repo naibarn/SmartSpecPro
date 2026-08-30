@@ -3,6 +3,7 @@ import {
   enqueueVerticalDramaCharacterPromptJob,
   getActiveVerticalDramaCharacterPromptJob,
   getVerticalDramaCharacterPromptJobStatus,
+  isVerticalDramaCharacterPromptCreditCapacityError,
   isVerticalDramaCharacterPromptWorkerExecution,
   runVerticalDramaCharacterPromptJob,
   type VerticalDramaCharacterPromptJobRedisAdapter,
@@ -119,5 +120,98 @@ describe("verticalDramaCharacterPromptJobs", () => {
         deps,
       ),
     ).toBeNull();
+  });
+
+  it("keeps a job alive while provider in-flight credit capacity settles", async () => {
+    const redis = fakeRedis();
+    const retryDelays: number[] = [];
+    const deps = {
+      redis,
+      now: () => 1_700_000_000_000,
+      sleep: async (milliseconds: number) => {
+        retryDelays.push(milliseconds);
+      },
+    };
+    const result = await enqueueVerticalDramaCharacterPromptJob(payload, {
+      ...deps,
+      enqueueBullmqJob: async () => {},
+    });
+    let calls = 0;
+
+    await runVerticalDramaCharacterPromptJob(
+      result.jobId,
+      async () => {
+        calls += 1;
+        if (calls === 1) {
+          throw new Error(
+            "LLM request failed: This request would exceed your available credits given your current in-flight requests. Retry after in-flight requests settle, or add credits."
+          );
+        }
+        return { mode: "single", portraitPrompt: "ready after capacity" };
+      },
+      deps,
+    );
+
+    expect(isVerticalDramaCharacterPromptCreditCapacityError(new Error(
+      "This request would exceed your available credits given your current in-flight requests"
+    ))).toBe(true);
+    expect(retryDelays).toEqual([15_000]);
+    expect(
+      await getVerticalDramaCharacterPromptJobStatus(result.jobId, owner, deps),
+    ).toMatchObject({
+      status: "succeeded",
+      result: { portraitPrompt: "ready after capacity" },
+    });
+  });
+
+  it("requeues capacity waits without failing the durable prompt job", async () => {
+    const redis = fakeRedis();
+    const scheduled: Array<{
+      jobId: string;
+      delayMs: number;
+      retryCount: number;
+    }> = [];
+    const deps = {
+      redis,
+      now: () => 1_700_000_000_000,
+      scheduleRetry: async (
+        jobId: string,
+        delayMs: number,
+        retryCount: number,
+      ) => {
+        scheduled.push({ jobId, delayMs, retryCount });
+      },
+    };
+    const result = await enqueueVerticalDramaCharacterPromptJob(payload, {
+      ...deps,
+      enqueueBullmqJob: async () => {},
+    });
+
+    await runVerticalDramaCharacterPromptJob(
+      result.jobId,
+      async () => {
+        throw new Error(
+          "LLM request failed: This request would exceed your available credits given your current in-flight requests",
+        );
+      },
+      deps,
+    );
+
+    expect(scheduled).toEqual([
+      { jobId: result.jobId, delayMs: 15_000, retryCount: 1 },
+    ]);
+    expect(
+      await getVerticalDramaCharacterPromptJobStatus(result.jobId, owner, deps),
+    ).toMatchObject({
+      status: "queued",
+      error: null,
+      capacityRetryCount: 1,
+      waitingReason: "provider_capacity",
+      nextRetryAt: expect.any(String),
+    });
+    expect(await getActiveVerticalDramaCharacterPromptJob(owner, deps)).toMatchObject({
+      jobId: result.jobId,
+      status: "queued",
+    });
   });
 });

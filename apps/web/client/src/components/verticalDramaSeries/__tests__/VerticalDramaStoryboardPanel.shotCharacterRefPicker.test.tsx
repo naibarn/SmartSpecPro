@@ -106,6 +106,164 @@ describe("VerticalDramaStoryboardPanel — per-shot character reference picker (
     ).toHaveAttribute("data-state", "unchecked");
   });
 
+  it("shows a recoverable waiting state for a suggested look without a portrait", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "a prompt",
+                requiredCharacterRefs: ["hero-uniform"],
+                characterLookAssignments: [
+                  {
+                    baseCharacterKey: "hero",
+                    selectedLookKey: "hero-uniform",
+                    mode: "needs_new_look",
+                    status: "waiting_for_portrait",
+                    requestedLabel: "ชุดยูนิฟอร์ม",
+                    reason: "missing portrait",
+                    confidence: 0.9,
+                  },
+                ],
+              },
+            ],
+          },
+          onSetShotCharacterReferences: vi.fn(),
+        }) as any)}
+      />
+    );
+
+    expect(
+      screen.getByTestId("vd-storyboard-pending-look-1")
+    ).toHaveTextContent("รอลุคใหม่");
+    expect(
+      screen.getByTestId("vd-storyboard-pending-look-use-other-1")
+    ).toBeInTheDocument();
+  });
+
+  it("shows the waiting state from storyboard data before a start-frame plan exists", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          storyboard: {
+            shots: [
+              {
+                shot_number: 1,
+                visual_description: "อยู่บ้าน",
+                required_character_refs: ["hero-uniform"],
+              },
+            ],
+          },
+          startFramePlan: { frames: [] },
+          characterPortraits: {
+            hero: { characterId: "1", name: "พระเอก", portraitUrl: null },
+            "hero-uniform": {
+              characterId: "2",
+              name: "พระเอก",
+              portraitUrl: null,
+              parentCharacterId: "1",
+              variantLabel: "ชุดลำลองอยู่บ้าน",
+              variantType: "outfit" as const,
+              isSystemSuggestedLook: true,
+            },
+          },
+        }) as any)}
+      />
+    );
+
+    expect(
+      screen.getByTestId("vd-storyboard-pending-look-1")
+    ).toHaveTextContent("ชุดลำลองอยู่บ้าน");
+    expect(
+      screen.getByTestId("vd-storyboard-pending-look-use-other-1")
+    ).toBeInTheDocument();
+  });
+
+  it("automatically clears the stale waiting state once the selected look has a portrait", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "a prompt",
+                requiredCharacterRefs: ["hero-uniform"],
+                characterLookAssignments: [
+                  {
+                    baseCharacterKey: "hero",
+                    selectedLookKey: "hero-uniform",
+                    mode: "needs_new_look",
+                    status: "waiting_for_portrait",
+                    requestedLabel: "ชุดยูนิฟอร์ม",
+                    reason: "missing portrait",
+                    confidence: 0.9,
+                  },
+                ],
+              },
+            ],
+          },
+          characterPortraits: {
+            hero: { characterId: "1", name: "พระเอก", portraitUrl: null },
+            "hero-uniform": {
+              characterId: "2",
+              name: "พระเอก",
+              portraitUrl: "https://cdn.example.test/uniform.jpg",
+              parentCharacterId: "1",
+              variantLabel: "ชุดยูนิฟอร์ม",
+              variantType: "outfit" as const,
+            },
+          },
+        }) as any)}
+      />
+    );
+
+    expect(
+      screen.queryByTestId("vd-storyboard-pending-look-1")
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows conflicting look cues as review without blocking the shot", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "a prompt",
+                requiredCharacterRefs: ["hero"],
+                characterLookAssignments: [
+                  {
+                    baseCharacterKey: "hero",
+                    selectedLookKey: "hero",
+                    mode: "base",
+                    status: "review",
+                    reason: "conflicting look cues",
+                    confidence: 0.2,
+                  },
+                ],
+              },
+            ],
+          },
+          onGenerateStartFrameImage: vi.fn(),
+        }) as any)}
+      />
+    );
+
+    expect(
+      screen.getByTestId(`vd-storyboard-look-review-1`)
+    ).toHaveTextContent("ควรตรวจสอบลุค");
+    expect(
+      screen.getByTestId(`vd-storyboard-look-review-use-other-1`)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`vd-generate-image-1`)
+    ).not.toBeDisabled();
+  });
+
   it("submits the full-replacement array with the correct shotNumber on save", () => {
     const onSet = vi.fn();
     render(
@@ -252,6 +410,35 @@ describe("VerticalDramaStoryboardPanel — per-shot character reference picker (
       screen.getByTestId("vd-storyboard-character-ref-picker-save-1")
     );
     expect(onSet).toHaveBeenCalledWith(1, ["hero"]);
+  });
+
+  it("drops a stale key automatically when the user selects another character", () => {
+    const onSet = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          onSetShotCharacterReferences: onSet,
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "a prompt",
+                requiredCharacterRefs: ["ghost-key"],
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+    fireEvent.click(screen.getByTestId("vd-storyboard-character-ref-edit-1"));
+    fireEvent.click(
+      checkboxFor("vd-storyboard-character-ref-option-1-hero-twin")
+    );
+    fireEvent.click(
+      screen.getByTestId("vd-storyboard-character-ref-picker-save-1")
+    );
+
+    expect(onSet).toHaveBeenCalledWith(1, ["hero-twin"]);
   });
 
   it("re-renders the shot's character chips from the updated plan after a save (chips read frame.requiredCharacterRefs, not the storyboard's own field)", () => {

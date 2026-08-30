@@ -74,10 +74,40 @@ export default function LibrarySearchPanel({
   const showItemTypeFilter = typeof onItemTypeFilterChange === "function";
   const showAddToReference = typeof onAddToReference === "function";
 
+  const getDurableMediaUrl = (
+    item: LibrarySearchResultItem,
+    variant: "source" | "thumbnail"
+  ): string | null => {
+    const metadata = item.metadata;
+    const allowSourceKeyFallback =
+      variant === "source" || item.item_type.toLowerCase() === "image";
+    const storageKey =
+      metadata && typeof metadata === "object"
+        ? [
+            variant === "thumbnail" ? metadata.thumbnail_key : undefined,
+            allowSourceKeyFallback ? metadata.source_key : undefined,
+            allowSourceKeyFallback ? metadata.storage_key : undefined,
+          ]
+            .find(value => typeof value === "string" && value.trim())
+            ?.toString()
+            .trim()
+        : null;
+    if (storageKey) {
+      return `/api/storage/files/${encodeURI(storageKey.replace(/^\/+/, ""))}`;
+    }
+
+    const value =
+      variant === "thumbnail" ? item.thumbnail_url : item.source_url;
+    const trimmed = value?.trim() || "";
+    return /^(?:\/api\/storage\/files\/|\/uploads\/)/i.test(trimmed)
+      ? trimmed
+      : null;
+  };
+
   const getItemDragUrl = (item: LibrarySearchResultItem): string | null => {
     const itemType = item.item_type.toLowerCase();
-    const sourceUrl = item.source_url?.trim() || null;
-    const thumbnailUrl = item.thumbnail_url?.trim() || null;
+    const sourceUrl = getDurableMediaUrl(item, "source");
+    const thumbnailUrl = getDurableMediaUrl(item, "thumbnail");
 
     if (itemType === "video") {
       return sourceUrl;
@@ -112,8 +142,8 @@ export default function LibrarySearchPanel({
 
   const renderItemPreview = (item: LibrarySearchResultItem) => {
     const itemType = item.item_type.toLowerCase();
-    const thumbnailUrl = item.thumbnail_url?.trim() || null;
-    const sourceUrl = item.source_url?.trim() || null;
+    const thumbnailUrl = getDurableMediaUrl(item, "thumbnail");
+    const sourceUrl = getDurableMediaUrl(item, "source");
     const previewUrl = thumbnailUrl || sourceUrl;
 
     if (itemType === "image" && previewUrl) {
@@ -237,7 +267,7 @@ export default function LibrarySearchPanel({
               const canAddToReference = showAddToReference && (canAddToReferenceItem ? canAddToReferenceItem(item) : true);
               const itemType = item.item_type.toLowerCase();
               const canPreview = itemType === "image" || itemType === "video";
-              const sourceUrl = item.source_url?.trim() || null;
+              const sourceUrl = getDurableMediaUrl(item, "source");
               return (
                 <div
                   key={item.item_id}

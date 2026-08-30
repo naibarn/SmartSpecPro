@@ -12,6 +12,8 @@ import {
   failMarketplaceAutoReviewInitialization,
   initializeMarketplaceAutoReviewRun,
   processMarketplaceAutoReviewDraftQualityQc,
+  reconcileMarketplaceAutoReviewSequentialShotImageEdit,
+  MARKETPLACE_AUTO_REVIEW_SEQUENTIAL_IMAGE_EDIT_RECONCILIATION_JOB_TYPE,
   type MarketplaceAutoReviewStatus,
 } from "../services/marketplaceAutoReviewService";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
@@ -45,6 +47,7 @@ export const MARKETPLACE_AUTO_REVIEW_ADVANCE_OUTBOX_JOB_TYPES = [
   "advance_run",
   "provider_reconciliation_recovery",
   "draft_quality_qc",
+  MARKETPLACE_AUTO_REVIEW_SEQUENTIAL_IMAGE_EDIT_RECONCILIATION_JOB_TYPE,
 ] as const;
 const SCHEDULER_MODES = ["auto", "interval", "external"] as const;
 
@@ -305,6 +308,24 @@ export async function runMarketplaceAutoReviewJob(
               userId: run.userId,
               tenantId,
             }
+          );
+        } else if (
+          job.jobType ===
+          MARKETPLACE_AUTO_REVIEW_SEQUENTIAL_IMAGE_EDIT_RECONCILIATION_JOB_TYPE
+        ) {
+          const payload = (job.payloadJson ?? {}) as Record<string, unknown>;
+          await reconcileMarketplaceAutoReviewSequentialShotImageEdit(
+            {
+              runId: run.id,
+              shotId: Number(payload.shotId),
+              taskId: String(payload.taskId ?? ""),
+              pollAttempt: Number(payload.pollAttempt ?? 0),
+            },
+            {
+              userId: run.userId,
+              tenantId,
+            },
+            jobRuntime
           );
         } else if (job.jobType === "initialize_run") {
           await initializeMarketplaceAutoReviewRun(

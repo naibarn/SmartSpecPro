@@ -28,10 +28,9 @@ import { DOCUMENT_MANAGEMENT_ROUTE, isMarkdownLibraryItem } from "@/lib/document
 import {
   validateMediaFile,
   validateAttachmentFile,
-  readFileAsBase64,
   getAcceptString,
-  resolveEditorFileMimeType,
 } from "./uploadMedia";
+import { uploadLibraryFileDirect } from "@/services/libraryUploadClient";
 import { resolveDocumentPreviewType } from "@/lib/documentManagementUi";
 
 export type MediaInsertAttrs =
@@ -195,8 +194,6 @@ export default function MediaInsertMenu({
 
   const isLoading = listLoading || searchLoading;
 
-  const uploadFileMutation = trpc.library.uploadFile.useMutation();
-
   const handleSelectItem = useCallback(
     (item: LibraryItem) => {
       const assetId = String(item.id);
@@ -262,11 +259,7 @@ export default function MediaInsertMenu({
       setUploadError(null);
 
       try {
-        const fileBase64 = await readFileAsBase64(file);
-        const result = await uploadFileMutation.mutateAsync({
-          fileName: file.name,
-          fileType: resolveEditorFileMimeType(file),
-          fileBase64,
+        const result = await uploadLibraryFileDirect(file, {
           title: file.name.replace(/\.[^.]+$/, ""),
           metadata: uploadMetadata,
         });
@@ -316,7 +309,7 @@ export default function MediaInsertMenu({
         setUploading(false);
       }
     },
-    [mediaType, onInsert, onOpenChange, uploadFileMutation, uploadMetadata],
+    [mediaType, onInsert, onOpenChange, uploadMetadata],
   );
 
   const handleInputChange = useCallback(

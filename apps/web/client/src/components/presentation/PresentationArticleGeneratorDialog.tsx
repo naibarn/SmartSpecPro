@@ -121,13 +121,14 @@ import {
 } from "@shared/presentation/editorialLayoutPlanner";
 
 type ExecutionSource = "skill" | "agency";
+export type ArticleInputMode = "generate" | "existing";
 type ArticleLanguage = "th" | "en";
 type SlideCanvasRatio = PresentationCanvasPresetId;
 type SlideOutputFormat = "json" | "md" | "pptx" | "pdf";
 type SlideVisualMode = "editable" | "full-slide-image" | "article-storyboard-video";
-type FullSlideImageStyleId = string;
+export type FullSlideImageStyleId = string;
 
-type FullSlideImageStylePreset = {
+export type FullSlideImageStylePreset = {
   id: FullSlideImageStyleId;
   label: string;
   bestFor: string;
@@ -383,7 +384,7 @@ const AUDIO_TEXT_BYTE_LIMIT = 8000;
 const DEFAULT_SLIDE_VISUAL_MODE: SlideVisualMode = "full-slide-image";
 const AUTO_FULL_SLIDE_STYLE_ID = "auto";
 
-const FULL_SLIDE_IMAGE_STYLE_PRESETS: FullSlideImageStylePreset[] = [
+export const FULL_SLIDE_IMAGE_STYLE_PRESETS: FullSlideImageStylePreset[] = [
   {
     id: "premium-parenting-editorial",
     label: "Premium Parenting Editorial",
@@ -712,12 +713,27 @@ function summarizeEditorialPlannerImageAssetIssues(
   return { errors, warnings };
 }
 
-function inferTopicFallbackFromArticle(article: string): string {
+export function inferTopicFallbackFromArticle(article: string): string {
   return article
     .split("\n")
     .map((line) => line.trim())
     .find(Boolean)
+    ?.slice(0, 2_000)
     ?? "Presentation";
+}
+
+export function getExistingArticleValidation(article: string): "required" | "too_short" | "too_long" | null {
+  const length = article.trim().length;
+  if (length === 0) {
+    return "required";
+  }
+  if (length < 20) {
+    return "too_short";
+  }
+  if (length > 25_000) {
+    return "too_long";
+  }
+  return null;
 }
 
 function isArticleFriendlySkill(skill: SkillOption): boolean {
@@ -988,7 +1004,7 @@ function sanitizeSelectExtraParamsForFields(
   return nextParams;
 }
 
-function getErrorMessage(error: unknown, fallback: string): string {
+export function getErrorMessage(error: unknown, fallback: string, topicLengthMessage?: string): string {
   const rawMessage = error instanceof Error
     ? error.message.trim()
     : typeof error === "string"
@@ -996,6 +1012,13 @@ function getErrorMessage(error: unknown, fallback: string): string {
       : "";
   if (rawMessage) {
     const normalized = rawMessage.toLowerCase();
+    if (
+      topicLengthMessage
+      && (normalized.includes("too_big") || normalized.includes("at most 2000") || normalized.includes("maximum of 2000"))
+      && (normalized.includes("topic") || normalized.includes("2000"))
+    ) {
+      return topicLengthMessage;
+    }
     const insufficientCreditsMatch = rawMessage.match(/insufficient credits\.?\s*required:\s*(\d+(?:\.\d+)?)\s*for\s*(\d+(?:\.\d+)?)s\s*video/i);
     if (insufficientCreditsMatch) {
       const [, requiredCredits, durationSeconds] = insufficientCreditsMatch;
@@ -1218,6 +1241,7 @@ function normalizeSlideVisualMode(value: unknown): SlideVisualMode {
 }
 
 type PersistedArticleBuilderDraft = {
+  articleInputMode?: ArticleInputMode;
   topic: string;
   article: string;
   executionSource: ExecutionSource;
@@ -1923,7 +1947,7 @@ function normalizeFullSlideImageStyleId(value: string | null | undefined): FullS
     : AUTO_FULL_SLIDE_STYLE_ID;
 }
 
-function resolveFullSlideImageStylePreset(input: {
+export function resolveFullSlideImageStylePreset(input: {
   styleId: FullSlideImageStyleId;
   topic: string;
   article: string;
@@ -1947,10 +1971,11 @@ function resolveFullSlideImageStylePreset(input: {
   }).sort((left, right) => right.score - left.score || left.index - right.index);
   return scoredPresets[0]?.score
     ? scoredPresets[0].preset
-    : FULL_SLIDE_IMAGE_STYLE_PRESETS[0]!;
+    : FULL_SLIDE_IMAGE_STYLE_PRESETS.find((preset) => preset.id === "modern-minimal-infographic")
+      ?? FULL_SLIDE_IMAGE_STYLE_PRESETS[0]!;
 }
 
-function buildFullSlideImagePrompt(input: {
+export function buildFullSlideImagePrompt(input: {
   topic: string;
   title: string;
   text: string;
@@ -1966,7 +1991,7 @@ function buildFullSlideImagePrompt(input: {
   const globalRequirements = input.imagePromptContext.trim();
   return [
     `สร้างภาพสไลด์สำเร็จรูปทั้งหน้า อัตราส่วน ${input.canvasRatio} โดยภาพสุดท้ายต้องเป็น poster/infographic editorial slide ไม่ใช่ภาพถ่ายเปล่า`,
-    "Style direction: realistic photography + premium parenting/editorial magazine layout + clean luxury infographic. Use cinematic realistic lighting, soft natural shadows, shallow depth of field, warm modern minimal mood, high-resolution details, realistic human expression.",
+    "Style direction: follow the selected visual system below. Use only subjects, settings, props, and visual metaphors supported by the presentation content. Do not invent an unrelated domain, audience, or lifestyle context.",
     "Layout requirements: reserve a clear top area for a large Thai headline; use the photo as an integrated background/focal image; add one translucent white/cream rounded text box in the lower half for explanatory copy; add 2-4 small clean callout chips/cards near the bottom when the content supports it; keep generous spacing and mobile-readable hierarchy.",
     "Typography requirements: render readable Thai modern sans-serif typography inside the image, large bold headline, concise body text, clean magazine spacing, no misspellings, no random extra words, no placeholder text.",
     "Important: the image must visibly contain the title and explanatory Thai text. Do not create a photo-only result. Do not follow any old instruction that says no text or no letters.",
@@ -1978,7 +2003,7 @@ function buildFullSlideImagePrompt(input: {
     bodyText ? `ข้อความอธิบายที่ต้องจัดวางให้อ่านง่ายบนภาพ:\n${bodyText}` : "",
     sanitizedSourcePrompt ? `Visual subject/background direction:\n${sanitizedSourcePrompt}` : "",
     globalRequirements ? `Additional global visual requirements:\n${globalRequirements}` : "",
-    "Composition target: similar to a premium Thai parenting article cover or vertical mobile infographic, with photo realism plus designed text blocks and balanced editorial composition.",
+    "Composition target: follow the selected style preset while keeping the visual subject, audience, and supporting details specific to this presentation.",
   ].filter(Boolean).join("\n\n");
 }
 
@@ -2081,7 +2106,7 @@ function buildFullSlideImageDeckJson(input: {
               height: canvas.height,
               src: asset.url,
               alt: asset.shortLabel || `Slide ${asset.pageNumber}`,
-              imageFit: "contain",
+              imageFit: "cover",
               imagePositionX: 50,
               imagePositionY: 50,
               imageZoom: 1,
@@ -2383,6 +2408,88 @@ export function mergeCompletedHistoryImagesIntoGeneratedImages(options: {
     .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
 }
 
+type PresentationBuilderImageJobLike = {
+  slotId: string;
+  pageNumber: number;
+  imageIndex: number;
+  placementRole: PreparedImagePrompt["placementRole"];
+  shortLabel: string;
+  prompt: string;
+  model?: string | null;
+  canvasRatio?: string | null;
+  mediaTaskId: string;
+  status: "processing" | "completed" | "failed";
+  resultUrl?: string | null;
+  errorMessage?: string | null;
+  completedAt?: string | null;
+  lastCheckedAt?: string | null;
+};
+
+export function mergePresentationBuilderImageJobsIntoGeneratedImages(options: {
+  prompts: PreparedImagePrompt[];
+  generatedImages: GeneratedImageAsset[];
+  jobs: PresentationBuilderImageJobLike[];
+  canvasRatio: SlideCanvasRatio;
+}): GeneratedImageAsset[] {
+  if (options.jobs.length === 0) {
+    return options.generatedImages;
+  }
+
+  const promptBySlot = new Map(
+    options.prompts.map((prompt) => [getPreparedImageSlotKey(prompt), prompt] as const),
+  );
+  const currentBySlot = new Map(
+    options.generatedImages.map((asset) => [getPreparedImageSlotKey(asset), asset] as const),
+  );
+  const nextBySlot = new Map(currentBySlot);
+
+  for (const job of options.jobs) {
+    const slotPrompt = promptBySlot.get(job.slotId) ?? {
+      id: job.slotId,
+      pageNumber: job.pageNumber,
+      imageIndex: job.imageIndex,
+      placementRole: job.placementRole,
+      shortLabel: job.shortLabel,
+      prompt: job.prompt,
+    };
+    const current = currentBySlot.get(job.slotId);
+    if (current?.url && current.status === "completed" && job.status !== "completed") {
+      continue;
+    }
+    const resultUrl = normalizeMediaSourceUrl(job.resultUrl ?? "");
+    nextBySlot.set(job.slotId, {
+      ...slotPrompt,
+      taskId: job.mediaTaskId,
+      ...(resultUrl ? { url: resultUrl } : {}),
+      status: job.status,
+      ...(job.errorMessage ? { errorMessage: job.errorMessage } : {}),
+      canvasRatio: normalizeCanvasRatio(job.canvasRatio ?? options.canvasRatio),
+      model: job.model ?? undefined,
+      updatedAt: job.completedAt ?? job.lastCheckedAt ?? new Date().toISOString(),
+    });
+  }
+
+  return [...nextBySlot.values()]
+    .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
+}
+
+export type PresentationSlideImportAction = "insert" | "generate_and_insert" | "blocked";
+
+export function resolvePresentationSlideImportAction(options: {
+  hasDraft: boolean;
+  canInsert: boolean;
+  imagesReady: boolean;
+  isGeneratingSlideDraft: boolean;
+  isBlocked: boolean;
+}): PresentationSlideImportAction {
+  if (options.hasDraft) {
+    return options.canInsert ? "insert" : "blocked";
+  }
+  return options.imagesReady && !options.isGeneratingSlideDraft && !options.isBlocked
+    ? "generate_and_insert"
+    : "blocked";
+}
+
 export function getRecoverableProcessingImageAssets(options: {
   prompts: PreparedImagePrompt[];
   generatedImages: GeneratedImageAsset[];
@@ -2546,6 +2653,9 @@ export function PresentationArticleGeneratorDialog({
   const workflowPrimaryActionRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const insertSlidesButtonRef = useRef<HTMLButtonElement | null>(null);
 
+  const [articleInputMode, setArticleInputMode] = useState<ArticleInputMode>(
+    initialArticle?.trim() ? "existing" : "generate",
+  );
   const [topic, setTopic] = useState(initialTopic ?? "");
   const [article, setArticle] = useState(initialArticle ?? "");
   const [executionSource, setExecutionSource] = useState<ExecutionSource>("skill");
@@ -2565,8 +2675,8 @@ export function PresentationArticleGeneratorDialog({
   const [imagePromptContext, setImagePromptContext] = useState("");
   const [slideSkillId, setSlideSkillId] = useState("");
   const [slideOutputFormat, setSlideOutputFormat] = useState<SlideOutputFormat>("json");
-  const [editorialPlannerAudiencePreset, setEditorialPlannerAudiencePreset] = useState<EditorialPlannerAudiencePreset>("parents");
-  const [editorialPlannerTonePreset, setEditorialPlannerTonePreset] = useState<EditorialPlannerTonePreset>("warm_parenting");
+  const [editorialPlannerAudiencePreset, setEditorialPlannerAudiencePreset] = useState<EditorialPlannerAudiencePreset>("general");
+  const [editorialPlannerTonePreset, setEditorialPlannerTonePreset] = useState<EditorialPlannerTonePreset>("neutral");
   const [editorialPlannerFitPreset, setEditorialPlannerFitPreset] = useState<EditorialPlannerFitPreset>("balanced");
   const [editorialPlannerPageCountMode, setEditorialPlannerPageCountMode] = useState<EditorialPlannerPageCountMode>("auto");
   const [editorialPlannerRequestedPageCount, setEditorialPlannerRequestedPageCount] = useState(6);
@@ -2675,6 +2785,13 @@ export function PresentationArticleGeneratorDialog({
       offset: 0,
     },
     { enabled: open },
+  );
+  const builderImageJobsQuery = trpc.presentation.ai.listBuilderImageJobs.useQuery(
+    { deckId },
+    {
+      enabled: open,
+      refetchInterval: open ? 5000 : false,
+    },
   );
   const generateArticleMutation = trpc.presentation.ai.generateArticle.useMutation();
   const prepareSlideBundleMutation = trpc.presentation.ai.prepareSlideBundle.useMutation();
@@ -2795,7 +2912,10 @@ export function PresentationArticleGeneratorDialog({
     () => parseModelInputFields(selectedImageModelConfig),
     [selectedImageModelConfig],
   );
-  const detectedLanguage = useMemo<ArticleLanguage>(() => detectArticleLanguage(topic), [topic]);
+  const detectedLanguage = useMemo<ArticleLanguage>(
+    () => detectArticleLanguage(articleInputMode === "existing" ? article : topic),
+    [article, articleInputMode, topic],
+  );
   const detectedLanguageLabel = detectedLanguage === "th"
     ? t("dialog.articleBuilder.languageThai")
     : t("dialog.articleBuilder.languageEnglish");
@@ -3499,6 +3619,18 @@ export function PresentationArticleGeneratorDialog({
     window.location.assign("/storyboard-review?source=presentation-article-video");
   };
   const articleStepStatus = useMemo<WizardStepStatus>(() => {
+    if (articleInputMode === "existing") {
+      if (prepareSlideBundleMutation.isPending) {
+        return "running";
+      }
+      if (bundleNeedsRefresh) {
+        return article.trim() ? "stale" : "idle";
+      }
+      if (preparedBundle) {
+        return "done";
+      }
+      return article.trim() ? "ready" : "idle";
+    }
     if (generateArticleMutation.isPending) {
       return "running";
     }
@@ -3506,7 +3638,7 @@ export function PresentationArticleGeneratorDialog({
       return "done";
     }
     return topic.trim() ? "ready" : "idle";
-  }, [article, generateArticleMutation.isPending, topic]);
+  }, [article, articleInputMode, bundleNeedsRefresh, generateArticleMutation.isPending, prepareSlideBundleMutation.isPending, preparedBundle, topic]);
   const bundleStepStatus = useMemo<WizardStepStatus>(() => {
     if (prepareSlideBundleMutation.isPending) {
       return "running";
@@ -3517,8 +3649,11 @@ export function PresentationArticleGeneratorDialog({
     if (preparedBundle) {
       return "done";
     }
+    if (articleInputMode === "existing") {
+      return "disabled";
+    }
     return article.trim() ? "ready" : "idle";
-  }, [article, bundleNeedsRefresh, prepareSlideBundleMutation.isPending, preparedBundle]);
+  }, [article, articleInputMode, bundleNeedsRefresh, prepareSlideBundleMutation.isPending, preparedBundle]);
   const imageStepStatus = useMemo<WizardStepStatus>(() => {
     if (isGeneratingImages || generateImageAsyncMutation.isPending) {
       return "running";
@@ -3909,6 +4044,13 @@ export function PresentationArticleGeneratorDialog({
     ? `กรุณาสร้างรูปภาพประกอบให้ครบก่อน Generate Slide JSON (${missingImagesBeforeSlideDraft.current}/${missingImagesBeforeSlideDraft.total}) เพื่อป้องกัน slide ไม่มีภาพ`
     : slideRefreshHint;
   const canInsertGeneratedSlides = hasImportableSlides && !slideGenerationBlockedHint && !generateSlideDraftMutation.isPending;
+  const slideImportAction = resolvePresentationSlideImportAction({
+    hasDraft: Boolean(generatedSlideDraft),
+    canInsert: canInsertGeneratedSlides,
+    imagesReady: Boolean(preparedBundle && activeImagePrompts.length > 0 && generatedImagesAreCurrentForBundle),
+    isGeneratingSlideDraft: generateSlideDraftMutation.isPending,
+    isBlocked: Boolean(slideGenerationBlockedHint),
+  });
   const canInsertGeneratedSlotVideos = Boolean(onInsertSlotVideos)
     && slotVideoImportAssets.length > 0
     && !isGeneratingSlotVideos
@@ -4034,6 +4176,22 @@ export function PresentationArticleGeneratorDialog({
     mediaHistoryImageQuery.data?.tasks,
     open,
     preparedBundle,
+  ]);
+  useEffect(() => {
+    if (!open || !builderImageJobsQuery.data?.length) {
+      return;
+    }
+    setGeneratedImages((previous) => mergePresentationBuilderImageJobsIntoGeneratedImages({
+      prompts: activeImagePrompts,
+      generatedImages: previous,
+      jobs: builderImageJobsQuery.data,
+      canvasRatio,
+    }));
+  }, [
+    activeImagePrompts,
+    builderImageJobsQuery.data,
+    canvasRatio,
+    open,
   ]);
   useEffect(() => {
     if (!open) {
@@ -4221,6 +4379,7 @@ export function PresentationArticleGeneratorDialog({
       );
       setTopic(persistedDraft.topic);
       setArticle(persistedDraft.article);
+      setArticleInputMode(persistedDraft.articleInputMode === "existing" ? "existing" : "generate");
       setExecutionSource(persistedDraft.executionSource);
       setSkillId(persistedDraft.skillId);
       setAgencyId(persistedDraft.agencyId);
@@ -4238,8 +4397,8 @@ export function PresentationArticleGeneratorDialog({
       setImagePromptContext(persistedDraft.imagePromptContext);
       setSlideSkillId(persistedDraft.slideSkillId);
       setSlideOutputFormat(persistedDraft.slideOutputFormat);
-      setEditorialPlannerAudiencePreset(persistedDraft.editorialPlannerAudiencePreset ?? "parents");
-      setEditorialPlannerTonePreset(persistedDraft.editorialPlannerTonePreset ?? "warm_parenting");
+      setEditorialPlannerAudiencePreset(persistedDraft.editorialPlannerAudiencePreset ?? "general");
+      setEditorialPlannerTonePreset(persistedDraft.editorialPlannerTonePreset ?? "neutral");
       setEditorialPlannerFitPreset(persistedDraft.editorialPlannerFitPreset ?? "balanced");
       setEditorialPlannerPageCountMode(persistedDraft.editorialPlannerPageCountMode ?? "auto");
       setEditorialPlannerRequestedPageCount(
@@ -4350,6 +4509,7 @@ export function PresentationArticleGeneratorDialog({
     }
     setTopic(initialTopic ?? "");
     setArticle(initialArticle ?? "");
+    setArticleInputMode(initialArticle?.trim() ? "existing" : "generate");
     setExecutionSource("skill");
     setSkillId("");
     setAgencyId("");
@@ -4366,8 +4526,8 @@ export function PresentationArticleGeneratorDialog({
     setImagePromptContext("");
     setSlideSkillId("");
     setSlideOutputFormat("json");
-    setEditorialPlannerAudiencePreset("parents");
-    setEditorialPlannerTonePreset("warm_parenting");
+    setEditorialPlannerAudiencePreset("general");
+    setEditorialPlannerTonePreset("neutral");
     setEditorialPlannerFitPreset("balanced");
     setEditorialPlannerPageCountMode("auto");
     setEditorialPlannerRequestedPageCount(6);
@@ -4433,6 +4593,7 @@ export function PresentationArticleGeneratorDialog({
       return;
     }
     savePersistedArticleBuilderDraft(deckId, {
+      articleInputMode,
       topic,
       article,
       executionSource,
@@ -4491,6 +4652,7 @@ export function PresentationArticleGeneratorDialog({
       slidePayloadEditorDirty,
     });
   }, [
+    articleInputMode,
     advancedMediaOptionsEnabled,
     agencyId,
     agencyName,
@@ -4805,10 +4967,29 @@ export function PresentationArticleGeneratorDialog({
     const trimmedArticle = (options?.articleOverride ?? article).trim();
     const fallbackTopic = inferTopicFallbackFromArticle(trimmedArticle);
     const trimmedTopic = ((options?.topicOverride ?? topic).trim() || (
-      slideSkillId === EDITORIAL_LAYOUT_PLANNER_SKILL_ID ? fallbackTopic : ""
+      articleInputMode === "existing" || slideSkillId === EDITORIAL_LAYOUT_PLANNER_SKILL_ID ? fallbackTopic : ""
     )).trim();
+    if (articleInputMode === "existing") {
+      const articleValidation = getExistingArticleValidation(trimmedArticle);
+      if (articleValidation === "required") {
+        toast.error(t("dialog.articleBuilder.existingArticleRequired"));
+        return null;
+      }
+      if (articleValidation === "too_short") {
+        toast.error(t("dialog.articleBuilder.existingArticleTooShort"));
+        return null;
+      }
+      if (articleValidation === "too_long") {
+        toast.error(t("dialog.articleBuilder.existingArticleTooLong"));
+        return null;
+      }
+    }
     if (!trimmedTopic) {
       toast.error(t("dialog.articleBuilder.topicRequired"));
+      return null;
+    }
+    if (trimmedTopic.length > 2_000) {
+      toast.error(t("dialog.articleBuilder.topicTooLong"));
       return null;
     }
     if (!trimmedArticle) {
@@ -5069,6 +5250,15 @@ export function PresentationArticleGeneratorDialog({
         model: imageModel.trim() || undefined,
         aspectRatio: canvasRatio,
         numImages: 1 as const,
+        presentationContext: {
+          deckId,
+          slotId: getPreparedImageSlotKey(prompt),
+          pageNumber: prompt.pageNumber,
+          imageIndex: prompt.imageIndex,
+          placementRole: prompt.placementRole,
+          shortLabel: prompt.shortLabel,
+          canvasRatio,
+        },
         ...(extraParams ? { extraParams } : {}),
       };
       let taskResult;
@@ -5085,28 +5275,15 @@ export function PresentationArticleGeneratorDialog({
         await sleepMs((retryAfterSeconds + 1) * 1000);
         taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
       }
-      let resultUrl: string | null = null;
+      let resultUrl = extractTaskResultUrl(taskResult);
       let taskId = extractTaskId(taskResult);
       if (!resultUrl) {
         if (!taskId) {
           throw new Error("Image generation started but task ID was not returned.");
         }
-        try {
-          const terminalTask = await pollTaskUntilTerminal(
-            taskId,
-            async (id) => fetchPresentationMediaTask(id, "image", prompt.id),
-            { mediaLabel: "Image" },
-          );
-          resultUrl = extractTaskResultUrl(terminalTask);
-          taskId = extractTaskId(terminalTask) ?? taskId;
-        } catch (error) {
-          if (!(error instanceof TaskPollingTimeoutError)) {
-            throw error;
-          }
-          upsertProcessingImageForPrompt(prompt, error.taskId);
-          toast.info(`Page ${prompt.pageNumber}: รูปภาพยังประมวลผลอยู่ สามารถกดดึงผลใหม่ภายหลังได้`);
-          return;
-        }
+        upsertProcessingImageForPrompt(prompt, taskId);
+        toast.info(t("dialog.articleBuilder.imageGenerationQueued", { number: prompt.pageNumber }));
+        return;
       }
       if (!resultUrl) {
         throw new Error("Image provider returned no URL");
@@ -5180,8 +5357,23 @@ export function PresentationArticleGeneratorDialog({
     const trimmedArticle = article.trim();
     const fallbackTopic = inferTopicFallbackFromArticle(trimmedArticle);
     const trimmedTopic = (topic.trim() || (
-      slideSkillId === EDITORIAL_LAYOUT_PLANNER_SKILL_ID ? fallbackTopic : ""
+      articleInputMode === "existing" || slideSkillId === EDITORIAL_LAYOUT_PLANNER_SKILL_ID ? fallbackTopic : ""
     )).trim();
+    if (articleInputMode === "existing") {
+      const articleValidation = getExistingArticleValidation(trimmedArticle);
+      if (articleValidation === "required") {
+        toast.error(t("dialog.articleBuilder.existingArticleRequired"));
+        return null;
+      }
+      if (articleValidation === "too_short") {
+        toast.error(t("dialog.articleBuilder.existingArticleTooShort"));
+        return null;
+      }
+      if (articleValidation === "too_long") {
+        toast.error(t("dialog.articleBuilder.existingArticleTooLong"));
+        return null;
+      }
+    }
     const requiredPrompts = isFullSlideImageMode
       ? buildFullSlideImagePrompts({
           bundle: preparedBundle,
@@ -5200,6 +5392,10 @@ export function PresentationArticleGeneratorDialog({
     const activeMaxPages = preparedBundle?.maxPages ?? null;
     if (!trimmedTopic) {
       toast.error(t("dialog.articleBuilder.topicRequired"));
+      return null;
+    }
+    if (trimmedTopic.length > 2_000) {
+      toast.error(t("dialog.articleBuilder.topicTooLong"));
       return null;
     }
     if (!trimmedArticle) {
@@ -5391,10 +5587,86 @@ export function PresentationArticleGeneratorDialog({
     }
   };
 
+  const handleInsertGeneratedSlides = async () => {
+    let activeDraft = generatedSlideDraft;
+    if (!activeDraft) {
+      if (slideImportAction !== "generate_and_insert") {
+        toast.error(
+          slideGenerationBlockedHint
+            ?? t("dialog.articleBuilder.generateSlideJsonFirstToImport"),
+        );
+        setGuidedWorkflowStep(3);
+        return;
+      }
+      activeDraft = await handleGenerateSlideDraft({
+        imageAssetsOverride: normalizedGeneratedImages,
+        successMessage: t("dialog.articleBuilder.generateSlideJsonSuccess"),
+      });
+    }
+    if (!activeDraft) return;
+
+    const insertResult = await onInsertSlides(activeDraft, { closeDialog: false });
+    if (!insertResult.inserted || !insertResult.importedSlideJson?.trim()) {
+      return;
+    }
+    setGeneratedSlideDraft((previous) => {
+      if (!previous) {
+        return previous;
+      }
+      const previousGeneratedAt = typeof previous.generatedAt === "string" ? previous.generatedAt.trim() : "";
+      const activeGeneratedAt = typeof activeDraft.generatedAt === "string" ? activeDraft.generatedAt.trim() : "";
+      const matchesActiveDraft = (
+        (previousGeneratedAt && activeGeneratedAt && previousGeneratedAt === activeGeneratedAt)
+        || previous.slideJson === activeDraft.slideJson
+      );
+      if (!matchesActiveDraft) {
+        return previous;
+      }
+      return {
+        ...previous,
+        importedSlideJson: insertResult.importedSlideJson ?? previous.importedSlideJson ?? null,
+        importedAt: insertResult.importedAt ?? new Date().toISOString(),
+        importedFromArtifact: Boolean(insertResult.importedFromArtifact),
+        importedArtifactUrl: insertResult.importedArtifactUrl ?? null,
+      };
+    });
+  };
+
+  const handleUseExistingArticle = async () => {
+    const trimmedArticle = article.trim();
+    const articleValidation = getExistingArticleValidation(trimmedArticle);
+    if (articleValidation === "required") {
+      toast.error(t("dialog.articleBuilder.existingArticleRequired"));
+      return;
+    }
+    if (articleValidation === "too_short") {
+      toast.error(t("dialog.articleBuilder.existingArticleTooShort"));
+      return;
+    }
+    if (articleValidation === "too_long") {
+      toast.error(t("dialog.articleBuilder.existingArticleTooLong"));
+      return;
+    }
+    const derivedTopic = topic.trim() || inferTopicFallbackFromArticle(trimmedArticle);
+    if (!topic.trim()) {
+      setTopic(derivedTopic);
+    }
+    await handlePrepareSlideBundle({
+      articleOverride: trimmedArticle,
+      topicOverride: derivedTopic,
+      successMessage: t("dialog.articleBuilder.existingArticlePrepared"),
+      preserveExistingImages: true,
+    });
+  };
+
   const handleGenerate = async () => {
     const trimmedTopic = topic.trim();
     if (!trimmedTopic) {
       toast.error(t("dialog.articleBuilder.topicRequired"));
+      return;
+    }
+    if (trimmedTopic.length > 2_000) {
+      toast.error(t("dialog.articleBuilder.topicTooLong"));
       return;
     }
     if (executionSource === "skill" && !skillId) {
@@ -5426,7 +5698,11 @@ export function PresentationArticleGeneratorDialog({
         successMessage: t("dialog.articleBuilder.prepareBundleSuccess"),
       });
     } catch (error) {
-      toast.error(getErrorMessage(error, t("dialog.articleBuilder.generateError")));
+      toast.error(getErrorMessage(
+        error,
+        t("dialog.articleBuilder.generateError"),
+        t("dialog.articleBuilder.topicTooLong"),
+      ));
     }
   };
 
@@ -5510,6 +5786,15 @@ export function PresentationArticleGeneratorDialog({
           model: imageModel.trim() || undefined,
           aspectRatio: canvasRatio,
           numImages: 1 as const,
+          presentationContext: {
+            deckId,
+            slotId: getPreparedImageSlotKey(promptPlan),
+            pageNumber: promptPlan.pageNumber,
+            imageIndex: promptPlan.imageIndex,
+            placementRole: promptPlan.placementRole,
+            shortLabel: promptPlan.shortLabel,
+            canvasRatio,
+          },
           ...(extraParams ? { extraParams } : {}),
         };
         let taskResult;
@@ -5526,34 +5811,20 @@ export function PresentationArticleGeneratorDialog({
           await sleepMs((retryAfterSeconds + 1) * 1000);
           taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
         }
-        let resultUrl: string | null = null;
+        let resultUrl = extractTaskResultUrl(taskResult);
         let taskId = extractTaskId(taskResult);
         if (!resultUrl) {
           if (!taskId) {
             throw new Error("Image generation started but task ID was not returned.");
           }
-          try {
-            const terminalTask = await pollTaskUntilTerminal(
-              taskId,
-              async (id) => fetchPresentationMediaTask(id, "image", promptPlan.id),
-              { mediaLabel: "Image" },
-            );
-            resultUrl = extractTaskResultUrl(terminalTask);
-            taskId = extractTaskId(terminalTask) ?? taskId;
-          } catch (error) {
-            if (!(error instanceof TaskPollingTimeoutError)) {
-              throw error;
-            }
-            toast.info(`Page ${promptPlan.pageNumber}: รูปภาพยังประมวลผลอยู่ สามารถกดดึงผลใหม่ภายหลังได้`);
-            return {
-              ...promptPlan,
-              taskId: error.taskId,
-              status: "processing",
-              canvasRatio,
-              model: imageModel.trim() || undefined,
-              updatedAt: new Date().toISOString(),
-            };
-          }
+          return {
+            ...promptPlan,
+            taskId,
+            status: "processing",
+            canvasRatio,
+            model: imageModel.trim() || undefined,
+            updatedAt: new Date().toISOString(),
+          };
         }
         if (!resultUrl) {
           throw new Error("Image provider returned no URL");
@@ -5599,7 +5870,10 @@ export function PresentationArticleGeneratorDialog({
           successMessage: t("dialog.articleBuilder.generateSlideJsonSuccess"),
         });
       } else {
-        toast.info(`รูปภาพบางรายการยังประมวลผลอยู่ (${completedImageCount}/${promptsForGeneration.length}) กดดึงผลรูปภาพเมื่อ provider ทำงานเสร็จ`);
+        toast.info(t("dialog.articleBuilder.imageGenerationBackgroundSummary", {
+          completed: completedImageCount,
+          total: promptsForGeneration.length,
+        }));
         setGuidedWorkflowStep(3);
       }
     } catch (error) {
@@ -5922,6 +6196,15 @@ export function PresentationArticleGeneratorDialog({
           model: imageModel.trim() || undefined,
           aspectRatio: canvasRatio,
           numImages: 1 as const,
+          presentationContext: {
+            deckId,
+            slotId: getPreparedImageSlotKey(promptPlan),
+            pageNumber: promptPlan.pageNumber,
+            imageIndex: promptPlan.imageIndex,
+            placementRole: promptPlan.placementRole,
+            shortLabel: promptPlan.shortLabel,
+            canvasRatio,
+          },
           ...(referenceImageUrls.length > 0 ? { referenceImageUrls } : {}),
           ...(extraParams ? { extraParams } : {}),
         };
@@ -5940,36 +6223,20 @@ export function PresentationArticleGeneratorDialog({
           taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
         }
 
-        let resultUrl: string | null = null;
+        let resultUrl = extractTaskResultUrl(taskResult);
         let taskId = extractTaskId(taskResult);
         if (!resultUrl) {
           if (!taskId) {
             throw new Error("Image generation started but task ID was not returned.");
           }
-          try {
-            const terminalTask = await pollTaskUntilTerminal(
-              taskId,
-              async (id) => fetchPresentationMediaTask(id, "image", promptPlan.id),
-              { mediaLabel: "Image" },
-            );
-            resultUrl = extractTaskResultUrl(terminalTask);
-            taskId = extractTaskId(terminalTask) ?? taskId;
-          } catch (error) {
-            if (!(error instanceof TaskPollingTimeoutError)) {
-              throw error;
-            }
-            toast.info(t("dialog.articleBuilder.articleStoryboardReferenceStillProcessing", {
-              number: promptPlan.pageNumber,
-            }));
-            return {
-              ...promptPlan,
-              taskId: error.taskId,
-              status: "processing",
-              canvasRatio,
-              model: imageModel.trim() || undefined,
-              updatedAt: new Date().toISOString(),
-            };
-          }
+          return {
+            ...promptPlan,
+            taskId,
+            status: "processing",
+            canvasRatio,
+            model: imageModel.trim() || undefined,
+            updatedAt: new Date().toISOString(),
+          };
         }
         if (!resultUrl) {
           throw new Error("Image provider returned no URL");
@@ -6895,16 +7162,58 @@ export function PresentationArticleGeneratorDialog({
                 <section className="min-h-0 xl:flex xl:h-[calc(92vh-12.25rem)] xl:min-h-0 xl:flex-col xl:overflow-hidden xl:rounded-2xl xl:border xl:bg-background/60 xl:p-3">
                   <div className="space-y-4 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-2">
                   <div className="space-y-2">
-                    <Label htmlFor="presentation-article-topic">{t("dialog.articleBuilder.topicLabel")}</Label>
+                    <Label>{t("dialog.articleBuilder.inputModeLabel")}</Label>
+                    <div className="grid grid-cols-2 gap-2" role="group" aria-label={t("dialog.articleBuilder.inputModeLabel")}>
+                      <Button
+                        type="button"
+                        variant={articleInputMode === "generate" ? "default" : "outline"}
+                        className="justify-start gap-2"
+                        aria-pressed={articleInputMode === "generate"}
+                        onClick={() => setArticleInputMode("generate")}
+                      >
+                        <WandSparkles className="h-4 w-4" />
+                        {t("dialog.articleBuilder.inputModeGenerate")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={articleInputMode === "existing" ? "default" : "outline"}
+                        className="justify-start gap-2"
+                        aria-pressed={articleInputMode === "existing"}
+                        onClick={() => setArticleInputMode("existing")}
+                      >
+                        <FileText className="h-4 w-4" />
+                        {t("dialog.articleBuilder.inputModeExisting")}
+                      </Button>
+                    </div>
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      {articleInputMode === "existing"
+                        ? t("dialog.articleBuilder.inputModeExistingHint")
+                        : t("dialog.articleBuilder.inputModeGenerateHint")}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="presentation-article-topic">
+                      {articleInputMode === "existing"
+                        ? t("dialog.articleBuilder.presentationTitleLabel")
+                        : t("dialog.articleBuilder.topicLabel")}
+                    </Label>
                     <Textarea
                       id="presentation-article-topic"
                       value={topic}
                       onChange={(event) => setTopic(event.target.value)}
-                      placeholder={isArticleStoryboardVideoMode
-                        ? t("dialog.articleBuilder.articleStoryboardTopicPlaceholder")
-                        : t("dialog.articleBuilder.topicPlaceholder")}
+                      placeholder={articleInputMode === "existing"
+                        ? t("dialog.articleBuilder.presentationTitlePlaceholder")
+                        : isArticleStoryboardVideoMode
+                          ? t("dialog.articleBuilder.articleStoryboardTopicPlaceholder")
+                          : t("dialog.articleBuilder.topicPlaceholder")}
                       rows={5}
                     />
+                    {articleInputMode === "existing" ? (
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        {t("dialog.articleBuilder.presentationTitleHint")}
+                      </p>
+                    ) : null}
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Languages className="h-3.5 w-3.5" />
                       <span>{t("dialog.articleBuilder.detectedLanguage")}</span>
@@ -6912,6 +7221,27 @@ export function PresentationArticleGeneratorDialog({
                     </div>
                   </div>
 
+                  {articleInputMode === "existing" ? (
+                    <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
+                      <Label htmlFor="presentation-existing-article">
+                        {t("dialog.articleBuilder.existingArticleLabel")}
+                      </Label>
+                      <Textarea
+                        id="presentation-existing-article"
+                        value={article}
+                        onChange={(event) => setArticle(event.target.value)}
+                        placeholder={t("dialog.articleBuilder.existingArticlePlaceholder")}
+                        rows={12}
+                        className="min-h-[260px] resize-y bg-background"
+                      />
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        {t("dialog.articleBuilder.existingArticleHint")}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {articleInputMode === "generate" ? (
+                  <>
                   <div className="space-y-2">
                     <Label>{t("dialog.articleBuilder.sourceLabel")}</Label>
                     <div className="grid grid-cols-2 gap-2">
@@ -6977,6 +7307,8 @@ export function PresentationArticleGeneratorDialog({
                       </div>
                     </div>
                   )}
+                  </>
+                  ) : null}
 
                   <fieldset className="space-y-3 rounded-xl border p-4">
                     <legend className="flex items-center gap-2 px-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -7673,6 +8005,7 @@ export function PresentationArticleGeneratorDialog({
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="general">General Readers</SelectItem>
                                 <SelectItem value="parents">Parents</SelectItem>
                                 <SelectItem value="educators">Educators</SelectItem>
                                 <SelectItem value="healthcare">Healthcare</SelectItem>
@@ -7689,6 +8022,7 @@ export function PresentationArticleGeneratorDialog({
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="neutral">Neutral / Topic-specific</SelectItem>
                                 <SelectItem value="warm_parenting">Warm Parenting</SelectItem>
                                 <SelectItem value="premium_editorial">Premium Editorial</SelectItem>
                                 <SelectItem value="clinical_guidance">Clinical Guidance</SelectItem>
@@ -7989,6 +8323,7 @@ export function PresentationArticleGeneratorDialog({
                     ) : null}
                   </div>
 
+                  {articleInputMode === "generate" ? (
                   <div className="space-y-3 rounded-xl border p-4">
                     <div className="flex items-center justify-between gap-2">
                       <Label htmlFor="presentation-article-web-search">{t("dialog.articleBuilder.webSearchLabel")}</Label>
@@ -8007,6 +8342,7 @@ export function PresentationArticleGeneratorDialog({
                       />
                     </div>
                   </div>
+                  ) : null}
                   </div>
                 </section>
 
@@ -8088,8 +8424,12 @@ export function PresentationArticleGeneratorDialog({
                       {(isArticleStoryboardVideoMode ? [
                         {
                           step: 1,
-                          title: t("dialog.articleBuilder.workflowStep1Title"),
-                          description: t("dialog.articleBuilder.workflowStep1Description"),
+                          title: articleInputMode === "existing"
+                            ? t("dialog.articleBuilder.existingArticleWorkflowTitle")
+                            : t("dialog.articleBuilder.workflowStep1Title"),
+                          description: articleInputMode === "existing"
+                            ? t("dialog.articleBuilder.existingArticleWorkflowDescription")
+                            : t("dialog.articleBuilder.workflowStep1Description"),
                           status: articleStepStatus,
                           action: (
                             <Button
@@ -8098,10 +8438,26 @@ export function PresentationArticleGeneratorDialog({
                               ref={(node) => {
                                 workflowPrimaryActionRefs.current[1] = node;
                               }}
-                              onClick={() => void handleGenerate()}
-                              disabled={generateArticleMutation.isPending}
+                              onClick={() => void (articleInputMode === "existing"
+                                ? handleUseExistingArticle()
+                                : handleGenerate())}
+                              disabled={articleInputMode === "existing"
+                                ? prepareSlideBundleMutation.isPending
+                                : generateArticleMutation.isPending}
                             >
-                              {generateArticleMutation.isPending ? (
+                              {articleInputMode === "existing" ? (
+                                prepareSlideBundleMutation.isPending ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    {t("dialog.articleBuilder.preparingBundle")}
+                                  </>
+                                ) : (
+                                  <>
+                                    <LayoutTemplate className="mr-2 h-4 w-4" />
+                                    {t("dialog.articleBuilder.useExistingArticle")}
+                                  </>
+                                )
+                              ) : generateArticleMutation.isPending ? (
                                 <>
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                   {t("dialog.articleBuilder.generating")}
@@ -8121,22 +8477,34 @@ export function PresentationArticleGeneratorDialog({
                           step: 2,
                           title: t("dialog.articleBuilder.articleStoryboardWorkflowStep2Title"),
                           description: t("dialog.articleBuilder.articleStoryboardWorkflowStep2Description"),
-                          status: !article.trim()
-                            ? "idle"
-                            : prepareSlideBundleMutation.isPending
-                              ? "running"
-                              : articleStoryboardNeedsPagePlan
+                          status: articleInputMode === "existing"
+                            ? (!article.trim()
+                              ? "idle"
+                              : prepareSlideBundleMutation.isPending
+                                ? "running"
+                                : preparedBundle && !bundleNeedsRefresh
+                                  ? "done"
+                                  : "disabled")
+                            : !article.trim()
+                              ? "idle"
+                              : prepareSlideBundleMutation.isPending
+                                ? "running"
+                                : articleStoryboardNeedsPagePlan
+                                  ? "ready"
+                                  : articleStoryboardHasEmptyPromptOverride || !articleStoryboardPreview.accessDecision.allowed
                                 ? "ready"
-                                : articleStoryboardHasEmptyPromptOverride || !articleStoryboardPreview.accessDecision.allowed
-                              ? "ready"
-                              : "done",
-                          hint: articleStoryboardNeedsPagePlan
-                            ? t("dialog.articleBuilder.articleStoryboardPagePlanRequired")
-                            : articleStoryboardHasEmptyPromptOverride
-                            ? t("dialog.articleBuilder.articleStoryboardPromptRequired")
-                            : !articleStoryboardPreview.accessDecision.allowed
-                              ? articleStoryboardPreview.accessDecision.message
-                              : undefined,
+                                : "done",
+                          hint: articleInputMode === "existing" && (!preparedBundle || bundleNeedsRefresh)
+                            ? t("dialog.articleBuilder.existingArticleMustUseFirst")
+                            : articleStoryboardNeedsPagePlan
+                              ? t("dialog.articleBuilder.articleStoryboardPagePlanRequired")
+                              : articleStoryboardHasEmptyPromptOverride
+                              ? t("dialog.articleBuilder.articleStoryboardPromptRequired")
+                              : !articleStoryboardPreview.accessDecision.allowed
+                                ? articleStoryboardPreview.accessDecision.message
+                                : articleInputMode === "existing"
+                                  ? t("dialog.articleBuilder.existingArticleAlreadyPrepared")
+                                  : undefined,
                           action: (
                             <Button
                               type="button"
@@ -8149,7 +8517,7 @@ export function PresentationArticleGeneratorDialog({
                                 successMessage: t("dialog.articleBuilder.articleStoryboardPreparePlanSuccess"),
                                 preserveExistingImages: true,
                               })}
-                              disabled={!article.trim() || prepareSlideBundleMutation.isPending}
+                              disabled={articleInputMode === "existing" || !article.trim() || prepareSlideBundleMutation.isPending}
                             >
                               {prepareSlideBundleMutation.isPending ? (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -8187,8 +8555,12 @@ export function PresentationArticleGeneratorDialog({
                       ] : [
                         {
                           step: 1,
-                          title: t("dialog.articleBuilder.workflowStep1Title"),
-                          description: t("dialog.articleBuilder.workflowStep1Description"),
+                          title: articleInputMode === "existing"
+                            ? t("dialog.articleBuilder.existingArticleWorkflowTitle")
+                            : t("dialog.articleBuilder.workflowStep1Title"),
+                          description: articleInputMode === "existing"
+                            ? t("dialog.articleBuilder.existingArticleWorkflowDescription")
+                            : t("dialog.articleBuilder.workflowStep1Description"),
                           status: articleStepStatus,
                           action: (
                             <Button
@@ -8197,10 +8569,26 @@ export function PresentationArticleGeneratorDialog({
                               ref={(node) => {
                                 workflowPrimaryActionRefs.current[1] = node;
                               }}
-                              onClick={() => void handleGenerate()}
-                              disabled={generateArticleMutation.isPending}
+                              onClick={() => void (articleInputMode === "existing"
+                                ? handleUseExistingArticle()
+                                : handleGenerate())}
+                              disabled={articleInputMode === "existing"
+                                ? prepareSlideBundleMutation.isPending
+                                : generateArticleMutation.isPending}
                             >
-                              {generateArticleMutation.isPending ? (
+                              {articleInputMode === "existing" ? (
+                                prepareSlideBundleMutation.isPending ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    {t("dialog.articleBuilder.preparingBundle")}
+                                  </>
+                                ) : (
+                                  <>
+                                    <LayoutTemplate className="mr-2 h-4 w-4" />
+                                    {t("dialog.articleBuilder.useExistingArticle")}
+                                  </>
+                                )
+                              ) : generateArticleMutation.isPending ? (
                                 <>
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                   {t("dialog.articleBuilder.generating")}
@@ -8221,7 +8609,9 @@ export function PresentationArticleGeneratorDialog({
                           title: t("dialog.articleBuilder.workflowStep2Title"),
                           description: t("dialog.articleBuilder.workflowStep2Description"),
                           status: bundleStepStatus,
-                          hint: bundleRefreshHint,
+                          hint: articleInputMode === "existing" && (!preparedBundle || bundleNeedsRefresh)
+                            ? t("dialog.articleBuilder.existingArticleMustUseFirst")
+                            : bundleRefreshHint,
                           action: (
                             <Button
                               type="button"
@@ -8234,7 +8624,7 @@ export function PresentationArticleGeneratorDialog({
                                 successMessage: t("dialog.articleBuilder.prepareBundleSuccess"),
                                 preserveExistingImages: true,
                               })}
-                              disabled={!article.trim() || prepareSlideBundleMutation.isPending}
+                              disabled={articleInputMode === "existing" || !article.trim() || prepareSlideBundleMutation.isPending}
                             >
                               {prepareSlideBundleMutation.isPending ? (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -8464,6 +8854,7 @@ export function PresentationArticleGeneratorDialog({
                     )}
                   </div>
 
+                  {articleInputMode === "generate" ? (
                   <div className={cn("space-y-2", isArticleStoryboardVideoMode && "rounded-xl border bg-background/70 p-2")}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
@@ -8527,6 +8918,7 @@ export function PresentationArticleGeneratorDialog({
                       />
                     )}
                   </div>
+                  ) : null}
 
                   {isArticleStoryboardVideoMode ? (
                     <div className="flex min-h-[58vh] flex-1 flex-col gap-4 xl:min-h-[420px]">
@@ -10162,6 +10554,11 @@ export function PresentationArticleGeneratorDialog({
             </div>
 
             <DialogFooter className="shrink-0 flex-col-reverse items-stretch gap-2 border-t px-4 py-3 sm:flex-row sm:items-center sm:px-6 sm:py-4 [&>button]:w-full sm:[&>button]:w-auto">
+              {slideImportAction === "blocked" ? (
+                <span className="text-xs leading-5 text-muted-foreground sm:mr-auto">
+                  {slideGenerationBlockedHint ?? t("dialog.articleBuilder.generateSlideJsonFirstToImport")}
+                </span>
+              ) : null}
               <Button
                 type="button"
                 variant="outline"
@@ -10192,44 +10589,13 @@ export function PresentationArticleGeneratorDialog({
                     type="button"
                     variant="outline"
                     ref={insertSlidesButtonRef}
-                    onClick={() => {
-                      if (!generatedSlideDraft || !canInsertGeneratedSlides) {
-                        toast.error("ยังไม่มี slides ที่นำเข้าได้ กรุณา Generate Slide JSON ใหม่อีกครั้ง");
-                        return;
-                      }
-                      const activeDraft = generatedSlideDraft;
-                      void (async () => {
-                        const insertResult = await onInsertSlides(activeDraft, { closeDialog: false });
-                        if (!insertResult.inserted || !insertResult.importedSlideJson?.trim()) {
-                          return;
-                        }
-                        setGeneratedSlideDraft((previous) => {
-                          if (!previous) {
-                            return previous;
-                          }
-                          const previousGeneratedAt = typeof previous.generatedAt === "string" ? previous.generatedAt.trim() : "";
-                          const activeGeneratedAt = typeof activeDraft.generatedAt === "string" ? activeDraft.generatedAt.trim() : "";
-                          const matchesActiveDraft = (
-                            (previousGeneratedAt && activeGeneratedAt && previousGeneratedAt === activeGeneratedAt)
-                            || previous.slideJson === activeDraft.slideJson
-                          );
-                          if (!matchesActiveDraft) {
-                            return previous;
-                          }
-                          return {
-                            ...previous,
-                            importedSlideJson: insertResult.importedSlideJson ?? previous.importedSlideJson ?? null,
-                            importedAt: insertResult.importedAt ?? new Date().toISOString(),
-                            importedFromArtifact: Boolean(insertResult.importedFromArtifact),
-                            importedArtifactUrl: insertResult.importedArtifactUrl ?? null,
-                          };
-                        });
-                      })();
-                    }}
-                    disabled={!generatedSlideDraft || !canInsertGeneratedSlides}
+                    onClick={() => void handleInsertGeneratedSlides()}
+                    disabled={slideImportAction === "blocked"}
                   >
                     <LayoutTemplate className="mr-2 h-4 w-4" />
-                    {t("dialog.articleBuilder.insertSlides")}
+                    {slideImportAction === "generate_and_insert"
+                      ? t("dialog.articleBuilder.generateSlideJsonAndInsert")
+                      : t("dialog.articleBuilder.insertSlides")}
                   </Button>
                   <Button
                     type="button"

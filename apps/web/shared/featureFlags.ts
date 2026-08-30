@@ -230,7 +230,7 @@ export interface TenantFeatureFlags {
   verticalDramaContinuityContracts: boolean; // F132H — spec 132 §8.2 causal chain / hook-to-opening enforcement (fail-closed)
   verticalDramaAngleGridQuality: boolean; // F132I — spec 132 §19 structured 9-angle schema, diversity/coverage rules, best-angle scoring rubric (fail-closed)
   verticalDramaRetentionHooks: boolean; // planning/vertical-drama-retention-hooks/plan.md — retention-loop guidance
-  verticalDramaSpecialEpisodes: boolean; // Special tie-in episode workflow; fail closed until rollout
+  verticalDramaSpecialEpisodes: boolean; // Special tie-in episode workflow; enabled by default, tenant may opt out
   marketplaceRemotionRendererEnabled: boolean; // F132J — planning/remotion-migration/plan.md — Marketplace Auto-Review render engine: opt in to the Remotion renderer instead of HyperFrames (default off, per-tenant rollout). Now redundant since Remotion is the default engine, but left in place for backward compat — harmless if left on.
   marketplaceHyperframesRendererForced: boolean; // F132K — planning/remotion-migration/plan.md §7 (Phase 6) — Marketplace Auto-Review render engine: per-tenant rollback lever that forces HyperFrames even though Remotion is now the default engine (default off, independent of the global RENDERER_ENGINE env var kill-switch)
   videoIntelligencePlatformEnabled: boolean; // F133A — specs/feature/133-content-video-intelligence-platform — Video Intelligence Platform entry point (Catalog/Motion Video Studio routes + videoProjects router gate), default off
@@ -726,7 +726,7 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   verticalDramaContinuityContracts: false,
   verticalDramaAngleGridQuality: false,
   verticalDramaRetentionHooks: false,
-  verticalDramaSpecialEpisodes: false,
+  verticalDramaSpecialEpisodes: true,
 };
 
 export const AGE_SAFETY_FEATURE_FLAG_KEYS = [

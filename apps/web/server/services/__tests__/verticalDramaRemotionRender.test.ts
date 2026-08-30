@@ -212,6 +212,50 @@ describe("buildVdRemotionTemplate", () => {
     expect(durationInFrames).toBe(360);
   });
 
+  it("renders still and footage B-roll at explicit destination seconds with source trim", () => {
+    const { template } = buildVdRemotionTemplate({
+      clips: [
+        { clipNumber: 1, url: "https://cdn.example.com/1.mp4", durationSec: 8 },
+        { clipNumber: 2, url: "https://cdn.example.com/2.mp4", durationSec: 4 },
+      ],
+      videoDurationSeconds: 12,
+      brollLayers: [
+        {
+          bindingId: "still-1",
+          mediaType: "image",
+          resolvedMediaUrl: "https://cdn.example.com/cafe.jpg",
+          startSec: 8,
+          endSec: 10,
+          fitMode: "cover",
+          audioPolicy: "mute",
+        },
+        {
+          bindingId: "footage-1",
+          mediaType: "video",
+          resolvedMediaUrl: "https://cdn.example.com/cafe.mp4",
+          startSec: 10,
+          endSec: 12,
+          sourceInSec: 14.5,
+          fitMode: "crop_safe",
+          audioPolicy: "keep",
+        },
+      ],
+    });
+    expect(template.layers.find(layer => layer.id === "broll-still-1-0")).toMatchObject({
+      type: "image",
+      startFrame: 240,
+      durationFrames: 60,
+      zIndex: 6,
+    });
+    expect(template.layers.find(layer => layer.id === "broll-footage-1-1")).toMatchObject({
+      type: "video",
+      startFrame: 300,
+      durationFrames: 60,
+      trimStartSec: 14.5,
+      muted: false,
+    });
+  });
+
   it("adds the Production Episode identity overlay and Settings text watermark", () => {
     const { template } = buildVdRemotionTemplate({
       clips: [
@@ -783,6 +827,41 @@ describe("submitVdRemotionAssembly", () => {
       typeof (episodeRow.assemblyManifest as any).compiledVideo
         .renderSubmittedAt
     ).toBe("number");
+  });
+
+  it("stages managed B-roll, resolves it for the worker, and preserves destination/source timing", async () => {
+    episodeRow = { assemblyManifest: {} };
+    const queueJob = vi.fn().mockResolvedValue({ created: true, job: { id: "job-broll" } });
+    const stageAsset = vi.fn(async (url: string, _base: string, wantDuration: boolean) =>
+      wantDuration ? { durationSec: url.includes("footage") ? 3 : 8, sha256: url.includes("footage") ? "bytes-video" : "bytes-clip" } : { sha256: "bytes-image" }
+    );
+    const resolveWorkerAssetUrls = vi.fn(async (urls: string[]) => urls.map(url => `https://worker.example/${url.split("/").pop()}`));
+
+    await submitVdRemotionAssembly(
+      {
+        owner,
+        clips: [{ clipNumber: 1, sourceShotNumbers: [1], videoUrl: "https://cdn.example.com/1.mp4" }],
+        internalBaseUrl: "http://localhost:3000",
+        filename: "ep-1.mp4",
+        tenantId: owner.tenantId,
+        requestedByUserId: owner.userId,
+        broll: [
+          { bindingId: "still-1", shotNumber: 1, order: 0, mediaType: "image", mediaUrl: "https://cdn.example.com/still.jpg", displayDurationSeconds: 2 },
+          { bindingId: "footage-1", shotNumber: 1, order: 1, mediaType: "video", mediaUrl: "https://cdn.example.com/footage.mp4", inSeconds: 1, outSeconds: 3, audioPolicy: "mute" },
+        ],
+      },
+      { queueJob, stageAsset, resolveWorkerAssetUrls }
+    );
+
+    const workerInput = queueJob.mock.calls[0][0];
+    expect(workerInput.remotionTemplate.layers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "broll-still-1-0", startFrame: 0, durationFrames: 60, type: "image" }),
+      expect.objectContaining({ id: "broll-footage-1-1", startFrame: 60, durationFrames: 60, type: "video", trimStartSec: 1, muted: true }),
+    ]));
+    expect(workerInput.assetManifest.sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({ role: "image", url: "https://worker.example/still.jpg", sha256: "bytes-image" }),
+      expect.objectContaining({ role: "video", url: "https://worker.example/footage.mp4", sha256: "bytes-video" }),
+    ]));
   });
 
   it("uses each staged asset's REAL bytes-sha256 in the asset manifest, not sha256(url)", async () => {

@@ -5,7 +5,14 @@ import { and, count, desc, eq, gt, inArray, isNotNull, isNull, ne, or, sql } fro
 import { debugLog } from "../_core/logger";
 import { getDb } from "../db";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
-import { assertR2StorageActive, storagePut, storageGet, storageDelete } from "../storage";
+import {
+  assertR2StorageActive,
+  storagePut,
+  storageGet,
+  storageDelete,
+  storageHeadFile,
+  storageReadBuffer,
+} from "../storage";
 import { ensureExternalMediaAssetDurable } from "./durableMediaAssetService";
 import {
   normalizeManagedMediaKey,
@@ -267,13 +274,16 @@ export interface LibrarySearchInput {
 export interface UploadLibraryFileInput {
   fileName: string;
   fileType: string;
-  fileBase64: string;
+  fileBase64?: string;
+  storageKey?: string;
+  fileSizeBytes?: number;
   title?: string;
   visibility?: LibraryVisibility;
   projectId?: string | null;
   parentId?: number | null;
   metadata?: Record<string, unknown>;
   billingMetadata?: Record<string, unknown>;
+  strictIndexing?: boolean;
 }
 
 export interface UploadLibraryFileResult {
@@ -315,9 +325,12 @@ export interface ReplaceLibraryFileInput {
   itemId: number;
   fileName: string;
   fileType: string;
-  fileBase64: string;
+  fileBase64?: string;
+  storageKey?: string;
+  fileSizeBytes?: number;
   changeDescription?: string;
   metadata?: Record<string, unknown>;
+  strictIndexing?: boolean;
 }
 
 export interface ReplaceLibraryFileResult {
@@ -962,6 +975,107 @@ function isAllowedLibraryUploadMime(fileType: string): boolean {
   const normalizedFileType = fileType.toLowerCase();
   if (ALLOWED_LIBRARY_UPLOAD_MIME_TYPES.has(normalizedFileType)) return true;
   return ALLOWED_LIBRARY_UPLOAD_MIME_PREFIXES.some((prefix) => normalizedFileType.startsWith(prefix));
+}
+
+export function validateLibraryUploadMetadata(
+  fileName: string,
+  fileType: string,
+): { fileName: string; fileType: string; extension: string } {
+  const normalizedFileName = fileName.trim();
+  const normalizedFileType = (fileType || "application/octet-stream").trim().toLowerCase();
+  if (!normalizedFileName) {
+    throw new Error("File name is required");
+  }
+
+  const extension = extractFileExtension(normalizedFileName);
+  if (!isAllowedLibraryUploadMime(normalizedFileType) && !ALLOWED_LIBRARY_UPLOAD_EXTENSIONS.has(extension)) {
+    throw new Error("File type is not supported for library upload");
+  }
+  if (extension && !ALLOWED_LIBRARY_UPLOAD_EXTENSIONS.has(extension)) {
+    throw new Error(`File extension .${extension} is not allowed`);
+  }
+
+  return {
+    fileName: normalizedFileName,
+    fileType: normalizedFileType,
+    extension,
+  };
+}
+
+async function resolveLibraryUploadFile(
+  input: {
+    fileBase64?: string;
+    storageKey?: string;
+    fileSizeBytes?: number;
+  },
+  tenantId: string,
+  userId: number,
+): Promise<{
+  fileBuffer: Buffer<ArrayBufferLike>;
+  storage: { key: string; url: string } | null;
+}> {
+  const storageKey = input.storageKey?.trim();
+  if (storageKey) {
+    const expectedPrefix = `library/uploads/${tenantId}/${userId}/`;
+    if (!storageKey.startsWith(expectedPrefix)) {
+      throw new Error("Invalid library upload storage key");
+    }
+
+    const head = await storageHeadFile(storageKey);
+    if (!head || !Number.isFinite(head.contentLength)) {
+      throw new Error("Uploaded file was not found in storage");
+    }
+    if (head.contentLength > MAX_LIBRARY_UPLOAD_BYTES) {
+      throw new Error("File too large (max 50MB)");
+    }
+    if (input.fileSizeBytes !== undefined && head.contentLength !== input.fileSizeBytes) {
+      throw new Error("Uploaded file size does not match the upload request");
+    }
+
+    const fileBuffer = await storageReadBuffer(storageKey);
+    if (!fileBuffer || fileBuffer.length === 0) {
+      throw new Error("Uploaded file is empty");
+    }
+    if (fileBuffer.length !== head.contentLength) {
+      throw new Error("Uploaded file could not be read completely");
+    }
+
+    return {
+      fileBuffer,
+      storage: await storageGet(storageKey),
+    };
+  }
+
+  const fileBase64 = input.fileBase64;
+  if (!fileBase64) {
+    throw new Error("Either fileBase64 or storageKey is required");
+  }
+  const b64 = fileBase64.includes(",")
+    ? fileBase64.split(",", 2)[1]
+    : fileBase64;
+  const fileBuffer = Buffer.from(b64, "base64");
+  if (!fileBuffer.length) {
+    throw new Error("Uploaded file is empty");
+  }
+  return { fileBuffer, storage: null };
+}
+
+async function rollbackCreatedLibraryUpload(
+  itemId: number,
+  actor: LibraryActor,
+  storageKey: string,
+  db: DbClient,
+): Promise<void> {
+  try {
+    const softDeleted = await softDeleteLibraryItem(itemId, actor, db);
+    if (softDeleted) {
+      await permanentDeleteLibraryItem(itemId, actor, db);
+    } else {
+      await storageDelete(storageKey).catch(() => {});
+    }
+  } catch {
+    await storageDelete(storageKey).catch(() => {});
+  }
 }
 
 function normalizeTagList(value: unknown): string[] {
@@ -2602,14 +2716,9 @@ export async function uploadLibraryFile(
     throw new Error(`File extension .${ext} is not allowed`);
   }
 
-  const b64 = input.fileBase64.includes(",")
-    ? input.fileBase64.split(",", 2)[1]
-    : input.fileBase64;
-  let fileBuffer: Buffer<ArrayBufferLike> = Buffer.from(b64, "base64");
-
-  if (!fileBuffer.length) {
-    throw new Error("Uploaded file is empty");
-  }
+  const resolvedUpload = await resolveLibraryUploadFile(input, tenantId, actor.userId);
+  let fileBuffer: Buffer<ArrayBufferLike> = resolvedUpload.fileBuffer;
+  const uploadedStorage = resolvedUpload.storage;
 
   if (fileBuffer.length > MAX_LIBRARY_UPLOAD_BYTES) {
     throw new Error("File too large (max 50MB)");
@@ -2633,6 +2742,9 @@ export async function uploadLibraryFile(
     checksumSha256,
   });
   if (duplicate) {
+    if (uploadedStorage) {
+      await storageDelete(uploadedStorage.key).catch(() => {});
+    }
     return {
       item: toLibraryItemDto(duplicate),
       storageKey: String((duplicate.metadata ?? {}).source_key || ""),
@@ -2672,7 +2784,7 @@ export async function uploadLibraryFile(
   if (/^(image|video|audio)\//i.test(effectiveFileType)) {
     await assertR2StorageActive();
   }
-  const storage = await storagePut(key, fileBuffer, effectiveFileType);
+  const storage = uploadedStorage ?? await storagePut(key, fileBuffer, effectiveFileType);
   let enrichment: LibraryUploadEnrichmentResult | null = null;
   let extractedText: string | null = null;
   let created: Awaited<ReturnType<typeof createLibraryItem>> | null = null;
@@ -2843,6 +2955,7 @@ export async function uploadLibraryFile(
   if (totalCharge > 0) {
     const hasCredits = await hasEnoughCredits(actor.userId, totalCharge);
     if (!hasCredits) {
+      await rollbackCreatedLibraryUpload(created.item.id, actor, storage.key, db);
       throw new Error(`Insufficient credits. Required: ${totalCharge}`);
     }
   }
@@ -2925,35 +3038,66 @@ export async function uploadLibraryFile(
       }).catch(() => {});
     }
     // Roll back uploaded artifact when post-upload billing fails (e.g., concurrent balance race).
-    try {
-      const softDeleted = await softDeleteLibraryItem(created.item.id, actor, db);
-      if (softDeleted) {
-        await permanentDeleteLibraryItem(created.item.id, actor, db);
-      } else {
-        await storageDelete(storage.key).catch(() => {});
-      }
-    } catch {
-      await storageDelete(storage.key).catch(() => {});
-    }
+    await rollbackCreatedLibraryUpload(created.item.id, actor, storage.key, db);
     throw error;
   }
 
-  const indexJob = await safeEnqueueLibraryIndexJob(
-    {
-      libraryItemId: created.item.id,
-      tenantId,
-      jobType: "initial_index",
-      domain: "library",
-      operation: "index",
-      source: "library.upload",
-      sourceMetadata: {
-        ingestion: "document_upload",
-        fileType,
+  const enqueueIndexJob = input.strictIndexing
+    ? enqueueLibraryIndexJob
+    : safeEnqueueLibraryIndexJob;
+  let indexJob: LibraryEnqueueResult;
+  try {
+    indexJob = await enqueueIndexJob(
+      {
+        libraryItemId: created.item.id,
+        tenantId,
+        jobType: "initial_index",
+        domain: "library",
+        operation: "index",
+        source: "library.upload",
+        sourceMetadata: {
+          ingestion: "document_upload",
+          fileType,
+        },
+        allowThrottle: !input.strictIndexing,
       },
-      allowThrottle: true,
-    },
-    db,
-  );
+      db,
+    );
+  } catch (error) {
+    if (input.strictIndexing) {
+      if (ocrCharged && ocrChargePlan) {
+        await refundCredits({
+          userId: actor.userId,
+          amount: ocrChargePlan.amount,
+          description: `Refund OCR charge (library upload): ${fileName}`,
+          sourceType: "other",
+          metadata: {
+            ...ocrChargePlan.metadata,
+            refundReason: "library_upload_index_enqueue_failed",
+          },
+        }).catch(() => {});
+      }
+      if (uploadCharged && billing.totalCredits > 0) {
+        await refundCredits({
+          userId: actor.userId,
+          amount: billing.totalCredits,
+          description: `Refund library upload billing: ${fileName}`,
+          sourceType: "indexing",
+          metadata: {
+            service: "library.upload_file",
+            libraryItemId: created.item.id,
+            fileName,
+            fileType,
+            fileSizeBytes: fileBuffer.length,
+            billingCategory: billing.category,
+            refundReason: "library_upload_index_enqueue_failed",
+          },
+        }).catch(() => {});
+      }
+      await rollbackCreatedLibraryUpload(created.item.id, actor, storage.key, db);
+    }
+    throw error;
+  }
 
   return {
     item: created.item,
@@ -3006,14 +3150,10 @@ export async function replaceLibraryFile(
     throw new Error(`File extension .${ext} is not allowed`);
   }
 
-  const b64 = input.fileBase64.includes(",")
-    ? input.fileBase64.split(",", 2)[1]
-    : input.fileBase64;
-  let fileBuffer: Buffer<ArrayBufferLike> = Buffer.from(b64, "base64");
+  const resolvedUpload = await resolveLibraryUploadFile(input, tenantId, actor.userId);
+  let fileBuffer: Buffer<ArrayBufferLike> = resolvedUpload.fileBuffer;
+  const uploadedStorage = resolvedUpload.storage;
 
-  if (!fileBuffer.length) {
-    throw new Error("Uploaded file is empty");
-  }
   if (fileBuffer.length > MAX_LIBRARY_UPLOAD_BYTES) {
     throw new Error("File too large (max 50MB)");
   }
@@ -3123,11 +3263,12 @@ export async function replaceLibraryFile(
 
     // 5. Upload new file
     const fileId = crypto.randomUUID().replace(/-/g, "");
-    newKey = `library/uploads/${tenantId}/${actor.userId}/${fileId}${ext ? `.${ext}` : ""}`;
+    newKey = uploadedStorage?.key
+      ?? `library/uploads/${tenantId}/${actor.userId}/${fileId}${ext ? `.${ext}` : ""}`;
     if (/^(image|video|audio)\//i.test(effectiveFileType)) {
       await assertR2StorageActive();
     }
-    const storage = await storagePut(newKey, fileBuffer, effectiveFileType);
+    const storage = uploadedStorage ?? await storagePut(newKey, fileBuffer, effectiveFileType);
     const inferredItemType = inferLibraryItemType(effectiveFileType, ext);
     const featureFlags = await getTenantFeatureFlags(String(tenantId));
     const enrichment = await enrichLibraryUploadContent({
@@ -3332,7 +3473,10 @@ export async function replaceLibraryFile(
     }
 
     // 8. Enqueue re-indexing (outside transaction — job queue insert)
-    const indexJob = await safeEnqueueLibraryIndexJob(
+    const enqueueIndexJob = input.strictIndexing
+      ? enqueueLibraryIndexJob
+      : safeEnqueueLibraryIndexJob;
+    const indexJob = await enqueueIndexJob(
       {
         libraryItemId: existing.id,
         tenantId,
@@ -3345,7 +3489,7 @@ export async function replaceLibraryFile(
           fileType,
           previousVersion: versionNumber,
         },
-        allowThrottle: true,
+        allowThrottle: !input.strictIndexing,
       },
       db,
     );

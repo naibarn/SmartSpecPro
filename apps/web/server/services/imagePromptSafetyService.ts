@@ -3,13 +3,27 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { executeSkillLlmWithFallback } from "./skillModelFallback";
+import {
+  analyzeVerticalDramaStorySafety,
+  isBlockingVerticalDramaStorySafety,
+} from "./verticalDramaStorySafety";
 
-const SKILL_ID = "image-prompt-safety-rewriter";
+const STANDARD_SKILL_ID = "image-prompt-safety-rewriter";
+const VERTICAL_DRAMA_COVER_SKILL_ID =
+  "vertical-drama-episode-cover-safety-rewriter";
 const SKILL_VERSION = "1.0.0";
 const MAX_PROMPT_LENGTH = 20_000;
+const MAX_SAFETY_REVIEW_ATTEMPTS = 2;
+const SAFETY_REVIEW_RETRY_DELAY_MS = process.env.NODE_ENV === "test" ? 0 : 750;
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
-export type ImagePromptSafetyMode = "standard" | "vertical_drama_managed";
+export const IMAGE_PROMPT_SAFETY_UNAVAILABLE_MESSAGE =
+  "Image prompt safety review was unavailable for a sensitive prompt.";
+
+export type ImagePromptSafetyMode =
+  | "standard"
+  | "vertical_drama_managed"
+  | "vertical_drama_cover";
 export type ImagePromptRiskLevel = "low" | "medium" | "high";
 
 export interface ImagePromptSafetyMetadata {
@@ -52,16 +66,16 @@ export class ImagePromptSafetyError extends Error {
   }
 }
 
-function hashPrompt(prompt: string): string {
+export function hashImagePrompt(prompt: string): string {
   return crypto.createHash("sha256").update(prompt, "utf8").digest("hex");
 }
 
-function loadSafetySkill(): string {
+function loadSafetySkill(skillId: string): string {
   const candidates = [
-    path.resolve(process.cwd(), "skills", SKILL_ID, "skill.md"),
-    path.resolve(process.cwd(), "apps", "web", "skills", SKILL_ID, "skill.md"),
-    path.resolve(process.cwd(), "..", "skills", SKILL_ID, "skill.md"),
-    path.resolve(moduleDir, "..", "..", "skills", SKILL_ID, "skill.md"),
+    path.resolve(process.cwd(), "skills", skillId, "skill.md"),
+    path.resolve(process.cwd(), "apps", "web", "skills", skillId, "skill.md"),
+    path.resolve(process.cwd(), "..", "skills", skillId, "skill.md"),
+    path.resolve(moduleDir, "..", "..", "skills", skillId, "skill.md"),
   ];
   for (const skillPath of candidates) {
     try {
@@ -73,7 +87,10 @@ function loadSafetySkill(): string {
   return "";
 }
 
-function detectPromptRisk(prompt: string): ImagePromptRiskLevel {
+function detectPromptRisk(
+  prompt: string,
+  mode: ImagePromptSafetyMode = "standard",
+): ImagePromptRiskLevel {
   const normalized = prompt.toLocaleLowerCase();
   const highRiskMarkers = [
     "porn",
@@ -88,6 +105,44 @@ function detectPromptRisk(prompt: string): ImagePromptRiskLevel {
   ];
   if (highRiskMarkers.some(marker => normalized.includes(marker))) {
     return "high";
+  }
+
+  if (mode === "vertical_drama_cover") {
+    const graphicMarkers = [
+      "blood",
+      "bleeding",
+      "gore",
+      "graphic injury",
+      "stabbed",
+      "shooting",
+      "ยิง",
+      "เลือด",
+      "ศพ",
+      "แทง",
+    ];
+    if (graphicMarkers.some(marker => normalized.includes(marker))) {
+      return "high";
+    }
+    const sensitiveDramaMarkers = [
+      "weapon",
+      "gun",
+      "knife",
+      "threat",
+      "threatening",
+      "forced",
+      "restrained",
+      "hostage",
+      "kidnap",
+      "assault",
+      "ข่มขู่",
+      "บังคับ",
+      "จับตัว",
+      "อาวุธ",
+      "มีด",
+    ];
+    if (sensitiveDramaMarkers.some(marker => normalized.includes(marker))) {
+      return "medium";
+    }
   }
 
   const minorMarkers = [
@@ -189,10 +244,10 @@ function parseSafetyResponse(content: string): {
   return null;
 }
 
-function buildFallbackSystemPrompt(): string {
+function buildFallbackSystemPrompt(skillId: string): string {
   return [
-    "You are the Image Prompt Safety Rewriter skill.",
-    loadSafetySkill(),
+    "You are the image prompt safety rewriter skill.",
+    loadSafetySkill(skillId),
     "Return only the required JSON object. Never return markdown or explanations.",
   ]
     .filter(Boolean)
@@ -215,21 +270,34 @@ function buildUserMessage(input: ImagePromptSafetyInput): string {
   ].join("\n");
 }
 
+function waitForSafetyReviewRetry(): Promise<void> {
+  return new Promise(resolve => {
+    setTimeout(resolve, SAFETY_REVIEW_RETRY_DELAY_MS);
+  });
+}
+
 function managedResult(input: ImagePromptSafetyInput): ImagePromptSafetyResult {
   const safePrompt = input.prompt.trim();
+  const storySafety = analyzeVerticalDramaStorySafety(safePrompt);
+  if (isBlockingVerticalDramaStorySafety(storySafety)) {
+    throw new ImagePromptSafetyError(
+      "blocked",
+      "Vertical Drama image prompt contains a high-risk story context; repair the episode before generating media.",
+    );
+  }
   return {
     prompt: safePrompt,
     metadata: {
       checked: true,
       mode: "vertical_drama_managed",
-      skillId: SKILL_ID,
+      skillId: STANDARD_SKILL_ID,
       skillVersion: SKILL_VERSION,
       riskLevel: "managed",
       rewritten: false,
       fallback: false,
       blocked: false,
-      originalPromptHash: hashPrompt(safePrompt),
-      safePromptHash: hashPrompt(safePrompt),
+      originalPromptHash: hashImagePrompt(safePrompt),
+      safePromptHash: hashImagePrompt(safePrompt),
       changes: [],
       preservedIntent: ["Vertical Drama prompt pipeline owns safety review"],
     },
@@ -250,51 +318,69 @@ export async function prepareImagePromptSafety(
     return managedResult({ ...input, prompt: originalPrompt });
   }
 
-  const detectedRisk = detectPromptRisk(originalPrompt);
-  const result = await executeSkillLlmWithFallback({
-    skillSlug: SKILL_ID,
-    userId: input.userId ?? 0,
-    executionPolicy: {
-      modelId: null,
-      allowFreeModels: true,
-      modelSource: "system_default",
-    },
-    maxModelAttempts: 2,
-    maxTokens: 1400,
-    temperature: 0.1,
-    messages: [
-      { role: "system", content: buildFallbackSystemPrompt() },
-      {
-        role: "user",
-        content: buildUserMessage({ ...input, prompt: originalPrompt }),
+  const skillId =
+    input.mode === "vertical_drama_cover"
+      ? VERTICAL_DRAMA_COVER_SKILL_ID
+      : STANDARD_SKILL_ID;
+  const reviewMode: ImagePromptSafetyMode =
+    input.mode === "vertical_drama_cover" ? "vertical_drama_cover" : "standard";
+  const detectedRisk = detectPromptRisk(originalPrompt, input.mode);
+  let parsed: ReturnType<typeof parseSafetyResponse> = null;
+  for (let attempt = 0; attempt < MAX_SAFETY_REVIEW_ATTEMPTS; attempt++) {
+    const result = await executeSkillLlmWithFallback({
+      skillSlug: skillId,
+      userId: input.userId ?? 0,
+      executionPolicy: {
+        modelId: null,
+        allowFreeModels: true,
+        modelSource: "system_default",
       },
-    ],
-  });
+      maxModelAttempts: 2,
+      maxTokens: 1400,
+      temperature: 0.1,
+      messages: [
+        { role: "system", content: buildFallbackSystemPrompt(skillId) },
+        {
+          role: "user",
+          content: buildUserMessage({ ...input, prompt: originalPrompt }),
+        },
+      ],
+    });
 
-  const parsed =
-    result.success && result.content
-      ? parseSafetyResponse(result.content)
-      : null;
+    parsed =
+      result.success && result.content
+        ? parseSafetyResponse(result.content)
+        : null;
+    if (
+      parsed ||
+      detectedRisk === "low" ||
+      attempt === MAX_SAFETY_REVIEW_ATTEMPTS - 1
+    ) {
+      break;
+    }
+    await waitForSafetyReviewRetry();
+  }
+
   if (!parsed) {
     if (detectedRisk === "high" || detectedRisk === "medium") {
       throw new ImagePromptSafetyError(
         "unavailable",
-        "Image prompt safety review was unavailable for a sensitive prompt."
+        IMAGE_PROMPT_SAFETY_UNAVAILABLE_MESSAGE
       );
     }
     return {
       prompt: originalPrompt,
       metadata: {
         checked: true,
-        mode: "standard",
-        skillId: SKILL_ID,
+        mode: reviewMode,
+        skillId,
         skillVersion: SKILL_VERSION,
         riskLevel: detectedRisk,
         rewritten: false,
         fallback: true,
         blocked: false,
-        originalPromptHash: hashPrompt(originalPrompt),
-        safePromptHash: hashPrompt(originalPrompt),
+        originalPromptHash: hashImagePrompt(originalPrompt),
+        safePromptHash: hashImagePrompt(originalPrompt),
         changes: [],
         preservedIntent: [],
       },
@@ -319,19 +405,42 @@ export async function prepareImagePromptSafety(
     prompt: safePrompt,
     metadata: {
       checked: true,
-      mode: "standard",
-      skillId: SKILL_ID,
+      mode: reviewMode,
+      skillId,
       skillVersion: SKILL_VERSION,
       riskLevel: parsed.riskLevel,
       rewritten: safePrompt !== originalPrompt,
       fallback: false,
       blocked: false,
-      originalPromptHash: hashPrompt(originalPrompt),
-      safePromptHash: hashPrompt(safePrompt),
+      originalPromptHash: hashImagePrompt(originalPrompt),
+      safePromptHash: hashImagePrompt(safePrompt),
       changes: parsed.changes,
       preservedIntent: parsed.preservedIntent,
     },
   };
+}
+
+/**
+ * An episode-cover request is prepared in the router because Hermes bypasses
+ * the normal media service. The normal media path may see that same request
+ * again; reuse is allowed only for the dedicated cover marker and an exact
+ * safe-prompt hash match.
+ */
+export function isReusablePreparedEpisodeCoverSafety(input: {
+  prompt: string;
+  extraParams?: Record<string, unknown>;
+}): boolean {
+  const marker = input.extraParams?.__prompt_safety;
+  if (!marker || typeof marker !== "object") return false;
+  const value = marker as Record<string, unknown>;
+  return (
+    input.extraParams?.__vd_purpose === "episode_cover" &&
+    value.checked === true &&
+    value.mode === "vertical_drama_cover" &&
+    value.skillId === VERTICAL_DRAMA_COVER_SKILL_ID &&
+    typeof value.safePromptHash === "string" &&
+    value.safePromptHash === hashImagePrompt(input.prompt)
+  );
 }
 
 export function isVerticalDramaImageRequest(input: {

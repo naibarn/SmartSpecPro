@@ -21,8 +21,9 @@
  *     `media.getTask`'s `errorMessage` (mirrors the existing
  *     `getMediaRetryDelayMsFromError` provider-capacity matcher pattern in
  *     `deferredMediaRetryService.ts` — keyword/regex matching over the raw
- *     error text, no new schema/DB column required) and decide whether to
- *     resubmit with a higher `soften_level`.
+ *     error text, no new schema/DB column required). A match is terminal for
+ *     the current submission; it is used for explicit user guidance and
+ *     audit classification, never as permission for an automatic resubmit.
  *
  * `CHILD_SAFETY_DIRECTIVE_MARKER` is exported so
  * `server/services/verticalDramaShotImageAction.ts` can run the same
@@ -173,9 +174,9 @@ function extractErrorStrings(error: unknown, out: string[], depth = 0): void {
  * True when `error` (a `Error`, raw string, or a `media.getTask`-shaped
  * object with an `errorMessage`/`resultData`/similar field) looks like a
  * provider content-policy/safety rejection rather than some other failure
- * (capacity, network, validation, etc.). Callers (client poll handlers and
- * router mutations) use this to decide whether to automatically resubmit
- * with a higher `softenLevel` instead of surfacing a generic failure toast.
+ * (capacity, network, validation, etc.). Callers use this to classify the
+ * terminal failure and show actionable guidance instead of a generic toast;
+ * this matcher must not trigger an automatic resubmission.
  */
 export function isCharacterLockPolicyFailure(error: unknown): boolean {
   const messages: string[] = [];

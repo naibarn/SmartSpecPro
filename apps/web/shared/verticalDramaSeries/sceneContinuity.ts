@@ -9,6 +9,22 @@
 
 export type VdSceneShotGroup = { locationKey: string; shotNumbers: number[] };
 
+export const VD_SLEEP_SURFACE_TYPES = [
+  "long_bed",
+  "single_bed",
+  "crib_bassinet",
+  "sofa",
+  "floor_mattress",
+  "other",
+] as const;
+export type VdSleepSurfaceType = (typeof VD_SLEEP_SURFACE_TYPES)[number];
+export type VdSceneSleepSurface = {
+  type: VdSleepSurfaceType;
+  name: string;
+  occupant?: string;
+  placement: string;
+};
+
 export const VD_SCENE_ANCHOR_SOURCES = ["approved", "latest_generated"] as const;
 export type VdSceneAnchorSource = (typeof VD_SCENE_ANCHOR_SOURCES)[number];
 export type VdSceneAnchor = {
@@ -34,6 +50,7 @@ export type VdSceneVisualState = {
   fixedElements: Array<{ name: string; placement: string }>;
   spatialLayout: string;
   stagingAxis: string;
+  sleepSurface?: VdSceneSleepSurface;
   wardrobeInScene: Array<{ character: string; wardrobe: string }>;
   activeProps: Array<{ name: string; placement: string; fromShot?: number }>;
   paletteMood: string;
@@ -54,6 +71,34 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function cleanString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function boundedString(value: unknown, maxLength: number): string {
+  const cleaned = cleanString(value);
+  return cleaned.length <= maxLength ? cleaned : "";
+}
+
+/** Replace an older persisted scene lock with the current canonical lock. */
+export function replaceSceneContinuityLockBlock(
+  prompt: string,
+  currentBlock: string,
+): string {
+  const lines = prompt.split("\n");
+  const output: string[] = [];
+  let replacing = false;
+  for (const line of lines) {
+    if (line.trim() === VD_SCENE_CONTINUITY_LOCK_HEADER) {
+      replacing = true;
+      continue;
+    }
+    if (replacing) {
+      if (/^\s*-\s+/.test(line) || !line.trim()) continue;
+      replacing = false;
+    }
+    output.push(line);
+  }
+  const base = output.join("\n").trim();
+  return base ? `${base}\n\n${currentBlock.trim()}` : currentBlock.trim();
 }
 
 function positiveInteger(value: unknown): number | undefined {
@@ -283,6 +328,24 @@ function resolvePairs(
   });
 }
 
+function resolveSleepSurface(raw: unknown): VdSceneSleepSurface | undefined {
+  if (!isRecord(raw)) return undefined;
+  const type = cleanString(raw.type);
+  if (!(VD_SLEEP_SURFACE_TYPES as readonly string[]).includes(type)) {
+    return undefined;
+  }
+  const name = boundedString(raw.name, 300);
+  const placement = boundedString(raw.placement, 500);
+  if (!name || !placement) return undefined;
+  const occupant = boundedString(raw.occupant, 300);
+  return {
+    type: type as VdSleepSurfaceType,
+    name,
+    placement,
+    ...(occupant ? { occupant } : {}),
+  };
+}
+
 export function resolveSceneVisualState(raw: unknown): VdSceneVisualState | undefined {
   try {
     if (!isRecord(raw)) return undefined;
@@ -313,6 +376,9 @@ export function resolveSceneVisualState(raw: unknown): VdSceneVisualState | unde
     const coverageGaps = Array.isArray(coverageRaw)
       ? coverageRaw.map(cleanString).filter(Boolean)
       : [];
+    const sleepSurface = resolveSleepSurface(
+      raw.sleepSurface ?? raw.sleep_surface,
+    );
     const manualEdit = typeof raw.manualEdit === "boolean" ? raw.manualEdit : undefined;
     const stale = typeof raw.stale === "boolean" ? raw.stale : undefined;
     return {
@@ -323,6 +389,7 @@ export function resolveSceneVisualState(raw: unknown): VdSceneVisualState | unde
       fixedElements,
       spatialLayout: cleanString(raw.spatialLayout ?? raw.spatial_layout),
       stagingAxis: cleanString(raw.stagingAxis ?? raw.staging_axis),
+      ...(sleepSurface ? { sleepSurface } : {}),
       wardrobeInScene,
       activeProps,
       paletteMood: cleanString(raw.paletteMood ?? raw.palette_mood),
@@ -397,9 +464,13 @@ export function renderSceneContinuityLockBlock(
         }
         return [`${name} — ${placement}${fromShot ? ` (from shot ${fromShot})` : ""}`];
       }).join("; ")
+      : "";
+  const sleepSurfaceLine = state.sleepSurface
+    ? `- Primary sleep surface (authoritative): ${state.sleepSurface.type} — ${state.sleepSurface.name}${state.sleepSurface.occupant ? ` — occupied by ${state.sleepSurface.occupant}` : ""} — ${state.sleepSurface.placement}. Do not replace this with a different sleep surface based on the location image.`
     : "";
-  const lines = [
+  const sceneFactLines = [
     cleanString(state.lightingState) ? `- Lighting: ${cleanString(state.lightingState)}` : "",
+    sleepSurfaceLine,
     fixed ? `- Fixed elements: ${fixed}` : "",
     cleanString(state.spatialLayout) ? `- Spatial layout: ${cleanString(state.spatialLayout)}` : "",
     cleanString(state.stagingAxis) ? `- Staging axis: ${cleanString(state.stagingAxis)}` : "",
@@ -410,7 +481,12 @@ export function renderSceneContinuityLockBlock(
       : "",
     cleanString(state.paletteMood) ? `- Palette and mood: ${cleanString(state.paletteMood)}` : "",
   ].filter(Boolean);
-  return lines.length > 0 ? [VD_SCENE_CONTINUITY_LOCK_HEADER, ...lines].join("\n") : undefined;
+  if (sceneFactLines.length === 0) return undefined;
+  return [
+    VD_SCENE_CONTINUITY_LOCK_HEADER,
+    "- Authority: this Scene Visual State is the authoritative source for scene-level visual facts; ignore conflicting furniture, layout, lighting, prop, or sleep-surface details from location descriptions, reference images, or older prompts. Preserve the shot action, but apply it to these locked scene facts.",
+    ...sceneFactLines,
+  ].join("\n");
 }
 
 /**

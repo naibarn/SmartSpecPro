@@ -23,10 +23,12 @@ import {
   registerVerticalDramaUploadedMediaAsset,
 } from "../services/verticalDramaMediaAssetService";
 import { getUnifiedMediaTask } from "../services/mediaTaskPollingService";
+import { listVerticalDramaEpisodeRepairAttempts } from "../services/verticalDramaEpisodeRepairAttempts";
 import { calculateCreditsForLLM } from "../services/creditService";
 import {
   verticalDramaSeries,
   verticalDramaEpisodes,
+  verticalDramaEpisodeRevisions,
   verticalDramaApprovalCheckpoints,
   verticalDramaGenrePresets,
   verticalDramaCharacters,
@@ -129,7 +131,10 @@ import {
 } from "@shared/verticalDramaSeries/planningState";
 import { mediaWorkflowPolicySnapshotSchema } from "@shared/verticalDramaMedia/contracts";
 import { workerSeriesAccessPolicySchema } from "@shared/workerSeriesControlPlane";
-import { retrieveVerticalDramaMediaEvidence, projectVerticalDramaMediaEvidence } from "../services/verticalDramaMediaRetrievalService";
+import {
+  retrieveVerticalDramaMediaEvidence,
+  projectVerticalDramaMediaEvidence,
+} from "../services/verticalDramaMediaRetrievalService";
 import {
   hasVerticalDramaGeneratedStory,
   resolveVerticalDramaSeriesStatus,
@@ -156,9 +161,7 @@ import {
 import { readVerticalDramaStoryControlSeed } from "@shared/verticalDramaSeries/storyControl";
 import { readVerticalDramaDraftStoryContext } from "@shared/verticalDramaSeries/draftStoryContext";
 import { readVerticalDramaDraftStoryDesign } from "@shared/verticalDramaSeries/draftStoryDesign";
-import {
-  inspectStoryConsistency,
-} from "@shared/verticalDramaSeries/storyConsistency";
+import { inspectStoryConsistency } from "@shared/verticalDramaSeries/storyConsistency";
 import {
   evaluateVerticalDramaStoryArchitecture,
   readVerticalDramaStoryArchitecture,
@@ -421,6 +424,12 @@ import {
   type VerticalDramaStoryJobCheckpoint,
 } from "../services/verticalDramaStoryJobs";
 import {
+  runVerticalDramaEpisodeRepairJob,
+  promoteVerticalDramaEpisodeRepairRevision,
+  cancelVerticalDramaEpisodeRepairRevision,
+  type VerticalDramaEpisodeRepairInput,
+} from "../services/verticalDramaEpisodeRepair";
+import {
   enqueueVerticalDramaInteractiveJob,
   getActiveVerticalDramaInteractiveJob,
   getVerticalDramaInteractiveJobStatus,
@@ -486,7 +495,10 @@ import {
   estimateDraftQualityQcCredits,
   fingerprintDraftQualityQcCandidate,
 } from "@shared/verticalDramaSeries/draftQualityQc";
-import { inspectVerticalDramaDraftCompleteness } from "@shared/verticalDramaSeries/draftCompletion";
+import {
+  inspectVerticalDramaDraftCompleteness,
+  readVerticalDramaDraftCompletionContext,
+} from "@shared/verticalDramaSeries/draftCompletion";
 import {
   assertVerticalDramaRecommendedDraftModel,
   resolveVerticalDramaRecommendedDraftModel,
@@ -508,7 +520,10 @@ function recoveredDraftCompositionStatus(ledger: {
     "storyContext",
     "storyDesign",
   ].some(key => draft[key] != null);
-  const completion = inspectVerticalDramaDraftCompleteness({ draft });
+  const completion = inspectVerticalDramaDraftCompleteness({
+    draft,
+    ...readVerticalDramaDraftCompletionContext(ledger.requestJson),
+  });
   const now = new Date().toISOString();
   if (!hasDraftPayload) {
     return {
@@ -1040,6 +1055,8 @@ type ApprovalAggRow = { seriesId: number; pendingCount: number };
 type EpisodeListProjection = {
   id: number;
   episodeNumber: number;
+  episodeKind: string;
+  specialSequence: number | null;
   title: string | null;
   status: string;
   targetDurationSeconds: number;
@@ -1444,7 +1461,7 @@ async function ensureLongFormRelationshipGraph(
     debugError(
       "verticalDramaSeries.longFormGraph",
       "Malformed relationship graph detected; rebuilding a compatibility projection and continuing automatically",
-      { seriesId },
+      { seriesId }
     );
   }
   const memory =
@@ -1492,7 +1509,7 @@ function buildDeepStoryJobLogicalRunKey(params: {
  */
 function appendStoryJobRecoveryAttempt(
   logicalRunKey: string,
-  recoveryAttempt?: number,
+  recoveryAttempt?: number
 ): string {
   return recoveryAttempt != null && recoveryAttempt > 0
     ? `${logicalRunKey}:recovery:${recoveryAttempt}`
@@ -2018,8 +2035,9 @@ async function syncDeepDraftsToMaterializedEpisodes(params: {
 function readActiveBreakdownVersionId(
   bible: Record<string, unknown> | null | undefined
 ): string | null {
-  const value = (bible as { activeBreakdownVersionId?: unknown } | null | undefined)
-    ?.activeBreakdownVersionId;
+  const value = (
+    bible as { activeBreakdownVersionId?: unknown } | null | undefined
+  )?.activeBreakdownVersionId;
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
@@ -2100,7 +2118,9 @@ async function persistDeepDraftChunkToSeries(params: {
   const [updatedRow] = await db
     .update(verticalDramaSeries)
     .set({ bible: nextBible, updatedAt: new Date() })
-    .where(seriesOwnershipWhere(params.tenantId, params.userId, params.seriesId))
+    .where(
+      seriesOwnershipWhere(params.tenantId, params.userId, params.seriesId)
+    )
     .returning({ id: verticalDramaSeries.id });
   if (!updatedRow) return null;
 
@@ -2949,7 +2969,7 @@ export async function runGenerateStoryBibleDeepJob(
       mode,
       suppliedKey: params.idempotencyKey,
     }),
-    params.__storyJobRecoveryAttempt,
+    params.__storyJobRecoveryAttempt
   );
 
   // Production-grade full-story generation — the series' known location
@@ -3060,7 +3080,14 @@ export async function runGenerateStoryBibleDeepJob(
     const workerMediaEvidence = await retrieveVerticalDramaMediaEvidence({
       tenantId,
       seriesId: String(seriesId),
-      query: [row.title, row.genre, row.tone, "footage scenes characters dialogue"].filter(Boolean).join(" "),
+      query: [
+        row.title,
+        row.genre,
+        row.tone,
+        "footage scenes characters dialogue",
+      ]
+        .filter(Boolean)
+        .join(" "),
       limit: 16,
     });
     if (workerMediaEvidence.length > 0) {
@@ -3068,12 +3095,18 @@ export async function runGenerateStoryBibleDeepJob(
         ...storyVisualInputs,
         sourcePackDigest: {
           ...(storyVisualInputs.sourcePackDigest ?? {}),
-          workerMediaEvidence: workerMediaEvidence.map(projectVerticalDramaMediaEvidence),
+          workerMediaEvidence: workerMediaEvidence.map(
+            projectVerticalDramaMediaEvidence
+          ),
         },
       };
     }
   } catch (error) {
-    debugError("verticalDramaSeries.deepStoryDraft", "Worker media evidence retrieval failed; continuing without optional evidence", error);
+    debugError(
+      "verticalDramaSeries.deepStoryDraft",
+      "Worker media evidence retrieval failed; continuing without optional evidence",
+      error
+    );
   }
 
   let ledgerPlan: {
@@ -3220,13 +3253,13 @@ export async function runGenerateStoryBibleDeepJob(
       debugError(
         "verticalDramaSeries.deepStoryDraft",
         "Initial deep-draft response failed schema validation; completing from the approved episode plan",
-        error,
+        error
       );
     } else {
       debugError(
         "verticalDramaSeries.deepStoryDraft",
         "Initial deep-draft provider call failed; completing from the approved episode plan",
-        error,
+        error
       );
     }
     const fallbackSpeaker =
@@ -3237,8 +3270,8 @@ export async function runGenerateStoryBibleDeepJob(
         materializeAutomaticCompletionFallback(
           episode,
           undefined,
-          fallbackSpeaker,
-        ),
+          fallbackSpeaker
+        )
       ),
       chunkSizes: episodesToDraft.length > 0 ? [episodesToDraft.length] : [],
       partial: false,
@@ -3273,7 +3306,7 @@ export async function runGenerateStoryBibleDeepJob(
     );
     const maxCompletionRepairRounds = Math.max(
       5,
-      Math.min(12, targetEpisodeNumbers.length),
+      Math.min(12, targetEpisodeNumbers.length)
     );
     const declaredMissingEpisodes = Array.isArray(result.missingEpisodes)
       ? result.missingEpisodes
@@ -3345,7 +3378,7 @@ export async function runGenerateStoryBibleDeepJob(
           seasonLineage,
           qualityRepairInstructions: completionReport.violations.map(
             violation =>
-              `Episode ${violation.episodeNumber}: repair completion violations ${violation.codes.join(", ")}. Return all required shots and speakable dialogue.`,
+              `Episode ${violation.episodeNumber}: repair completion violations ${violation.codes.join(", ")}. Return all required shots and speakable dialogue.`
           ),
           onProgress,
           onChunkComplete,
@@ -3413,7 +3446,7 @@ export async function runGenerateStoryBibleDeepJob(
           resolveStoryProtagonistNames(bible, characterBibleProfiles)[0] ??
           "พิมพ์ชนก";
         const fallbackEpisodes = new Set(
-          finalCompletionReport.missingEpisodeNumbers,
+          finalCompletionReport.missingEpisodeNumbers
         );
         result = {
           ...result,
@@ -3422,16 +3455,16 @@ export async function runGenerateStoryBibleDeepJob(
               fallbackEpisodes.has(item.episodeNumber)
                 ? materializeAutomaticCompletionFallback(
                     episodesToDraft.find(
-                      planned => planned.episodeNumber === item.episodeNumber,
+                      planned => planned.episodeNumber === item.episodeNumber
                     ) ?? {
                       episodeNumber: item.episodeNumber,
                       workingTitle: "",
                       logline: "",
                     },
                     item,
-                    fallbackSpeaker,
+                    fallbackSpeaker
                   )
-                : item,
+                : item
             )
             .concat(
               episodesToDraft
@@ -3439,16 +3472,16 @@ export async function runGenerateStoryBibleDeepJob(
                 .filter(
                   episode =>
                     !result.draftedItems.some(
-                      item => item.episodeNumber === episode.episodeNumber,
-                    ),
+                      item => item.episodeNumber === episode.episodeNumber
+                    )
                 )
                 .map(episode =>
                   materializeAutomaticCompletionFallback(
                     episode,
                     undefined,
-                    fallbackSpeaker,
-                  ),
-                ),
+                    fallbackSpeaker
+                  )
+                )
             )
             .sort((a, b) => a.episodeNumber - b.episodeNumber),
           partial: false,
@@ -3461,7 +3494,7 @@ export async function runGenerateStoryBibleDeepJob(
                 episodeNumber,
                 shotNumber: 0,
                 reason: "automatic_completion_fallback" as const,
-              }),
+              })
             ),
           ],
         };
@@ -3485,7 +3518,7 @@ export async function runGenerateStoryBibleDeepJob(
   ) {
     const protagonistNames = resolveStoryProtagonistNames(
       bible,
-      characterBibleProfiles,
+      characterBibleProfiles
     );
     const canonicalStory = {
       bible,
@@ -3542,7 +3575,9 @@ export async function runGenerateStoryBibleDeepJob(
           motionContractsEnabled,
           tieInDraftContext: tieInBootstrap.context,
           userPremise:
-            typeof bible.userPremise === "string" ? bible.userPremise : undefined,
+            typeof bible.userPremise === "string"
+              ? bible.userPremise
+              : undefined,
           audienceAgeRating: resolveAudienceAgeRating(bible.audienceAgeRating),
           existingLocations,
           characterBibleNames,
@@ -3668,7 +3703,7 @@ export async function runGenerateStoryBibleDeepJob(
       debugError(
         "verticalDramaSeries.deepStoryDraft",
         "Continuity repair exhausted; publishing the best complete draft with warnings",
-        { issueCount: result.continuityIssues.length },
+        { issueCount: result.continuityIssues.length }
       );
       result = {
         ...result,
@@ -3697,7 +3732,7 @@ export async function runGenerateStoryBibleDeepJob(
       debugError(
         "verticalDramaSeries.deepStoryDraft",
         "Story assurance reported quality findings; continuing with the automatically repaired draft",
-        { runId: params.runId },
+        { runId: params.runId }
       );
     }
   }
@@ -4191,11 +4226,12 @@ export async function runExtendStoryDraftHorizonJob(
   const priorHorizonStart = (priorMetadata?.horizonEndEpisode ?? 0) + 1;
   const recoveryCheckpointEpisodeNumbers =
     params.__storyJobRecoveryAttempt && params.__storyJobRecoveryAttempt > 0
-      ? resolvedResume.checkpoint?.completedEpisodeNumbers ?? []
+      ? (resolvedResume.checkpoint?.completedEpisodeNumbers ?? [])
       : [];
-  const horizonStart = recoveryCheckpointEpisodeNumbers.length > 0
-    ? Math.min(priorHorizonStart, ...recoveryCheckpointEpisodeNumbers)
-    : priorHorizonStart;
+  const horizonStart =
+    recoveryCheckpointEpisodeNumbers.length > 0
+      ? Math.min(priorHorizonStart, ...recoveryCheckpointEpisodeNumbers)
+      : priorHorizonStart;
   if (horizonStart > totalEpisodes) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
@@ -4207,14 +4243,15 @@ export async function runExtendStoryDraftHorizonJob(
     params.additionalEpisodes ?? VD_DEEP_DRAFT_EXTEND_DEFAULT_EPISODES;
   const requestedHorizonEnd = Math.min(
     priorHorizonStart + additionalEpisodes - 1,
-    totalEpisodes,
+    totalEpisodes
   );
-  const checkpointHorizonEnd = recoveryCheckpointEpisodeNumbers.length > 0
-    ? Math.max(...recoveryCheckpointEpisodeNumbers)
-    : 0;
+  const checkpointHorizonEnd =
+    recoveryCheckpointEpisodeNumbers.length > 0
+      ? Math.max(...recoveryCheckpointEpisodeNumbers)
+      : 0;
   const horizonEnd = Math.min(
     Math.max(requestedHorizonEnd, checkpointHorizonEnd),
-    totalEpisodes,
+    totalEpisodes
   );
   const episodeNumbers = new Set(
     Array.from(
@@ -4242,7 +4279,7 @@ export async function runExtendStoryDraftHorizonJob(
       mode,
       suppliedKey: params.idempotencyKey,
     }),
-    params.__storyJobRecoveryAttempt,
+    params.__storyJobRecoveryAttempt
   );
 
   // Full prior recap (owner-approved design): every episode already
@@ -4349,7 +4386,14 @@ export async function runExtendStoryDraftHorizonJob(
     const workerMediaEvidence = await retrieveVerticalDramaMediaEvidence({
       tenantId,
       seriesId: String(seriesId),
-      query: [row.title, row.genre, row.tone, "footage scenes characters dialogue"].filter(Boolean).join(" "),
+      query: [
+        row.title,
+        row.genre,
+        row.tone,
+        "footage scenes characters dialogue",
+      ]
+        .filter(Boolean)
+        .join(" "),
       limit: 16,
     });
     if (workerMediaEvidence.length > 0) {
@@ -4357,12 +4401,18 @@ export async function runExtendStoryDraftHorizonJob(
         ...storyVisualInputs,
         sourcePackDigest: {
           ...(storyVisualInputs.sourcePackDigest ?? {}),
-          workerMediaEvidence: workerMediaEvidence.map(projectVerticalDramaMediaEvidence),
+          workerMediaEvidence: workerMediaEvidence.map(
+            projectVerticalDramaMediaEvidence
+          ),
         },
       };
     }
   } catch (error) {
-    debugError("verticalDramaSeries.extendStoryDraft", "Worker media evidence retrieval failed; continuing without optional evidence", error);
+    debugError(
+      "verticalDramaSeries.extendStoryDraft",
+      "Worker media evidence retrieval failed; continuing without optional evidence",
+      error
+    );
   }
 
   let ledgerPlan: {
@@ -4449,13 +4499,13 @@ export async function runExtendStoryDraftHorizonJob(
       debugError(
         "verticalDramaSeries.extendStoryDraft",
         "Initial extension response failed schema validation; completing from the approved episode plan",
-        error,
+        error
       );
     } else {
       debugError(
         "verticalDramaSeries.extendStoryDraft",
         "Initial extension provider call failed; completing from the approved episode plan",
-        error,
+        error
       );
     }
     const fallbackSpeaker =
@@ -4466,8 +4516,8 @@ export async function runExtendStoryDraftHorizonJob(
         materializeAutomaticCompletionFallback(
           episode,
           undefined,
-          fallbackSpeaker,
-        ),
+          fallbackSpeaker
+        )
       ),
       chunkSizes: episodesToDraft.length > 0 ? [episodesToDraft.length] : [],
       partial: false,
@@ -4494,7 +4544,7 @@ export async function runExtendStoryDraftHorizonJob(
   // permanently partial horizon.
   {
     const targetEpisodeNumbers = episodesToDraft.map(
-      item => item.episodeNumber,
+      item => item.episodeNumber
     );
     const completionReport = inspectVerticalDramaCompletionSet({
       targetEpisodeNumbers,
@@ -4507,9 +4557,7 @@ export async function runExtendStoryDraftHorizonJob(
       const fallbackSpeaker =
         resolveStoryProtagonistNames(bible, characterBibleProfiles)[0] ??
         "พิมพ์ชนก";
-      const fallbackEpisodes = new Set(
-        completionReport.missingEpisodeNumbers,
-      );
+      const fallbackEpisodes = new Set(completionReport.missingEpisodeNumbers);
       result = {
         ...result,
         draftedItems: result.draftedItems
@@ -4517,16 +4565,16 @@ export async function runExtendStoryDraftHorizonJob(
             fallbackEpisodes.has(item.episodeNumber)
               ? materializeAutomaticCompletionFallback(
                   episodesToDraft.find(
-                    planned => planned.episodeNumber === item.episodeNumber,
+                    planned => planned.episodeNumber === item.episodeNumber
                   ) ?? {
                     episodeNumber: item.episodeNumber,
                     workingTitle: "",
                     logline: "",
                   },
                   item,
-                  fallbackSpeaker,
+                  fallbackSpeaker
                 )
-              : item,
+              : item
           )
           .concat(
             episodesToDraft
@@ -4534,16 +4582,16 @@ export async function runExtendStoryDraftHorizonJob(
               .filter(
                 episode =>
                   !result.draftedItems.some(
-                    item => item.episodeNumber === episode.episodeNumber,
-                  ),
+                    item => item.episodeNumber === episode.episodeNumber
+                  )
               )
               .map(episode =>
                 materializeAutomaticCompletionFallback(
                   episode,
                   undefined,
-                  fallbackSpeaker,
-                ),
-              ),
+                  fallbackSpeaker
+                )
+              )
           )
           .sort((a, b) => a.episodeNumber - b.episodeNumber),
         partial: false,
@@ -4572,13 +4620,10 @@ export async function runExtendStoryDraftHorizonJob(
   // horizon. Without this parity path, a 120-episode series could be clean
   // on initial generation but reintroduce disclosure/event drift at episode
   // 121+ or at the boundary between the old and new horizon.
-  if (
-    !result.partial &&
-    result.draftedItems.length > 0
-  ) {
+  if (!result.partial && result.draftedItems.length > 0) {
     const protagonistNames = resolveStoryProtagonistNames(
       bible,
-      characterBibleProfiles,
+      characterBibleProfiles
     );
     const canonicalStory = {
       bible,
@@ -4638,7 +4683,9 @@ export async function runExtendStoryDraftHorizonJob(
           motionContractsEnabled,
           tieInDraftContext: tieInBootstrap.context,
           userPremise:
-            typeof bible.userPremise === "string" ? bible.userPremise : undefined,
+            typeof bible.userPremise === "string"
+              ? bible.userPremise
+              : undefined,
           audienceAgeRating: resolveAudienceAgeRating(bible.audienceAgeRating),
           existingLocations,
           characterBibleNames,
@@ -4721,7 +4768,7 @@ export async function runExtendStoryDraftHorizonJob(
     debugError(
       "verticalDramaSeries.extendStoryDraft",
       "Continuity repair exhausted; publishing the best complete extension with warnings",
-      { issueCount: continuityIssues.length },
+      { issueCount: continuityIssues.length }
     );
     result = {
       ...result,
@@ -4749,7 +4796,7 @@ export async function runExtendStoryDraftHorizonJob(
       debugError(
         "verticalDramaSeries.extendStoryDraft",
         "Story assurance reported quality findings; continuing with the automatically repaired extension",
-        { runId: params.runId },
+        { runId: params.runId }
       );
     }
   }
@@ -5022,7 +5069,7 @@ export async function runGenerateStoryBiblePlanJob(
     jobId?: string;
   },
   onProgress?: (progress: VerticalDramaStoryJobProgress) => void,
-  resume?: VerticalDramaStoryJobResumeContext,
+  resume?: VerticalDramaStoryJobResumeContext
 ): Promise<unknown> {
   const { tenantId, userId, seriesId } = input;
   const row = await loadOwnedSeries(tenantId, userId, seriesId);
@@ -5086,10 +5133,13 @@ export async function runGenerateStoryBiblePlanJob(
   type StoryBiblePlanResult = Awaited<ReturnType<typeof generateStoryBible>>;
   const checkpoint = resume?.checkpoint;
   const checkpointCandidate = parseExpandedStoryBibleCandidate(
-    checkpoint?.planCandidate,
+    checkpoint?.planCandidate
   );
   const persistPlanCheckpoint = async (
-    patch: Pick<VerticalDramaStoryJobCheckpoint, "planStage" | "planCandidate" | "planCreditsUsed" | "planModel">,
+    patch: Pick<
+      VerticalDramaStoryJobCheckpoint,
+      "planStage" | "planCandidate" | "planCreditsUsed" | "planModel"
+    >
   ) => {
     if (!resume) return;
     const nextCheckpoint: VerticalDramaStoryJobCheckpoint = {
@@ -5099,8 +5149,7 @@ export async function runGenerateStoryBiblePlanJob(
       creditsUsed: patch.planCreditsUsed ?? checkpoint?.creditsUsed ?? 0,
       planStage: patch.planStage ?? checkpoint?.planStage,
       planCandidate: patch.planCandidate ?? checkpoint?.planCandidate,
-      planCreditsUsed:
-        patch.planCreditsUsed ?? checkpoint?.planCreditsUsed,
+      planCreditsUsed: patch.planCreditsUsed ?? checkpoint?.planCreditsUsed,
       planModel: patch.planModel ?? checkpoint?.planModel,
       updatedAt: new Date().toISOString(),
     };
@@ -5163,13 +5212,10 @@ export async function runGenerateStoryBiblePlanJob(
       debugError(
         "verticalDramaSeries.storyPlan",
         "Story plan provider failed; continuing with automatic plan fallback",
-        error,
+        error
       );
       result = {
-        expanded: materializeAutomaticStoryPlanFallback(
-          row,
-          bible,
-        ),
+        expanded: materializeAutomaticStoryPlanFallback(row, bible),
         creditsUsed: 0,
         model: "deterministic-plan-fallback",
         warnings: [
@@ -5234,7 +5280,7 @@ export async function runGenerateStoryBiblePlanJob(
       debugError(
         "verticalDramaSeries.storyPlan",
         "Story plan assurance reported quality findings; continuing automatically",
-        { runId: assuranceRunId },
+        { runId: assuranceRunId }
       );
     }
   }
@@ -5374,7 +5420,7 @@ export async function runVerticalDramaStoryJobExecutor(
           }),
         },
         onProgress,
-        resume,
+        resume
       );
     case "deep_generate":
       return runGenerateStoryBibleDeepJob(
@@ -5406,6 +5452,20 @@ export async function runVerticalDramaStoryJobExecutor(
         },
         onProgress,
         resume
+      );
+    case "episode_repair":
+      return runVerticalDramaEpisodeRepairJob(
+        {
+          tenantId: owner.tenantId,
+          userId: owner.userId,
+          seriesId: owner.seriesId,
+          jobId: payload.jobId,
+          ...(payload.input as Omit<
+            VerticalDramaEpisodeRepairInput,
+            "tenantId" | "userId" | "seriesId"
+          >),
+        },
+        onProgress
       );
     case "improve_script": {
       // Lazy `await import(...)` — see this file's own import block doc
@@ -6462,11 +6522,11 @@ function resolveStoryPlanningInputs(bible: Record<string, unknown>): {
  */
 function materializeAutomaticStoryPlanFallback(
   row: Pick<VerticalDramaSeriesRow, "title" | "targetEpisodeCount">,
-  bible: Record<string, unknown>,
+  bible: Record<string, unknown>
 ): ExpandedVerticalDramaStoryBible {
   const storedBreakdown = getActiveBreakdown(bible);
   const breakdownByEpisode = new Map(
-    storedBreakdown.map(item => [item.episodeNumber, item]),
+    storedBreakdown.map(item => [item.episodeNumber, item])
   );
   const episodeCount = Math.max(1, row.targetEpisodeCount);
   const episodeBreakdown = Array.from({ length: episodeCount }, (_, index) => {
@@ -6496,9 +6556,7 @@ function materializeAutomaticStoryPlanFallback(
   const sourceCharacters =
     storedCharacters.length > 0 ? storedCharacters : draftCharacters;
   const refinedCharacters = (
-    sourceCharacters.length > 0
-      ? sourceCharacters
-      : [{ name: "ตัวละครหลัก" }]
+    sourceCharacters.length > 0 ? sourceCharacters : [{ name: "ตัวละครหลัก" }]
   ).map((character, index) => {
     const name = character.name.trim() || `ตัวละครที่ ${index + 1}`;
     const role =
@@ -6526,7 +6584,8 @@ function materializeAutomaticStoryPlanFallback(
       : "";
   return {
     expandedSeasonArc:
-      storedArc || `${String(row.title).trim() || "เรื่องนี้"} เดินหน้าสู่บทสรุป`,
+      storedArc ||
+      `${String(row.title).trim() || "เรื่องนี้"} เดินหน้าสู่บทสรุป`,
     refinedCharacters,
     episodeBreakdown,
     ...(bible.storyControlSeed !== undefined
@@ -6537,7 +6596,7 @@ function materializeAutomaticStoryPlanFallback(
 
 function resolveStoryProtagonistNames(
   bible: Record<string, unknown>,
-  characterProfiles: unknown[],
+  characterProfiles: unknown[]
 ): string[] {
   const explicitCandidates = [
     bible.protagonistName,
@@ -6548,21 +6607,22 @@ function resolveStoryProtagonistNames(
     .map(profile =>
       profile && typeof profile === "object"
         ? (profile as Record<string, unknown>)
-        : null,
+        : null
     )
     .filter((profile): profile is Record<string, unknown> => profile !== null)
     .filter(profile =>
       /protagonist|main character|lead|นางเอก|พระเอก|ตัวเอก/i.test(
         [profile.role, profile.narrativeRole, profile.roleTier]
           .filter(value => typeof value === "string")
-          .join(" "),
-      ),
+          .join(" ")
+      )
     )
     .map(profile => profile.name)
     .filter((value): value is string => typeof value === "string");
   const candidates = [...explicitCandidates, ...rosterCandidates];
-  return [...new Set(candidates.length > 0 ? candidates : ["พิมพ์ชนก"])]
-    .filter(value => value.trim().length > 0);
+  return [...new Set(candidates.length > 0 ? candidates : ["พิมพ์ชนก"])].filter(
+    value => value.trim().length > 0
+  );
 }
 
 /**
@@ -6580,13 +6640,13 @@ function materializeAutomaticCompletionFallback(
     keyBeats?: string[];
   },
   candidate: DeepDraftedEpisodeItem | undefined,
-  speaker: string,
+  speaker: string
 ): DeepDraftedEpisodeItem {
   const sourceShots = candidate?.shotDrafts ?? [];
   const byShotNumber = new Map(
     sourceShots
       .filter(shot => Number.isInteger(shot.shot_number))
-      .map(shot => [shot.shot_number, shot]),
+      .map(shot => [shot.shot_number, shot])
   );
   const fallbackSummary =
     plannedEpisode.logline?.trim() ||
@@ -6617,13 +6677,11 @@ function materializeAutomaticCompletionFallback(
       return {
         shot_number: shotNumber,
         summary: shotSummary,
-        dialogue_lines: [
-          { speaker, line: fallbackLine, delivery: "จริงจัง" },
-        ],
+        dialogue_lines: [{ speaker, line: fallbackLine, delivery: "จริงจัง" }],
       };
     }
     const hasDialogue = existing.dialogue_lines.some(
-      line => line.line.trim().length > 0,
+      line => line.line.trim().length > 0
     );
     return hasDialogue
       ? existing
@@ -7103,6 +7161,111 @@ export const improveScriptJobRefInput = z.object({
   seriesId: z.string().min(1),
   jobId: z.string().min(1),
 });
+
+export const repairEpisodeInput = z.object({
+  seriesId: z.string().min(1),
+  episodeNumber: z.number().int().positive(),
+  reason: z.string().trim().min(1).max(1200).optional(),
+  idempotencyKey: z.string().trim().min(1).max(128).optional(),
+});
+
+const episodeRepairRevisionRefInput = z.object({
+  seriesId: z.string().min(1),
+  episodeId: z.number().int().positive(),
+  revisionId: z.number().int().positive().optional(),
+});
+const episodeRepairDecisionInput = episodeRepairRevisionRefInput.extend({
+  revisionId: z.number().int().positive(),
+});
+
+function safeEpisodeRepairError(
+  errorCode: string | null | undefined,
+  contextSummary?: unknown
+): string | undefined {
+  if (!errorCode) return undefined;
+  const messages: Record<string, string> = {
+    VD_STORY_POLICY_RISK: "เนื้อหาที่สร้างใหม่ต้องตรวจสอบความปลอดภัยก่อนใช้งาน",
+    VD_EPISODE_REPAIR_CONTINUITY:
+      "เนื้อหาที่สร้างใหม่ต้องตรวจสอบความต่อเนื่องก่อนใช้งาน",
+    VD_EPISODE_REPAIR_STALE_SOURCE:
+      "ข้อมูลตอนนี้ถูกแก้ไขระหว่างการซ่อม กรุณาเริ่มใหม่",
+    VD_REPAIR_STORYBOARD_CONTRACT: "ผลลัพธ์ storyboard ไม่ครบ 9 ช็อต",
+    VD_EPISODE_REPAIR_CANDIDATE_REVIEW:
+      "สร้าง candidate แล้ว แต่ต้องตรวจสอบก่อนใช้งาน",
+    VD_EPISODE_REPAIR_NOT_READY_FOR_REVIEW:
+      "candidate นี้ยังไม่พร้อมให้ตัดสินใจ",
+    VD_EPISODE_REPAIR_ALREADY_DECIDED: "candidate นี้ถูกตัดสินใจไปแล้ว",
+  };
+  const base =
+    messages[errorCode] ?? "การซ่อมเนื้อหาไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
+  if (!contextSummary || typeof contextSummary !== "object") return base;
+  const summary = contextSummary as Record<string, unknown>;
+  const diagnostics =
+    summary.repairDiagnostics && typeof summary.repairDiagnostics === "object"
+      ? (summary.repairDiagnostics as Record<string, unknown>)
+      : summary.mode === "skill_first_full_episode_rebuild"
+        ? summary
+        : null;
+  if (!diagnostics) return base;
+  const attempts = Number(diagnostics.attempts);
+  const maxAttempts = Number(diagnostics.maxAttempts);
+  const stage =
+    typeof diagnostics.lastStage === "string"
+      ? diagnostics.lastStage
+      : "unknown";
+  const lastError =
+    typeof diagnostics.lastErrorMessage === "string"
+      ? diagnostics.lastErrorMessage
+      : "ไม่พบรายละเอียดจาก skill";
+  const skillCallCounts =
+    diagnostics.skillCallCounts &&
+    typeof diagnostics.skillCallCounts === "object"
+      ? (diagnostics.skillCallCounts as Record<string, unknown>)
+      : {};
+  const scriptCalls = Number(skillCallCounts.script ?? 0);
+  const storyboardCalls = Number(skillCallCounts.storyboard ?? 0);
+  const contextLoaded =
+    diagnostics.contextLoaded && typeof diagnostics.contextLoaded === "object"
+      ? (diagnostics.contextLoaded as Record<string, unknown>)
+      : {};
+  const contextText =
+    [
+      contextLoaded.previousEpisode === true ? "ก่อนหน้า" : null,
+      contextLoaded.memory === true ? "memory" : null,
+      contextLoaded.nextEpisode === true ? "ถัดไป" : null,
+    ]
+      .filter(Boolean)
+      .join("/") || "ไม่ครบ";
+  const attemptText =
+    Number.isFinite(attempts) && Number.isFinite(maxAttempts)
+      ? `รอบ ${attempts}/${maxAttempts}`
+      : "ไม่ทราบจำนวนรอบ";
+  return `${base} (${attemptText}, skill script ${scriptCalls} ครั้ง / storyboard ${storyboardCalls} ครั้ง, บริบท ${contextText}, ขั้นตอน ${stage}, รายละเอียด: ${lastError})`;
+}
+
+function projectEpisodeRepairRevision(
+  row: typeof verticalDramaEpisodeRevisions.$inferSelect
+) {
+  return {
+    id: row.id,
+    seriesId: row.seriesId,
+    episodeId: row.episodeId,
+    revisionNumber: row.revisionNumber,
+    status: row.status,
+    jobId: row.jobId,
+    sourceUpdatedAt: row.sourceUpdatedAt,
+    hasCandidate: row.script != null || row.storyboard != null,
+    candidateScript: row.status === "needs_review" ? row.script : null,
+    candidateStoryboard: row.status === "needs_review" ? row.storyboard : null,
+    safetyFindings: row.safetyFindings,
+    contextSummary: row.contextSummary,
+    errorCode: row.errorCode,
+    errorMessage: safeEpisodeRepairError(row.errorCode, row.contextSummary),
+    promotedAt: row.promotedAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
 
 /* -------------------------------------------------------------------------- */
 /* Ad Banner Overlay (F131W, #30-A) — shared input schema + helpers           */
@@ -8986,17 +9149,14 @@ export const verticalDramaSeriesRouter = router({
       }
 
       // New synthesized drafts carry a foundation contract. Re-evaluate it at
-      // the server boundary so a client cannot bypass the pre-QC gate by
-      // sending a receipt/candidate pair with a stale contract. When the
-      // contract is incomplete, repair it here before persistence so a creator
-      // is not asked to diagnose internal architecture diagnostics manually.
+      // the server boundary before persistence. This validation is about the
+      // saved Draft's story structure, not its optional QC result, so skipping
+      // or failing QC never becomes a confirmation gate.
       const candidateStoryContract =
         input.bible?.storyContract ??
         input.draftQualityQcCandidate?.storyContract;
       const shouldAutoRepairStoryArchitecture =
-        candidateStoryContract !== undefined ||
-        (input.draftQualityQcReceipt !== undefined &&
-          input.draftQualityQcCandidate !== undefined);
+        candidateStoryContract !== undefined;
       let repairedStoryContract:
         | VerticalDramaStoryArchitectureContract
         | undefined;
@@ -9118,32 +9278,30 @@ export const verticalDramaSeriesRouter = router({
         }
       }
 
-      // Draft QC is additive and authoritative only when a receipt is sent by
-      // the new wizard path. Legacy/manual create payloads intentionally remain
-      // compatible. Never trust a client score or report: re-read the owner-
-      // scoped Redis record and compare the applied candidate fingerprint.
+      // Draft QC is advisory metadata only. Legacy/manual create payloads and
+      // confirmations with skipped, failed, stale, or edited QC remain valid.
+      // When the optional receipt still matches the owner-scoped candidate, we
+      // re-read it only to preserve an audit trail.
       let validatedDraftQualityQcAudit: Record<string, unknown> | undefined;
+      let confirmedDraftFingerprint: string | undefined;
       if (input.draftQualityQcReceipt) {
-        const receipt = draftQualityQcReceiptSchema.parse(
+        const parsedReceipt = draftQualityQcReceiptSchema.safeParse(
           input.draftQualityQcReceipt
         );
-        if (!planningSeriesRow || receipt.seriesId !== planningSeriesRow.id) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: "Draft QC receipt does not belong to the selected Series",
-          });
-        }
+        const receipt = parsedReceipt.success ? parsedReceipt.data : undefined;
         const candidate = input.draftQualityQcCandidate;
-        if (
-          !candidate ||
-          fingerprintDraftQualityQcCandidate(candidate) !==
-            receipt.candidateFingerprint
-        ) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Draft QC candidate does not match the approved run",
-          });
-        }
+        const receiptCanBeUsedForAudit = Boolean(
+          parsedReceipt.success &&
+            planningSeriesRow &&
+            receipt &&
+            candidate &&
+            receipt.seriesId === planningSeriesRow.id &&
+            fingerprintDraftQualityQcCandidate(candidate) ===
+              receipt.candidateFingerprint
+        );
+        if (receiptCanBeUsedForAudit && receipt && candidate) {
+          try {
+          confirmedDraftFingerprint = receipt.candidateFingerprint;
         const qcRecord = await getVerticalDramaDraftQualityQcStatus(
           receipt.runId,
           { tenantId, userId },
@@ -9177,91 +9335,84 @@ export const verticalDramaSeriesRouter = router({
                     receipt.seriesId
                   )
                 : null);
-        if (!qcResult) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: "Draft QC has not completed successfully",
-          });
-        }
-        const selectedHistoryEntry =
-          qcResult.history.find(
-            entry => entry.candidateFingerprint === receipt.candidateFingerprint
-          ) ??
-          (receipt.candidateFingerprint === qcResult.best.fingerprint
-            ? {
-                report: qcResult.best.report,
-                score: qcResult.best.report.overallScore,
-                status: qcResult.best.report.status,
-              }
-            : undefined);
-        const selectedReport = selectedHistoryEntry?.report;
-        if (!selectedReport) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message:
-              "Draft QC candidate is not one of the evaluated Draft versions",
-          });
-        }
-        // Draft QC is advisory. A completed receipt proves which Draft was
-        // evaluated and preserves the scorecard for audit, but the creator
-        // remains free to continue with any score or critical finding.
-        // A creator may explicitly choose another generated title or enter a
-        // custom title. The approved candidate fingerprint still protects the
-        // story fields; title choice is a presentation-level user decision,
-        // not a reason to reject an otherwise matching QC receipt.
-        const candidateBible = input.bible ?? {};
-        for (const key of ["logline", "mainPlot", "seasonArc"] as const) {
-          const candidateValue = candidate[key];
-          const appliedValue = candidateBible[key];
-          if (
-            typeof candidateValue === "string" &&
-            typeof appliedValue === "string" &&
-            candidateValue !== appliedValue
-          ) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: `Applied draft field does not match QC candidate: ${key}`,
-            });
+        if (qcResult) {
+          const selectedHistoryEntry =
+            qcResult.history.find(
+              entry => entry.candidateFingerprint === receipt.candidateFingerprint
+            ) ??
+            (receipt.candidateFingerprint === qcResult.best.fingerprint
+              ? {
+                  report: qcResult.best.report,
+                  score: qcResult.best.report.overallScore,
+                  status: qcResult.best.report.status,
+                }
+              : undefined);
+          const selectedReport = selectedHistoryEntry?.report;
+          if (selectedReport) {
+            // QC is advisory. Preserve an audit only when the owner-scoped
+            // receipt can be matched to a report; missing/failed/incomplete
+            // QC never blocks Draft confirmation.
+            const candidateBible = input.bible ?? {};
+            const appliedCandidateMatches =
+              (["logline", "mainPlot", "seasonArc"] as const).every(key => {
+                const candidateValue = candidate[key];
+                const appliedValue = candidateBible[key];
+                return (
+                  typeof candidateValue !== "string" ||
+                  typeof appliedValue !== "string" ||
+                  candidateValue === appliedValue
+                );
+              }) &&
+              ([
+                "storyContext",
+                "storyDesign",
+                "storyContract",
+                "visualNarrativeProfile",
+              ] as const).every(key =>
+                candidate[key] === undefined || candidateBible[key] === undefined
+                  ? true
+                  : fingerprintDraftQualityQcCandidate(candidate[key]) ===
+                    fingerprintDraftQualityQcCandidate(candidateBible[key])
+              );
+            if (appliedCandidateMatches) {
+              validatedDraftQualityQcAudit = {
+                contractVersion: "vd-draft-qc-v1",
+                runId: receipt.runId,
+                candidateFingerprint: receipt.candidateFingerprint,
+                overallScore: selectedReport.overallScore,
+                status: selectedReport.status,
+                pass: selectedReport.pass,
+                explicitOverride: receipt.explicitOverride === true,
+                appliedTitle: input.title.trim(),
+                bestRound: qcResult.best.round,
+                stopReason: qcResult.stopReason,
+                ...(qcResult.draftArtifactId
+                  ? { draftId: qcResult.draftArtifactId }
+                  : {}),
+                // Keep the Series projection compact. Immutable round history
+                // stays in the Draft ledger and is exposed only by getDraftHistory.
+                historyCount: qcResult.history.length,
+                creditEstimate: qcResult.creditEstimate,
+                evaluatedAt: qcResult.best.report.evaluatedAt,
+              };
+            }
           }
         }
-        for (const key of [
-          "storyContext",
-          "storyDesign",
-          "storyContract",
-          "visualNarrativeProfile",
-        ] as const) {
-          if (
-            candidate[key] !== undefined &&
-            candidateBible[key] !== undefined &&
-            fingerprintDraftQualityQcCandidate(candidate[key]) !==
-              fingerprintDraftQualityQcCandidate(candidateBible[key])
-          ) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: `Applied draft field does not match QC candidate: ${key}`,
-            });
+          } catch (error) {
+            // QC is optional metadata. Redis/ledger outages must never turn
+            // into a Draft confirmation failure.
+            debugError(
+              "verticalDramaSeries.create",
+              "Optional Draft QC audit unavailable; confirmation continues",
+              error
+            );
           }
         }
-        validatedDraftQualityQcAudit = {
-          contractVersion: "vd-draft-qc-v1",
-          runId: receipt.runId,
-          candidateFingerprint: receipt.candidateFingerprint,
-          overallScore: selectedReport.overallScore,
-          status: selectedReport.status,
-          pass: selectedReport.pass,
-          explicitOverride: receipt.explicitOverride === true,
-          appliedTitle: input.title.trim(),
-          bestRound: qcResult.best.round,
-          stopReason: qcResult.stopReason,
-          ...(qcResult.draftArtifactId
-            ? { draftId: qcResult.draftArtifactId }
-            : {}),
-          // Keep the Series projection compact. Immutable round history stays
-          // in the Draft ledger and is exposed only by getDraftHistory.
-          historyCount: qcResult.history.length,
-          creditEstimate: qcResult.creditEstimate,
-          evaluatedAt: qcResult.best.report.evaluatedAt,
-        };
+      }
+      if (!confirmedDraftFingerprint && input.draftQualityQcCandidate) {
+        confirmedDraftFingerprint = fingerprintDraftQualityQcCandidate(
+          input.draftQualityQcCandidate
+        );
       }
       if (validatedDraftQualityQcAudit && storyArchitectureRepairAudit) {
         validatedDraftQualityQcAudit = {
@@ -9633,14 +9784,14 @@ export const verticalDramaSeriesRouter = router({
             ...(input.draftSessionId
               ? { draftSessionId: input.draftSessionId }
               : {}),
-            activeDraft: input.draftQualityQcReceipt
+            activeDraft: confirmedDraftFingerprint
               ? {
                   ...(validatedDraftQualityQcAudit?.draftId
                     ? {
                         draftId: validatedDraftQualityQcAudit.draftId as string,
                       }
                     : {}),
-                  fingerprint: input.draftQualityQcReceipt.candidateFingerprint,
+                  fingerprint: confirmedDraftFingerprint,
                   confirmedAt: now,
                 }
               : (previousPlanningState?.activeDraft ?? null),
@@ -10033,6 +10184,8 @@ export const verticalDramaSeriesRouter = router({
         .select({
           id: verticalDramaEpisodes.id,
           episodeNumber: verticalDramaEpisodes.episodeNumber,
+          episodeKind: verticalDramaEpisodes.episodeKind,
+          specialSequence: verticalDramaEpisodes.specialSequence,
           title: verticalDramaEpisodes.title,
           status: verticalDramaEpisodes.status,
           targetDurationSeconds: verticalDramaEpisodes.targetDurationSeconds,
@@ -10081,12 +10234,19 @@ export const verticalDramaSeriesRouter = router({
           // Expose only the Worker workflow policy needed by Settings; do not
           // project the entire free-form policy JSONB to the browser.
           workerMediaWorkflowPolicy:
-            row.policy && typeof row.policy === "object" && !Array.isArray(row.policy)
-              ? (row.policy as Record<string, unknown>).workerMediaWorkflowPolicy ?? null
+            row.policy &&
+            typeof row.policy === "object" &&
+            !Array.isArray(row.policy)
+              ? ((row.policy as Record<string, unknown>)
+                  .workerMediaWorkflowPolicy ?? null)
               : null,
           workerAccessPolicy:
-            row.policy && typeof row.policy === "object" && !Array.isArray(row.policy)
-              ? workerSeriesAccessPolicySchema.safeParse((row.policy as Record<string, unknown>).workerAccess).success
+            row.policy &&
+            typeof row.policy === "object" &&
+            !Array.isArray(row.policy)
+              ? workerSeriesAccessPolicySchema.safeParse(
+                  (row.policy as Record<string, unknown>).workerAccess
+                ).success
                 ? (row.policy as Record<string, unknown>).workerAccess
                 : null
               : null,
@@ -11204,16 +11364,28 @@ export const verticalDramaSeriesRouter = router({
       z.object({
         seriesId: z.string().min(1),
         policy: z.unknown(),
-        expectedRevision: z.string().trim().min(1).max(128).nullable().optional().default(null),
+        expectedRevision: z
+          .string()
+          .trim()
+          .min(1)
+          .max(128)
+          .nullable()
+          .optional()
+          .default(null),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
-      const submittedPolicy = mediaWorkflowPolicySnapshotSchema.parse(input.policy);
+      const submittedPolicy = mediaWorkflowPolicySnapshotSchema.parse(
+        input.policy
+      );
       const isAdmin = ctx.user.role === "admin";
       const [adminRow] = isAdmin
         ? await db
@@ -11234,35 +11406,58 @@ export const verticalDramaSeriesRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
       }
       const currentPolicy =
-        currentRow.policy && typeof currentRow.policy === "object" && !Array.isArray(currentRow.policy)
+        currentRow.policy &&
+        typeof currentRow.policy === "object" &&
+        !Array.isArray(currentRow.policy)
           ? (currentRow.policy as Record<string, unknown>)
           : {};
-      const currentWorkerPolicy = mediaWorkflowPolicySnapshotSchema.safeParse(currentPolicy.workerMediaWorkflowPolicy);
-      const currentRevision = currentWorkerPolicy.success ? currentWorkerPolicy.data.policyRevision : null;
-      if (input.expectedRevision !== null && input.expectedRevision !== currentRevision) {
-        throw new TRPCError({ code: "CONFLICT", message: "Worker media workflow policy changed; reload before saving" });
+      const currentWorkerPolicy = mediaWorkflowPolicySnapshotSchema.safeParse(
+        currentPolicy.workerMediaWorkflowPolicy
+      );
+      const currentRevision = currentWorkerPolicy.success
+        ? currentWorkerPolicy.data.policyRevision
+        : null;
+      if (
+        input.expectedRevision !== null &&
+        input.expectedRevision !== currentRevision
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Worker media workflow policy changed; reload before saving",
+        });
       }
       const policy = mediaWorkflowPolicySnapshotSchema.parse({
         ...submittedPolicy,
         policyRevision: `worker-media-policy-${Date.now()}-${randomUUID().slice(0, 8)}`,
       });
-      const nextPolicy = { ...currentPolicy, workerMediaWorkflowPolicy: policy };
+      const nextPolicy = {
+        ...currentPolicy,
+        workerMediaWorkflowPolicy: policy,
+      };
       const [row] = await db
         .update(verticalDramaSeries)
         .set({ policy: nextPolicy, updatedAt: new Date() })
         .where(
           and(
             isAdmin
-              ? and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId))
+              ? and(
+                  eq(verticalDramaSeries.id, seriesId),
+                  eq(verticalDramaSeries.tenantId, tenantId)
+                )
               : seriesOwnershipWhere(tenantId, ctx.user.id, seriesId),
             ...(input.expectedRevision !== null
-              ? [sql`(${verticalDramaSeries.policy}->'workerMediaWorkflowPolicy'->>'policyRevision') = ${input.expectedRevision}`]
-              : []),
+              ? [
+                  sql`(${verticalDramaSeries.policy}->'workerMediaWorkflowPolicy'->>'policyRevision') = ${input.expectedRevision}`,
+                ]
+              : [])
           )
         )
         .returning();
       if (!row) {
-        throw new TRPCError({ code: "CONFLICT", message: "Worker media workflow policy changed; reload before saving" });
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Worker media workflow policy changed; reload before saving",
+        });
       }
       auditLogger.log({
         traceId: auditLogger.createTrace(),
@@ -11293,43 +11488,74 @@ export const verticalDramaSeriesRouter = router({
         seriesId: z.string().min(1),
         mode: z.enum(["private", "group", "tenant"]),
         userIds: z.array(z.number().int().positive()).max(100).default([]),
-        groupIds: z.array(z.string().trim().min(1).max(128)).max(100).default([]),
-        expectedRevision: z.string().trim().min(1).max(128).nullable().default(null),
+        groupIds: z
+          .array(z.string().trim().min(1).max(128))
+          .max(100)
+          .default([]),
+        expectedRevision: z
+          .string()
+          .trim()
+          .min(1)
+          .max(128)
+          .nullable()
+          .default(null),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const seriesId = Number(input.seriesId);
       if (!Number.isSafeInteger(seriesId) || seriesId <= 0) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
       const isAdmin = ctx.user.role === "admin";
       const [adminRow] = isAdmin
         ? await db
             .select()
             .from(verticalDramaSeries)
-            .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
+            .where(
+              and(
+                eq(verticalDramaSeries.id, seriesId),
+                eq(verticalDramaSeries.tenantId, tenantId)
+              )
+            )
             .limit(1)
         : [];
       const currentRow = isAdmin
         ? adminRow
         : await loadOwnedSeries(tenantId, ctx.user.id, seriesId);
-      if (!currentRow) throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
+      if (!currentRow)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
 
       const currentPolicy =
         currentRow.policy && typeof currentRow.policy === "object"
           ? (currentRow.policy as Record<string, unknown>)
           : {};
-      const currentAccess = workerSeriesAccessPolicySchema.safeParse(currentPolicy.workerAccess);
-      const currentRevision = currentAccess.success ? currentAccess.data.revision : "worker-access-v1";
-      if (input.expectedRevision !== null && input.expectedRevision !== currentRevision) {
-        throw new TRPCError({ code: "CONFLICT", message: "Worker access policy changed; reload before saving" });
+      const currentAccess = workerSeriesAccessPolicySchema.safeParse(
+        currentPolicy.workerAccess
+      );
+      const currentRevision = currentAccess.success
+        ? currentAccess.data.revision
+        : "worker-access-v1";
+      if (
+        input.expectedRevision !== null &&
+        input.expectedRevision !== currentRevision
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Worker access policy changed; reload before saving",
+        });
       }
 
       const accessPolicy = workerSeriesAccessPolicySchema.parse({
         mode: input.mode,
         userIds: [...new Set(input.userIds)].slice(0, 100),
-        groupIds: [...new Set(input.groupIds.map((id) => id.trim()))].slice(0, 100),
+        groupIds: [...new Set(input.groupIds.map(id => id.trim()))].slice(
+          0,
+          100
+        ),
         revision: `worker-access-${Date.now()}-${randomUUID().slice(0, 8)}`,
       });
       const nextPolicy = { ...currentPolicy, workerAccess: accessPolicy };
@@ -11338,7 +11564,10 @@ export const verticalDramaSeriesRouter = router({
         .set({ policy: nextPolicy, updatedAt: new Date() })
         .where(
           isAdmin
-            ? and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId))
+            ? and(
+                eq(verticalDramaSeries.id, seriesId),
+                eq(verticalDramaSeries.tenantId, tenantId)
+              )
             : seriesOwnershipWhere(tenantId, ctx.user.id, seriesId)
         )
         .returning();
@@ -11351,14 +11580,32 @@ export const verticalDramaSeriesRouter = router({
    * path; the downstream planner receives only grounded asset/time metadata.
    */
   searchSeriesMediaEvidence: verticalDramaProcedure
-    .input(z.object({ seriesId: z.string().min(1), query: z.string().trim().min(1).max(2000), limit: z.number().int().min(1).max(32).optional() }))
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        query: z.string().trim().min(1).max(2000),
+        limit: z.number().int().min(1).max(32).optional(),
+      })
+    )
     .query(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const seriesId = Number(input.seriesId);
-      if (!Number.isSafeInteger(seriesId) || seriesId <= 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      if (!Number.isSafeInteger(seriesId) || seriesId <= 0)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       await loadOwnedSeries(tenantId, ctx.user.id, seriesId);
-      const evidence = await retrieveVerticalDramaMediaEvidence({ tenantId, seriesId: String(seriesId), query: input.query, limit: input.limit });
-      return { seriesId: String(seriesId), items: evidence.map(projectVerticalDramaMediaEvidence) };
+      const evidence = await retrieveVerticalDramaMediaEvidence({
+        tenantId,
+        seriesId: String(seriesId),
+        query: input.query,
+        limit: input.limit,
+      });
+      return {
+        seriesId: String(seriesId),
+        items: evidence.map(projectVerticalDramaMediaEvidence),
+      };
     }),
 
   /**
@@ -11495,7 +11742,10 @@ export const verticalDramaSeriesRouter = router({
       const tenantId = requireTenantId(ctx.tenantId);
       const seriesId = Number(input.seriesId);
       if (!Number.isSafeInteger(seriesId) || seriesId <= 0) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
       await loadOwnedSeries(tenantId, ctx.user.id, seriesId);
 
@@ -11512,31 +11762,42 @@ export const verticalDramaSeriesRouter = router({
         .where(
           and(
             eq(mediaModels.modelType, "image"),
-            eq(mediaModels.isEnabled, true),
-          ),
+            eq(mediaModels.isEnabled, true)
+          )
         )
-        .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority), asc(mediaModels.id));
+        .orderBy(
+          asc(mediaModels.sortOrder),
+          asc(mediaModels.priority),
+          asc(mediaModels.id)
+        );
 
       return {
-        models: rows.flatMap((row: {
-          modelId: string;
-          name: string;
-          provider: string;
-          description: string | null;
-          creditCost: number;
-          configJson: unknown;
-        }) => {
-          const capability = resolveTransparentBackgroundCapability(row.configJson);
-          if (!capability || capability.outputFormat.toLowerCase() !== "png") return [];
-          return [{
-            modelId: row.modelId,
-            name: row.name,
-            provider: row.provider,
-            description: row.description,
-            creditCost: row.creditCost,
-            transparentBackground: capability,
-          }];
-        }),
+        models: rows.flatMap(
+          (row: {
+            modelId: string;
+            name: string;
+            provider: string;
+            description: string | null;
+            creditCost: number;
+            configJson: unknown;
+          }) => {
+            const capability = resolveTransparentBackgroundCapability(
+              row.configJson
+            );
+            if (!capability || capability.outputFormat.toLowerCase() !== "png")
+              return [];
+            return [
+              {
+                modelId: row.modelId,
+                name: row.name,
+                provider: row.provider,
+                description: row.description,
+                creditCost: row.creditCost,
+                transparentBackground: capability,
+              },
+            ];
+          }
+        ),
       };
     }),
 
@@ -11549,13 +11810,16 @@ export const verticalDramaSeriesRouter = router({
         prompt: z.string().trim().min(1).max(20_000),
         modelId: z.string().trim().min(1).max(128),
         idempotencyKey: z.string().trim().min(1).max(128).optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const seriesId = Number(input.seriesId);
       if (!Number.isSafeInteger(seriesId) || seriesId <= 0) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
       await loadActiveOwnedSeries(tenantId, ctx.user.id, seriesId);
 
@@ -11569,13 +11833,15 @@ export const verticalDramaSeriesRouter = router({
         .from(mediaModels)
         .where(eq(mediaModels.modelId, input.modelId))
         .limit(1);
-      const capability = model && model.isEnabled && model.modelType === "image"
-        ? resolveTransparentBackgroundCapability(model.configJson)
-        : null;
+      const capability =
+        model && model.isEnabled && model.modelType === "image"
+          ? resolveTransparentBackgroundCapability(model.configJson)
+          : null;
       if (!capability || capability.outputFormat.toLowerCase() !== "png") {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "The selected model does not support native transparent PNG output.",
+          message:
+            "The selected model does not support native transparent PNG output.",
         });
       }
 
@@ -11604,14 +11870,17 @@ export const verticalDramaSeriesRouter = router({
         slotId: z.enum(["primary", "secondary"]),
         taskId: z.string().trim().min(1).max(256),
         idempotencyKey: z.string().trim().min(1).max(128).optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isSafeInteger(seriesId) || seriesId <= 0) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
       const series = await loadActiveOwnedSeries(tenantId, userId, seriesId);
       let task;
@@ -11620,20 +11889,30 @@ export const verticalDramaSeriesRouter = router({
         // keeps token creation, task-source selection, and durability behavior
         // identical between preview and apply.
         const { mediaRouter } = await import("./media");
-        task = await mediaRouter.createCaller(ctx).getTask({ taskId: input.taskId });
+        task = await mediaRouter
+          .createCaller(ctx)
+          .getTask({ taskId: input.taskId });
       } catch (error) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: error instanceof Error ? error.message : "Generated logo task not found",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Generated logo task not found",
         });
       }
 
       const params = task?.parameters ?? {};
-      const rawExtra = params.extra_params ?? params.extraParams ?? task?.resultData?.extra_params;
-      const extra = rawExtra && typeof rawExtra === "object" && !Array.isArray(rawExtra)
-        ? rawExtra as Record<string, unknown>
-        : {};
-      const resultUrl = typeof task?.resultUrl === "string" ? task.resultUrl.trim() : "";
+      const rawExtra =
+        params.extra_params ??
+        params.extraParams ??
+        task?.resultData?.extra_params;
+      const extra =
+        rawExtra && typeof rawExtra === "object" && !Array.isArray(rawExtra)
+          ? (rawExtra as Record<string, unknown>)
+          : {};
+      const resultUrl =
+        typeof task?.resultUrl === "string" ? task.resultUrl.trim() : "";
       // Tasks created before __vd_logo_slot was added remain valid when their
       // series/purpose provenance is correct. New tasks always carry the slot
       // and must match it, preventing accidental cross-slot application.
@@ -11658,7 +11937,7 @@ export const verticalDramaSeriesRouter = router({
       const watermark = patchGeneratedLogoSlot(
         current,
         input.slotId as VerticalDramaLogoSlotId,
-        resultUrl,
+        resultUrl
       );
       const [row] = await db
         .update(verticalDramaSeries)
@@ -11779,16 +12058,24 @@ export const verticalDramaSeriesRouter = router({
       // prevent a cross-Series Draft from being accepted.
       const ledgerDraftSessionId = draftLedger.draftSessionId;
       const constraints = input.immutableConstraints ?? {};
+      const durableCompletionContext = readVerticalDramaDraftCompletionContext(
+        draftLedger.requestJson
+      );
       const targetEpisodeCount =
-        typeof constraints.targetEpisodeCount === "number"
+        typeof constraints.targetEpisodeCount === "number" &&
+        Number.isInteger(constraints.targetEpisodeCount) &&
+        constraints.targetEpisodeCount > 0
           ? constraints.targetEpisodeCount
-          : undefined;
+          : durableCompletionContext.targetEpisodeCount;
       const genre =
-        typeof constraints.genre === "string" ? constraints.genre : undefined;
+        typeof constraints.genre === "string" && constraints.genre.trim()
+          ? constraints.genre
+          : durableCompletionContext.genre;
       const userPremise =
-        typeof constraints.userPremise === "string"
+        typeof constraints.userPremise === "string" &&
+        constraints.userPremise.trim()
           ? constraints.userPremise
-          : undefined;
+          : durableCompletionContext.userPremise;
       const locale =
         typeof constraints.narrativeLocale === "string" &&
         constraints.narrativeLocale.toLowerCase().startsWith("en")
@@ -11824,6 +12111,9 @@ export const verticalDramaSeriesRouter = router({
       let draftForQc = repaired.draft;
       const qcImmutableConstraints = {
         ...(input.immutableConstraints ?? {}),
+        ...(targetEpisodeCount !== undefined ? { targetEpisodeCount } : {}),
+        ...(genre !== undefined ? { genre } : {}),
+        ...(userPremise !== undefined ? { userPremise } : {}),
         // QC is diagnostic here; an incomplete Draft remains blocked from
         // full series creation by the existing readiness gate.
         preQcCompleteness: {
@@ -14212,6 +14502,446 @@ export const verticalDramaSeriesRouter = router({
         ...(input.summary !== undefined ? { summary: input.summary } : {}),
         speakabilityWarnings,
         silenceIntentRemoved,
+      };
+    }),
+
+  /**
+   * Repair exactly one sub-episode as a new text/storyboard revision. The
+   * worker reads prior memory and a bounded next-episode constraint, then
+   * auto-promotes only after the policy/continuity gates pass.
+   */
+  repairEpisode: verticalDramaDeepStoryDraftsProcedure
+    .input(repairEpisodeInput)
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      const series = await loadOwnedSeries(tenantId, userId, seriesId);
+      const [episode] = await db
+        .select()
+        .from(verticalDramaEpisodes)
+        .where(
+          and(
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.userId, userId),
+            eq(verticalDramaEpisodes.seriesId, seriesId),
+            eq(verticalDramaEpisodes.episodeNumber, input.episodeNumber)
+          )
+        )
+        .limit(1);
+      if (!episode)
+        throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบตอนย่อยนี้" });
+      const sourceUpdatedAt =
+        episode.updatedAt instanceof Date
+          ? episode.updatedAt.toISOString()
+          : String(episode.updatedAt);
+      const activeBreakdownItem =
+        getActiveBreakdown(
+          (series.bible as Record<string, unknown> | null) ?? {}
+        ).find(item => item.episodeNumber === episode.episodeNumber) ?? null;
+      const hasExplicitIdempotencyKey = Boolean(input.idempotencyKey?.trim());
+      let idempotencyKey =
+        input.idempotencyKey?.trim() ??
+        `episode-repair:${episode.id}:${sourceUpdatedAt}`;
+      let retryingTerminalRevision = false;
+      const [existing] = await db
+        .select()
+        .from(verticalDramaEpisodeRevisions)
+        .where(
+          and(
+            eq(verticalDramaEpisodeRevisions.tenantId, tenantId),
+            eq(verticalDramaEpisodeRevisions.userId, userId),
+            eq(verticalDramaEpisodeRevisions.episodeId, episode.id),
+            eq(verticalDramaEpisodeRevisions.idempotencyKey, idempotencyKey)
+          )
+        )
+        .limit(1);
+      const existingIsActive =
+        existing?.status === "queued" || existing?.status === "running";
+      // A terminal revision may still have its historical jobId. Reusing it
+      // would immediately return the old failure and skip the skill-first
+      // rebuild entirely. Only active jobs are deduped by the default key.
+      if (existing?.jobId && existingIsActive) {
+        return {
+          jobId: existing.jobId,
+          revisionId: existing.id,
+          deduped: true,
+        };
+      }
+      if (existing && !existingIsActive && hasExplicitIdempotencyKey) {
+        // An explicitly supplied key is immutable idempotency history: callers
+        // must choose a new key to request a new attempt.
+        return {
+          jobId: existing.jobId ?? "",
+          revisionId: existing.id,
+          deduped: true,
+        };
+      }
+      if (existing && !existingIsActive) {
+        // The UI omits the key. Allow a failed/reviewed default-key attempt to
+        // be retried instead of trapping the user on a terminal revision.
+        idempotencyKey = `${idempotencyKey}:retry:${randomUUID()}`;
+        retryingTerminalRevision = true;
+      }
+      const active = await getActiveVerticalDramaStoryJob({
+        tenantId,
+        seriesId,
+      });
+      if (active) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "มีงานเนื้อเรื่องของซีรีส์นี้กำลังทำงานอยู่",
+        });
+      }
+      const [latest] = await db
+        .select({
+          revisionNumber: verticalDramaEpisodeRevisions.revisionNumber,
+        })
+        .from(verticalDramaEpisodeRevisions)
+        .where(
+          and(
+            eq(verticalDramaEpisodeRevisions.tenantId, tenantId),
+            eq(verticalDramaEpisodeRevisions.userId, userId),
+            eq(verticalDramaEpisodeRevisions.seriesId, seriesId),
+            eq(verticalDramaEpisodeRevisions.episodeId, episode.id)
+          )
+        )
+        .orderBy(desc(verticalDramaEpisodeRevisions.revisionNumber))
+        .limit(1);
+      const sourceFingerprint = createHash("sha256")
+        .update(
+          JSON.stringify({
+            updatedAt: sourceUpdatedAt,
+            script: episode.script,
+            storyboard: episode.storyboard,
+            breakdown: activeBreakdownItem,
+          })
+        )
+        .digest("hex");
+      let revision = retryingTerminalRevision ? undefined : existing;
+      if (!revision) {
+        try {
+          [revision] = await db
+            .insert(verticalDramaEpisodeRevisions)
+            .values({
+              tenantId,
+              userId,
+              seriesId,
+              episodeId: episode.id,
+              revisionNumber: (latest?.revisionNumber ?? 0) + 1,
+              status: "queued",
+              idempotencyKey,
+              sourceUpdatedAt: episode.updatedAt,
+              sourceFingerprint,
+            })
+            .returning();
+        } catch (error) {
+          // The unique idempotency index is the authoritative race guard.
+          // Re-read the owner-scoped row instead of enqueueing a duplicate.
+          const [raced] = await db
+            .select()
+            .from(verticalDramaEpisodeRevisions)
+            .where(
+              and(
+                eq(verticalDramaEpisodeRevisions.tenantId, tenantId),
+                eq(verticalDramaEpisodeRevisions.userId, userId),
+                eq(verticalDramaEpisodeRevisions.seriesId, seriesId),
+                eq(verticalDramaEpisodeRevisions.episodeId, episode.id),
+                eq(verticalDramaEpisodeRevisions.idempotencyKey, idempotencyKey)
+              )
+            )
+            .limit(1);
+          if (!raced) throw error;
+          revision = raced;
+        }
+      }
+      if (!revision)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "สร้าง revision ไม่สำเร็จ",
+        });
+      if (revision.jobId)
+        return {
+          jobId: revision.jobId,
+          revisionId: revision.id,
+          deduped: true,
+        };
+      if (
+        existing &&
+        revision.status !== "queued" &&
+        revision.status !== "running"
+      ) {
+        return { jobId: "", revisionId: revision.id, deduped: true };
+      }
+      const queued = await enqueueVerticalDramaStoryJob({
+        kind: "episode_repair",
+        tenantId,
+        userId,
+        seriesId,
+        input: {
+          revisionId: revision.id,
+          episodeId: episode.id,
+          sourceUpdatedAt,
+          reason: input.reason,
+        },
+      });
+      await db
+        .update(verticalDramaEpisodeRevisions)
+        .set({ jobId: queued.jobId, updatedAt: new Date() })
+        .where(
+          and(
+            eq(verticalDramaEpisodeRevisions.id, revision.id),
+            eq(verticalDramaEpisodeRevisions.tenantId, tenantId),
+            eq(verticalDramaEpisodeRevisions.userId, userId),
+            eq(verticalDramaEpisodeRevisions.seriesId, seriesId),
+            eq(verticalDramaEpisodeRevisions.episodeId, episode.id)
+          )
+        );
+      return {
+        jobId: queued.jobId,
+        revisionId: revision.id,
+        deduped: queued.deduped,
+      };
+    }),
+
+  listEpisodeRepairRevisions: verticalDramaDeepStoryDraftsProcedure
+    .input(
+      episodeRepairRevisionRefInput.extend({
+        limit: z.number().int().min(1).max(20).optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId))
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const [episode] = await db
+        .select({ id: verticalDramaEpisodes.id })
+        .from(verticalDramaEpisodes)
+        .where(
+          and(
+            eq(verticalDramaEpisodes.id, input.episodeId),
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.userId, userId),
+            eq(verticalDramaEpisodes.seriesId, seriesId)
+          )
+        )
+        .limit(1);
+      if (!episode)
+        throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบตอนย่อยนี้" });
+      const rows = await db
+        .select()
+        .from(verticalDramaEpisodeRevisions)
+        .where(
+          and(
+            eq(verticalDramaEpisodeRevisions.tenantId, tenantId),
+            eq(verticalDramaEpisodeRevisions.userId, userId),
+            eq(verticalDramaEpisodeRevisions.seriesId, seriesId),
+            eq(verticalDramaEpisodeRevisions.episodeId, input.episodeId)
+          )
+        )
+        .orderBy(desc(verticalDramaEpisodeRevisions.revisionNumber))
+        .limit(input.limit ?? 10);
+      return { revisions: rows.map(projectEpisodeRepairRevision) };
+    }),
+
+  getEpisodeRepairStatus: verticalDramaDeepStoryDraftsProcedure
+    .input(episodeRepairRevisionRefInput)
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId))
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const where = [
+        eq(verticalDramaEpisodeRevisions.tenantId, tenantId),
+        eq(verticalDramaEpisodeRevisions.userId, userId),
+        eq(verticalDramaEpisodeRevisions.seriesId, seriesId),
+        eq(verticalDramaEpisodeRevisions.episodeId, input.episodeId),
+        ...(input.revisionId
+          ? [eq(verticalDramaEpisodeRevisions.id, input.revisionId)]
+          : []),
+      ];
+      const [row] = await db
+        .select()
+        .from(verticalDramaEpisodeRevisions)
+        .where(and(...where))
+        .orderBy(desc(verticalDramaEpisodeRevisions.revisionNumber))
+        .limit(1);
+      if (!row)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "ไม่พบประวัติการซ่อมตอนนี้",
+        });
+      return projectEpisodeRepairRevision(row);
+    }),
+
+  promoteEpisodeRepairRevision: verticalDramaDeepStoryDraftsProcedure
+    .input(episodeRepairDecisionInput)
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      try {
+        return await promoteVerticalDramaEpisodeRepairRevision(
+          {
+            tenantId,
+            userId,
+            seriesId,
+            episodeId: input.episodeId,
+          },
+          input.revisionId
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const code = message.includes("NOT_FOUND")
+          ? "NOT_FOUND"
+          : message.includes("STALE") || message.includes("ALREADY")
+            ? "CONFLICT"
+            : message.includes("CONTRACT") || message.includes("NOT_READY")
+              ? "PRECONDITION_FAILED"
+              : "INTERNAL_SERVER_ERROR";
+        throw new TRPCError({
+          code,
+          message: safeEpisodeRepairError(message) ?? message,
+        });
+      }
+    }),
+
+  cancelEpisodeRepairRevision: verticalDramaDeepStoryDraftsProcedure
+    .input(episodeRepairDecisionInput)
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      try {
+        return await cancelVerticalDramaEpisodeRepairRevision(
+          {
+            tenantId,
+            userId,
+            seriesId,
+            episodeId: input.episodeId,
+          },
+          input.revisionId
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new TRPCError({
+          code: message.includes("ALREADY")
+            ? "CONFLICT"
+            : "INTERNAL_SERVER_ERROR",
+          message: "candidate นี้ถูกตัดสินใจไปแล้วหรือไม่พร้อมให้ยกเลิก",
+        });
+      }
+    }),
+
+  /**
+   * Owner-scoped forensic evidence for a repair job. Raw model output is
+   * intentionally exposed only through this authenticated episode-scoped
+   * query, never through the generic story-job status payload.
+   */
+  listEpisodeRepairAttempts: verticalDramaDeepStoryDraftsProcedure
+    .input(
+      episodeRepairRevisionRefInput.extend({
+        limit: z.number().int().min(1).max(100).optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const [episode] = await db
+        .select({ id: verticalDramaEpisodes.id })
+        .from(verticalDramaEpisodes)
+        .where(
+          and(
+            eq(verticalDramaEpisodes.id, input.episodeId),
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.userId, userId),
+            eq(verticalDramaEpisodes.seriesId, seriesId)
+          )
+        )
+        .limit(1);
+      if (!episode) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบตอนย่อยนี้" });
+      }
+      const rows = await listVerticalDramaEpisodeRepairAttempts({
+        tenantId,
+        userId,
+        seriesId,
+        episodeId: input.episodeId,
+        revisionId: input.revisionId,
+        limit: input.limit ?? 100,
+      });
+      return {
+        attempts: rows.map(row => ({
+          id: row.id,
+          revisionId: row.revisionId,
+          jobId: row.jobId,
+          attemptNumber: row.attemptNumber,
+          stage: row.stage,
+          skillSlug: row.skillSlug,
+          planningAttemptNumber: row.planningAttemptNumber,
+          model: row.model,
+          providerName: row.providerName,
+          providerCallId: row.providerCallId,
+          outcome: row.outcome,
+          rawOutput: row.rawOutput,
+          rawOutputHash: row.rawOutputHash,
+          rawOutputTruncated: row.rawOutputTruncated,
+          parsedOutput: row.parsedOutput,
+          responseMetadata: row.responseMetadata,
+          physicalAttempts: row.physicalAttempts,
+          promptHash: row.promptHash,
+          systemPromptLength: row.systemPromptLength,
+          userPromptLength: row.userPromptLength,
+          inputTokens: row.inputTokens,
+          outputTokens: row.outputTokens,
+          finishReason: row.finishReason,
+          errorCode: row.errorCode,
+          errorMessage: row.errorMessage,
+          safetyFindings: row.safetyFindings,
+          schemaIssues: row.schemaIssues,
+          startedAt: row.startedAt,
+          completedAt: row.completedAt,
+          createdAt: row.createdAt,
+        })),
       };
     }),
 

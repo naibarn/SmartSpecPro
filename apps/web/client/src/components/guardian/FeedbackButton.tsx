@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef, useCallback, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { Button } from "@smartspec/ui/src/components/ui/button";
 import {
   Dialog,
@@ -9,7 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@smartspec/ui/src/components/ui/dialog";
-import { Input } from "@smartspec/ui/src/components/ui/input";
 import { Textarea } from "@smartspec/ui/src/components/ui/textarea";
 import {
   Select,
@@ -19,7 +20,8 @@ import {
   SelectValue,
 } from "@smartspec/ui/src/components/ui/select";
 import { toast } from "sonner";
-import { MessageSquarePlus, Paperclip, X, FileText, Image, RefreshCw } from "lucide-react";
+import { MessageSquarePlus, Paperclip, X, FileText, Image, RefreshCw, Siren } from "lucide-react";
+import { Switch } from "@smartspec/ui/src/components/ui/switch";
 import {
   REPORT_ERROR_EVENT,
   getDiagnosticsForFeedback,
@@ -131,10 +133,14 @@ function getFileIcon(name: string) {
 
 export function FeedbackButton() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const { confirm } = useConfirm();
   const [open, setOpen] = useState(false);
   const [ticketType, setTicketType] = useState<string>("bug");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [isUrgent, setIsUrgent] = useState(false);
+  const [isConfirmingUrgent, setIsConfirmingUrgent] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -322,15 +328,59 @@ export function FeedbackButton() {
     },
   });
 
+  const isSubmitting = submitMutation.isPending || uploading;
+
   const resetForm = useCallback(() => {
     setOpen(false);
     setTitle("");
     setDescription("");
+    setIsUrgent(false);
+    setIsConfirmingUrgent(false);
     setTicketType("bug");
     setFiles([]);
     setPendingUploadTicketId(null);
     setPendingDiagnostics(null);
   }, []);
+
+  const handleSubmit = useCallback(async () => {
+    if (!title.trim() || isSubmitting || isConfirmingUrgent) return;
+
+    if (isUrgent) {
+      setIsConfirmingUrgent(true);
+      const confirmed = await confirm({
+        title: "Send urgent feedback?",
+        description:
+          "This will immediately alert every eligible admin with a critical center-screen notification. Use this only for issues that need immediate attention.",
+        confirmText: "Send Urgent Feedback",
+        cancelText: "Go Back",
+        tone: "danger",
+      });
+      setIsConfirmingUrgent(false);
+      if (!confirmed) return;
+    }
+
+    submitMutation.mutate({
+      ticketType: ticketType as any,
+      title: title.trim(),
+      description: description.trim() || undefined,
+      priority: isUrgent ? "critical" : "normal",
+      contextJson: (pendingDiagnostics ?? getDiagnosticsForFeedback()) as unknown as Record<
+        string,
+        unknown
+      >,
+    });
+  }, [
+    confirm,
+    description,
+    getDiagnosticsForFeedback,
+    isConfirmingUrgent,
+    isSubmitting,
+    isUrgent,
+    pendingDiagnostics,
+    submitMutation,
+    ticketType,
+    title,
+  ]);
 
   const handleRetryUpload = useCallback(async () => {
     if (!pendingUploadTicketId) return;
@@ -428,7 +478,6 @@ export function FeedbackButton() {
     [addFiles],
   );
 
-  const isSubmitting = submitMutation.isPending || uploading;
   const shouldDockLeftOnMobile = viewportWidth < 640;
   const feedbackButtonStyle = feedbackPlacement.mode === "custom"
     ? {
@@ -556,17 +605,42 @@ export function FeedbackButton() {
                   <SelectItem value="question">Question</SelectItem>
                 </SelectContent>
               </Select>
-              <Input
+              <Textarea
                 placeholder="Title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                rows={2}
+                className="min-h-16 break-words"
               />
               <Textarea
                 placeholder="Describe in detail..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
+                className="break-words"
               />
+              <div className={`flex items-start justify-between gap-3 rounded-lg border p-3 ${isUrgent ? "border-red-300 bg-red-50" : "border-border bg-muted/20"}`}>
+                <div className="flex items-start gap-2">
+                  <Siren className={`mt-0.5 h-4 w-4 shrink-0 ${isUrgent ? "text-red-600" : "text-muted-foreground"}`} />
+                  <div className="min-w-0">
+                    <label htmlFor="feedback-urgent-switch" className="text-sm font-medium cursor-pointer">
+                      Send as urgent
+                    </label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {isUrgent
+                        ? "All eligible admins will receive a critical alert immediately."
+                        : "Normal feedback is reviewed through the regular queue."}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="feedback-urgent-switch"
+                  checked={isUrgent}
+                  onCheckedChange={setIsUrgent}
+                  disabled={isSubmitting || isConfirmingUrgent}
+                  aria-label="Send feedback as urgent"
+                />
+              </div>
             </>
           )}
 
@@ -615,10 +689,10 @@ export function FeedbackButton() {
                 {files.map((file, idx) => (
                   <div
                     key={`${file.name}-${idx}`}
-                    className="flex items-center gap-2 bg-muted/50 rounded px-2 py-1 text-xs"
+                    className="flex items-start gap-2 bg-muted/50 rounded px-2 py-1 text-xs"
                   >
                     {getFileIcon(file.name)}
-                    <span className="truncate flex-1 min-w-0">{file.name}</span>
+                    <span className="min-w-0 flex-1 break-words">{file.name}</span>
                     <span className="text-muted-foreground shrink-0">
                       {formatFileSize(file.size)}
                     </span>
@@ -642,13 +716,13 @@ export function FeedbackButton() {
           {/* Transparency note: only shown when this draft was opened via a
               system-error-toast report, so users know diagnostics are attached. */}
           {pendingDiagnostics && !pendingUploadTicketId && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
-              <p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 break-words">
+              <p className="break-words">
                 ระบบจะแนบข้อมูลวินิจฉัยทางเทคนิค (รหัสติดตาม, หน้าที่เกิดปัญหา, ข้อความ error)
                 ไปให้ผู้ดูแลโดยอัตโนมัติ
               </p>
               {pendingDiagnostics.primaryError?.traceId && (
-                <p className="mt-1 font-mono text-[10px] text-blue-600">
+                <p className="mt-1 break-all font-mono text-[10px] text-blue-600">
                   traceId: {pendingDiagnostics.primaryError.traceId}
                 </p>
               )}
@@ -658,21 +732,13 @@ export function FeedbackButton() {
           {!pendingUploadTicketId && (
             <Button
               className="w-full"
-              disabled={!title.trim() || isSubmitting}
-              onClick={() =>
-                submitMutation.mutate({
-                  ticketType: ticketType as any,
-                  title: title.trim(),
-                  description: description.trim() || undefined,
-                  contextJson: (pendingDiagnostics ?? getDiagnosticsForFeedback()) as unknown as Record<
-                    string,
-                    unknown
-                  >,
-                })
-              }
+              disabled={!title.trim() || isSubmitting || isConfirmingUrgent}
+              onClick={handleSubmit}
             >
               {uploading
                 ? "Uploading files..."
+                : isConfirmingUrgent
+                  ? "Waiting for confirmation..."
                 : submitMutation.isPending
                   ? "Submitting..."
                   : "Submit Feedback"}
@@ -685,6 +751,18 @@ export function FeedbackButton() {
           >
             View my submitted feedback &rarr;
           </button>
+          {user?.role === "admin" && (
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-primary text-center w-full"
+              onClick={() => {
+                setOpen(false);
+                setLocation("/admin/feedback-hub");
+              }}
+            >
+              Admin Feedback Hub &rarr;
+            </button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

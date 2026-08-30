@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { inspectVerticalDramaDraftCompleteness } from "./draftCompletion";
+import {
+  inspectVerticalDramaDraftCompleteness,
+  readVerticalDramaDraftCompletionContext,
+} from "./draftCompletion";
 
 function baseDraft(): Record<string, unknown> {
   return {
@@ -47,6 +50,22 @@ function baseDraft(): Record<string, unknown> {
 }
 
 describe("inspectVerticalDramaDraftCompleteness", () => {
+  it("restores validation context from the durable request snapshot", () => {
+    expect(
+      readVerticalDramaDraftCompletionContext({
+        synthesis: {
+          targetEpisodeCount: 12,
+          genreHint: "โรแมนติกดราม่า",
+          userPremise: "โจทย์หลักของผู้สร้าง",
+        },
+      })
+    ).toEqual({
+      targetEpisodeCount: 12,
+      genre: "โรแมนติกดราม่า",
+      userPremise: "โจทย์หลักของผู้สร้าง",
+    });
+  });
+
   it("reports every missing foundation section instead of treating warnings as ready", () => {
     const result = inspectVerticalDramaDraftCompleteness({
       draft: baseDraft(),
@@ -56,6 +75,26 @@ describe("inspectVerticalDramaDraftCompleteness", () => {
     expect(result.report.missingPaths).toEqual(
       expect.arrayContaining(["storyContext", "storyContract", "storyDesign"])
     );
+  });
+
+  it("reports malformed persisted rows as incomplete without throwing", () => {
+    expect(() =>
+      inspectVerticalDramaDraftCompleteness({
+        draft: {
+          characters: [null, "malformed"],
+          locations: [null],
+        } as unknown as Record<string, unknown>,
+      })
+    ).not.toThrow();
+    const result = inspectVerticalDramaDraftCompleteness({
+      draft: {
+        characters: [null, "malformed"],
+        locations: [null],
+      } as unknown as Record<string, unknown>,
+    });
+    expect(result.ready).toBe(false);
+    expect(result.report.missingPaths).toContain("characters[0].name");
+    expect(result.report.missingPaths).toContain("locations[0].description");
   });
 
   it("rejects creator-decision and legacy-default facts at the QC boundary", () => {
@@ -103,25 +142,29 @@ describe("inspectVerticalDramaDraftCompleteness", () => {
       contractVersion: 1,
       primaryEngine: "academic rivalry",
       secondaryEngines: [],
-      pressureThreads: [{
-        threadId: "thread-1",
-        label: "pressure",
-        description: "pressure",
-        category: "career_or_school",
-        episodeWindow: { startEpisode: 1, endEpisode: 5 },
-      }],
+      pressureThreads: [
+        {
+          threadId: "thread-1",
+          label: "pressure",
+          description: "pressure",
+          category: "career_or_school",
+          episodeWindow: { startEpisode: 1, endEpisode: 5 },
+        },
+      ],
       earlyPayoff: {
         promise: "promise",
         episodeWindow: { startEpisode: 1, endEpisode: 2 },
         evidence: "evidence",
       },
       romanceProgression: [],
-      advantageBeats: [{
-        episodeNumber: 1,
-        advantagedSide: "protagonist",
-        cost: "cost",
-        opponentResponse: "response",
-      }],
+      advantageBeats: [
+        {
+          episodeNumber: 1,
+          advantagedSide: "protagonist",
+          cost: "cost",
+          opponentResponse: "response",
+        },
+      ],
       conflictGuardrails: ["guardrail"],
       storyControlSeed: {
         contractVersion: 1,
@@ -132,9 +175,12 @@ describe("inspectVerticalDramaDraftCompleteness", () => {
         advantageIntent: [],
       },
     };
-    const result = inspectVerticalDramaDraftCompleteness({ draft, targetEpisodeCount: 5 });
+    const result = inspectVerticalDramaDraftCompleteness({
+      draft,
+      targetEpisodeCount: 5,
+    });
     expect(result.report.missingPaths).toContain(
-      "storyDesign.storyControlSeed.seed.canonicalCharacterKeys",
+      "storyDesign.storyControlSeed.seed.canonicalCharacterKeys"
     );
   });
 });

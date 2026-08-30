@@ -705,12 +705,9 @@ export function buildReferenceCandidates(
  * Mirrors the backend's `getPrimaryPortraitUrl` selection ordering exactly
  * (approved-first, then newest-updated — same rule
  * {@link resolveCharacterCardPortraitAsset} already applies for the roster
- * card thumbnail) so the picker's default/pre-selected candidate always
- * matches today's auto-resolution behavior byte-for-byte until the user
- * actively picks a different one. Returns `null` when the character has no
- * `primary_portrait` of its own yet (matches the real "no reference
- * attached" auto behavior for a brand-new variant/twin — see
- * {@link buildReferenceCandidates}'s doc comment).
+ * card thumbnail). Main portrait generation no longer uses this as an
+ * implicit selection: only the explicit per-character override is sent as a
+ * reference. Returns `null` when there is no own portrait.
  */
 export function resolveDefaultReferenceAssetLinkId(
   assets: VerticalDramaCharacterAsset[],
@@ -725,6 +722,21 @@ export function resolveDefaultReferenceAssetLinkId(
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
   return own[0]?.assetLinkId ?? null;
+}
+
+/** Only a user-imported primary link is an explicit reference selection. A
+ * generated portrait is the result of a render and must not become the next
+ * main portrait's implicit reference merely because the poller links it. */
+export function isExplicitPrimaryReferenceImport(params: {
+  source: string;
+  role?: string | null;
+  characterId?: string | null;
+}): boolean {
+  return (
+    params.source === "imported" &&
+    params.role === "primary_portrait" &&
+    Boolean(params.characterId)
+  );
 }
 
 /** Minimum shape `buildCharacterRosterEntries` needs from a character DTO
@@ -770,6 +782,165 @@ export function resolveCharacterLookDescription(params: {
     return trimmed;
   }
   return undefined;
+}
+
+function readLookObject(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readLookText(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
+/**
+ * Read visual prompt material from both the current look contract and the
+ * older visual-bible shape. A review-required repair used to persist only the
+ * latter, so the UI must not present that real prompt as an empty state while
+ * the row is waiting for human review.
+ */
+function resolveCharacterLookDerivedPrompt(
+  data?: Record<string, unknown> | null
+): string | undefined {
+  const lookDesign = readLookObject(data?.lookDesign);
+  const visualBible = readLookObject(data?.visualBible);
+  const visualBiblePrompt = [
+    visualBible?.visualIdentitySummary,
+    visualBible?.signatureWardrobe,
+    visualBible?.hairMakeupNotes,
+    visualBible?.consistencyStrategy,
+    visualBible?.colorPalette,
+    ...(Array.isArray(visualBible?.identityAnchors)
+      ? visualBible?.identityAnchors
+      : []),
+    ...(Array.isArray(visualBible?.forbiddenDrift)
+      ? visualBible.forbiddenDrift.map(value => `Avoid: ${value}`)
+      : []),
+  ]
+    .map(readLookText)
+    .filter((value): value is string => Boolean(value))
+    .join(" ");
+  const candidates = [
+    lookDesign?.image_brief,
+    lookDesign?.visual_description,
+    visualBiblePrompt,
+  ];
+  for (const candidate of candidates) {
+    const value = readLookText(candidate);
+    if (value) return value;
+  }
+  return undefined;
+}
+
+/**
+ * Keep the roster card scannable even when a legacy row contains a complete
+ * wardrobe prompt in `description`. Prefer the structured LLM look design
+ * when available; otherwise fall back to the persisted human-facing text and
+ * bound it for the card. The full value remains available in the editor.
+ */
+export function resolveCharacterLookSummary(params: {
+  data?: Record<string, unknown> | null;
+  variantLabel?: string | null;
+  maxLength?: number;
+}): string | undefined {
+  const data = params.data ?? null;
+  const design = readLookObject(data?.lookDesign);
+  const outfit = readLookObject(design?.outfit);
+  const hair = readLookObject(design?.hair);
+  const footwear = readLookObject(design?.footwear);
+  const makeup = readLookObject(design?.makeup);
+  const structured =
+    data?.lookPromptEdited === true
+      ? []
+      : [
+          readLookText(design?.visual_description),
+          readLookText(design?.age_stage_description),
+          readLookText(outfit?.top),
+          readLookText(outfit?.bottom) ?? readLookText(outfit?.one_piece),
+          readLookText(outfit?.outerwear),
+          readLookText(hair?.style),
+          readLookText(makeup?.level),
+          readLookText(footwear?.type),
+        ].filter((value): value is string => Boolean(value));
+  const fallback =
+    resolveCharacterLookDescription({
+      data,
+      variantLabel: params.variantLabel,
+    }) ?? resolveCharacterLookDerivedPrompt(data);
+  const source = structured.length > 0 ? structured.join(" · ") : fallback;
+  if (!source) return undefined;
+  const normalized = source.replace(/\s+/g, " ").trim();
+  const maxLength = params.maxLength ?? 180;
+  if (normalized.length <= maxLength) return normalized;
+  const boundary = normalized.lastIndexOf(" ", maxLength);
+  const cutoff =
+    boundary >= Math.floor(maxLength * 0.65) ? boundary : maxLength;
+  return `${normalized.slice(0, cutoff).trimEnd()}…`;
+}
+
+/** Resolve the raw prompt shown in the compact look editor. */
+export function resolveCharacterLookPrompt(
+  data?: Record<string, unknown> | null
+): string {
+  const candidates = [
+    data?.lookImageBrief,
+    resolveCharacterLookDerivedPrompt(data),
+    data?.description,
+  ];
+  for (const candidate of candidates) {
+    const value = readLookText(candidate);
+    if (value) return value;
+  }
+  return "";
+}
+
+/** Compact preview of the exact prompt source used by the editor. */
+export function resolveCharacterLookPromptSummary(params: {
+  data?: Record<string, unknown> | null;
+  maxLength?: number;
+}): string | undefined {
+  const structuredSummary = resolveCharacterLookSummary({
+    data: params.data,
+    maxLength: params.maxLength,
+  });
+  // A manually edited prompt is the explicit source of truth. For
+  // skill-generated looks, prefer the structured visual summary so the
+  // preview starts with actual outfit/hair/makeup details instead of the
+  // generic identity-lock sentence at the beginning of image_brief.
+  if (params.data?.lookPromptEdited !== true && structuredSummary) {
+    return structuredSummary;
+  }
+  const prompt = resolveCharacterLookPrompt(params.data);
+  if (!prompt) return undefined;
+  const normalized = prompt.replace(/\s+/g, " ").trim();
+  const maxLength = params.maxLength ?? 180;
+  if (normalized.length <= maxLength) return normalized;
+  const boundary = normalized.lastIndexOf(" ", maxLength);
+  const cutoff =
+    boundary >= Math.floor(maxLength * 0.65) ? boundary : maxLength;
+  return `${normalized.slice(0, cutoff).trimEnd()}…`;
+}
+
+/**
+ * Build a safe whole-JSONB replacement for `updateCharacter`. The server
+ * stamps the authenticated manual-edit provenance; this helper only changes
+ * the two derived visual prompt fields and leaves identity/evidence intact.
+ */
+export function buildCharacterLookPromptData(params: {
+  currentData?: Record<string, unknown> | null;
+  prompt: string;
+}): Record<string, unknown> {
+  const prompt = params.prompt.trim();
+  return {
+    ...(params.currentData ?? {}),
+    description: prompt,
+    lookImageBrief: prompt,
+    lookDesignStatus: "review",
+    lookPromptEdited: true,
+  };
 }
 
 export interface VdRosterEntry<T extends VdRosterCharacterFields> {
@@ -999,13 +1170,16 @@ export function fitCharacterLookInstruction(
 export interface VdLookRenderRequestFields {
   characterId: string;
   customInstruction?: string;
+  referencePolicy: "auto";
   referenceAssetLinkId?: string;
 }
 
 /**
  * Pure builder for the per-look "สร้างภาพใหม่ของลุคนี้" dialog's request.
  *
- * Both optional fields are OMITTED rather than sent empty: `customInstruction`
+ * `referencePolicy: "auto"` is always explicit so the backend cannot mistake
+ * a look render for the main portrait's no-reference default. The optional
+ * asset field is omitted rather than sent empty: `customInstruction`
  * is server-capped at 500 chars and an empty string would be a meaningless
  * brief, and an absent `referenceAssetLinkId` is what selects the server's own
  * auto-resolution tiers. A choice whose asset link does not exist (e.g.
@@ -1028,6 +1202,7 @@ export function buildLookRenderRequestFields(params: {
         : null;
   return {
     characterId: params.lookCharacterId,
+    referencePolicy: "auto",
     ...(instruction ? { customInstruction: instruction } : {}),
     ...(referenceAssetLinkId ? { referenceAssetLinkId } : {}),
   };
@@ -1100,22 +1275,19 @@ export function resolveDirectCharacterImageInstruction(params: {
 }
 
 /**
- * Resolve the instruction for a look render. System-suggested looks persist a
- * detailed `lookImageBrief` in their character data; use it when the user has
- * not already typed a per-character instruction, so clicking "generate look"
- * cannot silently discard the context that created the slot.
+ * Resolve only the ephemeral instruction for a look render. The persisted look
+ * prompt is already part of the character data read by the server-side visual
+ * look skill; it must not be copied into this 500-character supplemental field
+ * because doing so creates a truncated second source of truth for Generate vs
+ * Edit prompt.
  */
 export function resolveLookRenderInstruction(params: {
   characterId: string;
   instructionByCharacter: Record<string, string>;
-  lookImageBrief?: string | null;
 }): string | undefined {
-  const typedInstruction =
-    params.instructionByCharacter[params.characterId]?.trim();
   const resolved = resolveDirectCharacterImageInstruction({
     characterId: params.characterId,
     instructionByCharacter: params.instructionByCharacter,
-    override: typedInstruction || params.lookImageBrief || undefined,
   });
   return resolved ? fitCharacterLookInstruction(resolved) : undefined;
 }
@@ -1384,6 +1556,9 @@ export interface VdCharacterPromptConfirmPayload<TSnapshot> {
   /** Feature 135 — Hermes/Grok media worker transport. Mutually exclusive
    *  with `mcpConnectionId` (a model row resolves to exactly one transport). */
   hermesConnectionId?: string;
+  /** Main portrait generation is text-to-image unless the user explicitly
+   * selects/attaches a reference asset. */
+  referencePolicy: "none" | "auto";
   referenceAssetLinkId?: string;
 }
 
@@ -1414,6 +1589,7 @@ export function buildCharacterPromptConfirmPayload<TSnapshot>(params: {
    *  `imageModelUsesMcp`. */
   imageModelUsesHermes?: boolean;
   hermesConnectionId?: string | null;
+  referencePolicy?: "none" | "auto";
   referenceAssetLinkId?: string | null;
 }): {
   payload: VdCharacterPromptConfirmPayload<TSnapshot>;
@@ -1459,6 +1635,9 @@ export function buildCharacterPromptConfirmPayload<TSnapshot>(params: {
       !(params.imageModelUsesMcp && params.mcpConnectionId)
         ? { hermesConnectionId: params.hermesConnectionId }
         : {}),
+      // Main portrait regeneration defaults to no reference. An explicit
+      // referenceAssetLinkId still wins in the backend resolver.
+      referencePolicy: params.referencePolicy ?? "none",
       ...(params.referenceAssetLinkId
         ? { referenceAssetLinkId: params.referenceAssetLinkId }
         : {}),
@@ -2485,8 +2664,8 @@ export function VerticalDramaCharacterStockPanel({
    *  `primary_portrait` asset is attached as the identity-lock reference on
    *  the next `generateCharacterImage`/`generateCharacterSheet` call for
    *  that character. Keyed by characterId so switching characters never
-   *  clobbers another character's choice; absent key = "use auto-
-   *  resolution" (today's exact default backend behavior, unchanged).
+   *  clobbers another character's choice; absent key = no explicit main-image
+   *  reference. Look/sheet flows select their own server policy.
    *  In-memory only, matches this file's existing per-character state
    *  convention (see `generatedImageUrls`/`pollingCharacters` above) — not
    *  persisted, not reset when the character selection changes. */
@@ -2805,6 +2984,16 @@ export function VerticalDramaCharacterStockPanel({
         toast.success(
           t(lang, "บันทึกโปรไฟล์เสียงพูดแล้ว", "Speech profile saved")
         );
+      },
+      onError,
+    });
+
+  const updateLookPromptMutation =
+    trpc.verticalDramaCharacters.updateCharacter.useMutation({
+      onSuccess: () => {
+        invalidate();
+        closeLookPromptDialog();
+        toast.success(t(lang, "บันทึก prompt ของลุคแล้ว", "Look prompt saved"));
       },
       onError,
     });
@@ -3185,7 +3374,17 @@ export function VerticalDramaCharacterStockPanel({
     });
 
   const linkMutation = trpc.verticalDramaCharacters.linkAsset.useMutation({
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
+      // An imported primary image came from an explicit user attach/drop
+      // action. Preserve that intent for the next main portrait generation;
+      // generated task completion also uses this mutation, so only imported
+      // primary links may become an explicit reference override.
+      if (isExplicitPrimaryReferenceImport(variables)) {
+        setReferenceOverrideByCharacter(prev => ({
+          ...prev,
+          [variables.characterId!]: _result.asset.assetLinkId,
+        }));
+      }
       invalidate();
       toast.success(t(lang, "นำเข้าอ้างอิงแล้ว", "Reference imported"));
     },
@@ -3334,6 +3533,7 @@ export function VerticalDramaCharacterStockPanel({
   const [lookRenderDialog, setLookRenderDialog] = useState<{
     lookCharacterId: string;
     lookLabel: string;
+    promptSummary: string | null;
     baseCharacterName: string;
     primaryAssetLinkId: string | null;
     primaryThumbnailUrl: string | null;
@@ -3344,6 +3544,18 @@ export function VerticalDramaCharacterStockPanel({
   const [lookRenderReferenceChoice, setLookRenderReferenceChoice] =
     useState<VdLookRenderReferenceChoice>("auto");
   const closeLookRenderDialog = () => setLookRenderDialog(null);
+
+  /** Compact look prompt editor. The card only shows a bounded summary; this
+   * dialog is the deliberate place to inspect/edit the full persisted visual
+   * prompt without exposing it in every roster card. */
+  const [lookPromptDialog, setLookPromptDialog] = useState<{
+    characterId: string;
+    characterName: string;
+    lookLabel: string;
+    originalPrompt: string;
+  } | null>(null);
+  const [lookPromptInput, setLookPromptInput] = useState("");
+  const closeLookPromptDialog = () => setLookPromptDialog(null);
 
   /** "เพิ่มแฝด" dialog — same open/closed convention as the variant dialog
    *  above, holding the SOURCE (face-sharing) character it was opened for. */
@@ -3373,6 +3585,26 @@ export function VerticalDramaCharacterStockPanel({
     setTwinReferencePreviewUrl(null);
   };
   const closeTwinDialog = () => setTwinDialogCharacter(null);
+
+  const handleSaveLookPrompt = () => {
+    if (!lookPromptDialog) return;
+    const prompt = lookPromptInput.trim();
+    if (!prompt || prompt === lookPromptDialog.originalPrompt.trim()) return;
+    const character = characters.find(
+      (candidate: VdCharacterListItem) =>
+        candidate.characterId === lookPromptDialog.characterId
+    );
+    updateLookPromptMutation.mutate({
+      seriesId,
+      characterId: lookPromptDialog.characterId,
+      data: buildCharacterLookPromptData({
+        currentData:
+          (character?.data as Record<string, unknown> | null | undefined) ??
+          null,
+        prompt,
+      }),
+    });
+  };
 
   /** Delete-CHARACTER confirm state (distinct from `confirmingDeleteAssetLinkId`
    *  above, which only ever deletes a reference IMAGE) — same 2-step
@@ -3867,13 +4099,14 @@ export function VerticalDramaCharacterStockPanel({
       seriesId,
       characterId,
       selectedImageModelId,
+      referencePolicy: "auto",
       // A look/regeneration is exactly the case that renders image-to-image;
       // the server applies it only when a reference is genuinely attached.
       ...(selectedEditImageModelId ? { selectedEditImageModelId } : {}),
       ...(customInstruction ? { customInstruction } : {}),
       // Explicit reference pick from the per-look re-render dialog
-      // (`buildLookRenderRequestFields`). Absent = the server's own tier
-      // resolution, byte-identical to every other call site here.
+      // (`buildLookRenderRequestFields`). `auto` preserves the look contract;
+      // an explicit asset id still wins server-side.
       ...(referenceAssetLinkId ? { referenceAssetLinkId } : {}),
       ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
       ...(imageModelUsesMcp && mcpConnectionId && mcpSharedGroupId != null
@@ -4260,14 +4493,11 @@ export function VerticalDramaCharacterStockPanel({
    */
   const setPrimaryPortraitMutation =
     trpc.verticalDramaCharacters.setPrimaryPortrait.useMutation({
-      onSuccess: async (_result, variables) => {
-        // Point the identity-lock reference at the new main image too —
-        // otherwise the next generation would still condition on whatever
-        // tile the user had previously clicked in this strip.
-        setReferenceOverrideByCharacter(prev => ({
-          ...prev,
-          [variables.characterId]: variables.assetLinkId,
-        }));
+      onSuccess: async () => {
+        // Setting an image as primary is not the same as explicitly attaching
+        // it as the next generation's reference. Main portrait generation is
+        // intentionally `none` by default; look generation uses the primary
+        // through its own `auto` policy.
         await invalidate();
         toast.success(t(lang, "ตั้งเป็นภาพหลักแล้ว", "Set as the main image"));
       },
@@ -6376,11 +6606,22 @@ export function VerticalDramaCharacterStockPanel({
                                   const variantLabel =
                                     v.variantLabel ??
                                     t(lang, "ตัวแปร", "Variant");
-                                  const variantDescription =
-                                    resolveCharacterLookDescription({
+                                  const variantSummary =
+                                    resolveCharacterLookSummary({
                                       data: v.data,
                                       variantLabel,
                                     });
+                                  const variantPromptSummary =
+                                    resolveCharacterLookPromptSummary({
+                                      data: v.data,
+                                    });
+                                  const variantLookDesignStatus =
+                                    v.data?.lookDesignStatus === "ready" ||
+                                    v.data?.lookDesignStatus === "review"
+                                      ? v.data.lookDesignStatus
+                                      : undefined;
+                                  const variantSlotPending =
+                                    v.data?.slotStatus === "pending";
                                   const isVariantDropTarget =
                                     dragOverCharacterId === v.characterId;
                                   const confirmingThisVariantCharacterDelete =
@@ -6406,22 +6647,18 @@ export function VerticalDramaCharacterStockPanel({
                                       getCharacterCardPortraitAsset(
                                         c.characterId
                                       );
-                                    setLookRenderInstruction(
-                                      resolveLookRenderInstruction({
-                                        characterId: v.characterId,
-                                        instructionByCharacter:
-                                          customInstructionByCharacter,
-                                        lookImageBrief:
-                                          typeof v.data?.lookImageBrief ===
-                                          "string"
-                                            ? v.data.lookImageBrief
-                                            : undefined,
-                                      }) ?? ""
-                                    );
+                                    // Keep this field independent from the
+                                    // persisted look prompt. Generate uses the
+                                    // saved prompt as its canonical source on
+                                    // the server; this textarea is only an
+                                    // optional one-off addition for this image.
+                                    setLookRenderInstruction("");
                                     setLookRenderReferenceChoice("auto");
                                     setLookRenderDialog({
                                       lookCharacterId: v.characterId,
                                       lookLabel: variantLabel,
+                                      promptSummary:
+                                        variantPromptSummary ?? null,
                                       baseCharacterName: c.name,
                                       primaryAssetLinkId:
                                         parentPortraitAsset?.assetLinkId ??
@@ -6431,6 +6668,18 @@ export function VerticalDramaCharacterStockPanel({
                                         null,
                                       lookAssetLinkId: variantAssetLinkId,
                                       lookThumbnailUrl: variantThumbnailUrl,
+                                    });
+                                  };
+                                  const openLookPromptEditorForVariant = () => {
+                                    if (readOnly) return;
+                                    const originalPrompt =
+                                      resolveCharacterLookPrompt(v.data);
+                                    setLookPromptInput(originalPrompt);
+                                    setLookPromptDialog({
+                                      characterId: v.characterId,
+                                      characterName: c.name,
+                                      lookLabel: variantLabel,
+                                      originalPrompt,
                                     });
                                   };
                                   return (
@@ -6454,7 +6703,7 @@ export function VerticalDramaCharacterStockPanel({
                                     <div
                                       key={v.characterId}
                                       className={cn(
-                                        "group/variant relative flex min-w-0 max-w-[18rem] items-start gap-1.5 rounded-md border px-1.5 py-1 transition-colors",
+                                        "group/variant relative flex w-full min-w-0 items-start gap-2 rounded-lg border bg-muted/20 p-1.5 transition-colors",
                                         variantActive
                                           ? "border-purple-400 bg-purple-50/60 ring-1 ring-purple-100"
                                           : "border-border hover:border-muted-foreground/40",
@@ -6721,97 +6970,186 @@ export function VerticalDramaCharacterStockPanel({
                                             </Button>
                                           ))}
                                       </div>
-                                      <button
-                                        type="button"
-                                        aria-pressed={variantActive}
-                                        aria-label={t(
-                                          lang,
-                                          `เลือกลุค ${variantLabel} ของ ${c.name}`,
-                                          `Select ${c.name}'s ${variantLabel} look`
-                                        )}
-                                        onClick={event => {
-                                          event.stopPropagation();
-                                          setSelectedCharacterId(v.characterId);
-                                        }}
-                                        className="min-w-0 flex-1 rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
-                                      >
-                                        <span
-                                          className={cn(
-                                            "block whitespace-normal break-words text-xs leading-snug",
-                                            variantActive
-                                              ? "font-semibold"
-                                              : "font-medium"
-                                          )}
-                                        >
-                                          {variantLabel}
-                                        </span>
-                                        {variantDescription ? (
-                                          <span
-                                            className="mt-0.5 block line-clamp-3 break-words text-[10px] leading-snug text-muted-foreground"
-                                            title={variantDescription}
-                                          >
-                                            {variantDescription}
-                                          </span>
-                                        ) : null}
-                                      </button>
-                                      {!readOnly &&
-                                      canRepairLegacyCharacterLook(v.data) ? (
-                                        <Button
+                                      <div className="min-w-0 flex-1">
+                                        <button
                                           type="button"
-                                          size="sm"
-                                          variant="outline"
-                                          className="h-6 shrink-0 px-1.5 text-[10px]"
-                                          disabled={
-                                            repairLegacyLookMutation.isPending
-                                          }
+                                          aria-pressed={variantActive}
                                           aria-label={t(
                                             lang,
-                                            `ซ่อมรายละเอียดลุค ${variantLabel} ด้วย AI`,
-                                            `Repair ${variantLabel} look details with AI`
+                                            `เลือกลุค ${variantLabel} ของ ${c.name}`,
+                                            `Select ${c.name}'s ${variantLabel} look`
                                           )}
-                                          title={t(
-                                            lang,
-                                            canRepairLegacyCharacterLook(v.data)
-                                              ? "แปลงข้อความจากบทให้เป็นรายละเอียดเสื้อผ้า ผม รองเท้า และเครื่องประดับ โดยคงตัวละครเดิม"
-                                              : "เรียก LLM ใหม่เพื่อจัดมาตรฐานชุด ผม รองเท้า และเครื่องประดับ โดยคงตัวละครเดิม",
-                                            canRepairLegacyCharacterLook(v.data)
-                                              ? "Convert episode evidence into outfit, hair, footwear, and accessory details while preserving the same character"
-                                              : "Ask the LLM to redesign the outfit, hair, footwear, and accessories while preserving the same character"
-                                          )}
+                                          title={variantLabel}
                                           onClick={event => {
                                             event.stopPropagation();
-                                            repairLegacyLookMutation.mutate({
-                                              seriesId,
-                                              characterId: v.characterId,
-                                            });
+                                            setSelectedCharacterId(
+                                              v.characterId
+                                            );
                                           }}
-                                          data-testid={`vd-repair-look-${v.characterId}`}
+                                          className="block w-full min-w-0 rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
                                         >
-                                          {repairLegacyLookMutation.isPending &&
-                                          repairLegacyLookMutation.variables
-                                            ?.characterId === v.characterId ? (
-                                            <Loader2
-                                              aria-hidden="true"
-                                              className="mr-1 h-3 w-3 animate-spin"
-                                            />
-                                          ) : (
-                                            <Sparkles
-                                              aria-hidden="true"
-                                              className="mr-1 h-3 w-3"
-                                            />
-                                          )}
-                                          {t(
-                                            lang,
-                                            canRepairLegacyCharacterLook(v.data)
-                                              ? "ซ่อมด้วย AI"
-                                              : "จัดมาตรฐานใหม่ด้วย AI",
-                                            canRepairLegacyCharacterLook(v.data)
-                                              ? "Repair with AI"
-                                              : "Redesign with AI"
-                                          )}
-                                        </Button>
-                                      ) : null}
-                                      {/* `planning/vd-character-look-one-step-
+                                          <span
+                                            className={cn(
+                                              "block truncate whitespace-nowrap text-xs leading-snug",
+                                              variantActive
+                                                ? "font-semibold"
+                                                : "font-medium"
+                                            )}
+                                          >
+                                            {variantLabel}
+                                          </span>
+                                          {variantSummary ? (
+                                            <span className="mt-1 block truncate whitespace-nowrap text-[10px] leading-snug text-muted-foreground">
+                                              {variantSummary}
+                                            </span>
+                                          ) : null}
+                                          <span className="mt-1 flex min-w-0 items-center gap-1 overflow-hidden">
+                                            <Badge
+                                              variant="secondary"
+                                              className="shrink-0 px-1.5 py-0 text-[9px] font-normal"
+                                            >
+                                              {v.variantType === "age_stage"
+                                                ? t(
+                                                    lang,
+                                                    "ช่วงวัย",
+                                                    "Age stage"
+                                                  )
+                                                : t(lang, "ชุด", "Outfit")}
+                                            </Badge>
+                                            {variantLookDesignStatus ? (
+                                              <Badge
+                                                variant="outline"
+                                                className="shrink-0 px-1.5 py-0 text-[9px] font-normal"
+                                              >
+                                                {variantLookDesignStatus ===
+                                                "ready"
+                                                  ? t(lang, "พร้อมใช้", "Ready")
+                                                  : t(
+                                                      lang,
+                                                      "ตรวจสอบ",
+                                                      "Review"
+                                                    )}
+                                              </Badge>
+                                            ) : null}
+                                          </span>
+                                        </button>
+                                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
+                                          {!readOnly ? (
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-6 gap-1 px-1.5 text-[10px]"
+                                              aria-label={t(
+                                                lang,
+                                                `แก้ไข prompt ลุค ${variantLabel}`,
+                                                `Edit ${variantLabel} look prompt`
+                                              )}
+                                              title={t(
+                                                lang,
+                                                "แก้ไขรายละเอียด prompt เต็มของลุค",
+                                                "Edit the full look prompt"
+                                              )}
+                                              onClick={event => {
+                                                event.stopPropagation();
+                                                openLookPromptEditorForVariant();
+                                              }}
+                                              data-testid={`vd-edit-look-prompt-${v.characterId}`}
+                                            >
+                                              <Pencil
+                                                aria-hidden="true"
+                                                className="h-3 w-3"
+                                              />
+                                              {t(
+                                                lang,
+                                                "แก้ไข prompt",
+                                                "Edit prompt"
+                                              )}
+                                            </Button>
+                                          ) : null}
+                                          {variantSlotPending ? (
+                                            <Badge
+                                              variant="secondary"
+                                              className="text-[9px]"
+                                            >
+                                              {t(
+                                                lang,
+                                                "รอสร้างลุคจาก Tie-in",
+                                                "Tie-in look slot pending"
+                                              )}
+                                            </Badge>
+                                          ) : null}
+                                          {!readOnly &&
+                                          canRepairLegacyCharacterLook(
+                                            v.data
+                                          ) ? (
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="outline"
+                                              className="h-6 shrink-0 px-1.5 text-[10px]"
+                                              disabled={
+                                                repairLegacyLookMutation.isPending
+                                              }
+                                              aria-label={t(
+                                                lang,
+                                                `ซ่อมรายละเอียดลุค ${variantLabel} ด้วย AI`,
+                                                `Repair ${variantLabel} look details with AI`
+                                              )}
+                                              title={t(
+                                                lang,
+                                                canRepairLegacyCharacterLook(
+                                                  v.data
+                                                )
+                                                  ? "แปลงข้อความจากบทให้เป็นรายละเอียดเสื้อผ้า ผม รองเท้า และเครื่องประดับ โดยคงตัวละครเดิม"
+                                                  : "เรียก LLM ใหม่เพื่อจัดมาตรฐานชุด ผม รองเท้า และเครื่องประดับ โดยคงตัวละครเดิม",
+                                                canRepairLegacyCharacterLook(
+                                                  v.data
+                                                )
+                                                  ? "Convert episode evidence into outfit, hair, footwear, and accessory details while preserving the same character"
+                                                  : "Ask the LLM to redesign the outfit, hair, footwear, and accessories while preserving the same character"
+                                              )}
+                                              onClick={event => {
+                                                event.stopPropagation();
+                                                repairLegacyLookMutation.mutate(
+                                                  {
+                                                    seriesId,
+                                                    characterId: v.characterId,
+                                                  }
+                                                );
+                                              }}
+                                              data-testid={`vd-repair-look-${v.characterId}`}
+                                            >
+                                              {repairLegacyLookMutation.isPending &&
+                                              repairLegacyLookMutation.variables
+                                                ?.characterId ===
+                                                v.characterId ? (
+                                                <Loader2
+                                                  aria-hidden="true"
+                                                  className="mr-1 h-3 w-3 animate-spin"
+                                                />
+                                              ) : (
+                                                <Sparkles
+                                                  aria-hidden="true"
+                                                  className="mr-1 h-3 w-3"
+                                                />
+                                              )}
+                                              {t(
+                                                lang,
+                                                canRepairLegacyCharacterLook(
+                                                  v.data
+                                                )
+                                                  ? "ซ่อมด้วย AI"
+                                                  : "จัดมาตรฐานใหม่ด้วย AI",
+                                                canRepairLegacyCharacterLook(
+                                                  v.data
+                                                )
+                                                  ? "Repair with AI"
+                                                  : "Redesign with AI"
+                                              )}
+                                            </Button>
+                                          ) : null}
+                                          {/* `planning/vd-character-look-one-step-
                                     flow/plan.md` (2026-07-17) — per-look
                                     generate/regenerate affordance: the modal
                                     already auto-fires this on submit when it
@@ -6831,162 +7169,171 @@ export function VerticalDramaCharacterStockPanel({
                                     generation call as the roster card's "auto"
                                     shortcuts — still never the preview
                                     wizard. */}
-                                      {!readOnly && (
-                                        <Button
-                                          type="button"
-                                          size="icon"
-                                          variant="ghost"
-                                          className="h-5 w-5 shrink-0"
-                                          disabled={
-                                            mutating ||
-                                            isImageGeneratingFor(
-                                              v.characterId
-                                            ) ||
-                                            !selectedImageModelId
-                                          }
-                                          aria-label={t(
-                                            lang,
-                                            `สร้างภาพลุค ${variantLabel} ของ ${c.name}`,
-                                            `Generate ${c.name}'s ${variantLabel} look image`
+                                          {!readOnly && (
+                                            <Button
+                                              type="button"
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-5 w-5 shrink-0"
+                                              disabled={
+                                                mutating ||
+                                                isImageGeneratingFor(
+                                                  v.characterId
+                                                ) ||
+                                                !selectedImageModelId
+                                              }
+                                              aria-label={t(
+                                                lang,
+                                                `สร้างภาพลุค ${variantLabel} ของ ${c.name}`,
+                                                `Generate ${c.name}'s ${variantLabel} look image`
+                                              )}
+                                              title={
+                                                selectedImageModelId
+                                                  ? t(
+                                                      lang,
+                                                      "แก้ไข/สร้างภาพลุคใหม่",
+                                                      "Edit / regenerate look image"
+                                                    )
+                                                  : t(
+                                                      lang,
+                                                      "เลือกโมเดลภาพก่อนสร้าง",
+                                                      "Select an image model first"
+                                                    )
+                                              }
+                                              onClick={event => {
+                                                event.stopPropagation();
+                                                openLookRenderDialogForVariant();
+                                              }}
+                                            >
+                                              {isImageGeneratingFor(
+                                                v.characterId
+                                              ) ? (
+                                                <Loader2
+                                                  aria-hidden="true"
+                                                  className="h-3 w-3 animate-spin"
+                                                />
+                                              ) : (
+                                                <ImagePlus
+                                                  aria-hidden="true"
+                                                  className="h-3 w-3"
+                                                />
+                                              )}
+                                            </Button>
                                           )}
-                                          title={
-                                            selectedImageModelId
-                                              ? t(
-                                                  lang,
-                                                  "แก้ไข/สร้างภาพลุคใหม่",
-                                                  "Edit / regenerate look image"
-                                                )
-                                              : t(
-                                                  lang,
-                                                  "เลือกโมเดลภาพก่อนสร้าง",
-                                                  "Select an image model first"
-                                                )
-                                          }
-                                          onClick={event => {
-                                            event.stopPropagation();
-                                            openLookRenderDialogForVariant();
-                                          }}
-                                        >
-                                          {isImageGeneratingFor(
-                                            v.characterId
-                                          ) ? (
-                                            <Loader2
-                                              aria-hidden="true"
-                                              className="h-3 w-3 animate-spin"
-                                            />
-                                          ) : (
-                                            <ImagePlus
-                                              aria-hidden="true"
-                                              className="h-3 w-3"
-                                            />
-                                          )}
-                                        </Button>
-                                      )}
-                                      {/* W2 delete-CHARACTER for this variant
+                                          {/* W2 delete-CHARACTER for this variant
                                     row (distinct from the portrait-image
                                     delete on the thumbnail above) — same
                                     2-step inline confirm convention as the
                                     top-level card's own delete-character
                                     button. */}
-                                      {confirmingThisVariantCharacterDelete ? (
-                                        <div
-                                          className="flex shrink-0 items-center gap-0.5"
-                                          onClick={event =>
-                                            event.stopPropagation()
-                                          }
-                                        >
-                                          <Button
-                                            type="button"
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-5 w-5"
-                                            disabled={mutating}
-                                            aria-label={t(
-                                              lang,
-                                              "ยกเลิก",
-                                              "Cancel"
-                                            )}
-                                            title={t(lang, "ยกเลิก", "Cancel")}
-                                            onClick={() =>
-                                              setConfirmingDeleteCharacterId(
-                                                null
-                                              )
-                                            }
-                                          >
-                                            <X
-                                              aria-hidden="true"
-                                              className="h-3 w-3"
-                                            />
-                                          </Button>
-                                          <Button
-                                            type="button"
-                                            size="icon"
-                                            variant="destructive"
-                                            className="h-5 w-5"
-                                            disabled={mutating}
-                                            aria-label={t(
-                                              lang,
-                                              `ยืนยันลบลุค ${variantLabel} ของ ${c.name}`,
-                                              `Confirm delete ${c.name}'s ${variantLabel} look`
-                                            )}
-                                            title={t(
-                                              lang,
-                                              "ยืนยันลบลุคนี้ทั้งตัว",
-                                              "Confirm delete this look"
-                                            )}
-                                            onClick={() => {
-                                              setConfirmingDeleteCharacterId(
-                                                null
-                                              );
-                                              deleteCharacterMutation.mutate({
-                                                seriesId,
-                                                characterId: v.characterId,
-                                              });
-                                            }}
-                                          >
-                                            {deletingThisVariantCharacter ? (
-                                              <Loader2
-                                                aria-hidden="true"
-                                                className="h-3 w-3 animate-spin"
-                                              />
-                                            ) : (
+                                          {confirmingThisVariantCharacterDelete ? (
+                                            <div
+                                              className="flex shrink-0 items-center gap-0.5"
+                                              onClick={event =>
+                                                event.stopPropagation()
+                                              }
+                                            >
+                                              <Button
+                                                type="button"
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-5 w-5"
+                                                disabled={mutating}
+                                                aria-label={t(
+                                                  lang,
+                                                  "ยกเลิก",
+                                                  "Cancel"
+                                                )}
+                                                title={t(
+                                                  lang,
+                                                  "ยกเลิก",
+                                                  "Cancel"
+                                                )}
+                                                onClick={() =>
+                                                  setConfirmingDeleteCharacterId(
+                                                    null
+                                                  )
+                                                }
+                                              >
+                                                <X
+                                                  aria-hidden="true"
+                                                  className="h-3 w-3"
+                                                />
+                                              </Button>
+                                              <Button
+                                                type="button"
+                                                size="icon"
+                                                variant="destructive"
+                                                className="h-5 w-5"
+                                                disabled={mutating}
+                                                aria-label={t(
+                                                  lang,
+                                                  `ยืนยันลบลุค ${variantLabel} ของ ${c.name}`,
+                                                  `Confirm delete ${c.name}'s ${variantLabel} look`
+                                                )}
+                                                title={t(
+                                                  lang,
+                                                  "ยืนยันลบลุคนี้ทั้งตัว",
+                                                  "Confirm delete this look"
+                                                )}
+                                                onClick={() => {
+                                                  setConfirmingDeleteCharacterId(
+                                                    null
+                                                  );
+                                                  deleteCharacterMutation.mutate(
+                                                    {
+                                                      seriesId,
+                                                      characterId:
+                                                        v.characterId,
+                                                    }
+                                                  );
+                                                }}
+                                              >
+                                                {deletingThisVariantCharacter ? (
+                                                  <Loader2
+                                                    aria-hidden="true"
+                                                    className="h-3 w-3 animate-spin"
+                                                  />
+                                                ) : (
+                                                  <Trash2
+                                                    aria-hidden="true"
+                                                    className="h-3 w-3"
+                                                  />
+                                                )}
+                                              </Button>
+                                            </div>
+                                          ) : (
+                                            <Button
+                                              type="button"
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-5 w-5 shrink-0 opacity-0 transition-opacity group-hover/variant:opacity-100 focus-visible:opacity-100"
+                                              disabled={mutating}
+                                              aria-label={t(
+                                                lang,
+                                                `ลบลุค ${variantLabel} ของ ${c.name}`,
+                                                `Delete ${c.name}'s ${variantLabel} look`
+                                              )}
+                                              title={t(
+                                                lang,
+                                                "ลบลุคนี้ทั้งตัว",
+                                                "Delete this look"
+                                              )}
+                                              onClick={event => {
+                                                event.stopPropagation();
+                                                setConfirmingDeleteCharacterId(
+                                                  v.characterId
+                                                );
+                                              }}
+                                            >
                                               <Trash2
                                                 aria-hidden="true"
                                                 className="h-3 w-3"
                                               />
-                                            )}
-                                          </Button>
+                                            </Button>
+                                          )}
                                         </div>
-                                      ) : (
-                                        <Button
-                                          type="button"
-                                          size="icon"
-                                          variant="ghost"
-                                          className="h-5 w-5 shrink-0 opacity-0 transition-opacity group-hover/variant:opacity-100 focus-visible:opacity-100"
-                                          disabled={mutating}
-                                          aria-label={t(
-                                            lang,
-                                            `ลบลุค ${variantLabel} ของ ${c.name}`,
-                                            `Delete ${c.name}'s ${variantLabel} look`
-                                          )}
-                                          title={t(
-                                            lang,
-                                            "ลบลุคนี้ทั้งตัว",
-                                            "Delete this look"
-                                          )}
-                                          onClick={event => {
-                                            event.stopPropagation();
-                                            setConfirmingDeleteCharacterId(
-                                              v.characterId
-                                            );
-                                          }}
-                                        >
-                                          <Trash2
-                                            aria-hidden="true"
-                                            className="h-3 w-3"
-                                          />
-                                        </Button>
-                                      )}
+                                      </div>
                                     </div>
                                   );
                                 })}
@@ -7631,21 +7978,15 @@ export function VerticalDramaCharacterStockPanel({
                           string,
                           unknown
                         > | null) ?? null;
-                      const brief =
-                        typeof data?.lookImageBrief === "string"
-                          ? data.lookImageBrief.trim()
-                          : "";
-                      return brief &&
-                        !looksLikeCharacterLookStoryLeak(brief) ? (
-                        <p className="whitespace-pre-wrap rounded-md border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                      const summary = resolveCharacterLookSummary({ data });
+                      return summary ? (
+                        <p className="min-w-0 rounded-md border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
                           <span className="font-medium">
-                            {t(
-                              lang,
-                              "คำแนะนำสร้างภาพลุค:",
-                              "Look image brief:"
-                            )}
+                            {t(lang, "สรุปลุค:", "Look summary:")}
                           </span>{" "}
-                          {brief}
+                          <span className="inline-block max-w-full truncate align-bottom">
+                            {summary}
+                          </span>
                         </p>
                       ) : null;
                     })()}
@@ -8221,17 +8562,10 @@ export function VerticalDramaCharacterStockPanel({
                             charactersById
                           );
                           if (referenceCandidates.length === 0) return null;
-                          const defaultReferenceAssetLinkId =
-                            resolveDefaultReferenceAssetLinkId(
-                              assets,
-                              selectedCharacter.characterId
-                            );
                           const selectedReferenceAssetLinkId =
                             referenceOverrideByCharacter[
                               selectedCharacter.characterId
-                            ] ??
-                            defaultReferenceAssetLinkId ??
-                            undefined;
+                            ] ?? undefined;
                           // Read the MAIN image from the same resolver the card
                           // thumbnail uses, so the "ภาพหลัก" badge always marks the
                           // picture actually on screen rather than a second guess
@@ -8248,6 +8582,13 @@ export function VerticalDramaCharacterStockPanel({
                                   lang,
                                   "ภาพอ้างอิงตัวตน",
                                   "Identity reference"
+                                )}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {t(
+                                  lang,
+                                  "ภาพหลักใหม่จะไม่ใช้ภาพเดิมเป็น reference เว้นแต่เลือกภาพนี้เอง",
+                                  "A new main portrait will not use the old image unless you select a reference here."
                                 )}
                               </span>
                               <div className="flex flex-wrap items-start gap-2">
@@ -8749,6 +9090,10 @@ export function VerticalDramaCharacterStockPanel({
                                       // Always sent — see the matching comment on
                                       // `generatePortraitCandidateBatchMutation.mutate` above.
                                       selectedImageModelId,
+                                      // Sheets retain the established identity
+                                      // reference behavior; only main portrait
+                                      // regeneration defaults to no reference.
+                                      referencePolicy: "auto",
                                       ...(imageModelUsesMcp && mcpConnectionId
                                         ? { mcpConnectionId }
                                         : {}),
@@ -11740,8 +12085,8 @@ export function VerticalDramaCharacterStockPanel({
           if (!open) closeLookRenderDialog();
         }}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="min-w-0 w-[calc(100%-2rem)] max-w-md max-h-[calc(100vh-2rem)] overflow-x-hidden overflow-y-auto sm:max-w-lg">
+          <DialogHeader className="min-w-0">
             <DialogTitle>
               {t(
                 lang,
@@ -11757,10 +12102,38 @@ export function VerticalDramaCharacterStockPanel({
               )}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 w-full max-w-full flex-col gap-3">
+            <div className="min-w-0 w-full max-w-full rounded-md border bg-muted/30 px-3 py-2 text-xs">
+              <p className="font-medium text-foreground">
+                {t(
+                  lang,
+                  "ใช้ prompt หลักของลุค",
+                  "Using the look's main prompt"
+                )}
+              </p>
+              <p className="mt-1 truncate text-muted-foreground">
+                {lookRenderDialog?.promptSummary ??
+                  t(
+                    lang,
+                    "ยังไม่มีสรุปลุค — ระบบจะใช้ข้อมูลลุคที่บันทึกไว้",
+                    "No look summary yet — the saved look data will be used"
+                  )}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t(
+                  lang,
+                  "เป็นข้อมูลชุดเดียวกับที่เปิดดูใน แก้ไข prompt",
+                  "This is the same source shown in Edit prompt"
+                )}
+              </p>
+            </div>
+            <div className="flex min-w-0 w-full max-w-full flex-col gap-1">
               <Label htmlFor="vd-look-render-instruction" className="text-xs">
-                {t(lang, "บรรยายรายละเอียดภาพใหม่", "Describe the new image")}
+                {t(
+                  lang,
+                  "คำแนะนำเพิ่มเติมสำหรับภาพนี้ (ไม่เปลี่ยน prompt หลัก)",
+                  "Additional instruction for this image (does not change the main prompt)"
+                )}
               </Label>
               <Textarea
                 id="vd-look-render-instruction"
@@ -11768,6 +12141,7 @@ export function VerticalDramaCharacterStockPanel({
                 onChange={e => setLookRenderInstruction(e.target.value)}
                 maxLength={500}
                 rows={3}
+                className="min-h-56 w-full min-w-0 max-w-full resize-y font-mono text-xs leading-relaxed"
                 placeholder={t(
                   lang,
                   "เช่น ภาพเต็มตัวกลางถนนตอนกลางคืน มือถือร่มสีดำ มองมาที่กล้อง",
@@ -11777,16 +12151,16 @@ export function VerticalDramaCharacterStockPanel({
               <p className="text-[11px] text-muted-foreground">
                 {t(
                   lang,
-                  "ใช้กับภาพที่กำลังจะสร้างครั้งนี้ — ไม่ถูกบันทึกเป็นข้อมูลของลุค",
-                  "Applies to the image about to be generated — not saved as look data."
+                  "ปล่อยว่างได้ ระบบจะใช้ prompt หลักของลุคโดยตรง; หากกรอกจะใช้เพิ่มเฉพาะครั้งนี้ และไม่ถูกบันทึกเป็นข้อมูลของลุค",
+                  "Leave blank to use the look's main prompt directly; text entered here is added only for this render and is not saved as look data."
                 )}
               </p>
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex min-w-0 w-full max-w-full flex-col gap-1.5">
               <Label className="text-xs">
                 {t(lang, "ภาพอ้างอิงที่จะใช้", "Reference image to use")}
               </Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid min-w-0 w-full max-w-full grid-cols-3 gap-2">
                 {(
                   [
                     {
@@ -11820,19 +12194,19 @@ export function VerticalDramaCharacterStockPanel({
                     aria-pressed={lookRenderReferenceChoice === option.choice}
                     onClick={() => setLookRenderReferenceChoice(option.choice)}
                     className={cn(
-                      "flex flex-col items-center gap-1 rounded-md border p-1.5 text-[11px] transition-colors disabled:opacity-40",
+                      "flex w-full min-w-0 max-w-full flex-col items-center gap-1 overflow-hidden rounded-md border p-1.5 text-[11px] transition-colors disabled:opacity-40",
                       lookRenderReferenceChoice === option.choice
                         ? "border-purple-400 bg-purple-50/60 ring-1 ring-purple-200"
                         : "border-border hover:border-muted-foreground/40"
                     )}
                     data-testid={`vd-look-render-reference-${option.choice}`}
                   >
-                    <div className="flex aspect-[9/16] w-full items-center justify-center overflow-hidden rounded bg-muted">
+                    <div className="flex aspect-[9/16] w-full min-w-0 items-center justify-center overflow-hidden rounded bg-muted">
                       {option.thumbnailUrl ? (
                         <AuthenticatedMediaImage
                           src={option.thumbnailUrl}
                           alt={t(lang, option.labelTh, option.labelEn)}
-                          className="h-full w-full object-cover"
+                          className="block h-full max-h-full w-full max-w-full object-cover"
                         />
                       ) : (
                         <Sparkles
@@ -11841,7 +12215,7 @@ export function VerticalDramaCharacterStockPanel({
                         />
                       )}
                     </div>
-                    <span className="text-center leading-tight">
+                    <span className="w-full min-w-0 truncate text-center leading-tight">
                       {t(lang, option.labelTh, option.labelEn)}
                     </span>
                   </button>
@@ -11868,7 +12242,7 @@ export function VerticalDramaCharacterStockPanel({
               </p>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="min-w-0">
             <Button
               type="button"
               variant="ghost"
@@ -11902,13 +12276,6 @@ export function VerticalDramaCharacterStockPanel({
                   ),
                   t(lang, "สร้างภาพลุค", "Generate look image"),
                   () => {
-                    // Persist the brief for this look so later regenerations keep
-                    // it, same as the "เพิ่มลุค" dialog's own seeding.
-                    setCustomInstructionByCharacter(prev => ({
-                      ...prev,
-                      [lookRenderDialog.lookCharacterId]:
-                        lookRenderInstruction.trim(),
-                    }));
                     closeLookRenderDialog();
                     fireDirectCharacterImageGeneration(
                       request.characterId,
@@ -12093,6 +12460,99 @@ export function VerticalDramaCharacterStockPanel({
                 <Plus aria-hidden="true" className="h-4 w-4" />
               )}
               {t(lang, "เพิ่มแฝด", "Add twin")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={lookPromptDialog !== null}
+        onOpenChange={open => {
+          if (!open && !updateLookPromptMutation.isPending) {
+            closeLookPromptDialog();
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil aria-hidden="true" className="h-4 w-4" />
+              {t(lang, "แก้ไข prompt ของลุค", "Edit look prompt")}
+            </DialogTitle>
+            <DialogDescription>
+              {t(
+                lang,
+                "แก้ไขเฉพาะรายละเอียดภาพ เสื้อผ้า ทรงผม เมกอัป รองเท้า และเครื่องประดับ ใบหน้า รูปร่าง และอายุของตัวละครจะยังคงเดิม",
+                "Edit only the visual details: clothing, hair, makeup, footwear, and accessories. The character's face, body, and age remain unchanged."
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-1.5 rounded-md border bg-muted/30 px-3 py-2 text-xs">
+              <span className="font-medium text-foreground">
+                {lookPromptDialog?.characterName}
+              </span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-muted-foreground">
+                {lookPromptDialog?.lookLabel}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="vd-look-prompt-editor">
+                {t(lang, "รายละเอียด prompt เต็ม", "Full prompt details")}
+              </Label>
+              <Textarea
+                id="vd-look-prompt-editor"
+                value={lookPromptInput}
+                onChange={event => setLookPromptInput(event.target.value)}
+                maxLength={2000}
+                rows={14}
+                className="min-h-56 w-full min-w-0 max-w-full resize-y font-mono text-xs leading-relaxed"
+                placeholder={t(
+                  lang,
+                  "เช่น เสื้อเชิ้ตผ้าลินินสีครีม แขนพับ กางเกงทรงตรง รองเท้าหนังเรียบ ทรงผมและเมกอัปเหมาะกับฉาก...",
+                  "Example: cream linen shirt with rolled sleeves, straight-leg trousers, simple leather shoes, scene-appropriate hair and makeup..."
+                )}
+                data-testid="vd-look-prompt-editor"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {t(
+                  lang,
+                  `${lookPromptInput.length}/2000 ตัวอักษร · หลังบันทึก ระบบจะติดสถานะให้ตรวจสอบ เพื่อป้องกันการเขียนทับโดยอัตโนมัติ`,
+                  `${lookPromptInput.length}/2000 characters · After saving, the look is marked for review so automatic repair will not overwrite it.`
+                )}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={closeLookPromptDialog}
+              disabled={updateLookPromptMutation.isPending}
+            >
+              {t(lang, "ยกเลิก", "Cancel")}
+            </Button>
+            <Button
+              type="button"
+              className="gap-2"
+              onClick={handleSaveLookPrompt}
+              disabled={
+                updateLookPromptMutation.isPending ||
+                !lookPromptInput.trim() ||
+                lookPromptInput.trim() ===
+                  lookPromptDialog?.originalPrompt.trim()
+              }
+              data-testid="vd-save-look-prompt"
+            >
+              {updateLookPromptMutation.isPending ? (
+                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
+              )}
+              {t(lang, "บันทึก prompt", "Save prompt")}
             </Button>
           </DialogFooter>
         </DialogContent>

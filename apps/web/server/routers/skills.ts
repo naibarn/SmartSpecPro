@@ -1270,6 +1270,14 @@ function mapCategoryToEnum(category?: string): string {
     "slide-generation": "slide_generation",
     "product_review": "product_review",
     "product-review": "product_review",
+    "quality_control": "product_review",
+    "quality-control": "product_review",
+    "video_prompting": "video_prompt_generation",
+    "video-prompting": "video_prompt_generation",
+    "story_planning": "article_generation",
+    "story-planning": "article_generation",
+    "video_prompt_qa": "video_prompt_generation",
+    "video-prompt-qa": "video_prompt_generation",
     "sound_effects": "sound_effects",
     "sound-effects": "sound_effects",
     "code_assistant": "code_assistant",
@@ -3350,7 +3358,7 @@ export const skillsRouter = router({
           description: "Storyboard video prompt from start/end frames",
           skillSlug: "storyboard-video-customer-journey-prompt",
           sourceType: "skill",
-          tenantId: ctx.tenantId,
+          tenantId: ctx.tenantId ?? undefined,
           metadata: {
             model: visionModel,
             llmModel: visionModel,
@@ -3631,7 +3639,7 @@ export const skillsRouter = router({
               durationSeconds: inputSlot.durationSeconds ?? null,
               model: inputSlot.model ?? null,
               productMetadata: input.productMetadata ?? null,
-              tenantId: ctx.tenantId,
+              tenantId: ctx.tenantId ?? undefined,
               publicUrl: ctx.publicUrl ?? null,
             });
             return { slotId: slot.id, repaired };
@@ -3800,7 +3808,7 @@ export const skillsRouter = router({
           description: "Storyboard customer journey video prompt plan",
           skillSlug,
           sourceType: "skill",
-          tenantId: ctx.tenantId,
+          tenantId: ctx.tenantId ?? undefined,
           metadata: {
             model: visionModel,
             llmModel: visionModel,
@@ -4042,7 +4050,7 @@ export const skillsRouter = router({
               description: `Auto Prompt enhancement (${skillName})`,
               skillSlug: resolvedSkillId,
               sourceType: "skill",
-              tenantId: ctx.tenantId,
+              tenantId: ctx.tenantId ?? undefined,
               metadata: {
                 model: visionModel,
                 llmModel: visionModel,
@@ -4362,7 +4370,7 @@ export const skillsRouter = router({
           description: `Skill execution: ${skill.name}`,
           skillSlug: input.skillId,
           sourceType: "skill",
-          tenantId: ctx.tenantId,
+          tenantId: ctx.tenantId ?? undefined,
           metadata: {
             skill: input.skillId,
             skillName: skill.name,
@@ -4576,7 +4584,7 @@ export const skillsRouter = router({
               description: `Skill execution: ${skill.name}`,
               skillSlug: input.skillId,
               sourceType: "skill",
-              tenantId: ctx.tenantId,
+              tenantId: ctx.tenantId ?? undefined,
               metadata: {
                 model: visionModel,
                 llmModel: visionModel,

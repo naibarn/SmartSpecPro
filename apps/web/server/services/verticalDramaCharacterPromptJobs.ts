@@ -14,6 +14,14 @@ const RECORD_TTL_SECONDS = 6 * 60 * 60;
 const POINTER_TTL_SECONDS = 6 * 60 * 60;
 const WORKER_CONCURRENCY = 2;
 const MAX_ERROR_CHARS = 2_000;
+/** Temporary provider capacity errors should stay in the durable queue. */
+const CREDIT_CAPACITY_RETRY_BACKOFF_MS = [
+  15_000,
+  30_000,
+  60_000,
+  120_000,
+  300_000,
+] as const;
 
 export type VerticalDramaCharacterPromptJobStatus =
   | "queued"
@@ -21,12 +29,26 @@ export type VerticalDramaCharacterPromptJobStatus =
   | "succeeded"
   | "failed";
 
+export type VerticalDramaCharacterPromptJobWaitingReason =
+  | "provider_capacity";
+
 export interface VerticalDramaCharacterPromptJobInput {
   seriesId: string;
   characterId: string;
   selectedImageModelId?: string;
   portraitCandidateCount?: number;
   customInstruction?: string;
+  castingReferenceAssetLinkIds?: string[];
+  castingLockClothing?: boolean;
+  castingPoseMode?: "auto_natural" | "lock_reference";
+  castingCameraFraming?:
+    | "full_body"
+    | "three_quarter"
+    | "half_body"
+    | "medium_close_up"
+    | "close_up"
+    | "extreme_close_up"
+    | "wide_environmental";
 }
 
 export interface VerticalDramaCharacterPromptJobOwner {
@@ -48,6 +70,12 @@ export interface VerticalDramaCharacterPromptJobRecord extends VerticalDramaChar
    * independent from the large character router response type. */
   result: unknown | null;
   error: string | null;
+  /** Number of provider-capacity deferrals already scheduled for this job. */
+  capacityRetryCount?: number;
+  /** Present while the job is queued behind the provider's in-flight limit. */
+  waitingReason?: VerticalDramaCharacterPromptJobWaitingReason;
+  /** ISO timestamp for the next durable retry, when waitingReason is set. */
+  nextRetryAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -81,6 +109,17 @@ export interface VerticalDramaCharacterPromptJobRedisAdapter {
 export interface VerticalDramaCharacterPromptJobStoreDependencies {
   redis: VerticalDramaCharacterPromptJobRedisAdapter;
   now: () => number;
+  sleep?: (milliseconds: number) => Promise<void>;
+  /**
+   * Requeue a temporary provider-capacity wait without holding a BullMQ
+   * worker slot. Tests omit this callback and exercise the in-process
+   * fallback below; production wires it to a delayed BullMQ job.
+   */
+  scheduleRetry?: (
+    jobId: string,
+    delayMs: number,
+    retryCount: number,
+  ) => Promise<void>;
 }
 
 export interface VerticalDramaCharacterPromptJobEnqueueDependencies extends Partial<VerticalDramaCharacterPromptJobStoreDependencies> {
@@ -112,6 +151,13 @@ function resolveDependencies(
   return {
     redis: dependencies?.redis ?? defaultRedisAdapter(),
     now: dependencies?.now ?? Date.now,
+    ...(dependencies?.scheduleRetry
+      ? { scheduleRetry: dependencies.scheduleRetry }
+      : {}),
+    sleep:
+      dependencies?.sleep ??
+      (milliseconds =>
+        new Promise(resolve => setTimeout(resolve, milliseconds))),
   };
 }
 
@@ -153,6 +199,19 @@ function boundedError(error: unknown): string {
   );
 }
 
+/** True only for the provider's temporary in-flight credit-capacity error. */
+export function isVerticalDramaCharacterPromptCreditCapacityError(
+  error: unknown,
+): boolean {
+  const message = (error instanceof Error ? error.message : String(error ?? ""))
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+  return (
+    message.includes("would exceed your available credits") &&
+    message.includes("in-flight")
+  );
+}
+
 async function readRecord(
   jobId: string,
   deps: VerticalDramaCharacterPromptJobStoreDependencies
@@ -176,7 +235,7 @@ async function writeRecord(
     "EX",
     RECORD_TTL_SECONDS
   );
-  if (record.status === "running") {
+  if (isActive(record.status)) {
     const pointer = activePointerKey(record);
     if ((await deps.redis.get(pointer)) === record.jobId) {
       await deps.redis.set(pointer, record.jobId, "EX", POINTER_TTL_SECONDS);
@@ -304,37 +363,104 @@ export async function runVerticalDramaCharacterPromptJob(
     ...record,
     status: "running" as const,
     error: null,
+    waitingReason: undefined,
+    nextRetryAt: undefined,
     updatedAt: new Date(deps.now()).toISOString(),
   };
   await writeRecord(running, deps);
   const token = randomUUID();
   activeWorkerExecutions.set(jobId, token);
+  let keepActivePointer = false;
   try {
-    const result = await executor(running, { jobId, token });
-    await writeRecord(
-      {
-        ...running,
-        status: "succeeded",
-        result,
-        error: null,
-        updatedAt: new Date(deps.now()).toISOString(),
-      },
-      deps
-    );
-  } catch (error) {
-    await writeRecord(
-      {
-        ...running,
-        status: "failed",
-        result: null,
-        error: boundedError(error),
-        updatedAt: new Date(deps.now()).toISOString(),
-      },
-      deps
-    ).catch(() => {});
+    for (
+      let retryIndex = running.capacityRetryCount ?? 0;
+      ;
+      retryIndex += 1
+    ) {
+      try {
+        const result = await executor(running, { jobId, token });
+        await writeRecord(
+          {
+            ...running,
+            status: "succeeded",
+            result,
+            error: null,
+            capacityRetryCount: 0,
+            waitingReason: undefined,
+            nextRetryAt: undefined,
+            updatedAt: new Date(deps.now()).toISOString(),
+          },
+          deps
+        );
+        return;
+      } catch (error) {
+        const retryDelay =
+          CREDIT_CAPACITY_RETRY_BACKOFF_MS[
+            Math.min(retryIndex, CREDIT_CAPACITY_RETRY_BACKOFF_MS.length - 1)
+          ];
+        if (
+          !isVerticalDramaCharacterPromptCreditCapacityError(error) ||
+          (!deps.scheduleRetry &&
+            retryIndex >= CREDIT_CAPACITY_RETRY_BACKOFF_MS.length)
+        ) {
+          await writeRecord(
+            {
+              ...running,
+              status: "failed",
+              result: null,
+              error: boundedError(error),
+              updatedAt: new Date(deps.now()).toISOString(),
+            },
+            deps
+          ).catch(() => {});
+          return;
+        }
+
+        debugError(
+          "verticalDramaCharacterPromptJobs",
+          `Character prompt job ${jobId} is waiting for provider credit capacity before retry ${retryIndex + 1}`,
+          { retryDelay }
+        );
+        if (deps.scheduleRetry) {
+          const retryCount = retryIndex + 1;
+          const queued = {
+            ...running,
+            status: "queued" as const,
+              result: null,
+              error: null,
+              capacityRetryCount: retryCount,
+              waitingReason: "provider_capacity" as const,
+              nextRetryAt: new Date(
+                deps.now() + retryDelay,
+              ).toISOString(),
+              updatedAt: new Date(deps.now()).toISOString(),
+          };
+          await writeRecord(queued, deps);
+          try {
+            await deps.scheduleRetry(jobId, retryDelay, retryCount);
+            keepActivePointer = true;
+            return;
+          } catch (scheduleError) {
+            await writeRecord(
+              {
+                ...queued,
+                status: "failed",
+                error: boundedError(scheduleError),
+                waitingReason: undefined,
+                nextRetryAt: undefined,
+                updatedAt: new Date(deps.now()).toISOString(),
+              },
+              deps
+            ).catch(() => {});
+            return;
+          }
+        }
+        await deps.sleep!(retryDelay);
+      }
+    }
   } finally {
     activeWorkerExecutions.delete(jobId);
-    await clearPointer(running, deps);
+    if (!keepActivePointer) await clearPointer(running, deps);
   }
 }
 
@@ -356,6 +482,29 @@ async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
   );
 }
 
+async function defaultScheduleRetry(
+  jobId: string,
+  delayMs: number,
+  retryCount: number,
+): Promise<void> {
+  if (!queue) {
+    throw new Error(
+      `${VERTICAL_DRAMA_CHARACTER_PROMPT_JOBS_QUEUE} queue is not initialized`,
+    );
+  }
+  await queue.add(
+    "run",
+    { jobId },
+    {
+      jobId: `retry-${jobId}-${retryCount}`,
+      delay: delayMs,
+      attempts: 1,
+      removeOnComplete: true,
+      removeOnFail: { age: 86400 },
+    },
+  );
+}
+
 export async function initVerticalDramaCharacterPromptJobsQueue(): Promise<void> {
   if (queue) return;
   try {
@@ -371,7 +520,8 @@ export async function initVerticalDramaCharacterPromptJobsQueue(): Promise<void>
           await import("../routers/verticalDramaCharacters");
         await runVerticalDramaCharacterPromptJob(
           job.data.jobId,
-          runVerticalDramaCharacterPromptJobExecutor
+          runVerticalDramaCharacterPromptJobExecutor,
+          { scheduleRetry: defaultScheduleRetry },
         );
       },
       { connection, concurrency: WORKER_CONCURRENCY }

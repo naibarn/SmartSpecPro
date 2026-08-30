@@ -13,7 +13,11 @@ vi.mock("./creditService", () => ({
   addCredits: vi.fn(),
 }));
 
-import { processInviteCodeUsage } from "./inviteCodeService";
+import {
+  checkRegistrationAllowed,
+  getRegistrationMode,
+  processInviteCodeUsage,
+} from "./inviteCodeService";
 
 type FakeInviteCode = {
   id: number;
@@ -111,5 +115,83 @@ describe("invite code usage accounting", () => {
     expect(result).toEqual({ success: true });
     expect(tx.update).not.toHaveBeenCalled();
     expect(insertValues).not.toHaveBeenCalled();
+  });
+});
+
+function makeSettingsDb(value?: string, inviteRows: unknown[] = []) {
+  let selectCount = 0;
+  return {
+    select: vi.fn(() => {
+      selectCount += 1;
+      return {
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            limit: vi.fn().mockResolvedValue(
+              selectCount === 1
+                ? value === undefined
+                  ? []
+                  : [{ value }]
+                : inviteRows,
+            ),
+          })),
+        })),
+      };
+    }),
+  };
+}
+
+describe("registration mode admission", () => {
+  it("defaults to Open Registration when the setting is absent", async () => {
+    mockGetDb.mockResolvedValue(makeSettingsDb());
+
+    await expect(getRegistrationMode()).resolves.toBe("open");
+  });
+
+  it("fails closed for an invalid registration mode value", async () => {
+    mockGetDb.mockResolvedValue(makeSettingsDb("unexpected"));
+
+    await expect(getRegistrationMode()).resolves.toBe("invite_only");
+  });
+
+  it("allows registration without a code in Open Registration", async () => {
+    mockGetDb.mockResolvedValue(makeSettingsDb("open"));
+
+    await expect(checkRegistrationAllowed()).resolves.toMatchObject({ allowed: true });
+  });
+
+  it("does not block Open Registration when an optional code is invalid", async () => {
+    mockGetDb.mockResolvedValue(makeSettingsDb("open"));
+
+    await expect(checkRegistrationAllowed("NOT-A-REAL-CODE")).resolves.toEqual({
+      allowed: true,
+    });
+  });
+
+  it("requires a code in Invite Only mode", async () => {
+    mockGetDb.mockResolvedValue(makeSettingsDb("invite_only"));
+
+    await expect(checkRegistrationAllowed()).resolves.toEqual({
+      allowed: false,
+      error: "Registration requires an invite code",
+    });
+  });
+
+  it("accepts Invite Only only with a valid invite code", async () => {
+    mockGetDb.mockResolvedValue(makeSettingsDb("invite_only", [makeCode()]));
+
+    await expect(checkRegistrationAllowed("ARWHSU96")).resolves.toMatchObject({
+      allowed: true,
+      codeId: 5,
+    });
+  });
+
+  it("fails closed when the registration setting cannot be read", async () => {
+    mockGetDb.mockResolvedValue(null);
+
+    await expect(getRegistrationMode()).resolves.toBe("invite_only");
+    await expect(checkRegistrationAllowed()).resolves.toEqual({
+      allowed: false,
+      error: "Registration requires an invite code",
+    });
   });
 });

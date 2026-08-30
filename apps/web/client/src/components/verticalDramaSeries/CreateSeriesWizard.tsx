@@ -55,6 +55,7 @@ import {
   VERTICAL_DRAMA_SUPPORTED_SHOT_DURATIONS_SECONDS,
   clampToCreateSeriesLimit,
   CREATE_SERIES_FIELD_LIMITS,
+  PROMPT_EXPANSION_PREMISE_LIMIT,
   verticalDramaLocaleEnglishName,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
@@ -68,7 +69,6 @@ import {
 import { resolveVerticalDramaDraftLanguageContract } from "@shared/verticalDramaSeries/draftLanguageContract";
 import { getVerticalDramaCharacterNamingPreview } from "@shared/verticalDramaSeries/characterNaming";
 import {
-  hasBlockingVerticalDramaDraftDiagnostics,
   getVerticalDramaDraftFactValue,
   type VerticalDramaDraftDiagnostic,
   type VerticalDramaDraftFact,
@@ -113,6 +113,10 @@ import {
   createSeriesFormatConfig,
   type VdSeriesFormatKind,
 } from "@shared/verticalDramaSeries/seriesFormat";
+import {
+  estimateVerticalDramaSeriesRuntimeSeconds,
+  formatVerticalDramaRuntimeSeconds,
+} from "@shared/verticalDramaSeries/durationProfiles";
 import {
   VD_SERIES_PROFILE_IDS,
   getSeriesProfile,
@@ -896,6 +900,19 @@ export function resolveCarryOverCharacters(
   }));
 }
 
+type SpecialEditionDraftForWizard = {
+  storyShape: string;
+  premise: string;
+  charactersUsed: Array<{ characterKey: string; roleInSpecial: string }>;
+  episodeBriefs: Array<{
+    episodeNumber: number;
+    logline: string;
+    protagonistStake: string;
+    pricePaid: string;
+  }>;
+  continuityNotes: string;
+};
+
 export function CreateSeriesWizard({
   open,
   lang,
@@ -961,6 +978,17 @@ export function CreateSeriesWizard({
     initialWorkspace?.draftSessionId ??
     createDraftSessionId();
   const [draftSessionId, setDraftSessionId] = useState(initialDraftSessionId);
+  const [carryOverResult, setCarryOverResult] = useState<{
+    draft: VerticalDramaSeasonCarryOverDraft;
+    parentEpisodeCount?: number;
+  } | null>(null);
+  const [specialEditionResult, setSpecialEditionResult] = useState<{
+    draft: SpecialEditionDraftForWizard;
+    suggestedUserPremise: string;
+    parentEpisodeCount?: number;
+  } | null>(null);
+  const [lineageJobId, setLineageJobId] = useState<string | null>(null);
+  const [lineageJobScope, setLineageJobScope] = useState("");
 
   const planningSourcePackPointerQuery =
     trpc.verticalDramaSeries.getPlanningSourcePackPointer.useQuery(
@@ -999,6 +1027,12 @@ export function CreateSeriesWizard({
   // while the new Series route is still resolving its durable pointer.
   const workspaceDraftSessionId = planningDraftSessionId ?? draftSessionId;
   const planningSnapshotHydratedKeyRef = useRef<string | null>(null);
+  const planningRequestHydratedKeyRef = useRef<string | null>(null);
+  const planningDraftHydratedKeyRef = useRef<string | null>(null);
+  const planningDraftSignatureKeyRef = useRef<string | null>(null);
+  const [planningDraftHydrationKey, setPlanningDraftHydrationKey] = useState<
+    string | null
+  >(null);
 
   // The planning shell can provide its Series ID after this component has
   // mounted (for example when the user switches tabs). The initial read above
@@ -1086,6 +1120,10 @@ export function CreateSeriesWizard({
   const [draftQcOverride, setDraftQcOverride] = useState(
     () => initialWorkspace?.draftQcOverride ?? false
   );
+  const [episodeCountConfirmationOpen, setEpisodeCountConfirmationOpen] =
+    useState(false);
+  const [episodeCountConfirmationValue, setEpisodeCountConfirmationValue] =
+    useState("10");
   const [draftQcPreviousResultState, setDraftQcPreviousResult] =
     useState<DraftQualityQcResultSnapshot | null>(null);
   const [
@@ -1145,7 +1183,7 @@ export function CreateSeriesWizard({
 
   const draftWorkspaceStatusQuery =
     trpc.verticalDramaSeries.getDraftWorkspaceStatus.useQuery(
-      { seriesId: planningSeriesId ?? "0" },
+      { seriesId: planningSeriesId ?? "0", includeHistory: true },
       {
         enabled:
           open &&
@@ -1255,6 +1293,19 @@ export function CreateSeriesWizard({
 
   const carryOverMutation =
     trpc.verticalDramaSeries.proposeSeasonCarryOver.useMutation({
+      onSuccess: data => {
+        if (data.jobId) {
+          setLineageJobId(data.jobId);
+          setLineageJobScope(`lineage:${form.parentSeriesId ?? ""}`);
+          return;
+        }
+        setCarryOverResult(
+          data as unknown as {
+            draft: VerticalDramaSeasonCarryOverDraft;
+            parentEpisodeCount?: number;
+          }
+        );
+      },
       onError: (err: { message?: string }) => {
         toast.error(
           err?.message ||
@@ -1268,6 +1319,17 @@ export function CreateSeriesWizard({
   const specialEditionMutation =
     trpc.verticalDramaSeries.proposeSpecialEditionBrief.useMutation({
       onSuccess: data => {
+        if (data.jobId) {
+          setLineageJobId(data.jobId);
+          setLineageJobScope(`special:${form.parentSeriesId ?? ""}`);
+          return;
+        }
+        const completed = data as unknown as {
+          draft: SpecialEditionDraftForWizard;
+          suggestedUserPremise: string;
+          parentEpisodeCount?: number;
+        };
+        setSpecialEditionResult(completed);
         // Same "propose -> transient draft -> user applies" shape as
         // `applyPresetDraft` — auto-fill `userPremise` only the FIRST time so
         // a regenerate never silently clobbers a user's edits to the applied
@@ -1278,7 +1340,7 @@ export function CreateSeriesWizard({
           ...prev,
           userPremise: prev.userPremise.trim()
             ? prev.userPremise
-            : data.suggestedUserPremise,
+            : completed.suggestedUserPremise,
         }));
       },
       onError: (err: { message?: string }) => {
@@ -1290,6 +1352,113 @@ export function CreateSeriesWizard({
         );
       },
     });
+
+  // Preserve compatibility with older clients and test doubles where a
+  // completed result is exposed as `data` rather than delivered through the
+  // callback. A queued result still waits for the generic job poll above.
+  useEffect(() => {
+    const data = carryOverMutation.data as unknown as
+      | {
+          jobId?: string | null;
+          draft?: VerticalDramaSeasonCarryOverDraft;
+          parentEpisodeCount?: number;
+        }
+      | undefined;
+    if (!data?.draft || data.jobId) return;
+    const draft = data.draft;
+    setCarryOverResult(previous =>
+      previous?.draft === draft
+        ? previous
+        : {
+            draft,
+            parentEpisodeCount: data.parentEpisodeCount,
+          }
+    );
+  }, [carryOverMutation.data]);
+
+  useEffect(() => {
+    const data = specialEditionMutation.data as unknown as
+      | {
+          jobId?: string | null;
+          draft?: SpecialEditionDraftForWizard;
+          suggestedUserPremise?: string;
+          parentEpisodeCount?: number;
+        }
+      | undefined;
+    if (!data?.draft || data.jobId || !data.suggestedUserPremise) return;
+    setSpecialEditionResult(previous =>
+      previous?.draft === data.draft
+        ? previous
+        : {
+            draft: data.draft!,
+            suggestedUserPremise: data.suggestedUserPremise!,
+            parentEpisodeCount: data.parentEpisodeCount,
+          }
+    );
+    setForm(previous => ({
+      ...previous,
+      userPremise: previous.userPremise.trim() || data.suggestedUserPremise!,
+    }));
+  }, [specialEditionMutation.data]);
+
+  // Keep the wizard renderable in older/minimal client test doubles while the
+  // deployed tRPC contract rolls out. In the real app this procedure is
+  // always present, so queued lineage work is still polled normally.
+  const lineageJobQueryProcedure =
+    trpc.verticalDramaSeries.getInteractiveJobStatus;
+  const lineageJobQuery = lineageJobQueryProcedure?.useQuery(
+    {
+      jobId: lineageJobId ?? "00000000-0000-0000-0000-000000000000",
+      scopeKey: lineageJobScope || "lineage:pending",
+    },
+    {
+      enabled: Boolean(lineageJobId && lineageJobScope),
+      refetchInterval: lineageJobId ? 2000 : false,
+      staleTime: 0,
+    }
+  ) ?? { data: undefined };
+  useEffect(() => {
+    const job = lineageJobQuery.data;
+    if (!job || !lineageJobId) return;
+    if (job.status === "succeeded") {
+      const result = job.result as {
+        draft?:
+          | VerticalDramaSeasonCarryOverDraft
+          | SpecialEditionDraftForWizard;
+        suggestedUserPremise?: string;
+        parentEpisodeCount?: number;
+      };
+      if (result.draft && lineageJobScope.startsWith("lineage:")) {
+        setCarryOverResult({
+          draft: result.draft as VerticalDramaSeasonCarryOverDraft,
+          parentEpisodeCount: result.parentEpisodeCount,
+        });
+      } else if (result.draft && result.suggestedUserPremise) {
+        const completed = {
+          draft: result.draft as SpecialEditionDraftForWizard,
+          suggestedUserPremise: result.suggestedUserPremise,
+          parentEpisodeCount: result.parentEpisodeCount,
+        };
+        setSpecialEditionResult(completed);
+        setForm(prev => ({
+          ...prev,
+          userPremise:
+            prev.userPremise.trim() || completed.suggestedUserPremise,
+        }));
+      }
+      setLineageJobId(null);
+      setLineageJobScope("");
+    } else if (job.status === "failed") {
+      toast.error(
+        job.error ||
+          (lang === "th"
+            ? "งานวางแผนภาคต่อไม่สำเร็จ"
+            : "Lineage planning failed")
+      );
+      setLineageJobId(null);
+      setLineageJobScope("");
+    }
+  }, [lang, lineageJobId, lineageJobQuery.data, lineageJobScope]);
 
   const uploadMutation = trpc.ai.upload.useMutation();
 
@@ -1665,6 +1834,7 @@ export function CreateSeriesWizard({
       {
         runId: draftQcRunId ?? "00000000-0000-4000-8000-000000000000",
         seriesId: planningSeriesId ?? "0",
+        includeHistory: true,
       },
       {
         enabled: Boolean(draftQcRunId && planningSeriesId),
@@ -1690,6 +1860,17 @@ export function CreateSeriesWizard({
       workspace.draftSessionId !== workspaceDraftSessionId
     ) {
       return;
+    }
+    // The Series-owned ledger is more authoritative than the planning
+    // snapshot/browser ref. A snapshot can lag behind the ledger when a new
+    // Draft was admitted immediately before refresh; using the stale ref here
+    // makes the next QC request fail its ledger identity check.
+    if (
+      typeof workspace.draftSessionId === "string" &&
+      workspace.draftSessionId.trim() &&
+      draftQcSessionId.current !== workspace.draftSessionId
+    ) {
+      setDraftSession(workspace.draftSessionId);
     }
     const composition = workspace.composition;
     const qc = workspace.qc;
@@ -1743,16 +1924,45 @@ export function CreateSeriesWizard({
       typeof planningSnapshot?.title === "string"
         ? planningSnapshot.title.trim()
         : "";
+    const persistedPremise =
+      typeof planningState?.userPremise === "string"
+        ? planningState.userPremise
+        : "";
     if (
-      persistedTitle &&
-      persistedTitle !== PLANNING_SERIES_PLACEHOLDER_TITLE
+      (persistedTitle &&
+        persistedTitle !== PLANNING_SERIES_PLACEHOLDER_TITLE) ||
+      persistedPremise ||
+      (typeof planningSnapshot?.targetEpisodeCount === "number" &&
+        Number.isInteger(planningSnapshot.targetEpisodeCount) &&
+        planningSnapshot.targetEpisodeCount > 0)
     ) {
-      setForm(previous =>
-        previous.title === persistedTitle
-          ? previous
-          : { ...previous, title: persistedTitle }
-      );
-      setTitleOrigin("manual");
+      const persistedTargetEpisodeCount =
+        typeof planningSnapshot?.targetEpisodeCount === "number" &&
+        Number.isInteger(planningSnapshot.targetEpisodeCount) &&
+        planningSnapshot.targetEpisodeCount > 0
+          ? String(planningSnapshot.targetEpisodeCount)
+          : undefined;
+      setForm(previous => ({
+        ...previous,
+        ...(persistedTitle &&
+        persistedTitle !== PLANNING_SERIES_PLACEHOLDER_TITLE &&
+        !previous.title.trim()
+          ? { title: persistedTitle }
+          : {}),
+        ...(persistedPremise && !previous.userPremise.trim()
+          ? { userPremise: persistedPremise }
+          : {}),
+        ...(persistedTargetEpisodeCount &&
+        previous.targetEpisodeCount === INITIAL_WIZARD.targetEpisodeCount
+          ? { targetEpisodeCount: persistedTargetEpisodeCount }
+          : {}),
+      }));
+      if (
+        persistedTitle &&
+        persistedTitle !== PLANNING_SERIES_PLACEHOLDER_TITLE
+      ) {
+        setTitleOrigin("manual");
+      }
     }
     if (
       planningDraftSessionId &&
@@ -1779,6 +1989,8 @@ export function CreateSeriesWizard({
     planningSourcePackPointerQuery.isFetched,
     planningSourcePackPointerQuery.isError,
     planningSnapshot?.title,
+    planningSnapshot?.targetEpisodeCount,
+    planningState?.userPremise,
     planningDraftSessionId,
     recoverySessionId,
     draftCompositionJobId,
@@ -1814,21 +2026,34 @@ export function CreateSeriesWizard({
   // Keep a durable comparison result in local state before the active run id
   // is cleared by reconciliation. This prevents a refresh/stale-queue repair
   // from hiding the old scorecard while a new QC run is started.
+  // The Series workspace query is a durable server read and can contain a
+  // reconciled QC result even after the short-lived Redis status record has
+  // expired. Prefer the direct run query when available, otherwise consume
+  // that same persisted response; never synthesize a local QC result.
+  const durableDraftQcStatus =
+    draftQcStatusQuery.data ?? draftWorkspaceStatusQuery.data?.qc;
+
   useEffect(() => {
-    const historical = draftQcStatusQuery.data?.historicalResult;
+    const historical = durableDraftQcStatus?.historicalResult;
     if (!historical) return;
     setDraftQcHistoricalRunId(
-      historical.runId ?? draftQcStatusQuery.data?.runId ?? null
+      historical.runId ?? durableDraftQcStatus?.runId ?? null
     );
     setDraftQcPreviousResult(previous =>
       previous?.best.fingerprint === historical.best.fingerprint
         ? previous
         : historical
     );
-  }, [draftQcStatusQuery.data?.historicalResult]);
+  }, [durableDraftQcStatus?.historicalResult, durableDraftQcStatus?.runId]);
   const draftQcStartMutation =
     trpc.verticalDramaSeries.startDraftQualityQc.useMutation({
       onSuccess: data => {
+        if (
+          typeof data.draftSessionId === "string" &&
+          data.draftSessionId.trim()
+        ) {
+          setDraftSession(data.draftSessionId);
+        }
         setDraftQcRunId(data.runId);
         setDraftQcSourceSignature(currentSynthesisSourceSignature);
         setDraftQcSelectedCandidateFingerprint(null);
@@ -1892,8 +2117,8 @@ export function CreateSeriesWizard({
         setAppliedDraftKey(null);
         toast.success(
           lang === "th"
-            ? `เลือก Draft รอบ ${data.version} แล้ว — ตรวจ receipt ของฉบับนี้ก่อนใช้`
-            : `Draft version ${data.version} selected — its QC receipt is required before use`
+              ? `เลือก Draft รอบ ${data.version} แล้ว — ยืนยันใช้ต่อได้เลย หรือจะตรวจ QC เพิ่มก็ได้`
+              : `Draft version ${data.version} selected — confirm it now, or run QC for optional feedback`
         );
       },
       onError: error =>
@@ -1921,11 +2146,15 @@ export function CreateSeriesWizard({
 
   const generateStoryMutation =
     trpc.verticalDramaSeries.generateStoryBible.useMutation({
-      onSuccess: (data: { creditsUsed: number }) => {
+      onSuccess: data => {
         toast.success(
           lang === "th"
-            ? `สร้างเนื้อเรื่องเต็มแล้ว (ใช้ ${data.creditsUsed} เครดิต)`
-            : `Full story generated (${data.creditsUsed} credits used)`
+            ? data.jobId
+              ? "ส่งงานสร้างเนื้อเรื่องเข้าคิวเบื้องหลังแล้ว"
+              : "สร้างเนื้อเรื่องเต็มแล้ว"
+            : data.jobId
+              ? "Story generation queued in the background"
+              : "Full story generated"
         );
       },
       onError: (err: { message?: string }) => {
@@ -2035,6 +2264,126 @@ export function CreateSeriesWizard({
     | SynthesizedGenrePresetDraft
     | undefined;
 
+  // A refreshed page restores the active composition job from the Series
+  // ledger, but the original implementation only used that result for the
+  // preview. Rehydrate the editable wizard sections as well, using the same
+  // server-approved request envelope that created the Draft. The key guard
+  // prevents a later status poll from overwriting edits made after restore.
+  const restoredWorkspaceComposition =
+    draftWorkspaceStatusQuery.data?.composition;
+  useEffect(() => {
+    if (!open || !planningSeriesId || recoveryJobId) return;
+    const requestJson = restoredWorkspaceComposition?.requestJson as
+      | Record<string, unknown>
+      | undefined;
+    const synthesis = requestJson?.synthesis;
+    if (
+      !synthesis ||
+      typeof synthesis !== "object" ||
+      Array.isArray(synthesis)
+    ) {
+      return;
+    }
+    const request = synthesis as Record<string, unknown>;
+    const hydrationKey = [
+      planningSeriesId,
+      restoredWorkspaceComposition?.jobId ?? "",
+      restoredWorkspaceComposition?.requestFingerprint ?? "",
+    ].join(":");
+    if (planningRequestHydratedKeyRef.current === hydrationKey) return;
+    planningRequestHydratedKeyRef.current = hydrationKey;
+    setForm(previous => ({
+      ...previous,
+      ...(typeof request.userPremise === "string" &&
+      request.userPremise.trim() &&
+      !previous.userPremise.trim()
+        ? { userPremise: request.userPremise }
+        : {}),
+      ...(typeof request.seriesTitleHint === "string" &&
+      request.seriesTitleHint.trim() &&
+      !previous.title.trim()
+        ? { title: request.seriesTitleHint }
+        : {}),
+      ...(typeof request.genreHint === "string" &&
+      request.genreHint.trim() &&
+      !previous.genre.trim()
+        ? { genre: request.genreHint }
+        : {}),
+      ...(typeof request.toneHint === "string" &&
+      request.toneHint.trim() &&
+      !previous.tone.trim()
+        ? { tone: request.toneHint }
+        : {}),
+      ...(typeof request.targetEpisodeCount === "number" &&
+      Number.isFinite(request.targetEpisodeCount) &&
+      previous.targetEpisodeCount === INITIAL_WIZARD.targetEpisodeCount
+        ? { targetEpisodeCount: String(request.targetEpisodeCount) }
+        : {}),
+      ...(request.defaultModelId === null ||
+      (typeof request.defaultModelId === "string" &&
+        request.defaultModelId.trim())
+        ? { defaultModelId: request.defaultModelId as string | null }
+        : {}),
+    }));
+  }, [open, planningSeriesId, recoveryJobId, restoredWorkspaceComposition]);
+
+  useEffect(() => {
+    if (
+      !open ||
+      !planningSeriesId ||
+      recoveryJobId ||
+      !restoredWorkspaceComposition?.jobId ||
+      !synthesizedDraft
+    ) {
+      return;
+    }
+    const hydrationKey = [
+      planningSeriesId,
+      restoredWorkspaceComposition.jobId,
+      restoredWorkspaceComposition.requestFingerprint ?? "",
+    ].join(":");
+    if (planningDraftHydratedKeyRef.current === hydrationKey) return;
+    planningDraftHydratedKeyRef.current = hydrationKey;
+    const requestJson = restoredWorkspaceComposition.requestJson as
+      | Record<string, unknown>
+      | undefined;
+    const synthesis = (requestJson?.synthesis ?? {}) as Record<string, unknown>;
+    setForm(previous =>
+      mergeSynthesizedDraftIntoWizardForm(previous, synthesizedDraft, synthesis)
+    );
+    setTitleOrigin("manual");
+    setSynthesisRequestKey(previous => previous ?? 1);
+    setPlanningDraftHydrationKey(hydrationKey);
+  }, [
+    open,
+    planningSeriesId,
+    recoveryJobId,
+    restoredWorkspaceComposition,
+    synthesizedDraft,
+  ]);
+
+  // The source signature is intentionally recalculated after the form has
+  // been rehydrated. Without this second pass a restored Draft is marked
+  // stale against the initial empty form and cannot proceed to QC/create.
+  useEffect(() => {
+    if (
+      !planningDraftHydrationKey ||
+      planningDraftSignatureKeyRef.current === planningDraftHydrationKey
+    ) {
+      return;
+    }
+    planningDraftSignatureKeyRef.current = planningDraftHydrationKey;
+    setSynthesisSourceSignature(currentSynthesisSourceSignature);
+    setDraftCompositionSourceSignature(currentSynthesisSourceSignature);
+    if (draftQcRunId) {
+      setDraftQcSourceSignature(currentSynthesisSourceSignature);
+    }
+  }, [
+    planningDraftHydrationKey,
+    currentSynthesisSourceSignature,
+    draftQcRunId,
+  ]);
+
   // The ledger is the source of truth for the full generated Draft. Older
   // migrated jobs do not have requestJson, but their currentJson still has the
   // complete AI output. Restore that output into every wizard section instead
@@ -2137,18 +2486,53 @@ export function CreateSeriesWizard({
   const draftToReview = (draftQcSelectedCandidateDraft ??
     draftQcAuthoritativeResult?.best?.draft ??
     synthesizedDraft) as SynthesizedGenrePresetDraft | undefined;
+
+  // A QC result can outlive the short-lived composition result. In that case
+  // the QC ledger's best candidate is still the authoritative complete Draft
+  // and must hydrate the editable form on refresh too.
+  useEffect(() => {
+    if (
+      !open ||
+      !planningSeriesId ||
+      recoveryJobId ||
+      synthesizedDraft ||
+      !draftQcAuthoritativeResult?.best?.draft
+    ) {
+      return;
+    }
+    const hydrationKey = [
+      planningSeriesId,
+      "qc",
+      draftQcAuthoritativeResult.runId ?? "",
+      draftQcAuthoritativeResult.best.fingerprint,
+    ].join(":");
+    if (planningDraftHydratedKeyRef.current === hydrationKey) return;
+    planningDraftHydratedKeyRef.current = hydrationKey;
+    setForm(previous =>
+      mergeSynthesizedDraftIntoWizardForm(
+        previous,
+        draftQcAuthoritativeResult.best.draft as SynthesizedGenrePresetDraft,
+        (
+          restoredWorkspaceComposition?.requestJson as
+            | Record<string, unknown>
+            | undefined
+        )?.synthesis as Record<string, unknown> | undefined
+      )
+    );
+    setTitleOrigin("manual");
+    setSynthesisRequestKey(previous => previous ?? 1);
+    setPlanningDraftHydrationKey(hydrationKey);
+  }, [
+    open,
+    planningSeriesId,
+    recoveryJobId,
+    synthesizedDraft,
+    draftQcAuthoritativeResult,
+    restoredWorkspaceComposition,
+  ]);
   const draftQcReport =
     selectedDraftHistoryEntry?.report ??
     draftQcAuthoritativeResult?.best.report;
-  const draftQcCandidateMatches = Boolean(
-    draftToReview &&
-    (!draftQcAuthoritativeResult ||
-      (draftQcSelectedCandidateFingerprint
-        ? selectedDraftHistoryEntry?.candidateFingerprint ===
-          fingerprintDraftQualityQcCandidate(draftToReview)
-        : draftQcAuthoritativeResult.best.fingerprint ===
-          fingerprintDraftQualityQcCandidate(draftToReview)))
-  );
   const draftQcOverrideEligible = Boolean(
     (Boolean(draftQcResult) ||
       Boolean(draftQcPreviousResult) ||
@@ -2156,9 +2540,6 @@ export function CreateSeriesWizard({
     draftQcReport &&
     draftQcReport.criticalFails.length === 0 &&
     !draftQcReport.pass
-  );
-  const normalizedDraftTitleOptions = normalizeDraftTitleOptions(
-    draftToReview?.titleOptions
   );
   const draftIsCurrent = Boolean(
     synthesizedDraft &&
@@ -2199,63 +2580,25 @@ export function CreateSeriesWizard({
       draftQcHistoricalCandidateIsCurrent ||
       draftCompositionHasPartialResult)
   );
-  const hasManualTitle =
-    titleOrigin === "manual" && form.title.trim().length > 0;
-  const hasSelectedGeneratedTitle = Boolean(
-    titleOrigin === "candidate" &&
-    hasValidDraftTitleOptions(draftToReview) &&
-    normalizedDraftTitleOptions.includes(form.title.trim())
-  );
-  const draftTitleReady = hasManualTitle || hasSelectedGeneratedTitle;
-  const draftDiagnostics = (draftToReview?.diagnostics ??
-    []) as VerticalDramaDraftDiagnostic[];
-  const hasBlockingDraftDiagnostics =
-    hasBlockingVerticalDramaDraftDiagnostics(draftDiagnostics);
   const draftCompositionReady =
     draftCompositionStatusQuery.data?.status === "ready_for_qc";
-  const draftCanBeApplied =
-    draftQcSourceReady &&
-    draftTitleReady &&
-    !hasBlockingDraftDiagnostics &&
-    draftQcCandidateMatches;
+  // QC is advisory. Any generated Draft may be confirmed, including when QC
+  // was skipped, failed, or returned a low score/critical finding.
+  const draftCanBeApplied = Boolean(draftToReview);
+  const draftApplicationKey = synthesisRequestKey ?? 1;
   const draftGateSatisfied = Boolean(
     draftCanBeApplied &&
-    synthesisRequestKey !== null &&
-    appliedDraftKey === synthesisRequestKey
+    appliedDraftKey === draftApplicationKey
   );
-  const draftGateReason = !synthesizedDraft
+  const draftGateReason = !draftToReview
     ? lang === "th"
       ? "กดให้ AI สร้าง draft ก่อนจึงไปต่อได้"
       : "Generate an AI draft before continuing"
-    : draftCompositionHasPartialResult
+    : !draftGateSatisfied
       ? lang === "th"
-        ? "Draft ยังไม่ครบ จึงยังสร้างเรื่องเต็มไม่ได้ แต่สามารถส่งเข้า QC เพื่อดูจุดที่ต้องแก้ได้"
-        : "The Draft is incomplete, so full-series creation is blocked, but it can still be sent to QC for diagnosis"
-      : !draftCompositionReady && !draftQcSourceReady
-        ? lang === "th"
-          ? "AI กำลังเติมข้อมูลโครงสร้างเรื่องให้ครบก่อนเข้า QC"
-          : "AI is completing the story structure before Draft QC"
-        : !draftQcSourceReady && !draftIsCurrent
-          ? lang === "th"
-            ? "draft เก่าแล้ว เพราะข้อมูลต้นทางเปลี่ยน — กรุณาโหลดงานล่าสุดหรือสร้างใหม่"
-            : "This draft is stale because the source changed — load the latest job or generate a new one"
-          : hasBlockingDraftDiagnostics
-            ? lang === "th"
-              ? "draft มีข้อมูลโครงสร้างเรื่องหรือบทบาทตัวละครไม่ครบ — กดปรับใหม่ก่อนจึงเริ่ม QC ได้"
-              : "This draft has incomplete story architecture or character-role data — regenerate it before Draft QC"
-            : !draftTitleReady
-              ? hasValidDraftTitleOptions(draftToReview)
-                ? lang === "th"
-                  ? "เลือกชื่อเรื่อง 1 รายการ หรือกรอกชื่อเรื่องเองก่อน"
-                  : "Select one title candidate or enter your own title"
-                : lang === "th"
-                  ? "draft นี้ไม่มีตัวเลือกชื่อเรื่องที่ครบ 4-5 แบบ — กดปรับใหม่"
-                  : "This draft has no valid 4–5 title choices — generate a new one"
-              : !draftGateSatisfied
-                ? lang === "th"
-                  ? "กด ใช้ draft นี้ ก่อนจึงไปต่อได้"
-                  : "Apply this draft before continuing"
-                : "";
+        ? "กด ใช้ draft นี้ ก่อนจึงไปต่อได้"
+        : "Apply this draft before continuing"
+      : "";
 
   function startDraftQualityQc(maxRoundsOverride?: number) {
     if (!draftQcSourceReady || draftQcStartMutation.isPending) {
@@ -2630,16 +2973,12 @@ export function CreateSeriesWizard({
   }
 
   function applyPresetDraft(draft: SynthesizedGenrePresetDraft) {
-    if (
-      !draftCanBeApplied ||
-      draft !== draftToReview ||
-      synthesisRequestKey === null
-    ) {
+    if (!draftCanBeApplied || draft !== draftToReview) {
       toast.error(draftGateReason);
       return;
     }
     setForm(prev => mergeSynthesizedDraftIntoWizardForm(prev, draft));
-    setAppliedDraftKey(synthesisRequestKey);
+    setAppliedDraftKey(draftApplicationKey);
     toast.success(
       lang === "th"
         ? "ใช้ draft นี้แล้ว — แก้ไขต่อได้ทุกแท็บ"
@@ -2856,6 +3195,8 @@ export function CreateSeriesWizard({
       title: form.title.trim() || PLANNING_SERIES_PLACEHOLDER_TITLE,
       draftSessionId: sessionId,
       activeStep: steps[stepIndex]?.id,
+      userPremise: form.userPremise,
+      targetEpisodeCount: Number(form.targetEpisodeCount) || undefined,
     });
   }
 
@@ -2879,6 +3220,8 @@ export function CreateSeriesWizard({
     planningSourcePackPointerQuery.isFetched,
     planningSourcePackPointerQuery.isError,
     form.title,
+    form.userPremise,
+    form.targetEpisodeCount,
     draftSessionId,
     stepIndex,
   ]);
@@ -2942,12 +3285,12 @@ export function CreateSeriesWizard({
     const parentSeriesIdNum = Number(form.parentSeriesId);
     const parentTitle = parentSeries?.title ?? "";
     if (form.createMode === "sequel") {
-      const draft = carryOverMutation.data?.draft;
+      const draft = carryOverResult?.draft;
       return {
         contractVersion: 1,
         parentSeriesId: parentSeriesIdNum,
         parentTitle,
-        parentEpisodeCount: carryOverMutation.data?.parentEpisodeCount,
+        parentEpisodeCount: carryOverResult?.parentEpisodeCount,
         createMode: "sequel",
         seasonNumber: Number(form.seasonNumber) || undefined,
         priorSeasonSummary: parentSeries?.memory
@@ -2976,12 +3319,14 @@ export function CreateSeriesWizard({
       contractVersion: 1,
       parentSeriesId: parentSeriesIdNum,
       parentTitle,
-      parentEpisodeCount: specialEditionMutation.data?.parentEpisodeCount,
+      parentEpisodeCount: specialEditionResult?.parentEpisodeCount,
       createMode: "special_edition",
     };
   };
 
-  const handleCreate = () => {
+  const isSpecialEdition = form.createMode === "special_edition";
+
+  const executeCreate = (targetEpisodeCountOverride?: number) => {
     if (createMutation.isPending || generateStoryMutation.isPending) return;
     if (!createValid) {
       toast.error(createBlockedReason);
@@ -2998,7 +3343,9 @@ export function CreateSeriesWizard({
       locale: form.locale,
       genre: resolvedGenre || undefined,
       tone: form.tone.trim() || undefined,
-      targetEpisodeCount: Number(form.targetEpisodeCount) || undefined,
+      targetEpisodeCount:
+        targetEpisodeCountOverride ??
+        (Number(form.targetEpisodeCount) || undefined),
       shotDurationSeconds: Number(form.shotDurationSeconds) || undefined,
       bible:
         // Widened (previously `characters`/`locations`-only input silently
@@ -3169,6 +3516,29 @@ export function CreateSeriesWizard({
           : undefined,
       lineage: buildLineagePayload(),
     } as Parameters<typeof createMutation.mutate>[0]);
+  };
+
+  const handleCreate = () => {
+    if (createMutation.isPending || generateStoryMutation.isPending) return;
+    if (!createValid) {
+      toast.error(createBlockedReason);
+      return;
+    }
+    const currentCount = Math.min(
+      isSpecialEdition ? 2 : 1000,
+      Math.max(1, Number(form.targetEpisodeCount) || 1)
+    );
+    setEpisodeCountConfirmationValue(String(currentCount));
+    setEpisodeCountConfirmationOpen(true);
+  };
+
+  const confirmEpisodeCountAndCreate = () => {
+    const parsed = Number(episodeCountConfirmationValue);
+    const max = isSpecialEdition ? 2 : 1000;
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > max) return;
+    setForm(previous => ({ ...previous, targetEpisodeCount: String(parsed) }));
+    setEpisodeCountConfirmationOpen(false);
+    executeCreate(parsed);
   };
 
   return (
@@ -3379,7 +3749,7 @@ export function CreateSeriesWizard({
             parentSeriesOptionsLoading={seriesListQuery.isLoading}
             onSelectParentSeries={handleSelectParentSeries}
             parentSeries={parentSeries}
-            carryOverDraft={carryOverMutation.data?.draft}
+            carryOverDraft={carryOverResult?.draft}
             carryOverLoading={carryOverMutation.isPending}
             carryOverError={
               carryOverMutation.error?.message
@@ -3389,7 +3759,7 @@ export function CreateSeriesWizard({
             onProposeCarryOver={handleProposeCarryOver}
             onCarryOverPremiseChange={value => set("carryOverPremise", value)}
             onCarryOverOverride={setCarryOverOverride}
-            specialEditionDraft={specialEditionMutation.data?.draft}
+            specialEditionDraft={specialEditionResult?.draft}
             specialEditionLoading={specialEditionMutation.isPending}
             specialEditionError={
               specialEditionMutation.error?.message
@@ -3487,6 +3857,78 @@ export function CreateSeriesWizard({
             )}
           </div>
         </DialogFooter>
+        <Dialog
+          open={episodeCountConfirmationOpen}
+          onOpenChange={setEpisodeCountConfirmationOpen}
+        >
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>
+                {lang === "th"
+                  ? "ยืนยันจำนวนตอนก่อนสร้างซีรีย์"
+                  : "Confirm episode count before creation"}
+              </DialogTitle>
+              <DialogDescription>
+                {lang === "th"
+                  ? "แก้จำนวนตอนย่อยได้ในจุดนี้ ระบบจะคำนวณเวลารวมให้ทันที และจะใช้จำนวนที่ยืนยันสร้างโครงเรื่องเต็มจริง"
+                  : "You can still change the planned sub-episode count here. The estimated runtime updates immediately and the confirmed count is used for full-story generation."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3 py-2">
+              <Label htmlFor="vd-confirm-target-episode-count">
+                {lang === "th"
+                  ? "จำนวนตอนย่อยที่ต้องการ"
+                  : "Planned sub-episodes"}
+              </Label>
+              <Input
+                id="vd-confirm-target-episode-count"
+                type="number"
+                min={1}
+                max={isSpecialEdition ? 2 : 1000}
+                value={episodeCountConfirmationValue}
+                onChange={event =>
+                  setEpisodeCountConfirmationValue(event.target.value)
+                }
+                autoFocus
+              />
+              <p className="rounded-md border bg-muted/40 p-3 text-sm font-medium">
+                {formatVerticalDramaRuntimeSeconds(
+                  estimateVerticalDramaSeriesRuntimeSeconds({
+                    episodeCount: Number(episodeCountConfirmationValue) || 0,
+                    shotDurationSeconds: Number(form.shotDurationSeconds) || 8,
+                  }),
+                  lang
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {lang === "th"
+                  ? `คำนวณจาก 9 ช็อตต่อตอน × ${Number(form.shotDurationSeconds) || 8} วินาทีต่อตอนย่อย`
+                  : `Calculated from 9 shots per episode × ${Number(form.shotDurationSeconds) || 8} seconds per shot`}
+              </p>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEpisodeCountConfirmationOpen(false)}
+              >
+                {lang === "th" ? "ย้อนกลับไปแก้ไข" : "Go back"}
+              </Button>
+              <Button
+                type="button"
+                onClick={confirmEpisodeCountAndCreate}
+                disabled={
+                  !Number.isInteger(Number(episodeCountConfirmationValue)) ||
+                  Number(episodeCountConfirmationValue) < 1 ||
+                  Number(episodeCountConfirmationValue) >
+                    (isSpecialEdition ? 2 : 1000)
+                }
+              >
+                {lang === "th" ? "ยืนยันและสร้างซีรีย์" : "Confirm and create"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );
@@ -3615,10 +4057,22 @@ export function mergeSynthesizedDraftIntoWizardForm(
   };
   const requestNumber = (key: string): string | undefined => {
     const value = requestSynthesis?.[key];
-    return typeof value === "number" && Number.isFinite(value)
+    return typeof value === "number" && Number.isInteger(value) && value > 0
       ? String(value)
       : undefined;
   };
+  // Migrated Draft ledgers may not retain the original synthesis request.
+  // The structural count in the Draft is the durable recovery source in that
+  // case. An explicit request remains authoritative so QC can still expose a
+  // malformed Draft generated for a different season length.
+  const draftTargetEpisodeCount =
+    typeof draft.storyDesign?.totalEpisodeCount === "number" &&
+    Number.isInteger(draft.storyDesign.totalEpisodeCount) &&
+    draft.storyDesign.totalEpisodeCount > 0
+      ? String(draft.storyDesign.totalEpisodeCount)
+      : undefined;
+  const targetEpisodeCount =
+    requestNumber("targetEpisodeCount") ?? draftTargetEpisodeCount;
   const resolvedTitle = previous.title.trim() ? previous.title : draft.title;
   const mappedCharacters = draft.characters.map(character => ({
     name: character.name,
@@ -3656,9 +4110,7 @@ export function mergeSynthesizedDraftIntoWizardForm(
     AUDIENCE_AGE_RATINGS.includes(audienceAgeRating as AudienceAgeRating)
       ? { audienceAgeRating: audienceAgeRating as AudienceAgeRating }
       : {}),
-    ...(requestNumber("targetEpisodeCount")
-      ? { targetEpisodeCount: requestNumber("targetEpisodeCount") }
-      : {}),
+    ...(targetEpisodeCount ? { targetEpisodeCount } : {}),
     logline: draft.logline,
     mainPlot: draft.mainPlot,
     seasonArc: draft.seasonArc,
@@ -4613,18 +5065,35 @@ function WizardStep({
                     ? "ข้อความนี้จะเป็นแกนเรื่องหลักของ AI"
                     : "This becomes the AI's primary story spine"}
                 </span>
-                <span aria-live="polite">
-                  {form.userPremise.length}/
-                  {CREATE_SERIES_FIELD_LIMITS.userPremise}
+                <span
+                  aria-live="polite"
+                  className={cn(
+                    form.userPremise.length > PROMPT_EXPANSION_PREMISE_LIMIT &&
+                      "font-medium text-destructive"
+                  )}
+                >
+                  {form.userPremise.length.toLocaleString()}/
+                  {PROMPT_EXPANSION_PREMISE_LIMIT.toLocaleString()}{" "}
+                  {th ? "ตัวอักษรสำหรับขยายโจทย์" : "chars for AI expansion"}
                 </span>
               </div>
+              {form.userPremise.length > PROMPT_EXPANSION_PREMISE_LIMIT && (
+                <p className="text-xs text-destructive" role="alert">
+                  {th
+                    ? `โจทย์ยาวเกิน ${PROMPT_EXPANSION_PREMISE_LIMIT.toLocaleString()} ตัวอักษร จึงไม่สามารถกดขยายโจทย์ด้วย AI ได้ กรุณาย่อข้อความก่อน`
+                    : `This premise exceeds ${PROMPT_EXPANSION_PREMISE_LIMIT.toLocaleString()} characters, so AI expansion is locked. Shorten it to continue.`}
+                </p>
+              )}
               <div className="mt-3 grid gap-2 rounded-md border border-primary/20 bg-primary/5 p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={!form.userPremise.trim()}
+                    disabled={
+                      !form.userPremise.trim() ||
+                      form.userPremise.length > PROMPT_EXPANSION_PREMISE_LIMIT
+                    }
                     onClick={() => setPromptExpansionOpen(true)}
                   >
                     <Sparkles className="mr-2 h-4 w-4" />
@@ -4654,6 +5123,7 @@ function WizardStep({
               open={promptExpansionOpen}
               prompt={form.userPremise}
               seriesId={planningSeriesId ? Number(planningSeriesId) : undefined}
+              modelId={form.defaultModelId}
               packId={form.sourcePackId}
               draftSessionId={form.sourceDraftSessionId}
               lang={lang}

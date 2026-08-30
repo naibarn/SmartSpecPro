@@ -324,6 +324,7 @@ export interface DesignedVerticalDramaCharacterLook {
   description: string;
   wardrobeRules: string[];
   imageBrief: string;
+  reviewReason?: string;
 }
 
 let cachedSystemPrompt: string | null = null;
@@ -630,8 +631,10 @@ function reconcileEvidenceRefs(
   );
   const refsAreGrounded = refs.every(item => {
     const sourceEvidence = requestEvidenceByShot.get(item.shot_number);
-    return Boolean(sourceEvidence) &&
-      sourceEvidence?.evidenceType === item.evidence_type;
+    return (
+      Boolean(sourceEvidence) &&
+      sourceEvidence?.evidenceType === item.evidence_type
+    );
   });
   if (refsAreGrounded) {
     return refs.map(item => ({
@@ -644,9 +647,7 @@ function reconcileEvidenceRefs(
   return request.evidence.map(evidence => ({
     shotNumber: evidence.shotNumber,
     evidenceSpan: clean(evidence.text, 240),
-    ...(evidence.evidenceType
-      ? { evidenceType: evidence.evidenceType }
-      : {}),
+    ...(evidence.evidenceType ? { evidenceType: evidence.evidenceType } : {}),
   }));
 }
 
@@ -699,7 +700,6 @@ export function getDesignedCharacterLookSemanticKey(
     parentCharacterKey: request.parentCharacterKey,
     canonicalIntent: request.canonicalIntent,
     variantType: request.variantType,
-    requestKey: request.requestKey,
   });
 }
 
@@ -850,25 +850,32 @@ export async function designVerticalDramaCharacterLooks(
       request.legacyVisualOnly &&
       evidenceRefs.some(
         item =>
-          item.shotNumber !== 0 ||
-          item.evidenceType !== "legacy_visual_context"
+          item.shotNumber !== 0 || item.evidenceType !== "legacy_visual_context"
       )
     ) {
       throw new Error(
         `LLM returned a storyboard reference for legacy-only request ${result.request_key}`
       );
     }
-    if (result.review_required) {
+    const reviewRequiredForResult = result.review_required;
+    if (reviewRequiredForResult) {
       reviewRequired.add(result.request_key);
-      continue;
     }
     assertVisualOnly(result.look_design, request);
-    assertAgeAppropriate(
-      result.look_design,
-      characterByKey.get(request.parentCharacterKey)?.apparentAgeAnchor ??
-        undefined,
-      request
-    );
+    // A review-required design is still a valid LLM-produced visual design.
+    // Materialize it with review status so the user can see and correct the
+    // prompt; dropping it here used to leave the row with only
+    // `lookDesignStatus=review` and no usable prompt at all. The age gate is
+    // intentionally deferred to that human review because the conflict is
+    // precisely why this result was marked for review.
+    if (!reviewRequiredForResult) {
+      assertAgeAppropriate(
+        result.look_design,
+        characterByKey.get(request.parentCharacterKey)?.apparentAgeAnchor ??
+          undefined,
+        request
+      );
+    }
     const description = renderDescription(result.look_design);
     const imageBrief = renderImageBrief(result.look_design);
     const wardrobeRules = [
@@ -895,6 +902,9 @@ export async function designVerticalDramaCharacterLooks(
       description,
       wardrobeRules,
       imageBrief,
+      ...(result.conflict_reason
+        ? { reviewReason: result.conflict_reason }
+        : {}),
     });
   }
   if (validatedData.designs.length !== params.requests.length) {

@@ -368,6 +368,11 @@ export const verticalDramaCopy = {
   storyJobQueued: { th: "กำลังอยู่ในคิว…", en: "Queued…" },
   storyJobRoundLabel: { th: "รอบเรียก", en: "Call" },
   storyJobPhaseOutline: { th: "กำลังคิดโครง", en: "Outlining" },
+  storyJobPlanGenerating: { th: "กำลังสร้างโครงเรื่องหลัก…", en: "Generating the main story plan…" },
+  storyJobPlanCandidateSaved: { th: "บันทึกร่างโครงเรื่องแล้ว · กำลังตรวจสอบ", en: "Plan draft saved · validating" },
+  storyJobPlanValidating: { th: "กำลังตรวจสอบโครงเรื่อง…", en: "Validating the story plan…" },
+  storyJobPlanSaving: { th: "กำลังบันทึกโครงเรื่องลงซีรีย์…", en: "Saving the story plan to the series…" },
+  storyJobPlanHandoff: { th: "บันทึกโครงเรื่องแล้ว · ส่งต่องานสร้างรายละเอียด…", en: "Story plan saved · handing off to detailed drafting…" },
   /** Feature 132 §5 (F132B, ledgers-and-story-state) — the `ledger_plan` job phase, runs after "outline"/before per-episode "draft". */
   storyJobPhaseLedger: {
     th: "กำลังจัดทำบัญชีความต่อเนื่อง…",
@@ -1932,11 +1937,16 @@ export function improveScriptPartialFailureEpisodeReasonText(
 /** A structural (not imported) mirror of `services/verticalDramaStoryJobs.ts`'s `VerticalDramaStoryJobProgress` — keeps this file dependency-free of any server module. */
 export interface VerticalDramaStoryJobProgressCopyInput {
   phase: "outline" | "ledger" | "draft" | "review" | "fix" | "reading";
+  stage?: "generating" | "candidate_saved" | "validating" | "saving" | "handoff";
   chunkIndex?: number;
   chunkCount?: number;
   episodesDone?: number[];
   retrying?: boolean;
   retryEpisodeNumbers?: number[];
+  episodesCompleted?: number;
+  episodesTotal?: number;
+  currentEpisodeStart?: number;
+  currentEpisodeEnd?: number;
 }
 
 /** Copy Contract: "กำลังซ่อมตอน {eps}" — episode numbers ascending, comma-joined; falls back to the bare prefix when no episode numbers are known yet. */
@@ -1989,6 +1999,19 @@ export function storyJobProgressText(
 ): string {
   if (!progress) return pickCopy(lang, verticalDramaCopy.storyJobQueued);
 
+  const planStageLabel =
+    progress.stage === "generating"
+      ? pickCopy(lang, verticalDramaCopy.storyJobPlanGenerating)
+      : progress.stage === "candidate_saved"
+        ? pickCopy(lang, verticalDramaCopy.storyJobPlanCandidateSaved)
+        : progress.stage === "validating"
+          ? pickCopy(lang, verticalDramaCopy.storyJobPlanValidating)
+          : progress.stage === "saving"
+            ? pickCopy(lang, verticalDramaCopy.storyJobPlanSaving)
+            : progress.stage === "handoff"
+              ? pickCopy(lang, verticalDramaCopy.storyJobPlanHandoff)
+              : null;
+
   const phaseLabel =
     progress.phase === "outline"
       ? pickCopy(lang, verticalDramaCopy.storyJobPhaseOutline)
@@ -2004,10 +2027,26 @@ export function storyJobProgressText(
 
   const visiblePhase = progress.retrying
     ? storyJobRetryText(lang, progress.retryEpisodeNumbers)
-    : phaseLabel;
+    : planStageLabel ?? phaseLabel;
 
-  if (progress.chunkIndex == null || progress.chunkCount == null) {
-    return visiblePhase;
+  const savedEpisodes =
+    progress.episodesCompleted != null && progress.episodesTotal != null
+      ? lang === "th"
+        ? `บันทึกแล้ว ${progress.episodesCompleted}/${progress.episodesTotal} ตอนย่อย`
+        : `Saved ${progress.episodesCompleted}/${progress.episodesTotal} sub-episodes`
+      : null;
+  const currentRange =
+    progress.currentEpisodeStart != null && progress.currentEpisodeEnd != null
+      ? lang === "th"
+        ? `ตอนย่อย ${progress.currentEpisodeStart}-${progress.currentEpisodeEnd}`
+        : `Sub-episodes ${progress.currentEpisodeStart}-${progress.currentEpisodeEnd}`
+      : null;
+  const contextPrefix = [savedEpisodes, currentRange]
+    .filter((value): value is string => value != null)
+    .join(" · ");
+
+  if (planStageLabel || progress.chunkIndex == null || progress.chunkCount == null) {
+    return contextPrefix ? `${contextPrefix} · ${visiblePhase}` : visiblePhase;
   }
 
   // Backward compatibility for jobs persisted before split-retry metadata
@@ -2016,8 +2055,8 @@ export function storyJobProgressText(
   if (progress.chunkIndex > progress.chunkCount) {
     const recoveryPrefix =
       lang === "th" ? "กำลังเก็บงานเพิ่มเติม" : "Finishing recovery";
-    return `${recoveryPrefix} · ${visiblePhase}`;
+    return `${contextPrefix ? `${contextPrefix} · ` : ""}${recoveryPrefix} · ${visiblePhase}`;
   }
 
-  return `${storyJobRoundText(lang, progress.chunkIndex, progress.chunkCount)} · ${visiblePhase}`;
+  return `${contextPrefix ? `${contextPrefix} · ` : ""}${storyJobRoundText(lang, progress.chunkIndex, progress.chunkCount)} · ${visiblePhase}`;
 }

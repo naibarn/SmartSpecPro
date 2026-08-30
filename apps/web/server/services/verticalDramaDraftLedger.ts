@@ -70,6 +70,15 @@ export interface VerticalDramaDraftJobPatch {
   archivedAt?: Date | null;
 }
 
+/**
+ * Only states with work still executing hold the Series admission lock.
+ * `ready_for_qc` is a completed composition and may be superseded by a new
+ * generation; it is archived below when the next job is admitted.
+ */
+export function isVerticalDramaDraftJobActive(status: string): boolean {
+  return ["queued", "composing", "qc_running"].includes(status);
+}
+
 const MAX_DRAFT_CONTENT_BYTES = 220_000;
 
 function safeSegment(value: string): string {
@@ -224,11 +233,7 @@ export async function ensureVerticalDramaDraftJob(
         .orderBy(desc(verticalDramaDraftLedgers.updatedAt))
         .limit(1);
       if (active) {
-        if (
-          ["queued", "composing", "ready_for_qc", "qc_running"].includes(
-            active.jobStatus
-          )
-        ) {
+        if (isVerticalDramaDraftJobActive(active.jobStatus)) {
           throw new Error("A Draft is already running for this Series");
         }
         await tx

@@ -11,7 +11,7 @@
  * This service is READ-ONLY — it never inserts, updates, or deletes rows.
  */
 
-import { and, asc, desc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { getDb, type DrizzleDB } from "../db";
 import {
   marketplaceAutoReviewRuns,
@@ -21,6 +21,8 @@ import {
 } from "../../drizzle/schema";
 import { StagedSequentialStoryboardMetadataV1Schema } from "@shared/marketplaceAutoReview/stagedContracts";
 import { getStagedAutoReviewCheckpointState } from "./marketplaceAutoReviewStagedCheckpointRouterService";
+import { marketplaceMediaUrl } from "./marketplaceMediaUrl";
+import { marketplaceOwnerTenantScope } from "./marketplaceTenantScope";
 
 interface ExtensionAuth {
   userId: number;
@@ -29,7 +31,9 @@ interface ExtensionAuth {
 
 function tenantAccessClause(auth: ExtensionAuth) {
   const tenantId = auth.tenantId?.trim();
-  if (!tenantId) return undefined;
+  // Extension auth is tenant-bound. Returning a false predicate here keeps
+  // this service fail-closed even if a caller bypasses the route guard.
+  if (!tenantId) return sql`false`;
   return or(
     eq(marketplaceAutoReviewRuns.tenantId, tenantId),
     isNull(marketplaceAutoReviewRuns.tenantId),
@@ -60,6 +64,7 @@ async function loadProductSummaries(
     .where(and(
       inArray(marketplaceProducts.id, uniqueProductIds),
       eq(marketplaceProducts.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
     ));
 
   const coverAssetIds = productRows
@@ -68,13 +73,14 @@ async function loadProductSummaries(
   const coverUrlByAssetId = new Map<string, string | null>();
   if (coverAssetIds.length > 0) {
     const assetRows = await db
-      .select({ id: marketplaceCaptureAssets.id, url: marketplaceCaptureAssets.url })
+      .select({ id: marketplaceCaptureAssets.id, url: marketplaceCaptureAssets.url, storageKey: marketplaceCaptureAssets.storageKey })
       .from(marketplaceCaptureAssets)
       .where(and(
         inArray(marketplaceCaptureAssets.id, coverAssetIds),
         eq(marketplaceCaptureAssets.userId, auth.userId),
+        marketplaceOwnerTenantScope(marketplaceCaptureAssets.tenantId, auth.tenantId),
       ));
-    for (const row of assetRows) coverUrlByAssetId.set(row.id, row.url ?? null);
+    for (const row of assetRows) coverUrlByAssetId.set(row.id, marketplaceMediaUrl(row.storageKey, row.url));
   }
 
   const productIdsMissingCover = productRows
@@ -86,12 +92,30 @@ async function loadProductSummaries(
       .select({
         productId: marketplaceProductImages.productId,
         url: marketplaceProductImages.url,
+        storageKey: marketplaceProductImages.storageKey,
+        captureAssetId: marketplaceProductImages.captureAssetId,
       })
       .from(marketplaceProductImages)
       .where(inArray(marketplaceProductImages.productId, productIdsMissingCover))
       .orderBy(asc(marketplaceProductImages.productId), asc(marketplaceProductImages.sortOrder));
+    const imageAssetIds = Array.from(new Set(imageRows.map((row) => row.captureAssetId).filter(Boolean))) as string[];
+    const imageAssets = imageAssetIds.length > 0
+      ? await db.select({
+        id: marketplaceCaptureAssets.id,
+        storageKey: marketplaceCaptureAssets.storageKey,
+        url: marketplaceCaptureAssets.url,
+      }).from(marketplaceCaptureAssets).where(and(
+        inArray(marketplaceCaptureAssets.id, imageAssetIds),
+        eq(marketplaceCaptureAssets.userId, auth.userId),
+        marketplaceOwnerTenantScope(marketplaceCaptureAssets.tenantId, auth.tenantId),
+      ))
+      : [];
+    const imageAssetById = new Map(imageAssets.map((asset) => [asset.id, asset]));
     for (const row of imageRows) {
-      if (!fallbackUrlByProductId.has(row.productId)) fallbackUrlByProductId.set(row.productId, row.url ?? null);
+      const asset = row.captureAssetId ? imageAssetById.get(row.captureAssetId) : undefined;
+      if (!fallbackUrlByProductId.has(row.productId)) {
+        fallbackUrlByProductId.set(row.productId, marketplaceMediaUrl(asset?.storageKey ?? row.storageKey, row.url || asset?.url));
+      }
     }
   }
 
@@ -240,6 +264,7 @@ export async function getMarketplaceAutoReviewProjectForExtension(
     .where(and(
       eq(marketplaceProducts.id, run.productId),
       eq(marketplaceProducts.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
     ))
     .limit(1);
 

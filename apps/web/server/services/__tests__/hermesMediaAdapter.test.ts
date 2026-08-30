@@ -210,9 +210,9 @@ describe("getHermesMediaTask — resultUrl", () => {
     const presign = vi.fn(async () => ({ url: "https://signed.example/output.png", key: "hermes-media/tenant-1/42/output.png" }));
     const task = await getHermesMediaTask("hermes_job-1", USER_ID, { repo, presign });
     expect(task?.status).toBe("completed");
-    expect(task?.resultUrl).toBe("https://signed.example/output.png");
+    expect(task?.resultUrl).toBe("/uploads/hermes-media/tenant-1/42/output.png");
     expect(task?.resultData?.mediaAssetId).toBe("77");
-    expect(presign).toHaveBeenCalledWith("hermes-media/tenant-1/42/output.png", expect.any(Number));
+    expect(presign).not.toHaveBeenCalled();
   });
 
   it("a completed job WITHOUT a registered asset never fabricates a resultUrl", async () => {
@@ -379,11 +379,11 @@ describe("mintHermesMediaReferenceUrls", () => {
     const repo = buildRepo({ getMediaAssetForOwner });
     const results = await mintHermesMediaReferenceUrls(
       { tenantId: TENANT_ID, requestedByUserId: USER_ID, references: [{ assetId: "1" }, { assetId: "2" }] },
-      { repo, presign },
+      { repo, presign, publicAppUrl: () => "https://app.example" },
     );
     expect(results).toHaveLength(2);
     expect(getMediaAssetForOwner).toHaveBeenCalledWith({ id: 1, tenantId: TENANT_ID, userId: USER_ID });
-    expect(results[0].url).toContain("key-1");
+    expect(results[0].url).toBe("https://app.example/uploads/key-1");
   });
 
   it("throws a typed ownership error for an asset the requester no longer owns (never a silent skip)", async () => {
@@ -396,7 +396,7 @@ describe("mintHermesMediaReferenceUrls", () => {
     ).rejects.toBeInstanceOf(HermesReferenceAssetOwnershipError);
   });
 
-  it("presigns the object key when a legacy media_assets row stores a storage proxy URL", async () => {
+  it("keeps a legacy storage proxy URL durable when minting a worker reference", async () => {
     const getMediaAssetForOwner = vi.fn(async () => ({
       id: 1,
       storageKey: "/api/storage/files/mcp-media/tenant-1/42/output.png",
@@ -409,15 +409,12 @@ describe("mintHermesMediaReferenceUrls", () => {
 
     const [result] = await mintHermesMediaReferenceUrls(
       { tenantId: TENANT_ID, requestedByUserId: USER_ID, references: [{ assetId: "1" }] },
-      { repo, presign },
+      { repo, presign, publicAppUrl: () => "https://app.example" },
     );
 
-    expect(presign).toHaveBeenCalledWith(
-      "mcp-media/tenant-1/42/output.png",
-      expect.any(Number),
-    );
+    expect(presign).not.toHaveBeenCalled();
     expect(result.url).toBe(
-      "https://signed.example/mcp-media/tenant-1/42/output.png",
+      "https://app.example/uploads/mcp-media/tenant-1/42/output.png",
     );
   });
 

@@ -41,6 +41,16 @@ def _image_safety_marker():
     }
 
 
+def _cover_safety_marker():
+    return {
+        "checked": True,
+        "mode": "vertical_drama_cover",
+        "skillId": "vertical-drama-episode-cover-safety-rewriter",
+        "skillVersion": "1.0.0",
+        "blocked": False,
+    }
+
+
 def test_provider_prompt_refusals_are_non_retryable():
     error = RuntimeError("500: Image generation failed: Task failed: We're so sorry, but the prompt cannot be processed.")
 
@@ -100,6 +110,31 @@ def test_openai_policy_errors_are_separated_from_other_permanent_failures():
 
 def test_transient_provider_errors_remain_retryable():
     assert _is_non_retryable_media_error(RuntimeError("temporary provider timeout")) is False
+
+
+def test_provider_safety_system_refusals_are_non_retryable():
+    error = RuntimeError(
+        "Provider failed: Content was flagged by the safety system. "
+        "Try a different prompt."
+    )
+
+    assert _is_non_retryable_media_error(error) is True
+    assert _is_openai_policy_media_error(error) is True
+
+
+def test_cover_safety_contract_errors_are_non_retryable():
+    error = ValueError("Image prompt safety review skill is invalid.")
+
+    assert _is_non_retryable_media_error(error) is True
+
+
+def test_cover_safety_marker_is_accepted_by_worker_validator():
+    from app.services.image_prompt_safety import validate_image_prompt_safety
+
+    marker = validate_image_prompt_safety({"__prompt_safety": _cover_safety_marker()})
+
+    assert marker["skillId"] == "vertical-drama-episode-cover-safety-rewriter"
+    assert marker["mode"] == "vertical_drama_cover"
 
 
 def _notification_session():

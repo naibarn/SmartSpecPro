@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "ui:order": [
+    "reference_images",
+    "image_count",
+    "gender_presentation",
+    "ethnicity",
+    "age_min",
+    "age_max",
+    "lock_clothing",
+    "pose_mode",
+    "camera_framing",
+    "custom_framing",
+    "hair_guidance",
+    "clothing_fallback",
+    "environment",
+    "expression",
+    "cinematic_intensity",
+    "depth_of_field",
+    "additional_instructions"
+  ],
+  "reference_images": {
+    "ui:widget": "image-upload",
+    "ui:options": {
+      "multiple": true,
+      "accept": ["image/jpeg", "image/png", "image/webp"],
+      "maxFiles": 6
+    },
+    "ui:help": "ใช้ภาพอ้างอิงสำหรับโครงหน้าและความยาว/แนวทรงผมเป็นหลัก ไม่คัดลอกตัวตนเดิม"
+  },
+  "image_count": {
+    "ui:widget": "range",
+    "ui:options": {
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "showValue": true
+    }
+  },
+  "gender_presentation": {
+    "ui:widget": "text"
+  },
+  "ethnicity": {
+    "ui:widget": "text",
+    "ui:placeholder": "เช่น Thai / Southeast Asian"
+  },
+  "age_min": {
+    "ui:widget": "number"
+  },
+  "age_max": {
+    "ui:widget": "number"
+  },
+  "lock_clothing": {
+    "ui:widget": "switch",
+    "ui:help": "เปิดเพื่อให้ชุดและเครื่องแต่งกายหลักใกล้เคียงภาพอ้างอิง"
+  },
+  "pose_mode": {
+    "ui:widget": "radio",
+    "ui:options": {
+      "labels": {
+        "auto_natural": "Auto — ท่าทางธรรมชาติ ไม่โพสแบบนางแบบ",
+        "lock_reference": "Lock — ยึดท่าทางหลักตามภาพอ้างอิง"
+      }
+    }
+  },
+  "camera_framing": {
+    "ui:widget": "select",
+    "ui:options": {
+      "labels": {
+        "full_body": "Full body — เต็มตัว",
+        "three_quarter": "Three-quarter — ประมาณเข่า/ต้นขาขึ้นไป",
+        "half_body": "Half body — ครึ่งตัว",
+        "medium_close_up": "Medium close-up — ช่วงอก/ไหล่ขึ้นไป",
+        "close_up": "Close-up — ใบหน้าและหัวไหล่",
+        "extreme_close_up": "Extreme close-up — ใบหน้าใกล้มาก",
+        "wide_environmental": "Wide environmental — เห็นตัวละครและสภาพแวดล้อมชัด",
+        "custom": "Custom — กำหนดเอง"
+      }
+    }
+  },
+  "custom_framing": {
+    "ui:widget": "textarea",
+    "ui:options": {
+      "rows": 2
+    },
+    "ui:visibleWhen": {
+      "camera_framing": "custom"
+    }
+  },
+  "hair_guidance": {
+    "ui:widget": "textarea",
+    "ui:options": {
+      "rows": 3
+    }
+  },
+  "clothing_fallback": {
+    "ui:widget": "textarea",
+    "ui:options": {
+      "rows": 2
+    },
+    "ui:visibleWhen": {
+      "lock_clothing": false
+    }
+  },
+  "environment": {
+    "ui:widget": "textarea",
+    "ui:options": {
+      "rows": 2
+    }
+  },
+  "expression": {
+    "ui:widget": "text"
+  },
+  "cinematic_intensity": {
+    "ui:widget": "segmented-control",
+    "ui:options": {
+      "labels": {
+        "subtle": "Subtle",
+        "balanced": "Balanced",
+        "strong": "Strong"
+      }
+    }
+  },
+  "depth_of_field": {
+    "ui:widget": "select",
+    "ui:options": {
+      "labels": {
+        "auto": "Auto ตามระยะภาพ",
+        "deep": "Deep focus",
+        "moderate": "Moderate depth",
+        "shallow": "Shallow depth"
+      }
+    }
+  },
+  "additional_instructions": {
+    "ui:widget": "textarea",
+    "ui:options": {
+      "rows": 4
+    }
+  }
+}

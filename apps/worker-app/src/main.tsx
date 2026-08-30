@@ -7,6 +7,15 @@ import {
 } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import "./styles.css";
+import { MediaWorkspacePanel, SeriesWorkspacePanel } from "./SeriesWorkspacePanel";
+import { WorkerAppShell } from "./app/WorkerAppShell";
+import { localizeConnectionPresentation, type WorkerConnectionPresentation } from "./app/workerDashboard";
+import { localizedWorkerRoutes, resolveWorkerRoute, type CanonicalWorkerRouteId, type WorkerRouteId } from "./app/workerRoutes";
+import { CanonicalWorkerRouteScreen } from "./screens/CanonicalWorkerRouteScreen";
+import { ComfyConnectionsScreen } from "./screens/ComfyConnectionsScreen";
+import { ComfyWorkflowsScreen } from "./screens/ComfyWorkflowsScreen";
+import { ComfyJobsScreen } from "./screens/ComfyJobsScreen";
+import { WorkerPermissionsPanel } from "./screens/WorkerPermissionsPanel";
 import {
   fetchJsonWithTimeout,
   isNewerVersion,
@@ -18,11 +27,14 @@ import {
 } from "./versionUpdate";
 
 const SMART_AI_HUB_CLOUD_URL = "https://smartaihub.app";
+const CONNECTION_HEALTH_RETRY_BUDGET_MS = 2 * 60 * 1000;
+const CONNECTION_HEALTH_RETRY_INITIAL_DELAY_MS = 2_000;
 const isMacOSHost =
   typeof navigator !== "undefined" &&
   /macintosh|mac os x/i.test(`${navigator.platform} ${navigator.userAgent}`);
 
 type Settings = {
+  locale: "th" | "en";
   serverUrl: string;
   workerLabel: string;
   acceptJobs: boolean;
@@ -89,20 +101,12 @@ type ActiveJobSummary = {
   jobId: string;
   jobLabel: string;
   jobType: string;
+  createdAt?: string | null;
   projectId?: string | null;
   projectName?: string | null;
   progressPercent: number;
   message: string;
 };
-
-const WORKER_TABS = [
-  { id: "connection", label: "Connection", hint: "Link this machine" },
-  { id: "render", label: "Video render", hint: "Jobs & runtime" },
-  { id: "hermes", label: "Hermes agents", hint: "Grok / xAI" },
-  { id: "settings", label: "Settings", hint: "Preferences" },
-] as const;
-
-type WorkerTabId = (typeof WORKER_TABS)[number]["id"];
 
 type HermesTuiLaunch = {
   launched: boolean;
@@ -138,6 +142,7 @@ type StartupModeStatus = {
 };
 
 type ConnectionHealth = {
+  status: "healthy" | "transient" | "unavailable" | "reconnectRequired";
   healthy: boolean;
   connected: boolean;
   reason?: string | null;
@@ -209,6 +214,7 @@ type SavedConnectionSession = {
 };
 
 const fallbackSettings: Settings = {
+  locale: "en",
   serverUrl: SMART_AI_HUB_CLOUD_URL,
   workerLabel: "My render worker",
   acceptJobs: true,
@@ -303,6 +309,17 @@ async function safeInvoke<T>(
 function formatInvokeError(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+function isTransientWorkerConnectionError(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("timed out") ||
+    normalized.includes("control plane request failed") ||
+    normalized.includes("failed to read control plane response") ||
+    normalized.includes("failed to parse worker control plane json") ||
+    /\b(?:408|425|429|500|501|502|503|504|505)\b/.test(normalized)
+  );
 }
 
 function decodeBase64UrlJson<T>(value: string): T | null {
@@ -459,6 +476,8 @@ function App() {
   const [hermesMessage, setHermesMessage] = useState("");
   const connectionStateRef = useRef(connectionState);
   const loopStartingRef = useRef(false);
+  const loopTransientRetryTimerRef = useRef<number | null>(null);
+  const loopTransientRetryStartedAtRef = useRef<number | null>(null);
   const liveLogRef = useRef<HTMLPreElement | null>(null);
   const updateCheckRunningRef = useRef(false);
   const updatePromptedRef = useRef<string | null>(null);
@@ -554,6 +573,10 @@ function App() {
   useEffect(() => {
     void refresh();
   }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = settings.locale === "th" ? "th" : "en";
+  }, [settings.locale]);
 
   const openManagedWslSetup = async () => {
     runtimeInstallStartedAtRef.current = Date.now();
@@ -788,7 +811,10 @@ function App() {
   // diverge whenever the Run key / LaunchAgent is removed outside this app
   // (reinstall, cleanup tool, antivirus) — the checkbox used to keep claiming
   // autostart was on while nothing would actually start.
-  const [activeTab, setActiveTab] = useState<WorkerTabId>("connection");
+  const [activeRoute, setActiveRoute] = useState<CanonicalWorkerRouteId>("overview");
+  const navigateWorkerRoute = (route: WorkerRouteId) => {
+    setActiveRoute(resolveWorkerRoute(route));
+  };
   const [hermesAuth, setHermesAuth] = useState<HermesAuthSummary | null>(null);
   const [hermesTui, setHermesTui] = useState<HermesTuiLaunch | null>(null);
   const [hermesError, setHermesError] = useState<string>("");
@@ -846,8 +872,8 @@ function App() {
     await refreshHermesAuth();
   };
   useEffect(() => {
-    if (activeTab === "hermes") void refreshHermesAuth();
-  }, [activeTab]);
+    if (activeRoute === "runtime") void refreshHermesAuth();
+  }, [activeRoute]);
   const [diagnosticsLogPath, setDiagnosticsLogPath] = useState<string>("");
   useEffect(() => {
     void safeInvoke<DiagnosticsLogLocation | null>(
@@ -888,17 +914,67 @@ function App() {
   const [connectionHealth, setConnectionHealth] =
     useState<ConnectionHealth | null>(null);
   const connectionHealthAlertedRef = useRef<string | null>(null);
+  const connectionHealthRetryTimerRef = useRef<number | null>(null);
+  const connectionHealthTransientStartedAtRef = useRef<number | null>(null);
+  const [connectionHealthRecoveryTimedOut, setConnectionHealthRecoveryTimedOut] =
+    useState(false);
+  const [connectionHealthStale, setConnectionHealthStale] = useState(false);
   useEffect(() => {
     let cancelled = false;
+    const scheduleNextCheck = () => {
+      if (cancelled) return;
+      if (connectionHealthRetryTimerRef.current !== null) {
+        window.clearTimeout(connectionHealthRetryTimerRef.current);
+      }
+      connectionHealthRetryTimerRef.current = window.setTimeout(() => {
+        connectionHealthRetryTimerRef.current = null;
+        void check();
+      }, 5_000);
+    };
     const check = async () => {
       const health = await safeInvoke<ConnectionHealth | null>(
         "worker_app_check_connection_health",
         null,
       );
-      if (cancelled || !health) return;
+      if (cancelled) return;
+      if (!health) {
+        setConnectionHealthStale(true);
+        scheduleNextCheck();
+        return;
+      }
+      setConnectionHealthStale(false);
       setConnectionHealth(health);
-      if (!health.connected) return;
-      if (!health.healthy) {
+      if (!health.connected) {
+        scheduleNextCheck();
+        return;
+      }
+      if (health.status === "transient" || health.status === "unavailable") {
+        const startedAt =
+          connectionHealthTransientStartedAtRef.current ?? Date.now();
+        connectionHealthTransientStartedAtRef.current = startedAt;
+        const elapsedMs = Date.now() - startedAt;
+        const timedOut = elapsedMs >= CONNECTION_HEALTH_RETRY_BUDGET_MS;
+        setConnectionHealthRecoveryTimedOut(timedOut);
+        setConnectionHealth((current) =>
+          current
+            ? { ...current, status: timedOut ? "unavailable" : "transient" }
+            : current,
+        );
+        // A transport failure must not block the existing worker loop or
+        // prevent the normal startup loop from continuing with cached tokens.
+        setConnectionState((current) =>
+          current === "pending" ? current : "connected",
+        );
+        connectionHealthAlertedRef.current = null;
+        setConnectMessage(
+          timedOut
+            ? "Smart AI Hub is still unavailable after 2 minutes. The app will keep retrying automatically."
+            : "Smart AI Hub is temporarily unavailable. Retrying automatically...",
+        );
+        scheduleNextCheck();
+        return;
+      }
+      if (health.status === "reconnectRequired" || !health.healthy) {
         // De-duplicate on the reason so a persistent outage does not reopen a
         // modal every poll — only a CHANGED problem interrupts again.
         const key = `unhealthy:${health.reason ?? ""}`;
@@ -914,9 +990,25 @@ function App() {
         ).catch(() => undefined);
         return;
       }
+      const recoveredFromUnavailable =
+        connectionHealthTransientStartedAtRef.current !== null ||
+        connectionStateRef.current === "error";
+      connectionHealthTransientStartedAtRef.current = null;
+      setConnectionHealthRecoveryTimedOut(false);
+      // A successful health check must clear a previous transient/error state;
+      // clearing only the dialog de-duplication key leaves the card stuck.
+      setConnectionState((current) =>
+        current === "pending" ? current : "connected",
+      );
+      if (recoveredFromUnavailable) {
+        setConnectMessage("Connected. Access recovered automatically.");
+      }
       if (health.expiringSoon) {
         const key = `expiring:${health.expiresAt ?? ""}`;
-        if (connectionHealthAlertedRef.current === key) return;
+        if (connectionHealthAlertedRef.current === key) {
+          scheduleNextCheck();
+          return;
+        }
         connectionHealthAlertedRef.current = key;
         const hours = health.hoursUntilExpiry ?? 0;
         await nativeMessage(
@@ -926,22 +1018,24 @@ function App() {
             kind: "warning",
           },
         ).catch(() => undefined);
+        scheduleNextCheck();
         return;
       }
       connectionHealthAlertedRef.current = null;
+      scheduleNextCheck();
     };
     void check();
-    // Re-check hourly: an expiry warning must still fire on a machine that is
-    // left running for days, not only at launch.
-    const handle = window.setInterval(() => void check(), 60 * 60 * 1000);
     return () => {
       cancelled = true;
-      window.clearInterval(handle);
+      if (connectionHealthRetryTimerRef.current !== null) {
+        window.clearTimeout(connectionHealthRetryTimerRef.current);
+        connectionHealthRetryTimerRef.current = null;
+      }
     };
   }, []);
 
   useEffect(() => {
-    const intervalMs = loopStatus.running ? 2_000 : 10_000;
+    const intervalMs = 5_000;
     const handle = window.setInterval(() => {
       void refresh({ updateConnectionMessage: false });
     }, intervalMs);
@@ -958,6 +1052,12 @@ function App() {
     () => (Array.isArray(executor.activeJobs) ? executor.activeJobs : []),
     [executor.activeJobs],
   );
+  const formatActiveJobTime = (value?: string | null) =>
+    value
+      ? new Date(value).toLocaleString(settings.locale === "th" ? "th-TH" : "en-US")
+      : settings.locale === "th"
+        ? "ไม่พบเวลาสร้างจาก Server"
+        : "Creation time unavailable from Server";
   // The render lane is the one users ask about ("is it rendering?"), so call it
   // out separately from the short Hermes media jobs sharing the same worker.
   const renderJob = useMemo(
@@ -1035,7 +1135,7 @@ function App() {
     startupUpdateCheckDone,
   ]);
 
-  const connectionStatus = useMemo(() => {
+  const connectionStatus = useMemo<WorkerConnectionPresentation>(() => {
     if (connectionState === "pending") {
       return {
         label: "Approval pending",
@@ -1057,6 +1157,14 @@ function App() {
         tone: "pending",
       };
     }
+    if (connectionHealthStale) {
+      return {
+        label: "Connection check delayed",
+        detail:
+          "The last connection result is stale. The Worker App is checking again and will not claim readiness until the server responds.",
+        tone: "warning",
+      };
+    }
     if (!connectionHealth.connected) {
       return {
         label: "Not connected",
@@ -1064,7 +1172,25 @@ function App() {
         tone: "error",
       };
     }
-    if (!connectionHealth.healthy || connectionState === "error") {
+    if (
+      connectionHealth.status === "transient" ||
+      connectionHealth.status === "unavailable"
+    ) {
+      return {
+        label: connectionHealthRecoveryTimedOut
+          ? "Smart AI Hub unavailable · retrying"
+          : "Reconnecting automatically",
+        detail: connectionHealthRecoveryTimedOut
+          ? "Smart AI Hub has not responded for 2 minutes. The Worker App will continue retrying without deleting this connection."
+          : "Smart AI Hub is temporarily unavailable. The Worker App will retry automatically.",
+        tone: connectionHealthRecoveryTimedOut ? "warning" : "pending",
+      };
+    }
+    if (
+      connectionHealth.status === "reconnectRequired" ||
+      !connectionHealth.healthy ||
+      connectionState === "error"
+    ) {
       return {
         label: "Reconnect required",
         detail:
@@ -1114,6 +1240,8 @@ function App() {
   }, [
     connectMessage,
     connectionHealth,
+    connectionHealthRecoveryTimedOut,
+    connectionHealthStale,
     connectionState,
     doctor.status,
     executor.lastMessage,
@@ -1122,6 +1250,7 @@ function App() {
     renderUpdateBlocked,
     savedConnection,
   ]);
+  const localizedConnectionStatus = localizeConnectionPresentation(connectionStatus, settings.locale);
 
   const doctorCheckById = useMemo(() => {
     return new Map(doctor.checks.map((check) => [check.id, check]));
@@ -1345,17 +1474,53 @@ function App() {
           ? `${status.message} Render jobs remain paused until the runtime update and readiness checks pass.`
           : status.message,
       );
+      loopTransientRetryStartedAtRef.current = null;
+      if (loopTransientRetryTimerRef.current !== null) {
+        window.clearTimeout(loopTransientRetryTimerRef.current);
+        loopTransientRetryTimerRef.current = null;
+      }
       void refresh({ fullDoctor: status.running });
     } catch (error) {
-      setLoopStatus({ running: false, mode: "manual", message: String(error) });
+      const message = formatInvokeError(error);
+      if (isTransientWorkerConnectionError(message)) {
+        setLoopStatus({
+          running: false,
+          mode: "automatic_retry",
+          message: "Smart AI Hub is temporarily unavailable. Retrying the worker loop automatically.",
+        });
+        setConnectionState("connected");
+        setConnectMessage(
+          "Smart AI Hub is temporarily unavailable. Retrying automatically...",
+        );
+        const startedAt =
+          loopTransientRetryStartedAtRef.current ?? Date.now();
+        loopTransientRetryStartedAtRef.current = startedAt;
+        if (loopTransientRetryTimerRef.current === null) {
+          const elapsedMs = Date.now() - startedAt;
+          loopTransientRetryTimerRef.current = window.setTimeout(() => {
+            loopTransientRetryTimerRef.current = null;
+            void startLoop(activeSession);
+          },
+          elapsedMs < CONNECTION_HEALTH_RETRY_BUDGET_MS
+            ? CONNECTION_HEALTH_RETRY_INITIAL_DELAY_MS
+            : 30_000);
+        }
+        return;
+      }
+      setLoopStatus({ running: false, mode: "manual", message });
       setConnectionState("error");
-      setConnectMessage(formatInvokeError(error));
+      setConnectMessage(message);
     } finally {
       loopStartingRef.current = false;
     }
   };
 
   const stopLoop = async () => {
+    if (loopTransientRetryTimerRef.current !== null) {
+      window.clearTimeout(loopTransientRetryTimerRef.current);
+      loopTransientRetryTimerRef.current = null;
+    }
+    loopTransientRetryStartedAtRef.current = null;
     const status = await safeInvoke<WorkerLoopStatus>(
       "worker_app_stop_worker_loop",
       fallbackLoopStatus,
@@ -1662,6 +1827,27 @@ function App() {
       } catch (error) {
         if (cancelled) return;
         const message = formatInvokeError(error);
+        if (isTransientWorkerConnectionError(message)) {
+          // A renewal timeout is an availability problem, not proof that the
+          // saved connection was revoked. Keep the loop and let the health
+          // retry path converge once the server is back.
+          setConnectionState("connected");
+          setConnectionHealth((current) =>
+            current
+              ? {
+                  ...current,
+                  status: "transient",
+                  healthy: false,
+                  reason: message,
+                }
+              : current,
+          );
+          setConnectionHealthRecoveryTimedOut(false);
+          setConnectMessage(
+            "Smart AI Hub is temporarily unavailable. Retrying automatically...",
+          );
+          return;
+        }
         if (shouldClearSavedConnectionAfterRefreshError(message)) {
           await safeInvoke<void>(
             "worker_app_clear_saved_connection",
@@ -1720,8 +1906,8 @@ function App() {
             className={`connection-status-card ${connectionStatus.tone}`}
             data-testid="connection-status"
           >
-            <strong>{connectionStatus.label}</strong>
-            <span>{connectionStatus.detail}</span>
+            <strong>{localizedConnectionStatus.label}</strong>
+            <span>{localizedConnectionStatus.detail}</span>
           </div>
         </div>
       </section>
@@ -1775,24 +1961,23 @@ function App() {
       {/* Tabbed layout (2026-07-31). One long scrolling grid mixed connection,
           render, Hermes and settings together, so nothing read as a coherent
           area of responsibility. Each tab is now one job the user came to do. */}
-      <nav className="tab-bar" role="tablist" aria-label="Worker sections">
-        {WORKER_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === tab.id}
-            className={`tab-button${activeTab === tab.id ? " active" : ""}`}
-            onClick={() => setActiveTab(tab.id)}
-            data-testid={`worker-tab-${tab.id}`}
-          >
-            <span className="tab-label">{tab.label}</span>
-            <span className="tab-hint">{tab.hint}</span>
-          </button>
-        ))}
-      </nav>
+      <WorkerAppShell routes={localizedWorkerRoutes(settings.locale)} activeRoute={activeRoute} onNavigate={navigateWorkerRoute} connected={Boolean(savedConnection && connectionHealth?.connected)} connectionStatus={{ ...localizedConnectionStatus, connected: Boolean(savedConnection && connectionHealth?.connected), expiresAt: connectionHealth?.expiresAt, hoursUntilExpiry: connectionHealth?.hoursUntilExpiry, checkedAt: connectionHealth?.checkedAt, stale: connectionHealthStale }} queueDepth={executor.queueDepth} runtimeStatus={doctor.status} loopRunning={loopStatus.running} locale={settings.locale}>
 
-      {activeTab === "connection" ? (
+      {["overview", "queue"].includes(activeRoute) ? (
+        <CanonicalWorkerRouteScreen
+          route={activeRoute}
+          connected={Boolean(savedConnection && connectionHealth?.connected)}
+          loopRunning={loopStatus.running}
+          queueDepth={executor.queueDepth}
+          lastMessage={executor.lastMessage}
+          runtimeStatus={doctor.status}
+          connectionStatus={{ ...localizedConnectionStatus, connected: Boolean(savedConnection && connectionHealth?.connected), expiresAt: connectionHealth?.expiresAt, hoursUntilExpiry: connectionHealth?.hoursUntilExpiry, checkedAt: connectionHealth?.checkedAt, stale: connectionHealthStale }}
+          executorState={executor}
+          onNavigate={navigateWorkerRoute}
+        />
+      ) : null}
+
+      {activeRoute === "connection" ? (
         <section className="dashboard-grid" role="tabpanel">
           <article className="panel connect-panel">
             <div className="panel-heading">
@@ -1813,8 +1998,8 @@ function App() {
               className={`connection-status-card ${connectionStatus.tone}`}
               data-testid="connection-status-panel"
             >
-              <strong>{connectionStatus.label}</strong>
-              <span>{connectionStatus.detail}</span>
+              <strong>{localizedConnectionStatus.label}</strong>
+              <span>{localizedConnectionStatus.detail}</span>
             </div>
             {savedConnection?.lastRefreshedAt ? (
               <p className="subtle">
@@ -1880,10 +2065,17 @@ function App() {
               </button>
             </div>
           </article>
+          <WorkerPermissionsPanel />
         </section>
       ) : null}
 
-      {activeTab === "render" ? (
+      {activeRoute === "series" ? <SeriesWorkspacePanel /> : null}
+      {activeRoute === "media-workspace" ? <MediaWorkspacePanel onNavigate={navigateWorkerRoute} /> : null}
+      {activeRoute === "comfy" ? <ComfyConnectionsScreen onNavigate={route => navigateWorkerRoute(route)} /> : null}
+      {activeRoute === "workflows" ? <ComfyWorkflowsScreen /> : null}
+      {activeRoute === "comfy-jobs" ? <ComfyJobsScreen /> : null}
+
+      {(activeRoute as string) === "render" ? (
         <section className="dashboard-grid" role="tabpanel">
           <article className="panel">
             <div className="panel-heading">
@@ -1930,7 +2122,9 @@ function App() {
                       />
                     </div>
                     <p className="subtle">
-                      {activeJob.jobType}
+                      {settings.locale === "th" ? "เลข Job" : "Job ID"}: {activeJob.jobId}
+                      {` · ${settings.locale === "th" ? "ชนิดงาน" : "Type"}: ${activeJob.jobType}`}
+                      {` · ${settings.locale === "th" ? "สร้างเมื่อ" : "Created"}: ${formatActiveJobTime(activeJob.createdAt)}`}
                       {activeJob.projectName
                         ? ` · ${activeJob.projectName}`
                         : ""}
@@ -2203,7 +2397,7 @@ function App() {
         </section>
       ) : null}
 
-      {activeTab === "hermes" ? (
+      {(activeRoute as string) === "runtime" ? (
         <section className="dashboard-grid" role="tabpanel">
           <article className="panel wide">
             <div className="panel-heading inline">
@@ -2422,7 +2616,7 @@ function App() {
         </section>
       ) : null}
 
-      {activeTab === "settings" ? (
+      {activeRoute === "settings" ? (
         <section className="dashboard-grid" role="tabpanel">
           <article className="panel wide settings-panel">
             <div className="panel-heading">
@@ -2430,6 +2624,23 @@ function App() {
               <h2>Worker preferences</h2>
             </div>
             <div className="settings-grid">
+              <label>
+                Language / ภาษา
+                <select
+                  value={settings.locale}
+                  onChange={(event) =>
+                    void saveSettings({
+                      locale: event.target.value as Settings["locale"],
+                    })
+                  }
+                >
+                  <option value="en">English</option>
+                  <option value="th">ไทย</option>
+                </select>
+                <span className="field-help">
+                  Applies to the Worker App after saving. / มีผลกับ Worker App หลังบันทึก
+                </span>
+              </label>
               <label>
                 Server URL preset
                 <select
@@ -2663,6 +2874,7 @@ function App() {
           </article>
         </section>
       ) : null}
+      </WorkerAppShell>
     </main>
   );
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifySidebarSeriesItem,
   groupMainViewSeries,
+  isVerticalDramaPlannerEditSearch,
   isVerticalDramaSeriesIndexPath,
   resolveSidebarSeriesView,
   type SidebarSeriesGroupNode,
@@ -16,7 +17,20 @@ describe("isVerticalDramaSeriesIndexPath", () => {
 
   it("keeps series detail and episode routes out of the Draft Inbox", () => {
     expect(isVerticalDramaSeriesIndexPath("/drama-series/21")).toBe(false);
-    expect(isVerticalDramaSeriesIndexPath("/drama-series/21/episodes/140")).toBe(
+    expect(
+      isVerticalDramaSeriesIndexPath("/drama-series/21/episodes/140")
+    ).toBe(false);
+  });
+});
+
+describe("isVerticalDramaPlannerEditSearch", () => {
+  it("recognizes the planner deep link from wouter's separate search value", () => {
+    expect(isVerticalDramaPlannerEditSearch("?tab=planning&edit=1")).toBe(true);
+  });
+
+  it("does not open the wizard for other tabs or edit values", () => {
+    expect(isVerticalDramaPlannerEditSearch("?tab=overview")).toBe(false);
+    expect(isVerticalDramaPlannerEditSearch("?tab=planning&edit=0")).toBe(
       false
     );
   });
@@ -51,21 +65,33 @@ describe("classifySidebarSeriesItem", () => {
   it("classifies a NULL-lineage row (today's default) as main", () => {
     expect(
       classifySidebarSeriesItem(
-        item({ id: "s1", createMode: null, seasonNumber: null, parentSeriesId: null })
+        item({
+          id: "s1",
+          createMode: null,
+          seasonNumber: null,
+          parentSeriesId: null,
+        })
       )
     ).toBe("main");
   });
 
   it("classifies createMode: special_edition as special", () => {
     expect(
-      classifySidebarSeriesItem(item({ id: "s2", createMode: "special_edition" }))
+      classifySidebarSeriesItem(
+        item({ id: "s2", createMode: "special_edition" })
+      )
     ).toBe("special");
   });
 
   it("classifies createMode: sequel as sequel", () => {
     expect(
       classifySidebarSeriesItem(
-        item({ id: "s3", createMode: "sequel", seasonNumber: 2, parentSeriesId: "s1" })
+        item({
+          id: "s3",
+          createMode: "sequel",
+          seasonNumber: 2,
+          parentSeriesId: "s1",
+        })
       )
     ).toBe("sequel");
   });
@@ -98,11 +124,7 @@ describe("classifySidebarSeriesItem", () => {
 
 describe("groupMainViewSeries", () => {
   it("returns every row as a childless main node when all rows are NULL-lineage (today's live data)", () => {
-    const series = [
-      item({ id: "s1" }),
-      item({ id: "s2" }),
-      item({ id: "s3" }),
-    ];
+    const series = [item({ id: "s1" }), item({ id: "s2" }), item({ id: "s3" })];
     const groups = groupMainViewSeries(series);
     expect(groups.map(g => g.item.id)).toEqual(["s1", "s2", "s3"]);
     expect(groups.every(g => g.children.length === 0)).toBe(true);
@@ -125,7 +147,9 @@ describe("groupMainViewSeries", () => {
       }),
     ];
     const groups = groupMainViewSeries(series);
-    const rootGroup = groups.find(g => g.item.id === "root") as SidebarSeriesGroupNode;
+    const rootGroup = groups.find(
+      g => g.item.id === "root"
+    ) as SidebarSeriesGroupNode;
     expect(rootGroup.children.map(c => c.id)).toEqual(["season2", "season3"]);
   });
 
@@ -173,7 +197,11 @@ describe("groupMainViewSeries", () => {
   it("excludes special_edition rows from the main-chip tree entirely", () => {
     const series = [
       item({ id: "root" }),
-      item({ id: "special1", createMode: "special_edition", parentSeriesId: "root" }),
+      item({
+        id: "special1",
+        createMode: "special_edition",
+        parentSeriesId: "root",
+      }),
     ];
     const groups = groupMainViewSeries(series);
     expect(groups.map(g => g.item.id)).toEqual(["root"]);
@@ -213,7 +241,11 @@ describe("resolveSidebarSeriesView", () => {
     const view = resolveSidebarSeriesView(series, "all", false);
     expect(view.mode).toBe("flat");
     if (view.mode === "flat") {
-      expect(view.items.map(i => i.id)).toEqual(["root", "season2", "special1"]);
+      expect(view.items.map(i => i.id)).toEqual([
+        "root",
+        "season2",
+        "special1",
+      ]);
     }
   });
 
@@ -223,7 +255,11 @@ describe("resolveSidebarSeriesView", () => {
     const view = resolveSidebarSeriesView(series, "special", true);
     expect(view.mode).toBe("flat");
     if (view.mode === "flat") {
-      expect(view.items.map(i => i.id)).toEqual(["root", "season2", "special1"]);
+      expect(view.items.map(i => i.id)).toEqual([
+        "root",
+        "season2",
+        "special1",
+      ]);
     }
   });
 
@@ -231,7 +267,11 @@ describe("resolveSidebarSeriesView", () => {
     const view = resolveSidebarSeriesView(series, "main", true);
     expect(view.mode).toBe("flat");
     if (view.mode === "flat") {
-      expect(view.items.map(i => i.id)).toEqual(["root", "season2", "special1"]);
+      expect(view.items.map(i => i.id)).toEqual([
+        "root",
+        "season2",
+        "special1",
+      ]);
     }
   });
 });

@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef, ElementType, ReactNode } from 'react';
+import type { ComponentPropsWithoutRef, ComponentType, ElementType, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 export const dashboardSurfaceClass =
@@ -31,7 +31,7 @@ export const dashboardCardTitleLgClass =
 export const dashboardCardTitleXlClass =
   'text-xl font-semibold text-slate-900';
 
-type DashboardIconComponent = ElementType<{ className?: string }>;
+type DashboardIconComponent = ComponentType<{ className?: string }>;
 
 type DashboardSectionHeaderProps = {
   eyebrow: string;
@@ -74,7 +74,7 @@ export function DashboardSurface<T extends ElementType = 'div'>({
   children,
   ...rest
 }: DashboardSurfaceProps<T>) {
-  const Component = as ?? 'div';
+  const Component: any = as ?? 'div';
   return <Component {...rest} className={cn(dashboardSurfaceClass, className)}>{children}</Component>;
 }
 
@@ -112,7 +112,7 @@ export function DashboardCard<T extends ElementType = 'div'>({
   descriptionClassName = dashboardCardDescriptionClass,
   ...rest
 }: DashboardCardProps<T>) {
-  const Component = (as ?? 'div') as ElementType;
+  const Component: any = as ?? 'div';
   const hasHeader = Boolean(eyebrow || title || description || leading || trailing);
   const componentProps = rest as Omit<ComponentPropsWithoutRef<T>, 'as' | 'className' | 'children' | 'title'>;
 

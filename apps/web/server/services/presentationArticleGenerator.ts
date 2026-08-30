@@ -111,6 +111,7 @@ export interface GeneratePresentationArticleResult {
 
 export interface PreparePresentationSlideBundleInput {
   userId: number;
+  tenantId?: string;
   topic: string;
   article: string;
   slideSkillId: string;
@@ -705,6 +706,8 @@ async function buildSemanticPresentationPagePlans(input: {
   skill: SkillDefinition;
   executionPolicy: SkillExecutionPolicyResult;
   userId: number;
+  tenantId?: string;
+  skillRunId: string;
 }): Promise<{
   pages: PresentationArticlePagePlan[];
   warnings: string[];
@@ -757,7 +760,9 @@ async function buildSemanticPresentationPagePlans(input: {
     if (!normalized.usedFallback) {
       await chargePresentationSkillLlmUsage({
         userId: input.userId,
+        tenantId: input.tenantId,
         skillSlug: input.slideSkillId,
+        skillRunId: input.skillRunId,
         operation: "presentation.semantic_page_plan",
         result,
       });
@@ -2318,6 +2323,7 @@ async function chargePresentationSkillLlmUsage(params: {
   userId: number;
   tenantId?: string;
   skillSlug: string;
+  skillRunId: string;
   operation: string;
   result: {
     modelId?: string;
@@ -2341,6 +2347,8 @@ async function chargePresentationSkillLlmUsage(params: {
     inputTokens: params.result.inputTokens ?? 0,
     outputTokens: params.result.outputTokens ?? 0,
     costUsd: usage?.cost,
+    idempotencyKey: params.skillRunId,
+    skillRunId: params.skillRunId,
     skillSlug: params.skillSlug,
     sourceType: "skill",
     description: `Presentation skill usage: ${params.skillSlug}`,
@@ -2348,33 +2356,6 @@ async function chargePresentationSkillLlmUsage(params: {
       operation: params.operation,
       requestType: "skill",
       service: "presentation.article_builder",
-    },
-  });
-}
-
-async function chargePresentationSandboxSkillDispatch(params: {
-  userId: number;
-  tenantId?: string;
-  skill: SkillDefinition;
-  outputFormats: PresentationSlideOutputFormat[];
-}): Promise<void> {
-  const multiplier = Number(params.skill.creditMultiplier ?? 1);
-  const estimatedCredits = Math.max(1, Math.ceil((Number.isFinite(multiplier) ? multiplier : 1) * 2));
-
-  await deductCredits({
-    userId: params.userId,
-    tenantId: params.tenantId,
-    amount: estimatedCredits,
-    sourceType: "skill",
-    skillSlug: params.skill.id,
-    description: `Presentation slide skill execution: ${params.skill.id}`,
-    metadata: {
-      operation: "presentation.generate_slide_draft",
-      stage: "sandbox_dispatch",
-      requestType: "skill",
-      service: "presentation.article_builder",
-      outputFormats: params.outputFormats,
-      billingBasis: "skill_credit_multiplier",
     },
   });
 }
@@ -3005,6 +2986,7 @@ async function resolveSlideSkillForPlanning(
 export async function preparePresentationSlideBundle(
   input: PreparePresentationSlideBundleInput,
 ): Promise<PreparePresentationSlideBundleResult> {
+  const skillRunId = crypto.randomUUID();
   const trimmedArticle = normalizeGeneratedPresentationArticle(input.article);
   if (!trimmedArticle) {
     throw new Error("Article is required");
@@ -3033,6 +3015,8 @@ export async function preparePresentationSlideBundle(
     skill,
     executionPolicy,
     userId: input.userId,
+    tenantId: input.tenantId,
+    skillRunId,
   });
   const plannedArticle = semanticPagePlan.rewrittenArticle || trimmedArticle;
   const basePagePlans = semanticPagePlan.pages;
@@ -3128,7 +3112,9 @@ export async function preparePresentationSlideBundle(
     if (result.success && result.content?.trim()) {
       await chargePresentationSkillLlmUsage({
         userId: input.userId,
+        tenantId: input.tenantId,
         skillSlug: input.slideSkillId,
+        skillRunId,
         operation: "presentation.prepare_slide_bundle",
         result,
       });
@@ -3222,6 +3208,7 @@ export async function preparePresentationSlideBundle(
 export async function generatePresentationSlideDraft(
   input: GeneratePresentationSlideDraftInput,
 ): Promise<GeneratePresentationSlideDraftResult> {
+  const skillRunId = crypto.randomUUID();
   const trimmedArticle = normalizeGeneratedPresentationArticle(input.article);
   if (!trimmedArticle) {
     throw new Error("Article is required");
@@ -3380,6 +3367,7 @@ export async function generatePresentationSlideDraft(
         userId: input.userId,
         tenantId: input.tenantId,
         skillSlug: input.slideSkillId,
+        skillRunId,
         operation,
         result,
       });
@@ -3551,17 +3539,12 @@ export async function generatePresentationSlideDraft(
       };
       (debugTrace.traces as Record<string, unknown>).sandbox = sandboxTrace;
       try {
-        await chargePresentationSandboxSkillDispatch({
-          userId: input.userId,
-          tenantId: input.tenantId,
-          skill: executionSkill,
-          outputFormats: input.outputFormats.slice(),
-        });
         const dispatchResult = await executeSkill(
           executionSkill,
           {
             prompt: trimmedArticle,
             extraParams: slidePayload as unknown as Record<string, unknown>,
+            runId: skillRunId,
           },
           input.userId,
           createInternalTokenFromAuth({ userId: input.userId, tenantId: input.tenantId }, ["skill:execute"]),
@@ -3759,6 +3742,7 @@ async function generateArticleWithSkill(
     userId: input.userId,
     tenantId: input.tenantId,
     skillSlug: skillId,
+    skillRunId: crypto.randomUUID(),
     operation: "presentation.generate_article",
     result,
   });

@@ -269,6 +269,7 @@ export async function runVerticalDramaSeriesMemoryPlanning(
       tenantId: params.tenantId,
       amount: creditsUsed,
       description: `Vertical Drama — series memory planning (episode #${params.episodeId})`,
+      skillSlug: "vertical-drama-series-memory-planner",
       sourceType: "skill",
       idempotencyKey: params.idempotencyKey,
       metadata: {

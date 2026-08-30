@@ -14,6 +14,11 @@ vi.mock("@/components/ui/badge", () => ({
   Badge: (props: Record<string, unknown>) => React.createElement("span", props),
 }));
 
+vi.mock("@/components/media/AuthenticatedMediaImage", () => ({
+  AuthenticatedMediaImage: (props: Record<string, unknown>) =>
+    React.createElement("img", props),
+}));
+
 vi.mock("@/i18n/useScopedTranslation", () => ({
   useScopedTranslation: () => ({
     t: (key: string, params?: Record<string, string | number>) => {
@@ -132,6 +137,10 @@ describe("LibrarySearchPanel", () => {
             title: "Lion image",
             source_url: "https://cdn.example.com/lion-full.png",
             thumbnail_url: "https://cdn.example.com/lion-thumb.png",
+            metadata: {
+              source_key: "library/10/lion-full.png",
+              thumbnail_key: "library/10/lion-thumb.png",
+            },
             status: "ready",
             source: "media_task",
             provider_name: "kie.ai",
@@ -143,6 +152,7 @@ describe("LibrarySearchPanel", () => {
             title: "Lion video",
             source_url: "https://cdn.example.com/lion.mp4",
             thumbnail_url: null,
+            metadata: { source_key: "library/11/lion.mp4" },
             status: "ready",
             source: "media_task",
             provider_name: "kie.ai",
@@ -152,8 +162,8 @@ describe("LibrarySearchPanel", () => {
       }),
     );
 
-    expect(html).toContain('src="https://cdn.example.com/lion-thumb.png"');
-    expect(html).toContain('src="https://cdn.example.com/lion.mp4"');
+    expect(html).toContain('src="/api/storage/files/library/10/lion-thumb.png"');
+    expect(html).toContain('src="/api/storage/files/library/11/lion.mp4"');
     expect(html).toContain("<video");
   });
 
@@ -172,6 +182,7 @@ describe("LibrarySearchPanel", () => {
             title: "Landscape",
             source_url: "https://cdn.example.com/landscape.png",
             thumbnail_url: null,
+            metadata: { source_key: "library/21/landscape.png" },
             status: "ready",
             source: "media_task",
             provider_name: "kie.ai",
@@ -183,6 +194,7 @@ describe("LibrarySearchPanel", () => {
             title: "Walkthrough",
             source_url: "https://cdn.example.com/walkthrough.mp4",
             thumbnail_url: "https://cdn.example.com/walkthrough-thumb.png",
+            metadata: { source_key: "library/22/walkthrough.mp4" },
             status: "ready",
             source: "media_task",
             provider_name: "kie.ai",

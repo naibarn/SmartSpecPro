@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 
 import {
+  mediaAssets,
   verticalDramaEpisodes,
   workerJobs,
   type WorkerJob,
@@ -11,6 +12,12 @@ import {
   type VerticalDramaEpisodePreviewState,
 } from "../../shared/verticalDramaSeries/episodePreview";
 import { db } from "../db";
+import {
+  ensureVerticalDramaManagedMediaAsset,
+  extractVerticalDramaManagedMediaKey,
+  ingestVerticalDramaMediaAsset,
+  reconcileVerticalDramaMediaAsset,
+} from "./verticalDramaMediaAssetService";
 import {
   resolveRemotionOutputRef,
   VD_REMOTION_QUEUED_TTL_MS,
@@ -158,13 +165,149 @@ export async function reconcileEpisodePreview(
           return rawOutputUrl;
         }
       })();
+  const managedKey = extractVerticalDramaManagedMediaKey(outputUrl);
+  let durableAsset = null;
+  try {
+    durableAsset = managedKey
+      ? await ensureVerticalDramaManagedMediaAsset({
+          tenantId: owner.tenantId,
+          userId: owner.userId,
+          sourceUrl: outputUrl,
+          mediaType: "video",
+          mimeType: "video/mp4",
+        })
+      : await ingestVerticalDramaMediaAsset({
+          tenantId: owner.tenantId,
+          userId: owner.userId,
+          seriesId: owner.seriesId,
+          mediaType: "video",
+          sourceUrl: outputUrl,
+          mimeType: "video/mp4",
+          identity: `episode-preview:${owner.episodeId}:${current.slotId}`,
+          purpose: "episode_preview",
+        });
+  } catch {
+    durableAsset = null;
+  }
+
   await persistEpisodePreviewState(owner, {
     ...current,
     status: "completed",
     pendingJobId: undefined,
-    videoUrl: outputUrl,
+    ...(durableAsset
+      ? {
+          mediaAssetId: String(durableAsset.mediaAssetId),
+          videoUrl: durableAsset.url,
+          durabilityStatus: "ready" as const,
+        }
+      : {
+          mediaAssetId: undefined,
+          videoUrl: undefined,
+          durabilityStatus: "expired" as const,
+        }),
     completedAt: new Date().toISOString(),
-    error: undefined,
+    error: durableAsset ? undefined : "Preview output is no longer available",
   });
   return { reconciled: true, status: "completed" };
+}
+
+/** Reconcile a completed preview on episode-detail reads. */
+export async function reconcileCompletedEpisodePreviewMedia(
+  owner: AssembleEpisodeVideoOwner,
+  current: VerticalDramaEpisodePreviewState,
+): Promise<{ state: VerticalDramaEpisodePreviewState; reconciled: boolean }> {
+  if (current.status !== "completed") return { state: current, reconciled: false };
+
+  let durableAsset: {
+    mediaAssetId: number;
+    storageKey: string;
+    url: string;
+    mimeType: string;
+    status?: "ready" | "expired";
+  } | null = null;
+
+  const numericAssetId = Number(current.mediaAssetId);
+  if (Number.isInteger(numericAssetId) && numericAssetId > 0) {
+    const [row] = await db
+      .select({
+        id: mediaAssets.id,
+        storageKey: mediaAssets.storageKey,
+        mimeType: mediaAssets.mimeType,
+        status: mediaAssets.status,
+        originalUrl: mediaAssets.originalUrl,
+      })
+      .from(mediaAssets)
+      .where(
+        and(
+          eq(mediaAssets.id, numericAssetId),
+          eq(mediaAssets.tenantId, owner.tenantId),
+          eq(mediaAssets.userId, owner.userId),
+        ),
+      )
+      .limit(1);
+    if (row) {
+      const reconciled = await reconcileVerticalDramaMediaAsset({
+        tenantId: owner.tenantId,
+        userId: owner.userId,
+        mediaAssetId: row.id,
+        storageKey: row.storageKey,
+        mediaType: "video",
+        mimeType: row.mimeType,
+        status: row.status,
+        originalUrl: row.originalUrl,
+      });
+      if (reconciled.status === "ready") durableAsset = reconciled;
+    }
+  }
+
+  if (!durableAsset && current.videoUrl) {
+    const managedKey = extractVerticalDramaManagedMediaKey(current.videoUrl);
+    if (managedKey) {
+      durableAsset = await ensureVerticalDramaManagedMediaAsset({
+        tenantId: owner.tenantId,
+        userId: owner.userId,
+        sourceUrl: current.videoUrl,
+        mediaType: "video",
+        mimeType: "video/mp4",
+      });
+    } else {
+      try {
+        durableAsset = await ingestVerticalDramaMediaAsset({
+          tenantId: owner.tenantId,
+          userId: owner.userId,
+          seriesId: owner.seriesId,
+          mediaType: "video",
+          sourceUrl: current.videoUrl,
+          mimeType: "video/mp4",
+          identity: `episode-preview:${owner.episodeId}:${current.slotId}`,
+          purpose: "episode_preview_legacy_repair",
+        });
+      } catch {
+        durableAsset = null;
+      }
+    }
+  }
+
+  const next = durableAsset
+    ? {
+        ...current,
+        mediaAssetId: String(durableAsset.mediaAssetId),
+        videoUrl: durableAsset.url,
+        durabilityStatus: "ready" as const,
+        error: undefined,
+      }
+    : {
+        ...current,
+        mediaAssetId: undefined,
+        videoUrl: undefined,
+        durabilityStatus: "expired" as const,
+        error: current.error || "Preview output is no longer available",
+      };
+  const reconciled =
+    next.mediaAssetId !== current.mediaAssetId ||
+    next.videoUrl !== current.videoUrl ||
+    next.durabilityStatus !== current.durabilityStatus ||
+    next.error !== current.error;
+  if (reconciled) await persistEpisodePreviewState(owner, next);
+  return { state: next, reconciled };
 }

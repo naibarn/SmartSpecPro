@@ -78,6 +78,9 @@ FALLBACK_MODEL_NAME_MAP = {
     "gemini-omni": "gemini-omni-video",
     "gemini-omni-video": "gemini-omni-video",
     "gemini_omni_video": "gemini-omni-video",
+    "gemini-omni-flash-1-1": "google/gemini-omni-flash-1-1",
+    "gemini_omni_flash_1_1": "google/gemini-omni-flash-1-1",
+    "google/gemini-omni-flash-1-1": "google/gemini-omni-flash-1-1",
     # Audio/Music models
     "suno-v4.5-plus": "suno-v4.5-plus",
     "suno-v4.5": "suno-v4.5",
@@ -91,6 +94,7 @@ FALLBACK_MODEL_NAME_MAP = {
 }
 
 NANO_BANANA_2_LITE_API_MODEL = "nano-banana-2-lite"
+GEMINI_OMNI_FLASH_1_1_API_MODEL = "google/gemini-omni-flash-1-1"
 
 _MODEL_RESOLUTION_STATS = {
     "explicit_api_model": 0,
@@ -728,7 +732,7 @@ def resolve_grok_image_2_operation(
     if operation == "segment-map":
         drop_params.update({"prompt", "aspect_ratio", "resolution", "output_format"})
     elif operation == "image-edit":
-        drop_params.update({"aspect_ratio", "resolution", "output_format"})
+        drop_params.update({"resolution", "output_format"})
     if drop_params:
         merged["drop_params"] = sorted(drop_params)
 
@@ -1984,7 +1988,7 @@ class KieAIProvider:
         for key, value in _iter_provider_extra_params(extra_params):
             input_params[key] = value
 
-        if grok_operation in {"image-edit", "segment-map"}:
+        if grok_operation == "segment-map":
             task_id = str(input_params.get("task_id") or "").strip()
             if not task_id:
                 raise ValueError(f"Grok Image 2 {grok_operation} requires task_id")
@@ -2032,6 +2036,9 @@ class KieAIProvider:
                     field_type=reference_image_input_type,
                     urls=[_redact_url_for_log(url) for url in ref_urls[:2]],
                 )  # Log first 2 for debug
+
+        if grok_operation == "image-edit" and not input_params.get("image_urls"):
+            raise ValueError("Grok Image 2 image-edit requires at least one image_url")
 
         # Add reference style URL if provided
         if kwargs.get("reference_style_url"):
@@ -2151,9 +2158,10 @@ class KieAIProvider:
         requested_resolution = kwargs.get("resolution")
         requires_veo_4k_postprocess = _is_4k_resolution(requested_resolution) and _is_veo_endpoint(api_endpoint)
 
+        default_duration = 4 if api_model == GEMINI_OMNI_FLASH_1_1_API_MODEL else 5
         input_params = {
             "prompt": prompt,
-            "duration": kwargs.get("duration", 5),
+            "duration": kwargs.get("duration", default_duration),
             "aspect_ratio": kwargs.get("aspect_ratio", "16:9")
         }
         if _get_api_config_bool(api_config, "omit_duration", "omitDuration"):
@@ -2171,6 +2179,13 @@ class KieAIProvider:
             if requires_veo_4k_postprocess and str(key) == "resolution":
                 continue
             input_params[key] = value
+
+        # Kie documents this model's 4K value as lowercase `4k`; the legacy
+        # Gemini Omni catalog keeps its historical `4K` spelling.
+        if api_model == GEMINI_OMNI_FLASH_1_1_API_MODEL and str(input_params.get("resolution", "")).strip().lower() == "4k":
+            input_params["resolution"] = "4k"
+        if api_model == GEMINI_OMNI_FLASH_1_1_API_MODEL and input_params.get("duration") is not None:
+            input_params["duration"] = str(input_params["duration"]).strip().removesuffix("s")
 
         is_veo_generation_request = (
             _is_veo_endpoint(api_endpoint)

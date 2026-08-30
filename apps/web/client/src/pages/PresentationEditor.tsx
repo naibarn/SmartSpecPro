@@ -574,7 +574,7 @@ function convertImportedLayoutElement(
     );
     const isGeneratedFullSlideImage = role === "full-slide" && coversWholeSlide;
     const imageFit = isGeneratedFullSlideImage
-      ? "contain"
+      ? "cover"
       : element.fit === "contain" || element.fit === "fill"
         ? element.fit
         : "cover";
@@ -658,7 +658,7 @@ function normalizeGeneratedSlideContentForImport(
     }
     return {
       ...element,
-      imageFit: "contain" as const,
+      imageFit: "cover" as const,
       imagePositionX: 50,
       imagePositionY: 50,
       imageZoom: 1,
@@ -2479,7 +2479,11 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-function resolveImageDisplayConfig(element: PresentationSlideContent["elements"][number]): {
+function resolveImageDisplayConfig(
+  element: PresentationSlideContent["elements"][number],
+  canvasWidth?: number,
+  canvasHeight?: number,
+): {
   fit: "contain" | "cover" | "fill";
   positionX: number;
   positionY: number;
@@ -2488,9 +2492,17 @@ function resolveImageDisplayConfig(element: PresentationSlideContent["elements"]
   if (element.type !== "image") {
     return { fit: "contain", positionX: 50, positionY: 50, zoom: 1 };
   }
-  const fit = (element.imageFit === "cover" || element.imageFit === "fill")
-    ? element.imageFit
-    : "contain";
+  const isFullCanvasImage = typeof canvasWidth === "number"
+    && typeof canvasHeight === "number"
+    && Math.abs(element.x) <= 1
+    && Math.abs(element.y) <= 1
+    && Math.abs(element.width - canvasWidth) <= 1
+    && Math.abs(element.height - canvasHeight) <= 1;
+  const fit = isFullCanvasImage
+    ? "cover"
+    : (element.imageFit === "cover" || element.imageFit === "fill")
+      ? element.imageFit
+      : "contain";
   const positionX = clampNumber(Number(element.imagePositionX ?? 50), 0, 100);
   const positionY = clampNumber(Number(element.imagePositionY ?? 50), 0, 100);
   const zoom = clampNumber(Number(element.imageZoom ?? 1), 0.5, 3);
@@ -2607,7 +2619,7 @@ function renderReadonlySlideElement(
   }
 
   if (element.type === "image") {
-    const imageConfig = resolveImageDisplayConfig(element);
+    const imageConfig = resolveImageDisplayConfig(element, canvasWidth, canvasHeight);
     const normalizedSource = normalizeMediaSourceUrl(element.src);
     const hasSource = Boolean(normalizedSource);
     const inlineSvg = typeof element.svgContent === "string" ? element.svgContent.trim() : "";
@@ -3235,6 +3247,7 @@ export default function PresentationEditor() {
     offsetX: 0,
     offsetY: 0,
   });
+  const [isCanvasPanMode, setIsCanvasPanMode] = useState(false);
   const [snapLockEnabled, setSnapLockEnabled] = useState(true);
   const [showElementFrames, setShowElementFrames] = useState(false);
   const mobileGestures = useMobileGestures();
@@ -10850,12 +10863,15 @@ export default function PresentationEditor() {
               activeElementIds={activeCanvasElementIds}
               snapGuides={commandState.snapGuides}
               showElementFrames={showElementFrames}
-              suppressTransformHandles={isMobilePanMode || hasMixedRenderableSelection}
+              suppressTransformHandles={isMobilePanMode || isCanvasPanMode || hasMixedRenderableSelection}
               showTransformDock={false}
               slideBackground={draftContent.background}
               viewport={activeViewport}
               onViewportChange={isMobileViewport ? handleMobileViewportChange : handleDesktopViewportChange}
-              showViewportControls={!isMobileViewport}
+              showViewportControls={!isMobileViewport || isTabletLayoutTier}
+              showZoomStepControls={isTabletLayoutTier}
+              panMode={isCanvasPanMode}
+              onPanModeChange={setIsCanvasPanMode}
               onSelectElement={handleSelectElement}
               onFocusElement={handleFocusElement}
               onMoveSelection={handleDragMove}

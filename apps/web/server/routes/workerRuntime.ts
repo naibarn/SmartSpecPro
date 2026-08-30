@@ -73,12 +73,22 @@ import {
   setEphemeralText,
   RedisEphemeralKeyRegistryError,
 } from "../services/redisEphemeralKeyRegistry";
-import { getWorkerAccessPermissionScopesForPreset } from "../../shared/workerAccessKeys";
+import {
+  getWorkerAccessPermissionScopesForPreset,
+  normalizeWorkerAccessPermissionScopes,
+  workerAccessPermissionPresetSchema,
+  type WorkerAccessPermissionPreset,
+} from "../../shared/workerAccessKeys";
 import { getDb, getUserById } from "../db";
-import { tenants, type WorkerArtifact, type WorkerJob } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { tenants, workers, workerJobs, workerJobEvents, verticalDramaSeries, type WorkerArtifact, type WorkerJob } from "../../drizzle/schema";
+import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 import { verifyBearerToken } from "../_core/tokens";
-import { isConnectedDeviceRevoked, upsertConnectedDevice, updateConnectedDeviceTokenMetadata } from "../services/connectedDeviceService";
+import {
+  getConnectedWorkerEffectiveScopes,
+  isConnectedDeviceRevoked,
+  upsertConnectedDevice,
+  updateConnectedDeviceTokenMetadata,
+} from "../services/connectedDeviceService";
 
 interface WorkerRuntimeRouteDeps {
   runtimePacks?: {
@@ -761,7 +771,85 @@ function requireBearerToken(req: Request): string {
   return token;
 }
 
-async function verifyWorkerRouteAccessToken(
+function getWorkerConnectPermissionPolicy(runtimeType: string) {
+  const preset: WorkerAccessPermissionPreset = runtimeType === "desktop_zeroclaw_managed"
+    ? "vertical_drama_media_operator"
+    : "operator_basic";
+  return {
+    preset,
+    scopes: getWorkerAccessPermissionScopesForPreset(preset),
+  };
+}
+
+function flattenWorkerCapabilityHints(value: unknown): Set<string> {
+  const result = new Set<string>();
+  const visit = (current: unknown) => {
+    if (typeof current === "string" && current.length <= 160) result.add(current);
+    else if (Array.isArray(current)) current.forEach(visit);
+    else if (current && typeof current === "object") Object.values(current).forEach(visit);
+  };
+  visit(value);
+  return result;
+}
+
+function workerJobRequirementsMatch(value: unknown, capabilities: Set<string>): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const raw = (value as Record<string, unknown>).capabilityFamilies;
+  if (!Array.isArray(raw) || raw.length === 0) return true;
+  return raw.every(item => typeof item === "string" && capabilities.has(item));
+}
+
+async function getWorkerConnectPermissionPolicyForConnection(input: {
+  runtimeType: string;
+  tenantId: string;
+  userId: number | null | undefined;
+  workerId?: string | null;
+  externalReference?: string | null;
+}) {
+  const fallback = getWorkerConnectPermissionPolicy(input.runtimeType);
+  if (!input.userId || (!input.workerId && !input.externalReference)) return fallback;
+
+  try {
+    const db = await getDb();
+    if (!db) return fallback;
+    const [worker] = await db
+      .select({ capabilitiesJson: workers.capabilitiesJson })
+      .from(workers)
+      .where(and(
+        eq(workers.tenantId, input.tenantId),
+        eq(workers.registeredByUserId, input.userId),
+        input.workerId
+          ? eq(workers.id, input.workerId)
+          : eq(workers.externalReference, input.externalReference as string),
+      ))
+      .limit(1);
+    const runtimeMetadata = worker?.capabilitiesJson && typeof worker.capabilitiesJson === "object"
+      && !Array.isArray(worker.capabilitiesJson)
+      ? (worker.capabilitiesJson as Record<string, unknown>).runtimeMetadata
+      : null;
+    const accessPolicy = runtimeMetadata && typeof runtimeMetadata === "object" && !Array.isArray(runtimeMetadata)
+      ? (runtimeMetadata as Record<string, unknown>).workerAccessPolicy
+      : null;
+    if (!accessPolicy || typeof accessPolicy !== "object" || Array.isArray(accessPolicy)) return fallback;
+
+    const policy = accessPolicy as Record<string, unknown>;
+    const parsedPreset = workerAccessPermissionPresetSchema.safeParse(policy.permissionPreset);
+    if (!parsedPreset.success) return fallback;
+    return {
+      preset: parsedPreset.data,
+      scopes: parsedPreset.data === "custom"
+        ? normalizeWorkerAccessPermissionScopes(policy.permissionScopes)
+        : getWorkerAccessPermissionScopesForPreset(parsedPreset.data),
+    };
+  } catch {
+    // A stale/legacy worker must remain connectable; the server still applies
+    // the durable device policy after pairing. Policy lookup is additive and
+    // must not turn a compatibility reconnect into a hard outage.
+    return fallback;
+  }
+}
+
+export async function verifyWorkerRouteAccessToken(
   req: Request,
   token: string,
   opts: VerifyWorkerAccessTokenOptions = {},
@@ -776,6 +864,39 @@ async function verifyWorkerRouteAccessToken(
     authKind: "worker_executor",
   })) {
     throw new WorkerAuthError("worker_connection_blocked", 401, "Worker connection is revoked and must be paired again");
+  }
+  const effectiveScopes = await getConnectedWorkerEffectiveScopes({
+    tenantId: String(claims.tenantId ?? ""),
+    workerConnectionId: claims.workerConnectionId ? String(claims.workerConnectionId) : null,
+  });
+  // Device-bound tokens are only issued after their durable connected-device
+  // record is persisted. If that record disappears, do not fall back to the
+  // legacy no-device compatibility path: the worker must pair again.
+  if (claims.deviceId && effectiveScopes === null) {
+    throw new WorkerAuthError(
+      "worker_connection_blocked",
+      401,
+      "Worker device authorization record is missing and must be paired again",
+      "authorization_error",
+    );
+  }
+  if (effectiveScopes) {
+    const effectiveScopeSet = new Set(effectiveScopes);
+    const deniedRequiredScopes = (opts.requiredScopes ?? []).filter(
+      scope => !effectiveScopeSet.has(scope),
+    );
+    if (deniedRequiredScopes.length > 0) {
+      throw new WorkerAuthError(
+        "worker_permission_denied",
+        403,
+        "Worker permission policy does not allow this operation",
+        "authorization_error",
+      );
+    }
+    return {
+      ...claims,
+      scopes: claims.scopes.filter(scope => effectiveScopeSet.has(scope)),
+    };
   }
   return claims;
 }
@@ -1176,13 +1297,24 @@ export function registerWorkerRuntimeRoutes(
           return;
         }
 
+        const connectPermissionPolicy = await getWorkerConnectPermissionPolicyForConnection({
+          runtimeType: session.payload.runtimeType,
+          tenantId,
+          userId: auth.userId,
+          externalReference: session.payload.externalReference,
+        });
         const registrationToken = createWorkerRegistrationToken({
           tenantId,
           registeredByUserId: auth.userId ?? null,
           runtimeType: session.payload.runtimeType,
           externalReference: session.payload.externalReference,
-          permissionPreset: "operator_basic",
-          permissionScopes: getWorkerAccessPermissionScopesForPreset("operator_basic"),
+          // The desktop Worker App exposes the Series media control plane.
+          // Keep this grant explicit and least-privileged: operator_basic
+          // does not include the series:* scopes, which previously let the
+          // heartbeat pass while every Series request returned 401. Other
+          // runtime families retain their existing operator_basic grant.
+          permissionPreset: connectPermissionPolicy.preset,
+          permissionScopes: connectPermissionPolicy.scopes,
           subject: `worker-connect:${tenantId}:${session.userCode}`,
         }, "10m");
         const registrationAuth = await verifyWorkerRegistrationToken(registrationToken, {
@@ -1204,11 +1336,9 @@ export function registerWorkerRuntimeRoutes(
             connectionMethod: "worker_connect",
             platform: typeof session.payload.hardwareJson?.platform === "string" ? session.payload.hardwareJson.platform : null,
             architecture: typeof session.payload.hardwareJson?.architecture === "string" ? session.payload.hardwareJson.architecture : null,
-            scopes: ["workers:heartbeat", "workers:claim", "workers:report", "workers:diagnostics"],
+            scopes: connectPermissionPolicy.scopes,
             approvedAt: new Date(),
             metadataJson: { source: "worker_connect", externalReference: result.worker.externalReference },
-          }).catch((error) => {
-            console.warn("[workerRuntime] connected device metadata unavailable", error instanceof Error ? error.message : String(error));
           });
         }
         session.errorMessage = undefined;
@@ -1270,37 +1400,59 @@ export function registerWorkerRuntimeRoutes(
           sendApiError(res, 401, "worker_connection_revoked", "Worker connection was revoked and must be approved again", "authorization_error");
           return;
         }
+        const connectPermissionPolicy = await getWorkerConnectPermissionPolicyForConnection({
+          runtimeType: session.result.worker.runtimeType,
+          tenantId: session.tenantId ?? session.result.worker.tenantId,
+          userId: session.approvedByUserId,
+          workerId: session.result.worker.id,
+          externalReference: session.result.worker.externalReference,
+        });
         const tokens = issueWorkerAccessTokens({
           tenantId: session.tenantId ?? session.result.worker.tenantId,
           workerId: session.result.worker.id,
           runtimeType: session.result.worker.runtimeType,
           teamId: session.result.worker.teamId ?? null,
           deviceBinding: session.payload.deviceBinding ?? undefined,
+          scopes: connectPermissionPolicy.scopes,
         });
-        await verifyBearerToken(tokens.executionToken).then(async (claims) => {
-          await updateConnectedDeviceTokenMetadata({
-            tenantId: String(claims.tenantId ?? session.tenantId ?? session.result?.worker.tenantId ?? ""),
-            workerId: String(claims.workerId ?? ""),
-            workerConnectionId: String(claims.workerConnectionId ?? ""),
-            deviceId: typeof claims.deviceId === "string" ? claims.deviceId : null,
-            authKind: "worker_executor",
-            accessTokenExpiresAt: claims.exp ? new Date(claims.exp * 1000) : null,
+        if (session.payload.deviceBinding?.deviceId) {
+          const executionMetadataUpdated = await verifyBearerToken(tokens.executionToken).then(async (claims) => {
+            return updateConnectedDeviceTokenMetadata({
+              tenantId: String(claims.tenantId ?? session.tenantId ?? session.result?.worker.tenantId ?? ""),
+              workerId: String(claims.workerId ?? ""),
+              workerConnectionId: String(claims.workerConnectionId ?? ""),
+              deviceId: typeof claims.deviceId === "string" ? claims.deviceId : null,
+              authKind: "worker_executor",
+              accessTokenExpiresAt: claims.exp ? new Date(claims.exp * 1000) : null,
+            });
           });
-        }).catch((error) => {
-          console.warn("[workerRuntime] connected device token metadata unavailable", error instanceof Error ? error.message : String(error));
-        });
-        await verifyBearerToken(tokens.refreshToken).then(async (claims) => {
-          await updateConnectedDeviceTokenMetadata({
-            tenantId: String(claims.tenantId ?? session.tenantId ?? session.result?.worker.tenantId ?? ""),
-            workerId: String(claims.workerId ?? ""),
-            workerConnectionId: String(claims.workerConnectionId ?? ""),
-            deviceId: typeof claims.deviceId === "string" ? claims.deviceId : null,
-            authKind: "worker_executor",
-            refreshTokenExpiresAt: claims.exp ? new Date(claims.exp * 1000) : null,
+          if (!executionMetadataUpdated) {
+            throw new WorkerAuthError(
+              "worker_connection_persistence_failed",
+              503,
+              "Worker device connection could not be persisted; try pairing again",
+              "transient_error",
+            );
+          }
+          const refreshMetadataUpdated = await verifyBearerToken(tokens.refreshToken).then(async (claims) => {
+            return updateConnectedDeviceTokenMetadata({
+              tenantId: String(claims.tenantId ?? session.tenantId ?? session.result?.worker.tenantId ?? ""),
+              workerId: String(claims.workerId ?? ""),
+              workerConnectionId: String(claims.workerConnectionId ?? ""),
+              deviceId: typeof claims.deviceId === "string" ? claims.deviceId : null,
+              authKind: "worker_executor",
+              refreshTokenExpiresAt: claims.exp ? new Date(claims.exp * 1000) : null,
+            });
           });
-        }).catch((error) => {
-          console.warn("[workerRuntime] connected device token metadata unavailable", error instanceof Error ? error.message : String(error));
-        });
+          if (!refreshMetadataUpdated) {
+            throw new WorkerAuthError(
+              "worker_connection_persistence_failed",
+              503,
+              "Worker device connection could not be persisted; try pairing again",
+              "transient_error",
+            );
+          }
+        }
         res.json({
           status: "approved",
           interval: WORKER_CONNECT_POLL_INTERVAL_SECONDS,
@@ -1421,10 +1573,111 @@ export function registerWorkerRuntimeRoutes(
         auth,
         workerId: req.params.workerId,
       });
-      res.json(snapshot);
+      // Return the token's effective scopes separately from runtime policy.
+      // A policy/capability description is not a permission grant; the Worker
+      // UI must display exactly what this connection can call and should
+      // refresh after an admin revocation.
+      res.json({
+        ...snapshot,
+        authorization: {
+          effectiveScopes: auth.scopes,
+          workerId: auth.workerId,
+          checkedAt: new Date().toISOString(),
+        },
+      });
     } catch (error) {
       handleWorkerRouteError(error, res);
     }
+  });
+
+  app.get("/api/worker-runtime/jobs/summary", async (req, res) => {
+    try {
+      const token = requireBearerToken(req);
+      const auth = await verifyWorkerRouteAccessToken(req, token, {
+        allowedTokenUses: ["worker_execution"],
+        requiredScopes: ["workers:jobs:read"],
+      });
+      const db = await getDb();
+      const [worker] = await db.select({ id: workers.id, capabilitiesJson: workers.capabilitiesJson, displayName: workers.displayName, machineName: workers.machineName, runtimeType: workers.runtimeType, runtimeVersion: workers.runtimeVersion, status: workers.status, lastSeenAt: workers.lastSeenAt })
+        .from(workers).where(and(eq(workers.id, auth.workerId), eq(workers.tenantId, auth.tenantId))).limit(1);
+      if (!worker) throw new WorkerRuntimeServiceError("worker_not_found", 404, "Worker not found");
+      const requestedJobType = typeof req.query.jobType === "string" && req.query.jobType.trim() ? req.query.jobType.trim() : null;
+      const requestedScope = typeof req.query.scope === "string" ? req.query.scope : "all";
+      if (!["active", "waiting", "recent", "all"].includes(requestedScope)) {
+        throw new WorkerRuntimeServiceError("invalid_job_summary_scope", 400, "Invalid job summary scope");
+      }
+      const requestedLimit = typeof req.query.limit === "string" ? Number(req.query.limit) : 100;
+      if (!Number.isInteger(requestedLimit) || requestedLimit < 1) throw new WorkerRuntimeServiceError("invalid_job_summary_limit", 400, "Invalid job summary limit");
+      const limit = Math.min(100, requestedLimit);
+      if (typeof req.query.cursor === "string" && !/^\d+$/.test(req.query.cursor)) throw new WorkerRuntimeServiceError("invalid_job_summary_cursor", 400, "Invalid job summary cursor");
+      const cursor = typeof req.query.cursor === "string" ? Number(req.query.cursor) : 0;
+      if (cursor > 10000) throw new WorkerRuntimeServiceError("invalid_job_summary_cursor", 400, "Invalid job summary cursor");
+      const rows = await db.select({ id: workerJobs.id, jobType: workerJobs.jobType, status: workerJobs.status, statusReason: workerJobs.statusReason, priority: workerJobs.priority, resourceProfile: workerJobs.resourceProfile, createdAt: workerJobs.createdAt, startedAt: workerJobs.startedAt, finishedAt: workerJobs.finishedAt, workerId: workerJobs.workerId, inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson, failureReason: workerJobs.failureReason, capabilityRequirementsJson: workerJobs.capabilityRequirementsJson })
+        .from(workerJobs)
+        .where(and(eq(workerJobs.tenantId, auth.tenantId), or(eq(workerJobs.workerId, auth.workerId), eq(workerJobs.status, "queued"))))
+        .orderBy(desc(workerJobs.priority), asc(workerJobs.createdAt), asc(workerJobs.id)).limit(501);
+      const capabilities = flattenWorkerCapabilityHints(worker.capabilitiesJson);
+      const visible = rows.filter(row => {
+        if (row.status === "queued" && !workerJobRequirementsMatch(row.capabilityRequirementsJson, capabilities)) return false;
+        if (requestedJobType && row.jobType !== requestedJobType) return false;
+        return requestedScope === "all"
+          || (requestedScope === "active" && ["claimed", "preparing", "preflight", "staging", "submitted", "running", "collecting", "validating", "saved", "uploading", "publishing", "indexing", "reconciling"].includes(row.status))
+          || (requestedScope === "waiting" && row.status === "queued")
+          || (requestedScope === "recent" && ["completed", "failed", "canceled", "expired"].includes(row.status));
+      });
+      const activeStatuses = new Set(["claimed", "preparing", "preflight", "staging", "submitted", "running", "collecting", "validating", "saved", "uploading", "publishing", "indexing", "reconciling"]);
+      const terminalStatuses = new Set(["completed", "failed", "canceled", "expired"]);
+      const waitingRows = visible.filter(row => row.status === "queued");
+      const queuePositions = new Map(waitingRows.map((row, index) => [row.id, index + 1]));
+      const ordered = [...visible].sort((left, right) => {
+        const rank = (status: string) => activeStatuses.has(status) ? 0 : status === "queued" ? 1 : terminalStatuses.has(status) ? 2 : 1;
+        const rankDelta = rank(left.status) - rank(right.status);
+        if (rankDelta !== 0) return rankDelta;
+        if (left.status === "queued" && right.status === "queued") return right.priority - left.priority || left.createdAt.getTime() - right.createdAt.getTime() || left.id.localeCompare(right.id);
+        const leftTime = (left.finishedAt ?? left.startedAt ?? left.createdAt).getTime();
+        const rightTime = (right.finishedAt ?? right.startedAt ?? right.createdAt).getTime();
+        return terminalStatuses.has(left.status) && terminalStatuses.has(right.status) ? rightTime - leftTime || left.id.localeCompare(right.id) : leftTime - rightTime || left.id.localeCompare(right.id);
+      });
+      const seriesIds = [...new Set(visible.map(row => {
+        const input = row.inputJson && typeof row.inputJson === "object" && !Array.isArray(row.inputJson) ? row.inputJson as Record<string, unknown> : {};
+        return typeof input.seriesId === "string" ? input.seriesId : null;
+      }).filter((value): value is string => Boolean(value)))];
+      const seriesRows = seriesIds.length > 0
+        ? await db.select({ id: verticalDramaSeries.id, title: verticalDramaSeries.title })
+          .from(verticalDramaSeries)
+          .where(and(eq(verticalDramaSeries.tenantId, auth.tenantId), inArray(verticalDramaSeries.id, seriesIds.map(value => Number(value)).filter(Number.isFinite))))
+        : [];
+      const seriesTitles = new Map(seriesRows.map(series => [String(series.id), series.title]));
+      const visibleIds = visible.map(row => row.id);
+      const events = visibleIds.length ? await db.select({ workerJobId: workerJobEvents.workerJobId, eventType: workerJobEvents.eventType, payloadJson: workerJobEvents.payloadJson, createdAt: workerJobEvents.createdAt }).from(workerJobEvents).where(inArray(workerJobEvents.workerJobId, visibleIds)).orderBy(desc(workerJobEvents.createdAt)).limit(500) : [];
+      const latest = new Map<string, typeof events[number]>();
+      for (const event of events) if (!latest.has(event.workerJobId)) latest.set(event.workerJobId, event);
+      res.setHeader("Cache-Control", "no-store");
+      const serverNow = new Date();
+      const projectionRevision = "worker-summary-v3";
+      const projectedItems = ordered.map(row => {
+        const event = latest.get(row.id);
+        const payload = event?.payloadJson && typeof event.payloadJson === "object" && !Array.isArray(event.payloadJson) ? event.payloadJson as Record<string, unknown> : {};
+        const input = row.inputJson && typeof row.inputJson === "object" && !Array.isArray(row.inputJson) ? row.inputJson as Record<string, unknown> : {};
+        const seriesId = typeof input.seriesId === "string" ? input.seriesId : null;
+        const workflowResolution = typeof input.workflowResolution === "object" && input.workflowResolution && !Array.isArray(input.workflowResolution) ? input.workflowResolution as Record<string, unknown> : null;
+        const workflowId = typeof input.workflowId === "string" ? input.workflowId : typeof workflowResolution?.selectedWorkflowId === "string" ? workflowResolution.selectedWorkflowId : typeof workflowResolution?.workflowId === "string" ? workflowResolution.workflowId : null;
+        const connectionResolution = typeof input.connectionResolution === "object" && input.connectionResolution && !Array.isArray(input.connectionResolution) ? input.connectionResolution as Record<string, unknown> : null;
+        const output = row.outputJson && typeof row.outputJson === "object" && !Array.isArray(row.outputJson) ? row.outputJson as Record<string, unknown> : {};
+        const outputCount = Array.isArray(output.outputs) ? output.outputs.length : Array.isArray(output.artifacts) ? output.artifacts.length : undefined;
+        const eventSequence = typeof payload.sequenceNumber === "number" && Number.isFinite(payload.sequenceNumber) ? Math.max(0, Math.floor(payload.sequenceNumber)) : 0;
+        const statusReason = typeof row.statusReason === "string" ? row.statusReason.slice(0, 240) : null;
+        const failureReason = typeof row.failureReason === "string" ? row.failureReason.slice(0, 500) : null;
+        const canCancel = ["queued", ...activeStatuses].includes(row.status);
+        const isAssignedToThisWorker = row.workerId === worker.id;
+        return { jobId: row.id, jobType: row.jobType, jobTypeLabelKey: `worker.jobType.${row.jobType}`, status: row.status, phase: typeof payload.stage === "string" ? payload.stage : row.status, progressPercent: typeof payload.percent === "number" ? Math.max(0, Math.min(100, Math.round(payload.percent))) : row.status === "completed" ? 100 : 0, createdAt: row.createdAt, updatedAt: event?.createdAt ?? row.startedAt ?? row.createdAt, queuedAt: row.createdAt, claimedAt: row.startedAt, terminalAt: row.finishedAt, workerId: row.workerId, workerDisplayName: isAssignedToThisWorker ? worker.displayName : null, workerMachineName: isAssignedToThisWorker ? worker.machineName : null, seriesId, seriesTitle: seriesId ? seriesTitles.get(seriesId) ?? null : null, episodeId: typeof input.episodeId === "string" ? input.episodeId : null, shotId: typeof input.shotId === "string" ? input.shotId : null, workflowId, workflowVersion: typeof workflowResolution?.version === "string" ? workflowResolution.version : null, connectionProfileId: typeof connectionResolution?.selectedProfileId === "string" ? connectionResolution.selectedProfileId : null, remoteExecutionId: typeof payload.executionId === "string" ? payload.executionId : null, capacitySlot: row.resourceProfile === "gpu_required" ? "gpu" : "worker", resourceProfile: row.resourceProfile, queuePosition: queuePositions.get(row.id) ?? null, waitReason: row.status === "queued" ? (row.capabilityRequirementsJson ? "waiting_for_worker_capacity_or_capability" : "waiting_for_worker_capacity") : null, statusReason, failureReason, latestEventType: event?.eventType ?? null, latestEventMessage: typeof payload.message === "string" ? payload.message.slice(0, 500) : null, retryable: ["failed", "expired"].includes(row.status), cacheHit: typeof payload.cacheHit === "boolean" ? payload.cacheHit : null, nextAction: row.status === "queued" ? "wait_for_worker" : row.status === "failed" ? "review_failure" : null, recoveryState: String(row.status) === "reconciling" ? "reconciling" : null, canCancel, cancellationState: row.status === "canceled" ? "confirmed" : null, outputCount, eventSequence, lastEventSequence: eventSequence, projectionRevision, observedAt: serverNow.toISOString(), staleAt: new Date(serverNow.getTime() + 30_000).toISOString() };
+      });
+      const pageItems = projectedItems.slice(cursor, cursor + limit);
+      const activeItems = projectedItems.filter(item => ["claimed", "preparing", "preflight", "staging", "submitted", "running", "collecting", "validating", "saved", "uploading", "publishing", "indexing", "reconciling"].includes(item.status));
+      const waitingItems = projectedItems.filter(item => item.status === "queued");
+      const recentItems = projectedItems.filter(item => ["completed", "failed", "canceled", "expired"].includes(item.status));
+      res.json({ projectionRevision, serverNow: serverNow.toISOString(), serverTime: serverNow.toISOString(), staleAfterSeconds: 30, worker: { workerId: worker.id, displayName: worker.displayName, machineName: worker.machineName, runtimeType: worker.runtimeType, runtimeVersion: worker.runtimeVersion, status: worker.status, lastSeenAt: worker.lastSeenAt }, active: pageItems.filter(item => activeItems.some(candidate => candidate.jobId === item.jobId)), waiting: pageItems.filter(item => waitingItems.some(candidate => candidate.jobId === item.jobId)), recent: pageItems.filter(item => recentItems.some(candidate => candidate.jobId === item.jobId)), counts: { active: activeItems.length, waiting: waitingItems.length, recent: recentItems.length, total: projectedItems.length }, nextCursor: cursor + limit < projectedItems.length ? String(cursor + limit) : undefined, items: pageItems });
+    } catch (error) { handleWorkerRouteError(error, res); }
   });
 
   app.post(

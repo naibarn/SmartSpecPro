@@ -26,7 +26,7 @@ describe("protected media cache validators", () => {
   it("allows wildcard revalidation without making the response public", () => {
     expect(matchesIfNoneMatch("*", `W/"version"`)).toBe(true);
     expect(PROTECTED_MEDIA_CACHE_CONTROL).toBe(
-      "private, max-age=60, must-revalidate"
+      "private, max-age=604800, stale-while-revalidate=2592000"
     );
   });
 });

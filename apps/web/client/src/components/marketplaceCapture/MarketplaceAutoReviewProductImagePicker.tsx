@@ -1,4 +1,5 @@
 import { CheckCircle2, Circle, ImageIcon, LockKeyhole } from "lucide-react";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import {
   isSequentialEvidenceOnlyAngleLabel,
   SEQUENTIAL_ANGLE_LABELS,
@@ -128,7 +129,7 @@ export function MarketplaceAutoReviewProductImagePicker({
                       }
                     >
                       <span className="relative block aspect-[4/3] bg-slate-50 p-2">
-                        <img
+                        <AuthenticatedMediaImage
                           src={image.url}
                           alt={imageLabel(image, index)}
                           className="h-full w-full object-contain"

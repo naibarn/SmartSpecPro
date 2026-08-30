@@ -8,7 +8,7 @@
 
 import fs from "fs";
 import path from "path";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { parseSkillFile } from "@smartspec/skills";
 import {
@@ -44,7 +44,10 @@ import {
   deductCredits,
   calculateCreditsForLLM,
 } from "./creditService";
-import { resolveSkillDirCandidates, resolveSkillManifestPath } from "./skillFiles";
+import {
+  resolveSkillDirCandidates,
+  resolveSkillManifestPath,
+} from "./skillFiles";
 import {
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
@@ -94,8 +97,12 @@ import {
 } from "@shared/verticalDramaSeries/storyArchitecture";
 import { readVerticalDramaStoryControlSeed } from "@shared/verticalDramaSeries/storyControl";
 import { verticalDramaVisualNarrativeProfileSchema } from "@shared/verticalDramaSeries/visualNarrativeProfile";
+import { renderSourcePackDigestPromptBlock } from "@shared/verticalDramaSeries/sourcePack";
 
-const SKILL_FOLDER_PATH = path.join("skills", "vertical-drama-preset-synthesizer");
+const SKILL_FOLDER_PATH = path.join(
+  "skills",
+  "vertical-drama-preset-synthesizer"
+);
 const MIN_SELECTIONS = 2;
 const MAX_SELECTIONS = 5;
 /**
@@ -143,7 +150,7 @@ function loadSkillSystemPrompt(): string {
   }
 
   throw new Error(
-    `Could not locate skill.md for "vertical-drama-preset-synthesizer" under any known skills directory`,
+    `Could not locate skill.md for "vertical-drama-preset-synthesizer" under any known skills directory`
   );
 }
 
@@ -177,7 +184,7 @@ const creatorFacingCopySchema = z
       !/(?:blendFacets|facetAssignments|primaryFlavor|supportingFlavors|contract_version|preset[_ -]?id|json|snake[_ -]?case)/i.test(
         value
       ),
-    "Creator-facing copy must not expose synthesis metadata",
+    "Creator-facing copy must not expose synthesis metadata"
   );
 
 const creatorSummarySchema = z.object({
@@ -272,7 +279,9 @@ const synthesizedPresetDraftSchema = z.object({
   diagnostics: z.array(synthesizedDiagnosticSchema).max(32).optional(),
 });
 
-export type SynthesizedGenrePresetDraft = z.infer<typeof synthesizedPresetDraftSchema>;
+export type SynthesizedGenrePresetDraft = z.infer<
+  typeof synthesizedPresetDraftSchema
+>;
 
 export interface PresetSynthesisPresetInput {
   id: string;
@@ -298,6 +307,8 @@ export interface PresetSynthesisPresetInput {
 
 export interface SynthesizeVerticalDramaPresetParams {
   userId: number;
+  /** Stable composition-job identity for ledger idempotency. */
+  idempotencyKey?: string;
   /** Server-approved LLM Recommend model for the Draft pipeline. */
   model?: string;
   tenantId?: string;
@@ -335,6 +346,9 @@ export interface SynthesizeVerticalDramaPresetParams {
   visualNarrativeIdentity?: VerticalDramaPresetVisualIdentity;
   /** Server-approved foundation created by the durable wizard composition job. */
   storyArchitecture?: VerticalDramaStoryArchitectureContract;
+  /** Bounded, owner-scoped evidence snapshot for documentary/review profiles. */
+  sourcePackDigest?: Record<string, unknown>;
+  seriesProfileId?: string;
 }
 
 type PresetSynthesisBasicSeedParams = Pick<
@@ -352,18 +366,18 @@ type PresetSynthesisBasicSeedParams = Pick<
 
 /** Defaults such as target count/audience tier are valid planning facts. */
 function hasPresetSynthesisBasicSeed(
-  params: PresetSynthesisBasicSeedParams,
+  params: PresetSynthesisBasicSeedParams
 ): boolean {
   return Boolean(
     params.selectedCategories.length > 0 ||
-      params.businessContext?.trim() ||
-      params.productContext?.trim() ||
-      params.targetEpisodeCount ||
-      params.toneHint?.trim() ||
-      params.seriesTitleHint?.trim() ||
-      params.genreHint?.trim() ||
-      params.audienceAgeRating ||
-      params.lineageContext
+    params.businessContext?.trim() ||
+    params.productContext?.trim() ||
+    params.targetEpisodeCount ||
+    params.toneHint?.trim() ||
+    params.seriesTitleHint?.trim() ||
+    params.genreHint?.trim() ||
+    params.audienceAgeRating ||
+    params.lineageContext
   );
 }
 
@@ -393,7 +407,7 @@ function buildPartialInputCompletionBlock(): string {
 }
 
 function buildLineageContinuityBlock(
-  lineageContext: VerticalDramaSeriesLineage | undefined,
+  lineageContext: VerticalDramaSeriesLineage | undefined
 ): string {
   if (!lineageContext) return "";
 
@@ -422,43 +436,52 @@ export class PresetSynthesisInputError extends Error {
  * sufficient because the skill's v1 instructions would otherwise conflict
  * with it and repeatedly produce a v1-shaped response.
  */
-export function assertPresetSynthesizerSkillSupportsV2(systemPrompt: string): void {
-  const missing = V2_SKILL_CONTRACT_MARKERS.filter(marker => !systemPrompt.includes(marker));
+export function assertPresetSynthesizerSkillSupportsV2(
+  systemPrompt: string
+): void {
+  const missing = V2_SKILL_CONTRACT_MARKERS.filter(
+    marker => !systemPrompt.includes(marker)
+  );
   if (missing.length > 0) {
     throw new Error(
-      `vertical-drama-preset-synthesizer skill is missing its v2 output contract markers: ${missing.join(", ")}`,
+      `vertical-drama-preset-synthesizer skill is missing its v2 output contract markers: ${missing.join(", ")}`
     );
   }
 }
 
 function assertPresetSynthesizerSkillSupportsVisualNarrative(
-  systemPrompt: string,
+  systemPrompt: string
 ): void {
   const missing = VISUAL_NARRATIVE_SKILL_CONTRACT_MARKERS.filter(
-    marker => !systemPrompt.includes(marker),
+    marker => !systemPrompt.includes(marker)
   );
   if (missing.length > 0) {
     throw new Error(
-      `vertical-drama-preset-synthesizer skill is missing its visual narrative contract markers: ${missing.join(", ")}`,
+      `vertical-drama-preset-synthesizer skill is missing its visual narrative contract markers: ${missing.join(", ")}`
     );
   }
 }
 
-function clampText(value: string | undefined, maxLength: number): string | undefined {
+function clampText(
+  value: string | undefined,
+  maxLength: number
+): string | undefined {
   const trimmed = value?.trim();
   if (!trimmed) return undefined;
   return trimmed.length > maxLength ? trimmed.slice(0, maxLength) : trimmed;
 }
 
 function normalizeSynthesizedCharacters(
-  characters: SynthesizedGenrePresetDraft["characters"],
+  characters: SynthesizedGenrePresetDraft["characters"]
 ): SynthesizedGenrePresetDraft["characters"] {
-  return characters.map((character) => {
+  return characters.map(character => {
     const legacy = normalizeLegacyRole(character.role);
     const narrativeRole =
       character.narrativeRole ??
       legacy.narrativeRole ??
-      (character.roleTier ? roleTierToNarrativeRole(character.roleTier) : undefined);
+      (character.roleTier
+        ? roleTierToNarrativeRole(character.roleTier)
+        : undefined);
     const roleTier = character.roleTier ?? legacy.roleTier ?? undefined;
     return {
       ...character,
@@ -472,23 +495,27 @@ function normalizeSynthesizedCharacters(
 function buildDraftStructuralDiagnostics(params: {
   draft: Pick<
     SynthesizedGenrePresetDraft,
-    "characters" | "storyContext" | "storyDesign" | "storyContract" | "diagnostics"
+    | "characters"
+    | "storyContext"
+    | "storyDesign"
+    | "storyContract"
+    | "diagnostics"
   >;
   targetEpisodeCount?: number;
   genre?: string;
   userPremise?: string;
 }): VerticalDramaDraftDiagnostic[] {
-  const diagnostics = readVerticalDramaDraftDiagnostics(params.draft.diagnostics);
+  const diagnostics = readVerticalDramaDraftDiagnostics(
+    params.draft.diagnostics
+  );
   const characters = params.draft.characters;
   for (const [index, character] of characters.entries()) {
     if (!character.narrativeRole || !character.roleTier) {
       diagnostics.push({
         code: "character_role_contract_incomplete",
         severity: "blocking",
-        message:
-          `Character ${character.name} is missing a valid narrativeRole or roleTier. Repair the draft before applying it.`,
-        messageEn:
-          `Character ${character.name} is missing a valid narrativeRole or roleTier. Repair the draft before applying it.`,
+        message: `Character ${character.name} is missing a valid narrativeRole or roleTier. Repair the draft before applying it.`,
+        messageEn: `Character ${character.name} is missing a valid narrativeRole or roleTier. Repair the draft before applying it.`,
         paths: [`characters[${index}]`],
         repairable: true,
       });
@@ -538,7 +565,9 @@ function buildDraftStructuralDiagnostics(params: {
     });
   }
 
-  const storyDesign = readVerticalDramaDraftStoryDesign(params.draft.storyDesign);
+  const storyDesign = readVerticalDramaDraftStoryDesign(
+    params.draft.storyDesign
+  );
   if (storyDesign && !storyDesign.storyControlSeed) {
     diagnostics.push({
       code: "story_control_seed_missing",
@@ -552,11 +581,14 @@ function buildDraftStructuralDiagnostics(params: {
     });
   }
   if (storyDesign?.storyControlSeed) {
-    const seed = readVerticalDramaStoryControlSeed(storyDesign.storyControlSeed, {
-      totalEpisodeCount: params.targetEpisodeCount,
-    });
+    const seed = readVerticalDramaStoryControlSeed(
+      storyDesign.storyControlSeed,
+      {
+        totalEpisodeCount: params.targetEpisodeCount,
+      }
+    );
     const characterNames = new Set(
-      characters.map(character => character.name.trim()).filter(Boolean),
+      characters.map(character => character.name.trim()).filter(Boolean)
     );
     const unknownCanonicalCharacters = seed
       ? seed.canonicalCharacterKeys.filter(key => !characterNames.has(key))
@@ -609,7 +641,7 @@ function buildDraftStructuralDiagnostics(params: {
 function buildUserPremisePrimaryBlock(
   userPremise: string | undefined,
   hasPresetSelections: boolean,
-  hasLineageContext = false,
+  hasLineageContext = false
 ): string | null {
   const trimmed = userPremise?.trim();
   if (!trimmed) return null;
@@ -651,7 +683,7 @@ function buildUserPremisePrimaryBlock(
         "- No preset or category was selected — build the ENTIRE draft from the",
         "  premise alone. Do not invent or reference a preset that was not",
         "  selected; ignore any `primarySelectionId`/preset-blend framing",
-        '  elsewhere in this prompt and set `mixRecipe.primaryFlavor` to',
+        "  elsewhere in this prompt and set `mixRecipe.primaryFlavor` to",
         '  "user_premise", leave `mixRecipe.supportingFlavors` empty, and use',
         "  `mixRecipe.rationale` to note the draft is synthesized purely from",
         "  the user's premise.",
@@ -747,7 +779,10 @@ function tokenizePremiseText(text: string): string[] {
   const tokens: string[] = [];
 
   for (const run of rawRuns) {
-    if (run.length >= THAI_NGRAM_MIN_RUN_LENGTH && THAI_SCRIPT_RANGE.test(run)) {
+    if (
+      run.length >= THAI_NGRAM_MIN_RUN_LENGTH &&
+      THAI_SCRIPT_RANGE.test(run)
+    ) {
       for (let i = 0; i <= run.length - THAI_NGRAM_SIZE; i++) {
         tokens.push(run.slice(i, i + THAI_NGRAM_SIZE));
       }
@@ -756,7 +791,9 @@ function tokenizePremiseText(text: string): string[] {
     }
   }
 
-  return tokens.filter((token) => token.length >= 2 && !PREMISE_COVERAGE_STOPWORDS.has(token));
+  return tokens.filter(
+    token => token.length >= 2 && !PREMISE_COVERAGE_STOPWORDS.has(token)
+  );
 }
 
 /** Minimum fraction of premise tokens that must reappear in the draft text for the draft to count as "covered" — deliberately conservative (spec §4.3 open question: "pick a conservative default that only warns on clear drift"). */
@@ -784,23 +821,29 @@ export interface EvaluatePremiseCoverageResult {
  */
 export function evaluatePremiseCoverage(
   premise: string,
-  draft: { logline: string; mainPlot: string; seasonArc: string },
+  draft: { logline: string; mainPlot: string; seasonArc: string }
 ): EvaluatePremiseCoverageResult {
   const trimmedPremise = premise?.trim() ?? "";
   if (!trimmedPremise) {
     return { covered: true };
   }
 
-  const premiseTokens = Array.from(new Set(tokenizePremiseText(trimmedPremise)));
+  const premiseTokens = Array.from(
+    new Set(tokenizePremiseText(trimmedPremise))
+  );
   if (premiseTokens.length === 0) {
     return { covered: true };
   }
 
   const draftTokens = new Set(
-    tokenizePremiseText(`${draft.logline}\n${draft.mainPlot}\n${draft.seasonArc}`),
+    tokenizePremiseText(
+      `${draft.logline}\n${draft.mainPlot}\n${draft.seasonArc}`
+    )
   );
 
-  const matchedCount = premiseTokens.filter((token) => draftTokens.has(token)).length;
+  const matchedCount = premiseTokens.filter(token =>
+    draftTokens.has(token)
+  ).length;
   const coverageRatio = matchedCount / premiseTokens.length;
 
   if (coverageRatio >= PREMISE_COVERAGE_MIN_RATIO) {
@@ -846,7 +889,7 @@ function appendPremiseCoverageWarning<
 }
 
 function uniqueStrings(values: string[]): string[] {
-  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+  return Array.from(new Set(values.map(value => value.trim()).filter(Boolean)));
 }
 
 /**
@@ -866,12 +909,13 @@ function uniqueStrings(values: string[]): string[] {
  * side-effect-free; `undefined` in, `undefined` out (the field is
  * optional/additive).
  */
-function clampTitleOptionsForCreateSeries(
-  titleOptions: string[] | undefined,
-): { titleOptions: string[] | undefined; changed: boolean } {
+function clampTitleOptionsForCreateSeries(titleOptions: string[] | undefined): {
+  titleOptions: string[] | undefined;
+  changed: boolean;
+} {
   if (!titleOptions) return { titleOptions: undefined, changed: false };
   const clamped = titleOptions.map(
-    (option) => clampToCreateSeriesLimit(option, "title") ?? option,
+    option => clampToCreateSeriesLimit(option, "title") ?? option
   );
   const changed = clamped.some((value, index) => value !== titleOptions[index]);
   return { titleOptions: clamped, changed };
@@ -901,15 +945,20 @@ function clampTitleOptionsForCreateSeries(
  * `titleOptions` (when present) is clamped the same way, entry by entry,
  * since any candidate may eventually be picked as `title`.
  */
-export function clampDraftForCreateSeries(
-  draft: SynthesizedGenrePresetDraft,
-): { draft: SynthesizedGenrePresetDraft; clamped: boolean } {
-  const clampedTitle = clampToCreateSeriesLimit(draft.title, "title") ?? draft.title;
-  const clampedTone = clampToCreateSeriesLimit(draft.tone, "tone") ?? draft.tone;
+export function clampDraftForCreateSeries(draft: SynthesizedGenrePresetDraft): {
+  draft: SynthesizedGenrePresetDraft;
+  clamped: boolean;
+} {
+  const clampedTitle =
+    clampToCreateSeriesLimit(draft.title, "title") ?? draft.title;
+  const clampedTone =
+    clampToCreateSeriesLimit(draft.tone, "tone") ?? draft.tone;
   const { titleOptions: clampedTitleOptions, changed: titleOptionsChanged } =
     clampTitleOptionsForCreateSeries(draft.titleOptions);
   const clamped =
-    clampedTitle !== draft.title || clampedTone !== draft.tone || titleOptionsChanged;
+    clampedTitle !== draft.title ||
+    clampedTone !== draft.tone ||
+    titleOptionsChanged;
 
   if (!clamped) {
     return { draft, clamped: false };
@@ -936,7 +985,7 @@ export function clampDraftForCreateSeries(
 
 function buildSinglePresetVariationBlock(
   selectedPresetCount: number,
-  variationNonce: string,
+  variationNonce: string
 ): string {
   if (selectedPresetCount !== 1) return "";
   return [
@@ -964,7 +1013,7 @@ function toVisualNarrativePromptContext(
     | VerticalDramaPresetVisualIdentity
     | VerticalDramaMergedVisualIdentity
     | null
-    | undefined,
+    | undefined
 ): VisualNarrativePromptContext | null {
   if (!identity) return null;
   return {
@@ -984,16 +1033,16 @@ function resolveVisualNarrativePromptContext(
   params: Pick<
     SynthesizeVerticalDramaPresetParams,
     "selectedPresets" | "primarySelectionId" | "visualNarrativeIdentity"
-  >,
+  >
 ): VisualNarrativePromptContext | null {
   const explicit = toVisualNarrativePromptContext(
-    params.visualNarrativeIdentity,
+    params.visualNarrativeIdentity
   );
   if (explicit) return explicit;
 
   const selectedIdentity =
     params.selectedPresets.find(
-      preset => preset.id === params.primarySelectionId,
+      preset => preset.id === params.primarySelectionId
     )?.visualIdentityJson ??
     params.selectedPresets.find(preset => preset.visualIdentityJson)
       ?.visualIdentityJson ??
@@ -1002,7 +1051,7 @@ function resolveVisualNarrativePromptContext(
 }
 
 function buildVisualNarrativeDraftBlock(
-  context: VisualNarrativePromptContext | null,
+  context: VisualNarrativePromptContext | null
 ): string | null {
   if (!context) return null;
   return [
@@ -1022,18 +1071,24 @@ const VISUAL_NARRATIVE_PROFILE_JSON_SHAPE =
 function buildUserPrompt(
   params: SynthesizeVerticalDramaPresetParams,
   variationNonce: string,
-  storyArchitecture?: VerticalDramaStoryArchitectureContract | null,
+  storyArchitecture?: VerticalDramaStoryArchitectureContract | null
 ): string {
   const langInstruction =
     params.locale === "th"
       ? "Write all narrative/content fields in natural Thai; title and titleOptions follow the DRAFT LANGUAGE CONTRACT below."
       : `Write all narrative/content fields in ${verticalDramaLocaleEnglishName(params.locale)}; title and titleOptions follow the DRAFT LANGUAGE CONTRACT below.`;
+  const sourcePackBlock = renderSourcePackDigestPromptBlock(
+    params.sourcePackDigest
+  );
 
-  const selectedPresetSummaries = params.selectedPresets.map((preset) => ({
+  const selectedPresetSummaries = params.selectedPresets.map(preset => ({
     id: preset.id,
     title: preset.title,
     category: preset.category,
-    categoryLabel: genrePresetCategoryLabel(preset.category, params.locale === "th" ? "th" : "en"),
+    categoryLabel: genrePresetCategoryLabel(
+      preset.category,
+      params.locale === "th" ? "th" : "en"
+    ),
     logline: preset.logline,
     tone: preset.tone,
     cliffhangerStyle: preset.cliffhangerStyle,
@@ -1043,9 +1098,12 @@ function buildUserPrompt(
     characterSeeds: preset.characters.slice(0, 5),
   }));
 
-  const selectedCategories = params.selectedCategories.map((category) => ({
+  const selectedCategories = params.selectedCategories.map(category => ({
     category,
-    label: genrePresetCategoryLabel(category, params.locale === "th" ? "th" : "en"),
+    label: genrePresetCategoryLabel(
+      category,
+      params.locale === "th" ? "th" : "en"
+    ),
   }));
 
   // Phase 2 (`planning/vd-premise-first-wizard/plan.md` §2.3) — whether the
@@ -1083,7 +1141,7 @@ function buildUserPrompt(
       ? {
           seriesTitleHint: clampText(
             params.seriesTitleHint,
-            CREATE_SERIES_FIELD_LIMITS.title,
+            CREATE_SERIES_FIELD_LIMITS.title
           ),
         }
       : {}),
@@ -1091,17 +1149,19 @@ function buildUserPrompt(
       ? {
           genreHint: clampText(
             params.genreHint,
-            CREATE_SERIES_FIELD_LIMITS.genre,
+            CREATE_SERIES_FIELD_LIMITS.genre
           ),
         }
       : {}),
-    ...(params.lineageContext
-      ? { lineageContext: params.lineageContext }
-      : {}),
-    ...(visualNarrativeContext
-      ? { visualNarrativeContext }
-      : {}),
+    ...(params.lineageContext ? { lineageContext: params.lineageContext } : {}),
+    ...(visualNarrativeContext ? { visualNarrativeContext } : {}),
     ...(storyArchitecture ? { storyArchitecture } : {}),
+    ...(params.seriesProfileId
+      ? { seriesProfileId: params.seriesProfileId }
+      : {}),
+    ...(params.sourcePackDigest
+      ? { sourcePackDigest: params.sourcePackDigest }
+      : {}),
     rules: [
       "Create one coherent preset draft, not a collage.",
       hasPresetSelections
@@ -1113,6 +1173,11 @@ function buildUserPrompt(
           : "No preset, category, or premise was selected — build the entire draft from the basic setup facts and make strong original choices for every missing detail.",
       "Keep the result easy for a non-technical creator to edit.",
       "Product or service tie-in may help a scene, but must not magically solve the main conflict.",
+      ...(sourcePackBlock
+        ? [
+            "Treat SOURCE PACK GROUNDING as authoritative evidence for the selected documentary/review profile and keep unsupported claims out of the draft.",
+          ]
+        : []),
       hasPresetSelections
         ? 'Use "mixRecipe.primaryFlavor" to name the dominant preset/category flavor and "mixRecipe.supportingFlavors" for the rest.'
         : `Set "mixRecipe.primaryFlavor" to "${hasLineageContext && hasUserPremise ? "series_lineage" : hasUserPremise ? "user_premise" : "ai_original"}" and leave "mixRecipe.supportingFlavors" as an empty array — there is no preset to name.`,
@@ -1121,8 +1186,8 @@ function buildUserPrompt(
       `"tone" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.tone} characters — a brief phrase, not a sentence.`,
       `Every character's "narrativeRole" MUST be exactly one of: ${NARRATIVE_ROLE_VALUES.join(", ")}.`,
       `Every character's "roleTier" MUST be exactly one of: ${ROLE_TIER_VALUES.join(", ")}. Copy one value verbatim — never invent a new label.`,
-      'If a character role is uncertain, use the closest allowed roleTier and include a creator-facing warning; never omit roleTier or invent an enum value.',
-      'Use storyContext to separate targetMarket, storySetting, leadBackground, leadOrigin, spokenDialogue, and namingPolicy. Use storyDesign to keep one primary engine, bounded pressure threads, an early payoff, romance progression, advantage beats, and a valid storyControlSeed. Use the exact generated character names as storyControlSeed.canonicalCharacterKeys.',
+      "If a character role is uncertain, use the closest allowed roleTier and include a creator-facing warning; never omit roleTier or invent an enum value.",
+      "Use storyContext to separate targetMarket, storySetting, leadBackground, leadOrigin, spokenDialogue, and namingPolicy. Use storyDesign to keep one primary engine, bounded pressure threads, an early payoff, romance progression, advantage beats, and a valid storyControlSeed. Use the exact generated character names as storyControlSeed.canonicalCharacterKeys.",
       storyArchitecture
         ? "Use the APPROVED STORY ARCHITECTURE as the authoritative source for destination, transformation, required arcs, failure model, and final payoff. Derive storyDesign, creatorSummary, mainPlot, and seasonArc from it without changing its meaning."
         : "No pre-approved Story Architecture was supplied. Generate a complete Story Architecture Contract in this same response before deriving storyDesign, creatorSummary, mainPlot, and seasonArc from it. Return the contract in storyContract; do not omit it or replace it with a diagnostic.",
@@ -1142,7 +1207,7 @@ function buildUserPrompt(
     '{"contract_version":1,"title":string,"titleOptions":[string],"category":string,"logline":string,"mainPlot":string,"seasonArc":string,"tone":string,"cliffhangerStyle":string,"creatorSummary":{"whatItIsAbout":string,"protagonistAndGoal":string,"conflictAndDiscovery":string,"centralMystery":string,"decisionNotes":[string]},"characters":[{"name":string,"role":string,"narrativeRole":string,"roleTier":string,"occupation":string,"description":string}],"visualBible":string,"locations":[{"name":string,"description":string}],"mixRecipe":{"primaryFlavor":string,"supportingFlavors":[string],"rationale":string},"warnings":[{"code":string,"message":string}]',
     ',"storyContract":object,"storyContext":object,"storyDesign":object,"diagnostics":[{"code":string,"severity":string,"message":string}]',
     visualNarrativeContext ? `,${VISUAL_NARRATIVE_PROFILE_JSON_SHAPE}` : "",
-    '}',
+    "}",
   ].join("");
 
   return [
@@ -1169,12 +1234,16 @@ function buildUserPrompt(
       ? renderAudienceAgeRatingBlock(params.audienceAgeRating)
       : "",
     buildLineageContinuityBlock(params.lineageContext),
-    buildSinglePresetVariationBlock(params.selectedPresets.length, variationNonce),
+    buildSinglePresetVariationBlock(
+      params.selectedPresets.length,
+      variationNonce
+    ),
     buildVisualNarrativeDraftBlock(visualNarrativeContext),
+    sourcePackBlock,
     buildUserPremisePrimaryBlock(
       params.userPremise,
       hasPresetSelections,
-      hasLineageContext,
+      hasLineageContext
     ),
     buildGenerateFromBasicsBlock({
       hasPresetSelections,
@@ -1212,20 +1281,30 @@ export function validatePresetSynthesisSelection(params: {
   /** Wizard basics (including defaults) may stand in for preset/premise seed. */
   hasBasicSeed?: boolean;
 }) {
-  const total = params.selectedPresets.length + uniqueStrings(params.selectedCategories).length;
+  const total =
+    params.selectedPresets.length +
+    uniqueStrings(params.selectedCategories).length;
   const minSelections =
     params.hasUserPremise || params.hasBasicSeed ? 0 : MIN_SELECTIONS;
   if (total < minSelections) {
-    throw new PresetSynthesisInputError("Select at least 2 story flavors for Mix and Match");
+    throw new PresetSynthesisInputError(
+      "Select at least 2 story flavors for Mix and Match"
+    );
   }
   if (total > MAX_SELECTIONS) {
-    throw new PresetSynthesisInputError("Select up to 5 story flavors for Mix and Match");
+    throw new PresetSynthesisInputError(
+      "Select up to 5 story flavors for Mix and Match"
+    );
   }
 }
 
 export async function synthesizeVerticalDramaPreset(
-  params: SynthesizeVerticalDramaPresetParams,
-): Promise<{ draft: SynthesizedGenrePresetDraft; creditsUsed: number; model: string }> {
+  params: SynthesizeVerticalDramaPresetParams
+): Promise<{
+  draft: SynthesizedGenrePresetDraft;
+  creditsUsed: number;
+  model: string;
+}> {
   const selectedCategories = uniqueStrings(params.selectedCategories);
   // Derived from `params.userPremise` — the value THIS function actually
   // received, which the router already forced to `undefined` when the
@@ -1237,6 +1316,20 @@ export async function synthesizeVerticalDramaPreset(
     ...params,
     selectedCategories,
   });
+  const logicalRunKey =
+    params.idempotencyKey ??
+    `vd-preset-synthesis:${createHash("sha256")
+      .update(
+        JSON.stringify({
+          selectedPresetIds: params.selectedPresets.map(preset => preset.id),
+          selectedCategories,
+          primarySelectionId: params.primarySelectionId ?? null,
+          targetEpisodeCount: params.targetEpisodeCount ?? null,
+          userPremise: params.userPremise ?? null,
+        }),
+      )
+      .digest("hex")
+      .slice(0, 24)}`;
   validatePresetSynthesisSelection({
     selectedPresets: params.selectedPresets,
     selectedCategories,
@@ -1249,8 +1342,11 @@ export async function synthesizeVerticalDramaPreset(
     throw new InsufficientCreditsError();
   }
 
-  const model = params.model ??
-    (await (await import("./verticalDramaLlmModelPolicy")).resolveVerticalDramaRecommendedDraftModel());
+  const model =
+    params.model ??
+    (await (
+      await import("./verticalDramaLlmModelPolicy")
+    ).resolveVerticalDramaRecommendedDraftModel());
   const systemPrompt = loadSkillSystemPrompt();
   const variationNonce = randomUUID();
   const visualNarrativeContext = params.visualNarrativeEnabled
@@ -1262,10 +1358,14 @@ export async function synthesizeVerticalDramaPreset(
   const userPrompt = buildUserPrompt(
     { ...params, selectedCategories },
     variationNonce,
-    params.storyArchitecture,
+    params.storyArchitecture
   );
 
-  const { data: synthesizedDraft, response } = await executeJsonPlanningCallWithRetry({
+  const {
+    data: synthesizedDraft,
+    response,
+    model: effectiveModel,
+  } = await executeJsonPlanningCallWithRetry({
     model,
     systemPrompt,
     userPrompt,
@@ -1274,8 +1374,10 @@ export async function synthesizeVerticalDramaPreset(
     maxTokens: 4500,
     schema: synthesizedPresetDraftSchema,
     disableProviderFallbacks: true,
+    maxTransientRetries: 0,
     label: "Preset synthesis",
   });
+  const usedModel = effectiveModel ?? model;
 
   const {
     visualNarrativeProfile: rawVisualNarrativeProfile,
@@ -1295,10 +1397,18 @@ export async function synthesizeVerticalDramaPreset(
     characters: normalizeSynthesizedCharacters(synthesizedDraft.characters),
     ...(storyContract ? { storyContract } : {}),
     ...(readVerticalDramaDraftStoryContext(synthesizedDraft.storyContext)
-      ? { storyContext: readVerticalDramaDraftStoryContext(synthesizedDraft.storyContext) }
+      ? {
+          storyContext: readVerticalDramaDraftStoryContext(
+            synthesizedDraft.storyContext
+          ),
+        }
       : {}),
     ...(readVerticalDramaDraftStoryDesign(synthesizedDraft.storyDesign)
-      ? { storyDesign: readVerticalDramaDraftStoryDesign(synthesizedDraft.storyDesign) }
+      ? {
+          storyDesign: readVerticalDramaDraftStoryDesign(
+            synthesizedDraft.storyDesign
+          ),
+        }
       : {}),
     ...(visualNarrativeContext && rawVisualNarrativeProfile
       ? { visualNarrativeProfile: rawVisualNarrativeProfile }
@@ -1312,16 +1422,20 @@ export async function synthesizeVerticalDramaPreset(
   });
   const normalizedDraftWithDiagnostics = {
     ...normalizedDraft,
-    ...(structuralDiagnostics.length ? { diagnostics: structuralDiagnostics } : {}),
+    ...(structuralDiagnostics.length
+      ? { diagnostics: structuralDiagnostics }
+      : {}),
   };
-  const { draft: clampedDraft } = clampDraftForCreateSeries(normalizedDraftWithDiagnostics);
+  const { draft: clampedDraft } = clampDraftForCreateSeries(
+    normalizedDraftWithDiagnostics
+  );
   const draft = appendPremiseCoverageWarning(clampedDraft, params.userPremise);
 
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
-    model,
+    usedModel
   );
 
   await deductCredits({
@@ -1329,19 +1443,23 @@ export async function synthesizeVerticalDramaPreset(
     tenantId: params.tenantId,
     amount: creditsUsed,
     description: "Vertical Drama — synthesize mix-and-match preset",
+    idempotencyKey: `${logicalRunKey}:preset-synthesis`,
+    skillRunId: `vd-preset-synthesis:${logicalRunKey}`,
+    skillSlug: "vertical-drama-preset-synthesizer",
     sourceType: "skill",
     metadata: {
-      model,
-      llmModel: model,
+      model: usedModel,
+      llmModel: usedModel,
       feature: "vertical_drama_preset_synthesis",
-      selectedPresetIds: params.selectedPresets.map((preset) => preset.id),
+      selectedPresetIds: params.selectedPresets.map(preset => preset.id),
       selectedCategories,
       inputTokens: usage?.prompt_tokens ?? 0,
       outputTokens: usage?.completion_tokens ?? 0,
+      logicalRunKey,
     },
   });
 
-  return { draft, creditsUsed, model };
+  return { draft, creditsUsed, model: usedModel };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1371,16 +1489,15 @@ export function resolveMixSelections(params: {
   if (params.selections && params.selections.length > 0) {
     return params.selections;
   }
-  return (params.selectedPresetIds ?? []).map((presetId) => ({
+  return (params.selectedPresetIds ?? []).map(presetId => ({
     presetId,
     weight: DEFAULT_MIX_WEIGHT,
   }));
 }
 
 /** The 7 facets every non-primary preset competes for coverage in (everything except `story_spine`, which the primary owns exclusively — spec §8.2.2.C.1). */
-const NON_SPINE_BLEND_FACETS: VerticalDramaBlendFacet[] = VERTICAL_DRAMA_BLEND_FACETS.filter(
-  (facet) => facet !== "story_spine",
-);
+const NON_SPINE_BLEND_FACETS: VerticalDramaBlendFacet[] =
+  VERTICAL_DRAMA_BLEND_FACETS.filter(facet => facet !== "story_spine");
 
 export interface VerticalDramaFacetAssignmentEntry {
   facet: VerticalDramaBlendFacet;
@@ -1427,16 +1544,18 @@ export function buildFacetAssignments(
   selections: VerticalDramaPresetMixSelection[],
   presets: PresetSynthesisPresetInput[],
   primarySelectionId: string,
-  minFacetsPerPreset: number = DEFAULT_MIN_FACETS_PER_PRESET,
+  minFacetsPerPreset: number = DEFAULT_MIN_FACETS_PER_PRESET
 ): VerticalDramaFacetAssignmentEntry[] {
-  const knownIds = new Set(presets.map((preset) => preset.id));
-  const relevantSelections = selections.filter((selection) => knownIds.has(selection.presetId));
+  const knownIds = new Set(presets.map(preset => preset.id));
+  const relevantSelections = selections.filter(selection =>
+    knownIds.has(selection.presetId)
+  );
   const nonPrimarySelections = relevantSelections.filter(
-    (selection) => selection.presetId !== primarySelectionId,
+    selection => selection.presetId !== primarySelectionId
   );
 
   const byFacet = new Map<VerticalDramaBlendFacet, string[]>(
-    VERTICAL_DRAMA_BLEND_FACETS.map((facet) => [facet, [] as string[]]),
+    VERTICAL_DRAMA_BLEND_FACETS.map(facet => [facet, [] as string[]])
   );
 
   if (knownIds.has(primarySelectionId)) {
@@ -1449,15 +1568,16 @@ export function buildFacetAssignments(
   nonPrimarySelections.forEach((selection, index) => {
     const facetCount = Math.min(
       minFacetsPerPreset + (selection.weight - 1),
-      NON_SPINE_BLEND_FACETS.length,
+      NON_SPINE_BLEND_FACETS.length
     );
     for (let i = 0; i < facetCount; i++) {
-      const facet = NON_SPINE_BLEND_FACETS[(index + i) % NON_SPINE_BLEND_FACETS.length];
+      const facet =
+        NON_SPINE_BLEND_FACETS[(index + i) % NON_SPINE_BLEND_FACETS.length];
       byFacet.get(facet)!.push(selection.presetId);
     }
   });
 
-  return VERTICAL_DRAMA_BLEND_FACETS.map((facet) => ({
+  return VERTICAL_DRAMA_BLEND_FACETS.map(facet => ({
     facet,
     presetIds: byFacet.get(facet)!,
   }));
@@ -1477,9 +1597,9 @@ export interface PresetSynthesisPresetInputV2 extends PresetSynthesisPresetInput
 function buildVisualIdentitySelections(
   selections: VerticalDramaPresetMixSelection[],
   presets: PresetSynthesisPresetInputV2[],
-  primarySelectionId: string,
+  primarySelectionId: string
 ): VerticalDramaVisualIdentitySelection[] {
-  const presetById = new Map(presets.map((preset) => [preset.id, preset]));
+  const presetById = new Map(presets.map(preset => [preset.id, preset]));
   const result: VerticalDramaVisualIdentitySelection[] = [];
   for (const selection of selections) {
     const preset = presetById.get(selection.presetId);
@@ -1510,32 +1630,41 @@ function assembleBlendReport(
   params: {
     sourceIds: string[];
     hasUserPremise: boolean;
-  },
+  }
 ): VerticalDramaBlendReport {
   const computedCoverage = computeBlendCoverage({ facets: blendFacets });
   // Keep a deterministic zero for every selected source. Without this, a
   // preset that the model forgot to mention disappears from the report and
   // the UI cannot distinguish "not selected" from "not blended".
   const contributionCoverage = Object.fromEntries(
-    params.sourceIds.map(sourceId => [sourceId, computedCoverage[sourceId] ?? 0]),
+    params.sourceIds.map(sourceId => [
+      sourceId,
+      computedCoverage[sourceId] ?? 0,
+    ])
   );
   const rawUnderBlended = params.sourceIds.filter(
-    sourceId => contributionCoverage[sourceId] < minFacetsPerPreset,
+    sourceId => contributionCoverage[sourceId] < minFacetsPerPreset
   );
-  const underBlended = rawUnderBlended.filter((presetId) => presetId !== primarySelectionId);
+  const underBlended = rawUnderBlended.filter(
+    presetId => presetId !== primarySelectionId
+  );
   const presetSourceCount = params.sourceIds.length;
   const sourceCount = presetSourceCount + (params.hasUserPremise ? 1 : 0);
-  const blendMode =
-    params.hasUserPremise
-      ? presetSourceCount > 0
-        ? "premise_plus_presets"
-        : "premise_only"
-      : presetSourceCount === 0
-        ? "no_sources"
-        : presetSourceCount === 1
-          ? "single_source"
-          : "multi_source";
-  const status = sourceCount <= 1 ? "not_applicable" : underBlended.length === 0 && blendFacets.length > 0 ? "complete" : "incomplete";
+  const blendMode = params.hasUserPremise
+    ? presetSourceCount > 0
+      ? "premise_plus_presets"
+      : "premise_only"
+    : presetSourceCount === 0
+      ? "no_sources"
+      : presetSourceCount === 1
+        ? "single_source"
+        : "multi_source";
+  const status =
+    sourceCount <= 1
+      ? "not_applicable"
+      : underBlended.length === 0 && blendFacets.length > 0
+        ? "complete"
+        : "incomplete";
   return {
     contractVersion: 2,
     facets: blendFacets,
@@ -1549,8 +1678,8 @@ function assembleBlendReport(
     ...(blendFacets.length === 0
       ? {
           emptyReason:
-              sourceCount >= 2
-                ? "multi_source_report_incomplete"
+            sourceCount >= 2
+              ? "multi_source_report_incomplete"
               : blendMode === "single_source"
                 ? "single_source_no_blend"
                 : blendMode === "premise_only"
@@ -1565,7 +1694,9 @@ const synthesizedVisualIdentityDraftSchema = z.object({
   styleName: z.string().min(1),
   lighting: z.string().min(1),
   cameraGrammar: z.string().min(1),
-  characterArchetypes: z.array(verticalDramaPresetCharacterArchetypeSchema).min(1),
+  characterArchetypes: z
+    .array(verticalDramaPresetCharacterArchetypeSchema)
+    .min(1),
   positiveFragments: z.array(z.string().min(1)),
 });
 
@@ -1589,10 +1720,14 @@ const synthesizedPresetDraftV2Schema = synthesizedPresetDraftSchema.extend({
   // a malformed/empty `visualIdentity` degrades to absent rather than failing
   // the whole draft (`assembleFinalVisualIdentity` already returns `undefined`
   // when either side is missing).
-  visualIdentity: synthesizedVisualIdentityDraftSchema.optional().catch(undefined),
+  visualIdentity: synthesizedVisualIdentityDraftSchema
+    .optional()
+    .catch(undefined),
 });
 
-type SynthesizedGenrePresetDraftV2Raw = z.infer<typeof synthesizedPresetDraftV2Schema>;
+type SynthesizedGenrePresetDraftV2Raw = z.infer<
+  typeof synthesizedPresetDraftV2Schema
+>;
 
 /** The FINAL v2 draft returned to callers: `blendFacets` replaced by the fully-assembled `blendReport`, `visualIdentity` (if any) replaced by the fully-merged identity object. */
 export type SynthesizedGenrePresetDraftV2 = Omit<
@@ -1605,6 +1740,8 @@ export type SynthesizedGenrePresetDraftV2 = Omit<
 
 export interface SynthesizeVerticalDramaPresetV2Params {
   userId: number;
+  /** Stable composition-job identity for ledger idempotency. */
+  idempotencyKey?: string;
   /** Server-approved LLM Recommend model for the Draft pipeline. */
   model?: string;
   tenantId?: string;
@@ -1636,6 +1773,9 @@ export interface SynthesizeVerticalDramaPresetV2Params {
   visualNarrativeIdentity?: VerticalDramaPresetVisualIdentity;
   /** Server-approved foundation created by the durable wizard composition job. */
   storyArchitecture?: VerticalDramaStoryArchitectureContract;
+  /** Bounded, owner-scoped evidence snapshot for documentary/review profiles. */
+  sourcePackDigest?: Record<string, unknown>;
+  seriesProfileId?: string;
 }
 
 /**
@@ -1656,12 +1796,16 @@ function clampTitleAndToneForCreateSeries<
     warnings: Array<{ code: string; message: string }>;
   },
 >(draft: T): { draft: T; clamped: boolean } {
-  const clampedTitle = clampToCreateSeriesLimit(draft.title, "title") ?? draft.title;
-  const clampedTone = clampToCreateSeriesLimit(draft.tone, "tone") ?? draft.tone;
+  const clampedTitle =
+    clampToCreateSeriesLimit(draft.title, "title") ?? draft.title;
+  const clampedTone =
+    clampToCreateSeriesLimit(draft.tone, "tone") ?? draft.tone;
   const { titleOptions: clampedTitleOptions, changed: titleOptionsChanged } =
     clampTitleOptionsForCreateSeries(draft.titleOptions);
   const clamped =
-    clampedTitle !== draft.title || clampedTone !== draft.tone || titleOptionsChanged;
+    clampedTitle !== draft.title ||
+    clampedTone !== draft.tone ||
+    titleOptionsChanged;
 
   if (!clamped) {
     return { draft, clamped: false };
@@ -1677,7 +1821,8 @@ function clampTitleAndToneForCreateSeries<
         ...draft.warnings,
         {
           code: "preset_field_length_clamped",
-          message: "AI output exceeded the Create Series field limits and was automatically shortened.",
+          message:
+            "AI output exceeded the Create Series field limits and was automatically shortened.",
         },
       ],
     },
@@ -1687,11 +1832,11 @@ function clampTitleAndToneForCreateSeries<
 
 function buildFacetAssignmentsPromptPayload(
   facetAssignments: VerticalDramaFacetAssignmentEntry[],
-  presetTitleById: Map<string, string>,
+  presetTitleById: Map<string, string>
 ) {
-  return facetAssignments.map((entry) => ({
+  return facetAssignments.map(entry => ({
     facet: entry.facet,
-    assignedPresets: entry.presetIds.map((presetId) => ({
+    assignedPresets: entry.presetIds.map(presetId => ({
       presetId,
       title: presetTitleById.get(presetId) ?? presetId,
     })),
@@ -1725,13 +1870,21 @@ function buildUserPromptV2(args: {
     params.locale === "th"
       ? "Write all narrative/content fields in natural Thai; title and titleOptions follow the DRAFT LANGUAGE CONTRACT below."
       : `Write all narrative/content fields in ${verticalDramaLocaleEnglishName(params.locale)}; title and titleOptions follow the DRAFT LANGUAGE CONTRACT below.`;
+  const sourcePackBlock = renderSourcePackDigestPromptBlock(
+    params.sourcePackDigest
+  );
 
-  const weightBySelectionPresetId = new Map(selections.map((s) => [s.presetId, s.weight]));
-  const selectedPresetSummaries = params.selectedPresets.map((preset) => ({
+  const weightBySelectionPresetId = new Map(
+    selections.map(s => [s.presetId, s.weight])
+  );
+  const selectedPresetSummaries = params.selectedPresets.map(preset => ({
     id: preset.id,
     title: preset.title,
     category: preset.category,
-    categoryLabel: genrePresetCategoryLabel(preset.category, params.locale === "th" ? "th" : "en"),
+    categoryLabel: genrePresetCategoryLabel(
+      preset.category,
+      params.locale === "th" ? "th" : "en"
+    ),
     weight: weightBySelectionPresetId.get(preset.id) ?? DEFAULT_MIX_WEIGHT,
     isPrimary: preset.id === primarySelectionId,
     logline: preset.logline,
@@ -1743,9 +1896,12 @@ function buildUserPromptV2(args: {
     characterSeeds: preset.characters.slice(0, 5),
   }));
 
-  const selectedCategoriesPayload = selectedCategories.map((category) => ({
+  const selectedCategoriesPayload = selectedCategories.map(category => ({
     category,
-    label: genrePresetCategoryLabel(category, params.locale === "th" ? "th" : "en"),
+    label: genrePresetCategoryLabel(
+      category,
+      params.locale === "th" ? "th" : "en"
+    ),
   }));
 
   // Phase 2 (`planning/vd-premise-first-wizard/plan.md` §2.3) — same fact as
@@ -1755,12 +1911,13 @@ function buildUserPromptV2(args: {
   // is already all-empty (see `buildFacetAssignments`'s "known ids only"
   // guard), so the "verifiable blend" rules below must not ask the model to
   // fill facet slots or name a PRIMARY preset that does not exist.
-  const hasPresetSelections = selections.length > 0 || selectedCategories.length > 0;
+  const hasPresetSelections =
+    selections.length > 0 || selectedCategories.length > 0;
   const hasUserPremise = Boolean(params.userPremise?.trim());
   const hasLineageContext = Boolean(params.lineageContext);
   const visualNarrativeContext = params.visualNarrativeEnabled
-    ? toVisualNarrativePromptContext(params.visualNarrativeIdentity) ??
-      toVisualNarrativePromptContext(mergedVisualIdentity)
+    ? (toVisualNarrativePromptContext(params.visualNarrativeIdentity) ??
+      toVisualNarrativePromptContext(mergedVisualIdentity))
     : null;
 
   const blendCoreRules = hasPresetSelections
@@ -1782,20 +1939,29 @@ function buildUserPromptV2(args: {
     selectedPresets: selectedPresetSummaries,
     selectedCategories: selectedCategoriesPayload,
     primarySelectionId,
-    facetAssignments: buildFacetAssignmentsPromptPayload(facetAssignments, presetTitleById),
+    facetAssignments: buildFacetAssignmentsPromptPayload(
+      facetAssignments,
+      presetTitleById
+    ),
     visualIdentityContext: mergedVisualIdentity
       ? {
           palette: mergedVisualIdentity.palette,
           environmentMotifs: mergedVisualIdentity.environmentMotifs,
           wardrobeGrammar: mergedVisualIdentity.wardrobeGrammar,
-          signaturePropsAndCompanions: mergedVisualIdentity.signaturePropsAndCompanions,
-          alreadyMergedNegativeFragments: mergedVisualIdentity.imagePromptFragments.negative,
+          signaturePropsAndCompanions:
+            mergedVisualIdentity.signaturePropsAndCompanions,
+          alreadyMergedNegativeFragments:
+            mergedVisualIdentity.imagePromptFragments.negative,
         }
       : null,
-    ...(visualNarrativeContext
-      ? { visualNarrativeContext }
-      : {}),
+    ...(visualNarrativeContext ? { visualNarrativeContext } : {}),
     ...(storyArchitecture ? { storyArchitecture } : {}),
+    ...(params.seriesProfileId
+      ? { seriesProfileId: params.seriesProfileId }
+      : {}),
+    ...(params.sourcePackDigest
+      ? { sourcePackDigest: params.sourcePackDigest }
+      : {}),
     businessContext: clampText(params.businessContext, 600),
     productContext: clampText(params.productContext, 600),
     targetEpisodeCount: params.targetEpisodeCount ?? 10,
@@ -1804,7 +1970,7 @@ function buildUserPromptV2(args: {
       ? {
           seriesTitleHint: clampText(
             params.seriesTitleHint,
-            CREATE_SERIES_FIELD_LIMITS.title,
+            CREATE_SERIES_FIELD_LIMITS.title
           ),
         }
       : {}),
@@ -1812,13 +1978,11 @@ function buildUserPromptV2(args: {
       ? {
           genreHint: clampText(
             params.genreHint,
-            CREATE_SERIES_FIELD_LIMITS.genre,
+            CREATE_SERIES_FIELD_LIMITS.genre
           ),
         }
       : {}),
-    ...(params.lineageContext
-      ? { lineageContext: params.lineageContext }
-      : {}),
+    ...(params.lineageContext ? { lineageContext: params.lineageContext } : {}),
     rules: [
       ...blendCoreRules,
       `"blendFacets" must cover every facet in this exact set: ${VERTICAL_DRAMA_BLEND_FACETS.join(", ")}.${
@@ -1839,6 +2003,11 @@ function buildUserPromptV2(args: {
         : []),
       "Keep the result easy for a non-technical creator to edit.",
       "Product or service tie-in may help a scene, but must not magically solve the main conflict.",
+      ...(sourcePackBlock
+        ? [
+            "Treat SOURCE PACK GROUNDING as authoritative evidence for the selected documentary/review profile and keep unsupported claims out of the draft.",
+          ]
+        : []),
       hasPresetSelections
         ? 'Use "mixRecipe.primaryFlavor" to name the dominant preset/category flavor and "mixRecipe.supportingFlavors" for the rest.'
         : `Set "mixRecipe.primaryFlavor" to "${hasLineageContext && hasUserPremise ? "series_lineage" : hasUserPremise ? "user_premise" : "ai_original"}" and leave "mixRecipe.supportingFlavors" as an empty array — there is no preset to name.`,
@@ -1847,8 +2016,8 @@ function buildUserPromptV2(args: {
       `"tone" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.tone} characters — a brief phrase, not a sentence.`,
       `Every character's "narrativeRole" MUST be exactly one of: ${NARRATIVE_ROLE_VALUES.join(", ")}.`,
       `Every character's "roleTier" MUST be exactly one of: ${ROLE_TIER_VALUES.join(", ")}. Copy one value verbatim — never invent a new label.`,
-      'If a character role is uncertain, use the closest allowed roleTier and include a creator-facing warning; never omit roleTier or invent an enum value.',
-      'Use storyContext to separate targetMarket, storySetting, leadBackground, leadOrigin, spokenDialogue, and namingPolicy. Use storyDesign to keep one primary engine, bounded pressure threads, an early payoff, romance progression, advantage beats, and a valid storyControlSeed. Use the exact generated character names as storyControlSeed.canonicalCharacterKeys.',
+      "If a character role is uncertain, use the closest allowed roleTier and include a creator-facing warning; never omit roleTier or invent an enum value.",
+      "Use storyContext to separate targetMarket, storySetting, leadBackground, leadOrigin, spokenDialogue, and namingPolicy. Use storyDesign to keep one primary engine, bounded pressure threads, an early payoff, romance progression, advantage beats, and a valid storyControlSeed. Use the exact generated character names as storyControlSeed.canonicalCharacterKeys.",
       storyArchitecture
         ? "Use the APPROVED STORY ARCHITECTURE as the authoritative source for destination, transformation, required arcs, failure model, and final payoff. Derive storyDesign, creatorSummary, mainPlot, and seasonArc from it without changing its meaning."
         : "If storyArchitecture is absent, return a draft diagnostic and do not invent a false long-term destination.",
@@ -1870,7 +2039,7 @@ function buildUserPromptV2(args: {
       : '{"contract_version":2,"title":string,"titleOptions":[string],"category":string,"logline":string,"mainPlot":string,"seasonArc":string,"tone":string,"cliffhangerStyle":string,"creatorSummary":{"whatItIsAbout":string,"protagonistAndGoal":string,"conflictAndDiscovery":string,"centralMystery":string,"decisionNotes":[string]},"characters":[{"name":string,"role":string,"narrativeRole":string,"roleTier":string,"occupation":string,"description":string}],"visualBible":string,"locations":[{"name":string,"description":string}],"mixRecipe":{"primaryFlavor":string,"supportingFlavors":[string],"rationale":string},"warnings":[{"code":string,"message":string}],"blendFacets":[{"facet":string,"contributions":[{"presetId":string,"element":string,"kept":boolean}]}]',
     ',"storyContract":object,"storyContext":object,"storyDesign":object,"diagnostics":[{"code":string,"severity":string,"message":string}]',
     visualNarrativeContext ? `,${VISUAL_NARRATIVE_PROFILE_JSON_SHAPE}` : "",
-    '}',
+    "}",
   ].join("");
 
   return [
@@ -1897,12 +2066,16 @@ function buildUserPromptV2(args: {
       ? renderAudienceAgeRatingBlock(params.audienceAgeRating)
       : "",
     buildLineageContinuityBlock(params.lineageContext),
-    buildSinglePresetVariationBlock(params.selectedPresets.length, variationNonce),
+    buildSinglePresetVariationBlock(
+      params.selectedPresets.length,
+      variationNonce
+    ),
     buildVisualNarrativeDraftBlock(visualNarrativeContext),
+    sourcePackBlock,
     buildUserPremisePrimaryBlock(
       params.userPremise,
       hasPresetSelections,
-      hasLineageContext,
+      hasLineageContext
     ),
     buildGenerateFromBasicsBlock({
       hasPresetSelections,
@@ -1921,9 +2094,11 @@ function buildUserPromptV2(args: {
 function buildCorrectiveInstruction(
   underBlendedPresetIds: string[],
   presetTitleById: Map<string, string>,
-  minFacetsPerPreset: number,
+  minFacetsPerPreset: number
 ): string {
-  const names = underBlendedPresetIds.map((id) => presetTitleById.get(id) ?? id).join(", ");
+  const names = underBlendedPresetIds
+    .map(id => presetTitleById.get(id) ?? id)
+    .join(", ");
   return [
     `Your previous response did not sufficiently blend the following preset(s): ${names}.`,
     `Revise "blendFacets" so EACH of these presets has at least ${minFacetsPerPreset} facets with a genuine "kept": true contribution (choose from their assigned facet slots in "facetAssignments" above), WITHOUT removing or weakening any other preset's existing kept contributions.`,
@@ -1932,7 +2107,7 @@ function buildCorrectiveInstruction(
 
 function assembleFinalVisualIdentity(
   merged: VerticalDramaMergedVisualIdentity | null,
-  llmWritten: SynthesizedGenrePresetDraftV2Raw["visualIdentity"],
+  llmWritten: SynthesizedGenrePresetDraftV2Raw["visualIdentity"]
 ): VerticalDramaPresetVisualIdentity | undefined {
   if (!merged || !llmWritten) return undefined;
   return {
@@ -1967,8 +2142,12 @@ function assembleFinalVisualIdentity(
  * spec §8.2.2.C.5).
  */
 export async function synthesizeVerticalDramaPresetV2(
-  params: SynthesizeVerticalDramaPresetV2Params,
-): Promise<{ draft: SynthesizedGenrePresetDraftV2; creditsUsed: number; model: string }> {
+  params: SynthesizeVerticalDramaPresetV2Params
+): Promise<{
+  draft: SynthesizedGenrePresetDraftV2;
+  creditsUsed: number;
+  model: string;
+}> {
   const selectedCategories = uniqueStrings(params.selectedCategories);
   const selections = resolveMixSelections({
     selectedPresetIds: params.selectedPresetIds,
@@ -1983,6 +2162,20 @@ export async function synthesizeVerticalDramaPresetV2(
     ...params,
     selectedCategories,
   });
+  const logicalRunKey =
+    params.idempotencyKey ??
+    `vd-preset-synthesis-v2:${createHash("sha256")
+      .update(
+        JSON.stringify({
+          selections,
+          selectedCategories,
+          primarySelectionId: params.primarySelectionId ?? null,
+          targetEpisodeCount: params.targetEpisodeCount ?? null,
+          userPremise: params.userPremise ?? null,
+        }),
+      )
+      .digest("hex")
+      .slice(0, 24)}`;
   validatePresetSynthesisSelection({
     selectedPresets: selections,
     selectedCategories,
@@ -1996,11 +2189,18 @@ export async function synthesizeVerticalDramaPresetV2(
   }
 
   const primarySelectionId =
-    params.primarySelectionId || selections[0]?.presetId || selectedCategories[0] || "auto";
-  const minFacetsPerPreset = params.minFacetsPerPreset ?? DEFAULT_MIN_FACETS_PER_PRESET;
+    params.primarySelectionId ||
+    selections[0]?.presetId ||
+    selectedCategories[0] ||
+    "auto";
+  const minFacetsPerPreset =
+    params.minFacetsPerPreset ?? DEFAULT_MIN_FACETS_PER_PRESET;
 
-  const model = params.model ??
-    (await (await import("./verticalDramaLlmModelPolicy")).resolveVerticalDramaRecommendedDraftModel());
+  const model =
+    params.model ??
+    (await (
+      await import("./verticalDramaLlmModelPolicy")
+    ).resolveVerticalDramaRecommendedDraftModel());
   const systemPrompt = loadSkillSystemPrompt();
   assertPresetSynthesizerSkillSupportsV2(systemPrompt);
 
@@ -2008,25 +2208,29 @@ export async function synthesizeVerticalDramaPresetV2(
     selections,
     params.selectedPresets,
     primarySelectionId,
-    minFacetsPerPreset,
+    minFacetsPerPreset
   );
 
   const visualIdentitySelections = buildVisualIdentitySelections(
     selections,
     params.selectedPresets,
-    primarySelectionId,
+    primarySelectionId
   );
   const mergedVisualIdentity =
-    visualIdentitySelections.length > 0 ? mergeVisualIdentities(visualIdentitySelections) : null;
-  const visualNarrativeContext = params.visualNarrativeEnabled
-    ? toVisualNarrativePromptContext(params.visualNarrativeIdentity) ??
-      toVisualNarrativePromptContext(mergedVisualIdentity)
+    visualIdentitySelections.length > 0
+      ? mergeVisualIdentities(visualIdentitySelections)
       : null;
+  const visualNarrativeContext = params.visualNarrativeEnabled
+    ? (toVisualNarrativePromptContext(params.visualNarrativeIdentity) ??
+      toVisualNarrativePromptContext(mergedVisualIdentity))
+    : null;
   if (visualNarrativeContext) {
     assertPresetSynthesizerSkillSupportsVisualNarrative(systemPrompt);
   }
 
-  const presetTitleById = new Map(params.selectedPresets.map((preset) => [preset.id, preset.title]));
+  const presetTitleById = new Map(
+    params.selectedPresets.map(preset => [preset.id, preset.title])
+  );
   const variationNonce = randomUUID();
 
   const basePrompt = buildUserPromptV2({
@@ -2055,18 +2259,61 @@ export async function synthesizeVerticalDramaPresetV2(
     maxTokens: V2_MAX_TOKENS,
     schema: synthesizedPresetDraftV2Schema,
     disableProviderFallbacks: true,
+    maxTransientRetries: 0,
     label: "Preset synthesis v2",
   });
 
+  const chargeSynthesisCall = async (
+    call: typeof firstAttempt,
+    callKey: string,
+    stage: string,
+  ): Promise<number> => {
+    const actualModel = call.model ?? model;
+    const inputTokens = call.response.usage?.prompt_tokens ?? 0;
+    const outputTokens = call.response.usage?.completion_tokens ?? 0;
+    const credits = calculateCreditsForLLM(
+      inputTokens,
+      outputTokens,
+      actualModel,
+    );
+    await deductCredits({
+      userId: params.userId,
+      tenantId: params.tenantId,
+      amount: credits,
+      description: `Skill run: vertical-drama-preset-synthesizer (${stage})`,
+      idempotencyKey: `${logicalRunKey}:preset-synthesis-v2:${callKey}`,
+      skillRunId: `vd-preset-synthesis-v2:${logicalRunKey}:${callKey}`,
+      skillSlug: "vertical-drama-preset-synthesizer",
+      sourceType: "skill",
+      metadata: {
+        feature: "vertical_drama_preset_synthesis_v2",
+        stage,
+        model: actualModel,
+        llmModel: actualModel,
+        inputTokens,
+        outputTokens,
+        logicalRunKey,
+        selectedPresetIds: selections.map(selection => selection.presetId),
+        selectedCategories,
+        primarySelectionId,
+      },
+    });
+    return credits;
+  };
+
+  let activeModel = firstAttempt.model ?? model;
   let finalRawDraft = firstAttempt.data;
-  let totalPromptTokens = firstAttempt.response.usage?.prompt_tokens ?? 0;
-  let totalCompletionTokens = firstAttempt.response.usage?.completion_tokens ?? 0;
+  let creditsUsed = await chargeSynthesisCall(
+    firstAttempt,
+    "primary",
+    "primary",
+  );
   const sourceIds = selections.map(selection => selection.presetId);
   let blendReport = assembleBlendReport(
     finalRawDraft.blendFacets,
     minFacetsPerPreset,
     primarySelectionId,
-    { sourceIds, hasUserPremise },
+    { sourceIds, hasUserPremise }
   );
 
   // Blend QC gate (spec §8.2.2.C.5): coverage below floor -> ONE corrective
@@ -2077,11 +2324,11 @@ export async function synthesizeVerticalDramaPresetV2(
     const correctiveInstruction = buildCorrectiveInstruction(
       blendReport.underBlended,
       presetTitleById,
-      minFacetsPerPreset,
+      minFacetsPerPreset
     );
     try {
       const retryAttempt = await executeJsonPlanningCallWithRetry({
-        model,
+        model: activeModel,
         systemPrompt,
         userPrompt: `${basePrompt}\n\n${correctiveInstruction}`,
         temperature: 0.75,
@@ -2089,28 +2336,39 @@ export async function synthesizeVerticalDramaPresetV2(
         maxTokens: V2_MAX_TOKENS,
         schema: synthesizedPresetDraftV2Schema,
         disableProviderFallbacks: true,
+        maxTransientRetries: 0,
         label: "Preset synthesis v2 (blend corrective retry)",
       });
+      activeModel = retryAttempt.model ?? activeModel;
       finalRawDraft = retryAttempt.data;
-      totalPromptTokens += retryAttempt.response.usage?.prompt_tokens ?? 0;
-      totalCompletionTokens += retryAttempt.response.usage?.completion_tokens ?? 0;
+      creditsUsed += await chargeSynthesisCall(
+        retryAttempt,
+        "blend-corrective-retry",
+        "blend_corrective_retry",
+      );
       blendReport = assembleBlendReport(
         finalRawDraft.blendFacets,
         minFacetsPerPreset,
         primarySelectionId,
-        { sourceIds, hasUserPremise },
+        { sourceIds, hasUserPremise }
       );
     } catch (retryError) {
       debugError(
         "vd_preset_mix_v2_retry",
         "Preset synthesis v2 corrective retry failed — keeping the first attempt's (under-blended) result",
-        { message: retryError instanceof Error ? retryError.message : String(retryError) },
+        {
+          message:
+            retryError instanceof Error
+              ? retryError.message
+              : String(retryError),
+        }
       );
       // Keep the FIRST attempt's draft/report — never throw for under-blend.
     }
   }
 
-  const { storyContract: rawStoryContract, ...draftWithoutStoryContract } = finalRawDraft;
+  const { storyContract: rawStoryContract, ...draftWithoutStoryContract } =
+    finalRawDraft;
   const storyContract =
     readVerticalDramaStoryArchitecture(params.storyArchitecture) ??
     readVerticalDramaStoryArchitecture(rawStoryContract);
@@ -2119,10 +2377,18 @@ export async function synthesizeVerticalDramaPresetV2(
     ...(storyContract ? { storyContract } : {}),
     characters: normalizeSynthesizedCharacters(finalRawDraft.characters),
     ...(readVerticalDramaDraftStoryContext(finalRawDraft.storyContext)
-      ? { storyContext: readVerticalDramaDraftStoryContext(finalRawDraft.storyContext) }
+      ? {
+          storyContext: readVerticalDramaDraftStoryContext(
+            finalRawDraft.storyContext
+          ),
+        }
       : {}),
     ...(readVerticalDramaDraftStoryDesign(finalRawDraft.storyDesign)
-      ? { storyDesign: readVerticalDramaDraftStoryDesign(finalRawDraft.storyDesign) }
+      ? {
+          storyDesign: readVerticalDramaDraftStoryDesign(
+            finalRawDraft.storyDesign
+          ),
+        }
       : {}),
   };
   const structuralDiagnostics = buildDraftStructuralDiagnostics({
@@ -2133,18 +2399,25 @@ export async function synthesizeVerticalDramaPresetV2(
   });
   finalRawDraft = {
     ...finalRawDraft,
-    ...(structuralDiagnostics.length ? { diagnostics: structuralDiagnostics } : {}),
+    ...(structuralDiagnostics.length
+      ? { diagnostics: structuralDiagnostics }
+      : {}),
   };
   const warnings = [...finalRawDraft.warnings];
   if (blendReport.underBlended.length > 0) {
-    const names = blendReport.underBlended.map((id) => presetTitleById.get(id) ?? id).join(", ");
+    const names = blendReport.underBlended
+      .map(id => presetTitleById.get(id) ?? id)
+      .join(", ");
     warnings.push({
       code: "preset_under_blended",
       message: `preset(s) ${names} ยังไม่ถูกผสมจริง (ครอบคลุมต่ำกว่า ${minFacetsPerPreset} ด้าน)`,
     });
   }
 
-  const visualIdentity = assembleFinalVisualIdentity(mergedVisualIdentity, finalRawDraft.visualIdentity);
+  const visualIdentity = assembleFinalVisualIdentity(
+    mergedVisualIdentity,
+    finalRawDraft.visualIdentity
+  );
 
   const {
     blendFacets: _blendFacets,
@@ -2165,26 +2438,5 @@ export async function synthesizeVerticalDramaPresetV2(
   const { draft: clampedDraft } = clampTitleAndToneForCreateSeries(mergedDraft);
   const draft = appendPremiseCoverageWarning(clampedDraft, params.userPremise);
 
-  const creditsUsed = calculateCreditsForLLM(totalPromptTokens, totalCompletionTokens, model);
-
-  await deductCredits({
-    userId: params.userId,
-    tenantId: params.tenantId,
-    amount: creditsUsed,
-    description: "Vertical Drama — synthesize mix-and-match preset (v2, verifiable blend)",
-    sourceType: "skill",
-    metadata: {
-      model,
-      llmModel: model,
-      feature: "vertical_drama_preset_synthesis_v2",
-      selectedPresetIds: selections.map((s) => s.presetId),
-      selectedCategories,
-      primarySelectionId,
-      underBlended: blendReport.underBlended,
-      inputTokens: totalPromptTokens,
-      outputTokens: totalCompletionTokens,
-    },
-  });
-
-  return { draft, creditsUsed, model };
+  return { draft, creditsUsed, model: activeModel };
 }

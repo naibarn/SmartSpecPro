@@ -309,6 +309,27 @@ def _poll_slide_ready(page, deck_id: int, slide_index: int, mode: str) -> dict[s
     }
 
 
+def _wait_for_slide_paint(page) -> None:
+    """Wait for decoded images and two compositor frames before capture."""
+    try:
+        page.evaluate(
+            """async () => {
+                const images = Array.from(document.querySelectorAll('img'));
+                await Promise.all(images.map(async (image) => {
+                    if (image.naturalWidth <= 0 || typeof image.decode !== 'function') return;
+                    try { await image.decode(); } catch (_) {}
+                }));
+                await new Promise((resolve) => requestAnimationFrame(() =>
+                    requestAnimationFrame(resolve)
+                ));
+            }"""
+        )
+    except Exception as exc:
+        # The ready gate remains authoritative; this is only a final compositor
+        # settle step and must not hide a useful readiness error.
+        logger.warning("slide_paint_settle_failed", error=str(exc))
+
+
 def _validate_png_file(path: str, slide_index: int) -> None:
     """Reject missing, truncated, or non-PNG screenshots before packaging."""
     if not os.path.isfile(path) or os.path.getsize(path) <= 0:
@@ -388,14 +409,14 @@ def _render_slides_to_screenshots(
                     state = ready_result.get("state") if isinstance(ready_result, dict) else None
                     state_status = str((state or {}).get("status", "")).strip().lower()
                     state_code = str((state or {}).get("code", "")).strip()
+                    if bool((state or {}).get("mediaDegraded")):
+                        raise RuntimeError(
+                            "E_SLIDE_MEDIA_DEGRADED: "
+                            f"deck {deck_id} slide {idx} has media that failed to load"
+                        )
                     if not ready:
                         logger.warning("slide_ready_timeout", deck_id=deck_id, slide_index=idx)
                     elif state_status == "degraded":
-                        if bool((state or {}).get("mediaDegraded")):
-                            raise RuntimeError(
-                                "E_SLIDE_MEDIA_DEGRADED: "
-                                f"deck {deck_id} slide {idx} has media that failed to load"
-                            )
                         logger.warning(
                             "slide_ready_degraded",
                             deck_id=deck_id,
@@ -404,6 +425,7 @@ def _render_slides_to_screenshots(
                         )
 
                     out_path = os.path.join(tmp_dir, f"slide_{idx:04d}.png")
+                    _wait_for_slide_paint(page)
                     page.screenshot(
                         path=out_path,
                         clip={"x": 0, "y": 0, "width": width, "height": height},
@@ -483,14 +505,14 @@ def _render_slides_to_video_clips(
                     state = ready_result.get("state") if isinstance(ready_result, dict) else None
                     state_status = str((state or {}).get("status", "")).strip().lower()
                     state_code = str((state or {}).get("code", "")).strip()
+                    if bool((state or {}).get("mediaDegraded")):
+                        raise RuntimeError(
+                            "E_SLIDE_MEDIA_DEGRADED: "
+                            f"deck {deck_id} slide {idx} has media that failed to load"
+                        )
                     if not ready:
                         logger.warning("slide_ready_timeout_record_mode", deck_id=deck_id, slide_index=idx)
                     elif state_status == "degraded":
-                        if bool((state or {}).get("mediaDegraded")):
-                            raise RuntimeError(
-                                "E_SLIDE_MEDIA_DEGRADED: "
-                                f"deck {deck_id} slide {idx} has media that failed to load"
-                            )
                         logger.warning(
                             "slide_ready_degraded_record_mode",
                             deck_id=deck_id,
@@ -969,12 +991,13 @@ def _build_jpg_zip(screenshot_paths: list[str], tmp_dir: str) -> str:
 
 def _upload_output(task_self, output_path: str, render_spec: dict, format: str) -> dict:
     """
-    Upload the rendered output to S3/R2 and return a 48-hour presigned download URL.
+    Upload the rendered output to S3/R2 and return the storage key.
 
-    H-2: Returns a time-limited presigned URL (not a permanent public URL).
+    The Node protected storage proxy is the only playback URL. Do not return a
+    presigned URL because it expires and bypasses the tenant/user cache boundary.
     H-4: deck_id is sanitized to prevent path traversal in the R2 key namespace.
 
-    Returns: {"output_url": str, "output_bytes": int}
+    Returns: {"output_url": None, "output_storage_key": str, "output_bytes": int}
     """
     deck_id = render_spec.get("deckId", "unknown")
     # H-4: Sanitize deck_id — coerce to integer string to prevent path traversal
@@ -997,14 +1020,9 @@ def _upload_output(task_self, output_path: str, render_spec: dict, format: str) 
     content_type = content_type_map.get(format, "application/octet-stream")
 
     file_size = os.path.getsize(output_path)
-    output_url: str | None = None
     try:
         r2 = get_r2_storage()
         _run_async(r2.upload_file(output_path, key, content_type=content_type))
-        # H-2: Generate 48-hour presigned URL (172800 seconds) — not permanent public URL
-        output_url = _run_async(r2.generate_presigned_url(key, expires_in=172800))
-        if not output_url:
-            raise RuntimeError(f"R2 presigned URL generation returned no URL for key={key}")
         logger.info(
             "render_presentation_uploaded_r2",
             deck_id=deck_id_safe,
@@ -1012,25 +1030,16 @@ def _upload_output(task_self, output_path: str, render_spec: dict, format: str) 
             output_bytes=file_size,
         )
     except Exception as exc:
-        # Dev-safe fallback: keep export usable even when R2 is misconfigured.
-        media_storage_path = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-        export_dir = os.path.join(media_storage_path, "presentation_exports", deck_id_safe)
-        os.makedirs(export_dir, exist_ok=True)
-        fallback_name = f"{task_id}.{ext}"
-        fallback_path = os.path.join(export_dir, fallback_name)
-        shutil.copy2(output_path, fallback_path)
-        token = _make_export_download_token(deck_id_safe, fallback_name)
-        output_url = f"/api/v1/presentations/export/files/{deck_id_safe}/{fallback_name}?token={token}"
-        logger.warning(
-            "render_presentation_upload_fallback_local",
+        logger.error(
+            "render_presentation_upload_r2_failed",
             deck_id=deck_id_safe,
             key=key,
-            local_path=fallback_path,
             error=str(exc),
         )
+        raise RuntimeError("Presentation export could not be stored in R2") from exc
 
     task_self.update_state(
         state="PROGRESS",
         meta={"percent": 100, "stage": "Done"},
     )
-    return {"output_url": output_url, "output_bytes": file_size}
+    return {"output_url": None, "output_storage_key": key, "output_bytes": file_size}

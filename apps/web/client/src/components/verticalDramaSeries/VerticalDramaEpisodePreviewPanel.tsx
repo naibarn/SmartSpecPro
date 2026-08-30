@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
+import { isTransientGenerationError } from "@shared/transientGenerationError";
 import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
 import { WebAssetResolver } from "@/services/webAssetResolver";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
@@ -37,6 +38,16 @@ import type { VerticalDramaFinalRenderOptionsView } from "./VerticalDramaEpisode
 
 type PreviewShotOption = { shotNumber: number; ready: boolean };
 type CoverModel = { modelId: string; name: string; isEnabled?: boolean };
+type EpisodePreviewCoverRetryRequest = {
+  seriesId: string;
+  episodeId: string;
+  coverSlotId: 1 | 2 | 3 | 4;
+  modelId: string;
+  includeTitleLogo: boolean;
+  includeChannelLogo: boolean;
+  idempotencyKey: string;
+  retryAttempt: number;
+};
 
 const coverModelStorageKey = (seriesId: string) =>
   `smartspec_vd_series_${seriesId}_cover_model`;
@@ -104,6 +115,11 @@ export function VerticalDramaEpisodePreviewPanel({
   const [failedPreviewSlots, setFailedPreviewSlots] = useState<Set<number>>(
     () => new Set(),
   );
+  const coverRetryRequestsRef = useRef(
+    new Map<string, EpisodePreviewCoverRetryRequest>()
+  );
+  const coverRetryAttemptsRef = useRef(new Map<string, number>());
+  const scheduledCoverRetriesRef = useRef(new Set<string>());
 
   const imageModelsQuery = trpc.mediaModels.list.useQuery({
     type: "image",
@@ -187,6 +203,25 @@ export function VerticalDramaEpisodePreviewPanel({
   }, [previews]);
 
   useEffect(() => {
+    const serverReadySlots = new Set<number>(
+      previews
+        .filter(
+          preview =>
+            preview.status === "completed" &&
+            Boolean(preview.videoUrl) &&
+            preview.durabilityStatus !== "expired",
+        )
+        .map(preview => preview.slotId),
+    );
+    setFailedPreviewSlots(current => {
+      const next = new Set(
+        Array.from(current).filter(slotId => !serverReadySlots.has(slotId)),
+      );
+      return next.size === current.size ? current : next;
+    });
+  }, [previews]);
+
+  useEffect(() => {
     if (!lightboxUrl) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setLightboxUrl(null);
@@ -197,15 +232,61 @@ export function VerticalDramaEpisodePreviewPanel({
 
   const generateCoverMutation =
     trpc.verticalDramaEpisodes.generateEpisodeCover.useMutation({
-      onSuccess: () => {
+      onSuccess: (_data, variables) => {
+        const key = `${variables.episodeId}:${variables.coverSlotId}`;
+        scheduledCoverRetriesRef.current.delete(key);
         setActiveCoverSlotId(null);
         void Promise.all(coverQueries.map(query => query.refetch()));
       },
       onError: error => {
         setActiveCoverSlotId(null);
+        if (isTransientGenerationError(error)) {
+          toast.info(
+            lang === "th"
+              ? "ผู้ให้บริการภาพขัดข้องชั่วคราว ระบบจะลองสร้างหน้าปกใหม่"
+              : "The image provider is temporarily unavailable; the cover will be retried"
+          );
+          return;
+        }
         toast.error(error.message);
       },
     });
+  const scheduleCoverRetry = (coverSlotId: number) => {
+    const key = `${episodeId}:${coverSlotId}`;
+    const request = coverRetryRequestsRef.current.get(key);
+    if (
+      !request ||
+      (coverRetryAttemptsRef.current.get(key) ?? 0) >= 2 ||
+      scheduledCoverRetriesRef.current.has(key)
+    ) {
+      return;
+    }
+    const nextAttempt = (coverRetryAttemptsRef.current.get(key) ?? 0) + 1;
+    coverRetryAttemptsRef.current.set(key, nextAttempt);
+    scheduledCoverRetriesRef.current.add(key);
+    window.setTimeout(() => {
+      scheduledCoverRetriesRef.current.delete(key);
+      setActiveCoverSlotId(coverSlotId);
+      const retryRequest = {
+        ...request,
+        // A terminal task is refunded by the status reconciler. A new
+        // generation attempt must therefore reserve against a new idempotency
+        // key; reusing the original key would make deductCredits treat the
+        // retry as a duplicate of the refunded attempt.
+        idempotencyKey: newIdempotencyKey(),
+        retryAttempt: nextAttempt,
+      };
+      coverRetryRequestsRef.current.set(key, retryRequest);
+      generateCoverMutation.mutate(retryRequest);
+    }, 2_000);
+  };
+  useEffect(() => {
+    for (const item of coverImages) {
+      if (item.coverImage.status === "failed" && item.coverImage.retryable) {
+        scheduleCoverRetry(item.slotId);
+      }
+    }
+  }, [coverImages]);
   const setCoverAssetMutation =
     trpc.verticalDramaEpisodes.setEpisodeCoverAsset.useMutation({
       onSuccess: () => {
@@ -256,15 +337,20 @@ export function VerticalDramaEpisodePreviewPanel({
       testId: "vd-episode-preview-cover-confirm",
       onConfirm: () => {
         setActiveCoverSlotId(coverSlotId);
-        generateCoverMutation.mutate({
-          seriesId,
-          episodeId,
-          coverSlotId: coverSlotId as 1 | 2 | 3 | 4,
-          modelId: coverModelId,
-          includeTitleLogo,
-          includeChannelLogo,
-          idempotencyKey: newIdempotencyKey(),
-        });
+          const request: EpisodePreviewCoverRetryRequest = {
+            seriesId,
+            episodeId,
+            coverSlotId: coverSlotId as 1 | 2 | 3 | 4,
+            modelId: coverModelId,
+            includeTitleLogo,
+            includeChannelLogo,
+            idempotencyKey: newIdempotencyKey(),
+            retryAttempt: 0,
+          };
+          const key = `${episodeId}:${coverSlotId}`;
+          coverRetryRequestsRef.current.set(key, request);
+          coverRetryAttemptsRef.current.set(key, 0);
+          generateCoverMutation.mutate(request);
       },
     });
   };
@@ -613,23 +699,24 @@ export function VerticalDramaEpisodePreviewPanel({
                         </span>
                       ) : null}
                     </div>
-                    {preview?.status === "completed" && preview.videoUrl ? (
-                      failedPreviewSlots.has(slotId) ? (
-                        <div
-                          className="flex aspect-[9/16] flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-amber-400/70 bg-amber-50/50 px-2 text-center text-amber-800 dark:bg-amber-950/20 dark:text-amber-200"
-                          data-testid={`vd-episode-preview-expired-${slotId}`}
-                        >
-                          <VideoOff className="h-5 w-5" aria-hidden="true" />
-                          <span className="text-xs font-medium">
-                            {lang === "th" ? "ไฟล์หมดอายุ" : "File expired"}
-                          </span>
-                          <span className="text-[10px]">
-                            {lang === "th"
-                              ? "กดสร้างชุดนี้ใหม่ด้านล่าง"
-                              : "Render this set again below"}
-                          </span>
-                        </div>
-                      ) : (
+                    {preview?.status === "completed" &&
+                    (preview.durabilityStatus === "expired" ||
+                      failedPreviewSlots.has(slotId)) ? (
+                      <div
+                        className="flex aspect-[9/16] flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-amber-400/70 bg-amber-50/50 px-2 text-center text-amber-800 dark:bg-amber-950/20 dark:text-amber-200"
+                        data-testid={`vd-episode-preview-expired-${slotId}`}
+                      >
+                        <VideoOff className="h-5 w-5" aria-hidden="true" />
+                        <span className="text-xs font-medium">
+                          {lang === "th" ? "ไฟล์หมดอายุ" : "File expired"}
+                        </span>
+                        <span className="text-[10px]">
+                          {lang === "th"
+                            ? "กดสร้างชุดนี้ใหม่ด้านล่าง"
+                            : "Render this set again below"}
+                        </span>
+                      </div>
+                    ) : preview?.status === "completed" && preview.videoUrl ? (
                       <div className="space-y-2">
                         <div className="overflow-hidden rounded-lg border border-border bg-black">
                           <video
@@ -677,7 +764,6 @@ export function VerticalDramaEpisodePreviewPanel({
                           </a>
                         </div>
                       </div>
-                      )
                     ) : null}
                     <Button
                       type="button"

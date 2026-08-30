@@ -262,7 +262,7 @@ export function validateEvidenceBundle(
     item =>
       !item.readable ||
       item.unresolvedPeople > 0 ||
-      (item.qualityScore !== null &&
+      (item.qualityScore != null &&
         item.qualityScore < evidencePolicy.minQualityScore)
   );
   if (

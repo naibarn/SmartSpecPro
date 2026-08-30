@@ -12,7 +12,7 @@ import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { Loader2, Save, Trash2, Upload } from "lucide-react";
+import { Loader2, Save, Sparkles, Trash2, Upload } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -64,6 +64,11 @@ import {
   VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS,
   type VerticalDramaSpokenLocaleId,
 } from "@shared/verticalDramaSeries/dialogueLanguageProfile";
+import {
+  DEFAULT_VERTICAL_DRAMA_WORKFLOW_POLICY,
+  readVerticalDramaWorkflowPolicy,
+} from "@shared/verticalDramaMedia/workflow";
+import { workerSeriesAccessPolicySchema } from "@shared/workerSeriesControlPlane";
 // Text Overlay Suite (F131AB, task #34) — series watermark card. Pure/
 // isomorphic module, safe as a normal static import (same posture as
 // `targetAudienceRegion.ts` above).
@@ -84,15 +89,24 @@ import {
   SeriesLookLockPicker,
   type SeriesLookLockPickerValue,
 } from "./SeriesLookLockPicker";
+import { VerticalDramaLogoGenerationDialog } from "./VerticalDramaLogoGenerationDialog";
 
 const STATUS_OPTIONS: VerticalDramaSeriesStatus[] = [
   "draft",
   "planning",
+  "story_ready",
   "active",
   "paused",
   "completed",
   "archived",
 ];
+
+const WORKER_WORKFLOW_OPERATION_FIELDS = [
+  { id: "broll_preprocess", th: "เตรียม B-roll", en: "B-roll preprocess" },
+  { id: "shot_generation", th: "สร้าง Shot", en: "Shot generation" },
+  { id: "image_to_video", th: "ภาพเป็นวิดีโอ", en: "Image to video" },
+  { id: "reference_to_video", th: "Reference เป็นวิดีโอ", en: "Reference to video" },
+] as const;
 
 /**
  * Manual LLM model override (added 2026-07-11 — see
@@ -136,6 +150,8 @@ export interface VerticalDramaSettingsTabProps {
    *  trust a jsonb column's runtime shape client-side, same convention as
    *  `watermark`/`bible` in this same file). Absent/`null` field = automatic. */
   llmModelPolicy?: unknown;
+  /** Series-level Worker/ComfyUI workflow policy, stored under policy JSONB. */
+  policy?: unknown;
   /** Text Overlay Suite (F131AB, task #34) — gates the watermark card
    *  entirely (fail-closed, default `false`, same convention as every other
    *  Vertical Drama flag threaded into this component's siblings). */
@@ -204,6 +220,7 @@ export function VerticalDramaSettingsTab({
   locale,
   bible,
   llmModelPolicy,
+  policy,
   textOverlaySuiteEnabled = false,
   lookLockEnabled = false,
   watermark,
@@ -251,6 +268,37 @@ export function VerticalDramaSettingsTab({
   const [defaultModelInput, setDefaultModelInput] = useState<string | null>(
     defaultModelIdFromProps
   );
+  const workflowPolicyFromProps = useMemo(
+    () => readVerticalDramaWorkflowPolicy(policy),
+    [policy]
+  );
+  const workerAccessPolicyFromProps = useMemo(() => {
+    const raw = policy && typeof policy === "object" && !Array.isArray(policy)
+      ? (policy as Record<string, unknown>).workerAccess
+      : null;
+    const parsed = workerSeriesAccessPolicySchema.safeParse(raw);
+    return parsed.success
+      ? parsed.data
+      : { mode: "private" as const, userIds: [], groupIds: [], revision: "worker-access-v1" };
+  }, [policy]);
+  const [workerDefaultWorkflowInput, setWorkerDefaultWorkflowInput] = useState(
+    workflowPolicyFromProps.defaultWorkflowId
+  );
+  const [workerAllowedWorkflowsInput, setWorkerAllowedWorkflowsInput] = useState(
+    workflowPolicyFromProps.allowedWorkflowIds.join(", ")
+  );
+  const [workerAllowOverrideInput, setWorkerAllowOverrideInput] = useState(
+    workflowPolicyFromProps.allowUserOverride
+  );
+  const [workerOperationDefaultsInput, setWorkerOperationDefaultsInput] = useState<Record<string, string>>(
+    Object.fromEntries(WORKER_WORKFLOW_OPERATION_FIELDS.map(({ id }) => [
+      id,
+      workflowPolicyFromProps.workflowDefaults[id] ?? workflowPolicyFromProps.defaultWorkflowId,
+    ]))
+  );
+  const [workerAccessModeInput, setWorkerAccessModeInput] = useState(workerAccessPolicyFromProps.mode);
+  const [workerAccessUserIdsInput, setWorkerAccessUserIdsInput] = useState(workerAccessPolicyFromProps.userIds.join(", "));
+  const [workerAccessGroupIdsInput, setWorkerAccessGroupIdsInput] = useState(workerAccessPolicyFromProps.groupIds.join(", "));
   const bibleRecord = bible && typeof bible === "object"
     ? bible as Record<string, unknown>
     : {};
@@ -293,6 +341,20 @@ export function VerticalDramaSettingsTab({
     setDefaultModelInput(defaultModelIdFromProps);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultModelIdFromProps]);
+  useEffect(() => {
+    setWorkerDefaultWorkflowInput(workflowPolicyFromProps.defaultWorkflowId);
+    setWorkerAllowedWorkflowsInput(workflowPolicyFromProps.allowedWorkflowIds.join(", "));
+    setWorkerAllowOverrideInput(workflowPolicyFromProps.allowUserOverride);
+    setWorkerOperationDefaultsInput(Object.fromEntries(WORKER_WORKFLOW_OPERATION_FIELDS.map(({ id }) => [
+      id,
+      workflowPolicyFromProps.workflowDefaults[id] ?? workflowPolicyFromProps.defaultWorkflowId,
+    ])));
+  }, [workflowPolicyFromProps]);
+  useEffect(() => {
+    setWorkerAccessModeInput(workerAccessPolicyFromProps.mode);
+    setWorkerAccessUserIdsInput(workerAccessPolicyFromProps.userIds.join(", "));
+    setWorkerAccessGroupIdsInput(workerAccessPolicyFromProps.groupIds.join(", "));
+  }, [workerAccessPolicyFromProps]);
   useEffect(() => {
     setDialogueSpokenInput(dialogueLanguageProfile.spokenLocale ?? "auto");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -343,6 +405,13 @@ export function VerticalDramaSettingsTab({
   const planningModels = planningModelsQuery.data ?? [];
   const llmModelPolicyMutation =
     trpc.verticalDramaSeries.setSeriesLlmModelPolicy.useMutation();
+  // Optional chaining keeps older test doubles/older clients renderable while
+  // the server router is rolled forward. The production tRPC client always
+  // exposes this mutation.
+  const workerWorkflowPolicyMutation =
+    trpc.verticalDramaSeries.setSeriesWorkerMediaWorkflowPolicy?.useMutation?.();
+  const workerAccessPolicyMutation =
+    trpc.verticalDramaSeries.setSeriesWorkerAccessPolicy?.useMutation?.();
   const durationProfileMutation =
     trpc.verticalDramaSeries.setSeriesDurationProfile.useMutation();
   const dialogueLanguageProfileMutation =
@@ -368,6 +437,15 @@ export function VerticalDramaSettingsTab({
   const dirty = titleInput !== title || statusInput !== status;
   const regionDirty = regionInput !== bibleRegion;
   const llmModelPolicyDirty = defaultModelInput !== defaultModelIdFromProps;
+  const workerWorkflowPolicyDirty =
+    workerDefaultWorkflowInput !== workflowPolicyFromProps.defaultWorkflowId ||
+    workerAllowedWorkflowsInput !== workflowPolicyFromProps.allowedWorkflowIds.join(", ") ||
+    workerAllowOverrideInput !== workflowPolicyFromProps.allowUserOverride ||
+    WORKER_WORKFLOW_OPERATION_FIELDS.some(({ id }) => workerOperationDefaultsInput[id] !== (workflowPolicyFromProps.workflowDefaults[id] ?? workflowPolicyFromProps.defaultWorkflowId));
+  const workerAccessPolicyDirty =
+    workerAccessModeInput !== workerAccessPolicyFromProps.mode ||
+    workerAccessUserIdsInput !== workerAccessPolicyFromProps.userIds.join(", ") ||
+    workerAccessGroupIdsInput !== workerAccessPolicyFromProps.groupIds.join(", ");
   const durationDirty =
     durationTouched && Number.isFinite(Number(shotDurationInput));
   const dialogueLanguageProfileDirty =
@@ -379,6 +457,8 @@ export function VerticalDramaSettingsTab({
     updateMutation.isPending ||
     regionMutation.isPending ||
     llmModelPolicyMutation.isPending ||
+    Boolean(workerWorkflowPolicyMutation?.isPending) ||
+    Boolean(workerAccessPolicyMutation?.isPending) ||
     durationProfileMutation.isPending ||
     dialogueLanguageProfileMutation.isPending ||
     lookLockMutation.isPending;
@@ -436,6 +516,48 @@ export function VerticalDramaSettingsTab({
             defaultModelId: defaultModelInput,
           })
         );
+      }
+      if (workerWorkflowPolicyDirty && workerWorkflowPolicyMutation) {
+        const allowedWorkflowIds = Array.from(new Set(
+          workerAllowedWorkflowsInput.split(",").map(value => value.trim()).filter(Boolean)
+        )).slice(0, 32);
+        const defaultWorkflowId = workerDefaultWorkflowInput.trim();
+        if (!defaultWorkflowId || !allowedWorkflowIds.includes(defaultWorkflowId)) {
+          throw new Error(lang === "th"
+            ? "Default workflow ต้องอยู่ในรายการ workflow ที่อนุญาต"
+            : "The default workflow must be included in the allowed workflow list");
+        }
+        const workflowDefaults = Object.fromEntries(WORKER_WORKFLOW_OPERATION_FIELDS.map(({ id }) => {
+          const workflowId = (workerOperationDefaultsInput[id] ?? "").trim();
+          if (!workflowId || !allowedWorkflowIds.includes(workflowId)) {
+            throw new Error(lang === "th"
+              ? `Workflow ของ ${id} ต้องอยู่ในรายการ workflow ที่อนุญาต`
+              : `The workflow for ${id} must be included in the allowed workflow list`);
+          }
+          return [id, workflowId];
+        }));
+        mutations.push(workerWorkflowPolicyMutation.mutateAsync({
+          seriesId,
+          policy: {
+            ...workflowPolicyFromProps,
+            defaultWorkflowId,
+            allowedWorkflowIds,
+            allowUserOverride: workerAllowOverrideInput,
+            workflowDefaults,
+          },
+          expectedRevision: workflowPolicyFromProps.policyRevision,
+        }));
+      }
+      if (workerAccessPolicyDirty && workerAccessPolicyMutation) {
+        const userIds = workerAccessUserIdsInput.split(",").map(value => Number(value.trim())).filter(value => Number.isSafeInteger(value) && value > 0).slice(0, 100);
+        const groupIds = workerAccessGroupIdsInput.split(",").map(value => value.trim()).filter(Boolean).slice(0, 100);
+        mutations.push(workerAccessPolicyMutation.mutateAsync({
+          seriesId,
+          mode: workerAccessModeInput,
+          userIds,
+          groupIds,
+          expectedRevision: workerAccessPolicyFromProps.revision,
+        }));
       }
       if (lookLockEnabled && lookLockDirty) {
         const hasPersistedVisualNarrativePreference =
@@ -634,6 +756,95 @@ export function VerticalDramaSettingsTab({
             />
           </div>
 
+          <Card className="border-primary/30 bg-primary/5" data-testid="vd-settings-worker-workflow-policy">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">
+                {lang === "th" ? "ค่าเริ่มต้น Worker / ComfyUI MCP" : "Worker / ComfyUI MCP defaults"}
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                {lang === "th"
+                  ? "กำหนด workflow ที่ server จะเลือกก่อน ผู้ใช้ยังเปลี่ยนได้ในรายละเอียด Shot ถ้าเปิด override และ workflow ผ่าน capability probe"
+                  : "Set the server default first. Users can override it in the Shot details drawer when allowed and compatible with the live capability probe."}
+              </p>
+            </CardHeader>
+            <CardContent className="grid max-w-2xl gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="vd-settings-worker-default-workflow">Default workflow</Label>
+                <Input
+                  id="vd-settings-worker-default-workflow"
+                  value={workerDefaultWorkflowInput}
+                  onChange={event => setWorkerDefaultWorkflowInput(event.target.value)}
+                  disabled={readOnly || isSaving}
+                  placeholder={DEFAULT_VERTICAL_DRAMA_WORKFLOW_POLICY.defaultWorkflowId}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="vd-settings-worker-allowed-workflows">Allowed workflows (comma-separated)</Label>
+                <Input
+                  id="vd-settings-worker-allowed-workflows"
+                  value={workerAllowedWorkflowsInput}
+                  onChange={event => setWorkerAllowedWorkflowsInput(event.target.value)}
+                  disabled={readOnly || isSaving}
+                />
+              </div>
+              <div className="grid gap-3 rounded-md border p-3">
+                <div>
+                  <Label>{lang === "th" ? "ค่าเริ่มต้นแยกตามฟังก์ชัน" : "Per-operation defaults"}</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === "th" ? "เลือก workflow เริ่มต้นให้แต่ละงาน โดยต้องอยู่ใน allowlist ด้านบน" : "Choose a default workflow for each operation; every value must be in the allowlist above."}
+                  </p>
+                </div>
+                {WORKER_WORKFLOW_OPERATION_FIELDS.map(({ id, th, en }) => (
+                  <div className="grid gap-1.5" key={id}>
+                    <Label htmlFor={`vd-settings-worker-operation-${id}`}>{lang === "th" ? th : en}</Label>
+                    <Input
+                      id={`vd-settings-worker-operation-${id}`}
+                      value={workerOperationDefaultsInput[id] ?? ""}
+                      onChange={event => setWorkerOperationDefaultsInput(current => ({ ...current, [id]: event.target.value }))}
+                      disabled={readOnly || isSaving}
+                    />
+                  </div>
+                ))}
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <Switch checked={workerAllowOverrideInput} onCheckedChange={setWorkerAllowOverrideInput} disabled={readOnly || isSaving} />
+                {lang === "th" ? "อนุญาตให้ผู้ใช้เลือก workflow ใน Shot ได้" : "Allow user workflow override in Shot"}
+              </label>
+              <p className="text-xs text-muted-foreground">
+                {lang === "th" ? "การบันทึกจะเพิ่ม policy revision ใหม่และไม่แก้ค่า setting อื่นของ Series" : "Saving creates a new policy revision and preserves unrelated Series settings."}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-primary/30 bg-primary/5" data-testid="vd-settings-worker-access-policy">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">{lang === "th" ? "สิทธิ์ Worker ของ Series" : "Series Worker access"}</CardTitle>
+              <p className="text-xs text-muted-foreground">{lang === "th" ? "กำหนดว่า Worker ของเจ้าของ กลุ่ม หรือ tenant นี้จะเห็นและประมวลผล Series ได้หรือไม่" : "Choose which Worker principals may discover and operate this Series."}</p>
+            </CardHeader>
+            <CardContent className="grid max-w-2xl gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="vd-settings-worker-access-mode">Access mode</Label>
+                <Select value={workerAccessModeInput} onValueChange={value => setWorkerAccessModeInput(value as "private" | "group" | "tenant")} disabled={readOnly || isSaving}>
+                  <SelectTrigger id="vd-settings-worker-access-mode"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="private">Private / explicit users</SelectItem>
+                    <SelectItem value="group">Worker group</SelectItem>
+                    <SelectItem value="tenant">Tenant workers</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="vd-settings-worker-access-users">User IDs (comma-separated)</Label>
+                <Input id="vd-settings-worker-access-users" value={workerAccessUserIdsInput} onChange={event => setWorkerAccessUserIdsInput(event.target.value)} disabled={readOnly || isSaving} placeholder="เช่น 12, 34" />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="vd-settings-worker-access-groups">Group IDs (comma-separated)</Label>
+                <Input id="vd-settings-worker-access-groups" value={workerAccessGroupIdsInput} onChange={event => setWorkerAccessGroupIdsInput(event.target.value)} disabled={readOnly || isSaving} placeholder="เช่น team-editors" />
+              </div>
+              <p className="text-xs text-muted-foreground">{lang === "th" ? "ระบบจะตรวจสิทธิ์และ revision อีกครั้งตอน bind/process/publish ทุกครั้ง" : "Access and revision are rechecked at bind/process/publish time."}</p>
+            </CardContent>
+          </Card>
+
           <div className="grid gap-1.5">
             <Label className="text-xs font-medium text-muted-foreground">
               {lang === "th" ? "สถานะ" : "Status"}
@@ -814,6 +1025,8 @@ export function VerticalDramaSettingsTab({
                 (!dirty &&
                   !regionDirty &&
                   !llmModelPolicyDirty &&
+                  !workerWorkflowPolicyDirty &&
+                  !workerAccessPolicyDirty &&
                   !durationDirty &&
                   !dialogueLanguageProfileDirty &&
                   !lookLockDirty) ||
@@ -843,6 +1056,7 @@ export function VerticalDramaSettingsTab({
           lang={lang}
           readOnly={readOnly}
           seriesId={seriesId}
+          seriesTitle={title}
           draft={watermarkDraft}
           onChange={setWatermarkDraft}
           saving={updateWatermarkMutation.isPending}
@@ -954,6 +1168,7 @@ function VerticalDramaSeriesWatermarkCard({
   lang,
   readOnly,
   seriesId,
+  seriesTitle,
   draft,
   onChange,
   saving,
@@ -962,6 +1177,7 @@ function VerticalDramaSeriesWatermarkCard({
   lang: "th" | "en";
   readOnly: boolean;
   seriesId: string;
+  seriesTitle: string;
   draft: VdSeriesWatermarkConfig;
   onChange: (next: VdSeriesWatermarkConfig) => void;
   saving: boolean;
@@ -1017,6 +1233,7 @@ function VerticalDramaSeriesWatermarkCard({
               lang={lang}
               readOnly={readOnly}
               seriesId={seriesId}
+              seriesTitle={seriesTitle}
               slotId="primary"
               value={primaryValue}
               onPatch={patchPrimary}
@@ -1028,6 +1245,7 @@ function VerticalDramaSeriesWatermarkCard({
               lang={lang}
               readOnly={readOnly}
               seriesId={seriesId}
+              seriesTitle={seriesTitle}
               slotId="secondary"
               value={secondaryValue}
               onPatch={patchSecondary}
@@ -1107,6 +1325,7 @@ function VerticalDramaWatermarkSlotForm({
   lang,
   readOnly,
   seriesId,
+  seriesTitle,
   slotId,
   value,
   onPatch,
@@ -1114,6 +1333,7 @@ function VerticalDramaWatermarkSlotForm({
   lang: "th" | "en";
   readOnly: boolean;
   seriesId: string;
+  seriesTitle: string;
   slotId: VdSeriesWatermarkSlotId;
   value: VdSeriesWatermarkSlot;
   onPatch: (next: Partial<VdSeriesWatermarkSlot>) => void;
@@ -1126,6 +1346,7 @@ function VerticalDramaWatermarkSlotForm({
     string | null
   >(null);
   const [watermarkDragActive, setWatermarkDragActive] = useState(false);
+  const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const watermarkFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const testId = (name: string) => `vd-watermark-${name}-${slotId}`;
@@ -1268,6 +1489,33 @@ function VerticalDramaWatermarkSlotForm({
         />
         <Label className="text-sm font-medium">{t.watermarkEnableLabel}</Label>
       </div>
+
+      {!readOnly ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-fit gap-1.5"
+          onClick={() => setLogoDialogOpen(true)}
+          data-testid={testId("generate-logo")}
+        >
+          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+          {lang === "th" ? "สร้างโลโก้ด้วย AI" : "Generate logo with AI"}
+        </Button>
+      ) : null}
+
+      {logoDialogOpen ? (
+        <VerticalDramaLogoGenerationDialog
+          lang={lang}
+          open={logoDialogOpen}
+          onOpenChange={setLogoDialogOpen}
+          seriesId={seriesId}
+          seriesTitle={seriesTitle}
+          slotId={slotId}
+          onApplied={imageUrl => {
+            onPatch({ enabled: true, type: "image", imageUrl });
+          }}
+        />
+      ) : null}
 
       {value.enabled ? (
         <>

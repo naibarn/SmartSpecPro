@@ -1309,6 +1309,7 @@ export async function runVerticalDramaEpisodeQualityReview(
       tenantId: params.tenantId,
       amount: creditsUsed,
       description: `Vertical Drama — episode quality review (episode #${params.episodeId})`,
+      skillSlug: "vertical-drama-episode-quality-review",
       sourceType: "skill",
       idempotencyKey: params.idempotencyKey,
       metadata: {

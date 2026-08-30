@@ -212,12 +212,13 @@ export function createPublicAgencyRouter(): Router {
             res,
             400,
             "invalid_request",
-            parsed.error.issues.map((i) => i.message).join("; "),
+            parsed.error?.issues.map((i) => i.message).join("; ") ?? "Invalid request",
           );
           return;
         }
 
-        const { message, conversation_id, max_credits, stream } = parsed.data;
+        const data = parsed.data as NonNullable<z.infer<typeof InvokeBodySchema>>;
+        const { message, conversation_id, max_credits, stream } = data;
         const { conversationId, result, reservedCredits } = await runWithDelegatedWorkerExecution({
           auth,
           actionClass: "compute",
@@ -300,9 +301,10 @@ export function createPublicAgencyRouter(): Router {
         }
 
         const creditsUsed = result.creditsUsed ?? 0;
+        const maxCredits = Number(max_credits || 0);
 
         // Deduct credits (or refund excess if reservation was used)
-        if (max_credits && max_credits > 0) {
+        if (maxCredits > 0) {
           // Refund unused credits
           const unused = Math.max(0, reservedCredits - creditsUsed);
           if (unused > 0) {
@@ -379,7 +381,14 @@ export function createPublicAgencyRouter(): Router {
         }
       } catch (err) {
         if (err instanceof WorkerDelegationError || err instanceof DelegatedWorkerPlatformError) {
-          sendApiError(res, err.statusCode, err.code, err.message, err.type);
+          const delegationError = err as WorkerDelegationError | DelegatedWorkerPlatformError;
+          sendApiError(
+            res,
+            delegationError.statusCode,
+            delegationError.code,
+            delegationError.message,
+            delegationError.type,
+          );
           return;
         }
         console.error("[PublicAgencyApi] POST invoke error", err);

@@ -124,6 +124,7 @@ import {
   parseMediaAspectRatio,
   type MediaAspectRatio,
 } from "@/lib/mediaAspectRatio";
+import { resolveMediaDisplayName } from "@shared/mediaDisplayName";
 
 type MediaType = "image" | "video" | "audio";
 type TaskStatus =
@@ -140,6 +141,10 @@ type Translator = (
 
 const MEDIA_HISTORY_PAGE_SIZE = 50;
 const MEDIA_HISTORY_SOURCE_FILTER_MAX_LENGTH = 128;
+export const MEDIA_HISTORY_TASK_STALE_TIME_MS = 30_000;
+export const MEDIA_HISTORY_TASK_GC_TIME_MS = 15 * 60_000;
+export const MEDIA_HISTORY_TASK_REVALIDATE_ON_MOUNT = "always" as const;
+export const MEDIA_HISTORY_TASK_REFETCH_ON_WINDOW_FOCUS = false;
 
 interface MediaHistoryQueryState {
   mediaType: MediaType | "all";
@@ -283,12 +288,30 @@ function canManuallyFetchTaskResult(
 }
 
 export function canAddTaskToGallery(
-  task: Pick<MediaTask, "status" | "resultUrl"> | null | undefined,
+  task:
+    | (Pick<MediaTask, "status" | "resultUrl"> &
+        Partial<Pick<MediaTask, "mediaType">>)
+    | null
+    | undefined,
   isAdmin: boolean,
 ): boolean {
   return Boolean(
-    isAdmin && task?.status === "completed" && task?.resultUrl,
+    isAdmin &&
+      (task?.mediaType === "image" || task?.mediaType === "video") &&
+      task.status === "completed" &&
+      task.resultUrl,
   );
+}
+
+export function resolveMediaHistoryGalleryTitle(
+  task: Pick<MediaTask, "mediaType" | "prompt" | "parameters" | "resultData">,
+): string {
+  return resolveMediaDisplayName({
+    mediaType: task.mediaType,
+    prompt: task.prompt,
+    parameters: task.parameters,
+    resultData: task.resultData,
+  }).title;
 }
 
 export function resolveMediaHistoryGalleryAspectRatio(
@@ -1248,10 +1271,38 @@ function VideoThumbnailCard({
 }) {
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
+
+  const useImageThumbnail = Boolean(thumbnailUrl) && !thumbnailFailed;
 
   useEffect(() => {
     setThumbnailFailed(false);
+    setShouldLoadVideo(false);
   }, [src, thumbnailUrl]);
+
+  useEffect(() => {
+    if (useImageThumbnail) return;
+    if (
+      typeof window === "undefined" ||
+      !("IntersectionObserver" in window)
+    ) {
+      setShouldLoadVideo(true);
+      return;
+    }
+    const element = previewRef.current;
+    if (!element) return;
+    const observer = new IntersectionObserver(
+      entries => {
+        if (!entries.some(entry => entry.isIntersecting)) return;
+        setShouldLoadVideo(true);
+        observer.disconnect();
+      },
+      { rootMargin: "400px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [src, thumbnailUrl, useImageThumbnail]);
 
   const handleLoadedMetadata = useCallback(() => {
     const el = videoRef.current;
@@ -1263,10 +1314,9 @@ function VideoThumbnailCard({
     }
   }, []);
 
-  const useImageThumbnail = Boolean(thumbnailUrl) && !thumbnailFailed;
-
   return (
     <div
+      ref={previewRef}
       className={cn(
         "relative h-full w-full overflow-hidden bg-slate-950",
         className
@@ -1277,9 +1327,11 @@ function VideoThumbnailCard({
           src={thumbnailUrl!}
           alt={alt}
           className="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
           onError={() => setThumbnailFailed(true)}
         />
-      ) : (
+      ) : shouldLoadVideo ? (
         <video
           ref={videoRef}
           src={src}
@@ -1290,7 +1342,7 @@ function VideoThumbnailCard({
           onLoadedMetadata={handleLoadedMetadata}
           onError={onError}
         />
-      )}
+      ) : null}
       <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
         <div className="rounded-full bg-black/55 p-3 text-white">
           <Play className="h-5 w-5" />
@@ -1379,6 +1431,15 @@ export default function MediaHistory() {
     limit: MEDIA_HISTORY_PAGE_SIZE,
     offset: currentPage * MEDIA_HISTORY_PAGE_SIZE,
     daysAgo: 12, // Only show tasks from last 12 days
+  }, {
+    // Keep the previous page visible while the short metadata cache is
+    // revalidated. Always revalidate on mount so newly completed media is not
+    // hidden behind a long-lived list cache.
+    staleTime: MEDIA_HISTORY_TASK_STALE_TIME_MS,
+    gcTime: MEDIA_HISTORY_TASK_GC_TIME_MS,
+    placeholderData: previous => previous,
+    refetchOnMount: MEDIA_HISTORY_TASK_REVALIDATE_ON_MOUNT,
+    refetchOnWindowFocus: MEDIA_HISTORY_TASK_REFETCH_ON_WINDOW_FOCUS,
   });
   const tasks: MediaTask[] = useMemo(
     () => (tasksData?.tasks || []).map((task: MediaTask) => {
@@ -1453,7 +1514,11 @@ export default function MediaHistory() {
     },
     {
       enabled: tasks.length > 0 || hasLibraryContextFilter,
-      staleTime: 30_000,
+      staleTime: MEDIA_HISTORY_TASK_STALE_TIME_MS,
+      gcTime: MEDIA_HISTORY_TASK_GC_TIME_MS,
+      placeholderData: previous => previous,
+      refetchOnMount: "always",
+      refetchOnWindowFocus: false,
     }
   );
   const recentLibraryResults = (recentLibraryData?.results ||
@@ -1705,6 +1770,10 @@ export default function MediaHistory() {
 
   // Handle adding task result to gallery (admin only)
   const handleAddToGallery = async (task: MediaTask) => {
+    if (task.mediaType !== "image" && task.mediaType !== "video") {
+      toast.info(t("historyPage.actions.imagesAndVideosOnly"));
+      return;
+    }
     if (!task.resultUrl) {
       toast.error(t("historyPage.toasts.noResultUrlAvailable"));
       return;
@@ -1729,8 +1798,8 @@ export default function MediaHistory() {
 
       // Create gallery item with permanent URL
       await addToGalleryMutation.mutateAsync({
-        type: task.mediaType === "audio" ? "video" : task.mediaType, // Map audio to video for gallery
-        title: task.prompt.slice(0, 100) || `${task.mediaType} - ${task.model}`,
+        type: task.mediaType,
+        title: resolveMediaHistoryGalleryTitle(task),
         description: task.prompt,
         aspectRatio,
         fileUrl: importResult.fileUrl, // Use permanent URL from storage
@@ -2013,7 +2082,7 @@ export default function MediaHistory() {
     }
     setShareDialogTarget({
       itemId: state.itemId,
-      title: task.prompt.slice(0, 80) || `${task.mediaType} - ${task.model}`,
+      title: resolveMediaHistoryGalleryTitle(task),
     });
   };
 
@@ -2742,6 +2811,8 @@ export default function MediaHistory() {
                             src={item.thumbnail_url}
                             alt={item.title}
                             className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-white">
@@ -3010,6 +3081,8 @@ export default function MediaHistory() {
                                   t("historyPage.preview.generatedImage")
                                 }
                                 className="h-full w-full object-contain"
+                                loading="lazy"
+                                decoding="async"
                                 onError={() => markExpired(task.resultUrl!)}
                               />
                             </button>
@@ -3287,6 +3360,8 @@ export default function MediaHistory() {
                               src={task.resultUrl}
                               alt={t("historyPage.preview.previewAlt")}
                               className="w-14 h-14 rounded-lg object-cover border cursor-pointer hover:opacity-80"
+                              loading="lazy"
+                              decoding="async"
                               onError={() => markExpired(task.resultUrl!)}
                               onClick={() => handleOpenFullscreenMedia(task)}
                             />
@@ -3602,6 +3677,8 @@ export default function MediaHistory() {
                                   src={task.resultUrl}
                                   alt={t("historyPage.preview.previewAlt")}
                                   className="w-12 h-12 rounded-lg object-cover border cursor-pointer hover:opacity-80"
+                                  loading="lazy"
+                                  decoding="async"
                                   onError={() => markExpired(task.resultUrl!)}
                                   onClick={() =>
                                     handleOpenFullscreenMedia(task)
@@ -3888,7 +3965,7 @@ export default function MediaHistory() {
                                       <Download className="w-4 h-4" />
                                     </Button>
                                     {/* Add to Gallery button - admin only */}
-                                    {isAdmin && (
+                                    {canAddTaskToGallery(task, isAdmin) && (
                                       <Button
                                         variant="ghost"
                                         size="sm"
@@ -4991,7 +5068,7 @@ export default function MediaHistory() {
                       {t("download")}
                     </Button>
                     {/* Add to Gallery button - admin only */}
-                    {isAdmin && (
+                    {canAddTaskToGallery(selectedTask, isAdmin) && (
                       <Button
                         variant="default"
                         onClick={() => handleAddToGallery(selectedTask)}

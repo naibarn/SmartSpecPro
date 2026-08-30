@@ -162,6 +162,11 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import {
+  getMediaTaskArtifactStatus,
+  selectMediaTaskPlaybackUrl,
+  type MediaTaskArtifactLite,
+} from "@/lib/mediaTaskArtifacts";
+import {
   GenerationProgress,
   type GenerationTask as QueueGenerationTask,
 } from "@/components/chat/media/GenerationProgress";
@@ -335,6 +340,7 @@ import {
   GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES,
   GEMINI_OMNI_VIDEO_MODEL_ID,
   GEMINI_OMNI_VOICE_PRESETS,
+  isGeminiOmniVideoModelId,
   validateGeminiOmniVideoInput,
 } from "@shared/geminiOmni";
 import {
@@ -7255,8 +7261,7 @@ function isGeminiOmniVideoMediaModel(
     .filter(Boolean);
   return candidates.some(
     value =>
-      value === GEMINI_OMNI_VIDEO_MODEL_ID ||
-      value === "gemini-omni" ||
+      isGeminiOmniVideoModelId(value) ||
       value.includes("gemini omni") ||
       value.includes("gemini-omni")
   );
@@ -10726,6 +10731,7 @@ type MediaHistoryTaskLite = {
   prompt?: string | null;
   model?: string | null;
   resultUrl?: string | null;
+  artifacts?: MediaTaskArtifactLite[] | null;
   parameters?: Record<string, unknown> | null;
   resultData?: Record<string, unknown> | null;
   errorMessage?: string | null;
@@ -10747,6 +10753,45 @@ type PublicGalleryMediaItemLite = {
   createdAt?: string | Date | null;
   updatedAt?: string | Date | null;
 };
+
+function publicGalleryMediaUrl(
+  galleryItemId: number,
+  variant: "file" | "thumbnail"
+): string {
+  return `/api/gallery/media/${galleryItemId}/${variant}`;
+}
+
+function durableLibraryMediaUrl(
+  item: Pick<
+    LibrarySearchResultItem,
+    "item_type" | "source_url" | "thumbnail_url" | "metadata"
+  >,
+  variant: "source" | "thumbnail"
+): string | null {
+  const metadata = item.metadata;
+  const allowSourceKeyFallback =
+    variant === "source" || item.item_type?.toLowerCase() === "image";
+  const storageKey =
+    metadata && typeof metadata === "object"
+      ? [
+          variant === "thumbnail" ? metadata.thumbnail_key : undefined,
+          allowSourceKeyFallback ? metadata.source_key : undefined,
+          allowSourceKeyFallback ? metadata.storage_key : undefined,
+        ]
+          .find(value => typeof value === "string" && value.trim())
+          ?.toString()
+          .trim()
+      : null;
+  if (storageKey) {
+    return `/api/storage/files/${encodeURI(storageKey.replace(/^\/+/, ""))}`;
+  }
+
+  const value = variant === "thumbnail" ? item.thumbnail_url : item.source_url;
+  const trimmed = value?.trim() || "";
+  return /^(?:\/api\/storage\/files\/|\/uploads\/)/i.test(trimmed)
+    ? trimmed
+    : null;
+}
 
 type SharedLibraryMediaItemLite = {
   id: number;
@@ -14269,9 +14314,12 @@ export default function MediaStudio() {
 
   const historyGallerySourceTasks = useMemo(() => {
     const tasks = (historyGalleryHistory?.tasks ??
-      []) as MediaHistoryTaskLite[];
+      []) as Array<MediaHistoryTaskLite | null | undefined>;
     return tasks
-      .filter(task => task.mediaType === historyGalleryTab)
+      .filter(
+        (task): task is MediaHistoryTaskLite =>
+          Boolean(task && task.mediaType === historyGalleryTab)
+      )
       .map(task => ({ ...task, sourceKind: "media_task" as const }))
       .filter(task =>
         mediaHistoryTaskBelongsToProductionProject(
@@ -14288,9 +14336,9 @@ export default function MediaStudio() {
   const publicGalleryTasks = useMemo<MediaHistoryTaskLite[]>(() => {
     if (historyGalleryTab === "audio") return [];
     const items = (publicGalleryHistoryItems ??
-      []) as PublicGalleryMediaItemLite[];
+      []) as Array<PublicGalleryMediaItemLite | null | undefined>;
     return items.flatMap(item => {
-      if (item.type !== historyGalleryTab || !item.fileUrl) return [];
+      if (!item || item.type !== historyGalleryTab) return [];
       const createdAt = item.createdAt
         ? new Date(item.createdAt).toISOString()
         : null;
@@ -14303,9 +14351,9 @@ export default function MediaStudio() {
         mediaType: item.type,
         prompt: item.description || item.title || null,
         model: item.model || "public-gallery",
-        resultUrl: item.fileUrl,
+        resultUrl: publicGalleryMediaUrl(item.id, "file"),
         resultData: {
-          thumbnail_url: item.thumbnailUrl || null,
+          thumbnail_url: publicGalleryMediaUrl(item.id, "thumbnail"),
           source: "public_gallery",
           gallery_item_id: item.id,
         },
@@ -14329,9 +14377,16 @@ export default function MediaStudio() {
 
   const sharedGroupTasks = useMemo<MediaHistoryTaskLite[]>(() => {
     const items = (
-      (sharedGroupHistoryData?.results ?? []) as SharedLibraryMediaItemLite[]
+      (sharedGroupHistoryData?.results ?? []) as Array<
+        SharedLibraryMediaItemLite | null | undefined
+      >
     ).filter(
-      item => item.item_type === historyGalleryTab && Boolean(item.source_url)
+      (item): item is SharedLibraryMediaItemLite =>
+        Boolean(
+          item &&
+            item.item_type === historyGalleryTab &&
+            Boolean(item.source_url)
+        )
     );
 
     return items.flatMap(item => {
@@ -14521,11 +14576,11 @@ export default function MediaStudio() {
 
   const historyGalleryCompletedTasks = useMemo(() => {
     return historyGalleryTasks.filter(task => {
-      const resultUrl = extractTaskResultUrl(task);
+      if (!task) return false;
+      const resultUrl = extractHistoryDurableResultUrl(task);
       return (
         task.status === "completed" &&
-        !!resultUrl &&
-        !expiredUrls.has(resultUrl)
+        (!resultUrl || !expiredUrls.has(resultUrl))
       );
     });
   }, [expiredUrls, historyGalleryTasks]);
@@ -14604,6 +14659,7 @@ export default function MediaStudio() {
 
   const historyGalleryPendingTasks = useMemo(() => {
     return historyGalleryTasks.filter(task => {
+      if (!task) return false;
       if (task.status === "processing" || task.status === "pending")
         return true;
       if (task.status === "failed") {
@@ -16801,7 +16857,9 @@ export default function MediaStudio() {
   const handleLibraryResultSelect = useCallback(
     (item: LibrarySearchResultItem) => {
       setSelectedLibraryItemId(item.item_id);
-      const previewSource = item.thumbnail_url || item.source_url;
+      const previewSource =
+        durableLibraryMediaUrl(item, "thumbnail") ||
+        durableLibraryMediaUrl(item, "source");
       if (previewSource) {
         const itemType = item.item_type.toLowerCase();
         const previewType: MediaType =
@@ -16831,7 +16889,9 @@ export default function MediaStudio() {
   const handleLibraryResultPreview = (item: LibrarySearchResultItem) => {
     setSelectedLibraryItemId(item.item_id);
     const itemType = item.item_type.toLowerCase();
-    const previewSource = item.source_url?.trim() || item.thumbnail_url?.trim();
+    const previewSource =
+      durableLibraryMediaUrl(item, "source") ||
+      durableLibraryMediaUrl(item, "thumbnail");
     if (!previewSource) {
       return;
     }
@@ -16855,8 +16915,9 @@ export default function MediaStudio() {
       const itemType = item.item_type.toLowerCase();
       const referenceUrl =
         itemType === "video"
-          ? item.source_url?.trim() || null
-          : item.source_url?.trim() || item.thumbnail_url?.trim() || null;
+          ? durableLibraryMediaUrl(item, "source")
+          : durableLibraryMediaUrl(item, "source") ||
+            durableLibraryMediaUrl(item, "thumbnail");
 
       if (!referenceUrl) {
         toast.error(t("mediaStudio.failedToAddAsReference"));
@@ -19055,6 +19116,9 @@ export default function MediaStudio() {
         audioIds: geminiOmni.selectedAudioIds,
         duration: effectiveSelectedVideoDuration ?? modelInputValues.duration,
         resolution: modelInputValues.resolution || "1080p",
+        modelId: selectedModel,
+        firstFrameUrl: mergedExtraParams.first_frame_url ?? mergedExtraParams.firstFrameUrl,
+        lastFrameUrl: mergedExtraParams.last_frame_url ?? mergedExtraParams.lastFrameUrl,
       });
       if (!geminiValidation.ok) {
         toast.error(
@@ -20017,6 +20081,7 @@ export default function MediaStudio() {
       trimmed.startsWith("http://") ||
       trimmed.startsWith("https://") ||
       trimmed.startsWith("/api/storage/files/") ||
+      trimmed.startsWith("/api/gallery/media/") ||
       trimmed.startsWith("/api/v1/media/files/") ||
       trimmed.startsWith("/uploads/") ||
       trimmed.startsWith("data:") ||
@@ -20058,6 +20123,10 @@ export default function MediaStudio() {
   }
 
   function extractTaskResultUrl(task: any): string | null {
+    const durablePlaybackUrl = selectMediaTaskPlaybackUrl(task);
+    if (durablePlaybackUrl) return normalizeTaskMediaUrl(durablePlaybackUrl);
+    if (Array.isArray(task?.artifacts) && task.artifacts.length > 0) return null;
+
     const fromValue = (value: any): string | null => {
       if (!value) return null;
       if (typeof value === "string" && isUsableMediaUrl(value))
@@ -20141,6 +20210,33 @@ export default function MediaStudio() {
     }
 
     return null;
+  }
+
+  function isDurableHistoryMediaUrl(value: string): boolean {
+    const trimmed = value.trim();
+    return (
+      trimmed.startsWith("/api/storage/files/") ||
+      trimmed.startsWith("/api/gallery/media/") ||
+      trimmed.startsWith("/uploads/")
+    );
+  }
+
+  function extractHistoryDurableResultUrl(
+    task: MediaHistoryTaskLite
+  ): string | null {
+    const projectedUrl = selectMediaTaskPlaybackUrl(task, {
+      allowProviderFallback: false,
+    });
+    if (projectedUrl) {
+      const normalized = normalizeTaskMediaUrl(projectedUrl);
+      if (isDurableHistoryMediaUrl(normalized)) return normalized;
+    }
+
+    // Public Gallery and shared-library records use application-controlled
+    // routes. Provider URLs are intentionally not accepted by this history
+    // surface while an R2 copy is pending.
+    const listedUrl = extractTaskResultUrl(task);
+    return listedUrl && isDurableHistoryMediaUrl(listedUrl) ? listedUrl : null;
   }
 
   function extractTaskThumbnailUrl(task: any): string | null {
@@ -21248,7 +21344,7 @@ export default function MediaStudio() {
           delete mergedExtraParams.sourceMediaTaskId;
         }
       }
-      if (targetTab === "video" && retryModel === GEMINI_OMNI_VIDEO_MODEL_ID) {
+      if (targetTab === "video" && isGeminiOmniVideoModelId(retryModel)) {
         mergedExtraParams.character_ids =
           tabState.geminiOmni.selectedCharacterIds;
         mergedExtraParams.audio_ids = tabState.geminiOmni.selectedAudioIds;
@@ -21264,6 +21360,9 @@ export default function MediaStudio() {
           audioIds: tabState.geminiOmni.selectedAudioIds,
           duration: retryVideoDuration ?? tabState.modelInputValues.duration,
           resolution: tabState.modelInputValues.resolution || "1080p",
+          modelId: retryModel,
+          firstFrameUrl: mergedExtraParams.first_frame_url ?? mergedExtraParams.firstFrameUrl,
+          lastFrameUrl: mergedExtraParams.last_frame_url ?? mergedExtraParams.lastFrameUrl,
         });
         if (!geminiValidation.ok) {
           toast.error(
@@ -24775,6 +24874,7 @@ export default function MediaStudio() {
     audioIds: geminiOmni.selectedAudioIds,
     duration: selectedVideoDuration ?? modelInputValues.duration,
     resolution: modelInputValues.resolution || "1080p",
+    modelId: selectedModel,
   });
   const geminiOmniSelectedResolution = String(
     modelInputValues.resolution || "1080p"
@@ -35176,8 +35276,8 @@ export default function MediaStudio() {
       const context = task.storyboardContext;
       const extraParams = context?.extraParams ?? {};
       const isGeminiTask =
-        task.model === GEMINI_OMNI_VIDEO_MODEL_ID ||
-        context?.model === GEMINI_OMNI_VIDEO_MODEL_ID ||
+        isGeminiOmniVideoModelId(task.model) ||
+        isGeminiOmniVideoModelId(context?.model) ||
         typeof extraParams.delivery_mode === "string" ||
         Array.isArray(extraParams.character_ids) ||
         Array.isArray(extraParams.audio_ids);
@@ -41691,10 +41791,51 @@ export default function MediaStudio() {
                           {/* Completed tasks grid */}
                           <div className="mb-4 grid grid-cols-2 gap-3 pb-2 xl:grid-cols-3">
                             {historyGalleryCompletedTasks.map(task => {
-                              const resultUrl = extractTaskResultUrl(task);
-                              if (!resultUrl) return null;
-                              const thumbnailUrl =
+                              const resultUrl = extractHistoryDurableResultUrl(task);
+                              const artifactStatus = getMediaTaskArtifactStatus(
+                                task,
+                                isThaiLocale,
+                              );
+                              if (!resultUrl) {
+                                if (!artifactStatus) return null;
+                                return (
+                                  <div
+                                    key={task.id}
+                                    className="flex aspect-square flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-slate-50 p-4 text-center"
+                                  >
+                                    <AlertCircle
+                                      className={cn(
+                                        "h-7 w-7",
+                                        artifactStatus.tone === "expired"
+                                          ? "text-amber-600"
+                                          : "text-slate-500",
+                                      )}
+                                    />
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        "text-[10px]",
+                                        artifactStatus.tone === "expired" &&
+                                          "border-amber-300 text-amber-700",
+                                      )}
+                                    >
+                                      {artifactStatus.label}
+                                    </Badge>
+                                    {artifactStatus.detail && (
+                                      <p className="text-xs text-muted-foreground">
+                                        {artifactStatus.detail}
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              const thumbnailCandidate =
                                 extractTaskThumbnailUrl(task);
+                              const thumbnailUrl =
+                                thumbnailCandidate &&
+                                isDurableHistoryMediaUrl(thumbnailCandidate)
+                                  ? thumbnailCandidate
+                                  : null;
                               const displayUrl = thumbnailUrl || resultUrl;
                               const canAddToLibrary =
                                 task.sourceKind === "media_task" &&
@@ -41830,6 +41971,20 @@ export default function MediaStudio() {
                                           : "Group"}
                                       </Badge>
                                     )}
+                                  {artifactStatus && (
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        "pointer-events-none absolute left-1 top-1 z-[1] rounded-full bg-white/90 px-2 py-0.5 text-[10px] shadow-sm",
+                                        artifactStatus.tone === "ready" &&
+                                          "border-emerald-300 text-emerald-700",
+                                        artifactStatus.tone === "fallback" &&
+                                          "border-amber-300 text-amber-700",
+                                      )}
+                                    >
+                                      {artifactStatus.label}
+                                    </Badge>
+                                  )}
                                   {productionQaSummary && (
                                     <Badge
                                       variant="outline"
@@ -41846,22 +42001,12 @@ export default function MediaStudio() {
                                   {task.mediaType === "video" ? (
                                     <div className="relative w-full aspect-square rounded-lg border border-blue-200 overflow-hidden hover:border-blue-400 transition-colors bg-black">
                                       {thumbnailUrl ? (
-                                        <img
+                                        <AuthenticatedMediaImage
                                           src={displayUrl}
                                           alt={task.prompt?.slice(0, 30)}
                                           className="h-full w-full object-cover"
                                           loading="lazy"
                                           draggable={false}
-                                          onError={event => {
-                                            if (
-                                              event.currentTarget.dataset
-                                                .fallbackApplied === "true"
-                                            )
-                                              return;
-                                            event.currentTarget.dataset.fallbackApplied =
-                                              "true";
-                                            event.currentTarget.src = resultUrl;
-                                          }}
                                         />
                                       ) : (
                                         <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 text-center">
@@ -41904,26 +42049,13 @@ export default function MediaStudio() {
                                       />
                                     </div>
                                   ) : (
-                                    <img
+                                    <AuthenticatedMediaImage
                                       src={displayUrl}
                                       alt={task.prompt?.slice(0, 30)}
                                       className="w-full aspect-square object-cover rounded-lg border hover:border-blue-400 transition-colors"
                                       loading="lazy"
                                       draggable={false}
-                                      onError={event => {
-                                        if (displayUrl !== resultUrl) {
-                                          if (
-                                            event.currentTarget.dataset
-                                              .fallbackApplied === "true"
-                                          )
-                                            return;
-                                          event.currentTarget.dataset.fallbackApplied =
-                                            "true";
-                                          event.currentTarget.src = resultUrl;
-                                          return;
-                                        }
-                                        markExpired(resultUrl);
-                                      }}
+                                      onError={() => markExpired(resultUrl)}
                                     />
                                   )}
                                   <div className="mt-1 grid grid-cols-4 gap-1 rounded-md border bg-white/90 p-1 shadow-sm">
@@ -42336,8 +42468,8 @@ export default function MediaStudio() {
                       )}
                       getProductionAssetForItem={item => {
                         const url =
-                          item.source_url?.trim() ||
-                          item.thumbnail_url?.trim() ||
+                          durableLibraryMediaUrl(item, "source") ||
+                          durableLibraryMediaUrl(item, "thumbnail") ||
                           "";
                         if (!url) return null;
                         const itemType = item.item_type.toLowerCase();
@@ -42356,8 +42488,8 @@ export default function MediaStudio() {
                       }}
                       onAttachToSelectedNode={item => {
                         const url =
-                          item.source_url?.trim() ||
-                          item.thumbnail_url?.trim() ||
+                          durableLibraryMediaUrl(item, "source") ||
+                          durableLibraryMediaUrl(item, "thumbnail") ||
                           "";
                         if (!url) return;
                         const itemType = item.item_type.toLowerCase();

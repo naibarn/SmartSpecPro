@@ -196,6 +196,10 @@ const GEMINI_OMNI_RESOLUTION_OPTIONS = [
   { value: "1080p", label: "1080p" },
   { value: "4K", label: "4K" },
 ];
+const GEMINI_OMNI_FLASH_1_1_RESOLUTION_OPTIONS = [
+  { value: "360p", label: "360p" },
+  ...GEMINI_OMNI_RESOLUTION_OPTIONS,
+];
 
 const GEMINI_OMNI_ASPECT_RATIO_OPTIONS = [
   { value: "16:9", label: "16:9" },
@@ -249,6 +253,41 @@ const GEMINI_OMNI_PRICING_TIERS = {
   "4K-8s-with-video": 360,
   "4K-10s-with-video": 360,
 };
+const GEMINI_OMNI_FLASH_1_1_PRICING_TIERS = {
+  default: 420,
+  "360p-4s-without-video": 315,
+  "360p-6s-without-video": 420,
+  "360p-8s-without-video": 525,
+  "360p-10s-without-video": 630,
+  "720p-4s-without-video": 315,
+  "720p-6s-without-video": 420,
+  "720p-8s-without-video": 525,
+  "720p-10s-without-video": 630,
+  "1080p-4s-without-video": 315,
+  "1080p-6s-without-video": 420,
+  "1080p-8s-without-video": 525,
+  "1080p-10s-without-video": 630,
+  "4K-4s-without-video": 735,
+  "4K-6s-without-video": 840,
+  "4K-8s-without-video": 945,
+  "4K-10s-without-video": 1050,
+  "360p-4s-with-video": 840,
+  "360p-6s-with-video": 840,
+  "360p-8s-with-video": 840,
+  "360p-10s-with-video": 840,
+  "720p-4s-with-video": 840,
+  "720p-6s-with-video": 840,
+  "720p-8s-with-video": 840,
+  "720p-10s-with-video": 840,
+  "1080p-4s-with-video": 840,
+  "1080p-6s-with-video": 840,
+  "1080p-8s-with-video": 840,
+  "1080p-10s-with-video": 840,
+  "4K-4s-with-video": 1260,
+  "4K-6s-with-video": 1260,
+  "4K-8s-with-video": 1260,
+  "4K-10s-with-video": 1260,
+};
 
 const GEMINI_OMNI_INPUT_FIELDS: InputField[] = [
   { key: "image_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", hidden: true, managedBySuite: true, providerPayloadKey: "image_urls", referenceUnitWeight: 1, maxItems: 7 },
@@ -273,6 +312,11 @@ const GEMINI_OMNI_INPUT_FIELDS: InputField[] = [
   { key: "duration", label: "Duration", type: "select", options: GEMINI_OMNI_DURATION_OPTIONS, default: "4", affectsPricing: true },
   { key: "aspect_ratio", label: "Aspect Ratio", type: "select", options: GEMINI_OMNI_ASPECT_RATIO_OPTIONS, default: "16:9", syncWith: "aspect_ratio" },
   { key: "seed", label: "Seed", type: "number", required: false, advancedOnly: true },
+];
+const GEMINI_OMNI_FLASH_1_1_INPUT_FIELDS: InputField[] = [
+  ...GEMINI_OMNI_INPUT_FIELDS,
+  { key: "first_frame_url", label: "First Frame URL", type: "text", required: false, advancedOnly: true, providerPayloadKey: "first_frame_url" },
+  { key: "last_frame_url", label: "Last Frame URL", type: "text", required: false, advancedOnly: true, providerPayloadKey: "last_frame_url" },
 ];
 
 function buildHappyHorseConfig(
@@ -569,7 +613,7 @@ const VIDEO_MODELS = [
         extend_model: "fast",
       },
       generateType: "video-extend",
-      maxPromptLength: 5000,
+      maxPromptLength: 390000,
       inputFields: [
         { key: "source_task_id", label: "Original Veo Task ID", type: "text", required: true },
         { key: "video_urls", label: "Source Video Preview", type: "video_urls", required: false, syncWith: "reference_videos" },
@@ -733,6 +777,50 @@ const VIDEO_MODELS = [
       },
       inputFields: GEMINI_OMNI_INPUT_FIELDS,
       pricingTiers: GEMINI_OMNI_PRICING_TIERS,
+      pricingFormula: "matrix",
+    } as ModelDefinition,
+  },
+  {
+    modelId: "gemini-omni-flash-1-1",
+    name: "Gemini Omni Flash 1.1",
+    description: "Google Gemini Omni Flash 1.1 multimodal video generation via Kie.ai Market API.",
+    modelType: "video",
+    provider: "kie.ai",
+    aliases: [
+      "gemini omni 1.1 flash",
+      "gemini omni flash 1.1",
+      "gemini omni flash 1 1",
+      "gemini-omni-flash-1-1",
+      "google/gemini-omni-flash-1-1",
+    ],
+    creditCost: 315,
+    priority: 23,
+    sortOrder: 23,
+    durations: [4, 6, 8, 10],
+    aspectRatios: ["16:9", "9:16"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+      apiPayloadFormat: "market",
+      kieModelId: "google/gemini-omni-flash-1-1",
+      generateType: "multimodal-video",
+      hasAudio: true,
+      maxDuration: 10,
+      maxPromptLength: 5000,
+      maxReferenceImages: 7,
+      maxReferenceVideos: 1,
+      maxReferenceAudios: 3,
+      supportedDurations: [4, 6, 8, 10],
+      supportedAspectRatios: ["16:9", "9:16"],
+      supportedResolutions: GEMINI_OMNI_FLASH_1_1_RESOLUTION_OPTIONS.map(option => option.value),
+      apiConfig: {
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        reference_video_input_key: "video_list",
+        reference_video_input_type: "object_array",
+      },
+      inputFields: GEMINI_OMNI_FLASH_1_1_INPUT_FIELDS,
+      pricingTiers: GEMINI_OMNI_FLASH_1_1_PRICING_TIERS,
       pricingFormula: "matrix",
     } as ModelDefinition,
   },
@@ -2015,20 +2103,22 @@ const IMAGE_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "grok-imagine-image-2-0/text-to-image",
       generateType: "text-to-image",
-      maxPromptLength: 5000,
-      maxReferenceImages: 1,
+      maxPromptLength: 390000,
+      maxReferenceImages: 5,
       supportsReferenceImages: true,
       operationModes: ["text-to-image", "image-edit"],
       documentationUrl: "https://docs.kie.ai/market/grok-imagine-image-2-0/text-to-image",
       apiConfig: {
         grok_imagine_image_2_family: true,
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
         operations: {
           "text-to-image": {
             kie_model_id: "grok-imagine-image-2-0/text-to-image",
           },
           "image-edit": {
             kie_model_id: "grok-imagine-image-2-0/image-edit",
-            drop_params: ["aspect_ratio", "resolution", "output_format", "sourceMediaTaskId", "grokOperation"],
+            drop_params: ["resolution", "output_format", "sourceMediaTaskId", "grokOperation"],
           },
         },
       },

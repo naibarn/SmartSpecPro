@@ -262,7 +262,8 @@ export async function listKeys(tenantId: string, userId?: number) {
     .where(and(...conditions))
     .orderBy(desc(apiKeys.createdAt));
 
-  return rows.map(({ metadata, ...row }) => {
+  return (rows as Array<{ metadata: unknown } & Record<string, unknown>>).map((rawRow) => {
+    const { metadata, ...row } = rawRow as { metadata: unknown } & Record<string, unknown>;
     const purpose = isMcpCliMetadata(metadata) ? MCP_CLI_PURPOSE : "public_api";
     return {
       ...row,

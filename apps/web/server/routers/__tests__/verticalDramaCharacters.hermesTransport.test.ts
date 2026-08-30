@@ -41,6 +41,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -49,7 +50,9 @@ vi.mock("../../middleware/requireFeatureFlag", () => ({
 }));
 
 vi.mock("../../services/tenantFeatureFlagService", () => ({
-  getTenantFeatureFlags: vi.fn().mockResolvedValue({ verticalDramaSeriesPresetMixV2: false }),
+  getTenantFeatureFlags: vi
+    .fn()
+    .mockResolvedValue({ verticalDramaSeriesPresetMixV2: false }),
 }));
 
 vi.mock("../../services/verticalDramaCharacterStock", () => ({
@@ -58,7 +61,10 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
     getReferenceImageUrlByAssetLinkId: vi.fn(),
   },
   VerticalDramaCharacterStockError: class extends Error {
-    constructor(public readonly reason: string, message: string) {
+    constructor(
+      public readonly reason: string,
+      message: string
+    ) {
       super(message);
     }
   },
@@ -77,11 +83,12 @@ vi.mock("../../services/pricingCalculator", () => ({
   calculateCreditCost: vi.fn(() => 10),
 }));
 
-const { mockHasEnoughCredits, mockDeductCredits, mockRefundCredits } = vi.hoisted(() => ({
-  mockHasEnoughCredits: vi.fn(),
-  mockDeductCredits: vi.fn(),
-  mockRefundCredits: vi.fn(),
-}));
+const { mockHasEnoughCredits, mockDeductCredits, mockRefundCredits } =
+  vi.hoisted(() => ({
+    mockHasEnoughCredits: vi.fn(),
+    mockDeductCredits: vi.fn(),
+    mockRefundCredits: vi.fn(),
+  }));
 vi.mock("../../services/creditService", () => ({
   hasEnoughCredits: mockHasEnoughCredits,
   deductCredits: mockDeductCredits,
@@ -97,6 +104,7 @@ const { mockGenerateCharacterVisualPrompts } = vi.hoisted(() => ({
 }));
 vi.mock("../../services/verticalDramaCharacterImageGeneration", () => ({
   generateCharacterVisualPrompts: mockGenerateCharacterVisualPrompts,
+  shouldRequireAgeStageVariantForRequest: vi.fn(() => false),
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
   readPresetVisualIdentityFromBible: vi.fn(() => undefined),
@@ -104,7 +112,11 @@ vi.mock("../../services/verticalDramaCharacterImageGeneration", () => ({
 }));
 
 vi.mock("../../services/verticalDramaCharacterDesignContext", () => ({
-  loadCharacterDesignContext: vi.fn(async () => ({ seriesDna: {}, currentCast: [], recentLeadArchive: [] })),
+  loadCharacterDesignContext: vi.fn(async () => ({
+    seriesDna: {},
+    currentCast: [],
+    recentLeadArchive: [],
+  })),
 }));
 
 const { mockPersistCharacterVisualBible } = vi.hoisted(() => ({
@@ -115,7 +127,10 @@ vi.mock("../../services/verticalDramaCharacterDnaPersistence", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
-  mediaGenerationLimiter: { isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) },
+  mediaGenerationLimiter: {
+    isAllowed: vi.fn(() => true),
+    getResetTime: vi.fn(() => 0),
+  },
 }));
 
 vi.mock("../../services/mediaAssetService", () => ({
@@ -160,10 +175,12 @@ vi.mock("../../services/hermesMediaReferences", () => ({
     createdAt: new Date().toISOString(),
   }),
   resolveHermesReferenceAssetIdFromUrl: vi.fn(async () => null),
-  resolveHermesOrderedRefsFromUrls: vi.fn(async (params: { urls: string[] }) => ({
-    orderedRefs: [],
-    droppedReferenceCount: params.urls.length,
-  })),
+  resolveHermesOrderedRefsFromUrls: vi.fn(
+    async (params: { urls: string[] }) => ({
+      orderedRefs: [],
+      droppedReferenceCount: params.urls.length,
+    })
+  ),
 }));
 vi.mock("../../services/hermesConnectionService", () => ({
   getHermesConnection: vi.fn(async () => ({ capabilities: null })),
@@ -172,10 +189,21 @@ vi.mock("../../services/hermesConnectionService", () => ({
 
 import { verticalDramaCharactersRouter } from "../verticalDramaCharacters";
 
-const router = verticalDramaCharactersRouter as unknown as Record<string, Function>;
+const router = verticalDramaCharactersRouter as unknown as Record<
+  string,
+  Function
+>;
 
-function ctx(overrides: Partial<{ tenantId: string | null; user: { id: number } }> = {}) {
-  return { tenantId: "tenant-1", user: { id: 42 }, userToken: "session-token", publicUrl: undefined, ...overrides };
+function ctx(
+  overrides: Partial<{ tenantId: string | null; user: { id: number } }> = {}
+) {
+  return {
+    tenantId: "tenant-1",
+    user: { id: 42 },
+    userToken: "session-token",
+    publicUrl: undefined,
+    ...overrides,
+  };
 }
 
 function selectChain(rows: unknown[]) {
@@ -243,7 +271,11 @@ beforeEach(() => {
   mockGenerateImageAsync.mockResolvedValue({ id: "task-gateway-1" });
   mockGenerateCharacterVisualPrompts.mockResolvedValue(visualPromptResult());
   mockPersistCharacterVisualBible.mockResolvedValue(undefined);
-  mockQueueHermesMediaJob.mockResolvedValue({ created: true, taskId: "hermes_job-1", job: {} });
+  mockQueueHermesMediaJob.mockResolvedValue({
+    created: true,
+    taskId: "hermes_job-1",
+    job: {},
+  });
   mockGetModelsByTypeAsync.mockResolvedValue([
     { id: "google-nano-banana-pro", type: "image", isEnabled: true },
     { id: "hermes-grok/grok-imagine-image", type: "image", isEnabled: true },
@@ -270,7 +302,7 @@ describe("generateCharacterImage — Hermes transport (code-review FIX 1)", () =
               },
             },
           },
-        ]),
+        ])
       ); // mediaModels pricing row (hermes-transport, priced as if non-zero to prove the gate is bypassed structurally, not by accident)
     // The caller's SmartSpec balance is insufficient — if the credit gate
     // ran for this hermes call, this would produce FORBIDDEN.
@@ -291,9 +323,16 @@ describe("generateCharacterImage — Hermes transport (code-review FIX 1)", () =
     expect(mockGenerateImageAsync).not.toHaveBeenCalled();
     expect(mockQueueHermesMediaJob).toHaveBeenCalledTimes(1);
     expect(mockQueueHermesMediaJob).toHaveBeenCalledWith(
-      expect.objectContaining({ connectionId: "hermes-conn-1", tenantId: "tenant-1", requestedByUserId: 42 }),
+      expect.objectContaining({
+        connectionId: "hermes-conn-1",
+        tenantId: "tenant-1",
+        requestedByUserId: 42,
+      })
     );
-    const hermesPayload = mockQueueHermesMediaJob.mock.calls[0][0] as Record<string, unknown>;
+    const hermesPayload = mockQueueHermesMediaJob.mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
     expect(hermesPayload).not.toHaveProperty("negative_prompt");
     expect(hermesPayload.settings).not.toHaveProperty("negative_prompt");
     expect(result.taskId).toBe("hermes_job-1");
@@ -310,8 +349,12 @@ describe("generateCharacterImage — Hermes transport (code-review FIX 1)", () =
     await expect(
       router.generateCharacterImage({
         ctx: ctx(),
-        input: { seriesId: "10", characterId: "1", selectedImageModelId: "google-nano-banana-pro" },
-      }),
+        input: {
+          seriesId: "10",
+          characterId: "1",
+          selectedImageModelId: "google-nano-banana-pro",
+        },
+      })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
 
     expect(mockHasEnoughCredits).toHaveBeenCalledWith(42, 10);
@@ -330,9 +373,12 @@ describe("generateCharacterSheet — Hermes transport (code-review FIX 1)", () =
         selectChain([
           {
             creditCost: 10,
-            configJson: { transport: "hermes_worker", hermes: { providerModelId: "grok-imagine-image" } },
+            configJson: {
+              transport: "hermes_worker",
+              hermes: { providerModelId: "grok-imagine-image" },
+            },
           },
-        ]),
+        ])
       );
     mockHasEnoughCredits.mockResolvedValue(false);
 
@@ -371,7 +417,7 @@ describe("generateCharacterSheet — Hermes transport (code-review FIX 1)", () =
           sheetType: "auto",
           selectedImageModelId: "google-nano-banana-pro",
         },
-      }),
+      })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
 
     expect(mockHasEnoughCredits).toHaveBeenCalledWith(42, 10);

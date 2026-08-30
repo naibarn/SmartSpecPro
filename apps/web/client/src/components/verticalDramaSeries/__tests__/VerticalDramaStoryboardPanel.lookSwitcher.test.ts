@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildShotCharacterLookOptions,
+  filterKnownShotCharacterRefKeys,
+  formatShotCharacterLabel,
   swapShotCharacterRefKey,
 } from "@/components/verticalDramaSeries/VerticalDramaStoryboardPanel";
 import type { VerticalDramaCharacterPortraitMap } from "@shared/verticalDramaSeries/storyboard";
@@ -74,6 +76,34 @@ describe("buildShotCharacterLookOptions", () => {
 
   it("returns nothing for a key that is not in the roster at all (a stale ref)", () => {
     expect(buildShotCharacterLookOptions(PORTRAITS, "ghost-key")).toEqual([]);
+  });
+});
+
+describe("formatShotCharacterLabel", () => {
+  it("keeps the base character name visible beside a look label", () => {
+    expect(
+      formatShotCharacterLabel(
+        { name: "ลลิน ศิริกุล", variantLabel: "ชุดลำลอง" },
+        "character-2-variant"
+      )
+    ).toBe("ลลิน ศิริกุล — ชุดลำลอง");
+  });
+
+  it("uses the base name for a primary character", () => {
+    expect(
+      formatShotCharacterLabel({ name: "ลลิน ศิริกุล" }, "character-2")
+    ).toBe("ลลิน ศิริกุล");
+  });
+});
+
+describe("filterKnownShotCharacterRefKeys", () => {
+  it("drops deleted look keys and de-duplicates the submitted cast", () => {
+    expect(
+      filterKnownShotCharacterRefKeys(
+        ["deleted-look", "character-2", "character-2"],
+        ["character-2", "character-3"]
+      )
+    ).toEqual(["character-2"]);
   });
 });
 

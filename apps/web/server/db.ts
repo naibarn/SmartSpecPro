@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, sql, like, or, inArray, SQL } from "drizzle-orm";
+import { eq, desc, asc, and, sql, like, or, inArray, isNull, SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { InsertUser, users, galleryItems, InsertGalleryItem, GalleryItem, creditTransactions, creditPackages } from "../drizzle/schema";
@@ -243,7 +243,8 @@ export type GalleryType = 'image' | 'video' | 'website';
 export type AspectRatio = '1:1' | '9:16' | '16:9';
 
 export interface GalleryFilters {
-  tenantId?: number;
+  tenantId?: string;
+  includeGlobal?: boolean;
   type?: GalleryType;
   isPublished?: boolean;
   isFeatured?: boolean;
@@ -265,7 +266,10 @@ export async function getGalleryItems(filters: GalleryFilters = {}): Promise<Gal
   const conditions = [];
 
   if (filters.tenantId !== undefined) {
-    conditions.push(eq(galleryItems.tenantId, filters.tenantId));
+    const tenantCondition = filters.includeGlobal
+      ? or(eq(galleryItems.tenantId, filters.tenantId), isNull(galleryItems.tenantId))
+      : eq(galleryItems.tenantId, filters.tenantId);
+    if (tenantCondition) conditions.push(tenantCondition);
   }
 
   if (filters.type) {
@@ -351,13 +355,24 @@ export async function updateGalleryItem(id: number, item: Partial<InsertGalleryI
 /**
  * Delete a gallery item
  */
-export async function deleteGalleryItem(id: number): Promise<void> {
+export async function deleteGalleryItem(
+  id: number,
+  tenantId: string | null,
+): Promise<boolean> {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available");
   }
 
-  await db.delete(galleryItems).where(eq(galleryItems.id, id));
+  const tenantCondition =
+    tenantId === null
+      ? or(isNull(galleryItems.tenantId), eq(galleryItems.tenantId, "NaN"))
+      : eq(galleryItems.tenantId, tenantId);
+  const deleted = await db
+    .delete(galleryItems)
+    .where(and(eq(galleryItems.id, id), tenantCondition))
+    .returning({ id: galleryItems.id });
+  return deleted.length > 0;
 }
 
 /**
@@ -440,7 +455,8 @@ export async function bulkUpdateGalleryFeatured(ids: number[], isFeatured: boole
  * Get gallery items count (for pagination)
  */
 export async function getGalleryItemsCount(filters: {
-  tenantId?: number;
+  tenantId?: string;
+  includeGlobal?: boolean;
   type?: GalleryType;
   isPublished?: boolean;
   isFeatured?: boolean;
@@ -454,7 +470,10 @@ export async function getGalleryItemsCount(filters: {
   const conditions: SQL<unknown>[] = [];
 
   if (filters.tenantId !== undefined) {
-    conditions.push(eq(galleryItems.tenantId, filters.tenantId));
+    const tenantCondition = filters.includeGlobal
+      ? or(eq(galleryItems.tenantId, filters.tenantId), isNull(galleryItems.tenantId))
+      : eq(galleryItems.tenantId, filters.tenantId);
+    if (tenantCondition) conditions.push(tenantCondition);
   }
 
   if (filters.type) {

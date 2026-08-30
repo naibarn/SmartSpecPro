@@ -104,6 +104,12 @@ async def presign_put(
 
     For simplicity, we'll use a regular POST endpoint instead of actual presigned URLs
     """
+    if (req.contentType or "").split(";", 1)[0].lower().startswith(("image/", "video/", "audio/")):
+        raise HTTPException(
+            status_code=410,
+            detail="Media artifacts must be uploaded through the tenant-scoped R2 media pipeline",
+        )
+
     # Auto-create session if not found (for robustness)
     if session_id not in SESSIONS:
         SESSIONS[session_id] = {
@@ -147,6 +153,15 @@ async def upload_artifact(
     """Upload artifact data"""
     if artifact_key not in ARTIFACTS:
         raise HTTPException(status_code=404, detail="Artifact not found")
+
+    # Do not let the legacy local artifact endpoint bypass the tenant-scoped
+    # R2 media pipeline by calling PUT directly instead of presign-put.
+    content_type = (ARTIFACTS[artifact_key].get("content_type") or "").split(";", 1)[0].lower()
+    if content_type.startswith(("image/", "video/", "audio/")):
+        raise HTTPException(
+            status_code=410,
+            detail="Media artifacts must be uploaded through the tenant-scoped R2 media pipeline",
+        )
 
     # Check Content-Length header before reading body
     content_length = request.headers.get("content-length")
@@ -215,6 +230,13 @@ async def download_artifact(artifact_key: str):
         raise HTTPException(status_code=404, detail="Artifact not found")
 
     artifact_meta = ARTIFACTS[artifact_key]
+
+    content_type = (artifact_meta.get("content_type") or "").split(";", 1)[0].lower()
+    if content_type.startswith(("image/", "video/", "audio/")):
+        raise HTTPException(
+            status_code=410,
+            detail="Legacy local media artifacts are retired; use the durable R2 media URL",
+        )
 
     if not artifact_meta.get("uploaded"):
         raise HTTPException(status_code=404, detail="Artifact not uploaded yet")

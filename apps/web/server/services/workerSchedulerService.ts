@@ -50,6 +50,7 @@ import {
   type RemotionExecutionTargetResolution,
 } from "../../shared/workerRuntime";
 import { evaluateHermesRolloutReadiness } from "../../shared/featureFlags";
+import { comfyMcpDispatchInputSchema } from "../../shared/comfyControlContracts";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import {
   reserveWorkerJobCredits,
@@ -804,6 +805,27 @@ export interface QueueDesktopComfyWorkflowRunJobInput extends ComfyWorkflowRunJo
   reservedCredits?: number | null;
 }
 
+export type DesktopComfyMcpJobType = "comfy_image_generation" | "comfy_video_generation" | "comfy_workflow_run";
+
+export interface QueueDesktopComfyMcpJobInput {
+  tenantId: string;
+  teamId?: string | null;
+  workflowRunId?: string | null;
+  requestedByUserId?: number | null;
+  requestedByPersonaId?: string | null;
+  requestedBySystemComponent?: string | null;
+  jobType: DesktopComfyMcpJobType;
+  title?: string | null;
+  description?: string | null;
+  priority?: number;
+  timeoutSeconds?: number;
+  inputJson: Record<string, unknown>;
+  instructionsJson?: Record<string, unknown>;
+  idempotencyKey?: string | null;
+  preferredWorkerId?: string | null;
+  reservedCredits?: number | null;
+}
+
 export interface QueueDesktopHyperframesFinalCompositeJobInput extends HyperframesFinalCompositeWorkerInput {
   tenantId: string;
   teamId?: string | null;
@@ -903,6 +925,10 @@ export type QueueWorkerJobByRuntimeInput =
       runtimeType: "desktop_zeroclaw_managed";
       jobType: "comfy_workflow_run";
     } & QueueDesktopComfyWorkflowRunJobInput)
+  | ({
+      runtimeType: "desktop_zeroclaw_managed";
+      jobType: "comfy_video_generation";
+    } & QueueDesktopComfyMcpJobInput)
   | ({
       runtimeType: "desktop_zeroclaw_managed";
       jobType: "hyperframes_final_composite";
@@ -2713,6 +2739,77 @@ export async function queueHiClawWorkerJob(
   );
 }
 
+export async function queueDesktopComfyMcpJob(
+  input: QueueDesktopComfyMcpJobInput,
+  deps: {
+    repo?: WorkerSchedulerRepository;
+    reserveCredits?: typeof reserveWorkerJobCredits;
+    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
+  } = {},
+): Promise<{ created: boolean; job: WorkerJobRecord }> {
+  const parsedMcpInput = comfyMcpDispatchInputSchema.safeParse({
+    ...input.inputJson,
+    adapter: "comfy_mcp",
+  });
+  if (!parsedMcpInput.success) {
+    throw new WorkerSchedulerError(
+      "invalid_comfy_mcp_input",
+      400,
+      parsedMcpInput.error.issues.map(issue => issue.message).join("; ") || "Invalid ComfyUI MCP job input",
+    );
+  }
+  const capabilityFamilies = input.jobType === "comfy_image_generation"
+    ? ["comfyui-mcp", "comfyui-image-generate", "comfyui-workflow-run", "gpu-nvidia"]
+    : input.jobType === "comfy_workflow_run"
+      ? ["comfyui-mcp", "comfyui-workflow-run", "gpu-nvidia"]
+      : ["comfyui-mcp", "comfyui-video-generate", "comfyui-workflow-run", "gpu-nvidia"];
+  return queueFeatureGatedExternalRuntimeJob(
+    {
+      runtimeType: DESKTOP_RUNTIME_TYPE,
+      tenantId: input.tenantId,
+      teamId: input.teamId,
+      workflowRunId: input.workflowRunId,
+      requestedByUserId: input.requestedByUserId,
+      requestedByPersonaId: input.requestedByPersonaId,
+      requestedBySystemComponent: input.requestedBySystemComponent,
+      jobType: input.jobType,
+      title: input.title,
+      description: input.description,
+      priority: input.priority ?? 22,
+      timeoutSeconds: input.timeoutSeconds,
+      resourceProfile: "gpu_required",
+      capabilityFamilies,
+      inputJson: parsedMcpInput.data,
+      instructionsJson: { ...(input.instructionsJson ?? {}), intent: input.jobType, adapter: "comfy_mcp" },
+      idempotencyKey: input.idempotencyKey,
+      preferredWorkerId: input.preferredWorkerId,
+      reservedCredits: input.reservedCredits,
+    },
+    {
+      featureFlagKey: "desktopZeroClawWorker",
+      dispatchDisabledMessage: "Desktop ComfyUI MCP worker dispatch is disabled.",
+      featureDisabledMessage: "Desktop ComfyUI MCP worker is not enabled for this tenant.",
+      unsupportedResourceProfiles: ["sandbox_required"],
+      defaultResourceProfile: "gpu_required",
+      intent: input.jobType,
+      statusReason: `desktop_comfy_mcp_${input.jobType}`,
+      runtimeLabel: "desktop ComfyUI MCP worker",
+    },
+    deps,
+  );
+}
+
+export async function queueDesktopComfyVideoGenerationJob(
+  input: QueueDesktopComfyMcpJobInput & { jobType: "comfy_video_generation" },
+  deps: {
+    repo?: WorkerSchedulerRepository;
+    reserveCredits?: typeof reserveWorkerJobCredits;
+    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
+  } = {},
+): Promise<{ created: boolean; job: WorkerJobRecord }> {
+  return queueDesktopComfyMcpJob(input, deps);
+}
+
 export async function queueWorkerJobByRuntime(
   input: QueueWorkerJobByRuntimeInput,
   deps: {
@@ -2732,10 +2829,19 @@ export async function queueWorkerJobByRuntime(
       return queueDesktopLocalFolderIngestJob(input, deps);
     }
     if (input.jobType === "comfy_image_generation") {
+      if (isComfyMcpInput(input)) {
+        return queueDesktopComfyMcpJob(input, deps);
+      }
       return queueDesktopComfyImageGenerationJob(input, deps);
     }
     if (input.jobType === "comfy_workflow_run") {
+      if (isComfyMcpInput(input)) {
+        return queueDesktopComfyMcpJob(input, deps);
+      }
       return queueDesktopComfyWorkflowRunJob(input, deps);
+    }
+    if (input.jobType === "comfy_video_generation") {
+      return queueDesktopComfyVideoGenerationJob(input, deps);
     }
     if (input.jobType === "hyperframes_final_composite") {
       return queueDesktopHyperframesFinalCompositeJob(input, deps);
@@ -2760,4 +2866,8 @@ export async function queueWorkerJobByRuntime(
     400,
     `Runtime type ${(input as { runtimeType: string }).runtimeType} is not supported by the scheduler`
   );
+}
+
+function isComfyMcpInput(input: unknown): input is QueueDesktopComfyMcpJobInput {
+  return Boolean(input && typeof input === "object" && "inputJson" in input && (input as { inputJson?: Record<string, unknown> }).inputJson?.adapter === "comfy_mcp");
 }

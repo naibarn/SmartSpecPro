@@ -57,7 +57,7 @@ describe("vertical drama stale Draft cleanup", () => {
         true
       );
     }
-    for (const days of [0, 6, 8, 30, "7"]) {
+    for (const days of [0, 5, 6, 8, 30, "7"]) {
       expect(verticalDramaStaleDraftDaysSchema.safeParse(days).success).toBe(
         false
       );
@@ -65,7 +65,7 @@ describe("vertical drama stale Draft cleanup", () => {
   });
 
   it("keeps the cleanup thresholds and pre-series terminal states allowlisted", () => {
-    expect(VERTICAL_DRAMA_STALE_DRAFT_DAY_OPTIONS).toEqual([5, 7, 10]);
+    expect(VERTICAL_DRAMA_STALE_DRAFT_DAY_OPTIONS).toEqual([7, 10]);
     expect(VERTICAL_DRAMA_STALE_DRAFT_ELIGIBLE_STATUSES).toEqual([
       "ready_for_qc",
       "passed",
@@ -91,9 +91,6 @@ describe("vertical drama stale Draft cleanup", () => {
 
   it("uses an exact server-time cutoff for each allowed day bucket", () => {
     const now = new Date("2026-08-17T12:00:00.000Z");
-    expect(verticalDramaStaleDraftCutoff(5, now).toISOString()).toBe(
-      "2026-08-12T12:00:00.000Z"
-    );
     expect(verticalDramaStaleDraftCutoff(7, now).toISOString()).toBe(
       "2026-08-10T12:00:00.000Z"
     );
@@ -105,9 +102,7 @@ describe("vertical drama stale Draft cleanup", () => {
   it("normalizes aggregate counts returned by the database", async () => {
     const where = vi
       .fn()
-      .mockResolvedValue([
-        { olderThan5Days: "12", olderThan7Days: 8n, olderThan10Days: 3 },
-      ]);
+      .mockResolvedValue([{ olderThan7Days: 8n, olderThan10Days: 3 }]);
     const from = vi.fn(() => ({ where }));
     const select = vi.fn(() => ({ from }));
     mockGetDb.mockResolvedValue({ select });
@@ -117,7 +112,7 @@ describe("vertical drama stale Draft cleanup", () => {
         { tenantId: "tenant-1", userId: 42 },
         new Date("2026-08-17T12:00:00.000Z")
       )
-    ).resolves.toEqual({ 5: 12, 7: 8, 10: 3 });
+    ).resolves.toEqual({ 7: 8, 10: 3 });
     expect(select).toHaveBeenCalledOnce();
     expect(where).toHaveBeenCalledOnce();
     expect(predicateSpies.eq).toHaveBeenCalledWith(
@@ -137,10 +132,6 @@ describe("vertical drama stale Draft cleanup", () => {
     );
     expect(predicateSpies.lt).toHaveBeenCalledWith(
       verticalDramaDraftLedgers.updatedAt,
-      new Date("2026-08-12T12:00:00.000Z")
-    );
-    expect(predicateSpies.lt).toHaveBeenCalledWith(
-      verticalDramaDraftLedgers.updatedAt,
       new Date("2026-08-10T12:00:00.000Z")
     );
     expect(predicateSpies.lt).toHaveBeenCalledWith(
@@ -157,7 +148,7 @@ describe("vertical drama stale Draft cleanup", () => {
 
     await expect(
       getVerticalDramaStaleDraftCounts({ tenantId: "tenant-1", userId: 42 })
-    ).resolves.toEqual({ 5: 0, 7: 0, 10: 0 });
+    ).resolves.toEqual({ 7: 0, 10: 0 });
   });
 
   it("returns the number of rows archived by the guarded bulk update", async () => {

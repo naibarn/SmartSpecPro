@@ -66,6 +66,10 @@ pub struct ActiveJobSummary {
     pub job_id: String,
     pub job_label: String,
     pub job_type: String,
+    /// Server-authoritative creation time, when supplied by the claim
+    /// response. Keep this separate from local start/claim time so the UI
+    /// matches the web job list.
+    pub created_at: Option<String>,
     pub project_id: Option<String>,
     pub project_name: Option<String>,
     pub progress_percent: u8,
@@ -130,11 +134,24 @@ impl ExecutorState {
         project_id: Option<String>,
         project_name: Option<String>,
     ) {
+        self.start_job_with_created_at(job_id, label, job_type, project_id, project_name, None);
+    }
+
+    pub fn start_job_with_created_at(
+        &mut self,
+        job_id: String,
+        label: String,
+        job_type: String,
+        project_id: Option<String>,
+        project_name: Option<String>,
+        created_at: Option<String>,
+    ) {
         self.active_jobs.retain(|entry| entry.job_id != job_id);
         self.active_jobs.push(ActiveJobSummary {
             job_id: job_id.clone(),
             job_label: label.clone(),
             job_type: job_type.clone(),
+            created_at,
             project_id: project_id.clone(),
             project_name: project_name.clone(),
             progress_percent: 0,
@@ -511,17 +528,22 @@ mod tests {
     fn current_job_metadata_is_serialized_in_state() {
         let mut state = ExecutorState::default();
         state.set_queue_depth(3);
-        state.start_job(
+        state.start_job_with_created_at(
             "job-1".into(),
             "Render".into(),
             "hyperframes_final_composite".into(),
             Some("project-9".into()),
             Some("Launch video".into()),
+            Some("2026-08-27T07:00:00.000Z".into()),
         );
 
         assert_eq!(state.queue_depth, 3);
         assert_eq!(state.current_project_id.as_deref(), Some("project-9"));
         assert_eq!(state.current_project_name.as_deref(), Some("Launch video"));
+        assert_eq!(
+            state.active_jobs[0].created_at.as_deref(),
+            Some("2026-08-27T07:00:00.000Z")
+        );
     }
 
     #[test]

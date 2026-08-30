@@ -19,6 +19,7 @@ import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
 import { getRedisClient } from "../services/redis";
 import { createInternalTokenFromAuth } from "../_core/tokens";
 import { resolveExportDownloadTarget } from "./exportDownloadTarget";
+import { storageStreamFile } from "../storage";
 import {
   buildDelegatedWorkerOriginMetadata,
   DelegatedWorkerPlatformError,
@@ -243,6 +244,27 @@ export function createPresentationPublicRouter(): Router {
               res.destroy(error as Error);
             }
           });
+          stream.pipe(res);
+          return;
+        }
+
+        if (downloadTarget.kind === "storage") {
+          const stored = await storageStreamFile(downloadTarget.key);
+          if (!stored) {
+            sendApiError(res, 404, "not_found", "Export file not available");
+            return;
+          }
+          res.setHeader("Content-Type", stored.contentType || mimeType);
+          res.setHeader("Accept-Ranges", "bytes");
+          if (stored.contentLength != null) {
+            res.setHeader("Content-Length", String(stored.contentLength));
+          }
+          const stream = stored.stream as any;
+          if (typeof stream.pipe !== "function") {
+            sendApiError(res, 500, "internal_error", "Export stream unavailable");
+            return;
+          }
+          stream.on?.("error", (error: Error) => res.destroy(error));
           stream.pipe(res);
           return;
         }

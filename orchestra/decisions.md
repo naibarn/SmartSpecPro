@@ -1,15 +1,16 @@
-[2026-08-24T11:32:00Z] DECISION: Start a fresh Orchestra session for ticket #422 and archive the unrelated prior session.
-  Context: Existing orchestra state described a completed Feedback Hub credit-modal fix, not this Vertical Drama tRPC error. The old state was moved to orchestra/archive/2026-08-24T11-32-00Z/.
-  Alternatives considered: Reuse the stale session; rejected because its task and evidence ledger were unrelated.
+[2026-08-30T12:40:41Z] DECISION: Start a fresh Orchestra session and archive the previous session.
+  Context: Existing orchestra/ state belonged to earlier work; safe archive moved it to .orchestra-archive/20260830T124041Z.
+  Alternatives considered: overwrite old state (rejected because it would lose recoverable audit context).
 
-[2026-08-24T11:32:00Z] DECISION: Use bounded shell discovery because SocratiCode MCP tools are unavailable.
-  Context: Repository instructions require SocratiCode first when active; no codebase_* tools were exposed in this session.
-  Alternatives considered: Broad repository scan; rejected in favor of route- and trace-scoped searches.
+[2026-08-30T12:41:00Z] DECISION: Use direct inline standard-light execution.
+  Context: This is a cross-layer bug requiring data-first debugging; no SocratiCode or sub-agent MCP tool is available in the current session.
+  Alternatives considered: broad parallel dispatch (not available and would risk overlapping a heavily dirty worktree).
 
-[2026-08-24T11:32:00Z] DECISION: Diagnose only; do not patch code or alter service/data state.
-  Context: The user asked to inspect the problem, and the screenshot is an incident report rather than an implementation authorization.
-  Alternatives considered: Apply a defensive fallback immediately; rejected until the authoritative failing boundary is proven.
+[2026-08-30T19:52:00Z] DECISION: Preserve the intentional description-only roster lifecycle and repair the failure boundary instead of fabricating DNA or auto-spending credits.
+  Evidence: series 57 rows 206-208 contain descriptions but no visualBible/designDna, while the design spec persists DNA only after confirmed generation; no task/error exists for those characters.
+  Repair: `needsSetup` now validates `visualBible.designDna`; candidate-first preview falls through to normal prompt generation when age cannot be safely resolved.
 
-[2026-08-24T13:42:00Z] DECISION: Treat the incident as an R2 HeadObject failure in the duplicate settle path, with high boundary confidence and medium-high call-site confidence.
-  Context: Ticket #422 stores an AWS SDK S3 protocol stack; the audit task completed successfully; the DB contains durable asset 4139; current code durabilizes the task in getUnifiedMediaTask and then ingests the managed URL again in getEpisodeCoverStatus.
-  Alternatives considered: Blame provider generation, credits, tenant scope, or missing episode data; rejected by the matching completed task and persisted tenant/user-scoped rows.
+[2026-08-30T20:00:00Z] DECISION: Reconcile all eligible repository changes while excluding generated payloads.
+  Context: `main` and `origin/main` were both `42a8b303a`; the worktree contained 917 tracked changes plus 2,396 untracked files, including about 22.5 GB of cache/build/release output that cannot be published to GitHub.
+  Alternatives considered: stage every filesystem path (rejected because it would include generated caches, multi-GB release archives, and an unexplained zero-byte root file).
+  Boundary: stage tracked changes and reviewed source/spec/doc/test/config/evidence paths; ignore generated outputs and leave `=.*new` untouched.

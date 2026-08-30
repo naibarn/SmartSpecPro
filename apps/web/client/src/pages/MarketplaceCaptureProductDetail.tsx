@@ -95,6 +95,7 @@ import {
   type SequentialAngleLabel,
 } from "@/lib/marketplaceSequentialStoryboardUi";
 import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { getMarketplaceHyperframesUiCopy } from "@/components/marketplaceCapture/hyperframesUiCopy";
 // Marketplace flexible-shots-and-creation-casting (planning/marketplace-
 // flexible-shots-and-creation-casting/plan.md, W3) — reuses the SAME Drama
@@ -2420,7 +2421,7 @@ function ProductMediaCard({
     >
       <div className="relative aspect-video bg-slate-100">
         {asset.mediaType === "image" ? (
-          <img
+          <AuthenticatedMediaImage
             src={asset.url}
             alt={asset.title}
             className="h-full w-full object-cover"
@@ -6066,7 +6067,7 @@ export default function MarketplaceCaptureProductDetail() {
                   key={`${item.vdCharacterId ?? item.url}-${index}`}
                   className="relative rounded-lg border border-violet-200 bg-white p-2 text-center shadow-2xs"
                 >
-                  <img
+                  <AuthenticatedMediaImage
                     src={item.url}
                     alt={item.characterName || `Character ${index + 1}`}
                     className="mx-auto h-12 w-12 rounded-full object-cover"
@@ -6366,7 +6367,7 @@ export default function MarketplaceCaptureProductDetail() {
           </div>
           {characterAnchorUrl ? (
             <div className="mt-3 flex items-start gap-3">
-              <img
+              <AuthenticatedMediaImage
                 src={characterAnchorUrl}
                 alt="Character anchor"
                 className="h-24 w-24 rounded-md border bg-white object-cover"
@@ -7134,7 +7135,7 @@ export default function MarketplaceCaptureProductDetail() {
                     }
                     aria-label="ดู Hero image แบบเต็มจอ"
                   >
-                    <img
+                    <AuthenticatedMediaImage
                       src={compactText((heroProductImage as any).url)}
                       alt=""
                       className="h-72 w-full object-contain p-3 md:h-80"
@@ -8283,7 +8284,7 @@ export default function MarketplaceCaptureProductDetail() {
                         </p>
                         {resolvedProductAnchorImageUrl ? (
                           <div className="mt-2 flex items-start gap-3">
-                            <img
+                            <AuthenticatedMediaImage
                               src={resolvedProductAnchorImageUrl}
                               alt="Selected product anchor"
                               className="h-20 w-20 rounded-md border object-cover"
@@ -8327,7 +8328,7 @@ export default function MarketplaceCaptureProductDetail() {
                                     className="h-16 rounded-md border bg-slate-50 p-1 transition hover:border-sky-500 hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-500"
                                     aria-label={`Use product image ${index + 1} as product anchor`}
                                   >
-                                    <img
+                                    <AuthenticatedMediaImage
                                       src={image.url}
                                       alt=""
                                       className="h-full w-full object-contain"
@@ -8420,7 +8421,7 @@ export default function MarketplaceCaptureProductDetail() {
                         </p>
                         {characterAnchorUrl ? (
                           <div className="mt-2 flex items-start gap-3">
-                            <img
+                            <AuthenticatedMediaImage
                               src={characterAnchorUrl}
                               alt="Character anchor"
                               className="h-20 w-20 rounded-md border object-cover"
@@ -8493,7 +8494,7 @@ export default function MarketplaceCaptureProductDetail() {
                         </p>
                         {environmentAnchorUrl ? (
                           <div className="mt-2 flex items-start gap-3">
-                            <img
+                            <AuthenticatedMediaImage
                               src={environmentAnchorUrl}
                               alt="Environment anchor"
                               className="h-20 w-20 rounded-md border object-cover"
@@ -9168,7 +9169,7 @@ export default function MarketplaceCaptureProductDetail() {
                                           >
                                             <div className="flex items-center gap-2">
                                               {anchor.url ? (
-                                                <img
+                                                <AuthenticatedMediaImage
                                                   src={anchor.url}
                                                   alt={`${anchor.role} locked anchor`}
                                                   className="h-10 w-10 rounded border bg-white object-cover"
@@ -9707,7 +9708,7 @@ export default function MarketplaceCaptureProductDetail() {
                                                                     className="group relative h-20 w-14 overflow-hidden rounded border bg-white shadow-sm"
                                                                     aria-label={`ดูภาพ ${thumb.title}`}
                                                                   >
-                                                                    <img
+                                                                    <AuthenticatedMediaImage
                                                                       src={
                                                                         thumb.url
                                                                       }
@@ -10279,7 +10280,7 @@ export default function MarketplaceCaptureProductDetail() {
                           className={`block w-full rounded text-left focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 ${sequentialPickerActive && isAutoReviewAnchor ? "cursor-default" : ""}`}
                         >
                           <div className="relative">
-                            <img
+                            <AuthenticatedMediaImage
                               src={image.url}
                               alt={`Product image ${index + 1}`}
                               className="h-44 w-full object-contain"
@@ -10805,7 +10806,7 @@ export default function MarketplaceCaptureProductDetail() {
             >
               <X className="h-4 w-4" />
             </button>
-            <img
+            <AuthenticatedMediaImage
               src={previewAutoReviewImage.url}
               alt={previewAutoReviewImage.title}
               className="max-h-[90vh] max-w-[92vw] object-contain"

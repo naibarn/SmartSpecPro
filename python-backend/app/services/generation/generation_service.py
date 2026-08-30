@@ -386,7 +386,11 @@ class GenerationService:
                         
                 except Exception as e:
                     logger.error("Error storing output", task_id=task_id, error=str(e))
-                    task_info["output_url"] = kie_result.output_url  # Use original URL
+                    # Never publish an expiring provider URL when the durable
+                    # R2 copy fails. Keep the task diagnosable and let the
+                    # retry/repair path try the provider provenance again.
+                    task_info["output_url"] = None
+                    task_info["error_message"] = "Generated media could not be stored in R2"
         
         elif kie_result.status == TaskStatus.FAILED:
             task_info["completed_at"] = datetime.utcnow()

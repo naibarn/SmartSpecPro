@@ -2895,6 +2895,7 @@ mod tests {
         ClaimedWorkerJob {
             id: "job-hermes-1".into(),
             job_type: job_type.into(),
+            created_at: None,
             lease_owner_token: "lease-1".into(),
             assignment_attempt: "attempt-1".into(),
             input_json: json!({

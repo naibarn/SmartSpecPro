@@ -1220,7 +1220,7 @@ describe("presentationPlaybackExport", () => {
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
       ok: true,
-      json: async () => ({ percent: 55, stage: "encoding" }),
+      text: async () => JSON.stringify({ percent: 55, stage: "encoding" }),
     } as Response);
 
     const result = await getPresentationExportStatus(77, actor);
@@ -1281,7 +1281,7 @@ describe("presentationPlaybackExport", () => {
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
       ok: true,
-      json: async () => ({ state: "done", output_url: "https://example.com/export.mp4" }),
+      text: async () => JSON.stringify({ state: "done", output_url: "https://example.com/export.mp4" }),
     } as Response);
 
     const result = await getPresentationExportStatus(78, actor);
@@ -1336,7 +1336,7 @@ describe("presentationPlaybackExport", () => {
 
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
       ok: true,
-      json: async () => ({ state: "error", error_message: "render failed" }),
+      text: async () => JSON.stringify({ state: "error", error_message: "render failed" }),
     } as Response);
 
     const result = await getPresentationExportStatus(79, actor);
@@ -1412,7 +1412,7 @@ describe("presentationPlaybackExport", () => {
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
       ok: false,
       status: 500,
-      json: async () => ({}),
+        text: async () => JSON.stringify({}),
     } as Response);
 
     const result = await getPresentationExportStatus(80, actor);
@@ -1472,7 +1472,7 @@ describe("presentationPlaybackExport", () => {
 
       const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
         ok: true,
-        json: async () => ({ state: "queued", percent: 0 }),
+        text: async () => JSON.stringify({ state: "queued", percent: 0 }),
       } as Response);
 
       const result = await getPresentationExportStatus(81, actor);

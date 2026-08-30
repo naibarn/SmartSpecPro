@@ -1,30 +1,54 @@
-# Progress: Series-owned Draft and QC lifecycle
+loop_policy:
+  purpose: coding webapp with an agent loop
+  max_iterations: 12
+  max_dispatch_waves: 6
+  max_active_subagents: 0
+  max_parallel_writers: 1
+  iteration: 2/12
+  tool_call_batch: 1
+  dispatch_waves: 0/6
+  repair_rounds: 0
+  cost_proxy: unknown exact telemetry unavailable
+  stop_condition: continue until evidence-backed fix and focused verification, or external data access blocks safe repair
+  active_agents: none
+  closed_agents: none
 
-- [COMPLETED] evidence-and-design — traced the delete/recovery loop, Draft ledger ownership, composition admission, QC admission, and status recovery.
-- [COMPLETED] schema-tombstone — added `seriesDeletedAt`, the active-Series uniqueness guard, and migration `0253`; applied successfully to the local `smartspec` database from `apps/web/.env`.
-- [COMPLETED] lifecycle-enforcement — enforced Series ownership across composition, QC, selection, status, receipt, cache pointers, and delete paths; disabled automatic legacy migration on Series index load.
-- [COMPLETED] data-retention — detached source packs before Series deletion and changed their FK to `ON DELETE SET NULL` so source assets/analyses survive.
-- [COMPLETED] focused-tests — Draft composition/QC, deleteSeries, and delete-dialog regression suites pass.
-- [COMPLETED] verification — server integrity suites pass (5 files / 45 tests), UI Wizard suites pass under jsdom (2 files / 70 tests), `git diff --check` is clean, and post-migration DB checks confirm no active unlinked/duplicate/orphan Series links; full typecheck remains baseline-noisy outside this change, and browser/production deployment proof is not run.
+[COMPLETED] wave-1-discovery — SocratiCode unavailable; shell fallback confirmed DB state, audit history, lifecycle writers/readers, and prompt failure path.
 
-## Database action
+[COMPLETED] wave-2-repair — corrected canonical DNA presence check and made candidate-first prompt generation fall back to a single prompt when no safe age profile exists.
 
-- Target: local PostgreSQL `smartspec` at `localhost:5432`, loaded from `apps/web/.env`.
-- Before migration: 41 Draft ledgers, 29 unlinked, 12 active linked, and 3 active ledgers duplicated `seriesId=52`.
-- Safe audit action: archived the 2 older duplicate ledgers for Series 52; their rows, immutable versions, and QC identifiers were preserved. The latest row matched the Series planning session and remained active.
-- After 0253/0254 cleanup: 41 ledgers, 5 active linked, 36 archived, 0 active unlinked, 0 active duplicate links, 0 orphan links, and 174 immutable versions retained; latest migration id 228 recorded at `1787575173477`.
-- Production was not targeted.
+Evidence ledger:
+  source: local DB + audit log
+  identifier: series 57 / character IDs 204-208
+  observed failure: Character DNA absent and downstream DNA/prompt actions fail
+  data state: 204/205 have valid visualBible.designDna, 206/207/208 do not; only 204/205 have portrait assets and media tasks.
+  confidence: high
+  next evidence needed: browser/provider run after deployment; owner must run the now-unblocked generation action to create real DNA for 206-208.
 
-## Discovery note
+Verification ledger:
+  commands: needsSetup test 8 passed; no-safe-age prompt fallback test 1 passed; visual-bible service tests 193 passed; Prettier passed for edited tests; full TypeScript check failed on existing unrelated errors across the dirty worktree.
+  result: focused verification passed; one broader customInstruction suite remains baseline-red due stale fixtures expecting implicit image-model fallback and invalid snapshot keys; no type error was reported in the edited server/test lines.
+  browser/live-production: not run
 
-SocratiCode MCP tools were not callable in this session, so discovery used bounded `rg` and targeted `sed` reads after narrowing the known router/service paths. No broad repository rewrite or destructive command was used.
+[COMPLETED] verification-review — TypeScript check passed; focused DNA-state and no-safe-age fallback regressions passed. No deployment or live-provider call was made.
 
-## Gap closure wave
+[COMPLETED] worker-transcription-runtime — added the bundled whisper.cpp +
+ggml-large-v3 runtime contract, HyperFrames transcript-file normalization,
+Managed WSL/native execution, isolated output workspace, and release/doctor
+guards. Hardened WSL path quoting and made the HyperFrames compatibility patch
+idempotent. Worker version is 0.1.196.
 
-- Added Series guards to Draft composition cancellation and Draft history/version loading.
-- Added active-ledger filters for tombstoned/archived rows and Series-scoped QC snapshot recovery.
-- Added deterministic cleanup migration `0254_vertical_drama_legacy_draft_cleanup`; local backup was written under `/tmp/smartspec-vd-draft-backup-Rmgl4v/` before applying it.
-- Applied `0254` locally: 0 active unlinked ledgers, 0 visible legacy recovery shells, 5 active Series-linked ledgers, 36 archived ledgers; immutable history was preserved.
-- Made 0253 self-healing for pre-existing duplicate active ledgers by retaining the newest row and archiving older rows before creating the unique index; a transaction rollback smoke check confirms the SQL parses and executes safely.
-- Removed the final browser-session-only Draft workspace recovery path; `getDraftWorkspaceStatus` and the Wizard now require an active Series ID before loading Draft/QC state.
-- Added route/QC regression coverage; server integrity suite passes 45 tests and UI Wizard suite passes 70 tests under jsdom.
+Verification ledger:
+  commands: cargo test --manifest-path apps/worker-app/src-tauri/Cargo.toml --lib (203 passed); npm --workspace apps/worker-app run build (passed); Node syntax and git diff checks (passed); runtime-pack SHA256SUMS verification (passed); real HyperFrames transcribe smoke (ok=true, wordCount=5, transcriptWords=5)
+  runtime evidence: whisper.cpp 1.9.3-dev; large-v3 model 3,095,033,483 bytes; binary/model hashes are declared in runtime-pack/manifest.json and SHA256SUMS
+  release gate: correctly blocked because SHA256SUMS.sig is still the explicit placeholder; official signing/deployment/platform installer verification remains external
+  socraticode: unavailable; targeted shell discovery fallback used
+
+[IN-PROGRESS] repository-reconciliation — origin/main was fetched and confirmed
+at the same SHA as local main before publication. Full inventory classified
+generated cache/build/release payloads separately from eligible source/spec/doc/
+test/config changes; generated paths were added to .gitignore and will remain
+local. `git diff --check HEAD` now passes. Targeted secret scan of the full
+worktree exceeded 120 seconds; added-line pattern review found no credential
+match, with test/package `sk-` matches classified as false positives from words
+such as task/ask.

@@ -59,6 +59,9 @@ vi.mock("../verticalDramaStoryBible", async () => {
     resolveStoryBibleModel: vi.fn(),
   };
 });
+vi.mock("../verticalDramaImproveScript", () => ({
+  resolveStoryboardModel: vi.fn(),
+}));
 
 import fs from "fs";
 import { parseSkillFile } from "@smartspec/skills";
@@ -68,12 +71,14 @@ import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../cred
 import { mediaGenerationLimiter } from "../rateLimiter";
 import { resolveSkillDirCandidates, resolveSkillManifestPath } from "../skillFiles";
 import { resolveStoryBibleModel } from "../verticalDramaStoryBible";
+import { resolveStoryboardModel } from "../verticalDramaImproveScript";
 
 const mockExecute = vi.mocked(executeWithFallback);
 const mockHasEnoughCredits = vi.mocked(hasEnoughCredits);
 const mockDeductCredits = vi.mocked(deductCredits);
 const mockCalculateCredits = vi.mocked(calculateCreditsForLLM);
 const mockResolveModel = vi.mocked(resolveStoryBibleModel);
+const mockResolveStoryboardModel = vi.mocked(resolveStoryboardModel);
 const mockIsAllowed = vi.mocked(mediaGenerationLimiter.isAllowed);
 const mockResolveSkillDirCandidates = vi.mocked(resolveSkillDirCandidates);
 const mockResolveSkillManifestPath = vi.mocked(resolveSkillManifestPath);
@@ -173,6 +178,7 @@ describe("generateStoryboardShotgrid — repairContext (real-repair wiring for r
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveStoryboardModel.mockResolvedValue("gpt-4o-mini");
     mockCalculateCredits.mockReturnValue(8);
     mockDeductCredits.mockResolvedValue(undefined as any);
     mockIsAllowed.mockReturnValue(true);
@@ -212,6 +218,32 @@ describe("generateStoryboardShotgrid — repairContext (real-repair wiring for r
     const match = content.match(/current_storyboard: (\{.*?\})\nrepair_instruction/);
     expect(match).toBeTruthy();
     expect(JSON.parse(match![1])).toEqual(CURRENT_STORYBOARD);
+  });
+
+  it("uses whole-episode rebuild mode with previous and future context instead of targeted repair mode", async () => {
+    await generateStoryboardShotgrid(
+      baseParams({
+        repairContext: {
+          currentStoryboard: CURRENT_STORYBOARD,
+          instruction: "legacy targeted repair must not win",
+        },
+        episodeRebuildContext: {
+          currentStoryboard: CURRENT_STORYBOARD,
+          previousEpisodeContext: { episode_number: 2, cliffhanger: "prior" },
+          futureEpisodeConstraint: { episode_number: 4, logline: "next" },
+          instruction: "rebuild all nine shots from the repaired script",
+        },
+      }),
+    );
+
+    const content = userMessageContent();
+    expect(content).toContain("FULL EPISODE REBUILD MODE");
+    expect(content).toContain('previous_episode_context: {"episode_number":2,"cliffhanger":"prior"}');
+    expect(content).toContain('future_episode_constraint: {"episode_number":4,"logline":"next"}');
+    expect(content).toContain("rebuild_instruction: rebuild all nine shots from the repaired script");
+    expect(content).toContain("previous_storyboard_reference");
+    expect(content).not.toContain("REPAIR MODE");
+    expect(content).not.toContain("repair_instruction: legacy targeted repair must not win");
   });
 
   it("omits REPAIR MODE entirely when repairContext is absent (fresh generation, byte-identical to before this field existed)", async () => {

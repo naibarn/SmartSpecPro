@@ -73,6 +73,7 @@ import {
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
+  type JsonPlanningAttemptEvent,
   // Deep story drafts hydration (W10-B, added 2026-07-08) — TYPE-ONLY (erased
   // at compile time, zero runtime import), safe regardless of any test's
   // mocking of this module: this file already has a REAL, static VALUE
@@ -107,6 +108,10 @@ import type {
   VdEpisodeMemory,
   VdOpenThread,
 } from "@shared/verticalDramaSeries/seriesMemoryState";
+import {
+  analyzeVerticalDramaStorySafety,
+  isBlockingVerticalDramaStorySafety,
+} from "./verticalDramaStorySafety";
 
 export { InsufficientCreditsError, VdSchemaValidationError };
 
@@ -272,7 +277,7 @@ const scriptRetentionLoopSchema = z
  * an already-well-formed object passes through unchanged.
  */
 const scriptNoteItemSchema = z.union([
-  z.string().transform((message) => ({ message })),
+  z.string().transform(message => ({ message })),
   z.object({}).passthrough(),
 ]);
 
@@ -345,6 +350,10 @@ type StoryControlNormalizationResult = {
  * The script itself and semantic story-control checks remain strict. In
  * particular, this never invents a purpose, thread id, episode number, or
  * evidence object; it drops metadata that cannot be trusted and records why.
+ * An unproven resolve is also dropped at this optional-annotation boundary so
+ * the episode can continue without falsely closing continuity; the strict
+ * persisted story-control validator remains responsible for rejecting such a
+ * resolve when it is supplied as authoritative data.
  */
 function normalizeStoryControlOutputForGeneration(
   raw: unknown
@@ -536,19 +545,22 @@ const scriptBuilderGenerationSchema = {
  * schema has passed. An invalid `open`/unknown reference cannot safely be
  * persisted, so dropping that annotation is safer than blocking the whole
  * episode. A known `resolve` without current-episode evidence is deliberately
- * retained so the semantic gate still fails closed instead of silently
- * closing continuity.
+ * dropped as well: this preserves the thread as open without silently
+ * closing it, while keeping the generation boundary resilient to incomplete
+ * LLM annotations.
  */
 function normalizeStoryControlSemanticsForGeneration(
   script: ScriptBuilderOutput,
   options: {
     seed: VerticalDramaStoryControlSeed;
     episodeNumber: number;
-  },
+  }
 ): ScriptBuilderOutput {
   const warnings: string[] = [];
   const value: ScriptBuilderOutput = { ...script };
-  const threadIds = new Set(options.seed.threadCandidates.map(thread => thread.threadId));
+  const threadIds = new Set(
+    options.seed.threadCandidates.map(thread => thread.threadId)
+  );
   const proposedThreadIds = new Set(threadIds);
   const characterKeys = new Set(options.seed.canonicalCharacterKeys);
 
@@ -558,9 +570,11 @@ function normalizeStoryControlSemanticsForGeneration(
 
   const currentEpisodeEvidence = <T extends { episodeNumber: number }>(
     refs: T[],
-    path: string,
+    path: string
   ): T[] => {
-    const validRefs = refs.filter(ref => ref.episodeNumber === options.episodeNumber);
+    const validRefs = refs.filter(
+      ref => ref.episodeNumber === options.episodeNumber
+    );
     if (validRefs.length !== refs.length) {
       warn(path, "evidence for another episode was omitted");
     }
@@ -587,26 +601,34 @@ function normalizeStoryControlSemanticsForGeneration(
         continue;
       }
 
-      actions.push({
-        ...action,
-        evidenceRefs: currentEpisodeEvidence(
-          action.evidenceRefs,
-          `${path}.evidenceRefs`,
-        ),
-      });
+      const evidenceRefs = currentEpisodeEvidence(
+        action.evidenceRefs,
+        `${path}.evidenceRefs`
+      );
+      if (action.action === "resolve" && evidenceRefs.length === 0) {
+        warn(
+          path,
+          "resolve action without current-episode evidence was omitted"
+        );
+        continue;
+      }
+
+      actions.push({ ...action, evidenceRefs });
     }
     value.thread_actions = actions;
   }
 
   if (value.character_role_bindings) {
-    value.character_role_bindings = value.character_role_bindings.filter(binding => {
-      if (characterKeys.has(binding.character_key)) return true;
-      warn(
-        `script.character_role_bindings.${binding.character_key}`,
-        "binding for an unknown canonical character was omitted",
-      );
-      return false;
-    });
+    value.character_role_bindings = value.character_role_bindings.filter(
+      binding => {
+        if (characterKeys.has(binding.character_key)) return true;
+        warn(
+          `script.character_role_bindings.${binding.character_key}`,
+          "binding for an unknown canonical character was omitted"
+        );
+        return false;
+      }
+    );
   }
 
   if (value.romance_beat) {
@@ -614,7 +636,7 @@ function normalizeStoryControlSemanticsForGeneration(
       ...value.romance_beat,
       evidence_refs: currentEpisodeEvidence(
         value.romance_beat.evidence_refs,
-        "script.romance_beat.evidence_refs",
+        "script.romance_beat.evidence_refs"
       ),
     };
   }
@@ -623,14 +645,14 @@ function normalizeStoryControlSemanticsForGeneration(
       ...value.advantage_beat,
       evidence_refs: currentEpisodeEvidence(
         value.advantage_beat.evidence_refs,
-        "script.advantage_beat.evidence_refs",
+        "script.advantage_beat.evidence_refs"
       ),
     };
   }
   if (value.evidence_refs) {
     value.evidence_refs = currentEpisodeEvidence(
       value.evidence_refs,
-      "script.evidence_refs",
+      "script.evidence_refs"
     );
   }
 
@@ -708,8 +730,7 @@ export function resolveScriptEpisodeMemory(
   }
 
   const continuityFacts = script.continuity_notes.filter(
-    (note): note is string =>
-      typeof note === "string" && note.trim().length > 0
+    (note): note is string => typeof note === "string" && note.trim().length > 0
   );
 
   const threadsFromOpenLoops: VdOpenThread[] = (script.open_loops ?? [])
@@ -729,11 +750,15 @@ export function resolveScriptEpisodeMemory(
     })
     .filter((thread): thread is VdOpenThread => thread !== null);
 
-  return mergeStoryControlMemory({
-    ...resolved,
-    canonicalFacts: [...resolved.canonicalFacts, ...continuityFacts],
-    threadsOpened: [...resolved.threadsOpened, ...threadsFromOpenLoops],
-  }, script, episodeNumber);
+  return mergeStoryControlMemory(
+    {
+      ...resolved,
+      canonicalFacts: [...resolved.canonicalFacts, ...continuityFacts],
+      threadsOpened: [...resolved.threadsOpened, ...threadsFromOpenLoops],
+    },
+    script,
+    episodeNumber
+  );
 }
 
 /**
@@ -747,7 +772,7 @@ export function resolveScriptEpisodeMemory(
 function mergeStoryControlMemory(
   memory: VdEpisodeMemory,
   script: ScriptBuilderOutput,
-  episodeNumber: number,
+  episodeNumber: number
 ): VdEpisodeMemory {
   const actions = script.thread_actions ?? [];
   if (actions.length === 0) return memory;
@@ -761,7 +786,8 @@ function mergeStoryControlMemory(
     threadsOpened.push({
       threadId,
       description:
-        action.note?.trim() || `Story-control thread opened in episode ${episodeNumber}`,
+        action.note?.trim() ||
+        `Story-control thread opened in episode ${episodeNumber}`,
       threadClass: "plot",
       openedEpisode: episodeNumber,
       expectedResolution: "future_episode",
@@ -995,6 +1021,27 @@ export interface GenerateEpisodeScriptParams {
     instruction: string;
   };
   /**
+   * Whole-episode rebuild mode. This is deliberately separate from
+   * `repairContext`: the skill's normal Repair Mode preserves untouched
+   * fields, while a policy repair must rewrite the synopsis, dialogue, and
+   * scene movement as one coherent replacement without changing the
+   * established story facts or continuity boundary.
+   */
+  episodeRebuildContext?: {
+    currentScript: Record<string, unknown>;
+    previousEpisodeContext: unknown;
+    futureEpisodeConstraint: unknown;
+    instruction: string;
+  };
+  /** Policy-safe story constraints supplied by initial or repair generation. */
+  policySafetyContext?: string;
+  /** Restricted forensic observer used by episode-scoped repair jobs only. */
+  planningAttemptObserver?: (
+    event: JsonPlanningAttemptEvent
+  ) => Promise<void> | void;
+  /** Repair candidates are charged only after the complete candidate passes all gates. */
+  deferCreditDeduction?: boolean;
+  /**
    * Additive feature-flag bag (spec §7.7, section-13). Every flag defaults
    * to falsy/undefined, which preserves today's byte-identical prompt,
    * schema, and control flow — see section-13's "flags off" acceptance
@@ -1093,7 +1140,8 @@ function buildSpeechBudgetPromptPayload(params: GenerateEpisodeScriptParams): {
   locale: string;
 } {
   const clipDurationsSeconds =
-    params.speechBudget?.clipDurationsSeconds ?? DEFAULT_SCRIPT_CLIP_DURATIONS_SECONDS;
+    params.speechBudget?.clipDurationsSeconds ??
+    DEFAULT_SCRIPT_CLIP_DURATIONS_SECONDS;
   const perShotBudgets = derivePerShotSpeechBudgets([...clipDurationsSeconds]);
 
   const seenDurations = new Set<number>();
@@ -1113,8 +1161,12 @@ function buildSpeechBudgetPromptPayload(params: GenerateEpisodeScriptParams): {
   }
 
   return {
-    target_speech_seconds_min: MIN_EPISODE_COVERAGE_RATIO * params.durationSeconds,
-    target_speech_seconds_max: perShotBudgets.reduce((sum, b) => sum + b.targetSpeechSeconds, 0),
+    target_speech_seconds_min:
+      MIN_EPISODE_COVERAGE_RATIO * params.durationSeconds,
+    target_speech_seconds_max: perShotBudgets.reduce(
+      (sum, b) => sum + b.targetSpeechSeconds,
+      0
+    ),
     per_shot_band: perShotBand,
     locale: params.locale,
   };
@@ -1134,7 +1186,9 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
   const { storySource } = params;
   const characterLines = params.characters.length
     ? params.characters
-        .map(c => `- ${c.characterId}: ${c.name}${c.role ? ` (${c.role})` : ""}`)
+        .map(
+          c => `- ${c.characterId}: ${c.name}${c.role ? ` (${c.role})` : ""}`
+        )
         .join("\n")
     : "(no characters registered yet — invent minimal placeholder character ids consistent with the story context)";
 
@@ -1146,13 +1200,16 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
   // renderer the characters router's `extractCharacterDescription` rewrite
   // (Section 08) also calls — one canonical "Voice:" block format, never a
   // second implementation.
-  const charactersWithSpeechProfile = params.characters.filter(c => c.speechProfile);
+  const charactersWithSpeechProfile = params.characters.filter(
+    c => c.speechProfile
+  );
   const voiceCardsSection =
     charactersWithSpeechProfile.length > 0
       ? [
           "Character voice cards — honor each character's distinct speech profile so lines remain identifiable by rhythm/word choice/attitude even with names removed (spec dialogue rules v2 'distinct voices'):",
           ...charactersWithSpeechProfile.map(
-            c => `${c.characterId} (${c.name}):\n${renderVoiceCardBlock(c.speechProfile!)}`,
+            c =>
+              `${c.characterId} (${c.name}):\n${renderVoiceCardBlock(c.speechProfile!)}`
           ),
         ].join("\n\n")
       : null;
@@ -1222,7 +1279,7 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
   const storyControlSection = storySource.storyControlSeed
     ? [
         `story_control_seed (registered IDs and bounded season intent; keep creative judgment with the writer skill and do not invent or silently close threads):\n${JSON.stringify(
-          storySource.storyControlSeed,
+          storySource.storyControlSeed
         )}`,
         `For episode ${params.episodeNumber}, return optional episode-level annotations alongside the normal script: thread_actions (open/advance/reframe/resolve/defer/park using registered threadId; use evidenceRefs in this array and a resolve action MUST include object evidenceRefs for the current episode), romance_beat (omit when there is no earned movement; when present it MUST include phase and purpose plus optional object evidence_refs), advantage_beat (protagonist/antagonist/shared/unclear plus cost and opponent_response plus optional object evidence_refs), character_role_bindings using only canonical character keys, and top-level evidence_refs with object entries only. These are annotations for reconciliation, not extra scenes. Do not force romance or a power switch when the story does not earn it.`,
       ].join("\n")
@@ -1340,7 +1397,8 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
   // the skill's own system-prompt brief) so it travels with the actual
   // `episode_draft` data in the same message and is directly verifiable by
   // this function's own unit tests.
-  const episodeDraftEnabled = params.opts?.episodeDraftHydrationEnabled === true;
+  const episodeDraftEnabled =
+    params.opts?.episodeDraftHydrationEnabled === true;
   const episodeDraftSection =
     episodeDraftEnabled && params.episodeDraft
       ? [
@@ -1358,7 +1416,7 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
   const sceneContractsEnabled = params.opts?.sceneContractsEnabled === true;
   const sceneContractSection =
     sceneContractsEnabled && episodeDraftSection
-      ? 'Some draft shots above may carry a "contract" object (storyFunction, emotionalBeat, audienceTakeaway, tensionSource, newClueIds, dialoguePurpose, and optionally characterDecision/continuityDependency/anchorLine) — honor it when refining: do not contradict that shot\'s storyFunction, emotionalBeat, or tensionSource; keep any characterDecision visible in the scene\'s dialogue/action; and do not introduce more new named clues/objects/lore terms in that shot than its contract.newClueIds budget allows.'
+      ? "Some draft shots above may carry a \"contract\" object (storyFunction, emotionalBeat, audienceTakeaway, tensionSource, newClueIds, dialoguePurpose, and optionally characterDecision/continuityDependency/anchorLine) — honor it when refining: do not contradict that shot's storyFunction, emotionalBeat, or tensionSource; keep any characterDecision visible in the scene's dialogue/action; and do not introduce more new named clues/objects/lore terms in that shot than its contract.newClueIds budget allows."
       : null;
 
   // Repair-mode framing (see `GenerateEpisodeScriptParams.repairContext`'s
@@ -1372,12 +1430,30 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
   // "Repair Mode" section, and applies as a standing instruction whenever
   // these two keys are present (skill-first architecture, see
   // `planning/vertical-drama-skill-first-architecture/plan.md` Tier 5).
-  const repairSection = params.repairContext
+  const episodeRebuildSection = params.episodeRebuildContext
     ? [
-        `current_script: ${JSON.stringify(params.repairContext.currentScript)}`,
-        `repair_instruction: ${params.repairContext.instruction}`,
+        "FULL EPISODE REBUILD MODE: use the existing episode only as continuity reference. Return a complete replacement script for this same episode, rewriting the synopsis, every spoken line, scene progression, and cliffhanger as one coherent safer version.",
+        "Preserve canonical character identities, established facts, setting, relationship state, prior-episode consequences, and the bounded setup toward the next episode. Do not turn this into a new unrelated story.",
+        "Do not copy unsafe wording or unsafe scene framing from the current script. Replace the risky dramatic mechanism with a neutral adult-centered alternative that serves the same narrative purpose. Continue until the complete schema is valid and policy-safe.",
+        `current_script_reference: ${JSON.stringify(params.episodeRebuildContext.currentScript)}`,
+        `previous_episode_context: ${JSON.stringify(params.episodeRebuildContext.previousEpisodeContext)}`,
+        `future_episode_constraint: ${JSON.stringify(params.episodeRebuildContext.futureEpisodeConstraint)}`,
+        `rebuild_instruction: ${params.episodeRebuildContext.instruction}`,
       ].join("\n")
     : null;
+  const repairSection =
+    !params.episodeRebuildContext && params.repairContext
+      ? [
+          `current_script: ${JSON.stringify(params.repairContext.currentScript)}`,
+          `repair_instruction: ${params.repairContext.instruction}`,
+        ].join("\n")
+      : null;
+
+  const automaticSafety = analyzeVerticalDramaStorySafety(storySource);
+  const policySafetySection =
+    params.policySafetyContext || automaticSafety.level !== "low"
+      ? `policy_safety_contract:\n${params.policySafetyContext ?? automaticSafety.instruction}`
+      : null;
 
   return [
     `story_title: ${params.episodeTitle}`,
@@ -1400,7 +1476,9 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
     durationProfileSection,
     episodeDraftSection,
     sceneContractSection,
+    episodeRebuildSection,
     repairSection,
+    policySafetySection,
     dialogueRulesV2Section,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
@@ -1411,7 +1489,7 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
 function validateEpisodeMemoryAuthoringContract(
   script: ScriptBuilderOutput,
   episodeNumber: number,
-  seasonContext?: GenerateEpisodeScriptParams["seasonContext"],
+  seasonContext?: GenerateEpisodeScriptParams["seasonContext"]
 ): Array<{ path: string; message: string }> {
   const rawMemory = (script as { episode_memory?: unknown }).episode_memory;
   if (!rawMemory || typeof rawMemory !== "object" || Array.isArray(rawMemory)) {
@@ -1432,7 +1510,8 @@ function validateEpisodeMemoryAuthoringContract(
   const isFinalEpisode =
     totalEpisodeCount != null && episodeNumber >= totalEpisodeCount;
   for (const [index, thread] of opened.entries()) {
-    if (!thread || typeof thread !== "object" || Array.isArray(thread)) continue;
+    if (!thread || typeof thread !== "object" || Array.isArray(thread))
+      continue;
     const value = thread as Record<string, unknown>;
     const expectedResolution = String(value.expected_resolution ?? "");
     if (!validExpectedResolutions.has(expectedResolution)) {
@@ -1456,7 +1535,8 @@ function validateEpisodeMemoryAuthoringContract(
         loop &&
         typeof loop === "object" &&
         !Array.isArray(loop) &&
-        (loop as Record<string, unknown>).expected_resolution === "future_episode"
+        (loop as Record<string, unknown>).expected_resolution ===
+          "future_episode"
       ) {
         issues.push({
           path: `script.open_loops[${index}].expected_resolution`,
@@ -1545,11 +1625,14 @@ const EPISODE_UNDERFILLED_ERROR_COVERAGE_RATIO = ERROR_EPISODE_COVERAGE_RATIO;
  * whatever the LLM was actually prompted with unless a caller explicitly
  * overrode it there too. Never a second formula (spec §7.7.1 hard rule 1).
  */
-function deriveScriptSpeechCoverageBand(
-  targetDurationSeconds: number,
-): { min: number; max: number } {
+function deriveScriptSpeechCoverageBand(targetDurationSeconds: number): {
+  min: number;
+  max: number;
+} {
   const durationSeconds = Math.max(0, targetDurationSeconds);
-  const perShotBudgets = derivePerShotSpeechBudgets([...DEFAULT_SCRIPT_CLIP_DURATIONS_SECONDS]);
+  const perShotBudgets = derivePerShotSpeechBudgets([
+    ...DEFAULT_SCRIPT_CLIP_DURATIONS_SECONDS,
+  ]);
   return {
     min: MIN_EPISODE_COVERAGE_RATIO * durationSeconds,
     max: perShotBudgets.reduce((sum, b) => sum + b.targetSpeechSeconds, 0),
@@ -1582,14 +1665,16 @@ const LEGACY_SCRIPT_DIALOGUE_MIN_MEANINGFUL_LENGTH = 4;
 
 function isLegacyScriptDialogueJunkFragment(
   speaker: string | undefined,
-  text: string,
+  text: string
 ): boolean {
   if (LEGACY_SCRIPT_DIALOGUE_SOUND_MARKER_PATTERN.test(text)) return true;
 
   const speakerLooksLikeSoundCue = Boolean(
-    speaker && LEGACY_SCRIPT_DIALOGUE_SOUND_SPEAKER_PATTERN.test(speaker),
+    speaker && LEGACY_SCRIPT_DIALOGUE_SOUND_SPEAKER_PATTERN.test(speaker)
   );
-  const strippedOfMarker = text.replace(LEGACY_SCRIPT_DIALOGUE_SOUND_MARKER_PATTERN, "").trim();
+  const strippedOfMarker = text
+    .replace(LEGACY_SCRIPT_DIALOGUE_SOUND_MARKER_PATTERN, "")
+    .trim();
   const strippedOfPunctuation = strippedOfMarker.replace(/[.…\s]+/g, "");
 
   return (
@@ -1610,7 +1695,9 @@ function isLegacyScriptDialogueJunkFragment(
  * resolution. Returns line TEXT only — speaker labels only matter for the
  * junk-fragment filter above, not for a seconds estimate.
  */
-function parseLegacyScriptDialogueLineTexts(sceneDialogueSummary: unknown): string[] {
+function parseLegacyScriptDialogueLineTexts(
+  sceneDialogueSummary: unknown
+): string[] {
   // Defensive (2026-07-08 prod hotfix): a regenerated/legacy script can carry
   // `scene_dialogue_summary` as a non-array (object/string/null) — iterating
   // it directly crashed `getEpisodeDetail` ("sceneDialogueSummary is not
@@ -1618,10 +1705,9 @@ function parseLegacyScriptDialogueLineTexts(sceneDialogueSummary: unknown): stri
   if (!Array.isArray(sceneDialogueSummary)) return [];
   const texts: string[] = [];
   for (const rawScene of sceneDialogueSummary) {
-    const scene = (rawScene && typeof rawScene === "object" ? rawScene : {}) as Record<
-      string,
-      unknown
-    >;
+    const scene = (
+      rawScene && typeof rawScene === "object" ? rawScene : {}
+    ) as Record<string, unknown>;
     const rawLines = Array.isArray(scene.dialogue_lines)
       ? (scene.dialogue_lines as unknown[])
       : [];
@@ -1629,7 +1715,9 @@ function parseLegacyScriptDialogueLineTexts(sceneDialogueSummary: unknown): stri
       if (typeof raw !== "string" || !raw.trim()) continue;
       const colonIndex = raw.indexOf(":");
       const hasSpeakerLabel = colonIndex > 0 && colonIndex < 40;
-      const speaker = hasSpeakerLabel ? raw.slice(0, colonIndex).trim() : undefined;
+      const speaker = hasSpeakerLabel
+        ? raw.slice(0, colonIndex).trim()
+        : undefined;
       const text = (hasSpeakerLabel ? raw.slice(colonIndex + 1) : raw)
         .trim()
         .replace(/^[""]|[""]$/g, "");
@@ -1676,7 +1764,7 @@ function parseLegacyScriptDialogueLineTexts(sceneDialogueSummary: unknown): stri
 export function evaluateScriptSpeechCoverage(
   script: ScriptBuilderOutput,
   targetDurationSeconds: number,
-  locale?: VerticalDramaSeriesLocale,
+  locale?: VerticalDramaSeriesLocale
 ): ScriptSpeechCoverageResult {
   void locale;
 
@@ -1695,15 +1783,19 @@ export function evaluateScriptSpeechCoverage(
     hasDialogueData = true;
     estimatedSpeechSeconds = beatLines.reduce(
       (sum, line) =>
-        sum + (line.estimated_speech_seconds ?? estimateVerticalDramaSpeechSeconds(line.line)),
-      0,
+        sum +
+        (line.estimated_speech_seconds ??
+          estimateVerticalDramaSpeechSeconds(line.line)),
+      0
     );
   } else {
-    const legacyLineTexts = parseLegacyScriptDialogueLineTexts(script.scene_dialogue_summary);
+    const legacyLineTexts = parseLegacyScriptDialogueLineTexts(
+      script.scene_dialogue_summary
+    );
     hasDialogueData = legacyLineTexts.length > 0;
     estimatedSpeechSeconds = legacyLineTexts.reduce(
       (sum, text) => sum + estimateVerticalDramaSpeechSeconds(text),
-      0,
+      0
     );
   }
 
@@ -1717,7 +1809,8 @@ export function evaluateScriptSpeechCoverage(
     };
   }
 
-  const coverageRatio = durationSeconds > 0 ? estimatedSpeechSeconds / durationSeconds : 0;
+  const coverageRatio =
+    durationSeconds > 0 ? estimatedSpeechSeconds / durationSeconds : 0;
 
   const status: ScriptSpeechCoverageStatus =
     coverageRatio >= MIN_EPISODE_COVERAGE_RATIO
@@ -1758,10 +1851,23 @@ export class VdEpisodeUnderfilledError extends Error {
   code = "VD_DIALOGUE_EPISODE_UNDERFILLED" as const;
   constructor(
     message: string,
-    public coverage: ScriptSpeechCoverageResult,
+    public coverage: ScriptSpeechCoverageResult
   ) {
     super(message);
     this.name = "VdEpisodeUnderfilledError";
+  }
+}
+
+/** High-risk story output must stop before credits are deducted. */
+export class VdStorySafetyError extends Error {
+  code = "VD_STORY_POLICY_RISK" as const;
+  candidate?: ScriptBuilderOutput;
+  constructor(
+    message: string,
+    public safety: ReturnType<typeof analyzeVerticalDramaStorySafety>
+  ) {
+    super(message);
+    this.name = "VdStorySafetyError";
   }
 }
 
@@ -1781,6 +1887,14 @@ export async function generateEpisodeScript(
   script: ScriptBuilderOutput;
   creditsUsed: number;
   model: string;
+  creditCharge?: {
+    amount: number;
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    skillSlug: string;
+    description: string;
+  };
 }> {
   const rateLimitKey = `user:${params.userId}`;
   if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
@@ -1823,6 +1937,7 @@ export async function generateEpisodeScript(
       // drift in optional story-control annotations at the LLM boundary.
       schema: scriptBuilderGenerationSchema,
       label: "Episode script",
+      planningAttemptObserver: params.planningAttemptObserver,
     });
 
   const validatedData = params.storySource.storyControlSeed
@@ -1832,15 +1947,28 @@ export async function generateEpisodeScript(
       })
     : rawValidatedData;
 
+  const storySafety = analyzeVerticalDramaStorySafety(validatedData);
+  if (isBlockingVerticalDramaStorySafety(storySafety)) {
+    const error = new VdStorySafetyError(
+      "Episode story contains a high-risk policy context; rewrite before media generation.",
+      storySafety
+    );
+    // Keep the structured skill result available to the episode repair loop.
+    // The candidate is never made live here; it is only eligible for an
+    // explicit review decision after the full episode attempt completes.
+    error.candidate = validatedData;
+    throw error;
+  }
+
   const episodeMemoryIssues = validateEpisodeMemoryAuthoringContract(
     validatedData,
     params.episodeNumber,
-    params.seasonContext,
+    params.seasonContext
   );
   if (episodeMemoryIssues.length > 0) {
     throw new VdSchemaValidationError(
       "Episode continuity metadata failed the authoring contract",
-      { issues: episodeMemoryIssues },
+      { issues: episodeMemoryIssues }
     );
   }
 
@@ -1853,14 +1981,14 @@ export async function generateEpisodeScript(
       {
         seed: params.storySource.storyControlSeed,
         episodeNumber: params.episodeNumber,
-      },
+      }
     );
     if (storyControlIssues.length > 0) {
       throw new VdSchemaValidationError(
         `Episode story-control annotations failed structural validation: ${storyControlIssues
           .map(issue => `${issue.code} at ${issue.path}`)
           .join(", ")}`,
-        storyControlIssues,
+        storyControlIssues
       );
     }
   }
@@ -1876,9 +2004,12 @@ export async function generateEpisodeScript(
     const coverage = evaluateScriptSpeechCoverage(
       validatedData,
       params.durationSeconds,
-      params.locale,
+      params.locale
     );
-    if (coverage.status === "underfilled_error" || coverage.status === "no_dialogue_data") {
+    if (
+      coverage.status === "underfilled_error" ||
+      coverage.status === "no_dialogue_data"
+    ) {
       // `no_dialogue_data` (2026-07-08 fix) is only ever grandfathered on
       // the WIZARD's read-back of an existing script — a fresh generation
       // that produced no dialogue anywhere is a failed generation and must
@@ -1887,7 +2018,7 @@ export async function generateEpisodeScript(
         coverage.status === "no_dialogue_data"
           ? `Episode script has no usable dialogue data at all (no beat-level dialogue_lines and no legacy scene_dialogue_summary lines) for a ${params.durationSeconds}s episode — needs repair before the storyboard stage.`
           : `Episode script is critically underfilled: ~${coverage.estimatedSpeechSeconds.toFixed(1)}s of estimated speech for a ${params.durationSeconds}s episode (${Math.round(coverage.coverageRatio * 100)}% coverage) — needs repair before the storyboard stage.`,
-        coverage,
+        coverage
       );
     }
   }
@@ -1899,22 +2030,38 @@ export async function generateEpisodeScript(
     model
   );
 
-  await deductCredits({
-    userId: params.userId,
-    tenantId: params.tenantId,
+  const creditCharge = {
     amount: creditsUsed,
+    model,
+    inputTokens: usage?.prompt_tokens ?? 0,
+    outputTokens: usage?.completion_tokens ?? 0,
+    skillSlug: "vertical-drama-script-builder",
     description: `Vertical Drama — generate episode script (episode #${params.episodeId})`,
-    sourceType: "skill",
-    metadata: {
-      model,
-      llmModel: model,
-      feature: "vertical_drama_series",
-      seriesId: params.seriesId,
-      episodeId: params.episodeId,
-      inputTokens: usage?.prompt_tokens ?? 0,
-      outputTokens: usage?.completion_tokens ?? 0,
-    },
-  });
+  } as const;
+  if (!params.deferCreditDeduction) {
+    await deductCredits({
+      userId: params.userId,
+      tenantId: params.tenantId,
+      amount: creditCharge.amount,
+      description: creditCharge.description,
+      skillSlug: creditCharge.skillSlug,
+      sourceType: "skill",
+      metadata: {
+        model,
+        llmModel: model,
+        feature: "vertical_drama_series",
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        inputTokens: creditCharge.inputTokens,
+        outputTokens: creditCharge.outputTokens,
+      },
+    });
+  }
 
-  return { script: validatedData, creditsUsed, model };
+  return {
+    script: validatedData,
+    creditsUsed,
+    model,
+    ...(params.deferCreditDeduction ? { creditCharge } : {}),
+  };
 }

@@ -24,6 +24,17 @@ vi.mock("../enabledLlmModels", () => ({
   loadEnabledLlmModelRows: mockLoadEnabledLlmModelRows,
 }));
 
+const { mockResolveVerticalDramaSeriesModel, mockResolveVerticalDramaRecommendedDraftModel } = vi.hoisted(() => ({
+  mockResolveVerticalDramaSeriesModel: vi.fn(
+    async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
+  ),
+  mockResolveVerticalDramaRecommendedDraftModel: vi.fn(async () => "active-llm-model"),
+}));
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: mockResolveVerticalDramaSeriesModel,
+  resolveVerticalDramaRecommendedDraftModel: mockResolveVerticalDramaRecommendedDraftModel,
+}));
+
 vi.mock("../intelligentModelSelector", () => ({
   selectBestLlmModel: vi.fn(() => null),
 }));
@@ -144,7 +155,12 @@ function baseDeepParams(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+  mockLoadEnabledLlmModelRows.mockResolvedValue([
+    { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+  ]);
+  mockResolveVerticalDramaSeriesModel.mockImplementation(
+    async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
+  );
   mockHasEnoughCredits.mockResolvedValue(true);
   mockDeductCredits.mockResolvedValue(undefined);
   mockCalculateCreditsForLLM.mockReturnValue(3);
@@ -701,7 +717,12 @@ describe("generateStoryBibleDeep — genre pollution guard (Stage 1.5)", () => {
     const firstUserPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
 
     vi.clearAllMocks();
-    mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+    ]);
+    mockResolveVerticalDramaSeriesModel.mockImplementation(
+      async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
+    );
     mockHasEnoughCredits.mockResolvedValue(true);
     mockLlmResponseOnce(chunkResponsePayload([1]));
     await generateStoryBibleDeep(
@@ -984,7 +1005,12 @@ describe("generateStoryBibleDeep — SEASON LINEAGE prompt block (Stage 2.4, seq
     const omitted = systemAndUserPromptOf(0);
 
     vi.clearAllMocks();
-    mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+    ]);
+    mockResolveVerticalDramaSeriesModel.mockImplementation(
+      async (_seriesId: number, autoFallback: () => Promise<string>) => autoFallback(),
+    );
     mockHasEnoughCredits.mockResolvedValue(true);
     mockLlmResponseOnce(chunkResponsePayload([1]));
     await generateStoryBibleDeep(baseDeepParams({ seasonLineage: undefined }));

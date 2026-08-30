@@ -17,6 +17,10 @@ import {
   isLostUpstreamApiErrorMessage,
 } from "@/lib/apiResponseDiagnostics";
 import { isTransientTenantServiceError } from "@/lib/tenantServiceRecovery";
+import {
+  formatStorageCapacityErrorForUser,
+  isStorageCapacityError,
+} from "@shared/storageCapacityError";
 
 export type ErrorClass = "system" | "user" | "auth";
 
@@ -86,6 +90,45 @@ function getTrpcData(error: unknown): TrpcErrorData | undefined {
   // `traceId` is an in-progress backend addition not yet reflected in the
   // shared TRPCClientError data types, so we widen via TrpcErrorData here.
   return error.data as TrpcErrorData | undefined;
+}
+
+/**
+ * True when a failed request is a temporary provider/transport observation
+ * problem rather than evidence of a code or data-contract bug. Keep this
+ * separate from `classifyError`: React Query still needs transient 5xx and
+ * network failures classified as `system` so its retry policy remains active,
+ * while the feedback monitor must not turn those expected retries into bug
+ * reports.
+ */
+export function isTransientSystemError(error: unknown): boolean {
+  if (isNetworkFailure(error)) return true;
+  if (error instanceof Error && error.name === "AbortError") return true;
+
+  const data = getTrpcData(error);
+  if (
+    data?.code === "TOO_MANY_REQUESTS" ||
+    data?.code === "TIMEOUT" ||
+    data?.code === "SERVICE_UNAVAILABLE" ||
+    data?.httpStatus === 408 ||
+    data?.httpStatus === 429
+  ) {
+    return true;
+  }
+
+  if (isTransientReconnectClass(error)) return true;
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const hasTransientStatus = /\b(?:408|429|502|503|504|522|524)\b/i.test(
+    message
+  );
+  const hasTransientContext =
+    /rate[ -]?limit|too many requests|provider status temporarily unavailable|provider.*(?:timeout|unavailable)|safety review.*(?:unavailable|temporarily)|get task failed.*(?:408|429|5\d{2})|request timeout|timed? out|upstream|gateway/i.test(
+      message
+    );
+  return (
+    hasTransientContext ||
+    (hasTransientStatus &&
+      /provider|task|poll|status|upstream|gateway/i.test(message))
+  );
 }
 
 /**
@@ -177,13 +220,37 @@ function isTransientReconnectClass(error: unknown): boolean {
  * (the existing redirect-to-login logic handles those).
  */
 export function handleError(error: unknown, path?: string): void {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  // Storage exhaustion is actionable for the operator but is not a product
+  // bug. Keep it out of the diagnostics ring and never offer "แจ้งปัญหา".
+  if (isStorageCapacityError(message)) {
+    const localized = formatStorageCapacityErrorForUser(message, "th");
+    if (localized) {
+      toast.error(localized, { id: "storage-capacity-error", duration: 10000 });
+    }
+    return;
+  }
+  // A status poll can fail to observe a still-running provider task. Keep the
+  // retry behavior owned by React Query/poller code, but do not put this
+  // transient observation failure in the feedback ring buffer or show a bug
+  // report action. A gateway restart still gets the existing soft info toast.
+  if (isTransientSystemError(error)) {
+    if (isTransientReconnectClass(error)) {
+      toast.info("กำลังเชื่อมต่อใหม่...", {
+        id: "system-error",
+        duration: 8000,
+        description:
+          "เซิร์ฟเวอร์กำลังรีสตาร์ทหรือขัดข้องชั่วคราว ระบบกำลังลองเชื่อมต่อให้อัตโนมัติ",
+      });
+    }
+    return;
+  }
+
   const errorClass = classifyError(error);
   if (errorClass !== "system") return;
 
   const data = getTrpcData(error);
   const resolvedPath = path ?? data?.path;
-  const message = error instanceof Error ? error.message : String(error);
-
   const record: ErrorRecord = {
     ts: new Date().toISOString(),
     path: resolvedPath,
@@ -213,16 +280,6 @@ export function handleError(error: unknown, path?: string): void {
   // (above), the record buffer (above), and classifyError()'s "system"
   // classification (which is what makes query retries fire in the first
   // place) are all unchanged either way.
-  if (isTransientReconnectClass(error)) {
-    toast.info("กำลังเชื่อมต่อใหม่...", {
-      id: "system-error",
-      duration: 8000,
-      description:
-        "เซิร์ฟเวอร์กำลังรีสตาร์ทหรือขัดข้องชั่วคราว ระบบกำลังลองเชื่อมต่อให้อัตโนมัติ",
-    });
-    return;
-  }
-
   toast.error("ระบบขัดข้องชั่วคราว", {
     id: "system-error",
     duration: 8000,

@@ -47,6 +47,7 @@
     "report:presentation-release-gate": "tsx scripts/generate-presentation-release-gate-report.ts",
     "seed:vertical-drama:genre-presets": "tsx scripts/seed-vertical-drama-genre-presets.ts",
     "seed:media:providers": "tsx scripts/seed-media-providers.ts",
+    "seed:media:kie-ai": "tsx scripts/seed-media-models-kie-ai.ts",
     "seed:media:uvoice": "tsx scripts/seed-media-models-uvoice.ts",
     "seed:media:wavespeed": "tsx scripts/seed-media-models-wavespeed.ts",
     "seed:smartaihub:public": "tsx scripts/seed-smartaihub-public-pages.ts",
@@ -62,6 +63,8 @@
     "backfill:free-plan": "tsx scripts/backfill-free-plan.ts",
     "backfill:grok-native-audio": "tsx scripts/backfill-grok-native-audio.ts",
     "backfill:vertical-drama-media": "tsx scripts/backfill-vertical-drama-media.ts",
+    "backfill:media-task-artifacts": "tsx scripts/backfill-media-task-artifacts.ts",
+    "migrate:media-r2": "tsx scripts/migrate-media-to-r2.ts",
     "backfill:library-media": "tsx scripts/backfill-library-media.ts",
     "backfill:marketplace-auto-review-media": "tsx server/scripts/backfill-marketplace-auto-review-media.ts",
     "backfill:library-knowledge": "node --import tsx scripts/backfill-library-knowledge.ts",
@@ -73,7 +76,8 @@
     "repair:library-knowledge-ledger": "node --import tsx scripts/verify-library-knowledge-migrations.ts --repair-ledger",
     "astryx": "node ../../node_modules/@astryxdesign/cli/bin/astryx.mjs",
     "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit generate && drizzle-kit migrate"
+    "db:push": "drizzle-kit generate && drizzle-kit migrate",
+    "release-gate:vertical-drama-assurance": "tsx scripts/verify-vertical-drama-assurance-release-gate.ts"
   },
   "dependencies": {
     "@astryxdesign/core": "^0.1.4",

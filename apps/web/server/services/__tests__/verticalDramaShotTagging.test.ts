@@ -12,6 +12,20 @@ import { describe, expect, it } from "vitest";
 import { stripProviderInternalExtraParams } from "../mediaGenerationService";
 
 describe("stripProviderInternalExtraParams — Vertical Drama shot tags", () => {
+  it("keeps __vd_logo_slot so generated logos can be applied to the right slot", () => {
+    const result = stripProviderInternalExtraParams({
+      __vd_series_id: "53",
+      __vd_purpose: "series_logo",
+      __vd_logo_slot: "primary",
+    });
+
+    expect(result).toEqual({
+      __vd_series_id: "53",
+      __vd_purpose: "series_logo",
+      __vd_logo_slot: "primary",
+    });
+  });
+
   it("keeps __vd_shot_number and __vd_purpose for an angle-grid submission", () => {
     const result = stripProviderInternalExtraParams({
       __vd_series_id: "series-1",

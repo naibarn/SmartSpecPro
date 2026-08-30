@@ -4,6 +4,7 @@ import { db, getDb } from "../db";
 import { mediaProviders } from "../../drizzle/schema";
 import { eq, asc, desc, sql } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
+import { clearModelCache } from "../services/modelRegistry";
 import {
   assertPublicSafeHttpUrl,
   ELEVENLABS_BASE_URL,
@@ -299,6 +300,8 @@ export const mediaProvidersRouter = router({
         })
         .returning();
 
+      clearModelCache();
+
       return { id: provider.id };
     }),
 
@@ -378,6 +381,8 @@ export const mediaProvidersRouter = router({
         .set(updateData)
         .where(eq(mediaProviders.id, id));
 
+      clearModelCache();
+
       return { success: true };
     }),
 
@@ -388,6 +393,8 @@ export const mediaProvidersRouter = router({
       await db
         .delete(mediaProviders)
         .where(eq(mediaProviders.id, input.id));
+
+      clearModelCache();
 
       return { success: true };
     }),

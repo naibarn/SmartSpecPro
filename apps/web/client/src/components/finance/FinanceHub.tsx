@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Loader2, ReceiptText, Upload, CheckCircle2, ArrowDownRight, ArrowUpRight, Pause, Play, FileText, Wallet, Sparkles, Search, Mic, MicOff, RotateCcw, Landmark, CreditCard, Plus, ChevronDown, Trash2, MoreVertical } from "lucide-react";
 
 import { trpc } from "@/lib/trpc";
+import { uploadLibraryFileDirect } from "@/services/libraryUploadClient";
 import { cn } from "@/lib/utils";
 import { readFileAsBase64 } from "@/components/editor/uploadMedia";
 import { Badge } from "@/components/ui/badge";
@@ -1082,6 +1083,7 @@ export function FinanceHub({
     provider: null,
     fileName: null,
   });
+  const [isFinanceLibraryUploadPending, setIsFinanceLibraryUploadPending] = useState(false);
 
   const { isRecording, isTranscribing, startRecording, stopRecording } = usePushToTalk({
     onTranscription: (text) => {
@@ -1387,7 +1389,6 @@ export function FinanceHub({
     onError: (error) => toast.error(error.message || "เริ่มใช้กฎรายการประจำอีกครั้งไม่สำเร็จ"),
   });
 
-  const uploadFileMutation = trpc.library.uploadFile.useMutation();
   const analyzeAttachmentAssistMutation = trpc.localAi.analyzeAttachmentAssist.useMutation();
   const ingestDocumentMutation = trpc.finance.ingestFinanceDocument.useMutation({
     onSuccess: async () => {
@@ -1919,10 +1920,8 @@ export function FinanceHub({
         projectId: conversationQuery.data?.projectId ?? null,
         hasExtractedText: Boolean(extractedText),
       });
-      const uploadResult = await uploadFileMutation.mutateAsync({
-        fileName: file.name,
-        fileType: file.type || "application/octet-stream",
-        fileBase64,
+      setIsFinanceLibraryUploadPending(true);
+      const uploadResult = await uploadLibraryFileDirect(file, {
         title: file.name.replace(/\.[^.]+$/, "") || file.name,
         visibility: "private",
         projectId: conversationQuery.data?.projectId ?? undefined,
@@ -1947,7 +1946,7 @@ export function FinanceHub({
             ? { unified_payin_slip_result: assistMetadata.unified_payin_slip_result }
             : {}),
         },
-      } as any);
+      });
       logFinanceOcrClientStep("receipt_upload_library_upload_success", {
         debugTraceId,
         fileName: file.name,
@@ -2138,6 +2137,7 @@ export function FinanceHub({
       });
       throw error;
     } finally {
+      setIsFinanceLibraryUploadPending(false);
       proofUploadIntentRef.current = null;
     }
   };
@@ -3584,9 +3584,9 @@ export function FinanceHub({
                           variant={captureIntent === "receipt" ? "default" : "outline"}
                           className="justify-start gap-2"
                           onClick={() => openProofUpload("receipt")}
-                          disabled={uploadFileMutation.isPending || ingestDocumentMutation.isPending || isReceiptUploadBusy}
+                          disabled={isFinanceLibraryUploadPending || ingestDocumentMutation.isPending || isReceiptUploadBusy}
                         >
-                          {uploadFileMutation.isPending || ingestDocumentMutation.isPending || isReceiptUploadBusy ? (
+                          {isFinanceLibraryUploadPending || ingestDocumentMutation.isPending || isReceiptUploadBusy ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <ReceiptText className="h-4 w-4" />
@@ -3598,9 +3598,9 @@ export function FinanceHub({
                           variant={captureIntent === "transfer_slip" ? "default" : "outline"}
                           className="justify-start gap-2"
                           onClick={() => openProofUpload("transfer_slip")}
-                          disabled={uploadFileMutation.isPending || ingestDocumentMutation.isPending || isReceiptUploadBusy}
+                          disabled={isFinanceLibraryUploadPending || ingestDocumentMutation.isPending || isReceiptUploadBusy}
                         >
-                          {uploadFileMutation.isPending || ingestDocumentMutation.isPending || isReceiptUploadBusy ? (
+                          {isFinanceLibraryUploadPending || ingestDocumentMutation.isPending || isReceiptUploadBusy ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <Upload className="h-4 w-4" />
@@ -3612,9 +3612,9 @@ export function FinanceHub({
                           variant={captureIntent === "statement" ? "default" : "outline"}
                           className="justify-start gap-2"
                           onClick={() => openProofUpload("statement")}
-                          disabled={uploadFileMutation.isPending || ingestDocumentMutation.isPending || isReceiptUploadBusy}
+                          disabled={isFinanceLibraryUploadPending || ingestDocumentMutation.isPending || isReceiptUploadBusy}
                         >
-                          {uploadFileMutation.isPending || ingestDocumentMutation.isPending || isReceiptUploadBusy ? (
+                          {isFinanceLibraryUploadPending || ingestDocumentMutation.isPending || isReceiptUploadBusy ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <FileText className="h-4 w-4" />

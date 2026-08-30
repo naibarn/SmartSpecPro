@@ -177,6 +177,19 @@ pub fn build_registration_payload_with_hermes(
             "workerApp": {
                 "sharingMode": settings.sharing_mode,
                 "acceptJobs": settings.accept_jobs && ready,
+            },
+            // Feature 162 local media lane. This advertises deterministic
+            // ingest/preprocess only; Comfy MCP/H3 capabilities are added only
+            // after the native Worker has restored/probed a local footage root
+            // and FFmpeg. Registration alone must not claim local media ready.
+            "verticalDramaMedia": {
+                "adapter": "worker_local",
+                "ready": false,
+                "capabilityRevision": format!("worker-media-{}", env!("CARGO_PKG_VERSION")),
+                "capabilities": Vec::<&str>::new(),
+                "workflowIds": [],
+                "models": [],
+                "reason": "awaiting_local_root_probe"
             }
         }),
         health_summary_json: serde_json::to_value(doctor).unwrap_or_else(|_| json!({})),

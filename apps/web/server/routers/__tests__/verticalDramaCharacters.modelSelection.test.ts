@@ -29,12 +29,14 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetModelsByTypeAsync, mockIsDbModelCatalogLoaded } = vi.hoisted(() => ({
-  mockGetModelsByTypeAsync: vi.fn(),
-  // Default: the DB-backed catalog IS loaded, so the resolver runs its normal
-  // exists/enabled validation. Flip to `false` to exercise the cold-start guard.
-  mockIsDbModelCatalogLoaded: vi.fn(() => true),
-}));
+const { mockGetModelsByTypeAsync, mockIsDbModelCatalogLoaded } = vi.hoisted(
+  () => ({
+    mockGetModelsByTypeAsync: vi.fn(),
+    // Default: the DB-backed catalog IS loaded, so the resolver runs its normal
+    // exists/enabled validation. Flip to `false` to exercise the cold-start guard.
+    mockIsDbModelCatalogLoaded: vi.fn(() => true),
+  })
+);
 
 const { mockResolveMediaTransport } = vi.hoisted(() => ({
   mockResolveMediaTransport: vi.fn(),
@@ -72,6 +74,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -87,7 +90,7 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   VerticalDramaCharacterStockError: class extends Error {
     constructor(
       public readonly reason: string,
-      message: string,
+      message: string
     ) {
       super(message);
     }
@@ -115,12 +118,16 @@ vi.mock("../../_core/tokens", () => ({
 
 vi.mock("../../services/verticalDramaCharacterImageGeneration", () => ({
   generateCharacterVisualPrompts: vi.fn(),
+  shouldRequireAgeStageVariantForRequest: vi.fn(() => false),
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
-  mediaGenerationLimiter: { isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) },
+  mediaGenerationLimiter: {
+    isAllowed: vi.fn(() => true),
+    getResetTime: vi.fn(() => 0),
+  },
 }));
 
 vi.mock("../../services/mediaAssetService", () => ({
@@ -136,8 +143,15 @@ import {
 } from "../verticalDramaCharacters";
 import { verticalDramaCharacterStockService } from "../../services/verticalDramaCharacterStock";
 
-function model(overrides: Partial<{ id: string; type: string; isEnabled: boolean }> = {}) {
-  return { id: "google-banana-2-lite", type: "image", isEnabled: true, ...overrides };
+function model(
+  overrides: Partial<{ id: string; type: string; isEnabled: boolean }> = {}
+) {
+  return {
+    id: "google-banana-2-lite",
+    type: "image",
+    isEnabled: true,
+    ...overrides,
+  };
 }
 
 describe("resolveCharacterImageModelId — resolution order (fail-closed, requires explicit selection)", () => {
@@ -147,9 +161,11 @@ describe("resolveCharacterImageModelId — resolution order (fail-closed, requir
   });
 
   it("throws BAD_REQUEST when no model was selected (fails closed, no silent DEFAULT_MODELS fallback)", async () => {
-    await expect(resolveCharacterImageModelId(undefined)).rejects.toMatchObject({
-      code: "BAD_REQUEST",
-    });
+    await expect(resolveCharacterImageModelId(undefined)).rejects.toMatchObject(
+      {
+        code: "BAD_REQUEST",
+      }
+    );
     // Bails out before touching the model catalog — nothing to resolve without a selection.
     expect(mockGetModelsByTypeAsync).not.toHaveBeenCalled();
   });
@@ -162,15 +178,23 @@ describe("resolveCharacterImageModelId — resolution order (fail-closed, requir
   });
 
   it("returns the caller-selected model when it exists and is enabled (the BUG 1 fix)", async () => {
-    mockGetModelsByTypeAsync.mockResolvedValue([model({ id: "higgsfield/nano-banana-pro" })]);
-    const resolved = await resolveCharacterImageModelId("higgsfield/nano-banana-pro");
+    mockGetModelsByTypeAsync.mockResolvedValue([
+      model({ id: "higgsfield/nano-banana-pro" }),
+    ]);
+    const resolved = await resolveCharacterImageModelId(
+      "higgsfield/nano-banana-pro"
+    );
     expect(resolved).toBe("higgsfield/nano-banana-pro");
     expect(mockGetModelsByTypeAsync).toHaveBeenCalledWith("image");
   });
 
   it("throws BAD_REQUEST for a model id that doesn't exist in the catalog", async () => {
-    mockGetModelsByTypeAsync.mockResolvedValue([model({ id: "google-banana-2-lite" })]);
-    await expect(resolveCharacterImageModelId("does-not-exist")).rejects.toMatchObject({
+    mockGetModelsByTypeAsync.mockResolvedValue([
+      model({ id: "google-banana-2-lite" }),
+    ]);
+    await expect(
+      resolveCharacterImageModelId("does-not-exist")
+    ).rejects.toMatchObject({
       code: "BAD_REQUEST",
     });
   });
@@ -183,8 +207,12 @@ describe("resolveCharacterImageModelId — resolution order (fail-closed, requir
   it("trusts the selected model id when the DB model catalog is not loaded (cold start), instead of rejecting it", async () => {
     mockIsDbModelCatalogLoaded.mockReturnValue(false);
     // Static fallback catalog does NOT contain the higgsfield model.
-    mockGetModelsByTypeAsync.mockResolvedValue([model({ id: "google-nano-banana-pro" })]);
-    const resolved = await resolveCharacterImageModelId("higgsfield/gpt_image_2");
+    mockGetModelsByTypeAsync.mockResolvedValue([
+      model({ id: "google-nano-banana-pro" }),
+    ]);
+    const resolved = await resolveCharacterImageModelId(
+      "higgsfield/gpt_image_2"
+    );
     expect(resolved).toBe("higgsfield/gpt_image_2");
   });
 
@@ -192,7 +220,9 @@ describe("resolveCharacterImageModelId — resolution order (fail-closed, requir
     mockGetModelsByTypeAsync.mockResolvedValue([
       model({ id: "google-banana-2-lite", isEnabled: false }),
     ]);
-    await expect(resolveCharacterImageModelId("google-banana-2-lite")).rejects.toMatchObject({
+    await expect(
+      resolveCharacterImageModelId("google-banana-2-lite")
+    ).rejects.toMatchObject({
       code: "BAD_REQUEST",
     });
   });
@@ -224,7 +254,7 @@ describe("resolveVdCharacterMcpTransportMetadata — MCP-transport routing", () 
         modelId: "higgsfield/nano-banana-pro",
         configJson: null,
         // mcpConnectionId intentionally omitted
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mockResolveMediaTransport).not.toHaveBeenCalled();
   });
@@ -244,7 +274,10 @@ describe("resolveVdCharacterMcpTransportMetadata — MCP-transport routing", () 
       configJson: null,
       mcpConnectionId: "conn-123",
     });
-    expect(result).toMatchObject({ transport: "mcp", providerKey: "higgsfield" });
+    expect(result).toMatchObject({
+      transport: "mcp",
+      providerKey: "higgsfield",
+    });
     expect(mockResolveMediaTransport).toHaveBeenCalledWith(
       expect.objectContaining({
         tenantId: "tenant-1",
@@ -253,7 +286,7 @@ describe("resolveVdCharacterMcpTransportMetadata — MCP-transport routing", () 
         requestedTransport: "mcp",
         mcpConnectionId: "conn-123",
         providerKey: "higgsfield",
-      }),
+      })
     );
   });
 
@@ -269,7 +302,10 @@ describe("resolveVdCharacterMcpTransportMetadata — MCP-transport routing", () 
       actorUserId: 1,
       assetType: "image",
       modelId: "some-catalog-model-id",
-      configJson: { transport: "mcp", mcp: { providerKey: "magnific", providerModelId: "upscale" } },
+      configJson: {
+        transport: "mcp",
+        mcp: { providerKey: "magnific", providerModelId: "upscale" },
+      },
       mcpConnectionId: "conn-456",
     });
     expect(result).toMatchObject({ transport: "mcp", providerKey: "magnific" });
@@ -328,7 +364,10 @@ describe("resolveVdCharacterMediaTransportDecision — transport-neutral decisio
       actorUserId: 1,
       assetType: "image",
       modelId: "hermes-grok/grok-imagine-image",
-      configJson: { transport: "hermes_worker", hermes: { providerModelId: "grok-imagine-image" } },
+      configJson: {
+        transport: "hermes_worker",
+        hermes: { providerModelId: "grok-imagine-image" },
+      },
       hermesConnectionId: "hermes-conn-1",
     });
     expect(decision).toEqual({ kind: "hermes", connectionId: "hermes-conn-1" });
@@ -337,7 +376,9 @@ describe("resolveVdCharacterMediaTransportDecision — transport-neutral decisio
   });
 
   it("Hermes-transport model, no explicit id, injected default resolver returns a connection -> { kind: 'hermes' }", async () => {
-    const resolveDefaultHermesConnectionId = vi.fn(async () => "default-conn-1");
+    const resolveDefaultHermesConnectionId = vi.fn(
+      async () => "default-conn-1"
+    );
     const decision = await resolveVdCharacterMediaTransportDecision(
       {
         tenantId: "tenant-1",
@@ -346,9 +387,12 @@ describe("resolveVdCharacterMediaTransportDecision — transport-neutral decisio
         modelId: "hermes-grok/grok-imagine-image",
         configJson: { transport: "hermes_worker" },
       },
-      { resolveDefaultHermesConnectionId },
+      { resolveDefaultHermesConnectionId }
     );
-    expect(decision).toEqual({ kind: "hermes", connectionId: "default-conn-1" });
+    expect(decision).toEqual({
+      kind: "hermes",
+      connectionId: "default-conn-1",
+    });
     expect(resolveDefaultHermesConnectionId).toHaveBeenCalledWith({
       tenantId: "tenant-1",
       userId: 1,
@@ -367,9 +411,12 @@ describe("resolveVdCharacterMediaTransportDecision — transport-neutral decisio
           modelId: "hermes-grok/grok-imagine-image",
           configJson: { transport: "hermes_worker" },
         },
-        { resolveDefaultHermesConnectionId },
-      ),
-    ).rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("HERMES_CONNECTION_REQUIRED") });
+        { resolveDefaultHermesConnectionId }
+      )
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: expect.stringContaining("HERMES_CONNECTION_REQUIRED"),
+    });
   });
 
   it("MCP model + hermesConnectionId supplied -> BAD_REQUEST (cross-transport rejection)", async () => {
@@ -381,7 +428,7 @@ describe("resolveVdCharacterMediaTransportDecision — transport-neutral decisio
         modelId: "higgsfield/nano-banana-pro",
         configJson: null,
         hermesConnectionId: "hermes-conn-1",
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mockResolveMediaTransport).not.toHaveBeenCalled();
   });
@@ -395,7 +442,7 @@ describe("resolveVdCharacterMediaTransportDecision — transport-neutral decisio
         modelId: "google-banana-2-lite",
         configJson: null,
         hermesConnectionId: "hermes-conn-1",
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });
@@ -470,64 +517,157 @@ describe("resolveReferencePortraitUrl — override branch (Phase D1)", () => {
   const owner = { tenantId: "tenant-1", userId: 7, seriesId: 3 };
 
   beforeEach(() => {
-    (verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<typeof vi.fn>).mockReset();
     (
-      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<typeof vi.fn>
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<
+        typeof vi.fn
+      >
+    ).mockReset();
+    (
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<
+        typeof vi.fn
+      >
     ).mockReset();
   });
 
   it("absent referenceAssetLinkId: calls getPrimaryPortraitUrl unchanged, never touches the override method", async () => {
-    (verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<typeof vi.fn>).mockResolvedValue(
-      "https://cdn.example.com/auto-portrait.png",
-    );
+    (
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue("https://cdn.example.com/auto-portrait.png");
 
     const url = await resolveReferencePortraitUrl(owner, 42, undefined);
 
     expect(url).toBe("https://cdn.example.com/auto-portrait.png");
-    expect(verticalDramaCharacterStockService.getPrimaryPortraitUrl).toHaveBeenCalledWith(owner, 42);
-    expect(verticalDramaCharacterStockService.getReferenceImageByAssetLinkId).not.toHaveBeenCalled();
+    expect(
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl
+    ).toHaveBeenCalledWith(owner, 42);
+    expect(
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId
+    ).not.toHaveBeenCalled();
+  });
+
+  it("none policy skips auto-resolution even when an existing primary portrait exists", async () => {
+    (
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue("https://cdn.example.com/old-primary.png");
+
+    const url = await resolveReferencePortraitUrl(
+      owner,
+      42,
+      undefined,
+      undefined,
+      "none"
+    );
+
+    expect(url).toBeNull();
+    expect(
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl
+    ).not.toHaveBeenCalled();
+    expect(
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId
+    ).not.toHaveBeenCalled();
+  });
+
+  it("explicit reference still wins when the caller policy is none", async () => {
+    (
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue({
+      url: "https://cdn.example.com/user-picked.png",
+      characterId: 42,
+    });
+
+    const url = await resolveReferencePortraitUrl(
+      owner,
+      42,
+      "55",
+      undefined,
+      "none"
+    );
+
+    expect(url).toBe("https://cdn.example.com/user-picked.png");
+    expect(
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId
+    ).toHaveBeenCalledWith(owner, 55);
+    expect(
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl
+    ).not.toHaveBeenCalled();
   });
 
   it("present referenceAssetLinkId: calls the override method with the parsed id, never touches auto-resolution", async () => {
     (
-      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({ url: "https://cdn.example.com/picked-portrait.png", characterId: 42 });
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue({
+      url: "https://cdn.example.com/picked-portrait.png",
+      characterId: 42,
+    });
 
     const url = await resolveReferencePortraitUrl(owner, 42, "55");
 
     expect(url).toBe("https://cdn.example.com/picked-portrait.png");
-    expect(verticalDramaCharacterStockService.getReferenceImageByAssetLinkId).toHaveBeenCalledWith(
-      owner,
-      55,
-    );
-    expect(verticalDramaCharacterStockService.getPrimaryPortraitUrl).not.toHaveBeenCalled();
+    expect(
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId
+    ).toHaveBeenCalledWith(owner, 55);
+    expect(
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl
+    ).not.toHaveBeenCalled();
   });
 
   it("rejects with BAD_REQUEST for a non-numeric referenceAssetLinkId (parseId guard) without calling the service", async () => {
-    await expect(resolveReferencePortraitUrl(owner, 42, "not-a-number")).rejects.toMatchObject({
+    await expect(
+      resolveReferencePortraitUrl(owner, 42, "not-a-number")
+    ).rejects.toMatchObject({
       code: "BAD_REQUEST",
     });
-    expect(verticalDramaCharacterStockService.getReferenceImageByAssetLinkId).not.toHaveBeenCalled();
+    expect(
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId
+    ).not.toHaveBeenCalled();
   });
 
   it("routes a wrong-role rejection from the override method through mapStockError as BAD_REQUEST", async () => {
-    const { VerticalDramaCharacterStockError } = await import("../../services/verticalDramaCharacterStock");
+    const { VerticalDramaCharacterStockError } =
+      await import("../../services/verticalDramaCharacterStock");
     (
-      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<typeof vi.fn>
-    ).mockRejectedValue(new VerticalDramaCharacterStockError("asset_wrong_role", "not a primary_portrait"));
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<
+        typeof vi.fn
+      >
+    ).mockRejectedValue(
+      new VerticalDramaCharacterStockError(
+        "asset_wrong_role",
+        "not a primary_portrait"
+      )
+    );
 
-    await expect(resolveReferencePortraitUrl(owner, 42, "55")).rejects.toMatchObject({
+    await expect(
+      resolveReferencePortraitUrl(owner, 42, "55")
+    ).rejects.toMatchObject({
       code: "BAD_REQUEST",
     });
   });
 
   it("routes a not-found rejection (also covers cross-tenant/cross-user) from the override method through mapStockError as NOT_FOUND", async () => {
-    const { VerticalDramaCharacterStockError } = await import("../../services/verticalDramaCharacterStock");
+    const { VerticalDramaCharacterStockError } =
+      await import("../../services/verticalDramaCharacterStock");
     (
-      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<typeof vi.fn>
-    ).mockRejectedValue(new VerticalDramaCharacterStockError("asset_not_found", "Character asset not found"));
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<
+        typeof vi.fn
+      >
+    ).mockRejectedValue(
+      new VerticalDramaCharacterStockError(
+        "asset_not_found",
+        "Character asset not found"
+      )
+    );
 
-    await expect(resolveReferencePortraitUrl(owner, 42, "55")).rejects.toMatchObject({
+    await expect(
+      resolveReferencePortraitUrl(owner, 42, "55")
+    ).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
   });
@@ -544,51 +684,84 @@ describe("resolveReferencePortraitUrl — parent/twin-source fallback (Phase F1)
   const owner = { tenantId: "tenant-1", userId: 7, seriesId: 3 };
 
   beforeEach(() => {
-    (verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<typeof vi.fn>).mockReset();
     (
-      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<typeof vi.fn>
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<
+        typeof vi.fn
+      >
+    ).mockReset();
+    (
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<
+        typeof vi.fn
+      >
     ).mockReset();
   });
 
   it("(a) own portrait exists: uses it unchanged, never calls getPrimaryPortraitUrl a second time for the fallback id", async () => {
-    (verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<typeof vi.fn>).mockResolvedValue(
-      "https://cdn.example.com/own-portrait.png",
-    );
+    (
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue("https://cdn.example.com/own-portrait.png");
 
     const url = await resolveReferencePortraitUrl(owner, 42, undefined, 10);
 
     expect(url).toBe("https://cdn.example.com/own-portrait.png");
-    expect(verticalDramaCharacterStockService.getPrimaryPortraitUrl).toHaveBeenCalledTimes(1);
-    expect(verticalDramaCharacterStockService.getPrimaryPortraitUrl).toHaveBeenCalledWith(owner, 42);
+    expect(
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl
+    ).toHaveBeenCalledWith(owner, 42);
   });
 
   it("(b) explicit override present: uses the override, ignores the fallback id entirely (tier 1 still wins)", async () => {
     (
-      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({ url: "https://cdn.example.com/picked-portrait.png", characterId: 42 });
+      verticalDramaCharacterStockService.getReferenceImageByAssetLinkId as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue({
+      url: "https://cdn.example.com/picked-portrait.png",
+      characterId: 42,
+    });
 
     const url = await resolveReferencePortraitUrl(owner, 42, "55", 10);
 
     expect(url).toBe("https://cdn.example.com/picked-portrait.png");
-    expect(verticalDramaCharacterStockService.getPrimaryPortraitUrl).not.toHaveBeenCalled();
+    expect(
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl
+    ).not.toHaveBeenCalled();
   });
 
   it("(c) no own portrait, has parentCharacterId whose portrait exists: falls back to the parent's portrait", async () => {
-    (verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<typeof vi.fn>)
+    (
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<
+        typeof vi.fn
+      >
+    )
       .mockResolvedValueOnce(null) // own portrait: none yet (brand-new variant)
       .mockResolvedValueOnce("https://cdn.example.com/parent-portrait.png"); // parent's portrait
 
     const url = await resolveReferencePortraitUrl(owner, 42, undefined, 10);
 
     expect(url).toBe("https://cdn.example.com/parent-portrait.png");
-    expect(verticalDramaCharacterStockService.getPrimaryPortraitUrl).toHaveBeenNthCalledWith(1, owner, 42);
-    expect(verticalDramaCharacterStockService.getPrimaryPortraitUrl).toHaveBeenNthCalledWith(2, owner, 10);
+    expect(
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl
+    ).toHaveBeenNthCalledWith(1, owner, 42);
+    expect(
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl
+    ).toHaveBeenNthCalledWith(2, owner, 10);
   });
 
   it("(d) no own portrait, has sharesFaceWithCharacterId (twin) whose portrait exists: falls back to the twin-source's portrait", async () => {
-    (verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<typeof vi.fn>)
+    (
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<
+        typeof vi.fn
+      >
+    )
       .mockResolvedValueOnce(null) // own portrait: none yet (brand-new twin)
-      .mockResolvedValueOnce("https://cdn.example.com/twin-source-portrait.png");
+      .mockResolvedValueOnce(
+        "https://cdn.example.com/twin-source-portrait.png"
+      );
 
     // Caller passes `parentCharacterId ?? sharesFaceWithCharacterId` — twin
     // characters have no parentCharacterId, so callers pass the twin-source
@@ -596,28 +769,45 @@ describe("resolveReferencePortraitUrl — parent/twin-source fallback (Phase F1)
     const url = await resolveReferencePortraitUrl(owner, 42, undefined, 99);
 
     expect(url).toBe("https://cdn.example.com/twin-source-portrait.png");
-    expect(verticalDramaCharacterStockService.getPrimaryPortraitUrl).toHaveBeenNthCalledWith(2, owner, 99);
+    expect(
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl
+    ).toHaveBeenNthCalledWith(2, owner, 99);
   });
 
   it("(e) no own portrait AND no parent/twin-source portrait either: returns null (unchanged final behavior)", async () => {
-    (verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<typeof vi.fn>)
+    (
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<
+        typeof vi.fn
+      >
+    )
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null);
 
     const url = await resolveReferencePortraitUrl(owner, 42, undefined, 10);
 
     expect(url).toBeNull();
-    expect(verticalDramaCharacterStockService.getPrimaryPortraitUrl).toHaveBeenCalledTimes(2);
+    expect(
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl
+    ).toHaveBeenCalledTimes(2);
   });
 
   it("(e2) no own portrait AND no parent/twin relationship at all (fallback id undefined): returns null without a second lookup", async () => {
-    (verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<typeof vi.fn>).mockResolvedValue(
-      null,
+    (
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue(null);
+
+    const url = await resolveReferencePortraitUrl(
+      owner,
+      42,
+      undefined,
+      undefined
     );
 
-    const url = await resolveReferencePortraitUrl(owner, 42, undefined, undefined);
-
     expect(url).toBeNull();
-    expect(verticalDramaCharacterStockService.getPrimaryPortraitUrl).toHaveBeenCalledTimes(1);
+    expect(
+      verticalDramaCharacterStockService.getPrimaryPortraitUrl
+    ).toHaveBeenCalledTimes(1);
   });
 });

@@ -59,6 +59,8 @@ import { trpc } from "@/lib/trpc";
 import { safeStorageGet, safeStorageSet } from "@/lib/safeLocalStorage";
 import {
   buildShotCharacterLookOptionsFromEntries,
+  filterKnownShotCharacterRefKeys,
+  formatShotCharacterLabel,
   swapShotCharacterRefKey,
 } from "@/lib/shotCharacterLooks";
 import {
@@ -68,6 +70,7 @@ import {
   type VerticalDramaCastPositionLock,
   type VerticalDramaCharacterDescriptionOverrides,
 } from "@shared/verticalDramaSeries/castPositionLock";
+import type { VerticalDramaCharacterLookAssignment } from "@shared/verticalDramaSeries/characterLookSelection";
 import {
   getBase64DataUrlByteLength,
   type VerticalDramaStartFrameDropInput,
@@ -97,6 +100,19 @@ import {
   DROPPED_IMAGE_FILE_MAX_BYTES,
 } from "@/components/media/ImageSourcePicker";
 import { toast } from "sonner";
+import { formatStorageCapacityErrorForUser } from "@shared/storageCapacityError";
+import {
+  VerticalDramaShotBrollPanel,
+  type VerticalDramaShotBrollBinding,
+  type VerticalDramaShotBrollSource,
+  type VerticalDramaShotBrollSegment,
+} from "./VerticalDramaShotBrollPanel";
+import {
+  VerticalDramaWorkerShotInspector,
+  type VerticalDramaWorkerShotDispatchState,
+  type VerticalDramaWorkerShotInspectorDetails,
+  type VerticalDramaWorkerShotTarget,
+} from "./VerticalDramaWorkerShotInspector";
 import ModelSelectorDialog, {
   formatMediaProviderDisplayName,
   type MediaModel,
@@ -113,6 +129,7 @@ import {
   presentHermesError,
 } from "@/lib/hermesErrorPresentation";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
+import { isCharacterLockPolicyFailureMessage } from "@shared/verticalDramaSeries/characterLock";
 import { resolveVdImagePromptBudgetForCatalogModel } from "@shared/verticalDramaSeries/imagePromptBudget";
 import { resolveVdVideoPromptBudgetForCatalogModel } from "@shared/verticalDramaSeries/videoPromptBudget";
 import {
@@ -628,6 +645,7 @@ export interface VerticalDramaStartFramePlanFrame {
   imagePrompt: string;
   negativePrompt?: string;
   requiredCharacterRefs?: string[];
+  characterLookAssignments?: VerticalDramaCharacterLookAssignment[];
   characterDescriptionOverrides?: VerticalDramaCharacterDescriptionOverrides;
   screenCallerCharacterRefs?: string[];
   supportingPresence?: VerticalDramaSupportingPresence[];
@@ -636,7 +654,18 @@ export interface VerticalDramaStartFramePlanFrame {
   barrierMultiView?: VerticalDramaBarrierMultiView;
   productReferenceAssetIds?: string[];
   approvedMediaAssetId?: string;
-  imageStaleReason?: "prompt_changed" | "location_variant_changed";
+  stopFramePrompt?: string;
+  stopFrameNegativePrompt?: string;
+  approvedStopFrameAssetId?: string;
+  staleStopFrameAssetId?: string;
+  stopFrameStaleReason?: string;
+  stopFrameStaleAt?: string;
+  stopFrameTask?: VerticalDramaImageTaskView;
+  imageStaleReason?:
+    | "prompt_changed"
+    | "character_references_changed"
+    | "supporting_presence_changed"
+    | "location_variant_changed";
   imageStaleAt?: string;
   /** Per-shot location override (Phase D, `planning/polished-toasting-
    *  gadget.md` — location visual bible), set via the `setShotLocation`
@@ -885,6 +914,9 @@ export type VerticalDramaCharacterPortraitMap = Record<
     variantLabel?: string;
     /** Present only for a variant row. */
     variantType?: "outfit" | "age_stage";
+    /** Portrait-less look suggested from the current storyboard context. */
+    isSystemSuggestedLook?: boolean;
+    lookImageBrief?: string;
     /** Additive — present only for a twin row: the DB row id (as a string)
      *  of the character this twin shares a face with. Twins are their own
      *  independent characters (never nested), shown with a "แฝดของ {name}"
@@ -1082,7 +1114,11 @@ export function buildShotCharacterLookOptions(
   );
 }
 
-export { swapShotCharacterRefKey };
+export {
+  filterKnownShotCharacterRefKeys,
+  formatShotCharacterLabel,
+  swapShotCharacterRefKey,
+};
 
 /**
  * Resolve which `locationKey` governs a given shot for the storyboard
@@ -1142,6 +1178,19 @@ interface VerticalDramaStoryboardPanelProps {
    *  continue to read the same breakdown-version source of truth. */
   onSaveShotSummary?: (shotNumber: number, summary: string) => Promise<void>;
   savingShotSummaryForShot?: number | null;
+  /** B-roll is a separate media track from start-frame/reference images. */
+  broll?: {
+    sources: VerticalDramaShotBrollSource[];
+    bindings: VerticalDramaShotBrollBinding[];
+    onSelectSource: (
+      shotNumber: number,
+      source: VerticalDramaShotBrollSource,
+      segment?: VerticalDramaShotBrollSegment,
+      existing?: VerticalDramaShotBrollBinding,
+    ) => void;
+    onRemove?: (binding: VerticalDramaShotBrollBinding) => void;
+    saving?: boolean;
+  };
   assetUrls?: VerticalDramaAssetUrlMap;
   /** Every series character's current approved portrait, keyed by character
    *  key — joined per-shot against `shot.required_character_refs` so each
@@ -1198,10 +1247,12 @@ interface VerticalDramaStoryboardPanelProps {
   ) => void;
   /** Opens the Media History/Library picker scoped to this shot's start frame. */
   onChangeStartFrame?: (shotNumber: number) => void;
+  /** Opens the same authorized media picker for the optional stop frame. */
+  onChangeStopFrame?: (shotNumber: number) => void;
   /** Error from an image admission/submission path that has not produced a task id. */
   imageGenerationErrorByShot?: Record<number, string>;
-  /** Retry only the paid image render using the already persisted prompt. */
-  onRetryStartFrameImage?: (shotNumber: number) => void;
+  /** Retry the paid image render; composition-lock failures can request prompt recovery. */
+  onRetryStartFrameImage?: (shotNumber: number, error?: string) => void;
   /** Retry linking a completed provider result without starting a new paid render. */
   onRetryStartFrameSync?: (shotNumber: number) => void;
   /** Opens the Media History/Library picker scoped to a specific character's global portrait (updates that character everywhere, not just this shot). */
@@ -1330,6 +1381,10 @@ interface VerticalDramaStoryboardPanelProps {
   repairingMissingShotCharacters?: boolean;
   /** Renders a real AI image for this shot from its approved prompt (spends credits). */
   onGenerateStartFrameImage?: (shotNumber: number) => void;
+  /** Generates an optional stop-frame image only after its prompt exists. */
+  onGenerateStopFrameImage?: (shotNumber: number) => void;
+  generatingStopFrameImageForShot?: ReadonlySet<number>;
+  stopFrameGenerationErrorByShot?: Record<number, string>;
   /** Runs the shared advisory continuity QC for the approved start frame. */
   onRunFrameContinuityQc?: (shotNumber: number) => void;
   runningFrameContinuityQcForShot?: number | null;
@@ -1584,11 +1639,27 @@ interface VerticalDramaStoryboardPanelProps {
   ) => void;
   /** Non-null while an upload+persist is in flight for this clip. */
   uploadingVideoClipForClip?: ReadonlySet<number>;
+  /** Feature 162 — separate local Worker/ComfyUI shot-generation lane. */
+  workerShotTargets?: VerticalDramaWorkerShotTarget[];
+  workerShotTargetsLoading?: boolean;
+  onDispatchWorkerShotVideo?: (
+    shotNumber: number,
+    input: { workerId: string; workflowId: string | null; durationMs: number }
+  ) => void;
+  onRetryWorkerShotVideo?: (
+    shotNumber: number,
+    input: { workerId: string; workflowId: string | null; durationMs: number }
+  ) => void;
+  onCancelWorkerShotVideo?: (shotNumber: number, jobId: string) => void;
+  dispatchingWorkerShotForShot?: number | null;
+  workerShotDispatchStateByShot?: Record<number, VerticalDramaWorkerShotDispatchState>;
 
   /* ---- Phase 4.1/4.2 — one-click generate + inline prompt editing ---- */
   /** Saves an edited image prompt for free (no LLM call) — distinct from
    *  `onEditStartFramePrompt`, which opens the paid AI-repair dialog. */
   onSaveStartFramePrompt?: (shotNumber: number, prompt: string) => void;
+  onGenerateStopFramePrompt?: (shotNumber: number) => void;
+  onSaveStopFramePrompt?: (shotNumber: number, prompt: string) => void;
   /** Saves View 2's independently authored image prompt for free. */
   onSaveReferenceFramePrompt?: (
     shotNumber: number,
@@ -1740,6 +1811,8 @@ interface VerticalDramaStoryboardPanelProps {
   videoPromptJobStatusByShot?: Record<number, "queued" | "running">;
   /** Durable error from the latest terminal/polling failure for this shot. */
   videoPromptJobErrorByShot?: Record<number, string>;
+  /** Non-blocking policy advisories from the completed prompt job. */
+  videoPromptJobWarningByShot?: Record<number, string>;
   /** True once the most recent `generateShotVideoPrompt` response for this
    *  shot reported `usedVision: true` — shown as a small note next to the
    *  video prompt box. */
@@ -1782,16 +1855,6 @@ interface VerticalDramaStoryboardPanelProps {
   /** Controlled open state for this panel's own meta-section disclosure —
    *  ignored entirely when `productionWizardEnabled` is false. */
   advancedMetaOpen?: boolean;
-
-  /** Deletes this episode's current storyboard shots and regenerates them —
-   *  same destructive action as `onRegenerateStage?.("storyboard_shotgrid")`
-   *  on the workspace's "Advanced" disclosure, surfaced here in the header
-   *  too since this panel is the primary view once shots exist. Omitted
-   *  entirely (default) renders no button, so callers/tests that don't wire
-   *  this keep today's exact header markup. */
-  onRegenerateStoryboard?: () => void;
-  /** True while a regenerate call for this storyboard is in flight. */
-  regeneratingStoryboard?: boolean;
 
   className?: string;
 }
@@ -1849,7 +1912,7 @@ function SpokenCallerVirtualScreen({
   portrait?: VerticalDramaCharacterPortraitMap[string];
   locale: Lang;
 }) {
-  const callerName = portrait?.variantLabel ?? portrait?.name ?? callerKey;
+  const callerName = formatShotCharacterLabel(portrait, callerKey);
   return (
     <div
       className="flex w-24 flex-col items-center gap-1.5 text-center text-[10px]"
@@ -1927,6 +1990,7 @@ export function VerticalDramaStoryboardPanel({
   canonicalShotDrafts = [],
   onSaveShotSummary,
   savingShotSummaryForShot = null,
+  broll,
   assetUrls = {},
   characterPortraits = {},
   episodeLocations = [],
@@ -1970,12 +2034,16 @@ export function VerticalDramaStoryboardPanel({
   onGenerateStartFramePlan,
   generatingStartFramePlan = false,
   onEditStartFramePrompt,
+  onChangeStopFrame,
   onGenerateVideoPromptPack,
   generatingVideoPromptPack = false,
   onRepairMissingShotCharacters,
   repairingMissingShotCharacters = false,
   onGenerateStartFrameImage,
+  onGenerateStopFrameImage,
   generatingStartFrameImageForShot = EMPTY_SHOT_NUMBER_SET,
+  generatingStopFrameImageForShot = EMPTY_SHOT_NUMBER_SET,
+  stopFrameGenerationErrorByShot = {},
   onRunFrameContinuityQc,
   runningFrameContinuityQcForShot = null,
   onRunVideoSafetyQc,
@@ -2047,7 +2115,16 @@ export function VerticalDramaStoryboardPanel({
   trimmedReferenceCountByClip = {},
   onUploadVideoClip,
   uploadingVideoClipForClip = EMPTY_SHOT_NUMBER_SET,
+  workerShotTargets = [],
+  workerShotTargetsLoading = false,
+  onDispatchWorkerShotVideo,
+  onRetryWorkerShotVideo,
+  onCancelWorkerShotVideo,
+  dispatchingWorkerShotForShot = null,
+  workerShotDispatchStateByShot = {},
   onSaveStartFramePrompt,
+  onGenerateStopFramePrompt,
+  onSaveStopFramePrompt,
   onSaveReferenceFramePrompt,
   onSaveVideoPrompt,
   onGeneratePromptAndImage,
@@ -2092,6 +2169,7 @@ export function VerticalDramaStoryboardPanel({
   generatingShotVideoPromptForShot = EMPTY_SHOT_NUMBER_SET,
   videoPromptJobStatusByShot = {},
   videoPromptJobErrorByShot = {},
+  videoPromptJobWarningByShot = {},
   usedVisionByShot = {},
   compiledVideo = null,
   onAssembleCompiledVideo,
@@ -2100,8 +2178,6 @@ export function VerticalDramaStoryboardPanel({
   assemblingCompiledVideo = false,
   productionWizardEnabled = false,
   advancedMetaOpen = false,
-  onRegenerateStoryboard,
-  regeneratingStoryboard = false,
   className,
 }: VerticalDramaStoryboardPanelProps) {
   const t2 = vdCopy(locale as VdLocale);
@@ -2355,12 +2431,6 @@ export function VerticalDramaStoryboardPanel({
     confirmingReassembleCompiledVideo,
     setConfirmingReassembleCompiledVideo,
   ] = useState(false);
-  /** Confirm-gate for the header's "regenerate storyboard" button — local to
-   *  this panel (not shared with the Workspace's own
-   *  `confirmingRegenerateStage`, which gates the deep Advanced entry point
-   *  for the same action). */
-  const [confirmingRegenerateStoryboard, setConfirmingRegenerateStoryboard] =
-    useState(false);
   const [confirmingStartFramePlan, setConfirmingStartFramePlan] =
     useState(false);
   const [confirmingVideoPromptPack, setConfirmingVideoPromptPack] =
@@ -2519,6 +2589,10 @@ export function VerticalDramaStoryboardPanel({
     number | null
   >(null);
   const [editingImagePromptDraft, setEditingImagePromptDraft] = useState("");
+  const [editingStopFramePromptForShot, setEditingStopFramePromptForShot] =
+    useState<number | null>(null);
+  const [editingStopFramePromptDraft, setEditingStopFramePromptDraft] =
+    useState("");
   const [
     editingReferenceImagePromptForShot,
     setEditingReferenceImagePromptForShot,
@@ -2895,91 +2969,6 @@ export function VerticalDramaStoryboardPanel({
       )}
     >
       {creditConfirmDialog}
-      {/* Deliberately OUTSIDE `StoryboardMetaSection` below — that section
-          collapses behind the same "ขั้นสูง" toggle as the workspace's deep
-          Advanced disclosure whenever `productionWizardEnabled` is on
-          (defaults collapsed per-series). Regenerate must stay reachable
-          without opening that toggle, or it's exactly as hard to find as the
-          pre-existing deep entry point it's meant to supplement. */}
-      {onRegenerateStoryboard ? (
-        <div className="flex items-center justify-end gap-2">
-          {confirmingRegenerateStoryboard ? (
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">
-                {t(
-                  locale,
-                  "จะลบผลลัพธ์ปัจจุบันและสร้างใหม่ — ย้อนกลับไม่ได้",
-                  "Deletes the current output and creates new — cannot be undone."
-                )}
-              </span>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-6 px-2 text-xs"
-                onClick={() => setConfirmingRegenerateStoryboard(false)}
-                disabled={regeneratingStoryboard}
-              >
-                {t(locale, "ยกเลิก", "Cancel")}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="destructive"
-                className="h-6 px-2 text-xs"
-                onClick={() => {
-                  setConfirmingRegenerateStoryboard(false);
-                  onRegenerateStoryboard();
-                }}
-                disabled={regeneratingStoryboard}
-                data-testid="vd-confirm-regenerate-storyboard"
-              >
-                {regeneratingStoryboard ? (
-                  <>
-                    <Loader2
-                      aria-hidden="true"
-                      className="h-3 w-3 animate-spin"
-                    />
-                    {t(locale, "กำลังสร้างใหม่…", "Regenerating…")}
-                  </>
-                ) : (
-                  t(locale, "ลบและสร้างใหม่", "Delete & regenerate")
-                )}
-              </Button>
-            </div>
-          ) : (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-destructive"
-              onClick={() => setConfirmingRegenerateStoryboard(true)}
-              disabled={regeneratingStoryboard}
-              data-testid="vd-regenerate-storyboard"
-            >
-              {regeneratingStoryboard ? (
-                <>
-                  <Loader2
-                    aria-hidden="true"
-                    className="h-3 w-3 animate-spin"
-                  />
-                  {t(locale, "กำลังสร้างใหม่…", "Regenerating…")}
-                </>
-              ) : (
-                <>
-                  <RotateCcw aria-hidden="true" className="h-3 w-3" />
-                  {t(
-                    locale,
-                    "สร้างใหม่ (ลบชุดเดิม)",
-                    "Regenerate (delete old)"
-                  )}
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-      ) : null}
-
       {/* Meta/planning sections (2026-07-08 disclosure split) — header,
           density meter, model-selection row, quality-review card, tie-in
           report, summarize-memory card. Collapses/expands together with the
@@ -3851,6 +3840,9 @@ export function VerticalDramaStoryboardPanel({
           const assetId = frame?.approvedMediaAssetId;
           const asset = assetId ? assetUrls[assetId] : undefined;
           const startFrameImageSrc = asset?.thumbnailUrl ?? asset?.url;
+          const stopAssetId = frame?.approvedStopFrameAssetId;
+          const stopAsset = stopAssetId ? assetUrls[stopAssetId] : undefined;
+          const stopFrameImageSrc = stopAsset?.thumbnailUrl ?? stopAsset?.url;
           const browserImageState = startFrameImageSrc
             ? imageBrowserStateByShot[shotNumber]?.src === startFrameImageSrc
               ? imageBrowserStateByShot[shotNumber].state
@@ -3864,6 +3856,9 @@ export function VerticalDramaStoryboardPanel({
             browserState: browserImageState,
             transientError: imageGenerationErrorByShot[shotNumber],
           });
+          const imagePolicyFailure =
+            imageDisplayState.kind === "failed" &&
+            isCharacterLockPolicyFailureMessage(imageDisplayState.error);
           const barrierMultiView = frame?.barrierMultiView;
           const barrierReferenceAssetId =
             barrierMultiView?.referenceView.referenceFrameAssetId;
@@ -3902,10 +3897,7 @@ export function VerticalDramaStoryboardPanel({
           const barrierCharacterNames = (keys: string[]) =>
             keys
               .map(
-                key =>
-                  characterPortraits[key]?.variantLabel ??
-                  characterPortraits[key]?.name ??
-                  key
+                key => formatShotCharacterLabel(characterPortraits[key], key)
               )
               .join(", ");
           const dualScenario = barrierMultiView?.scenario ?? "physical_barrier";
@@ -3986,6 +3978,43 @@ export function VerticalDramaStoryboardPanel({
                   : null,
               ].filter((value): value is string => Boolean(value))
             : [];
+          const pendingLookAssignments = (
+            frame?.characterLookAssignments ?? []
+          ).filter(
+            assignment =>
+              (assignment.status === "waiting_for_look_design" ||
+                assignment.status === "waiting_for_portrait") &&
+              !characterPortraits[assignment.selectedLookKey]?.portraitUrl
+          );
+          const storyboardPhysicalKeys =
+            frame?.requiredCharacterRefs !== undefined
+              ? frame.requiredCharacterRefs
+              : shot.required_character_refs?.length
+                ? shot.required_character_refs
+                : (shot.characters ?? []);
+          const pendingStoryboardLookLabels = storyboardPhysicalKeys
+            .map(key => characterPortraits[key])
+            .filter(
+              portrait =>
+                portrait?.isSystemSuggestedLook === true &&
+                !portrait.portraitUrl
+            )
+            .map(
+              portrait => formatShotCharacterLabel(portrait, portrait.name)
+            );
+          const reviewLookAssignments = (
+            frame?.characterLookAssignments ?? []
+          ).filter(assignment => assignment.status === "review");
+          const pendingLookLabels = Array.from(
+            new Set([
+              ...pendingLookAssignments.map(
+                assignment =>
+                  assignment.requestedLabel ?? assignment.selectedLookKey
+              ),
+              ...pendingStoryboardLookLabels,
+            ])
+          );
+          const hasPendingLook = pendingLookLabels.length > 0;
           const continuityHasWarning = continuityIssues.length > 0;
           const deviceOrientationAssetId =
             frame?.videoStartMediaAssetId ?? frame?.approvedMediaAssetId;
@@ -4031,6 +4060,31 @@ export function VerticalDramaStoryboardPanel({
               className="flex flex-col gap-3 rounded-md border border-border p-3"
               data-testid={`vd-storyboard-shot-${shotNumber}`}
             >
+              {onDispatchWorkerShotVideo ? (
+                <VerticalDramaWorkerShotInspector
+                  shotNumber={shotNumber}
+                  targets={workerShotTargets}
+                  loading={workerShotTargetsLoading}
+                  dispatching={dispatchingWorkerShotForShot === shotNumber}
+                  state={workerShotDispatchStateByShot[shotNumber]}
+                  onDispatch={input => onDispatchWorkerShotVideo(shotNumber, input)}
+                  onRetry={onRetryWorkerShotVideo ? input => onRetryWorkerShotVideo(shotNumber, input) : undefined}
+                  onCancel={onCancelWorkerShotVideo ? jobId => onCancelWorkerShotVideo(shotNumber, jobId) : undefined}
+                  details={((): VerticalDramaWorkerShotInspectorDetails => ({
+                    startFrameLabel: frame?.approvedMediaAssetId ?? "ยังไม่ได้เลือก start frame",
+                    referenceRoles: frame?.requiredCharacterRefs ?? [],
+                    previewUrl: frame?.videoStartMediaAssetId ? videoStartAsset?.url ?? null : null,
+                    qcMessage: continuityHasWarning
+                      ? continuityIssues.join(" · ")
+                      : videoSafetyVerdict
+                        ? `video safety: ${videoSafetyVerdict}`
+                        : "รอผล QC หลัง Worker สร้าง derived artifact",
+                    focusMode: frame?.videoStartSource
+                      ? `anchor ${frame.videoStartSource} · ตรวจ subject focus ใน Worker`
+                      : "auto_person · ต้องยืนยันผล focus หาก confidence ต่ำ",
+                  }))()}
+                />
+              ) : null}
               <div className="flex flex-col gap-3 sm:flex-row">
                 <div className="flex w-full shrink-0 flex-col gap-2 sm:w-40">
                   <div
@@ -4241,7 +4295,13 @@ export function VerticalDramaStoryboardPanel({
                           <>
                             <ImageOff aria-hidden="true" className="h-5 w-5" />
                             <span className="text-[11px] font-medium">
-                              {imageDisplayState.failureStage === "sync"
+                              {imagePolicyFailure
+                                ? t(
+                                    locale,
+                                    "หยุดการส่งซ้ำเนื่องจากไม่ผ่านนโยบายความปลอดภัย กรุณาแก้ prompt หรือภาพอ้างอิงก่อนสร้างใหม่",
+                                    "Submission stopped after a safety-policy rejection. Revise the prompt or reference image before retrying"
+                                  )
+                                : imageDisplayState.failureStage === "sync"
                                 ? t(
                                     locale,
                                     "สร้างภาพแล้ว แต่เชื่อมเข้าช็อตไม่สำเร็จ",
@@ -4284,7 +4344,10 @@ export function VerticalDramaStoryboardPanel({
                                   variant="secondary"
                                   className="h-7 px-2 text-[10px]"
                                   onClick={() =>
-                                    onRetryStartFrameImage(shotNumber)
+                                    onRetryStartFrameImage(
+                                      shotNumber,
+                                      imageDisplayState.error
+                                    )
                                   }
                                 >
                                   {t(
@@ -4351,6 +4414,133 @@ export function VerticalDramaStoryboardPanel({
                       </div>
                     ) : null}
                   </div>
+                  <section
+                    className="flex flex-col gap-1.5 rounded-md border border-dashed border-violet-300/70 bg-violet-50/40 p-1.5 dark:border-violet-800 dark:bg-violet-950/20"
+                    data-testid={`vd-storyboard-stop-frame-slot-${shotNumber}`}
+                    aria-label={t(
+                      locale,
+                      `เฟรมสุดท้าย ช็อต ${shotNumber}`,
+                      `Stop frame, shot ${shotNumber}`
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] font-semibold text-violet-800 dark:text-violet-200">
+                        {t(locale, "Stop Frame (ตัวเลือก)", "Stop frame (optional)")}
+                      </span>
+                      <span className="text-[9px] text-muted-foreground">→</span>
+                    </div>
+                    <div className="relative aspect-[9/16] w-full overflow-hidden rounded border border-violet-200 bg-muted dark:border-violet-900">
+                      {stopFrameImageSrc ? (
+                        <AuthenticatedMediaImage
+                          src={stopFrameImageSrc}
+                          alt={t(
+                            locale,
+                            `เฟรมสุดท้าย ช็อต ${shotNumber}`,
+                            `Stop frame, shot ${shotNumber}`
+                          )}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full flex-col items-center justify-center gap-1 px-1 text-center text-[10px] text-muted-foreground">
+                          <ImageOff aria-hidden="true" className="h-4 w-4" />
+                          <span>
+                            {frame?.stopFrameStaleReason
+                              ? t(
+                                  locale,
+                                  "ภาพเดิมไม่ตรงกับ prompt ล่าสุด",
+                                  "Previous image is stale"
+                                )
+                              : t(locale, "ยังไม่มีภาพ", "No image yet")}
+                          </span>
+                        </div>
+                      )}
+                      {frame?.stopFrameTask?.status === "processing" ||
+                      frame?.stopFrameTask?.status === "queued" ||
+                      frame?.stopFrameTask?.status === "submitted" ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/55 text-white">
+                          <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+                          <span className="text-[9px]">{t(locale, "กำลังสร้าง…", "Generating…")}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                    {frame?.stopFrameStaleReason ? (
+                      <p className="text-[9px] text-amber-700 dark:text-amber-300" role="status">
+                        {t(locale, "Stop frame ต้องสร้างใหม่ให้ตรงกับข้อมูลล่าสุด", "Stop frame needs regeneration")}
+                      </p>
+                    ) : null}
+                    {stopFrameGenerationErrorByShot[shotNumber] ? (
+                      <p className="text-[9px] text-destructive" role="alert">
+                        {stopFrameGenerationErrorByShot[shotNumber]}
+                      </p>
+                    ) : null}
+                    <div className="flex flex-wrap gap-1">
+                      {onChangeStopFrame ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-6 flex-1 px-1.5 text-[10px]"
+                          onClick={() => onChangeStopFrame(shotNumber)}
+                          data-testid={`vd-storyboard-change-stop-frame-${shotNumber}`}
+                        >
+                          {t(locale, "เลือกภาพ", "Choose image")}
+                        </Button>
+                      ) : null}
+                      {onGenerateStopFrameImage && frame?.stopFramePrompt ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-6 flex-1 gap-1 px-1.5 text-[10px]"
+                          onClick={() =>
+                            requestConfirmation({
+                              title: t(
+                                locale,
+                                "ยืนยันสร้าง Stop Frame",
+                                "Confirm stop-frame generation"
+                              ),
+                              description: t(
+                                locale,
+                                "การสร้างภาพนี้ใช้ AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                                "This uses AI and may spend credits. Continue?"
+                              ),
+                              confirmLabel: t(locale, "สร้างภาพ", "Generate image"),
+                              cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                              testId: `vd-credit-confirm-stop-frame-${shotNumber}`,
+                              onConfirm: () => onGenerateStopFrameImage(shotNumber),
+                            })
+                          }
+                          disabled={generatingStopFrameImageForShot.has(shotNumber)}
+                          data-testid={`vd-storyboard-generate-stop-frame-${shotNumber}`}
+                        >
+                          {generatingStopFrameImageForShot.has(shotNumber) ? (
+                            <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Sparkles aria-hidden="true" className="h-3 w-3" />
+                          )}
+                          {t(locale, "สร้างภาพ", "Generate")}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </section>
+                  {frame?.imageStaleReason === "prompt_changed" ? (
+                    <Badge
+                      variant="outline"
+                      className="w-full justify-center border-amber-400/70 px-1.5 py-1 text-[10px] text-amber-700 dark:text-amber-300"
+                      title={t(
+                        locale,
+                        "Scene Visual State เปลี่ยนแล้ว ภาพนี้ยังเก็บไว้ แต่ควรสร้างใหม่เพื่อให้ตรงกับข้อมูลฉากล่าสุด",
+                        "Scene Visual State changed. This image is kept, but regenerate it to match the latest scene facts.",
+                      )}
+                      data-testid={`vd-storyboard-image-stale-${shotNumber}`}
+                    >
+                      {t(
+                        locale,
+                        "ข้อมูลฉากเปลี่ยน — ควรสร้างภาพใหม่",
+                        "Scene facts changed — regenerate",
+                      )}
+                    </Badge>
+                  ) : null}
                   {onChangeStartFrame ? (
                     <Button
                       type="button"
@@ -4362,6 +4552,20 @@ export function VerticalDramaStoryboardPanel({
                     >
                       {t(locale, "เปลี่ยนภาพ", "Change image")}
                     </Button>
+                  ) : null}
+                  {frame?.imageStaleReason ===
+                  "character_references_changed" ? (
+                    <p
+                      className="rounded-md border border-amber-400/60 bg-amber-50 px-2 py-1.5 text-center text-[10px] leading-tight text-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
+                      role="status"
+                      data-testid={`vd-storyboard-retained-image-${shotNumber}`}
+                    >
+                      {t(
+                        locale,
+                        "เปลี่ยนตัวละครแล้ว — เก็บภาพเดิมไว้ สร้างภาพใหม่ได้เมื่อพร้อม",
+                        "Character references changed — the existing image was kept. Generate a new one when ready."
+                      )}
+                    </p>
                   ) : null}
                   {videoStartAsset?.url ? (
                     <div
@@ -4602,6 +4806,7 @@ export function VerticalDramaStoryboardPanel({
                         })
                       }
                       disabled={
+                        hasPendingLook ||
                         generatingVideoSafeStartFrameForShot === shotNumber
                       }
                       data-testid={`vd-storyboard-generate-video-safe-${shotNumber}`}
@@ -4769,9 +4974,10 @@ export function VerticalDramaStoryboardPanel({
                           }
                           setChoosingGenerateModeForShot(shotNumber);
                         }}
-                        disabled={generatingPromptAndImageForShot.has(
-                          shotNumber
-                        )}
+                        disabled={
+                          hasPendingLook ||
+                          generatingPromptAndImageForShot.has(shotNumber)
+                        }
                         title={
                           !selectedImageModelId
                             ? t2.selectImageModelFirst
@@ -4814,9 +5020,9 @@ export function VerticalDramaStoryboardPanel({
                             variant="outline"
                             className="h-6 px-2 text-[11px]"
                             onClick={() => setConfirmingImageForShot(null)}
-                            disabled={generatingStartFrameImageForShot.has(
-                              shotNumber
-                            )}
+                            disabled={
+                              generatingStartFrameImageForShot.has(shotNumber)
+                            }
                           >
                             {t(locale, "ยกเลิก", "Cancel")}
                           </Button>
@@ -4828,9 +5034,10 @@ export function VerticalDramaStoryboardPanel({
                               setConfirmingImageForShot(null);
                               onGenerateStartFrameImage(shotNumber);
                             }}
-                            disabled={generatingStartFrameImageForShot.has(
-                              shotNumber
-                            )}
+                            disabled={
+                              hasPendingLook ||
+                              generatingStartFrameImageForShot.has(shotNumber)
+                            }
                             data-testid={`vd-confirm-generate-image-${shotNumber}`}
                           >
                             {generatingStartFrameImageForShot.has(
@@ -4867,9 +5074,10 @@ export function VerticalDramaStoryboardPanel({
                           }
                           setConfirmingImageForShot(shotNumber);
                         }}
-                        disabled={generatingStartFrameImageForShot.has(
-                          shotNumber
-                        )}
+                        disabled={
+                          hasPendingLook ||
+                          generatingStartFrameImageForShot.has(shotNumber)
+                        }
                         title={
                           !selectedImageModelId
                             ? t2.selectImageModelFirst
@@ -4932,6 +5140,7 @@ export function VerticalDramaStoryboardPanel({
                               onGenerateAngleVariations(shotNumber);
                             }}
                             disabled={
+                              hasPendingLook ||
                               generatingAngleVariationsForShot === shotNumber
                             }
                             data-testid={`vd-confirm-generate-angles-${shotNumber}`}
@@ -4957,6 +5166,7 @@ export function VerticalDramaStoryboardPanel({
                           setConfirmingAngleVariationsForShot(shotNumber);
                         }}
                         disabled={
+                          hasPendingLook ||
                           generatingAngleVariationsForShot === shotNumber ||
                           splittingShot === shotNumber
                         }
@@ -5709,6 +5919,110 @@ export function VerticalDramaStoryboardPanel({
                         .join(" · ")}
                     </p>
                   ) : null}
+                  {hasPendingLook ? (
+                    <section
+                      className="rounded-md border border-amber-400/60 bg-amber-50 p-2 text-[11px] dark:bg-amber-950/30"
+                      data-testid={`vd-storyboard-pending-look-${shotNumber}`}
+                      aria-live="polite"
+                    >
+                      <p className="font-medium text-amber-900 dark:text-amber-100">
+                        {t(
+                          locale,
+                          "รอลุคใหม่ — ยังไม่มีภาพอ้างอิง",
+                          "Waiting for a new look — reference image not ready"
+                        )}
+                      </p>
+                      <p className="mt-1 text-amber-800 dark:text-amber-200">
+                        {pendingLookLabels.join(", ")}
+                        {t(
+                          locale,
+                          " · ไปสร้างภาพลุคนี้ในแท็บตัวละคร หรือเลือกใช้ลุคอื่นได้",
+                          " · Generate this look in Characters, or choose another look"
+                        )}
+                      </p>
+                      {onSetShotCharacterReferences ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="mt-2 h-7 px-2 text-[11px]"
+                          onClick={() => {
+                            const currentKeys =
+                              frame?.requiredCharacterRefs ??
+                              (shot.required_character_refs?.length
+                                ? shot.required_character_refs
+                                : (shot.characters ?? []));
+                            setCharacterRefPickerMode("scene");
+                            setCharacterRefPickerDraft(currentKeys);
+                            setCharacterRefPickerForShot(shotNumber);
+                          }}
+                          data-testid={`vd-storyboard-pending-look-use-other-${shotNumber}`}
+                        >
+                          {t(locale, "ใช้ลุคอื่น", "Use another look")}
+                        </Button>
+                      ) : null}
+                    </section>
+                  ) : null}
+                  {reviewLookAssignments.length > 0 ? (
+                    <section
+                      className="rounded-md border border-sky-400/60 bg-sky-50 p-2 text-[11px] dark:bg-sky-950/30"
+                      data-testid={`vd-storyboard-look-review-${shotNumber}`}
+                      aria-live="polite"
+                    >
+                      <p className="font-medium text-sky-900 dark:text-sky-100">
+                        {t(
+                          locale,
+                          "ควรตรวจสอบลุคของช็อตนี้",
+                          "Review this shot's character look"
+                        )}
+                      </p>
+                      <p className="mt-1 text-sky-800 dark:text-sky-200">
+                        {reviewLookAssignments
+                          .map(assignment => assignment.reason)
+                          .join(" · ")}
+                      </p>
+                      {onSetShotCharacterReferences ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="mt-2 h-7 px-2 text-[11px]"
+                          onClick={() => {
+                            const currentKeys =
+                              frame?.requiredCharacterRefs ??
+                              (shot.required_character_refs?.length
+                                ? shot.required_character_refs
+                                : (shot.characters ?? []));
+                            setCharacterRefPickerMode("scene");
+                            setCharacterRefPickerDraft(currentKeys);
+                            setCharacterRefPickerForShot(shotNumber);
+                          }}
+                          data-testid={`vd-storyboard-look-review-use-other-${shotNumber}`}
+                        >
+                          {t(locale, "ตรวจสอบ/เปลี่ยนลุค", "Review / change look")}
+                        </Button>
+                      ) : null}
+                    </section>
+                  ) : null}
+                  {broll ? (() => {
+                    const shotSummary = canonicalShotSummaryByShot.get(shotNumber) ?? shot.visual_description ?? shot.action ?? "";
+                    const normalizedSummary = shotSummary.toLowerCase();
+                    const hasBrollHint = /b[- ]?roll|footage|ภาพประกอบ|ภาพถ่าย|วิดีโอ|video|สถานที่|ร้าน/.test(normalizedSummary);
+                    const shotBindings = broll.bindings.filter(binding => binding.shotNumber === shotNumber && binding.active);
+                    const shouldShow = shotBindings.length > 0 || hasBrollHint;
+                    return (
+                      <VerticalDramaShotBrollPanel
+                        shotNumber={shotNumber}
+                        bindings={shotBindings}
+                        sources={broll.sources}
+                        visible={shouldShow}
+                        saving={broll.saving}
+                        locale={locale === "en" ? "en" : "th"}
+                        onSelectSource={(source, segment, existing) => broll.onSelectSource(shotNumber, source, segment, existing)}
+                        onRemove={broll.onRemove}
+                      />
+                    );
+                  })() : null}
                   {(() => {
                     // `frame.requiredCharacterRefs` (startFramePlan) is the
                     // identity-lock key list generation ACTUALLY uses once a
@@ -5839,11 +6153,9 @@ export function VerticalDramaStoryboardPanel({
                                     ?
                                   </span>
                                 )}
-                                <span className="w-full truncate leading-tight">
-                                  {portrait?.variantLabel ??
-                                    portrait?.name ??
-                                    key}
-                                </span>
+                              <span className="w-full truncate leading-tight">
+                                  {formatShotCharacterLabel(portrait, key)}
+                              </span>
                               </button>
                               {lookOptions.length > 0 &&
                               onSetShotCharacterReferences ? (
@@ -6133,9 +6445,10 @@ export function VerticalDramaStoryboardPanel({
                                 </span>
                               )}
                               <span className="w-full truncate">
-                                {characterPortraits[key]?.variantLabel ??
-                                  characterPortraits[key]?.name ??
-                                  key}
+                                {formatShotCharacterLabel(
+                                  characterPortraits[key],
+                                  key
+                                )}
                               </span>
                               <Badge
                                 variant="outline"
@@ -6739,6 +7052,46 @@ export function VerticalDramaStoryboardPanel({
                     />
                   ) : null}
 
+                  {onGenerateStopFramePrompt ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="w-full gap-1 text-xs"
+                      onClick={() => onGenerateStopFramePrompt(shotNumber)}
+                      data-testid={`vd-storyboard-generate-stop-frame-prompt-${shotNumber}`}
+                    >
+                      <Sparkles aria-hidden="true" className="h-3 w-3" />
+                      {frame?.stopFramePrompt
+                        ? t(locale, "สร้าง Stop Frame prompt ใหม่", "Regenerate stop-frame prompt")
+                        : t(locale, "สร้าง Stop Frame prompt", "Create stop-frame prompt")}
+                    </Button>
+                  ) : null}
+                  {frame || onGenerateStopFramePrompt ? (
+                    <InlineEditablePromptBox
+                      locale={locale}
+                      t={t2}
+                      title={t(locale, "พรอมต์ภาพสุดท้าย", "Stop-frame image prompt")}
+                      prompt={frame?.stopFramePrompt ?? ""}
+                      emptyLabel={t(locale, "ยังไม่มี Stop Frame prompt", "No stop-frame prompt yet.")}
+                      isEditing={editingStopFramePromptForShot === shotNumber}
+                      draft={editingStopFramePromptDraft}
+                      onStartEdit={() => {
+                        setEditingStopFramePromptForShot(shotNumber);
+                        setEditingStopFramePromptDraft(frame?.stopFramePrompt ?? "");
+                      }}
+                      onDraftChange={setEditingStopFramePromptDraft}
+                      onSave={() => {
+                        onSaveStopFramePrompt?.(shotNumber, editingStopFramePromptDraft);
+                        setEditingStopFramePromptForShot(null);
+                      }}
+                      onCancelEdit={() => setEditingStopFramePromptForShot(null)}
+                      canSaveFree={Boolean(onSaveStopFramePrompt)}
+                      testIdPrefix={`vd-storyboard-stop-frame-prompt-${shotNumber}`}
+                      maxChars={selectedImagePromptMaxChars}
+                    />
+                  ) : null}
+
                   {barrierMultiView ? (
                     <div
                       className="mt-2 flex flex-col gap-2 rounded-lg border border-sky-200/80 bg-sky-50/40 p-2 dark:border-sky-900 dark:bg-sky-950/20"
@@ -7166,6 +7519,13 @@ export function VerticalDramaStoryboardPanel({
                                 className="max-w-xs text-[10px] text-destructive"
                               >
                                 {videoPromptJobErrorByShot[shotNumber]}
+                              </span>
+                            ) : videoPromptJobWarningByShot[shotNumber] ? (
+                              <span
+                                role="status"
+                                className="max-w-xs text-[10px] text-amber-700"
+                              >
+                                {videoPromptJobWarningByShot[shotNumber]}
                               </span>
                             ) : !asset?.url ? (
                               <span className="text-[10px] text-muted-foreground">
@@ -7680,9 +8040,10 @@ export function VerticalDramaStoryboardPanel({
                                               </span>
                                             )}
                                             <span className="w-full truncate">
-                                              {portrait?.variantLabel ??
-                                                portrait?.name ??
-                                                key}
+                                              {formatShotCharacterLabel(
+                                                portrait,
+                                                key
+                                              )}
                                             </span>
                                           </div>
                                         );
@@ -7993,9 +8354,10 @@ export function VerticalDramaStoryboardPanel({
                                 ),
                             });
                           }}
-                          disabled={generatingPromptAndImageForShot.has(
-                            shotNumber
-                          )}
+                          disabled={
+                            hasPendingLook ||
+                            generatingPromptAndImageForShot.has(shotNumber)
+                          }
                           data-testid={`vd-barrier-generate-start-${shotNumber}`}
                         >
                           {generatingPromptAndImageForShot.has(shotNumber) ? (
@@ -8962,8 +9324,17 @@ export function VerticalDramaStoryboardPanel({
               // 2026-07-31).
               <div className="flex flex-col gap-2">
                 <p className="text-sm text-destructive">
-                  {t2.compiledVideoFailed}
-                  {compiledVideo.error ? `: ${compiledVideo.error}` : ""}
+                  {(() => {
+                    const storageMessage = formatStorageCapacityErrorForUser(
+                      compiledVideo.error,
+                      locale === "th" ? "th" : "en",
+                    );
+                    return storageMessage
+                      ? storageMessage
+                      : `${t2.compiledVideoFailed}${
+                          compiledVideo.error ? `: ${compiledVideo.error}` : ""
+                        }`;
+                  })()}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {locale === "th"
@@ -9305,10 +9676,17 @@ export function VerticalDramaStoryboardPanel({
             savingShotCharacterReferencesForShot === characterRefPickerForShot
           }
           onSave={() => {
+            // A deleted look can remain in a legacy plan until this picker is
+            // saved. Do not send that stale key back to the strict server
+            // validator together with the user's newly selected characters.
+            const selectedKeys = filterKnownShotCharacterRefKeys(
+              characterRefPickerDraft,
+              Object.keys(characterPortraits)
+            );
             if (characterRefPickerMode === "screen_caller") {
               onSetShotScreenCallerReferences?.(
                 characterRefPickerForShot,
-                characterRefPickerDraft
+                selectedKeys
               );
             } else if (
               characterRefPickerMode === "dual_primary" ||
@@ -9323,11 +9701,11 @@ export function VerticalDramaStoryboardPanel({
                   scenario: dualView.scenario ?? "physical_barrier",
                   primaryCharacterRefs:
                     characterRefPickerMode === "dual_primary"
-                      ? characterRefPickerDraft
+                      ? selectedKeys
                       : dualView.startView.characterRefs,
                   secondaryCharacterRefs:
                     characterRefPickerMode === "dual_reference"
-                      ? characterRefPickerDraft
+                      ? selectedKeys
                       : dualView.referenceView.characterRefs,
                   primaryLocationKey: dualView.startView.locationKey,
                   secondaryLocationKey: dualView.referenceView.locationKey,
@@ -9336,7 +9714,7 @@ export function VerticalDramaStoryboardPanel({
             } else {
               onSetShotCharacterReferences?.(
                 characterRefPickerForShot,
-                characterRefPickerDraft
+                selectedKeys
               );
             }
             setCharacterRefPickerForShot(null);
@@ -9848,11 +10226,12 @@ function VerticalDramaLocationsBibleCard({
   }
 
   const handlePreview = (
-    locationId: string,
+    locationId: string | undefined,
     locationKey: string,
     coverageRole?: VerticalDramaLocationCoverageRole,
     gapDescription?: string
   ) => {
+    if (!locationId) return;
     requestConfirmation({
       title: t(
         locale,
@@ -9900,7 +10279,8 @@ function VerticalDramaLocationsBibleCard({
     });
   };
 
-  const handleGenerate = (locationId: string, locationKey: string) => {
+  const handleGenerate = (locationId: string | undefined, locationKey: string) => {
+    if (!locationId) return;
     const preview = previewByKey[locationKey];
     if (!preview) return;
     const approvedPrompt = preview.prompt.trim();
@@ -9969,7 +10349,8 @@ function VerticalDramaLocationsBibleCard({
     });
   };
 
-  const handleApprove = async (locationId: string, locationKey: string) => {
+  const handleApprove = async (locationId: string | undefined, locationKey: string) => {
+    if (!locationId) return;
     const candidate = candidateByKey[locationKey];
     if (!candidate) return;
     setCandidateByKey(prev => ({
@@ -10222,6 +10603,7 @@ function VerticalDramaLocationsBibleCard({
                     locale={locale}
                     locationKey={locationKey}
                     state={sceneVisualStates?.[locationKey]}
+                    memberShotNumbers={group.shot_numbers ?? []}
                     enabled
                     planning={planningSceneVisualStateForKey === locationKey}
                     saving={savingSceneVisualStateForKey === locationKey}

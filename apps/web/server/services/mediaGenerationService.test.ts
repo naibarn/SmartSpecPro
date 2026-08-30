@@ -18,6 +18,7 @@ vi.mock("./modelRegistry", () => ({
 }));
 
 vi.mock("./imagePromptSafetyService", () => ({
+  isReusablePreparedEpisodeCoverSafety: vi.fn(() => false),
   isVerticalDramaImageRequest: vi.fn((request: {
     auditContext?: { source?: string };
     characterPromptContext?: { marker?: string };
@@ -277,6 +278,27 @@ describe("MEDIA_MODELS — Gemini Omni video entry", () => {
         },
       },
     });
+  });
+
+  it("includes the separately selectable Gemini Omni Flash 1.1 Kie model", () => {
+    expect(MEDIA_MODELS["gemini-omni-flash-1-1"]).toMatchObject({
+      id: "gemini-omni-flash-1-1",
+      provider: "kie.ai",
+      type: "video",
+      configJson: {
+        kieModelId: "google/gemini-omni-flash-1-1",
+        supportedResolutions: ["360p", "720p", "1080p", "4K"],
+        pricingTiers: {
+          "360p-4s-without-video": 315,
+          "4K-4s-with-video": 1260,
+        },
+      },
+    });
+    const inputFields = MEDIA_MODELS["gemini-omni-flash-1-1"].configJson?.inputFields as Array<{ key?: string }>;
+    expect(inputFields.map((field) => field.key)).toEqual(expect.arrayContaining([
+      "first_frame_url",
+      "last_frame_url",
+    ]));
   });
 });
 
@@ -713,6 +735,35 @@ describe("MediaGenerationService retry behavior", () => {
     expect(payload.extra_params.video_list).toEqual([
       { url: "https://tenant.example.com/api/storage/files/chat/uploads/source.mp4", start: 1, ends: 7 },
     ]);
+  });
+
+  it("forwards Gemini Omni Flash 1.1 first/last frames without conflicting reference arrays", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateVideoAsync(
+      {
+        prompt: "Animate the product reveal.",
+        model: "gemini-omni-flash-1-1",
+        resolution: "4K",
+        apiConfig: { provider: "kie.ai" },
+        extraParams: {
+          first_frame_url: "https://cdn.example.com/start.png",
+          last_frame_url: "https://cdn.example.com/end.png",
+        },
+      },
+      "test-token",
+    );
+
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(payload.extra_params).toMatchObject({
+      first_frame_url: "https://cdn.example.com/start.png",
+      last_frame_url: "https://cdn.example.com/end.png",
+    });
+    expect(payload.extra_params).not.toHaveProperty("image_urls");
+    expect(payload.extra_params).not.toHaveProperty("video_list");
   });
 
   it("forwards reference audio and the full reference video list for minimax-h3", async () => {

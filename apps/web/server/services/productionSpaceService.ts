@@ -116,6 +116,7 @@ type ProductionMediaDispatcher = {
     attempt: ProductionActionAttempt;
     userId: number;
     userToken: string;
+    tenantId?: string;
     publicUrl?: string;
   }): Promise<MediaTask>;
   getTask?(input: { mediaTaskId: string; userToken: string; tenantId?: string; userId?: number }): Promise<MediaTask>;
@@ -593,6 +594,7 @@ const defaultMediaDispatcher: ProductionMediaDispatcher = {
       : {};
     const auditContext = {
       userId: input.userId,
+      tenantId: input.tenantId,
       traceId: input.attempt.attemptId,
       source: "trpc.mediaProduction.runExecution",
       stage: "production-dispatch",
@@ -1477,6 +1479,7 @@ export async function scheduleProductionExecution(params: Omit<Parameters<typeof
           attempt: nextAttempt,
           userId: params.userId,
           userToken: params.userToken,
+          tenantId: params.tenantId,
           publicUrl: params.publicUrl,
         });
         dispatchedTasks.push({ nodeId: node.id, task });

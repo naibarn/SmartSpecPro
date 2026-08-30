@@ -24,6 +24,7 @@ import {
   deductCreditsForModel,
   calculateCreditsForLLMDynamic,
 } from "./creditService";
+import { settleSkillRun } from "./skillRevenueBilling";
 import { auditLogger } from "./auditLogger";
 import { getTraceId } from "./traceContext";
 import { signBearerToken } from "../_core/tokens";
@@ -478,6 +479,7 @@ export async function executeUnified(
       skill,
       skillSlug: (skill as any).slug || skill.id,
       userId: request.userId,
+      tenantId: request.tenantId,
       channel: request.channel,
       traceId,
       maxTokens: maxTokensHint,
@@ -492,7 +494,24 @@ export async function executeUnified(
     let creditsDeducted = 0;
 
     try {
-      if (creditMode === "deduct" && executorResult.modelUsed) {
+      if (creditMode === "deduct" && request.routeHint?.route === "skill") {
+        const settlement = await settleSkillRun({
+          runId: traceId,
+          userId: request.userId,
+          tenantId: request.tenantId,
+          skillSlug: (skill as any).slug || skill.id,
+          description: `Skill run: ${(skill as any).name || (skill as any).slug || skill.id}`,
+          metadata: {
+            runtimeKind: executorResult.mediaJob ? "media" : "llm",
+            originSurface: request.channel,
+            model: executorResult.modelUsed,
+            inputTokens: executorResult.inputTokens,
+            outputTokens: executorResult.outputTokens,
+          },
+        });
+        costCredits = settlement.totalCredits;
+        creditsDeducted = settlement.totalCredits;
+      } else if (creditMode === "deduct" && executorResult.modelUsed) {
         const creditResult = await deductCreditsForModel({
           userId: request.userId,
           model: executorResult.modelUsed,
@@ -513,6 +532,9 @@ export async function executeUnified(
       }
       // "skip" → 0
     } catch (err) {
+      if (creditMode === "deduct" && request.routeHint?.route === "skill") {
+        throw err;
+      }
       console.warn("[unifiedOrchestrator] credit handling failed:", err);
     }
 

@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { documentManagementTableRowsFixture } from "@/pages/DocumentManagement.mock";
@@ -102,5 +102,47 @@ describe("DocumentGridList", () => {
 
     fireEvent.click(screen.getByLabelText("Select Walkthrough.mp4"));
     expect(onSelectionChange).toHaveBeenCalled();
+  });
+
+  it("does not request fallback video metadata until the card nears the viewport", async () => {
+    let observerCallback: IntersectionObserverCallback | null = null;
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class MockIntersectionObserver {
+        constructor(callback: IntersectionObserverCallback) {
+          observerCallback = callback;
+        }
+
+        observe() {}
+        disconnect() {}
+      },
+    );
+
+    render(
+      <DocumentGridList
+        items={[
+          {
+            ...documentManagementTableRowsFixture.find(item => item.id === 303)!,
+            thumbnail_url: null,
+          },
+        ]}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    const video = document.querySelector("video");
+    expect(video).not.toHaveAttribute("src");
+    expect(video).toHaveAttribute("preload", "none");
+
+    observerCallback?.(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    );
+
+    await waitFor(() => {
+      expect(video).toHaveAttribute("src", "https://example.com/walkthrough.mp4");
+      expect(video).toHaveAttribute("preload", "metadata");
+    });
+    vi.unstubAllGlobals();
   });
 });

@@ -11,7 +11,7 @@ import { authorizeRequest } from "../_core/authz";
 import type { TenantRequest } from "../_core/tenant";
 import { rateLimit } from "../_core/limits";
 import multer from "multer";
-import { storagePut, storagePutFromPath } from "../storage";
+import { assertR2StorageActive, storagePut, storagePutFromPath } from "../storage";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { mediaAssets } from "../../drizzle/schema";
@@ -1511,39 +1511,22 @@ export function registerMediaJobRoutes(app: Express) {
 
           console.log("[MediaJobs Upload] File received:", file.originalname, file.size, "bytes");
 
-          // Check storage provider
-          const { getActiveStorageConfig } = await import("../storage");
-          const storageConfig = await getActiveStorageConfig();
+          // Generated/editor media must never be published from local disk.
+          const { assertR2StorageActive } = await import("../storage");
+          await assertR2StorageActive();
+          console.log("[MediaJobs Upload] Uploading to protected R2 storage");
+          const fileBuffer = await fs.readFile(file.path);
+          console.log("[MediaJobs Upload] File read complete:", fileBuffer.length, "bytes");
 
-          let url: string;
-          if (storageConfig.provider === "local") {
-            // Local storage: move file directly without buffering
-            console.log("[MediaJobs Upload] Using local storage - moving file");
-            const { getUploadsDir } = await import("../storage");
-            const uploadsDir = getUploadsDir();
-            const targetDir = path.join(uploadsDir, "media-jobs", "assets", assetId);
-            await fs.mkdir(targetDir, { recursive: true });
-            const targetPath = path.join(targetDir, file.originalname);
-            await fs.rename(file.path, targetPath);
-            url = `/uploads/media-jobs/assets/${assetId}/${file.originalname}`;
-            console.log("[MediaJobs Upload] File moved to:", targetPath);
-          } else {
-            // Remote storage: read and upload
-            console.log("[MediaJobs Upload] Using remote storage - buffering file");
-            const fileBuffer = await fs.readFile(file.path);
-            console.log("[MediaJobs Upload] File read complete:", fileBuffer.length, "bytes");
+          const { url } = await storagePut(
+            storageKey,
+            fileBuffer,
+            file.mimetype || "application/octet-stream",
+          );
+          console.log("[MediaJobs Upload] Storage upload complete");
 
-            const { url: storageUrl } = await storagePut(
-              storageKey,
-              fileBuffer,
-              file.mimetype || "application/octet-stream",
-            );
-            url = storageUrl;
-            console.log("[MediaJobs Upload] Storage upload complete");
-
-            // Clean up temp file
-            await fs.unlink(file.path).catch(e => console.warn("[Upload] Cleanup failed:", e));
-          }
+          // Clean up temp file only after the R2 upload has completed.
+          await fs.unlink(file.path).catch(e => console.warn("[Upload] Cleanup failed:", e));
 
           const mediaAssetId = await registerMediaJobAsset({
             auth: authResult,
@@ -1804,6 +1787,7 @@ export function registerMediaJobRoutes(app: Express) {
           maxBytes: MAX_UPLOAD_SIZE,
         });
 
+        await assertR2StorageActive();
         const { url: storageUrl } = await storagePutFromPath(storageKey, tempPath, contentType);
         await fs.unlink(tempPath).catch(() => {});
         tempPath = null;

@@ -12,13 +12,13 @@ describe("Vertical Drama image prompt budget", () => {
     },
   );
 
-  it("uses 20,000 for Kie.ai even when catalog metadata is stale", () => {
+  it("uses 390,000 for Kie.ai even when catalog metadata is stale", () => {
     expect(
       resolveVdImagePromptBudgetForCatalogModel({
         provider: "kie.ai",
         configJson: { maxPromptLength: 3_800 },
       }),
-    ).toBe(20_000);
+    ).toBe(390_000);
   });
 
   it("keeps the legacy floor for unknown providers", () => {

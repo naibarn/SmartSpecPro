@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   mockSubmitInternalMediaJob: vi.fn(),
   mockGetInternalMediaJobStatus: vi.fn(),
   mockStoragePut: vi.fn(),
+  mockAssertR2StorageActive: vi.fn(),
   mockStorageStreamFile: vi.fn(),
   mockGetActiveStorageConfig: vi.fn(async () => ({ provider: "local" })),
   mockGetUploadsDir: vi.fn(() => "/tmp/uploads"),
@@ -64,6 +65,7 @@ vi.mock("../../routers/mediaJobs", () => ({
 }));
 
 vi.mock("../../storage", () => ({
+  assertR2StorageActive: (...args: unknown[]) => mocks.mockAssertR2StorageActive(...args),
   getActiveStorageConfig: (...args: unknown[]) =>
     mocks.mockGetActiveStorageConfig(...args),
   storagePut: (...args: unknown[]) => mocks.mockStoragePut(...args),

@@ -14,6 +14,8 @@ import {
   HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC,
   HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC,
 } from "./hyperframes/limits";
+import { workerSeriesScopeValues } from "./workerSeriesControlPlane";
+export * from "./comfyControlContracts";
 
 export const WORKER_RUNTIME_PROTOCOL_VERSION = "2026-04-06";
 export const WORKER_RUNTIME_FAMILY_SCHEMA_VERSION = "2026-04-08";
@@ -164,7 +166,14 @@ export const workerScopeValues = [
   "workers:heartbeat",
   "workers:claim",
   "workers:report",
+  "workers:jobs:read",
   "workers:diagnostics",
+  ...workerSeriesScopeValues,
+  "comfy:profiles:read",
+  "comfy:profiles:write",
+  "comfy:workflow:discover",
+  "comfy:execute",
+  "comfy:artifact:write",
 ] as const;
 
 export const workerDesktopServiceModeValues = [
@@ -321,6 +330,16 @@ export const COMFY_WORKFLOW_RUN_PROGRESS_STAGES = [
 ];
 export const COMFY_WORKFLOW_RUN_FAILURE_CODES = [
   ...comfyWorkflowRunFailureCodeValues,
+];
+
+// Feature 165 keeps video generation on its own job type so the Web queue,
+// Worker claim contract, and progress validation can distinguish it from an
+// image/workflow run while sharing the same MCP lifecycle stages.
+export const COMFY_VIDEO_GENERATION_PROGRESS_STAGES = [
+  ...comfyImageGenerationProgressStageValues,
+];
+export const COMFY_VIDEO_GENERATION_FAILURE_CODES = [
+  ...comfyImageGenerationFailureCodeValues,
 ];
 
 export const hyperframesFinalCompositeProgressStageValues = [

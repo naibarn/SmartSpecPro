@@ -1,5 +1,5 @@
 export const PROTECTED_MEDIA_CACHE_CONTROL =
-  "private, max-age=60, must-revalidate";
+  "private, max-age=604800, stale-while-revalidate=2592000";
 
 // The response is intentionally private: the URL is stable for browser cache
 // reuse, but authorization still depends on the current session/bearer token.

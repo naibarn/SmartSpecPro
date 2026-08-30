@@ -189,4 +189,26 @@ describe("VerticalDramaStoryboardPanel — shot-local character descriptions", (
     );
     expect(screen.queryByText("กำลังสร้างพรอมต์…")).not.toBeInTheDocument();
   });
+
+  it("shows a policy advisory as status text while keeping the prompt action successful", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...({
+          ...baseProps,
+          selectedVideoModelId: "grok-imagine-video-1-5-preview",
+          onGenerateShotVideoPrompt: vi.fn(),
+          generatingShotVideoPromptForShot: new Set(),
+          videoPromptJobStatusByShot: {},
+          videoPromptJobWarningByShot: {
+            1: "Shot 1: video prompt safety advisory [minor_distress]: review wording",
+          },
+        } as any)}
+      />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "video prompt safety advisory",
+    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 });

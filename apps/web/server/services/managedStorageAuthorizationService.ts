@@ -4,12 +4,21 @@ import { getDb } from "../db";
 import {
   desktopInstallerReleases,
   feedbackTicketAttachments,
+  feedbackTicketComments,
   feedbackTickets,
+  groupMembers,
   libraryItems,
+  marketplaceAutoReviewRuns,
+  marketplaceCaptureAssets,
+  marketplaceProductGroupShares,
+  marketplaceProductImages,
+  marketplaceProducts,
   mediaAssets,
   workerArtifacts,
   workerJobs,
   mcpMediaTasks,
+  presentationExports,
+  userGroups,
   verticalDramaSeries,
 } from "../../drizzle/schema";
 import { getLibraryItemById, type LibraryActor } from "./libraryService";
@@ -56,8 +65,137 @@ export async function canReadManagedStorageKey(
     return false;
   }
 
+  // Marketplace Capture images are tenant-protected R2 objects. They are
+  // returned to the picker as managed storage URLs, so authorize the same
+  // owner/group access that powers the product list before streaming them.
+  if (normalizedKey.startsWith("marketplace-captures/")) {
+    const [ownedCaptureAsset] = await db
+      .select({ id: marketplaceCaptureAssets.id })
+      .from(marketplaceCaptureAssets)
+      .where(
+        and(
+          eq(marketplaceCaptureAssets.storageKey, normalizedKey),
+          or(
+            eq(marketplaceCaptureAssets.tenantId, viewer.tenantId),
+            sql`${marketplaceCaptureAssets.tenantId} IS NULL`,
+          ),
+          eq(marketplaceCaptureAssets.userId, viewer.userId)
+        )
+      )
+      .limit(1);
+    if (ownedCaptureAsset) return true;
+
+    const [ownedProductImage] = await db
+      .select({ id: marketplaceProductImages.id })
+      .from(marketplaceProductImages)
+      .innerJoin(
+        marketplaceProducts,
+        eq(marketplaceProducts.id, marketplaceProductImages.productId),
+      )
+      .where(
+        and(
+          eq(marketplaceProductImages.storageKey, normalizedKey),
+          eq(marketplaceProducts.userId, viewer.userId),
+          or(
+            eq(marketplaceProducts.tenantId, viewer.tenantId),
+            sql`${marketplaceProducts.tenantId} IS NULL`,
+          ),
+        ),
+      )
+      .limit(1);
+    if (ownedProductImage) return true;
+
+    const [sharedProductImage] = await db
+      .select({ id: marketplaceProductImages.id })
+      .from(marketplaceProductImages)
+      .innerJoin(
+        marketplaceProducts,
+        eq(marketplaceProducts.id, marketplaceProductImages.productId)
+      )
+      .innerJoin(
+        marketplaceProductGroupShares,
+        eq(marketplaceProductGroupShares.productId, marketplaceProducts.id)
+      )
+      .leftJoin(
+        marketplaceCaptureAssets,
+        eq(marketplaceCaptureAssets.id, marketplaceProductImages.captureAssetId),
+      )
+      .innerJoin(
+        groupMembers,
+        eq(groupMembers.groupId, marketplaceProductGroupShares.groupId)
+      )
+      .innerJoin(userGroups, eq(userGroups.id, groupMembers.groupId))
+      .where(
+        and(
+          or(
+            eq(marketplaceProductImages.storageKey, normalizedKey),
+            eq(marketplaceCaptureAssets.storageKey, normalizedKey),
+          ),
+          or(
+            eq(marketplaceProducts.tenantId, viewer.tenantId),
+            sql`${marketplaceProducts.tenantId} IS NULL`,
+          ),
+          or(
+            eq(marketplaceCaptureAssets.tenantId, viewer.tenantId),
+            sql`${marketplaceCaptureAssets.tenantId} IS NULL`,
+          ),
+          eq(marketplaceProductGroupShares.tenantId, viewer.tenantId),
+          or(
+            eq(marketplaceProductGroupShares.permission, "read"),
+            eq(marketplaceProductGroupShares.permission, "read_update")
+          ),
+          eq(groupMembers.userId, viewer.userId),
+          eq(groupMembers.status, "active"),
+          sql`${userGroups.deletedAt} IS NULL`
+        )
+      )
+      .limit(1);
+    return Boolean(sharedProductImage);
+  }
+
+  // Auto Review images, manual uploads, storyboard frames, and HyperFrames
+  // renders use both the legacy `.../{runId}/...` layout and the newer
+  // tenant-bound `.../{tenantId}/{runId}/...` layout. Resolve the run id from
+  // either segment and authorize the persisted owner/tenant, never the path
+  // alone.
+  if (normalizedKey.startsWith("marketplace-auto-review/")) {
+    const segments = normalizedKey.split("/");
+    const legacyRunDirectories = new Set([
+      "manual-uploads",
+      "overlay",
+      "reference-uploads",
+      "artifacts",
+    ]);
+    const tenantBoundRunDirectories = new Set([
+      "frames",
+      "media",
+      "hyperframes",
+    ]);
+    const runId = legacyRunDirectories.has(segments[2] ?? "")
+      ? segments[1]
+      : tenantBoundRunDirectories.has(segments[3] ?? "")
+        ? segments[2]
+        : null;
+    if (!runId) return false;
+    const [ownedRun] = await db
+      .select({ id: marketplaceAutoReviewRuns.id })
+      .from(marketplaceAutoReviewRuns)
+      .where(
+        and(
+          eq(marketplaceAutoReviewRuns.id, runId),
+          eq(marketplaceAutoReviewRuns.userId, viewer.userId),
+          or(
+            eq(marketplaceAutoReviewRuns.tenantId, viewer.tenantId),
+            sql`${marketplaceAutoReviewRuns.tenantId} IS NULL`,
+          ),
+        ),
+      )
+      .limit(1);
+    return Boolean(ownedRun);
+  }
+
   const verticalDramaWatermarkMatch = normalizedKey.match(
-    /^vertical-drama\/(\d+)\/watermark\/[^/]+$/,
+    /^vertical-drama\/(\d+)\/watermark\/[^/]+$/
   );
   if (verticalDramaWatermarkMatch) {
     const seriesId = Number(verticalDramaWatermarkMatch[1]);
@@ -68,8 +206,8 @@ export async function canReadManagedStorageKey(
         and(
           eq(verticalDramaSeries.id, seriesId),
           eq(verticalDramaSeries.tenantId, viewer.tenantId),
-          eq(verticalDramaSeries.userId, viewer.userId),
-        ),
+          eq(verticalDramaSeries.userId, viewer.userId)
+        )
       )
       .limit(1);
     if (!series) return false;
@@ -87,7 +225,9 @@ export async function canReadManagedStorageKey(
       if (typeof value !== "string") return false;
       const prefix = "/api/storage/files/";
       if (!value.startsWith(prefix)) return false;
-      return normalizeManagedMediaKey(value.slice(prefix.length)) === normalizedKey;
+      return (
+        normalizeManagedMediaKey(value.slice(prefix.length)) === normalizedKey
+      );
     });
   }
 
@@ -95,7 +235,7 @@ export async function canReadManagedStorageKey(
   // New keys include the tenant; legacy keys only include the user id and are
   // retained for existing references created before tenant scoping was added.
   const tenantScopedChatUpload = normalizedKey.match(
-    /^chat\/uploads\/([^/]+)\/(\d+)\/[^/]+$/,
+    /^chat\/uploads\/([^/]+)\/(\d+)\/[^/]+$/
   );
   if (tenantScopedChatUpload) {
     return (
@@ -104,9 +244,7 @@ export async function canReadManagedStorageKey(
     );
   }
 
-  const legacyChatUpload = normalizedKey.match(
-    /^chat\/uploads\/(\d+)\/[^/]+$/,
-  );
+  const legacyChatUpload = normalizedKey.match(/^chat\/uploads\/(\d+)\/[^/]+$/);
   if (legacyChatUpload) {
     return Number(legacyChatUpload[1]) === viewer.userId;
   }
@@ -120,11 +258,16 @@ export async function canReadManagedStorageKey(
         ticketTenantId: feedbackTickets.tenantId,
         submittedBy: feedbackTickets.submittedBy,
         submittedByType: feedbackTickets.submittedByType,
+        internalComment: feedbackTicketComments.isInternal,
       })
       .from(feedbackTicketAttachments)
       .innerJoin(
         feedbackTickets,
         eq(feedbackTickets.id, feedbackTicketAttachments.ticketId)
+      )
+      .leftJoin(
+        feedbackTicketComments,
+        eq(feedbackTicketComments.id, feedbackTicketAttachments.commentId)
       )
       .where(eq(feedbackTicketAttachments.fileUrl, normalizedKey))
       .limit(1);
@@ -132,6 +275,7 @@ export async function canReadManagedStorageKey(
     if (!feedbackAttachment) return false;
 
     const isAdmin = viewer.role === "admin" || viewer.role === "domain_admin";
+    if (!isAdmin && feedbackAttachment.internalComment === true) return false;
     const sameTenant = feedbackAttachment.ticketTenantId === viewer.tenantId;
     const legacySystemTicket =
       feedbackAttachment.submittedByType === "system" &&
@@ -142,11 +286,14 @@ export async function canReadManagedStorageKey(
   }
 
   const mcpMediaMatch = normalizedKey.match(
-    /^mcp-media\/([^/]+)\/(\d+)\/([^/]+)\//,
+    /^mcp-media\/([^/]+)\/(\d+)\/([^/]+)\//
   );
   if (mcpMediaMatch) {
     const [, mediaTenantId, mediaUserId, taskId] = mcpMediaMatch;
-    if (mediaTenantId !== viewer.tenantId || Number(mediaUserId) !== viewer.userId) {
+    if (
+      mediaTenantId !== viewer.tenantId ||
+      Number(mediaUserId) !== viewer.userId
+    ) {
       return false;
     }
     const [ownedMcpTask] = await db
@@ -156,11 +303,43 @@ export async function canReadManagedStorageKey(
         and(
           eq(mcpMediaTasks.id, taskId),
           eq(mcpMediaTasks.tenantId, viewer.tenantId),
-          eq(mcpMediaTasks.userId, viewer.userId),
-        ),
+          eq(mcpMediaTasks.userId, viewer.userId)
+        )
       )
       .limit(1);
     return Boolean(ownedMcpTask);
+  }
+
+  // Presentation exports are durable R2 objects keyed by deck/task, so the
+  // key itself does not contain tenant or user identity. Resolve ownership
+  // from the completed export row before allowing the storage proxy to read it.
+  if (normalizedKey.startsWith("presentation-exports/")) {
+    const [ownedPresentationExport] = await db
+      .select({ id: presentationExports.id })
+      .from(presentationExports)
+      .where(
+        and(
+          eq(presentationExports.outputStorageKey, normalizedKey),
+          eq(presentationExports.tenantId, viewer.tenantId),
+          eq(presentationExports.userId, viewer.userId),
+          eq(presentationExports.status, "done")
+        )
+      )
+      .limit(1);
+    return Boolean(ownedPresentationExport);
+  }
+
+  // Python media-job worker outputs are namespaced by tenant and user before
+  // the job id. Keep the proxy boundary tenant/user-scoped even when the
+  // worker has not yet materialized a media_assets row for the output.
+  const mediaJobOutputMatch = normalizedKey.match(
+    /^media-jobs\/([^/]+)\/(\d+)\/[^/]+\/[^/]+\.(?:avif|gif|heic|heif|jpe?g|m4a|mkv|mov|mp3|mp4|oga|ogg|png|svg|wav|webm|webp)$/i
+  );
+  if (mediaJobOutputMatch) {
+    return (
+      mediaJobOutputMatch[1] === viewer.tenantId &&
+      Number(mediaJobOutputMatch[2]) === viewer.userId
+    );
   }
 
   const [ownedMediaAsset] = await db

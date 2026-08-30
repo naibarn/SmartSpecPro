@@ -87,6 +87,29 @@ vi.mock("sonner", () => ({
   },
 }));
 
+vi.mock("@/components/ui/confirm/ConfirmProvider", () => ({
+  useConfirm: () => ({
+    confirm: vi.fn(),
+    prompt: vi.fn(),
+  }),
+}));
+
+vi.mock("@/contexts/ThemeContext", () => ({
+  useTheme: () => ({
+    theme: "light",
+    switchable: false,
+    toggleTheme: vi.fn(),
+  }),
+}));
+
+vi.mock("@/contexts/AstryxPaletteContext", () => ({
+  useAstryxPalette: () => ({
+    palette: "neutral",
+    setPalette: vi.fn(),
+    themes: [],
+  }),
+}));
+
 vi.mock("framer-motion", () => ({
   motion: {
     div: (props: React.HTMLAttributes<HTMLDivElement>) => <div {...props} />,

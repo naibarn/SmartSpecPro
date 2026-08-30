@@ -348,7 +348,7 @@ export async function updateConnectedDeviceTokenMetadata(input: {
   authKind?: string;
   accessTokenExpiresAt?: Date | null;
   refreshTokenExpiresAt?: Date | null;
-}): Promise<void> {
+}): Promise<boolean> {
   const db = await getDb();
   const predicates = [eq(connectedDevices.tenantId, input.tenantId)];
   if (input.ownerUserId != null)
@@ -359,14 +359,21 @@ export async function updateConnectedDeviceTokenMetadata(input: {
     );
   if (input.workerId)
     predicates.push(eq(connectedDevices.workerId, input.workerId));
-  if (input.workerConnectionId)
-    predicates.push(
-      eq(connectedDevices.workerConnectionId, input.workerConnectionId)
+  if (input.workerConnectionId) {
+    // The approval record is created before the redemption endpoint mints
+    // the worker connection id. Match that same device while allowing the
+    // initial NULL to be populated; subsequent refreshes still match the
+    // exact connection id.
+    const connectionPredicate = or(
+      eq(connectedDevices.workerConnectionId, input.workerConnectionId),
+      isNull(connectedDevices.workerConnectionId),
     );
+    if (connectionPredicate) predicates.push(connectionPredicate);
+  }
   if (input.authKind)
     predicates.push(eq(connectedDevices.authKind, input.authKind));
-  if (!input.deviceId && !input.workerId && !input.workerConnectionId) return;
-  await db
+  if (!input.deviceId && !input.workerId && !input.workerConnectionId) return false;
+  const updatedRows = await db
     .update(connectedDevices)
     .set({
       ...(input.workerConnectionId
@@ -382,7 +389,9 @@ export async function updateConnectedDeviceTokenMetadata(input: {
       status: "active",
       updatedAt: new Date(),
     })
-    .where(and(...predicates));
+    .where(and(...predicates))
+    .returning({ id: connectedDevices.id });
+  return updatedRows.length > 0;
 }
 
 export async function listConnectedDevicesForUser(input: {
@@ -463,6 +472,46 @@ export async function isConnectedDeviceRevoked(input: {
     // the durable revocation check.
     if (!process.env.DATABASE_URL) return false;
     throw error;
+  }
+}
+
+/**
+ * Returns the effective permission policy for a connected native worker.
+ *
+ * The access-token scopes are the immutable upper bound issued at approval
+ * time. The connected-device policy is the user-controlled subset and is
+ * checked at request time so a reduction takes effect without waiting for a
+ * worker token refresh. A missing row is returned as null for compatibility
+ * with older workers that were registered before device records existed.
+ */
+export async function getConnectedWorkerEffectiveScopes(input: {
+  tenantId: string;
+  workerConnectionId?: string | null;
+}): Promise<string[] | null> {
+  const workerConnectionId = input.workerConnectionId?.trim();
+  if (!workerConnectionId) return null;
+
+  try {
+    const db = await getDb();
+    const [row] = await db
+      .select()
+      .from(connectedDevices)
+      .where(
+        and(
+          eq(connectedDevices.tenantId, input.tenantId),
+          eq(connectedDevices.workerConnectionId, workerConnectionId),
+          eq(connectedDevices.authKind, "worker_executor"),
+        ),
+      )
+      .orderBy(desc(connectedDevices.updatedAt), desc(connectedDevices.createdAt))
+      .limit(1);
+    if (!row) return null;
+    return effectiveScopesForRow(row).effectiveScopes;
+  } catch (error) {
+    // A configured production database must fail closed. Local unit tests and
+    // legacy single-process development may intentionally run without DB.
+    if (process.env.DATABASE_URL) throw error;
+    return null;
   }
 }
 

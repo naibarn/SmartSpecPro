@@ -49,4 +49,40 @@ describe("vertical drama episode preview contract", () => {
       upsertVerticalDramaEpisodePreview([first, second], replacement)
     ).toEqual([replacement, second]);
   });
+
+  it("accepts durable media identity and expiry state for completed previews", () => {
+    expect(
+      readVerticalDramaEpisodePreviews([
+        {
+          slotId: 1,
+          selectedShotNumbers: [1, 2],
+          status: "completed",
+          mediaAssetId: "501",
+          videoUrl: "/api/storage/files/vertical-drama/preview-1.mp4",
+          durabilityStatus: "ready",
+        },
+        {
+          slotId: 2,
+          selectedShotNumbers: [3, 4],
+          status: "completed",
+          durabilityStatus: "expired",
+        },
+      ]),
+    ).toEqual([
+      {
+        slotId: 1,
+        selectedShotNumbers: [1, 2],
+        status: "completed",
+        mediaAssetId: "501",
+        videoUrl: "/api/storage/files/vertical-drama/preview-1.mp4",
+        durabilityStatus: "ready",
+      },
+      {
+        slotId: 2,
+        selectedShotNumbers: [3, 4],
+        status: "completed",
+        durabilityStatus: "expired",
+      },
+    ]);
+  });
 });

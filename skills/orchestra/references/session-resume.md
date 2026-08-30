@@ -172,4 +172,7 @@ If `task_description` does not match any currently visible task or the wave stru
 - if the user explicitly asked to resume prior work, continue with the snapshot
 - otherwise archive the old `orchestra/` directory automatically and start a fresh session
 
-Do not delete the old `orchestra/` directory — archive it. This ensures the old snapshot is not detected on the next invocation (since it has been moved into `archive/`).
+Do not delete the old `orchestra/` directory — archive it with
+`ops/orchestra-archive/orchestra-archive-safe.sh` into the sibling
+`.orchestra-archive/` root. This ensures the old snapshot is not detected on
+the next invocation without placing an archive inside the source tree.

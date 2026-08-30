@@ -131,6 +131,7 @@ export type VerticalDramaStoryJobKind =
   | "plan"
   | "deep_generate"
   | "extend"
+  | "episode_repair"
   /**
    * "ปรับปรุงบทละครให้มีความสมบูรณ์" (added 2026-07-10) — replaces the old
    * `critique`/`apply_critique`/`quality_loop` season-quality flow with one
@@ -639,8 +640,21 @@ const STORY_JOB_KIND_LABEL_TH: Record<VerticalDramaStoryJobKind, string> = {
   plan: "วางแผนเนื้อเรื่องหลัก",
   deep_generate: "สร้างร่างละเอียดเนื้อเรื่อง",
   extend: "ขยายร่างเนื้อเรื่อง",
+  episode_repair: "สร้างเนื้อหาตอนใหม่",
   improve_script: "ปรับปรุงบทละครให้มีความสมบูรณ์",
 };
+
+function storyJobUserFailureMessage(
+  record: Pick<VerticalDramaStoryJobRecord, "kind" | "error">,
+): string {
+  if (/VD_STORY_POLICY_RISK|high-risk policy context/i.test(record.error ?? "")) {
+    return "เนื้อหาที่สร้างใหม่ยังไม่ผ่านการตรวจสอบความปลอดภัย กรุณาเลือกซ่อมเนื้อหาใหม่อีกครั้งหรือปรับเนื้อหาให้ปลอดภัยขึ้น";
+  }
+  if (record.kind === "episode_repair") {
+    return "การสร้างเนื้อหาตอนใหม่ไม่สำเร็จ กรุณาเปิดตอนเพื่อตรวจสอบ revision และลองใหม่";
+  }
+  return (record.error ?? "งานเนื้อเรื่องไม่สำเร็จ").slice(0, 200);
+}
 
 function storyJobActionUrl(record: VerticalDramaStoryJobRecord): string {
   return `/drama-series/${record.seriesId}`;
@@ -831,7 +845,7 @@ async function notifyStoryJobTerminal(record: VerticalDramaStoryJobRecord): Prom
           title: succeeded ? `${kindLabel} เสร็จแล้ว` : `${kindLabel} ไม่สำเร็จ`,
           content: succeeded
             ? `งาน "${kindLabel}" เสร็จเรียบร้อยแล้ว กลับไปดูผลลัพธ์ได้เลย`
-            : `งาน "${kindLabel}" ล้มเหลว: ${(record.error ?? "").slice(0, 200)}`,
+            : `งาน "${kindLabel}" ล้มเหลว: ${storyJobUserFailureMessage(record)}`,
           priority: succeeded ? "normal" : "high",
           relatedResourceId: record.jobId,
           actionUrl: storyJobActionUrl(record),
@@ -1011,9 +1025,11 @@ export async function runVerticalDramaStoryJob(
   // time any queued write's closure actually runs, `currentCheckpoint`
   // already reflects every `persistCheckpoint` call made before it.
   let currentCheckpoint: VerticalDramaStoryJobCheckpoint | null = record.checkpoint ?? null;
+  let currentProgress: VerticalDramaStoryJobProgress | null = record.progress ?? null;
   let recoveryAttempts = Math.max(0, record.recoveryAttempts ?? 0);
 
   const onProgress = (progress: VerticalDramaStoryJobProgress) => {
+    currentProgress = progress;
     enqueueWrite(jobId, () =>
       writeRecord(
         {
@@ -1112,6 +1128,7 @@ export async function runVerticalDramaStoryJob(
             {
               ...record,
               status: "running",
+              progress: currentProgress,
               result: null,
               error: null,
               checkpoint: currentCheckpoint ?? undefined,
@@ -1144,6 +1161,7 @@ export async function runVerticalDramaStoryJob(
           {
             ...record,
             status: "running",
+            progress: currentProgress,
             result: null,
             error: null,
             checkpoint: currentCheckpoint ?? undefined,
@@ -1271,6 +1289,7 @@ export async function runVerticalDramaStoryJob(
       status: assuranceAccepted ? "succeeded" : "failed",
       result,
       error: assuranceAccepted ? null : assuranceError,
+      progress: currentProgress,
       checkpoint: currentCheckpoint ?? undefined,
       updatedAt: new Date(deps.now()).toISOString(),
     };
@@ -1285,6 +1304,7 @@ export async function runVerticalDramaStoryJob(
     const terminalRecord: VerticalDramaStoryJobRecord = {
       ...record,
       status: "failed",
+      progress: currentProgress,
       error: message,
       // Resilient resume — MUST reflect the latest checkpoint, not the
       // stale start-of-run one: a same-jobId BullMQ redelivery (retry) reads

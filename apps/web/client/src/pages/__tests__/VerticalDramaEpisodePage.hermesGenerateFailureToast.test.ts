@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { buildVdGenerateFailureToastMessage } from "../VerticalDramaEpisodePage";
+import {
+  buildVdGenerateFailureToastMessage,
+  shouldReauthorStartFrameImageRetry,
+} from "../VerticalDramaEpisodePage";
 import { formatHermesErrorMessage } from "@shared/hermesMedia";
 
 /**
@@ -49,9 +52,37 @@ describe("buildVdGenerateFailureToastMessage", () => {
     ).toBe("Generation failed: provider timeout");
   });
 
+  it("gives policy failures terminal guidance instead of suggesting an automatic retry", () => {
+    const message = buildVdGenerateFailureToastMessage(
+      {
+        errorMessage:
+          "Provider failed: Sorry, but the image we created may violate OpenAI's content policies.",
+      },
+      "th",
+      FALLBACK,
+    );
+    expect(message).toContain("หยุดส่งซ้ำทันที");
+    expect(message).toContain("แก้ prompt หรือภาพอ้างอิงก่อน");
+  });
+
   it("regression: falls back to the bare fallback string when there is no errorMessage at all", () => {
     expect(buildVdGenerateFailureToastMessage(null, "th", FALLBACK)).toBe("สร้างภาพล้มเหลว");
     expect(buildVdGenerateFailureToastMessage(undefined, "en", FALLBACK)).toBe("Generation failed");
     expect(buildVdGenerateFailureToastMessage({}, "th", FALLBACK)).toBe("สร้างภาพล้มเหลว");
+  });
+});
+
+describe("shouldReauthorStartFrameImageRetry", () => {
+  it("re-authors when the persisted failure is the stale composition-lock guard", () => {
+    expect(
+      shouldReauthorStartFrameImageRetry(
+        "พรอมต์ภาพของช็อต 1 ยังไม่มีข้อมูลจัดองค์ประกอบช็อตปัจจุบันครบถ้วน (missing_current_shot_composition_lock)"
+      )
+    ).toBe(true);
+  });
+
+  it("keeps provider failures on the existing prompt", () => {
+    expect(shouldReauthorStartFrameImageRetry("Provider timeout")).toBe(false);
+    expect(shouldReauthorStartFrameImageRetry(undefined)).toBe(false);
   });
 });

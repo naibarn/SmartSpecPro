@@ -48,6 +48,10 @@ class ImageGenerationRequest(BaseModel):
     # Per-model API config (passed from Node.js based on configJson)
     api_config: Optional[Dict[str, Any]] = Field(default=None, alias="apiConfig")
     extra_params: Optional[Dict[str, Any]] = Field(default=None, alias="extraParams")
+    # Trusted server-to-server tenant scope, verified before task creation.
+    tenant_id: Optional[str] = Field(default=None, alias="tenantId")
+    # Node skill runs are settled atomically by the web ledger.
+    skill_billing_run_id: Optional[str] = Field(default=None, alias="skill_billing_run_id")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name
 
@@ -88,6 +92,8 @@ class VideoGenerationRequest(BaseModel):
     # scalar-only annotation rejects the whole request at validation time.
     api_config: Optional[Dict[str, Any]] = Field(default=None, alias="apiConfig")
     extra_params: Optional[Dict[str, Any]] = Field(default=None, alias="extraParams")
+    tenant_id: Optional[str] = Field(default=None, alias="tenantId")
+    skill_billing_run_id: Optional[str] = Field(default=None, alias="skill_billing_run_id")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name
 
@@ -118,6 +124,8 @@ class AudioGenerationRequest(BaseModel):
     # Per-model API config (passed from Node.js based on configJson)
     api_config: Optional[Dict[str, Union[str, int, float, bool]]] = Field(default=None, alias="apiConfig")
     extra_params: Optional[Dict[str, Union[str, int, float, bool, List, Dict]]] = Field(default=None, alias="extraParams")
+    tenant_id: Optional[str] = Field(default=None, alias="tenantId")
+    skill_billing_run_id: Optional[str] = Field(default=None, alias="skill_billing_run_id")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name
 

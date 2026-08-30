@@ -109,12 +109,19 @@ const activePropSchema = z.object({
       : undefined,
   ),
 }).passthrough();
+const sleepSurfaceSchema = z.object({
+  type: z.enum(["long_bed", "single_bed", "crib_bassinet", "sofa", "floor_mattress", "other"]),
+  name: z.string().trim().min(1).max(300),
+  occupant: z.string().trim().max(300).optional(),
+  placement: z.string().trim().min(1).max(500),
+}).passthrough();
 
 const stateSchema = z.object({
   lighting_state: z.unknown().transform(cleanString),
   fixed_elements: lenientMembers(fixedElementSchema),
   spatial_layout: z.unknown().transform(cleanString),
   staging_axis: z.unknown().transform(cleanString),
+  sleep_surface: sleepSurfaceSchema.optional(),
   wardrobe_in_scene: lenientMembers(wardrobeSchema),
   active_props: lenientMembers(activePropSchema),
   palette_mood: z.unknown().transform(cleanString),
@@ -280,6 +287,18 @@ export function toSceneVisualState(
     })),
     spatialLayout: raw.spatial_layout,
     stagingAxis: raw.staging_axis,
+    ...(raw.sleep_surface
+      ? {
+          sleepSurface: {
+            type: raw.sleep_surface.type,
+            name: raw.sleep_surface.name,
+            placement: raw.sleep_surface.placement,
+            ...(raw.sleep_surface.occupant
+              ? { occupant: raw.sleep_surface.occupant }
+              : {}),
+          },
+        }
+      : {}),
     wardrobeInScene: raw.wardrobe_in_scene.map(entry => ({
       character: entry.character,
       wardrobe: entry.wardrobe,
@@ -337,7 +356,9 @@ export async function generateSceneVisualState(
     userId: params.userId,
     tenantId: params.tenantId,
     amount: creditsUsed,
+    contextRef: params.tenantId ? { contextType: "series", sourceType: "vertical_drama_series", sourceId: String(params.seriesId) } : undefined,
     description: "Vertical Drama — scene visual state",
+    skillSlug: "vertical-drama-scene-visual-state",
     sourceType: "skill",
     idempotencyKey: params.idempotencyKey
       ? `${params.idempotencyKey}:scene-visual-state`

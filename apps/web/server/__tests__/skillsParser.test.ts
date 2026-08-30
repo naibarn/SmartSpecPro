@@ -19,6 +19,13 @@ describe("skills parser", () => {
     expect(categoryToSkillType("audio_prompt_generation")).toBe("prompt-enhancement");
   });
 
+  it("normalizes the built-in quality, planning, and prompt QA categories", () => {
+    expect(mapCategoryToEnum("quality_control")).toBe("product_review");
+    expect(mapCategoryToEnum("video_prompting")).toBe("video_prompt_generation");
+    expect(mapCategoryToEnum("story_planning")).toBe("article_generation");
+    expect(mapCategoryToEnum("video_prompt_qa")).toBe("video_prompt_generation");
+  });
+
   it("treats unknown categories as generic chat skills instead of prompt skills", () => {
     expect(categoryToSkillType("other")).toBe("chat-assistant");
     expect(categoryToSkillType("totally-unknown")).toBe("chat-assistant");

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildCharacterDescriptorLine,
   buildCharacterIdentityMapBlock,
+  buildCharacterIdentityLockBlock,
+  ensureCharacterIdentityLockPrompt,
   findCharacterImageIndexMappingMismatches,
   findMissingCharacterIdentityWarnings,
   stripExistingIdentityLockSuffix,
@@ -316,5 +318,70 @@ describe("stripExistingIdentityLockSuffix", () => {
     expect(stripExistingIdentityLockSuffix(withSuffix)).toBe(
       "A close-up shot."
     );
+  });
+
+  it("strips the combined generated identity-lock block", () => {
+    const prompt = ensureCharacterIdentityLockPrompt("A scene.", [
+      { imageIndex: 1, characterKey: "a", characterName: "A" },
+      { imageIndex: 2, characterKey: "b", characterName: "B" },
+    ]).prompt;
+    expect(stripExistingIdentityLockSuffix(prompt)).toBe("A scene.");
+  });
+
+  it("removes a generated block in the middle without dropping the remaining scene prompt", () => {
+    const prompt = ensureCharacterIdentityLockPrompt(
+      "REFERENCE MAPPING: Image 1 = A. PHYSICAL CAST LOCK (MANDATORY): exactly one. SCENE DETAILS: keep the table.",
+      [{ imageIndex: 1, characterKey: "a", characterName: "A" }]
+    ).prompt;
+    expect(stripExistingIdentityLockSuffix(prompt)).toBe(
+      "REFERENCE MAPPING: Image 1 = A.\n\nPHYSICAL CAST LOCK (MANDATORY): exactly one. SCENE DETAILS: keep the table."
+    );
+  });
+});
+
+describe("combined character identity lock", () => {
+  it("covers all attached characters in one block", () => {
+    const block = buildCharacterIdentityLockBlock([
+      { imageIndex: 1, characterKey: "a", characterName: "Pimpchanok" },
+      { imageIndex: 2, characterKey: "b", characterName: "Mayuree" },
+      { imageIndex: 3, characterKey: "c", characterName: "Nicha" },
+    ]);
+    expect(block).toContain("- Pimpchanok — Reference Image 1");
+    expect(block).toContain("- Mayuree — Reference Image 2");
+    expect(block).toContain("- Nicha — Reference Image 3");
+    expect(block?.match(/facial proportions/g)).toHaveLength(1);
+    expect(block).toContain("Do not change, merge, swap, replace");
+  });
+
+  it("merges repeated references for one character without duplicating the checklist", () => {
+    const block = buildCharacterIdentityLockBlock([
+      { imageIndex: 1, characterKey: "a", characterName: "Pimpchanok" },
+      { imageIndex: 3, characterKey: "a", characterName: "Pimpchanok" },
+    ]);
+    expect(block).toContain("- Pimpchanok — Reference Images 1, 3");
+    expect(block?.match(/CHARACTER IDENTITY LOCK —/g)).toHaveLength(1);
+    expect(block?.match(/^- apparent age$/gm)).toHaveLength(1);
+    expect(block).toContain("AGE / MATURITY LOCK (NON-NEGOTIABLE)");
+  });
+
+  it("is idempotent and preserves prompts without references", () => {
+    const references = [
+      { imageIndex: 1, characterKey: "a", characterName: "Pimpchanok" },
+    ];
+    const first = ensureCharacterIdentityLockPrompt("A scene.", references);
+    expect(ensureCharacterIdentityLockPrompt(first.prompt, references)).toEqual(first);
+    const mapped = ensureCharacterIdentityLockPrompt(
+      "REFERENCE MAPPING: Image 1 = Pimpchanok. PHYSICAL CAST LOCK (MANDATORY): exactly one. Scene.",
+      references
+    ).prompt;
+    expect(mapped.indexOf("BEGIN CHARACTER IDENTITY LOCKS")).toBeGreaterThan(
+      mapped.indexOf("REFERENCE MAPPING:")
+    );
+    expect(mapped.indexOf("BEGIN CHARACTER IDENTITY LOCKS")).toBeLessThan(
+      mapped.indexOf("PHYSICAL CAST LOCK")
+    );
+    expect(ensureCharacterIdentityLockPrompt("A scene.", [])).toEqual({
+      prompt: "A scene.",
+    });
   });
 });

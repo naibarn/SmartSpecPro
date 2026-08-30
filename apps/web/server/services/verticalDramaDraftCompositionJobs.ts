@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getRedisClient } from "./redis";
 import { createHash } from "node:crypto";
-import { calculateCreditsForLLM, deductCredits } from "./creditService";
 import {
   synthesizeVerticalDramaPreset,
   synthesizeVerticalDramaPresetV2,
@@ -21,10 +20,7 @@ import {
 import { planVerticalDramaStoryArchitecture } from "./verticalDramaStoryArchitecturePlanner";
 import type { AudienceAgeRating } from "@shared/verticalDramaSeries/audienceAgeRating";
 import type { VerticalDramaStoryArchitectureContract } from "@shared/verticalDramaSeries/storyArchitecture";
-import {
-  assertVerticalDramaRecommendedDraftModel,
-  resolveVerticalDramaRecommendedDraftModel,
-} from "./verticalDramaLlmModelPolicy";
+import { resolveVerticalDramaRecommendedDraftModel } from "./verticalDramaLlmModelPolicy";
 import {
   appendVerticalDramaDraftVersion,
   ensureVerticalDramaDraftJob,
@@ -379,6 +375,7 @@ export async function enqueueVerticalDramaDraftComposition(
     createdAt: now,
     updatedAt: now,
   };
+  let durableJobPersisted = false;
   if (input.persistJob) {
     await input.persistJob({
       ...payload,
@@ -388,32 +385,40 @@ export async function enqueueVerticalDramaDraftComposition(
       content: {},
       jobId,
     });
+    durableJobPersisted = true;
   }
-  await writeRecord(record, input);
   try {
+    // Keep the durable queued row and the Redis/BullMQ admission as one
+    // recoverable boundary. A process or Redis failure between these calls
+    // must not leave a permanent queued row that blocks the next retry.
+    await writeRecord(record, input);
     await (input.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
   } catch (error) {
-    await writeRecord(
-      {
-        ...record,
-        status: "failed",
-        error:
-          error instanceof Error
-            ? error.message
-            : "Draft composition queue unavailable",
-        updatedAt: new Date().toISOString(),
-      },
-      input
-    );
-    if (input.persistJobStatus) {
-      await input.persistJobStatus(jobId, payload, {
-        jobStatus: "failed",
-        compositionJobId: jobId,
-        seriesId: payload.seriesId,
-        lastError: record.error,
-      });
+    const admissionError =
+      error instanceof Error
+        ? error.message
+        : "Draft composition queue unavailable";
+    const failedRecord: VerticalDramaDraftCompositionRecord = {
+      ...record,
+      status: "failed",
+      error: admissionError,
+      updatedAt: new Date().toISOString(),
+    };
+    // Best-effort cleanup must not hide the original admission error. The
+    // durable status update below is the important recovery path when Redis
+    // itself is unavailable.
+    await writeRecord(failedRecord, input).catch(() => undefined);
+    if (durableJobPersisted && input.persistJobStatus) {
+      await input
+        .persistJobStatus(jobId, payload, {
+          jobStatus: "failed",
+          compositionJobId: jobId,
+          seriesId: payload.seriesId,
+          lastError: admissionError,
+        })
+        .catch(() => false);
     }
-    await runtime.redis.del(active);
+    await runtime.redis.del(active).catch(() => undefined);
     throw new Error("Draft composition queue is unavailable; please retry");
   }
   return { jobId, deduped: false };
@@ -553,12 +558,14 @@ export async function runVerticalDramaDraftCompositionJob(
       seriesId: record.seriesId,
       lastError: null,
     });
-    await assertVerticalDramaRecommendedDraftModel(model);
     currentStage = "building_foundation";
     await progress(jobId, "building_foundation", 0, {}, input);
     const synthesis = record.synthesis;
     const foundation = await planVerticalDramaStoryArchitecture({
       userId: record.userId,
+      tenantId: record.tenantId,
+      seriesId: record.seriesId,
+      billingRunKey: `${record.jobId}:foundation`,
       model,
       locale: synthesis.locale,
       userPremise: synthesis.userPremise,
@@ -604,28 +611,10 @@ export async function runVerticalDramaDraftCompositionJob(
       changedPaths: ["storyArchitecture"],
       metadata: { model: foundation.model },
     });
-    const foundationCredits = calculateCreditsForLLM(
-      foundation.promptTokens,
-      foundation.completionTokens,
-      foundation.model
-    );
-    if (foundationCredits > 0) {
-      await deductCredits({
-        userId: record.userId,
-        tenantId: record.tenantId,
-        amount: foundationCredits,
-        description: "Vertical Drama - build transient story foundation",
-        skillSlug: "vertical-drama-deep-story-draft",
-        sourceType: "skill",
-        metadata: {
-          feature: "vertical_drama_draft_composition",
-          stage: "foundation",
-          model: foundation.model,
-        },
-      });
-    }
+    const foundationCredits = foundation.creditsUsed;
     const commonSynthesisParams = {
       userId: record.userId,
+      idempotencyKey: record.jobId,
       model,
       tenantId: record.tenantId,
       locale: synthesis.locale,
@@ -776,6 +765,7 @@ export async function runVerticalDramaDraftCompositionJob(
         creditsUsed: completed.creditsUsed,
         model: completed.model,
         repairRound: repairRound + 1,
+        idempotencyKey: record.jobId,
       });
       draft = completed.draft;
       latestArtifact = await persistVersion({

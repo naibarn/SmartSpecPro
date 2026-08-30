@@ -335,6 +335,70 @@ describe("executeWithFallback", () => {
     });
   }
 
+  it("downgrades Google Gemini JSON Schema to JSON mode through OpenRouter", async () => {
+    const provider = makeCandidate({
+      providerName: "openrouter",
+      baseUrl: "https://openrouter.ai/api/v1",
+      providerModelId: "google/gemini-3.7-flash",
+    });
+    setupProviderResolution([provider]);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: "{\"ok\":true}" } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      }),
+    });
+
+    const result = await executeWithFallback({
+      model: "google/gemini-3.7-flash",
+      messages: [{ role: "user", content: "Return JSON" }],
+      stream: false,
+      userId: 1,
+      extraBodyParams: {
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "demo", schema: { type: "object" } },
+        },
+      },
+    });
+
+    expect(result.type).toBe("success");
+    const [, fetchInit] = mockFetch.mock.calls[0] ?? [];
+    const body = JSON.parse(String((fetchInit as any)?.body ?? "{}"));
+    expect(body.response_format).toEqual({ type: "json_object" });
+    expect(body.response_format.json_schema).toBeUndefined();
+  });
+
+  it("treats Google INVALID_ARGUMENT as provider-fallback eligible", async () => {
+    const provider1 = makeCandidate({ providerId: 1, providerName: "openrouter", providerModelId: "google/gemini-3.7-flash" });
+    const provider2 = makeCandidate({ providerId: 2, providerName: "openrouter", providerModelId: "google/gemini-3.1-pro" });
+    setupProviderResolution([provider1, provider2]);
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () => '{"error":{"message":"Request contains an invalid argument.","status":"INVALID_ARGUMENT"}}',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: "OK" } }], usage: { prompt_tokens: 10, completion_tokens: 5 } }),
+      });
+
+    const result = await executeWithFallback({
+      model: "google/gemini-3.7-flash",
+      messages: [{ role: "user", content: "Hi" }],
+      stream: false,
+      userId: 1,
+    });
+
+    expect(result.type).toBe("success");
+    if (result.type === "success") expect(result.providerId).toBe(2);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
   it("returns an actionable model-specific error when all mapped providers are unavailable", async () => {
     setupProviderResolution([]);
 
@@ -762,6 +826,35 @@ describe("executeWithFallback", () => {
         bodyPreview: "Bad request",
       }),
     }));
+  });
+
+  it("redacts OpenRouter key URLs from returned and audited provider errors", async () => {
+    const keyId = "19b1f7803431216a3c43f58823f945af1d3b55285a86711b13ab0b2bf09";
+    const provider = makeCandidate({ providerName: "openrouter" });
+    setupProviderResolution([provider]);
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 402,
+      text: async () => JSON.stringify({
+        error: {
+          message: `This request requires more credits. To increase, visit https://openrouter.ai/workspaces/default/keys/${keyId}`,
+        },
+      }),
+    });
+
+    const result = await executeWithFallback({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "Hi" }],
+      stream: false,
+      userId: 1,
+    });
+
+    expect(result.type).toBe("error");
+    if (result.type === "error") {
+      expect(result.error).toContain("[openrouter_key_url_redacted]");
+      expect(result.error).not.toContain(keyId);
+    }
+    expect(JSON.stringify(mockAuditLog.mock.calls)).not.toContain(keyId);
   });
 
   it("records cross-model fallback provenance in request and response audit events", async () => {

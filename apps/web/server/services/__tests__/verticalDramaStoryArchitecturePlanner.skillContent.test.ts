@@ -18,7 +18,10 @@ describe("vertical-drama-story-architecture-planner skill contract", () => {
     ) as { type: string };
     const outputSchema = JSON.parse(
       fs.readFileSync(path.join(skillDir, "output.schema.json"), "utf8")
-    ) as { type: string };
+    ) as {
+      type: string;
+      properties?: Record<string, { type?: string; required?: string[] }>;
+    };
 
     expect(() =>
       assertStoryArchitecturePlannerSkillSupportsContract(skill)
@@ -28,6 +31,21 @@ describe("vertical-drama-story-architecture-planner skill contract", () => {
     expect(skill).toContain("real-world failure");
     expect(inputSchema.type).toBe("object");
     expect(outputSchema.type).toBe("object");
+    expect(outputSchema.properties?.audiencePromise).toMatchObject({
+      type: "object",
+      required: ["genrePromise", "emotionalPromise", "coreQuestion"],
+    });
+    expect(outputSchema.properties?.protagonistArc).toMatchObject({
+      type: "object",
+      required: [
+        "startingState",
+        "shortTermGoal",
+        "internalNeed",
+        "longTermDestination",
+        "transformationStages",
+        "endState",
+      ],
+    });
   });
 
   it("unwraps only transport envelopes and normalizes a version string", () => {

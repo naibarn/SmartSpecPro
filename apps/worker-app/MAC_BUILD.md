@@ -110,7 +110,7 @@ Typical command:
 RUNTIME_INPUT=/absolute/path/to/native-mac-runtime-inputs
 
 npm --workspace apps/worker-app run runtime:release:mac -- \
-  --runtime-version 2026.08.18.1 \
+  --runtime-version 2026.08.30.1 \
   --hyperframes-sidecar "$RUNTIME_INPUT/sidecars/hyperframes-render" \
   --node-dir "$RUNTIME_INPUT/node" \
   --hyperframes-dir "$RUNTIME_INPUT/hyperframes" \
@@ -120,6 +120,8 @@ npm --workspace apps/worker-app run runtime:release:mac -- \
   --browser-dir "$RUNTIME_INPUT/browser" \
   --ffmpeg "$RUNTIME_INPUT/bin/ffmpeg" \
   --ffprobe "$RUNTIME_INPUT/bin/ffprobe" \
+  --whisper-cli "$RUNTIME_INPUT/whisper/whisper-cli" \
+  --whisper-model "$RUNTIME_INPUT/whisper/.cache/hyperframes/whisper/models/ggml-large-v3.bin" \
   --thai-fonts-dir "$RUNTIME_INPUT/fonts" \
   --notices "$RUNTIME_INPUT/THIRD_PARTY_NOTICES.txt" \
   --signature-file "$RUNTIME_INPUT/SHA256SUMS.sig"

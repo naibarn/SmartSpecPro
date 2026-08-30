@@ -1,0 +1,29 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/planning/infrastructure-capacity-advisor-v2/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/planning/infrastructure-capacity-advisor-v2/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-foundation-policy-migration",
+    "section-02-collector-workload-storage",
+    "section-03-deterministic-assessment-forecast",
+    "section-04-skill-contract-reconciliation",
+    "section-05-guarded-runs-scheduler",
+    "section-06-admin-summary-details-ui",
+    "section-07-tests-observability-runbook",
+    "section-08-integration-rollout-proof"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-21T07:09:06.277477+00:00"
+}

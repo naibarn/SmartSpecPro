@@ -360,9 +360,11 @@ export async function resolveQualityLargeContextModelId(): Promise<string | null
       const ranked = [...recommended].sort((a, b) => a.priority - b.priority);
       return ranked[0]?.modelId ?? null;
     }
-    // Nothing currently recommended — preserve the pre-2026-07-31
-    // cheapest-first behavior across the full eligible set.
-    return eligible[0]?.modelId ?? null;
+    // Never select a model outside the admin-recommended set for an
+    // automatic quality-critical Vertical Drama stage. A missing curated
+    // model is an admission error, not permission to silently bill/use an
+    // unrelated model.
+    return null;
   } catch {
     return null;
   }
@@ -552,6 +554,15 @@ async function chargeImproveScriptLlmUsage(params: {
     inputTokens: params.result.inputTokens ?? 0,
     outputTokens: params.result.outputTokens ?? 0,
     costUsd: usage?.cost,
+    idempotencyKey: `vd-improve:${params.seriesId}:${params.episodeNumber}:${params.round}:${params.attemptIndex}`,
+    skillRunId: `vd-improve:${params.seriesId}:${params.episodeNumber}:${params.round}:${params.attemptIndex}`,
+    contextRef: {
+      contextType: "series",
+      sourceType: "vertical_drama_series",
+      sourceId: params.seriesId,
+      stageLabel: "improve_script",
+      attemptKey: `vd-improve:${params.seriesId}:${params.episodeNumber}:${params.round}:${params.attemptIndex}`,
+    },
     skillSlug: VD_IMPROVE_SCRIPT_SKILL_ID,
     sourceType: "skill",
     description,

@@ -7,7 +7,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { router, adminProcedure, protectedProcedure, domainAdminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { creditTransactions, groupMembers, llmProviders, userGroups, users, workers } from "../../drizzle/schema";
+import { connectedDevices, creditTransactions, groupMembers, llmProviders, userGroups, users, workers } from "../../drizzle/schema";
 import { and, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { addCredits, deductCredits, type TransactionType } from "../services/creditService";
 import { authEmailSchema } from "../services/emailNormalization";
@@ -174,6 +174,11 @@ const updateConnectedWorkerSharingSchema = z.object({
   groupIds: z.array(z.number().int().positive()).max(50).default([]),
 });
 
+const updateConnectedWorkerPermissionsSchema = z.object({
+  workerId: z.string().min(1).max(128),
+  permissionScopes: z.array(workerAccessPermissionScopeSchema).max(128),
+});
+
 const userPreferencesOutputSchema = z
   .object({
     translationLanguage: z.enum(SUPPORTED_LANGUAGES).optional(),
@@ -195,6 +200,94 @@ function asObject(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : {};
+}
+
+function deriveConnectedWorkerCapabilities(capabilitiesJson: unknown): {
+  hermesReady: boolean;
+  hermesVersion: string | null;
+  hermesReason: string | null;
+  localMediaReady: boolean;
+  localMediaCapabilities: string[];
+  acceptJobs: boolean | null;
+} {
+  const capabilities = asObject(capabilitiesJson);
+  const runtimeMetadata = asObject(capabilities.runtimeMetadata);
+  const hermesMedia = Object.keys(asObject(capabilities.hermesMedia)).length > 0
+    ? asObject(capabilities.hermesMedia)
+    : asObject(runtimeMetadata.hermesMedia);
+  const verticalDramaMedia = Object.keys(asObject(capabilities.verticalDramaMedia)).length > 0
+    ? asObject(capabilities.verticalDramaMedia)
+    : asObject(runtimeMetadata.verticalDramaMedia);
+  const workerApp = asObject(capabilities.workerApp);
+  const stringArray = (value: unknown): string[] => Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
+  return {
+    hermesReady: hermesMedia.advertised === true,
+    hermesVersion: typeof hermesMedia.hermesVersion === "string" && hermesMedia.hermesVersion.trim()
+      ? hermesMedia.hermesVersion.trim()
+      : null,
+    hermesReason: typeof hermesMedia.reason === "string" && hermesMedia.reason.trim()
+      ? hermesMedia.reason.trim()
+      : null,
+    localMediaReady: verticalDramaMedia.ready === true,
+    localMediaCapabilities: stringArray(verticalDramaMedia.capabilities),
+    acceptJobs: typeof runtimeMetadata.acceptJobs === "boolean"
+      ? runtimeMetadata.acceptJobs
+      : typeof workerApp.acceptJobs === "boolean"
+        ? workerApp.acceptJobs
+        : null,
+  };
+}
+
+function deriveConnectedWorkerPermissionPresentation(worker: {
+  externalReference: string;
+  runtimeType: z.infer<typeof workerRuntimeTypeSchema>;
+  capabilitiesJson: unknown;
+}): { permissionPreset: string; permissionScopes: string[] } {
+  const runtimeMetadata = asObject(asObject(worker.capabilitiesJson).runtimeMetadata);
+  const policy = asObject(runtimeMetadata.workerAccessPolicy);
+  const hasPersistedPolicy = Object.keys(policy).length > 0;
+  const preset = typeof policy.permissionPreset === "string" && policy.permissionPreset.trim()
+    ? policy.permissionPreset.trim()
+    : worker.externalReference.startsWith("worker-app://")
+      ? "vertical_drama_media_operator"
+      : "readonly";
+  const scopes = normalizeWorkerAccessPermissionScopes(policy.permissionScopes);
+  return {
+    permissionPreset: preset,
+    permissionScopes: hasPersistedPolicy
+      ? scopes
+      : getWorkerAccessPermissionScopesForPreset(preset as Parameters<typeof getWorkerAccessPermissionScopesForPreset>[0]),
+  };
+}
+
+function connectedWorkerRuntimePresentation(worker: {
+  externalReference: string;
+  runtimeType: z.infer<typeof workerRuntimeTypeSchema>;
+  capabilitiesJson: unknown;
+}): { runtimeLabel: string; runtimeFamily: string } {
+  const definition = getWorkerRuntimeDefinition(worker.runtimeType);
+  const capabilities = deriveConnectedWorkerCapabilities(worker.capabilitiesJson);
+  if (
+    worker.externalReference.startsWith("worker-app://")
+    && (capabilities.hermesReady || capabilities.hermesVersion || capabilities.hermesReason)
+  ) {
+    return {
+      runtimeLabel: "Hermes Worker App",
+      runtimeFamily: "Hermes",
+    };
+  }
+  if (worker.externalReference.startsWith("worker-app://")) {
+    return {
+      runtimeLabel: "Smart AI Hub Worker App",
+      runtimeFamily: "Worker App",
+    };
+  }
+  return {
+    runtimeLabel: definition.displayName,
+    runtimeFamily: definition.familyName,
+  };
 }
 
 function deriveConnectedWorkerType(worker: {
@@ -1276,7 +1369,8 @@ export const usersRouter = router({
 
       const groupNameById = new Map(activeGroups.map((group) => [group.id, group.name]));
       const connectedWorkers = workerRows.map((worker) => {
-        const runtimeDefinition = getWorkerRuntimeDefinition(worker.runtimeType);
+        const runtimePresentation = connectedWorkerRuntimePresentation(worker);
+        const capabilities = deriveConnectedWorkerCapabilities(worker.capabilitiesJson);
         const workerType = deriveConnectedWorkerType(worker);
         const sharing = normalizeConnectedWorkerSharing(worker, groupNameById);
         const runtimeMetadata = asObject(asObject(worker.capabilitiesJson).runtimeMetadata);
@@ -1285,11 +1379,10 @@ export const usersRouter = router({
           && runtimeMetadata.preferredProviderName.trim().length > 0
           ? runtimeMetadata.preferredProviderName.trim()
           : null;
-        const permissionPreset = typeof accessPolicy.permissionPreset === "string"
-          && accessPolicy.permissionPreset.trim().length > 0
-          ? accessPolicy.permissionPreset.trim()
-          : null;
-        const permissionScopeCount = normalizeWorkerAccessPermissionScopes(accessPolicy.permissionScopes).length;
+        const permissionPresentation = deriveConnectedWorkerPermissionPresentation(worker);
+        const permissionPreset = permissionPresentation.permissionPreset;
+        const permissionScopeCount = permissionPresentation.permissionScopes.length;
+        const permissionScopes = permissionPresentation.permissionScopes;
         const quotaParts = [
           typeof accessPolicy.quotaHourly === "number" && accessPolicy.quotaHourly > 0 ? `H${Math.floor(accessPolicy.quotaHourly)}` : null,
           typeof accessPolicy.quotaDaily === "number" && accessPolicy.quotaDaily > 0 ? `D${Math.floor(accessPolicy.quotaDaily)}` : null,
@@ -1302,8 +1395,8 @@ export const usersRouter = router({
           displayName: worker.displayName,
           externalReference: worker.externalReference,
           runtimeType: worker.runtimeType,
-          runtimeLabel: runtimeDefinition.displayName,
-          runtimeFamily: runtimeDefinition.familyName,
+          runtimeLabel: runtimePresentation.runtimeLabel,
+          runtimeFamily: runtimePresentation.runtimeFamily,
           workerTypeKey: workerType.workerTypeKey,
           workerTypeLabel: workerType.workerTypeLabel,
           workerMode: worker.workerMode,
@@ -1317,8 +1410,10 @@ export const usersRouter = router({
           sharedGroups: sharing.sharedGroups,
           preferredProviderName,
           permissionPreset,
+          permissionScopes,
           permissionScopeCount,
           quotaDisplayLabel: quotaParts.length > 0 ? quotaParts.join(" / ") : null,
+          capabilities,
         });
       });
 
@@ -1397,14 +1492,14 @@ export const usersRouter = router({
         throw new Error("Some selected groups are unavailable for this worker");
       }
 
-      const capabilities = asObject(workerRow.capabilitiesJson);
-      const workerApp = asObject(capabilities.workerApp);
-      const runtimeMetadata = asObject(capabilities.runtimeMetadata);
+      const rawCapabilities = asObject(workerRow.capabilitiesJson);
+      const workerApp = asObject(rawCapabilities.workerApp);
+      const runtimeMetadata = asObject(rawCapabilities.runtimeMetadata);
       const nextSharingMode = input.sharingMode === "groups"
         ? "group"
         : input.sharingMode;
       const nextCapabilities = {
-        ...capabilities,
+        ...rawCapabilities,
         workerApp: {
           ...workerApp,
           sharingMode: nextSharingMode,
@@ -1434,15 +1529,16 @@ export const usersRouter = router({
         })
         .where(eq(workers.id, workerRow.id));
 
-      const runtimeDefinition = getWorkerRuntimeDefinition(workerRow.runtimeType);
+      const runtimePresentation = connectedWorkerRuntimePresentation(workerRow);
+      const capabilities = deriveConnectedWorkerCapabilities(workerRow.capabilitiesJson);
       const workerType = deriveConnectedWorkerType(workerRow);
       const updatedWorker = connectedWorkerRecordSchema.parse({
         workerId: workerRow.id,
         displayName: workerRow.displayName,
         externalReference: workerRow.externalReference,
         runtimeType: workerRow.runtimeType,
-        runtimeLabel: runtimeDefinition.displayName,
-        runtimeFamily: runtimeDefinition.familyName,
+        runtimeLabel: runtimePresentation.runtimeLabel,
+        runtimeFamily: runtimePresentation.runtimeFamily,
         workerTypeKey: workerType.workerTypeKey,
         workerTypeLabel: workerType.workerTypeLabel,
         workerMode: nextWorkerMode,
@@ -1460,11 +1556,141 @@ export const usersRouter = router({
         permissionPreset: typeof asObject(runtimeMetadata.workerAccessPolicy).permissionPreset === "string"
           ? String(asObject(runtimeMetadata.workerAccessPolicy).permissionPreset)
           : null,
+        permissionScopes: normalizeWorkerAccessPermissionScopes(asObject(runtimeMetadata.workerAccessPolicy).permissionScopes),
         permissionScopeCount: normalizeWorkerAccessPermissionScopes(asObject(runtimeMetadata.workerAccessPolicy).permissionScopes).length,
         quotaDisplayLabel: null,
+        capabilities,
       });
 
       return { worker: updatedWorker };
+    }),
+
+  updateConnectedWorkerPermissions: protectedProcedure
+    .input(updateConnectedWorkerPermissionsSchema)
+    .output(z.object({
+      worker: connectedWorkerRecordSchema,
+      deviceUpdated: z.boolean(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new Error("Tenant context is required");
+
+      const [workerRow] = await db
+        .select({
+          id: workers.id,
+          displayName: workers.displayName,
+          externalReference: workers.externalReference,
+          runtimeType: workers.runtimeType,
+          workerMode: workers.workerMode,
+          status: workers.status,
+          machineId: workers.machineId,
+          machineName: workers.machineName,
+          runtimeVersion: workers.runtimeVersion,
+          lastSeenAt: workers.lastSeenAt,
+          teamId: workers.teamId,
+          capabilitiesJson: workers.capabilitiesJson,
+        })
+        .from(workers)
+        .where(and(
+          eq(workers.id, input.workerId),
+          eq(workers.tenantId, tenantId),
+          eq(workers.registeredByUserId, ctx.user.id),
+        ))
+        .limit(1);
+
+      if (!workerRow) throw new Error("Connected worker not found");
+
+      const rawCapabilities = asObject(workerRow.capabilitiesJson);
+      const runtimeMetadata = asObject(rawCapabilities.runtimeMetadata);
+      const currentPolicy = asObject(runtimeMetadata.workerAccessPolicy);
+      const permissionScopes = normalizeWorkerAccessPermissionScopes(input.permissionScopes);
+      const [deviceRow] = await db
+        .select({ id: connectedDevices.id, scopesJson: connectedDevices.scopesJson })
+        .from(connectedDevices)
+        .where(and(
+          eq(connectedDevices.tenantId, tenantId),
+          eq(connectedDevices.ownerUserId, ctx.user.id),
+          eq(connectedDevices.workerConnectionId, workerRow.id),
+          eq(connectedDevices.authKind, "worker_executor"),
+        ))
+        .orderBy(desc(connectedDevices.updatedAt), desc(connectedDevices.createdAt))
+        .limit(1);
+
+      // A connected device's approval is the immutable upper bound. Validate
+      // before either write so an invalid elevation cannot leave a durable
+      // worker policy behind after the mutation fails.
+      if (deviceRow) {
+        const grantedScopes = normalizeWorkerAccessPermissionScopes(deviceRow.scopesJson);
+        if (permissionScopes.some(scope => !grantedScopes.includes(scope))) {
+          throw new Error("permissionScopes exceed the current device approval");
+        }
+      }
+
+      const nextCapabilities = {
+        ...rawCapabilities,
+        runtimeMetadata: {
+          ...runtimeMetadata,
+          workerAccessPolicy: {
+            ...currentPolicy,
+            permissionPreset: "custom",
+            permissionScopes,
+            updatedAt: new Date().toISOString(),
+            updatedByUserId: ctx.user.id,
+          },
+        },
+      };
+
+      await db
+        .update(workers)
+        .set({ capabilitiesJson: nextCapabilities, updatedAt: new Date() })
+        .where(eq(workers.id, workerRow.id));
+
+      if (deviceRow) {
+        await db
+          .update(connectedDevices)
+          .set({ permissionPolicyJson: permissionScopes, updatedAt: new Date() })
+          .where(eq(connectedDevices.id, deviceRow.id));
+      }
+
+      const runtimePresentation = connectedWorkerRuntimePresentation({
+        ...workerRow,
+        capabilitiesJson: nextCapabilities,
+      });
+      const capabilities = deriveConnectedWorkerCapabilities(nextCapabilities);
+      const workerType = deriveConnectedWorkerType(workerRow);
+      const sharing = normalizeConnectedWorkerSharing(workerRow, new Map());
+      const worker = connectedWorkerRecordSchema.parse({
+        workerId: workerRow.id,
+        displayName: workerRow.displayName,
+        externalReference: workerRow.externalReference,
+        runtimeType: workerRow.runtimeType,
+        runtimeLabel: runtimePresentation.runtimeLabel,
+        runtimeFamily: runtimePresentation.runtimeFamily,
+        workerTypeKey: workerType.workerTypeKey,
+        workerTypeLabel: workerType.workerTypeLabel,
+        workerMode: workerRow.workerMode,
+        status: normalizeConnectedWorkerStatus(workerRow),
+        machineId: workerRow.machineId ?? null,
+        machineName: workerRow.machineName ?? null,
+        runtimeVersion: workerRow.runtimeVersion ?? null,
+        lastSeenAt: workerRow.lastSeenAt?.toISOString() ?? null,
+        teamId: workerRow.teamId ?? null,
+        sharingMode: sharing.sharingMode,
+        sharedGroups: sharing.sharedGroups,
+        preferredProviderName: typeof runtimeMetadata.preferredProviderName === "string"
+          ? runtimeMetadata.preferredProviderName
+          : null,
+        permissionPreset: "custom",
+        permissionScopes,
+        permissionScopeCount: permissionScopes.length,
+        quotaDisplayLabel: null,
+        capabilities,
+      });
+
+      return { worker, deviceUpdated: Boolean(deviceRow) };
     }),
 
   createWorkerAccessKey: protectedProcedure

@@ -165,11 +165,11 @@ Print the orchestra banner. Then check whether `orchestra/snapshot.json` exists 
 **If `orchestra/snapshot.json` exists:**
 - If the user explicitly asked for `new`, `fresh`, `reset`, or `archive and restart`, follow the fresh-start path.
 - Otherwise default to **Resume path** automatically: read `references/session-resume.md`, execute the R4 algorithm (Read, Restore, Reconcile, Resume), and jump to the step indicated by `snapshot.json` > `checkpoint.phase`.
-- **Fresh start path:** Read `references/artifact-management.md`. Move `orchestra/` to `orchestra/archive/<ISO-8601-timestamp>/`. Create a new empty `orchestra/` directory.
+- **Fresh start path:** Read `references/artifact-management.md`. Run `ops/orchestra-archive/orchestra-archive-safe.sh --source "$(pwd -P)/orchestra" --archive-root "$(pwd -P)/.orchestra-archive"`, then create a new empty `orchestra/` directory. Never place the archive root inside the source tree.
 
 **If no `orchestra/snapshot.json` exists:**
 - Read `references/artifact-management.md`.
-- If `orchestra/` already exists: check for stale session (old files from a previous run without a snapshot). Archive the existing directory to `orchestra/archive/<ISO-8601-timestamp>/` before starting fresh.
+- If `orchestra/` already exists: check for stale session (old files from a previous run without a snapshot). Run `ops/orchestra-archive/orchestra-archive-safe.sh --source "$(pwd -P)/orchestra" --archive-root "$(pwd -P)/.orchestra-archive"` before starting fresh. Never copy or package `orchestra/` into a descendant path.
 - Create `orchestra/` at the project root if it does not exist.
 - Run the **uncommitted work check** (see below).
 - Begin fresh session.

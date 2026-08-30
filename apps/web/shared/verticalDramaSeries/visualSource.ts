@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { VerticalDramaArtifactAssuranceLineage } from "./assurance";
 
 export const VISUAL_MEDIA_TYPES = ["image", "video"] as const;
 export type VisualMediaType = (typeof VISUAL_MEDIA_TYPES)[number];
@@ -185,5 +186,9 @@ export const shotBrollBindingSchema = z.object({
   fitMode: z.enum(VISUAL_FIT_MODES).default("cover"),
   active: z.boolean().default(true),
   status: z.enum(["draft", "ready", "stale", "blocked"]).default("draft"),
+  /** Additive JSONB projection; legacy bindings omit it. */
+  assuranceLineage: z.unknown().optional(),
 });
-export type ShotBrollBinding = z.infer<typeof shotBrollBindingSchema>;
+export type ShotBrollBinding = Omit<z.infer<typeof shotBrollBindingSchema>, "assuranceLineage"> & {
+  assuranceLineage?: VerticalDramaArtifactAssuranceLineage;
+};

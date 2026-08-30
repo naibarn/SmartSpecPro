@@ -566,6 +566,35 @@ class TestSlideReadyTimeout:
 
         assert not mock_page.screenshot.called
 
+    def test_media_degraded_state_never_produces_screenshot(self, monkeypatch, tmp_path):
+        """A ready layout with failed media must fail before packaging a white PNG."""
+        monkeypatch.setenv("JWT_SECRET", "test-secret-key-for-unit-tests")
+        monkeypatch.setenv("INTERNAL_RENDER_BASE_URL", "http://localhost:3000")
+
+        mock_sync_playwright, mock_page = _make_mock_playwright(slide_ready=True)
+        task_self = _make_mock_task_self()
+        render_spec = _make_render_spec(num_slides=1)
+
+        def evaluate_side_effect(script):
+            if "window.__slideReady === true" in script:
+                return True
+            if "window.__slideReadyState" in script:
+                return {
+                    "status": "ready",
+                    "mediaDegraded": True,
+                    "mediaReady": True,
+                }
+            return True
+
+        mock_page.evaluate.side_effect = evaluate_side_effect
+
+        with patch("app.tasks.presentation_render.sync_playwright", mock_sync_playwright):
+            from app.tasks.presentation_render import _render_slides_to_screenshots
+            with pytest.raises(RuntimeError, match="E_SLIDE_MEDIA_DEGRADED"):
+                _render_slides_to_screenshots(task_self, render_spec, str(tmp_path))
+
+        assert not mock_page.screenshot.called
+
 
 # ---------------------------------------------------------------------------
 # Tests: dynamic video MP4 path
@@ -966,10 +995,10 @@ class TestFFmpegConcatFile:
 
 @pytest.mark.unit
 class TestUploadOutput:
-    """Upload stage uses R2 storage and returns a 48-hour presigned URL."""
+    """Upload stage uses R2 storage and returns a durable object key."""
 
-    def test_upload_output_returns_presigned_url_and_bytes(self, tmp_path):
-        """Return value contains presigned output_url (str) and output_bytes (int)."""
+    def test_upload_output_returns_storage_key_and_bytes(self, tmp_path):
+        """Return value contains a durable storage key and output_bytes."""
         from app.tasks.presentation_render import _upload_output
 
         # Create a fake output file
@@ -993,12 +1022,13 @@ class TestUploadOutput:
             result = _upload_output(task_self, str(output_path), render_spec, "mp4")
 
         assert "output_url" in result
-        assert "presigned" in result["output_url"]  # verify presigned URL, not public URL
+        assert result["output_url"] is None
+        assert result["output_storage_key"].startswith("presentation-exports/")
         assert "output_bytes" in result
         assert result["output_bytes"] == len(b"fake-video-content")
 
-    def test_upload_uses_48_hour_expiry(self, tmp_path):
-        """generate_presigned_url is called with expires_in=172800 (48 hours)."""
+    def test_upload_does_not_generate_expiring_url(self, tmp_path):
+        """Final presentation publication does not create a presigned URL."""
         from app.tasks.presentation_render import _upload_output
 
         output_path = tmp_path / "output.mp4"
@@ -1023,7 +1053,7 @@ class TestUploadOutput:
         with patch("app.tasks.presentation_render.get_r2_storage", return_value=mock_r2):
             _upload_output(task_self, str(output_path), render_spec, "mp4")
 
-        assert captured_expires.get("expires_in") == 172800  # 48 hours
+        assert captured_expires == {}
 
     def test_upload_key_contains_sanitized_deck_id(self, tmp_path):
         """Upload key includes the sanitized deck ID (H-4: path traversal prevention)."""

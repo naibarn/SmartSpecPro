@@ -7,6 +7,7 @@ const {
   getStaticFallbackModelsMock,
   getModelsByTypeAsyncMock,
   suggestModelMock,
+  listConnectedMcpProviderKeysMock,
 } = vi.hoisted(() => ({
   dbMock: {
     select: vi.fn(),
@@ -22,6 +23,7 @@ const {
   getStaticFallbackModelsMock: vi.fn(),
   getModelsByTypeAsyncMock: vi.fn(),
   suggestModelMock: vi.fn(),
+  listConnectedMcpProviderKeysMock: vi.fn().mockResolvedValue(new Set()),
 }));
 
 vi.mock("../../db", () => ({
@@ -49,9 +51,14 @@ vi.mock("../../services/modelRegistry", () => ({
   clearModelCache: clearModelCacheMock,
   getStaticFallbackModels: getStaticFallbackModelsMock,
   getModelsByTypeAsync: getModelsByTypeAsyncMock,
+  filterModelsByMcpProviderAccess: (models: unknown[]) => models,
   getStaticModelById: vi.fn(),
   getModelRegistryCounters: vi.fn().mockReturnValue({}),
   resetModelRegistryCounters: vi.fn(),
+}));
+
+vi.mock("../../services/mcpConnectionService", () => ({
+  listConnectedMcpProviderKeys: listConnectedMcpProviderKeysMock,
 }));
 
 vi.mock("../modelSuggestTool", () => ({

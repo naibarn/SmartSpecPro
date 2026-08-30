@@ -39,6 +39,16 @@ import {
 import { clearSchemaCache } from "./skillSchemaLoader";
 import { clearSkillCatalogCache } from "./skillCatalog";
 import { getInternalSkillDefinitions } from "./internalSkills";
+import {
+  classifySkillReference,
+  getLegacySkillSlugAliases,
+  resolveSkillSlugAlias,
+} from "../../shared/skillReferenceContracts";
+
+export {
+  getLegacySkillSlugAliases,
+  resolveSkillSlugAlias,
+} from "../../shared/skillReferenceContracts";
 
 export type { SkillType, SkillDefinition } from "@smartspec/skills";
 
@@ -46,11 +56,6 @@ export type { SkillType, SkillDefinition } from "@smartspec/skills";
  * Skills directory path
  */
 const SKILLS_DIR = path.resolve(process.cwd(), "skills");
-
-const SKILL_SLUG_ALIASES: Record<string, string> = {
-  "grok-imagine-creator": "grok-imagine-prompt-planner",
-  "elevenlabs-beauty-dialogue": "elevenlabs-product-voiceover-dialogue",
-};
 
 function getSkillRenameMetadata(canonicalSlug: string): Partial<{
   name: string;
@@ -63,16 +68,6 @@ function getSkillRenameMetadata(canonicalSlug: string): Partial<{
     };
   }
   return {};
-}
-
-export function resolveSkillSlugAlias(slug: string): string {
-  return SKILL_SLUG_ALIASES[slug] ?? slug;
-}
-
-export function getLegacySkillSlugAliases(canonicalSlug: string): string[] {
-  return Object.entries(SKILL_SLUG_ALIASES)
-    .filter(([, resolvedSlug]) => resolvedSlug === canonicalSlug)
-    .map(([legacySlug]) => legacySlug);
 }
 
 /**
@@ -135,6 +130,9 @@ function dbSkillToDefinition(dbSkill: {
   isEnabled: boolean;
   enabledByDefault: boolean;
   creditMultiplier: string | null;
+  tenantCreditCost?: number | null;
+  skillOwnerCreditCost?: number | null;
+  tenantId?: string | null;
   priority: number;
   availableModels: string[] | null;
   defaultModel: string | null;
@@ -191,6 +189,9 @@ function dbSkillToDefinition(dbSkill: {
     triggers: dbSkill.isAutoTrigger ? parseTriggerPatterns(dbSkill.triggerPatterns) : [],
     requiresExplicit: !dbSkill.isAutoTrigger,
     creditMultiplier: Number(dbSkill.creditMultiplier) || 1.0,
+    tenantCreditCost: Number.isInteger(dbSkill.tenantCreditCost) ? dbSkill.tenantCreditCost : 2,
+    skillOwnerCreditCost: Number.isInteger(dbSkill.skillOwnerCreditCost) ? dbSkill.skillOwnerCreditCost : 0,
+    tenantId: dbSkill.tenantId ?? undefined,
     enabledByDefault: dbSkill.enabledByDefault,
     priority: dbSkill.priority,
     models,
@@ -445,6 +446,8 @@ export async function autoSyncSkillsFromFolder(options?: { force?: boolean }): P
         isEnabled: true,
         enabledByDefault: metadata.enabledByDefault ?? metadata.enabled_by_default ?? true,
         creditMultiplier: String(metadata.creditMultiplier ?? metadata.credit_multiplier ?? 1.0),
+        tenantCreditCost: 2,
+        skillOwnerCreditCost: 0,
         priority: metadata.priority ?? 50,
         skillContent: parsed.content,
         configJson: metadata.config,
@@ -650,6 +653,8 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
         isEnabled: true,
         enabledByDefault: metadata.enabledByDefault ?? metadata.enabled_by_default ?? true,
         creditMultiplier: String(metadata.creditMultiplier ?? metadata.credit_multiplier ?? 1.0),
+        tenantCreditCost: 2,
+        skillOwnerCreditCost: 0,
         priority: metadata.priority ?? 50,
         skillContent: parsed.content,
         systemPrompt: parsed.content,
@@ -806,6 +811,7 @@ export function getAvailableSkills(): SkillDefinition[] {
  * Get skill by ID (async version)
  */
 export async function getSkillByIdAsync(id: string): Promise<SkillDefinition | undefined> {
+  if (classifySkillReference(id) !== "executable-skill") return undefined;
   const skills = await getSkillRegistryAsync();
   const resolvedId = resolveSkillSlugAlias(id);
   return skills.find((s) => s.id === resolvedId) ?? skills.find((s) => s.id === id);
@@ -815,6 +821,7 @@ export async function getSkillByIdAsync(id: string): Promise<SkillDefinition | u
  * Get skill by ID (sync version for backward compatibility)
  */
 export function getSkillById(id: string): SkillDefinition | undefined {
+  if (classifySkillReference(id) !== "executable-skill") return undefined;
   const skills = getSkillRegistry();
   const resolvedId = resolveSkillSlugAlias(id);
   return skills.find((s) => s.id === resolvedId) ?? skills.find((s) => s.id === id);
@@ -825,6 +832,7 @@ export function getSkillById(id: string): SkillDefinition | undefined {
  * This allows looking up skills by either their slug ID or their type
  */
 export function getSkillByIdOrType(idOrType: string): SkillDefinition | undefined {
+  if (classifySkillReference(idOrType) !== "executable-skill") return undefined;
   const skills = getSkillRegistry();
   const resolvedId = resolveSkillSlugAlias(idOrType);
 

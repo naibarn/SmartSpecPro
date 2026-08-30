@@ -35,9 +35,14 @@ import {
   type CreditReservation,
 } from "./creditService";
 import {
+  chargeVerticalDramaLlmCall,
+  type VerticalDramaLlmCallBillingInput,
+} from "./verticalDramaLlmBilling";
+import {
   executeJsonPlanningCallWithRetry,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { DEFAULT_TENANT_SKILL_CREDITS } from "./skillRevenueBilling";
 import { resolveVerticalDramaRecommendedDraftModel } from "./verticalDramaLlmModelPolicy";
 import {
   appendVerticalDramaDraftVersion,
@@ -146,6 +151,10 @@ const SKILL_FOLDER_PATH = path.join(
   "skills",
   "vertical-drama-draft-quality-controller"
 );
+export const VERTICAL_DRAMA_DRAFT_QC_SKILL_SLUG =
+  "vertical-drama-draft-quality-controller";
+export const VERTICAL_DRAMA_DRAFT_QC_SKILL_NAME =
+  "Vertical Drama Draft Quality Controller";
 const MAX_DRAFT_BYTES = 160_000;
 const revisedDraftOutputSchema = z.object({
   draft: z.record(z.string(), z.unknown()),
@@ -188,6 +197,7 @@ export interface DraftQualityQcLoopInput {
   maxImprovementRounds?: number;
   userId: number;
   tenantId?: string;
+  seriesId?: number;
   draftId?: string;
   draftSessionId?: string;
   runId?: string;
@@ -237,6 +247,8 @@ export interface DraftQualityQcCallResult {
   data: unknown;
   promptTokens: number;
   completionTokens: number;
+  /** Model that produced the accepted response after bounded fallback rotation. */
+  model?: string;
   /** Provider/schema recovery notes that must survive the strict transport schema. */
   normalizationWarnings?: string[];
 }
@@ -256,7 +268,14 @@ export interface DraftQualityQcDependencies {
   }) => Promise<DraftQualityQcCallResult>;
   createReservation?: (amount: number) => Promise<CreditReservation>;
   drawReservation?: (reservationId: string, amount: number) => Promise<unknown>;
-  refundReservation?: (reservationId: string) => Promise<unknown>;
+  refundReservation?: (
+    reservationId: string,
+    forceFixedSkillRefund?: boolean,
+  ) => Promise<unknown>;
+  /** Test seam; production uses the real per-call ledger helper. */
+  chargeLlmCall?: (
+    input: VerticalDramaLlmCallBillingInput,
+  ) => Promise<{ creditsUsed: number; wasFree: boolean }>;
   persistVersion?: PersistVerticalDramaDraftVersion;
   now?: () => string;
 }
@@ -309,13 +328,13 @@ function normalizeChangedFields(changedFields: string[]): string[] {
 
 function deriveChangedFields(
   original: DraftQualityQcDraft,
-  revised: DraftQualityQcDraft,
+  revised: DraftQualityQcDraft
 ): string[] {
   const keys = new Set([...Object.keys(original), ...Object.keys(revised)]);
   return normalizeChangedFields(
     [...keys].filter(
-      key => stableValue(original[key]) !== stableValue(revised[key]),
-    ),
+      key => stableValue(original[key]) !== stableValue(revised[key])
+    )
   );
 }
 
@@ -326,7 +345,7 @@ function deriveChangedFields(
  */
 export function recoverDraftQualityQcRevisionOutput(
   value: unknown,
-  original: DraftQualityQcDraft,
+  original: DraftQualityQcDraft
 ): {
   data: z.infer<typeof revisedDraftOutputSchema>;
   warnings: string[];
@@ -334,21 +353,18 @@ export function recoverDraftQualityQcRevisionOutput(
   const parsed = revisedDraftRecoverySchema.safeParse(value);
   if (!parsed.success) return null;
   const rawChangedFields = parsed.data.changedFields;
-  if (
-    rawChangedFields !== undefined &&
-    !Array.isArray(rawChangedFields)
-  ) {
+  if (rawChangedFields !== undefined && !Array.isArray(rawChangedFields)) {
     return null;
   }
   const suppliedChangedFields = Array.isArray(rawChangedFields)
     ? rawChangedFields.filter(
-        (field): field is string => typeof field === "string",
+        (field): field is string => typeof field === "string"
       )
     : [];
   const changedFields = normalizeChangedFields(
     suppliedChangedFields.length > 0
       ? suppliedChangedFields
-      : deriveChangedFields(original, parsed.data.draft),
+      : deriveChangedFields(original, parsed.data.draft)
   );
   return {
     data: {
@@ -401,10 +417,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function stableArrayKey(value: Record<string, unknown>): string | null {
-  for (const key of ["id", "key", "name", "threadId", "criterionId", "episodeNumber", "code"]) {
+  for (const key of [
+    "id",
+    "key",
+    "name",
+    "threadId",
+    "criterionId",
+    "episodeNumber",
+    "code",
+  ]) {
     const candidate = value[key];
-    if (typeof candidate === "string" && candidate.trim()) return `${key}:${candidate}`;
-    if (typeof candidate === "number" && Number.isFinite(candidate)) return `${key}:${candidate}`;
+    if (typeof candidate === "string" && candidate.trim())
+      return `${key}:${candidate}`;
+    if (typeof candidate === "number" && Number.isFinite(candidate))
+      return `${key}:${candidate}`;
   }
   return null;
 }
@@ -413,20 +439,25 @@ function stableJson(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
   const record = value as Record<string, unknown>;
-  return `{${Object.keys(record).sort().map(key => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(",")}}`;
+  return `{${Object.keys(record)
+    .sort()
+    .map(key => `${JSON.stringify(key)}:${stableJson(record[key])}`)
+    .join(",")}}`;
 }
 
 function assertMutableStoryDesignContract(
   original: DraftQualityQcDraft,
   revised: DraftQualityQcDraft,
-  constraints: DraftQualityQcImmutableConstraints,
+  constraints: DraftQualityQcImmutableConstraints
 ): void {
   const originalDesign = readPath(original, "storyDesign");
   const revisedDesign = readPath(revised, "storyDesign");
   if (stableValue(originalDesign) === stableValue(revisedDesign)) return;
 
   if (!isRecord(revisedDesign)) {
-    throw new Error("Draft revision produced an invalid storyDesign control plane");
+    throw new Error(
+      "Draft revision produced an invalid storyDesign control plane"
+    );
   }
   const originalRecord = isRecord(originalDesign) ? originalDesign : {};
   const changedKeys = new Set([
@@ -436,7 +467,7 @@ function assertMutableStoryDesignContract(
   for (const key of changedKeys) {
     if (
       (DRAFT_QC_SERVER_MANAGED_STORY_DESIGN_KEYS as readonly string[]).includes(
-        key,
+        key
       )
     ) {
       continue;
@@ -447,12 +478,16 @@ function assertMutableStoryDesignContract(
       continue;
     }
     if (stableValue(originalRecord[key]) !== stableValue(revisedDesign[key])) {
-      throw new Error(`Draft revision changed immutable field: storyDesign.${key}`);
+      throw new Error(
+        `Draft revision changed immutable field: storyDesign.${key}`
+      );
     }
   }
 
   if (!readVerticalDramaDraftStoryDesign(revisedDesign)) {
-    throw new Error("Draft revision produced an invalid storyDesign control plane");
+    throw new Error(
+      "Draft revision produced an invalid storyDesign control plane"
+    );
   }
   const consistency = inspectVerticalDramaStoryControlConsistency({
     storyDesign: revisedDesign,
@@ -464,13 +499,13 @@ function assertMutableStoryDesignContract(
       `Draft revision produced inconsistent storyDesign: ${consistency.issues
         .slice(0, 3)
         .map(issue => issue.code)
-        .join(", ")}`,
+        .join(", ")}`
     );
   }
 }
 
 function stripServerManagedStoryDesignMetadata(
-  draft: DraftQualityQcDraft,
+  draft: DraftQualityQcDraft
 ): DraftQualityQcDraft {
   const storyDesign = draft.storyDesign;
   if (!isRecord(storyDesign)) return draft;
@@ -507,7 +542,11 @@ export function mergeDraftRevisionPreservingFields(
         if (!(key in patch)) restoredPaths.push(path ? `${path}.${key}` : key);
       }
       for (const [key, value] of Object.entries(patch)) {
-        merged[key] = mergeValue(base[key], value, path ? `${path}.${key}` : key);
+        merged[key] = mergeValue(
+          base[key],
+          value,
+          path ? `${path}.${key}` : key
+        );
       }
       return merged;
     }
@@ -516,7 +555,10 @@ export function mergeDraftRevisionPreservingFields(
         restoredPaths.push(path || "draft");
         return base;
       }
-      const baseByKey = new Map<string, { index: number; value: Record<string, unknown> }>();
+      const baseByKey = new Map<
+        string,
+        { index: number; value: Record<string, unknown> }
+      >();
       base.forEach((item, index) => {
         if (isRecord(item)) {
           const key = stableArrayKey(item);
@@ -574,11 +616,18 @@ function verifyDraftQualityQcCriticalFailures(params: {
     userPremise: params.constraints.userPremise,
   });
   if (inspection.ready) return [];
-  const failures: Array<{ code: DraftQualityQcCriticalFailCode; explanation: string }> = [];
+  const failures: Array<{
+    code: DraftQualityQcCriticalFailCode;
+    explanation: string;
+  }> = [];
   const add = (code: DraftQualityQcCriticalFailCode, explanation: string) => {
-    if (!failures.some(item => item.code === code)) failures.push({ code, explanation });
+    if (!failures.some(item => item.code === code))
+      failures.push({ code, explanation });
   };
-  const paths = [...inspection.report.missingPaths, ...inspection.report.contradictionPaths];
+  const paths = [
+    ...inspection.report.missingPaths,
+    ...inspection.report.contradictionPaths,
+  ];
   const controlConsistency = inspectVerticalDramaStoryControlConsistency({
     storyDesign: params.draft.storyDesign,
     storyArchitecture: params.draft.storyContract,
@@ -590,23 +639,56 @@ function verifyDraftQualityQcCriticalFailures(params: {
       `Story-control consistency failed at ${controlConsistency.issues
         .map(item => item.path)
         .slice(0, 6)
-        .join(", ")}. Repair control data against the approved Story Architecture.`,
+        .join(
+          ", "
+        )}. Repair control data against the approved Story Architecture.`
     );
   }
-  if (paths.some(path => /storyContract|protagonist|mainPlot|seasonArc|central/i.test(path))) {
-    add("missing_core_conflict", "The draft is missing a validated protagonist goal, core conflict, or story destination.");
+  if (
+    paths.some(path =>
+      /storyContract|protagonist|mainPlot|seasonArc|central/i.test(path)
+    )
+  ) {
+    add(
+      "missing_core_conflict",
+      "The draft is missing a validated protagonist goal, core conflict, or story destination."
+    );
   }
-  if (paths.some(path => /storyDesign\.(primaryEngine|pressureThreads|advantageBeats|storyControlSeed|conflictGuardrails)/i.test(path))) {
-    add("missing_repeatable_engine", "The draft has no complete repeatable story engine and control-plane evidence.");
+  if (
+    paths.some(path =>
+      /storyDesign\.(primaryEngine|pressureThreads|advantageBeats|storyControlSeed|conflictGuardrails)/i.test(
+        path
+      )
+    )
+  ) {
+    add(
+      "missing_repeatable_engine",
+      "The draft has no complete repeatable story engine and control-plane evidence."
+    );
   }
-  if (paths.some(path => /terminalDestination|totalEpisodeCount|episodeWindow|destination/i.test(path))) {
-    add("missing_escalation_path", "The draft does not prove escalation through the planned season endpoint.");
+  if (
+    paths.some(path =>
+      /terminalDestination|totalEpisodeCount|episodeWindow|destination/i.test(
+        path
+      )
+    )
+  ) {
+    add(
+      "missing_escalation_path",
+      "The draft does not prove escalation through the planned season endpoint."
+    );
   }
   if (inspection.report.contradictionPaths.length > 0) {
-    add("explicit_constraint_contradiction", "The draft contradicts an approved story or episode-count constraint.");
+    add(
+      "explicit_constraint_contradiction",
+      "The draft contradicts an approved story or episode-count constraint."
+    );
   }
   if (failures.length === 0) {
-    add("schema_or_role_inconsistency", "The draft failed deterministic completeness validation before QC could pass it.");
+    add(
+      "schema_or_role_inconsistency",
+      "The draft failed deterministic completeness validation before QC could pass it."
+    );
   }
   return failures.slice(0, 8);
 }
@@ -677,8 +759,9 @@ export function buildDraftQualityQcRevisionBrief(
   const criticalBrief = report.criticalFails.length
     ? [
         "BLOCKING CRITICAL FAILURES — these must be repaired even when numeric criteria are above 3/5:",
-        ...report.criticalFails.map(item =>
-          `- ${item.code}: ${criticalInstructions.get(item.code) ?? "repair this blocking issue using concrete story evidence"}.`,
+        ...report.criticalFails.map(
+          item =>
+            `- ${item.code}: ${criticalInstructions.get(item.code) ?? "repair this blocking issue using concrete story evidence"}.`
         ),
       ].join("\n")
     : "";
@@ -731,7 +814,8 @@ function buildPromptContext(
 }
 
 function stripSupersededStoryControlMetadata(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(stripSupersededStoryControlMetadata);
+  if (Array.isArray(value))
+    return value.map(stripSupersededStoryControlMetadata);
   if (!value || typeof value !== "object") return value;
   const record = value as Record<string, unknown>;
   const output: Record<string, unknown> = {};
@@ -785,6 +869,7 @@ async function defaultEvaluate(params: {
     data: result.data,
     promptTokens: result.response.usage?.prompt_tokens ?? 0,
     completionTokens: result.response.usage?.completion_tokens ?? 0,
+    model: result.model,
     normalizationWarnings: result.warnings ?? [],
   };
 }
@@ -818,13 +903,14 @@ async function defaultRevise(params: {
     data: result.data,
     promptTokens: result.response.usage?.prompt_tokens ?? 0,
     completionTokens: result.response.usage?.completion_tokens ?? 0,
+    model: result.model,
     normalizationWarnings: result.warnings ?? [],
   };
 }
 
 function repairStoryControlPlaneForQc(
   draft: DraftQualityQcDraft,
-  constraints: DraftQualityQcImmutableConstraints,
+  constraints: DraftQualityQcImmutableConstraints
 ): DraftQualityQcDraft {
   if (!draft.storyDesign) return draft;
   const repairedStoryDesign = repairVerticalDramaDraftStoryDesign({
@@ -836,7 +922,7 @@ function repairStoryControlPlaneForQc(
           .map(character =>
             typeof character === "object" && character !== null
               ? String((character as Record<string, unknown>).name ?? "")
-              : "",
+              : ""
           )
           .filter(Boolean)
       : [],
@@ -858,40 +944,73 @@ export async function runVerticalDramaDraftQualityQc(
     DRAFT_QC_MAX_IMPROVEMENT_ROUNDS,
     normalizeDraftQualityQcRoundBudget(input.maxImprovementRounds)
   );
-  const model =
+  let activeModel =
     dependencies.model ?? (await resolveVerticalDramaRecommendedDraftModel());
   // Reserve against the largest planned call (revision has a larger output
   // budget than evaluation) so a late revision cannot fail only because the
   // initial estimate was too optimistic.
-  const perCallCredits = calculateCreditsForLLM(6000, 7000, model);
+  const perCallCredits = calculateCreditsForLLM(6000, 7000, activeModel);
   const creditEstimate = estimateDraftQualityQcCredits({
     maxImprovementRounds: maxRounds,
     perCallCredits,
   });
+  const qcIdentity =
+    input.runId ??
+    input.draftSessionId ??
+    input.draftId ??
+    fingerprintDraftQualityQcCandidate(input.draft);
+  const logicalRunKey = `vd-draft-qc:${qcIdentity}`;
   const createReservation =
     dependencies.createReservation ??
-    (amount =>
-      createCreditReservation(input.userId, amount, "skill", {
-        feature: "vertical_drama_draft_quality_qc",
-        tenantId: input.tenantId,
-        maxImprovementRounds: maxRounds,
-      }));
+    (() =>
+      createCreditReservation(
+        input.userId,
+        DEFAULT_TENANT_SKILL_CREDITS,
+        "skill",
+        {
+          feature: "vertical_drama_draft_quality_qc",
+          tenantId: input.tenantId,
+          maxImprovementRounds: maxRounds,
+          skillName: VERTICAL_DRAMA_DRAFT_QC_SKILL_NAME,
+          model: activeModel,
+          llmModel: activeModel,
+          logicalRunKey,
+        },
+        logicalRunKey,
+        {
+          tenantId: input.tenantId,
+          skillSlug: VERTICAL_DRAMA_DRAFT_QC_SKILL_SLUG,
+          skillRunId: logicalRunKey,
+          description: `Skill run: ${VERTICAL_DRAMA_DRAFT_QC_SKILL_NAME}`,
+        },
+      ));
   const drawReservation =
     dependencies.drawReservation ??
     ((reservationId, amount) => drawFromReservation(reservationId, amount));
   const refundUnused =
     dependencies.refundReservation ??
-    (reservationId => refundReservation(reservationId));
+    ((reservationId, forceFixedSkillRefund = false) =>
+      refundReservation(reservationId, forceFixedSkillRefund));
   const persistVersion =
     dependencies.persistVersion ?? appendVerticalDramaDraftVersion;
-  const reservation = await createReservation(creditEstimate.estimatedCredits);
+  // Production billing is per accepted LLM call. Reservation mode remains
+  // available only for legacy/unit-test dependency injection; using it in the
+  // worker would hide later evaluate/revise calls from the credit ledger.
+  const reservation = dependencies.createReservation
+    ? await createReservation(DEFAULT_TENANT_SKILL_CREDITS)
+    : undefined;
+  const chargeLlmCall =
+    dependencies.chargeLlmCall ?? chargeVerticalDramaLlmCall;
   const evaluate =
-    dependencies.evaluate ?? (params => defaultEvaluate({ ...params, model }));
+    dependencies.evaluate ??
+    (params => defaultEvaluate({ ...params, model: activeModel }));
   const revise =
-    dependencies.revise ?? (params => defaultRevise({ ...params, model }));
+    dependencies.revise ??
+    (params => defaultRevise({ ...params, model: activeModel }));
   const now = dependencies.now ?? (() => new Date().toISOString());
   let callsDone = 0;
   let actualCredits = 0;
+  let fixedReservationConsumed = false;
   let consecutiveNoImprovement = 0;
   let reservationClosed = false;
   let latestArtifact: VerticalDramaDraftVersionRef | undefined;
@@ -903,15 +1022,49 @@ export async function runVerticalDramaDraftQualityQc(
   let lastReport: DraftQualityQcReport | null = null;
 
   const drawActual = async (call: DraftQualityQcCallResult) => {
+    const callNumber = callsDone + 1;
+    const stage = phase;
     const amount = calculateCreditsForLLM(
       call.promptTokens,
       call.completionTokens,
-      model
+      call.model ?? activeModel
     );
-    if (amount > 0) {
-      await drawReservation(reservation.reservationId, amount);
-      actualCredits += amount;
+    let chargedAmount = amount;
+    if (reservation) {
+      // Legacy injected reservation mode is retained for deterministic tests.
+      // The production path below creates one ledger entry for every call.
+      if (!fixedReservationConsumed) {
+        await drawReservation(
+          reservation.reservationId,
+          reservation.reservedAmount
+        );
+        fixedReservationConsumed = true;
+      }
+    } else {
+      const charge = await chargeLlmCall({
+        userId: input.userId,
+        tenantId: input.tenantId,
+        seriesId: input.seriesId,
+        runId: logicalRunKey,
+        attemptKey: `${logicalRunKey}:${stage}:round-${activeRound}:call-${callNumber}`,
+        skillSlug: VERTICAL_DRAMA_DRAFT_QC_SKILL_SLUG,
+        stage,
+        round: activeRound,
+        attempt: callNumber,
+        model: call.model ?? activeModel,
+        inputTokens: call.promptTokens,
+        outputTokens: call.completionTokens,
+        metadata: {
+          skillName: VERTICAL_DRAMA_DRAFT_QC_SKILL_NAME,
+          draftId: input.draftId ?? null,
+          draftSessionId: input.draftSessionId ?? null,
+          candidateFingerprint: fingerprintDraftQualityQcCandidate(input.draft),
+        },
+      });
+      chargedAmount = charge.creditsUsed;
     }
+    actualCredits += reservation ? amount : chargedAmount;
+    if (call.model) activeModel = call.model;
     callsDone += 1;
     return amount;
   };
@@ -972,7 +1125,8 @@ export async function runVerticalDramaDraftQualityQc(
     );
     evaluationsCompleted += 1;
     lastReport = baselineReport;
-    const baselineFingerprint = fingerprintDraftQualityQcCandidate(preparedDraft);
+    const baselineFingerprint =
+      fingerprintDraftQualityQcCandidate(preparedDraft);
     let baselineArtifact: VerticalDramaDraftVersionRef | undefined;
     if (input.draftId && input.draftSessionId) {
       baselineArtifact = await persistVersion({
@@ -1010,8 +1164,10 @@ export async function runVerticalDramaDraftQualityQc(
     });
     progress("evaluate", 0, best.report.overallScore);
     if (best.report.pass || maxRounds === 0) {
-      await refundUnused(reservation.reservationId);
-      reservationClosed = true;
+      if (reservation) {
+        await refundUnused(reservation.reservationId);
+        reservationClosed = true;
+      }
       return {
         best,
         history,
@@ -1019,8 +1175,8 @@ export async function runVerticalDramaDraftQualityQc(
         stopReason: best.report.pass ? "passed" : "max_rounds",
         roundsAttempted,
         evaluationsCompleted,
-        model,
-        reservationId: reservation.reservationId,
+        model: activeModel,
+        reservationId: reservation?.reservationId,
         draftArtifact: latestArtifact,
       };
     }
@@ -1039,7 +1195,7 @@ export async function runVerticalDramaDraftQualityQc(
       });
       await drawActual(revisedCall);
       const parsedRevisionResult = revisedDraftOutputSchema.safeParse(
-        revisedCall.data,
+        revisedCall.data
       );
       let parsedRevision: z.infer<typeof revisedDraftOutputSchema>;
       if (parsedRevisionResult.success) {
@@ -1047,13 +1203,13 @@ export async function runVerticalDramaDraftQualityQc(
       } else {
         const recoveredRevision = recoverDraftQualityQcRevisionOutput(
           revisedCall.data,
-          best.draft,
+          best.draft
         );
         if (!recoveredRevision) {
           throw new Error(
             `Vertical Drama draft QC revise response failed schema validation: ${parsedRevisionResult.error.issues
               .map(issue => issue.path.join(".") || "response")
-              .join(", ")}`,
+              .join(", ")}`
           );
         }
         revisedCall.normalizationWarnings = [
@@ -1062,9 +1218,11 @@ export async function runVerticalDramaDraftQualityQc(
         ];
         parsedRevision = recoveredRevision.data;
       }
-      const changedFields = normalizeChangedFields(parsedRevision.changedFields);
+      const changedFields = normalizeChangedFields(
+        parsedRevision.changedFields
+      );
       const providerRevisionDraft = stripServerManagedStoryDesignMetadata(
-        parsedRevision.draft,
+        parsedRevision.draft
       );
       assertBoundedDraft(providerRevisionDraft);
       const mergedRevision = mergeDraftRevisionPreservingFields(
@@ -1073,7 +1231,7 @@ export async function runVerticalDramaDraftQualityQc(
       );
       const repairedRevisionDraft = repairStoryControlPlaneForQc(
         mergedRevision.draft,
-        input.immutableConstraints,
+        input.immutableConstraints
       );
       mergedRevision.draft = repairedRevisionDraft;
       assertBoundedDraft(mergedRevision.draft);
@@ -1085,7 +1243,7 @@ export async function runVerticalDramaDraftQualityQc(
       assertMutableStoryDesignContract(
         best.draft,
         mergedRevision.draft,
-        input.immutableConstraints,
+        input.immutableConstraints
       );
       if (input.enforceCompleteness) {
         const completion = inspectVerticalDramaDraftCompleteness({
@@ -1166,10 +1324,7 @@ export async function runVerticalDramaDraftQualityQc(
           content: candidate.draft,
           runId: input.runId,
           changedPaths: [
-            ...new Set([
-              ...changedFields,
-              ...mergedRevision.restoredPaths,
-            ]),
+            ...new Set([...changedFields, ...mergedRevision.restoredPaths]),
           ],
           metadata: {
             round,
@@ -1190,7 +1345,8 @@ export async function runVerticalDramaDraftQualityQc(
         candidateVersion: candidateArtifact?.version,
         candidateFingerprint: candidate.fingerprint,
         report,
-        note: [
+        note:
+          [
           ...(revisedCall.normalizationWarnings ?? []),
           ...(mergedRevision.restoredPaths.length > 0
             ? [
@@ -1233,12 +1389,14 @@ export async function runVerticalDramaDraftQualityQc(
           creditEstimate: { ...creditEstimate, actualCredits },
           roundsAttempted,
           evaluationsCompleted,
-          model,
+          model: activeModel,
         },
       });
     }
-    await refundUnused(reservation.reservationId);
-    reservationClosed = true;
+    if (reservation) {
+      await refundUnused(reservation.reservationId);
+      reservationClosed = true;
+    }
     return {
       best,
       history,
@@ -1250,8 +1408,8 @@ export async function runVerticalDramaDraftQualityQc(
           : "no_improvement",
       roundsAttempted,
       evaluationsCompleted,
-      model,
-      reservationId: reservation.reservationId,
+      model: activeModel,
+      reservationId: reservation?.reservationId,
       draftArtifact: latestArtifact,
     };
   } catch (error) {
@@ -1270,8 +1428,8 @@ export async function runVerticalDramaDraftQualityQc(
       creditEstimate: { ...creditEstimate, actualCredits },
     });
   } finally {
-    if (!reservationClosed) {
-      await refundUnused(reservation.reservationId).catch(() => undefined);
+    if (reservation && !reservationClosed) {
+      await refundUnused(reservation.reservationId, true).catch(() => undefined);
     }
   }
 }
@@ -1284,6 +1442,7 @@ export interface DraftQualityQcRepairInput {
   immutableConstraints: DraftQualityQcImmutableConstraints;
   userId: number;
   tenantId?: string;
+  seriesId?: number;
   draftId?: string;
   draftSessionId?: string;
   runId?: string;
@@ -1298,44 +1457,77 @@ export interface DraftQualityQcRepairInput {
  */
 export async function runVerticalDramaDraftQualityQcRepair(
   input: DraftQualityQcRepairInput,
-  dependencies: DraftQualityQcDependencies = {},
-): Promise<DraftQualityQcLoopResult & { repaired: DraftQualityQcCandidateResult; improved: boolean }> {
+  dependencies: DraftQualityQcDependencies = {}
+): Promise<
+  DraftQualityQcLoopResult & {
+    repaired: DraftQualityQcCandidateResult;
+    improved: boolean;
+  }
+> {
   assertBoundedDraft(input.draft);
-  if (fingerprintDraftQualityQcCandidate(input.draft) !== input.sourceFingerprint) {
+  if (
+    fingerprintDraftQualityQcCandidate(input.draft) !== input.sourceFingerprint
+  ) {
     throw new Error("Draft QC repair source fingerprint is stale");
   }
-  const model =
+  let activeModel =
     dependencies.model ?? (await resolveVerticalDramaRecommendedDraftModel());
-  const perCallCredits = calculateCreditsForLLM(6000, 7000, model);
+  const perCallCredits = calculateCreditsForLLM(6000, 7000, activeModel);
   const creditEstimate = estimateDraftQualityQcCredits({
     maxImprovementRounds: 1,
     perCallCredits,
   });
+  const logicalRunKey = `vd-draft-qc-repair:${input.runId ?? input.draftSessionId ?? input.draftId ?? input.sourceFingerprint}`;
   const createReservation =
     dependencies.createReservation ??
-    (amount =>
-      createCreditReservation(input.userId, amount, "skill", {
-        feature: "vertical_drama_draft_quality_qc_repair",
-        tenantId: input.tenantId,
-        sourceFingerprint: input.sourceFingerprint,
-      }));
+    (() =>
+      createCreditReservation(
+        input.userId,
+        DEFAULT_TENANT_SKILL_CREDITS,
+        "skill",
+        {
+          feature: "vertical_drama_draft_quality_qc_repair",
+          tenantId: input.tenantId,
+          sourceFingerprint: input.sourceFingerprint,
+          skillName: VERTICAL_DRAMA_DRAFT_QC_SKILL_NAME,
+          model: activeModel,
+          llmModel: activeModel,
+          logicalRunKey,
+        },
+        logicalRunKey,
+        {
+          tenantId: input.tenantId,
+          skillSlug: VERTICAL_DRAMA_DRAFT_QC_SKILL_SLUG,
+          skillRunId: logicalRunKey,
+          description: `Skill run: ${VERTICAL_DRAMA_DRAFT_QC_SKILL_NAME} (repair)`,
+        },
+      ));
   const drawReservation =
     dependencies.drawReservation ??
     ((reservationId, amount) => drawFromReservation(reservationId, amount));
   const refundUnused =
     dependencies.refundReservation ??
-    (reservationId => refundReservation(reservationId));
+    ((reservationId, forceFixedSkillRefund = false) =>
+      refundReservation(reservationId, forceFixedSkillRefund));
   const persistVersion =
     dependencies.persistVersion ?? appendVerticalDramaDraftVersion;
-  const reservation = await createReservation(creditEstimate.estimatedCredits);
+  const reservation = dependencies.createReservation
+    ? await createReservation(DEFAULT_TENANT_SKILL_CREDITS)
+    : undefined;
+  const chargeLlmCall =
+    dependencies.chargeLlmCall ?? chargeVerticalDramaLlmCall;
   const evaluate =
-    dependencies.evaluate ?? (params => defaultEvaluate({ ...params, model }));
+    dependencies.evaluate ??
+    (params => defaultEvaluate({ ...params, model: activeModel }));
   const revise =
-    dependencies.revise ?? (params => defaultRevise({ ...params, model }));
+    dependencies.revise ??
+    (params => defaultRevise({ ...params, model: activeModel }));
   const now = dependencies.now ?? (() => new Date().toISOString());
   let callsDone = 0;
   let actualCredits = 0;
+  let fixedReservationConsumed = false;
   let reservationClosed = false;
+  let phase: DraftQualityQcFailurePhase = "revise";
   const source: DraftQualityQcCandidateResult = {
     draft: input.draft,
     report: input.sourceReport,
@@ -1357,7 +1549,7 @@ export async function runVerticalDramaDraftQualityQcRepair(
   const progress = (
     phase: DraftQualityQcProgressEvent["phase"],
     round: number,
-    score: number | null,
+    score: number | null
   ) =>
     input.onProgress?.({
       phase,
@@ -1368,20 +1560,54 @@ export async function runVerticalDramaDraftQualityQcRepair(
       lastScore: score,
     });
   const drawActual = async (call: DraftQualityQcCallResult) => {
+    const callNumber = callsDone + 1;
+    const stage = phase;
     const amount = calculateCreditsForLLM(
       call.promptTokens,
       call.completionTokens,
-      model,
+      call.model ?? activeModel
     );
-    if (amount > 0) {
-      await drawReservation(reservation.reservationId, amount);
-      actualCredits += amount;
+    let chargedAmount = amount;
+    if (reservation) {
+      if (!fixedReservationConsumed) {
+        await drawReservation(
+          reservation.reservationId,
+          reservation.reservedAmount
+        );
+        fixedReservationConsumed = true;
+      }
+    } else {
+      const charge = await chargeLlmCall({
+        userId: input.userId,
+        tenantId: input.tenantId,
+        seriesId: input.seriesId,
+        runId: logicalRunKey,
+        attemptKey: `${logicalRunKey}:${stage}:round-1:call-${callNumber}`,
+        skillSlug: VERTICAL_DRAMA_DRAFT_QC_SKILL_SLUG,
+        stage,
+        round: 1,
+        attempt: callNumber,
+        model: call.model ?? activeModel,
+        inputTokens: call.promptTokens,
+        outputTokens: call.completionTokens,
+        metadata: {
+          skillName: VERTICAL_DRAMA_DRAFT_QC_SKILL_NAME,
+          operation: "repair",
+          draftId: input.draftId ?? null,
+          draftSessionId: input.draftSessionId ?? null,
+          sourceFingerprint: input.sourceFingerprint,
+        },
+      });
+      chargedAmount = charge.creditsUsed;
     }
+    actualCredits += reservation ? amount : chargedAmount;
+    if (call.model) activeModel = call.model;
     callsDone += 1;
   };
 
   try {
-    if (await input.isCancelled?.()) throw new Error("Draft QC repair cancelled");
+    if (await input.isCancelled?.())
+      throw new Error("Draft QC repair cancelled");
     progress("revise", 1, input.sourceReport.overallScore);
     const revisedCall = await revise({
       draft: input.draft,
@@ -1391,37 +1617,37 @@ export async function runVerticalDramaDraftQualityQcRepair(
     });
     await drawActual(revisedCall);
     const parsedRevisionResult = revisedDraftOutputSchema.safeParse(
-      revisedCall.data,
+      revisedCall.data
     );
     const recoveredRevision = parsedRevisionResult.success
       ? { data: parsedRevisionResult.data, warnings: [] as string[] }
       : recoverDraftQualityQcRevisionOutput(revisedCall.data, input.draft);
     if (!recoveredRevision) {
       throw new Error(
-        `Vertical Drama draft QC repair response failed schema validation: ${parsedRevisionResult.success ? "response" : parsedRevisionResult.error.issues.map(issue => issue.path.join(".") || "response").join(", ")}`,
+        `Vertical Drama draft QC repair response failed schema validation: ${parsedRevisionResult.success ? "response" : parsedRevisionResult.error.issues.map(issue => issue.path.join(".") || "response").join(", ")}`
       );
     }
     const providerRevisionDraft = stripServerManagedStoryDesignMetadata(
-      recoveredRevision.data.draft,
+      recoveredRevision.data.draft
     );
     const mergedRevision = mergeDraftRevisionPreservingFields(
       input.draft,
-      providerRevisionDraft,
+      providerRevisionDraft
     );
     mergedRevision.draft = repairStoryControlPlaneForQc(
       mergedRevision.draft,
-      input.immutableConstraints,
+      input.immutableConstraints
     );
     assertBoundedDraft(mergedRevision.draft);
     assertImmutableConstraints(
       input.draft,
       mergedRevision.draft,
-      input.immutableConstraints,
+      input.immutableConstraints
     );
     assertMutableStoryDesignContract(
       input.draft,
       mergedRevision.draft,
-      input.immutableConstraints,
+      input.immutableConstraints
     );
     const completion = inspectVerticalDramaDraftCompleteness({
       draft: mergedRevision.draft,
@@ -1431,10 +1657,11 @@ export async function runVerticalDramaDraftQualityQcRepair(
     });
     if (!completion.ready) {
       throw new Error(
-        `Draft QC repair produced an incomplete Draft: ${completion.report.missingPaths.slice(0, 6).join(", ") || completion.report.contradictionPaths.slice(0, 6).join(", ") || "unknown completeness failure"}`,
+        `Draft QC repair produced an incomplete Draft: ${completion.report.missingPaths.slice(0, 6).join(", ") || completion.report.contradictionPaths.slice(0, 6).join(", ") || "unknown completeness failure"}`
       );
     }
 
+    phase = "evaluate";
     progress("evaluate", 1, input.sourceReport.overallScore);
     const evaluationCall = await evaluate({
       draft: mergedRevision.draft,
@@ -1444,7 +1671,9 @@ export async function runVerticalDramaDraftQualityQcRepair(
     await drawActual(evaluationCall);
     const judge = normalizeDraftQualityQcJudgeOutput(evaluationCall.data);
     if (!judge.ok) {
-      throw new Error(formatDraftQualityQcJudgeNormalizationError(evaluationCall.data));
+      throw new Error(
+        formatDraftQualityQcJudgeNormalizationError(evaluationCall.data)
+      );
     }
     const deterministicFailures = verifyDraftQualityQcCriticalFailures({
       draft: mergedRevision.draft,
@@ -1457,8 +1686,8 @@ export async function runVerticalDramaDraftQualityQcRepair(
         ...deterministicFailures.filter(
           deterministic =>
             !judge.data.criticalFails.some(
-              reported => reported.code === deterministic.code,
-            ),
+              reported => reported.code === deterministic.code
+            )
         ),
       ].slice(0, 8),
       evaluationWarnings: [
@@ -1506,36 +1735,50 @@ export async function runVerticalDramaDraftQualityQcRepair(
       score: repaired.report.overallScore,
       status: repaired.report.status,
       kept: improved,
-      reason: repaired.report.pass ? "passed" : improved ? "improved" : "not_better",
+      reason: repaired.report.pass
+        ? "passed"
+        : improved
+          ? "improved"
+          : "not_better",
       candidateVersion: artifact?.version,
       candidateFingerprint: repaired.fingerprint,
       report: repaired.report,
-      note: [
+      note:
+        [
         ...recoveredRevision.warnings,
         ...(mergedRevision.restoredPaths.length
-          ? [`Additive merge restored omitted fields: ${mergedRevision.restoredPaths.slice(0, 8).join(", ")}`]
+            ? [
+                `Additive merge restored omitted fields: ${mergedRevision.restoredPaths.slice(0, 8).join(", ")}`,
+              ]
           : []),
       ].join(" ") || undefined,
     });
     const creditResult = { ...creditEstimate, actualCredits };
-    await refundUnused(reservation.reservationId);
-    reservationClosed = true;
+    if (reservation) {
+      await refundUnused(reservation.reservationId);
+      reservationClosed = true;
+    }
     return {
       best: improved ? repaired : source,
       history,
       creditEstimate: creditResult,
-      stopReason: improved && repaired.report.pass ? "passed" : improved ? "max_rounds" : "no_improvement",
+      stopReason:
+        improved && repaired.report.pass
+          ? "passed"
+          : improved
+            ? "max_rounds"
+            : "no_improvement",
       roundsAttempted: 1,
       evaluationsCompleted: 1,
-      model,
-      reservationId: reservation.reservationId,
+      model: activeModel,
+      reservationId: reservation?.reservationId,
       draftArtifact: artifact,
       repaired,
       improved,
     };
   } finally {
-    if (!reservationClosed) {
-      await refundUnused(reservation.reservationId).catch(() => undefined);
+    if (reservation && !reservationClosed) {
+      await refundUnused(reservation.reservationId, true).catch(() => undefined);
     }
   }
 }

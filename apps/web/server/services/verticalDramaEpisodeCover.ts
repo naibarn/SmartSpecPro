@@ -17,6 +17,7 @@ import {
   type VerticalDramaEpisodeCoverState,
 } from "../../shared/verticalDramaSeries/episodeCover";
 import { parseSeriesWatermarkConfig } from "../../shared/verticalDramaSeries/textOverlay";
+import { storageExists } from "../storage";
 
 type Db = typeof dbProxy;
 
@@ -102,6 +103,8 @@ export async function resolveEpisodeCoverAssetUrls(
       mimeType: mediaAssets.mimeType,
       thumbnailUrl: mediaAssets.thumbnailUrl,
       originalUrl: mediaAssets.originalUrl,
+      storageKey: mediaAssets.storageKey,
+      status: mediaAssets.status,
     })
     .from(mediaAssets)
     .where(
@@ -115,7 +118,38 @@ export async function resolveEpisodeCoverAssetUrls(
 
   for (const row of rows) {
     if (!row.mimeType.toLowerCase().startsWith("image/")) continue;
-    const url = row.thumbnailUrl ?? row.originalUrl;
+    let url = row.thumbnailUrl ?? row.originalUrl;
+    if (row.storageKey) {
+      const objectExists = await storageExists(row.storageKey).catch(() => null);
+      if (objectExists === false) {
+        await db
+          .update(mediaAssets)
+          .set({ status: "expired", updatedAt: new Date() })
+          .where(
+            and(
+              eq(mediaAssets.id, row.id),
+              eq(mediaAssets.tenantId, owner.tenantId),
+              eq(mediaAssets.userId, owner.userId),
+            ),
+          );
+        continue;
+      }
+      if (objectExists === true) {
+        url = `/api/storage/files/${encodeURI(row.storageKey)}`;
+        if (row.status !== "ready" || row.originalUrl !== url) {
+          await db
+            .update(mediaAssets)
+            .set({ status: "ready", originalUrl: url, updatedAt: new Date() })
+            .where(
+              and(
+                eq(mediaAssets.id, row.id),
+                eq(mediaAssets.tenantId, owner.tenantId),
+                eq(mediaAssets.userId, owner.userId),
+              ),
+            );
+        }
+      }
+    }
     if (url) urls.set(String(row.id), url);
   }
   return urls;
@@ -138,6 +172,7 @@ export async function resolveOwnedEpisodeCoverReferenceUrls(
       mimeType: mediaAssets.mimeType,
       thumbnailUrl: mediaAssets.thumbnailUrl,
       originalUrl: mediaAssets.originalUrl,
+      storageKey: mediaAssets.storageKey,
     })
     .from(mediaAssets)
     .where(
@@ -149,7 +184,12 @@ export async function resolveOwnedEpisodeCoverReferenceUrls(
     );
   for (const row of rows) {
     if (!row.mimeType.toLowerCase().startsWith("image/")) continue;
-    const url = row.thumbnailUrl ?? row.originalUrl;
+    const managedUrl = row.storageKey
+      ? (await storageExists(row.storageKey).catch(() => false))
+        ? `/api/storage/files/${encodeURI(row.storageKey)}`
+        : null
+      : null;
+    const url = managedUrl ?? row.thumbnailUrl ?? row.originalUrl;
     if (url) urls.set(String(row.id), url);
   }
   return urls;

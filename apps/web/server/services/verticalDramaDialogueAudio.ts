@@ -1331,6 +1331,7 @@ export async function generateEpisodeDialogueAudioPlan(
     tenantId: params.tenantId,
     amount: creditsUsed,
     description: `Vertical Drama — generate dialogue audio plan (episode #${params.episodeId})`,
+    skillSlug: "vertical-drama-dialogue-audio-planner",
     sourceType: "skill",
     metadata: {
       model,

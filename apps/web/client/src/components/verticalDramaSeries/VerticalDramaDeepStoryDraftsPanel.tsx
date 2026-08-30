@@ -243,6 +243,7 @@ export type VerticalDramaStoryJobKind =
   | "plan"
   | "deep_generate"
   | "extend"
+  | "episode_repair"
   | "improve_script";
 
 export interface VerticalDramaStoryJobProgressLike {
@@ -254,6 +255,7 @@ export interface VerticalDramaStoryJobProgressLike {
    * `storyJobProgressText` for the matching label branch.
    */
   phase: "outline" | "ledger" | "draft" | "review" | "fix" | "reading";
+  stage?: "generating" | "candidate_saved" | "validating" | "saving" | "handoff";
   chunkIndex?: number;
   chunkCount?: number;
   callsDone?: number;
@@ -262,6 +264,13 @@ export interface VerticalDramaStoryJobProgressLike {
   retrying?: boolean;
   /** Episode numbers currently being retried after a chunk split. */
   retryEpisodeNumbers?: number[];
+  /** Number of fully speakable episodes already persisted to the series. */
+  episodesCompleted?: number;
+  /** Total episodes requested by this deep-draft run. */
+  episodesTotal?: number;
+  /** Inclusive episode range currently being processed. */
+  currentEpisodeStart?: number;
+  currentEpisodeEnd?: number;
   /**
    * Per-episode `improve_script` generation rewrite (2026-07-10) —
    * `episodeIndex` (1-based position of the CURRENT episode within this job)
@@ -293,9 +302,23 @@ export interface VerticalDramaStoryJobStatusLike {
   kind: VerticalDramaStoryJobKind;
   status: "queued" | "running" | "succeeded" | "failed";
   progress: VerticalDramaStoryJobProgressLike | null;
+  checkpoint?: {
+    draftedEpisodeNumbers: number[];
+    draftedCount: number;
+    planStage?: "candidate_ready" | "finalizing" | "completed";
+    planCandidateSaved?: boolean;
+    updatedAt: string;
+  };
+  recoveryAttempts?: number;
+  updatedAt?: string;
   result?: unknown;
   error?: string;
 }
+
+type StoryPlanGenerationResult = {
+  completed: boolean;
+  deepJobId?: string;
+};
 
 /** Default 2.5s interval — same cadence `pollVideoClipTask` uses. */
 const STORY_JOB_POLL_INTERVAL_MS = 2500;
@@ -1028,7 +1051,7 @@ export interface VerticalDramaDeepStoryDraftsActionsProps {
    * caller's own `onError` handler already surfaces the phase-1 error toast,
    * so this component does not need the rejection reason.
    */
-  onGenerateStoryBible: () => Promise<void>;
+  onGenerateStoryBible: () => Promise<StoryPlanGenerationResult | void>;
   /**
    * Feature 132 §4.4 (F132A) — the series' active "โจทย์เรื่องที่อยากได้"
    * (`series.bible.userPremise`), sourced by the parent
@@ -1147,9 +1170,10 @@ export function VerticalDramaDeepStoryDraftsActions({
    * queued/running for this series and resumes polling it, disabling the
    * primary CTA with progress shown. An `improve_script` job belongs to
    * `VerticalDramaImproveScriptCard` instead (it runs its own identical
-   * resume effect) — this component only cares about its OWN two kinds,
-   * even though the pointer is per-series (see
-   * `enqueueVerticalDramaStoryJob`'s cross-kind dedupe doc comment).
+   * resume effect) — this component also observes `plan` so initial story
+   * generation has a refresh-safe progress surface, even though the pointer
+   * is per-series (see `enqueueVerticalDramaStoryJob`'s cross-kind dedupe doc
+   * comment).
    */
   const activeStoryJobQuery =
     trpc.verticalDramaSeries.getActiveStoryJob.useQuery(
@@ -1174,6 +1198,27 @@ export function VerticalDramaDeepStoryDraftsActions({
         onProgress: (progress, kind) =>
           setStoryJobPoll({ jobId, kind, progress }),
         onSucceeded: (result, kind) => {
+          if (kind === "plan") {
+            // The worker owns the plan -> deep handoff. Refresh the active
+            // pointer so this poller can attach to the next job without a
+            // second client submission.
+            invalidateSeries();
+            const deepJobId =
+              result && typeof result === "object" &&
+              typeof (result as { deepJobId?: unknown }).deepJobId === "string"
+                ? (result as { deepJobId: string }).deepJobId
+                : null;
+            // Wait until pollStoryJob's finally block releases its in-flight
+            // guard; otherwise the refetch can arrive one microtask too early
+            // and the new deep job would not be attached on this tab.
+            if (deepJobId) {
+              window.setTimeout(() => {
+                resumedStoryJobRef.current = false;
+                void activeStoryJobQuery.refetch();
+              }, 0);
+            }
+            return;
+          }
           if (kind !== "deep_generate" && kind !== "extend") {
             // Cross-kind dedupe race (see module header doc comment) — this
             // series' active job turned out to be a critique/apply job, not
@@ -1274,7 +1319,11 @@ export function VerticalDramaDeepStoryDraftsActions({
   useEffect(() => {
     const active = activeStoryJobQuery.data;
     if (!active) return;
-    if (active.kind !== "deep_generate" && active.kind !== "extend") return;
+    if (
+      active.kind !== "plan" &&
+      active.kind !== "deep_generate" &&
+      active.kind !== "extend"
+    ) return;
     if (resumedStoryJobRef.current || storyJobPollInFlightRef.current) return;
     resumedStoryJobRef.current = true;
     void pollStoryJob(active.jobId, active.kind);
@@ -1352,12 +1401,23 @@ export function VerticalDramaDeepStoryDraftsActions({
   const runChain = async () => {
     setChainPhase("story");
     try {
-      await onGenerateStoryBible();
+      const planResult = await onGenerateStoryBible();
+      // A long-running plan may outlive this tab's polling budget. The
+      // server still owns the durable plan -> deep handoff, so stop the
+      // client chain here and let refresh-safe active-job polling continue.
+      if (planResult && planResult.completed === false) {
+        setChainPhase(null);
+        return;
+      }
+      setChainPhase("deep");
+      if (planResult?.deepJobId) {
+        await pollStoryJob(planResult.deepJobId, "deep_generate");
+        return;
+      }
     } catch {
       setChainPhase(null);
       return;
     }
-    setChainPhase("deep");
     try {
       // Large-series no-op fix (2026-07-14, see
       // `planning/vertical-drama-deep-draft-update-all-noop/plan.md`) — same
@@ -1433,7 +1493,9 @@ export function VerticalDramaDeepStoryDraftsActions({
   // "generating..."/"extending..." fallback text below.
   const thisCardProgress =
     storyJobPoll &&
-    (storyJobPoll.kind === "deep_generate" || storyJobPoll.kind === "extend")
+    (storyJobPoll.kind === "plan" ||
+      storyJobPoll.kind === "deep_generate" ||
+      storyJobPoll.kind === "extend")
       ? storyJobPoll.progress
       : undefined;
   const liveStoryJobProgressText = isPollingThisCard
@@ -1442,7 +1504,8 @@ export function VerticalDramaDeepStoryDraftsActions({
 
   const primaryProgressLabel = isChaining
     ? chainPhase === "story"
-      ? pickCopy(lang, verticalDramaCopy.deepStoryDraftsChainStoryProgress)
+      ? (liveStoryJobProgressText ??
+        pickCopy(lang, verticalDramaCopy.deepStoryDraftsChainStoryProgress))
       : (liveStoryJobProgressText ??
         pickCopy(lang, verticalDramaCopy.deepStoryDraftsChainDeepProgress))
     : (liveStoryJobProgressText ??

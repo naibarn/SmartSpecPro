@@ -12,6 +12,7 @@ import {
 import { validateMarketplaceShotMediaFile } from "@/lib/marketplaceShotMediaUpload";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { MarketplaceDramaCharacterPickerDialog } from "./MarketplaceDramaCharacterPickerDialog";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { MarketplaceDraftQualityQcPanel } from "./MarketplaceDraftQualityQcPanel";
 import {
   StagedShotCharacterRow,
@@ -50,7 +51,6 @@ export type StagedCheckpoint = {
   // `projectStagedCheckpoints`. Only ever present on the `kind ===
   // "story_plan"` checkpoint; absent/empty means no adherence concerns were
   // flagged. See ADHERENCE_WARNING_LABELS below for the code→Thai mapping.
-  adherenceWarnings?: string[] | null;
 };
 
 export type ReferenceManifestItem = {
@@ -1915,7 +1915,7 @@ export function StagedCheckpointReviewPanel(props: {
                 </label>
                 {effectiveOverlayImageUrl.trim() ? (
                   <div className="mt-2 flex items-start gap-3">
-                    <img
+                    <AuthenticatedMediaImage
                       src={effectiveOverlayImageUrl}
                       alt="ตัวอย่างภาพซ้อน"
                       className="h-16 w-16 rounded border border-slate-300 bg-slate-100 object-contain"
@@ -2045,7 +2045,10 @@ export function StagedCheckpointReviewPanel(props: {
                       overlayText: effectiveOverlayText.trim()
                         ? {
                             content: effectiveOverlayText.trim(),
-                            position: effectiveOverlayTextPosition,
+                            position:
+                              effectiveOverlayTextPosition === "top"
+                                ? "top_center"
+                                : effectiveOverlayTextPosition,
                             fontSizePx: effectiveOverlayTextSize,
                             color: effectiveOverlayTextColor,
                             fontWeight: effectiveOverlayTextWeight,
@@ -2351,7 +2354,7 @@ export function StagedCheckpointReviewPanel(props: {
                     : undefined;
                   return (
                     <div key={`char-${idx}`} className="relative group rounded-lg border border-violet-200 bg-white p-1.5 shadow-2xs">
-                      <img
+                      <AuthenticatedMediaImage
                         src={item.url}
                         alt={item.characterName || item.label || `Character ${idx + 1}`}
                         className="h-24 w-full rounded object-cover"
@@ -2656,7 +2659,7 @@ export function StagedCheckpointReviewPanel(props: {
                         : "border-slate-200 bg-slate-100 opacity-60"
                     }`}
                   >
-                    <img
+                    <AuthenticatedMediaImage
                       src={item.url}
                       alt={item.label || `Product ${idx + 1}`}
                       className="h-24 w-full rounded object-cover"
@@ -3260,7 +3263,7 @@ export function StagedCheckpointReviewPanel(props: {
                       <div className="relative">
                         {shot.imageArtifactUrl && !failedMediaUrls[shot.imageArtifactUrl] ? (
                           <div className="group relative">
-                            <img
+                            <AuthenticatedMediaImage
                               src={shot.imageArtifactUrl}
                               alt={`ผลภาพช็อตที่ ${shot.shotId}`}
                               className="aspect-[9/16] max-h-[22rem] w-full object-contain cursor-zoom-in"
@@ -3898,7 +3901,7 @@ export function StagedCheckpointReviewPanel(props: {
 
           {/* Media */}
           {lightboxType === "image" ? (
-            <img
+            <AuthenticatedMediaImage
               src={lightboxUrl}
               alt="ภาพขนาดเต็ม"
               className="max-h-[82vh] max-w-[88vw] rounded-xl shadow-2xl object-contain"

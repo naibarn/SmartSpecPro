@@ -96,9 +96,15 @@ function renderPreviewElement(
   }
 
   if (element.type === "image") {
-    const fit = (element.imageFit === "cover" || element.imageFit === "fill")
-      ? element.imageFit
-      : "contain";
+    const isFullCanvasImage = Math.abs(element.x) <= 1
+      && Math.abs(element.y) <= 1
+      && Math.abs(element.width - canvasWidth) <= 1
+      && Math.abs(element.height - canvasHeight) <= 1;
+    const fit = isFullCanvasImage
+      ? "cover"
+      : (element.imageFit === "cover" || element.imageFit === "fill")
+        ? element.imageFit
+        : "contain";
     const positionX = clampNumber(Number(element.imagePositionX ?? 50), 0, 100);
     const positionY = clampNumber(Number(element.imagePositionY ?? 50), 0, 100);
     const zoom = clampNumber(Number(element.imageZoom ?? 1), 0.5, 3);
@@ -130,7 +136,7 @@ function renderPreviewElement(
           <AuthenticatedMediaImage
             src={source}
             alt={element.alt || "Image"}
-            className="h-full w-full"
+            className="block h-full w-full"
             draggable={false}
             style={{
               objectFit: fit,

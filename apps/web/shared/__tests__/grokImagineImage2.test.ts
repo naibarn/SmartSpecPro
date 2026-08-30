@@ -19,6 +19,12 @@ describe("Grok Imagine Image 2 operation routing", () => {
         sourceMediaTaskId: "media-task-1",
       }),
     ).toBe("image-edit");
+    expect(
+      resolveGrokImagineImage2Operation({
+        modelId: GROK_IMAGINE_IMAGE_2_MODEL_ID,
+        referenceImageUrls: ["https://cdn.example.com/ref-1.png", "ref-2"],
+      }),
+    ).toBe("image-edit");
   });
 
   it("keeps segment-map as a separate operation model", () => {

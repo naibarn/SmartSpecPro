@@ -679,6 +679,8 @@ export default function DocumentPreviewPanel({
             <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-white/80 bg-black/95 p-2 shadow-sm">
               <video
                 src={sourceUrl}
+                poster={item.thumbnail_url || undefined}
+                preload="metadata"
                 controls
                 className="max-h-full w-auto max-w-full rounded-md bg-black object-contain shadow-sm"
                 onError={() => setPreviewLoadError("Video preview failed to load. Try Download File.")}

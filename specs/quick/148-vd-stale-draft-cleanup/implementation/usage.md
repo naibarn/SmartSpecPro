@@ -1,17 +1,15 @@
 # Usage guide
 
-Open `/drama-series`. After the metadata-only Draft Inbox loads, the application
-offers cleanup when at least one eligible inactive Draft is older than five
-days. Choose 5, 7, or 10 days and confirm “ลบออกจากรายการ” / “Remove from
-inbox”. The displayed count includes all matching owner-scoped Draft jobs, not
-only the first 50 visible rows.
+This cleanup flow is superseded by Feature 158. Open `/drama-series` and use
+the per-row remove action only for an unlinked Draft. The action archives the
+ledger and retains its immutable history; there is no age-based cleanup banner
+or automatic cleanup in the current Series-first workflow.
 
 The action archives terminal pre-series Draft jobs only. It does not stop active
 jobs, delete immutable Draft versions, or alter any created series.
 
 ## API
 
-- `verticalDramaSeries.listDraftJobs` returns `cleanup.counts` for keys 5, 7,
-  and 10 in addition to the existing `jobs` array.
-- `verticalDramaSeries.archiveStaleDraftJobs({ olderThanDays })` accepts only
-  `5 | 7 | 10` and returns `{ ok: true, archivedCount }`.
+- `verticalDramaSeries.listDraftJobs` returns only unlinked Draft metadata.
+- `verticalDramaSeries.archiveDraftJob({ jobId })` removes one unlinked Draft
+  from the list while retaining history.

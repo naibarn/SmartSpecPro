@@ -19,6 +19,8 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { presentationSlides } from "../../drizzle/schema";
 import { verifyBearerToken } from "../_core/tokens";
+import { normalizeManagedMediaKey } from "../services/managedMediaAccessService";
+import { storagePresignGet } from "../storage";
 import { PRESENTATION_MEDIA_MOTION_RUNTIME_CONFIG } from "@shared/presentation/mediaMotion";
 import { presentationSlideContentSchema, expandPresentationSlideContentForCompatibility } from "@shared/presentation/contracts";
 
@@ -43,6 +45,59 @@ function isInternalAddress(address: string | undefined): boolean {
 export function createSlideRenderRouter(options?: { getDb?: typeof getDb }): Router {
   const getDbImpl = options?.getDb ?? getDb;
   const router = Router();
+
+  async function resolveRenderMediaUrl(value: unknown): Promise<unknown> {
+    if (typeof value !== "string" || !value.trim()) return value;
+    const trimmed = value.trim();
+    let pathname = trimmed;
+    try {
+      if (/^https?:\/\//i.test(trimmed)) pathname = new URL(trimmed).pathname;
+    } catch {
+      return value;
+    }
+
+    const prefixes = ["/api/storage/files/", "/uploads/"];
+    const prefix = prefixes.find((candidate) => pathname.startsWith(candidate));
+    if (!prefix) return value;
+
+    const key = normalizeManagedMediaKey(pathname.slice(prefix.length));
+    if (!key) return value;
+    let presigned: Awaited<ReturnType<typeof storagePresignGet>> = null;
+    try {
+      presigned = await storagePresignGet(key, 3600);
+    } catch {
+      // The readiness gate will report the original URL as a failed media
+      // request. Do not turn a provider hiccup into an opaque HTML 500.
+      return value;
+    }
+    // Playwright has no user session. Use a short-lived direct storage URL for
+    // durable media, while retaining local/legacy URLs when presigning is not
+    // available.
+    return presigned?.url ?? value;
+  }
+
+  async function prepareSlideContentForRender(content: Record<string, any>): Promise<Record<string, any>> {
+    const elements = Array.isArray(content.elements) ? content.elements : [];
+    const resolvedElements = await Promise.all(elements.map(async (element: any) => {
+      if (!element || typeof element !== "object") return element;
+      const next = { ...element };
+      if (next.type === "image" || next.type === "video") {
+        next.src = await resolveRenderMediaUrl(next.src);
+      }
+      if (next.type === "video") {
+        next.poster = await resolveRenderMediaUrl(next.poster);
+      }
+      return next;
+    }));
+    const prepared: Record<string, any> = { ...content, elements: resolvedElements };
+    if (prepared.background?.type === "image") {
+      prepared.background = {
+        ...prepared.background,
+        url: await resolveRenderMediaUrl(prepared.background.url),
+      };
+    }
+    return prepared;
+  }
 
   router.get("/slide-render/:deckId/:slideIndex", async (req, res) => {
     // --- Layer 2: Internal network enforcement ---
@@ -101,9 +156,14 @@ export function createSlideRenderRouter(options?: { getDb?: typeof getDb }): Rou
 
     const slide = slides[urlSlideIndex];
     const parsedSlideContent = presentationSlideContentSchema.safeParse(slide.slideContent ?? {});
-    const slideContent = parsedSlideContent.success
+    const parsedContent = parsedSlideContent.success
       ? expandPresentationSlideContentForCompatibility(parsedSlideContent.data).slideContent
       : (slide.slideContent ?? {});
+    const slideContent = await prepareSlideContentForRender(
+      parsedContent && typeof parsedContent === "object" && !Array.isArray(parsedContent)
+        ? parsedContent as Record<string, any>
+        : {},
+    );
     // Escape `</script>` and `&` sequences to prevent XSS when embedding JSON in HTML
     const slideContentJson = JSON.stringify(slideContent)
       .replace(/</g, "\\u003c")
@@ -551,6 +611,7 @@ window.__slideReady = false;
 
     var src = normalizeMediaSrc(el.src);
     if (!src) {
+      readyGateMediaDegraded = true;
       return wrapper;
     }
 
@@ -560,8 +621,15 @@ window.__slideReady = false;
     img.style.width = "100%";
     img.style.height = "100%";
     img.style.display = "block";
-    // Keep default behavior aligned with editor canvas renderer.
-    img.style.objectFit = typeof el.imageFit === "string" ? el.imageFit : "contain";
+    // Full-slide images are the slide surface, so do not leave a white canvas
+    // visible around legacy records that were saved with contain.
+    var isFullCanvasImage = Math.abs(asNumber(el.x, 0)) <= 1
+      && Math.abs(asNumber(el.y, 0)) <= 1
+      && Math.abs(asNumber(el.width, 0) - canvasWidth) <= 1
+      && Math.abs(asNumber(el.height, 0) - canvasHeight) <= 1;
+    img.style.objectFit = isFullCanvasImage
+      ? "cover"
+      : (typeof el.imageFit === "string" ? el.imageFit : "contain");
     img.style.objectPosition = posX + "% " + posY + "%";
     registerMediaMotionNode(img, zoom, posX, posY, el.mediaMotion);
 
@@ -986,7 +1054,11 @@ window.__slideReady = false;
       && readyGateStableFramesReady;
 
     if (allReady) {
-      markReady("ready", null, null);
+      markReady(
+        readyGateMediaDegraded ? "degraded" : "ready",
+        readyGateMediaDegraded ? READY_GATE_DEGRADED_CODE : null,
+        readyGateMediaDegraded ? "media_failed_to_load" : null
+      );
       return;
     }
 
@@ -1004,6 +1076,12 @@ window.__slideReady = false;
       if (!layoutState.baseLayoutReady || !layoutState.textReady) {
         markReady("failed", READY_GATE_FAIL_CODE, "base_layout_or_text_not_ready");
       } else {
+        // An unresolved image/video/background is not a safe screenshot. Keep
+        // mediaDegraded=true so the worker cannot package a white frame after
+        // the hard timeout expires.
+        if (!readyGateMediaReady) {
+          readyGateMediaDegraded = true;
+        }
         var degradeReason = readyGateFontTimedOut ? "fonts_timeout" : "non_critical_assets_unresolved";
         markReady("degraded", READY_GATE_DEGRADED_CODE, degradeReason);
       }

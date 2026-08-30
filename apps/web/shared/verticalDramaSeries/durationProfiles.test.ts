@@ -4,6 +4,8 @@ import {
   createMixedVerticalDramaDurationPlan,
   createUniformVerticalDramaDurationPlan,
   deriveVerticalDramaEpisodeRuntimeSeconds,
+  estimateVerticalDramaSeriesRuntimeSeconds,
+  formatVerticalDramaRuntimeSeconds,
   formatVerticalDramaDurationPlan,
   readVerticalDramaDurationPlan,
   resolveVerticalDramaEpisodeDurationPlan,
@@ -22,6 +24,18 @@ describe("Vertical Drama duration profiles", () => {
     const plan = createMixedVerticalDramaDurationPlan([8, 8, 10, 10, 15, 15, 20, 25, 30]);
     expect(plan.shotDurationsSeconds).toHaveLength(9);
     expect(deriveVerticalDramaEpisodeRuntimeSeconds(plan)).toBe(141);
+  });
+
+  it("calculates the live season runtime for a proposed episode count", () => {
+    expect(
+      estimateVerticalDramaSeriesRuntimeSeconds({
+        episodeCount: 50,
+        shotDurationSeconds: 8,
+      })
+    ).toBe(3600);
+    expect(formatVerticalDramaRuntimeSeconds(3600, "th")).toBe(
+      "ประมาณ 60 นาที 0 วินาที"
+    );
   });
 
   it("does not accept unsupported or incomplete profiles", () => {

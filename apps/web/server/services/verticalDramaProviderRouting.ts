@@ -177,6 +177,14 @@ function normalizeAspectRatios(
 function configSupportsFirstLastFrame(cfg: Record<string, unknown>): boolean {
   if (cfg.apiPayloadFormat === "veo") return true;
   const fields = (cfg.inputFields as Array<Record<string, unknown>> | undefined) ?? [];
+  const fieldKeys = new Set(
+    fields.map((field) => String(field.key ?? "").trim().toLowerCase()),
+  );
+  // Market-style providers such as Kie.ai Gemini Omni expose the two frame
+  // URLs directly instead of using Veo's FIRST_AND_LAST_FRAMES_2_VIDEO mode.
+  if (fieldKeys.has("first_frame_url") && fieldKeys.has("last_frame_url")) {
+    return true;
+  }
   for (const f of fields) {
     const options = (f.options as Array<{ value?: string }> | undefined) ?? [];
     if (options.some((o) => o.value === "FIRST_AND_LAST_FRAMES_2_VIDEO")) return true;

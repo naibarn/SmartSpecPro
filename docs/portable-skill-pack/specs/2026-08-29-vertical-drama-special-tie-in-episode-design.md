@@ -242,7 +242,7 @@ type SpecialTieInInput = {
   imageModelId: string; // special-episode selection, not normal-series memory
   videoModelId: string; // special-episode selection, not normal-series memory
   dialogueMode: "none" | "character_dialogue";
-  dialogueBrief?: string; // max 3000 chars; exact lines or guidance for the skill
+  dialogueBrief?: string; // max 3000 chars; prefix locked lines with `EXACT:`; other text is guidance
   speakerCharacterIds: string[]; // 0..3, subset of characterIds
   allowAdditionalCharacters: boolean;
   lockCharacterReferences: boolean;

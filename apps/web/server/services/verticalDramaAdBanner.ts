@@ -510,6 +510,7 @@ export async function generateAdBannerPrompt(
     tenantId: params.tenantId,
     amount: creditsUsed,
     description: `Vertical Drama — generate ad banner prompt (series #${params.seriesId}, banner ${params.bannerId})`,
+    skillSlug: "vertical-drama-ad-banner-prompt",
     sourceType: "skill",
     metadata: {
       model,

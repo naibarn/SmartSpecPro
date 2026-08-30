@@ -1,7 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { libraryItems } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { storageExists, storagePut } from "../storage";
+import { assertR2StorageActive, storageExists, storagePut } from "../storage";
 
 const MAX_MEDIA_BYTES = 100 * 1024 * 1024;
 
@@ -153,6 +153,7 @@ export async function backfillLibraryMedia(
     }
 
     try {
+      await assertR2StorageActive();
       const downloaded = await downloadExternalImage(sourceUrl);
       const key = `library/backfill/${row.tenantId}/${row.ownerUserId}/${row.id}${extensionFor(downloaded.contentType, sourceUrl)}`;
       const stored = await storagePut(key, downloaded.bytes, downloaded.contentType);

@@ -49,7 +49,7 @@ import { pipeline } from "stream/promises";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import { verticalDramaEpisodes } from "../../drizzle/schema";
-import { storagePutFromPath, storageStreamFile } from "../storage";
+import { assertR2StorageActive, storagePutFromPath, storageStreamFile } from "../storage";
 import type { VerticalDramaMotionPromptPack } from "@shared/verticalDramaSeries";
 import { resolveCanonicalShotAssembly } from "@shared/verticalDramaSeries/assemblyReadiness";
 import type { VdAdBannerPlacementId } from "@shared/verticalDramaSeries/adBannerPresets";
@@ -101,6 +101,7 @@ import {
   type VdTextOverlayAssEvent,
   type VdTextOverlayAssKind,
 } from "./verticalDramaFinalRenderGraph";
+import { normalizeStorageCapacityError } from "./storageCapacityError";
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -170,6 +171,9 @@ export interface CompiledVideoState {
   assembledAt?: string;
   status?: CompiledVideoStatus;
   error?: string;
+  /** True when the compiled artifact already contains the active B-roll
+   * projection. Production assembly must not overlay the same track again. */
+  brollApplied?: boolean;
   /**
    * Additive (`planning/vd-remotion-render-option/plan.md`, wave 1) — which
    * render engine produced/owns this `compiledVideo` state. Omitted means
@@ -386,7 +390,7 @@ function slugForFilename(raw: string | number | undefined | null): string {
   return (
     s
       .normalize("NFKD")
-      .replace(/[^\w\-]+/g, "-")
+      .replace(/[^\p{L}\p{M}\p{N}_-]+/gu, "-")
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "")
       .slice(0, 80) || "untitled"
@@ -1106,19 +1110,24 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
   const probeDuration = args.probeDurationSecondsFn ?? probeDurationSeconds;
   jobs.set(jobId, { jobId, owner, status: "pending" });
 
-  const workDir = await fsp.mkdtemp(path.join(os.tmpdir(), "vd-assembly-"));
+  let workDir: string | undefined;
+  let failureTargetPath = os.tmpdir();
   try {
+    workDir = await fsp.mkdtemp(path.join(os.tmpdir(), "vd-assembly-"));
+    failureTargetPath = workDir;
     const inputPaths: string[] = [];
     for (const clip of clips) {
       const dest = path.join(
         workDir,
         `clip-${String(clip.clipNumber).padStart(3, "0")}.mp4`
       );
+      failureTargetPath = dest;
       await downloadClipToFile(clip.videoUrl!, dest, internalBaseUrl);
       inputPaths.push(dest);
     }
 
     const concatListPath = path.join(workDir, "concat.txt");
+    failureTargetPath = concatListPath;
     await fsp.writeFile(
       concatListPath,
       buildConcatListFileContent(inputPaths),
@@ -1126,6 +1135,7 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
     );
 
     const outputPath = path.join(workDir, "output.mp4");
+    failureTargetPath = outputPath;
 
     const hasFinalRenderInputs = Boolean(
       args.banners?.length ||
@@ -1347,6 +1357,7 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
     const durationSeconds = await probeDuration(outputPath);
 
     const storageKey = `${args.storageKeyPrefix ?? "vertical-drama/compiled"}/${owner.seriesId}/${owner.episodeId}/${randomUUID()}-${filename}`;
+    await assertR2StorageActive();
     const { url } = await storagePutFromPath(
       storageKey,
       outputPath,
@@ -1374,7 +1385,9 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
       );
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const rawMessage = err instanceof Error ? err.message : String(err);
+    const message =
+      normalizeStorageCapacityError(err, failureTargetPath) ?? rawMessage;
     jobs.set(jobId, { jobId, owner, status: "failed", error: message });
     await persistCompiledVideoState(owner, {
       pendingJobId: undefined,
@@ -1384,7 +1397,9 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
       /* best-effort — job status is still readable via jobs map while process is alive */
     });
   } finally {
-    await fsp.rm(workDir, { recursive: true, force: true }).catch(() => {});
+    if (workDir) {
+      await fsp.rm(workDir, { recursive: true, force: true }).catch(() => {});
+    }
   }
 }
 

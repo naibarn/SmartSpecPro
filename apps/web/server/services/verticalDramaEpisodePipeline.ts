@@ -154,6 +154,7 @@ import {
   generateVideoMotionPromptPack,
   syncDialogueOntoMotionPromptClips,
   syncStartFramesOntoMotionPromptClips,
+  syncStopFramesOntoMotionPromptClips,
   // Speaker-aware sub-shots task (Package 5, 2026-07-11 consolidated-clip
   // redesign) — SAME per-shot speaker-switch generator
   // `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt` mutation uses
@@ -196,6 +197,7 @@ import {
   type VerticalDramaCharacterDescriptorSource,
 } from "@shared/verticalDramaSeries/characterIdentityMap";
 import {
+  findVerticalDramaCharacterLookReuseCandidate,
   getVerticalDramaCharacterLookSemanticKey,
   isVerticalDramaCharacterAgeStage,
   normalizeVerticalDramaCharacterLookImageBrief,
@@ -1335,6 +1337,15 @@ async function resolvePipelineCharacterLooks(params: {
     }
   >();
   const pendingSuggestions: typeof selection.suggestions = [];
+  const pendingSuggestionKeys = new Set<string>();
+  const queuePendingSuggestion = (
+    suggestion: (typeof selection.suggestions)[number],
+    selectedKey: string
+  ) => {
+    if (pendingSuggestionKeys.has(selectedKey)) return;
+    pendingSuggestionKeys.add(selectedKey);
+    pendingSuggestions.push(suggestion);
+  };
 
   const readCharacterData = (row: PipelineCharacterLookRow) =>
     row.data && typeof row.data === "object" && !Array.isArray(row.data)
@@ -1387,22 +1398,61 @@ async function resolvePipelineCharacterLooks(params: {
       parentCharacterKey: suggestion.parentCharacterKey,
       canonicalIntent: suggestion.canonicalIntent,
       variantType: suggestion.variantType,
-      requestKey: suggestion.requestKey,
     });
-    const legacySemanticKey = getVerticalDramaCharacterLookSemanticKey({
+    const existingCandidate = findVerticalDramaCharacterLookReuseCandidate({
+      candidates: rows.flatMap(row => {
+        if (row.parentCharacterId !== parent.id) return [];
+        const data = readCharacterData(row);
+        const lookDesign =
+          data.lookDesign &&
+          typeof data.lookDesign === "object" &&
+          !Array.isArray(data.lookDesign)
+            ? (data.lookDesign as Record<string, unknown>)
+            : undefined;
+        const ageStage = isVerticalDramaCharacterAgeStage(lookDesign?.age_stage)
+          ? lookDesign.age_stage
+          : undefined;
+        const wardrobeRules = Array.isArray(data.wardrobeRules)
+          ? data.wardrobeRules.filter(
+              (value): value is string => typeof value === "string"
+            )
+          : undefined;
+        return [
+          {
+            characterKey: row.characterKey,
+            name: row.name,
+            parentCharacterKey: parent.characterKey,
+            ...(row.variantLabel ? { variantLabel: row.variantLabel } : {}),
+            ...(row.variantType === "outfit" || row.variantType === "age_stage"
+              ? { variantType: row.variantType }
+              : {}),
+            ...(ageStage ? { ageStage } : {}),
+            ...(typeof data.description === "string"
+              ? { description: data.description }
+              : {}),
+            ...(wardrobeRules?.length ? { wardrobeRules } : {}),
+            ...(typeof data.lookSemanticKey === "string"
+              ? { lookSemanticKey: data.lookSemanticKey }
+              : {}),
+            ...(typeof data.lookRequestKey === "string"
+              ? { lookRequestKey: data.lookRequestKey }
+              : {}),
+            hasPortrait: row.hasPortrait,
+            isSystemSuggested: data.source === "system_suggested_look",
+            rowId: row.id,
+          },
+        ];
+      }),
       parentCharacterKey: suggestion.parentCharacterKey,
-      canonicalIntent: suggestion.canonicalIntent,
       variantType: suggestion.variantType,
+      canonicalIntent: suggestion.canonicalIntent,
+      variantLabel: suggestion.variantLabel,
+      requestKey: suggestion.requestKey,
+      semanticKey,
     });
-    const existing = rows.find(row => {
-      if (row.parentCharacterId !== parent.id) return false;
-      const data = readCharacterData(row);
-      return (
-        data.lookRequestKey === suggestion.requestKey ||
-        data.lookSemanticKey === semanticKey ||
-        data.lookSemanticKey === legacySemanticKey
-      );
-    });
+    const existing = existingCandidate
+      ? rowsByKey.get(existingCandidate.characterKey)
+      : undefined;
     let selectedKey = existing?.characterKey;
     if (existing) {
       const existingData = readCharacterData(existing);
@@ -1516,13 +1566,16 @@ async function resolvePipelineCharacterLooks(params: {
           await updateCharacterData(existing, nextData);
         }
         if (repairable) {
-          pendingSuggestions.push({
-            ...suggestion,
-            legacyVisualContext: readLegacyVisualContext(
-              existingData,
-              row.variantLabel
-            ),
-          });
+          queuePendingSuggestion(
+            {
+              ...suggestion,
+              legacyVisualContext: readLegacyVisualContext(
+                existingData,
+                existing.variantLabel
+              ),
+            },
+            existing.characterKey
+          );
         }
         requestState.set(suggestion.requestKey, {
           selectedKey: existing.characterKey,
@@ -1665,7 +1718,9 @@ async function resolvePipelineCharacterLooks(params: {
           semanticKey,
           status: "waiting_for_look_design",
         });
-        if (insertedByThisRun) pendingSuggestions.push(suggestion);
+        if (insertedByThisRun) {
+          queuePendingSuggestion(suggestion, inserted.characterKey);
+        }
       }
     }
   }
@@ -1783,6 +1838,9 @@ async function resolvePipelineCharacterLooks(params: {
           continue;
         }
         const beforeDataHash = stableCharacterLookDesignFingerprint(rowData);
+        const reviewRequiredForSuggestion = designResult.reviewRequired.has(
+          suggestion.requestKey
+        );
         const provenance =
           rowData.provenance && typeof rowData.provenance === "object"
             ? (rowData.provenance as Record<string, unknown>)
@@ -1798,7 +1856,7 @@ async function resolvePipelineCharacterLooks(params: {
           lookDesign: designed.lookDesign,
           lookDesignContractVersion:
             VERTICAL_DRAMA_CHARACTER_LOOK_DESIGN_CONTRACT_VERSION,
-          lookDesignStatus: "ready",
+          lookDesignStatus: reviewRequiredForSuggestion ? "review" : "ready",
           lookSemanticKey: state.semanticKey,
           lookRequestKey: suggestion.requestKey,
           suggestedFromShotNumbers: suggestion.sourceShotNumbers,
@@ -1833,10 +1891,16 @@ async function resolvePipelineCharacterLooks(params: {
                   },
                 }
               : {}),
+            ...(reviewRequiredForSuggestion
+              ? {
+                  reviewReason:
+                    designed.reviewReason ?? "llm_marked_review_required",
+                }
+              : {}),
           },
         };
         await updateCharacterData(row, nextData);
-        state.status = "ready";
+        state.status = reviewRequiredForSuggestion ? "review" : "ready";
       }
     } catch (error) {
       debugError(
@@ -1872,6 +1936,9 @@ async function resolvePipelineCharacterLooks(params: {
             return {
               ...assignment,
               selectedLookKey: state.selectedKey,
+              ...(row?.parentCharacterId != null
+                ? { mode: "matched_existing" as const }
+                : {}),
               status,
             };
           }),
@@ -6669,6 +6736,12 @@ export class VerticalDramaEpisodePipeline {
           generated.pack,
           episode.startFramePlan
         );
+        if (typeof syncStopFramesOntoMotionPromptClips === "function") {
+          generated.pack = syncStopFramesOntoMotionPromptClips(
+            generated.pack,
+            episode.startFramePlan
+          );
+        }
         // Final-prompt QC (hard length cap) — BEFORE this pack is persisted
         // or used to render a paid video clip. Zero-cost no-op for clips
         // already within the selected provider's video-prompt budget.

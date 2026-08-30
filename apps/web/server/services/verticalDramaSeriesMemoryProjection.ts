@@ -81,6 +81,15 @@ import {
 } from "@shared/verticalDramaSeries/seriesMemoryState";
 import { VERTICAL_DRAMA_MEMORY_RETRIEVAL_POLICY_DEFAULT } from "@shared/verticalDramaSeries/memory";
 import { normalizeVerticalDramaContinuityTimeline } from "@shared/verticalDramaSeries/storyContinuity";
+import {
+  relationshipGraphDeltaSchema,
+  type RelationshipGraphDelta,
+} from "@shared/verticalDramaSeries/longFormContracts";
+import {
+  VD_THREAD_CLOSURE_DISPOSITIONS,
+  VD_THREAD_CLOSURE_INTENTS,
+  type VdThreadClosureAnnotation,
+} from "@shared/verticalDramaSeries/closureAssurance";
 
 /* -------------------------------------------------------------------------- */
 /* 1. Raw `episode_memory` LLM block -> trustworthy `VdEpisodeMemory`          */
@@ -124,6 +133,8 @@ const vdOpenThreadBlockSchema = z
       .enum(["this_episode", "future_episode", "season"])
       .optional(),
     expected_resolution_episode: z.number().int().positive().optional(),
+    closure_intent: z.enum(VD_THREAD_CLOSURE_INTENTS).optional(),
+    expected_evidence: z.array(z.string().min(1)).max(12).optional(),
   })
   .passthrough();
 
@@ -144,10 +155,26 @@ const vdRelationshipChangeBlockSchema = z
   })
   .passthrough();
 
+/** Strict Feature 153 graph mutation; legacy relationship_changes remains a derived compatibility field. */
+const vdRelationshipGraphDeltaBlockSchema = relationshipGraphDeltaSchema;
+
 const vdKnowledgeChangeBlockSchema = z
   .object({
     character_key: z.string().min(1),
     learned: z.string().min(1),
+  })
+  .passthrough();
+
+const vdThreadClosureBlockSchema = z
+  .object({
+    thread_id: z.string().min(1),
+    disposition: z.enum(VD_THREAD_CLOSURE_DISPOSITIONS),
+    evidence_episode_numbers: z
+      .array(z.number().int().positive())
+      .max(32)
+      .default([]),
+    rationale: z.string().min(1).max(1000),
+    confidence: z.enum(["high", "medium", "low"]).optional(),
   })
   .passthrough();
 
@@ -167,6 +194,10 @@ export const episodeMemoryBlockSchema = z
     threads_opened: z.array(vdOpenThreadBlockSchema).default([]),
     threads_resolved: z.array(z.string().min(1)).default([]),
     relationship_changes: z.array(vdRelationshipChangeBlockSchema).default([]),
+    relationship_graph_deltas: z
+      .array(vdRelationshipGraphDeltaBlockSchema)
+      .optional(),
+    thread_closures: z.array(vdThreadClosureBlockSchema).optional(),
     knowledge_changes: z.array(vdKnowledgeChangeBlockSchema).default([]),
   })
   .passthrough();
@@ -196,15 +227,34 @@ function toVdEpisodeMemory(
     ...(thread.expected_resolution_episode
       ? { expectedResolutionEpisode: thread.expected_resolution_episode }
       : {}),
+    ...(thread.closure_intent ? { closureIntent: thread.closure_intent } : {}),
+    ...(thread.expected_evidence
+      ? { expectedEvidence: thread.expected_evidence }
+      : {}),
   }));
-  const relationshipChanges: VdRelationshipState[] =
-    parsed.relationship_changes.map(relationship => ({
-      pair: relationship.pair,
-      status: relationship.status,
-      disclosure: relationship.disclosure,
-      knownBy: relationship.known_by,
-      sinceEpisode: episodeNumber,
-    }));
+  const relationshipGraphDeltas = parsed.relationship_graph_deltas?.map(
+    delta => delta as RelationshipGraphDelta
+  );
+  const relationshipChanges: VdRelationshipState[] = relationshipGraphDeltas
+    ? relationshipGraphDeltas.map(delta => ({
+        pair: [delta.fromCharacterKey, delta.toCharacterKey],
+        status: delta.operation === "end" ? "ended" : delta.relationType,
+        disclosure:
+          delta.disclosure === "private"
+            ? "secret"
+            : delta.disclosure === "misunderstood"
+              ? "undeclared"
+              : delta.disclosure,
+        knownBy: delta.knownByCharacterKeys,
+        sinceEpisode: episodeNumber,
+      }))
+    : parsed.relationship_changes.map(relationship => ({
+        pair: relationship.pair,
+        status: relationship.status,
+        disclosure: relationship.disclosure,
+        knownBy: relationship.known_by,
+        sinceEpisode: episodeNumber,
+      }));
   return {
     episodeNumber,
     recap: parsed.recap,
@@ -212,6 +262,20 @@ function toVdEpisodeMemory(
     threadsOpened,
     threadsResolved: parsed.threads_resolved,
     relationshipChanges,
+    ...(relationshipGraphDeltas ? { relationshipGraphDeltas } : {}),
+    ...(parsed.thread_closures
+      ? {
+          threadClosures: parsed.thread_closures.map(
+            (closure): VdThreadClosureAnnotation => ({
+              threadId: closure.thread_id,
+              disposition: closure.disposition,
+              evidenceEpisodeNumbers: closure.evidence_episode_numbers,
+              rationale: closure.rationale,
+              ...(closure.confidence ? { confidence: closure.confidence } : {}),
+            })
+          ),
+        }
+      : {}),
     knowledgeChanges: parsed.knowledge_changes.map(change => ({
       characterKey: change.character_key,
       learned: change.learned,
@@ -349,9 +413,7 @@ export function buildCompactSummary(
       : "- (none recorded yet)",
     "",
     "OPEN THREADS:",
-    openThreadLines.length > 0
-      ? openThreadLines.join("\n")
-      : "- (none open)",
+    openThreadLines.length > 0 ? openThreadLines.join("\n") : "- (none open)",
     "",
     "CANONICAL FACTS:",
     canonicalFactLines.length > 0
@@ -484,7 +546,11 @@ export async function upsertEpisodeMemories(
       ep != null && typeof ep.episodeNumber === "number"
   );
   if (incoming.length === 0) {
-    return { mergedEpisodeCount: 0, newEpisodeCount: 0, skippedUserEdited: false };
+    return {
+      mergedEpisodeCount: 0,
+      newEpisodeCount: 0,
+      skippedUserEdited: false,
+    };
   }
 
   return db.transaction(async tx => {
@@ -530,9 +596,12 @@ export async function upsertEpisodeMemories(
         };
       }
       const mergedEpisodes = normalizeVerticalDramaContinuityTimeline(
-        appendNewOnlyEpisodes(stored.episodes, incoming),
+        appendNewOnlyEpisodes(stored.episodes, incoming)
       ).episodes;
-      const nextMemory: VdSeriesMemory = { ...stored, episodes: mergedEpisodes };
+      const nextMemory: VdSeriesMemory = {
+        ...stored,
+        episodes: mergedEpisodes,
+      };
       await tx
         .update(verticalDramaSeries)
         .set({ memory: nextMemory, updatedAt: new Date() })
@@ -548,7 +617,7 @@ export async function upsertEpisodeMemories(
     // resolution that cannot be tied to an opening in the chronological
     // series ledger; otherwise one bad ID poisons every later media gate.
     const normalized = normalizeVerticalDramaContinuityTimeline(
-      supersedeEpisodes(stored.episodes, incoming),
+      supersedeEpisodes(stored.episodes, incoming)
     );
     const mergedEpisodes = normalized.episodes;
     const currentState = foldSeriesMemory(mergedEpisodes);
@@ -595,7 +664,7 @@ export async function upsertEpisodeMemory(
 export async function repairSeriesMemoryContinuity(
   seriesId: number,
   tenantId: string,
-  userId: number,
+  userId: number
 ): Promise<{
   quarantinedResolutionCount: number;
   quarantinedOpeningCount: number;
@@ -604,7 +673,7 @@ export async function repairSeriesMemoryContinuity(
     const ownershipWhere = and(
       eq(verticalDramaSeries.id, seriesId),
       eq(verticalDramaSeries.tenantId, tenantId),
-      eq(verticalDramaSeries.userId, userId),
+      eq(verticalDramaSeries.userId, userId)
     );
     const [row] = await tx
       .select({ memory: verticalDramaSeries.memory })
@@ -616,7 +685,9 @@ export async function repairSeriesMemoryContinuity(
     }
 
     const stored = readStoredSeriesMemory(row.memory);
-    const normalized = normalizeVerticalDramaContinuityTimeline(stored.episodes);
+    const normalized = normalizeVerticalDramaContinuityTimeline(
+      stored.episodes
+    );
     if (
       normalized.quarantinedResolutions.length === 0 &&
       normalized.quarantinedOpenings.length === 0
@@ -632,11 +703,11 @@ export async function repairSeriesMemoryContinuity(
           currentState: foldSeriesMemory(normalized.episodes),
           compactSummary: buildCompactSummary(
             foldSeriesMemory(normalized.episodes),
-            normalized.episodes,
+            normalized.episodes
           ),
           lastFoldedEpisode: normalized.episodes.reduce(
             (max, episode) => Math.max(max, episode.episodeNumber),
-            0,
+            0
           ),
         };
     await tx
@@ -673,7 +744,11 @@ export async function persistDeepDraftEpisodeMemories(
     .map(item => item.episodeMemory)
     .filter((memory): memory is VdEpisodeMemory => memory != null);
   if (episodeMemories.length === 0) {
-    return { mergedEpisodeCount: 0, newEpisodeCount: 0, skippedUserEdited: false };
+    return {
+      mergedEpisodeCount: 0,
+      newEpisodeCount: 0,
+      skippedUserEdited: false,
+    };
   }
   return upsertEpisodeMemories(
     owner.seriesId,

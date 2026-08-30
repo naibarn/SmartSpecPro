@@ -11,13 +11,14 @@ async function main() {
   const tenantId = readArg("tenant") || process.env.TENANT_ID;
   const userId = Number(readArg("user") || process.env.USER_ID);
   if (!tenantId || !Number.isInteger(userId) || userId <= 0) {
-    throw new Error("Usage: npm run backfill:vertical-drama-media -- --tenant=<tenant-id> --user=<user-id> [--series=<id>] [--apply] [--limit=<n>]");
+    throw new Error("Usage: npm run backfill:vertical-drama-media -- --tenant=<tenant-id> --user=<user-id> [--series=<id>] [--episode=<id>] [--apply] [--limit=<n>]");
   }
   getDb();
   const report = await backfillVerticalDramaMedia({
     tenantId,
     userId,
     seriesId: readArg("series") ? Number(readArg("series")) : undefined,
+    episodeId: readArg("episode") ? Number(readArg("episode")) : undefined,
     apply: process.argv.includes("--apply"),
     limit: readArg("limit") ? Number(readArg("limit")) : undefined,
   });

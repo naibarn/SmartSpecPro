@@ -7,7 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { Sparkles, Wand2, Video, Code2, FileText, Globe, BarChart3, Languages, Bot, Zap, Settings2, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const iconMap: Record<string, React.ElementType> = {
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   wand2: Wand2,
   sparkles: Sparkles,
   video: Video,

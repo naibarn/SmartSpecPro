@@ -176,6 +176,7 @@ const AdminServices = lazy(() => import("./pages/AdminServices"));
 const AdminSettings = lazy(() => import("./pages/AdminSettings"));
 const AdminFinanceRules = lazy(() => import("./pages/AdminFinanceRules"));
 const AdminBillingCenter = lazy(() => import("./pages/AdminBillingCenter"));
+const AdminDatabaseBackups = lazy(() => import("./pages/AdminDatabaseBackups"));
 const AdminQueueDashboard = lazy(() => import("./pages/AdminQueueDashboard"));
 const AdminQueueLLM = lazy(() => import("./pages/AdminQueueLLM"));
 const AdminQueueMedia = lazy(() => import("./pages/AdminQueueMedia"));
@@ -300,6 +301,7 @@ const WebhookTriggers = lazy(() => import("./pages/WebhookTriggers"));
 const AdminChannelRouter = lazy(() => import("./pages/AdminChannelRouter"));
 const AdminSystemGuardian = lazy(() => import("./pages/AdminSystemGuardian"));
 const AdminMonitoring = lazy(() => import("./pages/AdminMonitoring"));
+const AdminCapacityAdvisor = lazy(() => import("./pages/AdminCapacityAdvisor"));
 const AdminOcrUsage = lazy(() => import("./pages/AdminOcrUsage"));
 const AdminWorkOsDashboard = lazy(() => import("./pages/AdminWorkOsDashboard"));
 const AdminFeedbackHub = lazy(() => import("./pages/AdminFeedbackHub"));
@@ -841,6 +843,11 @@ function Router() {
               <AdminBillingCenter />
             </RequireAdmin>
           </Route>
+          <Route path="/admin/database-backups">
+            <RequireAdmin>
+              <AdminDatabaseBackups />
+            </RequireAdmin>
+          </Route>
           <Route path="/admin/queues">
             <RequireAdmin>
               <AdminQueueDashboard />
@@ -939,6 +946,11 @@ function Router() {
           <Route path="/admin/monitoring">
             <RequireAdmin>
               <AdminMonitoring />
+            </RequireAdmin>
+          </Route>
+          <Route path="/admin/capacity-advisor">
+            <RequireAdmin>
+              <AdminCapacityAdvisor />
             </RequireAdmin>
           </Route>
           <Route path="/admin/ocr-usage">

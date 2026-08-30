@@ -1,4 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
+
+vi.hoisted(() => {
+  process.env.CONTROL_PLANE_API_KEY = "test-control-plane-key-0001";
+});
+
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 import * as db from "./db";
@@ -131,6 +136,7 @@ describe("gallery.list (public)", () => {
       limit: 50,
       offset: 0,
       isPublished: true,
+      includeGlobal: true,
     });
   });
 
@@ -147,6 +153,7 @@ describe("gallery.list (public)", () => {
       limit: 50,
       offset: 0,
       isPublished: true,
+      includeGlobal: true,
     });
   });
 
@@ -163,6 +170,7 @@ describe("gallery.list (public)", () => {
       limit: 50,
       offset: 0,
       isPublished: true,
+      includeGlobal: true,
     });
   });
 });
@@ -277,7 +285,11 @@ describe("gallery.adminList (admin only)", () => {
     const result = await caller.gallery.adminList({ limit: 50 });
 
     expect(result).toEqual(mockItems);
-    expect(db.getGalleryItems).toHaveBeenCalledWith({ limit: 50, offset: 0 });
+    expect(db.getGalleryItems).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 0,
+      includeGlobal: true,
+    });
   });
 
   it("rejects non-admin users", async () => {
@@ -343,6 +355,28 @@ describe("gallery.create (admin only)", () => {
   });
 });
 
+describe("gallery.importFromUrl (admin only)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("reuses a managed relative storage URL", async () => {
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.gallery.importFromUrl({
+      url: "/api/storage/files/images/generated/task-1.png",
+      folder: "images",
+    });
+
+    expect(result).toEqual({
+      fileKey: "images/generated/task-1.png",
+      fileUrl: "/api/storage/files/images/generated/task-1.png",
+      contentType: "application/octet-stream",
+    });
+  });
+});
+
 describe("gallery.update (admin only)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -379,15 +413,29 @@ describe("gallery.delete (admin only)", () => {
   });
 
   it("deletes a gallery item", async () => {
-    vi.mocked(db.deleteGalleryItem).mockResolvedValue();
+    vi.mocked(db.deleteGalleryItem).mockResolvedValue(true);
 
-    const ctx = createAdminContext();
+    const ctx = {
+      ...createAdminContext(),
+      tenantId: "tenant-smartaihub",
+    };
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.gallery.delete({ id: 1 });
 
     expect(result).toEqual({ success: true });
-    expect(db.deleteGalleryItem).toHaveBeenCalledWith(1);
+    expect(db.deleteGalleryItem).toHaveBeenCalledWith(1, "tenant-smartaihub");
+  });
+
+  it("does not report success when no gallery item was deleted", async () => {
+    vi.mocked(db.deleteGalleryItem).mockResolvedValue(false);
+
+    const ctx = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(caller.gallery.delete({ id: 1 })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 
   it("rejects non-admin users", async () => {

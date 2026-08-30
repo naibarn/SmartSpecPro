@@ -28,8 +28,8 @@ import { billingEnvelopeFromMetadata } from "../services/workerBillingService";
 import {
   GEMINI_OMNI_AUDIO_CAPABILITY,
   GEMINI_OMNI_CHARACTER_CAPABILITY,
-  GEMINI_OMNI_VIDEO_MODEL_ID,
   buildGeminiOmniProviderExtraParams,
+  isGeminiOmniVideoModelId,
   validateGeminiOmniVideoInput,
 } from "../../shared/geminiOmni";
 import { createInternalTokenFromAuth } from "../_core/tokens";
@@ -54,6 +54,10 @@ import {
   getUnifiedMediaTask,
 } from "../services/mediaTaskPollingService";
 import {
+  getPresentationDeckDetail,
+} from "../services/presentationService";
+import { registerPresentationBuilderImageJob } from "../services/presentationBuilderImageJobService";
+import {
   applyMediaArtifactProjection,
   durabilizeMediaTaskHistory,
   ensureMediaTaskArtifactsForPolling,
@@ -73,6 +77,7 @@ import {
 } from "../services/mediaProviderUtils";
 import {
   getAllModelsAsync,
+  filterModelsByMcpProviderAccess,
   getDefaultModel,
   getModelMetadata,
   getModelsByTypeAsync,
@@ -80,6 +85,7 @@ import {
   refreshModelCache,
   mapToApiModelId,
 } from "../services/modelRegistry";
+import { listConnectedMcpProviderKeys } from "../services/mcpConnectionService";
 import {
   resolveTransparentBackgroundRequest,
   type TransparentBackgroundCapability,
@@ -425,7 +431,7 @@ async function preflightGeminiOmniVideoRequest(params: {
   referenceVideoUrl?: string;
   extraParams?: Record<string, any>;
 }): Promise<Record<string, unknown> | null> {
-  if (params.model !== GEMINI_OMNI_VIDEO_MODEL_ID) {
+  if (!isGeminiOmniVideoModelId(params.model)) {
     return null;
   }
 
@@ -441,6 +447,9 @@ async function preflightGeminiOmniVideoRequest(params: {
     audioIds,
     duration: params.duration,
     resolution: params.resolution,
+    modelId: params.model,
+    firstFrameUrl: params.extraParams?.first_frame_url ?? params.extraParams?.firstFrameUrl,
+    lastFrameUrl: params.extraParams?.last_frame_url ?? params.extraParams?.lastFrameUrl,
   });
 
   if (!validation.ok) {
@@ -478,6 +487,9 @@ async function preflightGeminiOmniVideoRequest(params: {
     audioIds,
     duration: params.duration,
     resolution: params.resolution,
+    modelId: params.model,
+    firstFrameUrl: params.extraParams?.first_frame_url ?? params.extraParams?.firstFrameUrl,
+    lastFrameUrl: params.extraParams?.last_frame_url ?? params.extraParams?.lastFrameUrl,
   });
 }
 
@@ -900,7 +912,12 @@ export async function reconcileTaskCredits(params: {
 
     // Get reserved credits from task parameters (stored during submission)
     const taskParams = task.parameters ?? {};
+    // `media_tasks.parameters` is written by the Python worker using the
+    // persisted snake_case field name. Keep accepting the camelCase shape
+    // used by older Node-side callers, otherwise a terminal provider failure
+    // can leave a reserved credit charge unreconciled.
     const extraParams = (taskParams as Record<string, unknown>).extraParams as Record<string, unknown> | undefined
+      ?? (taskParams as Record<string, unknown>).extra_params as Record<string, unknown> | undefined
       ?? taskParams;
     const skillRunId = typeof (taskParams as Record<string, unknown>).skill_billing_run_id === "string"
       ? (taskParams as Record<string, unknown>).skill_billing_run_id as string
@@ -938,13 +955,21 @@ export async function reconcileTaskCredits(params: {
 
     if (!reservedCredits || reservedCredits <= 0) return noOp;
 
-    if (task.status === "failed") {
+    const terminalFailure = ["failed", "cancelled", "expired"].includes(
+      task.status,
+    );
+    if (terminalFailure) {
+      const creditSourceType =
+        extraParams.__credit_source_type === "media_image"
+          ? "media_image"
+          : "media_video";
       await refundCredits({
         userId,
         amount: reservedCredits,
-        description: `Credit reconciliation refund: ${task.model} failed`,
+        description: `Credit reconciliation refund: ${task.model} ${task.status}`,
         idempotencyKey: `media:${task.id}:failed-refund`,
-        sourceType: "media_video",
+        tenantId: skillTenantId,
+        sourceType: creditSourceType,
         metadata: {
           model: task.model,
           taskId: task.id,
@@ -1679,18 +1704,24 @@ async function getConfiguredMediaProviderNames(): Promise<{
         providerName: mediaProviders.providerName,
         hasApiKey: mediaProviders.hasApiKey,
         apiKeyEncrypted: mediaProviders.apiKeyEncrypted,
+        isEnabled: mediaProviders.isEnabled,
       })
       .from(mediaProviders)
-      .where(eq(mediaProviders.isEnabled, true))
       .limit(50);
 
     return {
+      // A provider row that is present but disabled still makes the provider
+      // catalog authoritative. If this query filtered disabled rows out, an
+      // all-disabled installation would look like "no provider rows" and the
+      // compatibility fallback below would leak its models back to users.
       providerRowsAvailable: rows.length > 0,
       names: new Set(
         rows
           .filter((row) =>
-            row.hasApiKey ||
-            (typeof row.apiKeyEncrypted === "string" && row.apiKeyEncrypted.trim().length > 0),
+            row.isEnabled !== false && (
+              row.hasApiKey ||
+              (typeof row.apiKeyEncrypted === "string" && row.apiKeyEncrypted.trim().length > 0)
+            ),
           )
           .map((row) => normalizeMediaProviderName(row.providerName)),
       ),
@@ -2328,7 +2359,13 @@ export const mediaRouter = router({
         type: mediaTypeSchema.optional(),
       }).optional()
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const connectedMcpProviderKeys = ctx
+        ? await listConnectedMcpProviderKeys({
+            tenantId: ctx.tenantId ?? ctx.user.currentTenantId,
+            userId: ctx.user.id,
+          })
+        : new Set<string>();
       const db = await getDb();
       if (db) {
         const conditions = [eq(mediaModels.isEnabled, true)];
@@ -2354,7 +2391,10 @@ export const mediaRouter = router({
           .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority), asc(mediaModels.id));
 
         const configuredProviderInfo = await getConfiguredMediaProviderNames();
-        const selectableRows = filterModelsByConfiguredProviders(rows, configuredProviderInfo);
+        const selectableRows = filterModelsByMcpProviderAccess(
+          filterModelsByConfiguredProviders(rows, configuredProviderInfo),
+          connectedMcpProviderKeys,
+        );
         const defaultImage = pickConfiguredDefaultModelId(
           selectableRows
             .filter((model) => model.type === "image")
@@ -2388,7 +2428,10 @@ export const mediaRouter = router({
       const registryModels = input?.type
         ? await getModelsByTypeAsync(input.type)
         : await getAllModelsAsync();
-      const models = registryModels.map((model) => toMediaModelResponse({
+      const models = filterModelsByMcpProviderAccess(
+        registryModels,
+        connectedMcpProviderKeys,
+      ).map((model) => toMediaModelResponse({
         id: model.id,
         type: model.type,
         name: model.name,
@@ -3249,10 +3292,25 @@ export const mediaRouter = router({
         // caller has no default Hermes connection for this asset type.
         hermesConnectionId: z.string().max(64).optional(),
         idempotencyKey: z.string().max(128).optional(),
+        presentationContext: z.object({
+          deckId: z.number().int().positive(),
+          slotId: z.string().min(1).max(160),
+          pageNumber: z.number().int().min(1).max(20),
+          imageIndex: z.number().int().min(1).max(3),
+          placementRole: z.enum(["hero", "supporting", "detail"]),
+          shortLabel: z.string().trim().min(1).max(255),
+          canvasRatio: z.string().trim().min(1).max(16).optional(),
+        }).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
-      requireMediaTenantId(ctx);
+      const tenantId = requireMediaTenantId(ctx);
+      if (input.presentationContext) {
+        await getPresentationDeckDetail(input.presentationContext.deckId, {
+          userId: ctx.user.id,
+          tenantId,
+        });
+      }
       assertMcpFieldsOnlyWithMcpTransport(input);
       // Rate limiting
       const rateLimitKey = `user:${ctx.user.id}`;
@@ -3568,6 +3626,34 @@ export const mediaRouter = router({
           userToken
         );
 
+        if (input.presentationContext) {
+          try {
+            await registerPresentationBuilderImageJob({
+              tenantId,
+              userId: ctx.user.id,
+              deckId: input.presentationContext.deckId,
+              slotId: input.presentationContext.slotId,
+              pageNumber: input.presentationContext.pageNumber,
+              imageIndex: input.presentationContext.imageIndex,
+              placementRole: input.presentationContext.placementRole,
+              shortLabel: input.presentationContext.shortLabel,
+              prompt: input.prompt,
+              model,
+              canvasRatio: input.presentationContext.canvasRatio ?? input.aspectRatio,
+              mediaTaskId: task.id,
+            });
+          } catch (registrationError) {
+            // The provider task is already submitted and credits are reserved.
+            // Keep it alive; the task id remains visible in Media History and
+            // the client can retry the registration without refunding a live job.
+            console.error("[Media] Failed to register Presentation Builder image job", {
+              deckId: input.presentationContext.deckId,
+              slotId: input.presentationContext.slotId,
+              taskId: task.id,
+              error: registrationError instanceof Error ? registrationError.message : String(registrationError),
+            });
+          }
+        }
         return task;
       } catch (error) {
         // Refund credits on failure
@@ -3679,7 +3765,9 @@ export const mediaRouter = router({
         configJson: dbModel.configJson,
         fieldLabel: "Prompt",
       });
-      const duration = input.duration || 5;
+      const duration = isGeminiOmniVideoModelId(model)
+        ? (input.duration ?? 4)
+        : (input.duration || 5);
       const geminiOmniExtraParams = await preflightGeminiOmniVideoRequest({
         model,
         ctx,
@@ -4268,26 +4356,31 @@ export const mediaRouter = router({
         const fetchLimit = input?.seriesId
           ? Math.min(100, Math.max(requestedLimit * 4, 50))
           : requestedLimit;
-        const result = await mediaGenerationService.listTasks(userToken, {
-          mediaType: input?.mediaType as MediaType,
-          status: input?.status as TaskStatus,
-          limit: fetchLimit,
-          offset: input?.seriesId ? undefined : input?.offset,
-          daysAgo: input?.daysAgo,
-        });
-        const deferredTasks = await listDeferredMediaTasks(
-          ctx.user.id,
-          fetchLimit,
-          resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? undefined,
+        const tenantId = resolveTenantIdVarchar(
+          ctx.tenantId,
+          ctx.user.currentTenantId,
         );
-        const hyperframesTasks = await listHyperframesRenderHistoryTasks({
-          userId: ctx.user.id,
-          tenantId: resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId),
-          mediaType: input?.mediaType as MediaType | undefined,
-          status: input?.status as TaskStatus | undefined,
-          limit: fetchLimit,
-          daysAgo: input?.daysAgo,
-        });
+        // These sources are independent reads. Starting them together keeps
+        // the history response close to the slowest source instead of the sum
+        // of all source latencies.
+        const [result, deferredTasks, hyperframesTasks] = await Promise.all([
+          mediaGenerationService.listTasks(userToken, {
+            mediaType: input?.mediaType as MediaType,
+            status: input?.status as TaskStatus,
+            limit: fetchLimit,
+            offset: input?.seriesId ? undefined : input?.offset,
+            daysAgo: input?.daysAgo,
+          }),
+          listDeferredMediaTasks(ctx.user.id, fetchLimit, tenantId ?? undefined),
+          listHyperframesRenderHistoryTasks({
+            userId: ctx.user.id,
+            tenantId,
+            mediaType: input?.mediaType as MediaType | undefined,
+            status: input?.status as TaskStatus | undefined,
+            limit: fetchLimit,
+            daysAgo: input?.daysAgo,
+          }),
+        ]);
         const filteredDeferredTasks = deferredTasks.filter((task) => {
           if (input?.mediaType && task.mediaType !== input.mediaType) return false;
           if (input?.status && task.status !== input.status) return false;
@@ -4334,31 +4427,29 @@ export const mediaRouter = router({
           providerTasks.flatMap(task => [task.id, task.taskId].filter(Boolean) as string[])
         );
         const nonDuplicateHyperframesTasks = hyperframesTasks.filter(task => !providerTaskIds.has(task.id));
-        const mcpTasks = await listMcpMediaTasks({
-          userId: ctx.user.id,
-          tenantId: resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? undefined,
-          mediaType: input?.mediaType as MediaType | undefined,
-          status: input?.status,
-          limit: fetchLimit,
-        });
-        const hermesTasks = await listHermesMediaTasks({
-          userId: ctx.user.id,
-          tenantId: resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? undefined,
-          mediaType: input?.mediaType as MediaType | undefined,
-          status: input?.status,
-          limit: fetchLimit,
-          daysAgo: input?.daysAgo,
-        });
+        const [mcpTasks, hermesTasks] = await Promise.all([
+          listMcpMediaTasks({
+            userId: ctx.user.id,
+            tenantId: tenantId ?? undefined,
+            mediaType: input?.mediaType as MediaType | undefined,
+            status: input?.status,
+            limit: fetchLimit,
+          }),
+          listHermesMediaTasks({
+            userId: ctx.user.id,
+            tenantId: tenantId ?? undefined,
+            mediaType: input?.mediaType as MediaType | undefined,
+            status: input?.status,
+            limit: fetchLimit,
+            daysAgo: input?.daysAgo,
+          }),
+        ]);
         const allMergedTasks = [...hermesTasks, ...mcpTasks, ...activeDeferredTasks, ...nonDuplicateHyperframesTasks, ...providerTasks]
           .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
         const seriesFilteredTasks = input?.seriesId
           ? allMergedTasks.filter((task) => taskMatchesVerticalDramaSeries(task, input.seriesId as string))
           : allMergedTasks;
         const mergedTasks = seriesFilteredTasks.slice(0, requestedLimit);
-        const tenantId = resolveTenantIdVarchar(
-          ctx.tenantId,
-          ctx.user.currentTenantId,
-        );
         let historyTasks = mergedTasks;
         if (tenantId) {
           try {

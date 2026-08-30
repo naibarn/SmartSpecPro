@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "crypto";
 import { debugError } from "../_core/logger";
+import { isTransientGenerationError } from "../../shared/transientGenerationError";
 import { getRedisClient } from "./redis";
 
 export const VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE =
@@ -16,6 +17,8 @@ const TURN_WAIT_TIMEOUT_MS = 30 * 60 * 1000;
 const BULLMQ_LOCK_DURATION_MS = 35 * 60 * 1000;
 const STALE_RUNNING_MS = 30 * 60 * 1000;
 const MAX_ERROR_CHARS = 2_000;
+const MAX_TRANSIENT_EXECUTOR_RETRIES = 3;
+const TRANSIENT_RETRY_DELAYS_MS = [5_000, 15_000, 30_000] as const;
 
 export type VerticalDramaShotVideoPromptJobStatus =
   | "queued"
@@ -51,6 +54,8 @@ export interface VerticalDramaShotVideoPromptJobResult {
   audioDirection?: unknown;
   promptModelTarget?: unknown;
   promptQuality?: unknown;
+  /** Non-blocking policy advisories retained for the prompt review surface. */
+  safetyWarnings?: string[];
 }
 
 export interface VerticalDramaShotVideoPromptJobPayload extends VerticalDramaShotVideoPromptJobOwner {
@@ -284,6 +289,19 @@ function boundedError(error: unknown): string {
     0,
     MAX_ERROR_CHARS
   );
+}
+
+function retryDelayMs(error: unknown, retryAttempt: number): number {
+  const text = error instanceof Error ? error.message : String(error ?? "");
+  const retryAfterSeconds = Number(
+    text.match(/(?:retry[- ]after|try again in)\s+(\d+(?:\.\d+)?)\s*seconds?/i)?.[1]
+  );
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return Math.min(60_000, Math.max(1_000, Math.ceil(retryAfterSeconds * 1_000)));
+  }
+  return TRANSIENT_RETRY_DELAYS_MS[
+    Math.min(retryAttempt, TRANSIENT_RETRY_DELAYS_MS.length - 1)
+  ];
 }
 
 async function readRecord(
@@ -660,7 +678,7 @@ export async function runVerticalDramaShotVideoPromptJob(
     return;
   }
 
-  const running: VerticalDramaShotVideoPromptJobRecord = {
+  let running: VerticalDramaShotVideoPromptJobRecord = {
     ...record,
     status: "running",
     error: null,
@@ -670,27 +688,49 @@ export async function runVerticalDramaShotVideoPromptJob(
   const executionToken = randomUUID();
   activeWorkerExecutions.set(jobId, executionToken);
   try {
-    const result = await executor(
-      {
-        tenantId: running.tenantId,
-        userId: running.userId,
-        seriesId: running.seriesId,
-        episodeId: running.episodeId,
-        shotNumber: running.shotNumber,
-        publicUrl: running.publicUrl,
-        input: running.input,
-      },
-      { jobId, token: executionToken }
-    );
-    await markTerminalAndAdvance(running, "succeeded", result, null, deps);
-  } catch (error) {
-    await markTerminalAndAdvance(
-      running,
-      "failed",
-      null,
-      boundedError(error),
-      deps
-    ).catch(() => {});
+    for (let retryAttempt = 0; ; retryAttempt += 1) {
+      try {
+        const result = await executor(
+          {
+            tenantId: running.tenantId,
+            userId: running.userId,
+            seriesId: running.seriesId,
+            episodeId: running.episodeId,
+            shotNumber: running.shotNumber,
+            publicUrl: running.publicUrl,
+            input: running.input,
+          },
+          { jobId, token: executionToken }
+        );
+        await markTerminalAndAdvance(running, "succeeded", result, null, deps);
+        break;
+      } catch (error) {
+        const canRetry =
+          isTransientGenerationError(error) &&
+          retryAttempt < MAX_TRANSIENT_EXECUTOR_RETRIES;
+        if (!canRetry) {
+          await markTerminalAndAdvance(
+            running,
+            "failed",
+            null,
+            boundedError(error),
+            deps
+          ).catch(() => {});
+          break;
+        }
+
+        // Keep the durable job active while waiting. This prevents later
+        // shots from overtaking it and lets the browser continue polling one
+        // stable job id instead of receiving a transient failure.
+        running = {
+          ...running,
+          error: null,
+          updatedAt: new Date(deps.now()).toISOString(),
+        };
+        await writeRecord(running, deps);
+        await deps.sleep?.(retryDelayMs(error, retryAttempt));
+      }
+    }
   } finally {
     activeWorkerExecutions.delete(jobId);
     await deps.redis

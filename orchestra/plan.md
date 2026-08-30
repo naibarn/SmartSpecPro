@@ -1,40 +1,39 @@
-# Task
+# Orchestra Plan
 
-Diagnose the reported tRPC failure for `verticalDramaEpisodes.getEpisodeCoverStatus` (ticket #422, user #24).
+task: Diagnose and repair Vertical Drama characters whose Character DNA is absent, including the real persisted data and the prompt-generation failure path.
+language: Thai
+intent_signals: bug report; asks for root cause from real data; asks to fix and prevent recurrence end-to-end.
+activation: direct orchestra ownership from a cross-layer debugging and implementation request.
+bug_route: true
+scope: large
+risk: high
+route: direct-inline-waves (standard light mode; no sub-agent tool available)
+dispatch_preference: inline-standard-light
+socraticode: unavailable in this session; shell discovery fallback recorded.
 
-## Task Classification
-- Scope: medium
-- Risk: medium
-- Affected domains: Backend tRPC, Vertical Drama data/storage, runtime/audit evidence
-- Estimated file count: 4-8 read-only candidates; no edits authorized by the request
-- Chosen route: direct-inline-waves / data-first-debug
-- Bug route: true
-- Dispatch preference: inline-standard-light
-- Classification notes: This is an error-log investigation with a trace ID and a named route, but the authoritative failure may cross router, cover JSON parsing, storage lookup, and audit logging. The request asks for diagnosis only, so no implementation wave is planned.
+Evidence ledger:
+  source: local DB + audit log + code
+  identifier: series 57, tenant-ZCSKEM9s, characters 204-208
+  observed failure: rows 206-208 have no canonical DNA; first-casting prompt path can reject them when age cannot be inferred.
+  data state: confirmed — 5 roster rows; DNA/assets/tasks exist only for 204-205; no task/error for 206-208.
+  confidence: high
+  root cause: roster seeding intentionally writes description-only rows; candidate-first UI path required castingAgeProfile and threw for adult-looking rows without explicit age; needsSetup also incorrectly treated description as DNA.
+  repair: authoritative DNA detection uses validated visualBible.designDna; candidate path falls through to single prompt generation when no safe age profile exists.
 
-## Evidence Ledger
+Work waves:
+  1. Locate authoritative Character DNA contract, readers, writers, and runtime data access; inspect real series 57 records if available. [completed]
+  2. Reproduce with a focused failing test or data fixture; identify the exact invariant breach and repair scope. [completed]
+  3. Implement the smallest safe repair, durable backfill/recovery if required, and prevention at the write/API boundary. [completed]
+  4. Run focused tests/type checks and review the changed path; record residual production/browser verification limits. [completed with baseline typecheck failures]
 
-source: ui-screenshot
-identifier: traceId `ad5OgMuHcSFyj6zXJ0Txk`, ticket `422`, user `24`, time `2026-08-24 10:14:04 +07:00`
-observed failure: tRPC `verticalDramaEpisodes.getEpisodeCoverStatus` returned `INTERNAL_SERVER_ERROR`; UI rendered `UnknownError`; one occurrence
-data state: feedback ticket #422 contains an AWS SDK S3 protocol stack; audit at `2026-08-24T03:14:04.424Z` shows task `2f89fe49-0f3e-493b-afdf-7044bb4043d8` completed with a provider result URL for series 23 / episode 167; local DB has ready asset 4139 and episode cover slot 2 persisted
-confidence: high for the failing boundary (R2 `HeadObject`), medium-high for the exact duplicate-ingest call site because the runtime log lacks operation-level instrumentation
-next evidence needed: deployed-runtime retry/HeadObject metrics if exact R2 response code and transient cause must be proven
+Scope boundary: preserve unrelated dirty worktree changes; do not deploy or mutate production data without an explicit, safe runtime path and evidence.
 
-## Root-Cause Finding
+## Current Task: Repository Reconciliation and Main Publication
 
-`getUnifiedMediaTask()` now durabilizes completed Vertical Drama tasks and rewrites `task.resultUrl` to a managed `/api/storage/files/...` URL. The same procedure then calls `ingestVerticalDramaMediaAsset()` again. Its managed-URL branch performs an uncaught `storageExists()` check, which maps to S3 `HeadObject`; any R2 protocol/transport error other than 404 escapes as `INTERNAL_SERVER_ERROR`. This matches ticket #422's AWS SDK stack and the completed provider task. The generated cover was eventually persisted as asset 4139, so this incident is a settle/status read-path failure, not a failed generation or credit failure.
-
-Relevant code path:
-- `apps/web/server/routers/verticalDramaEpisodes.ts:15948-16061` — poll, then duplicate durable-ingest on completed result
-- `apps/web/server/services/mediaTaskPollingService.ts:48-75` — already durabilizes Vertical Drama result before returning task
-- `apps/web/server/services/verticalDramaMediaAssetService.ts:488-540` — managed URL path calls `storageExists()` without a retry/fail-soft boundary
-- `apps/web/server/storage.ts:310-325` — S3 `HeadObject`, only 404 is converted to `false`
-- `apps/web/server/services/verticalDramaEpisodeCover.ts:119-124` — projection path already catches storage probe errors, unlike the managed ingest branch
-
-## Scope Boundary
-
-- Read-only diagnosis in the current worktree.
-- Preserve all unrelated dirty worktree changes.
-- Do not query or mutate production data/services without an explicit live-access path and authorization.
-- Do not infer the affected series/episode from the email or user ID alone.
+- intent: inspect all current Git changes, commit eligible source/config/spec/doc/test changes, and publish `main` so `HEAD` matches `origin/main`.
+- scope: large; risk: medium (GitHub main publication and workflow/config changes).
+- route: direct-inline-waves (standard light mode; no sub-agents available).
+- socraticode: unavailable; shell-based full status/diff inventory used.
+- inventory: 917 tracked paths changed; 2,396 untracked files initially, including approximately 22.5 GB of generated cache/build/release payloads.
+- boundary: retain source/config/spec/doc/test/UI evidence files; ignore generated `.tmp-codex*`, `dist-staging-*`, release payloads, root Drizzle output, and skill reports. Do not stage the unexplained zero-byte root file `=.*new`.
+- publication gate: verify `git diff --check`, targeted secret-pattern review, staged file-size limits, commit success, push success, and local/remote SHA parity.

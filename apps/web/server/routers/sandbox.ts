@@ -16,6 +16,7 @@ import { shouldUseSandbox, dispatchToSandbox } from "../services/sandbox/dispatc
 import { checkTenantPolicy, resolveProfile } from "../services/sandbox/policyResolver";
 import { projectStatus, type SandboxInternalStatus } from "../services/sandbox/statusProjection";
 import { estimateCost, reserveCredits, refundReservedCredits } from "../services/sandbox/costEstimator";
+import { refundCredits } from "../services/creditService";
 import { getArtifactUrl, getJobArtifactUrls } from "../services/sandbox/artifactAccess";
 import { internalFetch } from "../services/sandbox/dispatchService";
 
@@ -37,6 +38,30 @@ export function canAccessSandboxJob(
   if (ctx.role === "admin") return true;
   if (!ctx.tenantId || !ctx.userId) return false;
   return job.tenantId === ctx.tenantId && job.userId === ctx.userId;
+}
+
+async function reconcileFailedSkillSandboxJob(job: {
+  id: string;
+  userId: number;
+  featureType: string;
+  status: string;
+  idempotencyKey: string | null;
+  tenantId: string;
+}): Promise<void> {
+  const projection = projectStatus(job.status as SandboxInternalStatus);
+  if (!projection.isTerminal || job.featureType !== "skill" || job.status === "completed" || !job.idempotencyKey) {
+    return;
+  }
+  await refundCredits({
+    userId: job.userId,
+    amount: 0,
+    description: `Sandbox skill run failed: ${job.id}`,
+    idempotencyKey: `skill:${job.idempotencyKey}:sandbox-refund`,
+    sourceType: "skill",
+    skillRunId: job.idempotencyKey,
+    tenantId: job.tenantId,
+    metadata: { sandboxJobId: job.id, type: "sandbox_skill_failed_refund" },
+  });
 }
 
 export const sandboxRouter = router({
@@ -159,6 +184,7 @@ export const sandboxRouter = router({
       }
 
       const projection = projectStatus(job.status as SandboxInternalStatus);
+      await reconcileFailedSkillSandboxJob(job);
 
       let artifacts;
       if (projection.isTerminal && job.status === "completed") {
@@ -229,8 +255,11 @@ export const sandboxRouter = router({
         });
       }
 
-      // Refund reserved credits only after successful cancel
-      if (job.costEstimate) {
+      // Fixed-credit skill runs reverse their durable settlement. Generic
+      // sandbox reservations use the legacy reservation refund path.
+      if (job.featureType === "skill" && job.idempotencyKey) {
+        await reconcileFailedSkillSandboxJob(job);
+      } else if (job.costEstimate) {
         await refundReservedCredits({
           userId: job.userId,
           jobId: job.id,
@@ -327,7 +356,8 @@ export const sandboxRouter = router({
         .limit(input.limit)
         .offset(input.offset);
 
-      return rows.map((job: typeof rows[number]) => {
+      return await Promise.all(rows.map(async (job: typeof rows[number]) => {
+        await reconcileFailedSkillSandboxJob(job);
         const projection = projectStatus(job.status as SandboxInternalStatus);
         return {
           jobId: job.id,
@@ -342,7 +372,7 @@ export const sandboxRouter = router({
           startedAt: job.startedAt,
           finishedAt: job.finishedAt,
         };
-      });
+      }));
     }),
 
   /**

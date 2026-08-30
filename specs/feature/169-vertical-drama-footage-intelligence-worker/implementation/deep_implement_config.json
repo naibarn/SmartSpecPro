@@ -1,0 +1,32 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/169-vertical-drama-footage-intelligence-worker/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/169-vertical-drama-footage-intelligence-worker/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "cargo test --manifest-path apps/worker-app/src-tauri/Cargo.toml --lib worker_loop::tests:: -- --nocapture",
+  "sections": [
+    "section-01-worker-analysis-transcription",
+    "section-02-worker-preparation-render-runtime"
+  ],
+  "sections_state": {
+    "section-01-worker-analysis-transcription": {
+      "status": "completed",
+      "evidence": "Rust worker classification, streamed source materialization, ffprobe/VAD/guide, pinned HyperFrames CLI resolution and typed recovery are implemented"
+    },
+    "section-02-worker-preparation-render-runtime": {
+      "status": "completed",
+      "evidence": "approved multi-segment trim/concat, dead-air removal, source-time map, QC/publication, capability gating and fail-closed Remotion executor path are implemented"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-30T09:02:14.830991+00:00"
+}

@@ -106,8 +106,23 @@ import {
   updateSpecialTieInInput,
 } from "../services/verticalDramaSpecialEpisodes";
 import { listSpecialTieInModels } from "../services/verticalDramaSpecialModelCatalog";
+import { listConnectedMcpProviderKeys } from "../services/mcpConnectionService";
 import { materializeMarketplaceImageReference } from "../services/verticalDramaSpecialReferences";
 import { specialTieInInputSchema } from "../../shared/verticalDramaSeries/specialTieInContracts";
+import {
+  buildMarketplaceReviewIdeaInput,
+  generateMarketplaceReviewIdeas,
+  listMarketplaceReviewIdeaModels,
+  listMarketplaceReviewIdeaRuns,
+  selectMarketplaceReviewIdea,
+} from "../services/verticalDramaMarketplaceReviewSkillAdapter";
+import {
+  enqueueFootageAnalysis,
+  enqueueFootageBrollRender,
+  enqueueFootagePreparation,
+  listFootageBrollAssets,
+  getFootageJob,
+} from "../services/verticalDramaSpecialTieInFootageService";
 import {
   parseShotBrollBinding,
   validateBrollBinding,
@@ -303,6 +318,7 @@ import { evaluateVideoSafetyGate } from "../services/verticalDramaVideoSafetyGat
 import { resolveVerticalDramaVisualConsistencyFlags } from "@shared/featureFlags";
 import { admitVerticalDramaMediaJob, buildMediaCapabilityProbe } from "../services/verticalDramaMediaJobService";
 import { resolveVerticalDramaWorkflow } from "../services/verticalDramaWorkflowResolver";
+import { sha256Prompt } from "../services/verticalDramaFrameRoles";
 import {
   buildCharacterIdentityMapBlock,
   ensureCharacterIdentityLockPrompt,
@@ -2452,6 +2468,8 @@ async function resolveEpisodePlanAssetUrls(
   for (const frame of frames) {
     if (frame?.approvedMediaAssetId)
       ids.add(String(frame.approvedMediaAssetId));
+    if (frame?.approvedStopFrameAssetId)
+      ids.add(String(frame.approvedStopFrameAssetId));
     if (frame?.videoStartMediaAssetId)
       ids.add(String(frame.videoStartMediaAssetId));
     // Reference-mapping fix Phase 5d (`vd-start-frame-reference-mapping/
@@ -9479,17 +9497,123 @@ type VerticalDramaShotVideoPromptTestExecutor = (args: {
 let verticalDramaShotVideoPromptTestExecutor: VerticalDramaShotVideoPromptTestExecutor | null =
   null;
 
+function specialTieInSafeErrorMessage(errorCode: string | null | undefined): string | null {
+  switch (errorCode) {
+    case "SPECIAL_SAFETY_BLOCKED":
+      return "ปรับโจทย์หรือ prompt ให้ปลอดภัยก่อนลองใหม่";
+    case "SPECIAL_OUTPUT_INVALID":
+      return "ผลลัพธ์จาก skill ไม่ตรงสัญญา ลองสร้างใหม่อีกครั้ง";
+    case "SPECIAL_CHARACTER_REFERENCE_MISSING":
+      return "ตัวละครที่เลือกยังไม่มีภาพอ้างอิงที่อนุมัติแล้ว";
+    case "SPECIAL_MODEL_UNAVAILABLE":
+    case "SPECIAL_MODEL_INCOMPATIBLE":
+      return "model ที่เลือกใช้กับการตั้งค่านี้ไม่ได้ โปรดเลือก model ที่รองรับ";
+    case "SPECIAL_LOCATION_LINK_FAILED":
+      return "เชื่อมโยงฉาก/สถานที่ไม่สำเร็จ โปรดลองใหม่";
+    case "SPECIAL_SKILL_FAILED":
+      return "สร้าง prompt ไม่สำเร็จชั่วคราว โปรดลองใหม่";
+    default:
+      return errorCode ? "ไม่สามารถสร้าง prompt ตอนพิเศษได้ โปรดลองใหม่" : null;
+  }
+}
+
 export const verticalDramaEpisodesRouter = router({
   listSpecialTieInModels: verticalDramaSpecialTieInProcedure
     .input(z.object({
       durationSeconds: z.union([z.literal(8), z.literal(10), z.literal(12), z.literal(15), z.literal(20), z.literal(24), z.literal(30)]),
+      aspectRatio: z.literal("9:16").default("9:16"),
       dialogueMode: z.enum(["none", "character_dialogue"]),
+      referenceType: z.enum(["product", "location", "store", "mixed"]).default("product"),
       referenceImageCount: z.number().int().min(1).max(3).default(1),
     }))
     .query(async ({ ctx, input }) => {
-      await assertSpecialTieInEnabled(requireTenantId(ctx.tenantId));
-      return listSpecialTieInModels(input);
+      const tenantId = requireTenantId(ctx.tenantId);
+      await assertSpecialTieInEnabled(tenantId);
+      return listSpecialTieInModels({
+        ...input,
+        connectedMcpProviderKeys: await listConnectedMcpProviderKeys({
+          tenantId,
+          userId: ctx.user.id,
+        }),
+      });
     }),
+
+  listMarketplaceReviewIdeaModels: verticalDramaSpecialTieInProcedure
+    .query(async () => listMarketplaceReviewIdeaModels()),
+
+  generateMarketplaceReviewIdeas: verticalDramaSpecialTieInProcedure
+    .input(z.object({
+      seriesId: z.string().min(1),
+      productId: z.string().min(1).max(128),
+      referenceImages: z.array(z.object({ mediaAssetId: z.string().min(1).max(128), imageId: z.string().max(128).optional(), label: z.string().max(255).optional() })).min(1).max(5),
+      dialogueMode: z.enum(["none", "character_dialogue"]),
+      selectedCharacterIds: z.array(z.string().trim().min(1).max(128)).min(1).max(4),
+      customerJourney: z.unknown().optional(),
+      footageGuide: z.unknown().optional(),
+      direction: z.string().trim().max(2000).optional(),
+      llmModelId: z.string().trim().min(1).max(160).optional(),
+      variationSeed: z.string().trim().min(1).max(128),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const actor = { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id };
+      const seriesId = parseId(input.seriesId, "series id");
+      const request = await buildMarketplaceReviewIdeaInput({ ...input, actor, seriesId });
+      return generateMarketplaceReviewIdeas({ actor, seriesId, request });
+    }),
+
+  listMarketplaceReviewIdeas: verticalDramaSpecialTieInProcedure
+    .input(z.object({ seriesId: z.string().min(1), productId: z.string().max(128).optional() }))
+    .query(async ({ ctx, input }) => listMarketplaceReviewIdeaRuns({ actor: { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id }, seriesId: parseId(input.seriesId, "series id"), productId: input.productId })),
+
+  selectMarketplaceReviewIdea: verticalDramaSpecialTieInProcedure
+    .input(z.object({ seriesId: z.string().min(1), runId: z.string().min(1), ideaId: z.string().min(1).max(128), selectedCharacterIds: z.array(z.string().trim().min(1).max(128)).max(4).optional() }))
+    .mutation(async ({ ctx, input }) => selectMarketplaceReviewIdea({ actor: { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id }, seriesId: parseId(input.seriesId, "series id"), runId: parseId(input.runId, "idea run id"), ideaId: input.ideaId, selectedCharacterIds: input.selectedCharacterIds })),
+
+  enqueueSpecialTieInFootageAnalysis: verticalDramaSpecialTieInProcedure
+    .input(z.object({
+      seriesId: z.string().min(1),
+      mediaAssetId: z.number().int().positive(),
+      requestedLanguage: z.string().trim().regex(/^[a-z]{2,8}(-[A-Z]{2})?$/).optional(),
+      transcriptionPolicy: z.enum(["required", "preferred", "disabled"]).optional(),
+      analysisProfile: z.enum(["fast", "standard", "deep"]).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => enqueueFootageAnalysis({ actor: { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id }, ...input, seriesId: parseId(input.seriesId, "series id") })),
+
+  enqueueSpecialTieInFootagePreparation: verticalDramaSpecialTieInProcedure
+    .input(z.object({
+      seriesId: z.string().min(1),
+      mediaAssetId: z.number().int().positive(),
+      analysisRevision: z.string().trim().min(1).max(160),
+      segments: z.array(z.object({ sourceInMs: z.number().int().nonnegative(), sourceOutMs: z.number().int().positive(), keep: z.boolean(), reason: z.string().trim().max(4000) })).min(1).max(64),
+      silenceRanges: z.array(z.object({ startMs: z.number().int().nonnegative(), endMs: z.number().int().positive() })).max(256).optional(),
+      removeDeadAir: z.boolean().optional(),
+      baseAudioPolicy: z.enum(["preserve", "mute", "selected_ranges"]).optional(),
+      fitPolicy: z.enum(["source", "9:16_cover", "9:16_contain"]).optional(),
+      maxDurationMs: z.number().int().positive().max(90_000).optional(),
+      approvalFingerprint: z.string().regex(/^[a-f0-9]{64}$/i),
+    }))
+    .mutation(async ({ ctx, input }) => enqueueFootagePreparation({ actor: { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id }, ...input, seriesId: parseId(input.seriesId, "series id") })),
+
+  enqueueSpecialTieInFootageBrollRender: verticalDramaSpecialTieInProcedure
+    .input(z.object({
+      seriesId: z.string().min(1),
+      preparedSource: z.unknown(),
+      preparedRevision: z.string().trim().min(1).max(160),
+      baseDurationMs: z.number().int().positive().max(90_000),
+      placements: z.array(z.unknown()).max(32),
+      storyRevisionId: z.string().trim().min(1).max(160),
+      shotPlanRevisionId: z.string().trim().min(1).max(160),
+      assetManifest: z.array(z.unknown()).max(64),
+    }))
+    .mutation(async ({ ctx, input }) => enqueueFootageBrollRender({ actor: { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id }, ...input, preparedSource: input.preparedSource, seriesId: parseId(input.seriesId, "series id") })),
+
+  listSpecialTieInFootageAssets: verticalDramaSpecialTieInProcedure
+    .input(z.object({ seriesId: z.string().min(1), query: z.string().trim().max(200).optional() }))
+    .query(async ({ ctx, input }) => listFootageBrollAssets({ actor: { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id }, seriesId: parseId(input.seriesId, "series id"), query: input.query })),
+
+  getSpecialTieInFootageJob: verticalDramaSpecialTieInProcedure
+    .input(z.object({ jobId: z.string().regex(/^[A-Za-z0-9-]{8,128}$/) }))
+    .query(async ({ ctx, input }) => getFootageJob({ actor: { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id }, jobId: input.jobId })),
 
   materializeSpecialMarketplaceImage: verticalDramaSpecialTieInProcedure
     .input(z.object({ seriesId: z.string().min(1), productId: z.string().min(1).max(64), imageId: z.string().min(1).max(64) }))
@@ -9504,7 +9628,39 @@ export const verticalDramaEpisodesRouter = router({
     .query(async ({ ctx, input }) => {
       const row = await getSpecialTieInEpisode({ tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id }, parseId(input.episodeId, "episode id"));
       const data = (row.specialData ?? {}) as Record<string, any>;
-      return { episode: { id: String(row.id), episodeNumber: row.episodeNumber, specialSequence: row.specialSequence, episodeKind: row.episodeKind, status: row.status }, inputVersion: Number(data.inputVersion ?? 1), outputVersion: Number(data.outputVersion ?? 0), skillRun: data.skillRun ?? null, promptReady: data.skillRun?.status === "succeeded", clarification: data.skillRun?.status === "needs_clarification", errorCode: data.skillRun?.errorCode ?? null, errorMessage: data.skillRun?.errorMessage ?? null };
+      const errorCode = data.skillRun?.errorCode ?? null;
+      const skillRun = data.skillRun
+        ? {
+            schemaVersion: data.skillRun.schemaVersion,
+            skillId: data.skillRun.skillId,
+            status: data.skillRun.status,
+            idempotencyKey: data.skillRun.idempotencyKey,
+            inputFingerprint: data.skillRun.inputFingerprint,
+            attempt: data.skillRun.attempt,
+            startedAt: data.skillRun.startedAt,
+            completedAt: data.skillRun.completedAt,
+            errorCode,
+            errorMessage: specialTieInSafeErrorMessage(errorCode),
+          }
+        : null;
+      return {
+        episode: {
+          id: String(row.id),
+          episodeNumber: row.episodeNumber,
+          specialSequence: row.specialSequence,
+          episodeKind: row.episodeKind,
+          status: row.status,
+        },
+        input: data.input ?? null,
+        inputVersion: Number(data.inputVersion ?? 1),
+        outputVersion: Number(data.outputVersion ?? 0),
+        skillRun,
+        modelSnapshots: data.modelSnapshots ?? null,
+        promptReady: data.skillRun?.status === "succeeded",
+        clarification: data.skillRun?.status === "needs_clarification",
+        errorCode,
+        errorMessage: specialTieInSafeErrorMessage(errorCode),
+      };
     }),
 
   updateSpecialTieInInput: verticalDramaSpecialTieInProcedure
@@ -9682,14 +9838,28 @@ export const verticalDramaEpisodesRouter = router({
         .where(
           and(
             eq(verticalDramaEpisodes.tenantId, tenantId),
-            eq(verticalDramaEpisodes.seriesId, seriesId)
+            eq(verticalDramaEpisodes.seriesId, seriesId),
+            eq(verticalDramaEpisodes.episodeKind, "normal")
           )
         )
         .orderBy(asc(verticalDramaEpisodes.episodeNumber));
 
-      let maxEpisodeNumber = existingRows.reduce(
-        (max: number, r) => Math.max(max, r.episodeNumber),
-        0
+      // Normal episode quota/continuity deliberately ignores special rows, but
+      // numeric allocation must still see every row so a planned normal row
+      // cannot collide with a previously-created SPECIAL episode.
+      const [allEpisodeNumberRow] = await db
+        .select({
+          maxEpisodeNumber: sql<number>`COALESCE(MAX(${verticalDramaEpisodes.episodeNumber}), 0)`,
+        })
+        .from(verticalDramaEpisodes)
+        .where(
+          and(
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.seriesId, seriesId)
+          )
+        );
+      let maxEpisodeNumber = Number(
+        allEpisodeNumberRow?.maxEpisodeNumber ?? 0
       );
       const targetEpisodeCount = Math.max(
         0,
@@ -13626,6 +13796,7 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
         shotNumber: z.number().int().positive(),
+        frameRole: z.enum(["start", "stop"]).optional().default("start"),
         mediaAssetId: z.string().min(1),
       })
     )
@@ -13667,6 +13838,7 @@ export const verticalDramaEpisodesRouter = router({
       }
 
       const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const frameRole = input.frameRole ?? "start";
       if (!plan || !Array.isArray(plan.frames)) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
@@ -13686,19 +13858,32 @@ export const verticalDramaEpisodesRouter = router({
       // into the reference strip (main-image-swap-history upgrade). Read
       // BEFORE `updatedFrames` overwrites it.
       const previousAssetIdRaw = plan.frames[frameIndex]?.approvedMediaAssetId;
+      const previousRoleAssetIdRaw =
+        frameRole === "stop"
+          ? plan.frames[frameIndex]?.approvedStopFrameAssetId
+          : previousAssetIdRaw;
       const previousAssetId =
-        previousAssetIdRaw != null &&
-        Number.isInteger(Number(previousAssetIdRaw))
-          ? Number(previousAssetIdRaw)
+        previousRoleAssetIdRaw != null &&
+        Number.isInteger(Number(previousRoleAssetIdRaw))
+          ? Number(previousRoleAssetIdRaw)
           : null;
 
       const updatedFrames = plan.frames.slice();
       updatedFrames[frameIndex] = {
         ...updatedFrames[frameIndex],
-        approvedMediaAssetId: input.mediaAssetId,
-        castPositionLock: undefined,
-        imageStaleReason: undefined,
-        imageStaleAt: undefined,
+        ...(frameRole === "stop"
+          ? {
+              approvedStopFrameAssetId: input.mediaAssetId,
+              staleStopFrameAssetId: undefined,
+              stopFrameStaleReason: undefined,
+              stopFrameStaleAt: undefined,
+            }
+          : {
+              approvedMediaAssetId: input.mediaAssetId,
+              castPositionLock: undefined,
+              imageStaleReason: undefined,
+              imageStaleAt: undefined,
+            }),
       };
       const updatedPlan: VerticalDramaStartFramePlan = {
         ...plan,
@@ -13711,7 +13896,7 @@ export const verticalDramaEpisodesRouter = router({
       // rendered against the new image; the user can regenerate the prompt
       // from the new approved frame.
       const motionPromptPackPatch =
-        previousAssetId !== numericAssetId && row.motionPromptPack
+        frameRole === "start" && previousAssetId !== numericAssetId && row.motionPromptPack
           ? {
               motionPromptPack: {
                 ...(row.motionPromptPack as VerticalDramaMotionPromptPack),
@@ -13747,7 +13932,7 @@ export const verticalDramaEpisodesRouter = router({
       // 1. Demote the OLD main image into the shot's reference strip (so it
       //    isn't lost) — skipped when there was no previous asset, or the
       //    asset didn't actually change (no-op swap).
-      if (previousAssetId && previousAssetId !== numericAssetId) {
+      if (frameRole === "start" && previousAssetId && previousAssetId !== numericAssetId) {
         try {
           await verticalDramaShotReferencesService.linkReference({
             tenantId,
@@ -13769,7 +13954,7 @@ export const verticalDramaEpisodesRouter = router({
       // 2. If the NEW main image was already sitting in the reference strip,
       //    remove that row — it's being promoted to the main image slot, so
       //    leaving it in the strip would show it twice.
-      if (previousAssetId !== numericAssetId) {
+      if (frameRole === "start" && previousAssetId !== numericAssetId) {
         await verticalDramaShotReferencesService.unlinkReferenceByAsset(
           { tenantId, userId, seriesId },
           episodeId,
@@ -13803,6 +13988,8 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
         shotNumber: z.number().int().positive(),
+        frameRole: z.enum(["start", "stop"]).optional().default("start"),
+        promptHash: z.string().trim().max(80).optional(),
         imageTask: z.object({
           // Provider/sync failures have a provider task id. Admission can
           // fail before a provider task exists, so its terminal marker is
@@ -13830,6 +14017,7 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: parseId(input.seriesId, "series id"),
         episodeId: parseId(input.episodeId, "episode id"),
       };
+      const frameRole = input.frameRole ?? "start";
       const ownedEpisode = await loadOwnedEpisode(owner);
 
       const persisted = await db.transaction(async tx => {
@@ -13857,7 +14045,19 @@ export const verticalDramaEpisodesRouter = router({
         if (frameIndex < 0) return false;
 
         const currentFrame = plan.frames[frameIndex];
-        const currentTask = currentFrame.imageTask;
+        if (input.promptHash) {
+          const currentPromptHash =
+            frameRole === "stop"
+              ? currentFrame.stopFramePromptHash
+              : currentFrame.imagePromptHash;
+          if (currentPromptHash && currentPromptHash !== input.promptHash) {
+            return false;
+          }
+        }
+        const currentTask =
+          frameRole === "stop"
+            ? currentFrame.stopFrameTask
+            : currentFrame.imageTask;
         const isTerminal = ["completed", "failed", "expired"].includes(
           input.imageTask.status
         );
@@ -13884,40 +14084,49 @@ export const verticalDramaEpisodesRouter = router({
 
         const frames = plan.frames.slice();
         if (input.imageTask.status === "completed") {
-          const { imageTask: _drop, ...frameWithoutTask } = currentFrame;
-          frames[frameIndex] = frameWithoutTask;
+          if (frameRole === "stop") {
+            const { stopFrameTask: _dropStopTask, ...frameWithoutTask } = currentFrame;
+            frames[frameIndex] = frameWithoutTask;
+          } else {
+            const { imageTask: _dropStartTask, ...frameWithoutTask } = currentFrame;
+            frames[frameIndex] = frameWithoutTask;
+          }
         } else if (
           input.imageTask.status === "failed" ||
           input.imageTask.status === "expired"
         ) {
+          const taskState = {
+            ...(input.imageTask.taskId
+              ? { lastTaskId: input.imageTask.taskId }
+              : {}),
+            status: input.imageTask.status,
+            ...(input.imageTask.failureStage
+              ? { failureStage: input.imageTask.failureStage }
+              : {}),
+            updatedAt: new Date().toISOString(),
+            ...(input.imageTask.error ? { error: input.imageTask.error } : {}),
+          };
           frames[frameIndex] = {
             ...currentFrame,
-            imageTask: {
-              ...(input.imageTask.taskId
-                ? { lastTaskId: input.imageTask.taskId }
-                : {}),
-              status: input.imageTask.status,
-              ...(input.imageTask.failureStage
-                ? { failureStage: input.imageTask.failureStage }
-                : {}),
-              updatedAt: new Date().toISOString(),
-              ...(input.imageTask.error
-                ? { error: input.imageTask.error }
-                : {}),
-            },
+            ...(frameRole === "stop"
+              ? { stopFrameTask: taskState }
+              : { imageTask: taskState }),
           };
         } else {
+          const taskState = {
+            pendingTaskId: input.imageTask.taskId,
+            status: input.imageTask.status,
+            submittedAt:
+              currentTask?.pendingTaskId === input.imageTask.taskId
+                ? currentTask?.submittedAt
+                : new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
           frames[frameIndex] = {
             ...currentFrame,
-            imageTask: {
-              pendingTaskId: input.imageTask.taskId,
-              status: input.imageTask.status,
-              submittedAt:
-                currentTask?.pendingTaskId === input.imageTask.taskId
-                  ? currentTask?.submittedAt
-                  : new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
+            ...(frameRole === "stop"
+              ? { stopFrameTask: taskState }
+              : { imageTask: taskState }),
           };
         }
 
@@ -15785,6 +15994,13 @@ export const verticalDramaEpisodesRouter = router({
         seriesId,
         episodeId,
       });
+      if (row.episodeKind === "special_tie_in") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Special tie-in models are episode-local; edit the special episode brief instead",
+        });
+      }
 
       if (input.selectedImageModelId) {
         await assertModelSelectable(input.selectedImageModelId, "image");
@@ -17001,6 +17217,7 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
         shotNumber: z.number().int().positive(),
+        frameRole: z.enum(["start", "stop"]).optional().default("start"),
         // Required only when the episode's selected image model is
         // MCP-transport (e.g. `higgsfield/*`, `magnific-mcp/*`) — see
         // `resolveVdMcpTransportMetadata`.
@@ -17044,6 +17261,8 @@ export const verticalDramaEpisodesRouter = router({
       const seriesTitle = await loadOwnedSeriesTitle(tenantId, userId, seriesId);
 
       const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const frameRole = input.frameRole ?? "start";
+      const framePurpose = frameRole === "stop" ? "stop_frame" : "start_frame";
       const frameIndex =
         plan?.frames?.findIndex(f => f.shotNumber === input.shotNumber) ?? -1;
       if (!plan || frameIndex === -1) {
@@ -17053,10 +17272,15 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
       const frame = plan.frames[frameIndex];
-      if (!frame.imagePrompt?.trim()) {
+      const sourcePrompt =
+        frameRole === "stop" ? frame.stopFramePrompt : frame.imagePrompt;
+      if (!sourcePrompt?.trim()) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: `Shot ${input.shotNumber} has no image prompt yet`,
+          message:
+            frameRole === "stop"
+              ? `Shot ${input.shotNumber} has no stop-frame prompt yet`
+              : `Shot ${input.shotNumber} has no image prompt yet`,
         });
       }
       const storyboardForComposition = Array.isArray(
@@ -17137,9 +17361,12 @@ export const verticalDramaEpisodesRouter = router({
       // is never echoed back as if it were story content on ANY call,
       // softened or not.
       let softenedImagePrompt = stripExistingIdentityLockSuffix(
-        frame.imagePrompt
+        sourcePrompt
       );
-      let softenedNegativePrompt: string | undefined = frame.negativePrompt;
+      let softenedNegativePrompt: string | undefined =
+        frameRole === "stop"
+          ? frame.stopFrameNegativePrompt
+          : frame.negativePrompt;
 
       // Render is also allowed to reuse a manually edited/stale prompt. Read
       // the durable scene state again here and replace the prompt's old lock
@@ -17751,8 +17978,10 @@ export const verticalDramaEpisodesRouter = router({
         label: `start-frame image prompt (episode #${episodeId}, shot ${input.shotNumber})`,
       });
 
+      const currentRolePrompt =
+        frameRole === "stop" ? frame.stopFramePrompt : frame.imagePrompt;
       if (
-        (imagePromptQc.prompt !== frame.imagePrompt ||
+        (imagePromptQc.prompt !== currentRolePrompt ||
           sceneNeighborAnchorsEnabled) &&
         Array.isArray(plan.frames)
       ) {
@@ -17760,10 +17989,20 @@ export const verticalDramaEpisodesRouter = router({
           if (f.shotNumber !== input.shotNumber) return f;
           const updatedFrame = {
             ...f,
-            ...(imagePromptQc.prompt !== frame.imagePrompt
-              ? { imagePrompt: imagePromptQc.prompt }
+            ...(imagePromptQc.prompt !== currentRolePrompt
+              ? frameRole === "stop"
+                ? {
+                    stopFramePrompt: imagePromptQc.prompt,
+                    stopFramePromptHash: sha256Prompt(imagePromptQc.prompt),
+                  }
+                : {
+                    imagePrompt: imagePromptQc.prompt,
+                    imagePromptHash: sha256Prompt(imagePromptQc.prompt),
+                  }
               : {}),
-            negativePrompt: "",
+            ...(frameRole === "stop"
+              ? { stopFrameNegativePrompt: "" }
+              : { negativePrompt: "" }),
           };
           if (sceneNeighborAnchorsEnabled) {
             if (sceneNeighborAnchor) {
@@ -17843,7 +18082,7 @@ export const verticalDramaEpisodesRouter = router({
           references,
           entity: {
             type: "vertical_drama_shot",
-            id: `${episodeId}:${input.shotNumber}`,
+            id: `${episodeId}:${input.shotNumber}:${frameRole}`,
           },
           traceId: hermesTraceId,
           tenantId,
@@ -17860,7 +18099,7 @@ export const verticalDramaEpisodesRouter = router({
             __vd_series_id: String(seriesId),
             __vd_episode_id: String(episodeId),
             __vd_shot_number: String(input.shotNumber),
-            __vd_purpose: "start_frame",
+            __vd_purpose: framePurpose,
             __media_series_title: seriesTitle,
             __media_episode_number: row.episodeNumber,
             __media_shot_number: input.shotNumber,
@@ -17871,6 +18110,7 @@ export const verticalDramaEpisodesRouter = router({
           taskId: hermesTask.id,
           modelId: resolvedImageModelId,
           creditCost: 0,
+          promptHash: sha256Prompt(sourcePrompt),
           trimmedProductReferenceCount,
           droppedReferenceCount,
         };
@@ -17903,11 +18143,11 @@ export const verticalDramaEpisodesRouter = router({
                 : 0,
               __credit_source_type: "media_image",
               __credit_reservation_key: input.idempotencyKey,
-              __origin_surface: "vertical_drama_start_frame",
+              __origin_surface: `vertical_drama_${framePurpose}`,
               __vd_series_id: String(seriesId),
               __vd_episode_id: String(episodeId),
               __vd_shot_number: String(input.shotNumber),
-              __vd_purpose: "start_frame",
+              __vd_purpose: framePurpose,
               __media_series_title: seriesTitle,
               __media_episode_number: row.episodeNumber,
               __media_shot_number: input.shotNumber,
@@ -17918,7 +18158,7 @@ export const verticalDramaEpisodesRouter = router({
               userId,
               tenantId,
               traceId: crypto.randomUUID(),
-              source: "trpc.verticalDramaEpisodes.generateStartFrameImage",
+              source: `trpc.verticalDramaEpisodes.generate${frameRole === "stop" ? "Stop" : "Start"}FrameImage`,
               stage: "submission",
             },
           },
@@ -17928,6 +18168,7 @@ export const verticalDramaEpisodesRouter = router({
           taskId: task.id,
           modelId: resolvedImageModelId,
           creditCost: imageCreditCost,
+          promptHash: sha256Prompt(sourcePrompt),
           trimmedProductReferenceCount,
         };
       } catch (err) {
@@ -20436,6 +20677,81 @@ export const verticalDramaEpisodesRouter = router({
    * that frame from the persisted storyboard facts; the per-shot UI never
    * needs to run the long whole-episode start-frame planning stage first.
    */
+  generateShotStopFramePrompt: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        instruction: z.string().trim().max(4000).optional(),
+        canonicalShotSummary: z.string().trim().max(2000).optional(),
+        attachShotImage: z.boolean().optional().default(true),
+        imageUrl: z.string().optional(),
+        additionalImageUrls: z.array(z.string().url().startsWith("http")).max(3).optional(),
+        idempotencyKey,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+      return enqueueVerticalDramaShotPromptJob({
+        tenantId,
+        userId,
+        seriesId,
+        episodeId,
+        shotNumber: input.shotNumber,
+        publicUrl: ctx.publicUrl,
+        input: { ...input, frameRole: "stop" },
+      });
+    }),
+
+  getShotStopFramePromptJob: verticalDramaProcedure
+    .input(
+      z.object({
+        jobId: z.string().uuid(),
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const job = await getVerticalDramaShotPromptJobStatus(input.jobId, {
+        tenantId: requireTenantId(ctx.tenantId),
+        userId: ctx.user.id,
+        seriesId: parseId(input.seriesId, "series id"),
+        episodeId: parseId(input.episodeId, "episode id"),
+        shotNumber: input.shotNumber,
+        frameRole: "stop",
+      });
+      if (!job) throw new TRPCError({ code: "NOT_FOUND", message: "Stop-frame prompt job not found" });
+      return { jobId: job.jobId, status: job.status, result: job.result, error: job.error, createdAt: job.createdAt, updatedAt: job.updatedAt };
+    }),
+
+  getActiveShotStopFramePromptJob: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const job = await getActiveVerticalDramaShotPromptJob({
+        tenantId: requireTenantId(ctx.tenantId),
+        userId: ctx.user.id,
+        seriesId: parseId(input.seriesId, "series id"),
+        episodeId: parseId(input.episodeId, "episode id"),
+        shotNumber: input.shotNumber,
+        frameRole: "stop",
+      });
+      return job
+        ? { jobId: job.jobId, status: job.status, result: job.result, error: job.error, createdAt: job.createdAt, updatedAt: job.updatedAt }
+        : null;
+    }),
+
   /**
    * Fast submit endpoint for start-frame prompt authoring. The expensive LLM
    * and persistence work runs in `vertical_drama_shot_prompt_jobs`; clients
@@ -20527,6 +20843,7 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: parseId(input.seriesId, "series id"),
         episodeId: parseId(input.episodeId, "episode id"),
         shotNumber: input.shotNumber,
+        frameRole: "start",
       });
       return job
         ? {
@@ -20552,6 +20869,7 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
         shotNumber: z.number().int().positive(),
+        frameRole: z.enum(["start", "stop"]).optional().default("start"),
         instruction: z.string().trim().max(4000).optional(),
         /** Latest Overview shot summary; passed raw to the skill as its authoritative source. */
         canonicalShotSummary: z.string().trim().max(2000).optional(),
@@ -20586,6 +20904,7 @@ export const verticalDramaEpisodesRouter = router({
       const userId = ctx.user.id;
       const seriesId = parseId(input.seriesId, "series id");
       const episodeId = parseId(input.episodeId, "episode id");
+      const frameRole = input.frameRole ?? "start";
       const row = await loadOwnedEpisode({
         tenantId,
         userId,
@@ -20637,6 +20956,12 @@ export const verticalDramaEpisodesRouter = router({
         ),
         productReferenceAssetIds: [],
       };
+      if (frameRole === "stop" && !frame.imagePrompt?.trim()) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `ยังไม่มี Start Frame prompt ของช็อต ${input.shotNumber} — ต้องสร้าง Start Frame prompt ก่อนสร้าง Stop Frame prompt`,
+        });
+      }
       const shotComposition =
         normalizeVerticalDramaShotComposition({
           ...((storyboardShot?.camera as Record<string, unknown> | undefined) ??
@@ -20915,7 +21240,7 @@ export const verticalDramaEpisodesRouter = router({
       // defensive stripping every other call site applies to a stored
       // prompt before an LLM call.
       const shotStartFramePromptBasePrompt = stripExistingIdentityLockSuffix(
-        frame.imagePrompt
+        frameRole === "stop" ? frame.imagePrompt : frame.imagePrompt
       );
 
       // Speaker-order composition fix (start-frame character positioning) —
@@ -21132,24 +21457,9 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
-      let shotStartFramePromptResult: {
-        prompt: string;
-        negativePrompt: string;
-        creditsUsed: number;
-        model: string;
-        usedVision?: boolean;
-        sceneAnchorAttached?: boolean;
-        usedMode?: VdImagePromptMode;
-        frameStamp?: VdImagePromptModeStamp;
-        safetyAdjustments?: string[];
-        promptAnalysis?: {
-          storyMeaning?: string;
-          primaryEmotion?: string;
-          decisiveMoment?: string;
-          qualityScore?: number;
-          qualityFlags?: string[];
-        };
-      };
+      let shotStartFramePromptResult: Awaited<
+        ReturnType<typeof generateStartFrameShotPrompt>
+      >;
       try {
         shotStartFramePromptResult = await generateStartFrameShotPrompt({
           userId,
@@ -21158,9 +21468,13 @@ export const verticalDramaEpisodesRouter = router({
           seriesId,
           episodeId,
           shotNumber: input.shotNumber,
+          frameRole,
           instruction: input.instruction,
           currentPrompt: shotStartFramePromptBasePrompt,
-          currentNegativePrompt: frame.negativePrompt ?? "",
+          currentNegativePrompt:
+            frameRole === "stop"
+              ? frame.stopFrameNegativePrompt ?? ""
+              : frame.negativePrompt ?? "",
           canonicalShotSummary: shotStartFramePromptCanonicalSynopsis,
           requiredCharacterRefs: shotStartFramePromptPhysicalCharacterRefs,
           screenCallerCharacterRefs: shotStartFramePromptScreenCallerRefs,
@@ -21392,7 +21706,10 @@ export const verticalDramaEpisodesRouter = router({
       // `generateShotVideoPrompt`'s own precondition gate for this shot.
       await db.transaction(async tx => {
         const [freshRow] = await tx
-          .select({ startFramePlan: verticalDramaEpisodes.startFramePlan })
+          .select({
+            startFramePlan: verticalDramaEpisodes.startFramePlan,
+            motionPromptPack: verticalDramaEpisodes.motionPromptPack,
+          })
           .from(verticalDramaEpisodes)
           .where(
             and(
@@ -21413,8 +21730,22 @@ export const verticalDramaEpisodesRouter = router({
         const updatedFrames = freshPlan.frames.slice();
         const updatedFrame = {
           ...(targetIndex === -1 ? frame : updatedFrames[targetIndex]),
-          imagePrompt: shotStartFramePromptResult.prompt,
-          negativePrompt: shotStartFramePromptResult.negativePrompt,
+            ...(frameRole === "stop"
+              ? {
+                  stopFramePrompt: shotStartFramePromptResult.prompt,
+                  stopFrameNegativePrompt:
+                    shotStartFramePromptResult.negativePrompt,
+                  stopFramePromptHash: sha256Prompt(
+                    shotStartFramePromptResult.prompt
+                  ),
+              }
+              : {
+                  imagePrompt: shotStartFramePromptResult.prompt,
+                  negativePrompt: shotStartFramePromptResult.negativePrompt,
+                  imagePromptHash: sha256Prompt(
+                    shotStartFramePromptResult.prompt
+                  ),
+              }),
           ...(shotComposition ? { shotComposition } : {}),
           requiredCharacterRefs: shotStartFramePromptPhysicalCharacterRefs,
           screenCallerCharacterRefs: shotStartFramePromptScreenCallerRefs,
@@ -21438,15 +21769,29 @@ export const verticalDramaEpisodesRouter = router({
           ...(shotStartFramePromptResult.promptAnalysis
             ? { promptAnalysis: shotStartFramePromptResult.promptAnalysis }
             : {}),
+          ...(frameRole === "start" && shotStartFramePromptResult.semanticHandoff
+            ? {
+                startFrameSemanticHandoff:
+                  shotStartFramePromptResult.semanticHandoff,
+              }
+            : {}),
         };
         const priorPrompt =
-          targetIndex === -1
-            ? frame.imagePrompt
-            : updatedFrames[targetIndex].imagePrompt;
-        const priorApprovedAssetId = updatedFrame.approvedMediaAssetId;
+          frameRole === "stop"
+            ? targetIndex === -1
+              ? frame.stopFramePrompt ?? ""
+              : updatedFrames[targetIndex].stopFramePrompt ?? ""
+            : targetIndex === -1
+              ? frame.imagePrompt
+              : updatedFrames[targetIndex].imagePrompt;
+        const priorApprovedAssetId =
+          frameRole === "stop"
+            ? updatedFrame.approvedStopFrameAssetId
+            : updatedFrame.approvedMediaAssetId;
         const retainImageAfterCharacterReferenceChange =
           updatedFrame.imageStaleReason === "character_references_changed";
         if (
+          frameRole === "start" &&
           priorApprovedAssetId &&
           priorPrompt !== shotStartFramePromptResult.prompt &&
           !retainImageAfterCharacterReferenceChange
@@ -21459,6 +21804,7 @@ export const verticalDramaEpisodesRouter = router({
           delete updatedFrame.videoSafety;
         }
         if (
+          frameRole === "start" &&
           priorApprovedAssetId &&
           priorPrompt !== shotStartFramePromptResult.prompt &&
           retainImageAfterCharacterReferenceChange
@@ -21473,6 +21819,35 @@ export const verticalDramaEpisodesRouter = router({
           delete updatedFrame.deviceOrientationQc;
           delete updatedFrame.videoSafety;
         }
+        if (
+          frameRole === "stop" &&
+          priorApprovedAssetId &&
+          priorPrompt !== shotStartFramePromptResult.prompt
+        ) {
+          delete updatedFrame.approvedStopFrameAssetId;
+          updatedFrame.staleStopFrameAssetId = priorApprovedAssetId;
+          updatedFrame.stopFrameStaleReason = "stop_prompt_changed";
+          updatedFrame.stopFrameStaleAt = new Date().toISOString();
+        }
+        const updatedMotionPromptPack =
+          frameRole === "stop" &&
+          priorApprovedAssetId &&
+          priorPrompt !== shotStartFramePromptResult.prompt &&
+          freshRow?.motionPromptPack
+            ? {
+                ...(freshRow.motionPromptPack as VerticalDramaMotionPromptPack),
+                clips: (
+                  freshRow.motionPromptPack as VerticalDramaMotionPromptPack
+                ).clips.map(clip => {
+                  const sourceShots = clip.sourceShotNumbers ?? [];
+                  const lastShot = sourceShots[sourceShots.length - 1];
+                  return lastShot === input.shotNumber &&
+                    clip.videoTask?.source !== "upload"
+                    ? { ...clip, endFrameAssetId: undefined }
+                    : clip;
+                }),
+              }
+            : undefined;
         if (sceneNeighborAnchorsEnabled) {
           if (sceneNeighborAnchor) {
             updatedFrame.sceneAnchor = {
@@ -21522,7 +21897,13 @@ export const verticalDramaEpisodesRouter = router({
 
         await tx
           .update(verticalDramaEpisodes)
-          .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
+          .set({
+            startFramePlan: updatedPlan,
+            ...(updatedMotionPromptPack
+              ? { motionPromptPack: updatedMotionPromptPack }
+              : {}),
+            updatedAt: new Date(),
+          })
           .where(
             and(
               eq(verticalDramaEpisodes.id, episodeId),

@@ -17,7 +17,7 @@ import {
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { extname, join } from "node:path";
-import { storageCopyToPath, storagePutFromPath } from "../storage";
+import { assertR2StorageActive, storageCopyToPath, storagePutFromPath } from "../storage";
 import {
   getHyperframesRuntimeMode,
   type HyperframesRuntimeAdapterEnv,
@@ -1600,6 +1600,7 @@ export async function executeLocalHyperframesSmokeRender(input: {
           input.renderJobId,
           "output.mp4",
         ].join("/");
+        await assertR2StorageActive();
         const stored = await storagePutFromPath(storageKey, outputPath, "video/mp4");
         return {
           ...input.payload,
@@ -1674,6 +1675,7 @@ export async function executeLocalHyperframesSmokeRender(input: {
       input.renderJobId,
       "output.mp4",
     ].join("/");
+    await assertR2StorageActive();
     const stored = await storagePutFromPath(storageKey, outputPath, "video/mp4");
     return {
       ...input.payload,
@@ -1792,7 +1794,12 @@ export async function executeRemotionRenderVideoJob(
   deps: RemotionRenderVideoJobExecutorDeps = {},
 ): Promise<Record<string, unknown>> {
   return packageExecuteRemotionRenderVideoJob(input, {
-    render: deps.render ?? executeRemotionRender,
+    render:
+      deps.render ??
+      (async renderInput => {
+        const result = await executeRemotionRender(renderInput);
+        return { ...result };
+      }),
     ffmpeg: deps.ffmpeg ?? defaultFfmpegRunner,
     storagePut: deps.storagePut ?? storagePutFromPath,
     emitEvent: deps.emitEvent,
@@ -1800,7 +1807,9 @@ export async function executeRemotionRenderVideoJob(
     emitAudit: deps.emitAudit ?? defaultEmitRemotionRenderAudit,
     planPostPasses: deps.planPostPasses ?? planPostPasses,
     buildAssBurnSubtitleFileContent:
-      deps.buildAssBurnSubtitleFileContent ?? buildAssBurnSubtitleFileContent,
+      deps.buildAssBurnSubtitleFileContent ??
+      ((lines, presetId, opts) =>
+        buildAssBurnSubtitleFileContent(lines, presetId as any, opts)),
   });
 }
 

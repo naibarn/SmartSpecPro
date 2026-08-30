@@ -44,6 +44,7 @@ vi.mock("../../services/marketplaceAutoReviewStagedCheckpointRouterService", () 
 }));
 
 vi.mock("../../storage", () => ({
+  assertR2StorageActive: vi.fn().mockResolvedValue(undefined),
   storagePut: mockStoragePut,
 }));
 

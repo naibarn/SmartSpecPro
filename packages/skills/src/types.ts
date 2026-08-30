@@ -72,6 +72,15 @@ export interface SkillDefinition {
   /** Credit cost multiplier */
   creditMultiplier: number;
 
+  /** Fixed credits charged to the active tenant owner per successful run. */
+  tenantCreditCost?: number;
+
+  /** Fixed credits charged to the skill owner per successful run. */
+  skillOwnerCreditCost?: number;
+
+  /** Tenant that owns a tenant-scoped skill; undefined means globally available. */
+  tenantId?: string;
+
   /** Available models for this skill */
   models?: string[];
 

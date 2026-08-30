@@ -9,6 +9,7 @@
  */
 
 import type { VerticalDramaSubShotPolicy } from "./subShots";
+import type { VerticalDramaArtifactAssuranceLineage } from "./assurance";
 
 /** Target episode duration in seconds (fixed for the MVP). */
 export const VERTICAL_DRAMA_TARGET_DURATION_SECONDS = 60 as const;
@@ -108,6 +109,8 @@ export function validateDurationProfile(
 /** Assembly / export manifest handed to the render pipeline (spec §7.3). */
 export type VerticalDramaAssemblyManifest = {
   handoffType: "video_assembly_manifest";
+  /** Optional Feature 157 lineage for the exact immutable assembly inputs. */
+  assuranceLineage?: VerticalDramaArtifactAssuranceLineage;
   /** Derived from the active profile; legacy manifests remain 60 seconds. */
   targetDurationSeconds: number;
   clips: Array<{
@@ -133,6 +136,29 @@ export type VerticalDramaAssemblyManifest = {
     startSeconds: number;
     endSeconds: number;
     volumeDb?: number;
+  }>;
+  /** Explicit still/footage B-roll projection. These entries reference only
+   * canonical media/segment IDs; no provider URL is allowed in assembly. */
+  brollPlan?: Array<{
+    bindingId: string;
+    shotNumber: number;
+    order: number;
+    sourceSlotId?: number;
+    sourceAssetId?: number;
+    mediaAssetId: string;
+    segmentId?: string;
+    segmentRevision?: number;
+    mediaType: "image" | "video";
+    inSeconds?: number;
+    outSeconds?: number;
+    displayDurationSeconds?: number;
+    /** Absolute destination window on the assembled episode timeline. */
+    startSeconds: number;
+    endSeconds: number;
+    fitMode: "cover" | "contain" | "crop_safe";
+    audioPolicy: "keep" | "mute" | "replace";
+    labelMode: "none" | "source" | "archive" | "ai_illustration";
+    sourceLabel?: string;
   }>;
   exportSettings: {
     aspectRatio: "9:16";
@@ -213,6 +239,8 @@ export type VerticalDramaCompiledVideoState = {
   assembledAt?: string;
   status?: "pending" | "completed" | "failed";
   error?: string;
+  /** True when the compiled Sub-Episode already contains its active B-roll. */
+  brollApplied?: boolean;
 };
 
 /**

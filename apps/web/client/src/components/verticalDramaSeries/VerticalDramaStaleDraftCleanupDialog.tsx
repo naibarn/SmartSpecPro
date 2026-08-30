@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Clock3, Loader2, Trash2 } from "lucide-react";
+import { Archive, Clock3, Loader2 } from "lucide-react";
 
 import {
   AlertDialog,
@@ -16,10 +16,9 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import type { VerticalDramaLang } from "./verticalDramaCopy";
 
-export type VerticalDramaStaleDraftDays = 5 | 7 | 10;
+export type VerticalDramaStaleDraftDays = 7 | 10;
 
 export interface VerticalDramaStaleDraftCounts {
-  5: number;
   7: number;
   10: number;
 }
@@ -35,14 +34,13 @@ export function defaultVerticalDramaStaleDraftDays(
 ): VerticalDramaStaleDraftDays | null {
   if (counts[10] > 0) return 10;
   if (counts[7] > 0) return 7;
-  if (counts[5] > 0) return 5;
   return null;
 }
 
 export function verticalDramaStaleDraftCleanupSignature(
   counts: VerticalDramaStaleDraftCounts
 ): string {
-  return `5:${counts[5]}|7:${counts[7]}|10:${counts[10]}`;
+  return `7:${counts[7]}|10:${counts[10]}`;
 }
 
 export function useVerticalDramaStaleDraftCleanupOffer(input: {
@@ -53,32 +51,32 @@ export function useVerticalDramaStaleDraftCleanupOffer(input: {
   const [open, setOpen] = useState(false);
   const [selectedDays, setSelectedDays] =
     useState<VerticalDramaStaleDraftDays>(10);
-  const handledSignatures = useRef(new Set<string>());
+  const lastSummarySignature = useRef<string | null>(null);
 
   useEffect(() => {
     if (!input.enabled) {
       setOpen(false);
+      lastSummarySignature.current = null;
       return;
     }
     if (!input.isLoaded) return;
 
     const defaultDays = defaultVerticalDramaStaleDraftDays(input.counts);
-    if (defaultDays == null) return;
     const signature = verticalDramaStaleDraftCleanupSignature(input.counts);
-    if (handledSignatures.current.has(signature)) return;
+    if (signature !== lastSummarySignature.current) {
+      lastSummarySignature.current = signature;
+      if (defaultDays != null) setSelectedDays(defaultDays);
+    }
+  }, [input.enabled, input.isLoaded, input.counts[7], input.counts[10]]);
 
-    handledSignatures.current.add(signature);
-    setSelectedDays(defaultDays);
-    setOpen(true);
-  }, [
-    input.enabled,
-    input.isLoaded,
-    input.counts[5],
-    input.counts[7],
-    input.counts[10],
-  ]);
-
-  return { open, setOpen, selectedDays, setSelectedDays };
+  return {
+    open,
+    setOpen,
+    openCleanupDialog: () => setOpen(true),
+    hasEligibleJobs: defaultVerticalDramaStaleDraftDays(input.counts) != null,
+    selectedDays,
+    setSelectedDays,
+  };
 }
 
 export function useVerticalDramaStaleDraftCleanupMutation(input: {
@@ -90,8 +88,8 @@ export function useVerticalDramaStaleDraftCleanupMutation(input: {
       toast.success(
         data.archivedCount > 0
           ? input.lang === "th"
-            ? `นำงาน Draft ${data.archivedCount} งานออกจากรายการแล้ว`
-            : `Removed ${data.archivedCount} Draft jobs from the inbox.`
+            ? `เก็บงาน Draft ${data.archivedCount} งานเข้าประวัติแล้ว`
+            : `Archived ${data.archivedCount} Draft jobs to history.`
           : input.lang === "th"
             ? "ไม่มีงาน Draft ที่ยังเข้าเงื่อนไข งานอาจมีการอัปเดตไปแล้ว"
             : "No Draft jobs are still eligible; they may have been updated."
@@ -101,8 +99,8 @@ export function useVerticalDramaStaleDraftCleanupMutation(input: {
     onError: () => {
       toast.error(
         input.lang === "th"
-          ? "ล้างงาน Draft ไม่สำเร็จ กรุณาลองใหม่"
-          : "Could not clean up Draft jobs. Please try again."
+          ? "เก็บงาน Draft เข้าประวัติไม่สำเร็จ กรุณาลองใหม่"
+          : "Could not archive Draft jobs. Please try again."
       );
     },
   });
@@ -112,7 +110,7 @@ function copy(lang: VerticalDramaLang, th: string, en: string): string {
   return lang === "th" ? th : en;
 }
 
-const DAY_OPTIONS = [5, 7, 10] as const;
+const DAY_OPTIONS = [7, 10] as const;
 
 export function VerticalDramaStaleDraftCleanupDialog(props: {
   lang: VerticalDramaLang;
@@ -139,23 +137,23 @@ export function VerticalDramaStaleDraftCleanupDialog(props: {
             <Clock3 className="h-5 w-5 text-amber-600" aria-hidden="true" />
             {copy(
               props.lang,
-              "ล้างงาน Draft เก่าหรือไม่?",
-              "Clean up old Draft jobs?"
+              "จัดการงาน Draft ที่ไม่มีการเคลื่อนไหว",
+              "Manage inactive Draft jobs"
             )}
           </AlertDialogTitle>
           <AlertDialogDescription className="space-y-2">
             <span className="block">
               {copy(
                 props.lang,
-                "พบงาน Draft ที่ไม่ได้เคลื่อนไหวมาหลายวัน เลือกช่วงเวลาที่ต้องการนำออกจากรายการเพื่อลดภาระการโหลด",
-                "Some Draft jobs have been inactive for several days. Choose an age threshold to remove them from the inbox and reduce loading work."
+                "พบงาน Draft ที่ไม่มีการเคลื่อนไหวตั้งแต่ 7 วันขึ้นไป เลือกช่วงเวลาเพื่อเก็บออกจากรายการหลักและลดภาระการโหลด",
+                "Some Draft jobs have been inactive for at least 7 days. Choose an age threshold to archive them from the active inbox and reduce loading work."
               )}
             </span>
             <span className="block font-medium text-foreground">
               {copy(
                 props.lang,
-                "ล้างเฉพาะงาน Draft ที่หยุดทำงานแล้ว ไม่กระทบซีรีส์ที่สร้างแล้ว",
-                "Only inactive Draft jobs are cleaned up. Created series are not affected."
+                "เก็บเฉพาะงาน Draft ที่หยุดทำงานแล้ว ประวัติและ version เดิมยังอยู่ และไม่กระทบซีรีส์ที่สร้างแล้ว",
+                "Only inactive Draft jobs are archived. History and versions are retained, and created series are not affected."
               )}
             </span>
           </AlertDialogDescription>
@@ -165,7 +163,7 @@ export function VerticalDramaStaleDraftCleanupDialog(props: {
           <legend className="mb-2 text-sm font-medium text-foreground">
             {copy(
               props.lang,
-              "เลือกระยะเวลาที่ไม่เคลื่อนไหว",
+              "เลือกอายุงานที่ไม่มีการเคลื่อนไหว",
               "Choose inactivity age"
             )}
           </legend>
@@ -196,8 +194,8 @@ export function VerticalDramaStaleDraftCleanupDialog(props: {
                     <span>
                       {copy(
                         props.lang,
-                        `เกิน ${days} วัน`,
-                        `Older than ${days} days`
+                        `ไม่มีการเคลื่อนไหวเกิน ${days} วัน`,
+                        `Inactive for more than ${days} days`
                       )}
                     </span>
                   </span>
@@ -229,9 +227,9 @@ export function VerticalDramaStaleDraftCleanupDialog(props: {
             {props.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
             ) : (
-              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              <Archive className="h-4 w-4" aria-hidden="true" />
             )}
-            {copy(props.lang, "ลบออกจากรายการ", "Remove from inbox")}
+            {copy(props.lang, "เก็บเข้าประวัติ", "Archive to history")}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

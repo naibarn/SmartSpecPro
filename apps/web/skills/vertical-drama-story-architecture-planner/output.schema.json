@@ -16,16 +16,261 @@
   ],
   "properties": {
     "contractVersion": { "const": 1 },
-    "premiseAnchor": { "type": "string" },
-    "requiredArcTypes": { "type": "array", "items": { "type": "string" } },
-    "audiencePromise": { "type": "object" },
-    "protagonistArc": { "type": "object" },
-    "primaryEngine": { "type": "object" },
-    "arcBundles": { "type": "array", "items": { "type": "object" } },
-    "realityFailureModel": { "type": "object" },
-    "destination": { "type": "object" },
-    "promisePayoffMap": { "type": "array", "items": { "type": "object" } },
-    "storyGuardrails": { "type": "array", "items": { "type": "string" } }
+    "premiseAnchor": { "type": "string", "minLength": 1, "maxLength": 1600 },
+    "requiredArcTypes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "enum": [
+          "romance",
+          "academic",
+          "professional_innovation",
+          "underdog_identity",
+          "mystery",
+          "family",
+          "survival",
+          "revenge",
+          "comedy",
+          "other"
+        ]
+      }
+    },
+    "audiencePromise": {
+      "type": "object",
+      "required": ["genrePromise", "emotionalPromise", "coreQuestion"],
+      "properties": {
+        "genrePromise": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "emotionalPromise": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "coreQuestion": { "type": "string", "minLength": 1, "maxLength": 500 }
+      },
+      "additionalProperties": true
+    },
+    "protagonistArc": {
+      "type": "object",
+      "required": [
+        "startingState",
+        "shortTermGoal",
+        "internalNeed",
+        "longTermDestination",
+        "transformationStages",
+        "endState"
+      ],
+      "properties": {
+        "startingState": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "shortTermGoal": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "internalNeed": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "longTermDestination": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 800
+        },
+        "transformationStages": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "required": ["phase", "beliefBefore", "change", "evidence"],
+            "properties": {
+              "phase": { "type": "string", "minLength": 1, "maxLength": 120 },
+              "beliefBefore": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "change": { "type": "string", "minLength": 1, "maxLength": 500 },
+              "evidence": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "episodeWindow": { "$ref": "#/$defs/episodeWindow" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "endState": { "type": "string", "minLength": 1, "maxLength": 800 }
+      },
+      "additionalProperties": true
+    },
+    "primaryEngine": {
+      "type": "object",
+      "required": [
+        "statement",
+        "repeatableEpisodeMechanism",
+        "escalationLadder"
+      ],
+      "properties": {
+        "statement": { "type": "string", "minLength": 1, "maxLength": 700 },
+        "repeatableEpisodeMechanism": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 700
+        },
+        "escalationLadder": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "required": ["phase", "pressure", "cost", "turningPoint"],
+            "properties": {
+              "phase": { "type": "string", "minLength": 1, "maxLength": 120 },
+              "pressure": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "cost": { "type": "string", "minLength": 1, "maxLength": 500 },
+              "turningPoint": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "episodeWindow": { "$ref": "#/$defs/episodeWindow" }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "arcBundles": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "required",
+          "startingState",
+          "turningPoints",
+          "failureOrCost",
+          "payoff",
+          "endState"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "romance",
+              "academic",
+              "professional_innovation",
+              "underdog_identity",
+              "mystery",
+              "family",
+              "survival",
+              "revenge",
+              "comedy",
+              "other"
+            ]
+          },
+          "label": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "required": { "type": "boolean" },
+          "startingState": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 600
+          },
+          "turningPoints": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 8,
+            "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+          },
+          "failureOrCost": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 600
+          },
+          "payoff": { "type": "string", "minLength": 1, "maxLength": 600 },
+          "endState": { "type": "string", "minLength": 1, "maxLength": 600 },
+          "episodeWindow": { "$ref": "#/$defs/episodeWindow" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "realityFailureModel": {
+      "type": "object",
+      "required": ["realWorldConstraints", "failedAttempts", "lessonsLearned"],
+      "properties": {
+        "realWorldConstraints": { "$ref": "#/$defs/storyStringArray" },
+        "failedAttempts": { "$ref": "#/$defs/storyStringArray" },
+        "lessonsLearned": { "$ref": "#/$defs/storyStringArray" }
+      },
+      "additionalProperties": true
+    },
+    "destination": {
+      "type": "object",
+      "required": [
+        "seasonEndpoint",
+        "longTermEndpoint",
+        "horizon",
+        "finalImage",
+        "meaning"
+      ],
+      "properties": {
+        "seasonEndpoint": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 800
+        },
+        "longTermEndpoint": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "horizon": { "enum": ["season", "series", "epilogue"] },
+        "finalImage": { "type": "string", "minLength": 1, "maxLength": 800 },
+        "meaning": { "type": "string", "minLength": 1, "maxLength": 800 }
+      },
+      "additionalProperties": true
+    },
+    "promisePayoffMap": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["promiseId", "setup", "payoff"],
+        "properties": {
+          "promiseId": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "setup": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "payoff": { "type": "string", "minLength": 1, "maxLength": 600 },
+          "payoffWindow": { "$ref": "#/$defs/episodeWindow" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "storyGuardrails": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+    }
+  },
+  "$defs": {
+    "episodeWindow": {
+      "type": "object",
+      "required": ["startEpisode", "endEpisode"],
+      "properties": {
+        "startEpisode": { "type": "integer", "minimum": 1 },
+        "endEpisode": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": true
+    },
+    "storyStringArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+    }
   },
   "additionalProperties": true
 }

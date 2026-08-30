@@ -43,6 +43,7 @@ import {
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
+  type JsonPlanningAttemptEvent,
   // Deep story drafts hydration (W10-B, added 2026-07-08) — TYPE-ONLY (erased
   // at compile time, zero runtime import), safe regardless of any test's
   // mocking of this module: this file already has a REAL, static VALUE
@@ -66,6 +67,10 @@ import {
   type VdSceneContract,
 } from "./verticalDramaStoryBible";
 import { resolveStoryboardModel } from "./verticalDramaImproveScript";
+import {
+  analyzeVerticalDramaStorySafety,
+  isBlockingVerticalDramaStorySafety,
+} from "./verticalDramaStorySafety";
 import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
 import { resolveVerticalDramaSupportingPresenceForShot } from "@shared/verticalDramaSeries/supportingPresence";
 import {
@@ -259,10 +264,15 @@ const storyboardShotSchema = z
           .object({
             id: z.string().optional(),
             role: z.string().min(1),
-            count: z.union([
-              z.number().int().positive(),
-              z.object({ min: z.number().int().positive(), max: z.number().int().positive() }),
-            ]).optional(),
+            count: z
+              .union([
+                z.number().int().positive(),
+                z.object({
+                  min: z.number().int().positive(),
+                  max: z.number().int().positive(),
+                }),
+              ])
+              .optional(),
             countMin: z.number().int().positive().optional(),
             countMax: z.number().int().positive().optional(),
             count_min: z.number().int().positive().optional(),
@@ -271,7 +281,9 @@ const storyboardShotSchema = z
             action: z.string().optional(),
             evidence: z.string().optional(),
             confidence: z.enum(["high", "medium", "low"]).optional(),
-            status: z.enum(["suggestion", "auto_confirmed", "accepted"]).optional(),
+            status: z
+              .enum(["suggestion", "auto_confirmed", "accepted"])
+              .optional(),
           })
           .passthrough()
       )
@@ -618,6 +630,21 @@ export interface GenerateStoryboardShotgridParams {
     currentStoryboard: Record<string, unknown>;
     instruction: string;
   };
+  /** Whole-episode rebuild context; distinct from targeted Repair Mode. */
+  episodeRebuildContext?: {
+    currentStoryboard: Record<string, unknown>;
+    previousEpisodeContext: unknown;
+    futureEpisodeConstraint: unknown;
+    instruction: string;
+  };
+  /** Shared policy contract for fresh and repaired storyboard generation. */
+  policySafetyContext?: string;
+  /** Restricted forensic observer used by episode-scoped repair jobs only. */
+  planningAttemptObserver?: (
+    event: JsonPlanningAttemptEvent
+  ) => Promise<void> | void;
+  /** Repair candidates are charged only after the complete candidate passes all gates. */
+  deferCreditDeduction?: boolean;
   /**
    * Additive feature-flag bag (W10-B) — mirrors
    * `GenerateEpisodeScriptParams.opts`'s decoupled-payload-vs-flag
@@ -810,14 +837,35 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
   // doc comment. Additive; only rendered when a caller explicitly supplies
   // `repairContext`, so every fresh-generation call site's prompt is
   // byte-identical to before this section existed.
-  const repairSection = params.repairContext
+  const episodeRebuildSection = params.episodeRebuildContext
     ? [
-        "REPAIR MODE: You are REPAIRING an existing storyboard shotgrid that was already generated — you are NOT creating a new one from scratch.",
-        "Apply ONLY the targeted change(s) the instruction below calls for. Preserve every other shot's camera, composition, timing, and description exactly as-is unless the instruction specifically requires changing it — do not rewrite unrelated shots. Still produce exactly 9 complete shots.",
-        `current_storyboard: ${JSON.stringify(params.repairContext.currentStoryboard)}`,
-        `repair_instruction: ${params.repairContext.instruction}`,
+        "FULL EPISODE REBUILD MODE: render exactly 9 shots from the newly rebuilt episode script supplied in the scene beats. This is a replacement storyboard for the same episode, not an unrelated new story.",
+        "Preserve established character identity, facts, setting, relationship state, prior-episode consequences, and the bounded setup toward the next episode. Do not copy unsafe wording or unsafe visual framing from the previous storyboard; use neutral, non-graphic cinematic alternatives while preserving the same narrative purpose.",
+        `previous_storyboard_reference: ${JSON.stringify(params.episodeRebuildContext.currentStoryboard)}`,
+        `previous_episode_context: ${JSON.stringify(params.episodeRebuildContext.previousEpisodeContext)}`,
+        `future_episode_constraint: ${JSON.stringify(params.episodeRebuildContext.futureEpisodeConstraint)}`,
+        `rebuild_instruction: ${params.episodeRebuildContext.instruction}`,
       ].join("\n")
     : null;
+  const repairSection =
+    !params.episodeRebuildContext && params.repairContext
+      ? [
+          "REPAIR MODE: You are REPAIRING an existing storyboard shotgrid that was already generated — you are NOT creating a new one from scratch.",
+          "Apply ONLY the targeted change(s) the instruction below calls for. Preserve every other shot's camera, composition, timing, and description exactly as-is unless the instruction specifically requires changing it — do not rewrite unrelated shots. Still produce exactly 9 complete shots.",
+          `current_storyboard: ${JSON.stringify(params.repairContext.currentStoryboard)}`,
+          `repair_instruction: ${params.repairContext.instruction}`,
+        ].join("\n")
+      : null;
+  const automaticSafety = analyzeVerticalDramaStorySafety({
+    storySource,
+    sceneBeats: params.sceneBeats,
+    episodeDraft: params.episodeDraft,
+    repairContext: params.repairContext,
+  });
+  const policySafetySection =
+    params.policySafetyContext || automaticSafety.level !== "low"
+      ? `policy_safety_contract:\n${params.policySafetyContext ?? automaticSafety.instruction}`
+      : null;
 
   return [
     `Episode title: ${params.episodeTitle}`,
@@ -860,15 +908,17 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     params.durationPlan &&
     getActiveVerticalDramaShotDurations(params.durationPlan)
       ? `Produce exactly 9 shots. The authoritative logical-shot duration vector is ${JSON.stringify(
-          getActiveVerticalDramaShotDurations(params.durationPlan),
+          getActiveVerticalDramaShotDurations(params.durationPlan)
         )} seconds in shot order. Copy those values exactly into shots[].duration_seconds; their derived runtime is ${deriveVerticalDramaEpisodeRuntimeSeconds(
-          params.durationPlan,
+          params.durationPlan
         )} seconds. Do not redistribute or invent durations.`
       : `Produce exactly 9 shots with duration_seconds summing to ${params.durationSeconds}.`,
     episodeDraftSection,
     sceneContractSection,
     identitySafeShotBoundariesSection,
+    episodeRebuildSection,
     repairSection,
+    policySafetySection,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
@@ -893,6 +943,14 @@ export async function generateStoryboardShotgrid(
   storyboard: StoryboardShotgridOutput;
   creditsUsed: number;
   model: string;
+  creditCharge?: {
+    amount: number;
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    skillSlug: string;
+    description: string;
+  };
 }> {
   // Rate limiting — reuses the shared `mediaGenerationLimiter` (this is a
   // paid LLM call, same per-user cap as `media.ts`'s generation mutations).
@@ -936,6 +994,7 @@ export async function generateStoryboardShotgrid(
       maxTokens: 16000,
       schema: storyboardShotgridOutputSchema,
       label: "Storyboard shotgrid",
+      planningAttemptObserver: params.planningAttemptObserver,
     });
 
   // The selected profile is the production source of truth. Let the skill
@@ -949,6 +1008,18 @@ export async function generateStoryboardShotgrid(
     storyboardData.shots.forEach((shot, index) => {
       shot.duration_seconds = authoritativeShotDurations[index]!;
     });
+  }
+
+  const storyboardSafety = analyzeVerticalDramaStorySafety(storyboardData);
+  if (isBlockingVerticalDramaStorySafety(storyboardSafety)) {
+    const error = new Error(
+      "Storyboard contains a high-risk policy context; rewrite before media generation."
+    ) as Error & { code?: string; safety?: unknown };
+    error.code = "VD_STORY_POLICY_RISK";
+    error.safety = storyboardSafety;
+    (error as Error & { candidate?: StoryboardShotgridOutput }).candidate =
+      storyboardData;
+    throw error;
   }
 
   // Normalize `characters` / `required_character_refs` / `screen_caller_refs` per shot — the LLM is
@@ -1268,22 +1339,38 @@ export async function generateStoryboardShotgrid(
     model
   );
 
-  await deductCredits({
-    userId: params.userId,
-    tenantId: params.tenantId,
+  const creditCharge = {
     amount: creditsUsed,
+    model,
+    inputTokens: usage?.prompt_tokens ?? 0,
+    outputTokens: usage?.completion_tokens ?? 0,
+    skillSlug: "vertical-drama-storyboard-shotgrid",
     description: `Vertical Drama — generate storyboard (episode #${params.episodeId})`,
-    sourceType: "skill",
-    metadata: {
-      model,
-      llmModel: model,
-      feature: "vertical_drama_series",
-      seriesId: params.seriesId,
-      episodeId: params.episodeId,
-      inputTokens: usage?.prompt_tokens ?? 0,
-      outputTokens: usage?.completion_tokens ?? 0,
-    },
-  });
+  } as const;
+  if (!params.deferCreditDeduction) {
+    await deductCredits({
+      userId: params.userId,
+      tenantId: params.tenantId,
+      amount: creditCharge.amount,
+      description: creditCharge.description,
+      skillSlug: creditCharge.skillSlug,
+      sourceType: "skill",
+      metadata: {
+        model,
+        llmModel: model,
+        feature: "vertical_drama_series",
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        inputTokens: creditCharge.inputTokens,
+        outputTokens: creditCharge.outputTokens,
+      },
+    });
+  }
 
-  return { storyboard: storyboardData, creditsUsed, model };
+  return {
+    storyboard: storyboardData,
+    creditsUsed,
+    model,
+    ...(params.deferCreditDeduction ? { creditCharge } : {}),
+  };
 }

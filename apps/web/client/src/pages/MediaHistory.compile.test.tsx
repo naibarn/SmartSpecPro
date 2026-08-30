@@ -3,13 +3,25 @@ import MediaHistory, {
   buildFallbackApiUrl,
   canAddTaskToGallery,
   getVideoEditorLibraryItemIdForTask,
+  MEDIA_HISTORY_TASK_GC_TIME_MS,
+  MEDIA_HISTORY_TASK_REVALIDATE_ON_MOUNT,
+  MEDIA_HISTORY_TASK_REFETCH_ON_WINDOW_FOCUS,
+  MEDIA_HISTORY_TASK_STALE_TIME_MS,
   parseMediaHistoryQueryState,
   resolveMediaHistoryGalleryAspectRatio,
+  resolveMediaHistoryGalleryTitle,
 } from "./MediaHistory";
 
 describe("MediaHistory module", () => {
   it("imports successfully", () => {
     expect(typeof MediaHistory).toBe("function");
+  });
+
+  it("uses a short list cache with immediate mount revalidation policy", () => {
+    expect(MEDIA_HISTORY_TASK_STALE_TIME_MS).toBe(30_000);
+    expect(MEDIA_HISTORY_TASK_GC_TIME_MS).toBe(15 * 60_000);
+    expect(MEDIA_HISTORY_TASK_REVALIDATE_ON_MOUNT).toBe("always");
+    expect(MEDIA_HISTORY_TASK_REFETCH_ON_WINDOW_FOCUS).toBe(false);
   });
 
   it("builds Magnific fallback URLs from the Magnific base URL", () => {
@@ -75,15 +87,68 @@ describe("MediaHistory module", () => {
 
   it("exposes Add to Gallery only to admins with completed media results", () => {
     expect(
-      canAddTaskToGallery({ status: "completed", resultUrl: "/api/storage/files/gallery/1" }, true),
+      canAddTaskToGallery(
+        {
+          mediaType: "image",
+          status: "completed",
+          resultUrl: "/api/storage/files/gallery/1",
+        },
+        true,
+      ),
     ).toBe(true);
     expect(
-      canAddTaskToGallery({ status: "completed", resultUrl: "/api/storage/files/gallery/1" }, false),
+      canAddTaskToGallery(
+        {
+          mediaType: "image",
+          status: "completed",
+          resultUrl: "/api/storage/files/gallery/1",
+        },
+        false,
+      ),
     ).toBe(false);
     expect(
-      canAddTaskToGallery({ status: "processing", resultUrl: "/api/storage/files/gallery/1" }, true),
+      canAddTaskToGallery(
+        {
+          mediaType: "image",
+          status: "processing",
+          resultUrl: "/api/storage/files/gallery/1",
+        },
+        true,
+      ),
     ).toBe(false);
-    expect(canAddTaskToGallery({ status: "completed" }, true)).toBe(false);
+    expect(
+      canAddTaskToGallery(
+        { mediaType: "image", status: "completed" },
+        true,
+      ),
+    ).toBe(false);
+    expect(
+      canAddTaskToGallery(
+        {
+          mediaType: "audio",
+          status: "completed",
+          resultUrl: "/api/storage/files/gallery/1",
+        },
+        true,
+      ),
+    ).toBe(false);
+  });
+
+  it("builds a searchable Gallery title from Vertical Drama metadata", () => {
+    expect(
+      resolveMediaHistoryGalleryTitle({
+        mediaType: "video",
+        prompt: "remotion_render_mp4",
+        parameters: {
+          extra_params: {
+            __media_series_title: "คาเฟ่รักในเวทีพิเศษ",
+            __media_episode_number: 29,
+            __media_shot_number: 1,
+          },
+        },
+        resultData: undefined,
+      }),
+    ).toBe("คาเฟ่รักในเวทีพิเศษ ตอนที่ 29-1");
   });
 
   it("resolves Gallery orientation from media dimensions before defaults", () => {

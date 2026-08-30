@@ -45,8 +45,8 @@ import { getRedisClient } from "./redis";
 import type {
   EpisodeRunOwner,
   RunStageOptions,
-  VerticalDramaPipelineStage,
 } from "./verticalDramaEpisodePipeline";
+import type { VerticalDramaPipelineStage } from "@shared/verticalDramaSeries/contracts";
 
 export const VERTICAL_DRAMA_EPISODE_STAGE_JOBS_QUEUE =
   "vertical_drama_episode_stage_jobs";

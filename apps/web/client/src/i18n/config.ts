@@ -10,14 +10,10 @@ export {
 
 export const DEFAULT_LANGUAGE = "en" as const;
 
-export const STARTUP_NAMESPACES = [
-  "common",
-  "nav",
-  "auth",
-  "errors",
-] as const;
+export const STARTUP_NAMESPACES = ["common", "nav", "auth", "errors"] as const;
 
 export const ALL_NAMESPACES = [
+  "publicSite",
   "common",
   "nav",
   "auth",

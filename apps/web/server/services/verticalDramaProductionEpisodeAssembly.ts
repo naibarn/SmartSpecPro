@@ -104,7 +104,7 @@ import path from "path";
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "../db";
 import { verticalDramaEpisodes, verticalDramaSeries } from "../../drizzle/schema";
-import { storagePutFromPath } from "../storage";
+import { assertR2StorageActive, storagePutFromPath } from "../storage";
 import { debugError } from "../_core/logger";
 import {
   buildConcatFfmpegArgs,
@@ -334,7 +334,7 @@ export interface ProductionEpisodeCreditsOptions {
  * directly, alongside `renderOptions`.
  */
 export interface VerticalDramaProductionEpisodeGroupStateWithBgm
-  extends VerticalDramaProductionEpisodeGroupState {
+  extends Omit<VerticalDramaProductionEpisodeGroupState, "bgm"> {
   bgm?: ProductionEpisodeBgmOptions;
   credits?: ProductionEpisodeCreditsOptions;
   /** Phase C-2 — see this file's own header doc comment. */
@@ -502,7 +502,7 @@ export function productionEpisodeFilename(args: {
 
 async function loadProductionEpisodesManifest(
   owner: ProductionEpisodeOwner
-): Promise<VerticalDramaProductionEpisodesManifest | null> {
+): Promise<ProductionEpisodesManifestWithBgm | null> {
   const [row] = await db
     .select({
       productionEpisodesManifest: verticalDramaSeries.productionEpisodesManifest,
@@ -518,7 +518,7 @@ async function loadProductionEpisodesManifest(
     .limit(1);
   if (!row) throw new Error("vertical_drama_series_not_found");
   return (
-    (row.productionEpisodesManifest as VerticalDramaProductionEpisodesManifest | null) ?? null
+    (row.productionEpisodesManifest as ProductionEpisodesManifestWithBgm | null) ?? null
   );
 }
 
@@ -527,7 +527,7 @@ async function loadProductionEpisodesManifest(
  *  job runs. */
 async function persistProductionEpisodesManifest(
   owner: ProductionEpisodeOwner,
-  manifest: VerticalDramaProductionEpisodesManifest
+  manifest: ProductionEpisodesManifestWithBgm
 ): Promise<void> {
   await db
     .update(verticalDramaSeries)
@@ -1113,6 +1113,7 @@ export async function runProductionEpisodeGroupJob(args: {
     }
 
     const storageKey = `vertical-drama/production-episodes/${owner.seriesId}/${randomUUID()}-${filename}`;
+    await assertR2StorageActive();
     const { url } = await storagePutFromPath(storageKey, finalOutputPath, "video/mp4");
 
     await patchProductionEpisodeGroupState(owner, groupIndex, {

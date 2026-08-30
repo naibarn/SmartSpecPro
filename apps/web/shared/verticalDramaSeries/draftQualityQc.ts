@@ -253,8 +253,8 @@ function readCriticalFails(value: unknown): {
 } {
   const issues: string[] = [];
   const fallback: Array<{
-  code: DraftQualityQcCriticalFailCode;
-  explanation: string;
+    code: DraftQualityQcCriticalFailCode;
+    explanation: string;
   }> = [];
   if (value === undefined) {
     return { value: fallback, issues: ["criticalFails"] };
@@ -447,7 +447,10 @@ export const draftQualityQcReportSchema = z.object({
   weaknesses: z.array(z.string().trim().min(1).max(500)).max(3),
   recommendations: z.array(z.string().trim().min(1).max(500)).max(3),
   repairPlan: draftQualityQcRepairPlanSchema.optional(),
-  evaluationWarnings: z.array(z.string().trim().min(1).max(500)).max(8).default([]),
+  evaluationWarnings: z
+    .array(z.string().trim().min(1).max(500))
+    .max(8)
+    .default([]),
   evaluatedAt: z.string().datetime(),
 });
 export type DraftQualityQcReport = z.infer<typeof draftQualityQcReportSchema>;
@@ -505,8 +508,10 @@ export function buildDraftQualityQcRepairPlan(
     .sort((a, b) => a.rawScore - b.rawScore)
     .slice(0, 3);
   for (const criterion of weakCriteria) {
-    if (actions.some(item => item.criterionId === criterion.criterionId)) continue;
-    const recommendation = report.recommendations[actions.length] ?? report.recommendations[0];
+    if (actions.some(item => item.criterionId === criterion.criterionId))
+      continue;
+    const recommendation =
+      report.recommendations[actions.length] ?? report.recommendations[0];
     actions.push({
       criterionId: criterion.criterionId,
       priority: criterion.rawScore < 4 ? "high" : "medium",
@@ -541,7 +546,10 @@ export const draftQualityQcHistoryEntrySchema = z.object({
   /** Immutable ledger version containing the exact Draft evaluated this round. */
   candidateVersion: z.number().int().positive().optional(),
   /** Fingerprint binds a selectable Draft to its scorecard and create receipt. */
-  candidateFingerprint: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  candidateFingerprint: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
   /** Full scorecard for this evaluation. Optional for legacy records and failed revisions. */
   report: z.lazy(() => draftQualityQcReportSchema).optional(),
   /** Explains why this round has no new score, or records a non-fatal round issue. */
@@ -654,6 +662,7 @@ export type DraftQualityQcProgress = z.infer<
 
 export const draftQualityQcReceiptSchema = z.object({
   runId: z.string().uuid(),
+  seriesId: z.number().int().positive(),
   candidateFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
   explicitOverride: z.boolean().optional().default(false),
 });

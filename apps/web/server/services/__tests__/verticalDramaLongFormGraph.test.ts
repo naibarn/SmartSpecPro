@@ -22,7 +22,7 @@ describe("vertical drama long-form relationship graph materialization", () => {
     });
   });
 
-  it("does not invent strict deltas when legacy relationship state is present", () => {
+  it("preserves legacy relationship state while recording no typed delta", () => {
     const [normalized] = normalizeStrictRelationshipGraphDeltas([
       {
         episodeNumber: 1,
@@ -34,9 +34,89 @@ describe("vertical drama long-form relationship graph materialization", () => {
       },
     ]);
 
-    expect(normalized).not.toHaveProperty(
-      "episodeMemory.relationshipGraphDeltas"
-    );
+    expect(normalized).toMatchObject({
+      episodeMemory: {
+        relationshipChanges: [{ pair: ["mina", "ethan"], status: "friend" }],
+        relationshipGraphDeltas: [],
+      },
+    });
+  });
+
+  it("adds an explicit empty delta array when the episode has no memory block", () => {
+    const [normalized] = normalizeStrictRelationshipGraphDeltas([
+      { episodeNumber: 7, shotDrafts: [] },
+    ]);
+
+    expect(normalized).toMatchObject({
+      episodeMemory: {
+        episodeNumber: 7,
+        relationshipGraphDeltas: [],
+      },
+    });
+  });
+
+  it("repairs malformed, duplicate, and future deltas without dropping episode memory", () => {
+    const [normalized] = normalizeStrictRelationshipGraphDeltas([
+      {
+        episodeNumber: 4,
+        episodeMemory: {
+          recap: "The episode preserves the relationship context.",
+          relationshipChanges: [{ pair: ["mina", "ethan"], status: "rival" }],
+          relationshipGraphDeltas: [
+            {
+              operation: "add",
+              edgeId: "edge-valid",
+              fromCharacterKey: "mina",
+              toCharacterKey: "ethan",
+              relationType: "rival",
+              validFromEpisode: 1,
+              disclosure: "public",
+              beliefState: "known",
+              knownByCharacterKeys: ["mina"],
+              evidenceRefs: ["ep4:shot1"],
+              affectedCharacterKeys: ["mina", "ethan"],
+            },
+            { malformed: true },
+            {
+              operation: "update_status",
+              edgeId: "edge-valid",
+              fromCharacterKey: "mina",
+              toCharacterKey: "ethan",
+              relationType: "rival",
+              validFromEpisode: 2,
+              disclosure: "public",
+              beliefState: "known",
+              knownByCharacterKeys: ["mina"],
+              evidenceRefs: ["ep4:shot2"],
+              affectedCharacterKeys: ["mina", "ethan"],
+            },
+            {
+              operation: "reveal",
+              edgeId: "edge-future",
+              fromCharacterKey: "mina",
+              toCharacterKey: "ethan",
+              relationType: "rival",
+              validFromEpisode: 9,
+              disclosure: "public",
+              beliefState: "known",
+              knownByCharacterKeys: ["mina"],
+              evidenceRefs: ["ep4:shot3"],
+              affectedCharacterKeys: ["mina", "ethan"],
+            },
+          ],
+        },
+      },
+    ]);
+
+    expect(normalized).toMatchObject({
+      episodeMemory: {
+        recap: "The episode preserves the relationship context.",
+        relationshipChanges: [{ pair: ["mina", "ethan"], status: "rival" }],
+        relationshipGraphDeltas: [
+          { edgeId: "edge-valid", validFromEpisode: 1 },
+        ],
+      },
+    });
   });
 
   it("projects structured memory relationships into a legacy-derived, revisioned graph", () => {

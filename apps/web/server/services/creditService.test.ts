@@ -25,6 +25,7 @@ import {
   hasEnoughCredits,
   deductCredits,
   addCredits,
+  getTransactionHistorySummary,
 } from "./creditService";
 
 beforeEach(() => {
@@ -82,6 +83,55 @@ describe("isModelFree", () => {
       },
     ]);
     expect(await isModelFree("gpt-5.4")).toBe(false);
+  });
+});
+
+describe("getTransactionHistorySummary", () => {
+  it("returns signed credit-in, credit-out, and net totals", async () => {
+    const whereMock = vi.fn().mockResolvedValue([{
+      creditIn: "12",
+      creditOut: "7",
+      net: "5",
+      transactionCount: "4",
+    }]);
+    mockSelect.mockReturnValue({
+      from: vi.fn().mockReturnValue({ where: whereMock }),
+    });
+
+    await expect(getTransactionHistorySummary({
+      userId: 42,
+      tenantId: "tenant-1",
+      sourceType: "media_image",
+      startDate: new Date("2026-08-01T00:00:00.000Z"),
+      endDate: new Date("2026-09-01T00:00:00.000Z"),
+    })).resolves.toEqual({
+      creditIn: 12,
+      creditOut: 7,
+      net: 5,
+      transactionCount: 4,
+    });
+
+    expect(whereMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("normalizes empty aggregate results to zero", async () => {
+    mockSelect.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{
+          creditIn: null,
+          creditOut: null,
+          net: null,
+          transactionCount: "0",
+        }]),
+      }),
+    });
+
+    await expect(getTransactionHistorySummary({ userId: 42 })).resolves.toEqual({
+      creditIn: 0,
+      creditOut: 0,
+      net: 0,
+      transactionCount: 0,
+    });
   });
 });
 

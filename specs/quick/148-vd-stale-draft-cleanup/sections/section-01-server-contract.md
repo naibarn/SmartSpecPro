@@ -7,7 +7,7 @@ inside `verticalDramaSeries.ts`. Do not modify the schema or series deletion pat
 
 ## TDD expectations
 
-- Red tests for exact 5/7/10 thresholds and eligible-state filtering.
+- Red tests for exact 7/10 thresholds and eligible-state filtering.
 - Prove active, applied, archived, cross-owner, and too-new rows are excluded.
 - Prove counts cover rows beyond the visible list limit.
 - Prove the update returns the actual affected-row count.
@@ -32,5 +32,5 @@ inside `verticalDramaSeries.ts`. Do not modify the schema or series deletion pat
 
 ## Coordination
 
-The client consumes `{ cleanup: { counts: { 5, 7, 10 } } }` from
+The client consumes `{ cleanup: { counts: { 7, 10 } } }` from
 `listDraftJobs` and calls `archiveStaleDraftJobs({ olderThanDays })`.

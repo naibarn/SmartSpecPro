@@ -32,8 +32,14 @@ function getData(error: unknown): RateLimitErrorData | undefined {
 /** True when the error is a 429 / rate-limit error from the API. */
 export function isRateLimitError(error: unknown): boolean {
   const data = getData(error);
-  if (!data) return false;
-  return data.code === "TOO_MANY_REQUESTS" || data.httpStatus === 429;
+  if (data?.code === "TOO_MANY_REQUESTS" || data?.httpStatus === 429) {
+    return true;
+  }
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  // Older server versions wrapped the upstream 429 as NOT_FOUND/404 or as
+  // INTERNAL_SERVER_ERROR/500. Keep already-running clients quiet while they
+  // roll forward by recognizing the preserved upstream message too.
+  return /\b429\b|rate[ -]?limit|too many requests/i.test(message);
 }
 
 /**
@@ -46,9 +52,15 @@ export function rateLimitBackoffMs(error: unknown): number {
   if (!isRateLimitError(error)) return 0;
   const data = getData(error);
   const raw =
-    typeof data?.retryAfter === "number" && Number.isFinite(data.retryAfter) && data.retryAfter > 0
+    typeof data?.retryAfter === "number" &&
+    Number.isFinite(data.retryAfter) &&
+    data.retryAfter > 0
       ? data.retryAfter
-      : DEFAULT_BACKOFF_SECONDS;
+      : Number(
+          (error instanceof Error ? error.message : String(error ?? "")).match(
+            /(?:retry[- ]after|try again in)\s+(\d+(?:\.\d+)?)\s*seconds?/i
+          )?.[1]
+        ) || DEFAULT_BACKOFF_SECONDS;
   const seconds = Math.min(Math.max(1, Math.ceil(raw)), MAX_BACKOFF_SECONDS);
   return seconds * 1000;
 }

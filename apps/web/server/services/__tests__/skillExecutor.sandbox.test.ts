@@ -14,6 +14,17 @@ vi.mock("child_process", () => ({
   spawnSync: vi.fn(() => ({ status: 0, stdout: "", stderr: "" })),
 }));
 vi.mock("../db", () => ({ getDb: vi.fn(async () => null) }));
+vi.mock("../skillRevenueBilling", () => ({
+  normalizeSkillRevenuePricing: vi.fn(() => ({ tenantCreditCost: 2, skillOwnerCreditCost: 0, totalCredits: 2 })),
+  settleSkillRun: vi.fn(async () => ({ totalCredits: 2 })),
+}));
+vi.mock("../durableMediaAssetService", () => ({
+  durabilizeMediaGenerationResponse: vi.fn(async (response: unknown) => response),
+}));
+vi.mock("../taskPlannerMiddleware", () => ({
+  runPlanner: vi.fn(async () => null),
+  recordStepAttempt: vi.fn(),
+}));
 
 // Mock heavy dependencies to isolate skill executor logic
 vi.mock("../redis", () => ({ getRedisClient: vi.fn(() => ({ setex: vi.fn() })) }));
@@ -41,6 +52,7 @@ import {
   getDispatchMode,
   dispatchToSandbox,
 } from "../sandbox";
+import { settleSkillRun } from "../skillRevenueBilling";
 
 function makeSkill(overrides: Partial<SkillDefinition> = {}): SkillDefinition {
   return {
@@ -164,15 +176,44 @@ describe("skillExecutor sandbox dispatch", () => {
 
   it("routes core-text to LLM text path", async () => {
     const skill = makeSkill({ executionMode: "core-text" });
-    const result = await executeSkill(skill, defaultParams, 1, "token");
+    const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
     expect(result.type).toBe("text");
     expect(result.success).toBe(true);
+    expect(result.creditsUsed).toBe(2);
+    expect(settleSkillRun).toHaveBeenCalledWith(expect.objectContaining({
+      runId: expect.any(String),
+      userId: 1,
+      tenantId: "tenant-001",
+      skillSlug: "test-skill",
+    }));
     expect(dispatchToSandbox).not.toHaveBeenCalled();
+  });
+
+  it("fails closed before execution when a tenant-scoped skill is run by another tenant", async () => {
+    const skill = makeSkill({ executionMode: "core-text", tenantId: "tenant-owner" });
+    const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-other");
+
+    expect(result).toMatchObject({
+      success: false,
+      error: "Skill is not available in the active tenant",
+    });
+    expect(settleSkillRun).not.toHaveBeenCalled();
+    expect(dispatchToSandbox).not.toHaveBeenCalled();
+  });
+
+  it("fails closed before a paid skill runs without tenant context", async () => {
+    const result = await executeSkill(makeSkill({ executionMode: "core-text" }), defaultParams, 1, "token");
+
+    expect(result).toMatchObject({
+      success: false,
+      error: "Tenant context required for skill revenue settlement",
+    });
+    expect(settleSkillRun).not.toHaveBeenCalled();
   });
 
   it("routes llm-only to LLM text path (backward compat)", async () => {
     const skill = makeSkill({ executionMode: "llm-only" });
-    const result = await executeSkill(skill, defaultParams, 1, "token");
+    const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
     expect(result.type).toBe("text");
     expect(result.success).toBe(true);
     expect(dispatchToSandbox).not.toHaveBeenCalled();
@@ -180,7 +221,7 @@ describe("skillExecutor sandbox dispatch", () => {
 
   it("routes enhance-prompt to LLM text path", async () => {
     const skill = makeSkill({ executionMode: "enhance-prompt" as any });
-    const result = await executeSkill(skill, defaultParams, 1, "token");
+    const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
     expect(result.type).toBe("text");
     expect(result.success).toBe(true);
   });
@@ -290,7 +331,7 @@ describe("skillExecutor sandbox dispatch", () => {
 
     // sandbox-code falls through to the default case since sandbox is disabled
     const skill = makeSkill({ executionMode: "sandbox-code", type: "chat-assistant" });
-    const result = await executeSkill(skill, defaultParams, 1, "token");
+    const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
     // Should not be a sandbox-job since sandbox is disabled
     expect(result.type).not.toBe("sandbox-job");
   });
@@ -303,7 +344,7 @@ describe("skillExecutor sandbox dispatch", () => {
     vi.mocked(getDispatchMode).mockReturnValue("required");
 
     const skill = makeSkill({ executionMode: "sandbox-code" });
-    const result = await executeSkill(skill, defaultParams, 1, "token");
+    const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
     expect(result.success).toBe(false);
     expect(result.error).toContain("required but unavailable");
   });
@@ -364,7 +405,7 @@ describe("skillExecutor sandbox dispatch", () => {
     });
 
     const skill = makeSkill({ executionMode: "media-generate", type: "audio-generation" as any });
-    const result = await executeSkill(skill, defaultParams, 1, "token");
+    const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
     expect(result.success).toBe(true);
     expect(result.type).toBe("audio");
     expect(mediaGenerationService.generateAudio).toHaveBeenCalled();

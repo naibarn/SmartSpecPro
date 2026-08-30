@@ -39,6 +39,19 @@ describe("marketplaceAutoReviewJob", () => {
     ).toBe(false);
   });
 
+  it("claims and dispatches background sequential image-edit reconciliation jobs", () => {
+    const source = readFileSync(
+      new URL("../marketplaceAutoReviewJob.ts", import.meta.url),
+      "utf8"
+    );
+    expect(source).toContain(
+      'MARKETPLACE_AUTO_REVIEW_SEQUENTIAL_IMAGE_EDIT_RECONCILIATION_JOB_TYPE'
+    );
+    expect(source).toContain(
+      "reconcileMarketplaceAutoReviewSequentialShotImageEdit("
+    );
+  });
+
   it("dispatches durable initialization with an atomic claim, heartbeat, and exhausted-run failure", () => {
     const source = readFileSync(
       new URL("../marketplaceAutoReviewJob.ts", import.meta.url),

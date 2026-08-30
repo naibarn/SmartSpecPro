@@ -40,6 +40,9 @@ interface CanvasStageProps {
   suppressTransformHandles?: boolean;
   showTransformDock?: boolean;
   showViewportControls?: boolean;
+  showZoomStepControls?: boolean;
+  panMode?: boolean;
+  onPanModeChange?: (active: boolean) => void;
   slideBackground?: PresentationSlideBackground;
   viewport?: {
     scale: number;
@@ -83,7 +86,10 @@ export interface CanvasStageDropAssetPayload extends CanvasStageDroppedAsset {
 
 const MIN_STAGE_ZOOM = 0.25;
 const MAX_STAGE_ZOOM = 3;
-const STAGE_ZOOM_STEP = 0.1;
+const WHEEL_LINE_HEIGHT_PX = 16;
+const WHEEL_ZOOM_SENSITIVITY = 0.001;
+const MAX_WHEEL_DELTA_PX = 240;
+const STAGE_BUTTON_ZOOM_STEP = 0.1;
 const TRANSFORM_DOCK_WIDTH = 228;
 
 interface MarqueeDragState {
@@ -103,6 +109,37 @@ interface TouchGestureState {
   startScale: number;
   startOffsetX: number;
   startOffsetY: number;
+}
+
+export function normalizeCanvasWheelDelta(
+  deltaY: number,
+  deltaMode = 0,
+  viewportHeight = 680,
+): number {
+  const safeDeltaY = Number.isFinite(deltaY) ? deltaY : 0;
+  const modeMultiplier = deltaMode === 1
+    ? WHEEL_LINE_HEIGHT_PX
+    : deltaMode === 2
+      ? Math.max(1, viewportHeight)
+      : 1;
+  return Math.max(
+    -MAX_WHEEL_DELTA_PX,
+    Math.min(MAX_WHEEL_DELTA_PX, safeDeltaY * modeMultiplier),
+  );
+}
+
+export function getCanvasZoomFromWheel(
+  scale: number,
+  deltaY: number,
+  deltaMode = 0,
+  viewportHeight = 680,
+): number {
+  const normalizedDelta = normalizeCanvasWheelDelta(deltaY, deltaMode, viewportHeight);
+  const nextScale = scale * Math.exp(-normalizedDelta * WHEEL_ZOOM_SENSITIVITY);
+  return Math.min(
+    MAX_STAGE_ZOOM,
+    Math.max(MIN_STAGE_ZOOM, Number(nextScale.toFixed(3))),
+  );
 }
 
 function normalizeMarqueeBounds(
@@ -136,6 +173,9 @@ export function CanvasStage({
   suppressTransformHandles,
   showTransformDock: showTransformDockProp = true,
   showViewportControls = true,
+  showZoomStepControls = false,
+  panMode = false,
+  onPanModeChange,
   slideBackground,
   viewport,
   onViewportChange,
@@ -503,13 +543,16 @@ export function CanvasStage({
 
     const target = event.target as HTMLElement | null;
     const clickedCanvasObject = Boolean(target?.closest("[data-canvas-object='true']"));
-    if (isLeftButton && clickedCanvasObject && !isModifierPan) {
+    const clickedViewportPanTarget = Boolean(target?.closest("[data-canvas-viewport-pan-target='true']"));
+    const shouldPanWithPrimaryButton = panMode || isModifierPan || clickedViewportPanTarget;
+    if (isLeftButton && clickedCanvasObject && !shouldPanWithPrimaryButton) {
       return;
     }
 
     const shouldStartMarquee = (
       isLeftButton
       && !clickedCanvasObject
+      && !panMode
       && !isModifierPan
       && marqueeSelectRef.current
     );
@@ -641,15 +684,19 @@ export function CanvasStage({
   }
 
   function handleCanvasWheel(event: ReactWheelEvent<HTMLDivElement>) {
+    // The canvas owns its wheel gesture. This makes ordinary mouse wheels and
+    // trackpads zoom naturally while still supporting Ctrl/Cmd+wheel pinch
+    // events emitted by browsers.
     if (!viewport || !onViewportChange) {
       return;
     }
 
     event.preventDefault();
-    const direction = event.deltaY < 0 ? 1 : -1;
-    const nextScale = Math.min(
-      MAX_STAGE_ZOOM,
-      Math.max(MIN_STAGE_ZOOM, Number((viewport.scale + (direction * STAGE_ZOOM_STEP)).toFixed(2))),
+    const nextScale = getCanvasZoomFromWheel(
+      viewport.scale,
+      event.deltaY,
+      event.deltaMode,
+      viewportSize.height,
     );
     if (nextScale === viewport.scale) {
       return;
@@ -663,6 +710,30 @@ export function CanvasStage({
     const nextOffsetX = pointerX - (canvasX * nextScale);
     const nextOffsetY = pointerY - (canvasY * nextScale);
     const clamped = clampViewportOffsets(nextScale, nextOffsetX, nextOffsetY);
+    onViewportChange({
+      scale: nextScale,
+      offsetX: clamped.offsetX,
+      offsetY: clamped.offsetY,
+    });
+  }
+
+  function handleViewportZoomStep(direction: 1 | -1) {
+    if (!viewport || !onViewportChange) {
+      return;
+    }
+
+    const nextScale = Math.min(
+      MAX_STAGE_ZOOM,
+      Math.max(
+        MIN_STAGE_ZOOM,
+        Number((viewport.scale + direction * STAGE_BUTTON_ZOOM_STEP).toFixed(2)),
+      ),
+    );
+    if (nextScale === viewport.scale) {
+      return;
+    }
+
+    const clamped = clampViewportOffsets(nextScale, viewport.offsetX, viewport.offsetY);
     onViewportChange({
       scale: nextScale,
       offsetX: clamped.offsetX,
@@ -708,6 +779,50 @@ export function CanvasStage({
         </p>
         {showViewportControls && viewport && onViewportChange ? (
           <div className="flex items-center gap-1">
+            {showZoomStepControls ? (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 w-6 px-0 text-sm leading-none"
+                  aria-label="Decrease canvas zoom"
+                  title="Zoom out"
+                  onClick={() => handleViewportZoomStep(-1)}
+                  disabled={effectiveScale <= MIN_STAGE_ZOOM}
+                >
+                  −
+                </Button>
+                <span className="min-w-[3rem] text-center text-[11px] tabular-nums" aria-label="Canvas zoom level">
+                  {Math.round(effectiveScale * 100)}%
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 w-6 px-0 text-sm leading-none"
+                  aria-label="Increase canvas zoom"
+                  title="Zoom in"
+                  onClick={() => handleViewportZoomStep(1)}
+                  disabled={effectiveScale >= MAX_STAGE_ZOOM}
+                >
+                  +
+                </Button>
+              </>
+            ) : null}
+            {onPanModeChange ? (
+              <Button
+                type="button"
+                size="sm"
+                variant={panMode ? "secondary" : "outline"}
+                className="h-6 px-2 text-[11px]"
+                aria-label={panMode ? "Exit Pan Mode" : "Enter Pan Mode"}
+                aria-pressed={panMode}
+                onClick={() => onPanModeChange(!panMode)}
+              >
+                {panMode ? "Edit Mode" : "Pan Mode"}
+              </Button>
+            ) : null}
             <Button
               type="button"
               size="sm"
@@ -764,7 +879,7 @@ export function CanvasStage({
 
                 <div
                   data-testid="canvas-stage-layer-content"
-                  className="absolute inset-0 touch-none cursor-grab active:cursor-grabbing"
+                  className={`absolute inset-0 touch-none ${panMode ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
                   onPointerDown={handlePanPointerDown}
                   onTouchStart={handleCanvasTouchStart}
                   onTouchMove={handleCanvasTouchMove}
@@ -790,7 +905,7 @@ export function CanvasStage({
                   >
                     {slideBackground?.type === "image" && (
                       <AuthenticatedMediaImage
-                        className="absolute inset-0 pointer-events-none"
+                        className="absolute inset-0 block h-full w-full pointer-events-none object-cover"
                         src={slideBackground.url}
                         alt=""
                         aria-hidden="true"
@@ -819,6 +934,7 @@ export function CanvasStage({
                       onAdjustMediaCrop={onAdjustMediaCrop}
                       onToggleCropMode={onToggleCropMode}
                       onSetCropModeTarget={onSetCropModeTarget}
+                      panMode={panMode}
                       clipTextToElementBounds={false}
                       mediaMotionTiming={mediaMotionTiming}
                     />
@@ -966,7 +1082,7 @@ export function CanvasStage({
 
         {viewport ? (
           <p className="pointer-events-none absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 text-[11px] text-white">
-            Scroll to zoom · Alt+drag / middle-mouse to pan · Drag empty area to select
+            {panMode ? "Pan Mode: drag canvas · " : "Edit Mode: drag objects · "}Scroll: zoom canvas · Alt/middle-drag: pan canvas · Crop Mode: scroll/drag image
           </p>
         ) : null}
       </div>

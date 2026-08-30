@@ -10,6 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useState } from "react";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { projectSequentialShotCards } from "@/lib/marketplaceSequentialStoryboardUi";
 import { SequentialShotReviewSection } from "./SequentialShotReviewSection";
 import type {
@@ -509,7 +510,7 @@ export function MarketplaceAutoReviewLegacyDetails({
                     key={`${reference.url}-${index}`}
                     className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-1.5"
                   >
-                    <img
+                    <AuthenticatedMediaImage
                       src={reference.url}
                       alt={`ภาพอ้างอิงสินค้า ${index + 1}`}
                       className="h-16 w-12 rounded object-cover"
@@ -781,7 +782,7 @@ export function MarketplaceAutoReviewLegacyDetails({
                     className="group block overflow-hidden rounded-xl border border-slate-200 bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                     aria-label={`เปิดภาพผลลัพธ์ที่ ${index + 1}`}
                   >
-                    <img
+                    <AuthenticatedMediaImage
                       src={url}
                       alt={`ผลลัพธ์ภาพที่ ${index + 1}`}
                       loading="lazy"

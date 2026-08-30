@@ -8,6 +8,12 @@ vi.mock("../creditService", () => ({
   deductCredits: vi.fn(),
   calculateCreditsForLLM: vi.fn(),
 }));
+const { mockResolveVerticalDramaSeriesModel } = vi.hoisted(() => ({
+  mockResolveVerticalDramaSeriesModel: vi.fn(),
+}));
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: mockResolveVerticalDramaSeriesModel,
+}));
 vi.mock("../verticalDramaStoryBible", async () => {
   const actual = await vi.importActual<typeof import("../verticalDramaStoryBible")>(
     "../verticalDramaStoryBible",
@@ -81,6 +87,7 @@ function validEpisode(num: number) {
 describe("generateNextEpisodesViaLlm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockResolveVerticalDramaSeriesModel.mockResolvedValue("gpt-4o-mini");
     mockResolveModel.mockResolvedValue("gpt-4o-mini");
     mockCalculateCredits.mockReturnValue(5);
     mockDeductCredits.mockResolvedValue(undefined as any);

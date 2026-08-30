@@ -8,6 +8,7 @@ import {
   workerHeartbeats,
   workerJobEvents,
   workerJobs,
+  tenants,
   workers,
 } from "../../drizzle/schema";
 import { auditLogger } from "./auditLogger";
@@ -1154,6 +1155,61 @@ export async function getWorkerQueueOverview(
       finishedAt: toIsoOrNull(job.finishedAt),
       leaseExpiresAt: toIsoOrNull(job.leaseExpiresAt),
     })),
+  };
+}
+
+/**
+ * Host-level aggregate used by scheduled infrastructure assessments. Capacity
+ * is a server concern, while the Admin UI remains tenant-scoped. Only counts
+ * and safe job-type summaries are returned; no tenant identifiers or payloads
+ * cross the capacity snapshot boundary.
+ */
+export async function getGlobalWorkerQueueOverview(
+  input: { hours?: number; now?: Date } = {},
+): Promise<WorkerQueueOverview> {
+  const db = await getDb();
+  const tenantRows = await db.select({ id: tenants.id }).from(tenants);
+  const overviews = await Promise.all(
+    tenantRows.map((tenant) => getWorkerQueueOverview(tenant.id, input)),
+  );
+  const oldest = overviews
+    .map((overview) => overview.oldestQueuedAt)
+    .filter((value): value is string => Boolean(value))
+    .sort()[0] ?? null;
+  const distribution = new Map<string, { runtimeType: string; runtimeVersion: string; count: number }>();
+  for (const overview of overviews) {
+    for (const item of overview.runtimeVersionDistribution) {
+      const key = `${item.runtimeType}\u0000${item.runtimeVersion}`;
+      const current = distribution.get(key) ?? { ...item, count: 0 };
+      current.count += item.count;
+      distribution.set(key, current);
+    }
+  }
+  return {
+    tenantId: "global",
+    generatedAt: input.now?.toISOString() ?? new Date().toISOString(),
+    hours: Math.min(168, Math.max(1, Math.floor(input.hours ?? 24))),
+    totalJobs: overviews.reduce((sum, item) => sum + item.totalJobs, 0),
+    queuedJobCount: overviews.reduce((sum, item) => sum + item.queuedJobCount, 0),
+    activeJobCount: overviews.reduce((sum, item) => sum + item.activeJobCount, 0),
+    stalledJobCount: overviews.reduce((sum, item) => sum + item.stalledJobCount, 0),
+    reassignableJobCount: overviews.reduce((sum, item) => sum + item.reassignableJobCount, 0),
+    completedJobCount: overviews.reduce((sum, item) => sum + item.completedJobCount, 0),
+    failedJobCount: overviews.reduce((sum, item) => sum + item.failedJobCount, 0),
+    canceledJobCount: overviews.reduce((sum, item) => sum + item.canceledJobCount, 0),
+    oldestQueuedAt: oldest,
+    oldestQueuedAgeMs: oldest ? Math.max(0, Date.now() - new Date(oldest).getTime()) : null,
+    verificationFailureCount: overviews.reduce((sum, item) => sum + item.verificationFailureCount, 0),
+    staleUploadRejectionCount: overviews.reduce((sum, item) => sum + item.staleUploadRejectionCount, 0),
+    reassignmentCount: overviews.reduce((sum, item) => sum + item.reassignmentCount, 0),
+    securityWarningCounts: {
+      tokenReplay: overviews.reduce((sum, item) => sum + item.securityWarningCounts.tokenReplay, 0),
+      deviceProofMismatch: overviews.reduce((sum, item) => sum + item.securityWarningCounts.deviceProofMismatch, 0),
+      refreshTokenReuse: overviews.reduce((sum, item) => sum + item.securityWarningCounts.refreshTokenReuse, 0),
+      autoBlockedConnection: overviews.reduce((sum, item) => sum + item.securityWarningCounts.autoBlockedConnection, 0),
+    },
+    runtimeVersionDistribution: [...distribution.values()],
+    recentJobs: [],
   };
 }
 

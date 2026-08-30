@@ -2,8 +2,9 @@
 
 ## User flow
 
-1. Enable tenant flag `verticalDramaSpecialEpisodes`.
-2. Open a series Episodes tab and choose `สร้างตอนพิเศษ Tie-in` beside the unchanged normal
+1. The feature is enabled by default. If an administrator explicitly disabled tenant flag
+   `verticalDramaSpecialEpisodes`, re-enable it under Admin > Tenant Feature Flags.
+2. Open a series Episodes tab and choose `สร้างตอนย่อยเพิ่มเติม (ตอนพิเศษ Tie-in)` beside the unchanged normal
    `สร้างตอนย่อยใหม่` action.
 3. Enter the idea, select 1–3 uploaded or Marketplace Capture images, optionally select
    approved series characters/speakers, choose duration, dialogue mode, and the independent

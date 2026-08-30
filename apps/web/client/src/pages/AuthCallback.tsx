@@ -110,9 +110,23 @@ export default function AuthCallback() {
 
         if (!sessionRes.ok) {
           const sessionErr = await sessionRes.json().catch(() => null);
-          throw new Error(
-            sessionErr?.error?.json?.message || 'Failed to create session'
-          );
+          const sessionMessage = sessionErr?.error?.json?.message || 'Failed to create session';
+          const sessionCode = sessionErr?.error?.json?.data?.code;
+          const isInviteAdmissionError =
+            sessionRes.status === 403 &&
+            (sessionCode === 'FORBIDDEN' || !sessionCode) &&
+            /invite code|registration/i.test(sessionMessage);
+
+          if (isInviteAdmissionError) {
+            setStatus('error');
+            setMessage(sessionMessage);
+            setTimeout(() => {
+              setLocation('/signup?inviteRequired=1');
+            }, 1200);
+            return;
+          }
+
+          throw new Error(sessionMessage);
         }
 
         const sessionData = await sessionRes.json();

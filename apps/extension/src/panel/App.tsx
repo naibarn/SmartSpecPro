@@ -327,6 +327,8 @@ interface DramaShot {
   dialogueLines: DramaShotDialogueLine[];
   mainImageUrl: string | null;
   mainImageThumbnailUrl: string | null;
+  stopFrameUrl: string | null;
+  stopFrameThumbnailUrl: string | null;
   gridImageUrl: string | null;
   gridFrames: DramaShotGridFrame[];
   referenceImages: DramaShotReferenceImage[];
@@ -5887,11 +5889,17 @@ export default function App() {
                       </div>
                       <div className="production-shot-assets">
                         {productionMediaCard({
-                          label: "Main image",
+                          label: "Start frame",
                           urls: [shot.mainImageThumbnailUrl, shot.mainImageUrl],
                           url: shot.mainImageUrl,
-                          title: `drama-shot-${shot.shotNumber}-main`,
+                          title: `drama-shot-${shot.shotNumber}-start-frame`,
                         })}
+                        {shot.stopFrameUrl ? productionMediaCard({
+                          label: "Stop frame",
+                          urls: [shot.stopFrameThumbnailUrl, shot.stopFrameUrl],
+                          url: shot.stopFrameUrl,
+                          title: `drama-shot-${shot.shotNumber}-stop-frame`,
+                        }) : null}
                       </div>
                       {(() => {
                         const gridCut = dramaGridCuts[shot.shotNumber];

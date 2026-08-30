@@ -1,4 +1,10 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
@@ -7,6 +13,12 @@ import {
   getAuthenticatedAttachmentUrl,
   openAuthenticatedAttachment,
 } from "@/components/feedback/AuthenticatedAttachmentImage";
+import { parseFeedbackTicketId } from "./feedbackHubNavigation";
+import {
+  FEEDBACK_LIGHTBOX_ZOOM_MIN,
+  getFeedbackLightboxImageStyle,
+} from "./feedbackHubZoom";
+import { FeedbackLightboxZoomControls } from "./FeedbackLightboxZoomControls";
 import { trpc } from "@/lib/trpc";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { Badge } from "@smartspec/ui/src/components/ui/badge";
@@ -20,8 +32,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@smartspec/ui/src/components/ui/select";
-import { ScrollArea } from "@smartspec/ui/src/components/ui/scroll-area";
-import { Dialog, DialogContent } from "@smartspec/ui/src/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@smartspec/ui/src/components/ui/dialog";
 import {
   Collapsible,
   CollapsibleContent,
@@ -50,7 +65,7 @@ import {
   Stethoscope,
 } from "lucide-react";
 
-const EMPTY_TICKETS: never[] = [];
+const TICKET_PAGE_SIZE = 100;
 
 function formatTicketTitle(
   title: string,
@@ -63,6 +78,40 @@ function formatTicketTitle(
   return `[${label}] ${title}`;
 }
 
+function formatFeedbackCreatedAt(d: string | Date | null | undefined) {
+  if (!d) return "";
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return `${date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  })} ${date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })}`;
+}
+
+function getFeedbackUploadError(
+  payload: any,
+  status: number,
+  fallback = "อัปโหลดไฟล์ไม่สำเร็จ"
+) {
+  const error = payload?.error;
+  const message =
+    typeof error === "string"
+      ? error
+      : typeof error?.message === "string"
+        ? error.message
+        : typeof payload?.message === "string"
+          ? payload.message
+          : "";
+  if (message) return message;
+  return status ? `${fallback} (HTTP ${status})` : fallback;
+}
+
 export default function AdminFeedbackHub() {
   const { confirm } = useConfirm();
   const [, setLocation] = useLocation();
@@ -72,32 +121,28 @@ export default function AdminFeedbackHub() {
   );
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
   // Source of the ticket: real user feedback ("human") vs auto-filed system
-  // error reports ("system"). Default to "human" so genuine user feedback is
-  // surfaced first instead of being buried under machine-generated noise.
+  // error reports ("system"). Start with all sources so the global unread
+  // count always has its unread rows visible in the same left-hand queue.
   const [sourceFilter, setSourceFilter] = useState<
     "human" | "system" | undefined
-  >("human");
+  >(undefined);
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [optimisticallyReadTicketIds, setOptimisticallyReadTicketIds] =
     useState<Set<number>>(() => new Set());
-  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [ticketOffset, setTicketOffset] = useState(0);
+  const [loadedTickets, setLoadedTickets] = useState<any[]>([]);
   const [ticketOrderIds, setTicketOrderIds] = useState<number[]>([]);
   const ticketFilterKey = [
     statusFilter ?? "",
     typeFilter ?? "",
     sourceFilter ?? "all",
-    unreadOnly ? "unread" : "all",
   ].join("|");
   const previousTicketFilterKeyRef = useRef(ticketFilterKey);
 
   // Deep-link: auto-select ticket from ?ticketId=X
   useEffect(() => {
-    const params = new URLSearchParams(search);
-    const ticketIdParam = params.get("ticketId");
-    if (ticketIdParam) {
-      const id = parseInt(ticketIdParam, 10);
-      if (!isNaN(id)) setSelectedTicketId(id);
-    }
+    const ticketId = parseFeedbackTicketId(search);
+    if (ticketId != null) setSelectedTicketId(ticketId);
   }, [search]);
 
   const selectTicket = (ticketId: number) => {
@@ -106,12 +151,35 @@ export default function AdminFeedbackHub() {
   };
   const [commentText, setCommentText] = useState("");
   const [replyFiles, setReplyFiles] = useState<File[]>([]);
+  const [replyError, setReplyError] = useState<string | null>(null);
   const [replyUploading, setReplyUploading] = useState(false);
+  const [replyDragOver, setReplyDragOver] = useState(false);
+  const [replyPreviewIndex, setReplyPreviewIndex] = useState<number | null>(
+    null
+  );
+  const replyFileInputRef = useRef<HTMLInputElement>(null);
   const [isInternal, setIsInternal] = useState(false);
   const [overdueAlertOpen, setOverdueAlertOpen] = useState(false);
   const lastOverdueAlertAtRef = useRef<number | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [lightboxZoom, setLightboxZoom] = useState(
+    FEEDBACK_LIGHTBOX_ZOOM_MIN,
+  );
+  const [lightboxImageSize, setLightboxImageSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const lightboxViewportRef = useRef<HTMLDivElement>(null);
+  const lightboxPanRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    scrollLeft: number;
+    scrollTop: number;
+  } | null>(null);
+  const [lightboxPanning, setLightboxPanning] = useState(false);
+  const commentsSectionRef = useRef<HTMLDivElement>(null);
 
   const statsQuery = trpc.feedback.stats.useQuery(undefined, {
     refetchInterval: 60_000,
@@ -121,11 +189,10 @@ export default function AdminFeedbackHub() {
       status: statusFilter as any,
       ticketType: typeFilter as any,
       submittedByType: sourceFilter,
-      unreadOnly,
-      // Load the full human-feedback queue (currently under 100 tickets) so
-      // the left-hand scroll can reach older reports instead of silently
-      // truncating the list at the first 50 rows.
-      limit: 100,
+      // Load the queue in pages so older reports remain reachable without
+      // requesting every system report in one response.
+      limit: TICKET_PAGE_SIZE,
+      offset: ticketOffset,
     },
     { refetchInterval: 60_000 }
   );
@@ -141,19 +208,32 @@ export default function AdminFeedbackHub() {
   });
 
   const addCommentMutation = trpc.feedback.addComment.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       setCommentText("");
       setReplyFiles([]);
-      ticketDetailQuery.refetch();
+      setReplyError(null);
+      setReplyPreviewIndex(null);
+      const refreshedDetail = await ticketDetailQuery.refetch();
+      if (refreshedDetail.isError) {
+        setReplyError(
+          "ส่ง reply สำเร็จแล้ว แต่โหลดรายการ reply ไม่ได้ กรุณากด Retry"
+        );
+        toast.error("ส่ง reply สำเร็จแล้ว แต่รีเฟรชรายการไม่สำเร็จ");
+      } else {
+        requestAnimationFrame(() => {
+          commentsSectionRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "end",
+          });
+        });
+      }
       toast.success(
         isInternal
           ? "Internal note added"
           : "Reply sent — user will be notified"
       );
     },
-    onError: err => {
-      toast.error(err.message || "Failed to send comment");
-    },
+    onError: err => setReplyError(err.message || "Failed to send comment"),
   });
   const markReadMutation = trpc.feedback.markRead.useMutation({
     onSuccess: () => {
@@ -175,7 +255,7 @@ export default function AdminFeedbackHub() {
     onSuccess: result => {
       setOptimisticallyReadTicketIds(current => {
         const next = new Set(current);
-        (ticketsQuery.data ?? []).forEach(ticket => next.add(ticket.id));
+        loadedTickets.forEach(ticket => next.add(ticket.id));
         return next;
       });
       ticketsQuery.refetch();
@@ -206,12 +286,42 @@ export default function AdminFeedbackHub() {
     },
   });
 
+  useEffect(() => {
+    setTicketOffset(0);
+    setLoadedTickets([]);
+  }, [statusFilter, typeFilter, sourceFilter]);
+
+  useEffect(() => {
+    const incomingTickets = (ticketsQuery.data ?? []) as any[];
+    setLoadedTickets(previousTickets => {
+      if (ticketOffset === 0) return incomingTickets;
+
+      const knownIds = new Set(previousTickets.map(ticket => ticket.id));
+      return [
+        ...previousTickets,
+        ...incomingTickets.filter(ticket => !knownIds.has(ticket.id)),
+      ];
+    });
+  }, [ticketOffset, ticketsQuery.data]);
+
   const stats = statsQuery.data;
+  const unreadCount = stats?.unread ?? 0;
+
+  const showFeedbackQueue = () => {
+    // The summary count is global to the admin's authorized scope. Clear the
+    // list filters so the mixed read/unread queue is visible in the left panel.
+    setStatusFilter(undefined);
+    setTypeFilter(undefined);
+    setSourceFilter(undefined);
+    setSelectedTicketId(null);
+    setLocation("/admin/feedback-hub");
+  };
+
   // Keep the empty fallback referentially stable. When the query is still
   // loading or fails (for example, an unrelated 402 from a browser
   // extension), a fresh [] here would retrigger the ordering effect forever
   // and crash React with error #185.
-  const tickets = ticketsQuery.data ?? EMPTY_TICKETS;
+  const tickets = loadedTickets;
   const detail = ticketDetailQuery.data;
   const detailError = ticketDetailQuery.error;
 
@@ -270,9 +380,11 @@ export default function AdminFeedbackHub() {
       const retainedIds = previousIds.filter(id => incomingIdSet.has(id));
       const knownIds = new Set(previousIds);
       const newIds = incomingIds.filter(id => !knownIds.has(id));
-      return [...newIds, ...retainedIds];
+      return ticketOffset > 0
+        ? [...retainedIds, ...newIds]
+        : [...newIds, ...retainedIds];
     });
-  }, [ticketFilterKey, ticketsForDisplay]);
+  }, [ticketFilterKey, ticketOffset, ticketsForDisplay]);
 
   const ticketsById = new Map(
     ticketsForDisplay.map(ticket => [ticket.id, ticket])
@@ -284,15 +396,17 @@ export default function AdminFeedbackHub() {
     orderedTickets.length > 0 || ticketsForDisplay.length === 0
       ? orderedTickets
       : ticketsForDisplay;
+  const hasMoreTickets = (ticketsQuery.data?.length ?? 0) === TICKET_PAGE_SIZE;
 
   const uploadReplyFiles = async (ticketId: number): Promise<number[]> => {
     if (replyFiles.length === 0) return [];
+    const filesToUpload = [...replyFiles];
     setReplyUploading(true);
     try {
       const formData = new FormData();
       formData.append("ticketId", String(ticketId));
       formData.append("purpose", "reply");
-      replyFiles.forEach(file => formData.append("files", file));
+      filesToUpload.forEach(file => formData.append("files", file));
       const csrfToken =
         document.cookie
           .split("; ")
@@ -306,11 +420,45 @@ export default function AdminFeedbackHub() {
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(payload?.error || "Image upload failed");
+        throw new Error(
+          getFeedbackUploadError(
+            payload,
+            response.status,
+            "อัปโหลดภาพไม่สำเร็จ"
+          )
+        );
       }
-      return (payload?.attachments ?? [])
+      const uploadedIds = (payload?.attachments ?? [])
         .map((attachment: any) => attachment.id)
         .filter((id: unknown): id is number => typeof id === "number");
+      const uploadErrors = Array.isArray(payload?.errors)
+        ? payload.errors
+            .map((item: any) => {
+              const fileName =
+                typeof item?.fileName === "string" ? `${item.fileName}: ` : "";
+              const message =
+                typeof item?.error === "string"
+                  ? item.error
+                  : "อัปโหลดไม่สำเร็จ";
+              return `${fileName}${message}`;
+            })
+            .filter(Boolean)
+        : [];
+
+      if (
+        uploadErrors.length > 0 ||
+        uploadedIds.length !== filesToUpload.length
+      ) {
+        await Promise.allSettled(
+          uploadedIds.map(attachmentId =>
+            deleteAttachmentMutation.mutateAsync({ attachmentId })
+          )
+        );
+        const details =
+          uploadErrors.length > 0 ? `: ${uploadErrors.join(", ")}` : "";
+        throw new Error(`อัปโหลดภาพไม่ครบทุกไฟล์${details}`);
+      }
+      return uploadedIds;
     } finally {
       setReplyUploading(false);
     }
@@ -324,6 +472,7 @@ export default function AdminFeedbackHub() {
       replyUploading
     )
       return;
+    setReplyError(null);
     let attachmentIds: number[] = [];
     try {
       attachmentIds = await uploadReplyFiles(selectedTicketId);
@@ -341,15 +490,71 @@ export default function AdminFeedbackHub() {
           )
         );
       }
-      if (error instanceof Error && !addCommentMutation.error) {
-        toast.error(error.message || "Failed to send comment");
-      }
+      const message =
+        error instanceof Error ? error.message : "ส่ง reply ไม่สำเร็จ";
+      setReplyError(message);
+      toast.error(message);
     }
+  };
+
+  const replyPreviewUrls = useMemo(
+    () => replyFiles.map(file => URL.createObjectURL(file)),
+    [replyFiles]
+  );
+
+  useEffect(() => {
+    return () => {
+      replyPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [replyPreviewUrls]);
+
+  useEffect(() => {
+    if (replyPreviewIndex !== null && replyPreviewIndex >= replyFiles.length) {
+      setReplyPreviewIndex(null);
+    }
+  }, [replyFiles.length, replyPreviewIndex]);
+
+  const addReplyFiles = (incoming: FileList | File[]) => {
+    const candidates = Array.from(incoming);
+    if (candidates.length === 0) return;
+
+    const availableSlots = Math.max(0, 5 - replyFiles.length);
+    const imageFiles = candidates.filter(file =>
+      file.type.toLowerCase().startsWith("image/")
+    );
+    const selectedFiles = imageFiles.slice(0, availableSlots);
+
+    if (selectedFiles.length === 0) {
+      setReplyError("กรุณาเลือกไฟล์ภาพ JPG, PNG หรือ WebP");
+      return;
+    }
+    if (imageFiles.length > availableSlots) {
+      setReplyError("แนบภาพได้สูงสุด 5 ไฟล์ต่อ reply");
+    } else {
+      setReplyError(null);
+    }
+    setReplyFiles(current => [...current, ...selectedFiles]);
+  };
+
+  const navigateReplyPreview = (direction: "prev" | "next") => {
+    if (replyFiles.length === 0) return;
+    setReplyPreviewIndex(current => {
+      const index = current ?? 0;
+      return direction === "prev"
+        ? index === 0
+          ? replyFiles.length - 1
+          : index - 1
+        : index === replyFiles.length - 1
+          ? 0
+          : index + 1;
+    });
   };
 
   const openLightbox = (attachmentId: number) => {
     const idx = imageAttachments.findIndex((a: any) => a.id === attachmentId);
     setLightboxIndex(idx >= 0 ? idx : 0);
+    setLightboxZoom(FEEDBACK_LIGHTBOX_ZOOM_MIN);
+    setLightboxImageSize(null);
     setLightboxOpen(true);
   };
 
@@ -363,6 +568,66 @@ export default function AdminFeedbackHub() {
     });
   };
 
+  const handleLightboxPointerDown = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    if (event.button !== 0 && event.pointerType !== "touch") return;
+    const target = event.target;
+    if (target instanceof HTMLElement && target.closest("button, a")) return;
+
+    const viewport = event.currentTarget;
+    if (
+      viewport.scrollWidth <= viewport.clientWidth &&
+      viewport.scrollHeight <= viewport.clientHeight
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    lightboxPanRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: viewport.scrollLeft,
+      scrollTop: viewport.scrollTop,
+    };
+    viewport.setPointerCapture(event.pointerId);
+    setLightboxPanning(true);
+  };
+
+  const handleLightboxPointerMove = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    const pan = lightboxPanRef.current;
+    if (!pan || pan.pointerId !== event.pointerId) return;
+
+    event.preventDefault();
+    const viewport = event.currentTarget;
+    viewport.scrollLeft = pan.scrollLeft - (event.clientX - pan.startX);
+    viewport.scrollTop = pan.scrollTop - (event.clientY - pan.startY);
+  };
+
+  const stopLightboxPan = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const pan = lightboxPanRef.current;
+    if (!pan || pan.pointerId !== event.pointerId) return;
+
+    lightboxPanRef.current = null;
+    setLightboxPanning(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  useEffect(() => {
+    setLightboxZoom(FEEDBACK_LIGHTBOX_ZOOM_MIN);
+    setLightboxImageSize(null);
+    lightboxPanRef.current = null;
+    setLightboxPanning(false);
+    requestAnimationFrame(() => {
+      lightboxViewportRef.current?.scrollTo({ left: 0, top: 0 });
+    });
+  }, [lightboxIndex]);
+
   // Keyboard navigation for the lightbox (Escape is handled by the Dialog
   // itself; we only need Arrow keys here).
   useEffect(() => {
@@ -375,6 +640,17 @@ export default function AdminFeedbackHub() {
     return () => window.removeEventListener("keydown", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lightboxOpen, imageAttachments.length]);
+
+  useEffect(() => {
+    if (replyPreviewIndex === null) return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "ArrowLeft") navigateReplyPreview("prev");
+      if (event.key === "ArrowRight") navigateReplyPreview("next");
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replyPreviewIndex, replyFiles.length]);
 
   useEffect(() => {
     if (!selectedTicketId) return;
@@ -677,31 +953,43 @@ export default function AdminFeedbackHub() {
             className="mx-3 mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-950"
             aria-live="polite"
           >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-sm font-semibold">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold">
                 <AlertCircle className="h-4 w-4 text-amber-600" />
-                <span>ยังไม่ได้อ่าน</span>
-                <span className="rounded-full bg-amber-600 px-2 py-0.5 text-xs text-white">
-                  {stats?.unread ?? 0}
+                <span className="truncate">
+                  ยังไม่ได้อ่าน {unreadCount} รายการ
+                </span>
+                <span className="shrink-0 rounded-full bg-amber-600 px-2 py-0.5 text-xs text-white">
+                  {unreadCount}
                 </span>
               </div>
+            </div>
+            {(stats?.overdueUnread ?? 0) > 0 && (
+              <p className="mt-1 text-xs font-medium text-red-700">
+                ค้างเกิน 2 ชั่วโมง {stats?.overdueUnread} รายการ
+              </p>
+            )}
+            <p className="mt-1 text-xs text-amber-800">
+              รายการอ่านแล้วและยังไม่ได้อ่านจะแสดงรวมกันด้านล่าง
+              โดยรายการที่ยังไม่ได้อ่านจะมีป้ายกำกับชัดเจน
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
                 size="sm"
-                variant={unreadOnly ? "default" : "outline"}
+                variant="outline"
                 className="h-7 text-xs"
-                onClick={() => setUnreadOnly(current => !current)}
+                disabled={unreadCount === 0}
+                onClick={showFeedbackQueue}
               >
-                {unreadOnly ? "ทั้งหมด" : "รายการค้าง"}
+                ไปดูรายการ
               </Button>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 className="h-7 text-xs"
-                disabled={
-                  markAllReadMutation.isPending || (stats?.unread ?? 0) === 0
-                }
+                disabled={markAllReadMutation.isPending || unreadCount === 0}
                 onClick={() => markAllReadMutation.mutate()}
               >
                 {markAllReadMutation.isPending ? (
@@ -710,11 +998,6 @@ export default function AdminFeedbackHub() {
                 อ่านทั้งหมด
               </Button>
             </div>
-            {(stats?.overdueUnread ?? 0) > 0 && (
-              <p className="mt-1 text-xs font-medium text-red-700">
-                ค้างเกิน 2 ชั่วโมง {stats?.overdueUnread} รายการ
-              </p>
-            )}
           </div>
 
           {/* Filters */}
@@ -837,9 +1120,9 @@ export default function AdminFeedbackHub() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1 whitespace-nowrap">
                         <Clock className="h-3 w-3" />
-                        {formatDate(ticket.createdAt)}
+                        {formatFeedbackCreatedAt(ticket.createdAt)}
                       </span>
                       {ticket.autoCategory && (
                         <span className="text-[10px] text-muted-foreground">
@@ -850,6 +1133,21 @@ export default function AdminFeedbackHub() {
                   </div>
                 );
               })}
+              {hasMoreTickets && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-2 w-full text-xs"
+                  disabled={ticketsQuery.isFetching}
+                  onClick={() =>
+                    setTicketOffset(current => current + TICKET_PAGE_SIZE)
+                  }
+                >
+                  {ticketsQuery.isFetching
+                    ? "กำลังโหลด..."
+                    : `โหลดรายการเพิ่มเติม (แสดงแล้ว ${tickets.length} รายการ)`}
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -888,13 +1186,15 @@ export default function AdminFeedbackHub() {
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
                 <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Select a ticket to view details</p>
+                <p className="text-sm">
+                  เลือก ticket จากรายการด้านซ้ายเพื่อดูรายละเอียด
+                </p>
               </div>
             </div>
           ) : (
             <>
               {/* Detail header */}
-              <div className="p-4 border-b bg-white/50">
+              <div className="shrink-0 border-b bg-white/50 p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -1011,7 +1311,7 @@ export default function AdminFeedbackHub() {
               </div>
 
               {/* Detail body + comments */}
-              <ScrollArea className="min-h-0 flex-1">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 <div className="p-4 space-y-4">
                   {/* Description */}
                   {detail.description && (
@@ -1424,7 +1724,7 @@ export default function AdminFeedbackHub() {
                   )}
 
                   {/* Comments */}
-                  <div>
+                  <div ref={commentsSectionRef}>
                     <h3 className="text-sm font-medium mb-3">
                       Comments ({(detail as any).comments?.length ?? 0})
                     </h3>
@@ -1500,15 +1800,15 @@ export default function AdminFeedbackHub() {
                     </div>
                   </div>
                 </div>
-              </ScrollArea>
+              </div>
 
               {/* Comment input */}
               {detail.status === "closed" ? (
-                <div className="border-t bg-slate-100 p-4 text-center text-sm font-medium text-slate-600">
+                <div className="shrink-0 border-t bg-slate-100 p-4 text-center text-sm font-medium text-slate-600">
                   งานนี้ปิดแล้ว ไม่สามารถ reply หรือแนบไฟล์เพิ่มได้
                 </div>
               ) : (
-                <div className="border-t bg-white/50 p-3">
+                <div className="shrink-0 border-t bg-white/50 p-3">
                   <div className="mb-2 flex flex-wrap items-center gap-3">
                     <label className="flex items-center gap-1.5 text-xs cursor-pointer">
                       <input
@@ -1520,57 +1820,151 @@ export default function AdminFeedbackHub() {
                       <Lock className="h-3 w-3 text-yellow-600" />
                       Internal note (not visible to user)
                     </label>
-                    <label className="flex cursor-pointer items-center gap-1.5 text-xs text-blue-700 hover:text-blue-900">
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Paperclip className="h-3.5 w-3.5" />
-                      แนบภาพ ({replyFiles.length}/{5})
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        multiple
-                        className="sr-only"
-                        disabled={replyUploading || replyFiles.length >= 5}
-                        onChange={event => {
-                          const selected = Array.from(event.target.files ?? [])
-                            .filter(file => file.type.startsWith("image/"))
-                            .slice(0, 5 - replyFiles.length);
-                          setReplyFiles(current => [...current, ...selected]);
-                          event.target.value = "";
-                        }}
-                      />
-                    </label>
+                      แนบภาพแล้ว {replyFiles.length}/{5}
+                    </span>
+                  </div>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label="ลากภาพมาวาง หรือคลิกเพื่อเลือกภาพแนบ"
+                    className={`mb-2 rounded-lg border-2 border-dashed px-3 py-3 text-center transition-colors ${
+                      replyDragOver
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-slate-300 bg-slate-50/70 hover:border-blue-400 hover:bg-blue-50/50"
+                    } ${
+                      replyUploading || replyFiles.length >= 5
+                        ? "cursor-not-allowed opacity-60"
+                        : "cursor-pointer"
+                    }`}
+                    onClick={() => replyFileInputRef.current?.click()}
+                    onKeyDown={event => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        replyFileInputRef.current?.click();
+                      }
+                    }}
+                    onDragEnter={event => {
+                      event.preventDefault();
+                      if (!replyUploading && replyFiles.length < 5) {
+                        setReplyDragOver(true);
+                      }
+                    }}
+                    onDragOver={event => {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect =
+                        replyUploading || replyFiles.length >= 5
+                          ? "none"
+                          : "copy";
+                      if (!replyUploading && replyFiles.length < 5) {
+                        setReplyDragOver(true);
+                      }
+                    }}
+                    onDragLeave={event => {
+                      event.preventDefault();
+                      if (
+                        !event.currentTarget.contains(
+                          event.relatedTarget as Node
+                        )
+                      ) {
+                        setReplyDragOver(false);
+                      }
+                    }}
+                    onDrop={event => {
+                      event.preventDefault();
+                      setReplyDragOver(false);
+                      if (!replyUploading && replyFiles.length < 5) {
+                        addReplyFiles(event.dataTransfer.files);
+                      }
+                    }}
+                  >
+                    <input
+                      ref={replyFileInputRef}
+                      id="feedback-reply-attachments"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      className="sr-only"
+                      disabled={replyUploading || replyFiles.length >= 5}
+                      onClick={event => event.stopPropagation()}
+                      onChange={event => {
+                        addReplyFiles(event.target.files ?? []);
+                        event.target.value = "";
+                      }}
+                    />
+                    <Paperclip className="mx-auto h-5 w-5 text-blue-600" />
+                    <p className="mt-1 text-xs font-medium text-slate-700">
+                      {replyDragOver
+                        ? "ปล่อยภาพที่นี่"
+                        : "ลากภาพมาวาง หรือคลิกเพื่อเลือกภาพ"}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">
+                      JPG, PNG, WebP · สูงสุด 5 ไฟล์ · ไม่เกิน 5 MB ต่อไฟล์
+                    </p>
                   </div>
                   {replyFiles.length > 0 && (
-                    <div className="mb-2 flex flex-wrap gap-2">
-                      {replyFiles.map((file, index) => (
-                        <span
-                          key={`${file.name}-${index}`}
-                          className="flex max-w-full items-center gap-1 rounded-md border bg-blue-50 px-2 py-1 text-xs text-blue-900"
-                        >
-                          <span className="max-w-[220px] truncate">
-                            {file.name}
-                          </span>
-                          <button
-                            type="button"
-                            className="rounded p-0.5 hover:bg-blue-100"
-                            aria-label={`ลบภาพ ${file.name}`}
-                            onClick={() =>
-                              setReplyFiles(current =>
-                                current.filter(
-                                  (_, fileIndex) => fileIndex !== index
-                                )
-                              )
-                            }
+                    <div className="mb-2">
+                      <p className="mb-1 text-[10px] text-muted-foreground">
+                        กดภาพเพื่อดูตัวอย่างเต็มจอ
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {replyFiles.map((file, index) => (
+                          <div
+                            key={`${file.name}-${index}`}
+                            className="relative overflow-hidden rounded-md border bg-white"
                           >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
+                            <button
+                              type="button"
+                              className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset"
+                              onClick={() => setReplyPreviewIndex(index)}
+                              aria-label={`ดูตัวอย่างภาพ ${file.name}`}
+                            >
+                              <img
+                                src={replyPreviewUrls[index]}
+                                alt={`ตัวอย่าง ${file.name}`}
+                                className="h-24 w-full object-cover"
+                              />
+                              <span className="block truncate px-2 py-1 text-[10px] text-slate-700">
+                                {file.name}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-slate-600 shadow-sm hover:bg-white hover:text-red-600"
+                              aria-label={`ลบภาพ ${file.name}`}
+                              onClick={() => {
+                                setReplyError(null);
+                                setReplyFiles(current =>
+                                  current.filter(
+                                    (_, fileIndex) => fileIndex !== index
+                                  )
+                                );
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {replyError && (
+                    <div
+                      role="alert"
+                      className="mb-2 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-2.5 py-2 text-xs text-red-700"
+                    >
+                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <span className="min-w-0 break-words">{replyError}</span>
                     </div>
                   )}
                   <div className="flex gap-2">
                     <Textarea
                       value={commentText}
-                      onChange={e => setCommentText(e.target.value)}
+                      onChange={e => {
+                        setReplyError(null);
+                        setCommentText(e.target.value);
+                      }}
                       placeholder={
                         isInternal
                           ? "Add internal note..."
@@ -1599,7 +1993,7 @@ export default function AdminFeedbackHub() {
                 </div>
               )}
 
-              {/* Generic overdue unread alert — intentionally omits ticket titles. */}
+              {/* Keep the alert compact; ticket identification lives in the left queue. */}
               <Dialog
                 open={overdueAlertOpen}
                 onOpenChange={setOverdueAlertOpen}
@@ -1613,7 +2007,7 @@ export default function AdminFeedbackHub() {
                       </h2>
                       <p className="mt-2 text-sm text-muted-foreground">
                         มีรายการ feedback ค้างที่ยังไม่ได้อ่านเกิน 2 ชั่วโมง
-                        กรุณาเข้าไปอ่านรายการที่ค้าง
+                        กรุณากดปุ่มเพื่อไปดูรายการทางด้านซ้าย
                       </p>
                     </div>
                   </div>
@@ -1621,22 +2015,87 @@ export default function AdminFeedbackHub() {
                     type="button"
                     className="mt-4 w-full"
                     onClick={() => {
-                      setUnreadOnly(true);
-                      setSourceFilter(undefined);
+                      showFeedbackQueue();
                       setOverdueAlertOpen(false);
                     }}
                   >
-                    ไปอ่านรายการค้าง
+                    ไปดูรายการที่ยังไม่ได้อ่าน ({unreadCount})
                   </Button>
                 </DialogContent>
               </Dialog>
 
               {/* Image attachment lightbox */}
-              <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
-                <DialogContent className="h-[100dvh] w-[100vw] max-w-none rounded-none p-0 overflow-hidden flex flex-col">
+              <Dialog
+                open={lightboxOpen}
+                onOpenChange={open => {
+                  setLightboxOpen(open);
+                  if (!open) {
+                    setLightboxZoom(FEEDBACK_LIGHTBOX_ZOOM_MIN);
+                    setLightboxImageSize(null);
+                    lightboxPanRef.current = null;
+                    setLightboxPanning(false);
+                  }
+                }}
+              >
+                <DialogContent
+                  fullscreen
+                  className="relative h-[100dvh] w-[100vw] max-w-none rounded-none p-0 overflow-hidden flex flex-col"
+                >
                   {imageAttachments[lightboxIndex] && (
                     <>
-                      <div className="relative flex-1 min-h-0 bg-black flex items-center justify-center overflow-hidden">
+                      <div
+                        ref={lightboxViewportRef}
+                        className={`relative flex-1 min-h-0 overflow-auto bg-black select-none ${
+                          lightboxZoom > FEEDBACK_LIGHTBOX_ZOOM_MIN
+                            ? lightboxPanning
+                              ? "cursor-grabbing"
+                              : "cursor-grab"
+                            : ""
+                        }`}
+                        style={{
+                          overflowAnchor: "none",
+                          touchAction:
+                            lightboxZoom > FEEDBACK_LIGHTBOX_ZOOM_MIN
+                              ? "none"
+                              : "auto",
+                        }}
+                        onPointerDown={handleLightboxPointerDown}
+                        onPointerMove={handleLightboxPointerMove}
+                        onPointerUp={stopLightboxPan}
+                        onPointerCancel={stopLightboxPan}
+                      >
+                        <div
+                          className={`flex min-h-full min-w-full p-4 ${
+                            lightboxZoom === FEEDBACK_LIGHTBOX_ZOOM_MIN
+                              ? "items-center justify-center"
+                              : "items-start justify-start"
+                          }`}
+                        >
+                          <AuthenticatedAttachmentImage
+                            key={imageAttachments[lightboxIndex].id}
+                            src={
+                              imageAttachments[lightboxIndex].resolvedUrl ??
+                              imageAttachments[lightboxIndex].fileUrl
+                            }
+                            alt={imageAttachments[lightboxIndex].fileName}
+                            className={
+                              lightboxZoom === FEEDBACK_LIGHTBOX_ZOOM_MIN
+                                ? "h-full w-full object-contain"
+                                : "block max-h-none max-w-none shrink-0 object-contain"
+                            }
+                            style={getFeedbackLightboxImageStyle(
+                              lightboxZoom,
+                              lightboxImageSize,
+                            )}
+                            onLoad={event => {
+                              setLightboxImageSize({
+                                width: event.currentTarget.naturalWidth,
+                                height: event.currentTarget.naturalHeight,
+                              });
+                            }}
+                          />
+                        </div>
+
                         {imageAttachments.length > 1 && (
                           <>
                             <Button
@@ -1657,16 +2116,11 @@ export default function AdminFeedbackHub() {
                             </Button>
                           </>
                         )}
-                        <AuthenticatedAttachmentImage
-                          key={imageAttachments[lightboxIndex].id}
-                          src={
-                            imageAttachments[lightboxIndex].resolvedUrl ??
-                            imageAttachments[lightboxIndex].fileUrl
-                          }
-                          alt={imageAttachments[lightboxIndex].fileName}
-                          className="w-full h-full object-contain"
-                        />
                       </div>
+                      <FeedbackLightboxZoomControls
+                        scale={lightboxZoom}
+                        onScaleChange={setLightboxZoom}
+                      />
                       <div className="flex-shrink-0 px-5 py-3 bg-background border-t flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">
@@ -1701,6 +2155,72 @@ export default function AdminFeedbackHub() {
                       </div>
                     </>
                   )}
+                </DialogContent>
+              </Dialog>
+
+              {/* Local reply-image preview before upload. */}
+              <Dialog
+                open={replyPreviewIndex !== null}
+                onOpenChange={open => {
+                  if (!open) setReplyPreviewIndex(null);
+                }}
+              >
+                <DialogContent
+                  fullscreen
+                  className="flex h-dvh flex-col overflow-hidden bg-black p-0 text-white"
+                >
+                  <DialogTitle className="sr-only">
+                    ตัวอย่างภาพแนบสำหรับ reply
+                  </DialogTitle>
+                  {replyPreviewIndex !== null &&
+                    replyPreviewUrls[replyPreviewIndex] && (
+                      <>
+                        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black">
+                          {replyFiles.length > 1 && (
+                            <>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="absolute left-3 top-1/2 z-10 -translate-y-1/2 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                                onClick={() => navigateReplyPreview("prev")}
+                                aria-label="ภาพก่อนหน้า"
+                              >
+                                <ChevronLeft className="h-6 w-6" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-3 top-1/2 z-10 -translate-y-1/2 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                                onClick={() => navigateReplyPreview("next")}
+                                aria-label="ภาพถัดไป"
+                              >
+                                <ChevronRight className="h-6 w-6" />
+                              </Button>
+                            </>
+                          )}
+                          <img
+                            src={replyPreviewUrls[replyPreviewIndex]}
+                            alt={`ตัวอย่าง ${replyFiles[replyPreviewIndex]?.name ?? "ภาพแนบ"}`}
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
+                        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-white/10 bg-black px-5 py-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">
+                              {replyFiles[replyPreviewIndex]?.name}
+                            </p>
+                            <p className="text-xs text-white/60">
+                              {replyPreviewIndex + 1} / {replyFiles.length}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-xs text-white/60">
+                            กด Esc เพื่อปิด
+                          </span>
+                        </div>
+                      </>
+                    )}
                 </DialogContent>
               </Dialog>
             </>

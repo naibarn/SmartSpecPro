@@ -29,7 +29,14 @@ const mockDraftQcStatusQuery = vi.fn();
 const mockDraftQcStartMutate = vi.fn();
 const mockDraftQcCancelMutate = vi.fn();
 
+function confirmEpisodeCountDialog() {
+  fireEvent.click(
+    screen.getByRole("button", { name: /ยืนยันและสร้างซีรีย์/ })
+  );
+}
+
 let mockDraftQcStatus: { data?: unknown } = { data: undefined };
+let mockDraftWorkspaceStatus: { data?: unknown } = { data: undefined };
 
 function makePassingDraftQcResult(
   draft: Record<string, unknown>,
@@ -193,7 +200,7 @@ vi.mock("@/lib/trpc", () => ({
           // Exercise the real query option during render. This catches TDZ
           // regressions where the callback reads refs declared below the hook.
           options?.refetchInterval?.({ state: { data: null } });
-          return { data: null };
+          return mockDraftWorkspaceStatus;
         },
       },
       startDraftComposition: {
@@ -591,7 +598,51 @@ it("rehydrates every wizard section from a migrated ledger Draft snapshot", () =
   expect(result.visualBible).toContain("blueprints");
 });
 
-describe("CreateSeriesWizard — draft confirmation gate", () => {
+it("restores the planned episode count from the Draft story design when the legacy request is missing it", () => {
+  const result = mergeSynthesizedDraftIntoWizardForm(
+    { title: "", genre: "", locations: "", targetEpisodeCount: "10" } as any,
+    {
+      contract_version: 1,
+      title: "Proof of Us",
+      category: "campus-romance",
+      logline: "A complete logline",
+      mainPlot: "A complete main plot",
+      seasonArc: "A complete season arc",
+      tone: "Warm and intense",
+      cliffhangerStyle: "A new failure",
+      characters: [],
+      visualBible: "Concrete, steel, and blueprints",
+      storyDesign: { totalEpisodeCount: 50 },
+    } as any,
+    {}
+  );
+
+  expect(result.targetEpisodeCount).toBe("50");
+});
+
+it("keeps an explicit synthesis target authoritative over a conflicting Draft design", () => {
+  const result = mergeSynthesizedDraftIntoWizardForm(
+    { title: "", genre: "", locations: "", targetEpisodeCount: "10" } as any,
+    {
+      contract_version: 1,
+      title: "Proof of Us",
+      category: "campus-romance",
+      logline: "A complete logline",
+      mainPlot: "A complete main plot",
+      seasonArc: "A complete season arc",
+      tone: "Warm and intense",
+      cliffhangerStyle: "A new failure",
+      characters: [],
+      visualBible: "Concrete, steel, and blueprints",
+      storyDesign: { totalEpisodeCount: 50 },
+    } as any,
+    { targetEpisodeCount: 30 }
+  );
+
+  expect(result.targetEpisodeCount).toBe("30");
+});
+
+describe("CreateSeriesWizard — draft confirmation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSynthesizeMutationState = { data: undefined, isPending: false };
@@ -614,9 +665,10 @@ describe("CreateSeriesWizard — draft confirmation gate", () => {
     });
     mockDraftQcStatus = { data: undefined };
     mockDraftQcStatusQuery.mockImplementation(() => mockDraftQcStatus);
+    mockDraftWorkspaceStatus = { data: undefined };
   });
 
-  it("keeps Next disabled until a generated draft is applied", () => {
+  it("keeps Draft confirmation enabled without relying on QC readiness", () => {
     renderWizard();
 
     expect(screen.getByRole("button", { name: "ถัดไป" })).toBeDisabled();
@@ -625,7 +677,7 @@ describe("CreateSeriesWizard — draft confirmation gate", () => {
 
     expect(
       screen.getByRole("button", { name: "ใช้ draft นี้" })
-    ).toBeDisabled();
+    ).not.toBeDisabled();
     expect(screen.getByRole("button", { name: "ถัดไป" })).toBeDisabled();
   });
 
@@ -706,6 +758,39 @@ describe("CreateSeriesWizard — draft confirmation gate", () => {
     });
   });
 
+  it("uses the Series ledger session when the restored browser session is stale", () => {
+    const view = renderWizard();
+    generateDraft();
+
+    mockDraftWorkspaceStatus = {
+      data: {
+        draftSessionId: "ledger-session-99",
+        composition: {
+          jobId: "00000000-0000-4000-8000-000000000002",
+          status: "ready_for_qc",
+          requestFingerprint: "request-fingerprint",
+        },
+        qc: null,
+      },
+    };
+    view.rerender(
+      <CreateSeriesWizard
+        open
+        lang="th"
+        planningSeriesId="99"
+        onOpenChange={() => {}}
+        onCreated={() => {}}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "เริ่มตรวจ QC" }));
+    fireEvent.click(screen.getByRole("button", { name: "ยืนยันและเริ่ม" }));
+
+    expect(mockDraftQcStartMutate).toHaveBeenLastCalledWith(
+      expect.objectContaining({ draftSessionId: "ledger-session-99" })
+    );
+  });
+
   it("keeps a failed composition's partial Draft available for diagnostic QC", () => {
     const view = renderWizard();
     generateDraft();
@@ -732,10 +817,13 @@ describe("CreateSeriesWizard — draft confirmation gate", () => {
     );
 
     expect(
-      screen.getAllByText(
+      screen.queryByText(
         "Draft ยังไม่ครบ จึงยังสร้างเรื่องเต็มไม่ได้ แต่สามารถส่งเข้า QC เพื่อดูจุดที่ต้องแก้ได้"
-      ).length
-    ).toBeGreaterThan(0);
+      )
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "ใช้ draft นี้" })
+    ).not.toBeDisabled();
     const qcButton = screen.getByRole("button", { name: "เริ่มตรวจ QC" });
     expect(qcButton).not.toBeDisabled();
     fireEvent.click(qcButton);
@@ -818,6 +906,27 @@ describe("CreateSeriesWizard — draft confirmation gate", () => {
     ).toBeInTheDocument();
   });
 
+  it("confirms a revised episode count and shows the live season runtime", () => {
+    renderWizard();
+    fireEvent.change(getTitleInput(), { target: { value: "Runtime Series" } });
+    generateDraft(/ให้ AI สร้างทั้งหมดให้/);
+    applyDraft();
+
+    fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
+    );
+
+    const countInput = screen.getByLabelText("จำนวนตอนย่อยที่ต้องการ");
+    fireEvent.change(countInput, { target: { value: "50" } });
+    expect(screen.getByText("ประมาณ 60 นาที 0 วินาที")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /ยืนยันและสร้างซีรีย์/ }));
+    expect(mockCreateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ targetEpisodeCount: 50 })
+    );
+  });
+
   it("invalidates the applied draft when the source premise changes or the draft is regenerated", () => {
     renderWizard();
 
@@ -873,6 +982,7 @@ describe("CreateSeriesWizard — series look lock", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
     );
+    confirmEpisodeCountDialog();
     expect(mockCreateMutate).toHaveBeenCalledWith(
       expect.objectContaining({
         lookLock: expect.objectContaining({
@@ -1212,6 +1322,7 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
     fireEvent.click(
       screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
     );
+    confirmEpisodeCountDialog();
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1255,6 +1366,7 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
     fireEvent.click(
       screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
     );
+    confirmEpisodeCountDialog();
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1300,7 +1412,7 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     expect(textarea.value.length).toBe(CREATE_SERIES_FIELD_LIMITS.userPremise);
   });
 
-  it("keeps a complete Proof of Us-style treatment instead of truncating it at the old 2,000-char limit", () => {
+  it("keeps a complete Proof of Us-style treatment instead of truncating it at the expansion limit", () => {
     renderWizard();
     const textarea = getPremiseTextarea();
     const proofOfUsPremise = [
@@ -1327,6 +1439,32 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     expect(textarea.value).toBe(proofOfUsPremise);
   });
 
+  it("shows the AI expansion character count and locks expansion above 5,000 characters", () => {
+    renderWizard();
+    const textarea = getPremiseTextarea();
+    const expandButton = screen.getByRole("button", {
+      name: /ขยายโจทย์ด้วย AI/,
+    });
+
+    fireEvent.change(textarea, { target: { value: "ก".repeat(5000) } });
+    expect(
+      screen.getByText(/5,000\/5,000 ตัวอักษรสำหรับขยายโจทย์/)
+    ).toBeInTheDocument();
+    expect(expandButton).not.toBeDisabled();
+
+    fireEvent.change(textarea, { target: { value: "ก".repeat(5001) } });
+
+    expect(
+      screen.getByText(/5,001\/5,000 ตัวอักษรสำหรับขยายโจทย์/)
+    ).toBeInTheDocument();
+    expect(expandButton).toBeDisabled();
+    expect(
+      screen.getByText(
+        /โจทย์ยาวเกิน 5,000 ตัวอักษร จึงไม่สามารถกดขยายโจทย์ด้วย AI ได้/
+      )
+    ).toHaveAttribute("role", "alert");
+  });
+
   it("handleCreate sends userPremise as a top-level field, omitted (undefined) when the textarea is empty", () => {
     renderWizard();
     const titleLabel = screen.getByText(/^ชื่อซีรีย์/);
@@ -1341,6 +1479,7 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
     );
+    confirmEpisodeCountDialog();
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
       expect.objectContaining({ userPremise: undefined })
@@ -1366,6 +1505,7 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
     );
+    confirmEpisodeCountDialog();
 
     const call = mockCreateMutate.mock.calls[0][0];
     expect(call.userPremise).toBe("ตำรวจสาวสืบคดีฆาตกรรม");
@@ -1464,6 +1604,7 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
     );
+    confirmEpisodeCountDialog();
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
       expect.objectContaining({ userPremise: "รักษาโจทย์เดิมไว้เสมอ" })
@@ -1505,6 +1646,7 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
     );
+    confirmEpisodeCountDialog();
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1795,6 +1937,7 @@ describe("CreateSeriesWizard — LLM model pin at creation", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
     );
+    confirmEpisodeCountDialog();
   }
 
   it("renders the Automatic option plus every mocked listQualityPlanningModels row", () => {
@@ -1986,6 +2129,7 @@ describe("CreateSeriesWizard — Phase 2 mode-first (mode selector, title picker
     fireEvent.click(
       screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
     );
+    confirmEpisodeCountDialog();
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Alt Title Two" })
@@ -2013,6 +2157,7 @@ describe("CreateSeriesWizard — Phase 2 mode-first (mode selector, title picker
     fireEvent.click(
       screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
     );
+    confirmEpisodeCountDialog();
 
     const call = mockCreateMutate.mock.calls[0][0];
     expect(call.bible.locationsDraft).toBe(
@@ -2059,6 +2204,7 @@ describe("CreateSeriesWizard — Phase 2 mode-first (mode selector, title picker
     fireEvent.click(
       screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
     );
+    confirmEpisodeCountDialog();
 
     const call = mockCreateMutate.mock.calls[0][0];
     expect(call.title).toBe("Manual Legacy Title");

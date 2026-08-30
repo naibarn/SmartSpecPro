@@ -174,6 +174,7 @@ describe("workerAuthService", () => {
     expect(execution.workerId).toBe("worker-1");
     expect(execution.runtimeType).toBe("openclaw_gateway");
     expect(execution.audience).toBe(WORKER_CONTROL_PLANE_AUDIENCE);
+    expect(execution.scopes).toContain("workers:jobs:read");
     expect(upload.tokenUse).toBe("worker_upload");
   });
 

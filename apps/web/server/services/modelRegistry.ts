@@ -8,13 +8,14 @@
  */
 
 import { db } from "../db";
-import { mediaModels } from "../../drizzle/schema";
+import { mediaModels, mediaProviders } from "../../drizzle/schema";
 import { eq, asc } from "drizzle-orm";
 import { calculateCreditCost } from "./pricingCalculator";
 import {
   buildElevenLabsModelSeeds,
   buildMagnificModelSeeds,
   buildWaveSpeedModelSeeds,
+  normalizeMediaProviderName,
 } from "./mediaProviderUtils";
 import {
   GEMINI_3_1_FLASH_TTS_CREDIT_COST,
@@ -103,6 +104,98 @@ export interface ModelDefinition {
   verticalDramaReady?: boolean;
 }
 
+export type MediaProviderEnabledState = {
+  providerName: string;
+  isEnabled: boolean;
+};
+
+/**
+ * Remove model rows backed by providers that an admin has disabled.
+ *
+ * A missing provider row is preserved for compatibility with installations
+ * that have not created media provider records yet. Once a provider row
+ * exists, only an explicit `isEnabled: false` state excludes its models.
+ */
+export function filterModelsByDisabledProviders<T extends { provider?: string | null }>(
+  models: readonly T[],
+  providers: readonly MediaProviderEnabledState[],
+): T[] {
+  if (providers.length === 0) {
+    return [...models];
+  }
+
+  const disabledProviders = new Set(
+    providers
+      .filter((provider) => provider.isEnabled === false)
+      .map((provider) => normalizeMediaProviderName(provider.providerName)),
+  );
+
+  return models.filter((model) => !disabledProviders.has(
+    normalizeMediaProviderName(model.provider),
+  ));
+}
+
+function mcpProviderKeyForModel(model: {
+  id?: string | null;
+  modelId?: string | null;
+  provider?: string | null;
+  configJson?: Record<string, any> | null;
+}): string | null {
+  const config = model.configJson ?? {};
+  const mcpConfig = config.mcp as Record<string, unknown> | undefined;
+  const transport = typeof config.transport === "string"
+    ? config.transport.trim().toLowerCase()
+    : "";
+  const modelId = String(model.modelId ?? model.id ?? "").trim().toLowerCase();
+  const provider = normalizeMediaProviderName(model.provider);
+  const configuredProvider = normalizeMediaProviderName(
+    typeof config.mcpProviderKey === "string"
+      ? config.mcpProviderKey
+      : typeof config.providerKey === "string"
+        ? config.providerKey
+        : typeof mcpConfig?.providerKey === "string"
+          ? mcpConfig.providerKey
+          : undefined,
+  );
+
+  if (transport === "mcp" || mcpConfig) {
+    if (configuredProvider === "higgsfield" || configuredProvider === "magnific") {
+      return configuredProvider;
+    }
+    if (provider === "higgsfield" || provider === "magnific") {
+      return provider;
+    }
+  }
+
+  if (modelId.startsWith("higgsfield/") || modelId.startsWith("higgsfield-mcp/")) {
+    return "higgsfield";
+  }
+  if (modelId.startsWith("magnific-mcp/")) {
+    return "magnific";
+  }
+  return null;
+}
+
+/**
+ * Hide MCP-routed models unless the actor has an active connection for the
+ * model's provider. Non-MCP models are unchanged, including Magnific's
+ * ordinary API catalog (`magnific/*`).
+ */
+export function filterModelsByMcpProviderAccess<T extends {
+  id?: string | null;
+  modelId?: string | null;
+  provider?: string | null;
+  configJson?: Record<string, any> | null;
+}>(models: readonly T[], connectedProviderKeys: ReadonlySet<string>): T[] {
+  const connected = new Set(
+    [...connectedProviderKeys].map(provider => normalizeMediaProviderName(provider)),
+  );
+  return models.filter(model => {
+    const providerKey = mcpProviderKeyForModel(model);
+    return providerKey === null || connected.has(providerKey);
+  });
+}
+
 /**
  * Static fallback registry - used when database is unavailable
  * This ensures the system works even without database connection
@@ -186,6 +279,10 @@ const GEMINI_OMNI_RESOLUTION_OPTIONS = [
   { value: "1080p", label: "1080p" },
   { value: "4K", label: "4K" },
 ];
+const GEMINI_OMNI_FLASH_1_1_RESOLUTION_OPTIONS = [
+  { value: "360p", label: "360p" },
+  ...GEMINI_OMNI_RESOLUTION_OPTIONS,
+];
 
 const GEMINI_OMNI_ASPECT_RATIO_OPTIONS = [
   { value: "16:9", label: "16:9" },
@@ -236,6 +333,41 @@ const GEMINI_OMNI_PRICING_TIERS = {
   "4K-8s-with-video": 360,
   "4K-10s-with-video": 360,
 };
+const GEMINI_OMNI_FLASH_1_1_PRICING_TIERS = {
+  default: 420,
+  "360p-4s-without-video": 315,
+  "360p-6s-without-video": 420,
+  "360p-8s-without-video": 525,
+  "360p-10s-without-video": 630,
+  "720p-4s-without-video": 315,
+  "720p-6s-without-video": 420,
+  "720p-8s-without-video": 525,
+  "720p-10s-without-video": 630,
+  "1080p-4s-without-video": 315,
+  "1080p-6s-without-video": 420,
+  "1080p-8s-without-video": 525,
+  "1080p-10s-without-video": 630,
+  "4K-4s-without-video": 735,
+  "4K-6s-without-video": 840,
+  "4K-8s-without-video": 945,
+  "4K-10s-without-video": 1050,
+  "360p-4s-with-video": 840,
+  "360p-6s-with-video": 840,
+  "360p-8s-with-video": 840,
+  "360p-10s-with-video": 840,
+  "720p-4s-with-video": 840,
+  "720p-6s-with-video": 840,
+  "720p-8s-with-video": 840,
+  "720p-10s-with-video": 840,
+  "1080p-4s-with-video": 840,
+  "1080p-6s-with-video": 840,
+  "1080p-8s-with-video": 840,
+  "1080p-10s-with-video": 840,
+  "4K-4s-with-video": 1260,
+  "4K-6s-with-video": 1260,
+  "4K-8s-with-video": 1260,
+  "4K-10s-with-video": 1260,
+};
 
 const GEMINI_OMNI_INPUT_FIELDS = [
   { key: "image_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", hidden: true, managedBySuite: true, providerPayloadKey: "image_urls", referenceUnitWeight: 1, maxItems: 7 },
@@ -260,6 +392,11 @@ const GEMINI_OMNI_INPUT_FIELDS = [
   { key: "duration", label: "Duration", type: "select", options: GEMINI_OMNI_DURATION_OPTIONS, default: "4", affectsPricing: true },
   { key: "aspect_ratio", label: "Aspect Ratio", type: "select", options: GEMINI_OMNI_ASPECT_RATIO_OPTIONS, default: "16:9", syncWith: "aspect_ratio" },
   { key: "seed", label: "Seed", type: "number", required: false, advancedOnly: true },
+];
+const GEMINI_OMNI_FLASH_1_1_INPUT_FIELDS = [
+  ...GEMINI_OMNI_INPUT_FIELDS,
+  { key: "first_frame_url", label: "First Frame URL", type: "text", required: false, advancedOnly: true, providerPayloadKey: "first_frame_url" },
+  { key: "last_frame_url", label: "Last Frame URL", type: "text", required: false, advancedOnly: true, providerPayloadKey: "last_frame_url" },
 ];
 
 function buildHappyHorseConfig(
@@ -559,20 +696,22 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       apiPayloadFormat: "market",
       kieModelId: "grok-imagine-image-2-0/text-to-image",
       generateType: "text-to-image",
-      maxPromptLength: 5000,
-      maxReferenceImages: 1,
+      maxPromptLength: 390000,
+      maxReferenceImages: 5,
       supportsReferenceImages: true,
       operationModes: ["text-to-image", "image-edit"],
       documentationUrl: "https://docs.kie.ai/market/grok-imagine-image-2-0/text-to-image",
       apiConfig: {
         grok_imagine_image_2_family: true,
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
         operations: {
           "text-to-image": {
             kie_model_id: "grok-imagine-image-2-0/text-to-image",
           },
           "image-edit": {
             kie_model_id: "grok-imagine-image-2-0/image-edit",
-            drop_params: ["aspect_ratio", "resolution", "output_format", "sourceMediaTaskId", "grokOperation"],
+            drop_params: ["resolution", "output_format", "sourceMediaTaskId", "grokOperation"],
           },
         },
       },
@@ -1222,7 +1361,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       "grok imagine video",
       "grok video 1.5",
     ],
-    creditCost: 90,
+    creditCost: 315,
     durations: GROK_IMAGINE_VIDEO_15_DURATIONS,
     aspectRatios: GROK_IMAGINE_VIDEO_15_ASPECT_RATIO_OPTIONS.map((option) => option.value),
     isEnabled: true,
@@ -1575,6 +1714,55 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     supportsNativeAudio: true,
     verticalDramaReady: true,
   },
+  {
+    id: "gemini-omni-flash-1-1",
+    type: "video",
+    name: "Gemini Omni Flash 1.1",
+    provider: "kie.ai",
+    description: "Google Gemini Omni Flash 1.1 multimodal video generation via Kie.ai",
+    aliases: [
+      "gemini omni 1.1 flash",
+      "gemini omni flash 1.1",
+      "gemini omni flash 1 1",
+      "gemini-omni-flash-1-1",
+      "google/gemini-omni-flash-1-1",
+    ],
+    creditCost: 315,
+    durations: [4, 6, 8, 10],
+    aspectRatios: ["16:9", "9:16"],
+    isEnabled: true,
+    priority: 19,
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+      apiPayloadFormat: "market",
+      kieModelId: "google/gemini-omni-flash-1-1",
+      generateType: "multimodal-video",
+      hasAudio: true,
+      maxDuration: 10,
+      maxPromptLength: 5000,
+      maxReferenceImages: 7,
+      maxReferenceVideos: 1,
+      maxReferenceAudios: 3,
+      supportedDurations: [4, 6, 8, 10],
+      supportedAspectRatios: ["16:9", "9:16"],
+      supportedResolutions: ["360p", "720p", "1080p", "4K"],
+      apiConfig: {
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        reference_video_input_key: "video_list",
+        reference_video_input_type: "object_array",
+      },
+      inputFields: GEMINI_OMNI_FLASH_1_1_INPUT_FIELDS,
+      pricingTiers: GEMINI_OMNI_FLASH_1_1_PRICING_TIERS,
+      pricingFormula: "matrix",
+    },
+    supportsStartFrame: true,
+    maxReferenceImages: 7,
+    nativeAudioDialogue: true,
+    supportsNativeAudio: true,
+    verticalDramaReady: true,
+  },
 ];
 
 // ==================== Cache Management ====================
@@ -1904,22 +2092,43 @@ function dbModelToDefinition(dbModel: any): ModelDefinition {
 /**
  * Load models from database (async)
  */
-async function loadModelsFromDatabase(): Promise<ModelDefinition[]> {
+async function loadModelsFromDatabase(): Promise<ModelDefinition[] | null> {
   try {
-    const dbModels = await db
-      .select()
-      .from(mediaModels)
-      .where(eq(mediaModels.isEnabled, true))
-      .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority));
+    const [dbModels, providerRows] = await Promise.all([
+      db
+        .select()
+        .from(mediaModels)
+        .where(eq(mediaModels.isEnabled, true))
+        .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority)),
+      db
+        .select({
+          providerName: mediaProviders.providerName,
+          isEnabled: mediaProviders.isEnabled,
+        })
+        .from(mediaProviders),
+    ]);
 
     if (dbModels.length > 0) {
-      return dbModels.map(dbModelToDefinition);
+      const eligibleModels = providerRows.length > 0
+        ? filterModelsByDisabledProviders(dbModels, providerRows)
+        : dbModels;
+      return eligibleModels.map(dbModelToDefinition);
+    }
+
+    if (providerRows.length > 0) {
+      // A successful DB read with configured providers and no eligible models
+      // is an authoritative empty catalog. Returning null here would revive
+      // static fallback models, including models owned by disabled providers.
+      return [];
     }
   } catch (error) {
     console.warn("[ModelRegistry] Database load failed, using static fallback:", error);
+    return null;
   }
 
-  return [];
+  // Preserve compatibility for installations that have not created provider
+  // rows yet: the static catalog remains the only available source there.
+  return null;
 }
 
 /**
@@ -1927,7 +2136,7 @@ async function loadModelsFromDatabase(): Promise<ModelDefinition[]> {
  */
 export async function refreshModelCache(): Promise<void> {
   const dbModels = await loadModelsFromDatabase();
-  if (dbModels.length > 0) {
+  if (dbModels !== null) {
     _cachedModels = dbModels;
     _cacheLoadedAt = Date.now();
     console.log(`[ModelRegistry] Loaded ${dbModels.length} models from database`);
@@ -1975,12 +2184,14 @@ export function clearModelCache(): void {
  *
  * During a cold start (the HTTP server accepts a request before the DB/model
  * cache is warm) or a transient DB outage, `loadModelsFromDatabase()` returns
- * empty and `_cachedModels` stays `null`, so `getModelsByType` serves only the
+ * `null` and `_cachedModels` stays `null`, so `getModelsByType` serves only the
  * static subset — which OMITS every DB-only model (e.g. the higgsfield/magnific
- * catalog). A model-resolution guard should NOT declare a user-selected model
- * "unavailable" (nor silently swap it for a default) in that window, because it
- * genuinely cannot verify the catalog yet. `false` here means "cannot verify —
- * trust the caller's selection and let the actual generation validate it."
+ * catalog). A successful DB load with no eligible models stores `[]` instead,
+ * and therefore remains an authoritative empty catalog. A model-resolution
+ * guard should NOT declare a user-selected model "unavailable" (nor silently
+ * swap it for a default) while the catalog is genuinely unverifiable.
+ * `false` here means "cannot verify — trust the caller's selection and let
+ * the actual generation validate it."
  */
 export function isDbModelCatalogLoaded(): boolean {
   return _cachedModels !== null;
@@ -2076,17 +2287,21 @@ export function findModelByAlias(
   const lowerAlias = alias.toLowerCase().trim();
   const models = type ? getModelsByType(type) : getEnabledModels();
 
+  // Exact IDs/aliases must win over the legacy partial-match fallback. This
+  // matters when a provider-qualified ID contains an older model's alias.
   for (const model of models) {
-    // Check ID
     if (model.id.toLowerCase() === lowerAlias) {
       return model;
     }
-
-    // Check aliases
     for (const modelAlias of model.aliases) {
       if (modelAlias.toLowerCase() === lowerAlias) {
         return model;
       }
+    }
+  }
+
+  for (const model of models) {
+    for (const modelAlias of model.aliases) {
       // Partial match for longer aliases
       if (
         lowerAlias.includes(modelAlias.toLowerCase()) ||

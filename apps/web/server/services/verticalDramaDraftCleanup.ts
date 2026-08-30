@@ -4,13 +4,16 @@ import { verticalDramaDraftLedgers } from "../../drizzle/schema";
 import { getDb } from "../db";
 import type { VerticalDramaDraftLedgerOwner } from "./verticalDramaDraftLedger";
 
-export const VERTICAL_DRAMA_STALE_DRAFT_DAY_OPTIONS = [5, 7, 10] as const;
+/**
+ * Draft cleanup is a maintenance action, not part of the active planning
+ * workflow. Keep a full-week grace period so a creator is not nudged to
+ * archive a Draft during a normal work week.
+ */
+export const VERTICAL_DRAMA_STALE_DRAFT_DAY_OPTIONS = [7, 10] as const;
 export type VerticalDramaStaleDraftDays =
   (typeof VERTICAL_DRAMA_STALE_DRAFT_DAY_OPTIONS)[number];
-const [stale5Days, stale7Days, stale10Days] =
-  VERTICAL_DRAMA_STALE_DRAFT_DAY_OPTIONS;
+const [stale7Days, stale10Days] = VERTICAL_DRAMA_STALE_DRAFT_DAY_OPTIONS;
 export const verticalDramaStaleDraftDaysSchema = z.union([
-  z.literal(stale5Days),
   z.literal(stale7Days),
   z.literal(stale10Days),
 ]);
@@ -23,7 +26,6 @@ export const VERTICAL_DRAMA_STALE_DRAFT_ELIGIBLE_STATUSES = [
 ] as const;
 
 export interface VerticalDramaStaleDraftCounts {
-  5: number;
   7: number;
   10: number;
 }
@@ -40,12 +42,10 @@ export async function getVerticalDramaStaleDraftCounts(
   now = new Date()
 ): Promise<VerticalDramaStaleDraftCounts> {
   const db = await getDb();
-  const cutoff5 = verticalDramaStaleDraftCutoff(5, now);
   const cutoff7 = verticalDramaStaleDraftCutoff(7, now);
   const cutoff10 = verticalDramaStaleDraftCutoff(10, now);
   const [row] = await db
     .select({
-      olderThan5Days: sql<number>`count(*) filter (where ${lt(verticalDramaDraftLedgers.updatedAt, cutoff5)})`,
       olderThan7Days: sql<number>`count(*) filter (where ${lt(verticalDramaDraftLedgers.updatedAt, cutoff7)})`,
       olderThan10Days: sql<number>`count(*) filter (where ${lt(verticalDramaDraftLedgers.updatedAt, cutoff10)})`,
     })
@@ -55,7 +55,8 @@ export async function getVerticalDramaStaleDraftCounts(
         eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
         eq(verticalDramaDraftLedgers.userId, owner.userId),
         isNull(verticalDramaDraftLedgers.archivedAt),
-        lt(verticalDramaDraftLedgers.updatedAt, cutoff5),
+        isNull(verticalDramaDraftLedgers.seriesId),
+        lt(verticalDramaDraftLedgers.updatedAt, cutoff7),
         inArray(
           verticalDramaDraftLedgers.jobStatus,
           VERTICAL_DRAMA_STALE_DRAFT_ELIGIBLE_STATUSES
@@ -64,7 +65,6 @@ export async function getVerticalDramaStaleDraftCounts(
     );
 
   return {
-    5: Number(row?.olderThan5Days ?? 0),
     7: Number(row?.olderThan7Days ?? 0),
     10: Number(row?.olderThan10Days ?? 0),
   };
@@ -81,6 +81,7 @@ export async function archiveVerticalDramaStaleDraftJobs(
     eq(verticalDramaDraftLedgers.tenantId, owner.tenantId),
     eq(verticalDramaDraftLedgers.userId, owner.userId),
     isNull(verticalDramaDraftLedgers.archivedAt),
+    isNull(verticalDramaDraftLedgers.seriesId),
     inArray(
       verticalDramaDraftLedgers.jobStatus,
       VERTICAL_DRAMA_STALE_DRAFT_ELIGIBLE_STATUSES

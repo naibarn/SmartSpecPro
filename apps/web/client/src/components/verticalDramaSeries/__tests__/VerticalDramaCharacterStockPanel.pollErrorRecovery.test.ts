@@ -8,6 +8,7 @@ import {
   VD_MEDIA_POLL_MAX_CONSECUTIVE_TRANSIENT_ERRORS,
 } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
 import { RETRYABLE_QUERY_MAX_ATTEMPTS } from "@/lib/requestResilience";
+import { rateLimitBackoffMs } from "@/lib/rateLimitBackoff";
 
 /**
  * Coverage for `planning/fix-character-image-false-failure/plan.md`, section
@@ -35,7 +36,7 @@ import { RETRYABLE_QUERY_MAX_ATTEMPTS } from "@/lib/requestResilience";
  *  optionally with `.cause` set to an underlying transport error. */
 function fakeTrpcClientError(
   message: string,
-  data?: { code?: string; httpStatus?: number },
+  data?: { code?: string; httpStatus?: number; retryAfter?: number },
   cause?: unknown
 ): TRPCClientError<any> {
   const err = new TRPCClientError(
@@ -158,6 +159,16 @@ describe("VD_MEDIA_POLL_MAX_CONSECUTIVE_TRANSIENT_ERRORS (guards the retry loop)
       RETRYABLE_QUERY_MAX_ATTEMPTS
     );
     expect(VD_MEDIA_POLL_MAX_CONSECUTIVE_TRANSIENT_ERRORS).toBeGreaterThan(1);
+  });
+
+  it("honors the server-provided Retry-After hint for a poll rate limit", () => {
+    const error = fakeTrpcClientError("Provider is busy", {
+      code: "TOO_MANY_REQUESTS",
+      httpStatus: 429,
+      retryAfter: 7,
+    });
+
+    expect(rateLimitBackoffMs(error)).toBe(7000);
   });
 });
 

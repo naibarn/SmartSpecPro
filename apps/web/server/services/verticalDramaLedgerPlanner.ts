@@ -8,9 +8,8 @@
  * `executeJsonPlanningCallWithRetry` LLM call — mirrors
  * `verticalDramaSeriesMemoryPlanning.ts`'s (itself mirroring
  * `verticalDramaStoryBible.ts`'s) check-credits -> resolve-model -> call ->
- * validate -> deduct-credits convention exactly, including the "deduct
- * failure never discards an already-generated, already-paid-for result"
- * behavior.
+ * validate -> deduct-credits convention exactly, with ledger failure
+ * propagated so a successful provider call cannot disappear from billing.
  *
  * Deterministic post-parse validation (never throws): the skill's raw LLM
  * response is only loosely schema-checked by `executeJsonPlanningCallWithRetry`
@@ -56,7 +55,6 @@ import {
 } from "./verticalDramaStoryBible";
 import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
 import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
-import { debugError } from "../_core/logger";
 import {
   verticalDramaLocaleEnglishName,
   type VerticalDramaSeriesLocale,
@@ -317,7 +315,7 @@ export async function runVerticalDramaLedgerPlanning(
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
-  const { data: rawData, response } = await executeJsonPlanningCallWithRetry({
+  const { data: rawData, response, model: effectiveModel } = await executeJsonPlanningCallWithRetry({
     model,
     systemPrompt,
     userPrompt,
@@ -336,38 +334,30 @@ export async function runVerticalDramaLedgerPlanning(
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
-    model
+    effectiveModel
   );
 
-  // The LLM cost is already sunk by this point — a failure deducting credits
-  // must not turn into a 500 that discards an otherwise-valid ledger plan the
-  // caller already paid provider cost for. Log for manual reconciliation
-  // instead of bubbling the raw error.
-  try {
-    await deductCredits({
-      userId: params.userId,
-      tenantId: params.tenantId,
-      amount: creditsUsed,
-      description: `Vertical Drama — quality ledger planning (series #${params.seriesId})`,
-      sourceType: "skill",
-      idempotencyKey: params.idempotencyKey,
-      metadata: {
-        model,
-        llmModel: model,
-        feature: "vertical_drama_series",
-        seriesId: params.seriesId,
-        inputTokens: usage?.prompt_tokens ?? 0,
-        outputTokens: usage?.completion_tokens ?? 0,
-        droppedRowCount,
-      },
-    });
-  } catch (err) {
-    debugError(
-      "verticalDramaLedgerPlanner",
-      `deductCredits failed after a successful ledger-planning call (userId=${params.userId}, seriesId=${params.seriesId}, creditsUsed=${creditsUsed}) — needs manual reconciliation`,
-      err
-    );
-  }
+  // A successful provider call must not be allowed to complete without a
+  // visible, idempotent credit transaction. Propagate ledger failures so the
+  // worker reports a retryable billing error instead of silently losing cost.
+  await deductCredits({
+    userId: params.userId,
+    tenantId: params.tenantId,
+    amount: creditsUsed,
+    description: `Vertical Drama — quality ledger planning (series #${params.seriesId})`,
+    skillSlug: "vertical-drama-ledger-planner",
+    sourceType: "skill",
+    idempotencyKey: params.idempotencyKey,
+    metadata: {
+      model: effectiveModel,
+      llmModel: effectiveModel,
+      feature: "vertical_drama_series",
+      seriesId: params.seriesId,
+      inputTokens: usage?.prompt_tokens ?? 0,
+      outputTokens: usage?.completion_tokens ?? 0,
+      droppedRowCount,
+    },
+  });
 
-  return { ledgers, droppedRowCount, creditsUsed, model };
+  return { ledgers, droppedRowCount, creditsUsed, model: effectiveModel };
 }

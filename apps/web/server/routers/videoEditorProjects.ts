@@ -47,6 +47,7 @@ import {
 import {
   optimizeProductReferenceStoryboardPrompt,
 } from "../services/productReferenceStoryboardSkillRunner";
+import { marketplaceOwnerTenantScope } from "../services/marketplaceTenantScope";
 
 const STORYBOARD_REVIEW_SERVER_DEBUG_BUILD = "storyboard-review-server-audio-debug-20260527-2245";
 const STORYBOARD_REVIEW_CLIENT_DEBUG_BUILD = "storyboard-review-client-lifecycle-debug-20260527-2325";
@@ -699,6 +700,7 @@ export function mergeStoryboardReviewMarketplaceContext(
 async function getStoryboardReviewAutoReviewContext(params: {
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
   userId: number;
+  tenantId?: string | null;
   reviewId: number;
   reviewData: unknown;
 }) {
@@ -707,10 +709,12 @@ async function getStoryboardReviewAutoReviewContext(params: {
     ? and(
         eq(marketplaceAutoReviewRuns.id, autoReviewRunId),
         eq(marketplaceAutoReviewRuns.userId, params.userId),
+        marketplaceOwnerTenantScope(marketplaceAutoReviewRuns.tenantId, params.tenantId),
       )
     : and(
         eq(marketplaceAutoReviewRuns.storyboardReviewId, String(params.reviewId)),
         eq(marketplaceAutoReviewRuns.userId, params.userId),
+        marketplaceOwnerTenantScope(marketplaceAutoReviewRuns.tenantId, params.tenantId),
       );
 
   const [autoReviewProduct] = await params.db
@@ -738,7 +742,10 @@ async function getStoryboardReviewAutoReviewContext(params: {
     .from(marketplaceAutoReviewRuns)
     .innerJoin(
       marketplaceProducts,
-      eq(marketplaceProducts.id, marketplaceAutoReviewRuns.productId),
+      and(
+        eq(marketplaceProducts.id, marketplaceAutoReviewRuns.productId),
+        marketplaceOwnerTenantScope(marketplaceProducts.tenantId, params.tenantId),
+      ),
     )
     .where(where)
     .orderBy(desc(marketplaceAutoReviewRuns.updatedAt))
@@ -767,6 +774,7 @@ async function getStoryboardReviewAutoReviewContext(params: {
 async function normalizeStoryboardReviewCanonicalLinks(params: {
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
   userId: number;
+  tenantId?: string | null;
   reviewData: unknown;
 }) {
   if (!isStoryboardReviewRecord(params.reviewData)) return params.reviewData;
@@ -804,12 +812,16 @@ async function normalizeStoryboardReviewCanonicalLinks(params: {
     .from(marketplaceAutoReviewRuns)
     .innerJoin(
       marketplaceProducts,
-      eq(marketplaceProducts.id, marketplaceAutoReviewRuns.productId),
+      and(
+        eq(marketplaceProducts.id, marketplaceAutoReviewRuns.productId),
+        marketplaceOwnerTenantScope(marketplaceProducts.tenantId, params.tenantId),
+      ),
     )
     .where(
       and(
         eq(marketplaceAutoReviewRuns.id, autoReviewRunId),
         eq(marketplaceAutoReviewRuns.userId, params.userId),
+        marketplaceOwnerTenantScope(marketplaceAutoReviewRuns.tenantId, params.tenantId),
       ),
     )
     .limit(1);
@@ -1415,6 +1427,7 @@ export const videoEditorProjectsRouter = router({
       const autoReviewProduct = await getStoryboardReviewAutoReviewContext({
         db,
         userId: ctx.user.id,
+        tenantId: ctx.tenantId,
         reviewId: input.id,
         reviewData: review.reviewData,
       });
@@ -1630,6 +1643,7 @@ export const videoEditorProjectsRouter = router({
       const normalizedReviewData = await normalizeStoryboardReviewCanonicalLinks({
         db,
         userId: ctx.user.id,
+        tenantId: ctx.tenantId,
         reviewData: existing.reviewData,
       });
       const canonicalProductId =
@@ -1721,6 +1735,7 @@ export const videoEditorProjectsRouter = router({
       const normalizedReviewData = await normalizeStoryboardReviewCanonicalLinks({
         db,
         userId: ctx.user.id,
+        tenantId: ctx.tenantId,
         reviewData: existing.reviewData,
       });
       const canonicalProductId =
@@ -1812,6 +1827,7 @@ export const videoEditorProjectsRouter = router({
       const normalizedReviewData = await normalizeStoryboardReviewCanonicalLinks({
         db,
         userId: ctx.user.id,
+        tenantId: ctx.tenantId,
         reviewData: existing.reviewData,
       });
       const canonicalProductId =
@@ -1965,6 +1981,7 @@ export const videoEditorProjectsRouter = router({
         const reviewData = await normalizeStoryboardReviewCanonicalLinks({
           db,
           userId: ctx.user.id,
+          tenantId: ctx.tenantId,
           reviewData: normalizeStoryboardReviewMediaProjection(
             mergeFresherExistingReviewTasks(existing.reviewData, input.reviewData),
           ),
@@ -2000,6 +2017,7 @@ export const videoEditorProjectsRouter = router({
       const reviewData = await normalizeStoryboardReviewCanonicalLinks({
         db,
         userId: ctx.user.id,
+        tenantId: ctx.tenantId,
         reviewData: normalizeStoryboardReviewMediaProjection(
           stripClientOwnedHyperframesFinalComposite(input.reviewData),
         ),

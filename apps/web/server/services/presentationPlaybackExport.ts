@@ -39,6 +39,7 @@ import {
   updateExportRecord,
   getExportRecord,
   getExportRecordByIdempotencyKey,
+  getPresentationExportDownloadUrl,
   type CreateExportRecordInput,
 } from "./presentationExportService";
 import {
@@ -1587,14 +1588,23 @@ export async function getPresentationExportStatus(
           const json = await readPresentationBridgeJson<{
             state?: string;
             output_url?: string;
+            output_storage_key?: string;
             error_message?: string;
             percent?: number;
             stage?: string;
           }>(response, "Python export status bridge");
-          if (json.state === "done" && json.output_url) {
+          if (json.state === "done" && (json.output_url || json.output_storage_key)) {
             const updated = await updateExportRecord(
               record.id,
-              { status: "done", outputUrl: json.output_url, progressPct: 100 },
+              {
+                status: "done",
+                outputUrl: json.output_storage_key
+                  ? `/api/storage/files/${encodeURI(json.output_storage_key)}`
+                  : json.output_url,
+                ...(json.output_url ? { outputOriginalUrl: json.output_url } : {}),
+                ...(json.output_storage_key ? { outputStorageKey: json.output_storage_key } : {}),
+                progressPct: 100,
+              },
               db,
             );
             if (updated) current = updated;
@@ -1640,7 +1650,7 @@ export async function getPresentationExportStatus(
       format: current.format,
       progressPct: current.progressPct,
       stage: current.stage,
-      downloadUrl: current.outputUrl,
+      downloadUrl: getPresentationExportDownloadUrl(current),
       errorMessage: current.errorMessage,
       outputBytes: current.outputBytes,
       updatedAt: current.updatedAt,

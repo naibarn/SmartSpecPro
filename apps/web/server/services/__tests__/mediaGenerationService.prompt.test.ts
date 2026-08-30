@@ -246,6 +246,34 @@ describe("buildPythonBackendExtraParams", () => {
       },
     });
   });
+
+  it("keeps cover credit reservation metadata in the task", () => {
+    expect(
+      buildPythonBackendExtraParamsForTest({
+        __reserved_credits: 12,
+        __credit_source_type: "media_image",
+        __credit_reservation_key: "cover-attempt-1",
+        __vd_purpose: "episode_cover",
+        __prompt_safety: {
+          checked: true,
+          mode: "vertical_drama_cover",
+          skillId: "vertical-drama-episode-cover-safety-rewriter",
+          safePromptHash: "hash",
+        },
+      }),
+    ).toEqual({
+      __reserved_credits: 12,
+      __credit_source_type: "media_image",
+      __credit_reservation_key: "cover-attempt-1",
+      __vd_purpose: "episode_cover",
+      __prompt_safety: {
+        checked: true,
+        mode: "vertical_drama_cover",
+        skillId: "vertical-drama-episode-cover-safety-rewriter",
+        safePromptHash: "hash",
+      },
+    });
+  });
 });
 
 describe("buildMediaRequestAuditPayload", () => {

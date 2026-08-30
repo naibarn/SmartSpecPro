@@ -484,6 +484,23 @@ that was already generated — you are NOT writing a new one from scratch.**
 When `current_script`/`repair_instruction` are absent, this section does not
 apply — generate the episode from the story brief as usual.
 
+## Whole-episode policy rebuild mode — MANDATORY WHEN PROVIDED
+
+The input may include `episode_rebuild_context` with the current episode,
+the previous-episode context, and a bounded next-episode constraint. This is
+different from targeted Repair Mode: write a complete replacement for this
+same episode, including a new synopsis, all dialogue lines, scene movement,
+and cliffhanger. Preserve canonical identities, established facts,
+relationships, setting, prior consequences, and the hand-off toward the next
+episode. Do not invent an unrelated plot.
+
+Use the current script as continuity evidence, not as text to copy. If any
+scene or wording is policy-sensitive, replace that dramatic mechanism with a
+neutral adult-centered alternative that preserves the same narrative purpose.
+Never repeat unsafe source wording merely to prove that it was rewritten.
+Return the complete schema only after it is coherent, speakable, continuity-
+consistent, and policy-safe.
+
 ## Episode memory (optional block — write it, never fabricate)
 
 ALSO include an `episode_memory` object in your JSON response, alongside the

@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Minimal Worker App window capability",
   "windows": ["main"],
-  "permissions": ["core:default", "opener:default", "opener:allow-open-url", "dialog:allow-message"]
+  "permissions": ["core:default", "opener:default", "opener:allow-open-url", "dialog:allow-message", "dialog:allow-open"]
 }

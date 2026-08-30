@@ -51,6 +51,7 @@ const STATUS_FILTERS: Array<VerticalDramaSeriesStatus | "all"> = [
   "all",
   "draft",
   "planning",
+  "story_ready",
   "active",
   "paused",
   "completed",
@@ -60,6 +61,7 @@ function statusBadgeVariant(
   status: string
 ): "default" | "secondary" | "destructive" | "outline" {
   if (status === "active") return "default";
+  if (status === "story_ready") return "default";
   if (status === "completed") return "secondary";
   if (status === "archived" || status === "paused") return "outline";
   return "secondary";
@@ -103,7 +105,11 @@ function VerticalDramaSeriesListContent({ lang }: { lang: "th" | "en" }) {
       search: search.trim() || undefined,
       status: statusFilter === "all" ? undefined : statusFilter,
     },
-    { staleTime: 30_000 }
+    {
+      staleTime: 5 * 60_000,
+      gcTime: 15 * 60_000,
+      placeholderData: previous => previous,
+    }
   );
 
   const series = Array.isArray(listQuery.data?.series)
@@ -133,8 +139,8 @@ function VerticalDramaSeriesListContent({ lang }: { lang: "th" | "en" }) {
         </Button>
       }
       toolbar={
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
+        <div className="flex min-w-0 max-w-full flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
               aria-hidden="true"
@@ -196,10 +202,11 @@ function VerticalDramaSeriesListContent({ lang }: { lang: "th" | "en" }) {
           </Button>
         ),
       }}
+      constrainToParent
     >
-      <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <ul className="grid min-w-0 w-full max-w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {series.map(item => (
-          <li key={item.id}>
+          <li key={item.id} className="min-w-0 max-w-full">
             <SeriesCard lang={lang} series={item} />
           </li>
         ))}
@@ -240,22 +247,29 @@ function SeriesCard({
       : series.status;
 
   return (
-    <Link href={verticalDramaRoutes.seriesDetail(series.id)}>
-      <Card className="h-full cursor-pointer transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
+    <Link
+      href={verticalDramaRoutes.seriesDetail(series.id)}
+      className="block min-w-0 max-w-full"
+    >
+      <Card className="h-full min-w-0 max-w-full cursor-pointer transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
         <CardHeader className="pb-2">
-          <div className="flex items-start justify-between gap-2">
-            <CardTitle className="truncate text-base">{series.title}</CardTitle>
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <CardTitle className="min-w-0 flex-1 truncate text-base">
+              {series.title}
+            </CardTitle>
             <Badge variant={statusBadgeVariant(series.status)}>
               {statusLabel}
             </Badge>
           </div>
         </CardHeader>
-        <CardContent className="flex gap-3 text-sm">
+        <CardContent className="flex min-w-0 gap-3 text-sm">
           {series.thumbnailUrl ? (
             <img
               src={series.thumbnailUrl}
               alt=""
               aria-hidden="true"
+              loading="lazy"
+              decoding="async"
               className="aspect-[9/16] w-16 shrink-0 rounded-md border border-border object-cover"
             />
           ) : (
@@ -325,12 +339,12 @@ function SeriesCard({
 function SeriesListSkeleton() {
   return (
     <ul
-      className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+      className="grid min-w-0 w-full max-w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
       aria-busy="true"
       aria-live="polite"
     >
       {Array.from({ length: 6 }).map((_, i) => (
-        <li key={i}>
+        <li key={i} className="min-w-0 max-w-full">
           <Card className="h-40">
             <CardContent className="flex h-full flex-col gap-3 p-4">
               <Skeleton className="h-5 w-2/3" />

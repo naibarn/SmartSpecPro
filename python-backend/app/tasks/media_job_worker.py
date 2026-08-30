@@ -6,6 +6,7 @@ handler, and reports progress via application-owned Redis keys.
 """
 
 import json
+import asyncio
 import os
 import re
 import shutil
@@ -85,6 +86,43 @@ URI_QUERY_SHELL_METACHAR_RE = re.compile(r"[;|`$(){}><]")
 # Strip all ASCII control characters (0x00-0x1f, 0x7f) for safe log/error output
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
 _HEX_COLOR_RE = re.compile(r"^#?([0-9a-fA-F]{6})$")
+
+
+def _safe_storage_component(value: str, field: str) -> str:
+    cleaned = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(value).strip())
+    if not cleaned or cleaned in {".", ".."}:
+        raise ValueError(f"{field} is required for durable media storage")
+    return cleaned[:128]
+
+
+def _store_final_output_in_r2(
+    spec: dict,
+    output_path: str,
+    artifact_kind: str,
+    content_type: str,
+    extension: str,
+) -> tuple[str, str]:
+    """Upload a completed worker output and return the protected Node proxy URL.
+
+    Local disk is used only as FFmpeg's working area. A completed artifact is
+    never published as a Python FileResponse URL.
+    """
+    tenant_id = str(spec.get("tenantId") or spec.get("tenant_id") or "").strip()
+    user_id = str(spec.get("_userId") or "").strip()
+    job_id = str(spec.get("jobId") or "").strip()
+    if not tenant_id or not user_id or not job_id:
+        raise ValueError("tenantId, userId and jobId are required for durable media storage")
+    from app.services.generation.r2_storage import get_r2_storage
+
+    key = "/".join([
+        "media-jobs",
+        _safe_storage_component(tenant_id, "tenantId"),
+        _safe_storage_component(user_id, "userId"),
+        _safe_storage_component(job_id, "jobId"),
+        f"{_safe_storage_component(artifact_kind, 'artifactKind')}{extension}",
+    ])
+    asyncio.run(get_r2_storage().upload_file(output_path, key, content_type=content_type))
+    return f"/api/storage/files/{key}", key
 
 _RENDER_FONT_WHITELIST = {
     "Noto Sans": "Noto Sans",
@@ -1488,15 +1526,10 @@ def handle_render_mp4(spec: dict, tmp_dir: str, runner=None) -> dict:
     if not safe_filename.lower().endswith(".mp4"):
         safe_filename += ".mp4"
 
-    # Tenant-scoped jobs use media_storage/renders/{tenantId}/{userId}/{jobId}/{filename}.
-    # Keep the legacy user-only layout when older specs do not carry a tenant.
-    media_storage_path = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-    tenant_id = str(spec.get("tenantId") or spec.get("tenant_id") or "").strip()
-    render_parts = [media_storage_path, "renders"]
-    if tenant_id:
-        render_parts.append(tenant_id)
-    render_parts.extend([user_id, job_id])
-    render_dir = os.path.join(*render_parts)
+    # FFmpeg working files are temporary only. The completed artifact is
+    # uploaded by `_store_final_output_in_r2`; never persist media output on
+    # the Python server filesystem.
+    render_dir = os.path.join(tmp_dir, "render")
     os.makedirs(render_dir, exist_ok=True)
     output_path = os.path.join(render_dir, safe_filename)
 
@@ -1657,14 +1690,15 @@ def handle_render_mp4(spec: dict, tmp_dir: str, runner=None) -> dict:
             job_id=job_id,
         )
 
-    # Return serveable URL (Python backend serves this via /api/v1/media/files/renders/)
-    serve_url = (
-        f"/api/v1/media/files/renders/{tenant_id}/{user_id}/{job_id}/{safe_filename}"
-        if tenant_id
-        else f"/api/v1/media/files/renders/{user_id}/{job_id}/{safe_filename}"
+    serve_url, storage_key = _store_final_output_in_r2(
+        spec,
+        output_path,
+        "render",
+        "video/mp4",
+        ".mp4",
     )
     result: dict[str, Any] = {
-        "artifacts": [{"kind": "video", "uri": serve_url, "mime": "video/mp4"}],
+        "artifacts": [{"kind": "video", "uri": serve_url, "storageKey": storage_key, "mime": "video/mp4"}],
     }
     if text_render_derived:
         result["derived"] = {"textRender": text_render_derived}
@@ -2262,10 +2296,21 @@ def handle_transcode_h264(spec: dict, tmp_dir: str, runner=None) -> dict:
     codec = _detect_video_codec(asset_uri, runner=runner)
 
     if codec and codec in _BROWSER_COMPATIBLE_VIDEO_CODECS:
-        # Already browser-compatible — return original URI
-        report_progress(job_id, 1.0, "done", f"Already {codec} — no transcode needed")
+        # Keep the no-reencode optimization, but still make the final output
+        # durable. Provider/local input URLs must never become the playback
+        # contract for a completed media job.
+        report_progress(job_id, 0.1, "downloading", "Preparing input file")
+        input_path = _resolve_asset_path(asset_uri, tmp_dir)
+        serve_url, storage_key = _store_final_output_in_r2(
+            spec,
+            input_path,
+            "transcoded",
+            "video/mp4",
+            ".mp4",
+        )
+        report_progress(job_id, 1.0, "done", f"Already {codec} — stored in R2")
         return {
-            "artifacts": [{"kind": "video", "uri": asset_uri, "mime": "video/mp4"}],
+            "artifacts": [{"kind": "video", "uri": serve_url, "storageKey": storage_key, "mime": "video/mp4"}],
             "derived": {"transcoded": False, "originalCodec": codec},
         }
 
@@ -2278,14 +2323,8 @@ def handle_transcode_h264(spec: dict, tmp_dir: str, runner=None) -> dict:
     media_info = _probe_media_info(input_path, runner=runner)
     total_duration_us = int(media_info["duration_s"] * 1_000_000)
 
-    # Build output path
-    media_storage_path = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-    tenant_id = str(spec.get("tenantId") or spec.get("tenant_id") or "").strip()
-    transcode_parts = [media_storage_path, "transcoded"]
-    if tenant_id:
-        transcode_parts.append(tenant_id)
-    transcode_parts.extend([user_id, job_id])
-    transcode_dir = os.path.join(*transcode_parts)
+    # FFmpeg working files are temporary only; final output is copied to R2.
+    transcode_dir = os.path.join(tmp_dir, "transcoded")
     os.makedirs(transcode_dir, exist_ok=True)
 
     # Use original filename with _h264 suffix
@@ -2345,14 +2384,15 @@ def handle_transcode_h264(spec: dict, tmp_dir: str, runner=None) -> dict:
 
     report_progress(job_id, 0.95, "finalizing", "Finalizing transcoded file")
 
-    # Return serveable URL
-    serve_url = (
-        f"/api/v1/media/files/transcoded/{tenant_id}/{user_id}/{job_id}/{output_filename}"
-        if tenant_id
-        else f"/api/v1/media/files/transcoded/{user_id}/{job_id}/{output_filename}"
+    serve_url, storage_key = _store_final_output_in_r2(
+        spec,
+        output_path,
+        "transcoded",
+        "video/mp4",
+        ".mp4",
     )
     return {
-        "artifacts": [{"kind": "video", "uri": serve_url, "mime": "video/mp4"}],
+        "artifacts": [{"kind": "video", "uri": serve_url, "storageKey": storage_key, "mime": "video/mp4"}],
         "derived": {
             "transcoded": True,
             "originalCodec": codec or "unknown",
@@ -2392,14 +2432,8 @@ def handle_extract_audio(spec: dict, tmp_dir: str, runner=None) -> dict:
 
     report_progress(job_id, 0.2, "extracting", "Extracting audio stream")
 
-    # Build output path
-    media_storage_path = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-    tenant_id = str(spec.get("tenantId") or spec.get("tenant_id") or "").strip()
-    extract_parts = [media_storage_path, "audio_extracts"]
-    if tenant_id:
-        extract_parts.append(tenant_id)
-    extract_parts.extend([user_id, job_id])
-    extract_dir = os.path.join(*extract_parts)
+    # FFmpeg working files are temporary only; final output is copied to R2.
+    extract_dir = os.path.join(tmp_dir, "audio_extracts")
     os.makedirs(extract_dir, exist_ok=True)
     output_filename = "audio.m4a"
     output_path = os.path.join(extract_dir, output_filename)
@@ -2441,13 +2475,15 @@ def handle_extract_audio(spec: dict, tmp_dir: str, runner=None) -> dict:
 
     report_progress(job_id, 0.95, "finalizing", "Finalizing extracted audio")
 
-    serve_url = (
-        f"/api/v1/media/files/audio_extracts/{tenant_id}/{user_id}/{job_id}/{output_filename}"
-        if tenant_id
-        else f"/api/v1/media/files/audio_extracts/{user_id}/{job_id}/{output_filename}"
+    serve_url, storage_key = _store_final_output_in_r2(
+        spec,
+        output_path,
+        "audio",
+        "audio/mp4",
+        ".m4a",
     )
     return {
-        "artifacts": [{"kind": "audio", "uri": serve_url, "mime": "audio/mp4"}],
+        "artifacts": [{"kind": "audio", "uri": serve_url, "storageKey": storage_key, "mime": "audio/mp4"}],
         "derived": {
             "duration": output_duration,
             "format": "m4a",
@@ -2498,10 +2534,13 @@ async def _persist_render_to_db(
     """
     from app.core.database import AsyncSessionLocal
     from app.models.media_task import MediaTask
+    from app.models.vision import MediaAsset
+    from sqlalchemy import select
     from datetime import datetime
 
     artifacts = result.get("artifacts", [])
     result_url = artifacts[0]["uri"] if artifacts else None
+    storage_key = artifacts[0].get("storageKey") if artifacts else None
     original_filename = spec.get("output", {}).get("target", "render")
 
     # DB column id is varchar(36) — strip the "mj-" prefix to fit
@@ -2510,6 +2549,29 @@ async def _persist_render_to_db(
         db_id = db_id[:36]
 
     async with AsyncSessionLocal() as db:
+        if storage_key:
+            existing_asset = await db.scalar(
+                select(MediaAsset).where(
+                    MediaAsset.tenantId == str(spec.get("tenantId") or spec.get("tenant_id") or ""),
+                    MediaAsset.userId == int(user_id),
+                    MediaAsset.storageKey == storage_key,
+                ).limit(1)
+            )
+            if existing_asset:
+                result.setdefault("mediaAssetId", existing_asset.id)
+            else:
+                asset = MediaAsset(
+                    tenantId=str(spec.get("tenantId") or spec.get("tenant_id") or ""),
+                    userId=int(user_id),
+                    sourceType="video_editor_render",
+                    status="ready",
+                    storageKey=storage_key,
+                    originalUrl=result_url,
+                    mimeType="video/mp4",
+                )
+                db.add(asset)
+                await db.flush()
+                result["mediaAssetId"] = asset.id
         task = MediaTask(
             id=db_id,
             user_id=int(user_id),

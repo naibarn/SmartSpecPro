@@ -8,7 +8,7 @@ import {
   Sparkles,
   Square,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { StagedCheckpointReviewSurface } from "@/components/marketplaceCapture/StagedCheckpointReviewSurface";
 import { MarketplaceAutoReviewJobNavigator } from "@/components/marketplaceCapture/MarketplaceAutoReviewJobNavigator";
@@ -86,6 +86,27 @@ function numeric(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function hasPendingSequentialImageEdit(runData: unknown): boolean {
+  const metadata =
+    runData && typeof runData === "object"
+      ? (runData as Record<string, any>).metadataJson
+      : null;
+  const candidates =
+    metadata && typeof metadata === "object"
+      ? (metadata as Record<string, any>).sequentialImageEditCandidates
+      : null;
+  return Boolean(
+    candidates &&
+      typeof candidates === "object" &&
+      Object.values(candidates).some(
+        candidate =>
+          candidate &&
+          typeof candidate === "object" &&
+          String((candidate as Record<string, any>).status ?? "") === "submitted"
+      )
+  );
+}
+
 export default function MarketplaceAutoReviewWorkflowPage() {
   const [, params] = useRoute("/marketplace/auto-review/:runId");
   const [, setLocation] = useLocation();
@@ -99,11 +120,14 @@ export default function MarketplaceAutoReviewWorkflowPage() {
       staleTime: 5_000,
       refetchInterval: query => {
         const status = (query.state.data as any)?.status;
-        return status && TERMINAL_STATUSES.has(String(status)) ? false : 12_000;
+        return status &&
+          TERMINAL_STATUSES.has(String(status)) &&
+          !hasPendingSequentialImageEdit(query.state.data)
+          ? false
+          : 12_000;
       },
     }
   );
-  const trpcUtils = trpc.useUtils();
   const run = runQuery.data as Record<string, any> | undefined;
   const metadata =
     run?.metadataJson && typeof run.metadataJson === "object"
@@ -222,7 +246,6 @@ export default function MarketplaceAutoReviewWorkflowPage() {
   const [legacyImageEditResultByShot, setLegacyImageEditResultByShot] = useState<
     Record<number, { beforeUrl: string; afterUrl: string }>
   >({});
-  const imageEditPollInFlightRef = useRef<Set<number>>(new Set());
   const persistedLanguagePlan = (() => {
     const sequential =
       metadata.sequentialStoryboard &&
@@ -323,12 +346,9 @@ export default function MarketplaceAutoReviewWorkflowPage() {
     });
   const editLegacyImageMutation =
     trpc.marketplaceCapture.editAutoReviewSequentialShotImage.useMutation({
-      onSuccess: data => {
-        void pollLegacyImageEditTask(
-          data.taskId,
-          data.shotId,
-          data.beforeUrl
-        );
+      onSuccess: async () => {
+        setLegacyImageEditSubmittingShotId(null);
+        await runQuery.refetch();
       },
       onError: (error, variables) => {
         setLegacyImageEditSubmittingShotId(null);
@@ -367,46 +387,6 @@ export default function MarketplaceAutoReviewWorkflowPage() {
         });
       },
     });
-
-  async function pollLegacyImageEditTask(
-    taskId: string,
-    shotId: number,
-    beforeUrl: string
-  ) {
-    if (imageEditPollInFlightRef.current.has(shotId)) return;
-    imageEditPollInFlightRef.current.add(shotId);
-    try {
-      for (let attempt = 0; attempt < 120; attempt += 1) {
-        const task = await trpcUtils.media.getTask.fetch({ taskId });
-        const afterUrl =
-          typeof task?.resultUrl === "string" ? task.resultUrl : "";
-        if (task?.status === "completed" && afterUrl) {
-          setLegacyImageEditResultByShot(current => ({
-            ...current,
-            [shotId]: { beforeUrl, afterUrl },
-          }));
-          return;
-        }
-        if (task?.status === "failed") {
-          setLegacyShotError({
-            shotId,
-            blockerId: "sequential_shot_image_edit_provider_failed",
-            message: task.errorMessage || "สร้างภาพแก้ไขไม่สำเร็จ",
-          });
-          return;
-        }
-        await new Promise(resolve => setTimeout(resolve, 2500));
-      }
-      setLegacyShotError({
-        shotId,
-        blockerId: "sequential_shot_image_edit_timeout",
-        message: "การแก้ภาพใช้เวลานานเกินไป กรุณาตรวจสอบแล้วลองใหม่",
-      });
-    } finally {
-      imageEditPollInFlightRef.current.delete(shotId);
-      setLegacyImageEditSubmittingShotId(null);
-    }
-  }
 
   return (
     <main className="min-h-dvh bg-[radial-gradient(circle_at_top,_rgba(124,58,237,0.08),_transparent_42%),#f8fafc] px-3 py-4 sm:px-6 lg:px-8">
@@ -709,22 +689,9 @@ export default function MarketplaceAutoReviewWorkflowPage() {
                   if (!runId) return;
                   discardLegacyImageMutation.mutate({ runId, shotId });
                 }}
-                onPollEditedShotImage={shotId => {
-                  const candidates =
-                    metadata.sequentialImageEditCandidates ?? {};
-                  const candidate = candidates[String(shotId)] ?? {};
-                  const taskId =
-                    typeof candidate.taskId === "string"
-                      ? candidate.taskId
-                      : "";
-                  const beforeUrl =
-                    typeof candidate.beforeUrl === "string"
-                      ? candidate.beforeUrl
-                      : "";
-                  if (!taskId || !beforeUrl) return;
+                onPollEditedShotImage={() => {
                   setLegacyShotError(null);
-                  setLegacyImageEditSubmittingShotId(shotId);
-                  void pollLegacyImageEditTask(taskId, shotId, beforeUrl);
+                  void runQuery.refetch();
                 }}
                 imageEditSubmittingShotId={legacyImageEditSubmittingShotId}
                 imageEditResultByShot={legacyImageEditResultByShot}

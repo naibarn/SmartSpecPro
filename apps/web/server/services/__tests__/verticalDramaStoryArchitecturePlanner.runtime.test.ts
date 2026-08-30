@@ -189,11 +189,17 @@ describe("Vertical Drama story architecture runtime contract", () => {
       targetEpisodeCount: 10,
     });
 
-    expect(mocks.assertRecommended).toHaveBeenCalledWith("openai/gpt-5.6-luna");
     const call = mocks.execute.mock.calls[0][0];
     expect(call.model).toBe("openai/gpt-5.6-luna");
     expect(call.maxTokens).toBe(9000);
     expect(call.retryMaxTokens).toBe(16000);
+    expect(call.maxSchemaRetries).toBe(2);
+    expect(call.maxTransientRetries).toBe(0);
+    expect(call.modelFallbackPolicy).toBeUndefined();
+    expect(call.modelFallbackOnSchema).toBeUndefined();
+    expect(call.schemaRetryContract).toContain(
+      "audiencePromise requires genrePromise, emotionalPromise, coreQuestion"
+    );
     expect(call.disableProviderFallbacks).toBe(true);
     expect(call.extraBodyParams.response_format).toMatchObject({
       type: "json_schema",

@@ -481,7 +481,7 @@ export default function Gallery() {
   // Handle download
   const handleDownload = (item: GalleryItem, e: React.MouseEvent) => {
     e.stopPropagation();
-    const mediaUrl = getGalleryMediaUrl(item, "file");
+    const mediaUrl = getGalleryMediaUrl(item, "file", { download: true });
     if (mediaUrl) {
       downloadMutation.mutate({ id: item.id });
       window.open(mediaUrl, "_blank", "noopener,noreferrer");
@@ -802,7 +802,7 @@ export default function Gallery() {
                               >
                                 <Heart className="w-4 h-4" />
                               </Button>
-                              {item.type === "image" && (
+                              {(item.type === "image" || item.type === "video") && (
                                 <Button
                                   size="icon"
                                   variant="secondary"
@@ -945,7 +945,8 @@ export default function Gallery() {
                           {formatNumber(selectedItem.likes)}
                         </span>
                       </Button>
-                      {selectedItem.type === "image" && (
+                      {(selectedItem.type === "image" ||
+                        selectedItem.type === "video") && (
                         <Button
                           size="sm"
                           variant="ghost"

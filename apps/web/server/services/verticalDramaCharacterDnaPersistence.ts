@@ -19,12 +19,34 @@ export async function persistCharacterVisualBible(
   characterId: number,
   visualBible: VerticalDramaCharacterVisualBible
 ): Promise<void> {
+  const existingVisualBible = sql`${verticalDramaCharacters.data}->'visualBible'`;
+  const revisionedVisualBible = sql`
+    jsonb_set(
+      jsonb_set(
+        jsonb_set(
+          jsonb_set(
+            ${JSON.stringify(visualBible)}::jsonb,
+            '{identityDnaRevision}',
+            COALESCE(${existingVisualBible}->'identityDnaRevision', '1'::jsonb),
+            true
+          ),
+          '{promptDnaRevision}',
+          COALESCE(${existingVisualBible}->'identityDnaRevision', '1'::jsonb),
+          true
+        ),
+        '{identityDnaSource}',
+        COALESCE(${existingVisualBible}->'identityDnaSource', '"ai_generated"'::jsonb),
+        true
+      ),
+      '{identityDnaUpdatedAt}',
+      COALESCE(${existingVisualBible}->'identityDnaUpdatedAt', 'null'::jsonb),
+      true
+    )
+  `;
   const [updated] = await db
     .update(verticalDramaCharacters)
     .set({
-      data: sql`jsonb_set(COALESCE(${verticalDramaCharacters.data}, '{}'::jsonb), '{visualBible}', ${JSON.stringify(
-        visualBible
-      )}::jsonb, true)`,
+      data: sql`jsonb_set(COALESCE(${verticalDramaCharacters.data}, '{}'::jsonb), '{visualBible}', ${revisionedVisualBible}, true)`,
       updatedAt: new Date(),
     })
     .where(

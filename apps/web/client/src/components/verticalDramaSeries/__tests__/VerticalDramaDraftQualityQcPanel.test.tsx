@@ -276,6 +276,73 @@ describe("VerticalDramaDraftQualityQcPanel", () => {
     expect(onConfirmCandidate).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps confirmation enabled when QC is skipped or has no approval flag", () => {
+    const onConfirmCandidate = vi.fn();
+    render(
+      <VerticalDramaDraftQualityQcPanel
+        {...baseProps}
+        status="idle"
+        onConfirmCandidate={onConfirmCandidate}
+        candidateCanBeConfirmed={false}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Use this Draft and continue" })
+    );
+    expect(onConfirmCandidate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not offer repair for a failed QC run without a recovered result", () => {
+    const report = makeReport(2);
+    const onRepair = vi.fn();
+    render(
+      <VerticalDramaDraftQualityQcPanel
+        {...baseProps}
+        status="failed"
+        report={null}
+        error="Draft revision changed immutable field: storyContract"
+        failure={{
+          phase: "revise",
+          round: 1,
+          message: "Draft revision changed immutable field: storyContract",
+          callsDone: 2,
+          callsMax: 11,
+          roundsAttempted: 1,
+          evaluationsCompleted: 1,
+          history: [],
+          lastReport: report,
+        }}
+        onRepair={onRepair}
+      />
+    );
+
+    expect(
+      screen.queryByRole("button", {
+        name: /let ai repair from qc findings/i,
+      })
+    ).not.toBeInTheDocument();
+    expect(onRepair).not.toHaveBeenCalled();
+  });
+
+  it("offers repair for a recovered, completed candidate from a failed run", () => {
+    const report = makeReport(2);
+    const onRepair = vi.fn();
+    render(
+      <VerticalDramaDraftQualityQcPanel
+        {...baseProps}
+        status="failed"
+        recoveredResult
+        report={report}
+        onRepair={onRepair}
+      />
+    );
+
+    expect(
+      screen.getByRole("button", { name: /let ai repair from qc findings/i })
+    ).toBeInTheDocument();
+  });
+
   it("keeps a valid candidate selectable after a later QC evaluator failure", () => {
     const report = makeReport(4);
     const onConfirmCandidate = vi.fn();

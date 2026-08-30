@@ -876,6 +876,62 @@ export async function ensureMediaTaskArtifactsDurable(
   return applyMediaArtifactProjection(input.task, artifacts);
 }
 
+/**
+ * Link a domain-owned completed task to an asset that its domain durability
+ * service has already written. Domain-owned tasks intentionally bypass the
+ * generic provider download path, but Media History still needs the shared
+ * artifact projection to show the same R2 truth.
+ */
+export async function linkMediaTaskArtifactToAsset(input: {
+  task: MediaTask;
+  tenantId: string;
+  userId: number;
+  mediaAssetId: number;
+  storageKey: string;
+}): Promise<void> {
+  if (
+    input.task.status !== "completed" ||
+    !input.tenantId ||
+    !input.userId ||
+    !Number.isFinite(input.mediaAssetId) ||
+    input.mediaAssetId <= 0 ||
+    !input.storageKey.trim()
+  ) {
+    return;
+  }
+  const providerUrl = extractMediaTaskOutputUrls(input.task)[0];
+  const row = await ensureLedgerRow({
+    sourceKind: sourceKindForMediaTask(input.task),
+    sourceTaskId: input.task.id,
+    outputIndex: 0,
+    tenantId: input.tenantId,
+    userId: input.userId,
+    task: input.task,
+    providerUrl,
+  });
+  const db = getDb();
+  await db
+    .update(mediaTaskArtifacts)
+    .set({
+      mediaAssetId: input.mediaAssetId,
+      r2StorageKey: input.storageKey,
+      r2Status: "ready",
+      providerStatus: "available",
+      providerCheckedAt: new Date(),
+      providerError: null,
+      r2Error: null,
+      nextRetryAt: null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(mediaTaskArtifacts.id, row.id),
+        eq(mediaTaskArtifacts.tenantId, input.tenantId),
+        eq(mediaTaskArtifacts.userId, input.userId)
+      )
+    );
+}
+
 export async function ensureMediaTaskArtifactsForPolling(input: {
   task: MediaTask;
   tenantId: string;
@@ -919,7 +975,8 @@ function isDomainOwnedMediaTask(task: MediaTask): boolean {
  * finalized by a provider callback without a subsequent task poll, so only
  * projecting the existing ledger leaves it stuck as "copying to R2" forever.
  * Keep the repair bounded because a history page can contain many completed
- * provider results, and never touch domain-owned media ledgers here.
+ * provider results. Domain-owned Vertical Drama tasks use their domain
+ * durability reconciler first, then register the shared artifact projection.
  */
 export async function durabilizeMediaTaskHistory(input: {
   tasks: MediaTask[];
@@ -930,7 +987,9 @@ export async function durabilizeMediaTaskHistory(input: {
   const candidates = input.tasks
     .map((task, index) => ({ task, index }))
     .filter(
-      ({ task }) => task.status === "completed" && !isDomainOwnedMediaTask(task)
+      ({ task }) =>
+        task.status === "completed" &&
+        (!isDomainOwnedMediaTask(task) || isVerticalDramaMediaTask(task))
     );
 
   for (
@@ -948,7 +1007,7 @@ export async function durabilizeMediaTaskHistory(input: {
           let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
           try {
             const result = await Promise.race([
-              ensureMediaTaskArtifactsForPolling({
+              durabilizeHistoryTask({
                 task,
                 tenantId: input.tenantId,
                 userId: input.userId,
@@ -970,4 +1029,44 @@ export async function durabilizeMediaTaskHistory(input: {
   }
 
   return output;
+}
+
+function isVerticalDramaMediaTask(task: MediaTask): boolean {
+  const internalParams = {
+    ...(task.parameters ?? {}),
+    ...((task.parameters?.extra_params as
+      | Record<string, unknown>
+      | undefined) ?? {}),
+    ...((task.resultData?.extra_params as
+      | Record<string, unknown>
+      | undefined) ?? {}),
+  };
+  return Boolean(internalParams.__vd_series_id);
+}
+
+async function durabilizeHistoryTask(input: {
+  task: MediaTask;
+  tenantId: string;
+  userId: number;
+}): Promise<MediaTask> {
+  if (isVerticalDramaMediaTask(input.task)) {
+    try {
+      const { ensureVerticalDramaTaskResultDurable } = await import(
+        "./verticalDramaMediaAssetService"
+      );
+      const durable = await ensureVerticalDramaTaskResultDurable({
+        tenantId: input.tenantId,
+        userId: input.userId,
+        task: input.task,
+      });
+      return durable?.task ?? input.task;
+    } catch (error) {
+      console.warn("[MediaArtifact] Vertical Drama history durability failed", {
+        taskId: input.task.id,
+        error: sanitizeError(error),
+      });
+      return applyMediaArtifactProjection(input.task, []);
+    }
+  }
+  return ensureMediaTaskArtifactsForPolling(input);
 }

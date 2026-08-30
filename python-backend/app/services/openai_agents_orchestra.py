@@ -18,6 +18,7 @@ from app.services.agent_output_assurance import (
     validate_evidence_bundle,
 )
 from app.services.openai_agents_contracts import AgentRuntimeRequest, AgentRuntimeResponse
+from app.services.openai_agents_vertical_drama_outputs import resolve_vertical_drama_output_type
 
 
 class OrchestraAdmissionError(ValueError):
@@ -47,6 +48,12 @@ def preflight_orchestra_request(request: AgentRuntimeRequest) -> AssuranceReques
         raise OrchestraAdmissionError(
             AssuranceFinding(code="side_effect_unauthorized", severity="blocking", message="side_effect_authorization_required")
         )
+    try:
+        resolve_vertical_drama_output_type(assurance)
+    except ValueError as exc:
+        raise OrchestraAdmissionError(
+            AssuranceFinding(code="output_contract_mismatch", severity="blocking", message=str(exc))
+        ) from exc
     return assurance
 
 

@@ -154,6 +154,11 @@ import {
   type VideoPromptAssuranceFinding,
 } from "@shared/verticalDramaSeries/videoPromptMotionAssurance";
 import type { VerticalDramaSupportingPresence } from "@shared/verticalDramaSeries/supportingPresence";
+import {
+  analyzeVerticalDramaStorySafety,
+  buildVerticalDramaVideoPromptSafetyInput,
+  formatVerticalDramaStorySafetyWarnings,
+} from "./verticalDramaStorySafety";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -436,6 +441,16 @@ export interface VideoMotionPromptPackProjection {
     /** 2026-07-11 consolidated-clip redesign — see `VerticalDramaMotionPromptPack["clips"][number].extraReferenceAssetIds`'s doc comment in `@shared/verticalDramaSeries/contracts.ts`. */
     extraReferenceAssetIds?: string[];
   }>;
+  /** Policy findings are advisory after approved image generation; they never
+   * turn a valid motion-prompt pack into a failed generation. */
+  warnings?: Array<{
+    code: string;
+    severity: "info" | "warning" | "error" | "blocking";
+    message: string;
+    targetShotNumber?: number;
+    targetClipNumber?: number;
+    repairable: boolean;
+  }>;
 }
 
 /**
@@ -687,10 +702,9 @@ export function syncDialogueOntoMotionPromptClips(
 /**
  * Map the episode's approved start-frame render (`startFramePlan.frames[]
  * .approvedMediaAssetId` — ground truth chosen/approved by the user in the
- * storyboard panel) onto `pack.clips[j].startFrameAssetId` — ONLY for clips
- * that don't already carry one (the motion-prompt-pack LLM's own
- * `start_frame_reference.asset_id` free-text claim, when present, is never
- * overwritten). Without this sync, the LLM has no real asset ids to
+ * storyboard panel) onto `pack.clips[j].startFrameAssetId`. The persisted
+ * approval is authoritative and overwrites any stale/free-text LLM claim.
+ * Without this sync, the LLM has no real asset ids to
  * reference (it is never given them — see `buildUserPrompt`) and almost
  * always emits nothing, so `clip.startFrameAssetId` ends up empty and
  * `generateVideoClip` (in `routers/verticalDramaEpisodes.ts`) resolves zero
@@ -719,7 +733,6 @@ export function syncStartFramesOntoMotionPromptClips(
   return {
     ...pack,
     clips: pack.clips.map((clip) => {
-      if (clip.startFrameAssetId) return clip;
       const primaryShotNumber = clip.sourceShotNumbers[0];
       const approvedAssetId =
         primaryShotNumber !== undefined
@@ -728,6 +741,55 @@ export function syncStartFramesOntoMotionPromptClips(
       if (!approvedAssetId) return clip;
       return { ...clip, startFrameAssetId: approvedAssetId };
     }),
+  };
+}
+
+/**
+ * Apply the selected terminal frame as the canonical last-frame reference.
+ * The last ordered source shot is authoritative; an LLM-emitted id is never
+ * trusted and a missing stop frame never falls back to start or an earlier
+ * shot.
+ */
+export function syncStopFramesOntoMotionPromptClips(
+  pack: VideoMotionPromptPackProjection,
+  startFramePlan: unknown,
+): VideoMotionPromptPackProjection {
+  if (!startFramePlan || typeof startFramePlan !== "object") return pack;
+  const plan = startFramePlan as {
+    frames?: Array<{
+      shotNumber?: number;
+      approvedStopFrameAssetId?: string;
+    }>;
+  };
+  if (!Array.isArray(plan.frames) || plan.frames.length === 0) return pack;
+  const approvedStopByShot = new Map<number, string>();
+  for (const frame of plan.frames) {
+    if (typeof frame.shotNumber === "number" && frame.approvedStopFrameAssetId) {
+      approvedStopByShot.set(frame.shotNumber, frame.approvedStopFrameAssetId);
+    }
+  }
+  const clips = pack.clips.map(clip => {
+      const orderedShots = clip.sourceShotNumbers.filter(
+        (shot): shot is number => typeof shot === "number",
+      );
+      const lastShot = orderedShots[orderedShots.length - 1];
+      const approvedStop = lastShot ? approvedStopByShot.get(lastShot) : undefined;
+      return approvedStop
+        ? { ...clip, endFrameAssetId: approvedStop }
+        : { ...clip, endFrameAssetId: undefined };
+    });
+  const hasBridge = clips.some(
+    clip => Boolean(clip.startFrameAssetId && clip.endFrameAssetId)
+  );
+  return {
+    ...pack,
+    motionMode:
+      hasBridge
+        ? "first_last_frame_bridge"
+        : pack.motionMode === "first_last_frame_bridge"
+          ? "first_frame_to_video"
+          : pack.motionMode,
+    clips,
   };
 }
 
@@ -989,12 +1051,20 @@ function buildUserPrompt(
   const episodePlanContextBlock = params.episodePlanContext
     ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${params.episodePlanContext}`
     : null;
+  const storySafety = analyzeVerticalDramaStorySafety({
+    episodeTitle: params.episodeTitle,
+    episodePlanContext: params.episodePlanContext,
+    storyboardShots: params.storyboardShots,
+  });
 
   return [
     `Episode title: ${params.episodeTitle}`,
     `Episode duration: ${params.durationSeconds} seconds`,
     `Duration profile: ${params.durationProfileId}`,
     episodePlanContextBlock,
+    storySafety.level === "medium"
+      ? `POLICY-SAFE STORY DIRECTIVE (MANDATORY): ${storySafety.instruction}`
+      : null,
     `Storyboard shots (bridge shots into motion clips per the skill's usual pairing strategy):\n${shotLines}`,
     visionBundleFacts.length
       ? `${visionBundleFacts.join("\n")} For every spoken line, bind the exact named character to the observed screen position using viewer-left/viewer-center-left/viewer-center/viewer-center-right/viewer-right, always from the viewer/camera side; never use anatomical left/right or left/right hand. All other established characters remain silent with mouths fully closed. Never infer identity from gender, clothing, or requested layout when the attached images disagree.`
@@ -1069,6 +1139,12 @@ export async function generateVideoMotionPromptPack(
   if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
     throw new RateLimitExceededError(mediaGenerationLimiter.getResetTime(rateLimitKey));
   }
+
+  const inputSafety = analyzeVerticalDramaStorySafety({
+    episodeTitle: params.episodeTitle,
+    episodePlanContext: params.episodePlanContext,
+    storyboardShots: params.storyboardShots,
+  });
 
   const hasCredits = await hasEnoughCredits(params.userId, 1);
   if (!hasCredits) {
@@ -1223,6 +1299,14 @@ export async function generateVideoMotionPromptPack(
     );
   }
 
+  const outputSafety = analyzeVerticalDramaStorySafety(
+    validatedData.video_clip_requests.map(clip => clip.prompt),
+  );
+  const safetyWarnings = [
+    ...formatVerticalDramaStorySafetyWarnings(inputSafety),
+    ...formatVerticalDramaStorySafetyWarnings(outputSafety),
+  ].filter((warning, index, all) => all.indexOf(warning) === index);
+
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
@@ -1235,6 +1319,7 @@ export async function generateVideoMotionPromptPack(
     tenantId: params.tenantId,
     amount: creditsUsed,
     description: `Vertical Drama — generate video motion prompt pack (episode #${params.episodeId})`,
+    skillSlug: "vertical-drama-video-motion-prompt-pack",
     sourceType: "skill",
     metadata: {
       model,
@@ -1258,6 +1343,15 @@ export async function generateVideoMotionPromptPack(
       thaiAccent: params.thaiAccent,
     },
   );
+
+  if (safetyWarnings.length > 0) {
+    pack.warnings = safetyWarnings.map(message => ({
+      code: "vd_video_prompt_policy_advisory",
+      severity: "warning" as const,
+      message,
+      repairable: true,
+    }));
+  }
 
   return { pack, raw: validatedData, creditsUsed, model };
 }
@@ -2837,6 +2931,8 @@ export interface GenerateVerticalDramaShotVideoPromptResult {
   motionProfile?: VdMotionProfile & { effectiveRisk: VdIdentityRisk };
   effectiveRisk?: VdIdentityRisk;
   motionContractStatus?: VdMotionContractStatus;
+  /** Policy findings are advisory after approved image generation. */
+  safetyWarnings?: string[];
   /**
    * Model-family-aware, vision-grounded video prompt quality upgrade — non-
    * blocking, human-readable warning(s) surfaced when the position-anchor
@@ -3235,6 +3331,17 @@ export async function generateVerticalDramaShotVideoPrompt(
   if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
     throw new RateLimitExceededError(mediaGenerationLimiter.getResetTime(rateLimitKey));
   }
+
+  const inputSafety = analyzeVerticalDramaStorySafety(
+    buildVerticalDramaVideoPromptSafetyInput({
+      imagePrompt: params.imagePrompt,
+      shotContext: params.shotContext,
+    }),
+  );
+  const safetyWarnings = formatVerticalDramaStorySafetyWarnings(
+    inputSafety,
+    params.shotNumber,
+  );
 
   const hasCredits = await hasEnoughCredits(params.userId, 1);
   if (!hasCredits) {
@@ -3650,30 +3757,6 @@ export async function generateVerticalDramaShotVideoPrompt(
     model,
   );
 
-  await deductCredits({
-    userId: params.userId,
-    tenantId: params.tenantId,
-    amount: creditsUsed,
-    description: `Vertical Drama — generate shot video prompt (episode #${params.episodeId}, shot #${params.shotNumber})`,
-    sourceType: "skill",
-    idempotencyKey: params.idempotencyKey,
-    metadata: {
-      model,
-      llmModel: model,
-      feature: "vertical_drama_series",
-      seriesId: params.seriesId,
-      episodeId: params.episodeId,
-      shotNumber: params.shotNumber,
-      usedVision: outcome.usedVision,
-      // Multi-character reference images (multi-character disambiguation
-      // fix, `polished-toasting-gadget.md`) — low-cost audit-log aid, per
-      // this codebase's "always read audit logs first" convention.
-      characterReferenceImageCount: params.characterReferenceImages?.length ?? 0,
-      inputTokens: usage?.prompt_tokens ?? 0,
-      outputTokens: usage?.completion_tokens ?? 0,
-    },
-  });
-
   const resolvedAudioDirection = nativeAudioDirectionEnabled
     ? data.audio_direction || undefined
     : undefined;
@@ -3819,6 +3902,31 @@ export async function generateVerticalDramaShotVideoPrompt(
   const assuranceWarnings = assurance.warnings.map(
     (finding: VideoPromptAssuranceFinding) => `Shot ${params.shotNumber}: ${finding.message}`,
   );
+  const finalSafety = analyzeVerticalDramaStorySafety(finalPrompt);
+  safetyWarnings.push(
+    ...formatVerticalDramaStorySafetyWarnings(finalSafety, params.shotNumber),
+  );
+  await deductCredits({
+    userId: params.userId,
+    tenantId: params.tenantId,
+    amount: creditsUsed,
+    description: `Vertical Drama — generate shot video prompt (episode #${params.episodeId}, shot #${params.shotNumber})`,
+    skillSlug: "vertical-drama-shot-video-prompt",
+    sourceType: "skill",
+    idempotencyKey: params.idempotencyKey,
+    metadata: {
+      model,
+      llmModel: model,
+      feature: "vertical_drama_series",
+      seriesId: params.seriesId,
+      episodeId: params.episodeId,
+      shotNumber: params.shotNumber,
+      usedVision: outcome.usedVision,
+      characterReferenceImageCount: params.characterReferenceImages?.length ?? 0,
+      inputTokens: usage?.prompt_tokens ?? 0,
+      outputTokens: usage?.completion_tokens ?? 0,
+    },
+  });
   // Sound-direction ownership fix (recorded gap 4, 2026-07-22) — this
   // function used to fold ` SFX cues: <audioDirection>` onto the returned
   // `prompt` here (the "SFX budget-aware concat", item E of `planning/vd-
@@ -3851,6 +3959,9 @@ export async function generateVerticalDramaShotVideoPrompt(
     ...motionResolution,
     warnings: warnings.concat(assuranceWarnings).length > 0
       ? warnings.concat(assuranceWarnings)
+      : undefined,
+    safetyWarnings: safetyWarnings.length > 0
+      ? Array.from(new Set(safetyWarnings))
       : undefined,
   };
 }
@@ -3959,6 +4070,8 @@ export interface GenerateVerticalDramaShotVideoPromptSpeakerSwitchResult {
   motionProfile?: VdMotionProfile & { effectiveRisk: VdIdentityRisk };
   effectiveRisk?: VdIdentityRisk;
   motionContractStatus?: VdMotionContractStatus;
+  /** Policy findings are advisory after approved image generation. */
+  safetyWarnings?: string[];
   /** Model-family-aware, vision-grounded video prompt quality upgrade — see `GenerateVerticalDramaShotVideoPromptResult.warnings`'s identical doc comment. */
   warnings?: string[];
 }
@@ -3989,6 +4102,13 @@ function buildSpeakerSwitchUserPrompt(
   const promptLanguageName = VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
   const dialogueLanguageName = VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[dialogueLanguage];
   const allDialogueLines = shotContext.dialogueLines ?? [];
+  const storySafety = analyzeVerticalDramaStorySafety(
+    buildVerticalDramaVideoPromptSafetyInput({
+      imagePrompt: params.imagePrompt,
+      shotContext,
+      subShotWindows,
+    }),
+  );
   const characterDescriptionOverrides = normalizeVerticalDramaCharacterDescriptionOverrides(
     params.characterDescriptionOverrides,
   );
@@ -4085,6 +4205,9 @@ function buildSpeakerSwitchUserPrompt(
 
   return [
     `Shot number: ${params.shotNumber}`,
+    storySafety.level === "medium"
+      ? `POLICY-SAFE STORY DIRECTIVE (MANDATORY): ${storySafety.instruction}`
+      : null,
     `Total clip duration: ${totalDurationSeconds}s across ${subShotWindows.length} timed segments (this shot's dialogue requires cutting between speakers — see the segment facts below; write ONE combined "prompt" narrating all segments in order, per your instructions).`,
     // Synopsis grounding (`planning/vd-video-prompt-skill-first/plan.md`
     // Phase 1a) — see `buildShotVideoPromptUserPrompt`'s identical fact line
@@ -4213,6 +4336,18 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
     throw new RateLimitExceededError(mediaGenerationLimiter.getResetTime(rateLimitKey));
   }
+
+  const inputSafety = analyzeVerticalDramaStorySafety(
+    buildVerticalDramaVideoPromptSafetyInput({
+      imagePrompt: params.imagePrompt,
+      shotContext: params.shotContext,
+      subShotWindows: params.subShotWindows,
+    }),
+  );
+  const safetyWarnings = formatVerticalDramaStorySafetyWarnings(
+    inputSafety,
+    params.shotNumber,
+  );
 
   const hasCredits = await hasEnoughCredits(params.userId, 1);
   if (!hasCredits) {
@@ -4576,31 +4711,6 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     model,
   );
 
-  await deductCredits({
-    userId: params.userId,
-    tenantId: params.tenantId,
-    amount: creditsUsed,
-    description: `Vertical Drama — generate shot video prompt (speaker switch) (episode #${params.episodeId}, shot #${params.shotNumber})`,
-    sourceType: "skill",
-    idempotencyKey: params.idempotencyKey,
-    metadata: {
-      model,
-      llmModel: model,
-      feature: "vertical_drama_series",
-      seriesId: params.seriesId,
-      episodeId: params.episodeId,
-      shotNumber: params.shotNumber,
-      usedVision: outcome.usedVision,
-      segmentCount: params.subShotWindows.length,
-      // Multi-character reference images (multi-character disambiguation
-      // fix, `polished-toasting-gadget.md`) — low-cost audit-log aid, per
-      // this codebase's "always read audit logs first" convention.
-      characterReferenceImageCount: params.characterReferenceImages?.length ?? 0,
-      inputTokens: usage?.prompt_tokens ?? 0,
-      outputTokens: usage?.completion_tokens ?? 0,
-    },
-  });
-
   const resolvedAudioDirection = nativeAudioDirectionEnabled
     ? data.audio_direction || undefined
     : undefined;
@@ -4756,6 +4866,32 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   const assuranceWarnings = assurance.warnings.map(
     (finding: VideoPromptAssuranceFinding) => `Shot ${params.shotNumber}: ${finding.message}`,
   );
+  const finalSafety = analyzeVerticalDramaStorySafety(finalPrompt);
+  safetyWarnings.push(
+    ...formatVerticalDramaStorySafetyWarnings(finalSafety, params.shotNumber),
+  );
+  await deductCredits({
+    userId: params.userId,
+    tenantId: params.tenantId,
+    amount: creditsUsed,
+    description: `Vertical Drama — generate shot video prompt (speaker switch) (episode #${params.episodeId}, shot #${params.shotNumber})`,
+    skillSlug: "vertical-drama-shot-video-prompt",
+    sourceType: "skill",
+    idempotencyKey: params.idempotencyKey,
+    metadata: {
+      model,
+      llmModel: model,
+      feature: "vertical_drama_series",
+      seriesId: params.seriesId,
+      episodeId: params.episodeId,
+      shotNumber: params.shotNumber,
+      usedVision: outcome.usedVision,
+      segmentCount: params.subShotWindows.length,
+      characterReferenceImageCount: params.characterReferenceImages?.length ?? 0,
+      inputTokens: usage?.prompt_tokens ?? 0,
+      outputTokens: usage?.completion_tokens ?? 0,
+    },
+  });
   // Sound-direction ownership fix (recorded gap 4, 2026-07-22) — mirrors
   // `generateVerticalDramaShotVideoPrompt`'s identical fix above: this
   // function no longer folds an SFX tail onto `prompt` (the skill now
@@ -4781,6 +4917,9 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     ...motionResolution,
     warnings: warnings.concat(assuranceWarnings).length > 0
       ? warnings.concat(assuranceWarnings)
+      : undefined,
+    safetyWarnings: safetyWarnings.length > 0
+      ? Array.from(new Set(safetyWarnings))
       : undefined,
   };
 }
@@ -5179,6 +5318,7 @@ async function callVerticalDramaVideoPromptJudge(args: {
       tenantId: args.tenantId,
       amount: creditsUsed,
       description: `Vertical Drama — judge shot video prompt candidates (episode #${args.episodeId}, shot #${args.shotNumber})`,
+      skillSlug: "vertical-drama-video-prompt-judge",
       sourceType: "skill",
       idempotencyKey: args.idempotencyKey,
       metadata: {
@@ -5928,6 +6068,7 @@ export async function generateVerticalDramaClipDialogue(
     tenantId: params.tenantId,
     amount: creditsUsed,
     description: `Vertical Drama — regenerate clip dialogue (episode #${params.episodeId}, shot #${params.shotNumber})`,
+    skillSlug: "vertical-drama-shot-video-prompt",
     sourceType: "skill",
     idempotencyKey: params.idempotencyKey,
     metadata: {

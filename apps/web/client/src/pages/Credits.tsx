@@ -59,6 +59,7 @@ import {
   Bot,
   type LucideIcon,
 } from 'lucide-react';
+
 import {
   AreaChart,
   Area,
@@ -73,8 +74,17 @@ import {
   type CreditTransactionOriginSurface,
   type CreditTransactionSourceType,
   inferCreditTransactionSourceType,
+  resolveCreditTransactionDescription,
   resolveCreditTransactionOriginSurface,
+  resolveCreditTransactionSkillLabel,
 } from '@/lib/creditTransactionSource';
+import {
+  formatCreditHistoryDateInputValue,
+  getDefaultCreditHistoryDateRange,
+  isCreditHistoryDateRangeValid,
+  parseCreditHistoryEndDateExclusive,
+  parseCreditHistoryStartDate,
+} from '@/lib/creditHistoryFilters';
 
 export default function Credits() {
   const { user, isLoading, isAuthenticated } = useAuth();
@@ -85,17 +95,114 @@ export default function Credits() {
   const [buyCreditsExpanded, setBuyCreditsExpanded] = useState(false);
   const [page, setPage] = useState(0);
   const [sourceFilter, setSourceFilter] = useState<string>("");
+  const defaultCreditHistoryDateRange = useMemo(() => getDefaultCreditHistoryDateRange(), []);
+  const [historyStartDateValue, setHistoryStartDateValue] = useState(defaultCreditHistoryDateRange.startDate);
+  const [historyEndDateValue, setHistoryEndDateValue] = useState(defaultCreditHistoryDateRange.endDate);
+  const [contextReportExpanded, setContextReportExpanded] = useState(false);
+  const [ocrUsageExpanded, setOcrUsageExpanded] = useState(false);
   const pageSize = 20;
+
+  const historyStartDate = useMemo(
+    () => parseCreditHistoryStartDate(historyStartDateValue),
+    [historyStartDateValue],
+  );
+  const historyEndDate = useMemo(
+    () => parseCreditHistoryEndDateExclusive(historyEndDateValue),
+    [historyEndDateValue],
+  );
+  const historyRangeValid = isCreditHistoryDateRangeValid(historyStartDate, historyEndDate);
+  const historyFilterInput = useMemo(() => ({
+    sourceType: sourceFilter ? (sourceFilter as CreditTransactionSourceType) : undefined,
+    startDate: historyRangeValid ? historyStartDate : undefined,
+    endDate: historyRangeValid ? historyEndDate : undefined,
+  }), [historyEndDate, historyRangeValid, historyStartDate, sourceFilter]);
+  const historyQueryInput = useMemo(() => ({
+    ...historyFilterInput,
+    limit: pageSize,
+    offset: page * pageSize,
+  }), [historyFilterInput, page]);
 
   // Fetch real data from API
   const { data: balance } = trpc.credits.balance.useQuery();
-  const { data: history, isLoading: historyLoading, refetch: refetchHistory } = trpc.credits.history.useQuery({
-    limit: pageSize,
-    offset: page * pageSize,
-    sourceType: sourceFilter ? (sourceFilter as CreditTransactionSourceType) : undefined,
-  });
+  const { data: history, isLoading: historyLoading, refetch: refetchHistory } = trpc.credits.history.useQuery(
+    historyQueryInput,
+    { enabled: historyRangeValid },
+  );
+  const {
+    data: historySummary,
+    isLoading: historySummaryLoading,
+    refetch: refetchHistorySummary,
+  } = trpc.credits.historySummary.useQuery(historyFilterInput, { enabled: historyRangeValid });
   const { data: usageStats } = trpc.credits.stats.useQuery({ days: 30 });
-  const { data: ocrUsage, isLoading: ocrLoading } = trpc.credits.ocrUsageSummary.useQuery({ days: 30 });
+  const [contextReportStartValue, setContextReportStartValue] = useState(() => formatCreditHistoryDateInputValue(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)));
+  const [contextReportEndValue, setContextReportEndValue] = useState(() => formatCreditHistoryDateInputValue(new Date()));
+  const contextReportStartDate = useMemo(() => new Date(`${contextReportStartValue}T00:00:00.000Z`), [contextReportStartValue]);
+  const contextReportEndDate = useMemo(() => {
+    const date = new Date(`${contextReportEndValue}T00:00:00.000Z`);
+    date.setUTCDate(date.getUTCDate() + 1);
+    return date;
+  }, [contextReportEndValue]);
+  const contextReportRangeValid = Number.isFinite(contextReportStartDate.getTime()) && Number.isFinite(contextReportEndDate.getTime()) && contextReportEndDate > contextReportStartDate;
+  const [includeUnattributedContextRows, setIncludeUnattributedContextRows] = useState(false);
+  const { data: contextReport, isLoading: contextReportLoading, isError: contextReportError, refetch: refetchContextReport } = trpc.credits.usageByContext.useQuery(
+    {
+      startDate: contextReportStartDate,
+      endDate: contextReportEndDate,
+      limit: 20,
+      offset: 0,
+      includeUnattributed: includeUnattributedContextRows,
+    },
+    { enabled: !!user && contextReportExpanded && contextReportRangeValid },
+  );
+  const [selectedContextId, setSelectedContextId] = useState<string | null>(null);
+  const { data: contextDetail, isLoading: contextDetailLoading } = trpc.credits.contextUsageDetail.useQuery(
+    {
+      contextId: selectedContextId ?? '',
+      startDate: contextReportStartDate,
+      endDate: contextReportEndDate,
+      asOfTransactionId: contextReport?.pagination.asOfTransactionId,
+      limit: 20,
+      offset: 0,
+    },
+    { enabled: contextReportExpanded && !!selectedContextId },
+  );
+  const contextExportQuery = trpc.credits.exportUsageByContext.useQuery(
+    {
+      startDate: contextReportStartDate,
+      endDate: contextReportEndDate,
+      asOfTransactionId: contextReport?.pagination.asOfTransactionId,
+      limit: 100,
+      offset: 0,
+      includeUnattributed: true,
+    },
+    { enabled: false },
+  );
+  const exportContextReport = async () => {
+    if (!contextReportRangeValid || !contextReport) {
+      toast.error(t('credits.contextReport.invalidRange'));
+      return;
+    }
+    try {
+      const result = await contextExportQuery.refetch();
+      if (!result.data?.csv) {
+        toast.error(t('credits.contextReport.unavailable'));
+        return;
+      }
+      const blob = new Blob([result.data.csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `credit-usage-by-work-${new Date().toISOString().slice(0, 10)}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(t('credits.contextReport.unavailable'));
+    }
+  };
+  const { data: ocrUsage, isLoading: ocrLoading } = trpc.credits.ocrUsageSummary.useQuery(
+    { days: 30 },
+    { enabled: ocrUsageExpanded },
+  );
   const { data: packages, isLoading: packagesLoading } = trpc.packages.list.useQuery();
   const { data: topupPaymentOptions, isLoading: topupPaymentOptionsLoading } = trpc.billing.getTopupPaymentOptions.useQuery(undefined, { enabled: !!user });
   const topupMutation = trpc.billing.createTopupCheckout.useMutation({
@@ -211,6 +318,10 @@ export default function Credits() {
     const provider = getFirstMetaValue(metadata, ["provider", "providerName", "modelProvider"]);
     const model = getFirstMetaValue(metadata, ["modelDisplayName", "llmModel", "model", "modelId", "modelUsed", "apiModelId"]);
     const runtime = getFirstMetaValue(metadata, ["runtimeKind", "executionMode"]);
+    const isFixedSkillRun = metadata?.billingBasis === "fixed_skill_run";
+    const tenantCredits = getFirstMetaValue(metadata, ["tenantCredits"]);
+    const skillOwnerCredits = getFirstMetaValue(metadata, ["skillOwnerCredits"]);
+    const totalSkillCredits = getFirstMetaValue(metadata, ["totalSkillCredits"]);
     const shouldShowPythonNoLlm =
       transaction.sourceType === "skill" &&
       !model &&
@@ -229,6 +340,13 @@ export default function Credits() {
         : null,
       runtime
         ? { label: t("credits.meta.runtime"), value: formatRuntimeLabel(runtime), emphasis: false }
+        : null,
+      isFixedSkillRun
+        ? {
+            label: t("credits.meta.billing"),
+            value: `Tenant ${tenantCredits ?? 0} + Skill owner ${skillOwnerCredits ?? 0} = ${totalSkillCredits ?? 0} credits`,
+            emphasis: true,
+          }
         : null,
     ].filter(Boolean) as { label: string; value: string; emphasis: boolean }[];
   };
@@ -418,6 +536,148 @@ export default function Credits() {
           ))}
         </motion.div>
 
+        <div className="mb-6">
+        <DashboardCard
+          id="credits-context-report-panel"
+          title={(
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 rounded-lg"
+              onClick={() => setContextReportExpanded((expanded) => !expanded)}
+              aria-expanded={contextReportExpanded}
+              aria-controls="credits-context-report-content"
+            >
+              <span>{t('credits.contextReport.title')}</span>
+              <ChevronDown
+                className={`h-5 w-5 shrink-0 text-slate-400 transition-transform ${contextReportExpanded ? 'rotate-180' : ''}`}
+                aria-hidden="true"
+              />
+            </button>
+          )}
+          description={t(contextReportExpanded ? 'credits.contextReport.actualCreditsNote' : 'credits.contextReport.collapsedDescription')}
+          trailing={contextReportExpanded ? (
+            <Button variant="outline" size="sm" onClick={exportContextReport} disabled={contextExportQuery.isFetching}>
+              {contextExportQuery.isFetching ? <Loader2 className="w-4 h-4 sm:mr-2 animate-spin" /> : <Download className="w-4 h-4 sm:mr-2" />}
+              <span className="hidden sm:inline">{t('credits.contextReport.export')}</span>
+            </Button>
+          ) : null}
+          bodyClassName={contextReportExpanded ? 'p-6' : 'hidden'}
+        >
+          <div id="credits-context-report-content">
+          {contextReportExpanded ? (
+          <>
+          <div className="mb-5 flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-end sm:flex-wrap">
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+              {t('credits.contextReport.startDate')}
+              <input
+                type="date"
+                value={contextReportStartValue}
+                onChange={(event) => {
+                  setContextReportStartValue(event.target.value);
+                  setSelectedContextId(null);
+                }}
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm font-normal text-slate-900"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+              {t('credits.contextReport.endDate')}
+              <input
+                type="date"
+                value={contextReportEndValue}
+                onChange={(event) => {
+                  setContextReportEndValue(event.target.value);
+                  setSelectedContextId(null);
+                }}
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm font-normal text-slate-900"
+              />
+            </label>
+            <label className="flex items-center gap-2 pb-2 text-xs text-slate-600">
+              <input
+                type="checkbox"
+                checked={includeUnattributedContextRows}
+                onChange={(event) => {
+                  setIncludeUnattributedContextRows(event.target.checked);
+                  setSelectedContextId(null);
+                }}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              {t('credits.contextReport.showUnattributed')}
+            </label>
+          </div>
+          {!contextReportRangeValid ? (
+            <div className="text-sm text-amber-700">{t('credits.contextReport.invalidRange')}</div>
+          ) : contextReportLoading ? (
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t('credits.contextReport.unavailable')}
+            </div>
+          ) : contextReportError ? (
+            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+              <span>{t('credits.contextReport.unavailable')}</span>
+              <Button variant="outline" size="sm" onClick={() => refetchContextReport()}>{t('credits.contextReport.retry')}</Button>
+            </div>
+          ) : contextReport ? (
+            <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {[
+                ['contextReport.charged', contextReport.totals.chargedCredits],
+                ['contextReport.refunded', contextReport.totals.refundedCredits],
+                ['contextReport.net', contextReport.totals.netActualCredits],
+                ['contextReport.unattributed', contextReport.totals.unattributedChargedCredits],
+                ['contextReport.ambiguous', contextReport.totals.ambiguousChargedCredits],
+                ['contextReport.integrity', contextReport.totals.integrityExceptionCredits],
+              ].map(([label, value]) => (
+                <div key={String(label)} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-xs text-slate-500">{t(`credits.${label}`)}</div>
+                  <div className="mt-1 text-lg font-semibold text-slate-900">{formatNumber(Number(value))}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 space-y-2">
+              {contextReport.rows.length ? contextReport.rows.slice(0, 5).map((row) => (
+                <button
+                  type="button"
+                  key={`${row.rootContextId ?? 'unattributed'}-${row.attributionStatus}`}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left hover:border-blue-300 hover:bg-blue-50/40 transition-colors"
+                  onClick={() => row.rootContextId && setSelectedContextId(row.rootContextId)}
+                  disabled={!row.rootContextId}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="truncate text-sm font-medium text-slate-900">{row.rootLabel || t('credits.contextReport.unattributed')}</span>
+                    <span className="shrink-0 text-sm font-semibold text-slate-900">{formatNumber(row.netActualCredits)}</span>
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500">{row.primaryWorkLabel || t('credits.contextReport.work')} · {row.usageTransactionCount + row.refundTransactionCount} {t('credits.contextReport.transactions')}</div>
+                </button>
+              )) : <div className="rounded-xl border border-dashed border-slate-300 px-3 py-5 text-center text-sm text-slate-500">{t('credits.contextReport.empty')}</div>}
+            </div>
+            {selectedContextId && (
+              <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/40 p-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-slate-900">{t('credits.contextReport.detail')}</div>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedContextId(null)}>{t('common.close')}</Button>
+                </div>
+                {contextDetailLoading ? <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> : contextDetail ? (
+                  <div className="space-y-1 text-xs text-slate-600">
+                    {contextDetail.transactions.length ? contextDetail.transactions.slice(0, 8).map((transaction) => (
+                      <div key={transaction.id} className="flex items-center justify-between gap-3">
+                        <span>{transaction.type === 'refund' ? t('credits.contextReport.refund') : t('credits.contextReport.usage')} · {transaction.stageLabel || t('credits.contextReport.unknownStage')}</span>
+                        <span className="font-medium">{transaction.amount > 0 ? '+' : ''}{transaction.amount}</span>
+                      </div>
+                    )) : <span>{t('credits.contextReport.empty')}</span>}
+                  </div>
+                ) : null}
+              </div>
+            )}
+            </>
+          ) : (
+            <div className="text-sm text-slate-500">{t('credits.contextReport.unavailable')}</div>
+          )}
+          </>
+          ) : null}
+          </div>
+        </DashboardCard>
+        </div>
+
         {/* OCR Usage Overview */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -426,10 +686,28 @@ export default function Credits() {
           className="mb-10"
         >
           <DashboardCard
-            title="OCR Usage Overview"
-            description="Track how often OCR is used and how many credits it consumes."
-            bodyClassName="p-6 space-y-6"
+            id="credits-ocr-usage-panel"
+            title={(
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 rounded-lg"
+                onClick={() => setOcrUsageExpanded((expanded) => !expanded)}
+                aria-expanded={ocrUsageExpanded}
+                aria-controls="credits-ocr-usage-content"
+              >
+                <span>{t('credits.ocrUsage.title')}</span>
+                <ChevronDown
+                  className={`h-5 w-5 shrink-0 text-slate-400 transition-transform ${ocrUsageExpanded ? 'rotate-180' : ''}`}
+                  aria-hidden="true"
+                />
+              </button>
+            )}
+            description={t(ocrUsageExpanded ? 'credits.ocrUsage.description' : 'credits.ocrUsage.collapsedDescription')}
+            bodyClassName={ocrUsageExpanded ? 'p-6 space-y-6' : 'hidden'}
           >
+            <div id="credits-ocr-usage-content">
+            {ocrUsageExpanded ? (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <DashboardKpiCard
                 icon={Zap}
@@ -558,6 +836,9 @@ export default function Credits() {
                 Loading OCR usage…
               </div>
             )}
+            </>
+            ) : null}
+            </div>
           </DashboardCard>
         </motion.div>
 
@@ -724,18 +1005,46 @@ export default function Credits() {
             title={t('credits.transactionHistory.title')}
             description={t('credits.transactionHistory.description')}
             trailing={(
-              <div className="flex items-center gap-2 flex-wrap">
-                <select
-                  value={sourceFilter}
-                  onChange={(e) => { setSourceFilter(e.target.value); setPage(0); }}
-                  className="flex-1 sm:flex-none text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              <div className="flex items-end gap-2 flex-wrap">
+                <label className="flex flex-col gap-1 text-left text-xs font-medium text-gray-500">
+                  {t('credits.transactionHistory.sourceFilter')}
+                  <select
+                    value={sourceFilter}
+                    onChange={(e) => { setSourceFilter(e.target.value); setPage(0); }}
+                    className="flex-1 sm:flex-none text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="">{t('credits.transactionHistory.allSources')}</option>
+                    {CREDIT_TRANSACTION_SOURCE_TYPES.map((key) => (
+                      <option key={key} value={key}>{sourceLabels[key].label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-left text-xs font-medium text-gray-500">
+                  {t('credits.transactionHistory.startDate')}
+                  <input
+                    type="date"
+                    value={historyStartDateValue}
+                    onChange={(event) => { setHistoryStartDateValue(event.target.value); setPage(0); }}
+                    aria-label={t('credits.transactionHistory.startDate')}
+                    className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm font-normal text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-left text-xs font-medium text-gray-500">
+                  {t('credits.transactionHistory.endDate')}
+                  <input
+                    type="date"
+                    value={historyEndDateValue}
+                    onChange={(event) => { setHistoryEndDateValue(event.target.value); setPage(0); }}
+                    aria-label={t('credits.transactionHistory.endDate')}
+                    className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm font-normal text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { void refetchHistory(); void refetchHistorySummary(); }}
+                  disabled={!historyRangeValid}
                 >
-                  <option value="">{t('credits.transactionHistory.allSources')}</option>
-                  {CREDIT_TRANSACTION_SOURCE_TYPES.map((key) => (
-                    <option key={key} value={key}>{sourceLabels[key].label}</option>
-                  ))}
-                </select>
-                <Button variant="outline" size="sm" onClick={() => refetchHistory()}>
                   <RefreshCw className="w-4 h-4 sm:mr-2" />
                   <span className="hidden sm:inline">{t('common.refresh')}</span>
                 </Button>
@@ -743,7 +1052,40 @@ export default function Credits() {
             )}
             bodyClassName="p-0"
           >
-            {historyLoading ? (
+            <div className="grid grid-cols-1 gap-3 border-b border-gray-100 bg-gray-50/40 p-4 sm:grid-cols-3">
+              {[
+                {
+                  key: 'creditIn',
+                  label: t('credits.transactionHistory.creditIn'),
+                  value: historySummary?.creditIn ?? 0,
+                  className: 'text-green-600',
+                },
+                {
+                  key: 'creditOut',
+                  label: t('credits.transactionHistory.creditOut'),
+                  value: historySummary?.creditOut ?? 0,
+                  className: 'text-red-600',
+                },
+                {
+                  key: 'net',
+                  label: t('credits.transactionHistory.net'),
+                  value: historySummary?.net ?? 0,
+                  className: (historySummary?.net ?? 0) >= 0 ? 'text-green-600' : 'text-red-600',
+                },
+              ].map((summary) => (
+                <div key={summary.key} className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+                  <div className="text-xs font-medium text-gray-500">{summary.label}</div>
+                  <div className={`mt-1 text-xl font-bold ${summary.className}`}>
+                    {historySummaryLoading ? '—' : formatNumber(Number(summary.value))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {!historyRangeValid ? (
+              <div className="px-4 py-10 text-center text-sm text-amber-700">
+                {t('credits.transactionHistory.invalidRange')}
+              </div>
+            ) : historyLoading || historySummaryLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
               </div>
@@ -760,6 +1102,8 @@ export default function Credits() {
                     const { sourceInfo: srcInfo, originLabel } = getSourcePresentation(transaction);
                     const SrcIcon = srcInfo?.icon ?? Zap;
                     const metadataSummaryRows = getCreditMetadataSummaryRows(transaction);
+                    const skillLabel = resolveCreditTransactionSkillLabel(transaction);
+                    const description = resolveCreditTransactionDescription(transaction);
                     const dateStr = transaction.createdAt
                       ? new Date(transaction.createdAt).toISOString().slice(0, 10)
                       : undefined;
@@ -802,8 +1146,24 @@ export default function Credits() {
                         </div>
                         {/* Row 2: description */}
                         <div className="text-sm font-medium text-gray-900 truncate mb-1">
-                          {transaction.description}
+                          {transaction.context?.primaryLabel || description.primary}
                         </div>
+                        {transaction.context?.primaryLabel && (
+                          <div className="text-xs text-slate-500 truncate mb-1">
+                            {transaction.context.workTypeLabel || t('credits.contextReport.work')}
+                            {transaction.context.stageLabel ? ` • ${transaction.context.stageLabel}` : ''}
+                            {transaction.context.status !== 'linked' ? ` • ${transaction.context.status}` : ''}
+                          </div>
+                        )}
+                        {description.secondary && (
+                          <div className="text-xs text-gray-500 truncate mb-1">{description.secondary}</div>
+                        )}
+                        {skillLabel && (
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mb-1">
+                            <Sparkles className="w-3 h-3 flex-shrink-0" />
+                            <span>{skillLabel}</span>
+                          </div>
+                        )}
                         {metadataSummaryRows.length > 0 && (
                           <div className="text-xs text-gray-500 space-y-0.5 mb-1">
                             {metadataSummaryRows.map((row) => (
@@ -855,6 +1215,8 @@ export default function Credits() {
                         const { sourceInfo: srcInfo, originLabel } = getSourcePresentation(transaction);
                         const SrcIcon = srcInfo?.icon ?? Zap;
                         const metadataSummaryRows = getCreditMetadataSummaryRows(transaction);
+                        const skillLabel = resolveCreditTransactionSkillLabel(transaction);
+                        const description = resolveCreditTransactionDescription(transaction);
                         const dateStr = transaction.createdAt
                           ? new Date(transaction.createdAt).toISOString().slice(0, 10)
                           : undefined;
@@ -885,16 +1247,26 @@ export default function Credits() {
                               ) : <span className="text-xs text-gray-400">&mdash;</span>}
                             </td>
                             <td className="px-4 py-3 max-w-[280px]">
-                              <span className="text-sm font-medium text-gray-900 block truncate">{transaction.description}</span>
+                              <span className="text-sm font-medium text-gray-900 block truncate">{transaction.context?.primaryLabel || description.primary}</span>
+                              {transaction.context?.primaryLabel && (
+                                <span className="text-xs text-slate-500 block truncate mt-0.5">
+                                  {transaction.context.workTypeLabel || t('credits.contextReport.work')}
+                                  {transaction.context.stageLabel ? ` • ${transaction.context.stageLabel}` : ''}
+                                  {transaction.context.status !== 'linked' ? ` • ${transaction.context.status}` : ''}
+                                </span>
+                              )}
+                              {description.secondary && (
+                                <span className="text-xs text-gray-500 block truncate mt-0.5">{description.secondary}</span>
+                              )}
                               {transaction.conversationTitle && (
                                 <a href={`/chat/${transaction.conversationId}`} className="text-xs text-blue-600 hover:text-blue-800 mt-0.5 flex items-center gap-1 truncate">
                                   <MessageCircle className="w-3 h-3 flex-shrink-0" />
                                   <span className="truncate">{transaction.conversationTitle}</span>
                                 </a>
                               )}
-                              {transaction.skillSlug && !transaction.metadata?.skill && (
+                              {skillLabel && !transaction.metadata?.skill && (
                                 <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                                  <Sparkles className="w-3 h-3 flex-shrink-0" />{transaction.skillSlug}
+                                  <Sparkles className="w-3 h-3 flex-shrink-0" />{skillLabel}
                                 </div>
                               )}
                             </td>
@@ -936,7 +1308,7 @@ export default function Credits() {
                                       <span className="text-gray-700">{transaction.metadata.inputTokens && transaction.metadata.outputTokens ? `${transaction.metadata.inputTokens}\u2192${transaction.metadata.outputTokens}` : transaction.metadata.tokensUsed}</span>
                                     </div>
                                   )}
-                                  {transaction.metadata.skill && <div className="flex items-center gap-1"><span className="font-medium">{t('credits.meta.skill')}:</span><span className="text-gray-700">{String(transaction.metadata.skill)}</span></div>}
+                                  {skillLabel && <div className="flex items-center gap-1"><span className="font-medium">{t('credits.meta.skill')}:</span><span className="text-gray-700">{skillLabel}</span></div>}
                                   {transaction.metadata.referenceImageCount > 0 && <div className="flex items-center gap-1"><span className="font-medium">{t('credits.meta.images')}:</span><span className="text-gray-700">{transaction.metadata.referenceImageCount}</span></div>}
                                   {transaction.metadata.mediaType && <div className="flex items-center gap-1"><span className="font-medium">{t('credits.meta.media')}:</span><span className="text-gray-700">{String(transaction.metadata.mediaType)}</span></div>}
                                   {transaction.metadata.billingBasis && (
@@ -1067,7 +1439,7 @@ export default function Credits() {
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800">
                   ขณะนี้ยังไม่มีช่องทางชำระเงินที่เปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ
                 </div>
-              )}
+            )}
 
               <div className="flex justify-end">
                 <Button

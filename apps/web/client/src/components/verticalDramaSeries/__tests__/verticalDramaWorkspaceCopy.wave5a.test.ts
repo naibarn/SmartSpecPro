@@ -42,6 +42,28 @@ describe("shot generation-history copy", () => {
   });
 });
 
+describe("episode regeneration vocabulary", () => {
+  it("keeps whole-episode rebuilding and stage rebuilding distinct", () => {
+    expect(vdCopy("th").episodeContentRebuildTitle).toBe("สร้างเนื้อหาตอนใหม่");
+    expect(vdCopy("th").episodeContentRebuildButton).toBe(
+      "สร้างเนื้อหาชุดใหม่ (9 ช็อต)"
+    );
+    expect(vdCopy("th").episodeContentRebuildModeSameStoryDescription).toContain(
+      "บทพูดเดิม"
+    );
+    expect(vdCopy("th").episodeContentRebuildModeRewriteStoryDescription).toContain(
+      "สร้างเรื่องย่อ"
+    );
+    expect(vdCopy("th").episodeContentRebuildConfirmButton).toBe(
+      "ยืนยันและเริ่มสร้าง"
+    );
+    expect(vdCopy("th").regenerateStage).toBe("สร้างผลลัพธ์ขั้นตอนนี้ใหม่");
+    expect(vdCopy("th").regenerateConfirm).not.toContain("ลบชุดเดิม");
+    expect(vdCopy("en").regenerateStage).toBe("Rebuild this stage");
+    expect(vdCopy("en").regenerateConfirm).not.toContain("delete old");
+  });
+});
+
 describe("vdWizardReasonLabel", () => {
   it("has a TH and EN label for every one of the 13 fixed VD_WIZARD_* codes", () => {
     for (const code of VERTICAL_DRAMA_WIZARD_BLOCKING_REASON_CODES) {

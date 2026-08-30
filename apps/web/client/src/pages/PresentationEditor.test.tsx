@@ -6198,7 +6198,7 @@ describe("PresentationEditor", () => {
     }));
   });
 
-  it("imports generated full-slide image layouts without cropping the designed image", async () => {
+  it("imports generated full-slide image layouts flush with the canvas", async () => {
     const [slide] = convertGeneratedSlideJsonToPresentationSlides(JSON.stringify({
       canvas: { ratio: "3:4" },
       slides: [
@@ -6229,7 +6229,7 @@ describe("PresentationEditor", () => {
             type: "image",
             width: 768,
             height: 1024,
-            imageFit: "contain",
+            imageFit: "cover",
             imageZoom: 1,
             imagePositionX: 50,
             imagePositionY: 50,
@@ -6239,7 +6239,7 @@ describe("PresentationEditor", () => {
     }));
   });
 
-  it("normalizes visual-only full-canvas slideContent images to contain on import", async () => {
+  it("normalizes visual-only full-canvas slideContent images to cover on import", async () => {
     const [slide] = convertGeneratedSlideJsonToPresentationSlides(JSON.stringify({
       slides: [
         {
@@ -6257,7 +6257,7 @@ describe("PresentationEditor", () => {
                 height: 1024,
                 src: "https://cdn.example.com/full-slide.png",
                 alt: "Full slide",
-                imageFit: "cover",
+                imageFit: "contain",
                 imageZoom: 1.4,
                 imagePositionX: 35,
                 imagePositionY: 50,
@@ -6275,7 +6275,7 @@ describe("PresentationEditor", () => {
         elements: [
           expect.objectContaining({
             type: "image",
-            imageFit: "contain",
+            imageFit: "cover",
             imageZoom: 1,
             imagePositionX: 50,
             imagePositionY: 50,
@@ -6720,7 +6720,7 @@ describe("PresentationEditor", () => {
     fireEvent.wheel(workspace, { deltaY: -100, clientX: 300, clientY: 260 });
 
     await waitFor(() => {
-      expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("viewport: 1.10x");
+      expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("viewport: 1.11x");
     });
   });
 

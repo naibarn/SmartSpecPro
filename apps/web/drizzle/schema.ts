@@ -5596,6 +5596,69 @@ export const presentationSlides = pgTable(
 export type PresentationSlide = typeof presentationSlides.$inferSelect;
 export type InsertPresentationSlide = typeof presentationSlides.$inferInsert;
 
+/** Durable image-generation jobs started from Presentation Builder. */
+export const presentationBuilderImageJobs = pgTable(
+  "presentation_builder_image_jobs",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    deckId: integer("deck_id")
+      .notNull()
+      .references(() => presentationDecks.id, { onDelete: "cascade" }),
+    slotId: varchar("slot_id", { length: 160 }).notNull(),
+    pageNumber: integer("page_number").notNull(),
+    imageIndex: integer("image_index").notNull(),
+    placementRole: varchar("placement_role", { length: 24 }).notNull(),
+    shortLabel: varchar("short_label", { length: 255 }).notNull(),
+    prompt: text("prompt").notNull(),
+    model: varchar("model", { length: 255 }),
+    canvasRatio: varchar("canvas_ratio", { length: 16 }),
+    mediaTaskId: varchar("media_task_id", { length: 256 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("processing"),
+    resultUrl: text("result_url"),
+    errorMessage: text("error_message"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    nextPollAt: timestamp("next_poll_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    uniqueIndex("presentation_builder_image_jobs_slot_unique").on(
+      t.tenantId,
+      t.userId,
+      t.deckId,
+      t.slotId,
+    ),
+    index("presentation_builder_image_jobs_due_idx").on(
+      t.status,
+      t.nextPollAt,
+    ),
+    index("presentation_builder_image_jobs_deck_idx").on(
+      t.tenantId,
+      t.userId,
+      t.deckId,
+      t.pageNumber,
+      t.imageIndex,
+    ),
+  ],
+);
+
+export type PresentationBuilderImageJob = typeof presentationBuilderImageJobs.$inferSelect;
+export type InsertPresentationBuilderImageJob = typeof presentationBuilderImageJobs.$inferInsert;
+
 export const presentationAssetLinks = pgTable(
   "presentation_asset_links",
   {
@@ -22592,6 +22655,35 @@ export const verticalDramaEpisodes = pgTable(
 export type VerticalDramaEpisodeRow = typeof verticalDramaEpisodes.$inferSelect;
 export type InsertVerticalDramaEpisodeRow =
   typeof verticalDramaEpisodes.$inferInsert;
+
+/** Durable history of three-card Marketplace -> Vertical Drama tie-in ideation runs. */
+export const verticalDramaMarketplaceReviewIdeaRuns = pgTable(
+  "vertical_drama_marketplace_review_idea_runs",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" }).notNull().references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    productId: varchar("productId", { length: 128 }).notNull(),
+    variationSeed: varchar("variationSeed", { length: 128 }).notNull(),
+    inputFingerprint: varchar("inputFingerprint", { length: 64 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("succeeded"),
+    input: jsonb("input").notNull(),
+    output: jsonb("output").notNull(),
+    selectedIdeaId: varchar("selectedIdeaId", { length: 128 }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    index("vds_marketplace_review_idea_run_lookup_idx").on(t.tenantId, t.userId, t.seriesId, t.createdAt),
+    index("vds_marketplace_review_idea_run_product_idx").on(t.tenantId, t.seriesId, t.productId),
+  ]
+);
+
+export type VerticalDramaMarketplaceReviewIdeaRunRow =
+  typeof verticalDramaMarketplaceReviewIdeaRuns.$inferSelect;
+export type InsertVerticalDramaMarketplaceReviewIdeaRunRow =
+  typeof verticalDramaMarketplaceReviewIdeaRuns.$inferInsert;
 
 export const verticalDramaSpecialSequenceCounters = pgTable(
   "vertical_drama_special_sequence_counters",

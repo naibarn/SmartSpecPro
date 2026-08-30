@@ -8,6 +8,10 @@ vi.mock("../mediaGenerationService", () => ({
   DEFAULT_MODELS: { image: "google-nano-banana-pro" },
 }));
 
+vi.mock("../durableMediaAssetService", () => ({
+  durabilizeMediaGenerationResponse: vi.fn(async (response: unknown) => response),
+}));
+
 vi.mock("../executors/executorRegistry", () => ({
   registerExecutor: vi.fn(),
 }));
@@ -27,6 +31,7 @@ function makeInput(overrides: Partial<ExecutorInput> = {}): ExecutorInput {
     skill: { id: "img-skill", name: "Image Skill" } as any,
     skillSlug: "image-generator",
     userId: 1,
+    tenantId: "tenant-1",
     channel: "chat",
     ...overrides,
   };

@@ -418,20 +418,25 @@ describe("policy-safe synopsis deterministic contract", () => {
   });
 
   it("builds reference mapping, an exact physical cast lock, and the rewritten synopsis", () => {
-    expect(
-      buildDeterministicPolicySafeImagePrompt({
-        rewrittenSynopsis: "ภูมิยืนคุยกับปราง",
-        characterReferenceManifest: [
-          { index: 1, name: "ภูมิ" },
-          { index: 2, name: "ปราง" },
-        ],
-        locationReferenceImage: {
-          url: "https://cdn/roof.png",
-          label: "ดาดฟ้าตึกแถวเก่า",
-        },
-      })
-    ).toBe(
-      "REFERENCE MAPPING: Image 1 = ภูมิ; Image 2 = ปราง; Image 3 = location: ดาดฟ้าตึกแถวเก่า.\nPHYSICAL CAST LOCK (MANDATORY): exactly 2 physical scene characters — ภูมิ, ปราง. Do not add any other named or unnamed person, background extra, staff member, reflection, or duplicate body.\nภูมิยืนคุยกับปราง"
+    const prompt = buildDeterministicPolicySafeImagePrompt({
+      rewrittenSynopsis: "ภูมิยืนคุยกับปราง",
+      characterReferenceManifest: [
+        { index: 1, name: "ภูมิ" },
+        { index: 2, name: "ปราง" },
+      ],
+      locationReferenceImage: {
+        url: "https://cdn/roof.png",
+        label: "ดาดฟ้าตึกแถวเก่า",
+      },
+    });
+    expect(prompt).toContain(
+      "REFERENCE MAPPING: Image 1 = ภูมิ; Image 2 = ปราง; Image 3 = location: ดาดฟ้าตึกแถวเก่า."
+    );
+    expect(prompt).toContain("PHYSICAL CAST LOCK (MANDATORY): exactly 2");
+    expect(prompt).toContain("CHARACTER APPARENT-AGE LOCK (MANDATORY)");
+    expect(prompt).toContain("ภูมิยืนคุยกับปราง");
+    expect(prompt.indexOf("CHARACTER APPARENT-AGE LOCK")).toBeGreaterThan(
+      prompt.indexOf("PHYSICAL CAST LOCK")
     );
   });
 
@@ -717,14 +722,17 @@ describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", ()
 
   it("places policy-safe lock text between mapping and synopsis", () => {
     const block = "SCENE CONTINUITY LOCK\nFIXED ELEMENTS: bar counter";
-    expect(
-      buildDeterministicPolicySafeImagePrompt({
-        rewrittenSynopsis: "อารียืนในคาเฟ่",
-        characterReferenceManifest: [{ index: 1, name: "อาเรีย" }],
-        sceneContinuityLockBlock: block,
-      })
-    ).toBe(
-      `REFERENCE MAPPING: Image 1 = อาเรีย.\nPHYSICAL CAST LOCK (MANDATORY): exactly 1 physical scene character — อาเรีย. Do not add any other named or unnamed person, background extra, staff member, reflection, or duplicate body.\n${block}\nอารียืนในคาเฟ่`
+    const prompt = buildDeterministicPolicySafeImagePrompt({
+      rewrittenSynopsis: "อารียืนในคาเฟ่",
+      characterReferenceManifest: [{ index: 1, name: "อาเรีย" }],
+      sceneContinuityLockBlock: block,
+    });
+    expect(prompt).toContain("REFERENCE MAPPING: Image 1 = อาเรีย.");
+    expect(prompt).toContain("CHARACTER APPARENT-AGE LOCK (MANDATORY)");
+    expect(prompt).toContain(block);
+    expect(prompt).toContain("อารียืนในคาเฟ่");
+    expect(prompt.indexOf("CHARACTER APPARENT-AGE LOCK")).toBeLessThan(
+      prompt.indexOf(block)
     );
   });
 

@@ -403,6 +403,8 @@ interface VdLocationListItem {
   locationKey: string;
   name: string;
   description: string;
+  slotStatus?: "pending";
+  slotReason?: string;
   primaryReferenceUrl?: string;
   primaryReferenceAssetLinkId?: string;
   cameraVariants?: Array<{
@@ -464,6 +466,13 @@ function getLocationModelMaxReferenceImages(
   return typeof limit === "number" ? limit : undefined;
 }
 
+type LocationAnalysisSummary = {
+  locationsCreated: number;
+  locationsReused: number;
+  createdLocations?: unknown[];
+  reusedLocations?: unknown[];
+};
+
 export interface VerticalDramaLocationStockPanelProps {
   seriesId: string;
   /** When true (archived series), all mutating controls are disabled. */
@@ -493,6 +502,38 @@ export function VerticalDramaLocationStockPanel({
 
   const onError = (err: { message?: string }) =>
     toast.error(resolveLocationMutationErrorMessage(err, lang));
+  const [locationAnalysisJobId, setLocationAnalysisJobId] = useState<
+    string | null
+  >(null);
+  const [locationAnalysisResult, setLocationAnalysisResult] =
+    useState<LocationAnalysisSummary | null>(null);
+  const interactiveJobStatusProcedure =
+    trpc.verticalDramaSeries.getInteractiveJobStatus;
+  const locationAnalysisJobQuery = interactiveJobStatusProcedure?.useQuery(
+    {
+      jobId: locationAnalysisJobId ?? "00000000-0000-0000-0000-000000000000",
+      scopeKey: `series:${seriesId}`,
+    },
+    {
+      enabled: Boolean(locationAnalysisJobId),
+      refetchInterval: locationAnalysisJobId ? 2000 : false,
+      staleTime: 0,
+    }
+  ) ?? { data: undefined };
+  useEffect(() => {
+    const job = locationAnalysisJobQuery.data;
+    if (!job || !locationAnalysisJobId) return;
+    if (job.status === "succeeded") {
+      const result = job.result as LocationAnalysisSummary;
+      setLocationAnalysisResult(result);
+      setLocationAnalysisJobId(null);
+      invalidate();
+      toast.success(buildDetectLocationsSummaryMessage(lang, result));
+    } else if (job.status === "failed") {
+      setLocationAnalysisJobId(null);
+      onError({ message: job.error ?? "Location analysis failed" });
+    }
+  }, [lang, locationAnalysisJobId, locationAnalysisJobQuery.data]);
 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
     null
@@ -702,8 +743,14 @@ export function VerticalDramaLocationStockPanel({
   const detectLocationsMutation =
     trpc.verticalDramaLocations.detectLocationsNow.useMutation({
       onSuccess: res => {
+        if ("jobId" in res) {
+          setLocationAnalysisJobId(res.jobId);
+          return;
+        }
+        const completed = res as LocationAnalysisSummary;
+        setLocationAnalysisResult(completed);
         invalidate();
-        toast.success(buildDetectLocationsSummaryMessage(lang, res));
+        toast.success(buildDetectLocationsSummaryMessage(lang, completed));
       },
       onError,
     });
@@ -1570,6 +1617,11 @@ export function VerticalDramaLocationStockPanel({
                           >
                             <Check aria-hidden="true" className="h-2.5 w-2.5" />
                             {t(lang, "มีภาพอ้างอิงแล้ว", "Reference set")}
+                          </Badge>
+                        ) : null}
+                        {location.slotStatus === "pending" ? (
+                          <Badge variant="secondary" className="w-fit text-[9px]">
+                            {t(lang, "รอสร้างภาพฉากจาก Tie-in", "Tie-in scene slot pending")}
                           </Badge>
                         ) : null}
                         {location.cameraVariants?.length ? (

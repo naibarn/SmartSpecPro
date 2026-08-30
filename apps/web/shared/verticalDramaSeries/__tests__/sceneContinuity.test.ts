@@ -9,6 +9,7 @@ import {
   findSceneShotGroupForShot,
   isSameSceneMembership,
   renderSceneContinuityLockBlock,
+  replaceSceneContinuityLockBlock,
   resolveSceneVisualState,
   selectSceneContinuityAnchor,
   type VdSceneVisualState,
@@ -198,6 +199,29 @@ describe("scene state resolution and lock rendering", () => {
     expect(resolved?.stale).toBeUndefined();
   });
 
+  it("normalizes an explicit sleep surface without changing legacy fields", () => {
+    const resolved = resolveSceneVisualState({
+      ...state(),
+      sleepSurface: {
+        type: "long_bed",
+        name: "เตียงนอนทรงยาวของภูมิ",
+        occupant: "ภูมิ",
+        placement: "ข้างโต๊ะเล็กด้านขวาของห้อง",
+      },
+    });
+    expect(resolved?.sleepSurface).toEqual({
+      type: "long_bed",
+      name: "เตียงนอนทรงยาวของภูมิ",
+      occupant: "ภูมิ",
+      placement: "ข้างโต๊ะเล็กด้านขวาของห้อง",
+    });
+    expect(resolveSceneVisualState({
+      ...state(),
+      sleepSurface: { type: "bassinet", name: "crib", placement: "right" },
+    })?.sleepSurface).toBeUndefined();
+    expect(resolveSceneVisualState(state())?.sleepSurface).toBeUndefined();
+  });
+
   it.each([null, 1, [], {}, { locationKey: " " }])("rejects unusable state", raw => {
     expect(resolveSceneVisualState(raw)).toBeUndefined();
   });
@@ -205,6 +229,7 @@ describe("scene state resolution and lock rendering", () => {
   it("renders only locked facts in fixed order when the membership hash matches", () => {
     expect(renderSceneContinuityLockBlock(state(), "vd-scene-v1-current")).toBe([
       VD_SCENE_CONTINUITY_LOCK_HEADER,
+      "- Authority: this Scene Visual State is the authoritative source for scene-level visual facts; ignore conflicting furniture, layout, lighting, prop, or sleep-surface details from location descriptions, reference images, or older prompts. Preserve the shot action, but apply it to these locked scene facts.",
       "- Lighting: late afternoon from camera left",
       "- Fixed elements: water tank — rear right",
       "- Spatial layout: door left, ledge right",
@@ -214,6 +239,38 @@ describe("scene state resolution and lock rendering", () => {
       "- Current-shot prop visibility rule: show only props explicitly required by the current shot synopsis/composition; omit unrelated prior props and never duplicate handheld devices.",
       "- Palette and mood: muted blue and concrete gray",
     ].join("\n"));
+  });
+
+  it("renders the structured sleep surface as an authoritative continuity fact", () => {
+    const rendered = renderSceneContinuityLockBlock(
+      state({
+        sleepSurface: {
+          type: "long_bed",
+          name: "ภูมิ's long bed",
+          occupant: "ภูมิ",
+          placement: "beside the small desk",
+        },
+      }),
+      "vd-scene-v1-current",
+    )!;
+    expect(rendered).toContain(
+      "- Primary sleep surface (authoritative): long_bed — ภูมิ's long bed — occupied by ภูมิ — beside the small desk. Do not replace this with a different sleep surface based on the location image.",
+    );
+  });
+
+  it("replaces a previously persisted scene lock with the latest state without choosing its content", () => {
+    const current = [
+      VD_SCENE_CONTINUITY_LOCK_HEADER,
+      "- Authority: latest state",
+      "- Fixed elements: window — left wall",
+    ].join("\n");
+    const replaced = replaceSceneContinuityLockBlock(
+      "shot action\n\nSCENE CONTINUITY LOCK\n- Authority: old state\n- Fixed elements: old set\n\nNEGATIVE PROMPT: none",
+      current,
+    );
+    expect(replaced).toBe(
+      "shot action\n\nNEGATIVE PROMPT: none\n\nSCENE CONTINUITY LOCK\n- Authority: latest state\n- Fixed elements: window — left wall",
+    );
   });
 
   it("does not render future props before their declared shot while preserving global props", () => {

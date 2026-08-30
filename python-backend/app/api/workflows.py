@@ -628,12 +628,25 @@ async def execute_workflow(
             detail="Workflow has not been compiled. Please compile before executing.",
         )
 
+    current_tenant_id = str(current_user.currentTenantId or "").strip()
+    requested_tenant_id = str(request.tenant_id or "").strip()
+    if not current_tenant_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Tenant context is required before executing a workflow.",
+        )
+    if requested_tenant_id and requested_tenant_id != current_tenant_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Requested tenant does not match the authenticated tenant.",
+        )
+
     # 2. Estimate cost and check credits
     cost_estimator = CostEstimator()
     cost_result = cost_estimator.estimate(workflow_json)
     estimated_cost = cost_result["total"]
 
-    user_balance = getattr(current_user, "creditBalance", 100.0)
+    user_balance = max(float(current_user.credits or 0), 0.0)
     if estimated_cost > user_balance:
         logger.warning(
             "insufficient_credits_for_execution",
@@ -653,7 +666,7 @@ async def execute_workflow(
     execution_record = WorkflowExecution(
         id=execution_id,
         workflow_id=str(request.workflow_id) if request.workflow_id is not None else None,
-        tenant_id=request.tenant_id or current_user.currentTenantId or None,
+        tenant_id=current_tenant_id,
         user_id=current_user.id,
         status="running",
         input_data=request.input_data or {},
@@ -675,7 +688,7 @@ async def execute_workflow(
         raise HTTPException(status_code=400, detail=f"Failed to compile workflow: {e.errors[0] if e.errors else str(e)}")
 
     # 5. Build config
-    resolved_tenant_id = request.tenant_id or current_user.currentTenantId or str(current_user.id)
+    resolved_tenant_id = current_tenant_id
     resolved_workflow_id = request.workflow_id or workflow_json.get("id")
     input_data = request.input_data or {}
     config = {
@@ -732,7 +745,7 @@ async def estimate_cost(
     breakdown = cost_result["breakdown"]
 
     # Get user balance
-    user_balance = getattr(current_user, "creditBalance", 100.0)  # Default for testing
+    user_balance = max(float(current_user.credits or 0), 0.0)
 
     # Generate warning if needed
     warning = None

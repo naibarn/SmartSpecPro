@@ -730,6 +730,54 @@ describe("storyJobProgressText", () => {
       })
     ).toBe("กำลังเก็บงานเพิ่มเติม · กำลังซ่อมตอนย่อย 46");
   });
+
+  it("shows persisted episode progress and the current range", () => {
+    expect(
+      storyJobProgressText("th", {
+        phase: "draft",
+        chunkIndex: 2,
+        chunkCount: 10,
+        episodesCompleted: 5,
+        episodesTotal: 50,
+        currentEpisodeStart: 6,
+        currentEpisodeEnd: 10,
+      })
+    ).toBe("บันทึกแล้ว 5/50 ตอนย่อย · ตอนย่อย 6-10 · รอบเรียก 2/10 · กำลังร่าง");
+    expect(
+      storyJobProgressText("en", {
+        phase: "draft",
+        episodesCompleted: 5,
+        episodesTotal: 50,
+        currentEpisodeStart: 6,
+        currentEpisodeEnd: 10,
+      })
+    ).toBe("Saved 5/50 sub-episodes · Sub-episodes 6-10 · Drafting");
+  });
+
+  it("renders explicit initial-plan lifecycle stages without a misleading call ratio", () => {
+    expect(
+      storyJobProgressText("th", {
+        phase: "outline",
+        stage: "generating",
+        chunkIndex: 1,
+        chunkCount: 1,
+      }),
+    ).toBe("กำลังสร้างโครงเรื่องหลัก…");
+    expect(
+      storyJobProgressText("th", {
+        phase: "outline",
+        stage: "candidate_saved",
+        chunkIndex: 1,
+        chunkCount: 1,
+      }),
+    ).toBe("บันทึกร่างโครงเรื่องแล้ว · กำลังตรวจสอบ");
+    expect(
+      storyJobProgressText("en", {
+        phase: "outline",
+        stage: "handoff",
+      }),
+    ).toBe("Story plan saved · handing off to detailed drafting…");
+  });
 });
 
 /**

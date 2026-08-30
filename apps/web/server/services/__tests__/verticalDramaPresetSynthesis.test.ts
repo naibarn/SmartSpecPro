@@ -1086,7 +1086,7 @@ describe("synthesizeVerticalDramaPresetV2", () => {
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
-  it("sums token usage across the first attempt and the corrective retry into ONE credit deduction", async () => {
+  it("records the first attempt and corrective retry as separate credit transactions", async () => {
     mockCalculateCreditsForLLM.mockReturnValue(9);
     mockExecuteWithFallback
       .mockResolvedValueOnce(
@@ -1104,8 +1104,11 @@ describe("synthesizeVerticalDramaPresetV2", () => {
 
     await synthesizeVerticalDramaPresetV2(baseV2Params());
 
-    expect(mockCalculateCreditsForLLM).toHaveBeenCalledWith(180, 90, "gpt-x");
-    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+    expect(mockCalculateCreditsForLLM).toHaveBeenNthCalledWith(1, 100, 50, "gpt-x");
+    expect(mockCalculateCreditsForLLM).toHaveBeenNthCalledWith(2, 80, 40, "gpt-x");
+    expect(mockDeductCredits).toHaveBeenCalledTimes(2);
+    expect(mockDeductCredits.mock.calls[0][0].idempotencyKey).toContain(":primary");
+    expect(mockDeductCredits.mock.calls[1][0].idempotencyKey).toContain(":blend-corrective-retry");
   });
 });
 

@@ -86,6 +86,26 @@ describe("reconcileTaskCredits", () => {
     );
   });
 
+  it("reverses a failed fixed-credit skill settlement in its tenant", async () => {
+    const result = await reconcileTaskCredits({
+      task: makeTask({
+        status: "failed",
+        parameters: {
+          skill_billing_run_id: "skill-run-1",
+          transportMetadata: { tenantId: "tenant-1" },
+        },
+      }) as any,
+      userId: 1,
+    });
+
+    expect(result).toMatchObject({ adjusted: true, action: "refund", difference: 0 });
+    expect(mockRefundCredits).toHaveBeenCalledWith(expect.objectContaining({
+      sourceType: "skill",
+      skillRunId: "skill-run-1",
+      tenantId: "tenant-1",
+    }));
+  });
+
   it("charges when actual cost > reserved", async () => {
     mockCalculateCreditCost.mockReturnValue(400); // actual cost higher
     const result = await reconcileTaskCredits({ task: makeTask() as any, userId: 1 });
@@ -130,6 +150,83 @@ describe("reconcileTaskCredits", () => {
       }),
     );
     expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("refunds a failed cover reservation using the image source type", async () => {
+    const result = await reconcileTaskCredits({
+      task: makeTask({
+        status: "failed",
+        resultData: undefined,
+        parameters: {
+          __reserved_credits: 12,
+          __credit_source_type: "media_image",
+          __vd_purpose: "episode_cover",
+        },
+      }) as any,
+      userId: 1,
+      tenantId: "tenant-1",
+    });
+
+    expect(result).toMatchObject({ action: "refund", difference: -12 });
+    expect(mockRefundCredits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 12,
+        sourceType: "media_image",
+        tenantId: "tenant-1",
+      }),
+    );
+  });
+
+  it("refunds a failed Python media task whose reservation is in extra_params", async () => {
+    const result = await reconcileTaskCredits({
+      task: makeTask({
+        status: "failed",
+        resultData: undefined,
+        parameters: {
+          extra_params: {
+            __reserved_credits: 70,
+            __credit_source_type: "media_image",
+            __origin_surface: "vertical_drama_start_frame",
+          },
+        },
+      }) as any,
+      userId: 1,
+      tenantId: "tenant-1",
+    });
+
+    expect(result).toMatchObject({ action: "refund", difference: -70 });
+    expect(mockRefundCredits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 70,
+        sourceType: "media_image",
+        tenantId: "tenant-1",
+        metadata: expect.objectContaining({
+          type: "failed_task_refund",
+          originSurface: "vertical_drama_start_frame",
+        }),
+      }),
+    );
+  });
+
+  it("refunds a cancelled or expired async cover reservation", async () => {
+    for (const status of ["cancelled", "expired"] as const) {
+      mockRedis.get.mockResolvedValue(null);
+      const result = await reconcileTaskCredits({
+        task: makeTask({
+          id: `task-${status}`,
+          status,
+          resultData: undefined,
+          parameters: {
+            __reserved_credits: 12,
+            __credit_source_type: "media_image",
+          },
+        }) as any,
+        userId: 1,
+      });
+
+      expect(result.action).toBe("refund");
+    }
+    expect(mockRefundCredits).toHaveBeenCalledTimes(2);
   });
 
   it("skips when actual_duration missing", async () => {

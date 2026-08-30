@@ -14,6 +14,7 @@ import {
  *  - `characterId` is ALWAYS the look's own id, so the poll->link flow writes
  *    the result onto the look row and never onto the base character (the whole
  *    point of the fix).
+ *  - `referencePolicy: "auto"` is always explicit for look renders.
  *  - Optional fields are OMITTED, never sent empty: an absent
  *    `referenceAssetLinkId` is what selects the server's own tier resolution,
  *    and an empty `customInstruction` would be a meaningless brief.
@@ -33,6 +34,7 @@ describe("buildLookRenderRequestFields", () => {
     });
 
     expect(request.characterId).toBe("112");
+    expect(request.referencePolicy).toBe("auto");
   });
 
   it("'primary' pins the base character's portrait link", () => {
@@ -55,7 +57,7 @@ describe("buildLookRenderRequestFields", () => {
     ).toBe("link-look");
   });
 
-  it("'auto' omits referenceAssetLinkId entirely (server-side tier resolution, today's behavior)", () => {
+  it("'auto' keeps the policy explicit and omits referenceAssetLinkId (server-side tier resolution)", () => {
     const request = buildLookRenderRequestFields({
       ...base,
       instruction: "",
@@ -63,6 +65,7 @@ describe("buildLookRenderRequestFields", () => {
     });
 
     expect(request).not.toHaveProperty("referenceAssetLinkId");
+    expect(request.referencePolicy).toBe("auto");
   });
 
   it("degrades to auto when the chosen reference has no asset link yet (a look with no image)", () => {

@@ -144,6 +144,129 @@ export function findMissingCharacterIdentityWarnings(
   return warnings;
 }
 
+/**
+ * One shot-local character identity reference. `imageIndex` is positional in
+ * the actual attachment list for this shot; it is never a character-global
+ * id. Multiple entries with the same `characterKey` are merged into one lock
+ * entry so a primary portrait plus a supplementary sheet does not duplicate
+ * the full facial-feature checklist.
+ */
+export interface VerticalDramaCharacterIdentityReference {
+  imageIndex: number;
+  characterName: string;
+  characterKey?: string | null;
+}
+
+const CHARACTER_IDENTITY_LOCK_BLOCK_START =
+  "BEGIN CHARACTER IDENTITY LOCKS (SYSTEM-GENERATED)";
+const CHARACTER_IDENTITY_LOCK_BLOCK_END = "END CHARACTER IDENTITY LOCKS";
+
+/** Build one combined identity-lock block for every unique attached character. */
+export function buildCharacterIdentityLockBlock(
+  references: readonly VerticalDramaCharacterIdentityReference[],
+): string | undefined {
+  const groups = new Map<
+    string,
+    { name: string; imageIndexes: number[] }
+  >();
+
+  for (const reference of references) {
+    const name = reference.characterName?.trim();
+    if (!name || !Number.isInteger(reference.imageIndex) || reference.imageIndex <= 0) {
+      continue;
+    }
+    const identityKey = reference.characterKey?.trim() || name.toLowerCase();
+    const existing = groups.get(identityKey);
+    if (existing) {
+      if (!existing.imageIndexes.includes(reference.imageIndex)) {
+        existing.imageIndexes.push(reference.imageIndex);
+      }
+      continue;
+    }
+    groups.set(identityKey, { name, imageIndexes: [reference.imageIndex] });
+  }
+
+  if (groups.size === 0) return undefined;
+
+  const mappingLines = Array.from(groups.values()).map(({ name, imageIndexes }) => {
+    const referenceLabel =
+      imageIndexes.length === 1
+        ? `Reference Image ${imageIndexes[0]}`
+        : `Reference Images ${imageIndexes.join(", ")}`;
+    return `- ${name} — ${referenceLabel}`;
+  });
+
+  return [
+    CHARACTER_IDENTITY_LOCK_BLOCK_START,
+    "CHARACTER IDENTITY LOCK — ALL ATTACHED CHARACTERS (HIGHEST PRIORITY)",
+    "For every character listed below, preserve the exact facial identity and recognizable likeness from that character's own reference image.",
+    "Reference mapping:",
+    ...mappingLines,
+    "Preserve for every character:",
+    "- facial proportions",
+    "- face shape",
+    "- forehead shape",
+    "- eyebrow shape and spacing",
+    "- eye shape, eye spacing and eyelids",
+    "- nose bridge, nose width and nostril shape",
+    "- cheekbone structure",
+    "- jawline and chin",
+    "- mouth width",
+    "- upper and lower lip shape",
+    "- skin tone",
+    "- hairline and hairstyle",
+    "- apparent age",
+    "AGE / MATURITY LOCK (NON-NEGOTIABLE): the apparent age and age impression shown in each character's own reference image are authoritative. Match that same apparent age exactly; do not age the character up or down.",
+    "Do not make any character look older, more mature, more lined, more gaunt, or more senior than their own reference image. Do not infer or change age from role, relationship, wardrobe, lighting, makeup, emotional intensity, camera angle, story context, or any textual age label; this reference-image rule overrides those descriptions.",
+    "Do not add wrinkles, crow's feet, sagging skin, age spots, gray hair, hollow cheeks, deep nasolabial folds, or aged facial texture unless those features are visible in that character's own reference image.",
+    "Each character must match only their own reference image. Do not change, merge, swap, replace, or reinterpret any character's identity.",
+    CHARACTER_IDENTITY_LOCK_BLOCK_END,
+  ].join("\n");
+}
+
+/**
+ * Replace the system-generated identity block with the canonical combined
+ * block. This is intentionally idempotent and leaves prompts unchanged when
+ * no attached character reference is available.
+ */
+export function ensureCharacterIdentityLockPrompt(
+  prompt: string,
+  references: readonly VerticalDramaCharacterIdentityReference[],
+): { prompt: string; identityLockBlock?: string } {
+  const identityLockBlock = buildCharacterIdentityLockBlock(references);
+  if (!identityLockBlock) {
+    return { prompt };
+  }
+  const basePrompt = stripExistingIdentityLockSuffix(prompt).trimEnd();
+  const mappingBoundaryMarkers = [
+    "PHYSICAL CAST LOCK",
+    "CURRENT SHOT COMPOSITION LOCK",
+    "SCENE CONTINUITY LOCK",
+    "VIDEO-FACE VISIBILITY LOCK",
+    "NEGATIVE PROMPT:",
+  ];
+  const mappingStart = basePrompt.indexOf("REFERENCE MAPPING:");
+  const mappingBoundary =
+    mappingStart === 0
+      ? mappingBoundaryMarkers
+          .map(marker => basePrompt.indexOf(marker, "REFERENCE MAPPING:".length))
+          .filter(index => index > "REFERENCE MAPPING:".length)
+          .sort((a, b) => a - b)[0]
+      : undefined;
+  if (mappingBoundary !== undefined) {
+    const mapping = basePrompt.slice(0, mappingBoundary).trimEnd();
+    const remainder = basePrompt.slice(mappingBoundary).trimStart();
+    return {
+      prompt: `${mapping}\n\n${identityLockBlock}\n\n${remainder}`,
+      identityLockBlock,
+    };
+  }
+  return {
+    prompt: `${identityLockBlock}${basePrompt ? `\n\n${basePrompt}` : ""}`,
+    identityLockBlock,
+  };
+}
+
 const IDENTITY_LOCK_BRACKET_MARKER = "[Attached character reference images:";
 const IDENTITY_LOCK_GENERIC_MARKER =
   "Use the attached reference image as this character's exact identity —";
@@ -384,9 +507,32 @@ export function findCharacterImageIndexMappingMismatches(
  * stacked copies in one pass.
  */
 export function stripExistingIdentityLockSuffix(prompt: string): string {
-  const bracketIdx = prompt.indexOf(IDENTITY_LOCK_BRACKET_MARKER);
-  const genericIdx = prompt.indexOf(IDENTITY_LOCK_GENERIC_MARKER);
+  const generatedIdx = prompt.indexOf(CHARACTER_IDENTITY_LOCK_BLOCK_START);
+  let promptWithoutGeneratedBlock = prompt;
+  if (generatedIdx !== -1) {
+    const generatedEndIdx = prompt.indexOf(
+      CHARACTER_IDENTITY_LOCK_BLOCK_END,
+      generatedIdx
+    );
+    if (generatedEndIdx === -1) {
+      promptWithoutGeneratedBlock = prompt.slice(0, generatedIdx).trimEnd();
+    } else {
+      const before = prompt.slice(0, generatedIdx).trimEnd();
+      const after = prompt
+        .slice(generatedEndIdx + CHARACTER_IDENTITY_LOCK_BLOCK_END.length)
+        .trimStart();
+      promptWithoutGeneratedBlock = [before, after]
+        .filter(Boolean)
+        .join("\n\n");
+    }
+  }
+  const bracketIdx = promptWithoutGeneratedBlock.indexOf(
+    IDENTITY_LOCK_BRACKET_MARKER
+  );
+  const genericIdx = promptWithoutGeneratedBlock.indexOf(
+    IDENTITY_LOCK_GENERIC_MARKER
+  );
   const candidates = [bracketIdx, genericIdx].filter((i) => i !== -1);
-  if (candidates.length === 0) return prompt;
-  return prompt.slice(0, Math.min(...candidates)).trimEnd();
+  if (candidates.length === 0) return promptWithoutGeneratedBlock;
+  return promptWithoutGeneratedBlock.slice(0, Math.min(...candidates)).trimEnd();
 }

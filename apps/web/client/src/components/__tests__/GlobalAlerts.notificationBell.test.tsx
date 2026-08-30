@@ -361,8 +361,33 @@ describe("GlobalNotificationBell occurrence badge", () => {
     const openIncidentButton = await screen.findByRole("button", { name: /open incident/i });
     fireEvent.click(openIncidentButton);
 
-    expect(openWindowMock).toHaveBeenCalledWith(
+    expect(setLocationMock).toHaveBeenCalledWith(
       "/admin/dashboard?incident=ops-overview%3Amonitoring_stale",
+    );
+    expect(openWindowMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps external urgent actions in a new tab", async () => {
+    urgentRemindersData = [
+      {
+        id: 1000,
+        title: "External documentation",
+        content: "Read the provider documentation.",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        actionUrl: "https://example.com/docs",
+        actionLabel: "Open Docs",
+        relatedResourceType: "system_health",
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /open docs/i }));
+
+    expect(openWindowMock).toHaveBeenCalledWith(
+      "https://example.com/docs",
       "_blank",
       "noopener,noreferrer",
     );
@@ -389,11 +414,38 @@ describe("GlobalNotificationBell occurrence badge", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /view feedback/i }));
 
-    expect(openWindowMock).toHaveBeenCalledWith(
+    expect(setLocationMock).toHaveBeenCalledWith(
       "/admin/feedback-hub?ticketId=250",
-      "_blank",
-      "noopener,noreferrer",
     );
+  });
+
+  it("navigates directly to the feedback ticket when its notification row is clicked", async () => {
+    notificationCountData = { count: 1 };
+    notificationsData = [
+      {
+        id: 251,
+        title: "New Feedback: [tassanee.thip@gmail.com]",
+        content: "[bug] Auto-classified as general (normal priority) Ticket #510 Reporter: tassanee.thip@gmail.com",
+        isRead: false,
+        priority: "normal",
+        createdAt: new Date().toISOString(),
+        actionUrl: null,
+        relatedResourceType: "feedback",
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText(/unread notification/i));
+    });
+
+    fireEvent.click(screen.getByText("New Feedback: [tassanee.thip@gmail.com]"));
+
+    expect(setLocationMock).toHaveBeenCalledWith(
+      "/admin/feedback-hub?ticketId=510",
+    );
+    expect(openWindowMock).not.toHaveBeenCalled();
   });
 
   it("repairs legacy guardian-routed feedback notifications", async () => {
@@ -416,10 +468,8 @@ describe("GlobalNotificationBell occurrence badge", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /view feedback/i }));
 
-    expect(openWindowMock).toHaveBeenCalledWith(
+    expect(setLocationMock).toHaveBeenCalledWith(
       "/admin/feedback-hub?ticketId=398",
-      "_blank",
-      "noopener,noreferrer",
     );
   });
 
@@ -512,10 +562,8 @@ describe("GlobalNotificationBell occurrence badge", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /open invoice/i }));
 
-    expect(openWindowMock).toHaveBeenCalledWith(
+    expect(setLocationMock).toHaveBeenCalledWith(
       "/billing/invoices/55",
-      "_blank",
-      "noopener,noreferrer",
     );
   });
 
@@ -549,10 +597,8 @@ describe("GlobalNotificationBell occurrence badge", () => {
     expect(screen.getByText(/customer@example\.com/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบสลิป/i }));
 
-    expect(openWindowMock).toHaveBeenCalledWith(
+    expect(setLocationMock).toHaveBeenCalledWith(
       "/admin/billing",
-      "_blank",
-      "noopener,noreferrer",
     );
   });
 
@@ -691,6 +737,31 @@ describe("GlobalNotificationBell occurrence badge", () => {
     expect(screen.queryByText(/relationship_graph_delta_missing/)).toBeNull();
   });
 
+  it("localizes a persisted story policy failure instead of exposing provider wording", async () => {
+    mockLocale = "th";
+    urgentRemindersData = [
+      {
+        id: 123,
+        title: "ซ่อมเนื้อหาตอนย่อยทั้งตอน ไม่สำเร็จ",
+        content:
+          "Episode story contains a high-risk policy context; rewrite before media generation.",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        actionUrl: "/drama-series/53",
+        actionLabel: "เปิดซีรีย์",
+        relatedResourceType: "system_failure",
+        metadata: { source: "vertical_drama_story_jobs" },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    expect(await screen.findByText("สร้างเนื้อหาตอนใหม่ไม่สำเร็จ")).toBeTruthy();
+    expect(screen.getByText(/ไม่ผ่านการตรวจสอบความปลอดภัย/)).toBeTruthy();
+    expect(screen.queryByText(/high-risk policy context/)).toBeNull();
+  });
+
   it("does not replace an open urgent reminder while a new one arrives", async () => {
     urgentRemindersData = [
       {
@@ -736,7 +807,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
     expect(await screen.findByText("Critical alerts need triage")).toBeTruthy();
   });
 
-  it("opens notification detail actions in a new tab to preserve the current page", async () => {
+  it("navigates internal notification detail actions in the current tab", async () => {
     notificationsData = [
       {
         id: 100,
@@ -760,14 +831,12 @@ describe("GlobalNotificationBell occurrence badge", () => {
     fireEvent.click(screen.getByText("Critical incident"));
     fireEvent.click(screen.getByRole("button", { name: /open incident/i }));
 
-    expect(openWindowMock).toHaveBeenCalledWith(
+    expect(setLocationMock).toHaveBeenCalledWith(
       "/admin/dashboard?incident=ops-overview%3Aqueue_backlog",
-      "_blank",
-      "noopener,noreferrer",
     );
   });
 
-  it("opens footer navigation in a new tab from the notification bell", async () => {
+  it("navigates footer links in the current tab from the notification bell", async () => {
     notificationCountData = { count: 0 };
     currentLocation = "/dashboard";
 
@@ -779,10 +848,6 @@ describe("GlobalNotificationBell occurrence badge", () => {
 
     fireEvent.click(screen.getByText("ดูย้อนหลัง"));
 
-    expect(openWindowMock).toHaveBeenCalledWith(
-      "/notifications",
-      "_blank",
-      "noopener,noreferrer",
-    );
+    expect(setLocationMock).toHaveBeenCalledWith("/notifications");
   });
 });

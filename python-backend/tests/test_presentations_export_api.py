@@ -412,7 +412,7 @@ class TestPresentationExportDownloadFile:
             algorithm="HS256",
         )
 
-    async def test_serves_locally_stored_export_file(self, tmp_path: Path):
+    async def test_serves_signed_legacy_export_file(self, tmp_path: Path):
         media_root = tmp_path / "media"
         export_dir = media_root / "presentation_exports" / "42"
         export_dir.mkdir(parents=True)
@@ -433,10 +433,30 @@ class TestPresentationExportDownloadFile:
                 os.environ["MEDIA_STORAGE_PATH"] = old_media_storage
             setattr(settings, "JWT_" + "SECRET", old_jwt_secret)
 
-        assert response.status_code == 200
-        assert response.media_type == "application/pdf"
         assert response.path == str(export_file)
-        assert response.filename == "deck-export.pdf"
+        assert response.media_type == "application/pdf"
+
+    async def test_returns_gone_when_legacy_export_file_is_missing(self, tmp_path: Path):
+        media_root = tmp_path / "media"
+        media_root.mkdir(parents=True)
+
+        old_media_storage = os.environ.get("MEDIA_STORAGE_PATH")
+        old_jwt_secret = settings.JWT_SECRET
+        try:
+            os.environ["MEDIA_STORAGE_PATH"] = str(media_root)
+            setattr(settings, "JWT_" + "SECRET", "test-signing-key")
+            token = self._make_token(42, "missing-export.pdf")
+            with pytest.raises(HTTPException) as exc_info:
+                await download_local_export_file(42, "missing-export.pdf", token)
+        finally:
+            if old_media_storage is None:
+                os.environ.pop("MEDIA_STORAGE_PATH", None)
+            else:
+                os.environ["MEDIA_STORAGE_PATH"] = old_media_storage
+            setattr(settings, "JWT_" + "SECRET", old_jwt_secret)
+
+        assert exc_info.value.status_code == 410
+        assert "export again" in exc_info.value.detail
 
     async def test_rejects_path_traversal_filename(self, tmp_path: Path):
         media_root = tmp_path / "media"

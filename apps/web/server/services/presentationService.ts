@@ -2176,6 +2176,7 @@ export async function generateSlideAudioFromSavedNote(
         publicUrl: input.publicUrl ?? undefined,
         auditContext: {
           userId: actor.userId,
+          tenantId: actor.tenantId,
           traceId,
           source: "presentation.generateSlideAudioFromSavedNote",
           stage: "submission",

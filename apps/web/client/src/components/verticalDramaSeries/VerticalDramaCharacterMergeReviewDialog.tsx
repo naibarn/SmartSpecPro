@@ -33,7 +33,7 @@
  *   summary line, never as individual confirm-required cards.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -130,7 +130,7 @@ export function buildMergeCharactersPayload(
   return {
     seriesId,
     keepCharacterId: group.canonicalCharacterId,
-    mergeCharacterIds: group.duplicateCharacterIds.filter((id) =>
+    mergeCharacterIds: group.duplicateCharacterIds.filter(id =>
       selectedDuplicateIds.has(id)
     ),
   };
@@ -164,6 +164,7 @@ export function VerticalDramaCharacterMergeReviewDialog({
   onOpenChange,
 }: VerticalDramaCharacterMergeReviewDialogProps) {
   const utils = trpc.useUtils();
+  const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
 
   const onError = (err: { message?: string }) => {
     toast.error(resolveVdCharacterMutationErrorMessage(err, lang));
@@ -191,7 +192,12 @@ export function VerticalDramaCharacterMergeReviewDialog({
 
   const analyzeMutation =
     trpc.verticalDramaCharacters.analyzeCharacterDuplicates.useMutation({
-      onSuccess: () => {
+      onSuccess: result => {
+        if ("jobId" in result) {
+          setAnalysisJobId(result.jobId);
+          return;
+        }
+        setCompletedAnalysis(result);
         // A fresh analysis is a new partition of the roster — old
         // per-group UI state (confirm-in-progress, prior merges, manual
         // deselection) no longer refers to anything meaningful.
@@ -202,24 +208,64 @@ export function VerticalDramaCharacterMergeReviewDialog({
       onError,
     });
 
-  const mergeMutation = trpc.verticalDramaCharacters.mergeCharacters.useMutation({
-    onSuccess: (_result, variables) => {
-      utils.verticalDramaCharacters.listCharacters.invalidate({ seriesId });
-      setConfirmingCanonicalId(null);
-      setMergedCanonicalIds((prev) => {
-        const next = new Set(prev);
-        next.add(variables.keepCharacterId);
-        return next;
-      });
-      toast.success(
-        t(lang, "รวมตัวละครสำเร็จแล้ว", "Characters merged successfully")
-      );
+  const [completedAnalysis, setCompletedAnalysis] =
+    useState<typeof analyzeMutation.data>(undefined);
+  const interactiveJobStatusProcedure =
+    trpc.verticalDramaSeries.getInteractiveJobStatus;
+  const analysisJobQuery = interactiveJobStatusProcedure?.useQuery(
+    {
+      jobId: analysisJobId ?? "00000000-0000-0000-0000-000000000000",
+      scopeKey: `series:${seriesId}`,
     },
-    onError,
-  });
+    {
+      enabled: Boolean(analysisJobId),
+      refetchInterval: analysisJobId ? 2000 : false,
+      staleTime: 0,
+    }
+  ) ?? { data: undefined };
+  useEffect(() => {
+    const job = analysisJobQuery.data;
+    if (!job || !analysisJobId) return;
+    if (job.status === "succeeded") {
+      const result = job.result as Exclude<
+        NonNullable<typeof analyzeMutation.data>,
+        { jobId: string }
+      >;
+      setCompletedAnalysis(result);
+      setAnalysisJobId(null);
+      setConfirmingCanonicalId(null);
+      setMergedCanonicalIds(new Set());
+      setSelectedByGroup({});
+    } else if (job.status === "failed") {
+      setAnalysisJobId(null);
+      onError({ message: job.error ?? "Character duplicate analysis failed" });
+    }
+  }, [analysisJobId, analysisJobQuery.data]);
 
-  const groups = analyzeMutation.data?.groups ?? [];
-  const { actionableGroups, singletonGroups } = partitionDuplicateGroups(groups);
+  const mergeMutation =
+    trpc.verticalDramaCharacters.mergeCharacters.useMutation({
+      onSuccess: (_result, variables) => {
+        utils.verticalDramaCharacters.listCharacters.invalidate({ seriesId });
+        setConfirmingCanonicalId(null);
+        setMergedCanonicalIds(prev => {
+          const next = new Set(prev);
+          next.add(variables.keepCharacterId);
+          return next;
+        });
+        toast.success(
+          t(lang, "รวมตัวละครสำเร็จแล้ว", "Characters merged successfully")
+        );
+      },
+      onError,
+    });
+
+  const completed =
+    completedAnalysis && !("jobId" in completedAnalysis)
+      ? completedAnalysis
+      : undefined;
+  const groups = completed?.groups ?? [];
+  const { actionableGroups, singletonGroups } =
+    partitionDuplicateGroups(groups);
 
   const getSelectedDuplicateIds = (group: {
     canonicalCharacterId: string;
@@ -228,8 +274,11 @@ export function VerticalDramaCharacterMergeReviewDialog({
     selectedByGroup[group.canonicalCharacterId] ??
     defaultSelectedDuplicateIds(group.duplicateCharacterIds);
 
-  const setGroupSelection = (canonicalCharacterId: string, next: Set<string>) => {
-    setSelectedByGroup((prev) => ({ ...prev, [canonicalCharacterId]: next }));
+  const setGroupSelection = (
+    canonicalCharacterId: string,
+    next: Set<string>
+  ) => {
+    setSelectedByGroup(prev => ({ ...prev, [canonicalCharacterId]: next }));
   };
 
   const handleClose = (nextOpen: boolean) => {
@@ -237,7 +286,7 @@ export function VerticalDramaCharacterMergeReviewDialog({
     onOpenChange(nextOpen);
   };
 
-  const hasResult = analyzeMutation.data !== undefined;
+  const hasResult = completed !== undefined;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -246,7 +295,9 @@ export function VerticalDramaCharacterMergeReviewDialog({
         data-testid="vd-character-merge-review-dialog"
       >
         <DialogHeader>
-          <DialogTitle>{t(lang, "รวมตัวละครซ้ำ", "Merge duplicate characters")}</DialogTitle>
+          <DialogTitle>
+            {t(lang, "รวมตัวละครซ้ำ", "Merge duplicate characters")}
+          </DialogTitle>
           <DialogDescription>
             {t(
               lang,
@@ -258,7 +309,10 @@ export function VerticalDramaCharacterMergeReviewDialog({
 
         {!hasResult && (
           <div className="flex flex-col items-center gap-3 rounded-md border border-dashed p-6 text-center">
-            <Sparkles aria-hidden="true" className="h-6 w-6 text-muted-foreground" />
+            <Sparkles
+              aria-hidden="true"
+              className="h-6 w-6 text-muted-foreground"
+            />
             <p className="text-sm text-muted-foreground">
               {t(
                 lang,
@@ -273,7 +327,10 @@ export function VerticalDramaCharacterMergeReviewDialog({
             >
               {analyzeMutation.isPending ? (
                 <>
-                  <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2
+                    aria-hidden="true"
+                    className="mr-2 h-4 w-4 animate-spin"
+                  />
                   {t(lang, "กำลังตรวจสอบ...", "Analyzing...")}
                 </>
               ) : (
@@ -282,7 +339,10 @@ export function VerticalDramaCharacterMergeReviewDialog({
             </Button>
             {analyzeMutation.isError && (
               <p className="text-sm text-destructive" role="alert">
-                {resolveVdCharacterMutationErrorMessage(analyzeMutation.error, lang)}
+                {resolveVdCharacterMutationErrorMessage(
+                  analyzeMutation.error,
+                  lang
+                )}
               </p>
             )}
           </div>
@@ -292,10 +352,11 @@ export function VerticalDramaCharacterMergeReviewDialog({
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <Badge variant="outline" className="text-[10px]">
-                {analyzeMutation.data?.model}
+                {completed?.model}
               </Badge>
               <span>
-                {t(lang, "เครดิตที่ใช้", "Credits used")}: {analyzeMutation.data?.creditsUsed}
+                {t(lang, "เครดิตที่ใช้", "Credits used")}:{" "}
+                {completed?.creditsUsed}
               </span>
             </div>
 
@@ -317,9 +378,18 @@ export function VerticalDramaCharacterMergeReviewDialog({
                 </p>
               </div>
             ) : (
-              <ul className="flex flex-col gap-4" aria-label={t(lang, "กลุ่มตัวละครซ้ำที่เสนอ", "Proposed duplicate groups")}>
-                {actionableGroups.map((group) => {
-                  const merged = mergedCanonicalIds.has(group.canonicalCharacterId);
+              <ul
+                className="flex flex-col gap-4"
+                aria-label={t(
+                  lang,
+                  "กลุ่มตัวละครซ้ำที่เสนอ",
+                  "Proposed duplicate groups"
+                )}
+              >
+                {actionableGroups.map(group => {
+                  const merged = mergedCanonicalIds.has(
+                    group.canonicalCharacterId
+                  );
                   const confirming =
                     confirmingCanonicalId === group.canonicalCharacterId;
                   const selected = getSelectedDuplicateIds(group);
@@ -350,7 +420,10 @@ export function VerticalDramaCharacterMergeReviewDialog({
                         </div>
                         {merged && (
                           <Badge className="gap-1 bg-emerald-600 text-[10px] text-white hover:bg-emerald-600">
-                            <CheckCircle2 aria-hidden="true" className="h-3 w-3" />
+                            <CheckCircle2
+                              aria-hidden="true"
+                              className="h-3 w-3"
+                            />
                             {t(lang, "รวมแล้ว", "Merged")}
                           </Badge>
                         )}
@@ -358,7 +431,10 @@ export function VerticalDramaCharacterMergeReviewDialog({
 
                       {group.autoFallback && (
                         <p className="mt-2 flex items-start gap-1.5 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
-                          <AlertTriangle aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <AlertTriangle
+                            aria-hidden="true"
+                            className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                          />
                           {t(
                             lang,
                             "การวิเคราะห์นี้ไม่ครอบคลุมตัวละครนี้โดยตรง — เป็นข้อเสนอเชิงป้องกัน กรุณาตรวจสอบอย่างละเอียดเป็นพิเศษ",
@@ -370,7 +446,11 @@ export function VerticalDramaCharacterMergeReviewDialog({
                       <p className="mt-2 text-xs text-muted-foreground">
                         {group.reasoning}{" "}
                         <span className="italic">
-                          {t(lang, "(ข้อเสนอแนะจาก AI ไม่ใช่คำตัดสิน)", "(AI suggestion, not a verdict)")}
+                          {t(
+                            lang,
+                            "(ข้อเสนอแนะจาก AI ไม่ใช่คำตัดสิน)",
+                            "(AI suggestion, not a verdict)"
+                          )}
                         </span>
                       </p>
 
@@ -389,9 +469,17 @@ export function VerticalDramaCharacterMergeReviewDialog({
 
                       <Separator className="my-3" />
 
-                      <ul className="flex flex-col gap-2" aria-label={t(lang, "หลักฐานต่อแถว", "Per-row evidence")}>
-                        {group.evidence.map((row) => {
-                          const isDuplicateRow = row.characterId !== group.canonicalCharacterId;
+                      <ul
+                        className="flex flex-col gap-2"
+                        aria-label={t(
+                          lang,
+                          "หลักฐานต่อแถว",
+                          "Per-row evidence"
+                        )}
+                      >
+                        {group.evidence.map(row => {
+                          const isDuplicateRow =
+                            row.characterId !== group.canonicalCharacterId;
                           const isCanonicalRow = !isDuplicateRow;
                           const episodesText = formatEpisodeNumbersSeenIn(
                             row.episodeNumbersSeenIn
@@ -413,7 +501,10 @@ export function VerticalDramaCharacterMergeReviewDialog({
                                   onCheckedChange={() =>
                                     setGroupSelection(
                                       group.canonicalCharacterId,
-                                      toggleDuplicateSelection(selected, row.characterId)
+                                      toggleDuplicateSelection(
+                                        selected,
+                                        row.characterId
+                                      )
                                     )
                                   }
                                   className="mt-0.5"
@@ -421,22 +512,32 @@ export function VerticalDramaCharacterMergeReviewDialog({
                               )}
                               <div className="flex flex-1 flex-col gap-1">
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                  <span className="font-medium">{row.name}</span>
+                                  <span className="font-medium">
+                                    {row.name}
+                                  </span>
                                   {isCanonicalRow && (
-                                    <Badge variant="outline" className="text-[9px]">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-[9px]"
+                                    >
                                       {t(lang, "คงไว้", "Keep")}
                                     </Badge>
                                   )}
                                   {row.matchesBibleCharacterExactly && (
-                                    <Badge variant="outline" className="text-[9px]">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-[9px]"
+                                    >
                                       {t(lang, "ตรงกับ Bible", "Matches bible")}
                                     </Badge>
                                   )}
                                 </div>
                                 <span className="text-muted-foreground">
-                                  {t(lang, "พบในฉาก", "Shot appearances")}: {row.shotCharacterOccurrences}
+                                  {t(lang, "พบในฉาก", "Shot appearances")}:{" "}
+                                  {row.shotCharacterOccurrences}
                                   {" · "}
-                                  {t(lang, "บทพูด", "Dialogue lines")}: {row.dialogueSpeakerOccurrences}
+                                  {t(lang, "บทพูด", "Dialogue lines")}:{" "}
+                                  {row.dialogueSpeakerOccurrences}
                                   {" · "}
                                   {t(lang, "ตอนที่พบ", "Episodes")}:{" "}
                                   {episodesText || t(lang, "ไม่พบ", "none")}
@@ -458,7 +559,10 @@ export function VerticalDramaCharacterMergeReviewDialog({
                                 disabled={mergingThis}
                                 onClick={() => setConfirmingCanonicalId(null)}
                               >
-                                <X aria-hidden="true" className="mr-1 h-3.5 w-3.5" />
+                                <X
+                                  aria-hidden="true"
+                                  className="mr-1 h-3.5 w-3.5"
+                                />
                                 {t(lang, "ยกเลิก", "Cancel")}
                               </Button>
                               <Button
@@ -468,14 +572,24 @@ export function VerticalDramaCharacterMergeReviewDialog({
                                 disabled={mergingThis || selected.size === 0}
                                 onClick={() =>
                                   mergeMutation.mutate(
-                                    buildMergeCharactersPayload(seriesId, group, selected)
+                                    buildMergeCharactersPayload(
+                                      seriesId,
+                                      group,
+                                      selected
+                                    )
                                   )
                                 }
                               >
                                 {mergingThis ? (
-                                  <Loader2 aria-hidden="true" className="mr-1 h-3.5 w-3.5 animate-spin" />
+                                  <Loader2
+                                    aria-hidden="true"
+                                    className="mr-1 h-3.5 w-3.5 animate-spin"
+                                  />
                                 ) : (
-                                  <Merge aria-hidden="true" className="mr-1 h-3.5 w-3.5" />
+                                  <Merge
+                                    aria-hidden="true"
+                                    className="mr-1 h-3.5 w-3.5"
+                                  />
                                 )}
                                 {t(lang, "ยืนยันรวมกลุ่มนี้", "Confirm merge")}
                               </Button>
@@ -487,10 +601,15 @@ export function VerticalDramaCharacterMergeReviewDialog({
                               variant="outline"
                               disabled={selected.size === 0}
                               onClick={() =>
-                                setConfirmingCanonicalId(group.canonicalCharacterId)
+                                setConfirmingCanonicalId(
+                                  group.canonicalCharacterId
+                                )
                               }
                             >
-                              <Merge aria-hidden="true" className="mr-1.5 h-3.5 w-3.5" />
+                              <Merge
+                                aria-hidden="true"
+                                className="mr-1.5 h-3.5 w-3.5"
+                              />
                               {t(
                                 lang,
                                 `รวมกลุ่มนี้ (${selected.size} ตัว)`,
@@ -528,14 +647,21 @@ export function VerticalDramaCharacterMergeReviewDialog({
               disabled={analyzeMutation.isPending}
             >
               {analyzeMutation.isPending ? (
-                <Loader2 aria-hidden="true" className="mr-2 h-3.5 w-3.5 animate-spin" />
+                <Loader2
+                  aria-hidden="true"
+                  className="mr-2 h-3.5 w-3.5 animate-spin"
+                />
               ) : (
                 <Sparkles aria-hidden="true" className="mr-2 h-3.5 w-3.5" />
               )}
               {t(lang, "วิเคราะห์อีกครั้ง", "Re-analyze")}
             </Button>
           )}
-          <Button type="button" variant="ghost" onClick={() => handleClose(false)}>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => handleClose(false)}
+          >
             {t(lang, "ปิด", "Close")}
           </Button>
         </DialogFooter>

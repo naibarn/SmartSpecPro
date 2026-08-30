@@ -845,6 +845,12 @@ export const workflowRouter = router({
     .mutation(async ({ input, ctx }) => {
       try {
         const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
+        if (!tenantId) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Tenant context is required before executing a workflow",
+          });
+        }
         const workflowFlags = await getWorkflowFeatureGateState(tenantId);
         assertWorkflowBrowserSessionNodesAllowed(workflowFlags, input.workflowJson.nodes);
         assertWorkflowWorkerRuntimeNodesAllowed(workflowFlags, input.workflowJson.nodes);

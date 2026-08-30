@@ -3,7 +3,7 @@ use crate::credentials::{
     save_connection_with_device_proof, save_device_proof_material, StoredWorkerConnection,
     WorkerDeviceProofMaterial,
 };
-use crate::diagnostics::{append_diagnostic_event, diagnostic_log_path, token_reference};
+use crate::diagnostics::{append_diagnostic_event, diagnostic_log_path, token_reference, LogLevel};
 use crate::executor_state::ExecutorState;
 use crate::runtime_manifest::{
     doctor_from_installed_or_default_paths, read_runtime_pack_manifest, runtime_pack_paths,
@@ -18,6 +18,7 @@ use std::cmp::Ordering;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
+use std::sync::{atomic::AtomicBool, Arc};
 use std::time::{Duration, Instant};
 #[cfg(target_os = "windows")]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -28,11 +29,29 @@ use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use crate::control_plane::{
     build_registration_payload_with_hermes, HermesRegistrationInfo, WorkerAppRegistrationPayload,
 };
+use crate::comfy_profiles::{resolve_bridge_args, ComfyConnectionProfile, ComfyProfileProjection, ComfyProfileStore};
+use crate::comfy_mcp_client::{command_available_with_path, discover_manifest, extract_mcp_execution_id, run_generic_workflow_with_lifecycle_for_tool, ComfyMcpConfig};
+use crate::comfy_mcp_transport::ComfyHttpMcpTransport;
+use crate::comfy_profiles::{ComfyTransportKind, ComfyCredentialKind};
 use crate::executor_state::ExecutorStatus;
-use crate::worker_control_plane::{post_worker_json, WorkerApiTokens, WorkerLoopConnection};
+use crate::media_pipeline::{
+    analyze_media_file, build_media_plan, probe_media_file, qc_derived_output_with_probe,
+    run_allowlisted_ffmpeg, LocalMediaAnalysis, LocalMediaEditPlan, LocalMediaQc, MediaPlanOptions,
+    MediaToolchain,
+};
+use crate::series_workspace::{
+    clear_root_state, create_child_folder, import_files_into_root, load_root_state_for_series,
+    persist_root_state, redacted_projection, root_fingerprint, root_id, scan_preview,
+    validate_local_root, ImportFilesResult, SeriesWorkspaceProjection, SeriesWorkspaceRoot,
+};
+use crate::worker_control_plane::{
+    get_worker_json, post_worker_json, post_worker_json_with_if_match, WorkerApiTokens,
+    WorkerLoopConnection,
+};
 #[cfg(target_os = "windows")]
 use crate::worker_executor::REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION;
 use crate::worker_loop::{start_worker_loop, WorkerLoopStatus};
+use base64::Engine;
 
 /// Serialises EVERY refresh-token rotation in this process.
 ///
@@ -201,6 +220,1393 @@ pub async fn worker_app_get_settings(
         .lock()
         .map(|settings| settings.clone())
         .map_err(|_| "settings lock poisoned".to_string())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComfyProfilesProjection {
+    pub profiles: Vec<ComfyProfileProjection>,
+    pub active_profile_id: Option<String>,
+}
+
+fn comfy_profile_store(app: &tauri::AppHandle) -> Result<ComfyProfileStore, String> {
+    let app_data_dir = app.path().app_data_dir().map_err(|_| "app_data_dir_unavailable".to_string())?;
+    let mut store = ComfyProfileStore::load(&app_data_dir)?;
+    if store.profiles().next().is_none() {
+        let settings = crate::settings::load_settings(&app_data_dir);
+        let legacy = ComfyConnectionProfile {
+            profile_id: "legacy-local-comfy".into(),
+            worker_id: "legacy-local-worker".into(),
+            display_name: "Legacy local ComfyUI".into(),
+            transport: crate::comfy_profiles::ComfyTransportKind::LocalStdio,
+            endpoint: None,
+            command: Some(settings.comfyui_mcp_command),
+            args: Vec::new(),
+            credential_kind: crate::comfy_profiles::ComfyCredentialKind::None,
+            credential_ref: None,
+            enabled: settings.comfyui_mcp_enabled,
+            profile_revision: 1,
+            permission_revision: 1,
+            policy_revision: 1,
+            projection_revision: 1,
+            expires_at: None,
+            last_probe_at: None,
+            last_probe_status: Some("legacy_unverified".into()),
+        };
+        store.upsert(legacy)?;
+    }
+    Ok(store)
+}
+
+#[tauri::command]
+pub async fn worker_app_get_comfy_profiles(app: tauri::AppHandle) -> Result<ComfyProfilesProjection, String> {
+    let store = comfy_profile_store(&app)?;
+    Ok(ComfyProfilesProjection {
+        profiles: store.projections(),
+        active_profile_id: store.active_profile().map(|profile| profile.profile_id.clone()),
+    })
+}
+
+#[tauri::command]
+pub async fn worker_app_get_comfy_mcp_runtime(
+    app: tauri::AppHandle,
+) -> Result<crate::comfy_mcp_runtime::ComfyMcpRuntimeStatus, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|_| "app_data_dir_unavailable".to_string())?;
+    Ok(crate::comfy_mcp_runtime::status(&app_data_dir).await)
+}
+
+/// Installs the official local MCP server and comfy-cli into a Worker-owned
+/// virtual environment. It does not install arbitrary custom nodes or write
+/// into the user's ComfyUI workspace.
+#[tauri::command]
+pub async fn worker_app_install_comfy_mcp(
+    app: tauri::AppHandle,
+) -> Result<crate::comfy_mcp_runtime::ComfyMcpInstallResult, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|_| "app_data_dir_unavailable".to_string())?;
+    crate::comfy_mcp_runtime::install(&app_data_dir).await
+}
+
+#[tauri::command]
+pub async fn worker_app_save_comfy_profile(app: tauri::AppHandle, profile: ComfyConnectionProfile) -> Result<ComfyProfileProjection, String> {
+    let app_data_dir = app.path().app_data_dir().map_err(|_| "app_data_dir_unavailable".to_string())?;
+    if let Some(connection) = load_connection(&app_data_dir)? {
+        if profile.worker_id != connection.worker.id {
+            return Err("comfy_profile_worker_mismatch".into());
+        }
+    }
+    let mut store = ComfyProfileStore::load(&app_data_dir)?;
+    let projection = profile.projection();
+    store.upsert(profile)?;
+    Ok(projection)
+}
+
+#[tauri::command]
+pub async fn worker_app_activate_comfy_profile(app: tauri::AppHandle, profile_id: String) -> Result<ComfyProfilesProjection, String> {
+    let mut store = comfy_profile_store(&app)?;
+    store.activate(&profile_id)?;
+    Ok(ComfyProfilesProjection { profiles: store.projections(), active_profile_id: store.active_profile().map(|profile| profile.profile_id.clone()) })
+}
+
+#[tauri::command]
+pub async fn worker_app_disable_comfy_profile(app: tauri::AppHandle, profile_id: String) -> Result<ComfyProfilesProjection, String> {
+    let mut store = comfy_profile_store(&app)?;
+    store.disable(&profile_id)?;
+    Ok(ComfyProfilesProjection { profiles: store.projections(), active_profile_id: store.active_profile().map(|profile| profile.profile_id.clone()) })
+}
+
+/// Store a ComfyUI API/OAuth secret in the native OS credential store. The
+/// secret is write-only at the Tauri boundary and is never returned to React.
+#[tauri::command]
+pub async fn worker_app_set_comfy_credential(app: tauri::AppHandle, profile_id: String, secret: String) -> Result<ComfyProfileProjection, String> {
+    let store = comfy_profile_store(&app)?;
+    let profile = store.profiles().find(|item| item.profile_id == profile_id).ok_or_else(|| "comfy_profile_not_found".to_string())?;
+    let reference = profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?;
+    crate::comfy_credentials::store(reference, &secret)?;
+    Ok(profile.projection())
+}
+
+#[tauri::command]
+pub async fn worker_app_delete_comfy_credential(app: tauri::AppHandle, profile_id: String) -> Result<ComfyProfileProjection, String> {
+    let store = comfy_profile_store(&app)?;
+    let profile = store.profiles().find(|item| item.profile_id == profile_id).ok_or_else(|| "comfy_profile_not_found".to_string())?;
+    let reference = profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?;
+    crate::comfy_credentials::delete(reference)?;
+    Ok(profile.projection())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComfyProfileProbeResult {
+    pub profile: ComfyProfileProjection,
+    pub status: String,
+    pub protocol_version: Option<String>,
+    pub tool_names: Vec<String>,
+    pub workflow_ids: Vec<String>,
+    pub capabilities: Vec<String>,
+    pub tool_schemas: Vec<(String, String)>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComfyWorkflowSchemaRequest {
+    pub profile_id: String,
+    pub workflow_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComfyWorkflowSchemaResult {
+    pub profile_id: String,
+    pub workflow_id: String,
+    pub tool_name: String,
+    pub input_schema: Value,
+    pub output_schema: Value,
+    pub result: Value,
+}
+
+fn ensure_comfy_profile_owner(app: &tauri::AppHandle, profile: &ComfyConnectionProfile) -> Result<(), String> {
+    let app_data_dir = app.path().app_data_dir().map_err(|_| "app_data_dir_unavailable".to_string())?;
+    if let Some(connection) = load_connection(&app_data_dir)? {
+        if profile.worker_id != connection.worker.id { return Err("comfy_profile_worker_mismatch".into()); }
+    }
+    Ok(())
+}
+
+/// Probe is a real MCP initialize/tools-list negotiation. It never returns a
+/// credential value or a local path to the WebView.
+#[tauri::command]
+pub async fn worker_app_probe_comfy_profile(app: tauri::AppHandle, profile_id: String) -> Result<ComfyProfileProbeResult, String> {
+    let mut store = comfy_profile_store(&app)?;
+    let profile = store.profiles().find(|item| item.profile_id == profile_id).cloned().ok_or_else(|| "comfy_profile_not_found".to_string())?;
+    ensure_comfy_profile_owner(&app, &profile)?;
+    if !profile.enabled { return Err("comfy_profile_disabled".into()); }
+    let manifest_result = match profile.transport {
+        ComfyTransportKind::LocalStdio | ComfyTransportKind::SelfHostedStdioBridge => {
+            let command = profile.command.clone().ok_or_else(|| "comfy_profile_command_missing".to_string())?;
+            let app_data_dir = app.path().app_data_dir().map_err(|_| "app_data_dir_unavailable".to_string())?;
+            let managed_command_path = (matches!(profile.transport, ComfyTransportKind::LocalStdio)
+                && crate::comfy_mcp_runtime::normalize_command(&command)
+                    == crate::comfy_mcp_runtime::STANDARD_COMMAND)
+                .then(|| crate::comfy_mcp_runtime::managed_command_path(&app_data_dir))
+                .flatten();
+            if !command_available_with_path(&command, managed_command_path.as_deref()) { return Err("comfy_mcp_unavailable".into()); }
+            let args = if matches!(profile.transport, ComfyTransportKind::SelfHostedStdioBridge) { resolve_bridge_args(&profile.args, profile.endpoint.as_deref().ok_or_else(|| "comfy_bridge_endpoint_missing".to_string())?)? } else { profile.args.clone() };
+            discover_manifest(&ComfyMcpConfig { command, managed_command_path, args, timeout_ms: 10_000 }).await
+        }
+        ComfyTransportKind::SelfHostedHttpMcp | ComfyTransportKind::ComfyCloud | ComfyTransportKind::SshTunnel => {
+            let ssh_key = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) { Some(crate::comfy_credentials::resolve(profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?) } else { None };
+            let _ssh_tunnel = if let Some(key) = ssh_key.as_deref() { Some(crate::comfy_ssh_tunnel::open_with_identity(&profile.args, key)?) } else { None };
+            let endpoint = profile.endpoint.clone().ok_or_else(|| "comfy_endpoint_missing".to_string())?;
+            let token = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) || profile.credential_kind == ComfyCredentialKind::None {
+                None
+            } else {
+                Some(crate::comfy_credentials::resolve(profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?)
+            };
+            let mut transport = ComfyHttpMcpTransport::new(endpoint, token, Duration::from_secs(15))?;
+            let response = transport.discover_tools().await?;
+            crate::comfy_mcp_client::parse_tools_manifest(&response)
+        }
+    };
+    let manifest = match manifest_result {
+        Ok(manifest) => manifest,
+        Err(error) => {
+            let _ = store.record_probe(&profile_id, "failed");
+            return Err(error);
+        }
+    };
+    store.record_probe(&profile_id, "ready")?;
+    let refreshed = store.profiles().find(|item| item.profile_id == profile_id).ok_or_else(|| "comfy_profile_not_found".to_string())?;
+    Ok(ComfyProfileProbeResult { profile: refreshed.projection(), status: "ready".into(), protocol_version: manifest.protocol_version, tool_names: manifest.tool_names, workflow_ids: manifest.workflow_ids, capabilities: manifest.capabilities, tool_schemas: manifest.tool_schemas })
+}
+
+/// Reads the schema for the selected workflow/template from MCP when the
+/// connection advertises a dedicated schema tool. This is separate from the
+/// generic `tools/list` input schema because hosted template inputs can vary
+/// by workflow.
+#[tauri::command]
+pub async fn worker_app_inspect_comfy_workflow(
+    app: tauri::AppHandle,
+    request: ComfyWorkflowSchemaRequest,
+) -> Result<ComfyWorkflowSchemaResult, String> {
+    if request.workflow_id.trim().is_empty() || request.workflow_id.len() > 160 || !request.workflow_id.bytes().all(|byte| byte.is_ascii_alphanumeric() || b"._:-/".contains(&byte)) {
+        return Err("comfy_workflow_id_invalid".into());
+    }
+    let app_data_dir = app.path().app_data_dir().map_err(|_| "app_data_dir_unavailable".to_string())?;
+    let store = comfy_profile_store(&app)?;
+    let profile = store.profiles().find(|item| item.profile_id == request.profile_id).cloned().ok_or_else(|| "comfy_profile_not_found".to_string())?;
+    ensure_comfy_profile_owner(&app, &profile)?;
+    if !profile.enabled { return Err("comfy_profile_disabled".into()); }
+    let schema_tools = ["get_template_schema", "get_workflow_schema", "workflow_schema", "inspect_workflow"];
+    let (tool_name, result) = match profile.transport {
+        ComfyTransportKind::LocalStdio | ComfyTransportKind::SelfHostedStdioBridge => {
+            let command = profile.command.clone().ok_or_else(|| "comfy_profile_command_missing".to_string())?;
+            let managed_command_path = (matches!(profile.transport, ComfyTransportKind::LocalStdio)
+                && crate::comfy_mcp_runtime::normalize_command(&command) == crate::comfy_mcp_runtime::STANDARD_COMMAND)
+                .then(|| crate::comfy_mcp_runtime::managed_command_path(&app_data_dir)).flatten();
+            if !command_available_with_path(&command, managed_command_path.as_deref()) { return Err("comfy_mcp_unavailable".into()); }
+            let args = if matches!(profile.transport, ComfyTransportKind::SelfHostedStdioBridge) {
+                resolve_bridge_args(&profile.args, profile.endpoint.as_deref().ok_or_else(|| "comfy_bridge_endpoint_missing".to_string())?)?
+            } else { profile.args.clone() };
+            let config = ComfyMcpConfig { command, managed_command_path, args, timeout_ms: 30_000 };
+            let manifest = discover_manifest(&config).await?;
+            let tool = schema_tools.iter().find(|candidate| manifest.tool_names.iter().any(|name| name == **candidate)).ok_or_else(|| "comfy_mcp_workflow_schema_tool_missing".to_string())?;
+            let schema = manifest.tool_schemas.iter().find(|(name, _)| name == *tool).map(|(_, schema)| schema.as_str());
+            let arguments = build_comfy_workflow_schema_arguments(schema, &request.workflow_id);
+            ((*tool).to_string(), crate::comfy_mcp_client::call_tool(&config, tool, arguments).await?)
+        }
+        ComfyTransportKind::SelfHostedHttpMcp | ComfyTransportKind::ComfyCloud | ComfyTransportKind::SshTunnel => {
+            let ssh_key = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) { Some(crate::comfy_credentials::resolve(profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?) } else { None };
+            let _ssh_tunnel = if let Some(key) = ssh_key.as_deref() { Some(crate::comfy_ssh_tunnel::open_with_identity(&profile.args, key)?) } else { None };
+            let endpoint = profile.endpoint.clone().ok_or_else(|| "comfy_endpoint_missing".to_string())?;
+            let token = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) || profile.credential_kind == ComfyCredentialKind::None { None } else { Some(crate::comfy_credentials::resolve(profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?) };
+            let mut transport = ComfyHttpMcpTransport::new(endpoint, token, Duration::from_secs(30))?;
+            let tools = transport.discover_tools().await?;
+            let manifest = crate::comfy_mcp_client::parse_tools_manifest(&tools)?;
+            let tool = schema_tools.iter().find(|candidate| manifest.tool_names.iter().any(|name| name == **candidate)).ok_or_else(|| "comfy_mcp_workflow_schema_tool_missing".to_string())?;
+            let schema = manifest.tool_schemas.iter().find(|(name, _)| name == *tool).map(|(_, schema)| schema.as_str());
+            let arguments = build_comfy_workflow_schema_arguments(schema, &request.workflow_id);
+            ((*tool).to_string(), transport.call_tool(tool, arguments).await?)
+        }
+    };
+    let encoded = serde_json::to_vec(&result).map_err(|_| "comfy_workflow_schema_encode_failed".to_string())?;
+    if encoded.len() > 4 * 1024 * 1024 { return Err("comfy_workflow_schema_too_large".into()); }
+    Ok(ComfyWorkflowSchemaResult {
+        profile_id: request.profile_id,
+        workflow_id: request.workflow_id,
+        tool_name,
+        input_schema: find_comfy_schema_section(&result, &["inputSchema", "input_schema", "inputs", "parameters", "schema"]),
+        output_schema: find_comfy_schema_section(&result, &["outputSchema", "output_schema", "outputs", "output"]),
+        result,
+    })
+}
+
+fn build_comfy_workflow_schema_arguments(schema: Option<&str>, workflow_id: &str) -> Value {
+    let properties = schema.and_then(|value| serde_json::from_str::<Value>(value).ok()).and_then(|value| value.get("properties").cloned()).and_then(|value| value.as_object().cloned()).unwrap_or_default();
+    let key = ["template_name", "templateName", "template_id", "templateId", "workflow_id", "workflowId", "workflow_path", "workflowPath", "name", "id"].iter().find(|candidate| properties.contains_key(**candidate)).copied().unwrap_or("workflowId");
+    json!({ key: workflow_id })
+}
+
+fn find_comfy_schema_section(value: &Value, keys: &[&str]) -> Value {
+    if let Some(object) = value.as_object() {
+        for key in keys {
+            if let Some(section) = object.get(*key) { return section.clone(); }
+        }
+        // Some MCP schema tools return the JSON Schema object directly rather
+        // than wrapping it under `inputSchema`/`schema`. Preserve that useful
+        // contract for the Workbench instead of showing a misleading null.
+        if keys.iter().any(|key| *key == "schema")
+            && (object.contains_key("properties") || object.contains_key("required"))
+        {
+            return value.clone();
+        }
+        for child in object.values() {
+            let found = find_comfy_schema_section(child, keys);
+            if !found.is_null() { return found; }
+        }
+    } else if let Some(array) = value.as_array() {
+        for child in array {
+            let found = find_comfy_schema_section(child, keys);
+            if !found.is_null() { return found; }
+        }
+    } else if let Some(text) = value.as_str() {
+        if let Ok(parsed) = serde_json::from_str::<Value>(text) { return find_comfy_schema_section(&parsed, keys); }
+    }
+    Value::Null
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComfyInteractiveRunRequest {
+    pub profile_id: String,
+    pub tool_name: Option<String>,
+    pub run_id: Option<String>,
+    #[serde(default)]
+    pub arguments: Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComfyInteractiveRunResult {
+    pub status: String,
+    pub profile_id: String,
+    pub tool_name: Option<String>,
+    pub run_id: String,
+    pub workflow_id: Option<String>,
+    pub execution_id: Option<String>,
+    pub output_dir: String,
+    pub local_files: Vec<String>,
+    pub result: Value,
+}
+
+/// Runs a ComfyUI MCP workflow directly from the Workflows screen. This is a
+/// local Worker operation: it does not create a SmartAIHub render-job and it
+/// never sends the Worker filesystem path to the server.
+#[tauri::command]
+pub async fn worker_app_run_comfy_workflow(
+    app: tauri::AppHandle,
+    request: ComfyInteractiveRunRequest,
+) -> Result<ComfyInteractiveRunResult, String> {
+    let app_data_dir = app.path().app_data_dir().map_err(|_| "app_data_dir_unavailable".to_string())?;
+    let store = comfy_profile_store(&app)?;
+    let profile = store.profiles().find(|item| item.profile_id == request.profile_id).cloned().ok_or_else(|| "comfy_profile_not_found".to_string())?;
+    ensure_comfy_profile_owner(&app, &profile)?;
+    if !profile.enabled { return Err("comfy_profile_disabled".into()); }
+    if !request.arguments.is_object() { return Err("comfy_workbench_arguments_must_be_object".into()); }
+    let encoded = serde_json::to_vec(&request.arguments).map_err(|_| "comfy_workbench_arguments_invalid".to_string())?;
+    if encoded.len() > 2 * 1024 * 1024 { return Err("comfy_workbench_arguments_too_large".into()); }
+    if let Some(tool_name) = request.tool_name.as_deref() {
+        if tool_name.trim().is_empty() || tool_name.len() > 160 || !tool_name.bytes().all(|byte| byte.is_ascii_alphanumeric() || b"._:-".contains(&byte)) {
+            return Err("comfy_workbench_tool_name_invalid".into());
+        }
+    }
+    let run_id = request.run_id.filter(|value| !value.trim().is_empty()).unwrap_or_else(|| OffsetDateTime::now_utc().unix_timestamp_nanos().to_string());
+    if run_id.len() > 160 || !run_id.bytes().all(|byte| byte.is_ascii_alphanumeric() || b"._:-".contains(&byte)) { return Err("comfy_workbench_run_id_invalid".into()); }
+    let cancel = Arc::new(AtomicBool::new(false));
+    {
+        let state = app.state::<WorkerAppState>();
+        let mut runs = state.comfy_interactive_runs.lock().map_err(|_| "comfy_workbench_state_unavailable".to_string())?;
+        if runs.insert(run_id.clone(), cancel.clone()).is_some() { return Err("comfy_workbench_run_already_exists".into()); }
+    }
+    let output_dir = app_data_dir.join("comfy-workbench").join("runs").join(&run_id);
+    let tool_name = request.tool_name.clone();
+    let result: Result<Value, String> = async {
+        fs::create_dir_all(&output_dir).map_err(|_| "comfy_workbench_output_directory_failed".to_string())?;
+        Ok(match profile.transport {
+        ComfyTransportKind::LocalStdio | ComfyTransportKind::SelfHostedStdioBridge => {
+            let command = profile.command.clone().ok_or_else(|| "comfy_profile_command_missing".to_string())?;
+            let managed_command_path = (matches!(profile.transport, ComfyTransportKind::LocalStdio)
+                && crate::comfy_mcp_runtime::normalize_command(&command) == crate::comfy_mcp_runtime::STANDARD_COMMAND)
+                .then(|| crate::comfy_mcp_runtime::managed_command_path(&app_data_dir)).flatten();
+            if !command_available_with_path(&command, managed_command_path.as_deref()) { return Err("comfy_mcp_unavailable".into()); }
+            let args = if matches!(profile.transport, ComfyTransportKind::SelfHostedStdioBridge) {
+                resolve_bridge_args(&profile.args, profile.endpoint.as_deref().ok_or_else(|| "comfy_bridge_endpoint_missing".to_string())?)?
+            } else { profile.args.clone() };
+            run_generic_workflow_with_lifecycle_for_tool(
+                &ComfyMcpConfig { command, managed_command_path, args, timeout_ms: 10 * 60 * 1000 },
+                request.arguments.clone(), tool_name.as_deref(), Some(&output_dir), cancel.as_ref(), |_| {},
+            ).await?
+        }
+        ComfyTransportKind::SelfHostedHttpMcp | ComfyTransportKind::ComfyCloud | ComfyTransportKind::SshTunnel => {
+            let ssh_key = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) { Some(crate::comfy_credentials::resolve(profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?) } else { None };
+            let _ssh_tunnel = if let Some(key) = ssh_key.as_deref() { Some(crate::comfy_ssh_tunnel::open_with_identity(&profile.args, key)?) } else { None };
+            let endpoint = profile.endpoint.clone().ok_or_else(|| "comfy_endpoint_missing".to_string())?;
+            let token = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) || profile.credential_kind == ComfyCredentialKind::None { None } else { Some(crate::comfy_credentials::resolve(profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?) };
+            let mut transport = ComfyHttpMcpTransport::new(endpoint, token, Duration::from_secs(30))?;
+            transport.run_workflow_with_lifecycle_for_tool(request.arguments.clone(), tool_name.as_deref(), cancel.clone(), |_| {}).await?
+        }
+        })
+    }.await;
+    {
+        let state = app.state::<WorkerAppState>();
+        if let Ok(mut runs) = state.comfy_interactive_runs.lock() { runs.remove(&run_id); };
+    }
+    let result = result?;
+    let local_files = materialize_comfy_outputs(&result, &output_dir).await;
+    let result_path = output_dir.join("result.json");
+    fs::write(&result_path, serde_json::to_vec_pretty(&result).map_err(|_| "comfy_workbench_result_encode_failed".to_string())?).map_err(|_| "comfy_workbench_result_write_failed".to_string())?;
+    Ok(ComfyInteractiveRunResult {
+        status: "completed".into(),
+        profile_id: request.profile_id,
+        tool_name,
+        run_id,
+        workflow_id: request.arguments.get("workflowId").or_else(|| request.arguments.get("workflow_id")).and_then(Value::as_str).map(str::to_string),
+        execution_id: extract_mcp_execution_id(&result),
+        output_dir: output_dir.to_string_lossy().to_string(),
+        local_files,
+        result,
+    })
+}
+
+/// Requests cancellation of a directly-running Workbench execution. The
+/// lifecycle loop then calls the advertised MCP cancellation tool and closes
+/// the session; it does not kill an unrelated ComfyUI process.
+#[tauri::command]
+pub fn worker_app_cancel_comfy_workflow(app: tauri::AppHandle, run_id: String) -> Result<(), String> {
+    if run_id.len() > 160 || !run_id.bytes().all(|byte| byte.is_ascii_alphanumeric() || b"._:-".contains(&byte)) { return Err("comfy_workbench_run_id_invalid".into()); }
+    let state = app.state::<WorkerAppState>();
+    let runs = state.comfy_interactive_runs.lock().map_err(|_| "comfy_workbench_state_unavailable".to_string())?;
+    let cancel = runs.get(&run_id).ok_or_else(|| "comfy_workbench_run_not_found".to_string())?;
+    cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+    Ok(())
+}
+
+async fn materialize_comfy_outputs(result: &Value, output_dir: &Path) -> Vec<String> {
+    let mut candidates = Vec::new();
+    collect_comfy_output_candidates(result, None, &mut candidates);
+    let client = reqwest::Client::builder().timeout(Duration::from_secs(30 * 60)).redirect(reqwest::redirect::Policy::none()).build().ok();
+    let mut used_names = std::collections::HashSet::new();
+    let mut saved = Vec::new();
+    for (index, (kind, value, name)) in candidates.into_iter().take(16).enumerate() {
+        let mut filename = safe_comfy_output_name(name.as_deref(), value.as_str(), index);
+        if filename.eq_ignore_ascii_case("result.json") {
+            filename = format!("output-{index}.json");
+        }
+        if !used_names.insert(filename.clone()) {
+            filename = format!("output-{index}-{filename}");
+            used_names.insert(filename.clone());
+        }
+        let destination = output_dir.join(filename);
+        if kind == "path" {
+            let source = PathBuf::from(value.as_str().unwrap_or_default());
+            let is_regular_media = fs::symlink_metadata(&source)
+                .map(|metadata| metadata.file_type().is_file() && metadata.len() <= 512 * 1024 * 1024)
+                .unwrap_or(false)
+                && is_allowed_comfy_output_path(&source);
+            if is_regular_media && source != destination && fs::copy(&source, &destination).is_ok() { saved.push(destination.to_string_lossy().to_string()); }
+        } else if kind == "url" && (value.as_str().unwrap_or_default().starts_with("https://") || value.as_str().unwrap_or_default().starts_with("http://127.0.0.1:") || value.as_str().unwrap_or_default().starts_with("http://localhost:")) {
+            let Some(client) = client.as_ref() else { continue; };
+            let Ok(response) = client.get(value.as_str().unwrap_or_default()).send().await else { continue; };
+            if !response.status().is_success() || response.content_length().is_some_and(|size| size > 512 * 1024 * 1024) { continue; }
+            let Ok(bytes) = response.bytes().await else { continue; };
+            if bytes.len() > 512 * 1024 * 1024 || fs::write(&destination, &bytes).is_err() { continue; }
+            saved.push(destination.to_string_lossy().to_string());
+        }
+    }
+    saved
+}
+
+fn is_allowed_comfy_output_path(path: &Path) -> bool {
+    matches!(
+        path.extension().and_then(|value| value.to_str()).map(|value| value.to_ascii_lowercase()).as_deref(),
+        Some("png" | "jpg" | "jpeg" | "webp" | "gif" | "mp4" | "webm" | "mov" | "mkv" | "wav" | "mp3" | "flac")
+    )
+}
+
+fn collect_comfy_output_candidates(value: &Value, inherited_name: Option<String>, output: &mut Vec<(String, Value, Option<String>)>) {
+    if let Some(object) = value.as_object() {
+        let name = ["fileName", "file_name", "filename", "name"].iter().find_map(|key| object.get(*key).and_then(Value::as_str)).map(str::to_string).or(inherited_name);
+        for key in ["artifactPath", "artifact_path", "outputPath", "output_path"] {
+            if let Some(path) = object.get(key).filter(|value| value.is_string()) { output.push(("path".into(), path.clone(), name.clone())); }
+        }
+        for key in ["artifactUrl", "artifact_url", "outputUrl", "output_url", "downloadUrl", "download_url", "url"] {
+            if let Some(url) = object.get(key).filter(|value| value.is_string()) { output.push(("url".into(), url.clone(), name.clone())); }
+        }
+        for child in object.values() { collect_comfy_output_candidates(child, name.clone(), output); }
+    } else if let Some(array) = value.as_array() {
+        for child in array { collect_comfy_output_candidates(child, inherited_name.clone(), output); }
+    }
+}
+
+fn safe_comfy_output_name(name: Option<&str>, source: Option<&str>, index: usize) -> String {
+    let candidate = name.or_else(|| source.and_then(|value| value.split('/').next_back().map(|part| part.split('?').next().unwrap_or(part)))).unwrap_or("");
+    let basename = Path::new(candidate).file_name().and_then(|value| value.to_str()).unwrap_or("");
+    let sanitized: String = basename.chars().map(|value| if value.is_ascii_alphanumeric() || matches!(value, '.' | '-' | '_') { value } else { '_' }).collect();
+    if sanitized.is_empty() { format!("output-{index}") } else { sanitized }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComfyInteractiveUploadRequest {
+    pub profile_id: String,
+    pub file_path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ComfyInteractiveUploadResult {
+    pub tool_name: String,
+    pub file_name: String,
+    pub reference: Option<String>,
+    pub result: Value,
+}
+
+/// Uploads a user-selected media input through the selected MCP connection.
+/// Local MCP may receive a path; remote MCP receives base64 only when its
+/// advertised `upload_file` schema supports a data field.
+#[tauri::command]
+pub async fn worker_app_upload_comfy_file(
+    app: tauri::AppHandle,
+    request: ComfyInteractiveUploadRequest,
+) -> Result<ComfyInteractiveUploadResult, String> {
+    let app_data_dir = app.path().app_data_dir().map_err(|_| "app_data_dir_unavailable".to_string())?;
+    let store = comfy_profile_store(&app)?;
+    let profile = store.profiles().find(|item| item.profile_id == request.profile_id).cloned().ok_or_else(|| "comfy_profile_not_found".to_string())?;
+    ensure_comfy_profile_owner(&app, &profile)?;
+    if !profile.enabled { return Err("comfy_profile_disabled".into()); }
+    let path = PathBuf::from(request.file_path.trim());
+    let metadata = fs::metadata(&path).map_err(|_| "comfy_workbench_input_file_unavailable".to_string())?;
+    if !metadata.is_file() { return Err("comfy_workbench_input_file_invalid".into()); }
+    if metadata.len() > 50 * 1024 * 1024 { return Err("comfy_workbench_input_file_too_large".into()); }
+    let file_name = path.file_name().and_then(|name| name.to_str()).filter(|name| !name.is_empty() && !name.contains(['/', '\\'])).ok_or_else(|| "comfy_workbench_input_file_name_invalid".to_string())?.to_string();
+    let bytes = fs::read(&path).map_err(|_| "comfy_workbench_input_file_unreadable".to_string())?;
+    let content_type = match path.extension().and_then(|value| value.to_str()).unwrap_or_default().to_ascii_lowercase().as_str() {
+        "png" => "image/png", "jpg" | "jpeg" => "image/jpeg", "webp" => "image/webp", "gif" => "image/gif",
+        "mp4" => "video/mp4", "webm" => "video/webm", "mov" => "video/quicktime", "wav" => "audio/wav", "mp3" => "audio/mpeg", "flac" => "audio/flac",
+        _ => return Err("comfy_workbench_input_file_type_unsupported".into()),
+    };
+    let upload_tool_candidates = ["upload_file", "upload_image", "upload_media", "upload_input"];
+    let (tool_name, result) = match profile.transport {
+        ComfyTransportKind::LocalStdio | ComfyTransportKind::SelfHostedStdioBridge => {
+            let command = profile.command.clone().ok_or_else(|| "comfy_profile_command_missing".to_string())?;
+            let managed_command_path = (matches!(profile.transport, ComfyTransportKind::LocalStdio)
+                && crate::comfy_mcp_runtime::normalize_command(&command) == crate::comfy_mcp_runtime::STANDARD_COMMAND)
+                .then(|| crate::comfy_mcp_runtime::managed_command_path(&app_data_dir)).flatten();
+            if !command_available_with_path(&command, managed_command_path.as_deref()) { return Err("comfy_mcp_unavailable".into()); }
+            let args = if matches!(profile.transport, ComfyTransportKind::SelfHostedStdioBridge) { resolve_bridge_args(&profile.args, profile.endpoint.as_deref().ok_or_else(|| "comfy_bridge_endpoint_missing".to_string())?)? } else { profile.args.clone() };
+            let config = ComfyMcpConfig { command, managed_command_path, args, timeout_ms: 30_000 };
+            let manifest = discover_manifest(&config).await?;
+            let tool = upload_tool_candidates.iter().find(|candidate| manifest.tool_names.iter().any(|name| name == **candidate)).ok_or_else(|| "comfy_mcp_upload_tool_missing".to_string())?;
+            let schema = manifest.tool_schemas.iter().find(|(name, _)| name == *tool).map(|(_, value)| value.clone());
+            let arguments = build_comfy_upload_arguments(schema.as_deref(), &path, &file_name, content_type, &bytes, true)?;
+            let result = crate::comfy_mcp_client::call_tool(&config, tool, arguments).await?;
+            ((*tool).to_string(), result)
+        }
+        ComfyTransportKind::SelfHostedHttpMcp | ComfyTransportKind::ComfyCloud | ComfyTransportKind::SshTunnel => {
+            let ssh_key = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) { Some(crate::comfy_credentials::resolve(profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?) } else { None };
+            let _ssh_tunnel = if let Some(key) = ssh_key.as_deref() { Some(crate::comfy_ssh_tunnel::open_with_identity(&profile.args, key)?) } else { None };
+            let endpoint = profile.endpoint.clone().ok_or_else(|| "comfy_endpoint_missing".to_string())?;
+            let token = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) || profile.credential_kind == ComfyCredentialKind::None { None } else { Some(crate::comfy_credentials::resolve(profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?) };
+            let mut transport = ComfyHttpMcpTransport::new(endpoint, token, Duration::from_secs(30))?;
+            let tools = transport.discover_tools().await?;
+            let manifest = crate::comfy_mcp_client::parse_tools_manifest(&tools)?;
+            let tool = upload_tool_candidates.iter().find(|candidate| manifest.tool_names.iter().any(|name| name == **candidate)).ok_or_else(|| "comfy_mcp_upload_tool_missing".to_string())?;
+            let schema = manifest.tool_schemas.iter().find(|(name, _)| name == *tool).map(|(_, value)| value.clone());
+            let arguments = build_comfy_upload_arguments(schema.as_deref(), &path, &file_name, content_type, &bytes, false)?;
+            let result = transport.call_tool(tool, arguments).await?;
+            ((*tool).to_string(), result)
+        }
+    };
+    let reference = find_comfy_reference(&result);
+    Ok(ComfyInteractiveUploadResult { tool_name, file_name, reference, result })
+}
+
+fn build_comfy_upload_arguments(schema: Option<&str>, path: &Path, file_name: &str, content_type: &str, bytes: &[u8], local: bool) -> Result<Value, String> {
+    let properties = schema.and_then(|value| serde_json::from_str::<Value>(value).ok()).and_then(|value| value.get("properties").cloned()).and_then(|value| value.as_object().cloned()).unwrap_or_default();
+    let mut arguments = serde_json::Map::new();
+    let path_key = ["file_path", "filePath", "path"].iter().find(|key| properties.contains_key(**key)).copied();
+    let data_key = ["data", "base64", "content", "contentBase64"].iter().find(|key| properties.contains_key(**key)).copied();
+    if local {
+        if let Some(key) = path_key { arguments.insert(key.to_string(), Value::String(path.to_string_lossy().to_string())); }
+        else if let Some(key) = data_key { arguments.insert(key.to_string(), Value::String(base64::engine::general_purpose::STANDARD.encode(bytes))); }
+        else { return Err("comfy_mcp_upload_schema_unsupported".into()); }
+    } else if let Some(key) = data_key {
+        arguments.insert(key.to_string(), Value::String(base64::engine::general_purpose::STANDARD.encode(bytes)));
+    } else {
+        return Err("comfy_mcp_remote_upload_requires_data_input".into());
+    }
+    for key in ["file_name", "fileName", "filename", "name"] {
+        if properties.contains_key(key) { arguments.insert(key.to_string(), Value::String(file_name.to_string())); break; }
+    }
+    for key in ["mime_type", "mimeType", "content_type", "contentType"] {
+        if properties.contains_key(key) { arguments.insert(key.to_string(), Value::String(content_type.to_string())); break; }
+    }
+    Ok(Value::Object(arguments))
+}
+
+fn find_comfy_reference(value: &Value) -> Option<String> {
+    if let Some(object) = value.as_object() {
+        for key in ["filePath", "file_path", "path", "url", "downloadUrl", "download_url", "assetId", "asset_id", "name"] {
+            if let Some(found) = object.get(key).and_then(Value::as_str).filter(|value| !value.trim().is_empty()) { return Some(found.to_string()); }
+        }
+        for child in object.values() { if let Some(found) = find_comfy_reference(child) { return Some(found); } }
+    }
+    if let Some(array) = value.as_array() { for child in array { if let Some(found) = find_comfy_reference(child) { return Some(found); } } }
+    None
+}
+
+#[tauri::command]
+pub async fn worker_app_pick_local_root(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    series_id: String,
+    path: String,
+) -> Result<SeriesWorkspaceProjection, String> {
+    let canonical = validate_local_root(Path::new(path.trim()))?;
+    let device_key = active_connected_device_proof(&state)?
+        .map(|proof| proof.machine_fingerprint)
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| "worker_device_proof_required".to_string())?;
+    let fingerprint = root_fingerprint(&device_key, &canonical, "local_only");
+    let root = SeriesWorkspaceRoot {
+        series_id,
+        root_id: root_id(&fingerprint),
+        root_path: canonical,
+        root_fingerprint: fingerprint,
+        workspace_mode: "local_only".into(),
+    };
+    let projection = redacted_projection(&root, None, "selected");
+    let mut workspace = state
+        .series_workspace
+        .lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?;
+    workspace.root = Some(root);
+    workspace.projection = Some(projection.clone());
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    persist_root_state(
+        &app_data_dir,
+        workspace.root.as_ref().expect("root set above"),
+    )?;
+    Ok(projection)
+}
+
+#[tauri::command]
+pub async fn worker_app_select_series_workspace(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    series_id: String,
+) -> Result<Option<SeriesWorkspaceProjection>, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let root = load_root_state_for_series(&app_data_dir, &series_id)?;
+    let mut workspace = state
+        .series_workspace
+        .lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?;
+    let Some(root) = root else {
+        workspace.root = None;
+        workspace.projection = None;
+        crate::series_workspace::stop_coordinator(&workspace);
+        return Ok(None);
+    };
+    let canonical = validate_local_root(&root.root_path)?;
+    if canonical != root.root_path {
+        return Err("local_root_identity_changed".into());
+    }
+    let projection = redacted_projection(&root, None, "selected");
+    workspace.root = Some(root);
+    workspace.projection = Some(projection.clone());
+    Ok(Some(projection))
+}
+
+#[tauri::command]
+pub async fn worker_app_create_series_folder(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    series_id: String,
+    folder_name: String,
+    parent_path: Option<String>,
+) -> Result<SeriesWorkspaceProjection, String> {
+    let mut workspace = state
+        .series_workspace
+        .lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?;
+    let current = workspace
+        .root
+        .clone()
+        .filter(|root| root.series_id == series_id);
+    let parent = if let Some(current) = current {
+        current.root_path
+    } else {
+        let path = parent_path.ok_or_else(|| "local_root_not_selected".to_string())?;
+        validate_local_root(Path::new(path.trim()))?
+    };
+    let child_path = create_child_folder(&parent, &folder_name)?;
+    let device_key = active_connected_device_proof(&state)?
+        .map(|proof| proof.machine_fingerprint)
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| "worker_device_proof_required".to_string())?;
+    let fingerprint = root_fingerprint(&device_key, &child_path, "local_only");
+    let root = SeriesWorkspaceRoot {
+        series_id,
+        root_id: root_id(&fingerprint),
+        root_path: child_path,
+        root_fingerprint: fingerprint,
+        workspace_mode: "local_only".into(),
+    };
+    let projection = redacted_projection(&root, None, "selected");
+    workspace.root = Some(root);
+    workspace.projection = Some(projection.clone());
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    persist_root_state(
+        &app_data_dir,
+        workspace.root.as_ref().expect("root set above"),
+    )?;
+    Ok(projection)
+}
+
+#[tauri::command]
+pub async fn worker_app_validate_local_root(
+    state: tauri::State<'_, WorkerAppState>,
+) -> Result<SeriesWorkspaceProjection, String> {
+    let mut workspace = state
+        .series_workspace
+        .lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?;
+    let root = workspace
+        .root
+        .clone()
+        .ok_or_else(|| "local_root_not_selected".to_string())?;
+    let canonical = validate_local_root(&root.root_path)?;
+    if canonical != root.root_path {
+        return Err("local_root_identity_changed".into());
+    }
+    let projection = redacted_projection(&root, None, "validated");
+    workspace.projection = Some(projection.clone());
+    Ok(projection)
+}
+
+#[tauri::command]
+pub async fn worker_app_scan_preview(
+    state: tauri::State<'_, WorkerAppState>,
+) -> Result<crate::series_workspace::ScanPreview, String> {
+    let mut workspace = state
+        .series_workspace
+        .lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?;
+    let root = workspace
+        .root
+        .clone()
+        .ok_or_else(|| "local_root_not_selected".to_string())?;
+    let scan = scan_preview(&root)?;
+    workspace.projection = Some(redacted_projection(&root, Some(&scan), "scan_ready"));
+    Ok(scan)
+}
+
+#[tauri::command]
+pub async fn worker_app_import_local_files(
+    state: tauri::State<'_, WorkerAppState>,
+    source_paths: Vec<String>,
+) -> Result<ImportFilesResult, String> {
+    let mut workspace = state
+        .series_workspace
+        .lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?;
+    let root = workspace
+        .root
+        .clone()
+        .ok_or_else(|| "local_root_not_selected".to_string())?;
+    let result = import_files_into_root(&root, &source_paths)?;
+    workspace.projection = Some(redacted_projection(&root, Some(&result.scan), "scan_ready"));
+    Ok(result)
+}
+
+#[tauri::command]
+pub async fn worker_app_analyze_media_asset(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    source_relative_name: String,
+) -> Result<LocalMediaAnalysis, String> {
+    let workspace = state
+        .series_workspace
+        .lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?;
+    let root = workspace
+        .root
+        .as_ref()
+        .ok_or_else(|| "local_root_not_selected".to_string())?;
+    let source = root
+        .root_path
+        .join(&source_relative_name)
+        .canonicalize()
+        .map_err(|_| "media_source_missing".to_string())?;
+    if !source.starts_with(&root.root_path) {
+        return Err("relative_path_escape".into());
+    }
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let settings = state
+        .settings
+        .lock()
+        .map_err(|_| "settings lock poisoned".to_string())?
+        .clone();
+    let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+    analyze_media_file(&source, &tools)
+}
+
+#[tauri::command]
+pub async fn worker_app_get_local_workspace_status(
+    state: tauri::State<'_, WorkerAppState>,
+) -> Result<Option<SeriesWorkspaceProjection>, String> {
+    state
+        .series_workspace
+        .lock()
+        .map(|workspace| workspace.projection.clone())
+        .map_err(|_| "workspace lock poisoned".to_string())
+}
+
+#[tauri::command]
+pub async fn worker_app_revoke_local_root(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    series_id: String,
+) -> Result<(), String> {
+    let mut workspace = state
+        .series_workspace
+        .lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?;
+    if workspace
+        .root
+        .as_ref()
+        .is_some_and(|root| root.series_id == series_id)
+    {
+        workspace.root = None;
+        workspace.projection = None;
+        crate::series_workspace::stop_coordinator(&workspace);
+    }
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    clear_root_state(&app_data_dir, &series_id)?;
+    Ok(())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkerSeriesProjection {
+    pub series_id: String,
+    pub title: String,
+    pub status: String,
+    pub access_mode: String,
+    pub access_source: String,
+    pub authority_revision: String,
+    pub binding_revision: Option<i64>,
+    pub binding_status: Option<String>,
+    pub can_bind: bool,
+    pub can_process: bool,
+    pub can_publish: bool,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkerSeriesListResponse {
+    pub contract_version: String,
+    pub items: Vec<WorkerSeriesProjection>,
+    pub next_cursor: Option<String>,
+}
+
+fn load_series_control_plane_connection(
+    app_data_dir: &Path,
+) -> Result<WorkerLoopConnection, String> {
+    let stored =
+        load_connection(app_data_dir)?.ok_or_else(|| "worker_connection_required".to_string())?;
+    let device_proof = load_connection_device_proof(app_data_dir)?
+        .ok_or_else(|| "worker_device_proof_required".to_string())?;
+    Ok(WorkerLoopConnection {
+        server_url: stored.server_url.trim_end_matches('/').to_string(),
+        worker_id: stored.worker.id,
+        worker_label: stored.worker.display_name,
+        tokens: WorkerApiTokens {
+            execution_token: stored.tokens.execution_token,
+            upload_token: stored.tokens.upload_token,
+        },
+        device_proof,
+    })
+}
+
+#[tauri::command]
+pub async fn worker_app_list_series(
+    app: tauri::AppHandle,
+    query: Option<String>,
+    cursor: Option<String>,
+) -> Result<WorkerSeriesListResponse, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let connection = load_series_control_plane_connection(&app_data_dir)?;
+    let mut params = Vec::new();
+    if let Some(value) = query
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+    {
+        params.push(format!("q={}", urlencoding::encode(&value)));
+    }
+    if let Some(value) = cursor
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+    {
+        params.push(format!("cursor={}", urlencoding::encode(&value)));
+    }
+    let path = format!(
+        "/api/workers/{}/series{}",
+        connection.worker_id,
+        if params.is_empty() {
+            String::new()
+        } else {
+            format!("?{}", params.join("&"))
+        }
+    );
+    get_worker_json(
+        &connection.server_url,
+        &path,
+        &connection.tokens.execution_token,
+        &connection.device_proof,
+    )
+    .await
+}
+
+/// Execute only the no-payload Series Quick Actions from the Worker shell.
+/// Actions that need a root, source selection, or QC payload stay in the
+/// Media Workspace so a toolbar click can never acknowledge unsafe work.
+#[tauri::command]
+pub async fn worker_app_execute_series_quick_action(
+    app: tauri::AppHandle,
+    series_id: String,
+    action: String,
+    job_ids: Option<Vec<String>>,
+    reason: Option<String>,
+) -> Result<Value, String> {
+    if series_id.trim().is_empty() {
+        return Err("series_id_required".into());
+    }
+    if !matches!(
+        action.as_str(),
+        "index" | "review" | "pause" | "resume" | "cancel" | "retry"
+    ) {
+        return Err("quick_action_requires_media_workspace".into());
+    }
+    if matches!(action.as_str(), "pause" | "resume" | "cancel" | "retry")
+        && job_ids.as_ref().map_or(true, Vec::is_empty)
+    {
+        return Err("job_ids_required".into());
+    }
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let connection = load_series_control_plane_connection(&app_data_dir)?;
+    let request_id = format!(
+        "worker-quick-{}-{}",
+        action,
+        chrono::Utc::now().timestamp_millis()
+    );
+    let action_payload = match action.as_str() {
+        "pause" | "cancel" => json!({
+            "action": action.clone(),
+            "seriesId": series_id.clone(),
+            "jobIds": job_ids.unwrap_or_default(),
+            "reason": reason.unwrap_or_else(|| "user_requested".into()),
+        }),
+        "resume" | "retry" => json!({
+            "action": action.clone(),
+            "seriesId": series_id.clone(),
+            "jobIds": job_ids.unwrap_or_default(),
+        }),
+        _ => json!({ "action": action.clone(), "seriesId": series_id.clone(), "assetIds": [] }),
+    };
+    let body = json!({
+        "requestId": request_id,
+        "idempotencyKey": format!("worker-quick:{}:{}:{}", action, series_id, chrono::Utc::now().timestamp_millis()),
+        "action": action_payload
+    });
+    post_worker_json(
+        &connection.server_url,
+        &format!("/api/workers/{}/quick-actions", connection.worker_id),
+        &connection.tokens.execution_token,
+        &body,
+        &connection.device_proof,
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn worker_app_get_series_media_workspace(
+    app: tauri::AppHandle,
+    series_id: String,
+) -> Result<Value, String> {
+    if series_id.trim().is_empty() {
+        return Err("series_id_required".into());
+    }
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let connection = load_series_control_plane_connection(&app_data_dir)?;
+    get_worker_json(
+        &connection.server_url,
+        &format!(
+            "/api/workers/{}/series/{}/media-workspace",
+            connection.worker_id,
+            urlencoding::encode(&series_id)
+        ),
+        &connection.tokens.execution_token,
+        &connection.device_proof,
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn worker_app_get_series_queue(
+    app: tauri::AppHandle,
+    series_id: Option<String>,
+) -> Result<Value, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let connection = load_series_control_plane_connection(&app_data_dir)?;
+    let path = series_id
+        .map(|value| {
+            format!(
+                "/api/workers/{}/queue?seriesId={}",
+                connection.worker_id,
+                urlencoding::encode(value.trim())
+            )
+        })
+        .unwrap_or_else(|| format!("/api/workers/{}/queue", connection.worker_id));
+    get_worker_json(
+        &connection.server_url,
+        &path,
+        &connection.tokens.execution_token,
+        &connection.device_proof,
+    )
+    .await
+}
+
+/// Returns the authoritative cross-workload job projection for this Worker.
+/// The series queue endpoint is intentionally retained for series actions, but
+/// Overview must read this endpoint so ComfyUI, Remotion, media, Hermes, and
+/// future worker lanes are visible in one place.
+#[tauri::command]
+pub async fn worker_app_get_worker_job_summary(
+    app: tauri::AppHandle,
+    job_type: Option<String>,
+) -> Result<Value, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let connection = load_series_control_plane_connection(&app_data_dir)?;
+    let path = job_type
+        .filter(|value| !value.trim().is_empty())
+        .map(|value| format!("/api/worker-runtime/jobs/summary?jobType={}", urlencoding::encode(value.trim())))
+        .unwrap_or_else(|| "/api/worker-runtime/jobs/summary".to_string());
+    get_worker_json(
+        &connection.server_url,
+        &path,
+        &connection.tokens.execution_token,
+        &connection.device_proof,
+    )
+    .await
+}
+
+/// Fetches the server-authoritative policy and effective token scopes for the
+/// connected Worker. This is read-only; changing grants remains a browser/admin
+/// action and the next request observes revocation immediately.
+#[tauri::command]
+pub async fn worker_app_get_worker_policy(app: tauri::AppHandle) -> Result<Value, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|_| "app_data_dir_unavailable".to_string())?;
+    let connection = load_series_control_plane_connection(&app_data_dir)?;
+    let path = format!("/api/workers/{}/policy", connection.worker_id);
+    get_worker_json(
+        &connection.server_url,
+        &path,
+        &connection.tokens.execution_token,
+        &connection.device_proof,
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn worker_app_bind_series(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    series_id: String,
+    expected_revision: i32,
+    idempotency_key: String,
+) -> Result<Value, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let connection = load_series_control_plane_connection(&app_data_dir)?;
+    let root = state
+        .series_workspace
+        .lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?
+        .root
+        .clone()
+        .ok_or_else(|| "local_root_not_selected".to_string())?;
+    if root.series_id != series_id {
+        return Err("local_root_series_mismatch".into());
+    }
+    let body = json!({
+        "seriesId": series_id,
+        "rootId": root.root_id,
+        "rootFingerprint": root.root_fingerprint,
+        "expectedRevision": expected_revision,
+        "idempotencyKey": idempotency_key,
+    });
+    let if_match = if expected_revision > 0 {
+        Some(expected_revision.to_string())
+    } else {
+        None
+    };
+    post_worker_json_with_if_match(
+        &connection.server_url,
+        &format!("/api/workers/{}/series-bindings", connection.worker_id),
+        &connection.tokens.execution_token,
+        &body,
+        &connection.device_proof,
+        if_match.as_deref(),
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn worker_app_build_media_plan(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    series_id: String,
+    source_relative_name: String,
+    options: MediaPlanOptions,
+) -> Result<LocalMediaEditPlan, String> {
+    let workspace = state
+        .series_workspace
+        .lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?;
+    let root = workspace
+        .root
+        .as_ref()
+        .ok_or_else(|| "local_root_not_selected".to_string())?;
+    if root.series_id != series_id {
+        return Err("local_root_series_mismatch".into());
+    }
+    if source_relative_name.trim().is_empty()
+        || source_relative_name.starts_with('/')
+        || source_relative_name.contains('\\')
+        || source_relative_name
+            .split('/')
+            .any(|part| part == ".." || part.is_empty())
+    {
+        return Err("relative_path_escape".into());
+    }
+    let source = root
+        .root_path
+        .join(&source_relative_name)
+        .canonicalize()
+        .map_err(|_| "media_source_missing".to_string())?;
+    if !source.starts_with(&root.root_path) {
+        return Err("relative_path_escape".into());
+    }
+    let source_is_still = matches!(
+        source
+            .extension()
+            .and_then(|value| value.to_str())
+            .map(|value| value.to_ascii_lowercase())
+            .as_deref(),
+        Some("jpg" | "jpeg" | "png" | "webp")
+    );
+    let actual_duration_ms = if source_is_still {
+        options.source_duration_ms.max(1)
+    } else {
+        let app_data_dir = app
+            .path()
+            .app_data_dir()
+            .map_err(|error| format!("app data directory unavailable: {error}"))?;
+        let settings = state
+            .settings
+            .lock()
+            .map_err(|_| "settings lock poisoned".to_string())?
+            .clone();
+        let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+        probe_media_file(&source, &tools)?
+            .duration_ms
+            .ok_or_else(|| "source_duration_unknown".to_string())?
+    };
+    let mut bounded_options = options;
+    bounded_options.source_duration_ms = actual_duration_ms;
+    build_media_plan(&source_relative_name, &bounded_options)
+}
+
+#[tauri::command]
+pub async fn worker_app_process_media_asset(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    series_id: String,
+    plan: LocalMediaEditPlan,
+) -> Result<LocalMediaQc, String> {
+    let workspace = state
+        .series_workspace
+        .lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?;
+    let root = workspace
+        .root
+        .as_ref()
+        .ok_or_else(|| "local_root_not_selected".to_string())?;
+    if root.series_id != series_id {
+        return Err("local_root_series_mismatch".into());
+    }
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let settings = state
+        .settings
+        .lock()
+        .map_err(|_| "settings lock poisoned".to_string())?
+        .clone();
+    let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+    let output = run_allowlisted_ffmpeg(&root.root_path, &plan, &tools)?;
+    qc_derived_output_with_probe(&root.root_path, &output, &tools)
+}
+
+#[tauri::command]
+pub async fn worker_app_submit_media_job(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    series_id: String,
+    binding_revision: i32,
+    source_relative_name: String,
+    remove_dead_air: bool,
+    reframe_9x16: bool,
+    focus_mode: String,
+    focus_x: f64,
+    focus_y: f64,
+    still_motion: Option<String>,
+    max_duration_ms: u64,
+    processing_mode: String,
+    idempotency_key: String,
+) -> Result<Value, String> {
+    if binding_revision <= 0 {
+        return Err("series_binding_revision_required".into());
+    }
+    if processing_mode != "manual_intent" && processing_mode != "automated_ai_editing" {
+        return Err("media_processing_mode_invalid".into());
+    }
+    // Automated AI editing is an intent mode, not a reason to reject the
+    // deterministic local pipeline. Auto subject tracking is still blocked
+    // below until a validated vision track exists; manual focus remains a
+    // valid user-controlled input for automated trimming/reframing.
+    if reframe_9x16 && !matches!(focus_mode.as_str(), "manual_region") {
+        return Err("focus_track_requires_ai_worker".into());
+    }
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let settings = state
+        .settings
+        .lock()
+        .map_err(|_| "settings lock poisoned".to_string())?
+        .clone();
+    let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+    let connection = load_series_control_plane_connection(&app_data_dir)?;
+    let root = state
+        .series_workspace
+        .lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?
+        .root
+        .clone()
+        .ok_or_else(|| "local_root_not_selected".to_string())?;
+    if root.series_id != series_id {
+        return Err("local_root_series_mismatch".into());
+    }
+    let canonical_source = root
+        .root_path
+        .join(&source_relative_name)
+        .canonicalize()
+        .map_err(|_| "media_source_missing".to_string())?;
+    if !canonical_source.starts_with(&root.root_path) {
+        return Err("relative_path_escape".into());
+    }
+    let metadata =
+        fs::metadata(&canonical_source).map_err(|_| "media_source_missing".to_string())?;
+    let fingerprint = format!(
+        "{:064x}",
+        Sha256::digest(
+            format!(
+                "{}:{}:{}",
+                source_relative_name,
+                metadata.len(),
+                metadata
+                    .modified()
+                    .ok()
+                    .and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok())
+                    .map(|value| value.as_millis())
+                    .unwrap_or_default()
+            )
+            .as_bytes()
+        )
+    );
+    let asset_id = format!("local-{}", &fingerprint[..24]);
+    let source_probe = crate::media_pipeline::probe_media_file(&canonical_source, &tools).ok();
+    let duration_ms = source_probe.as_ref().and_then(|probe| probe.duration_ms);
+    let kind = match canonical_source
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("jpg" | "jpeg" | "png" | "webp") => "image",
+        _ => "video",
+    };
+    let target = if reframe_9x16 {
+        Some(
+            json!({ "targetId": "local-focus", "label": "Worker focus region", "kind": "manual_region", "confidence": 1.0, "normalizedX": focus_x.clamp(0.0, 1.0), "normalizedY": focus_y.clamp(0.0, 1.0) }),
+        )
+    } else {
+        None
+    };
+    let focus_track = if reframe_9x16 {
+        json!([{ "timeMs": 0, "normalizedX": focus_x.clamp(0.0, 1.0), "normalizedY": focus_y.clamp(0.0, 1.0), "confidence": 1.0, "method": "user_focus_region" }, { "timeMs": duration_ms.unwrap_or(max_duration_ms).min(max_duration_ms), "normalizedX": focus_x.clamp(0.0, 1.0), "normalizedY": focus_y.clamp(0.0, 1.0), "confidence": 1.0, "method": "user_focus_region" }])
+    } else {
+        json!([])
+    };
+    let tracking_mode = match focus_mode.as_str() {
+        "auto_object" => "auto_object",
+        "auto_subject" => "auto_subject",
+        "manual_region" => "manual_region",
+        _ => "auto_person",
+    };
+    let payload = json!({ "kind": "broll_preprocess", "seriesId": series_id, "binding": { "seriesId": root.series_id, "rootId": root.root_id, "rootFingerprint": root.root_fingerprint, "bindingRevision": binding_revision, "workspaceMode": root.workspace_mode, "status": "active" }, "source": { "assetId": asset_id, "kind": kind, "sourceRevision": fingerprint, "sourceFingerprint": fingerprint, "fileName": canonical_source.file_name().and_then(|value| value.to_str()).unwrap_or("media"), "relativeName": source_relative_name, "sizeBytes": metadata.len(), "durationMs": duration_ms, "captureAt": Value::Null }, "probe": { "width": source_probe.as_ref().and_then(|probe| probe.width), "height": source_probe.as_ref().and_then(|probe| probe.height), "fps": Value::Null, "durationMs": duration_ms, "hasAudio": source_probe.as_ref().map(|probe| probe.has_audio).unwrap_or(false), "rotationDegrees": 0, "codec": source_probe.as_ref().and_then(|probe| probe.codec.clone()), "container": source_probe.as_ref().and_then(|probe| probe.container.clone()) }, "editPlan": { "planId": format!("plan-{}", &fingerprint[..24]), "planRevision": "worker-local-v1", "mode": processing_mode, "aspectRatio": if reframe_9x16 { "9:16" } else { "source" }, "deadAir": { "enabled": remove_dead_air, "thresholdDb": -42, "minSilenceMs": 650, "padMs": 120 }, "budget": { "maxDurationMs": max_duration_ms.clamp(1000, 90000), "minDurationMs": 1000, "maxBrollMs": max_duration_ms.clamp(1000, 90000), "preserveNarrativeAudio": true }, "segments": [{ "segmentId": "segment-1", "sourceAssetId": asset_id, "sourceRevision": fingerprint, "startMs": 0, "endMs": duration_ms.unwrap_or(max_duration_ms).min(max_duration_ms), "removeDeadAir": remove_dead_air, "reframe": { "enabled": reframe_9x16, "target": target, "trackingMode": tracking_mode, "aspectRatio": "9:16", "maxCropFraction": 0.6, "fallback": "reject", "focusTrack": focus_track }, "stillMotion": still_motion.map(|motion| json!({ "enabled": true, "motion": motion, "startScale": 1.0, "endScale": 1.18, "durationMs": max_duration_ms.clamp(500, 90000) })) }], "rationale": if processing_mode == "automated_ai_editing" { "Worker App automated AI editing intent" } else { "Worker App local preprocessing intent" } }, "idempotencyKey": idempotency_key });
+    post_worker_json(
+        &connection.server_url,
+        &format!("/api/workers/{}/media-jobs", connection.worker_id),
+        &connection.tokens.execution_token,
+        &json!({ "payload": payload }),
+        &connection.device_proof,
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn worker_app_submit_media_ingest_job(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    series_id: String,
+    binding_revision: i32,
+    idempotency_key: String,
+) -> Result<Value, String> {
+    if binding_revision <= 0 {
+        return Err("series_binding_revision_required".into());
+    }
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let connection = load_series_control_plane_connection(&app_data_dir)?;
+    let root = state
+        .series_workspace
+        .lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?
+        .root
+        .clone()
+        .ok_or_else(|| "local_root_not_selected".to_string())?;
+    if root.series_id != series_id {
+        return Err("local_root_series_mismatch".into());
+    }
+    let root_fingerprint = format!("{:064x}", Sha256::digest(root.root_id.as_bytes()));
+    let payload = json!({ "kind": "media_ingest", "seriesId": series_id, "binding": { "seriesId": root.series_id, "rootId": root.root_id, "rootFingerprint": root.root_fingerprint, "bindingRevision": binding_revision, "workspaceMode": root.workspace_mode, "status": "active" }, "source": { "assetId": format!("root-{}", &root_fingerprint[..24]), "kind": "video", "sourceRevision": root_fingerprint, "sourceFingerprint": root_fingerprint, "fileName": "local-footage-root", "relativeName": ".", "sizeBytes": 0, "durationMs": Value::Null, "captureAt": Value::Null }, "idempotencyKey": idempotency_key });
+    post_worker_json(
+        &connection.server_url,
+        &format!("/api/workers/{}/media-jobs", connection.worker_id),
+        &connection.tokens.execution_token,
+        &json!({ "payload": payload }),
+        &connection.device_proof,
+    )
+    .await
 }
 
 #[tauri::command]
@@ -2158,8 +3564,13 @@ pub async fn worker_app_poll_connect_session(
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionHealth {
-    /// `false` means the saved credentials no longer work — the user must
-    /// reconnect. The UI raises a NATIVE dialog for this.
+    /// Transport availability is deliberately separate from credential
+    /// validity. A timeout during a server restart must not become a
+    /// reconnect-required verdict.
+    pub status: ConnectionHealthStatus,
+    /// `false` means the current health check did not prove a healthy
+    /// connection. Inspect `status` before deciding whether reconnect is
+    /// required; transient outages must not trigger a native dialog.
     pub healthy: bool,
     pub connected: bool,
     pub reason: Option<String>,
@@ -2173,11 +3584,23 @@ pub struct ConnectionHealth {
     pub checked_at: String,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ConnectionHealthStatus {
+    Healthy,
+    Transient,
+    Unavailable,
+    ReconnectRequired,
+}
+
 /// Why a read-only access probe could not answer.
 enum ProbeOutcome {
     /// The server actively refused the credentials — this is a real verdict
     /// and the user must reconnect.
     Rejected(String),
+    /// The server could not answer, so this is not a verdict about the
+    /// credentials. The UI should retry without asking the user to reconnect.
+    Transient(String),
     /// The probe could not be made with the credentials on hand (execution
     /// token missing or about to expire). Not a verdict about the connection.
     NeedsRefresh(String),
@@ -2266,8 +3689,9 @@ async fn probe_worker_access(
                 Err(ProbeOutcome::Rejected(error))
             } else {
                 // Unreachable server, timeout, 5xx, rate limit: say nothing
-                // about the credentials. Retry on the next scheduled check.
-                Err(ProbeOutcome::NeedsRefresh(error))
+                // about the credentials. Retry without invalidating the
+                // saved connection.
+                Err(ProbeOutcome::Transient(error))
             }
         }
     }
@@ -2284,6 +3708,43 @@ fn is_worker_auth_rejection(error: &str) -> bool {
         || normalized.contains("(403)")
         || normalized.contains("revoked")
         || normalized.contains("device")
+}
+
+/// True only for failures where the control plane did not provide a durable
+/// credential verdict. Keep this separate from `is_worker_auth_rejection` so
+/// the health command can preserve the saved connection during an outage.
+fn is_transient_control_plane_error(error: &str) -> bool {
+    let normalized = error.to_lowercase();
+    normalized.contains("timed out")
+        || normalized.contains("control plane request failed")
+        || normalized.contains("failed to read control plane response")
+        || normalized.contains("failed to parse worker control plane json")
+        || [
+            "(408)", "(425)", "(429)", "(500)", "(501)", "(502)", "(503)", "(504)", "(505)",
+            "http 408", "http 425", "http 429", "http 500", "http 501", "http 502", "http 503",
+            "http 504", "http 505",
+        ]
+        .iter()
+        .any(|marker| normalized.contains(marker))
+}
+
+fn connection_health_for(
+    stored: &StoredWorkerConnection,
+    status: ConnectionHealthStatus,
+    reason: Option<String>,
+) -> ConnectionHealth {
+    let (expires_at, hours_until_expiry) = refresh_token_expiry_summary(stored);
+    ConnectionHealth {
+        status,
+        healthy: matches!(status, ConnectionHealthStatus::Healthy),
+        connected: true,
+        reason,
+        worker_name: Some(stored.worker.display_name.clone()),
+        expires_at,
+        expiring_soon: hours_until_expiry.is_some_and(|hours| hours <= 24),
+        hours_until_expiry,
+        checked_at: now_rfc3339(),
+    }
 }
 
 /// Reads the `exp` claim out of a JWT WITHOUT verifying the signature.
@@ -2332,6 +3793,7 @@ pub async fn worker_app_check_connection_health(
         .map_err(|error| format!("app data directory unavailable: {error}"))?;
     let Some(stored) = load_connection(&app_data_dir)? else {
         return Ok(ConnectionHealth {
+            status: ConnectionHealthStatus::ReconnectRequired,
             healthy: false,
             connected: false,
             reason: Some("No saved Worker App connection.".into()),
@@ -2354,6 +3816,13 @@ pub async fn worker_app_check_connection_health(
     let probed = match probe_worker_access(&app_data_dir, &stored).await {
         Ok(()) => Ok(stored.clone()),
         Err(ProbeOutcome::Rejected(reason)) => Err(reason),
+        Err(ProbeOutcome::Transient(reason)) => {
+            return Ok(connection_health_for(
+                &stored,
+                ConnectionHealthStatus::Transient,
+                Some(reason),
+            ));
+        }
         // The execution token is too old to probe with (or absent). Fall back
         // to a rotation — which is the correct action anyway at that point.
         Err(ProbeOutcome::NeedsRefresh(detail)) => {
@@ -2379,6 +3848,7 @@ pub async fn worker_app_check_connection_health(
                 }),
             );
             Ok(ConnectionHealth {
+                status: ConnectionHealthStatus::Healthy,
                 healthy: true,
                 connected: true,
                 reason: None,
@@ -2395,25 +3865,31 @@ pub async fn worker_app_check_connection_health(
             // is recorded separately from `connection.refresh.failed` because
             // the user only ever sees THIS one, and a bug report needs the two
             // side by side to tell a real revocation from a lost race.
-            crate::diagnostics::log_error(
+            let status = if is_transient_control_plane_error(&error) {
+                ConnectionHealthStatus::Transient
+            } else {
+                ConnectionHealthStatus::ReconnectRequired
+            };
+            let event = if matches!(status, ConnectionHealthStatus::Transient) {
+                "connection.health.transient"
+            } else {
+                "connection.health.unhealthy"
+            };
+            crate::diagnostics::log_event(
                 &app_data_dir,
-                "connection.health.unhealthy",
+                if matches!(status, ConnectionHealthStatus::Transient) {
+                    LogLevel::Warn
+                } else {
+                    LogLevel::Error
+                },
+                event,
                 json!({
                     "workerName": worker_name,
                     "reason": error,
+                    "status": status,
                 }),
             );
-            let (expires_at, hours_until_expiry) = refresh_token_expiry_summary(&stored);
-            Ok(ConnectionHealth {
-                healthy: false,
-                connected: true,
-                reason: Some(error),
-                worker_name,
-                expires_at,
-                expiring_soon: hours_until_expiry.is_some_and(|hours| hours <= 24),
-                hours_until_expiry,
-                checked_at,
-            })
+            Ok(connection_health_for(&stored, status, Some(error)))
         }
     }
 }
@@ -3727,8 +5203,7 @@ fn extract_runtime_archive(archive_path: &Path, app_data_dir: &Path) -> Result<(
     if !staged_sidecars.is_dir() {
         return Err("Runtime archive must contain sidecars/.".into());
     }
-    replace_dir(&staged_runtime_pack, &app_data_dir.join("runtime-pack"))?;
-    replace_dir(&staged_sidecars, &app_data_dir.join("sidecars"))?;
+    replace_runtime_directories(&staged_runtime_pack, &staged_sidecars, app_data_dir)?;
     let _ = fs::remove_dir_all(&install_root);
     Ok(())
 }
@@ -3746,8 +5221,8 @@ fn safe_archive_output_path(root: &Path, name: &str) -> Result<PathBuf, String> 
 }
 
 fn replace_dir(from: &Path, to: &Path) -> Result<(), String> {
-    if to.exists() {
-        let temp_old = to.with_file_name(format!(
+    let previous = if to.exists() {
+        let backup = to.with_file_name(format!(
             "{}_old_{}",
             to.file_name().unwrap_or_default().to_string_lossy(),
             std::time::SystemTime::now()
@@ -3756,18 +5231,124 @@ fn replace_dir(from: &Path, to: &Path) -> Result<(), String> {
                 .as_millis()
         ));
 
-        if let Err(e) = fs::rename(to, &temp_old) {
-            return Err(format!("failed to move previous runtime directory: {e}"));
+        if let Err(error) = fs::rename(to, &backup) {
+            return Err(format!(
+                "failed to move previous runtime directory: {error}"
+            ));
         }
+        Some(backup)
+    } else {
+        None
+    };
 
-        // We can safely ignore if this fails immediately, as it's just cleanup
-        let _ = fs::remove_dir_all(&temp_old);
-    }
     if let Some(parent) = to.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|error| format!("failed to create runtime parent directory: {error}"))?;
+        if let Err(error) = fs::create_dir_all(parent) {
+            if let Some(previous) = previous.as_ref() {
+                let _ = fs::rename(previous, to);
+            }
+            return Err(format!(
+                "failed to create runtime parent directory: {error}"
+            ));
+        }
     }
-    fs::rename(from, to).map_err(|error| format!("failed to install runtime directory: {error}"))
+
+    match fs::rename(from, to) {
+        Ok(()) => {
+            if let Some(previous) = previous {
+                let _ = fs::remove_dir_all(previous);
+            }
+            Ok(())
+        }
+        Err(error) => {
+            let restore_error = previous.and_then(|previous| fs::rename(previous, to).err());
+            if let Some(restore_error) = restore_error {
+                Err(format!(
+                    "failed to install runtime directory: {error}; failed to restore previous runtime directory: {restore_error}"
+                ))
+            } else {
+                Err(format!("failed to install runtime directory: {error}"))
+            }
+        }
+    }
+}
+
+/// Replace the two directories that form one runtime release as a single
+/// recoverable operation. Keeping `runtime-pack` and `sidecars` from
+/// different archives can make the next launch fail in non-obvious ways, so
+/// a failure in either move restores the previous pair before returning.
+fn replace_runtime_directories(
+    staged_runtime_pack: &Path,
+    staged_sidecars: &Path,
+    app_data_dir: &Path,
+) -> Result<(), String> {
+    let runtime_pack = app_data_dir.join("runtime-pack");
+    let sidecars = app_data_dir.join("sidecars");
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    let runtime_pack_backup = app_data_dir.join(format!("runtime-pack_old_{stamp}"));
+    let sidecars_backup = app_data_dir.join(format!("sidecars_old_{stamp}"));
+
+    if !staged_runtime_pack.is_dir() {
+        return Err("staged runtime-pack directory is missing".into());
+    }
+    if !staged_sidecars.is_dir() {
+        return Err("staged sidecars directory is missing".into());
+    }
+
+    let mut runtime_pack_backed_up = false;
+    let mut sidecars_backed_up = false;
+    let mut runtime_pack_installed = false;
+    let mut sidecars_installed = false;
+
+    let result = (|| {
+        if runtime_pack.exists() {
+            fs::rename(&runtime_pack, &runtime_pack_backup)
+                .map_err(|error| format!("failed to move previous runtime directory: {error}"))?;
+            runtime_pack_backed_up = true;
+        }
+        if sidecars.exists() {
+            if let Err(error) = fs::rename(&sidecars, &sidecars_backup) {
+                return Err(format!(
+                    "failed to move previous sidecars directory: {error}"
+                ));
+            }
+            sidecars_backed_up = true;
+        }
+        fs::rename(staged_runtime_pack, &runtime_pack)
+            .map_err(|error| format!("failed to install runtime directory: {error}"))?;
+        runtime_pack_installed = true;
+        fs::rename(staged_sidecars, &sidecars)
+            .map_err(|error| format!("failed to install sidecars directory: {error}"))?;
+        sidecars_installed = true;
+        Ok(())
+    })();
+
+    if result.is_ok() {
+        if runtime_pack_backed_up {
+            let _ = fs::remove_dir_all(&runtime_pack_backup);
+        }
+        if sidecars_backed_up {
+            let _ = fs::remove_dir_all(&sidecars_backup);
+        }
+        return Ok(());
+    }
+
+    if sidecars_installed {
+        let _ = fs::remove_dir_all(&sidecars);
+    }
+    if runtime_pack_installed {
+        let _ = fs::remove_dir_all(&runtime_pack);
+    }
+    if sidecars_backed_up {
+        let _ = fs::rename(&sidecars_backup, &sidecars);
+    }
+    if runtime_pack_backed_up {
+        let _ = fs::rename(&runtime_pack_backup, &runtime_pack);
+    }
+
+    result
 }
 
 fn active_connected_device_proof(
@@ -4459,10 +6040,10 @@ mod connection_health_tests {
 #[cfg(test)]
 mod refresh_coalescing_tests {
     use super::{
-        is_worker_auth_rejection, refresh_can_be_coalesced, remaining_token_seconds,
-        REFRESH_COALESCE_WINDOW_SECONDS,
+        is_transient_control_plane_error, is_worker_auth_rejection, refresh_can_be_coalesced,
+        remaining_token_seconds, REFRESH_COALESCE_WINDOW_SECONDS,
     };
-    use super::{WorkerConnectTokens, WorkerConnectWorker};
+    use super::{ConnectionHealthStatus, WorkerConnectTokens, WorkerConnectWorker};
     use crate::credentials::StoredWorkerConnection;
     use base64::Engine as _;
     use time::{format_description::well_known::Rfc3339, OffsetDateTime};
@@ -4549,6 +6130,41 @@ mod refresh_coalescing_tests {
     }
 
     #[test]
+    fn transient_control_plane_failures_are_retryable() {
+        for error in [
+            "worker control plane request timed out after 30000ms",
+            "worker control plane request failed: connection reset",
+            "worker control plane returned HTTP 429: too many requests",
+            "worker control plane returned HTTP 503: upstream unavailable",
+        ] {
+            assert!(is_transient_control_plane_error(error), "{error}");
+        }
+    }
+
+    #[test]
+    fn credential_verdicts_are_not_transient() {
+        for error in [
+            "worker control plane returned HTTP 401: Worker token has been revoked",
+            "worker control plane returned HTTP 403: worker scope mismatch",
+            "worker control plane returned HTTP 401: Worker device proof is required",
+        ] {
+            assert!(!is_transient_control_plane_error(error), "{error}");
+        }
+    }
+
+    #[test]
+    fn health_status_uses_the_react_boundary_names() {
+        assert_eq!(
+            serde_json::to_string(&ConnectionHealthStatus::ReconnectRequired).unwrap(),
+            "\"reconnectRequired\""
+        );
+        assert_eq!(
+            serde_json::to_string(&ConnectionHealthStatus::Transient).unwrap(),
+            "\"transient\""
+        );
+    }
+
+    #[test]
     fn server_auth_verdicts_are_rejections() {
         assert!(is_worker_auth_rejection(
             "server rejected worker connection (401): Worker token has been revoked"
@@ -4567,15 +6183,19 @@ mod tests {
     use super::{
         build_start_connect_registration_payload, is_windows_installer_payload,
         is_worker_app_update_url, normalize_machine_fingerprint_hash,
-        parse_managed_wsl_runtime_version, runtime_update_available, same_url_origin,
-        summarize_local_device_proof, token_device_binding_mismatches, validate_windows_installer,
-        worker_connect_url, WorkerTokenBindingSummary,
+        parse_managed_wsl_runtime_version, replace_dir, replace_runtime_directories,
+        runtime_update_available, same_url_origin, summarize_local_device_proof,
+        token_device_binding_mismatches, validate_windows_installer, worker_connect_url,
+        WorkerTokenBindingSummary,
+        build_comfy_upload_arguments,
+        find_comfy_schema_section, is_allowed_comfy_output_path,
     };
     use crate::credentials::{WorkerDeviceBinding, WorkerDeviceProofMaterial};
     use crate::runtime_manifest::DoctorSummary;
     use crate::settings::WorkerAppSettings;
     use base64::Engine;
     use std::fs;
+    use std::path::Path;
 
     #[test]
     fn worker_connect_url_uses_configured_server_without_double_slashes() {
@@ -4583,6 +6203,31 @@ mod tests {
             worker_connect_url("https://smartaihub.app/"),
             "https://smartaihub.app/workers/connect",
         );
+    }
+
+    #[test]
+    fn comfy_upload_arguments_use_path_for_local_and_base64_for_remote() {
+        let schema = r#"{"type":"object","properties":{"file_path":{"type":"string"},"file_name":{"type":"string"},"mime_type":{"type":"string"}}}"#;
+        let local = build_comfy_upload_arguments(Some(schema), Path::new("C:/input/a.png"), "a.png", "image/png", b"png", true).unwrap();
+        assert_eq!(local.get("file_path").and_then(|value| value.as_str()), Some("C:/input/a.png"));
+        let remote_schema = r#"{"type":"object","properties":{"data":{"type":"string"},"fileName":{"type":"string"}}}"#;
+        let remote = build_comfy_upload_arguments(Some(remote_schema), Path::new("a.png"), "a.png", "image/png", b"png", false).unwrap();
+        assert_eq!(remote.get("data").and_then(|value| value.as_str()), Some("cG5n"));
+        assert_eq!(remote.get("fileName").and_then(|value| value.as_str()), Some("a.png"));
+    }
+
+    #[test]
+    fn direct_workflow_schema_is_used_when_mcp_does_not_wrap_input() {
+        let schema = serde_json::json!({"type":"object","properties":{"prompt":{"type":"string"}},"required":["prompt"]});
+        assert_eq!(find_comfy_schema_section(&schema, &["inputSchema", "schema"]), schema);
+    }
+
+    #[test]
+    fn local_comfy_outputs_are_limited_to_media_files() {
+        assert!(is_allowed_comfy_output_path(Path::new("output.png")));
+        assert!(is_allowed_comfy_output_path(Path::new("clip.MP4")));
+        assert!(!is_allowed_comfy_output_path(Path::new("result.json")));
+        assert!(!is_allowed_comfy_output_path(Path::new("secret.txt")));
     }
 
     #[test]
@@ -4613,6 +6258,63 @@ mod tests {
         ));
         assert!(runtime_update_available(None, Some("2026.08.04.2"), true));
         assert!(!runtime_update_available(Some("2026.08.04.1"), None, true));
+    }
+
+    #[test]
+    fn replacing_runtime_restores_previous_directory_when_install_fails() {
+        let temp = tempfile::tempdir().unwrap();
+        let current = temp.path().join("runtime-pack");
+        let missing_staged = temp.path().join("staged-runtime-pack");
+        fs::create_dir_all(&current).unwrap();
+        fs::write(current.join("marker.txt"), "previous").unwrap();
+
+        let result = replace_dir(&missing_staged, &current);
+
+        assert!(result.is_err());
+        assert_eq!(
+            fs::read_to_string(current.join("marker.txt")).unwrap(),
+            "previous"
+        );
+    }
+
+    #[test]
+    fn replacing_runtime_directories_installs_matching_runtime_and_sidecars() {
+        let temp = tempfile::tempdir().unwrap();
+        let staged = temp.path().join("runtime-install");
+        let staged_runtime = staged.join("runtime-pack");
+        let staged_sidecars = staged.join("sidecars");
+        fs::create_dir_all(&staged_runtime).unwrap();
+        fs::create_dir_all(&staged_sidecars).unwrap();
+        fs::write(staged_runtime.join("manifest.json"), "new-runtime").unwrap();
+        fs::write(staged_sidecars.join("render.mjs"), "new-sidecar").unwrap();
+
+        let current_runtime = temp.path().join("runtime-pack");
+        let current_sidecars = temp.path().join("sidecars");
+        fs::create_dir_all(&current_runtime).unwrap();
+        fs::create_dir_all(&current_sidecars).unwrap();
+        fs::write(current_runtime.join("manifest.json"), "old-runtime").unwrap();
+        fs::write(current_sidecars.join("render.mjs"), "old-sidecar").unwrap();
+
+        replace_runtime_directories(&staged_runtime, &staged_sidecars, temp.path()).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(current_runtime.join("manifest.json")).unwrap(),
+            "new-runtime"
+        );
+        assert_eq!(
+            fs::read_to_string(current_sidecars.join("render.mjs")).unwrap(),
+            "new-sidecar"
+        );
+        assert!(!staged_runtime.exists());
+        assert!(!staged_sidecars.exists());
+        assert_eq!(
+            fs::read_dir(temp.path())
+                .unwrap()
+                .filter_map(Result::ok)
+                .filter(|entry| entry.file_name().to_string_lossy().contains("_old_"))
+                .count(),
+            0
+        );
     }
 
     #[test]

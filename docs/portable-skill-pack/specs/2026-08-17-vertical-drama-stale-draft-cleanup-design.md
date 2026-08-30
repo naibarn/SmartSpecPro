@@ -3,7 +3,7 @@
 ## Goal
 
 Reduce Draft Job Inbox loading and clutter by offering an owner-scoped cleanup
-when inactive pre-series Draft jobs are older than 5, 7, or 10 days. Existing
+when inactive pre-series Draft jobs are older than 7 or 10 days. Existing
 series data and Draft jobs already applied to a series must never be changed.
 
 ## Considered approaches
@@ -21,7 +21,8 @@ series data and Draft jobs already applied to a series must never be changed.
 ## Eligibility and safety contract
 
 - Inactivity is measured from the server-owned `updatedAt` timestamp.
-- Allowed thresholds are exactly `5 | 7 | 10` days.
+- Allowed thresholds are exactly `7 | 10` days. Seven days is the minimum
+  grace period for this maintenance action.
 - Active states `queued`, `composing`, and `qc_running` are excluded.
 - `applied` and `archived` are excluded. In particular, cleanup cannot affect a
   Draft that has already been used to create a series.
@@ -37,7 +38,7 @@ series data and Draft jobs already applied to a series must never be changed.
 ## Server contract
 
 `listDraftJobs` returns its existing metadata-only `jobs` array plus a cleanup
-summary containing counts for 5, 7, and 10 days. Counts are calculated across
+summary containing counts for 7 and 10 days. Counts are calculated across
 all eligible unarchived jobs, not only the first 50 visible rows.
 
 A new authenticated `archiveStaleDraftJobs` mutation accepts a threshold from
@@ -47,28 +48,28 @@ number archived. No schema migration or new dependency is required.
 ## User experience
 
 After the Draft Inbox metadata loads successfully on `/drama-series`, the UI
-opens one accessible alert dialog when at least one eligible job is older than
-5 days. The dialog:
+shows a non-blocking maintenance banner when at least one eligible job is older
+than 7 days. The user explicitly opens the accessible alert dialog from that
+banner. The dialog:
 
-- explains that only inactive Draft jobs are being removed from the inbox;
-- states that created series are unaffected;
-- offers 5, 7, and 10 day choices with the current matching count for each;
-- requires an explicit destructive confirmation;
+- explains that only inactive Draft jobs are being archived from the active inbox;
+- states that created series and Draft history are unaffected;
+- offers 7 and 10 day choices with the current matching count for each;
+- requires an explicit archive confirmation;
 - disables dismissal/actions while the archive mutation is pending;
 - shows a success or error toast, then refreshes the inbox on success.
 
-The prompt opens at most once per mounted page for a given cleanup-summary
-signature, so background polling/refetches do not repeatedly interrupt a user
-who declines. A manual reload may offer cleanup again while eligible jobs remain.
+The dialog never opens automatically, so background polling/refetches cannot
+interrupt a creator. The banner remains available while eligible jobs remain.
 
 ## Data flow and failure handling
 
 1. The index route loads the existing metadata-only Draft list and cleanup
    summary.
-2. The client derives whether the dialog should be offered and defaults to the
-   least destructive 10-day threshold when that bucket is non-empty; otherwise
-   it uses the oldest available bucket.
-3. The user may select any non-empty 5/7/10-day bucket and confirm.
+2. The client shows a maintenance banner and defaults the dialog to the
+   least-destructive 10-day threshold when that bucket is non-empty; otherwise
+   it uses the 7-day bucket.
+3. The user may select any non-empty 7/10-day bucket and confirm.
 4. The server archives only rows that still satisfy owner, state, and cutoff
    predicates.
 5. Success closes the dialog and refreshes the list/counts. A zero-row result is
@@ -82,8 +83,8 @@ who declines. A manual reload may offer cleanup again while eligible jobs remain
   dependence on the 50-row display limit.
 - Router tests or contract-level tests prove the fixed threshold input and
   owner-scoped call.
-- UI tests prove automatic offer, 5/7/10 counts, default threshold, decline
-  suppression during refetch, pending state, success refresh, and failure state.
+- UI tests prove no automatic interruption, 7/10 counts, default threshold,
+  explicit open, pending state, success refresh, and failure state.
 - Run focused Vitest suites, targeted TypeScript diagnostics, Prettier check,
   and scoped `git diff --check`. Browser evidence is reported separately if an
   authenticated browser session is unavailable.

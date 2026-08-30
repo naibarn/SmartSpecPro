@@ -254,14 +254,14 @@ describe("runVerticalDramaLedgerPlanning — schema validation & row-dropping", 
 });
 
 describe("runVerticalDramaLedgerPlanning — post-LLM deductCredits failure handling", () => {
-  it("does not throw and still returns the ledgers when deductCredits fails after a successful LLM call", async () => {
+  it("fails visibly when the credit ledger cannot record a successful LLM call", async () => {
     mockSuccessfulLlmResponse();
     mockDeductCredits.mockRejectedValue(new Error("db down"));
 
-    const result = await runVerticalDramaLedgerPlanning(baseParams());
-
-    expect(result.ledgers.evidenceLedger).toHaveLength(1);
-    expect(mockDebugError).toHaveBeenCalledTimes(1);
+    await expect(runVerticalDramaLedgerPlanning(baseParams())).rejects.toThrow(
+      "db down",
+    );
+    expect(mockDebugError).not.toHaveBeenCalled();
   });
 });
 

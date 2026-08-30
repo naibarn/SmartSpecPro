@@ -228,7 +228,8 @@ plan. Specifically, each `prompt` must include:
    left side of the frame" — never "<name> (Image N, leftmost)", which reads
    as if the index implied the position.
    **State the identity-lock attribute list ONCE per character** (face shape,
-   skin tone, hairstyle, clothing/outfit, distinguishing features), woven into
+   skin tone, hairstyle, clothing/outfit, distinguishing features, apparent
+   age), woven into
    that character's own description — do not re-list the same attributes or
    repeat intensifiers like "precisely" sentence after sentence; repetition
    does not add strength, it dilutes the model's attention on the rest of the
@@ -237,6 +238,15 @@ plan. Specifically, each `prompt` must include:
    the shot size cannot show (e.g. shoes in a waist-up medium two-shot),
    which pressures the model to widen the framing into an unintended full
    shot.
+   **APPARENT-AGE LOCK (MANDATORY):** the reference image's apparent age and
+   age impression are authoritative. Match the same apparent age exactly;
+   never age the character up or down, and never make the face look older,
+   more mature, more lined, more gaunt, or more senior because of role,
+   relationship, wardrobe, lighting, makeup, emotional intensity, camera
+   angle, story context, or any textual age label; this reference-image rule
+   overrides those descriptions. Do not add wrinkles, crow's feet, sagging
+   skin, age spots, gray hair, hollow cheeks, deep nasolabial folds, or aged
+   facial texture unless visible in the character's own reference image.
 8. **Screen-caller reference lock (MANDATORY when a shot line contains `screen_callers:`).** A screen caller is a real approved character reference that MUST remain attached, but is NOT a person physically present in the room. Show that character only as a clearly visible image/video-call participant inside the phone, tablet, monitor, or other call-screen surface explicitly described by the shot. Never place the caller's body, face, or duplicate outside that device screen. Include the caller's attached image in the mapping and keep its identity exact. This rule does not increase the physical `required_characters` count: screen callers are device-mediated references, not people standing in the room.
    If the shot carries a user-selected scene/caller role, preserve it exactly. Do not reclassify, move, add, or remove a reference from that role because the synopsis mentions the character elsewhere.
 

@@ -76,6 +76,7 @@ ENV CHROME_BIN=/usr/bin/chromium-browser
 RUN apk add --no-cache \
     chromium \
     ffmpeg \
+    postgresql-client \
     fontconfig \
     font-noto \
     font-noto-thai \

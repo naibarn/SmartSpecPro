@@ -4,48 +4,61 @@
  * Features: Multi-column layout, social links, newsletter
  */
 
-import { Link } from 'wouter';
-import { motion } from 'framer-motion';
-import { Sparkles, Github, Twitter, Linkedin, Mail } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useTenant } from '@/contexts/TenantContext';
+import { useEffect, useState } from "react";
+import { Link } from "wouter";
+import { motion } from "framer-motion";
+import { Sparkles, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useTenant } from "@/contexts/TenantContext";
 
 const footerLinks = {
   product: [
-    { label: 'Features', href: '/features' },
-    { label: 'Pricing', href: '/pricing' },
-    { label: 'Documentation', href: '/docs' },
-    { label: 'Changelog', href: '/changelog' },
+    { label: "Features", href: "/features" },
+    { label: "Pricing", href: "/pricing" },
+    { label: "Documentation", href: "/docs" },
+    { label: "Changelog", href: "/changelog" },
   ],
   company: [
-    { label: 'About', href: '/about' },
-    { label: 'Blog', href: '/blog' },
-    { label: 'Careers', href: '/careers' },
-    { label: 'Contact', href: '/contact' },
+    { label: "About", href: "/about" },
+    { label: "Blog", href: "/blog" },
+    { label: "Careers", href: "/careers" },
+    { label: "Contact", href: "/contact" },
   ],
   resources: [
-    { label: 'Community', href: '/community' },
-    { label: 'Support', href: '/support' },
-    { label: 'Site Index', href: '/resources' },
-    { label: 'Developer Docs', href: '/docs/api' },
-    { label: 'Status', href: '/status' },
+    { label: "Community", href: "/community" },
+    { label: "Support", href: "/support" },
+    { label: "Site Index", href: "/resources" },
+    { label: "Developer Docs", href: "/docs/api" },
+    { label: "Status", href: "/status" },
   ],
   legal: [
-    { label: 'Privacy', href: '/privacy' },
-    { label: 'Terms', href: '/terms' },
-    { label: 'Security', href: '/security' },
+    { label: "Privacy", href: "/privacy" },
+    { label: "Terms", href: "/terms" },
+    { label: "Security", href: "/security" },
   ],
 };
 
-const socialLinks = [
-  { icon: Github, href: 'https://github.com/smartaihub', label: 'GitHub' },
-  { icon: Twitter, href: 'https://twitter.com/smartaihub', label: 'Twitter' },
-  { icon: Linkedin, href: 'https://linkedin.com/company/smartaihub', label: 'LinkedIn' },
+const supportLinks = [
+  {
+    href: "https://www.facebook.com/groups/1421105783223209",
+    label: "Support Group",
+  },
+  {
+    href: "https://www.facebook.com/smartaihubthailand",
+    label: "Announcement Page",
+  },
 ];
 
 export function Footer() {
   const { tenant } = useTenant();
+  const tenantLogoUrl = tenant?.websiteLogoUrl || tenant?.logoUrl || "";
+  const [logoLoadFailed, setLogoLoadFailed] = useState(false);
+
+  useEffect(() => {
+    setLogoLoadFailed(false);
+  }, [tenantLogoUrl]);
+
   return (
     <footer className="relative bg-gradient-to-b from-background to-muted/30 border-t border-border/50">
       {/* Decorative gradient orbs */}
@@ -56,7 +69,7 @@ export function Footer() {
 
       <div className="container relative mx-auto px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         {/* Newsletter Section */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -70,9 +83,9 @@ export function Footer() {
               </p>
             </div>
             <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-              <Input 
-                type="email" 
-                placeholder="Enter your email" 
+              <Input
+                type="email"
+                placeholder="Enter your email"
                 className="h-11 w-full bg-background/50 lg:w-80"
               />
               <Button className="h-11 w-full bg-gradient-to-r from-violet-500 to-teal-400 text-white whitespace-nowrap sm:w-auto">
@@ -88,32 +101,39 @@ export function Footer() {
           <div className="col-span-2 md:col-span-3 lg:col-span-2">
             <Link href="/">
               <div className="flex items-center gap-2 mb-4 cursor-pointer">
-                {(tenant?.websiteLogoUrl || tenant?.logoUrl) ? (
-                  <img src={tenant.websiteLogoUrl || tenant.logoUrl} alt={tenant.name || "Logo"} className="h-10 w-auto object-contain" />
+                {tenantLogoUrl && !logoLoadFailed ? (
+                  <img
+                    src={tenantLogoUrl}
+                    alt={tenant?.name || "Logo"}
+                    className="h-10 w-auto object-contain"
+                    onError={() => setLogoLoadFailed(true)}
+                  />
                 ) : (
                   <>
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-cyan-400 to-teal-400 flex items-center justify-center">
                       <Sparkles className="w-5 h-5 text-white" />
                     </div>
-                    <span className="text-xl font-bold gradient-text">SmartAIHub</span>
+                    <span className="text-xl font-bold gradient-text">
+                      SmartAIHub
+                    </span>
                   </>
                 )}
               </div>
             </Link>
             <p className="text-muted-foreground mb-6 max-w-sm">
-              Discover reusable skills, orchestrate virtual workflows, and ship enterprise outputs through a shared marketplace.
+              Discover reusable skills, orchestrate virtual workflows, and ship
+              enterprise outputs through a shared marketplace.
             </p>
-            <div className="flex gap-3">
-              {socialLinks.map((social) => (
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              {supportLinks.map(social => (
                 <a
                   key={social.label}
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-lg bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors"
-                  aria-label={social.label}
+                  className="text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
                 >
-                  <social.icon className="w-5 h-5 text-muted-foreground" />
+                  {social.label}
                 </a>
               ))}
             </div>
@@ -123,7 +143,7 @@ export function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Product</h4>
             <ul className="space-y-3">
-              {footerLinks.product.map((link) => (
+              {footerLinks.product.map(link => (
                 <li key={link.label}>
                   <Link href={link.href}>
                     <span className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
@@ -139,7 +159,7 @@ export function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Company</h4>
             <ul className="space-y-3">
-              {footerLinks.company.map((link) => (
+              {footerLinks.company.map(link => (
                 <li key={link.label}>
                   <Link href={link.href}>
                     <span className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
@@ -155,7 +175,7 @@ export function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Resources</h4>
             <ul className="space-y-3">
-              {footerLinks.resources.map((link) => (
+              {footerLinks.resources.map(link => (
                 <li key={link.label}>
                   <Link href={link.href}>
                     <span className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
@@ -171,7 +191,7 @@ export function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Legal</h4>
             <ul className="space-y-3">
-              {footerLinks.legal.map((link) => (
+              {footerLinks.legal.map(link => (
                 <li key={link.label}>
                   <Link href={link.href}>
                     <span className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
@@ -191,8 +211,11 @@ export function Footer() {
           </p>
           <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
             <Mail className="w-4 h-4" />
-            <a href="mailto:hello@smartaihub.app" className="break-all hover:text-foreground transition-colors">
-              hello@smartaihub.app
+            <a
+              href="mailto:smartaihubapp@gmail.com"
+              className="break-all hover:text-foreground transition-colors"
+            >
+              smartaihubapp@gmail.com
             </a>
           </div>
         </div>

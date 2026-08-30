@@ -24,6 +24,7 @@ function payload() {
   return {
     tenantId: "tenant-1",
     userId: 7,
+    seriesId: 101,
     draftSessionId: "session-1",
     synthesis: {
       locale: "th" as const,
@@ -53,6 +54,17 @@ describe("vertical drama draft composition jobs", () => {
     });
     expect(providerFailure.code).toBe("llm_provider_error");
     expect(providerFailure.retryable).toBe(true);
+
+    const unavailableProviderFailure =
+      classifyVerticalDramaDraftCompositionFailure({
+        error: new Error(
+          'No healthy provider is available for model "openai/gpt-5.6-luna"'
+        ),
+        stage: "building_foundation",
+        modelId: "openai/gpt-5.6-luna",
+      });
+    expect(unavailableProviderFailure.code).toBe("llm_provider_error");
+    expect(unavailableProviderFailure.retryable).toBe(true);
 
     const capabilityFailure = classifyVerticalDramaDraftCompositionFailure({
       error: new Error(
@@ -92,6 +104,7 @@ describe("vertical drama draft composition jobs", () => {
       await getVerticalDramaDraftCompositionStatus(
         first.jobId,
         { tenantId: "other", userId: 7 },
+        101,
         { redis }
       )
     ).toBeNull();
@@ -135,6 +148,7 @@ describe("vertical drama draft composition jobs", () => {
     const recovered = await getVerticalDramaDraftCompositionStatusBySession(
       "session-1",
       { tenantId: "tenant-1", userId: 7 },
+      101,
       { redis }
     );
     expect(recovered?.jobId).toBe(first.jobId);
@@ -153,6 +167,33 @@ describe("vertical drama draft composition jobs", () => {
     expect(redis.del).toHaveBeenCalled();
   });
 
+  it("marks a Redis admission failure as failed when the durable row was created", async () => {
+    const redis = memoryRedis();
+    redis.set.mockRejectedValueOnce(new Error("redis unavailable"));
+    const persistJob = vi.fn(async () => {});
+    const persistJobStatus = vi.fn(async () => true);
+
+    await expect(
+      enqueueVerticalDramaDraftComposition(payload(), {
+        redis,
+        persistJob,
+        persistJobStatus,
+        enqueueBullmqJob: async () => {},
+      })
+    ).rejects.toThrow(/queue is unavailable/);
+
+    expect(persistJob).toHaveBeenCalledTimes(1);
+    expect(persistJobStatus).toHaveBeenCalledWith(
+      expect.any(String),
+      payload(),
+      expect.objectContaining({
+        jobStatus: "failed",
+        lastError: "redis unavailable",
+      })
+    );
+    expect(redis.del).toHaveBeenCalled();
+  });
+
   it("cancels an owner-scoped active job", async () => {
     const redis = memoryRedis();
     const result = await enqueueVerticalDramaDraftComposition(payload(), {
@@ -163,12 +204,14 @@ describe("vertical drama draft composition jobs", () => {
       await cancelVerticalDramaDraftComposition(
         result.jobId,
         { tenantId: "tenant-1", userId: 7 },
+        101,
         { redis }
       )
     ).toBe(true);
     const record = await getVerticalDramaDraftCompositionStatus(
       result.jobId,
       { tenantId: "tenant-1", userId: 7 },
+      101,
       { redis }
     );
     expect(record?.status).toBe("cancelled");

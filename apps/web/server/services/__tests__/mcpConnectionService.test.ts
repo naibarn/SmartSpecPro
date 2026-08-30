@@ -2,16 +2,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockConnectionRows = vi.fn();
 const mockSet = vi.fn();
+const mockListRows = vi.fn();
 
 vi.mock("../../db", () => ({
   getDb: () => ({
-    select: () => ({
-      from: () => ({
-        where: () => ({
-          limit: () => mockConnectionRows(),
-        }),
-      }),
-    }),
+    select: () => {
+      const builder: Record<string, ReturnType<typeof vi.fn>> = {
+        from: vi.fn(() => builder),
+        innerJoin: vi.fn(() => builder),
+        where: vi.fn(() => builder),
+        orderBy: vi.fn(() => mockListRows()),
+        limit: vi.fn(() => mockConnectionRows()),
+      };
+      return builder;
+    },
     update: () => ({
       set: (payload: Record<string, unknown>) => {
         mockSet(payload);
@@ -23,7 +27,7 @@ vi.mock("../../db", () => ({
   }),
 }));
 
-import { testMcpConnection } from "../mcpConnectionService";
+import { listConnectedMcpProviderKeys, testMcpConnection } from "../mcpConnectionService";
 
 describe("mcpConnectionService", () => {
   beforeEach(() => {
@@ -77,5 +81,38 @@ describe("mcpConnectionService", () => {
       lastHealthCheckAt: expect.any(Date),
       updatedAt: expect.any(Date),
     }));
+  });
+
+  it("includes connected personal and shared providers but excludes disconnected personal connections", async () => {
+    const now = new Date();
+    const connection = (overrides: Record<string, unknown>) => ({
+      id: "connection-1",
+      tenantId: "tenant-1",
+      ownerUserId: 1,
+      displayName: "MCP connection",
+      status: "connected",
+      providerAccountLabel: null,
+      defaultForImage: false,
+      defaultForVideo: false,
+      createdAt: now,
+      updatedAt: now,
+      tokenExpiresAt: null,
+      revokedAt: null,
+      encryptedTokenRef: "encrypted-token",
+      ...overrides,
+    });
+
+    mockListRows
+      .mockReturnValueOnce([
+        { connection: connection({ id: "personal-higgsfield" }), template: { providerKey: "higgsfield", displayName: "Higgsfield", allowedAssetTypes: ["image", "video"], isEnabled: true } },
+        { connection: connection({ id: "disconnected-magnific", status: "revoked", revokedAt: now }), template: { providerKey: "magnific", displayName: "Magnific", allowedAssetTypes: ["image", "video"], isEnabled: true } },
+      ])
+      .mockReturnValueOnce([
+        { connection: connection({ id: "shared-magnific", ownerUserId: 2 }), template: { providerKey: "magnific", displayName: "Magnific", allowedAssetTypes: ["image", "video"], isEnabled: true }, share: { id: "share-1", groupId: 7, allowedAssetTypes: ["image"], updatedAt: now } },
+      ]);
+
+    await expect(listConnectedMcpProviderKeys({ tenantId: "tenant-1", userId: 1 })).resolves.toEqual(
+      new Set(["higgsfield", "magnific"]),
+    );
   });
 });

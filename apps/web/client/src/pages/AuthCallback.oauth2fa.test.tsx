@@ -144,4 +144,39 @@ describe("AuthCallback OAuth 2FA flow", () => {
       "/login?mode=2fa&returnUrl=%2Fauth%2Fdevice%3Fuser_code%3DABCD1234",
     );
   });
+
+  it("redirects an invite-only OAuth denial to signup", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          makeResponse(200, { access_token: "python-oauth-token" }),
+        )
+        .mockResolvedValueOnce(
+          makeResponse(403, {
+            error: {
+              json: {
+                message: "Registration requires an invite code",
+                data: { code: "FORBIDDEN" },
+              },
+            },
+          }),
+        ),
+    );
+
+    render(<AuthCallback />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1200);
+    });
+
+    expect(setLocation).toHaveBeenCalledWith("/signup?inviteRequired=1");
+  });
 });

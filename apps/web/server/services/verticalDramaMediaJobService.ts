@@ -9,6 +9,9 @@ import {
   seriesMediaRootBindingSchema,
   brollPreprocessJobPayloadSchema,
   shotVideoGenerationJobPayloadSchema,
+  footageProbeAnalyzeJobPayloadSchema,
+  footagePrepareJobPayloadSchema,
+  footageBrollRenderJobPayloadSchema,
 } from "../../shared/verticalDramaMedia/contracts";
 
 export type MediaJobAdmissionInput = {
@@ -31,7 +34,7 @@ export type MediaJobAdmission = {
 };
 
 export function parseVerticalDramaMediaJobPayload(payload: unknown): VerticalDramaMediaJobPayload {
-  return z.union([mediaIngestJobPayloadSchema, brollPreprocessJobPayloadSchema, shotVideoGenerationJobPayloadSchema]).parse(payload);
+  return z.union([mediaIngestJobPayloadSchema, brollPreprocessJobPayloadSchema, shotVideoGenerationJobPayloadSchema, footageProbeAnalyzeJobPayloadSchema, footagePrepareJobPayloadSchema, footageBrollRenderJobPayloadSchema]).parse(payload);
 }
 
 /**
@@ -75,7 +78,7 @@ export function admitVerticalDramaMediaJob(input: MediaJobAdmissionInput): Media
   const probe = mediaCapabilityProbeSchema.parse(input.capabilityProbe);
   if (binding.status !== "active") throw new Error("root_not_bound");
   if ("binding" in payload && (payload.binding.bindingRevision !== binding.bindingRevision || payload.seriesId !== binding.seriesId)) throw new Error("root_revision_stale");
-  const localJob = payload.kind === "media_ingest" || payload.kind === "broll_preprocess";
+  const localJob = payload.kind !== "shot_video_generation";
   if (!probe.reachable || (localJob && probe.adapter !== "worker_local") || (!localJob && probe.adapter !== "comfy_mcp")) {
     throw new Error("workflow_capability_blocked");
   }
@@ -83,7 +86,13 @@ export function admitVerticalDramaMediaJob(input: MediaJobAdmissionInput): Media
     ? "media-ingest"
     : payload.kind === "broll_preprocess"
       ? "broll-preprocess"
-      : "shot_video_generation";
+      : payload.kind === "footage_probe_analyze"
+        ? "vd-footage-analysis"
+        : payload.kind === "footage_prepare"
+          ? "vd-footage-prepare"
+          : payload.kind === "footage_broll_render"
+            ? "vd-footage-broll-render"
+            : "shot_video_generation";
   if (!probe.capabilities.includes(requiredCapability)) {
     throw new Error("workflow_capability_blocked");
   }

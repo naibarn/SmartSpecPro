@@ -320,9 +320,13 @@ class MediaTaskService:
         status: Optional[TaskStatus] = None,
         limit: int = 50,
         offset: int = 0,
+        tenant_id: Optional[str] = None,
     ) -> List[MediaTask]:
-        """List ALL tasks across all users (admin only)"""
+        """List all tasks in the caller's tenant (admin only)."""
         query = select(MediaTask)
+
+        if tenant_id:
+            query = query.where(MediaTask.tenant_id == tenant_id)
 
         if media_type:
             media_type_value = (
@@ -344,11 +348,15 @@ class MediaTaskService:
         db: AsyncSession,
         media_type: Optional[MediaType] = None,
         status: Optional[TaskStatus] = None,
+        tenant_id: Optional[str] = None,
     ) -> int:
-        """Count ALL tasks across all users (admin only)"""
+        """Count all tasks in the caller's tenant (admin only)."""
         from sqlalchemy import func
 
         query = select(func.count(MediaTask.id))
+
+        if tenant_id:
+            query = query.where(MediaTask.tenant_id == tenant_id)
 
         if media_type:
             media_type_value = (

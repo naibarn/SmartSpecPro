@@ -132,6 +132,30 @@ describe("enqueueVerticalDramaShotPromptJob", () => {
     expect(enqueueBullmqJob).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps start and stop prompt jobs independent for the same shot", async () => {
+    const redis = makeFakeRedis();
+    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
+    const start = await enqueueVerticalDramaShotPromptJob(payload(), {
+      redis,
+      enqueueBullmqJob,
+    });
+    const stop = await enqueueVerticalDramaShotPromptJob(
+      payload({
+        input: { ...payload().input, frameRole: "stop", idempotencyKey: "stop-1" },
+      }),
+      { redis, enqueueBullmqJob },
+    );
+
+    expect(stop.jobId).not.toBe(start.jobId);
+    expect(enqueueBullmqJob).toHaveBeenCalledTimes(2);
+    await expect(
+      getActiveVerticalDramaShotPromptJob(
+        { ...owner, frameRole: "stop" },
+        { redis },
+      ),
+    ).resolves.toMatchObject({ jobId: stop.jobId });
+  });
+
   it("returns the same terminal job for the same idempotency key", async () => {
     const redis = makeFakeRedis();
     const first = await enqueueVerticalDramaShotPromptJob(payload(), {

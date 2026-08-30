@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { agencyBridge } from "./agencyBridge";
 import { createLibraryItem } from "./libraryService";
 import { mediaGenerationService } from "./mediaGenerationService";
+import { durabilizeMediaGenerationResponse } from "./durableMediaAssetService";
 import { executeAutomationCopilotTask } from "./automationCopilotExecutionService";
 import { createPresentationDeckForLibraryItem } from "./presentationService";
 import { executeSkill } from "./skillExecutor";
@@ -607,6 +608,7 @@ async function executeMediaStep(context: StepExecutionContext, policy: WorkAutom
     referenceImageUrls: context.referenceImageUrls ?? undefined,
     auditContext: {
       userId: context.actorUserId,
+      tenantId: context.tenantId,
       source: "work_automation",
       stepKey: context.stepKey,
       runId: context.runId,
@@ -625,7 +627,13 @@ async function executeMediaStep(context: StepExecutionContext, policy: WorkAutom
         referenceVideoUrls: context.referenceVideoUrls ?? undefined,
       } as any, context.userToken);
 
-  const firstResult = response.data[0] ?? null;
+  const durableResponse = await durabilizeMediaGenerationResponse(response, {
+    tenantId: context.tenantId,
+    userId: context.actorUserId,
+    mediaType,
+    sourceType: "media_sync_generated",
+  });
+  const firstResult = durableResponse.data[0] ?? null;
   const sourceUrl = firstResult?.url ?? null;
   const item = await createLibraryItem({
     itemType: mediaType,
@@ -644,8 +652,8 @@ async function executeMediaStep(context: StepExecutionContext, policy: WorkAutom
       adapterKind: mediaType,
       extra: {
         mediaType,
-        model: response.model,
-        creditsUsed: response.creditsUsed,
+        model: durableResponse.model,
+        creditsUsed: durableResponse.creditsUsed,
         creditsBalance: response.creditsBalance,
         mediaResult: firstResult,
       },

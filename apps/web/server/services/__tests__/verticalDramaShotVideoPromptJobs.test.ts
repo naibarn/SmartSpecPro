@@ -198,6 +198,64 @@ describe("vertical drama shot video prompt queue", () => {
     ).toBe(false);
   });
 
+  it("keeps a transient provider failure active and retries the same shot", async () => {
+    const redis = makeFakeRedis();
+    const submitted = await enqueueVerticalDramaShotVideoPromptJob(payload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+    const sleep = vi.fn().mockResolvedValue(undefined);
+    const executor = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("LLM response was empty; expected one complete JSON object"))
+      .mockResolvedValueOnce({
+        prompt: "recovered prompt",
+        creditsUsed: 1,
+        usedVision: true,
+      });
+
+    await runVerticalDramaShotVideoPromptJob(submitted.jobId, executor, {
+      redis,
+      sleep,
+    });
+
+    expect(executor).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledWith(5_000);
+    await expect(
+      getVerticalDramaShotVideoPromptJobStatus(submitted.jobId, owner, {
+        redis,
+      })
+    ).resolves.toMatchObject({
+      status: "succeeded",
+      result: { prompt: "recovered prompt" },
+    });
+  });
+
+  it("does not retry structural failures from the worker", async () => {
+    const redis = makeFakeRedis();
+    const submitted = await enqueueVerticalDramaShotVideoPromptJob(payload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+    const sleep = vi.fn().mockResolvedValue(undefined);
+    const executor = vi
+      .fn()
+      .mockRejectedValue(new Error("ต้องมีภาพหลักของช็อตก่อน"));
+
+    await runVerticalDramaShotVideoPromptJob(submitted.jobId, executor, {
+      redis,
+      sleep,
+    });
+
+    expect(executor).toHaveBeenCalledOnce();
+    expect(sleep).not.toHaveBeenCalled();
+    await expect(
+      getVerticalDramaShotVideoPromptJobStatus(submitted.jobId, owner, {
+        redis,
+      })
+    ).resolves.toMatchObject({ status: "failed" });
+  });
+
   it("reconciles a BullMQ failure so a stalled job cannot block later shots", async () => {
     const redis = makeFakeRedis();
     const first = await enqueueVerticalDramaShotVideoPromptJob(payload(), {

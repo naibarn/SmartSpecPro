@@ -530,7 +530,7 @@ function formatAgeSafetyChatError(payload: any): string {
   return payload?.message || payload?.error || "This chat request is restricted by age-safety policy.";
 }
 
-const skillIconMap: Record<string, React.ElementType> = {
+const skillIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   "image-generation": Wand2,
   "video-generation": Video,
   "audio-generation": Music,

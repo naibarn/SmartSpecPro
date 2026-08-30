@@ -76,6 +76,32 @@ describe("feedback admin tenant scope", () => {
     mockCheckPublicContactAbuse.mockResolvedValue({ allowed: true });
   });
 
+  it("returns the System / Auto count in admin stats", async () => {
+    mockGetDb.mockResolvedValue({
+      execute: vi.fn().mockResolvedValue([
+        {
+          total: "4",
+          new_count: "2",
+          triaged_count: "0",
+          in_progress_count: "1",
+          resolved_count: "0",
+          human_count: "3",
+          system_count: "1",
+          unread_count: "2",
+          overdue_unread_count: "1",
+        },
+      ]),
+    });
+
+    await expect(createCaller().stats()).resolves.toMatchObject({
+      total: 4,
+      human: 3,
+      system: 1,
+      unread: 2,
+      overdueUnread: 1,
+    });
+  });
+
   it("routes anonymous public sales contact to the feedback inbox as critical", async () => {
     const values = vi.fn().mockReturnThis();
     const returning = vi.fn().mockResolvedValue([{ id: 362 }]);

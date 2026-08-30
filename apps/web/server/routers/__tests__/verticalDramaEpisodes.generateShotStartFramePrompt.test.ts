@@ -60,6 +60,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 vi.mock("../../middleware/requireFeatureFlag", () => ({
@@ -566,7 +567,7 @@ describe("generateShotStartFramePrompt", () => {
       id: "google-nano-banana-pro",
       name: "Google Nano Banana Pro",
       provider: "kie.ai",
-      configJson: { maxPromptLength: 20_000 },
+      configJson: { maxPromptLength: 390_000 },
     }]);
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
@@ -587,10 +588,10 @@ describe("generateShotStartFramePrompt", () => {
     });
 
     expect(mockGenerateStartFrameShotPrompt).toHaveBeenCalledWith(
-      expect.objectContaining({ imagePromptMaxChars: 20_000 }),
+      expect.objectContaining({ imagePromptMaxChars: 390_000 }),
     );
     expect(mockEnsurePromptWithinLimit).toHaveBeenCalledWith(
-      expect.objectContaining({ maxChars: 20_000 }),
+      expect.objectContaining({ maxChars: 390_000 }),
     );
   });
 
@@ -805,6 +806,49 @@ describe("generateShotStartFramePrompt", () => {
     expect(capturedSet.startFramePlan.selectedImageModelId).toBe(
       "google-nano-banana-pro",
     );
+  });
+
+  it("keeps a retained image while re-authoring a prompt after character references changed", async () => {
+    const episodeRow = baseEpisodeRow({
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            approvedMediaAssetId: "900",
+            imageStaleReason: "character_references_changed",
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ bible: null }]))
+      .mockReturnValueOnce(approvedMediaAssetSelectChain());
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((value: any) => {
+        capturedSet = value;
+        return updateChain([episodeRow]);
+      }),
+    });
+
+    await router.executeShotStartFramePromptJob({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(capturedSet.startFramePlan.frames[0]).toMatchObject({
+      approvedMediaAssetId: "900",
+      imageStaleReason: "character_references_changed",
+      imagePrompt: "regenerated start-frame prompt",
+    });
   });
 
   it("strips a stale identity-lock suffix and threads instruction/region/product-lock/character-reference-manifest into the service call", async () => {

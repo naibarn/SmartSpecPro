@@ -65,6 +65,10 @@ export const LEGACY_VERTICAL_DRAMA_DURATION_PROFILE_IDS = [
   "vertical_drama_60s_9_shots",
 ] as const;
 
+/** Feature 153 quality recommendation: exactly 9 logical/render shots × 10s. */
+export const VERTICAL_DRAMA_STRICT_90_SECOND_PROFILE_ID =
+  "vertical_drama_10s_x9_shots" as const;
+
 const UNIFORM_EPISODE_PROFILE_PATTERN =
   /^vertical_drama_(8|10|15|20|25|30)s_x9_shots$/;
 
@@ -152,6 +156,30 @@ export function deriveVerticalDramaEpisodeRuntimeSeconds(
       ? plan.renderSegmentDurationsSeconds
       : plan.shotDurationsSeconds;
   return durations.reduce((sum, duration) => sum + duration, 0);
+}
+
+/** Estimate the season runtime shown before a creator commits the episode count. */
+export function estimateVerticalDramaSeriesRuntimeSeconds(params: {
+  episodeCount: number;
+  shotDurationSeconds?: number | null;
+  durationPlan?: VerticalDramaDurationPlan | null;
+}): number {
+  const perEpisode = params.durationPlan
+    ? deriveVerticalDramaEpisodeRuntimeSeconds(params.durationPlan)
+    : (params.shotDurationSeconds ?? 8) * VERTICAL_DRAMA_LOGICAL_SHOT_COUNT;
+  return Math.max(0, Math.trunc(params.episodeCount)) * perEpisode;
+}
+
+export function formatVerticalDramaRuntimeSeconds(
+  totalSeconds: number,
+  lang: "th" | "en"
+): string {
+  const safeSeconds = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
+  return lang === "th"
+    ? `ประมาณ ${minutes} นาที ${seconds} วินาที`
+    : `Approximately ${minutes}m ${seconds}s`;
 }
 
 export function createVerticalDramaDurationProfileOptions(

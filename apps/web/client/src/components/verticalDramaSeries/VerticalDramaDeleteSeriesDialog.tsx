@@ -62,10 +62,15 @@ export function VerticalDramaDeleteSeriesDialog({
   const utils = trpc.useUtils();
 
   const deleteMutation = trpc.verticalDramaSeries.deleteSeries.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success(pickCopy(lang, verticalDramaCopy.deleteSeriesSuccess));
-      void utils.verticalDramaSeries.list.invalidate();
-      void utils.verticalDramaSeries.get.invalidate();
+      // The shell/list page can remount immediately after `onDeleted`. Wait
+      // for every active list query to refresh so a previous cache snapshot
+      // cannot be rendered again during that navigation.
+      await utils.verticalDramaSeries.list.invalidate();
+      // The deleted detail query is no longer authoritative. Mark only this
+      // series stale after the list synchronization barrier has completed.
+      void utils.verticalDramaSeries.get.invalidate({ seriesId });
       setConfirmName("");
       onOpenChange(false);
       onDeleted();

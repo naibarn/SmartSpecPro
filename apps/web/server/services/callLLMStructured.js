@@ -112,11 +112,11 @@ function callLLMStructured(params) {
                     }
                     _l.label = 2;
                 case 2: return [4 /*yield*/, (0, taskPlannerMiddleware_1.runPlanner)({
-                        sourceType: "skill",
                         userId: userId,
                         tenantId: tenantId,
                         conversationModel: model,
                         skillSlug: (_c = billingMetadata === null || billingMetadata === void 0 ? void 0 : billingMetadata.skillSlug) !== null && _c !== void 0 ? _c : undefined,
+                        sourceType: billingMetadata && billingMetadata.skillSlug ? "skill" : "chat",
                         executionPolicy: {
                             requirements: {
                                 supportsStructuredOutputs: true,
@@ -176,8 +176,9 @@ function callLLMStructured(params) {
                             costUsd: costUsd,
                             tenantId: tenantId,
                             description: billingDescription,
+                            skillSlug: billingMetadata === null || billingMetadata === void 0 ? void 0 : billingMetadata.skillSlug,
                             metadata: __assign({ requestType: "structured_llm", structured: true, attempt: attempt + 1 }, (billingMetadata !== null && billingMetadata !== void 0 ? billingMetadata : {})),
-                            sourceType: "skill",
+                            sourceType: billingMetadata && billingMetadata.skillSlug ? "skill" : "chat",
                         })];
                 case 6:
                     creditsUsed = (_l.sent()).creditsUsed;

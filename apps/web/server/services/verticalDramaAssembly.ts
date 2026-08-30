@@ -28,7 +28,9 @@
  * the ownership-scoped persistence.
  */
 
-import { and, asc, desc, eq, lte } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lte } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+import { projectBrollPlacements } from "./verticalDramaBrollService";
 import { db } from "../db";
 import {
   verticalDramaEpisodes,
@@ -39,6 +41,12 @@ import {
   verticalDramaMemoryEvents,
   verticalDramaQcReports,
   mediaStudioStoryboardReviews,
+  verticalDramaShotBrollBindings,
+  verticalDramaSourceAssets,
+  mediaAssets,
+  type MediaAsset,
+  type VerticalDramaShotBrollBinding,
+  type VerticalDramaSourceAsset,
   type VerticalDramaEpisodeRow,
   type VerticalDramaRunArtifactRow,
   type VerticalDramaEpisodeRunRow,
@@ -59,6 +67,7 @@ import {
   type VerticalDramaArtifactStage,
   type VerticalDramaAssemblyManifest,
 } from "@shared/verticalDramaSeries";
+import { assertR2StorageActive, storageExists } from "../storage";
 
 /* -------------------------------------------------------------------------- */
 /* Ownership + shared types                                                   */
@@ -181,6 +190,33 @@ export interface AssemblyBuildResult {
   repairActions: AssemblyRepairAction[];
 }
 
+type AssemblyBrollPlanEntry = NonNullable<VerticalDramaEpisodeAssemblyManifest["brollPlan"]>[number];
+type AssemblyBrollPlanInput = Omit<AssemblyBrollPlanEntry, "startSeconds" | "endSeconds"> &
+  Partial<Pick<AssemblyBrollPlanEntry, "startSeconds" | "endSeconds">>;
+
+function validateBrollPlan(plan: AssemblyBrollPlanEntry[], targetDurationSeconds: number): string[] {
+  const errors: string[] = [];
+  let total = 0;
+  for (const item of plan) {
+    const duration = item.mediaType === "video"
+      ? (item.outSeconds ?? 0) - (item.inSeconds ?? 0)
+      : item.displayDurationSeconds ?? 0;
+    if (duration <= 0) errors.push(`broll_duration_invalid:${item.bindingId}`);
+    if (item.mediaType === "video" && (item.inSeconds == null || item.outSeconds == null || item.outSeconds <= item.inSeconds)) {
+      errors.push(`broll_bounds_invalid:${item.bindingId}`);
+    }
+    if (!Number.isFinite(item.startSeconds) || !Number.isFinite(item.endSeconds) || item.endSeconds <= item.startSeconds) {
+      errors.push(`broll_timeline_invalid:${item.bindingId}`);
+    }
+    if (item.startSeconds < 0 || item.endSeconds > targetDurationSeconds + 1e-9) {
+      errors.push(`broll_timeline_out_of_range:${item.bindingId}`);
+    }
+    total += Math.max(0, duration);
+  }
+  if (total > targetDurationSeconds + 1e-9) errors.push(`broll_overflow:${total}s>${targetDurationSeconds}s`);
+  return errors;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Pure builders                                                              */
 /* -------------------------------------------------------------------------- */
@@ -249,6 +285,7 @@ export function buildAssemblyManifest(input: {
   clips: ClipImportInput[];
   subtitlePlan?: SubtitleCue[];
   audioBgmPlan?: AudioBgmTrack[];
+  brollPlan?: AssemblyBrollPlanInput[];
   exportSettings?: Partial<AssemblyExportSettings>;
   subShotsEnabled?: boolean;
   /** Active 9-logical-shot profile. Omit for legacy 60-second profiles. */
@@ -378,6 +415,24 @@ export function buildAssemblyManifest(input: {
 
   const subtitlePlan = input.subtitlePlan ?? [];
   const audioBgmPlan = input.audioBgmPlan ?? [];
+  const rawBrollPlan = [...(input.brollPlan ?? [])].sort((a, b) => a.order - b.order || a.bindingId.localeCompare(b.bindingId));
+  const projectedBroll = projectBrollPlacements(
+    rawBrollPlan,
+    resolvedClips.map(clip => ({
+      clipNumber: clip.clipNumber,
+      durationSeconds: clip.durationSeconds,
+      sourceShotNumbers: clip.sourceShotNumbers,
+      parentShotNumber: clip.parentShotNumber,
+    })),
+    expectedTargetDurationSeconds,
+  );
+  errors.push(...projectedBroll.errors);
+  const brollPlan: AssemblyBrollPlanEntry[] = projectedBroll.items.map(item => ({
+    ...(item.source as AssemblyBrollPlanInput),
+    startSeconds: item.startSeconds,
+    endSeconds: item.endSeconds,
+  }));
+  errors.push(...validateBrollPlan(brollPlan, expectedTargetDurationSeconds));
 
   // Subtitle-window sanity: a cue past the episode total is a repair action.
   for (const cue of subtitlePlan) {
@@ -425,6 +480,7 @@ export function buildAssemblyManifest(input: {
     ffmpegConcatPlan,
     subtitlePlan,
     audioBgmPlan,
+    ...(brollPlan.length ? { brollPlan } : {}),
     exportSettings,
     concatText,
     subtitlesSrt,
@@ -632,6 +688,7 @@ export class VerticalDramaAssemblyService {
       clips: ClipImportInput[];
       subtitlePlan?: SubtitleCue[];
       audioBgmPlan?: AudioBgmTrack[];
+      brollPlan?: AssemblyBrollPlanInput[];
       exportSettings?: Partial<AssemblyExportSettings>;
       subShotsEnabled?: boolean;
       profileKind?: AssemblyProfileKind;
@@ -681,6 +738,67 @@ export class VerticalDramaAssemblyService {
         : profileKindForEpisode(episode.durationProfileId));
     const assemblyManifestId = `vdasm_${owner.seriesId}_${owner.episodeId}_${Date.now().toString(36)}`;
 
+    let persistedBrollPlan = args.brollPlan;
+    if (persistedBrollPlan === undefined) {
+      const rows = await db.select().from(verticalDramaShotBrollBindings).where(and(
+        eq(verticalDramaShotBrollBindings.tenantId, owner.tenantId),
+        eq(verticalDramaShotBrollBindings.userId, owner.userId),
+        eq(verticalDramaShotBrollBindings.seriesId, owner.seriesId),
+        eq(verticalDramaShotBrollBindings.episodeId, owner.episodeId),
+        eq(verticalDramaShotBrollBindings.active, true),
+      )).orderBy(asc(verticalDramaShotBrollBindings.order), asc(verticalDramaShotBrollBindings.id)) as VerticalDramaShotBrollBinding[];
+      if (rows.length) {
+        await assertR2StorageActive();
+        const sourceIds = rows.map(row => row.sourceAssetId).filter((id): id is number => id != null);
+        const sourceRows: Array<Pick<VerticalDramaSourceAsset, "id" | "rightsStatus" | "disclosureStatus">> = sourceIds.length
+          ? await db.select({ id: verticalDramaSourceAssets.id, rightsStatus: verticalDramaSourceAssets.rightsStatus, disclosureStatus: verticalDramaSourceAssets.disclosureStatus }).from(verticalDramaSourceAssets).where(and(
+              inArray(verticalDramaSourceAssets.id, sourceIds),
+              eq(verticalDramaSourceAssets.tenantId, owner.tenantId),
+              eq(verticalDramaSourceAssets.userId, owner.userId),
+            ))
+          : [];
+        const sourceById = new Map(sourceRows.map((row: Pick<VerticalDramaSourceAsset, "id" | "rightsStatus" | "disclosureStatus">) => [Number(row.id), row]));
+        const mediaIds = rows.map(row => row.mediaAssetId).filter((id): id is number => id != null);
+        const mediaRows: Array<Pick<MediaAsset, "id" | "status" | "storageKey">> = mediaIds.length
+          ? await db.select({ id: mediaAssets.id, status: mediaAssets.status, storageKey: mediaAssets.storageKey }).from(mediaAssets).where(and(
+              inArray(mediaAssets.id, mediaIds),
+              eq(mediaAssets.tenantId, owner.tenantId),
+              eq(mediaAssets.userId, owner.userId),
+            ))
+          : [];
+        const mediaById = new Map(mediaRows.map((row: Pick<MediaAsset, "id" | "status" | "storageKey">) => [Number(row.id), row]));
+        persistedBrollPlan = [];
+        for (const row of rows) {
+          const media = row.mediaAssetId == null ? undefined : mediaById.get(Number(row.mediaAssetId));
+          const source = row.sourceAssetId == null ? undefined : sourceById.get(Number(row.sourceAssetId));
+          if (!media || media.status !== "ready" || !media.storageKey || !(await storageExists(media.storageKey))) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: `B-roll ${row.bindingId} is not available in owner-scoped R2 storage` });
+          }
+          if (source && !(source.rightsStatus === "creator_owned" || source.rightsStatus === "licensed" || (source.rightsStatus === "restricted" && source.disclosureStatus === "shown"))) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: `B-roll ${row.bindingId} is blocked by rights/disclosure status` });
+          }
+          persistedBrollPlan.push({
+            bindingId: row.bindingId,
+            shotNumber: row.shotNumber,
+            order: row.order,
+            ...(row.sourceSlotId == null ? {} : { sourceSlotId: row.sourceSlotId }),
+            ...(row.sourceAssetId == null ? {} : { sourceAssetId: row.sourceAssetId }),
+            mediaAssetId: String(row.mediaAssetId),
+            ...(row.segmentId == null ? {} : { segmentId: row.segmentId }),
+            ...(row.segmentRevision == null ? {} : { segmentRevision: row.segmentRevision }),
+            mediaType: row.mediaType as "image" | "video",
+            ...(row.inSeconds == null ? {} : { inSeconds: row.inSeconds }),
+            ...(row.outSeconds == null ? {} : { outSeconds: row.outSeconds }),
+            ...(row.displayDurationSeconds == null ? {} : { displayDurationSeconds: row.displayDurationSeconds }),
+            fitMode: row.fitMode as "cover" | "contain" | "crop_safe",
+            audioPolicy: row.audioPolicy as "keep" | "mute" | "replace",
+            labelMode: row.labelMode as "none" | "source" | "archive" | "ai_illustration",
+            startSeconds: 0,
+            endSeconds: 0,
+          });
+        }
+      }
+    }
     const build = buildAssemblyManifest({
       assemblyManifestId,
       durationProfileId: episode.durationProfileId,
@@ -691,6 +809,7 @@ export class VerticalDramaAssemblyService {
       exportSettings: args.exportSettings,
       subShotsEnabled: args.subShotsEnabled,
       durationPlan,
+      brollPlan: persistedBrollPlan,
     });
 
     const runId = await this.createRun(

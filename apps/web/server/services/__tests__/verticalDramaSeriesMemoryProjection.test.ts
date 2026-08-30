@@ -43,7 +43,9 @@ const { mockDb, mockTx, resetHarness, setStoredMemory, getLastUpdateValues } =
     const mockDb = {
       transaction: vi
         .fn()
-        .mockImplementation(async (cb: (tx: any) => Promise<any>) => cb(mockTx)),
+        .mockImplementation(async (cb: (tx: any) => Promise<any>) =>
+          cb(mockTx)
+        ),
     };
 
     return {
@@ -180,6 +182,48 @@ describe("resolveEpisodeMemoryBlock", () => {
       ],
       knowledgeChanges: [{ characterKey: "kane", learned: "a secret" }],
     });
+  });
+
+  it("derives legacy relationship state from strict graph deltas", () => {
+    const result = resolveEpisodeMemoryBlock(
+      {
+        recap: "A public engagement is revealed.",
+        relationship_graph_deltas: [
+          {
+            operation: "reveal",
+            edgeId: "edge-7",
+            fromCharacterKey: "aria",
+            toCharacterKey: "kane",
+            relationType: "fiance",
+            validFromEpisode: 7,
+            disclosure: "public",
+            beliefState: "known",
+            knownByCharacterKeys: ["aria", "kane"],
+            evidenceRefs: ["ep7:shot2"],
+            affectedCharacterKeys: ["aria", "kane"],
+          },
+        ],
+        relationship_changes: [
+          {
+            pair: ["aria", "kane"],
+            status: "friend",
+            disclosure: "public",
+            known_by: [],
+          },
+        ],
+      },
+      { episodeNumber: 7 }
+    );
+    expect(result.relationshipGraphDeltas?.[0]?.edgeId).toBe("edge-7");
+    expect(result.relationshipChanges).toEqual([
+      {
+        pair: ["aria", "kane"],
+        status: "fiance",
+        disclosure: "public",
+        knownBy: ["aria", "kane"],
+        sinceEpisode: 7,
+      },
+    ]);
   });
 });
 
@@ -338,7 +382,9 @@ describe("upsertEpisodeMemories", () => {
 
     const written = getLastUpdateValues().memory;
     expect(written.episodes).toHaveLength(2);
-    const ep1 = written.episodes.find((e: VdEpisodeMemory) => e.episodeNumber === 1);
+    const ep1 = written.episodes.find(
+      (e: VdEpisodeMemory) => e.episodeNumber === 1
+    );
     expect(ep1.recap).toBe("NEW recap");
     expect(written.lastFoldedEpisode).toBe(2);
   });
@@ -372,7 +418,9 @@ describe("upsertEpisodeMemories", () => {
       "HAND-EDITED SUMMARY — must survive untouched"
     );
     // Episode 1 was NOT superseded.
-    const ep1 = written.episodes.find((e: VdEpisodeMemory) => e.episodeNumber === 1);
+    const ep1 = written.episodes.find(
+      (e: VdEpisodeMemory) => e.episodeNumber === 1
+    );
     expect(ep1.recap).toBe("Ep1 recap");
     // Episode 2 WAS appended.
     expect(
@@ -449,7 +497,10 @@ describe("persistDeepDraftEpisodeMemories", () => {
     const summary = await persistDeepDraftEpisodeMemories(
       { tenantId: "tenant-1", userId: 1, seriesId: 10 },
       [
-        { episodeNumber: 1, episodeMemory: episodeMemory({ episodeNumber: 1 }) },
+        {
+          episodeNumber: 1,
+          episodeMemory: episodeMemory({ episodeNumber: 1 }),
+        },
         { episodeNumber: 2 }, // no episodeMemory — must be skipped, never throws.
       ]
     );
@@ -493,7 +544,7 @@ describe("repairSeriesMemoryContinuity", () => {
 
     expect(result.quarantinedResolutionCount).toBe(1);
     expect(getLastUpdateValues().memory.episodes[0].threadsResolved).toEqual(
-      [],
+      []
     );
   });
 
@@ -532,7 +583,9 @@ describe("repairSeriesMemoryContinuity", () => {
     const result = await repairSeriesMemoryContinuity(10, "tenant-1", 1);
 
     expect(result.quarantinedOpeningCount).toBe(1);
-    expect(getLastUpdateValues().memory.episodes[0].threadsOpened).toHaveLength(1);
+    expect(getLastUpdateValues().memory.episodes[0].threadsOpened).toHaveLength(
+      1
+    );
     expect(getLastUpdateValues().memory.episodes[1].threadsOpened).toEqual([]);
   });
 });

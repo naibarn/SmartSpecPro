@@ -690,6 +690,75 @@ describe("workerRegistryService", () => {
     );
   });
 
+  it("preserves the server-owned worker access policy when heartbeats update runtime metadata", async () => {
+    const { recordWorkerHeartbeat } = await import("../workerRegistryService");
+    const worker = {
+      id: "worker-policy-1",
+      tenantId: "tenant-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "offline",
+      capabilitiesJson: {
+        runtimeMetadata: {
+          workerAccessPolicy: {
+            permissionPreset: "custom",
+            permissionScopes: ["workers:heartbeat", "series:read"],
+          },
+        },
+      },
+      healthSummaryJson: {},
+    };
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue(worker),
+      updateWorker: vi.fn().mockImplementation(async (_workerId, values) => ({
+        ...worker,
+        ...values,
+      })),
+      insertHeartbeat: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await recordWorkerHeartbeat({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-policy-1",
+        runtimeType: "desktop_zeroclaw_managed",
+      } as any,
+      workerId: "worker-policy-1",
+      payload: {
+        compatibility: {
+          protocolVersion: "2026-04-06",
+          runtimeVersion: "0.1.140",
+        },
+        runtimeType: "desktop_zeroclaw_managed",
+        status: "online",
+        currentJobCount: 0,
+        queueDepth: 0,
+        freeDiskBytes: 1024,
+        metricsJson: {},
+        warningsJson: [],
+        runtimeMetadataJson: {
+          comfyUi: {
+            advertised: true,
+            reason: "system_stats_ok",
+          },
+        },
+      },
+    }, { repo } as any);
+
+    expect(repo.updateWorker).toHaveBeenCalledWith(
+      "worker-policy-1",
+      expect.objectContaining({
+        capabilitiesJson: expect.objectContaining({
+          runtimeMetadata: expect.objectContaining({
+            workerAccessPolicy: {
+              permissionPreset: "custom",
+              permissionScopes: ["workers:heartbeat", "series:read"],
+            },
+          }),
+        }),
+      }),
+    );
+  });
+
   it("backfills compatibility state for legacy workers on heartbeat without re-registration", async () => {
     const { recordWorkerHeartbeat } = await import("../workerRegistryService");
 

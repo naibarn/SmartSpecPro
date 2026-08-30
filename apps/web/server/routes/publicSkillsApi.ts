@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomUUID } from "crypto";
 import path from "path";
 import { readFile } from "fs/promises";
 import { z } from "zod";
@@ -12,9 +13,9 @@ import { executeSkill } from "../services/skillExecutor";
 import { detectSkill } from "../services/skillDetector";
 import {
   hasEnoughCredits,
-  deductCredits,
   getCreditBalance,
 } from "../services/creditService";
+import { normalizeSkillRevenuePricing } from "../services/skillRevenueBilling";
 import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
 import { createInternalTokenFromAuth } from "../_core/tokens";
 import {
@@ -22,7 +23,6 @@ import {
   WorkerDelegationError,
 } from "../services/workerDelegationService";
 import {
-  buildDelegatedWorkerOriginMetadata,
   DelegatedWorkerPlatformError,
   runWithDelegatedWorkerExecution,
 } from "../services/delegatedWorkerPlatformService";
@@ -250,8 +250,11 @@ export function createPublicSkillsRouter(): Router {
         const userId = (auth as any).userId as number;
         const tenantId = (auth as any).tenantId as string;
 
-        // Credit pre-check and upfront deduction
-        const estimatedCost = Math.ceil((skill.creditMultiplier ?? 1) * 2);
+        // Public API uses the same fixed price as every other skill entry point.
+        // The charge is committed only after execution succeeds; media/python
+        // paths settle internally and the same run id makes this idempotent.
+        const estimatedCost = normalizeSkillRevenuePricing(skill).totalCredits;
+        const skillRunId = req.get("Idempotency-Key") || randomUUID();
         const sufficient = await hasEnoughCredits(userId, estimatedCost);
         if (!sufficient) {
           sendApiError(
@@ -266,26 +269,8 @@ export function createPublicSkillsRouter(): Router {
           auth,
           actionClass: "compute",
           estimatedCredits: estimatedCost,
-          idempotencyKey: req.get("Idempotency-Key"),
+          idempotencyKey: skillRunId,
         }, async () => {
-          // Deduct credits BEFORE execution so the user cannot get output for free
-          // if deductCredits fails. If execution subsequently fails, credits are NOT
-          // refunded — this is intentional (the service cost was incurred).
-          await deductCredits({
-            userId,
-            amount: estimatedCost,
-            sourceType: "api_skill",
-            description: `Skill execution: ${skill.id}`,
-            idempotencyKey: req.get("Idempotency-Key") || undefined,
-            metadata: buildDelegatedWorkerOriginMetadata(auth, "skills.execute", {
-              endpoint: "/v1/skills/:skillId/execute",
-              skillId: skill.id,
-              estimatedCredits: estimatedCost,
-              model: model ?? skill.defaultModel ?? null,
-            }),
-          } as any);
-          incrementDailyCredits((auth as any).apiKeyId, estimatedCost).catch(() => {});
-
           const prompt =
             typeof inputs.prompt === "string" ? inputs.prompt : "";
           const { prompt: _p, ...rest } = inputs as Record<string, unknown>;
@@ -293,18 +278,21 @@ export function createPublicSkillsRouter(): Router {
             prompt,
             model: model ?? skill.defaultModel,
             extraParams: rest,
+            runId: skillRunId,
           };
-
-          return executeSkill(
+          const execution = await executeSkill(
             skill,
             execParams as any,
             userId,
             createInternalTokenFromAuth({ userId, tenantId }),
             tenantId,
           );
+          if (!execution.success) return execution;
+          incrementDailyCredits((auth as any).apiKeyId, execution.creditsUsed ?? estimatedCost).catch(() => {});
+          return execution;
         });
 
-        const creditsUsed = estimatedCost;
+        const creditsUsed = (result as any)?.creditsUsed ?? estimatedCost;
 
         // Get remaining balance
         let remaining = 0;

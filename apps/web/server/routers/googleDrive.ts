@@ -20,7 +20,7 @@ import {
   creditTransactions,
   systemSettings,
 } from "../../drizzle/schema";
-import { storagePut, storageReadBuffer } from "../storage";
+import { assertR2StorageActive, storagePut, storageReadBuffer } from "../storage";
 import {
   gdriveSearchLimiter,
   gdriveReadLimiter,
@@ -555,6 +555,9 @@ export const googleDriveRouter = router({
       // Upload to storage with new key
       const timestamp = Date.now();
       const newKey = `library/${ctx.tenantId}/${session.libraryItemId}/edited-${timestamp}.${ext}`;
+      if (/^(image|video|audio)\//i.test(exportMime)) {
+        await assertR2StorageActive();
+      }
       const { url: newSourceUrl } = await storagePut(newKey, fileBuffer, exportMime);
 
       // Update library item source URL (tenant + owner scoped)

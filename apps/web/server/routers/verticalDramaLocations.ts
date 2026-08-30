@@ -112,6 +112,7 @@ import { resolveMediaModelTransportConfig } from "../../shared/mediaModelTranspo
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { createAssetFromAttachment } from "../services/mediaAssetService";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import { enqueueVerticalDramaInteractiveJob } from "../services/verticalDramaInteractiveJobs";
 import {
   applySeriesLookToImagePrompt,
   resolveEffectiveSeriesVisualIdentity,
@@ -137,6 +138,7 @@ import type {
   StoryScriptLang,
   StoryScriptEpisodeInput,
 } from "@shared/verticalDramaSeries/storyScriptText";
+import type { VerticalDramaInteractiveJobPayload } from "../services/verticalDramaInteractiveJobs";
 
 /* -------------------------------------------------------------------------- */
 /* Base procedure + ownership helpers                                          */
@@ -157,6 +159,78 @@ const verticalDramaSceneContinuityQcProcedure =
   verticalDramaSceneContinuityProcedure.use(
     requireFeatureFlag("verticalDramaSceneContinuityQc")
   );
+
+export async function runLocationDetectionInteractiveJob(
+  payload: VerticalDramaInteractiveJobPayload,
+  execution: { jobId: string; traceId: string }
+): Promise<unknown> {
+  const seriesId = Number(
+    payload.input.seriesId ?? payload.scopeKey.replace(/^series:/, "")
+  );
+  const seriesRow = await loadOwnedSeries(
+    payload.tenantId,
+    payload.userId,
+    seriesId
+  );
+  const bible = (seriesRow.bible as Record<string, unknown> | null) ?? {};
+  const lang: StoryScriptLang = seriesRow.locale === "th" ? "th" : "en";
+  const { getActiveBreakdown, readItemShotDrafts, readItemCliffhangerLine } =
+    await import("../services/verticalDramaStoryBible");
+  const { generateLocationDetectionPlan, reconcileLocationDetectionPlan } =
+    await import("../services/verticalDramaLocationDetector");
+  const draftedItems = getActiveBreakdown(bible).filter(
+    item => readItemShotDrafts(item) !== null
+  );
+  if (draftedItems.length === 0)
+    throw new Error(
+      "Generate deep story drafts first before detecting locations"
+    );
+  const episodes: StoryScriptEpisodeInput[] = draftedItems.map(item => ({
+    episodeNumber: item.episodeNumber,
+    workingTitle: item.workingTitle,
+    logline: item.logline,
+    keyBeats: item.keyBeats,
+    shotDrafts: readItemShotDrafts(item),
+    cliffhangerLine: readItemCliffhangerLine(item),
+  }));
+  const locationRows: VerticalDramaLocationRow[] = await db
+    .select()
+    .from(verticalDramaLocations)
+    .where(
+      and(
+        eq(verticalDramaLocations.tenantId, payload.tenantId),
+        eq(verticalDramaLocations.userId, payload.userId),
+        eq(verticalDramaLocations.seriesId, seriesId)
+      )
+    );
+  const existingLocations = locationRows.map(row => ({
+    locationKey: row.locationKey,
+    name: row.name,
+    description: extractLocationDescription(
+      (row.data as Record<string, unknown> | null) ?? null
+    ),
+  }));
+  const planResult = await generateLocationDetectionPlan({
+    userId: payload.userId,
+    tenantId: payload.tenantId,
+    seriesId,
+    lang,
+    existingLocations,
+    episodes,
+  });
+  const summary = await reconcileLocationDetectionPlan(
+    { tenantId: payload.tenantId, userId: payload.userId, seriesId },
+    planResult.plan
+  );
+  return {
+    locationsCreated: summary.createdLocations.length,
+    locationsReused: summary.reusedLocations.length,
+    createdLocations: summary.createdLocations,
+    reusedLocations: summary.reusedLocations,
+    jobId: execution.jobId,
+    traceId: execution.traceId,
+  };
+}
 
 /**
  * Location image providers used by this surface accept one prompt field.
@@ -345,6 +419,14 @@ function locationRowToDto(
     description: extractLocationDescription(
       (row.data as Record<string, unknown> | null) ?? null
     ),
+    slotStatus:
+      (row.data as Record<string, unknown> | null)?.slotStatus === "pending"
+        ? "pending"
+        : undefined,
+    slotReason:
+      typeof (row.data as Record<string, unknown> | null)?.slotReason === "string"
+        ? (row.data as Record<string, unknown>).slotReason
+        : undefined,
     primaryReferenceUrl: row.primaryReferenceUrl,
     primaryReferenceAssetLinkId:
       row.primaryReferenceAssetLinkId != null
@@ -653,12 +735,15 @@ export const verticalDramaLocationsRouter = router({
         });
       } catch (err) {
         if (err instanceof InsufficientCreditsError) {
-          throw new TRPCError({ code: "FORBIDDEN", message: err.message });
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: String(err),
+          });
         }
         if (err instanceof VdSchemaValidationError) {
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: err.message,
+            message: String(err),
           });
         }
         throw new TRPCError({
@@ -1703,6 +1788,20 @@ export const verticalDramaLocationsRouter = router({
       const seriesId = parseId(input.seriesId, "series id");
       await loadOwnedSeries(tenantId, userId, seriesId);
 
+      // Submit the paid planner to the durable worker.  The old inline body
+      // below is intentionally unreachable until removed in the cleanup
+      // pass; keeping the early return here makes the browser request bounded
+      // even when the season contains hundreds of drafted episodes.
+      return enqueueVerticalDramaInteractiveJob({
+        kind: "location_detection",
+        tenantId,
+        userId,
+        scopeKey: `series:${seriesId}`,
+        skillSlug: "vertical-drama-location-detector",
+        idempotencyKey: `locations:${seriesId}`,
+        input: { seriesId },
+      });
+
       const [seriesRow] = await db
         .select({
           locale: verticalDramaSeries.locale,
@@ -1784,18 +1883,20 @@ export const verticalDramaLocationsRouter = router({
         });
       } catch (err) {
         if (err instanceof InsufficientCreditsError) {
-          throw new TRPCError({ code: "FORBIDDEN", message: err.message });
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: String(err) || "Insufficient credits",
+          });
         }
         if (err instanceof VdSchemaValidationError) {
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: err.message,
+            message: String(err) || "Location detection validation failed",
           });
         }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message:
-            err instanceof Error ? err.message : "Location detection failed",
+          message: String(err),
         });
       }
 

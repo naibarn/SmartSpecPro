@@ -164,6 +164,35 @@ describe("cover state parsing", () => {
     expect(readEpisodeCoverState({ status: "unknown" })).toBeNull();
   });
 
+  it("keeps a bounded cover safety review in the JSONB state", () => {
+    const state = readEpisodeCoverState({
+      status: "generating",
+      prompt: "safe cover",
+      safetyReview: {
+        checked: true,
+        mode: "vertical_drama_cover",
+        skillId: "vertical-drama-episode-cover-safety-rewriter",
+        skillVersion: "1.0.0",
+        riskLevel: "medium",
+        rewritten: true,
+        fallback: false,
+        blocked: false,
+        originalPromptHash: "a".repeat(64),
+        safePromptHash: "b".repeat(64),
+        changes: ["x".repeat(500)],
+        preservedIntent: ["family", "9:16"],
+      },
+    });
+
+    expect(state?.safetyReview).toMatchObject({
+      mode: "vertical_drama_cover",
+      riskLevel: "medium",
+      rewritten: true,
+    });
+    expect(state?.safetyReview?.changes[0]).toHaveLength(240);
+    expect(state?.safetyReview?.preservedIntent).toEqual(["family", "9:16"]);
+  });
+
   it("keeps the previous cover visible during a replacement", () => {
     expect(
       toEpisodeCoverDisplay(

@@ -13,7 +13,15 @@ use std::time::{Duration, Instant, SystemTime};
 use tauri::async_runtime::JoinHandle;
 
 use crate::comfy_executor;
-use crate::credentials::clear_connection;
+use crate::comfy_mcp_client::{
+    command_available_with_path, discover_manifest, extract_mcp_execution_id, run_generic_workflow_with_lifecycle,
+    run_workflow_with_lifecycle,
+    ComfyMcpConfig, ComfyMcpManifest,
+};
+use crate::comfy_mcp_transport::ComfyHttpMcpTransport;
+use crate::comfy_profiles::{resolve_bridge_args, ComfyConnectionProfile, ComfyCredentialKind, ComfyProfileStore, ComfyTransportKind};
+use crate::comfy_execution_ledger::{ExecutionLedger, ExecutionLedgerEntry, ExecutionLedgerState};
+use crate::credentials::{clear_connection, load_connection};
 use crate::diagnostics::append_diagnostic_event;
 use crate::executor_state::{ExecutorState, ExecutorStatus};
 use crate::hermes_executor::{
@@ -27,15 +35,23 @@ use crate::hermes_executor::{
 use crate::hermes_runtime::{
     hermes_doctor_from_manifest_path, hermes_runtime_pack_paths, read_hermes_runtime_manifest,
 };
+use crate::media_pipeline::{
+    analyze_media_file, build_media_plan, collect_media_manifest, probe_media_file,
+    qc_derived_output_with_probe, run_allowlisted_ffmpeg, run_allowlisted_ffmpeg_segments, write_checkpoint_atomic, LocalMediaQc,
+    LocalMediaAnalysis, LocalMediaProbe, MediaCheckpoint, MediaFocusKeyframe, MediaPlanOptions, MediaToolchain,
+};
 use crate::runtime_manifest::{
     doctor_from_manifest_path, read_runtime_pack_manifest, runtime_pack_paths,
-    sidecar_path_from_manifest, DoctorSummary,
+    runtime_pack_root_for_sidecars, sidecar_path_from_manifest, DoctorSummary,
+    RuntimeTranscriptionManifest,
 };
+use crate::series_workspace::{load_root_state, load_root_state_for_series, validate_local_root};
 use crate::settings::WorkerAppSettings;
 use crate::worker_control_plane::{
-    build_worker_heartbeat_payload, claim_worker_job, report_worker_job_event,
-    send_worker_heartbeat, upload_worker_artifact_file, WorkerClaimRequest, WorkerClaimResponse,
-    WorkerJobEventPayload, WorkerLoopConnection,
+    build_worker_heartbeat_payload, claim_worker_job, download_worker_bytes, download_worker_file, get_worker_json,
+    publish_vertical_drama_media, report_worker_job_event, send_worker_heartbeat,
+    upload_worker_artifact_file, WorkerClaimRequest, WorkerClaimResponse, WorkerJobEventPayload,
+    WorkerLoopConnection,
 };
 use crate::worker_executor::{
     build_comfy_completed_event, build_comfy_failure_event, build_comfy_progress_event,
@@ -49,10 +65,16 @@ use crate::worker_executor::{
     remotion_render_video_content_hash, sanitize_segment, validate_final_video_artifact,
     validate_workspace_path, ArtifactUploadPlan, ClaimedWorkerJob, RemotionSidecarEvent,
     SidecarCommandPlan, WorkerEventPlan, WorkerJobKind, COMFY_CAPABILITY_FAMILIES,
-    COMFY_IMAGE_GENERATION_JOB_TYPE, COMFY_WORKFLOW_RUN_JOB_TYPE,
+    COMFY_IMAGE_GENERATION_JOB_TYPE, COMFY_VIDEO_GENERATION_JOB_TYPE,
+    COMFY_WORKFLOW_RUN_JOB_TYPE,
     HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, HYPERFRAMES_JOB_TYPE,
     REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES, REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
     REMOTION_RENDER_VIDEO_JOB_TYPE, REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+    VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE, VERTICAL_DRAMA_MEDIA_CAPABILITY,
+    VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE, VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE,
+    VERTICAL_DRAMA_FOOTAGE_PROBE_JOB_TYPE, VERTICAL_DRAMA_FOOTAGE_PREPARE_JOB_TYPE,
+    VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE, VERTICAL_DRAMA_FOOTAGE_ANALYSIS_CAPABILITY,
+    VERTICAL_DRAMA_FOOTAGE_PREPARE_CAPABILITY, VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_CAPABILITY,
 };
 
 /// Feature 135 §11 — hermes has its own single-job slot, independent of the
@@ -67,6 +89,11 @@ const HERMES_MEDIA_MAX_CONCURRENT_JOBS: u32 = 1;
 const WORKER_EVENT_MAX_ATTEMPTS: u8 = 3;
 const WORKER_EVENT_RETRY_BACKOFF_MS: [u64; 2] = [250, 750];
 
+static COMFY_MCP_MANIFEST_CACHE: std::sync::OnceLock<Mutex<Option<(String, ComfyMcpManifest)>>> =
+    std::sync::OnceLock::new();
+static COMFY_MCP_PROBE_FAILURE_CACHE: std::sync::OnceLock<Mutex<Option<(String, Instant, String)>>> =
+    std::sync::OnceLock::new();
+
 /// Feature 135 §11 — claim `capability_hints` construction. Render hints are
 /// included only when the render (HyperFrames) doctor is ready; `hermes_media`
 /// is appended only when this worker's Hermes doctor is ready. Both gates are
@@ -78,7 +105,12 @@ pub fn build_worker_claim_capability_hints(
     render_ready: bool,
     hermes_media_advertised: bool,
 ) -> Vec<String> {
-    build_worker_claim_capability_hints_with_remotion(render_ready, true, hermes_media_advertised)
+    build_worker_claim_capability_hints_with_media(
+        render_ready,
+        true,
+        hermes_media_advertised,
+        render_ready,
+    )
 }
 
 /// Builds claim hints with an explicit Remotion contract gate. HyperFrames
@@ -89,6 +121,44 @@ pub fn build_worker_claim_capability_hints_with_remotion(
     render_ready: bool,
     remotion_contract_ready: bool,
     hermes_media_advertised: bool,
+) -> Vec<String> {
+    build_worker_claim_capability_hints_with_media(
+        render_ready,
+        remotion_contract_ready,
+        hermes_media_advertised,
+        render_ready,
+    )
+}
+
+/// Builds claim hints for the independent local-media lane. Local ingest and
+/// B-roll preprocessing require only a bound, healthy footage root plus the
+/// allowlisted FFmpeg binary; they must remain claimable when the Chromium
+/// render pack is absent or blocked.
+pub fn build_worker_claim_capability_hints_with_media(
+    render_ready: bool,
+    remotion_contract_ready: bool,
+    hermes_media_advertised: bool,
+    media_ready: bool,
+) -> Vec<String> {
+    build_worker_claim_capability_hints_with_media_and_mcp(
+        render_ready,
+        remotion_contract_ready,
+        hermes_media_advertised,
+        media_ready,
+        false,
+    )
+}
+
+/// Builds claim hints for both local footage processing and the optional
+/// shell-free ComfyUI MCP adapter. The two lanes are intentionally separate:
+/// a worker may claim local ingest/B-roll without MCP, or shot generation with
+/// MCP without claiming a local footage job that has no bound root.
+pub fn build_worker_claim_capability_hints_with_media_and_mcp(
+    render_ready: bool,
+    remotion_contract_ready: bool,
+    hermes_media_advertised: bool,
+    media_ready: bool,
+    mcp_ready: bool,
 ) -> Vec<String> {
     let mut hints = Vec::new();
     if render_ready {
@@ -113,10 +183,186 @@ pub fn build_worker_claim_capability_hints_with_remotion(
             hints.push(REMOTION_RENDER_VIDEO_JOB_TYPE.to_string());
         }
     }
+    // Feature 162 deterministic local ingest/preprocess is independent from
+    // the Chromium/HyperFrames doctor, but never advertises Comfy/H3.
+    if media_ready {
+        hints.push(VERTICAL_DRAMA_MEDIA_CAPABILITY.to_string());
+        hints.push(VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE.to_string());
+        hints.push(VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE.to_string());
+        hints.push(VERTICAL_DRAMA_FOOTAGE_PROBE_JOB_TYPE.to_string());
+        hints.push(VERTICAL_DRAMA_FOOTAGE_PREPARE_JOB_TYPE.to_string());
+        hints.push(VERTICAL_DRAMA_FOOTAGE_ANALYSIS_CAPABILITY.to_string());
+        hints.push(VERTICAL_DRAMA_FOOTAGE_PREPARE_CAPABILITY.to_string());
+        if remotion_contract_ready {
+            hints.push(VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE.to_string());
+            hints.push(VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_CAPABILITY.to_string());
+        }
+    }
+    if mcp_ready {
+        for family in COMFY_CAPABILITY_FAMILIES {
+            hints.push(family.to_string());
+        }
+        hints.push(COMFY_IMAGE_GENERATION_JOB_TYPE.to_string());
+        hints.push(COMFY_VIDEO_GENERATION_JOB_TYPE.to_string());
+        hints.push(COMFY_WORKFLOW_RUN_JOB_TYPE.to_string());
+        hints.push(VERTICAL_DRAMA_MEDIA_CAPABILITY.to_string());
+        hints.push(VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE.to_string());
+    }
     if hermes_media_advertised {
         hints.push(HERMES_MEDIA_CLAIM_CAPABILITY.to_string());
     }
     hints
+}
+
+fn local_media_runtime_ready(app_data_dir: &Path, settings: &WorkerAppSettings) -> bool {
+    let Ok(Some(root)) = load_root_state(app_data_dir) else {
+        return false;
+    };
+    if validate_local_root(&root.root_path).is_err() {
+        return false;
+    }
+    MediaToolchain::from_settings(settings, app_data_dir).is_ready()
+}
+
+fn active_comfy_profile(app_data_dir: &Path, settings: &WorkerAppSettings, requested_id: Option<&str>) -> Result<ComfyConnectionProfile, String> {
+    let store = ComfyProfileStore::load(app_data_dir)?;
+    let paired_worker_id = load_connection(app_data_dir).ok().flatten().map(|connection| connection.worker.id);
+    let belongs_to_this_worker = |profile: &ComfyConnectionProfile| {
+        profile.enabled && paired_worker_id.as_deref().is_none_or(|worker_id| worker_id == profile.worker_id)
+    };
+    if let Some(profile_id) = requested_id {
+        return store.profiles().find(|profile| profile.profile_id == profile_id && belongs_to_this_worker(profile)).cloned().ok_or_else(|| "comfy_profile_not_found_or_disabled".into());
+    }
+    if let Some(profile) = store.active_profile().filter(|profile| belongs_to_this_worker(profile)) { return Ok(profile.clone()); }
+    if settings.comfyui_mcp_enabled {
+        let profile = ComfyConnectionProfile { profile_id: "legacy-local-comfy".into(), worker_id: "legacy-local-worker".into(), display_name: "Legacy local ComfyUI".into(), transport: ComfyTransportKind::LocalStdio, endpoint: None, command: Some(settings.comfyui_mcp_command.clone()), args: Vec::new(), credential_kind: ComfyCredentialKind::None, credential_ref: None, enabled: true, profile_revision: 1, permission_revision: 1, policy_revision: 1, projection_revision: 1, expires_at: None, last_probe_at: None, last_probe_status: None };
+        profile.validate()?;
+        return Ok(profile);
+    }
+    Err("comfy_profile_not_selected".into())
+}
+
+fn negotiated_mcp_runtime_ready(manifest: Option<&ComfyMcpManifest>) -> bool {
+    manifest.is_some_and(|manifest| {
+        ["run_workflow", "submit_workflow", "create_execution"]
+            .iter()
+            .any(|candidate| manifest.tool_names.iter().any(|name| name == candidate))
+            && !manifest.workflow_ids.is_empty()
+    })
+}
+
+async fn probe_active_comfy_mcp_profile(
+    app_data_dir: &Path,
+    settings: &WorkerAppSettings,
+) -> (bool, String, Option<ComfyMcpManifest>) {
+    let profile = match active_comfy_profile(app_data_dir, settings, None) {
+        Ok(profile) => profile,
+        Err(error) => return (false, error, None),
+    };
+    let result = match profile.transport {
+        ComfyTransportKind::LocalStdio | ComfyTransportKind::SelfHostedStdioBridge => {
+            let Some(command) = profile.command.clone() else {
+                return (false, "comfy_profile_command_missing".into(), None);
+            };
+            let managed_command_path = (matches!(profile.transport, ComfyTransportKind::LocalStdio)
+                && crate::comfy_mcp_runtime::normalize_command(&command)
+                    == crate::comfy_mcp_runtime::STANDARD_COMMAND)
+                .then(|| crate::comfy_mcp_runtime::managed_command_path(app_data_dir))
+                .flatten();
+            if !command_available_with_path(&command, managed_command_path.as_deref()) {
+                return (false, "comfy_mcp_unavailable".into(), None);
+            }
+            let args = if matches!(profile.transport, ComfyTransportKind::SelfHostedStdioBridge) {
+                let Some(endpoint) = profile.endpoint.as_deref() else {
+                    return (false, "comfy_bridge_endpoint_missing".into(), None);
+                };
+                match resolve_bridge_args(&profile.args, endpoint) {
+                    Ok(args) => args,
+                    Err(error) => return (false, error, None),
+                }
+            } else { profile.args.clone() };
+            discover_manifest(&ComfyMcpConfig {
+                command,
+                managed_command_path,
+                args,
+                timeout_ms: 5_000,
+            })
+            .await
+        }
+        ComfyTransportKind::SelfHostedHttpMcp
+        | ComfyTransportKind::ComfyCloud
+        | ComfyTransportKind::SshTunnel => {
+            let ssh_key = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) {
+                match profile
+                    .credential_ref
+                    .as_deref()
+                    .ok_or_else(|| "comfy_credential_ref_missing".to_string())
+                    .and_then(crate::comfy_credentials::resolve)
+                {
+                    Ok(value) => Some(value),
+                    Err(error) => return (false, error, None),
+                }
+            } else {
+                None
+            };
+            let _ssh_tunnel = match ssh_key.as_deref() {
+                Some(key) => match crate::comfy_ssh_tunnel::open_with_identity(&profile.args, key) {
+                    Ok(tunnel) => Some(tunnel),
+                    Err(error) => return (false, error, None),
+                },
+                None => None,
+            };
+            let Some(endpoint) = profile.endpoint.clone() else {
+                return (false, "comfy_endpoint_missing".into(), None);
+            };
+            let token = if matches!(&profile.transport, ComfyTransportKind::SshTunnel)
+                || profile.credential_kind == ComfyCredentialKind::None
+            {
+                None
+            } else {
+                match profile
+                    .credential_ref
+                    .as_deref()
+                    .ok_or_else(|| "comfy_credential_ref_missing".to_string())
+                    .and_then(crate::comfy_credentials::resolve)
+                {
+                    Ok(value) => Some(value),
+                    Err(error) => return (false, error, None),
+                }
+            };
+            let mut transport = match ComfyHttpMcpTransport::new(endpoint, token, Duration::from_secs(15)) {
+                Ok(transport) => transport,
+                Err(error) => return (false, error, None),
+            };
+            transport.discover_tools().await.and_then(|response| {
+                crate::comfy_mcp_client::parse_tools_manifest(&response)
+            })
+        }
+    };
+    match result {
+        Ok(manifest) => (true, "mcp_negotiation_passed".into(), Some(manifest)),
+        Err(error) => (false, error, None),
+    }
+}
+
+fn comfy_readiness_for_heartbeat(
+    legacy: &comfy_executor::ComfyReadiness,
+    mcp_ready: bool,
+    mcp_reason: &str,
+) -> comfy_executor::ComfyReadiness {
+    if mcp_ready {
+        return comfy_executor::ComfyReadiness {
+            ready: true,
+            reason: mcp_reason.to_string(),
+        };
+    }
+    if legacy.ready {
+        return legacy.clone();
+    }
+    comfy_executor::ComfyReadiness {
+        ready: false,
+        reason: mcp_reason.to_string(),
+    }
 }
 
 pub fn remotion_render_video_contract_ready(doctor: &DoctorSummary) -> bool {
@@ -197,6 +443,7 @@ struct HermesDoctorCache {
 }
 
 const HERMES_DOCTOR_REFRESH_INTERVAL: Duration = Duration::from_secs(60);
+const COMFY_MCP_PROBE_FAILURE_RETRY_INTERVAL: Duration = Duration::from_secs(60);
 
 fn hermes_doctor_cached(
     app_data_dir: &Path,
@@ -635,7 +882,7 @@ async fn worker_loop_tick(
     // between full re-registrations.
     let (hermes_doctor, hermes_version) = hermes_doctor_cached(app_data_dir, hermes_doctor_cache);
     let hermes_ready = hermes_doctor.status == "ready";
-    let comfy_readiness = if settings_snapshot.comfyui_enabled {
+    let legacy_comfy_readiness = if settings_snapshot.comfyui_enabled {
         comfy_executor::check_readiness(&settings_snapshot.comfyui_base_url).await
     } else {
         comfy_executor::ComfyReadiness {
@@ -643,12 +890,71 @@ async fn worker_loop_tick(
             reason: "comfyui_disabled".into(),
         }
     };
-    let comfy_ready = comfy_readiness.ready;
+    let comfy_ready = legacy_comfy_readiness.ready;
 
-    let any_runtime_ready = render_ready || hermes_ready || comfy_ready;
+    let media_ready = local_media_runtime_ready(app_data_dir, &settings_snapshot);
+    let render_active_now = render_active.load(Ordering::Relaxed);
+    let active_profile_id = active_comfy_profile(app_data_dir, &settings_snapshot, None)
+        .ok()
+        .map(|profile| profile.profile_id);
+    let cached_manifest = active_profile_id.as_deref().and_then(|profile_id| {
+        COMFY_MCP_MANIFEST_CACHE
+            .get_or_init(|| Mutex::new(None))
+            .lock()
+            .ok()
+            .and_then(|cache| cache.as_ref().filter(|(cached_id, _)| cached_id == profile_id).map(|(_, manifest)| manifest.clone()))
+    });
+    let cached_probe_failure = active_profile_id.as_deref().and_then(|profile_id| {
+        COMFY_MCP_PROBE_FAILURE_CACHE
+            .get_or_init(|| Mutex::new(None))
+            .lock()
+            .ok()
+            .and_then(|cache| cache.as_ref().filter(|(cached_id, checked_at, _)| {
+                cached_id == profile_id && checked_at.elapsed() < COMFY_MCP_PROBE_FAILURE_RETRY_INTERVAL
+            }).map(|(_, _, reason)| reason.clone()))
+    });
+    let had_cached_probe_failure = cached_probe_failure.is_some();
+    let (_mcp_probe_ready, mcp_probe_reason, mcp_manifest) = if render_active_now {
+        if let Some(manifest) = cached_manifest.as_ref() {
+            (true, "mcp_manifest_cached_while_job_active".to_string(), Some(manifest.clone()))
+        } else if let Some(reason) = cached_probe_failure.as_ref() {
+            (false, reason.clone(), None)
+        } else {
+            probe_active_comfy_mcp_profile(app_data_dir, &settings_snapshot).await
+        }
+    } else if let Some(manifest) = cached_manifest.as_ref() {
+        (true, "mcp_manifest_cached".to_string(), Some(manifest.clone()))
+    } else if let Some(reason) = cached_probe_failure.as_ref() {
+        (false, reason.clone(), None)
+    } else {
+        probe_active_comfy_mcp_profile(app_data_dir, &settings_snapshot).await
+    };
+    if let Ok(mut cache) = COMFY_MCP_PROBE_FAILURE_CACHE
+        .get_or_init(|| Mutex::new(None))
+        .lock()
+    {
+        if let Some(profile_id) = active_profile_id.as_ref() {
+            if mcp_manifest.is_some() {
+                *cache = None;
+            } else if !had_cached_probe_failure {
+                *cache = Some((profile_id.clone(), Instant::now(), mcp_probe_reason.clone()));
+            }
+        } else {
+            *cache = None;
+        }
+    }
+    if let Ok(mut cache) = COMFY_MCP_MANIFEST_CACHE
+        .get_or_init(|| Mutex::new(None))
+        .lock()
+    {
+        *cache = active_profile_id.zip(mcp_manifest.clone());
+    }
+    let mcp_ready = negotiated_mcp_runtime_ready(mcp_manifest.as_ref());
+    let heartbeat_comfy_readiness =
+        comfy_readiness_for_heartbeat(&legacy_comfy_readiness, mcp_ready, &mcp_probe_reason);
+    let any_runtime_ready = render_ready || hermes_ready || comfy_ready || media_ready || mcp_ready;
     let accepts_jobs = settings_snapshot.accept_jobs && any_runtime_ready;
     let connection_snapshot = clone_connection(connection)?;
-    let render_active_now = render_active.load(Ordering::Relaxed);
     let hermes_active_now = hermes_active.load(Ordering::Relaxed);
     heartbeat(
         executor,
@@ -659,7 +965,9 @@ async fn worker_loop_tick(
         Some((&hermes_doctor, hermes_version.as_deref())),
         render_active_now,
         hermes_active_now,
-        Some(&comfy_readiness),
+        Some(&heartbeat_comfy_readiness),
+        Some(media_ready),
+        Some(mcp_ready),
     )
     .await?;
 
@@ -688,8 +996,19 @@ async fn worker_loop_tick(
     let can_claim_comfy = comfy_ready
         && !settings_snapshot.render_update_blocked
         && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_media = media_ready
+        && !settings_snapshot.render_update_blocked
+        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_mcp = mcp_ready
+        && !settings_snapshot.render_update_blocked
+        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
 
-    if !can_claim_render && !can_claim_hermes && !can_claim_comfy {
+    if !can_claim_render
+        && !can_claim_hermes
+        && !can_claim_comfy
+        && !can_claim_media
+        && !can_claim_mcp
+    {
         set_executor_polling(
             executor,
             if render_active_now || hermes_active_now {
@@ -707,10 +1026,12 @@ async fn worker_loop_tick(
         WorkerClaimRequest {
             max_jobs,
             capability_hints: {
-                let mut hints = build_worker_claim_capability_hints_with_remotion(
+                let mut hints = build_worker_claim_capability_hints_with_media_and_mcp(
                     can_claim_render,
                     remotion_render_video_contract_ready(&doctor),
                     can_claim_hermes,
+                    can_claim_media,
+                    can_claim_mcp,
                 );
                 if can_claim_comfy {
                     hints.extend(
@@ -719,6 +1040,7 @@ async fn worker_loop_tick(
                             .map(|family| (*family).to_string()),
                     );
                     hints.push(COMFY_IMAGE_GENERATION_JOB_TYPE.into());
+                    hints.push(COMFY_VIDEO_GENERATION_JOB_TYPE.into());
                     hints.push(COMFY_WORKFLOW_RUN_JOB_TYPE.into());
                     hints.push("gpu-nvidia".into());
                 }
@@ -808,7 +1130,37 @@ async fn worker_loop_tick(
             });
             Ok(())
         }
-        WorkerJobKind::ComfyImageGeneration | WorkerJobKind::ComfyWorkflowRun => {
+        WorkerJobKind::VerticalDramaFootageRender => {
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let resource_dir_owned = resource_dir.to_path_buf();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let doctor_owned = doctor.clone();
+            let settings_owned = settings_snapshot.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_footage_broll_render_job(
+                    &executor,
+                    &resource_dir_owned,
+                    &app_data_dir_owned,
+                    &connection,
+                    job,
+                    &doctor_owned,
+                    &settings_owned,
+                    &cancel,
+                )
+                .await;
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::ComfyImageGeneration
+        | WorkerJobKind::ComfyVideoGeneration
+        | WorkerJobKind::ComfyWorkflowRun => {
             render_active.store(true, Ordering::Relaxed);
             let executor = executor.clone();
             let resource_dir_owned = resource_dir.to_path_buf();
@@ -820,6 +1172,32 @@ async fn worker_loop_tick(
             let terminal_error = terminal_error.clone();
             tauri::async_runtime::spawn(async move {
                 let result = execute_comfy_job(
+                    &executor,
+                    &resource_dir_owned,
+                    &app_data_dir_owned,
+                    &connection,
+                    job,
+                    &settings_owned,
+                    &cancel,
+                )
+                .await;
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::VerticalDramaMedia => {
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let resource_dir_owned = resource_dir.to_path_buf();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let settings_owned = settings_snapshot.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_vertical_drama_media_job(
                     &executor,
                     &resource_dir_owned,
                     &app_data_dir_owned,
@@ -963,6 +1341,8 @@ fn build_heartbeat_runtime_metadata(
     doctor_status: &str,
     hermes_info: Option<(&DoctorSummary, Option<&str>)>,
     comfy_readiness: Option<&comfy_executor::ComfyReadiness>,
+    media_ready: Option<bool>,
+    mcp_ready: Option<bool>,
 ) -> Value {
     let runtime_version = doctor
         .checks
@@ -1016,9 +1396,46 @@ fn build_heartbeat_runtime_metadata(
     }
     if let Some(comfy_readiness) = comfy_readiness {
         runtime_metadata["comfyUi"] = json!({
-            "advertised": comfy_readiness.ready,
-            "reason": comfy_readiness.reason,
+            "adapter": if mcp_ready.unwrap_or(false) { "mcp" } else { "legacy_rest" },
+            "advertised": comfy_readiness.ready || mcp_ready.unwrap_or(false),
+            "mcpReady": mcp_ready.unwrap_or(false),
+            "reason": if mcp_ready.unwrap_or(false) { "mcp_negotiation_passed" } else { comfy_readiness.reason.as_str() },
             "capabilityFamilies": COMFY_CAPABILITY_FAMILIES,
+            "workflowIds": COMFY_MCP_MANIFEST_CACHE.get_or_init(|| Mutex::new(None)).lock().ok().and_then(|cache| cache.clone()).map(|(_, manifest)| manifest.workflow_ids).unwrap_or_default(),
+            "mcpTools": COMFY_MCP_MANIFEST_CACHE.get_or_init(|| Mutex::new(None)).lock().ok().and_then(|cache| cache.clone()).map(|(_, manifest)| manifest.tool_names).unwrap_or_default(),
+        });
+    }
+    if let Some(media_ready) = media_ready {
+        // Do not advertise shot generation merely because the configured MCP
+        // executable exists. The caller must pass the result of the live
+        // tools/list negotiation and workflow capability check.
+        let mcp_ready = mcp_ready.unwrap_or(false);
+        let mcp_manifest = COMFY_MCP_MANIFEST_CACHE
+            .get_or_init(|| Mutex::new(None))
+            .lock()
+            .ok()
+            .and_then(|cache| cache.clone().map(|(_, manifest)| manifest));
+        let mut media_capabilities = Vec::new();
+        if media_ready {
+            media_capabilities.extend(["media-ingest", "broll-preprocess"]);
+        }
+        if mcp_ready {
+            media_capabilities.push("shot_video_generation");
+            if let Some(manifest) = mcp_manifest.as_ref() {
+                media_capabilities.extend(manifest.capabilities.iter().map(String::as_str));
+            }
+        }
+        runtime_metadata["verticalDramaMedia"] = json!({
+            "adapter": "worker_local",
+            "ready": media_ready,
+            "localReady": media_ready,
+            "mcpReady": mcp_ready,
+            "capabilityRevision": format!("worker-media-{}", env!("CARGO_PKG_VERSION")),
+            "capabilities": media_capabilities,
+            "workflowIds": mcp_manifest.as_ref().map(|manifest| manifest.workflow_ids.clone()).unwrap_or_default(),
+            "mcpTools": mcp_manifest.as_ref().map(|manifest| manifest.tool_names.clone()).unwrap_or_default(),
+            "models": [],
+            "reason": if media_ready || mcp_ready { "media_adapter_ready" } else { "local_root_ffmpeg_or_mcp_not_ready" },
         });
     }
     runtime_metadata
@@ -1034,15 +1451,17 @@ async fn heartbeat(
     render_active: bool,
     hermes_active: bool,
     comfy_readiness: Option<&comfy_executor::ComfyReadiness>,
+    media_ready: Option<bool>,
+    mcp_ready: Option<bool>,
 ) -> Result<(), String> {
     let current_job_count =
         active_worker_job_count(has_active_job(executor)?, render_active, hermes_active);
-    let status = if doctor.status == "ready" {
+    let status = if doctor.status == "ready" || accepts_jobs {
         "online"
     } else {
         "unhealthy"
     };
-    let warnings = if doctor.status == "ready" {
+    let warnings = if doctor.status == "ready" || accepts_jobs {
         Vec::new()
     } else {
         doctor.recommended_actions.clone()
@@ -1060,6 +1479,8 @@ async fn heartbeat(
             &doctor.status,
             hermes_info,
             comfy_readiness,
+            media_ready,
+            mcp_ready,
         ),
     );
     let response = send_worker_heartbeat(connection, &payload).await?;
@@ -1116,9 +1537,8 @@ fn runtime_block_message(doctor: &DoctorSummary) -> String {
         })
         .or_else(|| doctor.checks.iter().find(|check| check.status == "error"));
 
-    let mut parts = vec![
-        "Official HyperFrames runtime is not ready. Worker will not claim render jobs.".to_string(),
-    ];
+    let mut parts =
+        vec!["No local Worker capability is ready. Worker will not claim jobs.".to_string()];
     if let Some(check) = blocking_check {
         parts.push(format!("Blocked by {}: {}", check.id, check.message));
         if let Some(missing) = check
@@ -1203,6 +1623,918 @@ async fn execute_comfy_job(
     result
 }
 
+fn extract_mcp_artifact_path(value: &Value) -> Option<String> {
+    if let Some(path) = value.get("artifactPath").and_then(Value::as_str) {
+        return Some(path.to_string());
+    }
+    if let Some(structured) = value.get("structuredContent") {
+        if let Some(path) = extract_mcp_artifact_path(structured) {
+            return Some(path);
+        }
+    }
+    value
+        .get("content")
+        .and_then(Value::as_array)
+        .and_then(|blocks| {
+            blocks.iter().find_map(|block| {
+                block.get("text").and_then(Value::as_str).and_then(|text| {
+                    serde_json::from_str::<Value>(text)
+                        .ok()
+                        .and_then(|parsed| extract_mcp_artifact_path(&parsed))
+                })
+            })
+        })
+}
+
+fn extract_mcp_artifact_url(value: &Value) -> Option<String> {
+    if let Some(url) = value.get("artifactUrl").or_else(|| value.get("artifact_url")).or_else(|| value.get("outputUrl")).or_else(|| value.get("output_url")).and_then(Value::as_str) {
+        return Some(url.to_string());
+    }
+    if let Some(structured) = value.get("structuredContent") {
+        if let Some(url) = extract_mcp_artifact_url(structured) { return Some(url); }
+    }
+    value.get("content").and_then(Value::as_array).and_then(|blocks| blocks.iter().find_map(|block| block.get("text").and_then(Value::as_str).and_then(|text| serde_json::from_str::<Value>(text).ok()).and_then(|parsed| extract_mcp_artifact_url(&parsed))))
+}
+
+fn ensure_portrait_9x16_qc(qc: &LocalMediaQc) -> Result<(), String> {
+    let width = u64::from(
+        qc.width
+            .ok_or_else(|| "qc_aspect_ratio_failed".to_string())?,
+    );
+    let height = u64::from(
+        qc.height
+            .ok_or_else(|| "qc_aspect_ratio_failed".to_string())?,
+    );
+    if width == 0 || height == 0 || width.saturating_mul(16) != height.saturating_mul(9) {
+        return Err("qc_aspect_ratio_failed".into());
+    }
+    Ok(())
+}
+
+fn resolve_worker_media_source_path(
+    root_path: &Path,
+    source_name: &str,
+) -> Result<PathBuf, String> {
+    if source_name.trim().is_empty()
+        || source_name.starts_with('/')
+        || source_name.contains('\\')
+        || source_name
+            .split('/')
+            .any(|part| part.is_empty() || part == "..")
+    {
+        return Err("relative_path_escape".into());
+    }
+    let source_path = root_path
+        .join(source_name)
+        .canonicalize()
+        .map_err(|_| "media_source_missing".to_string())?;
+    if !source_path.starts_with(root_path) {
+        return Err("relative_path_escape".into());
+    }
+    Ok(source_path)
+}
+
+fn is_supported_frame_bytes(bytes: &[u8]) -> bool {
+    bytes.starts_with(&[0xff, 0xd8, 0xff])
+        || bytes.starts_with(b"\x89PNG\r\n\x1a\n")
+        || bytes.len() >= 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP"
+}
+
+async fn materialize_shot_frame(
+    root_path: &Path,
+    connection: &WorkerLoopConnection,
+    job: &ClaimedWorkerJob,
+    series_id: &str,
+    frame: &Value,
+    label: &str,
+    index: usize,
+) -> Result<Value, String> {
+    let asset_id = frame
+        .get("assetId")
+        .and_then(Value::as_str)
+        .and_then(|value| value.strip_prefix("media-"))
+        .filter(|value| !value.is_empty() && value.chars().all(|ch| ch.is_ascii_digit()))
+        .ok_or_else(|| "shot_frame_asset_id_missing".to_string())?;
+    let expected = frame
+        .get("fingerprint")
+        .and_then(Value::as_str)
+        .filter(|value| value.len() == 64)
+        .ok_or_else(|| "shot_frame_fingerprint_missing".to_string())?;
+    let path = format!(
+        "/api/workers/{}/media-inputs/{}?jobId={}&seriesId={}",
+        connection.worker_id, asset_id, job.id, series_id
+    );
+    let bytes = download_worker_bytes(
+        &connection.server_url,
+        &path,
+        &connection.tokens.execution_token,
+        &connection.device_proof,
+    )
+    .await?;
+    if bytes.is_empty() || bytes.len() > 64 * 1024 * 1024 || !is_supported_frame_bytes(&bytes) {
+        return Err("shot_frame_format_invalid".into());
+    }
+    let digest = format!("{:x}", Sha256::digest(&bytes));
+    if digest != expected {
+        return Err("shot_frame_checksum_mismatch".into());
+    }
+    let relative = format!("derived/.inputs/{}/{}-{}.img", job.id, label, index);
+    let output = root_path.join(&relative);
+    validate_workspace_path(root_path, &output)?;
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|error| format!("shot_frame_workspace_failed: {error}"))?;
+    }
+    fs::write(&output, &bytes).map_err(|error| format!("shot_frame_write_failed: {error}"))?;
+    let mut materialized = frame.clone();
+    let object = materialized
+        .as_object_mut()
+        .ok_or_else(|| "shot_frame_contract_invalid".to_string())?;
+    object.insert("materializedPath".into(), Value::String(relative));
+    object.remove("storageKey");
+    Ok(materialized)
+}
+
+async fn materialize_shot_inputs(
+    root_path: &Path,
+    connection: &WorkerLoopConnection,
+    job: &ClaimedWorkerJob,
+    series_id: &str,
+    start_frame: &Value,
+    reference_frames: &Value,
+) -> Result<(Value, Value), String> {
+    let materialized_start = if start_frame.is_null() {
+        Value::Null
+    } else {
+        materialize_shot_frame(
+            root_path,
+            connection,
+            job,
+            series_id,
+            start_frame,
+            "start",
+            0,
+        )
+        .await?
+    };
+    let materialized_refs = if reference_frames.is_null() {
+        Value::Null
+    } else {
+        let mut pack = reference_frames.clone();
+        let object = pack
+            .as_object_mut()
+            .ok_or_else(|| "reference_pack_contract_invalid".to_string())?;
+        if let Some(frames) = object.get_mut("frames").and_then(Value::as_array_mut) {
+            for (index, frame) in frames.iter_mut().enumerate() {
+                *frame = materialize_shot_frame(
+                    root_path,
+                    connection,
+                    job,
+                    series_id,
+                    frame,
+                    "reference",
+                    index,
+                )
+                .await?;
+            }
+        }
+        if let Some(last_frame) = object.get_mut("lastFrame") {
+            if !last_frame.is_null() {
+                *last_frame = materialize_shot_frame(
+                    root_path, connection, job, series_id, last_frame, "last", 0,
+                )
+                .await?;
+            }
+        }
+        pack
+    };
+    Ok((materialized_start, materialized_refs))
+}
+
+async fn materialize_footage_source(
+    root_path: &Path,
+    connection: &WorkerLoopConnection,
+    job: &ClaimedWorkerJob,
+    series_id: &str,
+    source: &Value,
+) -> Result<PathBuf, String> {
+    if let Some(relative_name) = source.get("relativeName").and_then(Value::as_str) {
+        return resolve_worker_media_source_path(root_path, relative_name);
+    }
+    let asset_id = source
+        .get("assetId")
+        .and_then(Value::as_str)
+        .and_then(|value| value.strip_prefix("media-"))
+        .filter(|value| !value.is_empty() && value.chars().all(|ch| ch.is_ascii_digit()))
+        .ok_or_else(|| "media_source_name_missing".to_string())?;
+    let expected = source
+        .get("sourceFingerprint")
+        .and_then(Value::as_str)
+        .filter(|value| value.len() == 64)
+        .ok_or_else(|| "source_fingerprint_missing".to_string())?;
+    let request_path = format!(
+        "/api/workers/{}/media-inputs/{}?jobId={}&seriesId={}",
+        connection.worker_id, asset_id, job.id, series_id
+    );
+    let extension = source
+        .get("fileName")
+        .and_then(Value::as_str)
+        .and_then(|value| Path::new(value).extension())
+        .and_then(|value| value.to_str())
+        .filter(|value| value.len() <= 8 && value.chars().all(|ch| ch.is_ascii_alphanumeric()))
+        .unwrap_or("mp4");
+    let relative = format!("derived/.inputs/{}/source.{extension}", sanitize_segment(&job.id));
+    let output = root_path.join(&relative);
+    validate_workspace_path(root_path, &output)?;
+    let (size_bytes, digest) = download_worker_file(
+        &connection.server_url,
+        &request_path,
+        &connection.tokens.execution_token,
+        &connection.device_proof,
+        &output,
+        // Keep the Worker admission limit aligned with the Web presigned
+        // upload contract (2 GiB). The file is streamed to the private root,
+        // so this limit does not turn the download into an in-memory buffer.
+        2_000 * 1024 * 1024,
+    ).await?;
+    if size_bytes == 0 { return Err("unsupported_media".into()); }
+    if digest != expected { return Err("source_fingerprint_mismatch".into()); }
+    Ok(output)
+}
+
+fn footage_silence_kind(index: usize, total: usize) -> &'static str {
+    if index == 0 { "leading" } else if index + 1 == total { "trailing" } else { "middle" }
+}
+
+fn transcript_text_and_tokens(value: &Value) -> (String, Vec<Value>) {
+    let text = value
+        .get("text")
+        .or_else(|| value.get("transcript"))
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .trim()
+        .chars()
+        .take(4000)
+        .collect::<String>();
+    let mut tokens = Vec::new();
+    let mut collect = |item: &Value| {
+        if tokens.len() >= 12_000 { return; }
+        let token_text = item.get("text").or_else(|| item.get("word")).and_then(Value::as_str).unwrap_or_default().trim();
+        let start = item.get("startMs").and_then(Value::as_u64).or_else(|| item.get("start").and_then(Value::as_f64).map(|v| (v * 1000.0) as u64));
+        let end = item.get("endMs").and_then(Value::as_u64).or_else(|| item.get("end").and_then(Value::as_f64).map(|v| (v * 1000.0) as u64));
+        if !token_text.is_empty() && start.is_some() && end.is_some() && end > start {
+            tokens.push(json!({ "text": token_text.chars().take(500).collect::<String>(), "startMs": start.unwrap(), "endMs": end.unwrap(), "confidence": item.get("confidence").or_else(|| item.get("probability")).and_then(Value::as_f64) }));
+        }
+    };
+    if let Some(items) = value.get("words").and_then(Value::as_array) { for item in items { collect(item); } }
+    if let Some(segments) = value.get("segments").and_then(Value::as_array) {
+        for segment in segments {
+            if let Some(items) = segment.get("words").and_then(Value::as_array) { for item in items { collect(item); } }
+        }
+    }
+    (text, tokens)
+}
+
+fn runtime_relative_path(runtime_root: &Path, relative: &str) -> Option<PathBuf> {
+    let relative_path = Path::new(relative);
+    if relative_path.is_absolute()
+        || relative_path
+            .components()
+            .any(|component| matches!(component, std::path::Component::ParentDir))
+    {
+        return None;
+    }
+    Some(runtime_root.join(relative_path))
+}
+
+fn transcription_output_dir(app_data_dir: &Path, source_path: &Path) -> PathBuf {
+    let mut fingerprint = Sha256::new();
+    fingerprint.update(source_path.to_string_lossy().as_bytes());
+    if let Ok(metadata) = fs::metadata(source_path) {
+        fingerprint.update(metadata.len().to_le_bytes());
+        if let Ok(modified) = metadata.modified() {
+            if let Ok(elapsed) = modified.duration_since(SystemTime::UNIX_EPOCH) {
+                fingerprint.update(elapsed.as_nanos().to_le_bytes());
+            }
+        }
+    }
+    let id = format!("{:x}", fingerprint.finalize());
+    app_data_dir
+        .join("worker-workspace")
+        .join("transcriptions")
+        .join(&id[..24])
+}
+
+fn windows_path_to_wsl(path: &Path) -> String {
+    let mut value = path.to_string_lossy().replace('\\', "/");
+    if value.starts_with("//?/") {
+        value = value[4..].to_string();
+    }
+    if value.len() >= 2 && value.as_bytes().get(1) == Some(&b':') {
+        let drive = value[..1].to_ascii_lowercase();
+        format!("/mnt/{drive}{}", &value[2..])
+    } else {
+        value
+    }
+}
+
+fn shell_single_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+fn managed_wsl_root_expr(value: &str) -> String {
+    let trimmed = value.trim();
+    if trimmed == "~" {
+        return "\"$HOME\"".into();
+    }
+    if let Some(rest) = trimmed.strip_prefix("~/") {
+        // Keep HOME expansion, but quote the user-provided suffix as a
+        // literal shell word. Double-quoting the whole value would allow
+        // `$()`, backticks, or `$VAR` in a configured path to execute/expand.
+        return format!("\"$HOME\"/{}", shell_single_quote(rest));
+    }
+    shell_single_quote(trimmed)
+}
+
+fn normalize_hyperframes_transcript_output(
+    output: &Value,
+    output_dir: &Path,
+) -> Result<Value, String> {
+    let transcript_path = output_dir.join("transcript.json");
+    let bytes = fs::read(&transcript_path).map_err(|_| "transcription_failed".to_string())?;
+    let words: Value =
+        serde_json::from_slice(&bytes).map_err(|_| "transcription_failed".to_string())?;
+    let words_array = words
+        .as_array()
+        .ok_or_else(|| "transcription_failed".to_string())?;
+    let text = words_array
+        .iter()
+        .filter_map(|word| {
+            word.get("text")
+                .or_else(|| word.get("word"))
+                .and_then(Value::as_str)
+        })
+        .map(str::trim)
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    Ok(json!({
+        "text": text,
+        "words": words_array,
+        "provider": "hyperframes-whisper.cpp",
+        "status": if words_array.is_empty() { "empty" } else { "ready" },
+        "metadata": output,
+    }))
+}
+
+fn execute_hyperframes_transcription_process(
+    managed_wsl: bool,
+    managed_wsl_root: String,
+    source_path: PathBuf,
+    output_dir: PathBuf,
+    language: String,
+    model: String,
+    whisper_path: PathBuf,
+    node: PathBuf,
+    cli: PathBuf,
+) -> Result<std::process::Output, String> {
+    if managed_wsl {
+        let root_expr = managed_wsl_root_expr(&managed_wsl_root);
+        let binary_name = whisper_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("whisper-cli");
+        let script = format!(
+            "set -eu\nROOT={root_expr}\nWHISPER_HOME=\"$ROOT/runtime-pack/whisper\"\nexport HOME=\"$WHISPER_HOME\"\nexport USERPROFILE=\"$WHISPER_HOME\"\nexport HYPERFRAMES_WHISPER_PATH=\"$WHISPER_HOME/{binary_name}\"\nNODE=\"$ROOT/runtime-pack/node/bin/node\"\nCLI=\"$ROOT/runtime-pack/hyperframes/node_modules/hyperframes/dist/cli.js\"\nif [ ! -x \"$HYPERFRAMES_WHISPER_PATH\" ] || [ ! -s \"$WHISPER_HOME/.cache/hyperframes/whisper/models/ggml-$4.bin\" ] || [ ! -x \"$NODE\" ] || [ ! -f \"$CLI\" ]; then\n  echo \"bundled transcription runtime is incomplete\" >&2\n  exit 24\nfi\nexec \"$NODE\" \"$CLI\" transcribe \"$1\" --dir \"$2\" --language \"$3\" --model \"$4\" --json\n",
+        );
+        let mut command = Command::new("wsl.exe");
+        command.args([
+            "-e", "bash", "-lc", &script, "smartaihub-transcribe",
+            &windows_path_to_wsl(&source_path),
+            &windows_path_to_wsl(&output_dir),
+            &language,
+            &model,
+        ]);
+        command
+            .output()
+            .map_err(|_| "transcription_unavailable".to_string())
+    } else {
+        let whisper_home = whisper_path
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| PathBuf::from("."));
+        let mut command = Command::new(&node);
+        command
+            .current_dir(source_path.parent().unwrap_or(Path::new(".")))
+            .env("HYPERFRAMES_WHISPER_PATH", &whisper_path)
+            .env("HOME", &whisper_home)
+            .env("USERPROFILE", &whisper_home)
+            .args([
+                cli.to_string_lossy().as_ref(),
+                "transcribe",
+                source_path.to_string_lossy().as_ref(),
+                "--dir",
+                output_dir.to_string_lossy().as_ref(),
+                "--language",
+                &language,
+                "--model",
+                &model,
+                "--json",
+            ])
+            .output()
+            .map_err(|_| "transcription_unavailable".to_string())
+    }
+}
+
+fn build_footage_guide(
+    source: &Value,
+    probe: &LocalMediaProbe,
+    analysis: Option<&LocalMediaAnalysis>,
+    transcript: Option<&Value>,
+    language: &str,
+    runtime_version: &str,
+    runtime_transcription: Option<&RuntimeTranscriptionManifest>,
+) -> Value {
+    let duration = probe.duration_ms.unwrap_or(0);
+    let silence_segments = analysis.map(|item| item.silence_segments.as_slice()).unwrap_or(&[]);
+    let silence_ranges: Vec<Value> = silence_segments.iter().enumerate().filter_map(|(index, item)| {
+        let end = item.end_ms.or(Some(duration)).filter(|value| *value > item.start_ms)?;
+        Some(json!({ "startMs": item.start_ms, "endMs": end, "kind": footage_silence_kind(index, silence_segments.len()), "confidence": item.confidence }))
+    }).collect::<Vec<_>>();
+    let mut speech_ranges = Vec::new();
+    let mut cursor = 0u64;
+    for item in &silence_ranges {
+        let start = item.get("startMs").and_then(Value::as_u64).unwrap_or(cursor);
+        if start > cursor { speech_ranges.push(json!({ "startMs": cursor, "endMs": start, "confidence": 0.6 })); }
+        cursor = item.get("endMs").and_then(Value::as_u64).unwrap_or(cursor);
+    }
+    if duration > cursor { speech_ranges.push(json!({ "startMs": cursor, "endMs": duration, "confidence": 0.5 })); }
+    let scene_ranges = analysis.map(|item| item.scene_candidates.iter().filter_map(|scene| Some(json!({ "startMs": scene.start_ms, "endMs": scene.end_ms?, "confidence": scene.confidence, "keyframeAssetId": Value::Null }))).collect::<Vec<_>>()).unwrap_or_default();
+    let runtime_model = runtime_transcription.map(|item| item.model.as_str()).unwrap_or("large-v3");
+    let transcript_json = transcript.map(|raw| {
+        let (text, tokens) = transcript_text_and_tokens(raw);
+        let status = raw.get("status").and_then(Value::as_str).unwrap_or("ready");
+        json!({ "language": language, "model": runtime_model, "text": text, "tokens": tokens, "fingerprint": format!("{:x}", Sha256::digest(text.as_bytes())), "status": status, "reason": Value::Null })
+    });
+    let mut warnings = Vec::<Value>::new();
+    let visual_ready = analysis.is_some();
+    if !visual_ready { warnings.push(json!("visual_analysis_unavailable")); }
+    if transcript_json.is_none() {
+        warnings.push(json!("transcription_unavailable"));
+    } else if transcript_json.as_ref().and_then(|value| value.get("status")).and_then(Value::as_str) == Some("empty") {
+        warnings.push(json!("transcription_empty"));
+    }
+    if silence_ranges.is_empty() { warnings.push(json!("silence_detection_empty")); }
+    let warning_strings = warnings.iter().filter_map(Value::as_str).map(str::to_string).collect::<Vec<_>>();
+    let unknowns = warning_strings.iter().map(|value| json!(value)).collect::<Vec<_>>();
+    let transcript_status = transcript_json
+        .as_ref()
+        .and_then(|value| value.get("status"))
+        .and_then(Value::as_str)
+        .unwrap_or("unavailable");
+    let guide_status = if warning_strings.is_empty() { "ready" } else { "partial" };
+    json!({
+        "schemaVersion": "vd-footage-guide-v1",
+        "sourceAssetId": source.get("assetId").cloned().unwrap_or(Value::Null),
+        "sourceRevision": source.get("sourceRevision").cloned().unwrap_or(Value::Null),
+        "sourceFingerprint": source.get("sourceFingerprint").cloned().unwrap_or(Value::Null),
+        "timelineTimebase": "milliseconds",
+        "probe": probe,
+        "speechRanges": speech_ranges,
+        "silenceRanges": silence_ranges,
+        "sceneRanges": scene_ranges,
+        "transcript": transcript_json,
+        "semanticGuide": {
+            "observations": if visual_ready { vec![json!({ "text": "วิดีโอมีข้อมูลภาพและช่วงเวลาสำหรับวางแผน tie-in", "confidence": 0.6, "evidence": "ffprobe_visual_analysis" })] } else { Vec::new() },
+            "recommendedTieIn": vec![json!({ "text": "วาง tie-in ในช่วงภาพที่มีการเคลื่อนไหวหรือช่วงเงียบที่ตรวจสอบแล้ว โดยไม่อ้างสิ่งที่ระบบยืนยันไม่ได้", "evidence": "footage_guide_policy" })],
+            "avoid": unknowns.iter().map(|item| json!({ "text": format!("อย่าเดาเนื้อหาที่ไม่พบหลักฐาน: {}", item.as_str().unwrap_or("unknown")), "evidence": "analysis_warning" })).collect::<Vec<_>>(),
+            "confidence": if guide_status == "ready" { 0.8 } else { 0.45 }
+        },
+        "status": { "probe": "ready", "transcript": transcript_status, "visual": if visual_ready { "ready" } else { "unavailable" }, "guide": guide_status, "warnings": warning_strings, "unknowns": unknowns.iter().filter_map(Value::as_str).collect::<Vec<_>>() },
+        "runtime": {
+            "manifestVersion": runtime_version,
+            "binaryFingerprint": runtime_transcription.map(|item| item.binary_sha256.as_str()),
+            "modelFingerprint": runtime_transcription.map(|item| item.model_sha256.as_str()),
+            "model": runtime_model
+        }
+    })
+}
+
+async fn run_hyperframes_transcription(
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    settings: &WorkerAppSettings,
+    source_path: &Path,
+    language: &str,
+    policy: &str,
+) -> Result<Option<Value>, String> {
+    if policy == "disabled" { return Ok(None); }
+    let effective_runtime_dir = if settings.runtime_dir.trim().is_empty() { app_data_dir.to_path_buf() } else { PathBuf::from(settings.runtime_dir.trim()) };
+    let (manifest_path, sidecar_root) = runtime_pack_paths(resource_dir, &effective_runtime_dir);
+    let runtime_root = runtime_pack_root_for_sidecars(&sidecar_root);
+    let manifest = read_runtime_pack_manifest(&manifest_path)?;
+    let Some(transcription) = manifest.transcription.as_ref() else {
+        return if policy == "required" { Err("transcription_unavailable".into()) } else { Ok(None) };
+    };
+    let Some(whisper_path) = runtime_relative_path(&runtime_root, &transcription.binary_path) else {
+        return if policy == "required" { Err("transcription_unavailable".into()) } else { Ok(None) };
+    };
+    let Some(model_path) = runtime_relative_path(&runtime_root, &transcription.model_path) else {
+        return if policy == "required" { Err("transcription_unavailable".into()) } else { Ok(None) };
+    };
+    let node = if settings.runtime_environment.is_managed_wsl() || cfg!(target_os = "macos") { runtime_root.join("node/bin/node") } else { runtime_root.join("node/node.exe") };
+    let cli = runtime_root.join("hyperframes/node_modules/hyperframes/dist/cli.js");
+    let output_dir = transcription_output_dir(app_data_dir, source_path);
+    fs::create_dir_all(&output_dir).map_err(|_| "transcription_unavailable".to_string())?;
+    if !settings.runtime_environment.is_managed_wsl()
+        && (!whisper_path.is_file() || !model_path.is_file() || !node.is_file() || !cli.is_file())
+    {
+        return if policy == "required" { Err("transcription_unavailable".into()) } else { Ok(None) };
+    }
+    let output = tauri::async_runtime::spawn_blocking({
+        let managed_wsl = settings.runtime_environment.is_managed_wsl();
+        let managed_wsl_root = settings.managed_wsl_root.clone();
+        let source_path = source_path.to_path_buf();
+        let output_dir = output_dir.clone();
+        let language = language.to_string();
+        let model = transcription.model.clone();
+        let whisper_path = whisper_path.clone();
+        let node = node.clone();
+        let cli = cli.clone();
+        move || execute_hyperframes_transcription_process(
+            managed_wsl,
+            managed_wsl_root,
+            source_path,
+            output_dir,
+            language,
+            model,
+            whisper_path,
+            node,
+            cli,
+        )
+    })
+    .await
+    .map_err(|_| "transcription_unavailable".to_string())??;
+    if !output.status.success() { return if policy == "required" { Err("transcription_failed".into()) } else { Ok(None) }; }
+    let raw: Value = serde_json::from_slice(&output.stdout).map_err(|_| "transcription_failed".to_string())?;
+    match normalize_hyperframes_transcript_output(&raw, &output_dir) {
+        Ok(value) => Ok(Some(value)),
+        Err(error) => if policy == "required" { Err(error) } else { Ok(None) },
+    }
+}
+
+async fn execute_vertical_drama_media_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    let result = async {
+        if cancel.load(Ordering::Relaxed) { return Err("media_job_canceled".to_string()); }
+        let kind = job.input_json.get("kind").and_then(Value::as_str).unwrap_or_default();
+        let series_id = job.input_json.get("seriesId").and_then(Value::as_str).ok_or_else(|| "series_id_missing".to_string())?;
+        let root = load_root_state_for_series(app_data_dir, series_id)?.ok_or_else(|| "root_not_bound".to_string())?;
+        let root_path = validate_local_root(&root.root_path)?;
+        let media_tools = MediaToolchain::from_settings(settings, app_data_dir);
+        let expected_binding_revision = job.input_json.get("binding").and_then(|value| value.get("bindingRevision")).and_then(Value::as_u64).unwrap_or(0);
+        let control_plane = refresh_connection_for_control_plane(app_data_dir, connection, "media binding validation").await?;
+        let series_projection: Value = get_worker_json(&control_plane.server_url, &format!("/api/workers/{}/series/{}", control_plane.worker_id, series_id), &control_plane.tokens.execution_token, &control_plane.device_proof).await?;
+        // The canonical Series detail route returns `binding`; older control
+        // plane projections used `item`. Read the canonical shape first and
+        // retain the compatibility fallback so an upgraded Worker does not
+        // reject every valid media job as stale during a rolling deploy.
+        let (current_binding, current_status) = read_media_binding_projection(&series_projection);
+        if current_binding != Some(expected_binding_revision) || current_status != Some("active".to_string()) { return Err("root_revision_stale".to_string()); }
+        send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan { event_type: "job.running".into(), sequence_number: 1, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "stage": "local_media_prepare", "percent": 5 }) }).await?;
+        if kind == VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE {
+            let inventory = collect_media_manifest(&root_path, 5000)?;
+            let completed = WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 2, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "status": "ingested", "source": job.input_json.get("source").cloned().unwrap_or_else(|| json!({})), "inventory": inventory, "rootId": root.root_id }) };
+            send_event_with_refresh(app_data_dir, connection, &job.id, completed).await?;
+            return Ok(());
+        }
+        if kind == VERTICAL_DRAMA_FOOTAGE_PROBE_JOB_TYPE {
+            let source = job.input_json.get("source").ok_or_else(|| "media_source_missing".to_string())?;
+            let source_path = materialize_footage_source(&root_path, &control_plane, &job, series_id, source).await?;
+            let local_probe = probe_media_file(&source_path, &media_tools)?;
+            let local_analysis = analyze_media_file(&source_path, &media_tools).ok();
+            let transcription_policy = job.input_json.get("transcriptionPolicy").and_then(Value::as_str).unwrap_or("preferred");
+            let language = job.input_json.get("requestedLanguage").and_then(Value::as_str).unwrap_or("th");
+            let transcript = run_hyperframes_transcription(resource_dir, app_data_dir, settings, &source_path, language, transcription_policy).await?;
+            let effective_runtime_dir = if settings.runtime_dir.trim().is_empty() { app_data_dir.to_path_buf() } else { PathBuf::from(settings.runtime_dir.trim()) };
+            let (manifest_path, _) = runtime_pack_paths(resource_dir, &effective_runtime_dir);
+            let runtime_manifest = read_runtime_pack_manifest(&manifest_path).ok();
+            let runtime_version = runtime_manifest.as_ref().map(|manifest| manifest.version.as_str()).unwrap_or("runtime-unknown");
+            let guide = build_footage_guide(source, &local_probe, local_analysis.as_ref(), transcript.as_ref(), language, runtime_version, runtime_manifest.as_ref().and_then(|manifest| manifest.transcription.as_ref()));
+            let guide_dir = root_path.join("derived/.analysis").join(sanitize_segment(&job.id));
+            fs::create_dir_all(&guide_dir).map_err(|_| "guide_workspace_failed".to_string())?;
+            let guide_path = guide_dir.join("footage-guide.json");
+            fs::write(&guide_path, serde_json::to_vec_pretty(&guide).map_err(|_| "guide_serialize_failed".to_string())?).map_err(|_| "guide_write_failed".to_string())?;
+            let artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "footage_guide", &guide_path, "footage-guide.json", "application/json", &job.lease_owner_token, &job.assignment_attempt, json!({ "kind": "analysis", "guide": guide, "sourceAssetId": source.get("assetId"), "sourceRevision": source.get("sourceRevision") })).await?;
+            write_checkpoint_atomic(&root_path.join("derived/.checkpoints").join(format!("{}.json", job.id)), &MediaCheckpoint { checkpoint_version: "media-checkpoint.v1".into(), job_id: job.id.clone(), root_id: root.root_id.clone(), binding_revision: expected_binding_revision, source_fingerprint: source.get("sourceFingerprint").and_then(Value::as_str).unwrap_or_default().into(), stage: "published".into(), output_relative_name: Some(format!("derived/.analysis/{}/footage-guide.json", sanitize_segment(&job.id))), remote_execution_id: artifact.artifact.get("id").and_then(Value::as_str).map(str::to_string) })?;
+            send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 2, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "status": "published", "guide": guide, "artifact": artifact.artifact }) }).await?;
+            return Ok(());
+        }
+        if kind == VERTICAL_DRAMA_FOOTAGE_PREPARE_JOB_TYPE {
+            let source = job.input_json.get("source").ok_or_else(|| "media_source_missing".to_string())?;
+            let source_path = materialize_footage_source(&root_path, &control_plane, &job, series_id, source).await?;
+            let local_probe = probe_media_file(&source_path, &media_tools)?;
+            let source_relative = source_path.strip_prefix(&root_path).map_err(|_| "media_source_scope_violation".to_string())?.to_string_lossy().replace('\\', "/");
+            let source_duration = local_probe.duration_ms.unwrap_or(90_000);
+            let requested_segments = job.input_json.get("segments").and_then(Value::as_array).ok_or_else(|| "approval_required".to_string())?;
+            let mut requested_approved_segments = Vec::new();
+            for segment in requested_segments {
+                if segment.get("keep").and_then(Value::as_bool) != Some(true) { continue; }
+                let start = segment.get("sourceInMs").and_then(Value::as_u64).ok_or_else(|| "approval_required".to_string())?;
+                let end = segment.get("sourceOutMs").and_then(Value::as_u64).ok_or_else(|| "approval_required".to_string())?;
+                if end <= start || end > source_duration { return Err("approval_required".into()); }
+                requested_approved_segments.push((start, end));
+            }
+            if requested_approved_segments.is_empty() { return Err("approval_required".into()); }
+            let silence_ranges = job.input_json.get("silenceRanges").and_then(Value::as_array).map(|ranges| ranges.iter().filter_map(|range| Some((range.get("startMs")?.as_u64()?, range.get("endMs")?.as_u64()?))).collect::<Vec<_>>()).unwrap_or_default();
+            let remove_dead_air = job.input_json.get("trimPolicy").and_then(|value| value.get("removeDeadAir")).and_then(Value::as_bool).unwrap_or(false);
+            let preserve_padding_ms = job.input_json.get("trimPolicy").and_then(|value| value.get("preserveSpeechPaddingMs")).and_then(Value::as_u64).unwrap_or(250).min(2_000);
+            let approved_segments = if remove_dead_air && !silence_ranges.is_empty() { remove_approved_silence(&requested_approved_segments, &silence_ranges, preserve_padding_ms) } else { requested_approved_segments.clone() };
+            if approved_segments.is_empty() { return Err("approval_required".into()); }
+            let max_duration = job.input_json.get("outputProfile").and_then(|value| value.get("maxDurationMs")).and_then(Value::as_u64).unwrap_or(90_000).min(90_000);
+            if approved_segments.iter().map(|(start, end)| end - start).sum::<u64>() > max_duration { return Err("duration_budget_exceeded".into()); }
+            let output_relative = format!("derived/footage-prepared/{}/prepared.mp4", sanitize_segment(&job.id));
+            let fit_policy = job.input_json.get("fitPolicy").and_then(Value::as_str).unwrap_or("9:16_cover");
+            let mute_audio = job.input_json.get("baseAudioPolicy").and_then(Value::as_str) == Some("mute");
+            let output = run_allowlisted_ffmpeg_segments(&root_path, &source_relative, &output_relative, &approved_segments, fit_policy == "9:16_cover", mute_audio, &media_tools)?;
+            let qc = qc_derived_output_with_probe(&root_path, &output, &media_tools)?;
+            if fit_policy != "source" { ensure_portrait_9x16_qc(&qc)?; }
+            let mut prepared_cursor = 0u64;
+            let source_time_map = approved_segments.iter().map(|(start, end)| {
+                let prepared_start = prepared_cursor;
+                prepared_cursor = prepared_cursor.saturating_add(end - start);
+                json!({ "sourceStartMs": start, "sourceEndMs": end, "preparedStartMs": prepared_start, "preparedEndMs": prepared_cursor })
+            }).collect::<Vec<_>>();
+            let artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "normalized_video", &output, "prepared-footage.mp4", "video/mp4", &job.lease_owner_token, &job.assignment_attempt, json!({ "qc": qc, "sourceAssetId": source.get("assetId"), "sourceRevision": source.get("sourceRevision"), "preparedRevision": job.input_json.get("analysisRevision"), "approvedSegments": approved_segments, "sourceTimeMap": source_time_map })).await?;
+            let artifact_id = artifact.artifact.get("id").and_then(Value::as_str).ok_or_else(|| "artifact_id_missing".to_string())?;
+            let qc_json = json!({ "qcVersion": "media-qc-v1", "passed": qc.passed, "durationMs": qc.duration_ms.unwrap_or(0), "width": qc.width.ok_or_else(|| "qc_failed".to_string())?, "height": qc.height.ok_or_else(|| "qc_failed".to_string())?, "hasAudio": qc.has_audio.unwrap_or(false), "checksum": qc.checksum, "checks": [{ "code": "approved_segments", "passed": true, "messageKey": "approved_segments_rendered" }], "failureCode": Value::Null });
+            let publication_payload = json!({ "jobId": job.id, "workerArtifactId": artifact_id, "bindingRevision": expected_binding_revision, "artifact": { "artifactId": artifact_id, "artifactRevision": job.input_json.get("analysisRevision").cloned().unwrap_or_else(|| json!("prepared-v1")), "kind": "normalized_video", "storageKey": artifact_id, "checksum": qc.checksum, "sizeBytes": qc.size_bytes, "contentType": "video/mp4", "durationMs": qc.duration_ms, "qc": qc_json, "sourceAssetId": source.get("assetId"), "sourceRevision": source.get("sourceRevision"), "intelligence": { "tags": ["footage_prepared", "approved_segments"], "subjects": [], "scenes": [], "silenceSegments": [], "focusTrack": [], "transform": { "aspectRatio": if fit_policy == "source" { "source" } else { "9:16" }, "trackingMode": "center_fallback", "fallback": Value::Null, "stillMotion": Value::Null } } }, "qc": qc_json });
+            let publication = publish_vertical_drama_media(&control_plane, series_id, &publication_payload).await?;
+            send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 2, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "status": "published", "artifact": artifact.artifact, "preparedSource": { "assetId": format!("artifact-{}", artifact_id), "kind": "video", "sourceRevision": job.input_json.get("analysisRevision").cloned().unwrap_or_else(|| json!("prepared-v1")), "sourceFingerprint": qc.checksum, "fileName": "prepared-footage.mp4", "relativeName": output_relative, "sizeBytes": qc.size_bytes, "durationMs": qc.duration_ms, "captureAt": Value::Null }, "qc": qc_json, "publication": publication }) }).await?;
+            return Ok(());
+        }
+        if kind == VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE {
+            let selected_profile_id = job.input_json.get("connectionResolution").and_then(|value| value.get("selectedProfileId")).and_then(Value::as_str);
+            let comfy_profile = active_comfy_profile(app_data_dir, settings, selected_profile_id)?;
+            let workflow_id = job.input_json.get("workflowResolution").and_then(|value| value.get("selectedWorkflowId")).and_then(Value::as_str).ok_or_else(|| "workflow_capability_blocked".to_string())?;
+            let workflow_request = job.input_json.get("workflowRequest").ok_or_else(|| "workflow_capability_blocked".to_string())?;
+            let start_frame = job.input_json.get("startFrame").cloned().unwrap_or(Value::Null);
+            let reference_frames = job.input_json.get("referenceFrames").cloned().unwrap_or(Value::Null);
+            let has_start_frame = !start_frame.is_null();
+            let has_reference_frames = !reference_frames.is_null();
+            let model_route = workflow_id.to_ascii_lowercase();
+            let model_route = if model_route.contains("minimax_h3_reference") || has_reference_frames {
+                "minimax_h3_reference_to_video"
+            } else if model_route.contains("minimax_h3_i2v") || has_start_frame {
+                "minimax_h3_i2v"
+            } else {
+                "minimax_h3_t2v"
+            };
+            let operation = if has_start_frame && has_reference_frames {
+                "first_last_frame_to_video"
+            } else if has_reference_frames {
+                "reference_to_video"
+            } else if has_start_frame {
+                "image_to_video"
+            } else {
+                "text_to_video"
+            };
+            let duration_ms = job.input_json.get("budget").and_then(|value| value.get("maxDurationMs")).and_then(Value::as_u64).unwrap_or(90_000).clamp(1_000, 90_000);
+            let checkpoint_path = root_path.join("derived/.checkpoints").join(format!("{}.json", job.id));
+            let source_revision = job.input_json.get("shotRevision").and_then(Value::as_str).unwrap_or("shot-v1").to_string();
+            write_checkpoint_atomic(&checkpoint_path, &MediaCheckpoint { checkpoint_version: "media-checkpoint.v1".into(), job_id: job.id.clone(), root_id: root.root_id.clone(), binding_revision: expected_binding_revision, source_fingerprint: source_revision.clone(), stage: "planned".into(), output_relative_name: None, remote_execution_id: None })?;
+            let callback_checkpoint_path = checkpoint_path.clone();
+            let callback_job_id = job.id.clone();
+            let callback_root_id = root.root_id.clone();
+            let callback_source_revision = source_revision.clone();
+            let (materialized_start_frame, materialized_reference_frames) = materialize_shot_inputs(
+                &root_path,
+                &control_plane,
+                &job,
+                series_id,
+                &start_frame,
+                &reference_frames,
+            ).await?;
+            let mcp_arguments = json!({
+                    "workflowId": workflow_id,
+                    "operation": operation,
+                    "startFrame": materialized_start_frame,
+                    "referenceFrames": materialized_reference_frames,
+                    "durationMs": duration_ms,
+                    "aspectRatio": "9:16",
+                    "modelRoute": model_route,
+                    "intent": workflow_request.get("intent"),
+                    "shotId": job.input_json.get("shotId"),
+                    "episodeId": job.input_json.get("episodeId"),
+                    "outputDir": "derived",
+                    "inputRoot": format!("derived/.inputs/{}", job.id)
+                });
+            let result = match comfy_profile.transport {
+                ComfyTransportKind::LocalStdio | ComfyTransportKind::SelfHostedStdioBridge => {
+                    let command = comfy_profile.command.clone().ok_or_else(|| "comfy_profile_command_missing".to_string())?;
+                    let managed_command_path = (matches!(comfy_profile.transport, ComfyTransportKind::LocalStdio)
+                        && crate::comfy_mcp_runtime::normalize_command(&command)
+                            == crate::comfy_mcp_runtime::STANDARD_COMMAND)
+                        .then(|| crate::comfy_mcp_runtime::managed_command_path(app_data_dir))
+                        .flatten();
+                    if !command_available_with_path(&command, managed_command_path.as_deref()) { return Err("comfy_mcp_unavailable".into()); }
+                    run_workflow_with_lifecycle(
+                        &ComfyMcpConfig { command, managed_command_path, args: if matches!(comfy_profile.transport, ComfyTransportKind::SelfHostedStdioBridge) { resolve_bridge_args(&comfy_profile.args, comfy_profile.endpoint.as_deref().ok_or_else(|| "comfy_bridge_endpoint_missing".to_string())?)? } else { comfy_profile.args.clone() }, timeout_ms: 10 * 60 * 1000 },
+                        mcp_arguments,
+                        cancel,
+                        move |execution_id| {
+                            let _ = write_checkpoint_atomic(&callback_checkpoint_path, &MediaCheckpoint { checkpoint_version: "media-checkpoint.v1".into(), job_id: callback_job_id.clone(), root_id: callback_root_id.clone(), binding_revision: expected_binding_revision, source_fingerprint: callback_source_revision.clone(), stage: "remote_submitted".into(), output_relative_name: None, remote_execution_id: Some(execution_id.to_string()) });
+                        },
+                    ).await?
+                }
+                ComfyTransportKind::SelfHostedHttpMcp | ComfyTransportKind::ComfyCloud | ComfyTransportKind::SshTunnel => {
+                    let ssh_key = if matches!(&comfy_profile.transport, ComfyTransportKind::SshTunnel) { Some(crate::comfy_credentials::resolve(comfy_profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?) } else { None };
+                    let _ssh_tunnel = if let Some(key) = ssh_key.as_deref() { Some(crate::comfy_ssh_tunnel::open_with_identity(&comfy_profile.args, key)?) } else { None };
+                    let endpoint = comfy_profile.endpoint.clone().ok_or_else(|| "comfy_endpoint_missing".to_string())?;
+                    let token = if matches!(&comfy_profile.transport, ComfyTransportKind::SshTunnel) || comfy_profile.credential_kind == ComfyCredentialKind::None { None } else { Some(crate::comfy_credentials::resolve(comfy_profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?) };
+                    let mut transport = ComfyHttpMcpTransport::new(endpoint, token, Duration::from_secs(10 * 60))?;
+                    transport.run_workflow_with_lifecycle(mcp_arguments, Arc::clone(cancel)).await?
+                }
+            };
+            let remote_execution_id = extract_mcp_execution_id(&result);
+            write_checkpoint_atomic(&checkpoint_path, &MediaCheckpoint { checkpoint_version: "media-checkpoint.v1".into(), job_id: job.id.clone(), root_id: root.root_id.clone(), binding_revision: expected_binding_revision, source_fingerprint: source_revision.clone(), stage: "remote_completed".into(), output_relative_name: None, remote_execution_id: remote_execution_id.clone() })?;
+            let output_name = extract_mcp_artifact_path(&result);
+            let output_url = extract_mcp_artifact_url(&result);
+            let output = if let Some(output_name) = output_name {
+                if output_name.trim().is_empty() || output_name.starts_with('/') || output_name.contains('\\') || output_name.split('/').any(|part| part == "..") { return Err("comfy_mcp_output_invalid".into()); }
+                root_path.join(&output_name).canonicalize().map_err(|_| "comfy_mcp_output_missing".to_string())?
+            } else if let Some(output_url) = output_url {
+                let output_workspace = root_path.join("derived").join(".mcp-downloads").join(sanitize_segment(&job.id));
+                fs::create_dir_all(&output_workspace).map_err(|_| "comfy_mcp_workspace_failed".to_string())?;
+                download_mcp_output(&output_url, &output_workspace).await?
+            } else {
+                return Err("comfy_mcp_output_missing".into());
+            };
+            if !output.starts_with(root_path.join("derived")) { return Err("derived_output_scope_violation".into()); }
+            let qc = qc_derived_output_with_probe(&root_path, &output, &media_tools)?;
+            ensure_portrait_9x16_qc(&qc)?;
+            let artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "shot_video", &output, output.file_name().and_then(|name| name.to_str()).unwrap_or("shot-video.mp4"), "video/mp4", &job.lease_owner_token, &job.assignment_attempt, json!({ "qc": qc, "shotId": job.input_json.get("shotId"), "episodeId": job.input_json.get("episodeId"), "workflowId": workflow_id })).await?;
+            let artifact_id = artifact.artifact.get("id").and_then(Value::as_str).ok_or_else(|| "artifact_id_missing".to_string())?;
+            let source_asset_id = format!("shot-{}", job.input_json.get("shotId").and_then(Value::as_str).unwrap_or("unknown"));
+            let qc_json = json!({ "qcVersion": "media-qc.v1", "passed": qc.passed, "durationMs": qc.duration_ms.unwrap_or(0), "width": qc.width.ok_or_else(|| "qc_failed".to_string())?, "height": qc.height.ok_or_else(|| "qc_failed".to_string())?, "hasAudio": qc.has_audio.unwrap_or(false), "checksum": qc.checksum, "checks": [{ "code": "mcp_output", "passed": true, "messageKey": "mcp_derived_output_verified" }], "failureCode": Value::Null });
+            let publication_payload = json!({ "jobId": job.id, "workerArtifactId": artifact_id, "bindingRevision": expected_binding_revision, "artifact": { "artifactId": artifact_id, "artifactRevision": source_revision, "kind": "shot_video", "storageKey": artifact_id, "checksum": qc.checksum, "sizeBytes": qc.size_bytes, "contentType": "video/mp4", "durationMs": qc.duration_ms, "qc": qc_json, "sourceAssetId": source_asset_id, "sourceRevision": source_revision, "intelligence": { "tags": ["generated-shot", workflow_id], "subjects": [], "scenes": [], "silenceSegments": [], "focusTrack": [], "transform": { "aspectRatio": "9:16", "trackingMode": if has_reference_frames { "manual_keyframes" } else { "center_fallback" }, "fallback": "reject", "stillMotion": Value::Null } } }, "qc": qc_json });
+            let connection_snapshot = refresh_connection_for_control_plane(app_data_dir, connection, "MCP shot publication").await?;
+            let publication = publish_vertical_drama_media(&connection_snapshot, series_id, &publication_payload).await?;
+            let output_name = output.strip_prefix(&root_path).ok().and_then(|value| value.to_str()).unwrap_or("derived/comfy-output").to_string();
+            write_checkpoint_atomic(&checkpoint_path, &MediaCheckpoint { checkpoint_version: "media-checkpoint.v1".into(), job_id: job.id.clone(), root_id: root.root_id.clone(), binding_revision: expected_binding_revision, source_fingerprint: source_revision.to_string(), stage: "published".into(), output_relative_name: Some(output_name), remote_execution_id: remote_execution_id.or_else(|| Some(artifact_id.into())) })?;
+            send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 2, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "status": "published", "artifact": artifact.artifact, "qc": qc_json, "publication": publication, "adapter": "comfy_mcp" }) }).await?;
+            return Ok(());
+        }
+        let source = job.input_json.get("source").ok_or_else(|| "media_source_missing".to_string())?;
+        let source_name = source.get("relativeName").and_then(Value::as_str).or_else(|| source.get("fileName").and_then(Value::as_str)).ok_or_else(|| "media_source_name_missing".to_string())?;
+        let probe = job.input_json.get("probe").cloned().unwrap_or_else(|| json!({}));
+        let source_path = resolve_worker_media_source_path(&root_path, source_name)?;
+        let local_probe = probe_media_file(&source_path, &media_tools)?;
+        let duration_ms = local_probe.duration_ms.or_else(|| probe.get("durationMs").and_then(Value::as_u64)).unwrap_or(90_000);
+        let edit_plan = job.input_json.get("editPlan").cloned().unwrap_or_else(|| json!({}));
+        let remove_dead_air_requested = edit_plan.get("deadAir").and_then(|value| value.get("enabled")).and_then(Value::as_bool).unwrap_or(false);
+        let local_analysis = if kind == "image" {
+            None
+        } else {
+            match analyze_media_file(&source_path, &media_tools) {
+                Ok(analysis) => Some(analysis),
+                Err(_) if remove_dead_air_requested => return Err("dead_air_detection_failed".into()),
+                Err(_) => None,
+            }
+        };
+        let budget = edit_plan.get("budget").cloned().unwrap_or_else(|| json!({}));
+        let target = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|reframe| reframe.get("target"));
+        let still_motion = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("stillMotion")).and_then(|motion| motion.get("motion")).and_then(Value::as_str).map(str::to_string);
+        let focus_track = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|value| value.get("focusTrack")).and_then(|value| serde_json::from_value::<Vec<MediaFocusKeyframe>>(value.clone()).ok()).unwrap_or_default();
+        let selected_segment = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first());
+        let options = MediaPlanOptions { remove_dead_air: edit_plan.get("deadAir").and_then(|value| value.get("enabled")).and_then(Value::as_bool).unwrap_or(false), reframe_9x16: edit_plan.get("aspectRatio").and_then(Value::as_str) == Some("9:16"), focus_mode: edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|value| value.get("trackingMode")).and_then(Value::as_str).unwrap_or("auto_person").into(), still_motion, max_duration_ms: budget.get("maxDurationMs").and_then(Value::as_u64).unwrap_or(90_000).min(90_000), source_duration_ms: duration_ms, requested_start_ms: selected_segment.and_then(|segment| segment.get("startMs")).and_then(Value::as_u64), requested_end_ms: selected_segment.and_then(|segment| segment.get("endMs")).and_then(Value::as_u64), focus_x: target.and_then(|value| value.get("normalizedX")).and_then(Value::as_f64), focus_y: target.and_then(|value| value.get("normalizedY")).and_then(Value::as_f64), focus_track };
+        let plan = build_media_plan(source_name, &options)?;
+        let binding_revision = expected_binding_revision;
+        let checkpoint_path = root_path.join("derived/.checkpoints").join(format!("{}.json", job.id));
+        write_checkpoint_atomic(&checkpoint_path, &MediaCheckpoint { checkpoint_version: "media-checkpoint.v1".into(), job_id: job.id.clone(), root_id: root.root_id.clone(), binding_revision, source_fingerprint: source.get("sourceFingerprint").and_then(Value::as_str).unwrap_or_default().into(), stage: "planned".into(), output_relative_name: Some(plan.output_relative_name.clone()), remote_execution_id: None })?;
+        send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan { event_type: "job.progress".into(), sequence_number: 2, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "stage": "local_media_render", "percent": 35 }) }).await?;
+        let output = run_allowlisted_ffmpeg(&root_path, &plan, &media_tools)?;
+        let qc = qc_derived_output_with_probe(&root_path, &output, &media_tools)?;
+        if options.reframe_9x16 {
+            ensure_portrait_9x16_qc(&qc)?;
+        }
+        let assignment_attempt = job.assignment_attempt.as_str();
+        let artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "normalized_video", &output, output.file_name().and_then(|name| name.to_str()).unwrap_or("normalized-video.mp4"), "video/mp4", &job.lease_owner_token, assignment_attempt, json!({ "qc": qc, "sourceAssetId": source.get("assetId"), "sourceRevision": source.get("sourceRevision"), "rootId": root.root_id })).await?;
+        let artifact_id = artifact.artifact.get("id").and_then(Value::as_str).ok_or_else(|| "artifact_id_missing".to_string())?;
+        let qc_json = json!({ "qcVersion": "media-qc-v1", "passed": qc.passed, "durationMs": qc.duration_ms.unwrap_or(duration_ms), "width": qc.width.ok_or_else(|| "qc_failed".to_string())?, "height": qc.height.ok_or_else(|| "qc_failed".to_string())?, "hasAudio": qc.has_audio.unwrap_or(local_probe.has_audio), "checksum": qc.checksum, "checks": [{ "code": "output_scope", "passed": true, "messageKey": "derived_output_verified" }], "failureCode": Value::Null });
+        let has_focus = options.focus_x.is_some() && options.focus_y.is_some();
+        let focus_track = if has_focus {
+            json!([{ "timeMs": 0, "normalizedX": options.focus_x.unwrap_or(0.5), "normalizedY": options.focus_y.unwrap_or(0.5), "confidence": 1.0, "method": "user_focus_region" }, { "timeMs": duration_ms.min(options.max_duration_ms), "normalizedX": options.focus_x.unwrap_or(0.5), "normalizedY": options.focus_y.unwrap_or(0.5), "confidence": 1.0, "method": "user_focus_region" }])
+        } else {
+            json!([])
+        };
+        let analysis_scenes = local_analysis.as_ref().map(|analysis| analysis.scene_candidates.iter().enumerate().map(|(index, segment)| json!({ "startMs": segment.start_ms, "endMs": segment.end_ms, "label": format!("scene-{}", index + 1), "confidence": segment.confidence })).collect::<Vec<_>>()).unwrap_or_default();
+        let analysis_silence = local_analysis.as_ref().map(|analysis| analysis.silence_segments.iter().map(|segment| json!({ "startMs": segment.start_ms, "endMs": segment.end_ms })).collect::<Vec<_>>()).unwrap_or_default();
+        let mut intelligence_tags = vec![source.get("kind").and_then(Value::as_str).unwrap_or("media").to_string()];
+        if !analysis_silence.is_empty() { intelligence_tags.push("has_dead_air".into()); }
+        if !analysis_scenes.is_empty() { intelligence_tags.push("scene_candidates".into()); }
+        if local_analysis.as_ref().is_some_and(|analysis| analysis.focus_candidates.iter().any(|candidate| candidate.requires_review)) { intelligence_tags.push("focus_requires_review".into()); }
+        let intelligence = json!({ "tags": intelligence_tags, "subjects": if has_focus { vec!["manual_region"] } else { Vec::<&str>::new() }, "scenes": analysis_scenes, "silenceSegments": analysis_silence, "focusTrack": focus_track, "transform": { "aspectRatio": if options.reframe_9x16 { "9:16" } else { "source" }, "trackingMode": if has_focus { "manual_region" } else { "center_fallback" }, "fallback": if options.reframe_9x16 { json!("reject") } else { Value::Null }, "stillMotion": options.still_motion.clone() } });
+        let publication_payload = json!({ "jobId": job.id, "workerArtifactId": artifact_id, "bindingRevision": binding_revision, "artifact": { "artifactId": artifact_id, "artifactRevision": plan.plan_id, "kind": "normalized_video", "storageKey": artifact_id, "checksum": qc.checksum, "sizeBytes": qc.size_bytes, "contentType": "video/mp4", "durationMs": qc.duration_ms.unwrap_or(duration_ms), "qc": qc_json, "sourceAssetId": source.get("assetId"), "sourceRevision": source.get("sourceRevision"), "intelligence": intelligence }, "qc": qc_json });
+        let connection_snapshot = refresh_connection_for_control_plane(app_data_dir, connection, "media publication").await?;
+        let publication = publish_vertical_drama_media(&connection_snapshot, job.input_json.get("seriesId").and_then(Value::as_str).ok_or_else(|| "series_id_missing".to_string())?, &publication_payload).await?;
+        write_checkpoint_atomic(&checkpoint_path, &MediaCheckpoint { checkpoint_version: "media-checkpoint.v1".into(), job_id: job.id.clone(), root_id: root.root_id.clone(), binding_revision, source_fingerprint: source.get("sourceFingerprint").and_then(Value::as_str).unwrap_or_default().into(), stage: "published".into(), output_relative_name: Some(plan.output_relative_name.clone()), remote_execution_id: Some(artifact_id.into()) })?;
+        send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 3, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "status": "published", "artifact": artifact.artifact, "qc": qc_json, "publication": publication }) }).await?;
+        Ok(())
+    }.await;
+    match &result {
+        Ok(()) => {
+            set_executor_last_job(
+                executor,
+                &job,
+                "success",
+                "Local media preprocessing completed.",
+                None,
+            );
+            set_executor_job_complete(executor, &job.id, "Local media preprocessing completed.");
+        }
+        Err(error) => {
+            let failure = build_failure_event(
+                &job,
+                FAILURE_EVENT_SEQUENCE_NUMBER,
+                media_failure_code(error),
+                error,
+            );
+            let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
+            set_executor_last_job(executor, &job, "error", error, None);
+            set_executor_job_error(executor, &job.id, error.clone());
+        }
+    }
+    result
+}
+
+fn read_media_binding_projection(value: &Value) -> (Option<u64>, Option<String>) {
+    let binding = value.get("binding").or_else(|| value.get("item"));
+    (
+        binding
+            .and_then(|item| item.get("bindingRevision"))
+            .and_then(Value::as_u64),
+        binding
+            .and_then(|item| item.get("status").or_else(|| item.get("bindingStatus")))
+            .and_then(Value::as_str)
+            .map(str::to_string),
+    )
+}
+
+/// Preserve the server's typed media failure code when a local media branch
+/// fails. The old generic `unsupported_job_type` mapping made valid source,
+/// approval and QC failures look like classifier bugs and prevented the UI
+/// from offering the right retry/repair action.
+fn media_failure_code(error: &str) -> &'static str {
+    let code = error.split(':').next().unwrap_or_default().trim();
+    const KNOWN_CODES: &[&str] = &[
+        "invalid_contract", "root_not_bound", "root_revision_stale",
+        "source_not_stable", "unsupported_media", "dead_air_detection_failed",
+        "focus_track_failed", "duration_budget_exceeded", "qc_failed",
+        "workflow_capability_blocked", "artifact_checksum_mismatch",
+        "artifact_ownership_failed", "publication_rejected", "index_enqueue_failed",
+        "source_reference_expired", "source_fingerprint_mismatch",
+        "transcription_unavailable", "transcription_failed",
+        "unsupported_composition_executor", "placement_out_of_bounds",
+        "placement_source_not_ready", "approval_required", "render_contract_mismatch",
+    ];
+    KNOWN_CODES.iter().copied().find(|candidate| *candidate == code).unwrap_or("unsupported_job_type")
+}
+
+fn remove_approved_silence(segments: &[(u64, u64)], silence_ranges: &[(u64, u64)], padding_ms: u64) -> Vec<(u64, u64)> {
+    const MIN_RENDER_SEGMENT_MS: u64 = 250;
+    let mut result = Vec::new();
+    for &(segment_start, segment_end) in segments {
+        let mut cursor = segment_start;
+        let mut silences = silence_ranges.iter().filter_map(|&(silence_start, silence_end)| {
+            let start = silence_start.max(segment_start);
+            let end = silence_end.min(segment_end);
+            (end > start).then_some((start, end))
+        }).collect::<Vec<_>>();
+        silences.sort_unstable();
+        for (silence_start, silence_end) in silences {
+            let cut_start = silence_start.saturating_sub(padding_ms).max(segment_start);
+            let cut_end = silence_end.saturating_add(padding_ms).min(segment_end);
+            if cut_start > cursor && cut_start - cursor >= MIN_RENDER_SEGMENT_MS {
+                result.push((cursor, cut_start));
+            }
+            cursor = cursor.max(cut_end);
+        }
+        if segment_end > cursor && segment_end - cursor >= MIN_RENDER_SEGMENT_MS {
+            result.push((cursor, segment_end));
+        }
+    }
+    result
+}
+
 async fn execute_comfy_job_inner(
     executor: &Arc<Mutex<ExecutorState>>,
     resource_dir: &Path,
@@ -1212,6 +2544,11 @@ async fn execute_comfy_job_inner(
     settings: &WorkerAppSettings,
     cancel: &Arc<AtomicBool>,
 ) -> Result<(), String> {
+    if job.input_json.get("adapter").and_then(Value::as_str) == Some("comfy_mcp")
+        || job.input_json.get("connectionResolution").is_some()
+    {
+        return execute_comfy_mcp_job(executor, resource_dir, app_data_dir, connection, job, settings, cancel).await;
+    }
     let service_input = job.input_json.get("service");
     let service = comfy_executor::ComfyServiceBinding {
         base_url: service_input
@@ -1447,6 +2784,182 @@ async fn execute_comfy_job_inner(
     )
     .await?;
     Ok(())
+}
+
+async fn execute_comfy_mcp_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: &ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    let selected_id = job.input_json.get("connectionResolution")
+        .and_then(|value| value.get("selectedProfileId"))
+        .and_then(Value::as_str);
+    let profile = active_comfy_profile(app_data_dir, settings, selected_id)?;
+    let workflow_id = job.input_json.get("workflowResolution")
+        .and_then(|value| value.get("workflowId").or_else(|| value.get("selectedWorkflowId")))
+        .and_then(Value::as_str)
+        .or_else(|| job.input_json.get("workflowId").and_then(Value::as_str))
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| "comfy_workflow_id_missing".to_string())?;
+    let mut arguments = job.input_json.get("mcpArguments").cloned().unwrap_or_else(|| json!({
+        "workflowId": workflow_id,
+        "inputs": job.input_json.get("inputs").cloned().unwrap_or_else(|| json!({})),
+        "outputPolicy": job.input_json.get("outputPolicy").cloned().unwrap_or_else(|| json!({ "saveLocally": true })),
+    }));
+    if let Some(object) = arguments.as_object_mut() { object.entry("workflowId").or_insert_with(|| json!(workflow_id)); }
+    if arguments.get("workflowId").and_then(Value::as_str) != Some(workflow_id) { return Err("comfy_workflow_resolution_mismatch".into()); }
+    let workspace_root = workspace_root(settings, resource_dir, app_data_dir)?;
+    let workspace = workspace_root.join("comfy-mcp").join(sanitize_segment(&job.id));
+    fs::create_dir_all(&workspace).map_err(|_| "comfy_mcp_workspace_failed".to_string())?;
+    let mut sequence = 1_u32;
+    for (stage, percent, message) in [("validate_service", 5, "Checking the selected ComfyUI MCP connection."), ("submit_workflow", 15, "Submitting the resolved workflow through MCP.")] {
+        let event = build_comfy_progress_event(job, sequence, stage, percent, Some(message)).ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+        send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, event, &mut sequence).await?;
+    }
+    update_executor_progress(executor, &job.id, 20, "Running ComfyUI workflow through MCP.");
+    let mut ledger = ExecutionLedger::load(app_data_dir)?;
+    let profile_revision = profile.profile_revision;
+    let workflow_version = job.input_json.get("workflowResolution").and_then(|value| value.get("version")).and_then(Value::as_str).unwrap_or("unversioned").to_string();
+    let now = format!("{:?}", SystemTime::now());
+    ledger.upsert(ExecutionLedgerEntry { job_id: job.id.clone(), attempt: job.assignment_attempt.clone(), profile_id: profile.profile_id.clone(), profile_revision, workflow_version: workflow_version.clone(), remote_execution_id: None, state: ExecutionLedgerState::Claimed, event_sequence: sequence as u64, output_fingerprints: Vec::new(), upload_session_id: None, updated_at: now })?;
+    let remote_execution_id = Arc::new(Mutex::new(None::<String>));
+    let record_execution_id = {
+        let remote_execution_id = Arc::clone(&remote_execution_id);
+        move |execution_id: &str| {
+            if let Ok(mut recorded) = remote_execution_id.lock() { *recorded = Some(execution_id.to_string()); }
+        }
+    };
+    let result = match profile.transport {
+        ComfyTransportKind::LocalStdio | ComfyTransportKind::SelfHostedStdioBridge => {
+            let command = profile.command.clone().ok_or_else(|| "comfy_profile_command_missing".to_string())?;
+            let managed_command_path = (matches!(profile.transport, ComfyTransportKind::LocalStdio)
+                && crate::comfy_mcp_runtime::normalize_command(&command)
+                    == crate::comfy_mcp_runtime::STANDARD_COMMAND)
+                .then(|| crate::comfy_mcp_runtime::managed_command_path(app_data_dir))
+                .flatten();
+            if !command_available_with_path(&command, managed_command_path.as_deref()) { return Err("comfy_mcp_unavailable".into()); }
+            let args = if matches!(profile.transport, ComfyTransportKind::SelfHostedStdioBridge) { resolve_bridge_args(&profile.args, profile.endpoint.as_deref().ok_or_else(|| "comfy_bridge_endpoint_missing".to_string())?)? } else { profile.args.clone() };
+            run_generic_workflow_with_lifecycle(&ComfyMcpConfig { command, managed_command_path, args, timeout_ms: job_timeout_ms(job) }, arguments, cancel, record_execution_id).await
+        }
+        ComfyTransportKind::SelfHostedHttpMcp | ComfyTransportKind::ComfyCloud | ComfyTransportKind::SshTunnel => {
+            let ssh_key = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) { Some(crate::comfy_credentials::resolve(profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?) } else { None };
+            let _ssh_tunnel = if let Some(key) = ssh_key.as_deref() { Some(crate::comfy_ssh_tunnel::open_with_identity(&profile.args, key)?) } else { None };
+            let endpoint = profile.endpoint.clone().ok_or_else(|| "comfy_endpoint_missing".to_string())?;
+            let token = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) || profile.credential_kind == ComfyCredentialKind::None { None } else { Some(crate::comfy_credentials::resolve(profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?) };
+            let mut transport = ComfyHttpMcpTransport::new(endpoint, token, Duration::from_millis(job_timeout_ms(job)))?;
+            transport.run_workflow_with_lifecycle_and_callback(arguments, Arc::clone(cancel), record_execution_id).await
+        }
+    };
+    let result = match result {
+        Ok(result) => result,
+        Err(error) => {
+            let _ = ledger.upsert(ExecutionLedgerEntry { job_id: job.id.clone(), attempt: job.assignment_attempt.clone(), profile_id: profile.profile_id.clone(), profile_revision: profile.profile_revision, workflow_version: workflow_version.clone(), remote_execution_id: None, state: ExecutionLedgerState::Failed, event_sequence: sequence as u64, output_fingerprints: Vec::new(), upload_session_id: None, updated_at: format!("{:?}", SystemTime::now()) });
+            return Err(error);
+        }
+    };
+    let recorded_execution_id = remote_execution_id.lock().ok().and_then(|value| value.clone()).or_else(|| extract_mcp_execution_id(&result));
+    if let Some(execution_id) = recorded_execution_id.as_ref() {
+        let now = format!("{:?}", SystemTime::now());
+        ledger.upsert(ExecutionLedgerEntry { job_id: job.id.clone(), attempt: job.assignment_attempt.clone(), profile_id: profile.profile_id.clone(), profile_revision: profile.profile_revision, workflow_version: job.input_json.get("workflowResolution").and_then(|value| value.get("version")).and_then(Value::as_str).unwrap_or("unversioned").into(), remote_execution_id: Some(execution_id.clone()), state: ExecutionLedgerState::Collected, event_sequence: sequence as u64, output_fingerprints: Vec::new(), upload_session_id: None, updated_at: now })?;
+    }
+    let output_path = extract_mcp_artifact_path(&result);
+    let output_url = extract_mcp_artifact_url(&result);
+    let local_path = if let Some(path) = output_path {
+        let candidate = if Path::new(&path).is_absolute() { PathBuf::from(path) } else { workspace.join(path) };
+        validate_workspace_path(&workspace, &candidate)?;
+        candidate.canonicalize().map_err(|_| "comfy_mcp_output_missing".to_string())?
+    } else if let Some(url) = output_url {
+        download_mcp_output(&url, &workspace).await?
+    } else {
+        return Err("comfy_mcp_output_missing".into());
+    };
+    if !local_path.is_file() { return Err("comfy_mcp_output_missing".into()); }
+    let digest = file_sha256(&local_path)?;
+    let file_name = local_path.file_name().and_then(|value| value.to_str()).unwrap_or("comfy-output.bin").to_string();
+    let content_type = content_type_for_file(&file_name);
+    let upload_library = job.input_json
+        .get("outputPolicy")
+        .and_then(|value| value.get("uploadLibrary"))
+        .and_then(Value::as_bool)
+        .unwrap_or(true);
+    if !upload_library {
+        update_executor_progress(executor, &job.id, 95, &format!("Saved locally: {}", local_path.display()));
+        ledger.upsert(ExecutionLedgerEntry { job_id: job.id.clone(), attempt: job.assignment_attempt.clone(), profile_id: profile.profile_id.clone(), profile_revision: profile.profile_revision, workflow_version, remote_execution_id: recorded_execution_id.clone(), state: ExecutionLedgerState::Saved, event_sequence: sequence as u64, output_fingerprints: vec![digest.clone()], upload_session_id: None, updated_at: format!("{:?}", SystemTime::now()) })?;
+        send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, build_comfy_completed_event(job, sequence, json!({ "status": "saved_locally", "profileId": profile.profile_id, "workflowId": workflow_id, "fileName": file_name, "contentType": content_type, "sha256": digest })), &mut sequence).await?;
+        return Ok(());
+    }
+    ledger.upsert(ExecutionLedgerEntry { job_id: job.id.clone(), attempt: job.assignment_attempt.clone(), profile_id: profile.profile_id.clone(), profile_revision: profile.profile_revision, workflow_version: workflow_version.clone(), remote_execution_id: recorded_execution_id.clone(), state: ExecutionLedgerState::Saved, event_sequence: sequence as u64, output_fingerprints: vec![digest.clone()], upload_session_id: None, updated_at: format!("{:?}", SystemTime::now()) })?;
+    let collect = build_comfy_progress_event(job, sequence, "collect_outputs", 75, Some("Validating the local ComfyUI output.")) .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, collect, &mut sequence).await?;
+    let upload = build_comfy_progress_event(job, sequence, "upload_artifacts", 85, Some("Uploading the verified artifact.")) .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, upload, &mut sequence).await?;
+    let uploaded = match upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, if content_type.starts_with("video/") { "comfy_video_output" } else { "comfy_image_output" }, &local_path, &file_name, content_type, &job.lease_owner_token, &job.assignment_attempt, json!({ "sha256": digest, "profileId": profile.profile_id, "workflowId": workflow_id })).await {
+        Ok(uploaded) => uploaded,
+        Err(error) => {
+            let _ = ledger.upsert(ExecutionLedgerEntry { job_id: job.id.clone(), attempt: job.assignment_attempt.clone(), profile_id: profile.profile_id.clone(), profile_revision: profile.profile_revision, workflow_version: workflow_version.clone(), remote_execution_id: recorded_execution_id.clone(), state: ExecutionLedgerState::Failed, event_sequence: sequence as u64, output_fingerprints: vec![digest.clone()], upload_session_id: None, updated_at: format!("{:?}", SystemTime::now()) });
+            return Err(format!("artifact upload failed: {error}"));
+        }
+    };
+    ledger.upsert(ExecutionLedgerEntry { job_id: job.id.clone(), attempt: job.assignment_attempt.clone(), profile_id: profile.profile_id.clone(), profile_revision: profile.profile_revision, workflow_version, remote_execution_id: recorded_execution_id.clone(), state: ExecutionLedgerState::Published, event_sequence: sequence as u64, output_fingerprints: vec![digest.clone()], upload_session_id: None, updated_at: format!("{:?}", SystemTime::now()) })?;
+    let publish = build_comfy_progress_event(job, sequence, "publish_artifacts", 95, Some("ComfyUI artifact accepted by SmartAIHub.")) .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, publish, &mut sequence).await?;
+    let index = build_comfy_progress_event(job, sequence, "trigger_indexing", 100, Some("ComfyUI output is ready.")) .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, index, &mut sequence).await?;
+    send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, build_comfy_completed_event(job, sequence, json!({ "profileId": profile.profile_id, "workflowId": workflow_id, "artifacts": [{ "fileName": file_name, "contentType": content_type, "sha256": digest, "artifact": uploaded.artifact }] })), &mut sequence).await?;
+    Ok(())
+}
+
+fn job_timeout_ms(job: &ClaimedWorkerJob) -> u64 { job.input_json.get("timeoutMs").and_then(Value::as_u64).unwrap_or(10 * 60 * 1000).clamp(5_000, 60 * 60 * 1000) }
+
+fn content_type_for_file(file_name: &str) -> &'static str {
+    match Path::new(file_name).extension().and_then(|value| value.to_str()).unwrap_or_default().to_ascii_lowercase().as_str() {
+        "mp4" | "webm" | "mov" | "mkv" => "video/mp4",
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "webp" => "image/webp",
+        _ => "application/octet-stream",
+    }
+}
+
+fn safe_output_extension(url: &reqwest::Url, content_type: Option<&str>) -> &'static str {
+    let from_path = url
+        .path_segments()
+        .and_then(|mut segments| segments.next_back())
+        .and_then(|name| Path::new(name).extension().and_then(|value| value.to_str()))
+        .map(str::to_ascii_lowercase);
+    match from_path.as_deref() {
+        Some("mp4") | Some("webm") | Some("mov") | Some("mkv") => "mp4",
+        Some("jpg") | Some("jpeg") => "jpg",
+        Some("png") => "png",
+        Some("webp") => "webp",
+        _ => match content_type.unwrap_or_default().split(';').next().unwrap_or_default().trim() {
+            "video/webm" => "webm",
+            "video/quicktime" => "mov",
+            "image/jpeg" => "jpg",
+            "image/png" => "png",
+            "image/webp" => "webp",
+            _ => "bin",
+        },
+    }
+}
+
+async fn download_mcp_output(url: &str, workspace: &Path) -> Result<PathBuf, String> {
+    let parsed = reqwest::Url::parse(url).map_err(|_| "comfy_mcp_output_url_invalid".to_string())?;
+    if parsed.scheme() != "https" && !matches!(parsed.host_str(), Some("localhost" | "127.0.0.1" | "::1")) { return Err("comfy_mcp_output_url_invalid".into()); }
+    let response = reqwest::Client::builder().timeout(Duration::from_secs(30 * 60)).redirect(reqwest::redirect::Policy::none()).build().map_err(|_| "comfy_mcp_output_download_failed".to_string())?.get(parsed.clone()).send().await.map_err(|_| "comfy_mcp_output_download_failed".to_string())?;
+    if !response.status().is_success() { return Err("comfy_mcp_output_download_failed".into()); }
+    if response.content_length().is_some_and(|size| size > 4 * 1024 * 1024 * 1024) { return Err("comfy_mcp_output_too_large".into()); }
+    let content_type = response.headers().get(reqwest::header::CONTENT_TYPE).and_then(|value| value.to_str().ok());
+    let extension = safe_output_extension(&parsed, content_type);
+    let bytes = response.bytes().await.map_err(|_| "comfy_mcp_output_download_failed".to_string())?;
+    if bytes.is_empty() { return Err("comfy_mcp_output_empty".into()); }
+    let path = workspace.join(format!("comfy-output.{extension}"));
+    fs::write(&path, bytes).map_err(|_| "comfy_mcp_output_write_failed".to_string())?;
+    Ok(path)
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -2165,6 +3678,8 @@ async fn execute_hyperframes_job_inner(
             true,
             false,
             None,
+            None,
+            None,
         )
         .await;
         let mut metadata = json!({
@@ -2257,6 +3772,56 @@ async fn execute_hyperframes_job_inner(
         .await?;
     }
     Ok(())
+}
+
+/// Footage B-roll composition is deliberately fail-closed until the caller
+/// supplies a Remotion asset manifest with worker-fetchable URLs. A media
+/// source manifest contains storage identity only; treating its relative
+/// path as a browser URL would silently render a blank layer.
+async fn execute_footage_broll_render_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    doctor: &DoctorSummary,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    if let Some(remotion_input) = job.input_json.get("remotionInput") {
+        // The Server compiles the URL-bearing, strict Remotion payload after
+        // authorizing every source. Reuse the existing proven executor so
+        // this feature does not grow a second Chromium/FFmpeg implementation.
+        let mut delegated_job = job.clone();
+        delegated_job.job_type = "remotion_render_video".into();
+        delegated_job.input_json = remotion_input.clone();
+        return execute_remotion_render_video_job(
+            executor,
+            resource_dir,
+            app_data_dir,
+            connection,
+            delegated_job,
+            doctor,
+            settings,
+            cancel,
+        )
+        .await;
+    }
+    let result = if job.input_json.get("kind").and_then(Value::as_str) != Some(VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE) {
+        Err("render_contract_mismatch".to_string())
+    } else if job.input_json.get("renderProfile").and_then(|value| value.get("compositionExecutor")).and_then(Value::as_str) != Some("remotion_render_video") {
+        Err("unsupported_composition_executor".to_string())
+    } else {
+        Err("unsupported_composition_executor: Remotion asset URLs are required before render".to_string())
+    };
+    if let Err(error) = &result {
+        let failure_code = error.split(':').next().unwrap_or("unsupported_composition_executor");
+        let _ = send_event_with_refresh(app_data_dir, connection, &job.id, build_failure_event(&job, FAILURE_EVENT_SEQUENCE_NUMBER, failure_code, error)).await;
+        set_executor_last_job(executor, &job, "error", error, None);
+        set_executor_job_error(executor, &job.id, error.clone());
+    }
+    result
 }
 
 /// `planning/worker-app-remotion-render-video/plan.md` P2 — top-level entry
@@ -2537,16 +4102,10 @@ async fn execute_remotion_render_video_job_inner(
     )
     .await?;
 
-    // Known scope gap (see this task's final report): the only durable
-    // reference this Rust process holds for the uploaded artifact is
-    // `storageRef` (a storage key, not a resolved playback URL — the
-    // `worker_artifacts` table has no `url` column; a real GET url is only
-    // resolvable server-side via `storageGet(storageRef)`). Lane A's
-    // `outputUrl` is a real resolved URL from its own `storagePut()`. Using
-    // `storageRef` here is the best value obtainable from
-    // `apps/worker-app` alone; closing this gap for real requires an
-    // `apps/web`-side change (out of this task's file scope) to resolve a
-    // playback URL from `storageRef` when persisting `outputJson.outputUrl`.
+    // The Worker stores the durable artifact identity as `storageRef`. The
+    // Web control plane resolves that protected reference to a short-lived
+    // playback URL before returning job status to the browser; the Worker
+    // must never mint or log a public media URL.
     let storage_ref = upload_response
         .artifact
         .get("storageRef")
@@ -2687,6 +4246,8 @@ async fn run_remotion_sidecar_and_collect(
                 None,
                 true,
                 false,
+                None,
+                None,
                 None,
             )
             .await;
@@ -2877,6 +4438,8 @@ async fn stage_hyperframes_source_videos(
             None,
             true,
             false,
+            None,
+            None,
             None,
         )
         .await;
@@ -3241,6 +4804,8 @@ async fn run_sidecar_with_active_heartbeat(
                 None,
                 true,
                 false,
+                None,
+                None,
                 None,
             )
             .await;
@@ -3714,12 +5279,13 @@ fn set_executor_queue_depth(executor: &Arc<Mutex<ExecutorState>>, queue_depth: u
 fn set_executor_job(executor: &Arc<Mutex<ExecutorState>>, job: &ClaimedWorkerJob) {
     if let Ok(mut state) = executor.lock() {
         let metadata = build_worker_job_display_metadata(job);
-        state.start_job(
+        state.start_job_with_created_at(
             job.id.clone(),
             metadata.label,
             job.job_type.clone(),
             metadata.project_id,
             metadata.project_name,
+            job.created_at.clone(),
         );
     }
 }
@@ -3880,6 +5446,123 @@ mod tests {
     use crate::worker_control_plane::WorkerApiTokens;
 
     #[test]
+    fn media_binding_projection_reads_canonical_and_legacy_shapes() {
+        assert_eq!(
+            read_media_binding_projection(&json!({
+                "binding": { "bindingRevision": 7, "status": "active" }
+            })),
+            (Some(7), Some("active".to_string()))
+        );
+        assert_eq!(
+            read_media_binding_projection(&json!({
+                "item": { "bindingRevision": 8, "bindingStatus": "stale" }
+            })),
+            (Some(8), Some("stale".to_string()))
+        );
+    }
+
+    #[test]
+    fn hyperframes_transcript_output_is_normalized_from_transcript_file() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(
+            dir.path().join("transcript.json"),
+            r#"[{"text":"สวัสดี","start":0.1,"end":0.8},{"word":"ครับ","start":0.9,"end":1.2}]"#.as_bytes(),
+        )
+        .unwrap();
+        let normalized = normalize_hyperframes_transcript_output(
+            &json!({ "ok": true, "transcriptPath": "ignored-by-worker" }),
+            dir.path(),
+        )
+        .unwrap();
+        assert_eq!(normalized["text"], "สวัสดี ครับ");
+        assert_eq!(normalized["words"].as_array().unwrap().len(), 2);
+        assert_eq!(transcript_text_and_tokens(&normalized).0, "สวัสดี ครับ");
+    }
+
+    #[test]
+    fn empty_hyperframes_transcript_is_reported_without_false_success() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("transcript.json"), b"[]").unwrap();
+        let normalized = normalize_hyperframes_transcript_output(
+            &json!({ "ok": true }),
+            dir.path(),
+        )
+        .unwrap();
+
+        assert_eq!(normalized["status"], "empty");
+        assert_eq!(normalized["text"], "");
+        assert!(normalized["words"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn runtime_relative_path_rejects_absolute_and_parent_paths() {
+        let root = Path::new("/runtime-pack");
+        assert!(runtime_relative_path(root, "/etc/passwd").is_none());
+        assert!(runtime_relative_path(root, "../outside").is_none());
+        assert_eq!(runtime_relative_path(root, "whisper/whisper-cli").unwrap(), root.join("whisper/whisper-cli"));
+    }
+
+    #[test]
+    fn managed_wsl_root_expression_quotes_home_suffix_as_a_literal() {
+        assert_eq!(managed_wsl_root_expr("~"), "\"$HOME\"");
+        assert_eq!(
+            managed_wsl_root_expr("~/runtime pack/$HOME`touch /tmp/pwned`"),
+            "\"$HOME\"/'runtime pack/$HOME`touch /tmp/pwned`'"
+        );
+        assert_eq!(
+            managed_wsl_root_expr("C:\\Program Files\\Smart AI Hub"),
+            "'C:\\Program Files\\Smart AI Hub'"
+        );
+    }
+
+    #[test]
+    fn comfy_output_extension_comes_from_url_or_content_type() {
+        let video_url = reqwest::Url::parse("https://comfy.example/output/result.mp4?token=redacted").unwrap();
+        assert_eq!(safe_output_extension(&video_url, Some("application/octet-stream")), "mp4");
+
+        let image_url = reqwest::Url::parse("https://comfy.example/output/result").unwrap();
+        assert_eq!(safe_output_extension(&image_url, Some("image/png; charset=binary")), "png");
+
+        assert_eq!(safe_output_extension(&image_url, Some("application/octet-stream")), "bin");
+    }
+
+    #[test]
+    fn local_media_source_resolution_rejects_absolute_and_traversal_paths_before_probe() {
+        let root = Path::new("/worker/series");
+        assert_eq!(
+            resolve_worker_media_source_path(root, "../outside.mp4"),
+            Err("relative_path_escape".into())
+        );
+        assert_eq!(
+            resolve_worker_media_source_path(root, "/outside.mp4"),
+            Err("relative_path_escape".into())
+        );
+        assert_eq!(
+            resolve_worker_media_source_path(root, "nested\\outside.mp4"),
+            Err("relative_path_escape".into())
+        );
+    }
+
+    #[test]
+    fn runtime_block_message_is_generic_for_current_capability_lanes() {
+        let message = runtime_block_message(&DoctorSummary {
+            status: "blocked".into(),
+            checks: vec![crate::runtime_manifest::DoctorCheck {
+                id: "media_tools".into(),
+                status: "error".into(),
+                message: "FFmpeg or ffprobe is missing.".into(),
+                details_json: json!({}),
+            }],
+            recommended_actions: vec!["Install the media runtime pack".into()],
+            official_hyperframes_runtime: None,
+            runtime_kind: None,
+        });
+
+        assert!(message.starts_with("No local Worker capability is ready."));
+        assert!(!message.contains("HyperFrames"));
+    }
+
+    #[test]
     fn remotion_claim_hints_include_capability_families_only_when_render_ready() {
         let ready = build_worker_claim_capability_hints(true, false);
         assert!(ready.contains(&"remotion-render".to_string()));
@@ -3890,6 +5573,30 @@ mod tests {
         let not_ready = build_worker_claim_capability_hints(false, false);
         assert!(!not_ready.contains(&"remotion-render".to_string()));
         assert!(not_ready.is_empty());
+    }
+
+    #[test]
+    fn local_media_claim_hints_are_independent_from_render_doctor() {
+        let local_only = build_worker_claim_capability_hints_with_media(false, false, false, true);
+        assert!(local_only.contains(&VERTICAL_DRAMA_MEDIA_CAPABILITY.to_string()));
+        assert!(local_only.contains(&VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE.to_string()));
+        assert!(local_only.contains(&VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE.to_string()));
+        assert!(!local_only.contains(&HYPERFRAMES_JOB_TYPE.to_string()));
+
+        let unavailable =
+            build_worker_claim_capability_hints_with_media(false, false, false, false);
+        assert!(unavailable.is_empty());
+    }
+
+    #[test]
+    fn mcp_claim_hints_are_separate_from_local_media_hints() {
+        let mcp_only = build_worker_claim_capability_hints_with_media_and_mcp(
+            false, false, false, false, true,
+        );
+        assert!(mcp_only.contains(&VERTICAL_DRAMA_MEDIA_CAPABILITY.to_string()));
+        assert!(mcp_only.contains(&VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE.to_string()));
+        assert!(!mcp_only.contains(&VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE.to_string()));
+        assert!(!mcp_only.contains(&VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE.to_string()));
     }
 
     #[test]
@@ -4050,6 +5757,8 @@ mod tests {
             "ready",
             Some((&hermes_ready, Some("0.18.2"))),
             None,
+            None,
+            None,
         );
         assert_eq!(ready_metadata["hermesMedia"]["advertised"], true);
         assert_eq!(ready_metadata["hermesMedia"]["hermesVersion"], "0.18.2");
@@ -4069,12 +5778,34 @@ mod tests {
             "ready",
             None,
             Some(&comfy_ready),
+            None,
+            None,
         );
         assert_eq!(comfy_metadata["comfyUi"]["advertised"], true);
         assert_eq!(
             comfy_metadata["comfyUi"]["capabilityFamilies"][0],
             "comfyui-image-generate"
         );
+
+        let local_media_metadata = build_heartbeat_runtime_metadata(
+            &settings,
+            &hermes_ready,
+            true,
+            "ready",
+            None,
+            None,
+            Some(true),
+            Some(false),
+        );
+        assert_eq!(
+            local_media_metadata["verticalDramaMedia"]["mcpReady"],
+            false
+        );
+        assert!(!local_media_metadata["verticalDramaMedia"]["capabilities"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|capability| capability == "shot_video_generation"));
 
         let blocked_metadata = build_heartbeat_runtime_metadata(
             &settings,
@@ -4083,6 +5814,8 @@ mod tests {
             "ready",
             Some((&hermes_blocked, None)),
             None,
+            None,
+            None,
         );
         assert_eq!(blocked_metadata["hermesMedia"]["advertised"], false);
 
@@ -4090,8 +5823,16 @@ mod tests {
         // HyperFrames render) pass `None` — no hermesMedia key at all, so
         // the server preserves the last-known value instead of clobbering
         // it with a stale/absent probe.
-        let no_hermes_info =
-            build_heartbeat_runtime_metadata(&settings, &hermes_ready, true, "ready", None, None);
+        let no_hermes_info = build_heartbeat_runtime_metadata(
+            &settings,
+            &hermes_ready,
+            true,
+            "ready",
+            None,
+            None,
+            None,
+            None,
+        );
         assert!(no_hermes_info.get("hermesMedia").is_none());
     }
 
@@ -4140,6 +5881,7 @@ mod tests {
         let job = ClaimedWorkerJob {
             id: "job-control".to_string(),
             job_type: "hermes_connection_probe".to_string(),
+            created_at: None,
             lease_owner_token: "lease-control".to_string(),
             assignment_attempt: "attempt-control".to_string(),
             input_json: json!({}),
@@ -4464,5 +6206,17 @@ mod tests {
         assert!(!serialized.contains("BEGIN PRIVATE KEY"));
         assert!(!serialized.contains("password"));
         assert!(!serialized.contains("apiKey"));
+    }
+
+    #[test]
+    fn remove_approved_silence_preserves_padded_speech_edges() {
+        let result = remove_approved_silence(&[(0, 10_000)], &[(4_000, 6_000)], 250);
+        assert_eq!(result, vec![(0, 3_750), (6_250, 10_000)]);
+    }
+
+    #[test]
+    fn media_failure_code_keeps_typed_errors_and_hides_unknowns() {
+        assert_eq!(media_failure_code("source_fingerprint_mismatch: bad bytes"), "source_fingerprint_mismatch");
+        assert_eq!(media_failure_code("unexpected private path"), "unsupported_job_type");
     }
 }

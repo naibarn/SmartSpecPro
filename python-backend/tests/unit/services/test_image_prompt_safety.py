@@ -24,6 +24,14 @@ def test_accepts_vertical_drama_managed_marker():
     assert validate_image_prompt_safety({"__prompt_safety": marker})["mode"] == "vertical_drama_managed"
 
 
+def test_accepts_vertical_drama_cover_marker():
+    marker = _marker(
+        mode="vertical_drama_cover",
+        skillId="vertical-drama-episode-cover-safety-rewriter",
+    )
+    assert validate_image_prompt_safety({"__prompt_safety": marker})["mode"] == "vertical_drama_cover"
+
+
 @pytest.mark.parametrize(
     "extra_params",
     [
@@ -32,6 +40,12 @@ def test_accepts_vertical_drama_managed_marker():
         {"__prompt_safety": {"checked": False}},
         {"__prompt_safety": _marker(skillId="other-skill")},
         {"__prompt_safety": _marker(mode="unknown")},
+        {
+            "__prompt_safety": _marker(
+                mode="vertical_drama_cover",
+                skillId="image-prompt-safety-rewriter",
+            )
+        },
         {"__prompt_safety": _marker(blocked=True)},
     ],
 )

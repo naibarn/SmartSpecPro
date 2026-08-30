@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canAddSpecialReferences,
+  resolveSpecialTieInCharacterId,
   specialEpisodeLabel,
   toggleBoundedSelection,
 } from "./specialTieInUi";
@@ -14,6 +15,13 @@ describe("special tie-in UI constraints", () => {
     expect(toggleBoundedSelection(["a", "b"], "c", 2)).toEqual(["a", "b"]);
     expect(toggleBoundedSelection(["a"], "b", 2)).toEqual(["a", "b"]);
     expect(toggleBoundedSelection(["a", "b"], "a", 2)).toEqual(["b"]);
+  });
+  it("uses the server characterId as the stable selection and portrait key", () => {
+    expect(
+      resolveSpecialTieInCharacterId({ characterId: "42", id: "legacy-42" })
+    ).toBe("42");
+    expect(resolveSpecialTieInCharacterId({ id: 7 })).toBe("7");
+    expect(resolveSpecialTieInCharacterId({})).toBe("");
   });
   it("labels special episodes independently from normal episode numbers", () => {
     expect(specialEpisodeLabel(3, "th")).toBe("ตอนพิเศษ 03");

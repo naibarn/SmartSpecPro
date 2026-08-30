@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ExternalLink,
+  Globe2,
   KeyRound,
   Loader2,
   ListChecks,

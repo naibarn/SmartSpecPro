@@ -13,8 +13,19 @@ use crate::runtime_manifest::DoctorSummary;
 pub const HYPERFRAMES_JOB_TYPE: &str = "hyperframes_final_composite";
 pub const HYPERFRAMES_RENDER_INTENT: &str = "hyperframes_final_composite";
 pub const COMFY_IMAGE_GENERATION_JOB_TYPE: &str = "comfy_image_generation";
+pub const COMFY_VIDEO_GENERATION_JOB_TYPE: &str = "comfy_video_generation";
 pub const COMFY_WORKFLOW_RUN_JOB_TYPE: &str = "comfy_workflow_run";
-pub const COMFY_CAPABILITY_FAMILIES: [&str; 2] = ["comfyui-image-generate", "comfyui-workflow-run"];
+pub const VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE: &str = "media_ingest";
+pub const VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE: &str = "broll_preprocess";
+pub const VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE: &str = "shot_video_generation";
+pub const VERTICAL_DRAMA_FOOTAGE_PROBE_JOB_TYPE: &str = "footage_probe_analyze";
+pub const VERTICAL_DRAMA_FOOTAGE_PREPARE_JOB_TYPE: &str = "footage_prepare";
+pub const VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE: &str = "footage_broll_render";
+pub const VERTICAL_DRAMA_FOOTAGE_ANALYSIS_CAPABILITY: &str = "vd-footage-analysis";
+pub const VERTICAL_DRAMA_FOOTAGE_PREPARE_CAPABILITY: &str = "vd-footage-prepare";
+pub const VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_CAPABILITY: &str = "vd-footage-broll-render";
+pub const VERTICAL_DRAMA_MEDIA_CAPABILITY: &str = "vertical-drama-media";
+pub const COMFY_CAPABILITY_FAMILIES: [&str; 4] = ["comfyui-image-generate", "comfyui-video-generate", "comfyui-workflow-run", "comfyui-mcp"];
 pub const COMFY_PROGRESS_STAGES: [&str; 7] = [
     "validate_service",
     "submit_workflow",
@@ -178,7 +189,10 @@ pub enum WorkerJobKind {
     Hyperframes,
     RemotionRenderVideo,
     ComfyImageGeneration,
+    ComfyVideoGeneration,
     ComfyWorkflowRun,
+    VerticalDramaMedia,
+    VerticalDramaFootageRender,
     HermesMediaImage,
     HermesMediaVideo,
     HermesConnectionAuthorize,
@@ -192,7 +206,13 @@ pub fn classify_job_type(job_type: &str) -> WorkerJobKind {
         HYPERFRAMES_JOB_TYPE => WorkerJobKind::Hyperframes,
         REMOTION_RENDER_VIDEO_JOB_TYPE => WorkerJobKind::RemotionRenderVideo,
         COMFY_IMAGE_GENERATION_JOB_TYPE => WorkerJobKind::ComfyImageGeneration,
+        COMFY_VIDEO_GENERATION_JOB_TYPE => WorkerJobKind::ComfyVideoGeneration,
         COMFY_WORKFLOW_RUN_JOB_TYPE => WorkerJobKind::ComfyWorkflowRun,
+        VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE
+        | VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE
+        | VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE => WorkerJobKind::VerticalDramaMedia,
+        VERTICAL_DRAMA_FOOTAGE_PROBE_JOB_TYPE | VERTICAL_DRAMA_FOOTAGE_PREPARE_JOB_TYPE => WorkerJobKind::VerticalDramaMedia,
+        VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE => WorkerJobKind::VerticalDramaFootageRender,
         HERMES_MEDIA_IMAGE_JOB_TYPE => WorkerJobKind::HermesMediaImage,
         HERMES_MEDIA_VIDEO_JOB_TYPE => WorkerJobKind::HermesMediaVideo,
         HERMES_CONNECTION_AUTHORIZE_JOB_TYPE => WorkerJobKind::HermesConnectionAuthorize,
@@ -235,6 +255,12 @@ pub struct HermesJobReferenceUrl {
 pub struct ClaimedWorkerJob {
     pub id: String,
     pub job_type: String,
+    /// Server-authoritative creation time. This is returned by the claim
+    /// endpoint so the desktop UI can be compared directly with the web job
+    /// list; it is intentionally optional for compatibility with older
+    /// control-plane responses.
+    #[serde(default)]
+    pub created_at: Option<String>,
     pub lease_owner_token: String,
     pub assignment_attempt: String,
     #[serde(default)]
@@ -1704,7 +1730,25 @@ mod tests {
         }))
         .unwrap();
 
+        assert_eq!(job.created_at, None);
         assert_eq!(job.capability_requirements_json, Value::Null);
         assert!(job.reference_urls.is_empty());
+    }
+
+    #[test]
+    fn claimed_worker_job_preserves_server_creation_time() {
+        let job: ClaimedWorkerJob = serde_json::from_value(json!({
+            "id": "job-1",
+            "jobType": HYPERFRAMES_JOB_TYPE,
+            "createdAt": "2026-08-27T07:00:00.000Z",
+            "leaseOwnerToken": "lease-1",
+            "assignmentAttempt": "attempt-1",
+        }))
+        .unwrap();
+
+        assert_eq!(
+            job.created_at.as_deref(),
+            Some("2026-08-27T07:00:00.000Z")
+        );
     }
 }

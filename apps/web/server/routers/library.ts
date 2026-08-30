@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import crypto from "crypto";
 import { PRESENTATION_ITEM_TYPE } from "@shared/presentation/constants";
 import { isPresentationTemplateItem } from "@shared/presentation/template";
 import {
@@ -40,7 +41,13 @@ import {
 } from "../../shared/libraryCanvas";
 
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
+import {
+  signBearerToken,
+  verifyBearerToken,
+  verifyBearerTokenIgnoringExpiration,
+} from "../_core/tokens";
 import { getDb } from "../db";
+import { storageDelete, storageHeadFile, storagePresignPut } from "../storage";
 import { shouldUseSandbox, dispatchToSandbox } from "../services/sandbox/dispatchService";
 import { auditLogger } from "../services/auditLogger";
 import { shareOperationLimiter } from "../services/rateLimiter";
@@ -123,6 +130,7 @@ import {
   updateLibrarySharePermission,
   uploadLibraryFile,
   replaceLibraryFile,
+  validateLibraryUploadMetadata,
   getVersionSnapshotDownloadUrl,
   updateLibraryItem,
 } from "../services/libraryService";
@@ -191,8 +199,8 @@ const documentFilterSchema = z.object({
   recentDays: recentDaysSchema.optional(),
 }).optional();
 
-// 50 MB binary → ~68 MB base64 (4/3 overhead + data URL prefix margin)
-const MAX_FILE_BASE64_LENGTH = 68_000_000;
+// 50 MiB binary → ~69.9 MB base64 (4/3 overhead + data URL prefix margin)
+const MAX_FILE_BASE64_LENGTH = 70_000_000;
 
 const uploadLibraryFileSchema = z.object({
   fileName: z.string().min(1).max(255),
@@ -204,6 +212,76 @@ const uploadLibraryFileSchema = z.object({
   parentId: z.number().int().positive().nullable().optional(),
   metadata: z.record(z.any()).optional(),
 });
+
+const MAX_DIRECT_LIBRARY_UPLOAD_BYTES = 50 * 1024 * 1024;
+
+const directLibraryUploadInitSchema = z.object({
+  fileName: z.string().min(1).max(255),
+  fileType: z.string().min(1).max(255),
+  fileSizeBytes: z.number().int().positive().max(MAX_DIRECT_LIBRARY_UPLOAD_BYTES),
+  operation: z.enum(["create", "replace"]).default("create"),
+  itemId: z.number().int().positive().optional(),
+});
+
+const directLibraryUploadCompleteSchema = z.object({
+  uploadToken: z.string().min(1).max(4096),
+  title: z.string().min(1).max(255).optional(),
+  visibility: visibilitySchema.optional(),
+  projectId: z.string().min(1).max(100).nullable().optional(),
+  parentId: z.number().int().positive().nullable().optional(),
+  metadata: z.record(z.any()).optional(),
+  changeDescription: z.string().max(500).optional(),
+});
+
+type LibraryDirectUploadClaims = {
+  uploadKey: string;
+  uploadSizeBytes: number;
+  uploadMimeType: string;
+  uploadFileName: string;
+  uploadOperation: "create" | "replace";
+  uploadItemId?: number;
+};
+
+async function verifyLibraryDirectUploadToken(
+  token: string,
+  ctx: { user: { id: number; currentTenantId?: unknown }; tenantId: unknown },
+  ignoreExpiration = false,
+): Promise<{ tenantId: string; claims: LibraryDirectUploadClaims }> {
+  let decoded;
+  try {
+    decoded = await (ignoreExpiration
+      ? verifyBearerTokenIgnoringExpiration(token)
+      : verifyBearerToken(token));
+  } catch {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid or expired library upload token" });
+  }
+
+  const tenantId = await resolveLibraryTenantId(ctx);
+  const userId = Number(decoded.userId ?? decoded.sub);
+  const claims = decoded as typeof decoded & Partial<LibraryDirectUploadClaims>;
+  if (
+    decoded.type !== "library_upload"
+    || !Number.isInteger(userId)
+    || userId !== ctx.user.id
+    || decoded.tenantId !== tenantId
+    || typeof claims.uploadKey !== "string"
+    || !Number.isInteger(claims.uploadSizeBytes)
+    || claims.uploadSizeBytes <= 0
+    || claims.uploadSizeBytes > MAX_DIRECT_LIBRARY_UPLOAD_BYTES
+    || typeof claims.uploadMimeType !== "string"
+    || typeof claims.uploadFileName !== "string"
+    || (claims.uploadOperation !== "create" && claims.uploadOperation !== "replace")
+    || (claims.uploadOperation === "replace" && !Number.isInteger(claims.uploadItemId))
+    || (claims.uploadOperation === "create" && claims.uploadItemId !== undefined)
+  ) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid library upload token" });
+  }
+
+  return {
+    tenantId,
+    claims: claims as LibraryDirectUploadClaims,
+  };
+}
 
 const uploadStatusSchema = z.object({
   ids: z.array(z.number().int().positive()).min(1).max(25),
@@ -266,6 +344,56 @@ function assertLibraryEnabled(tenantId: string): void {
       message: "Library feature is disabled for this tenant",
     });
   }
+}
+
+async function dispatchLibrarySandboxParsing(params: {
+  result: any;
+  tenantId: string;
+  userId: number;
+  fileName: string;
+  fileType: string;
+}) {
+  if (!shouldUseSandbox("sandbox-file") || !SANDBOX_PARSE_MIME_TYPES.has(params.fileType)) {
+    return params.result;
+  }
+
+  try {
+    const sandboxResult = await dispatchToSandbox({
+      featureType: "library",
+      executionMode: "sandbox-file",
+      tenantId: params.tenantId,
+      userId: params.userId,
+      inputFiles: [
+        {
+          key: params.result.storageKey,
+          mimeType: params.fileType,
+          sizeBytes: Number(params.result.billing?.fileSizeBytes ?? 0),
+        },
+      ],
+      profileOverride: "file-parser",
+      metadata: {
+        libraryItemId: params.result.item.id,
+        fileName: params.fileName,
+      },
+    });
+
+    params.result.sandboxParseJobId = sandboxResult.jobId;
+    const metadata = (params.result.item.metadata ?? {}) as Record<string, any>;
+    const uploadPipeline = metadata.upload_pipeline && typeof metadata.upload_pipeline === "object"
+      ? { ...metadata.upload_pipeline }
+      : {};
+    uploadPipeline.parserJobId = sandboxResult.jobId;
+    uploadPipeline.parserStatus = "queued";
+    uploadPipeline.updatedAt = new Date().toISOString();
+    params.result.item.metadata = {
+      ...metadata,
+      upload_pipeline: uploadPipeline,
+    };
+  } catch (err) {
+    console.error("[library.uploadFile] Sandbox parsing dispatch failed:", err);
+  }
+
+  return params.result;
 }
 
 async function assertKnowledgeVaultSurface(
@@ -1033,6 +1161,156 @@ export const libraryRouter = router({
       const actor = await createLibraryActor(ctx, tenantIdResolved);
 
       return getLibraryUploadStatuses(input.ids, actor);
+    }),
+
+  directUploadInit: protectedProcedure
+    .input(directLibraryUploadInitSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+      const normalized = validateLibraryUploadMetadata(input.fileName, input.fileType);
+
+      if (input.operation === "replace" && !input.itemId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "itemId is required when replacing a library file" });
+      }
+      if (input.operation === "create" && input.itemId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "itemId is not valid for a new library upload" });
+      }
+      if (input.operation === "replace" && input.itemId) {
+        const permission = await getUserEffectivePermission(input.itemId, actor);
+        if (
+          actor.role !== "admin"
+          && (!permission || !["write", "delete", "owner"].includes(permission.effectivePermissionLevel ?? ""))
+        ) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You do not have permission to replace this library item" });
+        }
+      }
+
+      // SVG is sanitized on the trusted server before it is stored; keep this
+      // format on the legacy path so an unsafe object is never left in R2.
+      if (normalized.extension === "svg") {
+        return {
+          method: "legacy_base64" as const,
+          maxFileSizeBytes: MAX_DIRECT_LIBRARY_UPLOAD_BYTES,
+        };
+      }
+
+      const fileId = crypto.randomUUID().replace(/-/g, "");
+      const storageKey = `library/uploads/${tenantIdResolved}/${actor.userId}/${fileId}${normalized.extension ? `.${normalized.extension}` : ""}`;
+      const presigned = await storagePresignPut(
+        storageKey,
+        normalized.fileType,
+        input.fileSizeBytes,
+      );
+
+      if (!presigned) {
+        return {
+          method: "legacy_base64" as const,
+          maxFileSizeBytes: MAX_DIRECT_LIBRARY_UPLOAD_BYTES,
+        };
+      }
+
+      const uploadToken = signBearerToken(
+        {
+          sub: String(actor.userId),
+          userId: actor.userId,
+          ownerUserId: actor.userId,
+          tenantId: tenantIdResolved,
+          type: "library_upload",
+          uploadKey: presigned.key,
+          uploadSizeBytes: input.fileSizeBytes,
+          uploadMimeType: normalized.fileType,
+          uploadFileName: normalized.fileName,
+          uploadOperation: input.operation,
+          ...(input.itemId ? { uploadItemId: input.itemId } : {}),
+        },
+        "1h",
+      );
+
+      return {
+        method: "presigned" as const,
+        uploadUrl: presigned.url,
+        storageKey: presigned.key,
+        uploadToken,
+        maxFileSizeBytes: MAX_DIRECT_LIBRARY_UPLOAD_BYTES,
+      };
+    }),
+
+  directUploadComplete: protectedProcedure
+    .input(directLibraryUploadCompleteSchema)
+    .mutation(async ({ input, ctx }) => {
+      const { tenantId, claims } = await verifyLibraryDirectUploadToken(input.uploadToken, ctx);
+      assertLibraryEnabled(tenantId);
+      const actor = await createLibraryActor(ctx, tenantId);
+
+      try {
+        const head = await storageHeadFile(claims.uploadKey);
+        if (!head || head.contentLength !== claims.uploadSizeBytes) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Uploaded file is missing or has an invalid size" });
+        }
+
+        let result;
+        if (claims.uploadOperation === "replace") {
+          if (!claims.uploadItemId) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid replace upload token" });
+          }
+          result = await replaceLibraryFile(
+            {
+              itemId: claims.uploadItemId,
+              fileName: claims.uploadFileName,
+              fileType: claims.uploadMimeType,
+              storageKey: claims.uploadKey,
+              fileSizeBytes: claims.uploadSizeBytes,
+              changeDescription: input.changeDescription,
+              metadata: input.metadata,
+              strictIndexing: true,
+            },
+            actor,
+          );
+        } else {
+          result = await uploadLibraryFile(
+            {
+              fileName: claims.uploadFileName,
+              fileType: claims.uploadMimeType,
+              storageKey: claims.uploadKey,
+              fileSizeBytes: claims.uploadSizeBytes,
+              title: input.title,
+              visibility: input.visibility,
+              projectId: input.projectId,
+              parentId: input.parentId,
+              metadata: input.metadata,
+              strictIndexing: true,
+            },
+            actor,
+          );
+        }
+
+        if (claims.uploadOperation === "create") {
+          return dispatchLibrarySandboxParsing({
+            result,
+            tenantId,
+            userId: ctx.user.id,
+            fileName: claims.uploadFileName,
+            fileType: claims.uploadMimeType,
+          });
+        }
+        return result;
+      } catch (error) {
+        await storageDelete(claims.uploadKey).catch(() => {});
+        if (error instanceof Error && error.message.toLowerCase().includes("insufficient credits")) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: error.message });
+        }
+        throw error;
+      }
+    }),
+
+  directUploadAbort: protectedProcedure
+    .input(z.object({ uploadToken: z.string().min(1).max(4096) }))
+    .mutation(async ({ input, ctx }) => {
+      const { claims } = await verifyLibraryDirectUploadToken(input.uploadToken, ctx, true);
+      await storageDelete(claims.uploadKey).catch(() => {});
+      return { aborted: true };
     }),
 
   uploadFile: protectedProcedure

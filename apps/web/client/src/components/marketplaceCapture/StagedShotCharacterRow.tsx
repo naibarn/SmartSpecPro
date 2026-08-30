@@ -13,6 +13,7 @@
  * the rest of `StagedCheckpointReviewPanel` handles manifest edits.
  */
 import { useState } from "react";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { Check, Pencil, Shirt, Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -169,7 +170,7 @@ export function StagedShotCharacterRow({
               className="relative flex w-16 flex-col items-center"
             >
               <div className="flex w-16 flex-col items-center gap-1 rounded-lg border border-violet-200 bg-white p-1 text-center text-[10px]">
-                <img
+                <AuthenticatedMediaImage
                   src={thumbnailUrl}
                   alt={member.name}
                   className="aspect-[3/4] w-full rounded-md object-cover object-top"
@@ -243,7 +244,7 @@ export function StagedShotCharacterRow({
                         data-testid={`staged-look-option-${shotId}-${member.castId}-${option.key}`}
                       >
                         {option.portraitUrl ? (
-                          <img
+                          <AuthenticatedMediaImage
                             src={option.portraitUrl}
                             alt=""
                             className="h-6 w-5 shrink-0 rounded object-cover object-top"
@@ -322,7 +323,7 @@ export function StagedShotCharacterRow({
                     onChangeCastInShot(shotId, ordered);
                   }}
                 />
-                <img
+                <AuthenticatedMediaImage
                   src={castLooks?.[member.castId]?.url || member.url}
                   alt=""
                   className="h-6 w-5 shrink-0 rounded object-cover object-top"

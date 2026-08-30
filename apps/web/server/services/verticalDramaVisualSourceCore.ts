@@ -12,6 +12,7 @@ import {
   type VisualSourceSlot,
   type VisualUsageRef,
 } from "@shared/verticalDramaSeries/visualSource";
+import { VerticalDramaArtifactAssuranceLineageSchema } from "@shared/verticalDramaSeries/assurance";
 
 type FingerprintInput = Pick<
   VisualSourceSnapshot,
@@ -312,5 +313,9 @@ export function parseVisualSourceSnapshot(input: unknown): VisualSourceSnapshot 
 }
 
 export function parseShotBrollBinding(input: unknown): ShotBrollBinding {
-  return shotBrollBindingSchema.parse(input);
+  const parsed = shotBrollBindingSchema.parse(input);
+  const { assuranceLineage: rawLineage, ...baseBinding } = parsed;
+  return rawLineage === undefined
+    ? baseBinding
+    : { ...baseBinding, assuranceLineage: VerticalDramaArtifactAssuranceLineageSchema.parse(rawLineage) };
 }

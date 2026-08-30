@@ -71,7 +71,7 @@ import { SkillStudioDialog } from "@/components/skills/SkillStudioDialog";
 
 const PAGE_SIZE = 20;
 
-const iconMap: Record<string, React.ElementType> = {
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   wand2: Wand2,
   sparkles: Sparkles,
   video: Video,
@@ -106,7 +106,7 @@ const categoryLabels: Record<string, string> = {
   other: "Other",
 };
 
-const visibilityConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+const visibilityConfig: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
   public: { label: "Public", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: Globe },
   private: { label: "Private", color: "bg-slate-100 text-slate-700 border-slate-200", icon: Lock },
   pending_approval: { label: "Pending", color: "bg-amber-100 text-amber-700 border-amber-200", icon: Clock },

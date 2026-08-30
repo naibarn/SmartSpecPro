@@ -1,0 +1,32 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/168-vertical-drama-special-tie-in-footage-web/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/168-vertical-drama-special-tie-in-footage-web/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm --workspace apps/web test -- --run shared/verticalDramaMedia/__tests__/contracts.test.ts server/services/__tests__/verticalDramaMarketplaceReviewSkillAdapter.test.ts",
+  "sections": [
+    "section-01-web-contract-api-skill",
+    "section-02-web-ui-review-broll"
+  ],
+  "sections_state": {
+    "section-01-web-contract-api-skill": {
+      "status": "completed",
+      "evidence": "shared contracts, protected procedures, Skill adapter, billing/idempotency and Skill bundle are implemented"
+    },
+    "section-02-web-ui-review-broll": {
+      "status": "completed",
+      "evidence": "dialog upload/preview/fullscreen, searchable model selectors, single-character selection, review gate, history and footage preparation flow are implemented"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-30T09:02:14.833648+00:00"
+}

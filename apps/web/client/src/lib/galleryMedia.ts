@@ -10,12 +10,17 @@ export interface GalleryMediaSource {
   thumbnailUrl?: string | null;
 }
 
+export interface GalleryMediaUrlOptions {
+  download?: boolean;
+}
+
 const IMAGE_EXTENSION_PATTERN =
   /\.(?:avif|bmp|gif|jpe?g|png|svg|webp)(?:[?#].*)?$/i;
 
 export function getGalleryMediaUrl(
   item: GalleryMediaSource,
-  variant: GalleryMediaVariant
+  variant: GalleryMediaVariant,
+  options: GalleryMediaUrlOptions = {},
 ): string {
   const key =
     variant === "thumbnail"
@@ -23,7 +28,10 @@ export function getGalleryMediaUrl(
       : item.fileKey || item.thumbnailKey;
 
   if (key) {
-    return `/api/gallery/media/${item.id}/${variant}`;
+    const url = `/api/gallery/media/${item.id}/${variant}`;
+    return options.download && variant === "file"
+      ? `${url}?download=1`
+      : url;
   }
 
   const source =
@@ -35,7 +43,10 @@ export function getGalleryMediaUrl(
   // Legacy rows may have only the protected storage URL and no separate key.
   // The public route can recover the key from that URL server-side.
   if (normalizedSource.startsWith("/api/storage/files/")) {
-    return `/api/gallery/media/${item.id}/${variant}`;
+    const url = `/api/gallery/media/${item.id}/${variant}`;
+    return options.download && variant === "file"
+      ? `${url}?download=1`
+      : url;
   }
 
   return normalizedSource;

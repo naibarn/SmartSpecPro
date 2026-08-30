@@ -10,7 +10,8 @@ from typing import Any
 
 PROMPT_SAFETY_EXTRA_PARAM = "__prompt_safety"
 PROMPT_SAFETY_SKILL_ID = "image-prompt-safety-rewriter"
-PROMPT_SAFETY_MODES = {"standard", "vertical_drama_managed"}
+PROMPT_SAFETY_COVER_SKILL_ID = "vertical-drama-episode-cover-safety-rewriter"
+PROMPT_SAFETY_MODES = {"standard", "vertical_drama_managed", "vertical_drama_cover"}
 
 
 def validate_image_prompt_safety(extra_params: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -26,10 +27,14 @@ def validate_image_prompt_safety(extra_params: Mapping[str, Any] | None) -> dict
         raise ValueError("Image prompt safety review is required before provider submission.")
     if marker.get("checked") is not True:
         raise ValueError("Image prompt safety review marker is invalid.")
-    if marker.get("skillId") != PROMPT_SAFETY_SKILL_ID:
+    skill_id = marker.get("skillId")
+    if skill_id not in {PROMPT_SAFETY_SKILL_ID, PROMPT_SAFETY_COVER_SKILL_ID}:
         raise ValueError("Image prompt safety review skill is invalid.")
-    if marker.get("mode") not in PROMPT_SAFETY_MODES:
+    mode = marker.get("mode")
+    if mode not in PROMPT_SAFETY_MODES:
         raise ValueError("Image prompt safety review mode is invalid.")
+    if (mode == "vertical_drama_cover") != (skill_id == PROMPT_SAFETY_COVER_SKILL_ID):
+        raise ValueError("Image prompt safety review skill and mode do not match.")
     if marker.get("blocked") is True:
         raise ValueError("Image prompt was blocked by the image safety skill.")
     return dict(marker)

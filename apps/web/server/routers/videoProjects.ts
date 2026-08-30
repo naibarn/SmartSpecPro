@@ -112,7 +112,7 @@ import { signBearerToken } from "../_core/tokens";
 import { getCachedPublicAppUrl } from "../services/appRuntimeConfig";
 import { transcribeAudio } from "../_core/voiceTranscription";
 import { buildVideoIntelligenceCreditContext } from "../services/videoIntelligenceCreditGuards";
-import { storagePut, storageResolveUrl } from "../storage";
+import { assertR2StorageActive, storagePut, storageResolveUrl } from "../storage";
 import {
   renderTranscriptCuesAsSrt,
   renderTranscriptCuesAsVtt,
@@ -2032,6 +2032,7 @@ async function synthesizeProjectNarration(args: {
           publicUrl: getCachedPublicAppUrl() || undefined,
           auditContext: {
             userId: auth.userId,
+            tenantId: auth.tenantId,
             traceId,
             source: "videoProjects.runNarrationStage",
             stage: "narration",
@@ -2066,6 +2067,7 @@ async function synthesizeProjectNarration(args: {
     }
 
     const storageKey = `video-intelligence/${auth.tenantId}/${projectId}/narration/${scene.sceneId}-${Date.now()}.mp3`;
+    await assertR2StorageActive();
     const stored = await storagePut(storageKey, audioBuffer, contentType);
 
     const [assetRow] = await db
@@ -2077,7 +2079,7 @@ async function synthesizeProjectNarration(args: {
         sourceType: "video_intelligence_narration",
         status: "ready",
         storageKey: stored.key,
-        originalUrl: stored.url,
+        originalUrl: audioUrl ?? stored.url,
         mimeType: contentType,
         fileSize: audioBuffer.byteLength,
       } as never)

@@ -248,7 +248,9 @@ export const inviteCodeRouter = router({
       .groupBy(sql`${inviteCodeUsage.createdAt}::date`)
       .orderBy(sql`${inviteCodeUsage.createdAt}::date`);
 
-    // 6. Disabled/inactive user stats — scoped via invite code tenant (not users.currentTenantId which is integer FK mismatch)
+    // 6. Disabled/inactive user stats — scoped via the invite-code tenant so
+    // this report remains authoritative even if a legacy user tenant value is
+    // missing or stale.
     const disabledWhere = tenantScope.length > 0
       ? and(
           sql`${users.referredByInviteCodeId} is not null`,

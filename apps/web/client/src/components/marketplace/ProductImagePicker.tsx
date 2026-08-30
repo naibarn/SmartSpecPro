@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 
 type CaptureAsset = {
   id: string;
@@ -103,7 +104,7 @@ export function ProductImagePicker({
           return (
             <div key={id} className={`rounded-md border p-3 ${isCover ? "border-emerald-400 bg-emerald-50" : "bg-slate-50"}`}>
               <button className="block w-full" onClick={() => setPreviewUrl(url)}>
-                <img src={url} alt="" className="h-36 w-full rounded object-contain" />
+                <AuthenticatedMediaImage src={url} alt="" className="h-36 w-full rounded object-contain" />
               </button>
               {isCover ? (
                 <div className="mt-2 rounded-md bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800">
@@ -142,7 +143,7 @@ export function ProductImagePicker({
       {previewUrl ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-6" onClick={() => setPreviewUrl(null)}>
           <div className="max-h-full max-w-5xl rounded-lg bg-white p-3" onClick={(event) => event.stopPropagation()}>
-            <img src={previewUrl} alt="" className="max-h-[78vh] w-full object-contain" />
+            <AuthenticatedMediaImage src={previewUrl} alt="" className="max-h-[78vh] w-full object-contain" />
             <div className="mt-3 flex justify-end">
               <button className="rounded-md bg-slate-900 px-3 py-2 text-sm text-white" onClick={() => setPreviewUrl(null)}>Close</button>
             </div>

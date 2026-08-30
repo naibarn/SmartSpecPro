@@ -36,37 +36,49 @@ function bible(control?: VdLookLockControl, identity = inheritedIdentity) {
 }
 
 describe("series look-lock catalog", () => {
-  it("freezes exactly five product genres", () => {
+  it("keeps the supported product genres explicit", () => {
     expect(VD_LOOK_LOCK_GENRES).toEqual([
       "drama_romance",
       "horror_thriller",
       "sci_fi_cyberpunk",
       "action_epic",
       "fantasy_fairytale",
+      "animation_cartoon",
     ]);
   });
 
-  it.each(VD_LOOK_LOCK_GENRES)("returns a bounded complete identity for %s", key => {
-    const identity = getSeriesLookLockGenreIdentity(key);
-    expect(identity.palette.length).toBeGreaterThanOrEqual(3);
-    expect(identity.palette.length).toBeLessThanOrEqual(6);
-    expect(identity.imagePromptFragments.positive.length).toBeLessThanOrEqual(12);
-    expect(JSON.stringify(identity)).not.toMatch(/gpt|openai|midjourney|4k|8k|1080/i);
-  });
+  it.each(VD_LOOK_LOCK_GENRES)(
+    "returns a bounded complete identity for %s",
+    key => {
+      const identity = getSeriesLookLockGenreIdentity(key);
+      expect(identity.palette.length).toBeGreaterThanOrEqual(3);
+      expect(identity.palette.length).toBeLessThanOrEqual(6);
+      expect(identity.imagePromptFragments.positive.length).toBeLessThanOrEqual(
+        12
+      );
+      expect(JSON.stringify(identity)).not.toMatch(
+        /gpt|openai|midjourney|4k|8k|1080/i
+      );
+    }
+  );
 });
 
 describe("effective series visual identity", () => {
   it("keeps the legacy preset path governed only by preset-mix", () => {
-    expect(resolveEffectiveSeriesVisualIdentity({
-      bible: bible(),
-      presetMixEnabled: true,
-      lookLockEnabled: false,
-    })).toEqual(inheritedIdentity);
-    expect(resolveEffectiveSeriesVisualIdentity({
-      bible: bible(),
-      presetMixEnabled: false,
-      lookLockEnabled: true,
-    })).toBeUndefined();
+    expect(
+      resolveEffectiveSeriesVisualIdentity({
+        bible: bible(),
+        presetMixEnabled: true,
+        lookLockEnabled: false,
+      })
+    ).toEqual(inheritedIdentity);
+    expect(
+      resolveEffectiveSeriesVisualIdentity({
+        bible: bible(),
+        presetMixEnabled: false,
+        lookLockEnabled: true,
+      })
+    ).toBeUndefined();
   });
 
   it("keeps stored genre/manual data inert while the look flag is off", () => {
@@ -79,29 +91,39 @@ describe("effective series visual identity", () => {
       revision: 2,
       updatedAt: "2026-08-01T00:00:00.000Z",
     };
-    expect(resolveEffectiveSeriesVisualIdentity({
-      bible: bible(control, getSeriesLookLockGenreIdentity("horror_thriller")),
-      presetMixEnabled: true,
-      lookLockEnabled: false,
-    })).toEqual(inheritedIdentity);
+    expect(
+      resolveEffectiveSeriesVisualIdentity({
+        bible: bible(
+          control,
+          getSeriesLookLockGenreIdentity("horror_thriller")
+        ),
+        presetMixEnabled: true,
+        lookLockEnabled: false,
+      })
+    ).toEqual(inheritedIdentity);
   });
 
-  it.each(["genre", "manual"] as const)("lets look-lock govern %s mode", mode => {
-    const active = getSeriesLookLockGenreIdentity("action_epic");
-    const control: VdLookLockControl = {
-      mode,
-      inheritedIdentity,
-      inheritedSource: "preset",
-      inheritedGovernance: "preset_mix",
-      revision: 3,
-      updatedAt: "2026-08-01T00:00:00.000Z",
-    };
-    expect(resolveEffectiveSeriesVisualIdentity({
-      bible: bible(control, active),
-      presetMixEnabled: false,
-      lookLockEnabled: true,
-    })).toEqual(active);
-  });
+  it.each(["genre", "manual"] as const)(
+    "lets look-lock govern %s mode",
+    mode => {
+      const active = getSeriesLookLockGenreIdentity("action_epic");
+      const control: VdLookLockControl = {
+        mode,
+        inheritedIdentity,
+        inheritedSource: "preset",
+        inheritedGovernance: "preset_mix",
+        revision: 3,
+        updatedAt: "2026-08-01T00:00:00.000Z",
+      };
+      expect(
+        resolveEffectiveSeriesVisualIdentity({
+          bible: bible(control, active),
+          presetMixEnabled: false,
+          lookLockEnabled: true,
+        })
+      ).toEqual(active);
+    }
+  );
 
   it("returns no identity for none, malformed, or unauthorized state", () => {
     const none: VdLookLockControl = {
@@ -111,14 +133,20 @@ describe("effective series visual identity", () => {
       revision: 2,
       updatedAt: "2026-08-01T00:00:00.000Z",
     };
-    expect(resolveEffectiveSeriesVisualIdentity({
-      bible: bible(none), presetMixEnabled: true, lookLockEnabled: true,
-    })).toBeUndefined();
-    expect(resolveEffectiveSeriesVisualIdentity({
-      bible: { presetVisualIdentity: { styleName: "bad" } },
-      presetMixEnabled: true,
-      lookLockEnabled: true,
-    })).toBeUndefined();
+    expect(
+      resolveEffectiveSeriesVisualIdentity({
+        bible: bible(none),
+        presetMixEnabled: true,
+        lookLockEnabled: true,
+      })
+    ).toBeUndefined();
+    expect(
+      resolveEffectiveSeriesVisualIdentity({
+        bible: { presetVisualIdentity: { styleName: "bad" } },
+        presetMixEnabled: true,
+        lookLockEnabled: true,
+      })
+    ).toBeUndefined();
   });
 
   it("restores an inherited source only under its recorded governance", () => {
@@ -130,24 +158,40 @@ describe("effective series visual identity", () => {
       revision: 4,
       updatedAt: "2026-08-01T00:00:00.000Z",
     };
-    expect(resolveEffectiveSeriesVisualIdentity({
-      bible: bible(control), presetMixEnabled: true, lookLockEnabled: false,
-    })).toBeUndefined();
-    expect(resolveEffectiveSeriesVisualIdentity({
-      bible: bible(control), presetMixEnabled: false, lookLockEnabled: true,
-    })).toEqual(inheritedIdentity);
+    expect(
+      resolveEffectiveSeriesVisualIdentity({
+        bible: bible(control),
+        presetMixEnabled: true,
+        lookLockEnabled: false,
+      })
+    ).toBeUndefined();
+    expect(
+      resolveEffectiveSeriesVisualIdentity({
+        bible: bible(control),
+        presetMixEnabled: false,
+        lookLockEnabled: true,
+      })
+    ).toEqual(inheritedIdentity);
   });
 });
 
 describe("look-lock validation and final prompt assembly", () => {
   it("accepts only editable fields and rejects controls/oversized strings", () => {
-    expect(validateSeriesLookManualPatch({ styleName: "  Noir drama  " })).toEqual({
+    expect(
+      validateSeriesLookManualPatch({ styleName: "  Noir drama  " })
+    ).toEqual({
       ok: true,
       value: { styleName: "Noir drama" },
     });
-    expect(validateSeriesLookManualPatch({ styleName: "bad\u0000value" })).toMatchObject({ ok: false });
-    expect(validateSeriesLookManualPatch({ lighting: "x".repeat(501) })).toMatchObject({ ok: false });
-    expect(validateSeriesLookManualPatch({ referenceAssetIds: ["forbidden"] })).toMatchObject({ ok: false });
+    expect(
+      validateSeriesLookManualPatch({ styleName: "bad\u0000value" })
+    ).toMatchObject({ ok: false });
+    expect(
+      validateSeriesLookManualPatch({ lighting: "x".repeat(501) })
+    ).toMatchObject({ ok: false });
+    expect(
+      validateSeriesLookManualPatch({ referenceAssetIds: ["forbidden"] })
+    ).toMatchObject({ ok: false });
   });
 
   it("appends positive and negative fragments exactly once", () => {
@@ -156,7 +200,10 @@ describe("look-lock validation and final prompt assembly", () => {
       negativePrompt: "blur",
       identity: inheritedIdentity,
     });
-    const twice = applySeriesLookToImagePrompt({ ...once, identity: inheritedIdentity });
+    const twice = applySeriesLookToImagePrompt({
+      ...once,
+      identity: inheritedIdentity,
+    });
     expect(once).toEqual({
       prompt: "portrait, soft window light, grounded production design",
       negativePrompt: "blur, neon cyberpunk",
@@ -171,7 +218,7 @@ describe("look-lock validation and final prompt assembly", () => {
       identity: inheritedIdentity,
     });
     expect(result.prompt).toBe(
-      "portrait, SOFT   window light, grounded production design",
+      "portrait, SOFT   window light, grounded production design"
     );
   });
 });
@@ -212,36 +259,67 @@ describe("series look-lock transitions", () => {
 
   it("restores the captured identity after genre, manual, and none transitions", () => {
     const genre = applySeriesLookLockTransition({
-      bible: bible(), mode: "genre", genreKey: "drama_romance",
-      expectedRevision: 0, now,
+      bible: bible(),
+      mode: "genre",
+      genreKey: "drama_romance",
+      expectedRevision: 0,
+      now,
     });
     const manual = applySeriesLookLockTransition({
-      bible: genre.bible, mode: "manual", expectedRevision: 1, now,
+      bible: genre.bible,
+      mode: "manual",
+      expectedRevision: 1,
+      now,
       manualPatch: { styleName: "Edited series register" },
     });
-    expect((manual.bible.presetVisualIdentity as VerticalDramaPresetVisualIdentity).styleName)
-      .toBe("Edited series register");
+    expect(
+      (manual.bible.presetVisualIdentity as VerticalDramaPresetVisualIdentity)
+        .styleName
+    ).toBe("Edited series register");
     const none = applySeriesLookLockTransition({
-      bible: manual.bible, mode: "none", expectedRevision: 2, now,
+      bible: manual.bible,
+      mode: "none",
+      expectedRevision: 2,
+      now,
     });
     expect(none.bible).not.toHaveProperty("presetVisualIdentity");
     const restored = applySeriesLookLockTransition({
-      bible: none.bible, mode: "inherit_source", expectedRevision: 3, now,
+      bible: none.bible,
+      mode: "inherit_source",
+      expectedRevision: 3,
+      now,
     });
     expect(restored.bible.presetVisualIdentity).toEqual(inheritedIdentity);
     expect(restored.control.revision).toBe(4);
   });
 
   it("rejects stale revisions and missing transition preconditions", () => {
-    expect(() => applySeriesLookLockTransition({
-      bible: bible(), mode: "none", expectedRevision: 2, now,
-    })).toThrowError(new SeriesLookLockTransitionError("conflict", 0));
-    expect(() => applySeriesLookLockTransition({
-      bible: {}, mode: "inherit_source", expectedRevision: 0, now,
-    })).toThrowError(new SeriesLookLockTransitionError("missing_inherited_identity", 0));
-    expect(() => applySeriesLookLockTransition({
-      bible: {}, mode: "manual", expectedRevision: 0, now,
-      manualPatch: { styleName: "No base" },
-    })).toThrowError(new SeriesLookLockTransitionError("missing_manual_base", 0));
+    expect(() =>
+      applySeriesLookLockTransition({
+        bible: bible(),
+        mode: "none",
+        expectedRevision: 2,
+        now,
+      })
+    ).toThrowError(new SeriesLookLockTransitionError("conflict", 0));
+    expect(() =>
+      applySeriesLookLockTransition({
+        bible: {},
+        mode: "inherit_source",
+        expectedRevision: 0,
+        now,
+      })
+    ).toThrowError(
+      new SeriesLookLockTransitionError("missing_inherited_identity", 0)
+    );
+    expect(() =>
+      applySeriesLookLockTransition({
+        bible: {},
+        mode: "manual",
+        expectedRevision: 0,
+        now,
+        manualPatch: { styleName: "No base" },
+      })
+    ).toThrowError(new SeriesLookLockTransitionError("missing_manual_base", 0));
   });
 });

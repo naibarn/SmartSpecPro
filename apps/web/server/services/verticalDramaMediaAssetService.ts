@@ -9,9 +9,14 @@ import type { MediaTask } from "./mediaGenerationService";
 import {
   assertR2StorageActive,
   storageExists,
+  storageReadBuffer,
+  storagePut,
   storagePutFromPath,
 } from "../storage";
 import { validateReferenceUrls } from "./ssrfValidation";
+import { canReadManagedStorageKey } from "./managedStorageAuthorizationService";
+import { normalizeManagedMediaKey } from "./managedMediaAccessService";
+import { linkMediaTaskArtifactToAsset } from "./mediaTaskArtifactService";
 
 const DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000;
 const MAX_IMAGE_BYTES = 100 * 1024 * 1024;
@@ -25,6 +30,87 @@ export type DurableVerticalDramaAsset = {
   url: string;
   mimeType: string;
 };
+
+export type ReconciledVerticalDramaMediaAsset = DurableVerticalDramaAsset & {
+  status: "ready" | "expired";
+};
+
+/**
+ * Reconcile an owner-scoped media row against the object that backs it.
+ * `pending` and `expired` are storage lifecycle states, not proof that the
+ * object is gone: a worker or an older backfill may have written the object
+ * while the database update was interrupted. Only a confirmed missing object
+ * becomes expired.
+ */
+export async function reconcileVerticalDramaMediaAsset(input: {
+  tenantId: string;
+  userId: number;
+  mediaAssetId: number;
+  storageKey: string;
+  mediaType: VerticalDramaMediaType;
+  mimeType?: string | null;
+  status?: string | null;
+  originalUrl?: string | null;
+}): Promise<ReconciledVerticalDramaMediaAsset> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const storageKey = input.storageKey.replace(/^\/+/, "");
+  const fallbackMimeType =
+    input.mimeType ||
+    (input.mediaType === "image" ? "image/png" : "video/mp4");
+  const durableUrl = `/api/storage/files/${encodeURI(storageKey)}`;
+  const objectExists = await storageExists(storageKey);
+
+  if (!objectExists) {
+    await db
+      .update(mediaAssets)
+      .set({ status: "expired", updatedAt: new Date() })
+      .where(
+        and(
+          eq(mediaAssets.id, input.mediaAssetId),
+          eq(mediaAssets.tenantId, input.tenantId),
+          eq(mediaAssets.userId, input.userId),
+        ),
+      );
+    return {
+      mediaAssetId: input.mediaAssetId,
+      storageKey,
+      url: "",
+      mimeType: fallbackMimeType,
+      status: "expired",
+    };
+  }
+
+  if (
+    input.status !== "ready" ||
+    input.originalUrl !== durableUrl ||
+    input.mimeType !== fallbackMimeType
+  ) {
+    await db
+      .update(mediaAssets)
+      .set({
+        status: "ready",
+        originalUrl: durableUrl,
+        mimeType: fallbackMimeType,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(mediaAssets.id, input.mediaAssetId),
+          eq(mediaAssets.tenantId, input.tenantId),
+          eq(mediaAssets.userId, input.userId),
+        ),
+      );
+  }
+
+  return {
+    mediaAssetId: input.mediaAssetId,
+    storageKey,
+    url: durableUrl,
+    mimeType: fallbackMimeType,
+    status: "ready",
+  };
+}
 
 /**
  * Re-register a legacy managed-storage URL that predates the media_assets
@@ -149,6 +235,43 @@ export async function ensureVerticalDramaManagedMediaAsset(input: {
         mimeType: inserted.mimeType || fallbackMimeType,
       }
     : null;
+}
+
+/** Register an already-uploaded object as a Vertical Drama media asset.
+ * Source Packs call this only for objects written by the R2-backed upload
+ * route; local `/uploads` paths and provider URLs are intentionally rejected. */
+export async function registerVerticalDramaUploadedMediaAsset(input: {
+  tenantId: string;
+  userId: number;
+  storageKey: string;
+  mediaType: VerticalDramaMediaType;
+  mimeType?: string;
+}): Promise<DurableVerticalDramaAsset> {
+  await assertR2StorageActive();
+  const normalized = normalizeManagedMediaKey(input.storageKey);
+  if (!normalized || normalized.startsWith("uploads/")) {
+    throw new Error("Vertical Drama source media must use an R2 storage key");
+  }
+  if (
+    !(await canReadManagedStorageKey(normalized, {
+      tenantId: input.tenantId,
+      userId: input.userId,
+    })) ||
+    !(await storageExists(normalized))
+  ) {
+    throw new Error("Uploaded source media is not an owner-scoped R2 object");
+  }
+  const durable = await ensureVerticalDramaManagedMediaAsset({
+    tenantId: input.tenantId,
+    userId: input.userId,
+    sourceUrl: `/api/storage/files/${encodeURI(normalized)}`,
+    mediaType: input.mediaType,
+    mimeType: input.mimeType,
+  });
+  if (!durable) {
+    throw new Error("Uploaded source media is not present in R2");
+  }
+  return durable;
 }
 
 export type VerticalDramaTaskDurability = {
@@ -474,6 +597,53 @@ export async function ingestVerticalDramaMediaAsset(input: {
 }
 
 /**
+ * Copy an already-authorized managed object (for example a Marketplace Capture
+ * image) into the Vertical Drama asset namespace. A managed URL alone is not
+ * proof that it is a Vertical Drama asset, so this path is explicit and the
+ * caller must have performed the source authorization before calling it.
+ */
+export async function copyAuthorizedManagedMediaToVerticalDrama(input: {
+  tenantId: string;
+  userId: number;
+  seriesId: string | number;
+  sourceStorageKey: string;
+  mediaType: VerticalDramaMediaType;
+  mimeType?: string;
+  identity: string;
+  purpose?: string;
+}): Promise<DurableVerticalDramaAsset> {
+  const sourceStorageKey = input.sourceStorageKey.replace(/^\/+/, "");
+  if (!sourceStorageKey) throw new Error("Vertical Drama managed source key is empty");
+  const bytes = await storageReadBuffer(sourceStorageKey);
+  if (!bytes || bytes.byteLength === 0) throw new Error("Vertical Drama managed source object is missing");
+  await assertR2StorageActive();
+  const checksumSha256 = crypto.createHash("sha256").update(`vertical-drama:${input.mediaType}:${input.identity}`).digest("hex");
+  const existing = await findExistingAsset(input.tenantId, input.userId, checksumSha256);
+  if (existing) return existing;
+  const mimeType = inferMimeType(input.mediaType, input.mimeType, input.mimeType);
+  const key = ["vertical-drama", safeTaskPart(String(input.seriesId)), input.mediaType, safeTaskPart(input.purpose), `${checksumSha256}${extensionFor(input.mediaType, mimeType)}`].join("/");
+  const stored = await storagePut(key, bytes, mimeType);
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const durableUrl = stored.url || `/api/storage/files/${encodeURI(stored.key)}`;
+  const [inserted] = await db.insert(mediaAssets).values({
+    tenantId: input.tenantId,
+    userId: input.userId,
+    sourceType: "vertical_drama_generated",
+    status: "ready",
+    storageKey: stored.key,
+    originalUrl: durableUrl,
+    thumbnailUrl: input.mediaType === "image" ? durableUrl : null,
+    mimeType,
+    checksumSha256,
+  }).onConflictDoNothing().returning({ id: mediaAssets.id });
+  if (inserted) return { mediaAssetId: inserted.id, storageKey: stored.key, url: durableUrl, mimeType };
+  const raced = await findExistingAsset(input.tenantId, input.userId, checksumSha256);
+  if (!raced) throw new Error("Vertical Drama managed source copy did not return an asset");
+  return raced;
+}
+
+/**
  * Move an existing Vertical Drama media_assets row to R2 without changing its
  * ID. This is deliberately separate from ingest: every storyboard/character/
  * location reference keeps pointing at the same canonical row after a
@@ -591,6 +761,23 @@ export async function ensureVerticalDramaTaskResultDurable(input: {
     identity: input.task.id,
     purpose: scope.purpose || mediaType,
   });
+  try {
+    await linkMediaTaskArtifactToAsset({
+      task: input.task,
+      tenantId: input.tenantId,
+      userId: input.userId,
+      mediaAssetId: asset.mediaAssetId,
+      storageKey: asset.storageKey,
+    });
+  } catch (error) {
+    // The domain asset is already durable. A transient shared-ledger failure
+    // must not turn a completed generation into a failed poll; History will
+    // retry this idempotent bridge on its next load.
+    console.warn("[VerticalDramaMedia] shared artifact link failed", {
+      taskId: input.task.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
   const resultData = {
     ...(input.task.resultData || {}),
     verticalDramaDurabilityStatus: "ready",

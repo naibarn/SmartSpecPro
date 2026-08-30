@@ -6,6 +6,68 @@ X-Internal-Token instead of Bearer JWT.
 
 import inspect
 
+import pytest
+from jose import JWTError, jwt
+
+
+def _jwt_manager_for_test():
+    from app.core.jwt_manager import JWTManager
+
+    manager = JWTManager.__new__(JWTManager)
+    manager.algorithm = "HS256"
+    manager.secret_key = "test-jwt-secret-32-chars-minimum-1234567890"
+    manager.public_key = None
+    return manager
+
+
+def test_jwt_manager_accepts_node_internal_service_audience():
+    manager = _jwt_manager_for_test()
+    token = jwt.encode(
+        {
+            "sub": "24",
+            "type": "access",
+            "aud": "smartspec-internal-service",
+        },
+        manager.secret_key,
+        algorithm="HS256",
+    )
+
+    payload = manager.verify_token(token, expected_type="access")
+
+    assert payload["aud"] == "smartspec-internal-service"
+
+
+def test_jwt_manager_rejects_unrecognized_audience():
+    manager = _jwt_manager_for_test()
+    token = jwt.encode(
+        {
+            "sub": "24",
+            "type": "access",
+            "aud": "unexpected-service",
+        },
+        manager.secret_key,
+        algorithm="HS256",
+    )
+
+    with pytest.raises(JWTError, match="Invalid audience"):
+        manager.verify_token(token, expected_type="access")
+
+
+def test_jwt_manager_keeps_accepting_legacy_tokens_without_audience():
+    manager = _jwt_manager_for_test()
+    token = jwt.encode(
+        {
+            "sub": "24",
+            "type": "access",
+        },
+        manager.secret_key,
+        algorithm="HS256",
+    )
+
+    payload = manager.verify_token(token, expected_type="access")
+
+    assert payload["sub"] == "24"
+
 
 def test_llm_gateway_client_builds_internal_token_header():
     """LLMGatewayClient._build_headers must include X-Internal-Token."""

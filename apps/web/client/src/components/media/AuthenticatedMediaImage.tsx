@@ -29,10 +29,6 @@ export function getAuthenticatedMediaUrl(
   return normalized || null;
 }
 
-function shouldFetchThroughApp(url: string): boolean {
-  return !/^(?:https?:|data:|blob:)/i.test(url);
-}
-
 export async function fetchAuthenticatedMedia(url: string): Promise<Blob> {
   const resolvedUrl = getAuthenticatedMediaUrl(url);
   if (!resolvedUrl) throw new Error("Media URL is empty");

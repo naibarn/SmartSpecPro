@@ -1,5 +1,20 @@
 export type VerticalDramaEpisodeCoverStatus = "generating" | "ready" | "failed";
 
+export type VerticalDramaEpisodeCoverSafetyReview = {
+  checked: true;
+  mode: "vertical_drama_cover";
+  skillId: string;
+  skillVersion: string;
+  riskLevel: "low" | "medium" | "high";
+  rewritten: boolean;
+  fallback: boolean;
+  blocked: boolean;
+  originalPromptHash: string;
+  safePromptHash: string;
+  changes: string[];
+  preservedIntent: string[];
+};
+
 export const verticalDramaEpisodeCoverSlotIds = [1, 2, 3, 4] as const;
 export type VerticalDramaEpisodeCoverSlotId =
   (typeof verticalDramaEpisodeCoverSlotIds)[number];
@@ -15,6 +30,10 @@ export type VerticalDramaEpisodeCoverState = {
   generatedAt?: string;
   source?: "generated" | "upload";
   error?: string;
+  /** The last provider failure was transient and may be retried safely. */
+  retryable?: boolean;
+  /** Number of automatic provider retries already attempted. */
+  retryCount?: number;
   /** Server-only replay key. Never expose this through a client projection. */
   idempotencyKey?: string;
   /** Server-only stale-task cleanup handle for a manual replacement. */
@@ -22,6 +41,8 @@ export type VerticalDramaEpisodeCoverState = {
   /** Internal record of how this variant selected scene references. */
   referenceStrategy?: "one" | "two" | "three" | "random";
   referenceImageCount?: number;
+  /** Bounded server-side record of the cover prompt safety preparation. */
+  safetyReview?: VerticalDramaEpisodeCoverSafetyReview;
 };
 
 export type VerticalDramaEpisodeCoverVariantsEnvelope = {
@@ -40,6 +61,7 @@ export type VerticalDramaEpisodeCoverDisplay = {
   sourceShotNumbers: number[];
   error: string | null;
   pendingTaskId: string | null;
+  retryable?: boolean;
 };
 
 export type EpisodeCoverPromptInput = {
@@ -388,6 +410,49 @@ function readSingleEpisodeCoverState(
   const referenceImageCount = Number.isInteger(raw.referenceImageCount)
     ? Number(raw.referenceImageCount)
     : undefined;
+  const rawSafetyReview =
+    raw.safetyReview && typeof raw.safetyReview === "object"
+      ? (raw.safetyReview as Record<string, unknown>)
+      : null;
+  const safetyRiskLevel = rawSafetyReview?.riskLevel;
+  const safetyReview: VerticalDramaEpisodeCoverSafetyReview | undefined =
+    rawSafetyReview?.checked === true &&
+    rawSafetyReview?.mode === "vertical_drama_cover" &&
+    typeof rawSafetyReview.skillId === "string" &&
+    typeof rawSafetyReview.skillVersion === "string" &&
+    (safetyRiskLevel === "low" ||
+      safetyRiskLevel === "medium" ||
+      safetyRiskLevel === "high") &&
+    typeof rawSafetyReview.rewritten === "boolean" &&
+    typeof rawSafetyReview.fallback === "boolean" &&
+    typeof rawSafetyReview.blocked === "boolean" &&
+    typeof rawSafetyReview.originalPromptHash === "string" &&
+    typeof rawSafetyReview.safePromptHash === "string"
+      ? {
+          checked: true,
+          mode: "vertical_drama_cover",
+          skillId: rawSafetyReview.skillId.slice(0, 128),
+          skillVersion: rawSafetyReview.skillVersion.slice(0, 32),
+          riskLevel: safetyRiskLevel,
+          rewritten: rawSafetyReview.rewritten,
+          fallback: rawSafetyReview.fallback,
+          blocked: rawSafetyReview.blocked,
+          originalPromptHash: rawSafetyReview.originalPromptHash.slice(0, 128),
+          safePromptHash: rawSafetyReview.safePromptHash.slice(0, 128),
+          changes: Array.isArray(rawSafetyReview.changes)
+            ? rawSafetyReview.changes
+                .filter((item): item is string => typeof item === "string")
+                .map(item => item.slice(0, 240))
+                .slice(0, 12)
+            : [],
+          preservedIntent: Array.isArray(rawSafetyReview.preservedIntent)
+            ? rawSafetyReview.preservedIntent
+                .filter((item): item is string => typeof item === "string")
+                .map(item => item.slice(0, 240))
+                .slice(0, 12)
+            : [],
+        }
+      : undefined;
   return {
     status: raw.status,
     ...(clean(raw.pendingTaskId)
@@ -414,6 +479,7 @@ function readSingleEpisodeCoverState(
     ...(referenceImageCount !== undefined && referenceImageCount >= 0
       ? { referenceImageCount }
       : {}),
+    ...(safetyReview ? { safetyReview } : {}),
   };
 }
 
@@ -559,5 +625,6 @@ export function toEpisodeCoverDisplay(
     sourceShotNumbers: state.sourceShotNumbers ?? [],
     error: state.error ?? null,
     pendingTaskId: state.pendingTaskId ?? state.supersededTaskId ?? null,
+    ...(state.retryable === true ? { retryable: true } : {}),
   };
 }

@@ -1,0 +1,30 @@
+{
+  "product": {
+    "productId": "product-1",
+    "name": "แก้วเก็บอุณหภูมิ",
+    "description": "แก้วพร้อมฝาปิด",
+    "sourceClaims": ["เก็บอุณหภูมิ"]
+  },
+  "productImages": [
+    {
+      "url": "/api/storage/files/marketplace/product-1/main.jpg",
+      "label": "ภาพสินค้า"
+    }
+  ],
+  "series": {
+    "seriesId": "53",
+    "title": "ห้องข้าง ๆ",
+    "genre": "โรแมนติกดราม่า"
+  },
+  "characters": [
+    {
+      "characterId": "1",
+      "name": "มีนา",
+      "role": "นักออกแบบ",
+      "dna": { "temperament": "เกรงใจแต่ช่างสังเกต" },
+      "availableLooks": ["ชุดทำงาน"]
+    }
+  ],
+  "customerJourney": { "stages": ["เห็นปัญหา", "ลองใช้", "ตัดสินใจ"] },
+  "variationSeed": "round-1"
+}

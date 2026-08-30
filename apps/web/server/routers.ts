@@ -4,7 +4,10 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import {
   clearOAuthInviteCookie,
   getOAuthInviteCode,
+  isOAuthRegistrationPending,
+  requiresOAuthOnboarding,
 } from "./services/oauthRegistration";
+import { throwRegistrationDenied } from "./services/authRegistrationPolicy";
 import { systemRouter } from "./_core/systemRouter";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, protectedProcedure, adminProcedure, router, loginProcedure, registerProcedure, verifyEmailProcedure, resetPasswordProcedure, verifyResetCodeProcedure } from "./_core/trpc";
@@ -28,7 +31,7 @@ import {
   type GalleryType,
   type AspectRatio
 } from "./db";
-import { storagePut } from "./storage";
+import { assertR2StorageActive, storagePut } from "./storage";
 import {
   GEMINI_OMNI_MAX_IMAGE_UPLOAD_BYTES,
   GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES,
@@ -113,6 +116,7 @@ import { contentArtifactsRouter } from "./routers/contentArtifacts";
 import { contentQualityRouter } from "./routers/contentQuality";
 import { apiKeysRouter } from "./routers/apiKeys";
 import { helpRouter } from "./routers/help";
+import { databaseBackupsRouter } from "./routers/databaseBackups";
 import { virtualAdminRouter } from "./routers/virtualAdmin";
 import { feedbackRouter } from "./routers/feedback";
 import { teamRouter } from "./routers/team";
@@ -146,6 +150,8 @@ import {
   setPendingTwoFactorCookie,
 } from "./services/pendingTwoFactor";
 import { buildOAuthProviderAvailability } from "./services/oauthProviderAvailability";
+import { normalizeGalleryTenantId } from "./services/galleryTenantScope";
+import { parseManagedMediaUrl } from "./services/managedMediaAccessService";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -277,6 +283,7 @@ const aiRouter = router({
       const ownerPath = tenantId ? `${tenantId}/${userId}` : String(userId);
       const key = `chat/uploads/${ownerPath}/${id}-${Date.now()}${ext ? "." + ext : ""}`;
 
+      await assertR2StorageActive();
       const { url } = await storagePut(key, buf, input.fileType);
       return { key, url, fileType: input.fileType };
     }),
@@ -288,11 +295,11 @@ const galleryRouter = router({
   list: publicProcedure
     .input(galleryFiltersSchema.omit({ isPublished: true }))
     .query(async ({ input, ctx }) => {
-      const numericTenantId = ctx.tenantId ? Number.parseInt(ctx.tenantId, 10) : NaN;
       return getGalleryItems({
         ...input,
         isPublished: true, // Only show published items to public
-        tenantId: Number.isFinite(numericTenantId) ? numericTenantId : undefined, // Filter by current tenant
+        tenantId: ctx.tenantId ?? undefined, // Filter by current tenant
+        includeGlobal: true,
       });
     }),
 
@@ -335,10 +342,10 @@ const galleryRouter = router({
   adminList: adminProcedure
     .input(galleryFiltersSchema)
     .query(async ({ input, ctx }) => {
-      const numericTenantId = ctx.tenantId ? Number.parseInt(ctx.tenantId, 10) : NaN;
       return getGalleryItems({
         ...input,
-        tenantId: Number.isFinite(numericTenantId) ? numericTenantId : undefined, // Filter by current tenant
+        tenantId: ctx.tenantId ?? undefined, // Filter by current tenant
+        includeGlobal: true,
       });
     }),
 
@@ -353,11 +360,10 @@ const galleryRouter = router({
   create: adminProcedure
     .input(createGalleryItemSchema)
     .mutation(async ({ input, ctx }) => {
-      const numericTenantId = ctx.tenantId ? Number.parseInt(ctx.tenantId, 10) : NaN;
       const id = await createGalleryItem({
         ...input,
         authorId: ctx.user.id,
-        tenantId: Number.isFinite(numericTenantId) ? numericTenantId : undefined, // Associate with current tenant
+        tenantId: ctx.tenantId ?? undefined, // Associate with current tenant
         tags: input.tags || [],
       });
       return { id };
@@ -377,8 +383,17 @@ const galleryRouter = router({
   // Admin: Delete gallery item
   delete: adminProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
-      await deleteGalleryItem(input.id);
+    .mutation(async ({ input, ctx }) => {
+      const deleted = await deleteGalleryItem(
+        input.id,
+        normalizeGalleryTenantId(ctx.tenantId),
+      );
+      if (!deleted) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Gallery item was not found in the current tenant.",
+        });
+      }
       return { success: true };
     }),
 
@@ -406,7 +421,7 @@ const galleryRouter = router({
       // Convert base64 to buffer
       const buffer = Buffer.from(fileBase64, 'base64');
 
-      // Upload to S3
+      await assertR2StorageActive();
       const { url } = await storagePut(fileKey, buffer, fileType);
 
       return {
@@ -418,15 +433,32 @@ const galleryRouter = router({
   // Admin: Import file from external URL and upload to storage
   importFromUrl: adminProcedure
     .input(z.object({
-      url: z.string().url(),
+      // Media History can already provide a durable root-relative storage URL.
+      url: z.string().trim().min(1),
       folder: z.enum(["images", "videos", "thumbnails", "websites"]),
     }))
     .mutation(async ({ input }) => {
       const { url, folder } = input;
 
+      const managedRef = parseManagedMediaUrl(url);
+      if (managedRef?.kind === "storage") {
+        // The object is already durable in R2. Reuse it instead of making the
+        // server fetch its own protected relative URL.
+        return {
+          fileKey: managedRef.key,
+          fileUrl: url,
+          contentType: "application/octet-stream",
+        };
+      }
+
       try {
+        const externalUrl = new URL(url);
+        if (!["http:", "https:"].includes(externalUrl.protocol)) {
+          throw new Error("Only http and https URLs are supported");
+        }
+
         // Fetch the file from external URL
-        const response = await fetch(url);
+        const response = await fetch(externalUrl);
         if (!response.ok) {
           throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
         }
@@ -450,8 +482,12 @@ const galleryRouter = router({
         const uniqueId = nanoid(10);
         const fileKey = `gallery/${folder}/${uniqueId}-${Date.now()}.${ext}`;
 
-        // Upload to storage
-        const { url: permanentUrl } = await storagePut(fileKey, buffer, contentType);
+        await assertR2StorageActive();
+        const { url: permanentUrl } = await storagePut(
+          fileKey,
+          buffer,
+          contentType
+        );
 
         return {
           fileKey,
@@ -832,13 +868,13 @@ const authRouter = router({
       // Check if email auth method is allowed
       const authMethods = await getAuthMethodsConfig();
       if (!authMethods.email) {
-        throw new Error('Email registration is currently disabled');
+        throwRegistrationDenied("Email registration is currently disabled");
       }
 
       // Check registration mode (open vs invite-only)
       const regCheck = await checkRegistrationAllowed(input.inviteCode, ctx.tenantId);
       if (!regCheck.allowed) {
-        throw new Error(regCheck.error || 'Registration not allowed');
+        throwRegistrationDenied(regCheck.error || "Registration not allowed");
       }
 
       // Check device fraud limit
@@ -846,7 +882,7 @@ const authRouter = router({
       const ipAddress = (ctx.req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || ctx.req.ip || "unknown";
       const fraudCheck = await checkDeviceFraudLimit(fingerprintHash, ipAddress);
       if (!fraudCheck.allowed) {
-        throw new Error(fraudCheck.reason || 'Registration blocked');
+        throwRegistrationDenied(fraudCheck.reason || "Registration blocked");
       }
 
       // Check if email already registered with a password
@@ -1902,7 +1938,34 @@ const authRouter = router({
         // onboarding is not skipped by the existing-user branch.
         const isNewOAuthSignup =
           input.isNewUser === true && pythonUser.is_new_user === true;
-        if (isNewOAuthSignup) {
+        const requiresOnboarding = requiresOAuthOnboarding(existing);
+        const cleanupRejectedOAuthSignup = async () => {
+          // Only remove the row that Python created during this first callback.
+          // A pending legacy row must remain available for a later valid invite.
+          if (!isNewOAuthSignup || !isOAuthRegistrationPending(existing))
+            return;
+
+          try {
+            await db
+              .delete(users)
+              .where(
+                and(eq(users.id, existing.id), eq(users.email, normalizedEmail))
+              );
+          } catch (cleanupError) {
+            console.error(
+              "[OAuthRegister] Failed to clean up rejected OAuth signup:",
+              {
+                userId: existing.id,
+                error:
+                  cleanupError instanceof Error
+                    ? cleanupError.message
+                    : String(cleanupError),
+              }
+            );
+          }
+        };
+
+        if (requiresOnboarding) {
           const {
             checkRegistrationAllowed,
             checkDeviceFraudLimit,
@@ -1917,7 +1980,10 @@ const authRouter = router({
           );
           if (!registrationCheck.allowed) {
             clearOAuthInviteCookie(ctx.res);
-            throw new Error(registrationCheck.error || "Registration not allowed");
+            await cleanupRejectedOAuthSignup();
+            throwRegistrationDenied(
+              registrationCheck.error || "Registration not allowed"
+            );
           }
 
           const fingerprintHash = ctx.req.cookies?.["__fp"] || undefined;
@@ -1928,27 +1994,17 @@ const authRouter = router({
           const fraudCheck = await checkDeviceFraudLimit(fingerprintHash, ipAddress);
           if (!fraudCheck.allowed) {
             clearOAuthInviteCookie(ctx.res);
-            throw new Error(fraudCheck.reason || "Registration blocked");
+            await cleanupRejectedOAuthSignup();
+            throwRegistrationDenied(
+              fraudCheck.reason || "Registration blocked"
+            );
           }
 
-          let signupBonus = 100;
-          try {
-            const [bonusSetting] = await db.select().from(systemSettings)
-              .where(and(
-                eq(systemSettings.category, "registration"),
-                eq(systemSettings.key, "signup_bonus_credits"),
-              ))
-              .limit(1);
-            if (bonusSetting?.value) {
-              const configuredBonus = parseInt(bonusSetting.value, 10);
-              if (Number.isFinite(configuredBonus) && configuredBonus >= 0) {
-                signupBonus = configuredBonus;
-              }
-            }
-          } catch { /* use default */ }
-
-          const hostname = ctx.req.hostname || ctx.req.get("host")?.split(":")[0] || "localhost";
-          let tenantId: number | null = null;
+          const hostname =
+            ctx.req.hostname ||
+            ctx.req.get("host")?.split(":")[0] ||
+            "localhost";
+          let tenantId: string | null = null;
           try {
             const [autoSetting] = await db.select().from(systemSettings)
               .where(and(
@@ -1960,7 +2016,7 @@ const authRouter = router({
               const [tenant] = await db.select().from(tenants)
                 .where(eq(tenants.primaryDomain, hostname))
                 .limit(1);
-              if (tenant) tenantId = parseInt(tenant.id, 10) || null;
+              if (tenant) tenantId = String(tenant.id);
             }
           } catch { /* skip tenant assignment */ }
 
@@ -1975,6 +2031,8 @@ const authRouter = router({
           await db.update(users)
             .set(onboardingUpdate)
             .where(eq(users.id, existing.id));
+          existing.registeredDomain = hostname;
+          if (tenantId) existing.currentTenantId = tenantId;
 
           await ensureFreePlanForUser(existing.id, {
             reason: "oauth_signup",
@@ -2077,7 +2135,9 @@ const authRouter = router({
       );
       if (!registrationCheck.allowed) {
         clearOAuthInviteCookie(ctx.res);
-        throw new Error(registrationCheck.error || "Registration not allowed");
+        throwRegistrationDenied(
+          registrationCheck.error || "Registration not allowed"
+        );
       }
 
       const fingerprintHash = ctx.req.cookies?.["__fp"] || undefined;
@@ -2088,7 +2148,7 @@ const authRouter = router({
       const fraudCheck = await checkDeviceFraudLimit(fingerprintHash, ipAddress);
       if (!fraudCheck.allowed) {
         clearOAuthInviteCookie(ctx.res);
-        throw new Error(fraudCheck.reason || "Registration blocked");
+        throwRegistrationDenied(fraudCheck.reason || "Registration blocked");
       }
 
       // Auto-assign tenant by domain (same as register)
@@ -2294,6 +2354,7 @@ type AppRouterShape = {
   connectedDevices: typeof connectedDevicesRouter;
   hybridOrchestration: typeof hybridOrchestrationRouter;
   help: typeof helpRouter;
+  databaseBackups: typeof databaseBackupsRouter;
 };
 
 const appRouterInternal = router<AppRouterShape>({
@@ -2487,6 +2548,7 @@ const appRouterInternal = router<AppRouterShape>({
   connectedDevices: connectedDevicesRouter,
   hybridOrchestration: hybridOrchestrationRouter,
   help: helpRouter,
+  databaseBackups: databaseBackupsRouter,
 
   // Feature 131 — Vertical Drama Series (flag-gated, default off)
   verticalDramaSeries: verticalDramaSeriesRouter,

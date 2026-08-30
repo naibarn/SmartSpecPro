@@ -41,6 +41,32 @@ describe("presentationEditorState", () => {
     });
   });
 
+  it("repairs a full-canvas image that was accidentally moved as an object", () => {
+    const content = ensureSlideContent({
+      canvas: { preset: "9:16", width: 720, height: 1280 },
+      visualOnly: true,
+      elements: [{
+        id: "full-slide-image",
+        type: "image",
+        x: 128,
+        y: 360,
+        width: 720,
+        height: 1280,
+        src: "https://cdn.example.com/full-slide.png",
+        alt: "Full slide",
+        imageZoom: 1.4,
+        imagePositionX: 35,
+      }],
+    });
+
+    expect(content.elements[0]).toMatchObject({
+      x: 0,
+      y: 0,
+      imageZoom: 1.4,
+      imagePositionX: 35,
+    });
+  });
+
   it("mutates only targeted element fields during update", () => {
     const textA = createElement("text", "text-a");
     const textB = createElement("text", "text-b");

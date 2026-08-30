@@ -10,7 +10,13 @@ import { mediaModels, mediaProviders } from "../../drizzle/schema";
 import { eq, asc, desc, and, ilike, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { clearModelCache } from "../services/modelRegistry";
-import { getStaticFallbackModels, getStaticModelById } from "../services/modelRegistry";
+import {
+  filterModelsByMcpProviderAccess,
+  filterModelsByDisabledProviders,
+  getStaticFallbackModels,
+  getStaticModelById,
+} from "../services/modelRegistry";
+import { listConnectedMcpProviderKeys } from "../services/mcpConnectionService";
 import { resolveVerticalDramaCapabilities, deriveModelResolutionOptions } from "../services/modelRegistry";
 import { clearSkillRegistryCache } from "../services/skillRegistry";
 import { suggestModel } from "./modelSuggestTool";
@@ -488,7 +494,7 @@ export const mediaModelsRouter = router({
    */
   adminList: adminProcedure
     .input(adminModelListFiltersSchema.optional())
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       try {
         const conditions = [];
 
@@ -562,7 +568,7 @@ export const mediaModelsRouter = router({
    */
   adminTemplates: adminProcedure
     .input(adminModelListFiltersSchema.optional())
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       try {
         const [existingRows, providers] = await Promise.all([
           db
@@ -1116,7 +1122,7 @@ export const mediaModelsRouter = router({
       search: z.string().optional(),
       verticalDramaReady: z.boolean().optional(),
     }).optional())
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       try {
         const conditions = [eq(mediaModels.isEnabled, true)];
 
@@ -1130,27 +1136,46 @@ export const mediaModelsRouter = router({
           );
         }
 
-        const models = await db
-          .select({
-            id: mediaModels.id,
-            modelId: mediaModels.modelId,
-            name: mediaModels.name,
-            description: mediaModels.description,
-            modelType: mediaModels.modelType,
-            provider: mediaModels.provider,
-            creditCost: mediaModels.creditCost,
-            aspectRatios: mediaModels.aspectRatios,
-            sizes: mediaModels.sizes,
-            durations: mediaModels.durations,
-            voices: mediaModels.voices,
-            priority: mediaModels.priority,
-            configJson: mediaModels.configJson,
-          })
-          .from(mediaModels)
-          .where(and(...conditions))
-          .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority));
+        const [models, providerRows, connectedMcpProviderKeys] = await Promise.all([
+          db
+            .select({
+              id: mediaModels.id,
+              modelId: mediaModels.modelId,
+              name: mediaModels.name,
+              description: mediaModels.description,
+              modelType: mediaModels.modelType,
+              provider: mediaModels.provider,
+              creditCost: mediaModels.creditCost,
+              aspectRatios: mediaModels.aspectRatios,
+              sizes: mediaModels.sizes,
+              durations: mediaModels.durations,
+              voices: mediaModels.voices,
+              priority: mediaModels.priority,
+              configJson: mediaModels.configJson,
+            })
+            .from(mediaModels)
+            .where(and(...conditions))
+            .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority)),
+          db
+            .select({
+              providerName: mediaProviders.providerName,
+              isEnabled: mediaProviders.isEnabled,
+            })
+            .from(mediaProviders),
+          ctx
+            ? listConnectedMcpProviderKeys({
+                tenantId: ctx.tenantId ?? ctx.user.currentTenantId,
+                userId: ctx.user.id,
+              })
+            : Promise.resolve(new Set<string>()),
+        ]);
 
-        const modelsWithCapabilities = models.map((model: (typeof models)[number]) => {
+        const eligibleModels = filterModelsByMcpProviderAccess(
+          filterModelsByDisabledProviders(models, providerRows),
+          connectedMcpProviderKeys,
+        );
+
+        const modelsWithCapabilities = eligibleModels.map((model: (typeof eligibleModels)[number]) => {
           const mergedConfigJson = mergeStaticModelConfigJson(
             model.modelId,
             model.configJson as Record<string, unknown> | null | undefined,
@@ -1218,13 +1243,22 @@ export const mediaModelsRouter = router({
    * admin-recommended shortlist only, with its default chosen by cost within
    * that shortlist.
    */
-  listRecommendedImageModels: protectedProcedure.query(async () => {
-    const suggestion = await suggestModel("image", "balanced");
+  listRecommendedImageModels: protectedProcedure.query(async ({ ctx } = {} as any) => {
+    const connectedMcpProviderKeys = ctx
+      ? await listConnectedMcpProviderKeys({
+          tenantId: ctx.tenantId ?? ctx.user.currentTenantId,
+          userId: ctx.user.id,
+        })
+      : new Set<string>();
+    const suggestion = await suggestModel("image", "balanced", connectedMcpProviderKeys);
     const recommendedIds = [
       suggestion.recommended?.model_id,
       ...suggestion.alternatives.map((model) => model.model_id),
     ].filter((modelId): modelId is string => Boolean(modelId));
-    const rows = await getModelsByTypeAsync("image");
+    const rows = filterModelsByMcpProviderAccess(
+      await getModelsByTypeAsync("image"),
+      connectedMcpProviderKeys,
+    );
     const byId = new Map(rows.map((row) => [row.id, row]));
     const models = recommendedIds
       .map((modelId) => {
@@ -1251,13 +1285,22 @@ export const mediaModelsRouter = router({
    * the image picker: only the model-suggest shortlist is exposed, and the
    * cheapest model inside that shortlist is the automatic default.
    */
-  listRecommendedVideoModels: protectedProcedure.query(async () => {
-    const suggestion = await suggestModel("video", "balanced");
+  listRecommendedVideoModels: protectedProcedure.query(async ({ ctx } = {} as any) => {
+    const connectedMcpProviderKeys = ctx
+      ? await listConnectedMcpProviderKeys({
+          tenantId: ctx.tenantId ?? ctx.user.currentTenantId,
+          userId: ctx.user.id,
+        })
+      : new Set<string>();
+    const suggestion = await suggestModel("video", "balanced", connectedMcpProviderKeys);
     const recommendedIds = [
       suggestion.recommended?.model_id,
       ...suggestion.alternatives.map((model) => model.model_id),
     ].filter((modelId): modelId is string => Boolean(modelId));
-    const rows = await getModelsByTypeAsync("video");
+    const rows = filterModelsByMcpProviderAccess(
+      await getModelsByTypeAsync("video"),
+      connectedMcpProviderKeys,
+    );
     const byId = new Map(rows.map((row) => [row.id, row]));
     const models = recommendedIds
       .map((modelId) => {
@@ -1290,13 +1333,22 @@ export const mediaModelsRouter = router({
    * Music, SFX, transcription, voice-changing, and voice-isolation models
    * are excluded because they cannot narrate a scene script.
    */
-  listRecommendedAudioModels: protectedProcedure.query(async () => {
-    const suggestion = await suggestModel("audio", "balanced");
+  listRecommendedAudioModels: protectedProcedure.query(async ({ ctx } = {} as any) => {
+    const connectedMcpProviderKeys = ctx
+      ? await listConnectedMcpProviderKeys({
+          tenantId: ctx.tenantId ?? ctx.user.currentTenantId,
+          userId: ctx.user.id,
+        })
+      : new Set<string>();
+    const suggestion = await suggestModel("audio", "balanced", connectedMcpProviderKeys);
     const recommendedIds = [
       suggestion.recommended?.model_id,
       ...suggestion.alternatives.map((model) => model.model_id),
     ].filter((modelId): modelId is string => Boolean(modelId));
-    const rows = await getModelsByTypeAsync("audio");
+    const rows = filterModelsByMcpProviderAccess(
+      await getModelsByTypeAsync("audio"),
+      connectedMcpProviderKeys,
+    );
     const recommendedIdSet = new Set(recommendedIds);
     const ttsModels = rows.filter((model) => {
       const id = model.id.toLowerCase();

@@ -1,15 +1,65 @@
 import { describe, expect, it } from "vitest";
 import {
   buildGeminiOmniProviderExtraParams,
+  GEMINI_OMNI_FLASH_1_1_PROVIDER_MODEL_ID,
+  GEMINI_OMNI_FLASH_1_1_VIDEO_MODEL_ID,
   GEMINI_OMNI_VOICE_PRESETS,
   getGeminiOmniVoicePreset,
   isGeminiOmniVoicePresetId,
+  isGeminiOmniVideoModelId,
   normalizeGeminiOmniVideoList,
   validateGeminiOmniProductionNodeCapability,
   validateGeminiOmniVideoInput,
 } from "./geminiOmni";
 
 describe("geminiOmni shared contract", () => {
+  it("recognizes both the new catalog ID and Kie provider ID without changing the legacy model", () => {
+    expect(isGeminiOmniVideoModelId(GEMINI_OMNI_FLASH_1_1_VIDEO_MODEL_ID)).toBe(true);
+    expect(isGeminiOmniVideoModelId(GEMINI_OMNI_FLASH_1_1_PROVIDER_MODEL_ID)).toBe(true);
+    expect(isGeminiOmniVideoModelId("gemini-omni-video")).toBe(true);
+    expect(isGeminiOmniVideoModelId("unrelated-video-model")).toBe(false);
+  });
+
+  it("accepts Flash 1.1 360p and builds mutually-exclusive first/last frame payloads", () => {
+    const input = {
+      modelId: GEMINI_OMNI_FLASH_1_1_VIDEO_MODEL_ID,
+      prompt: "A product reveal",
+      firstFrameUrl: "https://cdn.example.com/start.png",
+      lastFrameUrl: "https://cdn.example.com/end.png",
+      duration: "4s",
+      resolution: "360p",
+    };
+    const result = validateGeminiOmniVideoInput(input);
+
+    expect(result.ok).toBe(true);
+    expect(result.normalized.resolution).toBe("360p");
+    expect(buildGeminiOmniProviderExtraParams(input)).toEqual({
+      first_frame_url: "https://cdn.example.com/start.png",
+      last_frame_url: "https://cdn.example.com/end.png",
+      duration: "4",
+      resolution: "360p",
+      gemini_omni_contract_version: "1.0.0",
+    });
+  });
+
+  it("rejects incomplete, unsafe, and mixed frame requests", () => {
+    const result = validateGeminiOmniVideoInput({
+      modelId: GEMINI_OMNI_FLASH_1_1_VIDEO_MODEL_ID,
+      prompt: "A product reveal",
+      lastFrameUrl: "http://localhost/end.png",
+      imageUrls: ["https://cdn.example.com/reference.png"],
+      duration: "4s",
+      resolution: "720p",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining([
+      "invalid_last_frame_url",
+      "last_frame_requires_first_frame",
+      "first_last_frame_conflict",
+    ]));
+  });
+
   it("normalizes provider video_list and preserves Kie ends spelling", () => {
     expect(normalizeGeminiOmniVideoList([
       { videoUrl: "https://cdn.example.com/in.mp4", startTime: 1, end: 3 },

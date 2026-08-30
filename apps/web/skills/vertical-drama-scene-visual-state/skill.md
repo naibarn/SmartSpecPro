@@ -54,6 +54,7 @@ Return exactly this shape:
     "fixed_elements": [{ "name": "fixed item", "placement": "stable placement" }],
     "spatial_layout": "short factual set arrangement",
     "staging_axis": "short factual 180-degree line lock",
+    "sleep_surface": { "type": "long_bed", "name": "primary bed", "occupant": "character name", "placement": "stable placement" },
     "wardrobe_in_scene": [{ "character": "name", "wardrobe": "one scene outfit" }],
     "active_props": [{ "name": "prop", "placement": "current placement", "from_shot": 3 }],
     "palette_mood": "short palette and texture lock",
@@ -67,6 +68,11 @@ Return exactly this shape:
 sky/window state. `fixed_elements` contains immovable set facts.
 `spatial_layout` locks their arrangement relative to the camera.
 `staging_axis` locks character sides and the safe side of the 180-degree line.
+`sleep_surface` is optional but mandatory when a bed, crib/bassinet, sofa, or
+other sleep surface is part of the scene. Its `type`, name, occupant, and
+placement are concrete continuity facts. If the script explicitly says a long
+bed, preserve `long_bed` even when a location reference image resembles a
+crib/bassinet; never silently substitute the surface.
 `wardrobe_in_scene` carries one outfit for every character appearing in the
 scene. `active_props` is optional scene-local rendering context, with optional
 `from_shot` provenance; it is not a story prop ledger and must not invent durable
@@ -75,6 +81,11 @@ prop history. `palette_mood` is color and surface texture, never emotion.
 
 The calling application owns the location identity, scene membership, revision,
 timestamps, lifecycle flags, and skill version. Never add those fields to the JSON.
+
+This state is the authoritative source for scene-level visual facts after it is
+saved. If a location description, reference image, or older prompt conflicts
+with the saved state, preserve the shot action but apply it to the saved scene
+facts. Do not infer or import a replacement from another source.
 
 ## LOCK, DO NOT DESCRIBE
 
@@ -114,6 +125,11 @@ condition. Do not copy series camera grammar into any field.
 A fixed element cannot move during the scene: walls, doors, windows, counters,
 built-in appliances, large furniture, permanent signs, and structural fixtures.
 Record each with a terse placement relative to stable set landmarks.
+
+For a primary bed or sleep surface, use `sleep_surface` in addition to any
+fixed-element entry. Choose one of `long_bed`, `single_bed`, `crib_bassinet`,
+`sofa`, `floor_mattress`, or `other`. Do not infer the type from the image when
+the explicit script or supplied user correction says otherwise.
 
 Write `spatial_layout` as a reusable relationship between those landmarks, not as
 one shot's composition. Write `staging_axis` as a stable character-side and

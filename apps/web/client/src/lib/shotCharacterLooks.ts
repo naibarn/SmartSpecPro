@@ -25,6 +25,38 @@ export interface ShotLookCharacterFields {
   portraitUrl?: string | null;
 }
 
+/**
+ * Display a look with its owning character name so a look label is never
+ * mistaken for a standalone character in a shot card.
+ */
+export function formatShotCharacterLabel(
+  character: Pick<ShotLookCharacterFields, "name" | "variantLabel"> | undefined,
+  fallbackKey: string
+): string {
+  const name = character?.name?.trim();
+  const variantLabel = character?.variantLabel?.trim();
+  if (name && variantLabel && variantLabel !== name) {
+    return `${name} — ${variantLabel}`;
+  }
+  return name || variantLabel || fallbackKey;
+}
+
+/** Remove deleted/stale roster keys before a picker submits its full cast. */
+export function filterKnownShotCharacterRefKeys(
+  keys: readonly string[],
+  knownKeys: Iterable<string>
+): string[] {
+  const known = new Set(knownKeys);
+  const result: string[] = [];
+  const seen = new Set<string>();
+  for (const key of keys) {
+    if (!known.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    result.push(key);
+  }
+  return result;
+}
+
 /** One switchable option for a character chip. */
 export interface ShotCharacterLookOption {
   /** The key the shot's cast list stores for this option. */
@@ -50,7 +82,9 @@ export interface ShotCharacterLookOption {
  * no looks, or an uploaded photo with no family at all.
  */
 export function buildShotCharacterLookOptionsFromEntries(
-  entries: ReadonlyArray<readonly [key: string, character: ShotLookCharacterFields]>,
+  entries: ReadonlyArray<
+    readonly [key: string, character: ShotLookCharacterFields]
+  >,
   chipKey: string
 ): ShotCharacterLookOption[] {
   const byKey = new Map(entries);

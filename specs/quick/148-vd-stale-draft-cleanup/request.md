@@ -1,8 +1,9 @@
 # Request
 
 Add a Draft Job Inbox cleanup prompt on `/drama-series`. When owner-scoped,
-inactive pre-series Draft jobs have not changed for more than 5, 7, or 10 days,
-show a dialog with counts and let the user archive the selected age bucket.
+inactive pre-series Draft jobs have not changed for more than 7 or 10 days,
+show a user-opened dialog with counts and let the user archive the selected age
+bucket.
 
 ## Constraints
 
@@ -16,5 +17,6 @@ show a dialog with counts and let the user archive the selected age bucket.
 ## Non-goals
 
 - Automatic cleanup without confirmation.
+- A blocking modal that interrupts the creator when the index loads.
 - Cleanup of created series, episodes, media, or archived Draft storage.
 - A retention scheduler or administrative policy system.

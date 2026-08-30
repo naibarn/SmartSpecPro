@@ -446,10 +446,12 @@ export function validateVerticalDramaContinuity(input: {
   const dueThreadIds = new Set<string>();
   if (input.currentEpisodeNumber != null) {
     for (const thread of openThreads) {
+      const expectedResolutionEpisode = thread.expectedResolutionEpisode;
       if (
         thread.expectedResolution === "season" ||
-        !Number.isInteger(thread.expectedResolutionEpisode) ||
-        thread.expectedResolutionEpisode > input.currentEpisodeNumber
+        typeof expectedResolutionEpisode !== "number" ||
+        !Number.isInteger(expectedResolutionEpisode) ||
+        expectedResolutionEpisode > input.currentEpisodeNumber
       ) {
         continue;
       }
@@ -458,7 +460,7 @@ export function validateVerticalDramaContinuity(input: {
         code: "thread_due_unresolved",
         episodeNumber: input.currentEpisodeNumber,
         threadId: thread.threadId,
-        message: `Thread ${thread.threadId} was expected to resolve by episode ${thread.expectedResolutionEpisode} but remains open at episode ${input.currentEpisodeNumber}.`,
+        message: `Thread ${thread.threadId} was expected to resolve by episode ${expectedResolutionEpisode} but remains open at episode ${input.currentEpisodeNumber}.`,
       });
     }
   }

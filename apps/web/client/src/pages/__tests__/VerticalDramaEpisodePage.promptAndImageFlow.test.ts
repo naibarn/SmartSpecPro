@@ -74,7 +74,7 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     expect(repair).toContain('setRepairJobStatus("succeeded")');
   });
 
-  it("uses the authored prompt response instead of a concurrent stale episode snapshot", () => {
+  it("uses the authored prompt response while re-reading only the look gate", () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
       "utf8"
@@ -89,7 +89,8 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
 
     expect(handler).toContain("const promptResult");
     expect(handler).toContain("preparedImagePrompt = promptResult.prompt");
-    expect(handler).not.toContain("getEpisodeDetail.fetch");
+    expect(handler).toContain("getEpisodeDetail.fetch");
+    expect(handler).toContain("getVerticalDramaPendingLookLabels");
     expect(handler).toContain(
       "await generateStartFrameImageMutation.mutateAsync(request)"
     );
@@ -122,9 +123,61 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     expect(source).toContain("failureStage: \"sync\"");
     expect(source).toContain("onRetryStartFrameImage");
     expect(source).toContain("onRetryStartFrameSync");
-    expect(source).toContain("void handleGeneratePromptAndImage(shotNumber, \"single\", false)");
+    expect(source).toContain(
+      "shouldReauthorStartFrameImageRetry(errorMessage)"
+    );
+    expect(source).toContain(
+      "shouldReauthorStartFrameImageRetry(err.message)"
+    );
+    expect(source).toContain("autoRecoveringCompositionShotsRef");
+    expect(source).toContain("กำลังซิงก์ข้อมูลจัดองค์ประกอบช็อตใหม่");
     expect(source).toContain("async function handleRetryStartFrameSync(");
     expect(source).toContain("utils.media.getTask.fetch({ taskId })");
+  });
+
+  it("treats provider policy failures as terminal and never auto-submits a softened task", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+    const startFramePoll = source.slice(
+      source.indexOf("async function pollStartFrameTask("),
+      source.indexOf("/** Retry the non-paid result-linking step", source.indexOf("async function pollStartFrameTask("))
+    );
+    const anglePoll = source.slice(
+      source.indexOf("async function pollAngleVariationsTask("),
+      source.indexOf("const generateAngleVariationsMutation", source.indexOf("async function pollAngleVariationsTask("))
+    );
+    const repairPoll = source.slice(
+      source.indexOf("async function pollRepairImageTask("),
+      source.indexOf("function handleSubmitRepairImage", source.indexOf("async function pollRepairImageTask("))
+    );
+
+    for (const poll of [startFramePoll, anglePoll, repairPoll]) {
+      expect(poll).not.toContain("softenLevel + 1");
+      expect(poll).not.toContain("crypto.randomUUID()");
+    }
+    expect(startFramePoll).toContain("persistTerminalImageFailure");
+    expect(anglePoll).toContain("persistAngleGrid(shotNumber, null)");
+    expect(repairPoll).toContain("setRepairImageErrorByShot");
+  });
+
+  it("applies the same pending-look gate to the paid video-safe render", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+    const handler = source.slice(
+      source.indexOf("async function handleGenerateVideoSafeStartFrame("),
+      source.indexOf(
+        "function handleClearVideoStartFrame(",
+        source.indexOf("async function handleGenerateVideoSafeStartFrame(")
+      )
+    );
+
+    expect(handler).toContain("getVerticalDramaPendingLookLabels");
+    expect(handler).toContain("getEpisodeDetail.fetch");
+    expect(handler).toContain("setGeneratingVideoSafeStartFrameForShot");
   });
 
   it("refetches the episode detail after the whole-episode video prompt stage succeeds", () => {

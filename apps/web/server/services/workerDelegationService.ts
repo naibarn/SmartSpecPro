@@ -590,6 +590,7 @@ function assertWorkerAccessPolicyAllowsDelegatedSession(
       || policy.permissionPreset === "content_worker"
       || policy.permissionPreset === "knowledge_worker"
       || policy.permissionPreset === "work_os_worker"
+      || policy.permissionPreset === "vertical_drama_media_operator"
       || policy.permissionPreset === "full_personal_worker")
       ? policy.permissionPreset as WorkerAccessPermissionPreset
       : null;

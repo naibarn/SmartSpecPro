@@ -219,10 +219,14 @@ function mergeDraftAdditively(
     return null;
   };
   const stable = (value: unknown): string => {
-    if (value === null || typeof value !== "object") return JSON.stringify(value);
+    if (value === null || typeof value !== "object")
+      return JSON.stringify(value);
     if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
     const record = value as Record<string, unknown>;
-    return `{${Object.keys(record).sort().map(key => `${JSON.stringify(key)}:${stable(record[key])}`).join(",")}}`;
+    return `{${Object.keys(record)
+      .sort()
+      .map(key => `${JSON.stringify(key)}:${stable(record[key])}`)
+      .join(",")}}`;
   };
   const merge = (baseValue: unknown, patchValue: unknown): unknown => {
     if (patchValue === undefined || patchValue === null) return baseValue;
@@ -245,13 +249,20 @@ function mergeDraftAdditively(
       const merged = patchValue.map(item => {
         if (!isRecord(item)) return item;
         const key = arrayKey(item);
-        return key && baseByKey.has(key) ? merge(baseByKey.get(key), item) : item;
+        return key && baseByKey.has(key)
+          ? merge(baseByKey.get(key), item)
+          : item;
       });
       if (baseByKey.size > 0) {
         for (const item of baseValue) {
           if (!isRecord(item)) continue;
           const key = arrayKey(item);
-          if (key && !patchValue.some(candidate => isRecord(candidate) && arrayKey(candidate) === key)) {
+          if (
+            key &&
+            !patchValue.some(
+              candidate => isRecord(candidate) && arrayKey(candidate) === key
+            )
+          ) {
             merged.push(item);
           }
         }
@@ -301,7 +312,11 @@ export async function completeVerticalDramaDraft(params: {
 
   const model =
     params.model ?? (await resolveVerticalDramaRecommendedDraftModel());
-  const { data, response } = await executeJsonPlanningCallWithRetry({
+  const {
+    data,
+    response,
+    model: effectiveModel,
+  } = await executeJsonPlanningCallWithRetry({
     model,
     systemPrompt: [
       loadCompletionSkillPrompt(),
@@ -324,13 +339,14 @@ export async function completeVerticalDramaDraft(params: {
     label: "Vertical Drama draft completion",
     timeoutMs: 90_000,
     maxSchemaRetries: 1,
-    maxTransientRetries: 1,
+    maxTransientRetries: 0,
   });
+  const usedModel = effectiveModel ?? model;
 
   const creditsUsed = calculateCreditsForLLM(
     response.usage?.prompt_tokens ?? 0,
     response.usage?.completion_tokens ?? 0,
-    model
+    usedModel
   );
   let completedDraft = materializeVerticalDramaDraftFoundation({
     draft: mergeDraftAdditively(foundationDraft, data.draft),
@@ -370,7 +386,7 @@ export async function completeVerticalDramaDraft(params: {
       stage: "completing",
     },
     creditsUsed,
-    model,
+    model: usedModel,
   };
 }
 
@@ -489,6 +505,7 @@ export async function deductVerticalDramaDraftCompletionCredits(params: {
   creditsUsed: number;
   model: string;
   repairRound: number;
+  idempotencyKey?: string;
 }): Promise<void> {
   if (params.creditsUsed <= 0) return;
   await deductCredits({
@@ -496,11 +513,19 @@ export async function deductVerticalDramaDraftCompletionCredits(params: {
     tenantId: params.tenantId,
     amount: params.creditsUsed,
     description: "Vertical Drama - complete transient draft",
+    idempotencyKey: params.idempotencyKey
+      ? `${params.idempotencyKey}:completion:${params.repairRound}`
+      : undefined,
+    skillRunId: params.idempotencyKey
+      ? `vd-draft-completion:${params.idempotencyKey}:round:${params.repairRound}`
+      : undefined,
+    skillSlug: "vertical-drama-deep-story-draft",
     sourceType: "skill",
     metadata: {
       feature: "vertical_drama_draft_completion",
       model: params.model,
       repairRound: params.repairRound,
+      logicalRunKey: params.idempotencyKey ?? null,
     },
   });
 }

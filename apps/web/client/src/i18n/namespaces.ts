@@ -9,7 +9,10 @@ export const ROUTE_NAMESPACES = [
   { pathPrefix: "/media", namespaces: ["media"] as const },
   { pathPrefix: "/generate", namespaces: ["media"] as const },
   { pathPrefix: "/gallery", namespaces: ["media"] as const },
-  { pathPrefix: "/storyboard-review", namespaces: ["media", "common"] as const },
+  {
+    pathPrefix: "/storyboard-review",
+    namespaces: ["media", "common"] as const,
+  },
   { pathPrefix: "/marketplace", namespaces: ["marketplace"] as const },
   { pathPrefix: "/presentation", namespaces: ["presentation"] as const },
   { pathPrefix: "/video-editor", namespaces: ["presentation"] as const },
@@ -22,6 +25,7 @@ export const ROUTE_NAMESPACES = [
   { pathPrefix: "/credits", namespaces: ["billing"] as const },
   { pathPrefix: "/usage", namespaces: ["billing"] as const },
   { pathPrefix: "/help", namespaces: ["help"] as const },
+  { pathPrefix: "/", namespaces: ["publicSite"] as const },
 ] as const;
 
 /**
@@ -29,10 +33,12 @@ export const ROUTE_NAMESPACES = [
  * or undefined if no match.
  */
 export function getRouteNamespaces(
-  pathname: string,
+  pathname: string
 ): readonly string[] | undefined {
-  const match = ROUTE_NAMESPACES.find((entry) =>
-    pathname.startsWith(entry.pathPrefix),
+  const match = ROUTE_NAMESPACES.find(entry =>
+    entry.pathPrefix === "/"
+      ? pathname === "/"
+      : pathname.startsWith(entry.pathPrefix)
   );
   return match?.namespaces;
 }

@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { renderVerticalDramaDraftMarkdown } from "../verticalDramaDraftLedger";
+import {
+  isVerticalDramaDraftJobActive,
+  renderVerticalDramaDraftMarkdown,
+} from "../verticalDramaDraftLedger";
 
 describe("vertical drama draft ledger", () => {
+  it("allows a ready Draft to be archived when a new composition starts", () => {
+    expect(isVerticalDramaDraftJobActive("queued")).toBe(true);
+    expect(isVerticalDramaDraftJobActive("composing")).toBe(true);
+    expect(isVerticalDramaDraftJobActive("qc_running")).toBe(true);
+    expect(isVerticalDramaDraftJobActive("ready_for_qc")).toBe(false);
+    expect(isVerticalDramaDraftJobActive("failed")).toBe(false);
+  });
+
   it("renders a stable readable projection with identity and changed paths", () => {
     const markdown = renderVerticalDramaDraftMarkdown({
       draftId: "0190-test",

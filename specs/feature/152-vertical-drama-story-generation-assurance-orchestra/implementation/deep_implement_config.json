@@ -1,0 +1,30 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/152-vertical-drama-story-generation-assurance-orchestra/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm --workspace apps/web test --",
+  "sections": [
+    "section-01-contracts-evidence",
+    "section-02-schema-credit",
+    "section-03-runtime-state",
+    "section-04-validation-repair",
+    "section-05-server-integration",
+    "section-06-ui-recovery",
+    "section-07-agents-adapter",
+    "section-08-rollout-observability",
+    "section-09-proof-gap-closure"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-21T12:32:59.115891+00:00"
+}

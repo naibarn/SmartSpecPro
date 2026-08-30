@@ -1,10 +1,59 @@
 import { describe, expect, it } from "vitest";
 import {
   inferCreditTransactionSourceType,
+  resolveCreditTransactionDescription,
+  resolveCreditTransactionSkillLabel,
   resolveCreditTransactionOriginSurface,
 } from "./creditTransactionSource";
 
 describe("creditTransactionSource", () => {
+  it("uses the authoritative skill name before the slug in credit history", () => {
+    expect(resolveCreditTransactionSkillLabel({
+      skillName: "Vertical Drama Prompt Expansion",
+      skillSlug: "vertical-drama-prompt-expansion",
+      metadata: {
+        skill: "vertical-drama-prompt-expansion",
+        skillName: "Vertical Drama Prompt Expansion",
+      },
+    })).toBe("Vertical Drama Prompt Expansion");
+  });
+
+  it("falls back to the skill slug for legacy rows", () => {
+    expect(resolveCreditTransactionSkillLabel({
+      skillSlug: "general-article-writer",
+      metadata: null,
+    })).toBe("general-article-writer");
+  });
+
+  it("makes the authoritative skill name the primary credit description", () => {
+    expect(resolveCreditTransactionDescription({
+      sourceType: "skill",
+      skillName: "Vertical Drama Prompt Expansion",
+      skillSlug: "vertical-drama-prompt-expansion",
+      description: "LLM usage: openai/gpt-5.4-nano",
+      metadata: { skill: "vertical-drama-prompt-expansion" },
+    })).toEqual({
+      primary: "Vertical Drama Prompt Expansion",
+      secondary: "LLM usage: openai/gpt-5.4-nano",
+    });
+  });
+
+  it("uses the canonical Vertical Drama Draft QC skill name", () => {
+    expect(resolveCreditTransactionDescription({
+      sourceType: "skill",
+      skillName: "Vertical Drama Draft Quality Controller",
+      skillSlug: "vertical-drama-draft-quality-controller",
+      description: "Skill run: Vertical Drama Draft Quality Controller",
+      metadata: {
+        skill: "vertical-drama-draft-quality-controller",
+        skillName: "Vertical Drama Draft Quality Controller",
+      },
+    })).toEqual({
+      primary: "Vertical Drama Draft Quality Controller",
+      secondary: "Skill run: Vertical Drama Draft Quality Controller",
+    });
+  });
+
   it("prefers declared source types when present", () => {
     expect(
       inferCreditTransactionSourceType({

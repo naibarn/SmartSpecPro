@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { remotionRenderVideoWorkerInputSchema } from "../workerRuntime";
 
 export const VERTICAL_DRAMA_MEDIA_CONTRACT_VERSION = "2026-08-25.1";
 const id = z.string().trim().min(1).max(160).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/);
@@ -25,9 +26,20 @@ export const mediaAspectRatioValues = ["source", "9:16"] as const;
 export const mediaProcessingModeValues = ["manual_intent", "automated_ai_editing"] as const;
 export const mediaAssetKindValues = ["video", "image", "audio"] as const;
 export const mediaPipelineStateValues = ["discovered", "admitted", "processing", "qc_failed", "ready", "published", "stale", "revoked"] as const;
-export const mediaJobKindValues = ["media_ingest", "broll_preprocess", "shot_video_generation"] as const;
-export const mediaJobStatusValues = ["queued", "claimed", "running", "uploading", "verifying", "published", "failed", "canceled", "quarantined"] as const;
-export const mediaErrorCodeValues = ["invalid_contract", "root_not_bound", "root_revision_stale", "source_not_stable", "unsupported_media", "dead_air_detection_failed", "focus_track_failed", "duration_budget_exceeded", "qc_failed", "workflow_capability_blocked", "artifact_checksum_mismatch", "artifact_ownership_failed", "publication_rejected", "index_enqueue_failed"] as const;
+export const mediaJobKindValues = [
+  "media_ingest",
+  "broll_preprocess",
+  "shot_video_generation",
+  "footage_probe_analyze",
+  "footage_prepare",
+  "footage_broll_render",
+] as const;
+// Keep the media contract aligned with the Worker job ledger. `completed` is
+// emitted before/alongside publication by some control-plane versions, while
+// `expired` is a terminal reconciliation state; both must be representable so
+// clients do not poll forever or mistake an expired job for an active one.
+export const mediaJobStatusValues = ["queued", "claimed", "running", "uploading", "verifying", "completed", "published", "failed", "canceled", "expired", "quarantined"] as const;
+export const mediaErrorCodeValues = ["invalid_contract", "root_not_bound", "root_revision_stale", "source_not_stable", "unsupported_media", "dead_air_detection_failed", "focus_track_failed", "duration_budget_exceeded", "qc_failed", "workflow_capability_blocked", "artifact_checksum_mismatch", "artifact_ownership_failed", "publication_rejected", "index_enqueue_failed", "source_reference_expired", "source_fingerprint_mismatch", "transcription_unavailable", "transcription_failed", "unsupported_composition_executor", "placement_out_of_bounds", "placement_source_not_ready", "approval_required", "render_contract_mismatch"] as const;
 
 export const mediaAspectRatioSchema = z.enum(mediaAspectRatioValues);
 export const mediaProcessingModeSchema = z.enum(mediaProcessingModeValues);
@@ -300,7 +312,161 @@ export const shotVideoGenerationJobPayloadSchema = z.object({
   budget: shotBudgetPolicySchema,
   idempotencyKey: id.max(128),
 }).strict();
-export const verticalDramaMediaJobPayloadSchema = z.discriminatedUnion("kind", [mediaIngestJobPayloadSchema, brollPreprocessJobPayloadSchema, shotVideoGenerationJobPayloadSchema]);
+
+export const footageAnalysisStatusSchema = z.enum(["ready", "partial", "unavailable", "failed"]);
+export const footageAnalysisSourceStatusSchema = z.object({
+  probe: footageAnalysisStatusSchema,
+  transcript: footageAnalysisStatusSchema,
+  visual: footageAnalysisStatusSchema,
+  guide: footageAnalysisStatusSchema,
+  warnings: z.array(id).max(32),
+  unknowns: z.array(boundedText).max(32),
+}).strict().superRefine((value, context) => {
+  const incomplete = [value.probe, value.transcript, value.visual, value.guide]
+    .some(status => status !== "ready");
+  if (incomplete && value.warnings.length === 0) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["warnings"], message: "Incomplete footage analysis must declare a warning" });
+  }
+  if (incomplete && value.unknowns.length === 0) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["unknowns"], message: "Incomplete footage analysis must declare an unknown" });
+  }
+});
+
+export const footageSpeechRangeSchema = z.object({
+  startMs: z.number().int().nonnegative().max(86_400_000),
+  endMs: z.number().int().positive().max(86_400_000),
+  confidence: z.number().min(0).max(1),
+}).strict().superRefine((value, context) => {
+  if (value.endMs <= value.startMs) context.addIssue({ code: z.ZodIssueCode.custom, path: ["endMs"], message: "speech range end must be after start" });
+});
+
+export const footageTranscriptTokenSchema = z.object({
+  text: z.string().trim().min(1).max(500),
+  startMs: z.number().int().nonnegative().max(86_400_000),
+  endMs: z.number().int().positive().max(86_400_000),
+  confidence: z.number().min(0).max(1).nullable(),
+}).strict();
+
+export const footageTranscriptSchema = z.object({
+  language: id,
+  model: id,
+  text: boundedText,
+  tokens: z.array(footageTranscriptTokenSchema).max(12_000),
+  fingerprint: checksum,
+  status: footageAnalysisStatusSchema,
+  reason: id.nullable(),
+}).strict();
+
+export const footageGuideSchema = z.object({
+  schemaVersion: z.literal("vd-footage-guide-v1"),
+  sourceAssetId: id,
+  sourceRevision: revision,
+  sourceFingerprint: checksum,
+  timelineTimebase: z.literal("milliseconds"),
+  probe: mediaProbeSchema,
+  speechRanges: z.array(footageSpeechRangeSchema).max(256),
+  silenceRanges: z.array(z.object({
+    startMs: z.number().int().nonnegative().max(86_400_000),
+    endMs: z.number().int().positive().max(86_400_000),
+    kind: z.enum(["leading", "middle", "trailing", "unknown"]),
+    confidence: z.number().min(0).max(1),
+  }).strict()).max(256),
+  sceneRanges: z.array(z.object({
+    startMs: z.number().int().nonnegative().max(86_400_000),
+    endMs: z.number().int().positive().max(86_400_000),
+    confidence: z.number().min(0).max(1),
+    keyframeAssetId: id.nullable(),
+  }).strict()).max(256),
+  transcript: footageTranscriptSchema.nullable(),
+  semanticGuide: z.object({
+    observations: z.array(z.object({ text: boundedText, confidence: z.number().min(0).max(1), evidence: id }).strict()).max(64),
+    recommendedTieIn: z.array(z.object({ text: boundedText, evidence: id }).strict()).max(32),
+    avoid: z.array(z.object({ text: boundedText, evidence: id }).strict()).max(32),
+    confidence: z.number().min(0).max(1),
+  }).strict(),
+  status: footageAnalysisSourceStatusSchema,
+  runtime: z.object({ manifestVersion: id, binaryFingerprint: checksum.nullable(), modelFingerprint: checksum.nullable() }).strict(),
+}).strict();
+export type FootageGuide = z.infer<typeof footageGuideSchema>;
+
+export const footageProbeAnalyzeJobPayloadSchema = z.object({
+  kind: z.literal("footage_probe_analyze"),
+  seriesId: id,
+  binding: seriesMediaRootBindingSchema,
+  source: mediaSourceManifestSchema,
+  requestedLanguage: z.string().trim().regex(/^[a-z]{2,8}(-[A-Z]{2})?$/).default("th"),
+  transcriptionPolicy: z.enum(["required", "preferred", "disabled"]).default("preferred"),
+  analysisProfile: z.enum(["fast", "standard", "deep"]).default("standard"),
+  idempotencyKey: id.max(128),
+}).strict();
+
+export const footagePrepareSegmentSchema = z.object({
+  sourceInMs: z.number().int().nonnegative().max(86_400_000),
+  sourceOutMs: z.number().int().positive().max(86_400_000),
+  keep: z.boolean(),
+  reason: boundedText,
+}).strict().superRefine((value, context) => {
+  if (value.sourceOutMs <= value.sourceInMs) context.addIssue({ code: z.ZodIssueCode.custom, path: ["sourceOutMs"], message: "prepare segment end must be after start" });
+});
+
+export const footagePrepareJobPayloadSchema = z.object({
+  kind: z.literal("footage_prepare"),
+  seriesId: id,
+  binding: seriesMediaRootBindingSchema,
+  source: mediaSourceManifestSchema,
+  analysisRevision: revision,
+  segments: z.array(footagePrepareSegmentSchema).min(1).max(64),
+  /** Silence is copied from the immutable Worker guide. It is advisory input
+   * to preparation; the Worker still bounds and validates every cut. */
+  silenceRanges: z.array(z.object({
+    startMs: z.number().int().nonnegative().max(86_400_000),
+    endMs: z.number().int().positive().max(86_400_000),
+  }).strict()).max(256).default([]),
+  trimPolicy: z.object({ removeDeadAir: z.boolean(), preserveSpeechPaddingMs: z.number().int().min(0).max(2000) }).strict(),
+  baseAudioPolicy: z.enum(["preserve", "mute", "selected_ranges"]),
+  fitPolicy: z.enum(["source", "9:16_cover", "9:16_contain"]),
+  outputProfile: z.object({ maxDurationMs: z.number().int().positive().max(90_000), generateProxy: z.boolean() }).strict(),
+  approvalFingerprint: checksum,
+  idempotencyKey: id.max(128),
+}).strict();
+
+export const footageBrollPlacementSchema = z.object({
+  storyBeatId: id,
+  startMs: z.number().int().nonnegative().max(86_400_000),
+  endMs: z.number().int().positive().max(86_400_000),
+  sourceMediaAssetId: id,
+  sourceInMs: z.number().int().nonnegative().max(86_400_000).default(0),
+  sourceOutMs: z.number().int().positive().max(86_400_000).nullable().default(null),
+  placementMode: z.enum(["overlay", "cutaway", "replace"]),
+  fitMode: z.enum(["cover", "contain", "crop"]),
+  baseAudioPolicy: z.enum(["preserve", "mute", "selected_ranges"]),
+  brollAudioPolicy: z.enum(["mute", "mix", "replace"]).default("mute"),
+}).strict().superRefine((value, context) => {
+  if (value.endMs <= value.startMs) context.addIssue({ code: z.ZodIssueCode.custom, path: ["endMs"], message: "placement end must be after start" });
+  if (value.sourceOutMs !== null && value.sourceOutMs <= value.sourceInMs) context.addIssue({ code: z.ZodIssueCode.custom, path: ["sourceOutMs"], message: "B-roll source out must be after source in" });
+});
+export type FootageBrollPlacement = z.infer<typeof footageBrollPlacementSchema>;
+
+export const footageBrollRenderJobPayloadSchema = z.object({
+  kind: z.literal("footage_broll_render"),
+  seriesId: id,
+  binding: seriesMediaRootBindingSchema,
+  preparedSource: mediaSourceManifestSchema,
+  preparedRevision: revision,
+  baseDurationMs: z.number().int().positive().max(90_000),
+  placements: z.array(footageBrollPlacementSchema).max(32),
+  storyRevisionId: id,
+  shotPlanRevisionId: id,
+  assetManifest: z.array(mediaSourceManifestSchema).max(64),
+  renderProfile: z.object({ width: z.literal(1080), height: z.literal(1920), fps: z.number().positive().max(60), compositionExecutor: z.literal("remotion_render_video") }).strict(),
+  /** Server-compiled, URL-bearing Remotion payload. It is optional only for
+   * backwards-compatible admission; the Worker must reject a render request
+   * that does not contain it rather than guessing storage URLs. */
+  remotionInput: remotionRenderVideoWorkerInputSchema.optional(),
+  idempotencyKey: id.max(128),
+}).strict();
+
+export const verticalDramaMediaJobPayloadSchema = z.discriminatedUnion("kind", [mediaIngestJobPayloadSchema, brollPreprocessJobPayloadSchema, shotVideoGenerationJobPayloadSchema, footageProbeAnalyzeJobPayloadSchema, footagePrepareJobPayloadSchema, footageBrollRenderJobPayloadSchema]);
 
 export const mediaArtifactManifestSchema = z.object({
   artifactId: id,

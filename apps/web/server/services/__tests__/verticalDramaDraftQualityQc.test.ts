@@ -139,8 +139,8 @@ describe("vertical drama draft quality QC loop", () => {
     expect(plan.actions.length).toBeGreaterThan(0);
     expect(
       plan.actions.every(action =>
-        action.targetPaths.every(path => !action.preservePaths.includes(path)),
-      ),
+        action.targetPaths.every(path => !action.preservePaths.includes(path))
+      )
     ).toBe(true);
   });
 
@@ -151,8 +151,8 @@ describe("vertical drama draft quality QC loop", () => {
       DRAFT_QC_JUDGE_RESPONSE_FORMAT.json_schema.schema.required
     ).toContain("criticalFails");
     expect(
-      DRAFT_QC_JUDGE_RESPONSE_FORMAT.json_schema.schema.properties
-        .criticalFails.type
+      DRAFT_QC_JUDGE_RESPONSE_FORMAT.json_schema.schema.properties.criticalFails
+        .type
     ).toBe("array");
   });
 
@@ -222,7 +222,7 @@ describe("vertical drama draft quality QC loop", () => {
   it("recovers omitted revise changedFields from the Draft diff", () => {
     const recovered = recoverDraftQualityQcRevisionOutput(
       { draft: { ...draft, seasonArc: `${draft.seasonArc} Revised` } },
-      draft,
+      draft
     );
 
     expect(recovered?.data.changedFields).toEqual(["seasonArc"]);
@@ -253,6 +253,54 @@ describe("vertical drama draft quality QC loop", () => {
     expect(result.best.report.criticalFails).toHaveLength(0);
     expect(result.best.report.evaluationWarnings).toEqual([]);
     expect(result.stopReason).toBe("max_rounds");
+    expect(injected.createReservation).toHaveBeenCalledWith(2);
+    expect(injected.drawReservation).toHaveBeenCalledTimes(1);
+    expect(injected.drawReservation).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Number)
+    );
+  });
+
+  it("reports the effective fallback model returned by a QC call", async () => {
+    const injected = deps([5]);
+    injected.evaluate = vi.fn(async () => ({
+      ...call(5),
+      model: "openai/gpt-5.6-luna",
+    }));
+
+    const result = await runVerticalDramaDraftQualityQc(
+      { draft, immutableConstraints: {}, userId: 1, maxImprovementRounds: 0 },
+      injected
+    );
+
+    expect(result.model).toBe("openai/gpt-5.6-luna");
+  });
+
+  it("charges every production QC LLM call instead of drawing one fixed reservation", async () => {
+    const { createReservation: _legacyReservation, ...productionDeps } = deps([2, 4]);
+    const chargeLlmCall = vi.fn(async () => ({ creditsUsed: 1, wasFree: false }));
+    const result = await runVerticalDramaDraftQualityQc(
+      {
+        draft,
+        immutableConstraints: {},
+        userId: 1,
+        tenantId: "tenant-1",
+        seriesId: 53,
+        runId: "qc-run-1",
+        maxImprovementRounds: 1,
+      },
+      { ...productionDeps, chargeLlmCall },
+    );
+
+    expect(result.evaluationsCompleted).toBe(2);
+    expect(chargeLlmCall).toHaveBeenCalledTimes(3);
+    expect(chargeLlmCall.mock.calls.map(([input]) => input.stage)).toEqual([
+      "baseline_evaluate",
+      "revise",
+      "evaluate",
+    ]);
+    expect(new Set(chargeLlmCall.mock.calls.map(([input]) => input.attemptKey)).size).toBe(3);
+    expect(result.reservationId).toBeUndefined();
   });
 
   it("rejects malformed critical-failure rows instead of substituting deterministic output", () => {
@@ -425,14 +473,19 @@ describe("vertical drama draft quality QC loop", () => {
   it("continues a QC revision when the provider omits audit-only changedFields", async () => {
     const injected = deps([2, 4]);
     injected.revise = vi.fn(async ({ draft: current }) => ({
-      data: { draft: { ...current, seasonArc: `${String(current.seasonArc)} Revised` } },
+      data: {
+        draft: {
+          ...current,
+          seasonArc: `${String(current.seasonArc)} Revised`,
+        },
+      },
       promptTokens: 1,
       completionTokens: 1,
     }));
 
     const result = await runVerticalDramaDraftQualityQc(
       { draft, immutableConstraints: {}, userId: 1, maxImprovementRounds: 1 },
-      injected,
+      injected
     );
 
     expect(injected.evaluate).toHaveBeenCalledTimes(2);
@@ -479,13 +532,16 @@ describe("vertical drama draft quality QC loop", () => {
     ]);
     expect(result.history.filter(item => item.report)).toHaveLength(4);
     expect(
-      result.history.filter(item => item.report).every(item =>
+      result.history
+        .filter(item => item.report)
+        .every(item =>
         Boolean(item.candidateVersion && item.candidateFingerprint)
       )
     ).toBe(true);
-    expect(result.history.find(item => item.reason === "not_better")?.candidateVersion).toBe(
-      3
-    );
+    expect(
+      result.history.find(item => item.reason === "not_better")
+        ?.candidateVersion
+    ).toBe(3);
   });
 
   it("does not allow a revision to change preserved story identity", async () => {
@@ -534,7 +590,7 @@ describe("vertical drama draft quality QC loop", () => {
         userId: 1,
         maxImprovementRounds: 1,
       },
-      injected,
+      injected
     );
 
     expect(injected.evaluate).toHaveBeenCalledTimes(2);
@@ -582,7 +638,7 @@ describe("vertical drama draft quality QC loop", () => {
         userId: 1,
         maxImprovementRounds: 1,
       },
-      injected,
+      injected
     );
 
     expect(injected.evaluate).toHaveBeenCalledTimes(2);
@@ -592,10 +648,10 @@ describe("vertical drama draft quality QC loop", () => {
     });
     expect(result.best.draft.storyDesign).toHaveProperty(
       "legacyControlArchive.superseded",
-      true,
+      true
     );
     expect(result.best.draft.storyDesign).not.toHaveProperty(
-      "legacyControlArchive.forgedByProvider",
+      "legacyControlArchive.forgedByProvider"
     );
   });
 
@@ -625,8 +681,8 @@ describe("vertical drama draft quality QC loop", () => {
           userId: 1,
           maxImprovementRounds: 1,
         },
-        injected,
-      ),
+        injected
+      )
     ).rejects.toThrow("immutable field: storyDesign.providerNote");
     expect(injected.refunded).toBe(1);
   });
@@ -738,10 +794,17 @@ describe("vertical drama draft quality QC loop", () => {
       completionTokens: 1,
     }));
     const result = await runVerticalDramaDraftQualityQc(
-      { draft: draftWithVisualBible, immutableConstraints: {}, userId: 1, maxImprovementRounds: 1 },
+      {
+        draft: draftWithVisualBible,
+        immutableConstraints: {},
+        userId: 1,
+        maxImprovementRounds: 1,
+      },
       injected
     );
-    expect(result.best.draft.visualBible).toEqual(draftWithVisualBible.visualBible);
+    expect(result.best.draft.visualBible).toEqual(
+      draftWithVisualBible.visualBible
+    );
     expect(result.best.draft.characters).toEqual([
       { name: "Mina", role: "protagonist", arc: "trust" },
     ]);

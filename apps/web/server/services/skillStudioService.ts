@@ -26,6 +26,7 @@ import {
   type CapabilityRequirements,
 } from "./intelligentModelSelector";
 import { buildModelLookupCandidates } from "./modelLookup";
+import { settleSkillRun } from "./skillRevenueBilling";
 import {
   skills,
 } from "../../drizzle/schema";
@@ -82,6 +83,7 @@ export interface SkillStudioRequest {
 
 export interface SkillStudioLaunchContext {
   userId: number;
+  tenantId?: string | null;
   userRole?: string | null;
   userToken?: string | null;
   publicUrl?: string | null;
@@ -880,12 +882,14 @@ export async function launchSkillStudioTask(
   }
 
   const executionToken = ctx.userToken || createSkillExecutionToken(ctx.userId);
+  const skillRunId = crypto.randomUUID();
   const { taskId } = await startPythonSkillTask(
     iscSkill,
     {
       prompt: instructionBrief,
       extraParams,
       publicUrl: ctx.publicUrl || undefined,
+      runId: skillRunId,
     },
     ctx.userId,
     executionToken,
@@ -896,6 +900,22 @@ export async function launchSkillStudioTask(
         }
         return result;
       }
+
+      // Skill Studio is an asynchronous Python entry point, so settle here at
+      // the same successful completion boundary as the synchronous executor.
+      // This is idempotent and prevents create/improve runs from being free.
+      await settleSkillRun({
+        runId: skillRunId,
+        userId: ctx.userId,
+        tenantId: ctx.tenantId,
+        skillSlug: iscSkill.id,
+        description: `Skill Studio ${input.mode}: ${iscSkill.name}`,
+        metadata: {
+          runtimeKind: "python",
+          originSurface: "skill_studio",
+          mode: input.mode,
+        },
+      });
 
       if (input.mode === "create") {
         const createdSlug = extractCreatedSkillSlug(result);

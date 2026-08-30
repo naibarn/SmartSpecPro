@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'vitest';
-import { getTableColumns } from 'drizzle-orm';
+import { and, eq, getTableColumns, isNull } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import {
   userGroups,
   groupMembers,
@@ -33,7 +34,35 @@ import {
   supportRecoveryCases,
   billingEffects,
   messages,
+  verticalDramaDraftLedgers,
 } from './schema';
+
+describe('vertical_drama_draft_ledgers Series ownership schema', () => {
+  test('exposes the Series fields used by Draft recovery queries', () => {
+    const columns = getTableColumns(verticalDramaDraftLedgers);
+
+    expect(columns.seriesId).toBeDefined();
+    expect(columns.seriesId.notNull).toBe(false);
+    expect(columns.seriesDeletedAt).toBeDefined();
+    expect(columns.seriesDeletedAt.notNull).toBe(false);
+  });
+
+  test('compiles Series recovery predicates with real column expressions', () => {
+    const compiled = new PgDialect().sqlToQuery(
+      and(
+        eq(verticalDramaDraftLedgers.seriesId, 55),
+        isNull(verticalDramaDraftLedgers.seriesDeletedAt),
+      )!,
+    );
+
+    expect(compiled.sql).toContain('"vertical_drama_draft_ledgers"."seriesId" = $1');
+    expect(compiled.sql).toContain(
+      '"vertical_drama_draft_ledgers"."seriesDeletedAt" is null',
+    );
+    expect(compiled.sql).not.toContain('( = $1');
+    expect(compiled.sql).not.toContain('and  is null');
+  });
+});
 
 describe('user_groups table schema', () => {
   test('has required columns with correct types', () => {

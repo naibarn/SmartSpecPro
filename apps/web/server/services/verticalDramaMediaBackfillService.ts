@@ -12,6 +12,7 @@ import { db } from "../db";
 import { assertR2StorageActive, storageExists } from "../storage";
 import {
   extractVerticalDramaManagedMediaKey,
+  ensureVerticalDramaManagedMediaAsset,
   ingestVerticalDramaMediaAsset,
   migrateExistingVerticalDramaMediaAsset,
   type VerticalDramaMediaType,
@@ -23,6 +24,7 @@ export type VerticalDramaMediaBackfillOptions = {
   tenantId: string;
   userId: number;
   seriesId?: number;
+  episodeId?: number;
   apply: boolean;
   limit?: number;
 };
@@ -97,7 +99,8 @@ function collectRawMediaUrls(
   }
   if (typeof value === "string") {
     if (
-      isExternalMediaUrl(value) &&
+      (isExternalMediaUrl(value) ||
+        Boolean(extractVerticalDramaManagedMediaKey(value))) &&
       /image|video|thumbnail|cover|frame|angle|asset|trailer|clip|compiled|watermark/i.test(path)
     ) {
       urls.set(value.trim(), { mediaType: mediaTypeForPath(path), path });
@@ -114,7 +117,9 @@ function collectRawMediaUrls(
 function replaceMediaUrls(value: unknown, replacements: Map<string, string>): { value: unknown; changed: boolean } {
   if (typeof value === "string") {
     const replacement = replacements.get(value.trim());
-    return replacement ? { value: replacement, changed: true } : { value, changed: false };
+    return replacement && replacement !== value
+      ? { value: replacement, changed: true }
+      : { value, changed: false };
   }
   if (Array.isArray(value)) {
     let changed = false;
@@ -135,6 +140,67 @@ function replaceMediaUrls(value: unknown, replacements: Map<string, string>): { 
     next[key] = result.value;
   }
   return { value: changed ? next : value, changed };
+}
+
+async function linkEpisodePreviewMediaAssets(
+  value: unknown,
+  owner: Pick<VerticalDramaMediaBackfillOptions, "tenantId" | "userId">,
+): Promise<{ value: unknown; changed: boolean }> {
+  const manifest = asRecord(value);
+  const previews = manifest?.episodePreviews;
+  if (!Array.isArray(previews)) return { value, changed: false };
+
+  let changed = false;
+  const nextPreviews = await Promise.all(
+    previews.map(async previewValue => {
+      const preview = asRecord(previewValue);
+      if (
+        !preview ||
+        preview.status !== "completed" ||
+        typeof preview.videoUrl !== "string"
+      ) {
+        return previewValue;
+      }
+      const storageKey = extractVerticalDramaManagedMediaKey(preview.videoUrl);
+      if (!storageKey) return previewValue;
+      const [asset] = await db
+        .select({
+          id: mediaAssets.id,
+          status: mediaAssets.status,
+          storageKey: mediaAssets.storageKey,
+        })
+        .from(mediaAssets)
+        .where(
+          and(
+            eq(mediaAssets.tenantId, owner.tenantId),
+            eq(mediaAssets.userId, owner.userId),
+            eq(mediaAssets.storageKey, storageKey),
+          ),
+        )
+        .limit(1);
+      if (!asset) return previewValue;
+      const next = {
+        ...preview,
+        mediaAssetId: String(asset.id),
+        durabilityStatus: asset.status === "ready" ? "ready" : "expired",
+        ...(asset.status === "ready"
+          ? { videoUrl: `/api/storage/files/${encodeURI(asset.storageKey)}` }
+          : { videoUrl: undefined }),
+      };
+      if (
+        preview.mediaAssetId !== next.mediaAssetId ||
+        preview.durabilityStatus !== next.durabilityStatus ||
+        preview.videoUrl !== next.videoUrl
+      ) {
+        changed = true;
+      }
+      return next;
+    }),
+  );
+  return {
+    value: changed ? { ...manifest, episodePreviews: nextPreviews } : value,
+    changed,
+  };
 }
 
 function inferMimeType(mediaType: VerticalDramaMediaType, value: string): string {
@@ -173,10 +239,13 @@ export async function backfillVerticalDramaMedia(
         .select()
         .from(verticalDramaEpisodes)
         .where(
-          and(
+        and(
             eq(verticalDramaEpisodes.tenantId, options.tenantId),
             eq(verticalDramaEpisodes.userId, options.userId),
             inArray(verticalDramaEpisodes.seriesId, seriesIds),
+            ...(options.episodeId
+              ? [eq(verticalDramaEpisodes.id, options.episodeId)]
+              : []),
           ),
         )
     : [];
@@ -397,16 +466,26 @@ export async function backfillVerticalDramaMedia(
       await Promise.all(rawEntries.slice(index, index + 4).map(async ([url, info]) => {
       if (replacements.has(url)) return;
       try {
-        const migrated = await ingestVerticalDramaMediaAsset({
-          tenantId: options.tenantId,
-          userId: options.userId,
-          seriesId: seriesIds[0] ?? options.seriesId ?? "unknown",
-          mediaType: info.mediaType,
-          sourceUrl: url,
-          mimeType: inferMimeType(info.mediaType, url),
-          identity: `backfill-url:${url}`,
-          purpose: "backfill-embedded-url",
-        });
+        const managedKey = extractVerticalDramaManagedMediaKey(url);
+        const migrated = managedKey
+          ? await ensureVerticalDramaManagedMediaAsset({
+              tenantId: options.tenantId,
+              userId: options.userId,
+              sourceUrl: url,
+              mediaType: info.mediaType,
+              mimeType: inferMimeType(info.mediaType, url),
+            })
+          : await ingestVerticalDramaMediaAsset({
+              tenantId: options.tenantId,
+              userId: options.userId,
+              seriesId: seriesIds[0] ?? options.seriesId ?? "unknown",
+              mediaType: info.mediaType,
+              sourceUrl: url,
+              mimeType: inferMimeType(info.mediaType, url),
+              identity: `backfill-url:${url}`,
+              purpose: "backfill-embedded-url",
+            });
+        if (!migrated) throw new Error("Managed media object is missing from storage");
         replacements.set(url, migrated.url);
         report.migratedRawUrlCount += 1;
       } catch (error) {
@@ -431,7 +510,14 @@ export async function backfillVerticalDramaMedia(
         "textOverlayPlan",
         "coverImage",
       ] as const) {
-        const result = replaceMediaUrls(row[field], replacements);
+        let result = replaceMediaUrls(row[field], replacements);
+        if (field === "assemblyManifest") {
+          const linked = await linkEpisodePreviewMediaAssets(
+            result.value,
+            options,
+          );
+          if (linked.changed) result = linked;
+        }
         if (result.changed) updates[field] = result.value;
       }
       if (Object.keys(updates).length) {

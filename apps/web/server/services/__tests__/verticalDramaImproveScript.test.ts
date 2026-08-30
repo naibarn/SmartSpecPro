@@ -355,6 +355,12 @@ describe("runImproveScriptJob — whole-block primary pass", () => {
     expect(result.needsReview).toBe(false);
     expect(result.partialFailureEpisodeNumbers).toEqual([]);
     expect(result.scoreSummary).toContain("คะแนนหลังปรับปรุง");
+    expect(mockDeductCreditsForModel).toHaveBeenCalledWith(expect.objectContaining({
+      sourceType: "skill",
+      skillSlug: VD_IMPROVE_SCRIPT_SKILL_ID,
+      idempotencyKey: "vd-improve:6:0:1:1",
+      skillRunId: "vd-improve:6:0:1:1",
+    }));
   });
 
   it("a leftover continuation marker trailing an otherwise-valid episode block does NOT force a straggler redo (real series-6 re-validation, 2026-07-10)", async () => {

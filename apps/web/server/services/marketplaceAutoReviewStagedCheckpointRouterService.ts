@@ -1,4 +1,4 @@
-import { and, eq, isNull, or } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { TRPCError } from "@trpc/server";
 
@@ -131,7 +131,9 @@ function isStagedCheckpointRetryable(
 
 function tenantAccessClause(auth: StagedCheckpointAuth) {
   const tenantId = auth.tenantId?.trim();
-  if (!tenantId) return undefined;
+  // Staged checkpoint mutations are tenant-bound; fail closed if a caller
+  // reaches this service without a resolved tenant context.
+  if (!tenantId) return sql`false`;
   return or(
     eq(marketplaceAutoReviewRuns.tenantId, tenantId),
     isNull(marketplaceAutoReviewRuns.tenantId)
