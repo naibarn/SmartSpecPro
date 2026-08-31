@@ -4,6 +4,7 @@ import MediaHistory, {
   canAddTaskToGallery,
   getVideoEditorLibraryItemIdForTask,
   MEDIA_HISTORY_TASK_GC_TIME_MS,
+  MEDIA_HISTORY_TASK_REFETCH_INTERVAL_MS,
   MEDIA_HISTORY_TASK_REVALIDATE_ON_MOUNT,
   MEDIA_HISTORY_TASK_REFETCH_ON_WINDOW_FOCUS,
   MEDIA_HISTORY_TASK_STALE_TIME_MS,
@@ -20,6 +21,7 @@ describe("MediaHistory module", () => {
   it("uses a short list cache with immediate mount revalidation policy", () => {
     expect(MEDIA_HISTORY_TASK_STALE_TIME_MS).toBe(30_000);
     expect(MEDIA_HISTORY_TASK_GC_TIME_MS).toBe(15 * 60_000);
+    expect(MEDIA_HISTORY_TASK_REFETCH_INTERVAL_MS).toBe(15_000);
     expect(MEDIA_HISTORY_TASK_REVALIDATE_ON_MOUNT).toBe("always");
     expect(MEDIA_HISTORY_TASK_REFETCH_ON_WINDOW_FOCUS).toBe(false);
   });

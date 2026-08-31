@@ -110,6 +110,7 @@ import {
 } from "@/lib/mediaHistoryDebug";
 import {
   createMediaHistoryPollState,
+  MEDIA_HISTORY_POLL_INTERVAL_MS,
   reserveMediaHistoryPoll,
   setMediaHistoryRateLimit,
 } from "@/lib/mediaHistoryPolling";
@@ -143,6 +144,8 @@ const MEDIA_HISTORY_PAGE_SIZE = 50;
 const MEDIA_HISTORY_SOURCE_FILTER_MAX_LENGTH = 128;
 export const MEDIA_HISTORY_TASK_STALE_TIME_MS = 30_000;
 export const MEDIA_HISTORY_TASK_GC_TIME_MS = 15 * 60_000;
+export const MEDIA_HISTORY_TASK_REFETCH_INTERVAL_MS =
+  MEDIA_HISTORY_POLL_INTERVAL_MS;
 export const MEDIA_HISTORY_TASK_REVALIDATE_ON_MOUNT = "always" as const;
 export const MEDIA_HISTORY_TASK_REFETCH_ON_WINDOW_FOCUS = false;
 
@@ -1438,6 +1441,8 @@ export default function MediaHistory() {
     staleTime: MEDIA_HISTORY_TASK_STALE_TIME_MS,
     gcTime: MEDIA_HISTORY_TASK_GC_TIME_MS,
     placeholderData: previous => previous,
+    refetchInterval: MEDIA_HISTORY_TASK_REFETCH_INTERVAL_MS,
+    refetchIntervalInBackground: false,
     refetchOnMount: MEDIA_HISTORY_TASK_REVALIDATE_ON_MOUNT,
     refetchOnWindowFocus: MEDIA_HISTORY_TASK_REFETCH_ON_WINDOW_FOCUS,
   });
