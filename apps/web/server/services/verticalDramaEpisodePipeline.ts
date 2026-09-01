@@ -180,6 +180,14 @@ import { ensurePromptWithinLimit } from "./verticalDramaPromptQc";
 import { resolveVdImagePromptBudgetForModel } from "./modelPromptBudget";
 import { resolveVdVideoPromptBudgetForCatalogModel } from "@shared/verticalDramaSeries/videoPromptBudget";
 import { VD_IMAGE_PROMPT_MAX } from "@shared/verticalDramaSeries/contracts";
+import {
+  buildCrossEpisodeWardrobeHandoff,
+  findCrossEpisodeWardrobeMismatches,
+  VD_CROSS_EPISODE_WARDROBE_MISMATCH,
+  type CrossEpisodeWardrobeCatalogEntry,
+  type CrossEpisodeWardrobeHandoff,
+  type CrossEpisodeWardrobeMismatch,
+} from "@shared/verticalDramaSeries/crossEpisodeWardrobeContinuity";
 import { stampArtifactForStoryboard } from "./verticalDramaStoryboardRevision";
 import {
   generateEpisodeDialogueAudioPlan,
@@ -426,6 +434,16 @@ function mapScriptGenerationError(error: unknown): RunResult["errors"][number] {
 function mapStoryboardGenerationError(
   error: unknown
 ): RunResult["errors"][number] {
+  if (
+    (error as { code?: unknown } | null)?.code ===
+    VD_CROSS_EPISODE_WARDROBE_MISMATCH
+  ) {
+    return {
+      code: VD_CROSS_EPISODE_WARDROBE_MISMATCH,
+      message: error instanceof Error ? error.message : String(error),
+      repairable: true,
+    };
+  }
   if (error instanceof StoryboardInsufficientCreditsError) {
     return {
       code: "VD_INSUFFICIENT_CREDITS",
@@ -485,6 +503,16 @@ function mapDialogueAudioPlanGenerationError(
 function mapStartFrameGenerationError(
   error: unknown
 ): RunResult["errors"][number] {
+  if (
+    (error as { code?: unknown } | null)?.code ===
+    VD_CROSS_EPISODE_WARDROBE_MISMATCH
+  ) {
+    return {
+      code: VD_CROSS_EPISODE_WARDROBE_MISMATCH,
+      message: error instanceof Error ? error.message : String(error),
+      repairable: true,
+    };
+  }
   if ((error as { code?: unknown } | null)?.code === "VD_STORY_POLICY_RISK") {
     return {
       code: "VD_STORY_POLICY_RISK",
@@ -1157,6 +1185,99 @@ type PipelineCharacterLookRow = {
   data: unknown;
   hasPortrait?: boolean;
 };
+
+function buildCrossEpisodeWardrobeCatalog(
+  rows: readonly PipelineCharacterLookRow[]
+): CrossEpisodeWardrobeCatalogEntry[] {
+  const baseKeyById = new Map(
+    rows
+      .filter(row => row.parentCharacterId == null)
+      .map(row => [row.id, row.characterKey])
+  );
+  return rows.map(row => {
+    const data =
+      row.data && typeof row.data === "object" && !Array.isArray(row.data)
+        ? (row.data as Record<string, unknown>)
+        : {};
+    return {
+      characterKey: row.characterKey,
+      familyKey:
+        row.parentCharacterId == null
+          ? row.characterKey
+          : (baseKeyById.get(row.parentCharacterId) ?? row.characterKey),
+      variantType:
+        row.variantType === "outfit" || row.variantType === "age_stage"
+          ? row.variantType
+          : null,
+      variantLabel: row.variantLabel,
+      description:
+        typeof data.description === "string" ? data.description : null,
+    };
+  });
+}
+
+function buildCrossEpisodeWardrobeShots(storyboard: unknown): Array<{
+  shotNumber: number;
+  text: string;
+  characterKeys: string[];
+}> {
+  const root =
+    storyboard && typeof storyboard === "object" && !Array.isArray(storyboard)
+      ? (storyboard as Record<string, unknown>)
+      : {};
+  const shots = Array.isArray(root.shots) ? root.shots : [];
+  return shots.flatMap(raw => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+    const shot = raw as Record<string, unknown>;
+    const shotNumber = Number(shot.shot_number ?? shot.shotNumber);
+    if (!Number.isInteger(shotNumber) || shotNumber < 1) return [];
+    const refs = Array.isArray(shot.required_character_refs)
+      ? shot.required_character_refs
+      : Array.isArray(shot.characters)
+        ? shot.characters
+        : [];
+    return [
+      {
+        shotNumber,
+        text: [
+          shot.action,
+          shot.visual_description,
+          shot.description,
+          shot.narrative_purpose,
+        ]
+          .filter((value): value is string => typeof value === "string")
+          .join(" "),
+        characterKeys: refs
+          .filter((value): value is string => typeof value === "string")
+          .map(value => value.trim())
+          .filter(Boolean),
+      },
+    ];
+  });
+}
+
+function assertCrossEpisodeWardrobeContinuity(params: {
+  handoff?: CrossEpisodeWardrobeHandoff;
+  storyboard: unknown;
+  catalog: readonly CrossEpisodeWardrobeCatalogEntry[];
+}): void {
+  const mismatches = findCrossEpisodeWardrobeMismatches({
+    handoff: params.handoff,
+    catalog: params.catalog,
+    shots: buildCrossEpisodeWardrobeShots(params.storyboard),
+  });
+  if (mismatches.length === 0) return;
+  const first = mismatches[0]!;
+  const error = new Error(
+    `Cross-episode wardrobe mismatch at shot ${first.shotNumber}: ${first.characterKey} uses ${first.actualLookKey} (${first.actualWardrobe}) but must continue with ${first.expectedLookKey} (${first.expectedWardrobe}) from episode boundary.`
+  ) as Error & {
+    code?: string;
+    mismatches?: CrossEpisodeWardrobeMismatch[];
+  };
+  error.code = VD_CROSS_EPISODE_WARDROBE_MISMATCH;
+  error.mismatches = mismatches;
+  throw error;
+}
 
 /**
  * Resolve and persist per-shot looks before the paid image stage. This is
@@ -3381,6 +3502,55 @@ export class VerticalDramaEpisodePipeline {
     return row;
   }
 
+  /** Resolve the durable wardrobe boundary for a normal episode. */
+  private async resolveCrossEpisodeWardrobeHandoff(
+    owner: EpisodeRunOwner,
+    episode: Pick<VerticalDramaEpisodeRow, "episodeNumber" | "episodeKind">,
+    catalog: readonly CrossEpisodeWardrobeCatalogEntry[]
+  ): Promise<CrossEpisodeWardrobeHandoff | undefined> {
+    if (
+      !episode.episodeKind ||
+      episode.episodeKind === "special_tie_in" ||
+      episode.episodeNumber <= 1
+    ) {
+      return undefined;
+    }
+    const previousEpisodes = await db
+      .select({
+        id: verticalDramaEpisodes.id,
+        episodeNumber: verticalDramaEpisodes.episodeNumber,
+        episodeKind: verticalDramaEpisodes.episodeKind,
+        storyboard: verticalDramaEpisodes.storyboard,
+      })
+      .from(verticalDramaEpisodes)
+      .where(
+        and(
+          eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+          eq(verticalDramaEpisodes.userId, owner.userId),
+          eq(verticalDramaEpisodes.seriesId, owner.seriesId),
+          lt(verticalDramaEpisodes.episodeNumber, episode.episodeNumber)
+        )
+      )
+      .orderBy(desc(verticalDramaEpisodes.episodeNumber))
+      .limit(20);
+    for (const previous of previousEpisodes) {
+      if (previous.episodeKind === "special_tie_in" || !previous.storyboard) {
+        continue;
+      }
+      const handoff = buildCrossEpisodeWardrobeHandoff({
+        previousEpisode: {
+          id: previous.id,
+          episodeNumber: previous.episodeNumber,
+          episodeKind: previous.episodeKind,
+          storyboard: previous.storyboard,
+        },
+        catalog,
+      });
+      if (handoff) return handoff;
+    }
+    return undefined;
+  }
+
   /** Persist an immutable artifact-ledger row and return its id. */
   private async writeArtifact(
     owner: EpisodeRunOwner,
@@ -3702,9 +3872,14 @@ export class VerticalDramaEpisodePipeline {
 
     const characterRows = await db
       .select({
+        id: verticalDramaCharacters.id,
         characterKey: verticalDramaCharacters.characterKey,
         name: verticalDramaCharacters.name,
         role: verticalDramaCharacters.role,
+        parentCharacterId: verticalDramaCharacters.parentCharacterId,
+        variantLabel: verticalDramaCharacters.variantLabel,
+        variantType: verticalDramaCharacters.variantType,
+        data: verticalDramaCharacters.data,
       })
       .from(verticalDramaCharacters)
       .where(
@@ -3714,6 +3889,18 @@ export class VerticalDramaEpisodePipeline {
           eq(verticalDramaCharacters.seriesId, owner.seriesId)
         )
       );
+
+    const crossEpisodeWardrobeHandoff =
+      await this.resolveCrossEpisodeWardrobeHandoff(
+        owner,
+        episode,
+        buildCrossEpisodeWardrobeCatalog(
+          characterRows as PipelineCharacterLookRow[]
+        )
+      );
+    const memoryBundleForPrompt = crossEpisodeWardrobeHandoff
+      ? { ...memoryBundle, crossEpisodeWardrobeHandoff }
+      : memoryBundle;
 
     const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? null;
     // The active version is authoritative. The old top-level
@@ -3876,7 +4063,7 @@ export class VerticalDramaEpisodePipeline {
           role: c.role,
         })
       ),
-      memoryBundle,
+      memoryBundle: memoryBundleForPrompt,
       repairContext:
         !episodeRebuildContext && repairInstruction
           ? {
@@ -4155,6 +4342,15 @@ export class VerticalDramaEpisodePipeline {
     const variantRows = allCharacterRows.filter(
       (c: VdCharacterRosterRow) => c.parentCharacterId != null
     );
+    const crossEpisodeWardrobeCatalog = buildCrossEpisodeWardrobeCatalog(
+      allCharacterRows as PipelineCharacterLookRow[]
+    );
+    const crossEpisodeWardrobeHandoff =
+      await this.resolveCrossEpisodeWardrobeHandoff(
+        owner,
+        episode,
+        crossEpisodeWardrobeCatalog
+      );
 
     // Alias-aware speaker resolution (`planning/vd-character-identity-repair/
     // plan.md` — closes the plan's last-remaining gap). This series' durable
@@ -4410,6 +4606,7 @@ export class VerticalDramaEpisodePipeline {
       episodeDraft: episodeDraft ?? undefined,
       existingLocations:
         existingLocations.length > 0 ? existingLocations : undefined,
+      crossEpisodeWardrobeHandoff,
       // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`
       // W3) — the series' free-text `genre` column, already available on
       // the full `seriesRow` select above. Passed unconditionally (cheap
@@ -4501,7 +4698,18 @@ export class VerticalDramaEpisodePipeline {
         palette: seriesLookRegister?.palette,
       },
     });
-    return { ...generated, storyboard };
+    const storyboardWithHandoff = crossEpisodeWardrobeHandoff
+      ? ({
+          ...storyboard,
+          cross_episode_wardrobe_handoff: crossEpisodeWardrobeHandoff,
+        } as StoryboardShotgridOutput)
+      : storyboard;
+    assertCrossEpisodeWardrobeContinuity({
+      handoff: crossEpisodeWardrobeHandoff,
+      storyboard: storyboardWithHandoff,
+      catalog: crossEpisodeWardrobeCatalog,
+    });
+    return { ...generated, storyboard: storyboardWithHandoff };
   }
 
   /**
@@ -4919,6 +5127,20 @@ export class VerticalDramaEpisodePipeline {
           eq(verticalDramaCharacters.seriesId, owner.seriesId)
         )
       );
+    const crossEpisodeWardrobeCatalog = buildCrossEpisodeWardrobeCatalog(
+      characterIdentityRows as PipelineCharacterLookRow[]
+    );
+    const crossEpisodeWardrobeHandoff =
+      await this.resolveCrossEpisodeWardrobeHandoff(
+        owner,
+        episode,
+        crossEpisodeWardrobeCatalog
+      );
+    assertCrossEpisodeWardrobeContinuity({
+      handoff: crossEpisodeWardrobeHandoff,
+      storyboard,
+      catalog: crossEpisodeWardrobeCatalog,
+    });
     // Phase 1 of `planning/polished-toasting-gadget.md` (location visual
     // bible) — build a shot-number -> location lookup from the storyboard's
     // own `distinct_locations[]` (server-validated for full 1-9 coverage by
@@ -5137,6 +5359,7 @@ export class VerticalDramaEpisodePipeline {
       targetAudienceRegion,
       promptLanguage: effectiveImagePromptLanguage,
       episodePlanContext,
+      crossEpisodeWardrobeHandoff,
       previousFramesByShotNumber,
       ...(previousSceneVisualStates !== undefined ||
       Object.keys(sceneVisualStatesForProjection).length > 0

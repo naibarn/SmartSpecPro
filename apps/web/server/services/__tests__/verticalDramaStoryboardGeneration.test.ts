@@ -789,6 +789,41 @@ describe("generateStoryboardShotgrid", () => {
       );
     });
 
+    it("renders the inherited cross-episode wardrobe as a mandatory opening fact", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+      await generateStoryboardShotgrid(
+        baseParams({
+          crossEpisodeWardrobeHandoff: {
+            schemaVersion: "1.0",
+            continuityMode: "continue",
+            sourceEpisodeId: 249,
+            sourceEpisodeNumber: 11,
+            sourceShotNumber: 9,
+            characterLooks: [
+              {
+                characterKey: "char-pim-dress",
+                familyKey: "char-pim",
+                lookKey: "char-pim-dress",
+                lookLabel: "ชุดเดรส",
+                wardrobe: "ชุดเดรสสีดำ",
+              },
+            ],
+          },
+        })
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: { role: string }) => m.role === "user"
+      ).content;
+      expect(userMessage).toContain(
+        "CROSS-EPISODE WARDROBE CONTINUITY (MANDATORY)"
+      );
+      expect(userMessage).toContain("char-pim-dress");
+      expect(userMessage).toContain("source shot 9");
+    });
+
     it("does not strip a variant's characterKey from a shot's characters/required_character_refs (variant ids are real ids, not LLM-invented junk)", async () => {
       mockHasEnoughCredits.mockResolvedValue(true);
       mockExecute.mockResolvedValue(

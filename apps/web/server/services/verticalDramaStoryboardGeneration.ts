@@ -78,6 +78,10 @@ import {
   getActiveVerticalDramaShotDurations,
   type VerticalDramaDurationPlan,
 } from "@shared/verticalDramaSeries/durationProfiles";
+import {
+  renderCrossEpisodeWardrobeHandoff,
+  type CrossEpisodeWardrobeHandoff,
+} from "@shared/verticalDramaSeries/crossEpisodeWardrobeContinuity";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -482,6 +486,8 @@ export interface GenerateStoryboardShotgridParams {
     name: string;
     description: string;
   }>;
+  /** Structured wardrobe handoff from the nearest previous normal episode. */
+  crossEpisodeWardrobeHandoff?: CrossEpisodeWardrobeHandoff;
   /**
    * `referenceImageUrl` closes an upstream parity gap: the pinned
    * `storyboard-shotgrid-skill`'s `skill.json` is explicitly
@@ -794,6 +800,9 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
   const existingLocationsInstruction = existingLocationLines
     ? `Existing series locations (reuse a location_key EXACTLY when a shot's setting matches one of these — see "Location continuity and scene grouping" below):\n${existingLocationLines}`
     : null;
+  const crossEpisodeWardrobeInstruction = renderCrossEpisodeWardrobeHandoff(
+    params.crossEpisodeWardrobeHandoff
+  );
 
   // Deep story drafts hydration (W10-B, spec/section-16 refine-mode, added
   // 2026-07-08) — additive; only sent when `verticalDramaSeriesDeepStoryDrafts`
@@ -888,6 +897,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     storySource.cliffhanger ? `Cliffhanger: ${storySource.cliffhanger}` : null,
     sceneBeatInstruction,
     existingLocationsInstruction,
+    crossEpisodeWardrobeInstruction,
     `Characters (reference these ids in "characters" and "required_character_refs"). "required_character_refs" means characters physically visible in the primary room/scene only. For a caller who is heard or shown only through a phone/video-call screen, put the character id in "screen_caller_refs" instead; never put that caller in "required_character_refs". The caller's approved portrait will still be attached and the image prompt must show that portrait only inside the visible call screen:\n${characterLines}`,
     [
       "SHOT-LOCAL SUPPORTING PRESENCE (MANDATORY PER SHOT):",

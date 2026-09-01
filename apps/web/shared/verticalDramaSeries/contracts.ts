@@ -535,6 +535,8 @@ export type VerticalDramaStartFramePlan = {
    * membership, drops generated mismatches, and marks manual mismatches stale.
    */
   sceneVisualStates?: Record<string, VdSceneVisualState>;
+  /** Additive opening wardrobe handoff from the nearest previous normal episode. */
+  crossEpisodeWardrobeHandoff?: import("./crossEpisodeWardrobeContinuity").CrossEpisodeWardrobeHandoff;
   frames: Array<{
     shotNumber: number;
     imagePrompt: string;

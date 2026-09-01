@@ -193,6 +193,41 @@ describe("generateStartFrameRenderPlan", () => {
     expect(userMessage).toMatch(/always takes precedence/i);
   });
 
+  it("renders the inherited cross-episode wardrobe in the start-frame planning prompt", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateStartFrameRenderPlan(
+      baseParams({
+        crossEpisodeWardrobeHandoff: {
+          schemaVersion: "1.0",
+          continuityMode: "continue",
+          sourceEpisodeId: 249,
+          sourceEpisodeNumber: 11,
+          sourceShotNumber: 9,
+          characterLooks: [
+            {
+              characterKey: "char-pim-dress",
+              familyKey: "char-pim",
+              lookKey: "char-pim-dress",
+              lookLabel: "ชุดเดรส",
+              wardrobe: "ชุดเดรสสีดำ",
+            },
+          ],
+        },
+      })
+    );
+
+    const callArgs = mockExecute.mock.calls[0][0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toContain(
+      "CROSS-EPISODE WARDROBE CONTINUITY (MANDATORY)"
+    );
+    expect(userMessage).toContain("char-pim-dress");
+  });
+
   it("defaults to the Thai/Southeast Asian region descriptor when targetAudienceRegion is omitted", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute.mockResolvedValue(successResponse(validOutput()));

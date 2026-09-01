@@ -20,6 +20,7 @@ export * from "./assembly";
 export * from "./durationProfiles";
 export * from "./assemblyReadiness";
 export * from "./storyboardHandoff";
+export * from "./crossEpisodeWardrobeContinuity";
 export * from "./artifacts";
 export * from "./targetAudienceRegion";
 export * from "./characterCasting";

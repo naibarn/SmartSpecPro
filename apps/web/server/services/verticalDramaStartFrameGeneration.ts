@@ -99,6 +99,10 @@ import {
 // reading logic.
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
 import {
+  renderCrossEpisodeWardrobeHandoff,
+  type CrossEpisodeWardrobeHandoff,
+} from "@shared/verticalDramaSeries/crossEpisodeWardrobeContinuity";
+import {
   filterSceneContinuityLockBlockForShot,
   isSameSceneMembership,
   replaceSceneContinuityLockBlock,
@@ -327,6 +331,8 @@ export interface StartFrameRenderPlanProjection {
   imagePromptLanguage?: VerticalDramaPromptLanguage;
   /** See `VerticalDramaStartFramePlan.sceneVisualStates` in the shared contract. */
   sceneVisualStates?: Record<string, VdSceneVisualState>;
+  /** Additive opening wardrobe handoff from the nearest previous normal episode. */
+  crossEpisodeWardrobeHandoff?: CrossEpisodeWardrobeHandoff;
   frames: Array<{
     shotNumber: number;
     imagePrompt: string;
@@ -605,7 +611,8 @@ export function projectStartFramePlan(
   shotCharacterLookAssignmentsByShotNumber?: Map<
     number,
     VerticalDramaCharacterLookAssignment[]
-  >
+  >,
+  crossEpisodeWardrobeHandoff?: CrossEpisodeWardrobeHandoff
 ): StartFrameRenderPlanProjection {
   const summary = raw.render_plan_summary as Record<string, unknown>;
   const selectedImageModelId =
@@ -622,6 +629,7 @@ export function projectStartFramePlan(
     selectedImageModelId,
     ...(imagePromptLanguage ? { imagePromptLanguage } : {}),
     ...(sceneVisualStates ? { sceneVisualStates } : {}),
+    ...(crossEpisodeWardrobeHandoff ? { crossEpisodeWardrobeHandoff } : {}),
     frames: raw.start_frame_requests
       .slice()
       .sort((a, b) => a.shot_number - b.shot_number)
@@ -972,6 +980,8 @@ export interface GenerateStartFrameRenderPlanParams {
    * matching active breakdown item for this episode yet.
    */
   episodePlanContext?: string;
+  /** Structured wardrobe handoff from the nearest previous normal episode. */
+  crossEpisodeWardrobeHandoff?: CrossEpisodeWardrobeHandoff;
   /** Deterministic story-safety instruction supplied by the caller when available. */
   policySafetyContext?: string;
   /**
@@ -1236,6 +1246,9 @@ export function buildStartFrameRenderPlanUserPrompt(
   const episodePlanContextBlock = params.episodePlanContext
     ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${params.episodePlanContext}`
     : null;
+  const crossEpisodeWardrobeInstruction = renderCrossEpisodeWardrobeHandoff(
+    params.crossEpisodeWardrobeHandoff
+  );
   const policySafetyContext = params.policySafetyContext?.trim();
 
   return [
@@ -1243,6 +1256,7 @@ export function buildStartFrameRenderPlanUserPrompt(
     renderCriteriaVersionMarker(),
     `Episode duration: ${params.durationSeconds} seconds`,
     episodePlanContextBlock,
+    crossEpisodeWardrobeInstruction,
     policySafetyContext
       ? `POLICY-SAFE STORY DIRECTIVE (MANDATORY): ${policySafetyContext}`
       : null,
@@ -1690,25 +1704,30 @@ export async function generateStartFrameRenderPlan(
             ? ([s.shotNumber, barrierMultiView] as const)
             : null;
         })
-        .filter((entry): entry is readonly [number, VerticalDramaBarrierMultiView] =>
-          entry !== null
+        .filter(
+          (entry): entry is readonly [number, VerticalDramaBarrierMultiView] =>
+            entry !== null
         )
     ),
     new Map(
       params.storyboardShots
         .map(s =>
-          s.supportingPresence?.length || s.supportingPresenceCustomized === true
+          s.supportingPresence?.length ||
+          s.supportingPresenceCustomized === true
             ? ([s.shotNumber, s.supportingPresence ?? []] as const)
             : null
         )
         .filter(
-          (entry): entry is readonly [number, VerticalDramaSupportingPresence[]] =>
+          (
+            entry
+          ): entry is readonly [number, VerticalDramaSupportingPresence[]] =>
             entry !== null
         )
     ),
     shotCompositionByShotNumber,
     params.characters,
-    shotCharacterLookAssignmentsByShotNumber
+    shotCharacterLookAssignmentsByShotNumber,
+    params.crossEpisodeWardrobeHandoff
   );
 
   return {
