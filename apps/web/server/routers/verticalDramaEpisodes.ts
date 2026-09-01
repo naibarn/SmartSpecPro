@@ -114,6 +114,7 @@ import {
   generateMarketplaceReviewIdeas,
   listMarketplaceReviewIdeaModels,
   listMarketplaceReviewIdeaRuns,
+  resolveMarketplaceReviewScene,
   selectMarketplaceReviewIdea,
 } from "../services/verticalDramaMarketplaceReviewSkillAdapter";
 import {
@@ -9563,6 +9564,23 @@ export const verticalDramaEpisodesRouter = router({
   selectMarketplaceReviewIdea: verticalDramaSpecialTieInProcedure
     .input(z.object({ seriesId: z.string().min(1), runId: z.string().min(1), ideaId: z.string().min(1).max(128), selectedCharacterIds: z.array(z.string().trim().min(1).max(128)).max(4).optional() }))
     .mutation(async ({ ctx, input }) => selectMarketplaceReviewIdea({ actor: { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id }, seriesId: parseId(input.seriesId, "series id"), runId: parseId(input.runId, "idea run id"), ideaId: input.ideaId, selectedCharacterIds: input.selectedCharacterIds })),
+
+  resolveMarketplaceReviewScene: verticalDramaSpecialTieInProcedure
+    .input(z.object({
+      seriesId: z.string().min(1),
+      decision: z.enum(["reuse", "create"]),
+      locationId: z.number().int().positive().optional(),
+      sceneLabel: z.string().trim().min(1).max(255),
+      description: z.string().trim().min(1).max(4_000),
+    }))
+    .mutation(async ({ ctx, input }) => resolveMarketplaceReviewScene({
+      actor: { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+      seriesId: parseId(input.seriesId, "series id"),
+      decision: input.decision,
+      locationId: input.locationId,
+      sceneLabel: input.sceneLabel,
+      description: input.description,
+    })),
 
   enqueueSpecialTieInFootageAnalysis: verticalDramaSpecialTieInProcedure
     .input(z.object({

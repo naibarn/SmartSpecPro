@@ -37,6 +37,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import { verticalDramaLocations, type VerticalDramaLocationRow } from "../../drizzle/schema";
 import type { VerticalDramaStoryboardLocationGroup } from "@shared/verticalDramaSeries/storyboardLocations";
+import { normalizeVerticalDramaLocationName } from "@shared/verticalDramaSeries/locationIdentity";
 
 /** Matches `verticalDramaLocations.locationKey`'s `varchar(64)` column limit. */
 const LOCATION_KEY_MAX_LENGTH = 64;
@@ -92,7 +93,7 @@ function generateUniqueLocationKey(baseKey: string, usedKeys: Set<string>): stri
  * names (e.g. "ร้านกาแฟ" vs "ร้านกาแฟ (สาขา 2)") stay distinct.
  */
 function normalizeLocationName(name: string): string {
-  return name.trim().toLowerCase().replace(/\s+/g, " ");
+  return normalizeVerticalDramaLocationName(name);
 }
 
 /**

@@ -20,6 +20,13 @@ describe("special tie-in contracts", () => {
     expect(parsed.durationSeconds).toBe(12);
     expect(parsed.aspectRatio).toBe("9:16");
   });
+  it("accepts an optional canonical scene identity for product tie-ins", () => {
+    const parsed = specialTieInInputSchema.parse({
+      ...validInput,
+      sceneLocationKey: "location-living-room",
+    });
+    expect(parsed.sceneLocationKey).toBe("location-living-room");
+  });
   it("enforces bounded idea and references", () => {
     expect(() =>
       specialTieInInputSchema.parse({ ...validInput, idea: "x".repeat(12_001) })

@@ -75,11 +75,43 @@ type Reference = {
   provenance?: Record<string, unknown>;
 };
 
+type SceneSuggestion = {
+  sceneLabel: string;
+  description: string;
+  candidates: Array<{
+    locationId: string;
+    locationKey: string;
+    name: string;
+    score: number;
+  }>;
+};
+
+export const DEFAULT_SPECIAL_TIE_IN_DIALOGUE_MODE =
+  "character_dialogue" as const;
+
+export function resolveSpecialTieInDialogueMode(
+  initialInput?: Pick<SpecialTieInInput, "dialogueMode"> | null,
+): "none" | "character_dialogue" {
+  return initialInput?.dialogueMode ?? DEFAULT_SPECIAL_TIE_IN_DIALOGUE_MODE;
+}
+
 type FootageBrollAsset = {
   manifest: MediaSourceManifest;
   previewUrl: string;
   thumbnailUrl?: string | null;
 };
+
+export function resolveSpecialTieInActionState(input: {
+  createMutationPending: boolean;
+  finalSubmitPending: boolean;
+  materializeMutationPending: boolean;
+}) {
+  return {
+    finalSubmitPending:
+      input.createMutationPending || input.finalSubmitPending,
+    materializeReferencesPending: input.materializeMutationPending,
+  };
+}
 
 function parseEditableDialogueScript(
   script: string,
@@ -354,7 +386,15 @@ export function SpecialTieInEpisodeDialog({
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
     null
   );
+  const [sceneSuggestions, setSceneSuggestions] = useState<SceneSuggestion[]>(
+    []
+  );
+  const [selectedSceneLocationKey, setSelectedSceneLocationKey] = useState<
+    string | null
+  >(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMaterializingReferences, setIsMaterializingReferences] =
+    useState(false);
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
   const [ideaHistory, setIdeaHistory] = useState<Array<{ runId: string; ideas: MarketplaceReviewIdea[] }>>([]);
   const [freshIdeaRunId, setFreshIdeaRunId] = useState<string | null>(null);
@@ -391,6 +431,7 @@ export function SpecialTieInEpisodeDialog({
         dialogueMode,
         referenceType,
         referenceImageCount: Math.max(1, references.length),
+        characterReferenceCount: characterIds.length,
       },
       { enabled: open }
     );
@@ -449,7 +490,9 @@ export function SpecialTieInEpisodeDialog({
         open &&
         (referenceType === "location" ||
           referenceType === "store" ||
-          referenceType === "mixed"),
+          referenceType === "mixed" ||
+          Boolean(selectedMarketplaceIdea) ||
+          sceneSuggestions.length > 0),
       staleTime: 15_000,
     }
   );
@@ -472,6 +515,8 @@ export function SpecialTieInEpisodeDialog({
     trpc.verticalDramaEpisodes.generateMarketplaceReviewIdeas.useMutation();
   const selectIdeaMutation =
     trpc.verticalDramaEpisodes.selectMarketplaceReviewIdea.useMutation();
+  const resolveSceneMutation =
+    trpc.verticalDramaEpisodes.resolveMarketplaceReviewScene.useMutation();
   const footageAnalysisMutation =
     trpc.verticalDramaEpisodes.enqueueSpecialTieInFootageAnalysis.useMutation();
   const footagePrepareMutation =
@@ -557,6 +602,8 @@ export function SpecialTieInEpisodeDialog({
     setVideoModelId(initialInput.videoModelId);
     setIdeaLlmModelId("auto");
     setSelectedMarketplaceIdea(initialInput.marketplaceReviewIdea ?? null);
+    setSelectedSceneLocationKey(initialInput.sceneLocationKey ?? null);
+    setSceneSuggestions([]);
     if (initialInput.footage) {
       setFootageAssetId(Number(initialInput.footage.sourceMediaAssetId.replace(/^media-/, "")));
       setFootageAnalysisJobId(initialInput.footage.analysisJobId);
@@ -1052,6 +1099,13 @@ export function SpecialTieInEpisodeDialog({
   const chooseMarketplaceIdea = async (runId: string, candidate: MarketplaceReviewIdea) => {
     try {
       const result = await selectIdeaMutation.mutateAsync({ seriesId, runId, ideaId: candidate.ideaId, selectedCharacterIds: characterIds.slice(0, 4) });
+      const suggestions = (result.slotRequests.sceneSuggestions ?? []) as SceneSuggestion[];
+      const normalizedPrimaryLabel = candidate.scene.location.trim().toLocaleLowerCase();
+      const primaryScene = result.slotRequests.scenes.find(
+        scene => scene.label.trim().toLocaleLowerCase() === normalizedPrimaryLabel
+      );
+      setSceneSuggestions(suggestions);
+      setSelectedSceneLocationKey(primaryScene?.locationKey ?? null);
       setSelectedIdeaId(candidate.ideaId);
       setSelectedMarketplaceIdea(candidate);
       setIdea(candidate.episodeStory);
@@ -1070,9 +1124,62 @@ export function SpecialTieInEpisodeDialog({
       setSpeakerCharacterIds(matchedSpeakerIds);
       setDialogueMode(matchedSpeakerIds.length > 0 ? "character_dialogue" : "none");
       setDialogueBrief(candidate.dialogueScript);
-      toast.success(lang === "th" ? `เลือกไอเดียแล้ว เพิ่ม slot ลุค ${result.slotRequests.looks.length} และฉาก ${result.slotRequests.scenes.length} รายการ` : "Idea selected and missing look/scene slots were added");
+      toast.success(
+        lang === "th"
+          ? suggestions.length > 0
+            ? `เลือกไอเดียแล้ว พบฉากที่อาจซ้ำ ${suggestions.length} รายการ กรุณาตรวจสอบก่อนสร้างตอน`
+            : `เลือกไอเดียแล้ว เพิ่ม slot ลุค ${result.slotRequests.looks.length} และฉาก ${result.slotRequests.scenes.length} รายการ`
+          : suggestions.length > 0
+            ? `${suggestions.length} possible duplicate scene(s) need review before creating the episode`
+            : "Idea selected and missing look/scene slots were added"
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : lang === "th" ? "เลือกไอเดียไม่สำเร็จ" : "Could not select idea");
+    }
+  };
+
+  const resolveSceneSuggestion = async (
+    suggestion: SceneSuggestion,
+    decision: "reuse" | "create",
+    locationId?: string,
+  ) => {
+    try {
+      const result = await resolveSceneMutation.mutateAsync({
+        seriesId,
+        decision,
+        ...(locationId ? { locationId: Number(locationId) } : {}),
+        sceneLabel: suggestion.sceneLabel,
+        description: suggestion.description,
+      });
+      const normalizedLabel = suggestion.sceneLabel.trim().toLocaleLowerCase();
+      if (
+        selectedMarketplaceIdea?.scene.location.trim().toLocaleLowerCase() ===
+        normalizedLabel
+      ) {
+        setSelectedSceneLocationKey(result.locationKey);
+      }
+      setSceneSuggestions(current =>
+        current.filter(
+          item => item.sceneLabel.trim().toLocaleLowerCase() !== normalizedLabel
+        )
+      );
+      toast.success(
+        lang === "th"
+          ? decision === "reuse"
+            ? "ใช้ฉากเดิมแล้ว"
+            : "สร้างฉากใหม่แล้ว"
+          : decision === "reuse"
+            ? "Existing scene selected"
+            : "New scene created"
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : lang === "th"
+            ? "บันทึกการเลือกฉากไม่สำเร็จ"
+            : "Could not save the scene decision"
+      );
     }
   };
 
@@ -1120,10 +1227,20 @@ export function SpecialTieInEpisodeDialog({
             ? "เพิ่มภาพจาก Marketplace ไม่สำเร็จ"
             : "Could not add Marketplace images"
       );
+    } finally {
+      setIsMaterializingReferences(false);
     }
   };
 
   const submit = async () => {
+    if (sceneSuggestions.length > 0) {
+      toast.error(
+        lang === "th"
+          ? "กรุณาตรวจสอบฉากที่อาจซ้ำให้ครบก่อนสร้างตอน"
+          : "Review all possible duplicate scenes before creating the episode"
+      );
+      return;
+    }
     const reviewedMarketplaceIdea = selectedMarketplaceIdea
       ? {
           ...selectedMarketplaceIdea,
@@ -1160,6 +1277,7 @@ export function SpecialTieInEpisodeDialog({
       allowAdditionalCharacters,
       lockCharacterReferences,
       lockReferenceImages,
+      sceneLocationKey: selectedSceneLocationKey ?? undefined,
       marketplaceReviewIdea: reviewedMarketplaceIdea,
       footage: (() => {
         const guide = footageGuideSchema.safeParse(footageAnalysisOutput?.guide);
@@ -1199,6 +1317,7 @@ export function SpecialTieInEpisodeDialog({
       );
       return;
     }
+    setIsSubmitting(true);
     try {
       if (onSubmitInput) {
         await onSubmitInput(parsed.data);
@@ -1250,11 +1369,14 @@ export function SpecialTieInEpisodeDialog({
     setSelectedProductId(null);
     setSelectedLocationId(null);
     setIsSubmitting(false);
+    setIsMaterializingReferences(false);
     setIdeaHistory([]);
     setFreshIdeaRunId(null);
     setShowIdeaHistory(false);
     setSelectedIdeaId(null);
     setSelectedMarketplaceIdea(null);
+    setSceneSuggestions([]);
+    setSelectedSceneLocationKey(null);
     setFootageAssetId(null);
     setFootageFileName("");
     setFootagePreviewUrl(null);
@@ -1584,7 +1706,7 @@ export function SpecialTieInEpisodeDialog({
                         <AuthenticatedMediaImage
                           src={reference.previewUrl}
                           alt={reference.label ?? reference.source}
-                          className="mr-2 h-10 w-10 shrink-0 rounded object-cover md:mb-2 md:mr-0 md:h-28 md:w-full"
+                          className="mr-2 h-24 w-24 shrink-0 rounded object-cover md:mb-2 md:mr-0 md:h-44 md:w-full"
                           loadingLabel={lang === "th" ? "กำลังโหลดภาพ..." : "Loading image..."}
                           errorLabel={lang === "th" ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"}
                         />
@@ -1785,6 +1907,78 @@ export function SpecialTieInEpisodeDialog({
               ) : null}
             </div>
 
+            {sceneSuggestions.length > 0 ? (
+              <section
+                className="space-y-3 rounded-md border border-amber-300/70 bg-amber-50/50 p-3 dark:bg-amber-950/10"
+                aria-labelledby="special-scene-similar-heading"
+              >
+                <div className="space-y-1">
+                  <h3
+                    id="special-scene-similar-heading"
+                    className="font-medium text-amber-950 dark:text-amber-100"
+                  >
+                    {lang === "th"
+                      ? "พบชื่อฉากที่อาจซ้ำ"
+                      : "Possible duplicate scenes found"}
+                  </h3>
+                  <p className="text-xs text-amber-900/80 dark:text-amber-200/80">
+                    {lang === "th"
+                      ? "ระบบจะไม่รวมฉากให้อัตโนมัติ กรุณาเลือกใช้ฉากเดิมหรือสร้างฉากใหม่ก่อนสร้างตอน"
+                      : "Scenes are never fuzzy-merged automatically. Reuse an existing scene or create a new one before continuing."}
+                  </p>
+                </div>
+                {sceneSuggestions.map(suggestion => (
+                  <div
+                    key={suggestion.sceneLabel}
+                    className="space-y-2 rounded-md border bg-background p-3"
+                  >
+                    <p className="text-sm font-medium">{suggestion.sceneLabel}</p>
+                    <div className="space-y-2">
+                      {suggestion.candidates.map(candidate => (
+                        <div
+                          key={candidate.locationKey}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2"
+                        >
+                          <span className="text-sm">
+                            {candidate.name}
+                            <Badge variant="secondary" className="ml-2">
+                              {Math.round(candidate.score * 100)}%
+                            </Badge>
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={resolveSceneMutation.isPending}
+                            onClick={() =>
+                              void resolveSceneSuggestion(
+                                suggestion,
+                                "reuse",
+                                candidate.locationId
+                              )
+                            }
+                          >
+                            {lang === "th" ? "ใช้ฉากเดิม" : "Reuse scene"}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={resolveSceneMutation.isPending}
+                      onClick={() =>
+                        void resolveSceneSuggestion(suggestion, "create")
+                      }
+                    >
+                      {lang === "th" ? "สร้างฉากใหม่" : "Create new scene"}
+                    </Button>
+                  </div>
+                ))}
+              </section>
+            ) : null}
+
             {referenceType === "location" ||
             referenceType === "store" ||
             referenceType === "mixed" ? (
@@ -1905,7 +2099,7 @@ export function SpecialTieInEpisodeDialog({
                           toggleCharacter(id);
                         }
                       }}
-                      className={`flex min-h-16 cursor-pointer items-center gap-2 rounded-md border p-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${selected ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "hover:bg-muted/50"}`}
+                      className={`flex min-h-16 cursor-pointer items-center gap-2 rounded-md border p-2 text-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${selected ? "border-primary bg-primary/5 ring-1 ring-primary/30" : ""}`}
                     >
                       <Checkbox
                         id={`special-tie-in-character-${id}`}

@@ -8,7 +8,6 @@ import { db } from "../db";
 import {
   mediaAssets,
   verticalDramaCharacters,
-  verticalDramaLocations,
   verticalDramaMarketplaceReviewIdeaRuns,
   verticalDramaSeries,
 } from "../../drizzle/schema";
@@ -22,6 +21,11 @@ import {
   deductCredits,
   refundCredits,
 } from "./creditService";
+import {
+  findSpecialStorySceneMatches,
+  reconcileSpecialStorySceneSlot,
+  resolveSpecialStorySceneSlotDecision,
+} from "./verticalDramaSpecialReferences";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectBestLlmModel } from "./intelligentModelSelector";
 import { isAvailable } from "./providerHealth";
@@ -1117,7 +1121,19 @@ export async function selectMarketplaceReviewIdea(input: {
     scenes: [] as Array<{
       locationId: string;
       label: string;
+      locationKey: string;
       status: "pending";
+      reused?: boolean;
+    }>,
+    sceneSuggestions: [] as Array<{
+      sceneLabel: string;
+      description: string;
+      candidates: Array<{
+        locationId: string;
+        locationKey: string;
+        name: string;
+        score: number;
+      }>;
     }>,
   };
   for (const request of idea.lookSlotRequests) {
@@ -1203,37 +1219,100 @@ export async function selectMarketplaceReviewIdea(input: {
         status: "pending",
       });
   }
-  for (const request of idea.sceneSlotRequests) {
-    const key = `tie-in-${crypto.createHash("sha256").update(`${input.seriesId}:${request.sceneLabel}`).digest("hex").slice(0, 56)}`;
-    const [location] = await db
-      .insert(verticalDramaLocations)
-      .values({
-        tenantId: input.actor.tenantId,
-        userId: input.actor.userId,
-        seriesId: input.seriesId,
-        locationKey: key,
-        name: request.sceneLabel,
-        data: {
-          description: request.description,
-          slotStatus: "pending",
-          slotReason: request.reason,
-          source: "marketplace_review_idea",
-        },
-      })
-      .onConflictDoUpdate({
-        target: [
-          verticalDramaLocations.seriesId,
-          verticalDramaLocations.locationKey,
-        ],
-        set: { updatedAt: new Date() },
-      })
-      .returning({ id: verticalDramaLocations.id });
-    if (location)
+  // The scene is required even when the model correctly reports no *new*
+  // scene slot request: a product tie-in still needs a normal background
+  // location before its start-frame prompt can resolve a reference image.
+  const primarySceneRequest = {
+    sceneLabel: idea.scene.location,
+    description: [
+      `สถานที่: ${idea.scene.location}`,
+      idea.scene.time ? `เวลา: ${idea.scene.time}` : null,
+      `บรรยากาศ: ${idea.scene.atmosphere}`,
+      ...idea.scene.beats.map((beat, index) => `จังหวะฉาก ${index + 1}: ${beat}`),
+    ]
+      .filter((part): part is string => Boolean(part))
+      .join("; "),
+    reason: "ฉากพื้นหลังหลักของเรื่อง Tie-in",
+  };
+  const sceneRequests = [...idea.sceneSlotRequests];
+  if (
+    primarySceneRequest.sceneLabel.trim() &&
+    !sceneRequests.some(
+      request =>
+        request.sceneLabel.trim().toLocaleLowerCase() ===
+        primarySceneRequest.sceneLabel.trim().toLocaleLowerCase()
+    )
+  ) {
+    sceneRequests.push(primarySceneRequest);
+  }
+  const seenSceneLabels = new Set<string>();
+  for (const request of sceneRequests) {
+    if (!request.sceneLabel.trim()) continue;
+    const normalizedLabel = request.sceneLabel.trim().toLocaleLowerCase();
+    if (seenSceneLabels.has(normalizedLabel)) continue;
+    seenSceneLabels.add(normalizedLabel);
+    const matches = await findSpecialStorySceneMatches({
+      actor: input.actor,
+      seriesId: input.seriesId,
+      label: request.sceneLabel,
+    });
+    if (matches.exact) {
       slotResults.scenes.push({
-        locationId: String(location.id),
+        locationId: String(matches.exact.id),
+        locationKey: matches.exact.locationKey,
         label: request.sceneLabel,
         status: "pending",
+        reused: true,
       });
+      continue;
+    }
+    if (matches.similar.length > 0) {
+      slotResults.sceneSuggestions.push({
+        sceneLabel: request.sceneLabel,
+        description: request.description,
+        candidates: matches.similar.map(candidate => ({
+          locationId: String(candidate.locationId),
+          locationKey: candidate.locationKey,
+          name: candidate.name,
+          score: candidate.score,
+        })),
+      });
+      continue;
+    }
+    const location = await reconcileSpecialStorySceneSlot({
+      actor: input.actor,
+      seriesId: input.seriesId,
+      label: request.sceneLabel,
+      description: request.description,
+      metadata: {
+        source: "marketplace_review_idea",
+        slotReason: request.reason,
+      },
+    });
+    slotResults.scenes.push({
+      locationId: String(location.locationId),
+      locationKey: location.locationKey,
+      label: request.sceneLabel,
+      status: "pending",
+    });
   }
   return { idea, runId: String(row.id), slotRequests: slotResults };
+}
+
+export async function resolveMarketplaceReviewScene(input: {
+  actor: MarketplaceReviewIdeaActor;
+  seriesId: number;
+  decision: "reuse" | "create";
+  locationId?: number;
+  sceneLabel: string;
+  description: string;
+}) {
+  return resolveSpecialStorySceneSlotDecision({
+    actor: input.actor,
+    seriesId: input.seriesId,
+    decision: input.decision,
+    locationId: input.locationId,
+    label: input.sceneLabel,
+    description: input.description,
+  });
 }

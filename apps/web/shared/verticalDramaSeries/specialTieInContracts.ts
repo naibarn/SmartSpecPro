@@ -71,6 +71,8 @@ export const specialTieInInputSchema = z
     allowAdditionalCharacters: z.boolean().default(false),
     lockCharacterReferences: z.boolean().default(true),
     lockReferenceImages: z.boolean().default(true),
+    /** Canonical series scene selected during near-duplicate review. */
+    sceneLocationKey: z.string().trim().min(1).max(64).optional(),
     marketplaceReviewIdea: marketplaceReviewIdeaSchema.optional(),
     footage: z
       .object({
@@ -163,8 +165,15 @@ export type SpecialEpisodeData = {
   modelSnapshots: { image: SpecialModelSnapshot; video: SpecialModelSnapshot };
   output?: {
     shotCount: number;
+    /** Materialized story-first beats used by the existing prompt consumers. */
+    storySummaries?: Array<{
+      shotNumber: number;
+      summary: string;
+    }>;
     assumptions?: string[];
     qualityControl?: unknown;
+    source?: "llm" | "deterministic_fallback";
+    needsReview?: boolean;
   };
 };
 export type SpecialTieInShotContract = {
