@@ -16,6 +16,7 @@ import {
 } from "./hyperframes/limits";
 import { workerSeriesScopeValues } from "./workerSeriesControlPlane";
 export * from "./comfyControlContracts";
+export * from "./workerLocalLlm";
 
 export const WORKER_RUNTIME_PROTOCOL_VERSION = "2026-04-06";
 export const WORKER_RUNTIME_FAMILY_SCHEMA_VERSION = "2026-04-08";
@@ -168,6 +169,7 @@ export const workerScopeValues = [
   "workers:report",
   "workers:jobs:read",
   "workers:diagnostics",
+  "llm:inventory",
   ...workerSeriesScopeValues,
   "comfy:profiles:read",
   "comfy:profiles:write",

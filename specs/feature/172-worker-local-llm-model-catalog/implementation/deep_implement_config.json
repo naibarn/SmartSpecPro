@@ -1,0 +1,34 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/172-worker-local-llm-model-catalog/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/172-worker-local-llm-model-catalog/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-shared-contracts",
+    "section-02-projection-inventory-acl",
+    "section-03-catalog-routing",
+    "section-04-worker-runtime",
+    "section-05-ui-selectors",
+    "section-06-lifecycle-billing-rollout"
+  ],
+  "sections_state": {
+    "section-01-shared-contracts": "completed",
+    "section-02-projection-inventory-acl": "completed",
+    "section-03-catalog-routing": "completed",
+    "section-04-worker-runtime": "completed",
+    "section-05-ui-selectors": "completed",
+    "section-06-lifecycle-billing-rollout": "completed"
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-01T04:33:07.475455+00:00"
+}

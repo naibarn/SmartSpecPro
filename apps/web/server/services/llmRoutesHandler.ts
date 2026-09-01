@@ -71,6 +71,8 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
   let resolvedSelection;
   try {
     resolvedSelection = await resolveChatModelSelection({
+      tenantId,
+      userId,
       bodyModel: model,
       bodyPreferredProvider: preferredProvider,
       bodyModelSelection: modelSelection,
@@ -103,12 +105,18 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
     messages,
     stream: false,
     userId,
+    tenantId,
     conversationId,
     preferredProvider: resolvedSelection.preferredProviderId,
     strictProviderPin: resolvedSelection.strictProviderPin,
   });
 
   switch (result.type) {
+    case "worker_job": {
+      res.status(202).json({ queued: true, jobId: result.jobId, sourceType: "worker_app", resolvedModelId: effectiveModel });
+      return;
+    }
+
     case "success": {
       const data = result.response;
       const inputTokens = data?.usage?.prompt_tokens ?? 0;
@@ -239,6 +247,8 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
   let resolvedSelection;
   try {
     resolvedSelection = await resolveChatModelSelection({
+      tenantId,
+      userId,
       bodyModel: model,
       bodyPreferredProvider: preferredProvider,
       bodyModelSelection: modelSelection,
@@ -279,12 +289,20 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
     messages,
     stream: true,
     userId,
+    tenantId,
     conversationId,
     preferredProvider: resolvedSelection.preferredProviderId,
     strictProviderPin: resolvedSelection.strictProviderPin,
   });
 
   switch (result.type) {
+    case "worker_job": {
+      res.write(`event: worker_job\ndata: ${JSON.stringify({ queued: true, jobId: result.jobId, sourceType: "worker_app", resolvedModelId: effectiveModel })}\n\n`);
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+
     case "success": {
       const data = result.response;
       const inputTokens = data?.usage?.prompt_tokens ?? 0;

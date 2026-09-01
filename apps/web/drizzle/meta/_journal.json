@@ -1800,6 +1800,13 @@
       "when": 1788080000000,
       "tag": "0270_presentation_builder_image_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 261,
+      "version": "7",
+      "when": 1788230000001,
+      "tag": "0276_worker_local_llm_catalog",
+      "breakpoints": true
     }
   ]
 }

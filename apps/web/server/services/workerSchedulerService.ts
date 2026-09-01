@@ -543,6 +543,23 @@ export function workerJobMatchesSelection(
     string,
     unknown
   >;
+  if (job.jobType === "llm_invoke") {
+    const requiredFamilies = Array.isArray(requirements.capabilityFamilies)
+      ? requirements.capabilityFamilies.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      : [];
+    const modelRef = typeof requirements.modelRef === "string" ? requirements.modelRef : "";
+    const inventoryRevision = requirements.inventoryRevision;
+    // LLM jobs are never claimable on an empty hint set or an incomplete
+    // server binding. This is stricter than the legacy generic matcher.
+    if (!modelRef || !/^wllm_[A-Za-z0-9_-]{8,128}$/.test(modelRef) ||
+      !Number.isInteger(inventoryRevision) || requiredFamilies.length === 0) {
+      return false;
+    }
+    if (!capabilityHints.includes("llm_gateway") || !capabilityHints.includes("llm_invoke")) {
+      return false;
+    }
+    return requiredFamilies.every((family) => capabilityHints.includes(family));
+  }
   const preferredWorkerId =
     typeof requirements.preferredWorkerId === "string"
       ? requirements.preferredWorkerId

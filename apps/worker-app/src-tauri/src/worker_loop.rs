@@ -47,8 +47,9 @@ use crate::runtime_manifest::{
 };
 use crate::series_workspace::{load_root_state, load_root_state_for_series, validate_local_root};
 use crate::settings::WorkerAppSettings;
+use crate::local_llm_registry::{load_registry, LocalLlmRegistry};
 use crate::worker_control_plane::{
-    build_worker_heartbeat_payload, claim_worker_job, download_worker_bytes, download_worker_file, get_worker_json,
+    build_worker_heartbeat_payload, claim_worker_job, download_worker_bytes, download_worker_file, get_worker_json, post_worker_json_with_idempotency,
     publish_vertical_drama_media, report_worker_job_event, send_worker_heartbeat,
     upload_worker_artifact_file, WorkerClaimRequest, WorkerClaimResponse, WorkerJobEventPayload,
     WorkerLoopConnection,
@@ -60,7 +61,7 @@ use crate::worker_executor::{
     build_remotion_render_video_output_json, build_remotion_render_video_progress_event,
     build_remotion_render_video_sidecar_command, build_required_artifact_uploads,
     build_sidecar_command, build_sidecar_manifest, build_worker_job_display_metadata,
-    classify_job_type, compact_json_artifact_metadata, parse_remotion_sidecar_event,
+    classify_job_type, compact_json_artifact_metadata, execute_local_llm_job, parse_remotion_sidecar_event,
     prepare_hyperframes_execution_plan, prepare_remotion_render_video_execution_plan,
     remotion_render_video_content_hash, sanitize_segment, validate_final_video_artifact,
     validate_workspace_path, ArtifactUploadPlan, ClaimedWorkerJob, RemotionSidecarEvent,
@@ -958,6 +959,7 @@ async fn worker_loop_tick(
     let hermes_active_now = hermes_active.load(Ordering::Relaxed);
     heartbeat(
         executor,
+        app_data_dir,
         &connection_snapshot,
         &settings_snapshot,
         &doctor,
@@ -1043,6 +1045,14 @@ async fn worker_loop_tick(
                     hints.push(COMFY_VIDEO_GENERATION_JOB_TYPE.into());
                     hints.push(COMFY_WORKFLOW_RUN_JOB_TYPE.into());
                     hints.push("gpu-nvidia".into());
+                }
+                if let Ok(registry) = load_registry(app_data_dir) {
+                    let has_enabled_provider = registry.providers.iter().any(|provider| provider.enabled);
+                    if has_enabled_provider && registry.models.iter().any(|model| model.enabled) {
+                        hints.push("llm_gateway".into());
+                        hints.push("llm_invoke".into());
+                        hints.extend(registry.models.iter().flat_map(|model| model.capabilities.iter().cloned()));
+                    }
                 }
                 hints
             },
@@ -1260,6 +1270,25 @@ async fn worker_loop_tick(
             });
             Ok(())
         }
+        WorkerJobKind::LocalLlmInvoke => {
+            let result = execute_local_llm_job(app_data_dir, &job, cancel).await;
+            match result {
+                Ok(output) => {
+                    let event = WorkerEventPlan {
+                        event_type: "job.completed".into(),
+                        sequence_number: 1,
+                        lease_owner_token: job.lease_owner_token.clone(),
+                        assignment_attempt: job.assignment_attempt.clone(),
+                        payload_json: json!({ "status": "completed", "result": output }),
+                    };
+                    send_event_with_refresh(app_data_dir, connection, &job.id, event).await
+                }
+                Err(error) => {
+                    let failure = build_failure_event(&job, 1, "local_llm_failed", &error);
+                    send_event_with_refresh(app_data_dir, connection, &job.id, failure).await
+                }
+            }
+        }
         WorkerJobKind::Unknown => {
             // The server offered a job type this Worker App build does not
             // know how to execute — fail explicitly rather than silently
@@ -1443,6 +1472,7 @@ fn build_heartbeat_runtime_metadata(
 
 async fn heartbeat(
     executor: &Arc<Mutex<ExecutorState>>,
+    app_data_dir: &Path,
     connection: &WorkerLoopConnection,
     settings: &WorkerAppSettings,
     doctor: &DoctorSummary,
@@ -1485,6 +1515,66 @@ async fn heartbeat(
     );
     let response = send_worker_heartbeat(connection, &payload).await?;
     apply_hermes_heartbeat_warning(executor, &response.warning_flags_json);
+    if let Err(error) = sync_local_llm_inventory(
+        connection,
+        &load_registry(app_data_dir).unwrap_or_default(),
+    )
+    .await
+    {
+        // Inventory is an auxiliary projection. A temporary sync failure must
+        // not take the control-plane heartbeat or legacy job lanes offline.
+        crate::diagnostics::log_error(
+            app_data_dir,
+            "local_llm.inventory_sync_failed",
+            json!({ "error": error }),
+        );
+    }
+    Ok(())
+}
+
+fn build_local_llm_inventory(registry: &LocalLlmRegistry) -> Value {
+    json!({
+        "schemaVersion": "worker-llm-inventory/1",
+        "inventoryRevision": registry.inventory_revision,
+        "providers": registry.providers.iter().map(|provider| json!({
+            "localProviderId": provider.local_provider_id,
+            "providerKind": provider.provider_kind,
+            "displayName": provider.display_name,
+            "enabled": provider.enabled,
+            "models": registry.models.iter()
+                .filter(|model| model.local_provider_id == provider.local_provider_id)
+                .map(|model| json!({
+                    "localModelId": model.local_model_id,
+                    "providerModelId": model.provider_model_id,
+                    "displayName": model.display_name,
+                    "capabilities": model.capabilities,
+                    "contextWindow": model.context_window,
+                    "readiness": if model.enabled { "ready" } else { "blocked" },
+                    "metadata": {},
+                }))
+                .collect::<Vec<_>>(),
+            "metadata": {},
+        })).collect::<Vec<_>>(),
+    })
+}
+
+async fn sync_local_llm_inventory(
+    connection: &WorkerLoopConnection,
+    registry: &LocalLlmRegistry,
+) -> Result<(), String> {
+    let inventory = build_local_llm_inventory(registry);
+    let serialized = serde_json::to_vec(&inventory).map_err(|error| error.to_string())?;
+    let hash = Sha256::digest(serialized);
+    let idempotency_key = format!("inventory-{:x}", hash);
+    let _: Value = post_worker_json_with_idempotency(
+        &connection.server_url,
+        &format!("/api/workers/{}/llm/inventory", connection.worker_id),
+        &connection.tokens.execution_token,
+        &inventory,
+        &connection.device_proof,
+        &idempotency_key,
+    )
+    .await?;
     Ok(())
 }
 
@@ -3670,6 +3760,7 @@ async fn execute_hyperframes_job_inner(
                 .await?;
         let _ = heartbeat(
             executor,
+            app_data_dir,
             &connection_snapshot,
             settings,
             doctor,
@@ -4239,6 +4330,7 @@ async fn run_remotion_sidecar_and_collect(
             let connection_snapshot = clone_connection(connection)?;
             let _ = heartbeat(
                 executor,
+                app_data_dir,
                 &connection_snapshot,
                 settings,
                 doctor,
@@ -4431,6 +4523,7 @@ async fn stage_hyperframes_source_videos(
         let connection_snapshot = clone_connection(connection)?;
         let _ = heartbeat(
             executor,
+            app_data_dir,
             &connection_snapshot,
             settings,
             doctor,
@@ -4797,6 +4890,7 @@ async fn run_sidecar_with_active_heartbeat(
             let connection_snapshot = clone_connection(connection)?;
             let _ = heartbeat(
                 executor,
+                app_data_dir,
                 &connection_snapshot,
                 settings,
                 doctor,

@@ -6,6 +6,7 @@ import {
 import type { CapabilityRequirements } from "./intelligentModelSelector";
 import { debugLog } from "../_core/logger";
 import { buildModelLookupCandidates } from "./modelLookup";
+import { listVisibleWorkerLlmModels } from "./workerLlmCatalog";
 
 export type ChatSelectionMode = "explicit" | "auto-global" | "auto-provider";
 export type ChatRouteFamily = "chat-completions" | "messages" | "responses" | "unknown";
@@ -517,6 +518,37 @@ export async function resolveChatModelSelection(
   input: ResolveChatModelSelectionInput,
 ): Promise<ResolvedChatModelSelection> {
   const rows = await loadEnabledLlmModelRows();
+  const preselection = normalizeChatModelSelection({
+    bodyModel: input.bodyModel,
+    bodyPreferredProvider: input.bodyPreferredProvider,
+    bodyModelSelection: input.bodyModelSelection,
+    storedSelectionState: input.storedSelectionState,
+  });
+  if (preselection?.mode === "explicit" && /^wllm_[A-Za-z0-9_-]{8,128}$/.test(preselection.modelId)) {
+    if (!input.tenantId || !input.userId) {
+      throw new Error("Worker Local LLM selection requires tenant and user context");
+    }
+    const derived = deriveChatCapabilityRequirements({ messages: input.messages, selectionContext: input.selectionContext });
+    const workerRow = (await listVisibleWorkerLlmModels({ tenantId: input.tenantId, userId: input.userId, task: derived.requirements.supportsVision ? "vision" : "chat" }))
+      .find((row) => row.modelRef === preselection.modelId);
+    if (!workerRow) throw new Error("Requested Worker Local LLM model is not available");
+    if (!workerRow.selectable) throw new Error("Selected Worker Local LLM model is offline or stale");
+    if (derived.requirements.supportsVision && !workerRow.capabilities.includes("llm.vision")) {
+      throw new Error("Selected Worker Local LLM model does not support vision");
+    }
+    return {
+      selectionMode: "explicit",
+      selection: preselection,
+      requestedModelId: preselection.modelId,
+      resolvedModelId: workerRow.modelRef,
+      resolvedProviderName: "worker_app",
+      strictProviderPin: true,
+      routeFamily: "chat-completions",
+      requirements: derived.requirements,
+      continuityApplied: false,
+      shouldPersistSelectionState: true,
+    };
+  }
   if (rows.length === 0) {
     throw new Error("No enabled LLM model configured");
   }

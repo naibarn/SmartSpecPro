@@ -9,12 +9,16 @@ use crate::hermes_executor::{
     HERMES_CONNECTION_PROBE_JOB_TYPE, HERMES_MEDIA_IMAGE_JOB_TYPE, HERMES_MEDIA_VIDEO_JOB_TYPE,
 };
 use crate::runtime_manifest::DoctorSummary;
+use crate::local_llm_adapter::{execute_openai_compatible, LocalLlmRequest};
+use crate::local_llm_registry::load_registry;
+use std::sync::atomic::AtomicBool;
 
 pub const HYPERFRAMES_JOB_TYPE: &str = "hyperframes_final_composite";
 pub const HYPERFRAMES_RENDER_INTENT: &str = "hyperframes_final_composite";
 pub const COMFY_IMAGE_GENERATION_JOB_TYPE: &str = "comfy_image_generation";
 pub const COMFY_VIDEO_GENERATION_JOB_TYPE: &str = "comfy_video_generation";
 pub const COMFY_WORKFLOW_RUN_JOB_TYPE: &str = "comfy_workflow_run";
+pub const LOCAL_LLM_INVOKE_JOB_TYPE: &str = "llm_invoke";
 pub const VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE: &str = "media_ingest";
 pub const VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE: &str = "broll_preprocess";
 pub const VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE: &str = "shot_video_generation";
@@ -186,6 +190,7 @@ pub fn build_comfy_completed_event(
 /// job type this module didn't already know about.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkerJobKind {
+    LocalLlmInvoke,
     Hyperframes,
     RemotionRenderVideo,
     ComfyImageGeneration,
@@ -203,6 +208,7 @@ pub enum WorkerJobKind {
 
 pub fn classify_job_type(job_type: &str) -> WorkerJobKind {
     match job_type {
+        LOCAL_LLM_INVOKE_JOB_TYPE => WorkerJobKind::LocalLlmInvoke,
         HYPERFRAMES_JOB_TYPE => WorkerJobKind::Hyperframes,
         REMOTION_RENDER_VIDEO_JOB_TYPE => WorkerJobKind::RemotionRenderVideo,
         COMFY_IMAGE_GENERATION_JOB_TYPE => WorkerJobKind::ComfyImageGeneration,
@@ -220,6 +226,34 @@ pub fn classify_job_type(job_type: &str) -> WorkerJobKind {
         HERMES_CONNECTION_DISCONNECT_JOB_TYPE => WorkerJobKind::HermesConnectionDisconnect,
         _ => WorkerJobKind::Unknown,
     }
+}
+
+pub async fn execute_local_llm_job(
+    app_data_dir: &Path,
+    job: &ClaimedWorkerJob,
+    cancel: &AtomicBool,
+) -> Result<Value, String> {
+    if job.job_type != LOCAL_LLM_INVOKE_JOB_TYPE {
+        return Err(format!("unsupported worker job type: {}", job.job_type));
+    }
+    let request: LocalLlmRequest = serde_json::from_value(job.input_json.clone())
+        .map_err(|error| format!("invalid llm_invoke input: {error}"))?;
+    let registry = load_registry(app_data_dir)?;
+    let provider = registry.providers.iter()
+        .find(|item| item.local_provider_id == request.local_provider_id && item.enabled)
+        .ok_or_else(|| "local provider binding is unavailable".to_string())?;
+    let model = registry.models.iter()
+        .find(|item| item.local_provider_id == request.local_provider_id && item.local_model_id == request.local_model_id && item.enabled)
+        .ok_or_else(|| "local model binding is unavailable".to_string())?;
+    if request.model_ref.trim().is_empty() || request.inventory_revision < 0 {
+        return Err("invalid model binding".into());
+    }
+    let api_key = provider.credential_ref.as_deref().and_then(|credential_ref| {
+        keyring::Entry::new("smartaihub-worker-local-llm", credential_ref)
+            .ok()
+            .and_then(|entry| entry.get_password().ok())
+    });
+    execute_openai_compatible(provider, model, &request, api_key.as_deref(), cancel).await
 }
 
 const PROGRESS_STAGES: [&str; 9] = [

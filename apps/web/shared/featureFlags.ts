@@ -63,6 +63,7 @@ export interface TenantFeatureFlags {
   UPLOAD_POST_GATEWAY_ENABLED: boolean; // F43 — Upload-Post Universal Gateway
   chatAutoModelSelection: boolean; // F44 — Chat Auto/Provider-Auto model selection
   localClientLlmMode: boolean; // F45 — Local / Client LLM mode
+  workerLocalLlmModels: boolean; // F172 — Worker-hosted Local LLM catalog and routing
   openClawExternalRuntime: boolean; // F46 — OpenClaw external worker runtime control plane
   desktopZeroClawWorker: boolean; // F47 — Desktop + ZeroClaw managed worker runtime
   nemoClawSecureWorkerPool: boolean; // F48 — NemoClaw secure worker pools
@@ -312,6 +313,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "UPLOAD_POST_GATEWAY_ENABLED",
   "chatAutoModelSelection",
   "localClientLlmMode",
+  "workerLocalLlmModels",
   "openClawExternalRuntime",
   "desktopZeroClawWorker",
   "nemoClawSecureWorkerPool",
@@ -551,6 +553,7 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   UPLOAD_POST_GATEWAY_ENABLED: false, // Requires Upload-Post connection + consent flow
   chatAutoModelSelection: true, // Enabled by default; admin can still disable per tenant if needed
   localClientLlmMode: false, // Rollout-gated until local runtime paths are explicitly enabled per tenant
+  workerLocalLlmModels: true, // Worker Local LLM is independently disableable without deleting projections
   openClawExternalRuntime: false, // External worker control plane ships disabled until tenant enablement
   desktopZeroClawWorker: false, // Desktop worker host remains tenant-gated until runtime/profile support is ready
   nemoClawSecureWorkerPool: false, // Secure sandbox pools are explicitly admin-gated

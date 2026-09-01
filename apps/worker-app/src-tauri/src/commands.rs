@@ -51,6 +51,7 @@ use crate::worker_control_plane::{
 #[cfg(target_os = "windows")]
 use crate::worker_executor::REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION;
 use crate::worker_loop::{start_worker_loop, WorkerLoopStatus};
+use crate::local_llm_registry::{load_registry, save_registry, LocalLlmModelRecord, LocalLlmProviderProfile, LocalLlmRegistry};
 use base64::Engine;
 
 /// Serialises EVERY refresh-token rotation in this process.
@@ -265,6 +266,106 @@ pub async fn worker_app_get_comfy_profiles(app: tauri::AppHandle) -> Result<Comf
         profiles: store.projections(),
         active_profile_id: store.active_profile().map(|profile| profile.profile_id.clone()),
     })
+}
+
+const LOCAL_LLM_KEYRING_SERVICE: &str = "smartaihub-worker-local-llm";
+
+fn local_llm_registry_for_app(app: &tauri::AppHandle) -> Result<(PathBuf, LocalLlmRegistry), String> {
+    let app_data_dir = app.path().app_data_dir().map_err(|_| "app_data_dir_unavailable".to_string())?;
+    let registry = load_registry(&app_data_dir)?;
+    Ok((app_data_dir, registry))
+}
+
+#[tauri::command]
+pub async fn worker_app_get_local_llm_registry(app: tauri::AppHandle) -> Result<LocalLlmRegistry, String> {
+    Ok(local_llm_registry_for_app(&app)?.1)
+}
+
+#[tauri::command]
+pub async fn worker_app_save_local_llm_provider(
+    app: tauri::AppHandle,
+    provider: LocalLlmProviderProfile,
+) -> Result<LocalLlmRegistry, String> {
+    crate::local_llm_adapter::validate_provider_url(&provider).map_err(|_| "local_llm_provider_url_invalid".to_string())?;
+    let (app_data_dir, mut registry) = local_llm_registry_for_app(&app)?;
+    registry.upsert_provider(provider)?;
+    registry.bump_inventory_revision();
+    save_registry(&app_data_dir, &registry)?;
+    Ok(registry)
+}
+
+#[tauri::command]
+pub async fn worker_app_save_local_llm_model(
+    app: tauri::AppHandle,
+    model: LocalLlmModelRecord,
+) -> Result<LocalLlmRegistry, String> {
+    let (app_data_dir, mut registry) = local_llm_registry_for_app(&app)?;
+    registry.upsert_model(model)?;
+    registry.bump_inventory_revision();
+    save_registry(&app_data_dir, &registry)?;
+    Ok(registry)
+}
+
+#[tauri::command]
+pub async fn worker_app_delete_local_llm_model(
+    app: tauri::AppHandle,
+    local_provider_id: String,
+    local_model_id: String,
+) -> Result<LocalLlmRegistry, String> {
+    let (app_data_dir, mut registry) = local_llm_registry_for_app(&app)?;
+    registry.remove_model(&local_provider_id, &local_model_id)?;
+    registry.bump_inventory_revision();
+    save_registry(&app_data_dir, &registry)?;
+    Ok(registry)
+}
+
+#[tauri::command]
+pub async fn worker_app_delete_local_llm_provider(
+    app: tauri::AppHandle,
+    local_provider_id: String,
+) -> Result<LocalLlmRegistry, String> {
+    let (app_data_dir, mut registry) = local_llm_registry_for_app(&app)?;
+    let credential_ref = registry.providers.iter().find(|item| item.local_provider_id == local_provider_id).and_then(|item| item.credential_ref.clone());
+    registry.remove_provider(&local_provider_id)?;
+    registry.bump_inventory_revision();
+    save_registry(&app_data_dir, &registry)?;
+    if let Some(reference) = credential_ref.as_deref() {
+        if let Ok(entry) = keyring::Entry::new(LOCAL_LLM_KEYRING_SERVICE, reference) {
+            let _ = entry.delete_credential();
+        }
+    }
+    Ok(registry)
+}
+
+#[tauri::command]
+pub async fn worker_app_set_local_llm_credential(
+    app: tauri::AppHandle,
+    local_provider_id: String,
+    secret: String,
+) -> Result<LocalLlmRegistry, String> {
+    if secret.trim().is_empty() || secret.len() > 4096 {
+        return Err("local_llm_credential_invalid".into());
+    }
+    let (_app_data_dir, registry) = local_llm_registry_for_app(&app)?;
+    let provider = registry.providers.iter().find(|item| item.local_provider_id == local_provider_id).ok_or_else(|| "local_llm_provider_not_found".to_string())?;
+    let reference = provider.credential_ref.as_deref().ok_or_else(|| "local_llm_credential_ref_missing".to_string())?;
+    keyring::Entry::new(LOCAL_LLM_KEYRING_SERVICE, reference).map_err(|error| error.to_string())?.set_password(&secret).map_err(|error| error.to_string())?;
+    Ok(registry)
+}
+
+#[tauri::command]
+pub async fn worker_app_delete_local_llm_credential(
+    app: tauri::AppHandle,
+    local_provider_id: String,
+) -> Result<LocalLlmRegistry, String> {
+    let (_app_data_dir, registry) = local_llm_registry_for_app(&app)?;
+    let provider = registry.providers.iter().find(|item| item.local_provider_id == local_provider_id).ok_or_else(|| "local_llm_provider_not_found".to_string())?;
+    if let Some(reference) = provider.credential_ref.as_deref() {
+        if let Ok(entry) = keyring::Entry::new(LOCAL_LLM_KEYRING_SERVICE, reference) {
+            let _ = entry.delete_credential();
+        }
+    }
+    Ok(registry)
 }
 
 #[tauri::command]

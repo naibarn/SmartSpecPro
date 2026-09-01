@@ -7,7 +7,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { router, adminProcedure, protectedProcedure, domainAdminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { connectedDevices, creditTransactions, groupMembers, llmProviders, userGroups, users, workers } from "../../drizzle/schema";
+import { connectedDevices, creditTransactions, groupMembers, llmProviders, userGroups, users, workers, workerJobs } from "../../drizzle/schema";
 import { and, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { addCredits, deductCredits, type TransactionType } from "../services/creditService";
 import { authEmailSchema } from "../services/emailNormalization";
@@ -1485,7 +1485,10 @@ export const usersRouter = router({
             eq(userGroups.tenantId, tenantId),
             isNull(userGroups.deletedAt),
             inArray(userGroups.id, normalizedGroupIds),
-            or(eq(userGroups.ownerId, ctx.user.id), sql`${groupMembers.id} is not null`),
+            // Local LLM Worker sharing is intentionally limited to Groups
+            // created by the Worker owner. Membership in someone else's Group
+            // must never grant the owner a way to publish that Group's users.
+            eq(userGroups.ownerId, ctx.user.id),
           ));
 
       if (normalizedGroupIds.length !== allowedGroups.length) {
@@ -1520,14 +1523,27 @@ export const usersRouter = router({
         ? "per_user"
         : "shared_department";
 
-      await db
-        .update(workers)
-        .set({
-          workerMode: nextWorkerMode,
-          capabilitiesJson: nextCapabilities,
-          updatedAt: new Date(),
-        })
-        .where(eq(workers.id, workerRow.id));
+      // Keep the ACL write and queued-job invalidation in one transaction so
+      // a concurrent claim cannot observe the old policy between the two.
+      await db.transaction(async (tx) => {
+        await tx
+          .update(workers)
+          .set({
+            workerMode: nextWorkerMode,
+            capabilitiesJson: nextCapabilities,
+            updatedAt: new Date(),
+          })
+          .where(eq(workers.id, workerRow.id));
+        await tx
+          .update(workerJobs)
+          .set({ status: "canceled", statusReason: "worker_local_llm_sharing_changed", finishedAt: new Date() })
+          .where(and(
+            eq(workerJobs.workerId, workerRow.id),
+            eq(workerJobs.status, "queued"),
+            eq(workerJobs.jobType, "llm_invoke"),
+            sql`${workerJobs.requestedByUserId} <> ${ctx.user.id}`,
+          ));
+      });
 
       const runtimePresentation = connectedWorkerRuntimePresentation(workerRow);
       const capabilities = deriveConnectedWorkerCapabilities(workerRow.capabilitiesJson);

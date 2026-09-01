@@ -377,7 +377,7 @@ export interface WorkerRuntimeRepository {
   getWorkerPolicyById: (id: string) => Promise<Record<string, any> | null>;
   insertArtifact: (values: Record<string, any>) => Promise<WorkerArtifactRecord>;
   insertHeartbeat: (values: Record<string, any>) => Promise<void>;
-  insertJobEvent: (workerJobId: string, eventType: string, payloadJson: Record<string, unknown>) => Promise<WorkerJobEventRecord>;
+  insertJobEvent: (workerJobId: string, eventType: string, payloadJson: Record<string, unknown>, identity?: { assignmentId: string; sequence: number }) => Promise<WorkerJobEventRecord | null>;
   listClaimableJobs: (tenantId: string, runtimeType: WorkerRuntimeType, teamId: string | null, capabilityHints: string[]) => Promise<WorkerJobRecord[]>;
   listJobEvents: (workerJobId: string) => Promise<WorkerJobEventRecord[]>;
   /**
@@ -505,6 +505,9 @@ function mergeRuntimeMetadata(
   const existingWorkerAccessPolicy = isPlainObject(existingRuntimeMetadata.workerAccessPolicy)
     ? existingRuntimeMetadata.workerAccessPolicy
     : null;
+  const existingWorkerSharingPolicy = isPlainObject(existingRuntimeMetadata.workerSharingPolicy)
+    ? existingRuntimeMetadata.workerSharingPolicy
+    : null;
   const mergedRuntimeMetadata = {
     ...existingRuntimeMetadata,
     ...sanitizedRuntimeMetadata,
@@ -513,6 +516,12 @@ function mergeRuntimeMetadata(
     // policy with a partial payload from the local app.
     ...(existingWorkerAccessPolicy
       ? { workerAccessPolicy: existingWorkerAccessPolicy }
+      : {}),
+    // Local LLM sharing is an owner-controlled ACL. Runtime health/model
+    // metadata may be refreshed by a Worker heartbeat, but it must never
+    // grant, revoke, or move the Worker into a different Group.
+    ...(existingWorkerSharingPolicy
+      ? { workerSharingPolicy: existingWorkerSharingPolicy }
       : {}),
   };
   return {
@@ -860,7 +869,7 @@ function readAssignmentAttempt(job: WorkerJobRecord): string | null {
 }
 
 function ensureAssignmentAttempt(job: WorkerJobRecord, assignmentAttempt: string | null | undefined): void {
-  if (job.jobType !== "hyperframes_final_composite" && !isHermesFabricJobType(job.jobType)) {
+  if (job.jobType !== "hyperframes_final_composite" && job.jobType !== "llm_invoke" && !isHermesFabricJobType(job.jobType)) {
     return;
   }
   const activeAttempt = readAssignmentAttempt(job);
@@ -1100,14 +1109,18 @@ const defaultRepo: WorkerRuntimeRepository = {
     const db = await getDb();
     await db.insert(workerHeartbeats).values(values as any);
   },
-  async insertJobEvent(workerJobId, eventType, payloadJson) {
+  async insertJobEvent(workerJobId, eventType, payloadJson, identity) {
     const db = await getDb();
-    const [event] = await db.insert(workerJobEvents).values({
+    const query = db.insert(workerJobEvents).values({
       workerJobId,
       eventType,
       payloadJson,
-    }).returning();
-    return event;
+      ...(identity ?? {}),
+    });
+    const [event] = identity
+      ? await query.onConflictDoNothing({ target: [workerJobEvents.workerJobId, workerJobEvents.assignmentId, workerJobEvents.sequence] }).returning()
+      : await query.returning();
+    return event ?? null;
   },
   async listClaimableJobs(tenantId, runtimeType, teamId) {
     const db = await getDb();
@@ -1774,6 +1787,7 @@ export async function recordWorkerJobEvent(
   const existingEvents = await repo.listJobEvents(job.id);
   const activeAssignmentAttempt = readAssignmentAttempt(job);
   const assignmentScoped = job.jobType === "hyperframes_final_composite"
+    || job.jobType === "llm_invoke"
     || isHermesFabricJobType(job.jobType);
   const relevantEvents = assignmentScoped && activeAssignmentAttempt
     ? existingEvents.filter(
@@ -1794,6 +1808,22 @@ export async function recordWorkerJobEvent(
   let nextJob = job;
   const nextStatus = resolveEventStatus(input.payload.eventType);
   const sanitizedPayloadJson = sanitizeWorkerPayload(input.payload.payloadJson) as Record<string, unknown>;
+  const eventPayload = {
+    ...sanitizedPayloadJson,
+    leaseOwnerToken: input.payload.leaseOwnerToken,
+    assignmentAttempt: input.payload.assignmentAttempt ?? null,
+    sequenceNumber,
+  };
+  // The unique DB identity is the source of truth for LLM stream replay. Do
+  // this insert before mutating the job so two concurrent retries cannot both
+  // apply a terminal event after the read-then-insert check above.
+  if (job.jobType === "llm_invoke" && activeAssignmentAttempt) {
+    const inserted = await repo.insertJobEvent(job.id, input.payload.eventType, eventPayload, {
+      assignmentId: activeAssignmentAttempt,
+      sequence: sequenceNumber,
+    });
+    if (!inserted) return { accepted: false, job, replayed: true };
+  }
   const eventAt = new Date();
   const terminalStatus = nextStatus ? TERMINAL_JOB_STATUSES.includes(nextStatus) : false;
   const nextLeaseExpiresAt = terminalStatus
@@ -1836,12 +1866,9 @@ export async function recordWorkerJobEvent(
     });
   }
 
-  await repo.insertJobEvent(job.id, input.payload.eventType, {
-    ...sanitizedPayloadJson,
-    leaseOwnerToken: input.payload.leaseOwnerToken,
-    assignmentAttempt: input.payload.assignmentAttempt ?? null,
-    sequenceNumber,
-  });
+  if (job.jobType !== "llm_invoke") {
+    await repo.insertJobEvent(job.id, input.payload.eventType, eventPayload);
+  }
 
   if (repo === defaultRepo && nextStatus === "completed" && job.jobType === "media_ingest") {
     const inventory = sanitizedPayloadJson.inventory;

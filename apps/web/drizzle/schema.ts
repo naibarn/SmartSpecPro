@@ -14530,6 +14530,7 @@ export const workerRuntimeTypeEnum = pgEnum("worker_runtime_type", [
   "hiclaw_cluster",
   "hermes_agent_gateway",
   "remotion_executor",
+  "local_llm_worker",
 ]);
 
 export const workerStatusEnum = pgEnum("worker_status", [
@@ -14725,6 +14726,65 @@ export const workers = pgTable(
 
 export type Worker = typeof workers.$inferSelect;
 export type InsertWorker = typeof workers.$inferInsert;
+
+/** Server projection of models advertised by a connected Worker. */
+export const workerLlmModels = pgTable(
+  "worker_llm_models",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    workerId: varchar("workerId", { length: 36 }).notNull().references(() => workers.id, { onDelete: "cascade" }),
+    ownerUserId: integer("ownerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    localProviderId: varchar("localProviderId", { length: 160 }).notNull(),
+    providerKind: varchar("providerKind", { length: 64 }).notNull(),
+    localModelId: varchar("localModelId", { length: 160 }).notNull(),
+    providerModelId: varchar("providerModelId", { length: 240 }).notNull(),
+    modelRef: varchar("modelRef", { length: 160 }).notNull(),
+    displayName: varchar("displayName", { length: 240 }).notNull(),
+    capabilitiesJson: jsonb("capabilitiesJson").$type<string[]>().notNull().default([]),
+    contextWindow: integer("contextWindow"),
+    inventoryRevision: integer("inventoryRevision").notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("unknown"),
+    enabled: boolean("enabled").notNull().default(true),
+    tombstoned: boolean("tombstoned").notNull().default(false),
+    metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>().notNull().default({}),
+    lastInventoryAt: timestamp("lastInventoryAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("worker_llm_models_worker_provider_model_unique").on(t.tenantId, t.workerId, t.localProviderId, t.providerModelId),
+    uniqueIndex("worker_llm_models_model_ref_unique").on(t.modelRef),
+    index("worker_llm_models_actor_catalog_idx").on(t.tenantId, t.ownerUserId, t.enabled, t.tombstoned),
+    index("worker_llm_models_worker_revision_idx").on(t.workerId, t.inventoryRevision),
+  ]
+);
+
+export type WorkerLlmModel = typeof workerLlmModels.$inferSelect;
+export type InsertWorkerLlmModel = typeof workerLlmModels.$inferInsert;
+
+export const workerLlmInventorySync = pgTable(
+  "worker_llm_inventory_sync",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    workerId: varchar("workerId", { length: 36 }).notNull().references(() => workers.id, { onDelete: "cascade" }),
+    ownerUserId: integer("ownerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    lastAcceptedRevision: integer("lastAcceptedRevision").notNull().default(0),
+    lastInventoryHash: varchar("lastInventoryHash", { length: 128 }).notNull(),
+    lastIdempotencyKey: varchar("lastIdempotencyKey", { length: 160 }).notNull(),
+    lastSyncedAt: timestamp("lastSyncedAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("worker_llm_inventory_sync_worker_unique").on(t.tenantId, t.workerId),
+    index("worker_llm_inventory_sync_revision_idx").on(t.tenantId, t.lastAcceptedRevision),
+  ]
+);
+
+export type WorkerLlmInventorySync = typeof workerLlmInventorySync.$inferSelect;
+export type InsertWorkerLlmInventorySync = typeof workerLlmInventorySync.$inferInsert;
 
 export const connectedDevices = pgTable(
   "connected_devices",

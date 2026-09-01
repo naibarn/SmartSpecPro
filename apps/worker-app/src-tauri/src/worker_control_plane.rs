@@ -377,6 +377,7 @@ where
         payload,
         device_proof,
         None,
+        None,
         CONTROL_PLANE_TIMEOUT_MS,
     )
     .await
@@ -402,6 +403,33 @@ where
         payload,
         device_proof,
         if_match,
+        None,
+        CONTROL_PLANE_TIMEOUT_MS,
+    )
+    .await
+}
+
+pub async fn post_worker_json_with_idempotency<T, P>(
+    server_url: &str,
+    path: &str,
+    bearer_token: &str,
+    payload: &P,
+    device_proof: &WorkerDeviceProofMaterial,
+    idempotency_key: &str,
+) -> Result<T, String>
+where
+    T: DeserializeOwned,
+    P: Serialize + ?Sized,
+{
+    let url = join_url(server_url, path)?;
+    post_worker_json_url_with_timeout(
+        url,
+        path,
+        bearer_token,
+        payload,
+        device_proof,
+        None,
+        Some(idempotency_key),
         CONTROL_PLANE_TIMEOUT_MS,
     )
     .await
@@ -564,6 +592,7 @@ async fn post_worker_json_url_with_timeout<T, P>(
     payload: &P,
     device_proof: &WorkerDeviceProofMaterial,
     if_match: Option<&str>,
+    idempotency_key: Option<&str>,
     timeout_ms: u64,
 ) -> Result<T, String>
 where
@@ -589,6 +618,9 @@ where
     }
     if let Some(if_match) = if_match {
         request = request.header("If-Match", if_match);
+    }
+    if let Some(idempotency_key) = idempotency_key {
+        request = request.header("Idempotency-Key", idempotency_key);
     }
     let response = request.json(&payload_value).send().await.map_err(|error| {
         if error.is_timeout() {
@@ -641,6 +673,7 @@ where
         bearer_token,
         payload,
         &connection.device_proof,
+        None,
         None,
         timeout_ms,
     )

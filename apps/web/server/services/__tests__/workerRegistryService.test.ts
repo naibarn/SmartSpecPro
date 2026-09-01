@@ -759,6 +759,54 @@ describe("workerRegistryService", () => {
     );
   });
 
+  it("preserves the server-owned Local LLM sharing policy when heartbeats update runtime metadata", async () => {
+    const { recordWorkerHeartbeat } = await import("../workerRegistryService");
+    const worker = {
+      id: "worker-llm-policy-1",
+      tenantId: "tenant-1",
+      runtimeType: "desktop_zeroclaw_managed",
+      status: "offline",
+      capabilitiesJson: {
+        runtimeMetadata: {
+          workerSharingPolicy: { mode: "groups", groupIds: [10], updatedByUserId: 7 },
+        },
+      },
+      healthSummaryJson: {},
+    };
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue(worker),
+      updateWorker: vi.fn().mockImplementation(async (_workerId, values) => ({ ...worker, ...values })),
+      insertHeartbeat: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await recordWorkerHeartbeat({
+      auth: { tenantId: "tenant-1", workerId: worker.id, runtimeType: worker.runtimeType } as any,
+      workerId: worker.id,
+      payload: {
+        compatibility: { protocolVersion: "2026-04-06", runtimeVersion: "0.1.0" },
+        runtimeType: worker.runtimeType,
+        status: "online",
+        currentJobCount: 0,
+        queueDepth: 0,
+        freeDiskBytes: 1024,
+        metricsJson: {},
+        warningsJson: [],
+        runtimeMetadataJson: {
+          workerSharingPolicy: { mode: "tenant", groupIds: [999] },
+          localLlm: { inventoryRevision: 4 },
+        },
+      },
+    }, { repo } as any);
+
+    expect(repo.updateWorker).toHaveBeenCalledWith(worker.id, expect.objectContaining({
+      capabilitiesJson: expect.objectContaining({
+        runtimeMetadata: expect.objectContaining({
+          workerSharingPolicy: { mode: "groups", groupIds: [10], updatedByUserId: 7 },
+        }),
+      }),
+    }));
+  });
+
   it("backfills compatibility state for legacy workers on heartbeat without re-registration", async () => {
     const { recordWorkerHeartbeat } = await import("../workerRegistryService");
 

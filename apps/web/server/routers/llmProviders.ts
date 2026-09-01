@@ -20,6 +20,7 @@ import {
   buildKRouterLlmAvailableModels,
   type AvailableLlmProviderModel,
 } from "../services/llmProviderCatalog";
+import { listVisibleWorkerLlmModels } from "../services/workerLlmCatalog";
 
 interface EnabledProviderRow {
   id: number;
@@ -381,14 +382,26 @@ export const llmProvidersRouter = router({
         ) as EnabledMappedModelRow[],
       });
 
+      const workerModels = ctx.tenantId
+        ? await listVisibleWorkerLlmModels({
+            tenantId: ctx.tenantId,
+            userId: ctx.user.id,
+            task: "chat",
+          })
+        : [];
       return {
-        models,
-        providers: enabledProviders.map(p => ({
+        models: [...models, ...workerModels],
+        providers: [
+          ...enabledProviders.map(p => ({
           name: p.providerName,
           displayName: p.displayName,
           isPrimary: (p.configJson as any)?.isPrimary === true,
           isFallback: (p.configJson as any)?.isFallback === true,
-        })),
+          })),
+          ...(workerModels.length > 0
+            ? [{ name: "worker_app", displayName: "Worker Local AI", isPrimary: false, isFallback: false }]
+            : []),
+        ],
       };
     } catch (error) {
       console.warn("[llmProviders.availableModels] falling back after query failure", error);
@@ -418,6 +431,16 @@ export const llmProvidersRouter = router({
       };
     }
   }),
+
+  workerLocalModels: protectedProcedure
+    .input(z.object({ task: z.enum(["chat", "completion", "vision", "embedding"]).default("chat") }).optional())
+    .query(async ({ ctx, input }) => ctx.tenantId
+      ? listVisibleWorkerLlmModels({
+          tenantId: ctx.tenantId,
+          userId: ctx.user.id,
+          task: input?.task ?? "chat",
+        })
+      : []),
 
   // Get all enabled providers (for users)
   list: protectedProcedure.query(async () => {

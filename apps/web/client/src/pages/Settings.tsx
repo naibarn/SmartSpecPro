@@ -86,6 +86,7 @@ import { PersonasPanel } from '@/components/settings/PersonasPanel';
 import { UserAutomationPreferencesPanel } from '@/components/settings/UserAutomationPreferencesPanel';
 import { NotificationPreferencesPanel } from '@/components/settings/NotificationPreferencesPanel';
 import { WorkerAccessKeysPanel } from '@/components/settings/WorkerAccessKeysPanel';
+import { WorkerLocalAiPanel } from '@/components/settings/WorkerLocalAiPanel';
 import { ConnectedDevicesPanel } from '@/components/settings/ConnectedDevicesPanel';
 import { LocalAiSettingsSection } from '@/features/local-ai/components/LocalAiSettingsSection';
 import { DesktopHostSettingsPanel } from '@/features/desktop-host/DesktopHostSettingsPanel';
@@ -2370,6 +2371,7 @@ export default function Settings() {
               {activeTab === 'workers' && (
                 <div className="space-y-6">
               <WorkerAccessKeysPanel tenantName={tenant?.name ?? null} />
+              <WorkerLocalAiPanel />
                 </div>
               )}
 

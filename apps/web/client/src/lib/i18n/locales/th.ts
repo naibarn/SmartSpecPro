@@ -2259,6 +2259,7 @@ const th: TranslationDictionary = {
   "settings.workers.permissions.scopes.seriesMediaProcess": "ประมวลผลสื่อของ Series",
   "settings.workers.permissions.scopes.seriesMediaPublish": "เผยแพร่สื่อของ Series",
   "settings.workers.permissions.scopes.llmChat": "LLM chat",
+  "settings.workers.permissions.scopes.llmInventory": "รายการโมเดล Local LLM",
   "settings.workers.permissions.scopes.delegateHttp": "Delegate HTTP",
   "settings.workers.permissions.scopes.delegateMcp": "Delegate MCP",
   "settings.workers.permissions.scopes.callbacksPublish": "เผยแพร่ callback",

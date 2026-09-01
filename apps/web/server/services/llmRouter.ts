@@ -11,6 +11,7 @@ import { calculateCreditsFromCost, calculateCreditsForLLMDynamic } from "./credi
 import { isFreeModelIdentifier, resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import { resolveCatalogBackedPricing } from "./llmProviderCatalog";
+import { queueWorkerLlmInvoke } from "./workerLocalLlmService";
 import type { Message } from "../_core/llm";
 
 // --- Types ---
@@ -36,8 +37,36 @@ type NormalizedResponsesInputPart =
 
 export type ExecuteResult =
   | { type: "success"; response: any; providerId: number; providerName: string }
+  | { type: "worker_job"; jobId: string; providerName: "worker_app" }
   | { type: "fallback_required"; from: ProviderCandidate; to: ProviderCandidate; estimatedCredits: number }
   | { type: "error"; error: string; statusCode: number };
+
+/**
+ * A request-stable, privacy-preserving idempotency key for Worker Local LLM
+ * jobs. Conversation identity alone is not sufficient: every message in one
+ * conversation must be allowed to enqueue a distinct inference.
+ */
+export function makeWorkerLlmIdempotencyKey(input: {
+  conversationId?: number;
+  model: string;
+  messages: Message[];
+  stream: boolean;
+  maxTokens?: number;
+  temperature?: number;
+  extraBodyParams?: Record<string, unknown>;
+}): string | undefined {
+  if (input.conversationId == null) return undefined;
+  const digest = crypto.createHash("sha256").update(JSON.stringify({
+    conversationId: input.conversationId,
+    model: input.model,
+    messages: input.messages,
+    stream: input.stream,
+    maxTokens: input.maxTokens ?? null,
+    temperature: input.temperature ?? null,
+    extraBodyParams: input.extraBodyParams ?? null,
+  })).digest("hex");
+  return `conversation:${input.conversationId}:${digest}`.slice(0, 128);
+}
 
 export type PhysicalLlmAttemptEvent = {
   phase: "started" | "terminal";
@@ -588,6 +617,19 @@ function extractAnyAssistantText(rawData: any): string {
   if (typeof rawData?.content === "string") {
     return rawData.content;
   }
+  if (Array.isArray(rawData?.content)) {
+    return rawData.content
+      .flatMap((part: unknown) => {
+        if (!part || typeof part !== "object") return [];
+        const record = part as Record<string, unknown>;
+        return typeof record.text === "string"
+          ? [record.text]
+          : typeof record.content === "string"
+            ? [record.content]
+            : [];
+      })
+      .join("");
+  }
   if (typeof rawData?.response?.content === "string") {
     return rawData.response.content;
   }
@@ -778,6 +820,27 @@ export async function executeWithFallback(params: {
   /** Optional refs-only observer; omitted callers retain the current behavior. */
   physicalAttemptObserver?: (event: PhysicalLlmAttemptEvent) => Promise<void> | void;
 }): Promise<ExecuteResult> {
+  if (/^wllm_[A-Za-z0-9_-]{8,128}$/.test(params.model)) {
+    if (!params.tenantId) {
+      return { type: "error", error: "Worker Local LLM requires tenant context", statusCode: 403 };
+    }
+    try {
+      const queued = await queueWorkerLlmInvoke({
+        tenantId: params.tenantId,
+        userId: params.userId,
+        modelRef: params.model,
+        messages: params.messages,
+        stream: params.stream,
+        maxTokens: params.maxTokens,
+        temperature: params.temperature,
+        extraBodyParams: params.extraBodyParams,
+        idempotencyKey: makeWorkerLlmIdempotencyKey(params),
+      });
+      return { type: "worker_job", jobId: queued.job.id, providerName: "worker_app" };
+    } catch (error) {
+      return { type: "error", error: error instanceof Error ? error.message : "Worker Local LLM dispatch failed", statusCode: 409 };
+    }
+  }
   const notify = async (event: PhysicalLlmAttemptEvent) => {
     // The only current observer is the authoritative Vertical Drama billing
     // hook. If it fails, do not return a successful but unbilled LLM result.

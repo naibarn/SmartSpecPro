@@ -15,6 +15,7 @@ import {
   workerClaimRequestSchema,
   workerDiagnosticsPayloadSchema,
   workerHeartbeatPayloadSchema,
+  workerLlmInventorySchema,
   workerJobEventPayloadSchema,
   workerRegistrationPayloadSchema,
   remotionExecutorRuntimePackManifestSchema,
@@ -67,6 +68,10 @@ import {
 } from "../services/workerRegistryService";
 import { getWorkerPolicySnapshot } from "../services/workerPolicyService";
 import {
+  syncWorkerLlmInventory,
+  WorkerLocalLlmError,
+} from "../services/workerLocalLlmService";
+import {
   getEphemeralJson,
   getEphemeralText,
   setEphemeralJson,
@@ -91,6 +96,9 @@ import {
 } from "../services/connectedDeviceService";
 
 interface WorkerRuntimeRouteDeps {
+  workerLocalLlm?: {
+    syncWorkerLlmInventory: typeof syncWorkerLlmInventory;
+  };
   runtimePacks?: {
     releaseDirs?: string[];
     /** Pinned Ed25519 public key used to admit signed executor archives. */
@@ -1004,6 +1012,7 @@ export function registerWorkerRuntimeRoutes(
     registerWorker,
   };
   const workerPolicy = deps.workerPolicy ?? { getWorkerPolicySnapshot };
+  const workerLocalLlm = deps.workerLocalLlm ?? { syncWorkerLlmInventory };
   const runtimePackReleaseDirs = deps.runtimePacks?.releaseDirs ?? getRuntimePackReleaseDirs();
   const runtimePackPublicKey = normalizeRuntimePackPublicKey(deps.runtimePacks?.publicKey?.trim()
     || process.env.SMARTAIHUB_RUNTIME_PACK_PUBLIC_KEY?.trim()
@@ -1011,6 +1020,7 @@ export function registerWorkerRuntimeRoutes(
 
   const registrationLimiter = rateLimit("workers-register", { rpm: 10 });
   const heartbeatLimiter = rateLimit("workers-heartbeat", { rpm: 120 });
+  const localLlmInventoryLimiter = rateLimit("workers-llm-inventory", { rpm: 30 });
   const claimLimiter = rateLimit("workers-claim", { rpm: 60 });
   const delegatedSessionLimiter = rateLimit("worker-delegated-session", { rpm: 60 });
   const eventLimiter = rateLimit("worker-job-events", { rpm: 240 });
@@ -1556,6 +1566,44 @@ export function registerWorkerRuntimeRoutes(
           warningFlagsJson: Array.isArray(worker.warningFlagsJson) ? worker.warningFlagsJson : [],
         });
       } catch (error) {
+        handleWorkerRouteError(error, res);
+      }
+    },
+  );
+
+  app.post(
+    "/api/workers/:workerId/llm/inventory",
+    localLlmInventoryLimiter,
+    enforceJsonBodyMaxBytes(512 * 1024),
+    async (req, res) => {
+      try {
+        const token = requireBearerToken(req);
+        const parsed = workerLlmInventorySchema.parse(req.body);
+        const idempotencyKey = String(req.header("Idempotency-Key") ?? "").trim();
+        if (!idempotencyKey || idempotencyKey.length > 160) {
+          throw new WorkerRuntimeServiceError(
+            "invalid_request",
+            400,
+            "Idempotency-Key header is required",
+            "validation_error",
+          );
+        }
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
+          allowedTokenUses: ["worker_execution"],
+          requiredScopes: ["llm:inventory"],
+          workerId: req.params.workerId,
+        });
+        const result = await workerLocalLlm.syncWorkerLlmInventory({
+          auth,
+          workerId: req.params.workerId,
+          idempotencyKey,
+          inventory: parsed,
+        });
+        res.status(result.replay ? 200 : 202).json(result);
+      } catch (error) {
+        if (error instanceof WorkerLocalLlmError) {
+          error = new WorkerRuntimeServiceError(error.code, error.statusCode, error.message);
+        }
         handleWorkerRouteError(error, res);
       }
     },

@@ -80,6 +80,7 @@ const WORKER_PERMISSION_GROUPS: Array<{
       "workers:claim",
       "workers:report",
       "workers:diagnostics",
+      "llm:inventory",
     ],
   },
   {
@@ -148,6 +149,7 @@ const WORKER_PERMISSION_SCOPE_LABEL_KEYS: Record<
   "series:media:publish":
     "settings.workers.permissions.scopes.seriesMediaPublish",
   "llm:chat": "settings.workers.permissions.scopes.llmChat",
+  "llm:inventory": "settings.workers.permissions.scopes.llmInventory",
   "delegate:http": "settings.workers.permissions.scopes.delegateHttp",
   "delegate:mcp": "settings.workers.permissions.scopes.delegateMcp",
   "callbacks:publish": "settings.workers.permissions.scopes.callbacksPublish",

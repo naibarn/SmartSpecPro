@@ -49,7 +49,7 @@ vi.mock("./crypto", () => ({
   decrypt: vi.fn().mockReturnValue("decrypted-api-key"),
 }));
 
-import { resolveProviders, executeWithFallback } from "./llmRouter";
+import { resolveProviders, executeWithFallback, makeWorkerLlmIdempotencyKey } from "./llmRouter";
 import { auditLogger } from "./auditLogger";
 
 const mockAuditLog = vi.mocked(auditLogger.log);
@@ -66,6 +66,25 @@ beforeEach(() => {
 });
 
 // --- Helpers ---
+
+describe("Worker Local LLM idempotency", () => {
+  it("changes when a later message is added to the same conversation", () => {
+    const base = {
+      conversationId: 42,
+      model: "wllm_12345678",
+      stream: false,
+      messages: [{ role: "user", content: "first" }],
+    } as const;
+    const first = makeWorkerLlmIdempotencyKey(base);
+    const second = makeWorkerLlmIdempotencyKey({
+      ...base,
+      messages: [...base.messages, { role: "assistant", content: "answer" }],
+    });
+    expect(first).toMatch(/^conversation:42:/);
+    expect(second).toMatch(/^conversation:42:/);
+    expect(second).not.toBe(first);
+  });
+});
 
 function mockProviderRows(rows: any[]) {
   // resolveProviders does: db.select().from().innerJoin().where()

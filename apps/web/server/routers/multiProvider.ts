@@ -9,6 +9,7 @@ import { getHealthSummary } from "../services/providerHealth";
 import { getAdminUsageStats, getUserUsageStats } from "../services/costTracker";
 import { computeModelPriority } from "../services/intelligentModelSelector";
 import { resolveProviderCatalogDefaults } from "./llmProviders";
+import { listVisibleWorkerLlmModels } from "../services/workerLlmCatalog";
 import {
   buildProviderCatalogLookupKey,
   canonicalModelIdForCatalogModel,
@@ -1109,7 +1110,7 @@ export const multiProviderRouter = router({
 
   // --- User Endpoints ---
 
-  getAvailableModelsWithProviders: protectedProcedure.query(async () => {
+  getAvailableModelsWithProviders: protectedProcedure.query(async ({ ctx }) => {
     const mappedRows = await db
       .select({
         modelId: modelProviderMap.modelId,
@@ -1154,6 +1155,33 @@ export const multiProviderRouter = router({
         pricingOutput: String(effectivePricing.pricingOutput),
         isFree: effectivePricing.isFree,
       });
+    }
+
+    if (ctx.tenantId) {
+      const workerModels = await listVisibleWorkerLlmModels({
+        tenantId: ctx.tenantId,
+        userId: ctx.user!.id,
+        task: "chat",
+      });
+      for (const workerModel of workerModels) {
+        modelProviders[workerModel.modelRef] = {
+          modelId: workerModel.modelRef,
+          modelName: workerModel.name,
+          providers: [{
+            providerId: workerModel.workerId,
+            providerName: workerModel.providerDisplayName,
+            providerDisplayName: workerModel.providerDisplayName,
+            providerModelId: workerModel.localProviderId,
+            pricingInput: "0",
+            pricingOutput: "0",
+            isFree: true,
+            contextLength: workerModel.contextLength,
+            sourceType: "worker_app",
+            privacyMode: workerModel.privacyMode,
+            selectable: workerModel.selectable,
+          }],
+        };
+      }
     }
 
     return Object.values(modelProviders);

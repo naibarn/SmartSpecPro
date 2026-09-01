@@ -2284,6 +2284,7 @@ const en: TranslationDictionary = {
   "settings.workers.permissions.scopes.seriesMediaProcess": "Process Series media",
   "settings.workers.permissions.scopes.seriesMediaPublish": "Publish Series media",
   "settings.workers.permissions.scopes.llmChat": "LLM chat",
+  "settings.workers.permissions.scopes.llmInventory": "Local LLM inventory",
   "settings.workers.permissions.scopes.delegateHttp": "Delegate HTTP",
   "settings.workers.permissions.scopes.delegateMcp": "Delegate MCP",
   "settings.workers.permissions.scopes.callbacksPublish": "Publish callbacks",

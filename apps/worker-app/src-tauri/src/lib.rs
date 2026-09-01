@@ -14,6 +14,8 @@ pub mod executor_state;
 pub mod hermes_executor;
 pub mod hermes_runtime;
 pub mod media_pipeline;
+pub mod local_llm_adapter;
+pub mod local_llm_registry;
 pub mod runtime_manifest;
 pub mod series_workspace;
 pub mod settings;
@@ -167,6 +169,13 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::worker_app_get_settings,
             commands::worker_app_get_comfy_profiles,
+            commands::worker_app_get_local_llm_registry,
+            commands::worker_app_save_local_llm_provider,
+            commands::worker_app_save_local_llm_model,
+            commands::worker_app_delete_local_llm_model,
+            commands::worker_app_delete_local_llm_provider,
+            commands::worker_app_set_local_llm_credential,
+            commands::worker_app_delete_local_llm_credential,
             commands::worker_app_save_comfy_profile,
             commands::worker_app_activate_comfy_profile,
             commands::worker_app_disable_comfy_profile,
