@@ -88,13 +88,16 @@ def test_provider_file_type_validation_errors_are_non_retryable():
     assert _is_non_retryable_media_error(error) is True
 
 
-def test_provider_reference_image_fetch_errors_are_non_retryable():
+def test_provider_reference_image_fetch_errors_are_retryable():
     error = RuntimeError(
         "500: Image generation failed: Task failed: Image fetch failed. "
         "Check access settings or use our File Upload API instead."
     )
 
-    assert _is_non_retryable_media_error(error) is True
+    # Kie reference access can recover after the provider-side file upload
+    # normalization/retry path runs; do not classify it as a permanent prompt
+    # or policy refusal.
+    assert _is_non_retryable_media_error(error) is False
 
 
 def test_openai_policy_errors_are_separated_from_other_permanent_failures():

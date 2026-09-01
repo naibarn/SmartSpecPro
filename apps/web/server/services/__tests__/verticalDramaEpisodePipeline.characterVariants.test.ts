@@ -147,6 +147,7 @@ function selectChain(rows: unknown[]) {
   const chain: any = {
     from: vi.fn(() => chain),
     where: vi.fn(() => chain),
+    orderBy: vi.fn(() => chain),
     limit: vi.fn(() => Promise.resolve(rows)),
     then: (resolve: any) => Promise.resolve(rows).then(resolve),
   };
@@ -311,6 +312,92 @@ describe("generateRealStoryboard — character variants (Phase D)", () => {
     const callArgs = mockGenerateStoryboardShotgrid.mock.calls[0][0];
     expect(callArgs.characters).toHaveLength(1);
     expect(callArgs.characters[0].variants).toBeUndefined();
+  });
+
+  it("repairs a wardrobe mismatch from the episode handoff without blocking storyboard generation", async () => {
+    const characterRows = [
+      {
+        id: 1,
+        characterKey: "char-nuna",
+        name: "Nuna",
+        role: "lead",
+        parentCharacterId: null,
+        variantLabel: null,
+        variantType: null,
+        data: null,
+      },
+      {
+        id: 2,
+        characterKey: "char-nuna-dress",
+        name: "Nuna",
+        role: "lead",
+        parentCharacterId: 1,
+        variantLabel: "ชุดเดรส",
+        variantType: "outfit",
+        data: { description: "dress" },
+      },
+      {
+        id: 3,
+        characterKey: "char-nuna-work",
+        name: "Nuna",
+        role: "lead",
+        parentCharacterId: 1,
+        variantLabel: "ชุดทำงาน",
+        variantType: "outfit",
+        data: { description: "workwear" },
+      },
+    ];
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain(characterRows))
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 99,
+            episodeNumber: 2,
+            episodeKind: "normal",
+            storyboard: {
+              shots: [
+                {
+                  shot_number: 9,
+                  required_character_refs: ["char-nuna-dress"],
+                },
+              ],
+            },
+          },
+        ])
+      )
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([]));
+    mockGetPrimaryPortraitUrl.mockResolvedValue(null);
+    mockGenerateStoryboardShotgrid.mockResolvedValue({
+      storyboard: {
+        shots: [
+          {
+            shot_number: 1,
+            required_character_refs: ["char-nuna-work"],
+            visual_description: "Nuna gets into the car",
+          },
+        ],
+      },
+      creditsUsed: 1,
+      model: "gpt-x",
+    });
+
+    const result = await pipeline.generateRealStoryboard(
+      owner,
+      {
+        ...episode,
+        episodeKind: "normal",
+      },
+      false
+    );
+
+    expect(result.storyboard.shots).toHaveLength(1);
+    expect(result.storyboard.shots[0]?.required_character_refs).toEqual([
+      "char-nuna-dress",
+    ]);
+    expect(result.warnings).toEqual([]);
   });
 });
 

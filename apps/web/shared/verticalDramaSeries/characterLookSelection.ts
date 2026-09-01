@@ -10,6 +10,8 @@ export interface VerticalDramaCharacterLookCatalogEntry {
   wardrobeRules?: string[];
   hasPortrait?: boolean;
   lookDesignStatus?: "waiting_for_look_design" | "ready" | "review";
+  /** Authoritative age band of the parent character, when known. */
+  authoritativeAgeBand?: "minor" | "adult" | "unknown";
 }
 
 /** Additional persisted facts used only while reusing an existing roster row. */
@@ -390,12 +392,9 @@ function findIntentMatches(text: string): LookIntent[] {
   );
 }
 
-function findIntent(text: string): LookIntent | undefined {
-  return findIntentMatches(text)[0];
-}
-
-function findConflictingIntents(text: string): LookIntent[] {
-  const matches = findIntentMatches(text);
+function findConflictingIntentMatches(
+  matches: readonly LookIntent[]
+): LookIntent[] {
   const ageStageMatches = matches.filter(
     intent => intent.variantType === "age_stage"
   );
@@ -418,9 +417,136 @@ function findConflictingIntents(text: string): LookIntent[] {
     incompatibleOutfitPair ||
     incompatibleAgeAndOutfit
   ) {
-    return matches;
+    return [...matches];
   }
   return [];
+}
+
+function findIntent(text: string): LookIntent | undefined {
+  return findIntentMatches(text)[0];
+}
+
+function findConflictingIntents(text: string): LookIntent[] {
+  return findConflictingIntentMatches(findIntentMatches(text));
+}
+
+function escapeRegularExpression(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * A phrase such as "มองผู้ใหญ่ทั้งสอง" describes other people in the shot;
+ * it is not an instruction to age up the character currently being resolved.
+ */
+function isRelationalAdultReference(text: string): boolean {
+  return /(?:ผู้ใหญ่|adult)\s*(?:ทั้งสอง|ทั้งคู่|สองคน|สองฝ่าย)|(?:ทั้งสอง|ทั้งคู่)\s*(?:คน|ฝ่าย)?\s*(?:ผู้ใหญ่|adult)/i.test(
+    text
+  );
+}
+
+function explicitlyBindsAgeCueToCharacter(
+  text: string,
+  characterName: string,
+  intent: LookIntent
+): boolean {
+  const normalizedText = normalizeLookText(text);
+  const normalizedName = normalizeLookText(characterName);
+  if (!normalizedName || !intent.ageStage) return false;
+  const ageTerms =
+    intent.ageStage === "adult"
+      ? ["วัยผู้ใหญ่", "ผู้ใหญ่", "adult"]
+      : [intent.label, intent.key];
+  return ageTerms.some(term => {
+    const normalizedTerm = normalizeLookText(term);
+    const nameBeforeCue = new RegExp(
+      `${escapeRegularExpression(normalizedName)}(?:เป็น|อยู่ในวัย|เข้าสู่วัย|กลายเป็น|โตเป็น|ตอนโต|อายุ){0,12}${escapeRegularExpression(normalizedTerm)}`,
+      "i"
+    );
+    const cueBeforeName = new RegExp(
+      `${escapeRegularExpression(normalizedTerm)}(?:ของ|คือ|เป็น|ที่รับบทเป็น){0,12}${escapeRegularExpression(normalizedName)}`,
+      "i"
+    );
+    return nameBeforeCue.test(normalizedText) || cueBeforeName.test(normalizedText);
+  });
+}
+
+function findCharacterScopedIntentMatches(
+  text: string,
+  character: VerticalDramaCharacterLookCatalogEntry,
+  familyCount: number
+): LookIntent[] {
+  const matches = findIntentMatches(text);
+  if (familyCount <= 1 || !isRelationalAdultReference(text)) return matches;
+  return matches.filter(intent =>
+    intent.ageStage !== "adult"
+      ? true
+      : explicitlyBindsAgeCueToCharacter(text, character.name, intent)
+  );
+}
+
+function isAgeStageCompatibleWithAuthoritativeBand(
+  ageStage: VerticalDramaCharacterAgeStage | undefined,
+  authoritativeAgeBand: VerticalDramaCharacterLookCatalogEntry["authoritativeAgeBand"]
+): boolean {
+  if (!ageStage || !authoritativeAgeBand || authoritativeAgeBand === "unknown") {
+    return true;
+  }
+  const minorStages: VerticalDramaCharacterAgeStage[] = [
+    "infant",
+    "early_childhood",
+    "school_age",
+  ];
+  if (authoritativeAgeBand === "minor") return minorStages.includes(ageStage);
+  return !minorStages.includes(ageStage);
+}
+
+function isSafeAutomaticLook(
+  entry: VerticalDramaCharacterLookCatalogEntry,
+  baseEntry: VerticalDramaCharacterLookCatalogEntry
+): boolean {
+  if (!entry.variantType || entry.variantType !== "age_stage") return true;
+  if (
+    !isAgeStageCompatibleWithAuthoritativeBand(
+      entry.ageStage,
+      baseEntry.authoritativeAgeBand
+    )
+  ) {
+    return false;
+  }
+  // An adult base character does not need a duplicate "adult" age-stage row.
+  return !(
+    entry.ageStage === "adult" &&
+    baseEntry.authoritativeAgeBand === "adult"
+  );
+}
+
+function selectSafeCarriedLook(params: {
+  family: readonly VerticalDramaCharacterLookCatalogEntry[];
+  recentKeys: readonly string[];
+  preferredLookKey?: string;
+  catalogByKey: ReadonlyMap<string, VerticalDramaCharacterLookCatalogEntry>;
+  currentEntry: VerticalDramaCharacterLookCatalogEntry;
+  baseEntry: VerticalDramaCharacterLookCatalogEntry;
+}): VerticalDramaCharacterLookCatalogEntry {
+  const candidates = [
+    ...[...params.recentKeys].reverse().map(key =>
+      params.catalogByKey.get(key)
+    ),
+    params.preferredLookKey
+      ? params.catalogByKey.get(params.preferredLookKey)
+      : undefined,
+    params.currentEntry,
+    params.baseEntry,
+    ...params.family,
+  ];
+  return (
+    candidates.find(
+      (entry): entry is VerticalDramaCharacterLookCatalogEntry => {
+        if (!entry) return false;
+        return isSafeAutomaticLook(entry, params.baseEntry);
+      }
+    ) ?? params.baseEntry
+  );
 }
 
 const CONTEXT_TRANSITION_PHRASES = [
@@ -485,13 +611,17 @@ function hasMeaningfulTextContextTransition(
   return Boolean(previousTime && currentTime && previousTime !== currentTime);
 }
 
-function resolveShotIntent(text: string): {
+function resolveShotIntent(
+  text: string,
+  character: VerticalDramaCharacterLookCatalogEntry,
+  familyCount: number
+): {
   intent?: LookIntent;
   conflicts: LookIntent[];
 } {
-  const conflicts = findConflictingIntents(text);
+  const matches = findCharacterScopedIntentMatches(text, character, familyCount);
+  const conflicts = findConflictingIntentMatches(matches);
   if (conflicts.length > 0) return { conflicts };
-  const matches = findIntentMatches(text);
   // Age-stage correctness outranks an outfit cue when both are compatible,
   // e.g. a newborn wearing safe sleepwear.
   return {
@@ -619,6 +749,19 @@ function uniqueStrings(values: readonly string[]): string[] {
   return Array.from(new Set(values.map(value => value.trim()).filter(Boolean)));
 }
 
+function findBaseEntryForUnknownLookKey(
+  key: string,
+  catalog: readonly VerticalDramaCharacterLookCatalogEntry[]
+): VerticalDramaCharacterLookCatalogEntry | undefined {
+  return [...catalog]
+    .filter(entry => !entry.parentCharacterKey)
+    .sort((left, right) => right.characterKey.length - left.characterKey.length)
+    .find(
+      entry =>
+        key === entry.characterKey || key.startsWith(`${entry.characterKey}-`)
+    );
+}
+
 function buildLookRequestKey(
   familyKey: string,
   intent: LookIntent,
@@ -671,6 +814,8 @@ export function selectVerticalDramaCharacterLooks(params: {
   shots: readonly VerticalDramaLookSelectionShot[];
   catalog: readonly VerticalDramaCharacterLookCatalogEntry[];
   manualShotNumbers?: ReadonlySet<number>;
+  /** Seed shot 1 with a context-aware cross-episode look when available. */
+  preferredLookKeysByFamily?: ReadonlyMap<string, string>;
 }): VerticalDramaCharacterLookSelectionResult {
   const catalogByKey = new Map(
     params.catalog.map(entry => [entry.characterKey, entry])
@@ -707,16 +852,39 @@ export function selectVerticalDramaCharacterLooks(params: {
     const currentFamilies = new Set<string>();
 
     for (const rawKey of uniqueStrings(shot.characterKeys)) {
-      const currentEntry = catalogByKey.get(rawKey);
+      let currentEntry = catalogByKey.get(rawKey);
       if (!currentEntry) {
-        nextKeys.push(rawKey);
-        continue;
+        currentEntry = findBaseEntryForUnknownLookKey(rawKey, params.catalog);
+        if (!currentEntry) {
+          nextKeys.push(rawKey);
+          continue;
+        }
       }
       const familyKey = getFamilyKey(currentEntry);
       if (currentFamilies.has(familyKey)) continue;
       currentFamilies.add(familyKey);
       const family = familyEntries.get(familyKey) ?? [currentEntry];
-      const { intent, conflicts } = resolveShotIntent(shot.text);
+      const baseEntry =
+        family.find(entry => !entry.parentCharacterKey) ?? currentEntry;
+      const { intent: detectedIntent, conflicts } = resolveShotIntent(
+        shot.text,
+        currentEntry,
+        uniqueStrings(shot.characterKeys).length
+      );
+      const incompatibleAgeStage = Boolean(
+        detectedIntent?.ageStage &&
+          !isAgeStageCompatibleWithAuthoritativeBand(
+            detectedIntent.ageStage,
+            baseEntry.authoritativeAgeBand
+          )
+      );
+      const redundantAdultStage = Boolean(
+        detectedIntent?.ageStage === "adult" &&
+          baseEntry.authoritativeAgeBand === "adult"
+      );
+      const intent = incompatibleAgeStage || redundantAdultStage
+        ? undefined
+        : detectedIntent;
       const prior = priorShot.get(familyKey);
       const transition = Boolean(
         prior &&
@@ -726,8 +894,18 @@ export function selectVerticalDramaCharacterLooks(params: {
           hasMeaningfulTextContextTransition(prior.text, shot.text))
       );
       const recentKeys = recentByFamily.get(familyKey) ?? [];
-      const carriedLookKey = recentKeys[recentKeys.length - 1] ?? rawKey;
-      const carriedLookEntry = catalogByKey.get(carriedLookKey) ?? currentEntry;
+      const carriedLookEntry = selectSafeCarriedLook({
+        family,
+        recentKeys,
+        preferredLookKey:
+          recentKeys.length === 0
+            ? params.preferredLookKeysByFamily?.get(familyKey)
+            : undefined,
+        catalogByKey,
+        currentEntry,
+        baseEntry,
+      });
+      const carriedLookKey = carriedLookEntry.characterKey;
 
       if (manual) {
         nextKeys.push(rawKey);
@@ -740,6 +918,26 @@ export function selectVerticalDramaCharacterLooks(params: {
           confidence: 1,
         });
         recentByFamily.set(familyKey, [...recentKeys, rawKey].slice(-4));
+        priorShot.set(familyKey, shot);
+        continue;
+      }
+
+      if (incompatibleAgeStage) {
+        const selected = carriedLookEntry;
+        nextKeys.push(selected.characterKey);
+        assignments.push({
+          baseCharacterKey: familyKey,
+          selectedLookKey: selected.characterKey,
+          mode: selected.parentCharacterKey ? "matched_existing" : "base",
+          status: "review",
+          reason:
+            `ละเว้นลุค${detectedIntent!.label} เนื่องจากไม่สอดคล้องกับช่วงวัยหลักของตัวละคร จึงใช้ลุคที่ปลอดภัยและทำงานต่อได้`,
+          confidence: 0.96,
+        });
+        recentByFamily.set(
+          familyKey,
+          [...recentKeys, selected.characterKey].slice(-4)
+        );
         priorShot.set(familyKey, shot);
         continue;
       }

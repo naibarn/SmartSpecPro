@@ -285,6 +285,28 @@ async def test_generate_image_routes_to_configured_model_variant_when_references
     provider = KieAIProvider(api_key="test-key")
     provider.wait_for_task = AsyncMock(return_value={"id": "task-1", "data": []})
     provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-1"}})
+    provider.client.get = AsyncMock(
+        return_value=httpx.Response(
+            200,
+            headers={"content-type": "image/png"},
+            content=b"reference-image",
+            request=httpx.Request("GET", "https://smartaihub.app/reference.png"),
+        )
+    )
+    provider.client.post = AsyncMock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "code": 200,
+                "data": {
+                    "downloadUrl": "https://tempfile.redpandaai.co/reference.png",
+                },
+            },
+            request=httpx.Request(
+                "POST", "https://kieai.redpandaai.co/api/file-stream-upload"
+            ),
+        )
+    )
 
     await provider.generate_image(
         model="gpt-image-2-text-to-image",
@@ -303,7 +325,15 @@ async def test_generate_image_routes_to_configured_model_variant_when_references
     args, kwargs = provider.create_task.await_args
     assert kwargs == {}
     assert args[0] == "gpt-image-2-image-to-image"
-    assert args[1]["input_urls"] == ["https://cdn.example.com/product.png"]
+    assert args[1]["input_urls"] == ["https://tempfile.redpandaai.co/reference.png"]
+    provider.client.get.assert_awaited_once_with(
+        "https://cdn.example.com/product.png",
+        follow_redirects=True,
+    )
+    provider.client.post.assert_awaited_once()
+    upload_call = provider.client.post.await_args
+    assert upload_call.args[0] == "https://kieai.redpandaai.co/api/file-stream-upload"
+    assert upload_call.kwargs["headers"] == {"Authorization": "Bearer test-key"}
 
 
 @pytest.mark.asyncio

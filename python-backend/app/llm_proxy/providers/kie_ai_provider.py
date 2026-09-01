@@ -1,5 +1,7 @@
 import asyncio
+import hashlib
 import json
+import mimetypes
 import os
 import re
 import time
@@ -1067,6 +1069,10 @@ class KieAIProvider:
         self.api_key = api_key
         raw_base_url = base_url or self.BASE_URL
         self.base_url = self.normalize_base_url(raw_base_url)
+        self.file_upload_base_url = os.getenv(
+            "KIE_FILE_UPLOAD_BASE_URL",
+            "https://kieai.redpandaai.co",
+        ).strip().rstrip("/")
         # Callback URL for async task completion notifications
         self.callback_url = callback_url
         # Increased timeout to 600s to handle longer generation times
@@ -1101,6 +1107,122 @@ class KieAIProvider:
         self._client_loop = current_loop
         logger.info("kie_ai_http_client_recreated_for_event_loop")
         return self.client
+
+    async def _upload_reference_image(self, url: str, index: int) -> str:
+        """Upload one reference to Kie's file service before image-to-image.
+
+        Kie's image-to-image contracts require a Kie-hosted ``input_urls``
+        value. Passing SmartSpec's tenant-scoped download broker URL directly
+        is not reliable: Kie may reject it even when the URL is reachable from
+        our own web process. Streaming the bytes through the File Upload API
+        removes that provider-to-app fetch dependency and keeps the original
+        tenant URL out of the provider task payload.
+        """
+        client = self._get_client_for_current_loop()
+        try:
+            source_response = await client.get(url, follow_redirects=True)
+            source_response.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise RuntimeError(
+                f"Kie reference image download failed for item {index + 1}"
+            ) from exc
+
+        content = source_response.content
+        if not content:
+            raise RuntimeError(f"Kie reference image {index + 1} is empty")
+        if len(content) > 10 * 1024 * 1024:
+            raise RuntimeError(
+                f"Kie reference image {index + 1} exceeds the 10MB upload limit"
+            )
+
+        content_type = (
+            source_response.headers.get("content-type") or ""
+        ).split(";", 1)[0].strip().lower()
+        source_suffix = os.path.splitext(urlparse(url).path)[1].lower()
+        if not content_type.startswith("image/"):
+            inferred_type = mimetypes.guess_type(source_suffix)[0]
+            if inferred_type and inferred_type.startswith("image/"):
+                content_type = inferred_type
+        if content_type not in {"image/jpeg", "image/png", "image/webp", "image/gif"}:
+            raise RuntimeError(
+                f"Kie reference image {index + 1} has unsupported content type"
+            )
+
+        extension = mimetypes.guess_extension(content_type) or ".png"
+        file_name = (
+            f"smartspec-reference-{hashlib.sha256(content).hexdigest()[:16]}"
+            f"{extension}"
+        )
+        try:
+            upload_response = await client.post(
+                f"{self.file_upload_base_url}/api/file-stream-upload",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                data={
+                    "uploadPath": "images/user-uploads",
+                    "fileName": file_name,
+                },
+                files={"file": (file_name, content, content_type)},
+            )
+            upload_response.raise_for_status()
+            upload_body = upload_response.json()
+        except (httpx.HTTPError, json.JSONDecodeError) as exc:
+            raise RuntimeError(
+                f"Kie reference image upload failed for item {index + 1}"
+            ) from exc
+
+        upload_data = upload_body.get("data") if isinstance(upload_body, dict) else None
+        candidates = [
+            upload_data.get("downloadUrl") if isinstance(upload_data, dict) else None,
+            upload_data.get("fileUrl") if isinstance(upload_data, dict) else None,
+            upload_body.get("downloadUrl") if isinstance(upload_body, dict) else None,
+            upload_body.get("fileUrl") if isinstance(upload_body, dict) else None,
+        ]
+        uploaded_url = next(
+            (
+                candidate.strip()
+                for candidate in candidates
+                if isinstance(candidate, str) and candidate.strip()
+            ),
+            None,
+        )
+        if not uploaded_url or not uploaded_url.startswith(("http://", "https://")):
+            raise RuntimeError(
+                f"Kie reference image upload returned no usable URL for item {index + 1}"
+            )
+
+        logger.info(
+            "kie_ai_reference_uploaded",
+            index=index + 1,
+            bytes=len(content),
+            content_type=content_type,
+        )
+        return uploaded_url
+
+    async def _prepare_reference_image_urls(
+        self,
+        reference_image_urls: list[str],
+        api_model: str,
+        api_config: dict[str, Any] | None,
+    ) -> list[str]:
+        """Return provider-ready refs, uploading Kie ``input_urls`` inputs."""
+        reference_key, _ = _resolve_reference_image_input_config(
+            api_config,
+            default_key=_default_reference_image_key_for_model(api_model),
+        )
+        requires_upload = (
+            reference_key == "input_urls"
+            or api_model in {
+                "gpt-image-2-image-to-image",
+                "gpt-image/1.5-image-to-image",
+            }
+        )
+        if not requires_upload:
+            return reference_image_urls
+
+        return [
+            await self._upload_reference_image(url, index)
+            for index, url in enumerate(reference_image_urls)
+        ]
 
     @staticmethod
     def _extract_task_id(result: dict[str, Any], *, include_record_id: bool = False) -> str | None:
@@ -1955,13 +2077,19 @@ class KieAIProvider:
             media_type="image",
             reference_image_urls=reference_image_urls,
         )
-        api_config, api_model, grok_operation = resolve_grok_image_2_operation(
-            model,
-            api_config,
-            extra_params if isinstance(extra_params, dict) else None,
-        )
-        if grok_operation:
-            active_mode_id = grok_operation
+        grok_operation = None
+        normalized_model = str(model or "").strip().lower()
+        if normalized_model in {
+            _GROK_IMAGE_2_MODEL,
+            _GROK_IMAGE_2_SEGMENT_MAP_MODEL,
+        }:
+            api_config, api_model, grok_operation = resolve_grok_image_2_operation(
+                model,
+                api_config,
+                extra_params if isinstance(extra_params, dict) else None,
+            )
+            if grok_operation:
+                active_mode_id = grok_operation
 
         # Build input parameters for image generation
         input_params = {
@@ -2018,24 +2146,31 @@ class KieAIProvider:
         if reference_image_urls:
             ref_urls = reference_image_urls
             if isinstance(ref_urls, list) and len(ref_urls) > 0:
-                reference_image_input_key, reference_image_input_type = _resolve_reference_image_input_config(
-                    api_config,
-                    default_key=_default_reference_image_key_for_model(api_model),
-                )
-                _apply_reference_urls_to_input(
-                    input_params,
-                    ref_urls,
-                    key=reference_image_input_key,
-                    input_type=reference_image_input_type,
-                    overflow_keys=_resolve_reference_overflow_keys(api_config, subject="image"),
-                )
-                logger.info(
-                    "kie_ai_reference_images",
-                    count=len(ref_urls),
-                    field_key=reference_image_input_key,
-                    field_type=reference_image_input_type,
-                    urls=[_redact_url_for_log(url) for url in ref_urls[:2]],
-                )  # Log first 2 for debug
+                normalized_ref_urls = normalize_reference_url_list(ref_urls)
+                if normalized_ref_urls:
+                    reference_image_input_key, reference_image_input_type = _resolve_reference_image_input_config(
+                        api_config,
+                        default_key=_default_reference_image_key_for_model(api_model),
+                    )
+                    ref_urls = await self._prepare_reference_image_urls(
+                        normalized_ref_urls,
+                        api_model,
+                        api_config,
+                    )
+                    _apply_reference_urls_to_input(
+                        input_params,
+                        ref_urls,
+                        key=reference_image_input_key,
+                        input_type=reference_image_input_type,
+                        overflow_keys=_resolve_reference_overflow_keys(api_config, subject="image"),
+                    )
+                    logger.info(
+                        "kie_ai_reference_images",
+                        count=len(ref_urls),
+                        field_key=reference_image_input_key,
+                        field_type=reference_image_input_type,
+                        urls=[_redact_url_for_log(url) for url in ref_urls[:2]],
+                    )  # Log first 2 for debug
 
         if grok_operation == "image-edit" and not input_params.get("image_urls"):
             raise ValueError("Grok Image 2 image-edit requires at least one image_url")

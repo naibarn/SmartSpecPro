@@ -220,6 +220,184 @@ describe("vertical drama automatic character look selection", () => {
     });
   });
 
+  it("does not apply relational adult wording to every character in a shot", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "poom",
+          name: "ภูมิ",
+          authoritativeAgeBand: "minor",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "pimchanok",
+          name: "พิมพ์ชนก",
+          authoritativeAgeBand: "adult",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "thir",
+          name: "ธีร์",
+          authoritativeAgeBand: "adult",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["poom", "pimchanok", "thir"],
+          text: "ภูมิถือช้อนค้างกลางอากาศและมองผู้ใหญ่ทั้งสองอย่างจริงใจ",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual([
+      "poom",
+      "pimchanok",
+      "thir",
+    ]);
+    expect(result.suggestions).toHaveLength(0);
+  });
+
+  it("keeps the context-aware inherited look when the model returns age-stage refs", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "poom",
+          name: "ภูมิ",
+          authoritativeAgeBand: "minor",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "poom-casual",
+          name: "ภูมิ",
+          parentCharacterKey: "poom",
+          variantLabel: "ชุดลำลองอยู่บ้าน",
+          variantType: "outfit",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "poom-adult",
+          name: "ภูมิ",
+          parentCharacterKey: "poom",
+          variantLabel: "วัยผู้ใหญ่",
+          variantType: "age_stage",
+          ageStage: "adult",
+          hasPortrait: false,
+        },
+        {
+          characterKey: "pimchanok",
+          name: "พิมพ์ชนก",
+          authoritativeAgeBand: "adult",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "pimchanok-dress",
+          name: "พิมพ์ชนก",
+          parentCharacterKey: "pimchanok",
+          variantLabel: "ชุดเดรส",
+          variantType: "outfit",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "pimchanok-adult",
+          name: "พิมพ์ชนก",
+          parentCharacterKey: "pimchanok",
+          variantLabel: "วัยผู้ใหญ่",
+          variantType: "age_stage",
+          ageStage: "adult",
+          hasPortrait: false,
+        },
+      ],
+      preferredLookKeysByFamily: new Map([
+        ["poom", "poom-casual"],
+        ["pimchanok", "pimchanok-dress"],
+      ]),
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["poom-look-adult", "pimchanok-look-adult"],
+          text: "ภูมิถือช้อนค้างกลางอากาศและมองผู้ใหญ่ทั้งสองอย่างจริงใจ",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual([
+      "poom-casual",
+      "pimchanok-dress",
+    ]);
+    expect(result.suggestions).toHaveLength(0);
+  });
+
+  it("keeps a child look when an explicit adult request conflicts with authoritative age", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "poom",
+          name: "ภูมิ",
+          authoritativeAgeBand: "minor",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "poom-adult",
+          name: "ภูมิ",
+          parentCharacterKey: "poom",
+          variantLabel: "วัยผู้ใหญ่",
+          variantType: "age_stage",
+          ageStage: "adult",
+          hasPortrait: false,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["poom-adult"],
+          text: "ภูมิเป็นวัยผู้ใหญ่ในฉากย้อนเวลา",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual(["poom"]);
+    expect(result.suggestions).toHaveLength(0);
+    expect(result.assignmentsByShotNumber.get(1)?.[0]).toMatchObject({
+      selectedLookKey: "poom",
+      mode: "base",
+      status: "review",
+    });
+  });
+
+  it("reuses an adult base look instead of creating a redundant adult age-stage look", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "pimchanok",
+          name: "พิมพ์ชนก",
+          authoritativeAgeBand: "adult",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "pimchanok-adult",
+          name: "พิมพ์ชนก",
+          parentCharacterKey: "pimchanok",
+          variantLabel: "วัยผู้ใหญ่",
+          variantType: "age_stage",
+          ageStage: "adult",
+          hasPortrait: false,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["pimchanok-adult"],
+          text: "พิมพ์ชนกเป็นวัยผู้ใหญ่ในฉากปัจจุบัน",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual(["pimchanok"]);
+    expect(result.suggestions).toHaveLength(0);
+  });
+
   it("uses the stored structured age stage even when a look label is generic", () => {
     const result = selectVerticalDramaCharacterLooks({
       catalog: [
