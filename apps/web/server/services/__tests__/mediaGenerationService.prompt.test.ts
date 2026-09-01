@@ -69,6 +69,18 @@ describe("resolveExternalMediaReferenceUrls", () => {
       "https://smartaihub.app/api/mcp/downloads/download-ref-for-tenant-a%2Freference.png/reference.png",
     ]);
   });
+
+  it("brokers an absolute protected storage URL before external provider access", async () => {
+    await expect(
+      resolveExternalMediaReferenceUrls(
+        ["https://smartaihub.app/api/storage/files/tenant-a/reference.png"],
+        { userId: 24, tenantId: "tenant-a" },
+        "https://smartaihub.app",
+      ),
+    ).resolves.toEqual([
+      "https://smartaihub.app/api/mcp/downloads/download-ref-for-tenant-a%2Freference.png/reference.png",
+    ]);
+  });
 });
 
 describe("resolveExternalMediaMessageUrls", () => {

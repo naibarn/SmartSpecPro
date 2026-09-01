@@ -55,6 +55,7 @@ import {
 } from "./creditService";
 import { debugLog, debugError } from "../_core/logger";
 import { inspectVerticalDramaEpisodeCompletion } from "./verticalDramaCompletionContract";
+import { getCachedPublicAppUrl } from "./appRuntimeConfig";
 import type { StoryConsistencyFinding } from "@shared/verticalDramaSeries/storyConsistency";
 import {
   verticalDramaLocaleEnglishName,
@@ -2235,6 +2236,92 @@ function isVolatileVisionReferenceUrl(value: string): boolean {
   }
 }
 
+const MAX_VISION_INLINE_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_VISION_INLINE_TOTAL_BYTES = 20 * 1024 * 1024;
+
+function isManagedVisionBrokerUrl(
+  value: string,
+  publicUrl?: string | null,
+): boolean {
+  try {
+    const parsed = new URL(value);
+    const configuredOrigin = new URL(
+      publicUrl || getCachedPublicAppUrl(),
+    ).origin;
+    return (
+      parsed.origin === configuredOrigin &&
+      parsed.pathname.startsWith("/api/mcp/downloads/")
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * OpenRouter providers normally fetch broker URLs themselves. Some upstream
+ * provider adapters (observed with OpenRouter/Azure) can still return a 404
+ * for an otherwise valid broker URL. On that specific failure, inline only
+ * our own brokered images as data URLs so the provider does not need to make
+ * a second server-to-server download. Public user URLs are deliberately not
+ * fetched here to avoid turning this recovery path into an SSRF primitive.
+ */
+async function materializeVisionBrokerImagesForRetry(
+  images: VisionAwareImageInput[],
+  publicUrl?: string | null,
+): Promise<VisionAwareImageInput[] | null> {
+  if (!images.some(image => isManagedVisionBrokerUrl(image.url, publicUrl))) {
+    return null;
+  }
+
+  let totalBytes = 0;
+  try {
+    const materialized = await Promise.all(
+      images.map(async image => {
+        if (!isManagedVisionBrokerUrl(image.url, publicUrl)) return image;
+
+        const response = await fetch(image.url);
+        if (!response.ok) {
+          throw new Error(`broker responded with HTTP ${response.status}`);
+        }
+        const contentType =
+          response.headers.get("content-type")?.split(";", 1)[0]?.trim() ||
+          "image/png";
+        if (!contentType.startsWith("image/")) {
+          throw new Error(`broker returned unexpected content type ${contentType}`);
+        }
+
+        const bytes = Buffer.from(await response.arrayBuffer());
+        if (bytes.length === 0 || bytes.length > MAX_VISION_INLINE_IMAGE_BYTES) {
+          throw new Error(`broker image size ${bytes.length} exceeds inline retry limit`);
+        }
+        totalBytes += bytes.length;
+        if (totalBytes > MAX_VISION_INLINE_TOTAL_BYTES) {
+          throw new Error("combined broker image size exceeds inline retry limit");
+        }
+
+        return {
+          ...image,
+          url: `data:${contentType};base64,${bytes.toString("base64")}`,
+        };
+      }),
+    );
+    return materialized;
+  } catch (error) {
+    console.warn(
+      "[executeVisionAwareJsonCallWithRetry] Could not inline broker images for recovery:",
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
+}
+
+function isVisionReferenceDownloadError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /vision reference image unavailable|error while downloading (?:file|image)|upstream status code(?: of)?\s*:?[ ]?404/i.test(
+    message,
+  );
+}
+
 async function prepareVisionReferenceUrls(args: {
   images: VisionAwareImageInput[];
   userId: number;
@@ -2446,6 +2533,39 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
     );
     if (isProviderUnavailableError(firstError) && !args.modelFallbackPolicy)
       throw firstError;
+
+    // Some provider adapters cannot fetch the valid signed broker URL even
+    // though the application can. Retry the same model once with the owned
+    // brokered images inlined; this preserves vision grounding without asking
+    // the external provider to reach our storage endpoint again.
+    if (args.hasVision && isVisionReferenceDownloadError(firstError)) {
+      const inlineImages = await materializeVisionBrokerImagesForRetry(
+        images,
+        args.publicUrl,
+      );
+      if (inlineImages) {
+        try {
+          const result = await runVisionAwareJsonAttempt<T>({
+            model: args.model,
+            systemPrompt: args.systemPrompt,
+            content: buildVisionAwareContent(
+              args.userPromptText,
+              args.hasVision,
+              inlineImages,
+            ),
+            userId: args.userId,
+            maxTokens: args.retryMaxTokens,
+            schema: args.schema,
+          });
+          return { ...result, usedVision: args.hasVision };
+        } catch (inlineError) {
+          console.warn(
+            `[executeVisionAwareJsonCallWithRetry] Inline vision recovery failed for model ${args.model}:`,
+            inlineError instanceof Error ? inlineError.message : inlineError,
+          );
+        }
+      }
+    }
 
     // A provider that returned HTTP 200 with no assistant text, or could not
     // download one of the attached references, did not produce a schema

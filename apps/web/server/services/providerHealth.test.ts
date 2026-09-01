@@ -43,6 +43,15 @@ describe("Health State Transitions", () => {
     expect(getHealthStatus(1)).toBe("healthy");
   });
 
+  it("does not count request-specific vision reference failures against provider health", () => {
+    for (let i = 0; i < 8; i++) recordSuccess(1);
+    for (let i = 0; i < 12; i++) recordFailure(1, "reference_unavailable");
+
+    expect(getHealthStatus(1)).toBe("healthy");
+    expect(isAvailable(1)).toBe(true);
+    expect(getHealthSummary().get(1)?.failureCount).toBe(0);
+  });
+
   it("transitions to degraded when failure rate exceeds 5%", () => {
     // 9 successes, 1 failure = 10% > 5%
     for (let i = 0; i < 9; i++) recordSuccess(1);

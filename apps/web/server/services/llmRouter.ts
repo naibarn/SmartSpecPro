@@ -1423,7 +1423,13 @@ export async function executeWithFallback(params: {
         return { type: "error", error: detailedErrorMessage.slice(0, 500), statusCode };
       }
 
-      recordFailure(candidate.providerId, `http_${statusCode}`);
+      // A 404 while a provider downloads an attached vision reference is a
+      // request/reference problem, not evidence that the provider is down.
+      // Keep the request retryable, but do not poison the provider-wide
+      // circuit breaker for every later vision request.
+      if (!referenceDownloadFailure) {
+        recordFailure(candidate.providerId, failureType);
+      }
 
       // Check free->paid boundary before fallback
       const nextCandidate = targets[i + 1];

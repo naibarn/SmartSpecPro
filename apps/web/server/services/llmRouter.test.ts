@@ -939,6 +939,47 @@ describe("executeWithFallback", () => {
     expect(mockHealthRecordSuccess).toHaveBeenCalledWith(2);
   });
 
+  it("vision reference download 404s fallback without poisoning provider health", async () => {
+    const provider1 = makeCandidate({ providerId: 1, providerName: "OpenRouter-A" });
+    const provider2 = makeCandidate({ providerId: 2, providerName: "OpenRouter-B" });
+    setupProviderResolution([provider1, provider2]);
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () => JSON.stringify({
+          error: {
+            message: "Vision reference image unavailable: upstream status code: 404",
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: "Recovered with vision" } }],
+          usage: { prompt_tokens: 12, completion_tokens: 6 },
+        }),
+      });
+
+    const result = await executeWithFallback({
+      model: "gpt-5.6-luna",
+      messages: [{ role: "user", content: "Inspect the attached frame" }],
+      stream: false,
+      userId: 1,
+    });
+
+    expect(result.type).toBe("success");
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockHealthRecordFailure).not.toHaveBeenCalledWith(1, expect.any(String));
+    expect(mockHealthRecordSuccess).toHaveBeenCalledWith(2);
+    expect(mockAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "llm_response",
+      errorType: "reference_unavailable",
+    }));
+  });
+
   it("max fallback attempts respected (default 3)", async () => {
     const providers = [1, 2, 3, 4, 5].map(id => makeCandidate({ providerId: id }));
     setupProviderResolution(providers);
