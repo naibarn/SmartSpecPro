@@ -136,6 +136,8 @@ export const workerLlmInvokeSchema = z
     schemaVersion: z.literal(WORKER_LLM_INVOKE_SCHEMA_VERSION),
     requestId: boundedId,
     modelRef: z.string().regex(/^wllm_[A-Za-z0-9_-]{8,128}$/),
+    localProviderId: boundedId.optional(),
+    localModelId: boundedId.optional(),
     inventoryRevision: z.number().int().nonnegative().max(2_147_483_647),
     task: workerLlmTaskSchema,
     requiredCapabilities: z.array(workerLlmCapabilitySchema).max(16).default([]),

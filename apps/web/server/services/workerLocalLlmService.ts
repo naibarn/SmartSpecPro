@@ -42,6 +42,21 @@ export interface WorkerLlmSharePolicy {
   groupIds: number[];
 }
 
+export function readWorkerSharingPolicy(value: unknown): WorkerLlmSharePolicy {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return { mode: "private", groupIds: [] };
+  const runtimeMetadata = (value as Record<string, unknown>).runtimeMetadata;
+  if (!runtimeMetadata || typeof runtimeMetadata !== "object" || Array.isArray(runtimeMetadata)) return { mode: "private", groupIds: [] };
+  const policy = (runtimeMetadata as Record<string, unknown>).workerSharingPolicy;
+  if (!policy || typeof policy !== "object" || Array.isArray(policy)) return { mode: "private", groupIds: [] };
+  const record = policy as Record<string, unknown>;
+  return {
+    mode: record.mode === "groups" || record.mode === "group" ? "groups" : "private",
+    groupIds: Array.isArray(record.groupIds)
+      ? record.groupIds.filter((id): id is number => Number.isInteger(id) && id > 0)
+      : [],
+  };
+}
+
 export function validateWorkerLlmSharePolicy(input: {
   tenantId: string;
   actorId: number;

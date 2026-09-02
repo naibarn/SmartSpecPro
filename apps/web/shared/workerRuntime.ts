@@ -29,6 +29,7 @@ export const workerRuntimeTypeValues = [
   "hiclaw_cluster",
   "hermes_agent_gateway",
   "remotion_executor",
+  "local_llm_worker",
 ] as const;
 
 export const workerRuntimeSourceValues = [
@@ -1425,6 +1426,21 @@ export const WORKER_RUNTIME_DEFINITIONS: Readonly<
     featureFlag: "remotionDedicatedExecutorEnabled",
     registrationSupport: "feature_gated",
     dispatchSupport: "limited",
+    supportedRuntimeFamilySchemaVersions: [
+      WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
+    ],
+    supportedRuntimeProfileSchemaVersions: [
+      WORKER_RUNTIME_PROFILE_SCHEMA_VERSION,
+    ],
+    gatewayCompatibility: null,
+  },
+  local_llm_worker: {
+    runtimeType: "local_llm_worker",
+    displayName: "Local LLM Worker",
+    familyName: "Local AI",
+    featureFlag: "workerLocalLlmModels",
+    registrationSupport: "feature_gated",
+    dispatchSupport: "stable",
     supportedRuntimeFamilySchemaVersions: [
       WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
     ],

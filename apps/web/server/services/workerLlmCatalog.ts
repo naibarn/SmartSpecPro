@@ -3,7 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { workerLlmModels, workers, groupMembers, userGroups } from "../../drizzle/schema";
 import { getDb } from "../db";
 import type { EnabledLlmModelRow } from "./enabledLlmModels";
-import { canAccessWorkerLlmModel, isWorkerLlmRowSelectable, type WorkerLlmSharePolicy } from "./workerLocalLlmService";
+import { canAccessWorkerLlmModel, isWorkerLlmRowSelectable, readWorkerSharingPolicy, type WorkerLlmSharePolicy } from "./workerLocalLlmService";
 import type { WorkerLlmTask } from "../../shared/workerLocalLlm";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 
@@ -24,27 +24,13 @@ export type WorkerLlmCatalogRow = {
   lastInventoryAt: string | null;
   selectable: boolean;
   privacyMode: "local_only" | "worker_relay";
+  isDefault?: boolean;
 };
 
 export type ActorLlmCatalog = {
   models: Array<EnabledLlmModelRow | WorkerLlmCatalogRow>;
   providers: Array<Record<string, unknown>>;
 };
-
-function readWorkerSharingPolicy(value: unknown): WorkerLlmSharePolicy {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return { mode: "private", groupIds: [] };
-  const runtimeMetadata = (value as Record<string, unknown>).runtimeMetadata;
-  if (!runtimeMetadata || typeof runtimeMetadata !== "object" || Array.isArray(runtimeMetadata)) return { mode: "private", groupIds: [] };
-  const policy = (runtimeMetadata as Record<string, unknown>).workerSharingPolicy;
-  if (!policy || typeof policy !== "object" || Array.isArray(policy)) return { mode: "private", groupIds: [] };
-  const record = policy as Record<string, unknown>;
-  return {
-    mode: record.mode === "groups" || record.mode === "group" ? "groups" : "private",
-    groupIds: Array.isArray(record.groupIds)
-      ? record.groupIds.filter((id): id is number => Number.isInteger(id) && id > 0)
-      : [],
-  };
-}
 
 export function filterVisibleWorkerLlmRows(input: {
   actorId: number;
