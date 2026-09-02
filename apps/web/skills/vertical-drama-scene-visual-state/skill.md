@@ -1,7 +1,7 @@
 ---
 name: Vertical Drama Scene Visual State
 description: Author one durable visual continuity lock for one scene of a Vertical Drama sub-episode.
-version: 1.0.0
+version: 1.0.1
 category: other
 execution_mode: llm-only
 auto_trigger: false
@@ -56,7 +56,7 @@ Return exactly this shape:
     "staging_axis": "short factual 180-degree line lock",
     "sleep_surface": { "type": "long_bed", "name": "primary bed", "occupant": "character name", "placement": "stable placement" },
     "wardrobe_in_scene": [{ "character": "name", "wardrobe": "one scene outfit" }],
-    "active_props": [{ "name": "prop", "placement": "current placement", "from_shot": 3 }],
+    "active_props": [{ "name": "prop", "placement": "current placement", "from_shot": 3, "identity_lock": "stable visual identity facts for a distinctive recurring prop" }],
     "palette_mood": "short palette and texture lock",
     "time_jump_suspected": false,
     "coverage_gaps": ["script-required element absent from the reference"]
@@ -75,8 +75,13 @@ bed, preserve `long_bed` even when a location reference image resembles a
 crib/bassinet; never silently substitute the surface.
 `wardrobe_in_scene` carries one outfit for every character appearing in the
 scene. `active_props` is optional scene-local rendering context, with optional
-`from_shot` provenance; it is not a story prop ledger and must not invent durable
-prop history. `palette_mood` is color and surface texture, never emotion.
+`from_shot` provenance and optional `identity_lock` for a distinctive recurring
+object. When the script explicitly identifies a prop as important and reused
+across adjacent shots (for example, one locked wooden keepsake box), record
+stable visual facts such as silhouette, proportions, material, color, markings,
+hardware, and lock placement in `identity_lock`. This is a visual identity lock,
+not permission to invent a prop history. `active_props` is not a story prop
+ledger. `palette_mood` is color and surface texture, never emotion.
 `time_jump_suspected` and `coverage_gaps` are review signals.
 
 The calling application owns the location identity, scene membership, revision,
@@ -147,6 +152,9 @@ Use `active_props` only for objects visibly in play within this scene and needed
 keep adjacent renders coherent. Record stable placement and `from_shot` only when
 the introducing shot is clear. Do not infer possession, long-term state, narrative
 importance, or cross-scene persistence; Feature 140's fact ledger owns those facts.
+For an explicitly recurring distinctive prop, fill `identity_lock` with only
+observable or script-established appearance facts. Do not make the prop appear in
+shots whose synopsis does not require it.
 
 ## TIME JUMP AND COVERAGE GAPS
 

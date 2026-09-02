@@ -108,6 +108,10 @@ const activePropSchema = z.object({
       ? value
       : undefined,
   ),
+  identity_lock: z.unknown().transform(value => {
+    const text = typeof value === "string" ? value.trim() : "";
+    return text ? text.slice(0, 500) : undefined;
+  }),
 }).passthrough();
 const sleepSurfaceSchema = z.object({
   type: z.enum(["long_bed", "single_bed", "crib_bassinet", "sofa", "floor_mattress", "other"]),
@@ -307,6 +311,7 @@ export function toSceneVisualState(
       name: entry.name,
       placement: entry.placement,
       ...(entry.from_shot ? { fromShot: entry.from_shot } : {}),
+      ...(entry.identity_lock ? { identityLock: entry.identity_lock } : {}),
     })),
     paletteMood: raw.palette_mood,
     timeJumpSuspected: raw.time_jump_suspected,

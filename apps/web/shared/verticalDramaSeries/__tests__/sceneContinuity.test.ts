@@ -258,6 +258,23 @@ describe("scene state resolution and lock rendering", () => {
     );
   });
 
+  it("adds a non-blocking identity lock for a recurring box prop", () => {
+    const rendered = renderSceneContinuityLockBlock(
+      state({
+        activeProps: [{
+          name: "กล่องของที่ระลึก",
+          placement: "อยู่ในมือภาคิน",
+          fromShot: 1,
+        }],
+      }),
+      "vd-scene-v1-current",
+      3,
+    )!;
+    expect(rendered).toContain("Persistent prop identity lock: กล่องของที่ระลึก");
+    expect(rendered).toContain("คงรูปทรงและสัดส่วนเดิม");
+    expect(rendered).toContain("ห้ามเปลี่ยนเป็นกล่องใบอื่น");
+  });
+
   it("replaces a previously persisted scene lock with the latest state without choosing its content", () => {
     const current = [
       VD_SCENE_CONTINUITY_LOCK_HEADER,

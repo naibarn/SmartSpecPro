@@ -25,6 +25,14 @@ export type VdSceneSleepSurface = {
   placement: string;
 };
 
+export type VdSceneActiveProp = {
+  name: string;
+  placement: string;
+  fromShot?: number;
+  /** Optional visual identity facts for a distinctive recurring prop. */
+  identityLock?: string;
+};
+
 export const VD_SCENE_ANCHOR_SOURCES = ["approved", "latest_generated"] as const;
 export type VdSceneAnchorSource = (typeof VD_SCENE_ANCHOR_SOURCES)[number];
 export type VdSceneAnchor = {
@@ -52,7 +60,7 @@ export type VdSceneVisualState = {
   stagingAxis: string;
   sleepSurface?: VdSceneSleepSurface;
   wardrobeInScene: Array<{ character: string; wardrobe: string }>;
-  activeProps: Array<{ name: string; placement: string; fromShot?: number }>;
+  activeProps: VdSceneActiveProp[];
   paletteMood: string;
   timeJumpSuspected: boolean;
   coverageGaps: string[];
@@ -369,7 +377,16 @@ export function resolveSceneVisualState(raw: unknown): VdSceneVisualState | unde
           const placement = cleanString(entry.placement);
           if (!name || !placement) return [];
           const fromShot = positiveInteger(entry.fromShot ?? entry.from_shot);
-          return [{ name, placement, ...(fromShot ? { fromShot } : {}) }];
+          const identityLock = boundedString(
+            entry.identityLock ?? entry.identity_lock,
+            500,
+          );
+          return [{
+            name,
+            placement,
+            ...(fromShot ? { fromShot } : {}),
+            ...(identityLock ? { identityLock } : {}),
+          }];
         })
       : [];
     const coverageRaw = raw.coverageGaps ?? raw.coverage_gaps;
@@ -465,6 +482,32 @@ export function renderSceneContinuityLockBlock(
         return [`${name} — ${placement}${fromShot ? ` (from shot ${fromShot})` : ""}`];
       }).join("; ")
       : "";
+  const propIdentityLocks = Array.isArray(state.activeProps)
+    ? state.activeProps.flatMap(entry => {
+        if (!isRecord(entry)) return [];
+        const name = cleanString(entry.name);
+        const placement = cleanString(entry.placement);
+        if (!name || !placement) return [];
+        const fromShot = positiveInteger(entry.fromShot);
+        if (
+          fromShot !== undefined &&
+          shotNumber !== undefined &&
+          fromShot > shotNumber
+        ) {
+          return [];
+        }
+        const identityLock = boundedString(
+          entry.identityLock,
+          500,
+        );
+        const isBoxLike = /กล่อง|หีบ|box|chest|trunk|case/i.test(name);
+        if (!identityLock && !isBoxLike) return [];
+        return [`- Persistent prop identity lock: ${name} — ${
+          identityLock ||
+          "วัตถุชิ้นเดิมตลอดฉาก: คงรูปทรงและสัดส่วนเดิม วัสดุและโทนสีเดิม (ถ้าเป็นไม้ให้คงลายไม้เดิม) รอย/ตำหนิ ตำแหน่งฝา บานพับ และตัวล็อกเดิม ห้ามเปลี่ยนเป็นกล่องใบอื่น ห้ามออกแบบใหม่หรือรวมกับกล่องอื่น; หากเห็นเพียงบางส่วนให้คงรายละเอียดส่วนที่มองเห็นให้ตรงเดิม"
+        }`];
+      })
+    : [];
   const sleepSurfaceLine = state.sleepSurface
     ? `- Primary sleep surface (authoritative): ${state.sleepSurface.type} — ${state.sleepSurface.name}${state.sleepSurface.occupant ? ` — occupied by ${state.sleepSurface.occupant}` : ""} — ${state.sleepSurface.placement}. Do not replace this with a different sleep surface based on the location image.`
     : "";
@@ -476,6 +519,7 @@ export function renderSceneContinuityLockBlock(
     cleanString(state.stagingAxis) ? `- Staging axis: ${cleanString(state.stagingAxis)}` : "",
     wardrobe ? `- Wardrobe: ${wardrobe}` : "",
     props ? `- Continuity prop candidates (not all visible): ${props}` : "",
+    ...propIdentityLocks,
     props
       ? "- Current-shot prop visibility rule: show only props explicitly required by the current shot synopsis/composition; omit unrelated prior props and never duplicate handheld devices."
       : "",

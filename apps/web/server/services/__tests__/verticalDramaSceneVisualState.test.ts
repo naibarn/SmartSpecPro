@@ -113,7 +113,12 @@ function validOutput(overrides: Record<string, unknown> = {}) {
       spatial_layout: "counter rear; table center",
       staging_axis: "Mali right; camera doorway side",
       wardrobe_in_scene: [{ character: "Mali", wardrobe: "pale work shirt" }],
-      active_props: [{ name: "mug", placement: "table", from_shot: 3 }],
+      active_props: [{
+        name: "mug",
+        placement: "table",
+        from_shot: 3,
+        identity_lock: "same chipped mug",
+      }],
       palette_mood: "warm cream and muted navy",
       time_jump_suspected: false,
       coverage_gaps: [],
@@ -224,7 +229,12 @@ describe("scene visual state schema and mapper", () => {
           { name: "window", placement: "left" },
           { name: "broken" },
         ],
-        active_props: [{ name: "mug", placement: "table", from_shot: "bad" }],
+        active_props: [{
+          name: "mug",
+          placement: "table",
+          from_shot: "bad",
+          identity_lock: "same chipped mug",
+        }],
         time_jump_suspected: "yes",
         extra: "kept at the write boundary",
       },
@@ -232,7 +242,12 @@ describe("scene visual state schema and mapper", () => {
     expect(parsed.scene_visual_state).toMatchObject({
       lighting_state: "",
       fixed_elements: [{ name: "window", placement: "left" }],
-      active_props: [{ name: "mug", placement: "table", from_shot: undefined }],
+      active_props: [{
+        name: "mug",
+        placement: "table",
+        from_shot: undefined,
+        identity_lock: "same chipped mug",
+      }],
       time_jump_suspected: false,
       extra: "kept at the write boundary",
     });
@@ -263,7 +278,7 @@ describe("scene visual state schema and mapper", () => {
       memberShotNumbers: [1, 3],
       plannedAt: "2026-08-01T00:00:00.000Z",
       skillVersion: "1.0.0",
-      activeProps: [{ name: "mug", placement: "table", fromShot: 3 }],
+      activeProps: [{ name: "mug", placement: "table", fromShot: 3, identityLock: "same chipped mug" }],
     });
     expect(mapped).not.toHaveProperty("manualEdit");
     expect(mapped).not.toHaveProperty("stale");
