@@ -77,7 +77,7 @@ import {
   VerticalDramaShell,
 } from "@/components/verticalDramaSeries/VerticalDramaShell";
 import { VerticalDramaSettingsTab } from "@/components/verticalDramaSeries/VerticalDramaSettingsTab";
-import { VerticalDramaProductTieInTab } from "@/components/verticalDramaSeries/VerticalDramaProductTieInTab";
+import { VerticalDramaObjectReferenceTab } from "@/components/verticalDramaSeries/VerticalDramaObjectReferenceTab";
 import { VerticalDramaAssetsTab } from "@/components/verticalDramaSeries/VerticalDramaAssetsTab";
 import { VerticalDramaSeriesMemoryTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryTab";
 import { VerticalDramaSeriesMemoryStateTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryStateTab";
@@ -156,7 +156,7 @@ type TabId =
   | "bible"
   | "seriesMemory"
   | "memory"
-  | "product"
+  | "objects"
   | "assets"
   | "settings";
 
@@ -179,7 +179,7 @@ const ALL_TABS: TabId[] = [
   "bible",
   "seriesMemory",
   "memory",
-  "product",
+  "objects",
   "assets",
   "settings",
 ];
@@ -190,7 +190,7 @@ const STORY_TABS: TabId[] = [
   "seriesMemory",
   "memory",
 ];
-const ADVANCED_TABS: TabId[] = ["product", "assets", "settings"];
+const ADVANCED_TABS: TabId[] = ["objects", "assets", "settings"];
 
 const tabLabels: Record<TabId, { th: string; en: string }> = {
   planning: { th: "วางแผน", en: "Planning" },
@@ -212,7 +212,7 @@ const tabLabels: Record<TabId, { th: string; en: string }> = {
   // its own TabId/behavior untouched, only this visible label changes.
   seriesMemory: { th: "ความจำซีรีย์", en: "Series Memory" },
   memory: { th: "บันทึกเหตุการณ์", en: "Event Log" },
-  product: { th: "สินค้าผูกเรื่อง", en: "Product Tie-in" },
+  objects: { th: "วัตถุประกอบฉาก", en: "Object Reference" },
   assets: { th: "แอสเซ็ต", en: "Assets" },
   settings: { th: "ตั้งค่า", en: "Settings" },
 };
@@ -228,6 +228,7 @@ const tabLabels: Record<TabId, { th: string; en: string }> = {
  */
 export function resolveInitialSeriesTab(search: string): TabId {
   const requested = new URLSearchParams(search).get("tab");
+  if (requested === "product") return "objects";
   return requested && (ALL_TABS as readonly string[]).includes(requested)
     ? (requested as TabId)
     : "overview";
@@ -716,6 +717,7 @@ export default function VerticalDramaSeriesDetailPage() {
                   watermark={series.watermark}
                   readOnly={isArchived}
                   targetEpisodeCount={series.targetEpisodeCount ?? undefined}
+                  onOpenCharacterSettings={() => setActiveTab("characters")}
                 />
               </TabsContent>
 
@@ -785,7 +787,16 @@ export default function VerticalDramaSeriesDetailPage() {
                       }
                       locale={series.locale}
                       bible={series.bible}
-                      policy={series.workerMediaWorkflowPolicy || series.workerAccessPolicy ? { workerMediaWorkflowPolicy: series.workerMediaWorkflowPolicy, workerAccess: series.workerAccessPolicy } : null}
+                      policy={
+                        series.workerMediaWorkflowPolicy ||
+                        series.workerAccessPolicy
+                          ? {
+                              workerMediaWorkflowPolicy:
+                                series.workerMediaWorkflowPolicy,
+                              workerAccess: series.workerAccessPolicy,
+                            }
+                          : null
+                      }
                       llmModelPolicy={series.llmModelPolicy}
                       readOnly={isArchived}
                       onSaved={() => detailQuery.refetch()}
@@ -793,8 +804,8 @@ export default function VerticalDramaSeriesDetailPage() {
                       lookLockEnabled={seriesLookLockEnabled}
                       watermark={series.watermark}
                     />
-                  ) : tab === "product" ? (
-                    <VerticalDramaProductTieInTab
+                  ) : tab === "objects" ? (
+                    <VerticalDramaObjectReferenceTab
                       lang={lang}
                       seriesId={seriesId}
                       productTieIn={series.productTieIn}
@@ -1059,6 +1070,7 @@ export function EpisodesTab({
   watermark,
   readOnly,
   targetEpisodeCount,
+  onOpenCharacterSettings,
 }: {
   lang: "th" | "en";
   seriesId: string;
@@ -1094,6 +1106,7 @@ export function EpisodesTab({
    *  option in the add-episodes dropdown below (task: bulk sub-episode
    *  slot creation, `planning/vertical-drama-scene-dedup-bulk-slots/plan.md`). */
   targetEpisodeCount?: number | null;
+  onOpenCharacterSettings?: () => void;
 }) {
   const utils = trpc.useUtils();
   const t = vdCopy(lang);
@@ -1116,7 +1129,9 @@ export function EpisodesTab({
     alt: string;
   } | null>(null);
   const [specialTieInDialogOpen, setSpecialTieInDialogOpen] = useState(false);
-  const specialTieInEnabled = useTenantFeatureFlag("verticalDramaSpecialEpisodes");
+  const specialTieInEnabled = useTenantFeatureFlag(
+    "verticalDramaSpecialEpisodes"
+  );
   const imageModelsQuery = trpc.mediaModels.list.useQuery({
     type: "image",
     verticalDramaReady: true,
@@ -1849,9 +1864,12 @@ export function EpisodesTab({
         seriesId={seriesId}
         open={specialTieInDialogOpen}
         onOpenChange={setSpecialTieInDialogOpen}
+        onOpenCharacterSettings={onOpenCharacterSettings}
         onCreated={episodeId => {
           void utils.verticalDramaSeries.get.invalidate({ seriesId });
-          window.location.assign(`/drama-series/${seriesId}/episodes/${episodeId}`);
+          window.location.assign(
+            `/drama-series/${seriesId}/episodes/${episodeId}`
+          );
         }}
       />
       <div className="flex flex-wrap items-center gap-2">
@@ -1898,7 +1916,7 @@ export function EpisodesTab({
             </Button>
             {specialTieInEnabled ? (
               <Button
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 className="gap-2"
                 onClick={() => setSpecialTieInDialogOpen(true)}
@@ -1910,6 +1928,13 @@ export function EpisodesTab({
                   : "Create additional special tie-in"}
               </Button>
             ) : null}
+            {specialTieInEnabled && (
+              <span className="basis-full text-xs text-muted-foreground">
+                {lang === "th"
+                  ? "ตอนปกติจะต่อจากเลขตอนปกติเท่านั้น · ตอนพิเศษ Tie-in ใช้เลข 501 ขึ้นไป"
+                  : "Normal episodes continue from normal episodes only · special Tie-in uses 501+"}
+              </span>
+            )}
             {isAtPlannedTarget && (
               <span className="text-xs text-muted-foreground">
                 {lang === "th"

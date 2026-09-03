@@ -43,6 +43,76 @@ function baseProps(overrides: Record<string, unknown> = {}) {
 }
 
 describe("VerticalDramaStoryboardPanel — supplementary reference frames (Phase 6c)", () => {
+  it("keeps lazy prompt authoring separate from render-only image generation for every episode type", () => {
+    const { rerender } = render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          selectedImageModelId: "image-model",
+          onGeneratePromptAndImage: vi.fn(),
+          onGenerateStartFrameImage: vi.fn(),
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "",
+                canonicalShotSummary: "เด็กกำลังทดลองเล่นของเล่นในห้องนั่งเล่น",
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+
+    expect(
+      screen.getByTestId("vd-storyboard-one-click-generate-1")
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("vd-generate-image-1")).not.toBeInTheDocument();
+
+    rerender(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          selectedImageModelId: "image-model",
+          onGeneratePromptAndImage: vi.fn(),
+          onGenerateStartFrameImage: vi.fn(),
+          startFramePlan: {
+            frames: [{ shotNumber: 1, imagePrompt: "stored prompt" }],
+          },
+        }) as any)}
+      />
+    );
+
+    expect(
+      screen.getByTestId("vd-storyboard-one-click-generate-1")
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("vd-generate-image-1")).toBeInTheDocument();
+  });
+
+  it("shows tie-in dialogue from the canonical shot draft before a clip exists", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          canonicalShotDrafts: [
+            {
+              shotNumber: 1,
+              summary: "เด็กกำลังทดลองเล่นของเล่นในห้องนั่งเล่น",
+              dialogueLines: [
+                { speaker: "แม่", line: "ลองหมุนชิ้นนี้ดูนะ" },
+                { speaker: "ลูก", line: "สนุกมากเลยครับ" },
+              ],
+            },
+          ],
+        }) as any)}
+      />
+    );
+
+    expect(
+      screen.getByTestId("vd-storyboard-canonical-dialogue-1")
+    ).toHaveTextContent("แม่: ลองหมุนชิ้นนี้ดูนะ");
+    expect(
+      screen.getByTestId("vd-storyboard-canonical-dialogue-1")
+    ).toHaveTextContent("ลูก: สนุกมากเลยครับ");
+  });
+
   it("keeps the existing shot image visible after character references change", () => {
     render(
       <VerticalDramaStoryboardPanel
@@ -126,6 +196,152 @@ describe("VerticalDramaStoryboardPanel — supplementary reference frames (Phase
     expect(
       screen.queryByTestId("vd-reference-frame-row-1")
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the unified Product/Object Reference card for ordinary shots", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          objectReferenceEnabled: true,
+          onAddShotReference: vi.fn(),
+          onRemoveShotReference: vi.fn(),
+        }) as any)}
+      />
+    );
+
+    expect(
+      screen.getByTestId("vd-storyboard-object-reference-card-1")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-storyboard-prop-object-reference-strip-1")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-storyboard-upload-prop-object-reference-1")
+    ).toHaveAttribute("aria-label", "เพิ่มสื่ออ้างอิง");
+    expect(
+      screen
+        .getByTestId("vd-storyboard-upload-prop-object-reference-1")
+        .querySelector("input")
+    ).toHaveAttribute("accept", "image/*");
+  });
+
+  it("uses the same wide card and reference list for Product tie-in shots", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          onAddShotReference: vi.fn(),
+          onAddShotProductReference: vi.fn(),
+          onRemoveShotReference: vi.fn(),
+          productTieInByShot: { 1: { productName: "สินค้า" } },
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "สินค้าอยู่ในฉาก",
+                productReferenceAssetIds: ["https://cdn.example/product.png"],
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+
+    const card = screen.getByTestId("vd-storyboard-object-reference-card-1");
+    expect(card).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-storyboard-prop-object-reference-strip-1")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-storyboard-product-tie-in-chip-1")
+    ).toBeInTheDocument();
+    expect(
+      card.querySelectorAll(
+        '[data-testid="vd-storyboard-prop-object-reference-strip-1"]'
+      )
+    ).toHaveLength(1);
+  });
+
+  it("renders Product and story-object images in one shared reference collection", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          objectReferenceEnabled: true,
+          onAddShotReference: vi.fn(),
+          onAddShotProductReference: vi.fn(),
+          onRemoveShotReference: vi.fn(),
+          productTieInByShot: { 1: { productName: "กล่องสินค้า" } },
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "กล่องสำคัญอยู่ในมือเด็ก",
+                productReferenceAssetIds: ["https://cdn.example/product.png"],
+              },
+            ],
+          },
+          shotReferencesByShot: {
+            1: [
+              {
+                referenceId: "prop-1",
+                mediaAssetId: "prop-asset-1",
+                role: "reference",
+                source: "prop_object",
+                sortOrder: 0,
+                thumbnailUrl: "https://cdn.example/box.png",
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+
+    const card = screen.getByTestId("vd-storyboard-object-reference-card-1");
+    const sharedStrip = screen.getByTestId(
+      "vd-storyboard-prop-object-reference-strip-1"
+    );
+    expect(card).toContainElement(sharedStrip);
+    expect(
+      screen.getByTestId(
+        "vd-storyboard-reference-1-product:https://cdn.example/product.png"
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-storyboard-reference-1-prop-1")
+    ).toBeInTheDocument();
+    expect(
+      card.querySelectorAll('[data-testid*="reference-strip-1"]')
+    ).toHaveLength(1);
+  });
+
+  it("routes a dropped image to the selected Product or Object type", async () => {
+    const onAddObjectReference = vi.fn();
+    const onAddProductReference = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          objectReferenceEnabled: true,
+          onAddShotReference: onAddObjectReference,
+          onAddShotProductReference: onAddProductReference,
+          onRemoveShotReference: vi.fn(),
+          productTieInByShot: { 1: { productName: "กล่องสำคัญ" } },
+        }) as any)}
+      />
+    );
+
+    const sharedStrip = screen.getByTestId(
+      "vd-storyboard-prop-object-reference-strip-1"
+    );
+    const file = new File(["image"], "box.png", { type: "image/png" });
+    fireEvent.click(
+      screen.getByRole("button", { name: "สินค้า", exact: true })
+    );
+    fireEvent.drop(sharedStrip, { dataTransfer: { files: [file] } });
+    await waitFor(() => expect(onAddProductReference).toHaveBeenCalled());
+    expect(onAddObjectReference).not.toHaveBeenCalled();
+    expect(onAddProductReference).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ source: "upload", mediaType: "image" })
+    );
   });
 
   it("renders only reference_frame-sourced entries (filters out other sources), most-recent first", () => {
@@ -677,9 +893,7 @@ describe("VerticalDramaStoryboardPanel — supplementary reference frames (Phase
     );
 
     const phoneOption = screen.getByTestId("vd-shot-communication-phone-1");
-    const closedDoorOption = screen.getByTestId(
-      "vd-shot-communication-door-1"
-    );
+    const closedDoorOption = screen.getByTestId("vd-shot-communication-door-1");
     expect(
       screen.getByRole("radiogroup", { name: "รูปแบบการสื่อสาร" })
     ).toBeInTheDocument();

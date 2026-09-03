@@ -130,6 +130,45 @@ describe("buildStartFrameShotPromptVisionImages — scene anchor", () => {
     ]);
   });
 
+  it("attaches prop/object references after the location reference", () => {
+    const images = buildStartFrameShotPromptVisionImages(
+      undefined,
+      undefined,
+      {
+        locationReferenceImage: { url: "https://cdn/location.png", label: "Hall" },
+        propObjectReferenceImages: [
+          { url: "https://cdn/box.png", label: "Locked wooden box" },
+        ],
+      },
+    );
+    expect(images).toEqual([
+      { url: "https://cdn/location.png", label: "Location reference: Hall" },
+      {
+        url: "https://cdn/box.png",
+        label: "Prop/object reference: Locked wooden box",
+      },
+    ]);
+  });
+
+  it("does not pull cinematic portrait/location references into the legacy prop-only path", () => {
+    const images = buildStartFrameShotPromptVisionImages(
+      "https://cdn/current.png",
+      undefined,
+      {
+        propObjectReferenceImages: [
+          { url: "https://cdn/box.png", label: "Locked wooden box" },
+        ],
+      },
+    );
+    expect(images).toEqual([
+      { url: "https://cdn/current.png" },
+      {
+        url: "https://cdn/box.png",
+        label: "Prop/object reference: Locked wooden box",
+      },
+    ]);
+  });
+
   it("raises the cap to seven and drops anchor before location when the flag is absent", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const images = buildStartFrameShotPromptVisionImages(
@@ -175,6 +214,25 @@ describe("generateStartFrameShotPrompt — anchor-only vision gate", () => {
         anchorShotNumber: 3,
       },
       sceneContinuityEnabled: true,
+    });
+    expect(result.usedVision).toBe(true);
+    expect(mockLoadModels).toHaveBeenCalled();
+  });
+
+  it("requests vision when a prop/object reference is the only attached reference", async () => {
+    const result = await generateStartFrameShotPrompt({
+      userId: 1,
+      tenantId: "tenant-1",
+      seriesId: 2,
+      episodeId: 3,
+      shotNumber: 4,
+      currentPrompt: "current",
+      currentNegativePrompt: "negative",
+      canonicalShotSummary: "A shot",
+      characterReferenceManifest: [],
+      propObjectReferenceImages: [
+        { url: "https://cdn/box.png", label: "Locked wooden box" },
+      ],
     });
     expect(result.usedVision).toBe(true);
     expect(mockLoadModels).toHaveBeenCalled();

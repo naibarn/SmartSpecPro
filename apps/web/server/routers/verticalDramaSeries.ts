@@ -21,6 +21,7 @@ import { assertR2StorageActive, storageExists } from "../storage";
 import {
   ingestVerticalDramaMediaAsset,
   registerVerticalDramaUploadedMediaAsset,
+  ensureVerticalDramaTaskResultDurable,
 } from "../services/verticalDramaMediaAssetService";
 import { getUnifiedMediaTask } from "../services/mediaTaskPollingService";
 import { listVerticalDramaEpisodeRepairAttempts } from "../services/verticalDramaEpisodeRepairAttempts";
@@ -86,6 +87,27 @@ import {
   /** Production-grade full-story generation — see `loadSeriesLocationFacts` below. */
   type VerticalDramaLocationRow,
 } from "../../drizzle/schema";
+import {
+  addVerticalDramaObjectReferenceAsset,
+  archiveVerticalDramaObjectReference,
+  createVerticalDramaObjectReference,
+  ensureCommercialObjectReference,
+  getVerticalDramaObjectReferenceGenerationContext,
+  reconcileCommercialObjectReference,
+  previewVerticalDramaObjectReferencePrompt,
+  requestVerticalDramaObjectReferencePrompt,
+  linkVerticalDramaShotObjectReference,
+  listVerticalDramaObjectReferences,
+  listVerticalDramaObjectReferenceAliases,
+  removeVerticalDramaObjectReferenceAsset,
+  restoreVerticalDramaObjectReference,
+  restoreVerticalDramaObjectReferenceAsset,
+  setVerticalDramaObjectReferenceCanonicalAsset,
+  reorderVerticalDramaObjectReferenceAssets,
+  unlinkVerticalDramaShotObjectReference,
+  upsertVerticalDramaObjectReferenceAliases,
+  updateVerticalDramaObjectReference,
+} from "../services/verticalDramaObjectReferences";
 import type {
   VerticalDramaStartFramePlan,
   VerticalDramaMotionPromptPack,
@@ -1126,6 +1148,14 @@ type GenrePresetDto = {
  */
 const verticalDramaProcedure = protectedProcedure.use(
   requireFeatureFlag("verticalDramaSeries")
+);
+
+const verticalDramaObjectCatalogProcedure = verticalDramaProcedure.use(
+  requireFeatureFlag("verticalDramaObjectReferences")
+);
+
+const verticalDramaObjectImageProcedure = verticalDramaObjectCatalogProcedure.use(
+  requireFeatureFlag("verticalDramaObjectImageGeneration")
 );
 
 /**
@@ -7833,7 +7863,7 @@ export const verticalDramaSeriesRouter = router({
 
       const seriesIds = rows.map(r => r.id);
 
-      // Per-series episode aggregates (max episode number + count) in one query.
+      // Per-series normal-episode aggregates (max episode number + count) in one query.
       const episodeAgg: EpisodeAggRow[] =
         seriesIds.length > 0
           ? await db
@@ -7847,7 +7877,8 @@ export const verticalDramaSeriesRouter = router({
                 and(
                   eq(verticalDramaEpisodes.tenantId, tenantId),
                   eq(verticalDramaEpisodes.userId, userId),
-                  inArray(verticalDramaEpisodes.seriesId, seriesIds)
+                  inArray(verticalDramaEpisodes.seriesId, seriesIds),
+                  eq(verticalDramaEpisodes.episodeKind, "normal")
                 )
               )
               .groupBy(verticalDramaEpisodes.seriesId)
@@ -9292,112 +9323,116 @@ export const verticalDramaSeriesRouter = router({
         const candidate = input.draftQualityQcCandidate;
         const receiptCanBeUsedForAudit = Boolean(
           parsedReceipt.success &&
-            planningSeriesRow &&
-            receipt &&
-            candidate &&
-            receipt.seriesId === planningSeriesRow.id &&
-            fingerprintDraftQualityQcCandidate(candidate) ===
-              receipt.candidateFingerprint
+          planningSeriesRow &&
+          receipt &&
+          candidate &&
+          receipt.seriesId === planningSeriesRow.id &&
+          fingerprintDraftQualityQcCandidate(candidate) ===
+            receipt.candidateFingerprint
         );
         if (receiptCanBeUsedForAudit && receipt && candidate) {
           try {
-          confirmedDraftFingerprint = receipt.candidateFingerprint;
-        const qcRecord = await getVerticalDramaDraftQualityQcStatus(
-          receipt.runId,
-          { tenantId, userId },
-          receipt.seriesId
-        );
-        // A completed run is intentionally also recoverable from the durable
-        // ledger after Redis/BullMQ expiry. The receipt still has to identify
-        // the exact owner-scoped run and candidate fingerprint; this fallback
-        // only prevents a refresh/TTL boundary from making a valid Draft
-        // impossible to confirm.
-        const durableQcLedger = !qcRecord?.result
-          ? await getVerticalDramaDraftLedgerByQcRunId(
+            confirmedDraftFingerprint = receipt.candidateFingerprint;
+            const qcRecord = await getVerticalDramaDraftQualityQcStatus(
               receipt.runId,
               { tenantId, userId },
               receipt.seriesId
-            )
-          : null;
-        const qcResult =
-          qcRecord?.result ??
-          (qcRecord?.status === "failed" && qcRecord.failure
-            ? await recoverVerticalDramaDraftQualityQcResultFromFailure(
-                qcRecord,
-                qcRecord.failure
-              )
-            : qcRecord?.status === "succeeded"
-              ? qcRecord.result
-              : durableQcLedger
-                ? await recoverVerticalDramaDraftQualityQcResultByRunId(
-                    receipt.runId,
-                    { tenantId, userId },
-                    receipt.seriesId
+            );
+            // A completed run is intentionally also recoverable from the durable
+            // ledger after Redis/BullMQ expiry. The receipt still has to identify
+            // the exact owner-scoped run and candidate fingerprint; this fallback
+            // only prevents a refresh/TTL boundary from making a valid Draft
+            // impossible to confirm.
+            const durableQcLedger = !qcRecord?.result
+              ? await getVerticalDramaDraftLedgerByQcRunId(
+                  receipt.runId,
+                  { tenantId, userId },
+                  receipt.seriesId
+                )
+              : null;
+            const qcResult =
+              qcRecord?.result ??
+              (qcRecord?.status === "failed" && qcRecord.failure
+                ? await recoverVerticalDramaDraftQualityQcResultFromFailure(
+                    qcRecord,
+                    qcRecord.failure
                   )
-                : null);
-        if (qcResult) {
-          const selectedHistoryEntry =
-            qcResult.history.find(
-              entry => entry.candidateFingerprint === receipt.candidateFingerprint
-            ) ??
-            (receipt.candidateFingerprint === qcResult.best.fingerprint
-              ? {
-                  report: qcResult.best.report,
-                  score: qcResult.best.report.overallScore,
-                  status: qcResult.best.report.status,
+                : qcRecord?.status === "succeeded"
+                  ? qcRecord.result
+                  : durableQcLedger
+                    ? await recoverVerticalDramaDraftQualityQcResultByRunId(
+                        receipt.runId,
+                        { tenantId, userId },
+                        receipt.seriesId
+                      )
+                    : null);
+            if (qcResult) {
+              const selectedHistoryEntry =
+                qcResult.history.find(
+                  entry =>
+                    entry.candidateFingerprint === receipt.candidateFingerprint
+                ) ??
+                (receipt.candidateFingerprint === qcResult.best.fingerprint
+                  ? {
+                      report: qcResult.best.report,
+                      score: qcResult.best.report.overallScore,
+                      status: qcResult.best.report.status,
+                    }
+                  : undefined);
+              const selectedReport = selectedHistoryEntry?.report;
+              if (selectedReport) {
+                // QC is advisory. Preserve an audit only when the owner-scoped
+                // receipt can be matched to a report; missing/failed/incomplete
+                // QC never blocks Draft confirmation.
+                const candidateBible = input.bible ?? {};
+                const appliedCandidateMatches =
+                  (["logline", "mainPlot", "seasonArc"] as const).every(key => {
+                    const candidateValue = candidate[key];
+                    const appliedValue = candidateBible[key];
+                    return (
+                      typeof candidateValue !== "string" ||
+                      typeof appliedValue !== "string" ||
+                      candidateValue === appliedValue
+                    );
+                  }) &&
+                  (
+                    [
+                      "storyContext",
+                      "storyDesign",
+                      "storyContract",
+                      "visualNarrativeProfile",
+                    ] as const
+                  ).every(key =>
+                    candidate[key] === undefined ||
+                    candidateBible[key] === undefined
+                      ? true
+                      : fingerprintDraftQualityQcCandidate(candidate[key]) ===
+                        fingerprintDraftQualityQcCandidate(candidateBible[key])
+                  );
+                if (appliedCandidateMatches) {
+                  validatedDraftQualityQcAudit = {
+                    contractVersion: "vd-draft-qc-v1",
+                    runId: receipt.runId,
+                    candidateFingerprint: receipt.candidateFingerprint,
+                    overallScore: selectedReport.overallScore,
+                    status: selectedReport.status,
+                    pass: selectedReport.pass,
+                    explicitOverride: receipt.explicitOverride === true,
+                    appliedTitle: input.title.trim(),
+                    bestRound: qcResult.best.round,
+                    stopReason: qcResult.stopReason,
+                    ...(qcResult.draftArtifactId
+                      ? { draftId: qcResult.draftArtifactId }
+                      : {}),
+                    // Keep the Series projection compact. Immutable round history
+                    // stays in the Draft ledger and is exposed only by getDraftHistory.
+                    historyCount: qcResult.history.length,
+                    creditEstimate: qcResult.creditEstimate,
+                    evaluatedAt: qcResult.best.report.evaluatedAt,
+                  };
                 }
-              : undefined);
-          const selectedReport = selectedHistoryEntry?.report;
-          if (selectedReport) {
-            // QC is advisory. Preserve an audit only when the owner-scoped
-            // receipt can be matched to a report; missing/failed/incomplete
-            // QC never blocks Draft confirmation.
-            const candidateBible = input.bible ?? {};
-            const appliedCandidateMatches =
-              (["logline", "mainPlot", "seasonArc"] as const).every(key => {
-                const candidateValue = candidate[key];
-                const appliedValue = candidateBible[key];
-                return (
-                  typeof candidateValue !== "string" ||
-                  typeof appliedValue !== "string" ||
-                  candidateValue === appliedValue
-                );
-              }) &&
-              ([
-                "storyContext",
-                "storyDesign",
-                "storyContract",
-                "visualNarrativeProfile",
-              ] as const).every(key =>
-                candidate[key] === undefined || candidateBible[key] === undefined
-                  ? true
-                  : fingerprintDraftQualityQcCandidate(candidate[key]) ===
-                    fingerprintDraftQualityQcCandidate(candidateBible[key])
-              );
-            if (appliedCandidateMatches) {
-              validatedDraftQualityQcAudit = {
-                contractVersion: "vd-draft-qc-v1",
-                runId: receipt.runId,
-                candidateFingerprint: receipt.candidateFingerprint,
-                overallScore: selectedReport.overallScore,
-                status: selectedReport.status,
-                pass: selectedReport.pass,
-                explicitOverride: receipt.explicitOverride === true,
-                appliedTitle: input.title.trim(),
-                bestRound: qcResult.best.round,
-                stopReason: qcResult.stopReason,
-                ...(qcResult.draftArtifactId
-                  ? { draftId: qcResult.draftArtifactId }
-                  : {}),
-                // Keep the Series projection compact. Immutable round history
-                // stays in the Draft ledger and is exposed only by getDraftHistory.
-                historyCount: qcResult.history.length,
-                creditEstimate: qcResult.creditEstimate,
-                evaluatedAt: qcResult.best.report.evaluatedAt,
-              };
+              }
             }
-          }
-        }
           } catch (error) {
             // QC is optional metadata. Redis/ledger outages must never turn
             // into a Draft confirmation failure.
@@ -10528,6 +10563,443 @@ export const verticalDramaSeriesRouter = router({
    * direct-URL-only, matching `resolveMarketplaceCaptureProductImageUrls`'s
    * existing graceful-skip convention.
    */
+  /** Feature 174 — one catalog for story props and Special Tie-in objects. */
+  listObjectReferences: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        includeArchived: z.boolean().default(false),
+      })
+    )
+    .query(async ({ ctx, input }) =>
+      listVerticalDramaObjectReferences(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input.seriesId,
+        { includeArchived: input.includeArchived }
+      )
+    ),
+
+  createObjectReference: verticalDramaObjectCatalogProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        name: z.string().trim().min(1).max(160),
+        description: z.string().trim().max(2000).optional(),
+        canonicalPrompt: z.string().trim().max(4000).optional(),
+        objectType: z.string().trim().max(32).optional(),
+        narrativeRole: z.string().trim().max(160).optional(),
+        continuityNotes: z.string().trim().max(2000).optional(),
+        commercialTieInEnabled: z.boolean().optional(),
+        aliases: z.array(z.string().trim().min(2).max(160)).max(24).optional(),
+        mode: z
+          .enum(["story_object", "commercial_tie_in"])
+          .default("story_object"),
+        source: z
+          .enum([
+            "manual",
+            "uploaded",
+            "library",
+            "marketplace_capture",
+            "generated",
+            "legacy_product_tie_in",
+          ])
+          .default("uploaded"),
+        marketplaceCaptureId: z.string().trim().max(128).optional(),
+        marketplaceProductId: z.string().trim().max(128).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) =>
+      createVerticalDramaObjectReference(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input
+      )
+    ),
+
+  updateObjectReference: verticalDramaObjectCatalogProcedure
+    .input(
+      z.object({
+        objectReferenceId: z.string().min(1),
+        name: z.string().trim().min(1).max(160).optional(),
+        description: z.string().trim().max(2000).nullable().optional(),
+        canonicalPrompt: z.string().trim().max(4000).nullable().optional(),
+        mode: z.enum(["story_object", "commercial_tie_in"]).optional(),
+        objectType: z.string().trim().max(32).optional(),
+        narrativeRole: z.string().trim().max(160).nullable().optional(),
+        continuityNotes: z.string().trim().max(2000).nullable().optional(),
+        commercialTieInEnabled: z.boolean().optional(),
+        expectedRevision: z.number().int().nonnegative().optional(),
+        idempotencyKey: z.string().trim().min(8).max(128).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) =>
+      updateVerticalDramaObjectReference(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input
+      )
+    ),
+
+  archiveObjectReference: verticalDramaObjectCatalogProcedure
+    .input(z.object({ objectReferenceId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) =>
+      archiveVerticalDramaObjectReference(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input.objectReferenceId
+      )
+    ),
+
+  restoreObjectReference: verticalDramaObjectCatalogProcedure
+    .input(z.object({ objectReferenceId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) =>
+      restoreVerticalDramaObjectReference(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input.objectReferenceId
+      )
+    ),
+
+  addObjectReferenceAsset: verticalDramaObjectCatalogProcedure
+    .input(
+      z.object({
+        objectReferenceId: z.string().min(1),
+        mediaAssetId: z.string().min(1),
+        role: z.enum(["primary", "canonical", "alternate"]).default("alternate"),
+        source: z
+          .enum([
+            "manual",
+            "uploaded",
+            "library",
+            "marketplace_capture",
+            "generated",
+            "legacy_product_tie_in",
+          ])
+          .default("library"),
+        label: z.string().trim().max(160).optional(),
+        expectedRevision: z.number().int().nonnegative().optional(),
+        idempotencyKey: z.string().trim().min(8).max(128).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) =>
+      addVerticalDramaObjectReferenceAsset(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input
+      )
+    ),
+
+  removeObjectReferenceAsset: verticalDramaObjectCatalogProcedure
+    .input(z.object({ assetId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) =>
+      removeVerticalDramaObjectReferenceAsset(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input.assetId
+      )
+    ),
+
+  restoreObjectReferenceAsset: verticalDramaObjectCatalogProcedure
+    .input(z.object({ assetId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) =>
+      restoreVerticalDramaObjectReferenceAsset(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input.assetId
+      )
+    ),
+
+  setObjectReferenceCanonicalAsset: verticalDramaObjectCatalogProcedure
+    .input(
+      z.object({
+        objectReferenceId: z.string().min(1),
+        assetId: z.string().min(1),
+        expectedRevision: z.number().int().nonnegative().optional(),
+        idempotencyKey: z.string().trim().min(8).max(128).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) =>
+      setVerticalDramaObjectReferenceCanonicalAsset(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input
+      )
+    ),
+
+  reorderObjectReferenceAssets: verticalDramaObjectCatalogProcedure
+    .input(
+      z.object({
+        objectReferenceId: z.string().min(1),
+        assetIds: z.array(z.string().min(1)).max(20),
+      })
+    )
+    .mutation(async ({ ctx, input }) =>
+      reorderVerticalDramaObjectReferenceAssets(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input
+      )
+    ),
+
+  listObjectReferenceAliases: verticalDramaProcedure
+    .input(z.object({ objectReferenceId: z.string().min(1) }))
+    .query(async ({ ctx, input }) =>
+      listVerticalDramaObjectReferenceAliases(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input.objectReferenceId
+      )
+    ),
+
+  upsertObjectReferenceAliases: verticalDramaObjectCatalogProcedure
+    .input(
+      z.object({
+        objectReferenceId: z.string().min(1),
+        aliases: z.array(z.string().trim().min(2).max(160)).max(24),
+      })
+    )
+    .mutation(async ({ ctx, input }) =>
+      upsertVerticalDramaObjectReferenceAliases(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input
+      )
+    ),
+
+  objectReferenceCapabilities: verticalDramaProcedure
+    .input(z.object({ seriesId: z.string().min(1) }))
+    .query(async ({ ctx }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      try {
+        const flags = await getTenantFeatureFlags(tenantId);
+        return {
+          objectCatalog: flags.verticalDramaObjectReferences === true,
+          objectDetection: flags.verticalDramaObjectDetection === true,
+          objectImageGeneration:
+            flags.verticalDramaObjectImageGeneration === true,
+          objectLegacyBackfill:
+            flags.verticalDramaObjectLegacyBackfill === true,
+        } as const;
+      } catch {
+        return {
+          objectCatalog: false,
+          objectDetection: false,
+          objectImageGeneration: false,
+          objectLegacyBackfill: false,
+        } as const;
+      }
+    }),
+
+  previewObjectReferencePrompt: verticalDramaObjectCatalogProcedure
+    .input(
+      z.object({
+        objectReferenceId: z.string().min(1),
+        sceneContext: z.string().trim().max(4000).optional(),
+      })
+    )
+    .query(async ({ ctx, input }) =>
+      previewVerticalDramaObjectReferencePrompt(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input
+      )
+    ),
+
+  requestObjectReferencePrompt: verticalDramaObjectCatalogProcedure
+    .input(
+      z.object({
+        objectReferenceId: z.string().min(1),
+        sceneContext: z.string().trim().max(4000).optional(),
+        idempotencyKey: z.string().trim().min(8).max(128),
+      })
+    )
+    .mutation(async ({ ctx, input }) =>
+      requestVerticalDramaObjectReferencePrompt(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input
+      )
+    ),
+
+  /** Submit an explicitly confirmed, credit-admitted object image task. */
+  generateObjectReferenceImage: verticalDramaObjectImageProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        objectReferenceId: z.string().min(1),
+        selectedImageModelId: z.string().trim().min(1).max(128),
+        sceneContext: z.string().trim().max(4000).optional(),
+        negativePrompt: z.string().trim().max(1000).optional(),
+        confirmation: z.literal(true),
+        idempotencyKey: z.string().trim().min(8).max(128).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const context = await getVerticalDramaObjectReferenceGenerationContext(
+        { tenantId, userId: ctx.user.id },
+        input
+      );
+      if (context.seriesId !== input.seriesId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Object reference not found",
+        });
+      }
+      const { mediaRouter } = await import("./media");
+      return mediaRouter.createCaller(ctx).generateImageAsync({
+        prompt: context.prompt,
+        model: input.selectedImageModelId,
+        aspectRatio: "1:1",
+        ...(input.negativePrompt ? { negativePrompt: input.negativePrompt } : {}),
+        ...(context.referenceImageUrls.length > 0
+          ? { referenceImageUrls: context.referenceImageUrls }
+          : {}),
+        originSurface: "media_studio",
+        idempotencyKey: input.idempotencyKey,
+        extraParams: {
+          __vd_series_id: input.seriesId,
+          __vd_object_reference_id: input.objectReferenceId,
+          __vd_object_reference_revision: context.revision,
+          __vd_purpose: "object_reference",
+        },
+      });
+    }),
+
+  /** Convert only a completed owned task into a draft catalog asset. */
+  applyGeneratedObjectReferenceImage: verticalDramaObjectImageProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        objectReferenceId: z.string().min(1),
+        taskId: z.string().trim().min(1).max(256),
+        role: z.enum(["canonical", "detail", "alternate"]).default("alternate"),
+        idempotencyKey: z.string().trim().min(8).max(128).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const context = await getVerticalDramaObjectReferenceGenerationContext(
+        { tenantId, userId: ctx.user.id },
+        { objectReferenceId: input.objectReferenceId }
+      );
+      if (context.seriesId !== input.seriesId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Object reference not found" });
+      }
+      const { mediaRouter } = await import("./media");
+      let task;
+      try {
+        task = await mediaRouter.createCaller(ctx).getTask({ taskId: input.taskId });
+      } catch (error) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: error instanceof Error ? error.message : "Generated object task not found",
+        });
+      }
+      const parameters = (task?.parameters ?? {}) as Record<string, unknown>;
+      const rawExtra = parameters.extra_params ?? parameters.extraParams ?? task?.resultData?.extra_params;
+      const extra = rawExtra && typeof rawExtra === "object" && !Array.isArray(rawExtra)
+        ? (rawExtra as Record<string, unknown>)
+        : {};
+      if (
+        task?.mediaType !== "image" ||
+        task.status !== "completed" ||
+        !task.resultUrl?.startsWith("/api/storage/files/") ||
+        String(extra.__vd_series_id ?? "") !== input.seriesId ||
+        String(extra.__vd_object_reference_id ?? "") !== input.objectReferenceId ||
+        extra.__vd_purpose !== "object_reference"
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "The generated object image is not ready to apply.",
+        });
+      }
+      const durable = await ensureVerticalDramaTaskResultDurable({
+        tenantId,
+        userId: ctx.user.id,
+        task: task as any,
+      });
+      if (!durable) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "The generated object image is not available in managed storage.",
+        });
+      }
+      const asset = await addVerticalDramaObjectReferenceAsset(
+        { tenantId, userId: ctx.user.id },
+        {
+          objectReferenceId: input.objectReferenceId,
+          mediaAssetId: String(durable.mediaAssetId),
+          role: input.role,
+          source: "generated",
+          label: `Generated from ${input.taskId}`,
+        }
+      );
+      if (input.role === "canonical") {
+        await setVerticalDramaObjectReferenceCanonicalAsset(
+          { tenantId, userId: ctx.user.id },
+          { objectReferenceId: input.objectReferenceId, assetId: asset.id }
+        );
+      }
+      return { ...asset, taskId: input.taskId, revision: context.revision };
+    }),
+
+  linkShotObjectReference: verticalDramaObjectCatalogProcedure
+    .input(
+      z.object({
+        objectReferenceId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().min(1).max(100),
+        assignmentSource: z
+          .enum(["manual", "detected", "special_tie_in"])
+          .default("manual"),
+        confidence: z.number().min(0).max(1).optional(),
+        locked: z.boolean().default(false),
+        selectedMediaAssetId: z.string().min(1).optional(),
+        expectedRevision: z.number().int().nonnegative().optional(),
+        idempotencyKey: z.string().trim().min(8).max(128).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) =>
+      linkVerticalDramaShotObjectReference(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input
+      )
+    ),
+
+  unlinkShotObjectReference: verticalDramaProcedure
+    .input(z.object({ linkId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) =>
+      unlinkVerticalDramaShotObjectReference(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input.linkId
+      )
+    ),
+
+  /** Idempotent bridge used when an existing Special/Product tie-in selects a product. */
+  ensureCommercialObjectReference: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        name: z.string().trim().min(1).max(160),
+        marketplaceCaptureId: z.string().trim().max(128).optional(),
+        marketplaceProductId: z.string().trim().max(128).optional(),
+        mediaAssetIds: z.array(z.string().min(1)).max(20).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) =>
+      ensureCommercialObjectReference(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input
+      )
+    ),
+
+  reconcileCommercialObjectReference: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        name: z.string().trim().min(1).max(160),
+        marketplaceCaptureId: z.string().trim().max(128).optional(),
+        marketplaceProductId: z.string().trim().max(128).optional(),
+        mediaAssetIds: z.array(z.string().min(1)).max(20).optional(),
+        reviewedSnapshot: z.unknown().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) =>
+      reconcileCommercialObjectReference(
+        { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        input
+      )
+    ),
+
   listProductImages: verticalDramaProcedure
     .input(z.object({ seriesId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {

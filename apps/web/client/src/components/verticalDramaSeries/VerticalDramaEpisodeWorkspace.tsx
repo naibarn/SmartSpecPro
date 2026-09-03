@@ -439,6 +439,17 @@ export interface VerticalDramaStoryboardPanelData {
       existing?: VerticalDramaShotBrollBinding
     ) => void;
     onRemove?: (binding: VerticalDramaShotBrollBinding) => void;
+    onUpdateBinding?: (
+      shotNumber: number,
+      binding: VerticalDramaShotBrollBinding,
+      patch: {
+        fitMode?: string;
+        inSeconds?: number | null;
+        outSeconds?: number | null;
+        displayDurationSeconds?: number | null;
+        transform?: import("@shared/verticalDramaSeries/visualSource").ShotBrollTransform;
+      }
+    ) => void;
     saving?: boolean;
   };
   assetUrls?: VerticalDramaAssetUrlMap;
@@ -492,6 +503,7 @@ export interface VerticalDramaStoryboardPanelData {
   onGenerateStopFramePrompt?: (shotNumber: number) => void;
   onSaveStopFramePrompt?: (shotNumber: number, prompt: string) => void;
   onGenerateStopFrameImage?: (shotNumber: number) => void;
+  generatingStopFramePromptForShot?: ReadonlySet<number>;
   generatingStopFrameImageForShot?: ReadonlySet<number>;
   stopFrameGenerationErrorByShot?: Record<number, string>;
   onRunFrameContinuityQc?: (shotNumber: number) => void;
@@ -677,9 +689,44 @@ export interface VerticalDramaStoryboardPanelData {
 
   /* ---- Phase 2.5 — per-shot reference strip ---- */
   shotReferencesByShot?: Record<number, VerticalDramaShotReferenceView[]>;
+  /** Feature 174 — reusable story/commercial object catalog and shot links. */
+  objectReferenceCatalog?: Array<{ id: string; name: string }>;
+  objectReferenceEnabled?: boolean;
+  objectReferencesByShot?: Record<
+    number,
+    Array<{ id: string; objectReferenceId: string; name: string }>
+  >;
+  objectReferenceSuggestionsByShot?: Record<
+    number,
+    Array<{
+      id: string;
+      objectReferenceId: string;
+      name: string;
+      confidence: number | null;
+      status: string;
+      decision: string | null;
+    }>
+  >;
+  onLinkObjectReference?: (
+    shotNumber: number,
+    objectReferenceId: string
+  ) => void;
+  onUnlinkObjectReference?: (shotNumber: number, linkId: string) => void;
+  onReviewObjectReferenceSuggestion?: (
+    suggestionId: string,
+    decision: "accepted" | "rejected" | "reset"
+  ) => void;
   onAddShotReference?: (
     shotNumber: number,
     payload: { url: string; source: VerticalDramaShotReferenceView["source"] }
+  ) => void;
+  onAddShotProductReference?: (
+    shotNumber: number,
+    payload: {
+      url: string;
+      source: VerticalDramaShotReferenceView["source"];
+      mediaType?: "image" | "video" | "audio";
+    }
   ) => void;
   onRemoveShotReference?: (shotNumber: number, referenceId: string) => void;
   addingShotReferenceForShot?: ReadonlySet<number>;
@@ -804,11 +851,48 @@ export interface VerticalDramaStoryboardPanelData {
   videoPromptJobErrorByShot?: Record<number, string>;
   videoPromptJobWarningByShot?: Record<number, string>;
   usedVisionByShot?: Record<number, boolean>;
+  enhancedVideoPromptUiEnabled?: boolean;
+  onGenerateEnhancedShotVideoPrompt?: (shotNumber: number) => void;
+  enhancedGeneratingForShot?: ReadonlySet<number>;
+  enhancedJobStatusByShot?: Record<number, "queued" | "running">;
+  enhancedJobErrorByShot?: Record<number, string>;
+  enhancedReadinessByShot?: Record<
+    number,
+    { ready: boolean; reasons: string[] }
+  >;
+  onSaveEnhancedVideoPrompt?: (
+    shotNumber: number,
+    clipNumber: number,
+    prompt: string,
+    expectedRevision: number
+  ) => void;
+  onFinalizeVideoPromptVariant?: (
+    shotNumber: number,
+    clipNumber: number,
+    expectedRevision: number
+  ) => void;
+  onApplyVideoPromptVariant?: (
+    shotNumber: number,
+    clipNumber: number,
+    variantId: "legacy" | "enhanced",
+    expectedRevision: number
+  ) => void;
+  onApplyVideoPromptVariantGroup?: (
+    shotNumber: number,
+    variantId: "legacy" | "enhanced",
+    expectedRevisions: Record<number, number>
+  ) => void;
+  onRestoreLegacyVideoPromptVariant?: (
+    shotNumber: number,
+    clipNumber: number
+  ) => void;
 
   /* ---- Whole-episode compiled video (2026-07-06 download + assembly upgrade) ---- */
   compiledVideo?: VerticalDramaCompiledVideoView | null;
   onAssembleCompiledVideo?: (opts?: { allowPartial?: boolean }) => void;
   assemblingCompiledVideo?: boolean;
+  /** Main-track footage timeline editor for the final assembly. */
+  assemblyTimelineSlot?: ReactNode;
 
   /* ---- Wave-5A (2026-07-07 production-grade upgrade) — density meter,
      scorecard v2, tie-in report. Mirrors the same-named
@@ -1464,6 +1548,7 @@ export function VerticalDramaEpisodeWorkspace({
               />
             ) : null
           }
+          assemblyTimelineSlot={storyboardPanel?.assemblyTimelineSlot}
           locale={locale}
           seriesId={storyboardPanel?.seriesId}
           episodeNumber={storyboardPanel?.episodeNumber}
@@ -1502,6 +1587,9 @@ export function VerticalDramaEpisodeWorkspace({
           onGenerateStopFramePrompt={storyboardPanel?.onGenerateStopFramePrompt}
           onSaveStopFramePrompt={storyboardPanel?.onSaveStopFramePrompt}
           onGenerateStopFrameImage={storyboardPanel?.onGenerateStopFrameImage}
+          generatingStopFramePromptForShot={
+            storyboardPanel?.generatingStopFramePromptForShot
+          }
           generatingStopFrameImageForShot={
             storyboardPanel?.generatingStopFrameImageForShot
           }
@@ -1531,6 +1619,17 @@ export function VerticalDramaEpisodeWorkspace({
           }
           characterPortraits={storyboardPanel?.characterPortraits}
           episodeLocations={storyboardPanel?.episodeLocations}
+          objectReferenceCatalog={storyboardPanel?.objectReferenceCatalog}
+          objectReferenceEnabled={storyboardPanel?.objectReferenceEnabled}
+          objectReferencesByShot={storyboardPanel?.objectReferencesByShot}
+          objectReferenceSuggestionsByShot={
+            storyboardPanel?.objectReferenceSuggestionsByShot
+          }
+          onLinkObjectReference={storyboardPanel?.onLinkObjectReference}
+          onUnlinkObjectReference={storyboardPanel?.onUnlinkObjectReference}
+          onReviewObjectReferenceSuggestion={
+            storyboardPanel?.onReviewObjectReferenceSuggestion
+          }
           productTieInByShot={storyboardPanel?.productTieInByShot}
           productImages={storyboardPanel?.productImages}
           productImagesLoading={storyboardPanel?.productImagesLoading}
@@ -1650,6 +1749,9 @@ export function VerticalDramaEpisodeWorkspace({
           }
           shotReferencesByShot={storyboardPanel?.shotReferencesByShot}
           onAddShotReference={storyboardPanel?.onAddShotReference}
+          onAddShotProductReference={
+            storyboardPanel?.onAddShotProductReference
+          }
           onRemoveShotReference={storyboardPanel?.onRemoveShotReference}
           addingShotReferenceForShot={
             storyboardPanel?.addingShotReferenceForShot
@@ -1756,6 +1858,27 @@ export function VerticalDramaEpisodeWorkspace({
             storyboardPanel?.videoPromptJobWarningByShot
           }
           usedVisionByShot={storyboardPanel?.usedVisionByShot}
+          enhancedVideoPromptUiEnabled={
+            storyboardPanel?.enhancedVideoPromptUiEnabled
+          }
+          onGenerateEnhancedShotVideoPrompt={
+            storyboardPanel?.onGenerateEnhancedShotVideoPrompt
+          }
+          enhancedGeneratingForShot={storyboardPanel?.enhancedGeneratingForShot}
+          enhancedJobStatusByShot={storyboardPanel?.enhancedJobStatusByShot}
+          enhancedJobErrorByShot={storyboardPanel?.enhancedJobErrorByShot}
+          enhancedReadinessByShot={storyboardPanel?.enhancedReadinessByShot}
+          onSaveEnhancedVideoPrompt={storyboardPanel?.onSaveEnhancedVideoPrompt}
+          onFinalizeVideoPromptVariant={
+            storyboardPanel?.onFinalizeVideoPromptVariant
+          }
+          onApplyVideoPromptVariant={storyboardPanel?.onApplyVideoPromptVariant}
+          onApplyVideoPromptVariantGroup={
+            storyboardPanel?.onApplyVideoPromptVariantGroup
+          }
+          onRestoreLegacyVideoPromptVariant={
+            storyboardPanel?.onRestoreLegacyVideoPromptVariant
+          }
           compiledVideo={storyboardPanel?.compiledVideo}
           onAssembleCompiledVideo={storyboardPanel?.onAssembleCompiledVideo}
           episodePreviewSlot={episodePreviewPanel}
@@ -1777,7 +1900,10 @@ export function VerticalDramaEpisodeWorkspace({
           tieInDeferScheduleAtRisk={storyboardPanel?.tieInDeferScheduleAtRisk}
           seasonTieInPlacement={storyboardPanel?.seasonTieInPlacement}
           productionWizardEnabled={productionWizardEnabled}
-          advancedMetaOpen={advancedStagesOpen}
+          // Special tie-ins do not render the workspace-level "ขั้นสูง"
+          // disclosure, so keep their model selectors visible. Normal
+          // episodes retain the existing user-controlled disclosure state.
+          advancedMetaOpen={specialEpisode || advancedStagesOpen}
         />
       ) : null}
 
@@ -1827,15 +1953,15 @@ export function VerticalDramaEpisodeWorkspace({
           <p className="font-medium">
             {specialPromptStatus === "failed"
               ? locale === "th"
-                ? "สร้าง Prompt ตอนพิเศษไม่สำเร็จ"
-                : "Special episode prompt generation failed"
+                ? "สร้าง storyboard ตอนพิเศษไม่สำเร็จ"
+                : "Special episode storyboard generation failed"
               : specialPromptStatus === "needs_clarification"
                 ? locale === "th"
                   ? "ต้องปรับโจทย์ของตอนพิเศษ"
                   : "The special episode needs clarification"
                 : locale === "th"
-                  ? "กำลังสร้าง Prompt ของตอนพิเศษ"
-                  : "Generating special episode prompts"}
+                  ? "กำลังสร้าง storyboard ของตอนพิเศษ"
+                  : "Generating special episode storyboard"}
           </p>
           <p className="mt-1 text-muted-foreground">
             {specialPromptError ??
@@ -1844,12 +1970,14 @@ export function VerticalDramaEpisodeWorkspace({
                   ? "แก้ไขไอเดียหรือข้อมูลอ้างอิง แล้วลองสร้างใหม่ได้ โดยยังใช้ตอนเดิม"
                   : "Edit the idea or references and retry; the same episode is retained."
                 : locale === "th"
-                  ? "ระบบจะสร้าง prompt ภาพเริ่มต้นและวิดีโอให้อัตโนมัติ เมื่อพร้อมแล้วจะแสดงในพื้นที่ storyboard เดิม"
-                  : "Start-frame and video prompts are generated automatically and will appear in the shared storyboard surface when ready.")}
+                  ? "ระบบจะสร้างเรื่องย่อและบทพูดครบ 9 ช็อตก่อน ส่วน prompt ภาพและวิดีโอจะสร้างผ่าน flow ปกติเมื่อกดสร้างรายช็อต"
+                  : "The system creates the complete nine-shot story and dialogue first; image and video prompts are generated later through the normal per-shot flow.")}
           </p>
           {specialModelSnapshots ? (
             <p className="mt-2 text-xs text-muted-foreground">
-              {locale === "th" ? "Model เฉพาะตอนนี้: " : "Episode-local models: "}
+              {locale === "th"
+                ? "Model เฉพาะตอนนี้: "
+                : "Episode-local models: "}
               {specialModelSnapshots.image?.label ??
                 specialModelSnapshots.image?.modelId ??
                 "—"}
@@ -2133,6 +2261,18 @@ export function VerticalDramaEpisodeWorkspace({
                   ))}
                 </ul>
               ) : null}
+              {current.warnings && current.warnings.length > 0 ? (
+                <ul className="mt-2 space-y-1" data-testid="vd-stage-warnings">
+                  {current.warnings.map((warning, i) => (
+                    <li
+                      key={i}
+                      className="text-xs text-amber-700 dark:text-amber-400"
+                    >
+                      [{warning.code}] {warning.message}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </section>
           ) : completed ? (
             <div className="rounded-lg border px-3 py-2 text-sm font-medium">
@@ -2395,6 +2535,9 @@ export function VerticalDramaEpisodeWorkspace({
                         onGenerateStopFrameImage={
                           storyboardPanel?.onGenerateStopFrameImage
                         }
+                        generatingStopFramePromptForShot={
+                          storyboardPanel?.generatingStopFramePromptForShot
+                        }
                         generatingStopFrameImageForShot={
                           storyboardPanel?.generatingStopFrameImageForShot
                         }
@@ -2410,6 +2553,30 @@ export function VerticalDramaEpisodeWorkspace({
                         onRetryStartFrameSync={
                           storyboardPanel?.onRetryStartFrameSync
                         }
+                        onAddShotProductReference={
+                          storyboardPanel?.onAddShotProductReference
+                        }
+                        objectReferenceCatalog={
+                          storyboardPanel?.objectReferenceCatalog
+                        }
+                        objectReferenceEnabled={
+                          storyboardPanel?.objectReferenceEnabled
+                        }
+                        objectReferencesByShot={
+                          storyboardPanel?.objectReferencesByShot
+                        }
+                        objectReferenceSuggestionsByShot={
+                          storyboardPanel?.objectReferenceSuggestionsByShot
+                        }
+                        onLinkObjectReference={
+                          storyboardPanel?.onLinkObjectReference
+                        }
+                        onUnlinkObjectReference={
+                          storyboardPanel?.onUnlinkObjectReference
+                        }
+                        onReviewObjectReferenceSuggestion={
+                          storyboardPanel?.onReviewObjectReferenceSuggestion
+                        }
                         productTieInByShot={storyboardPanel?.productTieInByShot}
                         productImages={storyboardPanel?.productImages}
                         productImagesLoading={
@@ -2421,16 +2588,16 @@ export function VerticalDramaEpisodeWorkspace({
                         savingProductReferencesForShot={
                           storyboardPanel?.savingProductReferencesForShot
                         }
-                        imageModels={specialEpisode ? undefined : storyboardPanel?.imageModels}
-                        videoModels={specialEpisode ? undefined : storyboardPanel?.videoModels}
+                        imageModels={storyboardPanel?.imageModels}
+                        videoModels={storyboardPanel?.videoModels}
                         selectedImageModelId={
                           storyboardPanel?.selectedImageModelId
                         }
                         selectedVideoModelId={
                           storyboardPanel?.selectedVideoModelId
                         }
-                        onSelectImageModel={specialEpisode ? undefined : storyboardPanel?.onSelectImageModel}
-                        onSelectVideoModel={specialEpisode ? undefined : storyboardPanel?.onSelectVideoModel}
+                        onSelectImageModel={storyboardPanel?.onSelectImageModel}
+                        onSelectVideoModel={storyboardPanel?.onSelectVideoModel}
                         modelsLoading={storyboardPanel?.modelsLoading}
                         imageModelsError={storyboardPanel?.imageModelsError}
                         videoModelsError={storyboardPanel?.videoModelsError}

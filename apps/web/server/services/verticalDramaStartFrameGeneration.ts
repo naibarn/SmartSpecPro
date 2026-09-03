@@ -343,7 +343,10 @@ export interface StartFrameRenderPlanProjection {
     startFrameSemanticHandoff?: VerticalDramaStartFramePlanFrame["startFrameSemanticHandoff"];
     approvedStopFrameAssetId?: string;
     staleStopFrameAssetId?: string;
-    stopFrameStaleReason?: "start_prompt_changed" | "start_asset_changed" | "stop_prompt_changed";
+    stopFrameStaleReason?:
+      | "start_prompt_changed"
+      | "start_asset_changed"
+      | "stop_prompt_changed";
     stopFrameStaleAt?: string;
     stopFrameTask?: VerticalDramaStartFramePlanFrame["stopFrameTask"];
     screenCallerCharacterRefs?: string[];
@@ -355,6 +358,8 @@ export interface StartFrameRenderPlanProjection {
     supportingPresence?: VerticalDramaSupportingPresence[];
     supportingPresenceCustomized?: boolean;
     productReferenceAssetIds: string[];
+    referenceAssetIds?: string[];
+    sceneDescription?: string;
     canonicalShotSummary?: string;
     shotComposition?: VerticalDramaShotComposition;
     imageStaleReason?:
@@ -642,7 +647,7 @@ export function projectStartFramePlan(
                 .map(ref => ref.character_id)
                 .filter(
                   (id): id is string => typeof id === "string" && id.length > 0
-            );
+                );
         const characterLookAssignments =
           shotCharacterLookAssignmentsByShotNumber?.get(r.shot_number);
         // Gap-5 fix — this shot's PRIOR persisted frame, when the caller
@@ -705,7 +710,8 @@ export function projectStartFramePlan(
             (characterKey, index) => ({
               imageIndex: index + 1,
               characterKey,
-              characterName: characterNameByKey.get(characterKey) ?? characterKey,
+              characterName:
+                characterNameByKey.get(characterKey) ?? characterKey,
             })
           )
         ).prompt;
@@ -734,9 +740,15 @@ export function projectStartFramePlan(
             : {}),
           ...(supportingPresence.length > 0 ? { supportingPresence } : {}),
           ...(previous?.supportingPresenceCustomized !== undefined
-            ? { supportingPresenceCustomized: previous.supportingPresenceCustomized }
+            ? {
+                supportingPresenceCustomized:
+                  previous.supportingPresenceCustomized,
+              }
             : {}),
           productReferenceAssetIds: previous?.productReferenceAssetIds ?? [],
+          ...(previous?.referenceAssetIds !== undefined
+            ? { referenceAssetIds: previous.referenceAssetIds }
+            : {}),
           ...(canonicalShotSummary ? { canonicalShotSummary } : {}),
           ...(shotComposition ? { shotComposition } : {}),
           ...(previous?.productRefsCustomized !== undefined
@@ -1129,17 +1141,16 @@ export function buildStartFrameRenderPlanUserPrompt(
         renderVerticalDramaSpokenCallerVirtualScreenPromptBlock({
           ...spokenCallerPolicy,
           spokenScreenCallerCharacterRefs:
-        s.spokenCallerCharacterRefs ??
-        spokenCallerPolicy.spokenScreenCallerCharacterRefs,
-          virtualScreens:
-            s.spokenCallerCharacterRefs?.length
-              ? s.spokenCallerCharacterRefs.map((callerCharacterRef, index) => ({
-                  callerCharacterRef,
-                  screenIndex: index + 1,
-                  orientation: "vertical" as const,
-                  visibleFaceRequired: true as const,
-                }))
-              : spokenCallerPolicy.virtualScreens,
+            s.spokenCallerCharacterRefs ??
+            spokenCallerPolicy.spokenScreenCallerCharacterRefs,
+          virtualScreens: s.spokenCallerCharacterRefs?.length
+            ? s.spokenCallerCharacterRefs.map((callerCharacterRef, index) => ({
+                callerCharacterRef,
+                screenIndex: index + 1,
+                orientation: "vertical" as const,
+                visibleFaceRequired: true as const,
+              }))
+            : spokenCallerPolicy.virtualScreens,
         });
       // Phase 1 of `planning/polished-toasting-gadget.md` (location visual
       // bible) — additive; only appended when this shot carries a
@@ -1184,7 +1195,8 @@ export function buildStartFrameRenderPlanUserPrompt(
       const lookSelectionSuffix = s.characterLookAssignments?.length
         ? ` | look_selection: ${s.characterLookAssignments
             .map(assignment => {
-              const label = assignment.requestedLabel ?? assignment.selectedLookKey;
+              const label =
+                assignment.requestedLabel ?? assignment.selectedLookKey;
               return `${assignment.baseCharacterKey} -> ${label} (${assignment.status}; ${assignment.reason})${assignment.imageBrief ? `; image_brief: ${assignment.imageBrief}` : ""}`;
             })
             .join(" || ")}`
@@ -1305,7 +1317,7 @@ export function buildRenderPlanSceneContinuityLockSection(
   for (const shot of storyboardShots) {
     const block = sanitizeSceneContinuityLockForShot(
       shot.sceneContinuityLockBlock,
-      shot.shotNumber,
+      shot.shotNumber
     );
     if (!block) continue;
     const shots = groups.get(block) ?? [];
@@ -1335,11 +1347,11 @@ export function buildRenderPlanSceneContinuityLockSection(
  */
 export function sanitizeSceneContinuityLockForShot(
   block?: string,
-  currentShotNumber?: number,
+  currentShotNumber?: number
 ): string | undefined {
   const sanitized = filterSceneContinuityLockBlockForShot(
     block,
-    currentShotNumber,
+    currentShotNumber
   )
     ?.split("\n")
     .filter(
@@ -1518,7 +1530,7 @@ export async function generateStartFrameRenderPlan(
   if (inputSafety.level === "high") {
     throw new VerticalDramaStorySafetyError(
       "Start-frame planning requires a policy-safe story rewrite before image generation.",
-      inputSafety,
+      inputSafety
     );
   }
 
@@ -1615,12 +1627,12 @@ export async function generateStartFrameRenderPlan(
   }
 
   const outputSafety = analyzeVerticalDramaStorySafety(
-    planData.start_frame_requests.map(request => request.prompt),
+    planData.start_frame_requests.map(request => request.prompt)
   );
   if (outputSafety.level === "high") {
     throw new VerticalDramaStorySafetyError(
       "Generated start-frame prompts require a policy-safe rewrite before image generation.",
-      outputSafety,
+      outputSafety
     );
   }
 
@@ -1639,11 +1651,13 @@ export async function generateStartFrameRenderPlan(
       episodeId: params.episodeId,
       inputTokens: usage?.prompt_tokens ?? 0,
       outputTokens: usage?.completion_tokens ?? 0,
-      referenceMappingRetry: creditsUsed > calculateCreditsForLLM(
-        usage?.prompt_tokens ?? 0,
-        usage?.completion_tokens ?? 0,
-        model,
-      ),
+      referenceMappingRetry:
+        creditsUsed >
+        calculateCreditsForLLM(
+          usage?.prompt_tokens ?? 0,
+          usage?.completion_tokens ?? 0,
+          model
+        ),
     },
   });
 
@@ -1690,8 +1704,9 @@ export async function generateStartFrameRenderPlan(
           );
           return barrier ? ([s.shotNumber, barrier] as const) : null;
         })
-        .filter((entry): entry is readonly [number, VerticalDramaBarrierDialogue] =>
-          entry !== null
+        .filter(
+          (entry): entry is readonly [number, VerticalDramaBarrierDialogue] =>
+            entry !== null
         )
     ),
     new Map(
@@ -2225,7 +2240,8 @@ export function buildDeterministicPolicySafeImagePrompt(params: {
         screenCallerCharacterRefs: params.screenCallerCharacterRefs ?? [],
         dialogueSpeakerRefs:
           params.spokenCallerCharacterRefs ??
-          params.screenCallerCharacterRefs ?? [],
+          params.screenCallerCharacterRefs ??
+          [],
         faceReferenceImageIndexByCharacterRef: Object.fromEntries(
           params.characterReferenceManifest
             .filter(entry => entry.presence === "screen_caller")
@@ -2249,7 +2265,7 @@ export function buildDeterministicPolicySafeImagePrompt(params: {
       ),
       sanitizeSceneContinuityLockForShot(
         params.sceneContinuityLockBlock,
-        params.shotNumber,
+        params.shotNumber
       ),
       synopsis,
     ]
@@ -2545,6 +2561,10 @@ export interface GenerateStartFrameShotPromptParams {
   characterReferenceImages?: { url: string; label: string }[];
   /** Location reference image for `cinematic_narrative` mode's vision attachment. Ignored by every other mode. */
   locationReferenceImage?: { url: string; label: string };
+  /** Selected product reference images for special tie-in vision grounding. */
+  productReferenceImages?: { url: string; label: string }[];
+  /** User-attached physical prop/object references for ordinary-shot continuity. */
+  propObjectReferenceImages?: { url: string; label: string }[];
   /** F138 P1b — same-scene neighbor frame attached to the prompt-authoring call. */
   sceneAnchorImage?: { url: string; anchorShotNumber: number };
   /** F138 P1b — raises the automatic vision cap to make room for the anchor. */
@@ -2609,9 +2629,7 @@ export function buildStartFrameShotPromptUserPrompt(
       params.characterReferenceManifest
         .filter(entry => entry.presence === "screen_caller")
         .flatMap(entry =>
-          entry.characterId
-            ? [[entry.characterId, entry.index] as const]
-            : []
+          entry.characterId ? [[entry.characterId, entry.index] as const] : []
         )
     ),
   });
@@ -2621,19 +2639,17 @@ export function buildStartFrameShotPromptUserPrompt(
       spokenScreenCallerCharacterRefs:
         params.spokenCallerCharacterRefs ??
         spokenCallerPolicy.spokenScreenCallerCharacterRefs,
-      virtualScreens:
-          params.spokenCallerCharacterRefs?.length
-            ? params.spokenCallerCharacterRefs.map((callerCharacterRef, index) => ({
-                callerCharacterRef,
-                screenIndex: index + 1,
-                orientation: "vertical" as const,
-                visibleFaceRequired: true as const,
-                faceReferenceImageIndex:
-                  params.characterReferenceManifest.find(
-                    entry => entry.characterId === callerCharacterRef
-                  )?.index,
-              }))
-            : spokenCallerPolicy.virtualScreens,
+      virtualScreens: params.spokenCallerCharacterRefs?.length
+        ? params.spokenCallerCharacterRefs.map((callerCharacterRef, index) => ({
+            callerCharacterRef,
+            screenIndex: index + 1,
+            orientation: "vertical" as const,
+            visibleFaceRequired: true as const,
+            faceReferenceImageIndex: params.characterReferenceManifest.find(
+              entry => entry.characterId === callerCharacterRef
+            )?.index,
+          }))
+        : spokenCallerPolicy.virtualScreens,
     });
 
   const manifestLines = params.characterReferenceManifest
@@ -2733,7 +2749,9 @@ export function buildStartFrameShotPromptUserPrompt(
     params.screenCallerCharacterRefs?.length
       ? `screen_caller_character_refs: ${params.screenCallerCharacterRefs.join(", ")} — screen-only role; do not attach caller portraits as physical-scene references. If depicted, show the caller only inside a clearly visible phone/video-call screen; never place the caller physically in the room or scene.`
       : null,
-    barrierDialogue ? renderVerticalDramaBarrierDialogueBlock(barrierDialogue) : null,
+    barrierDialogue
+      ? renderVerticalDramaBarrierDialogueBlock(barrierDialogue)
+      : null,
     barrierMultiView
       ? renderVerticalDramaBarrierMultiViewFactBlock(barrierMultiView)
       : null,
@@ -2802,7 +2820,7 @@ export function buildStartFrameShotPromptUserPrompt(
     ) ?? null,
     sanitizeSceneContinuityLockForShot(
       params.sceneContinuityLockBlock,
-      params.shotNumber,
+      params.shotNumber
     ) ?? null,
     // Speaker-order composition fix — additive; `null` (filtered out
     // entirely, same convention as `location` immediately above) when
@@ -2851,14 +2869,19 @@ export function buildStartFrameShotPromptUserPrompt(
     !barrierDialogue && !barrierMultiView && requiredCharacterCount >= 2
       ? `framing_override: ${widenedMultiCharacterFramingToken(requiredCharacterCount)} (${requiredCharacterCount} required characters must ALL be visible — do not isolate one in a close-up)`
       : null,
+    params.propObjectReferenceImages?.length
+      ? "prop_object_reference_inputs: the attached prop/object reference image(s) are authoritative for the physical object's appearance; preserve their shape, materials, colors, and distinctive details when the prop is visible"
+      : null,
     // Two-mode start-frame image prompt switch — `cinematic_narrative`-only:
     // a FACT (not an instruction) telling the skill the portraits + location
     // image it needs to interpret are attached below as vision inputs — see
     // `buildStartFrameShotPromptVisionImages`'s mode-2 branch for the actual
     // attachment. `null` (filtered out entirely) for every other mode,
-    // including legacy, which never attaches these images at all.
+    // including legacy, which does not attach the character/location mode-two
+    // images. Prop/object references are an explicit exception and are
+    // attached for every non-policy-safe prompt mode when supplied.
     isNewImagePromptMode && params.imagePromptMode === "cinematic_narrative"
-      ? `frame_analysis_inputs: character portraits, the location image, and any scene continuity reference are ATTACHED as images below`
+      ? `frame_analysis_inputs: character portraits, the location image, ${params.productReferenceImages?.length ? "selected product reference image(s), " : ""}${params.propObjectReferenceImages?.length ? "prop/object reference image(s), " : ""}and any scene continuity reference are ATTACHED as images below`
       : null,
     // Independent image-prompt language — same default/wording convention
     // as `verticalDramaVideoMotionPromptGeneration.ts`'s
@@ -2907,7 +2930,7 @@ async function resolveStartFrameShotPromptModel(
   }
   try {
     const rows = await loadEnabledLlmModelRows();
-    const routableRows = rows.filter((row) => isAvailable(row.providerId));
+    const routableRows = rows.filter(row => isAvailable(row.providerId));
     if (routableRows.length > 0) {
       const configuredRow = routableRows.find(
         r =>
@@ -2978,6 +3001,8 @@ export function buildStartFrameShotPromptVisionImages(
   cinematicNarrativeVisionInputs?: {
     characterReferenceImages?: readonly { url: string; label: string }[];
     locationReferenceImage?: { url: string; label: string };
+    productReferenceImages?: readonly { url: string; label: string }[];
+    propObjectReferenceImages?: readonly { url: string; label: string }[];
     sceneAnchorImage?: { url: string; anchorShotNumber: number };
     sceneContinuityEnabled?: boolean;
   }
@@ -3013,6 +3038,20 @@ export function buildStartFrameShotPromptVisionImages(
       images.push({
         url: cinematicNarrativeVisionInputs.locationReferenceImage.url,
         label: `Location reference: ${cinematicNarrativeVisionInputs.locationReferenceImage.label}`,
+      });
+    }
+    for (const product of cinematicNarrativeVisionInputs.productReferenceImages ??
+      []) {
+      images.push({
+        url: product.url,
+        label: `Product reference: ${product.label}`,
+      });
+    }
+    for (const prop of cinematicNarrativeVisionInputs.propObjectReferenceImages ??
+      []) {
+      images.push({
+        url: prop.url,
+        label: `Prop/object reference: ${prop.label}`,
       });
     }
     if (cinematicNarrativeVisionInputs.sceneAnchorImage) {
@@ -3144,12 +3183,17 @@ export async function generateStartFrameShotPrompt(
     Boolean(
       params.characterReferenceImages?.length ||
       params.locationReferenceImage ||
+      params.productReferenceImages?.length ||
       params.sceneAnchorImage
     );
+  const hasPropObjectVisionInputs = Boolean(
+    params.propObjectReferenceImages?.length
+  );
   const wantsVision =
     !isPolicySafeSynopsisMode &&
     (Boolean(params.imageUrl) ||
-      (hasModeTwoVisionInputs && params.attachShotImage !== false));
+      (hasModeTwoVisionInputs && params.attachShotImage !== false) ||
+      (hasPropObjectVisionInputs && params.attachShotImage !== false));
 
   const resolvedModel = await resolveStartFrameShotPromptModel(
     params.seriesId,
@@ -3184,9 +3228,13 @@ export async function generateStartFrameShotPrompt(
       ? {
           characterReferenceImages: params.characterReferenceImages,
           locationReferenceImage: params.locationReferenceImage,
+          productReferenceImages: params.productReferenceImages,
+          propObjectReferenceImages: params.propObjectReferenceImages,
           sceneAnchorImage: params.sceneAnchorImage,
           sceneContinuityEnabled: params.sceneContinuityEnabled,
         }
+      : hasPropObjectVisionInputs
+        ? { propObjectReferenceImages: params.propObjectReferenceImages }
       : undefined
   );
 
@@ -3309,8 +3357,8 @@ export async function generateStartFrameShotPrompt(
           call.response.usage?.completion_tokens ?? 0,
           model
         ),
-        0
-      );
+      0
+    );
     const policySafety = analyzeVerticalDramaStorySafety({
       prompt: policySafePrompt,
       negativePrompt: "",
@@ -3318,7 +3366,7 @@ export async function generateStartFrameShotPrompt(
     if (policySafety.level === "high") {
       throw new VerticalDramaStorySafetyError(
         "Policy-safe synopsis rewrite still contains a high-risk image prompt.",
-        policySafety,
+        policySafety
       );
     }
     await deductCredits({
@@ -3384,7 +3432,7 @@ export async function generateStartFrameShotPrompt(
 
   const roleAwareData = normalizeRoleAwareFramePromptOutput(
     validatedData,
-    params.frameRole ?? "start",
+    params.frameRole ?? "start"
   );
 
   const usage = response.usage;
@@ -3491,7 +3539,7 @@ export async function generateStartFrameShotPrompt(
 
     const retryRoleAwareData = normalizeRoleAwareFramePromptOutput(
       retry.data,
-      params.frameRole ?? "start",
+      params.frameRole ?? "start"
     );
     outputPrompt = retryRoleAwareData.prompt;
     outputNegativePrompt = retryRoleAwareData.negative_prompt ?? "";
@@ -3556,9 +3604,7 @@ export async function generateStartFrameShotPrompt(
       params.characterReferenceManifest
         .filter(entry => entry.presence === "screen_caller")
         .flatMap(entry =>
-          entry.characterId
-            ? [[entry.characterId, entry.index] as const]
-            : []
+          entry.characterId ? [[entry.characterId, entry.index] as const] : []
         )
     ),
   });
@@ -3568,10 +3614,13 @@ export async function generateStartFrameShotPrompt(
   // description cannot silently outrank the latest manual state.
   const currentSceneLock = sanitizeSceneContinuityLockForShot(
     params.sceneContinuityLockBlock,
-    params.shotNumber,
+    params.shotNumber
   );
   if (currentSceneLock) {
-    outputPrompt = replaceSceneContinuityLockBlock(outputPrompt, currentSceneLock);
+    outputPrompt = replaceSceneContinuityLockBlock(
+      outputPrompt,
+      currentSceneLock
+    );
   }
 
   const finalSafety = analyzeVerticalDramaStorySafety({
@@ -3581,7 +3630,7 @@ export async function generateStartFrameShotPrompt(
   if (finalSafety.level === "high") {
     throw new VerticalDramaStorySafetyError(
       "Generated start-frame shot prompt requires a policy-safe rewrite before image generation.",
-      finalSafety,
+      finalSafety
     );
   }
 
@@ -3602,11 +3651,13 @@ export async function generateStartFrameShotPrompt(
       shotNumber: params.shotNumber,
       inputTokens: usage?.prompt_tokens ?? 0,
       outputTokens: usage?.completion_tokens ?? 0,
-      referenceMappingRetry: creditsUsed > calculateCreditsForLLM(
-        usage?.prompt_tokens ?? 0,
-        usage?.completion_tokens ?? 0,
-        model,
-      ),
+      referenceMappingRetry:
+        creditsUsed >
+        calculateCreditsForLLM(
+          usage?.prompt_tokens ?? 0,
+          usage?.completion_tokens ?? 0,
+          model
+        ),
     },
   });
 
@@ -3651,9 +3702,9 @@ export async function generateStartFrameShotPrompt(
             ),
         }
       : {}),
-      ...(usedMode ? { usedMode } : {}),
-      ...(frameStamp ? { frameStamp } : {}),
-      ...(safetyAdjustments ? { safetyAdjustments } : {}),
+    ...(usedMode ? { usedMode } : {}),
+    ...(frameStamp ? { frameStamp } : {}),
+    ...(safetyAdjustments ? { safetyAdjustments } : {}),
     ...(promptAnalysis ? { promptAnalysis } : {}),
     frameRole: params.frameRole ?? "start",
     ...(roleAwareData.semantic_handoff
