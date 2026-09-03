@@ -412,6 +412,23 @@ export function buildVideoPromptVariantStore(input: {
   });
 }
 
+/**
+ * Build a store for a shot where Enhanced was authored before Legacy. The
+ * missing Legacy variant is intentional; Enhanced must not manufacture a
+ * Legacy prompt just to satisfy the shared variant schema.
+ */
+export function buildEnhancedOnlyVideoPromptVariantStore(input: {
+  enhanced: z.input<typeof enhancedVariantSchema>;
+}): VideoPromptVariantStore {
+  const enhanced = enhancedVariantSchema.parse(input.enhanced);
+  return videoPromptVariantStoreSchema.parse({
+    version: VIDEO_PROMPT_VARIANT_STORE_VERSION,
+    activeVariant: "enhanced",
+    revision: 1,
+    variants: { enhanced },
+  });
+}
+
 export function readVideoPromptVariantStore(
   raw: unknown,
   clip: VideoPromptVariantClip

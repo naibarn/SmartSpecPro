@@ -147,4 +147,35 @@ describe("VerticalDramaStoryboardPanel — Stop Frame prompt and image actions",
       screen.getByTestId("vd-storyboard-generate-stop-frame-image-1")
     ).toBeDisabled();
   });
+
+  it("offers a slot-only remove action for an existing Stop Frame image", () => {
+    const onClearStopFrame = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          onClearStopFrame,
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "a start frame prompt",
+                stopFramePrompt: "a stop frame prompt",
+                approvedStopFrameAssetId: "42",
+              },
+            ],
+          },
+          assetUrls: {
+            "42": { url: "https://cdn.example.test/stop-frame.png" },
+          },
+        }) as any)}
+      />
+    );
+
+    const clearButton = screen.getByTestId("vd-storyboard-clear-stop-frame-1");
+    expect(clearButton).toHaveClass("absolute", "right-1", "top-1");
+    fireEvent.click(clearButton);
+
+    expect(onClearStopFrame).toHaveBeenCalledTimes(1);
+    expect(onClearStopFrame).toHaveBeenCalledWith(1);
+  });
 });

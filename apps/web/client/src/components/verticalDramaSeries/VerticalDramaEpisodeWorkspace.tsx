@@ -472,6 +472,8 @@ export interface VerticalDramaStoryboardPanelData {
   /** Opens the Media History/Library picker scoped to this shot's start frame. */
   onChangeStartFrame?: (shotNumber: number) => void;
   onChangeStopFrame?: (shotNumber: number) => void;
+  /** Clears only the stop-frame slot; the underlying media asset is retained. */
+  onClearStopFrame?: (shotNumber: number) => void;
   imageGenerationErrorByShot?: Record<number, string>;
   onRetryStartFrameImage?: (shotNumber: number, error?: string) => void;
   onRetryStartFrameSync?: (shotNumber: number) => void;
@@ -1567,6 +1569,7 @@ export function VerticalDramaEpisodeWorkspace({
           onEditVideoPrompt={storyboardPanel?.onEditVideoPrompt}
           onChangeStartFrame={storyboardPanel?.onChangeStartFrame}
           onChangeStopFrame={storyboardPanel?.onChangeStopFrame}
+          onClearStopFrame={storyboardPanel?.onClearStopFrame}
           imageGenerationErrorByShot={
             storyboardPanel?.imageGenerationErrorByShot
           }
@@ -2526,6 +2529,7 @@ export function VerticalDramaEpisodeWorkspace({
                         onEditVideoPrompt={storyboardPanel?.onEditVideoPrompt}
                         onChangeStartFrame={storyboardPanel?.onChangeStartFrame}
                         onChangeStopFrame={storyboardPanel?.onChangeStopFrame}
+                        onClearStopFrame={storyboardPanel?.onClearStopFrame}
                         onGenerateStopFramePrompt={
                           storyboardPanel?.onGenerateStopFramePrompt
                         }

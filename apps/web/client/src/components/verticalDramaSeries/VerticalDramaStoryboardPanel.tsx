@@ -4687,21 +4687,21 @@ export function VerticalDramaStoryboardPanel({
                       <span className="text-[10px] font-semibold text-violet-800 dark:text-violet-200">
                         {t(locale, "Stop Frame (ตัวเลือก)", "Stop frame (optional)")}
                       </span>
+                      <span className="text-[9px] text-muted-foreground">→</span>
+                    </div>
+                    <div className="relative aspect-[9/16] w-full overflow-hidden rounded border border-violet-200 bg-muted dark:border-violet-900">
                       {stopFrameImageSrc && onClearStopFrame ? (
                         <button
                           type="button"
                           onClick={() => onClearStopFrame(shotNumber)}
-                          className="flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-background/85 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-destructive hover:text-destructive-foreground"
                           title={t(locale, "เอาภาพ Stop frame ออกจาก slot", "Remove stop frame from slot")}
+                          aria-label={t(locale, "เอาภาพ Stop frame ออกจาก slot", "Remove stop frame from slot")}
                           data-testid={`vd-storyboard-clear-stop-frame-${shotNumber}`}
                         >
                           <X aria-hidden="true" className="h-3 w-3" />
                         </button>
-                      ) : (
-                        <span className="text-[9px] text-muted-foreground">→</span>
-                      )}
-                    </div>
-                    <div className="relative aspect-[9/16] w-full overflow-hidden rounded border border-violet-200 bg-muted dark:border-violet-900">
+                      ) : null}
                       {stopFrameImageSrc ? (
                         <AuthenticatedMediaImage
                           src={stopFrameImageSrc}
@@ -7778,7 +7778,9 @@ export function VerticalDramaStoryboardPanel({
                                 {t(locale, "ยืนยันพรอมต์ Enhanced", "Finalize Enhanced prompt")}
                               </Button>
                             ) : null}
-                            {activeVariant === "enhanced" && (onRestoreLegacyVideoPromptVariant || onApplyVideoPromptVariantGroup) ? (
+                            {activeVariant === "enhanced" &&
+                            variantRead.store?.variants.legacy &&
+                            (onRestoreLegacyVideoPromptVariant || onApplyVideoPromptVariantGroup) ? (
                               <Button
                                 type="button"
                                 size="sm"

@@ -1,4 +1,5 @@
 import {
+  buildEnhancedOnlyVideoPromptVariantStore,
   buildVideoPromptVariantStore,
   computeVideoPromptVariantFingerprint,
 } from "@shared/verticalDramaSeries/videoPromptVariants";
@@ -317,10 +318,12 @@ export function normalizeEnhancedStoryboardShot(
 }
 
 /**
- * Capability selection is shared with the paid video-render admission path.
- * Enhanced must refuse to author a prompt for a reference combination that
- * the locked target model cannot transport, instead of producing a polished
- * but unusable prompt.
+ * Enhanced prompt authoring and paid video submission have different
+ * capability boundaries. Prompt authoring needs a declared temporal frame
+ * mode for the approved Start/Stop pair, but its vision references are
+ * prompt-only context and may use a different provider transport at render
+ * time. The paid render path remains responsible for the full reference
+ * transport admission check.
  */
 export function isEnhancedCapabilityCompatible(input: {
   model: EnhancedModelFacts;
@@ -328,11 +331,26 @@ export function isEnhancedCapabilityCompatible(input: {
 }): boolean {
   const profile = parseVideoCapabilityProfile(input.model.capabilitySnapshot);
   if (!profile) return false;
-  return selectVideoCapabilityMode(profile, {
+  const capabilityInput = {
     startFrame: Boolean(input.mediaBundle.startFrame),
     stopFrame: Boolean(input.mediaBundle.stopFrame),
     references: input.mediaBundle.references,
-  }).mode.id !== "unsupported";
+  };
+  const fullSelection = selectVideoCapabilityMode(profile, capabilityInput);
+  if (fullSelection.mode.id !== "unsupported") return true;
+
+  // A Start+Stop pair is independently meaningful to Enhanced authoring.
+  // References are sent to the authoring Agent as visual evidence; do not
+  // reject the prompt job solely because the selected video provider has a
+  // separate reference-to-video transport for those attachments. Actual
+  // video submission still performs the complete selection with references.
+  if (capabilityInput.startFrame && capabilityInput.stopFrame) {
+    return selectVideoCapabilityMode(profile, {
+      ...capabilityInput,
+      references: [],
+    }).mode.id !== "unsupported";
+  }
+  return false;
 }
 
 export type EnhancedVideoPromptReadinessInput = {
@@ -607,48 +625,53 @@ export function buildEnhancedVariantStore(input: {
   jobId?: string;
 }) {
   const now = input.now ?? new Date().toISOString();
-  return buildVideoPromptVariantStore({
-    clip: input.clip,
+  const enhanced = {
+    variantId: "enhanced" as const,
+    status: "ready" as const,
+    prompt: input.bridge.prompt,
+    ...(input.bridge.negativeMotionPrompt
+      ? { negativeMotionPrompt: input.bridge.negativeMotionPrompt }
+      : {}),
+    ...(input.bridge.dialogue ? { dialogue: input.bridge.dialogue } : {}),
+    ...(input.bridge.audioDirection
+      ? { audioDirection: input.bridge.audioDirection }
+      : {}),
+    mediaBundle: input.skillInput.mediaBundle,
     inputFingerprint: buildEnhancedInputFingerprint(input.skillInput),
+    terminalPromptHash: input.bridge.terminalPromptHash,
+    revision: 1,
     createdAt: now,
-    selectedVideoModelId: input.skillInput.targetVideoModel.id,
-    enhanced: {
-      variantId: "enhanced",
-      status: "ready",
-      prompt: input.bridge.prompt,
-      ...(input.bridge.negativeMotionPrompt
-        ? { negativeMotionPrompt: input.bridge.negativeMotionPrompt }
-        : {}),
-      ...(input.bridge.dialogue ? { dialogue: input.bridge.dialogue } : {}),
-      ...(input.bridge.audioDirection
-        ? { audioDirection: input.bridge.audioDirection }
-        : {}),
-      mediaBundle: input.skillInput.mediaBundle,
-      inputFingerprint: buildEnhancedInputFingerprint(input.skillInput),
-      terminalPromptHash: input.bridge.terminalPromptHash,
-      revision: 1,
-      createdAt: now,
-      updatedAt: now,
-      skillVersion: input.bridge.skillVersion,
-      adapterVersion: input.bridge.adapterVersion,
-      sdkVersion: input.bridge.sdkVersion,
-      ...(input.sourceImageModelId ? { sourceImageModelId: input.sourceImageModelId } : {}),
-      authoringModelId: input.skillInput.authoringModel.id,
-      targetVideoModelId: input.skillInput.targetVideoModel.id,
-      targetModelSnapshot: input.skillInput.targetVideoModel.capabilitySnapshot ?? {},
-      targetModelFingerprint: input.targetModelFingerprint,
-      providerProfileId: input.providerProfileId,
-      providerPlanHash: input.providerPlanHash,
-      warnings: input.bridge.warnings ?? [],
-      assumptions: input.bridge.assumptions ?? [],
-      researchProvenance: Array.isArray(input.bridge.researchProvenance)
-        ? input.bridge.researchProvenance.filter(
-            (entry): entry is Record<string, unknown> => Boolean(entry && typeof entry === "object" && !Array.isArray(entry)),
-          )
-        : [],
-      ...(input.jobId ? { sourceJobId: input.jobId } : {}),
-    },
-  });
+    updatedAt: now,
+    skillVersion: input.bridge.skillVersion,
+    adapterVersion: input.bridge.adapterVersion,
+    sdkVersion: input.bridge.sdkVersion,
+    ...(input.sourceImageModelId ? { sourceImageModelId: input.sourceImageModelId } : {}),
+    authoringModelId: input.skillInput.authoringModel.id,
+    targetVideoModelId: input.skillInput.targetVideoModel.id,
+    targetModelSnapshot: input.skillInput.targetVideoModel.capabilitySnapshot ?? {},
+    targetModelFingerprint: input.targetModelFingerprint,
+    providerProfileId: input.providerProfileId,
+    providerPlanHash: input.providerPlanHash,
+    warnings: input.bridge.warnings ?? [],
+    assumptions: input.bridge.assumptions ?? [],
+    researchProvenance: Array.isArray(input.bridge.researchProvenance)
+      ? input.bridge.researchProvenance.filter(
+          (entry): entry is Record<string, unknown> => Boolean(entry && typeof entry === "object" && !Array.isArray(entry)),
+        )
+      : [],
+    ...(input.jobId ? { sourceJobId: input.jobId } : {}),
+  };
+  const hasLegacyPrompt =
+    typeof input.clip.prompt === "string" && input.clip.prompt.trim().length > 0;
+  return hasLegacyPrompt
+    ? buildVideoPromptVariantStore({
+        clip: input.clip,
+        inputFingerprint: buildEnhancedInputFingerprint(input.skillInput),
+        createdAt: now,
+        selectedVideoModelId: input.skillInput.targetVideoModel.id,
+        enhanced,
+      })
+    : buildEnhancedOnlyVideoPromptVariantStore({ enhanced });
 }
 
 export function buildEnhancedJobKey(input: {

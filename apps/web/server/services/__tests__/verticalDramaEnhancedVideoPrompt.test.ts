@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import {
+  buildEnhancedVariantStore,
   buildEnhancedSkillInput,
   buildEnhancedJobKey,
   buildEnhancedInputFingerprint,
   evaluateEnhancedVideoPromptReadiness,
   getEnhancedBridgeResultValidationError,
+  isEnhancedCapabilityCompatible,
   isEnhancedJobResultApplicable,
   normalizeEnhancedStoryboardShot,
   resolveEnhancedRuntimeFacts,
@@ -13,6 +15,131 @@ import {
   type EnhancedVideoPromptReadinessInput,
 } from "../verticalDramaEnhancedVideoPrompt";
 import type { VideoShotMediaBundle } from "@shared/verticalDramaShotMedia";
+
+const h3FrameModes = {
+  textToVideo: {
+    id: "text-to-video",
+    acceptsStartFrame: false,
+    acceptsStopFrame: false,
+    acceptsReferenceImages: false,
+    acceptsReferenceVideos: false,
+    acceptsReferenceAudio: false,
+    allowsMixedReferences: false,
+    maxImages: 0,
+    maxVideos: 0,
+    maxAudio: 0,
+    maxTotalReferences: 0,
+    maxPayloadBytes: null,
+    maxVideoDurationSec: 15,
+    startFrameConsumesImageSlot: false,
+    requiresVisualReferenceForAudio: false,
+    supportedReferenceRoles: [],
+    preservesStartStopSemanticsWithReferences: false,
+    transport: "kie" as const,
+    nativeFieldMap: {},
+  },
+  imageToVideo: {
+    id: "image-to-video",
+    acceptsStartFrame: true,
+    acceptsStopFrame: true,
+    acceptsReferenceImages: false,
+    acceptsReferenceVideos: false,
+    acceptsReferenceAudio: false,
+    allowsMixedReferences: false,
+    maxImages: 0,
+    maxVideos: 0,
+    maxAudio: 0,
+    maxTotalReferences: 0,
+    maxPayloadBytes: null,
+    maxVideoDurationSec: 15,
+    startFrameConsumesImageSlot: false,
+    requiresVisualReferenceForAudio: false,
+    supportedReferenceRoles: [],
+    preservesStartStopSemanticsWithReferences: true,
+    transport: "kie" as const,
+    nativeFieldMap: {
+      startFrame: "first_frame_url",
+      stopFrame: "last_frame_url",
+    },
+  },
+};
+
+const minimaxH3CapabilityProfile = {
+  providerFamily: "minimax-h3",
+  modelKey: "minimax-h3",
+  displayName: "MiniMax H3",
+  capabilityProfileVersion: "minimax-h3/1",
+  capabilitySource: "provider_manifest" as const,
+  modes: [h3FrameModes.textToVideo, h3FrameModes.imageToVideo],
+};
+
+const geminiOmniFlashCapabilityProfile = {
+  providerFamily: "gemini-omni",
+  modelKey: "gemini-omni-flash-1-1",
+  displayName: "Gemini Omni Flash 1.1",
+  capabilityProfileVersion: "gemini-omni/1",
+  capabilitySource: "runtime_catalog" as const,
+  modes: [
+    {
+      ...h3FrameModes.imageToVideo,
+      id: "mixed-references",
+      acceptsReferenceImages: true,
+      acceptsReferenceVideos: true,
+      acceptsReferenceAudio: true,
+      allowsMixedReferences: true,
+      maxImages: 7,
+      maxVideos: 1,
+      maxAudio: 3,
+      maxTotalReferences: null,
+      supportedReferenceRoles: [
+        "reference",
+        "character",
+        "location",
+        "prop",
+        "style",
+        "continuity",
+        "action",
+        "barrier_reference",
+        "soundscape",
+      ],
+      nativeFieldMap: {
+        startFrame: "first_frame_url",
+        stopFrame: "last_frame_url",
+        images: "image_urls",
+      },
+    },
+  ],
+};
+
+const framePairBundle = {
+  contractVersion: "vd-shot-media/1",
+  bundleRevision: 5,
+  startFrame: {
+    assetId: 101,
+    mediaType: "image" as const,
+    mediaFingerprint: "a".repeat(64),
+    resolvedAt: "2026-09-03T00:00:00.000Z",
+  },
+  stopFrame: {
+    assetId: 102,
+    mediaType: "image" as const,
+    mediaFingerprint: "b".repeat(64),
+    resolvedAt: "2026-09-03T00:00:00.000Z",
+  },
+  references: [
+    {
+      referenceId: "continuity-1",
+      assetId: 103,
+      mediaType: "image" as const,
+      role: "reference" as const,
+      source: "previous_main" as const,
+      order: 0,
+      label: "CONTINUITY_REFERENCE",
+      mediaFingerprint: "c".repeat(64),
+    },
+  ],
+  bundleFingerprint: "d".repeat(64),
+} satisfies VideoShotMediaBundle;
 
 const baseMediaBundle = {
   contractVersion: "vd-shot-media/1",
@@ -53,6 +180,77 @@ const baseInput: EnhancedVideoPromptReadinessInput = {
 };
 
 describe("vertical drama Enhanced prompt boundary", () => {
+  it("does not require Legacy prompt content for Enhanced authoring", () => {
+    const input = buildEnhancedSkillInput({
+      shot: { shotNumber: 2, description: "A woman reads a document" },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: baseInput.targetVideoModel,
+      authoringModel: baseInput.authoringModel,
+      researchMode: "off",
+    });
+    expect(input.shot.shotNumber).toBe(2);
+    expect(input).not.toHaveProperty("legacyPrompt");
+  });
+
+  it("persists Enhanced first without creating a Legacy variant", () => {
+    const skillInput = buildEnhancedSkillInput({
+      shot: { shotNumber: 4, description: "A woman reads a document" },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: baseInput.targetVideoModel,
+      authoringModel: baseInput.authoringModel,
+      researchMode: "off",
+    });
+    const store = buildEnhancedVariantStore({
+      clip: { clipNumber: 4, sourceShotNumbers: [4], prompt: "" },
+      skillInput,
+      bridge: {
+        prompt: "Preserve the approved opening frame while she reads.",
+        terminalPromptHash: "1".repeat(64),
+        skillVersion: "11.0.0",
+        adapterVersion: "1.0.0",
+        sdkVersion: "0.22.3",
+      },
+      targetModelFingerprint: "2".repeat(64),
+      providerProfileId: "veo-profile",
+      providerPlanHash: "3".repeat(64),
+    });
+    expect(store.activeVariant).toBe("enhanced");
+    expect(store.variants.legacy).toBeUndefined();
+    expect(store.variants.enhanced?.prompt).toContain("approved opening frame");
+  });
+
+  it("allows Enhanced readiness for MiniMax H3 Start+Stop authoring with prompt-only references", () => {
+    expect(
+      isEnhancedCapabilityCompatible({
+        model: {
+          id: "minimax-h3",
+          enabled: true,
+          capabilityFingerprint: "e".repeat(64),
+          providerProfileId: "minimax-h3",
+          capabilitySnapshot: minimaxH3CapabilityProfile,
+        },
+        mediaBundle: framePairBundle,
+      })
+    ).toBe(true);
+  });
+
+  it("allows Enhanced readiness for Gemini Omni Flash with Start+Stop and references", () => {
+    expect(
+      isEnhancedCapabilityCompatible({
+        model: {
+          id: "gemini-omni-flash-1-1",
+          enabled: true,
+          capabilityFingerprint: "f".repeat(64),
+          providerProfileId: "google/gemini-omni-flash-1-1",
+          capabilitySnapshot: geminiOmniFlashCapabilityProfile,
+        },
+        mediaBundle: framePairBundle,
+      })
+    ).toBe(true);
+  });
+
   it("normalizes persisted snake_case storyboard shots for readiness", () => {
     expect(
       normalizeEnhancedStoryboardShot({
@@ -176,7 +374,9 @@ describe("vertical drama Enhanced prompt boundary", () => {
         storyBeat: "Mali opens the door",
         dialogue: [{ speaker: "Mali", text: "ไปกันเถอะ" }],
         frameAnalysis: {
-          people: [{ name: "Mali", position: "left", action: "holding the handle" }],
+          people: [
+            { name: "Mali", position: "left", action: "holding the handle" },
+          ],
         },
       },
       continuity: { previous: "hand on knob", next: "door open" },
@@ -194,7 +394,9 @@ describe("vertical drama Enhanced prompt boundary", () => {
     expect(input.generationMode).toBe("plan_only");
     expect(input.dialogue).toEqual([{ speaker: "Mali", text: "ไปกันเถอะ" }]);
     expect(input.shot.frameAnalysis).toEqual({
-      people: [{ name: "Mali", position: "left", action: "holding the handle" }],
+      people: [
+        { name: "Mali", position: "left", action: "holding the handle" },
+      ],
     });
     expect(input.mediaBundle.bundleFingerprint).toBe(
       baseInput.mediaBundle.bundleFingerprint

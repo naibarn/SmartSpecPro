@@ -9364,6 +9364,12 @@ function EpisodeWorkspaceShell({
               setImageSwapTarget({ type: "startFrame", shotNumber }),
             onChangeStopFrame: shotNumber =>
               setImageSwapTarget({ type: "stopFrame", shotNumber }),
+            onClearStopFrame: shotNumber =>
+              clearShotStopFrameMutation.mutate({
+                seriesId,
+                episodeId,
+                shotNumber,
+              }),
             onGenerateStopFramePrompt: shotNumber =>
               void handleGenerateStopFramePrompt(shotNumber),
             generatingStopFramePromptForShot,

@@ -13,10 +13,8 @@ function count(source: string, value: string): number {
 describe("Vertical Drama shot prompt background-job wiring", () => {
   it("initializes once and closes on both graceful shutdown signals", () => {
     const source = read("../_core/index.ts");
-    expect(count(source, "initVerticalDramaShotPromptJobsQueue()"))
-      .toBe(1);
-    expect(count(source, "closeVerticalDramaShotPromptJobsQueue()"))
-      .toBe(2);
+    expect(count(source, "initVerticalDramaShotPromptJobsQueue()")).toBe(1);
+    expect(count(source, "closeVerticalDramaShotPromptJobsQueue()")).toBe(2);
   });
 
   it("keeps the public prompt mutation submit-only", () => {
@@ -58,5 +56,35 @@ describe("Vertical Drama shot prompt background-job wiring", () => {
     expect(enhancedContext).toContain("resolveExternalMediaReferenceUrls");
     expect(enhancedContext).toContain("tenantId: input.tenantId");
     expect(enhancedContext).toContain("providerUrls?.[index]");
+  });
+
+  it("does not make Enhanced context depend on Legacy prompt text", () => {
+    const source = read("../routers/verticalDramaEpisodes.ts");
+    const start = source.indexOf("async function loadEnhancedShotContext");
+    const end = source.indexOf("function throwIfEnhancedBlocked", start);
+    const enhancedContext = source.slice(start, end);
+
+    expect(enhancedContext).toContain("const existingClip = pack.clips.find");
+    expect(enhancedContext).toContain("const clip = existingClip ??");
+    expect(enhancedContext).not.toContain("if (!clip)");
+    expect(enhancedContext).not.toContain("ต้องมี Legacy prompt");
+
+    const startJob = source.indexOf("async function executeEnhancedShotVideoPromptJob");
+    const endJob = source.indexOf("async function mutateEnhancedVariant", startJob);
+    const enhancedJob = source.slice(startJob, endJob);
+    expect(enhancedJob).toContain("freshClipIndex >= 0");
+    expect(enhancedJob).toContain("...freshPack.clips, updatedClip");
+    expect(enhancedJob).not.toContain("Legacy prompt changed before Enhanced merge");
+  });
+
+  it("keeps Stop Frame removal slot-only", () => {
+    const source = read("../routers/verticalDramaEpisodes.ts");
+    const start = source.indexOf("clearShotStopFrame:");
+    const end = source.indexOf("persistStartFrameImageTask:", start);
+    const clearProcedure = source.slice(start, end);
+
+    expect(clearProcedure).toContain("approvedStopFrameAssetId: undefined");
+    expect(clearProcedure).toContain("staleStopFrameAssetId: undefined");
+    expect(clearProcedure).not.toContain("db.delete");
   });
 });

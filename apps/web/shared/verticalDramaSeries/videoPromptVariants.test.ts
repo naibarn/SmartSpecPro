@@ -3,6 +3,7 @@ import {
   VIDEO_PROMPT_VARIANT_STORE_VERSION,
   applyVideoPromptVariant,
   buildLegacyVideoPromptVariant,
+  buildEnhancedOnlyVideoPromptVariantStore,
   buildVideoPromptVariantStore,
   computeVideoPromptVariantFingerprint,
   readVideoPromptVariantStore,
@@ -115,6 +116,21 @@ describe("video prompt variant contract", () => {
     expect(result.activeVariant).toBe("legacy");
     expect(result.variants.legacy?.prompt).toBe(legacyClip.prompt);
     expect(result.variants.enhanced?.prompt).toContain("restrained push-in");
+  });
+
+  it("supports an Enhanced-only clip without manufacturing a Legacy prompt", () => {
+    const store = buildEnhancedOnlyVideoPromptVariantStore({
+      enhanced: enhancedVariant(),
+    });
+    const result = readVideoPromptVariantStore(store, {
+      clipNumber: 4,
+      sourceShotNumbers: [4],
+    });
+    expect(store.activeVariant).toBe("enhanced");
+    expect(store.variants.legacy).toBeUndefined();
+    expect(result.kind).toBe("ready");
+    expect(result.activeVariant).toBe("enhanced");
+    expect(result.activeProjection.prompt).toContain("restrained push-in");
   });
 
   it("moves the complete bundle on Apply and rejects stale Enhanced metadata", () => {

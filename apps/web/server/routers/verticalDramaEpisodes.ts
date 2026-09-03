@@ -956,17 +956,12 @@ async function loadEnhancedShotContext(input: {
       code: "PRECONDITION_FAILED",
       message: "ยังไม่มี motion prompt pack ของตอนนี้",
     });
-  const clip = pack.clips.find(
+  const existingClip = pack.clips.find(
     c =>
       c.sourceShotNumbers?.includes(input.shotNumber) ||
       c.clipNumber === input.shotNumber ||
       c.parentShotNumber === input.shotNumber
   );
-  if (!clip?.prompt?.trim())
-    throw new TRPCError({
-      code: "PRECONDITION_FAILED",
-      message: "ต้องมี Legacy prompt ของช็อตก่อนสร้าง Enhanced preview",
-    });
   const targetModel = await resolveEpisodeVideoModel(pack);
   const targetVideoModel: EnhancedModelFacts = {
     id: targetModel.id,
@@ -1176,6 +1171,29 @@ async function loadEnhancedShotContext(input: {
     }),
     input.shotNumber,
   );
+  // Enhanced is authored from the storyboard and approved visual bundle. A
+  // Legacy motion clip is optional: special episodes and partially-generated
+  // packs can legitimately have storyboard shots with no Legacy projection.
+  // Keep a transient slot for context only; it is materialized as an
+  // Enhanced-only clip after the paid authoring job succeeds.
+  const clip = existingClip ?? ({
+    clipNumber: input.shotNumber,
+    sourceShotNumbers: [input.shotNumber],
+    prompt: "",
+    durationSeconds: storyboardShot?.durationSeconds ?? 8,
+    dialogue: [],
+  } as unknown as VerticalDramaMotionPromptPack["clips"][number]);
+  // Enhanced dialogue comes from canonical episode sources, never from a
+  // Legacy clip. This keeps a missing/stale Legacy projection from changing
+  // the Enhanced authoring input.
+  const enhancedDialogue = resolveShotDialogueLines({
+    shotNumber: input.shotNumber,
+    dialogueAudioPlan: row.dialogueAudioPlan as {
+      dialogue_lines?: Array<Record<string, unknown>>;
+    } | null,
+    script: row.script as Record<string, unknown> | null,
+    storyboardShotCount: storyboard?.shots?.length,
+  });
   const validVisionReferences = visionReferences.filter(reference =>
     isUsableEnhancedVisionUrl(reference.url)
   );
@@ -1227,7 +1245,7 @@ async function loadEnhancedShotContext(input: {
       clipNumber: (clip as { clipNumber?: number }).clipNumber,
       sourceShotNumbers:
         (clip as { sourceShotNumbers?: number[] }).sourceShotNumbers ?? [],
-      dialogue: clip.dialogue ?? [],
+      dialogue: enhancedDialogue,
     },
     promptPolicy: {
       promptLanguage: pack.promptLanguage ?? "en",
@@ -1241,13 +1259,11 @@ async function loadEnhancedShotContext(input: {
       shotNumber: input.shotNumber,
       description: storyboardShot?.description ?? "",
       cameraSetup: storyboardShot?.cameraSetup ?? "",
-      dialogue: clip.dialogue ?? [],
-      // Existing Legacy vision analysis is useful corroborating evidence for
-      // the dedicated Enhanced observed-state stage. The approved Start Frame
-      // remains authoritative and the Agent is instructed to override stale
-      // or conflicting analysis with what is actually visible.
-      frameAnalysis:
-        (clip as { frameAnalysis?: unknown }).frameAnalysis ?? null,
+      dialogue: enhancedDialogue,
+      // Enhanced observes the approved visual bundle directly. Do not import
+      // Legacy's persisted frame analysis as a hidden prerequisite or source
+      // of truth.
+      frameAnalysis: null,
       durationSeconds: storyboardShot?.durationSeconds ?? clip.durationSeconds,
       characterIds,
       locationId,
@@ -1424,29 +1440,39 @@ async function executeEnhancedShotVideoPromptJob(input: {
         code: "PRECONDITION_FAILED",
         message: "motion prompt pack changed before Enhanced merge",
       });
-    const freshClip = freshPack.clips.find(
+    const freshClipIndex = freshPack.clips.findIndex(
       c =>
         c.sourceShotNumbers?.includes(input.shotNumber) ||
         c.clipNumber === input.shotNumber ||
         c.parentShotNumber === input.shotNumber
     );
-    if (!freshClip?.prompt?.trim())
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "Legacy prompt changed before Enhanced merge",
-      });
+    const freshClip = freshClipIndex >= 0
+      ? freshPack.clips[freshClipIndex]
+      : undefined;
+    // Enhanced may be the first prompt author for this shot. Materialize a
+    // structural clip slot only after the paid job succeeds; do not create a
+    // fake Legacy prompt or require one for the merge.
+    const clipForEnhanced = (freshClip ?? {
+      clipNumber: input.shotNumber,
+      sourceShotNumbers: [input.shotNumber],
+      prompt: "",
+      durationSeconds:
+        Number(context.skillInput.shot.durationSeconds) > 0
+          ? Number(context.skillInput.shot.durationSeconds)
+          : 8,
+    }) as unknown as Record<string, unknown>;
     const existing = readVideoPromptVariantStore(
-      (freshClip as Record<string, unknown>).videoPromptVariants,
-      freshClip as Record<string, unknown>
+      clipForEnhanced.videoPromptVariants,
+      clipForEnhanced
     );
     const store = existing.store
       ? mergeVideoPromptVariantStore({
-          clip: freshClip as Record<string, unknown>,
+          clip: clipForEnhanced,
           existing: existing.store,
           patch: {
             variants: {
               enhanced: buildEnhancedVariantStore({
-                clip: freshClip as Record<string, unknown>,
+                clip: clipForEnhanced,
                 skillInput: context.skillInput,
                 bridge,
                 sourceImageModelId: context.sourceImageModelId,
@@ -1461,7 +1487,7 @@ async function executeEnhancedShotVideoPromptJob(input: {
           },
         })
       : buildEnhancedVariantStore({
-          clip: freshClip as Record<string, unknown>,
+          clip: clipForEnhanced,
           skillInput: context.skillInput,
           bridge,
           sourceImageModelId: context.sourceImageModelId,
@@ -1470,13 +1496,17 @@ async function executeEnhancedShotVideoPromptJob(input: {
           providerProfileId: context.targetVideoModel.providerProfileId!,
           providerPlanHash,
           now: createdAt,
-          jobId: input.jobId,
-        });
+        jobId: input.jobId,
+      });
+    const updatedClip = { ...clipForEnhanced, videoPromptVariants: store };
     const updatedPack = {
       ...freshPack,
-      clips: freshPack.clips.map(c =>
-        c === freshClip ? { ...c, videoPromptVariants: store } : c
-      ),
+      clips:
+        freshClipIndex >= 0
+          ? freshPack.clips.map((c, index) =>
+              index === freshClipIndex ? updatedClip : c
+            )
+          : [...freshPack.clips, updatedClip],
     };
     await tx
       .update(verticalDramaEpisodes)
