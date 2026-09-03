@@ -249,17 +249,26 @@ export class LibraryUrlValidationError extends Error {
 
 export interface LibrarySearchFilters {
   itemType?: string;
-  source?: string;
+  fileTypes?: string[];
+  mimeTypes?: string[];
+  extensions?: string[];
+  filenameContains?: string;
+  folderId?: number | null;
+  recursive?: boolean;
+  source?: string | string[];
   productId?: string;
   runId?: string;
   model?: string;
   ownerUserId?: number;
   projectId?: string | null;
   tags?: string[];
-  status?: LibraryItemStatus;
+  tagsAll?: string[];
+  tagsAny?: string[];
+  status?: LibraryItemStatus | LibraryItemStatus[];
   fromDate?: Date;
   toDate?: Date;
   recentDays?: LibraryRecentDaysFilter;
+  sizeBytes?: { min?: number; max?: number };
 }
 
 export interface LibrarySearchInput {
@@ -269,6 +278,9 @@ export interface LibrarySearchInput {
   filters?: LibrarySearchFilters;
   scope?: LibraryDocumentScope;
   folderId?: number | null;
+  itemType?: string;
+  sortBy?: "created_at" | "title" | "size_bytes" | "relevance";
+  sortOrder?: "asc" | "desc";
 }
 
 export interface UploadLibraryFileInput {
@@ -1740,9 +1752,70 @@ function getLibraryMetadataText(
 function itemMatchesFilters(item: LibraryItemRow, filters?: LibrarySearchFilters): boolean {
   if (!filters) return true;
 
+  // Single itemType or array fileTypes
   if (filters.itemType && item.itemType !== filters.itemType) return false;
-  if (filters.source && item.source !== filters.source) return false;
+  if (filters.fileTypes && filters.fileTypes.length > 0 && !filters.fileTypes.includes(item.itemType)) return false;
+
+  // Source (single or array)
+  if (filters.source) {
+    if (Array.isArray(filters.source)) {
+      if (filters.source.length > 0 && !filters.source.includes(item.source)) return false;
+    } else if (item.source !== filters.source) {
+      return false;
+    }
+  }
+
+  // Status (single or array)
+  if (filters.status) {
+    if (Array.isArray(filters.status)) {
+      if (filters.status.length > 0 && !filters.status.includes(item.status)) return false;
+    } else if (item.status !== filters.status) {
+      return false;
+    }
+  }
+
+  // Filename contains
+  if (filters.filenameContains) {
+    const term = filters.filenameContains.toLowerCase();
+    const titleMatch = item.title.toLowerCase().includes(term);
+    const descMatch = item.description?.toLowerCase().includes(term) ?? false;
+    if (!titleMatch && !descMatch) return false;
+  }
+
+  // Extensions
+  if (filters.extensions && filters.extensions.length > 0) {
+    const extList = filters.extensions.map((e) => e.toLowerCase().startsWith(".") ? e.toLowerCase() : `.${e.toLowerCase()}`);
+    const title = item.title.toLowerCase();
+    const sourceUrl = (item.sourceUrl ?? "").toLowerCase();
+    const hasExt = extList.some((ext) => title.endsWith(ext) || sourceUrl.endsWith(ext));
+    if (!hasExt) return false;
+  }
+
+  // Folder ID
+  if (filters.folderId !== undefined) {
+    if (filters.folderId === null) {
+      if (item.parentId !== null) return false;
+    } else if (item.parentId !== filters.folderId) {
+      return false;
+    }
+  }
+
   const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+
+  // MIME types
+  if (filters.mimeTypes && filters.mimeTypes.length > 0) {
+    const itemMime = String(metadata.mimeType ?? metadata.mime_type ?? metadata.contentType ?? "").toLowerCase();
+    const mimes = filters.mimeTypes.map((m) => m.toLowerCase());
+    if (!mimes.some((m) => itemMime.includes(m))) return false;
+  }
+
+  // Size bytes (min / max)
+  if (filters.sizeBytes) {
+    const itemSize = Number(metadata.sizeBytes ?? metadata.fileSizeBytes ?? metadata.size ?? 0);
+    if (filters.sizeBytes.min !== undefined && itemSize < filters.sizeBytes.min) return false;
+    if (filters.sizeBytes.max !== undefined && itemSize > filters.sizeBytes.max) return false;
+  }
+
   if (filters.productId) {
     const productId = getLibraryMetadataText(metadata, [
       "productId",
@@ -1765,7 +1838,7 @@ function itemMatchesFilters(item: LibraryItemRow, filters?: LibrarySearchFilters
   }
   if (filters.ownerUserId !== undefined && item.ownerUserId !== filters.ownerUserId) return false;
   if (filters.projectId !== undefined && item.projectId !== filters.projectId) return false;
-  if (filters.status && item.status !== filters.status) return false;
+
   if (filters.fromDate && item.createdAt < filters.fromDate) return false;
   if (filters.toDate && item.createdAt > filters.toDate) return false;
   const recentCutoff = getRecentCutoffDate(filters.recentDays);
@@ -1777,11 +1850,21 @@ function itemMatchesFilters(item: LibraryItemRow, filters?: LibrarySearchFilters
     if (model !== filters.model && modelName !== filters.model) return false;
   }
 
+  // Tags: tags / tagsAll / tagsAny
+  const metadataTags = Array.isArray(metadata.tags) ? metadata.tags.map((tag) => String(tag)) : [];
+  const tagsSet = new Set(metadataTags.map((tag) => tag.toLowerCase()));
+
   if (filters.tags && filters.tags.length > 0) {
-    const metadataTags = Array.isArray(metadata.tags) ? metadata.tags.map((tag) => String(tag)) : [];
-    const tagsSet = new Set(metadataTags.map((tag) => tag.toLowerCase()));
     const required = filters.tags.map((tag) => tag.toLowerCase());
     if (!required.every((tag) => tagsSet.has(tag))) return false;
+  }
+  if (filters.tagsAll && filters.tagsAll.length > 0) {
+    const required = filters.tagsAll.map((tag) => tag.toLowerCase());
+    if (!required.every((tag) => tagsSet.has(tag))) return false;
+  }
+  if (filters.tagsAny && filters.tagsAny.length > 0) {
+    const anyList = filters.tagsAny.map((tag) => tag.toLowerCase());
+    if (!anyList.some((tag) => tagsSet.has(tag))) return false;
   }
 
   return true;
@@ -5360,7 +5443,11 @@ export async function searchLibraryItems(
     )
     .orderBy(desc(libraryItems.createdAt));
 
-  const filteredItems = itemRows.filter((item) => itemMatchesFilters(item, input.filters));
+  const effectiveFilters: LibrarySearchFilters = {
+    ...input.filters,
+    ...(input.itemType && !input.filters?.itemType ? { itemType: input.itemType } : {}),
+  };
+  const filteredItems = itemRows.filter((item) => itemMatchesFilters(item, effectiveFilters));
   const itemIds = filteredItems.map((item) => item.id);
 
   if (itemIds.length === 0) {
@@ -5558,15 +5645,24 @@ export async function searchLibraryItems(
       return entry.keywordScore > 0 || entry.vectorScore > 0;
     });
 
-  visibleScored.sort((a, b) => {
-    if (b.combinedScore !== a.combinedScore) return b.combinedScore - a.combinedScore;
-    if (b.keywordScore !== a.keywordScore) return b.keywordScore - a.keywordScore;
-    if (b.vectorScore !== a.vectorScore) return b.vectorScore - a.vectorScore;
-    if (b.item.createdAt.getTime() !== a.item.createdAt.getTime()) {
-      return b.item.createdAt.getTime() - a.item.createdAt.getTime();
-    }
-    return a.item.id - b.item.id;
-  });
+  if (input.sortBy === "title") {
+    visibleScored.sort((a, b) => {
+      const cmp = a.item.title.localeCompare(b.item.title);
+      return input.sortOrder === "asc" ? cmp : -cmp;
+    });
+  } else if (input.sortBy === "created_at" && input.sortOrder === "asc") {
+    visibleScored.sort((a, b) => a.item.createdAt.getTime() - b.item.createdAt.getTime());
+  } else {
+    visibleScored.sort((a, b) => {
+      if (b.combinedScore !== a.combinedScore) return b.combinedScore - a.combinedScore;
+      if (b.keywordScore !== a.keywordScore) return b.keywordScore - a.keywordScore;
+      if (b.vectorScore !== a.vectorScore) return b.vectorScore - a.vectorScore;
+      if (b.item.createdAt.getTime() !== a.item.createdAt.getTime()) {
+        return b.item.createdAt.getTime() - a.item.createdAt.getTime();
+      }
+      return a.item.id - b.item.id;
+    });
+  }
 
   const paged = visibleScored.slice(offset, offset + limit);
   const results: LibrarySearchResultV1[] = paged.map((entry) => ({

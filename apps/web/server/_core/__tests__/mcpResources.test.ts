@@ -10,13 +10,27 @@ describe("MCP documentation resources", () => {
     expect(result.resources.length).toBeGreaterThan(0);
     expect(
       result.resources.every(resource =>
-        resource.uri.startsWith("smartaihub://docs/mcp/")
+        resource.uri.startsWith("smartaihub://docs/mcp/") ||
+        resource.uri.startsWith("smartaihub://help/") ||
+        resource.uri === "smartaihub://capabilities" ||
+        resource.uri === "smartaihub://schema/library-search"
       )
     ).toBe(true);
     expect(result.resources.every(resource => !("text" in resource))).toBe(
       true
     );
     expect(result.cacheScope).toBe("public");
+  });
+
+  it("reads help and schema documents with stable revisions", () => {
+    const helpResult = readMcpDocumentationResource("smartaihub://help/library-search");
+    expect(helpResult.contents[0].text).toContain("smartaihub_library_search");
+    expect(helpResult.contents[0].text).toContain("filters");
+    expect(helpResult.revision).toMatch(/^[a-f0-9]{16}$/);
+
+    const indexResult = readMcpDocumentationResource("smartaihub://help/index");
+    expect(indexResult.contents[0].text).toContain("SmartAIHub MCP Server");
+    expect(indexResult.revision).toMatch(/^[a-f0-9]{16}$/);
   });
 
   it("reads an allowlisted document and returns a stable revision", () => {

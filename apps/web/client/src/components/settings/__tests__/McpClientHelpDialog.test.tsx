@@ -77,6 +77,7 @@ describe("McpClientHelpDialog", () => {
     expect(
       screen.getByRole("tab", { name: "Hermes Agent / CLI" })
     ).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "OpenClaw" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Claude Code" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Codex" })).toBeTruthy();
     expect(

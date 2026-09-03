@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Volume2,
   Mic,
@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
+import { toast } from "sonner";
 
 export interface AudioMixDeltas {
   dialogueDb: number;
@@ -27,6 +28,9 @@ export interface AudioInspectorProps {
   episodeId: string;
   shotNumber: number;
   nativeAudioEnabled: boolean;
+  videoUrl?: string;
+  audioUrl?: string;
+  isRepairing?: boolean;
   mixDeltas?: AudioMixDeltas;
   qcScore?: number;
   qcStatus?: "PASS" | "WARNING_MINOR" | "FAIL_RETRY";
@@ -41,6 +45,9 @@ export interface AudioInspectorProps {
 export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
   shotNumber,
   nativeAudioEnabled,
+  videoUrl,
+  audioUrl,
+  isRepairing = false,
   mixDeltas = { dialogueDb: 0, foleyDb: -2, ambienceDb: -6 },
   qcScore = 9.2,
   qcStatus = "PASS",
@@ -59,6 +66,62 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
   const [ambienceMuted, setAmbienceMuted] = useState(false);
   const [soloStem, setSoloStem] = useState<"dialogue" | "foley" | "ambience" | null>(null);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+
+  const audioSourceUrl = audioUrl || videoUrl;
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Synchronize audio volume / mute with the faders
+  useEffect(() => {
+    if (!audioRef.current) return;
+    const isMuted = dialogueMuted || (soloStem !== null && soloStem !== "dialogue");
+    if (isMuted) {
+      audioRef.current.volume = 0;
+    } else {
+      const linearGain = Math.min(1.0, Math.max(0.0, Math.pow(10, dialogueDb / 20)));
+      audioRef.current.volume = linearGain;
+    }
+  }, [dialogueDb, dialogueMuted, soloStem]);
+
+  // Pause audio on unmount or URL change
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, [audioSourceUrl]);
+
+  const togglePreview = () => {
+    if (!audioSourceUrl) {
+      toast.warning("ยังไม่มีคลิปวิดีโอหรือไฟล์เสียงสำหรับช็อตนี้");
+      setIsPlayingPreview(!isPlayingPreview);
+      return;
+    }
+    if (!audioRef.current) {
+      setIsPlayingPreview(!isPlayingPreview);
+      return;
+    }
+
+    if (isPlayingPreview) {
+      audioRef.current.pause();
+      setIsPlayingPreview(false);
+    } else {
+      audioRef.current.currentTime = 0;
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsPlayingPreview(true);
+          })
+          .catch(err => {
+            console.warn("Audio playback notice:", err?.message);
+            setIsPlayingPreview(true);
+          });
+      } else {
+        setIsPlayingPreview(true);
+      }
+    }
+  };
 
   const handleDialogueChange = (vals: number[]) => {
     const val = vals[0];
@@ -109,7 +172,7 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsPlayingPreview(!isPlayingPreview)}
+            onClick={togglePreview}
             className="h-7 text-xs gap-1.5"
             data-testid="vd-audio-preview-toggle-btn"
           >
@@ -376,14 +439,25 @@ export const VerticalDramaAudioInspector: React.FC<AudioInspectorProps> = ({
             variant="secondary"
             size="sm"
             onClick={onTriggerRepair}
+            disabled={isRepairing}
             className="h-7 text-xs gap-1"
             data-testid="vd-audio-trigger-repair-btn"
           >
             <Wrench className="h-3.5 w-3.5" />
-            ซ่อมเฉพาะเสียงพูด (5 เครดิต)
+            {isRepairing ? "กำลังซ่อมเสียง..." : "ซ่อมเฉพาะเสียงพูด (5 เครดิต)"}
           </Button>
         ) : null}
       </div>
+
+      {audioSourceUrl ? (
+        <audio
+          ref={audioRef}
+          src={audioSourceUrl}
+          preload="auto"
+          onEnded={() => setIsPlayingPreview(false)}
+          onPause={() => setIsPlayingPreview(false)}
+        />
+      ) : null}
     </div>
   );
 };

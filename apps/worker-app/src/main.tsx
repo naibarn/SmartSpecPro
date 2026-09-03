@@ -18,6 +18,7 @@ import { ComfyWorkflowsScreen } from "./screens/ComfyWorkflowsScreen";
 import { ComfyJobsScreen } from "./screens/ComfyJobsScreen";
 import { WorkerPermissionsPanel } from "./screens/WorkerPermissionsPanel";
 import { LocalLlmSettingsScreen } from "./screens/LocalLlmSettingsScreen";
+import { AudioStudioSettingsCard } from "./screens/AudioStudioSettingsCard";
 import {
   fetchJsonWithTimeout,
   isNewerVersion,
@@ -2917,6 +2918,7 @@ function App() {
       {activeRoute === "settings" ? (
         <section className="dashboard-grid" role="tabpanel">
           <LocalLlmSettingsScreen locale={settings.locale} />
+          <AudioStudioSettingsCard locale={settings.locale} />
           <article className="panel wide settings-panel">
             <div className="panel-heading">
               <p className="eyebrow">Settings</p>

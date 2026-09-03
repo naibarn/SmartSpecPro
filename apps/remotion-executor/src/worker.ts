@@ -18,7 +18,9 @@ async function runtimeSource(): Promise<"existing_hermes_install" | "managed_run
     : "managed_runtime_pack";
 }
 
-type Job = { id: string; inputJson: Record<string, unknown>; leaseOwnerToken: string; assignmentAttempt?: string };
+import { executeAudioRepair } from "./audioRepair.js";
+
+type Job = { id: string; jobType?: string; inputJson: Record<string, unknown>; leaseOwnerToken: string; assignmentAttempt?: string };
 
 async function freeDiskBytes(): Promise<number | null> {
   try {
@@ -102,7 +104,8 @@ export async function runWorker(): Promise<void> {
     if (!claimed.job) { await new Promise((resolve) => setTimeout(resolve, 3_000)); await heartbeat(); continue; }
     const job = claimed.job;
     try {
-      const outputPath = await render(job);
+      const isAudioRepair = job.jobType === "vd_audio_surgical_repair" || Boolean(job.inputJson?.targetIssue);
+      const outputPath = isAudioRepair ? await executeAudioRepair(job) : await render(job);
       auth = await credentials();
       await workerRequest(`/api/worker-jobs/${job.id}/events`, auth.accessToken, { eventType: "job.progress", payloadJson: { stage: "upload_artifacts", message: "Uploading verified Remotion output" }, sequenceNumber: 1, leaseOwnerToken: job.leaseOwnerToken, assignmentAttempt: job.assignmentAttempt ?? null }, auth.device);
       await uploadArtifact({ jobId: job.id, token: auth.accessToken, uploadToken: auth.uploadToken, filePath: outputPath, leaseOwnerToken: job.leaseOwnerToken, assignmentAttempt: job.assignmentAttempt ?? "1", device: auth.device });

@@ -14,6 +14,7 @@ export const MCP_ONBOARDING_DESCRIPTOR_VERSION = "2026-08-18.1" as const;
 export type SupportedMcpClient =
   | "hermes-one"
   | "hermes-cli"
+  | "openclaw"
   | "claude"
   | "codex"
   | "generic";
@@ -80,6 +81,12 @@ function instructionsFor(
         "hermes mcp login smartaihub",
         "hermes mcp test smartaihub",
       ];
+    case "openclaw":
+      return [
+        `openclaw mcp add smartaihub --url ${endpoint} --auth oauth`,
+        "openclaw mcp login smartaihub",
+        "openclaw mcp list",
+      ];
     case "claude":
       return [
         `claude mcp add --transport http smartaihub ${endpoint}`,
@@ -127,6 +134,6 @@ export function buildMcpClientOnboardingDescriptors(
   endpoint = DEFAULT_ENDPOINT
 ): readonly McpClientOnboardingDescriptor[] {
   return (
-    ["hermes-one", "hermes-cli", "claude", "codex", "generic"] as const
+    ["hermes-one", "hermes-cli", "openclaw", "claude", "codex", "generic"] as const
   ).map(client => buildMcpClientOnboardingDescriptor(client, endpoint));
 }

@@ -107,6 +107,7 @@ export function McpClientHelpDialog({
   const descriptors = useMemo(
     () => ({
       hermesCli: buildMcpClientOnboardingDescriptor("hermes-cli", endpoint),
+      openclaw: buildMcpClientOnboardingDescriptor("openclaw", endpoint),
       claude: buildMcpClientOnboardingDescriptor("claude", endpoint),
       codex: buildMcpClientOnboardingDescriptor("codex", endpoint),
     }),
@@ -159,8 +160,9 @@ export function McpClientHelpDialog({
         <PermissionFlow t={t} />
 
         <Tabs defaultValue="hermes-cli" className="mt-1">
-          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4">
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-5">
             <TabsTrigger value="hermes-cli">Hermes Agent / CLI</TabsTrigger>
+            <TabsTrigger value="openclaw">OpenClaw</TabsTrigger>
             <TabsTrigger value="hermes-one">Hermes One</TabsTrigger>
             <TabsTrigger value="claude">Claude Code</TabsTrigger>
             <TabsTrigger value="codex">Codex</TabsTrigger>
@@ -199,6 +201,46 @@ export function McpClientHelpDialog({
               <CommandBlock
                 commands={[
                   `hermes mcp add smartaihub --url ${endpoint} --auth header`,
+                ]}
+                copyLabel={t("connectedDevices.helpCopyCommands")}
+                copiedLabel={t("connectedDevices.helpCopied")}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="openclaw" className="mt-4 space-y-3">
+            <div>
+              <h3 className="font-semibold text-slate-950">
+                {t("connectedDevices.helpOpenClawTitle")}
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                {t("connectedDevices.helpOpenClawDescription")}
+              </p>
+              <CommandBlock
+                commands={[
+                  ...descriptors.openclaw.instructions,
+                  "openclaw mcp list",
+                ]}
+                copyLabel={t("connectedDevices.helpCopyCommands")}
+                copiedLabel={t("connectedDevices.helpCopied")}
+              />
+            </div>
+            <div className="rounded-lg border border-slate-200 p-3 text-xs leading-5 text-slate-700">
+              <div className="font-semibold text-slate-900">
+                {t("connectedDevices.helpVerifyTitle")}
+              </div>
+              <p className="mt-1">{t("connectedDevices.helpOpenClawVerify")}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-slate-900">
+                {t("connectedDevices.helpOpenClawDeviceTitle")}
+              </h4>
+              <p className="mt-1 text-xs leading-5 text-slate-600">
+                {t("connectedDevices.helpOpenClawDeviceDescription")}
+              </p>
+              <CommandBlock
+                commands={[
+                  `openclaw mcp login smartaihub --device-code`,
                 ]}
                 copyLabel={t("connectedDevices.helpCopyCommands")}
                 copiedLabel={t("connectedDevices.helpCopied")}

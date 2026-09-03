@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Task #36 (optional NATIVE AUDIO DIRECTION prompt option, added
  * 2026-07-09) integration coverage for `VerticalDramaStoryboardPanel.tsx`:

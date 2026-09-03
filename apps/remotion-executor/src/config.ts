@@ -42,6 +42,13 @@ export const REMOTION_CAPABILITY_FAMILIES = [
   "remotion-render",
   "chromium-render",
   "ffmpeg-probe",
+  "vertical-drama-audio-dsp",
+  "vertical-drama-demucs-gpu",
+] as const;
+export const VERTICAL_DRAMA_AUDIO_REPAIR_JOB_TYPE = "vd_audio_surgical_repair" as const;
+export const VERTICAL_DRAMA_AUDIO_CAPABILITY_FAMILIES = [
+  "vertical-drama-audio-dsp",
+  "vertical-drama-demucs-gpu",
 ] as const;
 export const PROTOCOL = {
   protocolVersion: "2026-04-06",

@@ -656,6 +656,8 @@ describe("POST /v1/mcp — protocol", () => {
     expect(res.status).toBe(200);
     expect(res.body.result.content).toBeInstanceOf(Array);
     expect(res.body.result.content.length).toBeGreaterThan(0);
+    expect(res.body.result.structuredContent).toBeDefined();
+    expect(typeof res.body.result.structuredContent).toBe("object");
   });
 
   it("lists orchestrator room action tools when the session has agencies:invoke + mcp:write", async () => {

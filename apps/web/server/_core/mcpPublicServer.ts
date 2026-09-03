@@ -217,6 +217,7 @@ function requireMcpScope(requiredScope: string) {
         error: {
           code: "invalid_api_key",
           message: "Authentication required",
+          hint: "Use 'openclaw mcp login smartaihub' (browser) or 'openclaw mcp login smartaihub --device-code' (remote server, container, or headless environments).",
           type: "auth_error",
         },
       });
@@ -798,7 +799,12 @@ async function handleToolsList(
     throw { code: -32602, message: "Invalid cursor value" };
   }
 
-  const page = allTools.slice(cursor, cursor + PAGE_SIZE);
+  const page = allTools.slice(cursor, cursor + PAGE_SIZE).map((tool) => ({
+    ...tool,
+    inputSchema: (tool.inputSchema && typeof tool.inputSchema === "object" && Object.keys(tool.inputSchema).length > 0)
+      ? tool.inputSchema
+      : { type: "object", properties: {}, additionalProperties: false },
+  }));
   const nextCursor = cursor + PAGE_SIZE < allTools.length
     ? protocolEra === "modern"
       ? encodeMcpCursor(cursor + PAGE_SIZE, {
@@ -915,24 +921,51 @@ async function handleToolsCall(
   });
 
   const contentResult = stripContextMetaFromToolResult(rawResult);
-  const serialized = JSON.stringify(contentResult);
-  const result = serialized.length > MAX_RESULT_BYTES
-    ? {
-        content: [
-          {
-            type: "text",
-            text: `[Result truncated: ${serialized.length} bytes exceeds ${MAX_RESULT_BYTES} byte limit. Use the REST API for large results.]`,
+
+  const isPreformattedResult =
+    contentResult !== null &&
+    typeof contentResult === "object" &&
+    !Array.isArray(contentResult) &&
+    Array.isArray((contentResult as any).content) &&
+    "structuredContent" in (contentResult as any);
+
+  let result: Record<string, unknown>;
+  if (isPreformattedResult) {
+    result = { ...(contentResult as Record<string, unknown>) };
+  } else {
+    const serialized = JSON.stringify(contentResult);
+    let structuredContent: Record<string, unknown>;
+    if (contentResult !== null && typeof contentResult === "object") {
+      structuredContent = Array.isArray(contentResult)
+        ? { items: contentResult }
+        : (contentResult as Record<string, unknown>);
+    } else {
+      structuredContent = { value: contentResult ?? null };
+    }
+
+    result = serialized.length > MAX_RESULT_BYTES
+      ? {
+          content: [
+            {
+              type: "text",
+              text: `[Result truncated: ${serialized.length} bytes exceeds ${MAX_RESULT_BYTES} byte limit. Use the REST API for large results.]`,
+            },
+          ],
+          structuredContent: {
+            truncated: true,
+            byteLength: serialized.length,
           },
-        ],
-      }
-    : {
-        content: [
-          {
-            type: "text",
-            text: typeof contentResult === "string" ? contentResult : JSON.stringify(contentResult, null, 2),
-          },
-        ],
-      };
+        }
+      : {
+          content: [
+            {
+              type: "text",
+              text: typeof contentResult === "string" ? contentResult : JSON.stringify(contentResult, null, 2),
+            },
+          ],
+          structuredContent,
+        };
+  }
 
   if (Object.keys(contextState).length > 0) {
     (result as Record<string, unknown>)._meta = {
@@ -1297,6 +1330,9 @@ export function registerMcpPublicRoutes(app: Express): void {
         res.status(400).json({ error: { code: "invalid_request", message: "device_id, code_challenge, and scopes are required." } });
         return;
       }
+      const displayName = pairingStringBody(req.body, "display_name", 255) || null;
+      const runtimeType = pairingStringBody(req.body, "runtime_type", 80) || null;
+      const clientLabel = displayName || (runtimeType === "openclaw_gateway" ? "OpenClaw" : "Hermes");
       const result = await startHermesAgentPairing({
         tenantId: browser.tenantId,
         userId: browser.userId,
@@ -1305,14 +1341,14 @@ export function registerMcpPublicRoutes(app: Express): void {
         codeChallenge,
         userCode: pairingUserCode(),
         verificationUri: "https://smartaihub.app/mcp/pairing/approve",
-        displayName: pairingStringBody(req.body, "display_name", 255) || null,
+        displayName,
         platform: pairingStringBody(req.body, "platform", 40) || null,
         architecture: pairingStringBody(req.body, "architecture", 40) || null,
-        runtimeType: pairingStringBody(req.body, "runtime_type", 80) || null,
+        runtimeType,
       });
       res.status(201).json({
         ...result,
-        verificationUri: `${result.verificationUri}?pairing_id=${encodeURIComponent(result.pairingId)}&user_code=${encodeURIComponent(result.userCode)}`,
+        verificationUri: `${result.verificationUri}?pairing_id=${encodeURIComponent(result.pairingId)}&user_code=${encodeURIComponent(result.userCode)}&client_name=${encodeURIComponent(clientLabel)}`,
       });
     } catch (error) {
       pairingErrorResponse(res, error);

@@ -9,6 +9,7 @@ import {
   agencies,
   agencyConversations,
   llmProviders,
+  mediaModels,
   modelProviderMap,
   workers,
 } from "../../drizzle/schema";
@@ -28,6 +29,11 @@ import {
   hasEnoughCredits,
   refundCredits,
 } from "../services/creditService";
+import { calculateCreditCost } from "../services/pricingCalculator";
+import {
+  inferMediaModelHintFromText,
+  resolveEnabledMediaModelSelection,
+} from "../services/enabledMediaModelSelection";
 import { loadEnabledLlmModelRows, resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 import { executeWithFallback } from "../services/llmRouter";
 import {
@@ -41,6 +47,8 @@ import {
   safeEnqueueLibraryIndexJob,
   searchLibraryItems,
   uploadLibraryFile,
+  type LibraryRecentDaysFilter,
+  type LibrarySearchFilters,
 } from "../services/libraryService";
 import {
   createLibraryDownloadRef,
@@ -631,7 +639,7 @@ async function executeGatewayChat(
           estimatedCredits: result.estimatedCredits,
         };
       }
-      throw new Error(result.error);
+      throw new Error((result as any).error ?? "LLM execution failed");
     }
 
     const data = result.response ?? {};
@@ -701,6 +709,100 @@ async function executeGatewayResponses(
   };
 }
 
+function normalizeLibraryItemType(rawType: unknown): string | undefined {
+  if (typeof rawType !== "string" || !rawType.trim()) return undefined;
+  const val = rawType.trim().toLowerCase();
+  if (["image", "images", "img", "photo", "photos", "picture", "pictures", "รูป", "รูปภาพ", "ภาพ"].includes(val)) {
+    return "image";
+  }
+  if (["video", "videos", "clip", "clips", "mp4", "movie", "วิดีโอ", "คลิป"].includes(val)) {
+    return "video";
+  }
+  if (["audio", "sound", "music", "mp3", "voice", "เสียง", "เพลง"].includes(val)) {
+    return "audio";
+  }
+  if (["document", "documents", "doc", "docs", "pdf", "text", "txt", "เอกสาร"].includes(val)) {
+    return "document";
+  }
+  if (["presentation", "presentations", "ppt", "pptx", "slides", "สไลด์"].includes(val)) {
+    return "presentation";
+  }
+  if (["folder", "folders", "directory", "โฟลเดอร์"].includes(val)) {
+    return "folder";
+  }
+  return val;
+}
+
+function parseLibraryDate(val: unknown): Date | undefined {
+  if (!val) return undefined;
+  if (val instanceof Date && !isNaN(val.getTime())) return val;
+  if (typeof val === "number" && Number.isFinite(val)) {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d;
+  }
+  if (typeof val === "string" && val.trim()) {
+    const d = new Date(val.trim());
+    if (!isNaN(d.getTime())) return d;
+  }
+  return undefined;
+}
+
+function normalizeRecentDays(val: unknown): LibraryRecentDaysFilter | undefined {
+  if (!val) return undefined;
+  const num = typeof val === "number" ? val : parseInt(String(val).replace(/[^0-9]/g, ""), 10);
+  if (Number.isNaN(num) || num <= 0) return undefined;
+  if (num <= 1) return 1;
+  if (num <= 3) return 3;
+  if (num <= 7) return 7;
+  if (num <= 15) return 15;
+  return 30;
+}
+
+const SUPPORTED_LIBRARY_FILTERS_LIST = [
+  "file_types",
+  "mime_types",
+  "extensions",
+  "filename_contains",
+  "folder_id",
+  "recursive",
+  "tags_all",
+  "tags_any",
+  "source",
+  "status",
+  "created_at",
+  "size_bytes",
+];
+
+const ALLOWED_LIBRARY_FILTER_KEYS = new Set([
+  ...SUPPORTED_LIBRARY_FILTERS_LIST,
+  "fileTypes",
+  "mimeTypes",
+  "filenameContains",
+  "folderId",
+  "tagsAll",
+  "tagsAny",
+  "createdAt",
+  "sizeBytes",
+  "item_type",
+  "itemType",
+  "from_date",
+  "fromDate",
+  "to_date",
+  "toDate",
+  "recent_days",
+  "recentDays",
+  "tags",
+  "model",
+  "product_id",
+  "productId",
+  "run_id",
+  "runId",
+  "project_id",
+  "projectId",
+  "owner_user_id",
+  "ownerUserId",
+]);
+
 async function searchOwnerLibrary(
   args: Record<string, unknown>,
   ctx: McpExecutionContext,
@@ -709,27 +811,478 @@ async function searchOwnerLibrary(
   if (isDelegatedWorker) {
     await assertDelegatedWorkerGrant(ctx.session as any, { grantType: "library_search_scope" });
   }
+
+  // Check for unsupported filters inside args.filters
+  const rawFilters = args.filters && typeof args.filters === "object" && !Array.isArray(args.filters)
+    ? (args.filters as Record<string, unknown>)
+    : undefined;
+
+  if (rawFilters) {
+    const unsupportedKey = Object.keys(rawFilters).find((k) => !ALLOWED_LIBRARY_FILTER_KEYS.has(k));
+    if (unsupportedKey) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: `ไม่รองรับ filter ชื่อ ${unsupportedKey} กรุณาใช้ filter ที่รองรับ หรือดูคู่มือที่ smartaihub://help/library-search`,
+          },
+        ],
+        structuredContent: {
+          error_code: "UNSUPPORTED_FILTER",
+          message: `ไม่รองรับ filter ชื่อ ${unsupportedKey}`,
+          supported_filters: SUPPORTED_LIBRARY_FILTERS_LIST,
+          example: {
+            filters: {
+              file_types: ["video"],
+            },
+          },
+        },
+      };
+    }
+  }
+
+  // Text search query: query / q / search / text / prompt
+  const rawQuery = args.query ?? args.q ?? args.search ?? args.text ?? args.prompt;
+  const query = typeof rawQuery === "string" && rawQuery.trim().length > 0 ? rawQuery.trim() : undefined;
+
+  // Limit / page_size (1-100, default 25)
+  const rawLimit = args.page_size ?? args.pageSize ?? args.limit ?? args.count ?? args.max_items;
+  const limit = Number.isFinite(Number(rawLimit)) ? Math.min(Math.max(Number(rawLimit), 1), 100) : 25;
+
+  // Offset / cursor / skip
+  const rawOffset = args.offset ?? args.skip ?? (typeof args.cursor === "string" && /^\d+$/.test(args.cursor) ? Number(args.cursor) : undefined);
+  const offset = Number.isFinite(Number(rawOffset)) ? Math.max(Number(rawOffset), 0) : 0;
+
+  // Sorting
+  const rawSortBy = args.sort_by ?? args.sortBy;
+  const sortBy = rawSortBy === "title" || rawSortBy === "created_at" || rawSortBy === "size_bytes" || rawSortBy === "relevance"
+    ? rawSortBy
+    : undefined;
+
+  const rawSortOrder = args.sort_order ?? args.sortOrder;
+  const sortOrder = rawSortOrder === "asc" || rawSortOrder === "desc" ? rawSortOrder : undefined;
+
+  // File types / item_type
+  let fileTypes: string[] | undefined;
+  const rawFileTypes = rawFilters?.file_types ?? rawFilters?.fileTypes;
+  if (Array.isArray(rawFileTypes)) {
+    fileTypes = rawFileTypes.map((t) => normalizeLibraryItemType(t)).filter((t): t is string => Boolean(t));
+  } else if (typeof rawFileTypes === "string") {
+    const norm = normalizeLibraryItemType(rawFileTypes);
+    if (norm) fileTypes = [norm];
+  }
+
+  const rawItemType = rawFilters?.item_type ?? rawFilters?.itemType ?? args.item_type ?? args.itemType ?? args.type ?? args.kind;
+  const itemType = normalizeLibraryItemType(rawItemType);
+  if (itemType && (!fileTypes || fileTypes.length === 0)) {
+    fileTypes = [itemType];
+  }
+
+  // MIME types
+  const rawMimeTypes = rawFilters?.mime_types ?? rawFilters?.mimeTypes;
+  const mimeTypes = Array.isArray(rawMimeTypes) ? rawMimeTypes.map((m) => String(m).trim().toLowerCase()).filter(Boolean) : undefined;
+
+  // Extensions
+  const rawExtensions = rawFilters?.extensions;
+  const extensions = Array.isArray(rawExtensions) ? rawExtensions.map((e) => String(e).trim().toLowerCase()).filter(Boolean) : undefined;
+
+  // Filename contains
+  const rawFilenameContains = rawFilters?.filename_contains ?? rawFilters?.filenameContains;
+  const filenameContains = typeof rawFilenameContains === "string" && rawFilenameContains.trim() ? rawFilenameContains.trim() : undefined;
+
+  // Folder ID
+  let folderId: number | null | undefined;
+  const rawFolderId = rawFilters?.folder_id ?? rawFilters?.folderId ?? args.folder_id ?? args.folderId;
+  if (rawFolderId !== undefined) {
+    if (rawFolderId === null || rawFolderId === "root") {
+      folderId = null;
+    } else {
+      const parsed = parseInt(String(rawFolderId).replace(/^folder_/, ""), 10);
+      if (!Number.isNaN(parsed)) {
+        folderId = parsed;
+      }
+    }
+  }
+
+  // Recursive
+  const recursive = typeof rawFilters?.recursive === "boolean" ? rawFilters.recursive : undefined;
+
+  // Tags All & Tags Any
+  const rawTagsAll = rawFilters?.tags_all ?? rawFilters?.tagsAll;
+  const tagsAll = Array.isArray(rawTagsAll) ? rawTagsAll.map(String).filter(Boolean) : undefined;
+
+  const rawTagsAny = rawFilters?.tags_any ?? rawFilters?.tagsAny;
+  const tagsAny = Array.isArray(rawTagsAny) ? rawTagsAny.map(String).filter(Boolean) : undefined;
+
+  const rawTags = rawFilters?.tags;
+  const tags = Array.isArray(rawTags) ? rawTags.map(String).filter(Boolean) : undefined;
+
+  // Source (single or array)
+  const rawSource = rawFilters?.source ?? args.source;
+  const source = Array.isArray(rawSource)
+    ? rawSource.map(String).filter(Boolean)
+    : typeof rawSource === "string" && rawSource.trim() ? rawSource.trim() : undefined;
+
+  // Status (single or array)
+  const rawStatus = rawFilters?.status ?? args.status;
+  const status = Array.isArray(rawStatus)
+    ? (rawStatus as any[])
+    : typeof rawStatus === "string" && rawStatus.trim() ? (rawStatus as any) : undefined;
+
+  // Date filters
+  const rawCreatedAt = rawFilters?.created_at ?? rawFilters?.createdAt;
+  const createdAtObj = rawCreatedAt && typeof rawCreatedAt === "object" ? (rawCreatedAt as Record<string, unknown>) : undefined;
+
+  const rawFromDate = createdAtObj?.from ?? rawFilters?.from_date ?? rawFilters?.fromDate ?? args.from_date ?? args.fromDate ?? args.start_date ?? args.startDate ?? args.after;
+  const fromDate = parseLibraryDate(rawFromDate);
+
+  const rawToDate = createdAtObj?.to ?? rawFilters?.to_date ?? rawFilters?.toDate ?? args.to_date ?? args.toDate ?? args.end_date ?? args.endDate ?? args.before;
+  const toDate = parseLibraryDate(rawToDate);
+
+  const rawRecentDays = rawFilters?.recent_days ?? rawFilters?.recentDays ?? args.recent_days ?? args.recentDays ?? args.days;
+  const recentDays = normalizeRecentDays(rawRecentDays);
+
+  // Size bytes { min, max }
+  const rawSizeBytes = rawFilters?.size_bytes ?? rawFilters?.sizeBytes;
+  let sizeBytes: { min?: number; max?: number } | undefined;
+  if (rawSizeBytes && typeof rawSizeBytes === "object") {
+    const min = typeof (rawSizeBytes as any).min === "number" ? (rawSizeBytes as any).min : undefined;
+    const max = typeof (rawSizeBytes as any).max === "number" ? (rawSizeBytes as any).max : undefined;
+    if (min !== undefined || max !== undefined) {
+      sizeBytes = { min, max };
+    }
+  }
+
+  // Model, ProductId, RunId
+  const model = typeof rawFilters?.model === "string" ? rawFilters.model : undefined;
+  const productId = typeof rawFilters?.product_id === "string" ? rawFilters.product_id : typeof rawFilters?.productId === "string" ? rawFilters.productId : undefined;
+  const runId = typeof rawFilters?.run_id === "string" ? rawFilters.run_id : typeof rawFilters?.runId === "string" ? rawFilters.runId : undefined;
+
+  // SECURITY: Tenant and user filtering ALWAYS bound to authenticated context!
+  // args.tenant_id or args.filters.tenant_id is ignored to guarantee isolation.
+  const filters: LibrarySearchFilters = {
+    ...(isDelegatedWorker ? { ownerUserId: ctx.session.ownerUserId ?? ctx.session.userId } : {}),
+    ...(itemType ? { itemType } : {}),
+    ...(fileTypes && fileTypes.length > 0 ? { fileTypes } : {}),
+    ...(mimeTypes && mimeTypes.length > 0 ? { mimeTypes } : {}),
+    ...(extensions && extensions.length > 0 ? { extensions } : {}),
+    ...(filenameContains ? { filenameContains } : {}),
+    ...(folderId !== undefined ? { folderId } : {}),
+    ...(recursive !== undefined ? { recursive } : {}),
+    ...(source ? { source } : {}),
+    ...(status ? { status } : {}),
+    ...(tagsAll && tagsAll.length > 0 ? { tagsAll } : {}),
+    ...(tagsAny && tagsAny.length > 0 ? { tagsAny } : {}),
+    ...(tags && tags.length > 0 ? { tags } : {}),
+    ...(fromDate ? { fromDate } : {}),
+    ...(toDate ? { toDate } : {}),
+    ...(recentDays ? { recentDays } : {}),
+    ...(sizeBytes ? { sizeBytes } : {}),
+    ...(model ? { model } : {}),
+    ...(productId ? { productId } : {}),
+    ...(runId ? { runId } : {}),
+  };
+
   return runWithDelegatedWorkerExecution({
     auth: ctx.session as any,
     actionClass: "read",
-  }, async () =>
-    searchLibraryItems(
+  }, async () => {
+    const searchResponse = (await searchLibraryItems(
       {
-        query: typeof args.query === "string" ? args.query : undefined,
-        limit: Number.isFinite(Number(args.limit)) ? Number(args.limit) : undefined,
-        offset: Number.isFinite(Number(args.offset)) ? Number(args.offset) : undefined,
-        itemType: typeof args.item_type === "string" ? args.item_type : undefined,
+        query,
+        limit,
+        offset,
+        itemType,
+        filters,
+        sortBy,
+        sortOrder,
         scope: isDelegatedWorker ? "my_library" : "all",
-        ...(isDelegatedWorker
-          ? { filters: { ownerUserId: ctx.session.ownerUserId ?? ctx.session.userId } }
-          : {}),
-      } as any,
+      },
       {
         userId: ctx.session.userId,
         tenantId: ctx.session.tenantId,
         role: "user",
       } as any,
-    ));
+    )) as any;
+
+    const items = Array.isArray(searchResponse?.results) ? searchResponse.results : [];
+    const itemsCount = items.length;
+    const totalCount = typeof searchResponse?.total === "number" ? searchResponse.total : itemsCount;
+    const textSummary = itemsCount === 0
+      ? (query ? `ไม่พบไฟล์ที่ตรงกับคำค้นหา "${query}"` : "ไม่พบไฟล์ใน Library ตามเงื่อนไขที่ระบุ")
+      : `พบไฟล์ ${itemsCount} รายการ จากทั้งหมด ${totalCount} รายการ${query ? ` สำหรับคำค้นหา "${query}"` : ""}`;
+
+    const nextCursor = searchResponse?.has_more
+      ? String((searchResponse.offset ?? offset) + itemsCount)
+      : null;
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: textSummary,
+        },
+      ],
+      structuredContent: {
+        items: items.map((item: any) => ({
+          item_id: item.item_id,
+          item_type: item.item_type,
+          title: item.title,
+          description: item.description,
+          source_url: item.source_url,
+          thumbnail_url: item.thumbnail_url,
+          status: item.status,
+          source: item.source,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          metadata: item.metadata,
+          resource_uri: `smartaihub://library/items/${item.item_id}`,
+          download_command: `smartspec.knowledge.library.download item_id=${item.item_id}`,
+        })),
+        total: totalCount,
+        limit: searchResponse?.limit ?? limit,
+        offset: searchResponse?.offset ?? offset,
+        has_more: Boolean(searchResponse?.has_more),
+        next_cursor: nextCursor,
+        applied_filters: {
+          ...(query ? { query } : {}),
+          ...(fileTypes && fileTypes.length > 0 ? { file_types: fileTypes } : {}),
+          ...(mimeTypes && mimeTypes.length > 0 ? { mime_types: mimeTypes } : {}),
+          ...(extensions && extensions.length > 0 ? { extensions } : {}),
+          ...(filenameContains ? { filename_contains: filenameContains } : {}),
+          ...(folderId !== undefined ? { folder_id: folderId } : {}),
+          ...(source ? { source } : {}),
+          ...(status ? { status } : {}),
+          ...(fromDate ? { from_date: fromDate.toISOString() } : {}),
+          ...(toDate ? { to_date: toDate.toISOString() } : {}),
+          ...(recentDays ? { recent_days: recentDays } : {}),
+        },
+        available_next_actions: [
+          "เปิด metadata (smartspec.knowledge.library.get หรือ smartaihub_library_get_file)",
+          "อ่าน resource (smartaihub://library/items/{item_id})",
+          "ดาวน์โหลดไฟล์ (smartspec.knowledge.library.download)",
+        ],
+      },
+    };
+  });
+}
+
+async function executeSmartaihubHelp(
+  args: Record<string, unknown>,
+  _ctx: McpExecutionContext,
+): Promise<unknown> {
+  const topic = String(args.topic ?? "index").trim().toLowerCase();
+
+  if (topic === "library.search" || topic === "library-search" || topic === "search") {
+    return {
+      content: [
+        {
+          type: "text",
+          text: [
+            "คุณกำลังเชื่อมต่อกับ SmartAIHub MCP Server",
+            "",
+            "สำหรับการค้นหาไฟล์ใน Library ให้ใช้ smartaihub_library_search (หรือ smartspec.knowledge.library.search)",
+            "ระบบจะจำกัดผลลัพธ์ตามสิทธิ์และ Tenant ของผู้ใช้โดยอัตโนมัติ ห้ามส่ง tenant_id จากผู้ใช้โดยตรง",
+            "หากไม่แน่ใจเกี่ยวกับ filter ให้เรียก smartaihub_help โดยใช้ topic library.search หรือเปิด resource smartaihub://help/library-search",
+            "หากต้องการเปิดไฟล์ ให้ใช้ resource URI หรือ smartaihub_library_get_file",
+            "",
+            "ตัวอย่าง filter ที่รองรับ:",
+            JSON.stringify({
+              query: "แชมพูในห้องน้ำ",
+              filters: {
+                file_types: ["image", "video"],
+                mime_types: ["image/png", "video/mp4"],
+                extensions: [".png", ".mp4"],
+                filename_contains: "shampoo",
+                folder_id: "folder_123",
+                recursive: true,
+                tags_all: ["campaign", "approved"],
+                tags_any: ["product", "advertisement"],
+                source: ["upload", "generated", "rendered"],
+                status: ["ready"],
+                created_at: {
+                  from: "2026-09-01T00:00:00Z",
+                  to: "2026-09-03T23:59:59Z",
+                },
+                size_bytes: {
+                  min: 1000,
+                  max: 500000000,
+                },
+              },
+              sort_by: "created_at",
+              sort_order: "desc",
+              page_size: 25,
+              include: ["metadata", "thumbnail"],
+            }, null, 2),
+            "",
+            "ดูรายละเอียดเพิ่มเติมได้ที่ resource: smartaihub://help/library-search",
+          ].join("\n"),
+        },
+      ],
+      structuredContent: {
+        topic: "library.search",
+        canonical_tool: "smartaihub_library_search",
+        supported_filters: SUPPORTED_LIBRARY_FILTERS_LIST,
+        resource_uri: "smartaihub://help/library-search",
+      },
+    };
+  }
+
+  if (topic === "media.generate" || topic === "media-generate" || topic === "generate") {
+    return {
+      content: [
+        {
+          type: "text",
+          text: [
+            "คุณกำลังเชื่อมต่อกับ SmartAIHub MCP Server — Media Studio Generation",
+            "",
+            "เครื่องมือสั่งสร้างภาพและวิดีโอ:",
+            "- สร้างภาพ: smartspec.media.generate_image (หรือ alias smartaihub_media_generate_image)",
+            "- สร้างวิดีโอ: smartspec.media.generate_video (หรือ alias smartaihub_media_generate_video)",
+            "",
+            "🌟 โมเดลแนะนำยอดนิยมในระบบ (Recommended Models):",
+            "1. โมเดลสร้างภาพ (Image Models):",
+            "   - GPT Image 2 (model: 'gpt-image-2-text-to-image') — คุณภาพสูงมาก เข้าใจ prompt ซับซ้อน วาดตัวอักษร Text บนภาพได้ (~70 credits)",
+            "   - Nano Banana 2 Lite (model: 'google-banana-2-lite') — สไตล์สมจริง Hyper-realistic, Semantic Narrative, ไวและประหยัดเครดิต (~35 credits)",
+            "   - Nano Banana Pro (model: 'google/nano-banana-pro') — สไตล์สมจริงระดับ Pro แสงเงาฟิสิกส์แม่นยำ (~90 credits)",
+            "   - Seedream 5.0 Pro (model: 'seedream/5-pro-text-to-image') — ภาพคมชัดสูง สไตล์คอมเมิร์ซ โฆษณา ตัวละครเอเชีย (~70 credits)",
+            "",
+            "2. โมเดลสร้างวิดีโอ (Video Models):",
+            "   - Grok Imagine Video 1.5 (model: 'grok-imagine-video-1-5-preview') — วิดีโอไดนามิกสูง มีชีวิตชีวา เคลื่อนไหวเร็ว (~125 credits)",
+            "   - Veo 3.1 Lite / Fast (model: 'veo3/generate-veo-3-video-lite' หรือ 'veo3/generate-veo-3-video-fast') — วิดีโอ Cinematic ภาพยนตร์ ฟิสิกส์สมจริง (~150-300 credits)",
+            "   - Gemini Omni Flash 1.1 (model: 'gemini-omni-flash-1-1') — ประมวลผลไว เชื่อมโยง prompt มัลติโมดอลได้ดีเยี่ยม (~315 credits)",
+            "",
+            "*(หากไม่ระบุ model ระบบจะเลือกโมเดลแนะนำที่เหมาะสมที่สุดให้อัตโนมัติ)*",
+            "",
+            "💳 หลักเกณฑ์การหักเครดิต:",
+            "ระบบจะคำนวณราคาตาม Pricing Tiers ของแต่ละโมเดล อิงตาม aspect_ratio, resolution, duration_seconds และ num_images เหมือนระบบบนเว็บทุกประการ",
+            "หากเครดิตไม่เพียงพอ ระบบจะแจ้งเตือนจำนวนที่ต้องการและยอดคงเหลือ",
+            "",
+            "ดูโมเดลทั้งหมดได้ที่ tool: smartspec.media.models.list หรือ resource: smartaihub://help/media-generate",
+          ].join("\n"),
+        },
+      ],
+      structuredContent: {
+        topic: "media.generate",
+        recommended_image_models: [
+          { model_id: "gpt-image-2-text-to-image", name: "GPT Image 2", credit_cost: 70 },
+          { model_id: "google-banana-2-lite", name: "Nano Banana 2 Lite", credit_cost: 35 },
+          { model_id: "google/nano-banana-pro", name: "Nano Banana Pro", credit_cost: 90 },
+          { model_id: "seedream/5-pro-text-to-image", name: "Seedream 5.0 Pro", credit_cost: 70 },
+        ],
+        recommended_video_models: [
+          { model_id: "grok-imagine-video-1-5-preview", name: "Grok Imagine Video 1.5 Preview", credit_cost: 125 },
+          { model_id: "veo3/generate-veo-3-video-lite", name: "Veo 3.1 Lite", credit_cost: 150 },
+          { model_id: "gemini-omni-flash-1-1", name: "Gemini Omni Flash 1.1", credit_cost: 315 },
+        ],
+        resource_uri: "smartaihub://help/media-generate",
+      },
+    };
+  }
+
+  if (topic === "media.models" || topic === "media-models" || topic === "models") {
+    return {
+      content: [
+        {
+          type: "text",
+          text: [
+            "คุณกำลังเชื่อมต่อกับ SmartAIHub MCP Server — Media Models",
+            "",
+            "สำหรับการดูโมเดลทั้งหมดในระบบ ให้เรียก tool smartspec.media.models.list (หรือ alias smartaihub_media_models_list)",
+            "สามารถระบุ { type: 'image' } หรือ { type: 'video' } เพื่อกรองชนิดได้",
+            "",
+            "ดูรายละเอียดเพิ่มเติมได้ที่ resource: smartaihub://help/media-models",
+          ].join("\n"),
+        },
+      ],
+      structuredContent: {
+        topic: "media.models",
+        canonical_tool: "smartspec.media.models.list",
+        resource_uri: "smartaihub://help/media-models",
+      },
+    };
+  }
+
+  if (topic === "media.history" || topic === "media-history" || topic === "history") {
+    return {
+      content: [
+        {
+          type: "text",
+          text: [
+            "คุณกำลังเชื่อมต่อกับ SmartAIHub MCP Server — Media History",
+            "",
+            "สำหรับการค้นหาประวัติงานสร้างสื่อใน Media History ให้ใช้ smartspec.media.history.list (หรือ alias smartaihub_media_history_search)",
+            "ตัวกรองที่รองรับ:",
+            "- query: ค้นหาคำใน Prompt",
+            "- media_type: image, video, audio (หรือ รูปภาพ, วิดีโอ)",
+            "- model: กรองตามชื่อหรือรหัสโมเดล",
+            "- status: completed, pending, processing, failed",
+            "- from_date / to_date: ช่วงเวลา (ISO string)",
+            "- recent_days: จำนวนวันที่ผ่านมา เช่น 1, 3, 7, 15, 30",
+            "- limit / offset: สำหรับแบ่งหน้าผลลัพธ์",
+            "",
+            "การเปิดดูรายละเอียดงานรายตัว:",
+            "เรียก smartspec.media.history.get (หรือ alias smartaihub_media_history_get) โดยส่ง task_id",
+            "",
+            "ดูรายละเอียดเพิ่มเติมได้ที่ resource: smartaihub://help/media-history",
+          ].join("\n"),
+        },
+      ],
+      structuredContent: {
+        topic: "media.history",
+        canonical_tool: "smartspec.media.history.list",
+        supported_filters: ["query", "media_type", "model", "status", "from_date", "to_date", "recent_days", "limit", "offset"],
+        resource_uri: "smartaihub://help/media-history",
+      },
+    };
+  }
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: [
+          "คุณกำลังเชื่อมต่อกับ SmartAIHub MCP Server",
+          "ระบบจะจำกัดผลลัพธ์ตามสิทธิ์และ Tenant ของผู้ใช้โดยอัตโนมัติ ห้ามส่ง tenant_id จากผู้ใช้โดยตรง",
+          "",
+          "หัวข้อความช่วยเหลือที่พร้อมใช้งาน:",
+          "- library.search: คู่มือและตัวอย่าง filter สำหรับ smartaihub_library_search",
+          "- library.files: การเปิดไฟล์และดาวน์โหลดผ่าน smartaihub_library_get_file",
+          "- media.generate: การสั่งสร้างภาพ/วิดีโอ (Media Studio), โมเดลแนะนำ และการหักเครดิต",
+          "- media.models: รายการโมเดลสร้างภาพและวิดีโอ พร้อมราคาเครดิต",
+          "- media.history: การค้นหาประวัติงานสร้างสื่อและดาวน์โหลดผลลัพธ์",
+          "- capabilities: สรุปความสามารถของ SmartAIHub MCP Server",
+          "- errors: การแก้ปัญหา error code เช่น UNSUPPORTED_FILTER หรือ Insufficient credits",
+          "",
+          "สามารถเรียก smartaihub_help พร้อมระบุ topic ที่ต้องการ หรือเปิด MCP Resource smartaihub://help/index",
+        ].join("\n"),
+      },
+    ],
+    structuredContent: {
+      topics: [
+        "library.search",
+        "library.files",
+        "media.generate",
+        "media.models",
+        "media.history",
+        "capabilities",
+        "errors",
+      ],
+      resources: [
+        "smartaihub://help/index",
+        "smartaihub://help/library-search",
+        "smartaihub://help/library-files",
+        "smartaihub://help/media-generate",
+        "smartaihub://help/media-models",
+        "smartaihub://help/media-history",
+        "smartaihub://help/errors",
+        "smartaihub://capabilities",
+        "smartaihub://schema/library-search",
+        "smartaihub://schema/media-generate",
+      ],
+    },
+  };
 }
 
 function safeMediaHistoryTask(task: any): Record<string, unknown> {
@@ -748,6 +1301,7 @@ function safeMediaHistoryTask(task: any): Record<string, unknown> {
     error: task.errorMessage ?? null,
     credits_used: task.creditsUsed ?? null,
     download_available: task.status === "completed" && Boolean(durablePlayback || task.resultUrl?.startsWith?.("/api/storage/files/")),
+    resource_uri: `smartaihub://media/tasks/${task.id}`,
   };
 }
 
@@ -767,33 +1321,242 @@ function resolveMcpManagedDownloadTarget(rawTarget: unknown) {
   return null;
 }
 
+const RECOMMENDED_MEDIA_MODELS = new Set([
+  "gpt-image-2-text-to-image",
+  "google-banana-2-lite",
+  "google/nano-banana-pro",
+  "seedream/5-pro-text-to-image",
+  "grok-imagine-video-1-5-preview",
+  "veo3/generate-veo-3-video-lite",
+  "gemini-omni-flash-1-1",
+]);
+
+function getMediaModelRecommendationNote(modelId: string): string {
+  switch (modelId) {
+    case "gpt-image-2-text-to-image":
+      return "โมเดลสร้างภาพคุณภาพสูงมาก เข้าใจ Prompt ซับซ้อน วาดตัวอักษร Text บนภาพได้แม่นยำ";
+    case "google-banana-2-lite":
+      return "โมเดลสร้างภาพสมจริง Hyper-realistic, Semantic Narrative, ทำงานรวดเร็วและประหยัดเครดิต";
+    case "google/nano-banana-pro":
+      return "โมเดลภาพสมจริงระดับ Pro แสงเงาฟิสิกส์แม่นยำ เหมาะกับภาพระดับ Studio";
+    case "seedream/5-pro-text-to-image":
+      return "โมเดลภาพความคมชัดสูง สไตล์งานโฆษณา คอมเมิร์ซ และตัวละครเอเชีย";
+    case "grok-imagine-video-1-5-preview":
+      return "โมเดลสร้างวิดีโอไดนามิกสูง เคลื่อนไหวเร็ว มีชีวิตชีวาและทรงพลัง";
+    case "veo3/generate-veo-3-video-lite":
+      return "โมเดลวิดีโอระดับ Cinematic ฟิสิกส์สมจริง มุมกล้องลื่นไหลระดับภาพยนตร์";
+    case "gemini-omni-flash-1-1":
+      return "โมเดลวิดีโอประมวลผลไว เชื่อมโยง prompt มัลติโมดอลได้ยอดเยี่ยม";
+    default:
+      return "";
+  }
+}
+
+async function listMediaModels(
+  args: Record<string, unknown>,
+  _ctx: McpExecutionContext,
+): Promise<unknown> {
+  const typeFilter = typeof args.type === "string" ? args.type.trim().toLowerCase() : undefined;
+  let db: any = null;
+  try {
+    db = getDb();
+  } catch {
+    db = null;
+  }
+  let rows: Array<any> = [];
+  if (db) {
+    try {
+      const conditions = [eq(mediaModels.isEnabled, true)];
+      if (typeFilter && ["image", "video", "audio"].includes(typeFilter)) {
+        conditions.push(eq(mediaModels.modelType, typeFilter as any));
+      }
+      rows = await db
+        .select({
+          modelId: mediaModels.modelId,
+          name: mediaModels.name,
+          modelType: mediaModels.modelType,
+          provider: mediaModels.provider,
+          description: mediaModels.description,
+          creditCost: mediaModels.creditCost,
+          aspectRatios: mediaModels.aspectRatios,
+          sizes: mediaModels.sizes,
+          durations: mediaModels.durations,
+          sortOrder: mediaModels.sortOrder,
+          priority: mediaModels.priority,
+        })
+        .from(mediaModels)
+        .where(and(...conditions))
+        .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority), asc(mediaModels.name));
+    } catch {
+      rows = [];
+    }
+  }
+
+  const models = rows.map((r) => ({
+    model_id: r.modelId,
+    name: r.name,
+    type: r.modelType,
+    provider: r.provider,
+    credit_cost: r.creditCost,
+    aspect_ratios: r.aspectRatios,
+    sizes: r.sizes,
+    durations: r.durations,
+    is_recommended: RECOMMENDED_MEDIA_MODELS.has(r.modelId),
+    recommendation_note: getMediaModelRecommendationNote(r.modelId),
+  }));
+
+  const recommendedList = models.filter((m) => m.is_recommended);
+
+  const summaryLines = [
+    "รายการโมเดลสร้างสื่อ (Media Models) ในระบบ SmartAIHub:",
+    "",
+    "🌟 โมเดลแนะนำยอดนิยม (Recommended Top Picks):",
+    ...(recommendedList.length > 0
+      ? recommendedList.map((m) => `- [${m.type.toUpperCase()}] ${m.name} (model: "${m.model_id}", cost: ~${m.credit_cost} credits)\n  ${m.recommendation_note}`)
+      : [
+          "- [IMAGE] GPT Image 2 (model: 'gpt-image-2-text-to-image', cost: ~70 credits) — คุณภาพสูงมาก เข้าใจ prompt ซับซ้อน วาด text ได้",
+          "- [IMAGE] Nano Banana 2 Lite (model: 'google-banana-2-lite', cost: ~35 credits) — สมจริง Hyper-realistic ไวและประหยัด",
+          "- [IMAGE] Seedream 5.0 Pro (model: 'seedream/5-pro-text-to-image', cost: ~70 credits) — คมชัดสูง สไตล์คอมเมิร์ซ โฆษณา",
+          "- [VIDEO] Grok Imagine Video 1.5 (model: 'grok-imagine-video-1-5-preview', cost: ~125 credits) — ไดนามิกสูง เคลื่อนไหวเร็ว",
+          "- [VIDEO] Veo 3.1 Lite (model: 'veo3/generate-veo-3-video-lite', cost: ~150 credits) — วิดีโอ Cinematic มุมกล้องสมจริง",
+          "- [VIDEO] Gemini Omni Flash 1.1 (model: 'gemini-omni-flash-1-1', cost: ~315 credits) — ประมวลผลไว prompt มัลติโมดอล",
+        ]),
+    "",
+    `พบโมเดลทั้งหมด ${models.length} โมเดลที่เปิดใช้งาน สามารถระบุ model ในการสั่งสร้างภาพ/วิดีโอได้`,
+  ];
+
+  return {
+    content: [{ type: "text", text: summaryLines.join("\n") }],
+    structuredContent: {
+      total: models.length,
+      recommended: recommendedList,
+      models,
+    },
+  };
+}
+
 async function listMediaHistory(
   args: Record<string, unknown>,
   ctx: McpExecutionContext,
 ): Promise<unknown> {
-  const limit = Math.min(100, Math.max(1, Number(args.limit) || 50));
-  const mediaType = typeof args.media_type === "string" ? args.media_type as any : undefined;
-  const status = typeof args.status === "string" ? args.status as any : undefined;
+  const limit = Math.min(100, Math.max(1, Number(args.limit) || Number(args.page_size) || 50));
+  const offset = Math.max(0, Number(args.offset) || Number(args.skip) || 0);
+
+  // Normalize mediaType with Thai synonyms
+  let mediaType: "image" | "video" | "audio" | undefined = undefined;
+  const rawMediaType = typeof args.media_type === "string" ? args.media_type.trim().toLowerCase() : undefined;
+  if (rawMediaType) {
+    if (["image", "img", "รูป", "รูปภาพ", "ภาพ"].includes(rawMediaType)) mediaType = "image";
+    else if (["video", "vid", "วิดีโอ", "คลิป"].includes(rawMediaType)) mediaType = "video";
+    else if (["audio", "sound", "voice", "เสียง"].includes(rawMediaType)) mediaType = "audio";
+  }
+
+  const status = typeof args.status === "string" ? args.status.trim() : undefined;
+  const query = typeof args.query === "string"
+    ? args.query.trim().toLowerCase()
+    : (typeof args.search === "string" ? args.search.trim().toLowerCase() : undefined);
+  const modelFilter = typeof args.model === "string" ? args.model.trim().toLowerCase() : undefined;
+
+  // Date filters
+  let fromDate: Date | undefined;
+  let toDate: Date | undefined;
+  if (typeof args.from_date === "string" || typeof args.fromDate === "string") {
+    const parsed = new Date((args.from_date ?? args.fromDate) as string);
+    if (!Number.isNaN(parsed.getTime())) fromDate = parsed;
+  }
+  if (typeof args.to_date === "string" || typeof args.toDate === "string") {
+    const parsed = new Date((args.to_date ?? args.toDate) as string);
+    if (!Number.isNaN(parsed.getTime())) toDate = parsed;
+  }
+  const recentDays = Number(args.recent_days ?? args.recentDays);
+  let recentCutoff: Date | undefined;
+  if (Number.isFinite(recentDays) && recentDays > 0) {
+    recentCutoff = new Date(Date.now() - recentDays * 86_400_000);
+  }
+
   const tenantId = ctx.session.tenantId;
   const internalToken = createInternalTokenFromAuth(
     { userId: ctx.session.userId, tenantId },
     ["media:read"],
   );
+
+  // Fetch from all sources
   const [providerResult, deferredTasks, mcpTasks, hermesTasks] = await Promise.all([
-    mediaGenerationService.listTasks(internalToken, { mediaType, status, limit }),
-    listDeferredMediaTasks(ctx.session.userId, limit, tenantId),
-    listMcpMediaTasks({ userId: ctx.session.userId, tenantId: ctx.session.tenantId, mediaType, status, limit }),
-    listHermesMediaTasks({ userId: ctx.session.userId, tenantId: ctx.session.tenantId, mediaType, status, limit }),
+    mediaGenerationService.listTasks(internalToken, { mediaType, status: status as any, limit: 100 }).catch(() => ({ tasks: [] })),
+    listDeferredMediaTasks(ctx.session.userId, 100, tenantId).catch(() => []),
+    listMcpMediaTasks({ userId: ctx.session.userId, tenantId: ctx.session.tenantId, mediaType, status: status as any, limit: 100 }).catch(() => []),
+    listHermesMediaTasks({ userId: ctx.session.userId, tenantId: ctx.session.tenantId, mediaType, status: status as any, limit: 100 }).catch(() => []),
   ]);
-  const providerTasks = providerResult.tasks ?? [];
-  const filteredDeferredTasks = deferredTasks.filter((task) =>
-    (!mediaType || task.mediaType === mediaType) && (!status || task.status === status));
+
+  const allRawTasks = [
+    ...(providerResult.tasks ?? []),
+    ...deferredTasks,
+    ...hermesTasks,
+    ...mcpTasks,
+  ];
+
+  // Filter tasks
+  const filtered = allRawTasks.filter((task) => {
+    if (mediaType && task.mediaType !== mediaType) return false;
+    if (status && task.status !== status) return false;
+    if (query) {
+      const promptText = String(task.prompt ?? "").toLowerCase();
+      if (!promptText.includes(query)) return false;
+    }
+    if (modelFilter) {
+      const taskModel = String(task.model ?? "").toLowerCase();
+      if (!taskModel.includes(modelFilter)) return false;
+    }
+    const createdAtTime = Date.parse(task.createdAt);
+    if (Number.isFinite(createdAtTime)) {
+      if (fromDate && createdAtTime < fromDate.getTime()) return false;
+      if (toDate && createdAtTime > toDate.getTime()) return false;
+      if (recentCutoff && createdAtTime < recentCutoff.getTime()) return false;
+    }
+    return true;
+  });
+
+  // Sort descending by createdAt
+  filtered.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+
+  const total = filtered.length;
+  const paged = filtered.slice(offset, offset + limit).map(safeMediaHistoryTask);
+  const hasMore = offset + limit < total;
+
+  const summaryLines = [
+    `พบประวัติการสั่งสร้างสื่อ ${paged.length} รายการ (จากทั้งหมด ${total} รายการ)`,
+    ...(query ? [`- คำค้นหา: "${query}"`] : []),
+    ...(mediaType ? [`- ชนิด: ${mediaType}`] : []),
+    ...(modelFilter ? [`- โมเดล: ${modelFilter}`] : []),
+    "",
+    ...paged.map((t, idx) => {
+      const promptSnippet = t.prompt ? `\n   Prompt: "${(t.prompt as string).slice(0, 80)}..."` : "";
+      return `${offset + idx + 1}. [${String(t.media_type).toUpperCase()}] ${t.model || "Unknown"} — สถานะ: ${t.status} (Task ID: ${t.id})${promptSnippet}`;
+    }),
+  ];
+
   return {
-    tasks: [...providerTasks, ...filteredDeferredTasks, ...hermesTasks, ...mcpTasks]
-      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-      .slice(0, limit)
-      .map(safeMediaHistoryTask),
-    limit,
+    content: [{ type: "text", text: summaryLines.join("\n") }],
+    structuredContent: {
+      tasks: paged,
+      total,
+      limit,
+      offset,
+      has_more: hasMore,
+      applied_filters: {
+        media_type: mediaType,
+        status,
+        query,
+        model: modelFilter,
+        from_date: fromDate?.toISOString(),
+        to_date: toDate?.toISOString(),
+        recent_days: Number.isFinite(recentDays) && recentDays > 0 ? recentDays : undefined,
+      },
+      available_next_actions: [
+        "ตรวจสอบรายละเอียดงานด้วย smartspec.media.history.get หรือ smartaihub_media_history_get โดยระบุ task_id",
+        "ดาวน์โหลดไฟล์ผลลัพธ์ด้วย smartspec.media.history.download โดยระบุ task_id",
+      ],
+    },
   };
 }
 
@@ -816,7 +1579,26 @@ async function getMediaHistoryTask(
         { userId: ctx.session.userId, tenantId: ctx.session.tenantId, source: "mcp.media.history.get" },
       ).catch(() => null);
   if (!task) throw new Error("media_task_not_found");
-  return safeMediaHistoryTask(task);
+  const safe = safeMediaHistoryTask(task);
+  return {
+    content: [
+      {
+        type: "text",
+        text: [
+          `รายละเอียดงานสร้างสื่อ (Task ID: ${safe.id})`,
+          `- ประเภท: ${safe.media_type}`,
+          `- โมเดล: ${safe.model || "Unknown"}`,
+          `- สถานะ: ${safe.status}`,
+          `- เครดิตที่ใช้: ${safe.credits_used ?? "N/A"}`,
+          `- วันที่สร้าง: ${safe.created_at}`,
+          safe.prompt ? `- Prompt: "${safe.prompt}"` : "",
+          safe.error ? `- ข้อผิดพลาด: ${safe.error}` : "",
+          safe.download_available ? "- ไฟล์ผลลัพธ์พร้อมดาวน์โหลด สามารถเรียก smartspec.media.history.download ได้" : "",
+        ].filter(Boolean).join("\n"),
+      },
+    ],
+    structuredContent: safe,
+  };
 }
 
 async function downloadLibraryItem(
@@ -850,9 +1632,10 @@ async function getOwnerLibraryItem(
   args: Record<string, unknown>,
   ctx: McpExecutionContext,
 ): Promise<unknown> {
-  const itemId = Number(args.library_item_id);
+  const rawId = args.item_id ?? args.itemId ?? args.library_item_id ?? args.id;
+  const itemId = Number(rawId);
   if (!Number.isInteger(itemId) || itemId <= 0) {
-    throw new Error("library_item_id must be a positive integer");
+    throw new Error("item_id (or library_item_id) must be a positive integer");
   }
   if (ctx.session.authMode === "delegated_worker") {
     await assertDelegatedWorkerGrant(ctx.session as any, {
@@ -868,7 +1651,19 @@ async function getOwnerLibraryItem(
   if (!item) {
     throw new Error("Library item not found");
   }
-  return item;
+  return {
+    content: [
+      {
+        type: "text",
+        text: `ไฟล์: ${(item as any).title} (ID: ${(item as any).id}, Type: ${(item as any).itemType}, Status: ${(item as any).status})`,
+      },
+    ],
+    structuredContent: {
+      item,
+      resource_uri: `smartaihub://library/items/${(item as any).id}`,
+      download_command: `smartspec.knowledge.library.download item_id=${(item as any).id}`,
+    },
+  };
 }
 
 function isAgentReadableContextPack(detail: {
@@ -1555,6 +2350,62 @@ async function getAgencyRunStatus(
   };
 }
 
+async function resolveMediaModelAndPricing(
+  mediaType: "image" | "video",
+  requestedModel: string | undefined,
+  promptText: string,
+  selections: {
+    aspectRatio?: string;
+    size?: string;
+    resolution?: string;
+    numImages?: number;
+    duration?: number;
+  },
+): Promise<{
+  modelId: string;
+  modelName: string;
+  provider: string;
+  creditCost: number;
+}> {
+  const modelHint = inferMediaModelHintFromText(mediaType, requestedModel || promptText);
+  const selection = await resolveEnabledMediaModelSelection({
+    mediaType,
+    requestedModel: requestedModel || modelHint,
+    requireConfiguredProvider: true,
+    allowSubstitution: true,
+  });
+
+  if (selection.ok) {
+    const cost = calculateCreditCost(selection.model, {
+      aspectRatio: selections.aspectRatio,
+      size: selections.size,
+      resolution: selections.resolution,
+      numImages: selections.numImages,
+      duration: selections.duration,
+    });
+    return {
+      modelId: selection.modelId,
+      modelName: selection.name,
+      provider: selection.provider,
+      creditCost: Math.max(1, cost),
+    };
+  }
+
+  if (selection.reasonCode !== "media_registry_unavailable") {
+    throw new Error(`${selection.reasonCode}: ${selection.message}`);
+  }
+
+  const fallbackModel = mediaType === "image" ? "gpt-image-2-text-to-image" : "grok-imagine-video-1-5-preview";
+  const fallbackName = mediaType === "image" ? "GPT Image 2" : "Grok Imagine Video 1.5 Preview";
+  const defaultCost = mediaType === "image" ? 70 : 125;
+  return {
+    modelId: requestedModel || fallbackModel,
+    modelName: fallbackName,
+    provider: "kie.ai",
+    creditCost: defaultCost,
+  };
+}
+
 async function generateMedia(
   kind: "image" | "video" | "audio",
   args: Record<string, unknown>,
@@ -1580,82 +2431,180 @@ async function generateMedia(
   }
   const userToken = createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }, ["media:generate"]);
   const idempotencyKey = ctx.idempotencyKey ?? undefined;
+  const references = Array.isArray(args.reference_image_urls)
+    ? args.reference_image_urls.filter((item): item is string => typeof item === "string")
+    : undefined;
+
   if (kind === "image") {
-    const prompt = typeof args.prompt === "string" ? args.prompt : "";
+    const prompt = typeof args.prompt === "string" ? args.prompt.trim() : "";
     if (!prompt) {
       throw new Error("prompt is required");
     }
+    const requestedModel = typeof args.model === "string" ? args.model.trim() : undefined;
+    const aspectRatio = typeof args.aspect_ratio === "string" ? args.aspect_ratio.trim() : undefined;
+    const size = typeof args.size === "string" ? args.size.trim() : (
+      Number.isFinite(Number(args.width)) && Number.isFinite(Number(args.height))
+        ? `${args.width}x${args.height}`
+        : undefined
+    );
+    const resolution = typeof args.resolution === "string" ? args.resolution.trim() : undefined;
+    const numImages = Number.isFinite(Number(args.num_images)) ? Math.max(1, Number(args.num_images)) : 1;
+
+    const resolved = await resolveMediaModelAndPricing("image", requestedModel, prompt, {
+      aspectRatio,
+      size,
+      resolution,
+      numImages,
+    });
+
+    const hasCredits = await hasEnoughCredits(ctx.session.userId, resolved.creditCost);
+    if (!hasCredits) {
+      const balance = await getCreditBalance(ctx.session.userId).catch(() => 0);
+      throw new Error(`Insufficient credits. Required: ${resolved.creditCost}, Current balance: ${balance}`);
+    }
+
     return runWithDelegatedWorkerExecution({
       auth: ctx.session as any,
       actionClass: "media",
-      estimatedCredits: 1,
+      estimatedCredits: resolved.creditCost,
       idempotencyKey,
     }, async () => {
       const task = await mediaGenerationService.generateImageAsync({
         prompt,
-        model: typeof args.model === "string" ? args.model : undefined,
-        size:
-          Number.isFinite(Number(args.width)) && Number.isFinite(Number(args.height))
-            ? `${Number(args.width)}x${Number(args.height)}`
-            : undefined,
-        aspectRatio: typeof args.aspect_ratio === "string" ? args.aspect_ratio : undefined,
-        referenceImageUrls: Array.isArray(args.reference_image_urls)
-          ? args.reference_image_urls.filter((item): item is string => typeof item === "string")
-          : undefined,
+        model: resolved.modelId,
+        size,
+        aspectRatio,
+        resolution,
+        numImages,
+        referenceImageUrls: references,
         auditContext: { userId: ctx.session.userId, tenantId: ctx.session.tenantId, source: "mcp" },
       }, userToken);
 
       await deductCredits({
         userId: ctx.session.userId,
-        amount: 1,
-        sourceType: "api_media",
-        description: `Image generation: ${prompt.slice(0, 50)}`,
+        amount: resolved.creditCost,
+        sourceType: "media_image",
+        description: `Image generation: ${resolved.modelName}`,
         idempotencyKey,
         metadata: buildDelegatedWorkerOriginMetadata(ctx.session as any, "mcp.media.generate_image", {
           endpoint: "/v1/mcp",
           toolName: "smartspec.media.generate_image",
+          modelId: resolved.modelId,
+          modelName: resolved.modelName,
+          creditCost: resolved.creditCost,
         }),
       } as any);
 
-      return { task_id: task.id, status: task.status };
+      return {
+        content: [
+          {
+            type: "text",
+            text: [
+              `สั่งสร้างรูปภาพสำเร็จ (Task ID: ${task.id})`,
+              `- โมเดล: ${resolved.modelName} (${resolved.modelId})`,
+              `- สถานะ: ${task.status}`,
+              `- เครดิตที่หัก: ${resolved.creditCost} credits`,
+              `สามารถตรวจสอบสถานะและดูผลลัพธ์ด้วย smartspec.media.history.get หรือ smartaihub_media_history_get โดยระบุ task_id: "${task.id}"`,
+            ].join("\n"),
+          },
+        ],
+        structuredContent: {
+          task_id: task.id,
+          status: task.status,
+          media_type: "image",
+          model: resolved.modelId,
+          model_name: resolved.modelName,
+          credits_charged: resolved.creditCost,
+          check_status_command: "smartspec.media.history.get",
+        },
+      };
     });
   }
 
   if (kind === "video") {
-    const prompt = typeof args.prompt === "string" ? args.prompt : "";
+    const prompt = typeof args.prompt === "string" ? args.prompt.trim() : "";
     if (!prompt) {
       throw new Error("prompt is required");
     }
+    const requestedModel = typeof args.model === "string" ? args.model.trim() : undefined;
+    const aspectRatio = typeof args.aspect_ratio === "string" ? args.aspect_ratio.trim() : undefined;
+    const duration = Number.isFinite(Number(args.duration_seconds))
+      ? Number(args.duration_seconds)
+      : (Number.isFinite(Number(args.duration)) ? Number(args.duration) : undefined);
+    const resolution = typeof args.resolution === "string" ? args.resolution.trim() : undefined;
+    const fps = Number.isFinite(Number(args.fps)) ? Number(args.fps) : undefined;
+    const refVideoUrls = Array.isArray(args.reference_video_urls)
+      ? args.reference_video_urls.filter((item): item is string => typeof item === "string")
+      : undefined;
+
+    const resolved = await resolveMediaModelAndPricing("video", requestedModel, prompt, {
+      aspectRatio,
+      duration,
+      resolution,
+    });
+
+    const hasCredits = await hasEnoughCredits(ctx.session.userId, resolved.creditCost);
+    if (!hasCredits) {
+      const balance = await getCreditBalance(ctx.session.userId).catch(() => 0);
+      throw new Error(`Insufficient credits. Required: ${resolved.creditCost}, Current balance: ${balance}`);
+    }
+
     return runWithDelegatedWorkerExecution({
       auth: ctx.session as any,
       actionClass: "media",
-      estimatedCredits: 2,
+      estimatedCredits: resolved.creditCost,
       idempotencyKey,
     }, async () => {
       const task = await mediaGenerationService.generateVideoAsync({
         prompt,
-        model: typeof args.model === "string" ? args.model : undefined,
-        duration: Number.isFinite(Number(args.duration_seconds)) ? Number(args.duration_seconds) : undefined,
-        aspectRatio: typeof args.aspect_ratio === "string" ? args.aspect_ratio : undefined,
-        referenceImageUrls: Array.isArray(args.reference_image_urls)
-          ? args.reference_image_urls.filter((item): item is string => typeof item === "string")
-          : undefined,
+        model: resolved.modelId,
+        duration,
+        aspectRatio,
+        resolution,
+        fps,
+        referenceImageUrls: references,
+        referenceVideoUrls: refVideoUrls,
         auditContext: { userId: ctx.session.userId, tenantId: ctx.session.tenantId, source: "mcp" },
       }, userToken);
 
       await deductCredits({
         userId: ctx.session.userId,
-        amount: 2,
-        sourceType: "api_media",
-        description: `Video generation: ${prompt.slice(0, 50)}`,
+        amount: resolved.creditCost,
+        sourceType: "media_video",
+        description: `Video generation: ${resolved.modelName}`,
         idempotencyKey,
         metadata: buildDelegatedWorkerOriginMetadata(ctx.session as any, "mcp.media.generate_video", {
           endpoint: "/v1/mcp",
           toolName: "smartspec.media.generate_video",
+          modelId: resolved.modelId,
+          modelName: resolved.modelName,
+          creditCost: resolved.creditCost,
         }),
       } as any);
 
-      return { task_id: task.id, status: task.status };
+      return {
+        content: [
+          {
+            type: "text",
+            text: [
+              `สั่งสร้างวิดีโอสำเร็จ (Task ID: ${task.id})`,
+              `- โมเดล: ${resolved.modelName} (${resolved.modelId})`,
+              `- สถานะ: ${task.status}`,
+              `- เครดิตที่หัก: ${resolved.creditCost} credits`,
+              `สามารถตรวจสอบสถานะและดูผลลัพธ์ด้วย smartspec.media.history.get หรือ smartaihub_media_history_get โดยระบุ task_id: "${task.id}"`,
+            ].join("\n"),
+          },
+        ],
+        structuredContent: {
+          task_id: task.id,
+          status: task.status,
+          media_type: "video",
+          model: resolved.modelId,
+          model_name: resolved.modelName,
+          credits_charged: resolved.creditCost,
+          check_status_command: "smartspec.media.history.get",
+        },
+      };
     });
   }
 
@@ -2652,7 +3601,7 @@ type McpAliasDefinition = {
   name: string;
   target: string;
   description: string;
-  inputSchema: Record<string, unknown>;
+  inputSchema?: Record<string, unknown>;
 };
 
 /**
@@ -2717,26 +3666,339 @@ function validateMcpSchema(schema: Record<string, unknown>, value: unknown, path
   return null;
 }
 
+const LIBRARY_SEARCH_INPUT_SCHEMA: Record<string, unknown> = {
+  type: "object",
+  properties: {
+    query: {
+      type: "string",
+      description: "ค้นหาจากชื่อไฟล์ คำอธิบาย metadata tags และข้อความ semantic vector index (เว้นว่างไว้เพื่อดูไฟล์ล่าสุด)",
+    },
+    filters: {
+      type: "object",
+      description: "ตัวกรองไฟล์ขั้นสูงตามสเปก SmartAIHub",
+      properties: {
+        file_types: {
+          type: "array",
+          description: "กรองตามประเภทไฟล์ เช่น image, video, audio, document, presentation, folder, code, archive",
+          items: {
+            type: "string",
+            enum: ["image", "video", "audio", "document", "presentation", "folder", "code", "archive"],
+          },
+        },
+        mime_types: {
+          type: "array",
+          description: "กรองตาม MIME type เช่น image/png, video/mp4, application/pdf",
+          items: { type: "string" },
+        },
+        extensions: {
+          type: "array",
+          description: "กรองตามนามสกุลไฟล์ เช่น .png, .mp4, .jpg",
+          items: { type: "string" },
+        },
+        filename_contains: {
+          type: "string",
+          description: "กรองคำที่ปรากฏในชื่อไฟล์",
+        },
+        folder_id: {
+          type: "string",
+          description: "ID ของโฟลเดอร์ที่ต้องการค้นหา (เช่น 'folder_123' หรือ 123)",
+        },
+        recursive: {
+          type: "boolean",
+          description: "ค้นหารวมโฟลเดอร์ย่อยหรือไม่",
+        },
+        tags_all: {
+          type: "array",
+          description: "ต้องมีทุกแท็กที่ระบุ",
+          items: { type: "string" },
+        },
+        tags_any: {
+          type: "array",
+          description: "มีแท็กใดแท็กหนึ่งที่ระบุ",
+          items: { type: "string" },
+        },
+        source: {
+          type: "array",
+          description: "แหล่งที่มา เช่น upload, generated, rendered, media_history",
+          items: { type: "string" },
+        },
+        status: {
+          type: "array",
+          description: "สถานะของไฟล์ เช่น ready, processing, failed",
+          items: {
+            type: "string",
+            enum: ["ready", "processing", "failed"],
+          },
+        },
+        created_at: {
+          type: "object",
+          description: "ช่วงเวลาที่สร้างไฟล์ { from, to }",
+          properties: {
+            from: { type: "string" },
+            to: { type: "string" },
+          },
+        },
+        size_bytes: {
+          type: "object",
+          description: "ขนาดไฟล์เป็นไบต์ { min, max }",
+          properties: {
+            min: { type: "number" },
+            max: { type: "number" },
+          },
+        },
+      },
+      additionalProperties: true,
+    },
+    sort_by: {
+      type: "string",
+      description: "เรียงลำดับตาม: created_at, title, size_bytes, relevance",
+      enum: ["created_at", "title", "size_bytes", "relevance"],
+    },
+    sort_order: {
+      type: "string",
+      description: "ทิศทางการเรียง: desc (ล่าสุดก่อน) หรือ asc",
+      enum: ["desc", "asc"],
+    },
+    page_size: {
+      type: "integer",
+      description: "จำนวนรายการต่อหน้า (1-100, ค่าเริ่มต้น 25)",
+      minimum: 1,
+      maximum: 100,
+      default: 25,
+    },
+    cursor: {
+      type: "string",
+      description: "Cursor หรือ offset สำหรับหน้าถัดไป",
+    },
+    limit: {
+      type: "integer",
+      description: "ชื่อพารามิเตอร์เดิมเทียบเท่า page_size",
+    },
+    offset: {
+      type: "integer",
+      description: "Offset สำหรับ pagination",
+    },
+    item_type: {
+      type: "string",
+      description: "ชื่อพารามิเตอร์เดิมเทียบเท่า filters.file_types[0]",
+    },
+    from_date: {
+      type: "string",
+      description: "ชื่อพารามิเตอร์เดิมเทียบเท่า filters.created_at.from",
+    },
+    to_date: {
+      type: "string",
+      description: "ชื่อพารามิเตอร์เดิมเทียบเท่า filters.created_at.to",
+    },
+    recent_days: {
+      type: "string",
+      description: "กรองวันย้อนหลังด่วน เช่น '1', '3', '7', '15', '30' วัน",
+    },
+    include: {
+      type: "array",
+      description: "ฟิลด์เสริมที่ต้องการรวม เช่น metadata, thumbnail",
+      items: { type: "string" },
+    },
+  },
+  additionalProperties: true,
+};
+
 const MCP_ALIAS_DEFINITIONS: McpAliasDefinition[] = [
   {
-    name: "image.generate",
+    name: "smartaihub_library_search",
+    target: "smartspec.knowledge.library.search",
+    description: "คุณกำลังเชื่อมต่อกับ SmartAIHub MCP Server สำหรับการค้นหาไฟล์ใน Library ให้ใช้ smartaihub_library_search ระบบจะจำกัดผลลัพธ์ตามสิทธิ์และ Tenant ของผู้ใช้โดยอัตโนมัติ ห้ามส่ง tenant_id จากผู้ใช้โดยตรง",
+    inputSchema: LIBRARY_SEARCH_INPUT_SCHEMA,
+  },
+  {
+    name: "smartaihub_library_get_file",
+    target: "smartspec.knowledge.library.get",
+    description: "Read a specific owner Library item metadata and download reference",
+    inputSchema: {
+      type: "object",
+      properties: {
+        item_id: { type: "integer", description: "ID ของไฟล์ใน Library" },
+        library_item_id: { type: "integer", description: "ID ของไฟล์ใน Library (ชื่อเดิม)" },
+      },
+      additionalProperties: true,
+    },
+  },
+  {
+    name: "library.search",
+    target: "smartspec.knowledge.library.search",
+    description: "Search user and tenant files in SmartAIHub Library",
+    inputSchema: LIBRARY_SEARCH_INPUT_SCHEMA,
+  },
+  {
+    name: "library.get",
+    target: "smartspec.knowledge.library.get",
+    description: "Read a specific owner Library item metadata and download reference",
+    inputSchema: {
+      type: "object",
+      properties: {
+        item_id: { type: "integer", description: "ID ของไฟล์ใน Library" },
+        library_item_id: { type: "integer", description: "ID ของไฟล์ใน Library (ชื่อเดิม)" },
+      },
+      additionalProperties: true,
+    },
+  },
+  {
+    name: "smartaihub_media_generate_image",
     target: "smartspec.media.generate_image",
-    description: "Generate an image through the SmartAIHub media stack",
+    description: "สร้างรูปภาพผ่าน SmartAIHub Media Studio ระบบจะหักเครดิตตามโมเดลและพารามิเตอร์จริง โมเดลแนะนำ: GPT Image 2 (gpt-image-2-text-to-image), Nano Banana 2 Lite (google-banana-2-lite) / Nano Banana Pro (google/nano-banana-pro), Seedream 5.0 Pro (seedream/5-pro-text-to-image) หรือเรียก smartaihub_media_models_list เพื่อดูโมเดลทั้งหมด หากไม่แน่ใจให้เรียก smartaihub_help topic media.generate",
     inputSchema: {
       type: "object",
       required: ["prompt"],
-      properties: { prompt: { type: "string" }, model: { type: "string" } },
-      additionalProperties: false,
+      properties: {
+        prompt: { type: "string", description: "ข้อความ Prompt สำหรับสร้างภาพ" },
+        model: { type: "string", description: "รหัสหรือชื่อโมเดล เช่น gpt-image-2-text-to-image, google-banana-2-lite, seedream/5-pro-text-to-image" },
+        aspect_ratio: { type: "string", description: "สัดส่วนภาพ เช่น 1:1, 16:9, 9:16, 4:3, 3:4" },
+        size: { type: "string", description: "ขนาดภาพ เช่น 1024x1024, 1280x720" },
+        resolution: { type: "string", description: "ความละเอียด เช่น 1k, 2k, 4k" },
+        num_images: { type: "integer", minimum: 1, maximum: 4, description: "จำนวนภาพที่ต้องการสร้าง" },
+        reference_image_urls: { type: "array", items: { type: "string" }, description: "URL ภาพอ้างอิง" },
+      },
+      additionalProperties: true,
+    },
+  },
+  {
+    name: "image.generate",
+    target: "smartspec.media.generate_image",
+    description: "Generate an image through SmartAIHub Media Studio",
+    inputSchema: {
+      type: "object",
+      required: ["prompt"],
+      properties: {
+        prompt: { type: "string" },
+        model: { type: "string" },
+        aspect_ratio: { type: "string" },
+        size: { type: "string" },
+        resolution: { type: "string" },
+        num_images: { type: "integer" },
+        reference_image_urls: { type: "array", items: { type: "string" } },
+      },
+      additionalProperties: true,
+    },
+  },
+  {
+    name: "smartaihub_media_generate_video",
+    target: "smartspec.media.generate_video",
+    description: "สร้างวิดีโอผ่าน SmartAIHub Media Studio ระบบจะหักเครดิตตามโมเดลและพารามิเตอร์จริง โมเดลแนะนำ: Grok Imagine Video 1.5 (grok-imagine-video-1-5-preview), Veo 3.1 Lite (veo3/generate-veo-3-video-lite), Gemini Omni Flash 1.1 (gemini-omni-flash-1-1) หรือเรียก smartaihub_media_models_list เพื่อดูโมเดลทั้งหมด หากไม่แน่ใจให้เรียก smartaihub_help topic media.generate",
+    inputSchema: {
+      type: "object",
+      required: ["prompt"],
+      properties: {
+        prompt: { type: "string", description: "ข้อความ Prompt สำหรับสร้างวิดีโอ" },
+        model: { type: "string", description: "รหัสหรือชื่อโมเดล เช่น grok-imagine-video-1-5-preview, veo3/generate-veo-3-video-lite, gemini-omni-flash-1-1" },
+        aspect_ratio: { type: "string", description: "สัดส่วนวิดีโอ เช่น 16:9, 9:16" },
+        duration_seconds: { type: "number", minimum: 1, maximum: 60, description: "ความยาววิดีโอ (วินาที)" },
+        resolution: { type: "string", description: "ความละเอียด เช่น 720p, 1080p, 4k" },
+        fps: { type: "number", description: "เฟรมต่อวินาที" },
+        reference_image_urls: { type: "array", items: { type: "string" }, description: "URL ภาพอ้างอิง" },
+        reference_video_urls: { type: "array", items: { type: "string" }, description: "URL วิดีโออ้างอิง" },
+      },
+      additionalProperties: true,
     },
   },
   {
     name: "video.generate",
     target: "smartspec.media.generate_video",
-    description: "Generate a video through the SmartAIHub media stack",
+    description: "Generate a video through SmartAIHub Media Studio",
     inputSchema: {
       type: "object",
       required: ["prompt"],
-      properties: { prompt: { type: "string" }, model: { type: "string" }, duration_seconds: { type: "number" } },
+      properties: {
+        prompt: { type: "string" },
+        model: { type: "string" },
+        aspect_ratio: { type: "string" },
+        duration_seconds: { type: "number" },
+        resolution: { type: "string" },
+        fps: { type: "number" },
+        reference_image_urls: { type: "array", items: { type: "string" } },
+      },
+      additionalProperties: true,
+    },
+  },
+  {
+    name: "smartaihub_media_models_list",
+    target: "smartspec.media.models.list",
+    description: "List available media generation models and pricing in SmartAIHub",
+    inputSchema: {
+      type: "object",
+      properties: {
+        type: { type: "string", enum: ["image", "video", "audio"], description: "กรองชนิดโมเดล" },
+      },
+      additionalProperties: true,
+    },
+  },
+  {
+    name: "media.models.list",
+    target: "smartspec.media.models.list",
+    description: "List available media generation models and pricing in SmartAIHub",
+    inputSchema: {
+      type: "object",
+      properties: {
+        type: { type: "string", enum: ["image", "video", "audio"] },
+      },
+      additionalProperties: true,
+    },
+  },
+  {
+    name: "smartaihub_media_history_search",
+    target: "smartspec.media.history.list",
+    description: "Search and filter media generation tasks in Media History",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "ค้นหาข้อความใน Prompt" },
+        media_type: { type: "string", description: "image, video, audio หรือ รูปภาพ, วิดีโอ" },
+        model: { type: "string", description: "กรองตามชื่อหรือรหัสโมเดล" },
+        status: { type: "string", description: "completed, pending, processing, failed" },
+        from_date: { type: "string", description: "ช่วงเวลาเริ่มต้น (ISO format หรือ YYYY-MM-DD)" },
+        to_date: { type: "string", description: "ช่วงเวลาสิ้นสุด" },
+        recent_days: { type: "number", description: "จำนวนวันที่ผ่านมา เช่น 1, 3, 7, 15, 30" },
+        limit: { type: "integer", minimum: 1, maximum: 100, description: "จำนวนรายการ" },
+        offset: { type: "integer", minimum: 0, description: "ลำดับเริ่มต้น (pagination)" },
+      },
+      additionalProperties: true,
+    },
+  },
+  {
+    name: "smartaihub_media_history_get",
+    target: "smartspec.media.history.get",
+    description: "Get detailed status and metadata of a media task",
+    inputSchema: {
+      type: "object",
+      required: ["task_id"],
+      properties: { task_id: { type: "string", description: "Task ID" } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "media.history.search",
+    target: "smartspec.media.history.list",
+    description: "Search media generation tasks in Media History",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        media_type: { type: "string" },
+        model: { type: "string" },
+        status: { type: "string" },
+        limit: { type: "integer" },
+        offset: { type: "integer" },
+      },
+      additionalProperties: true,
+    },
+  },
+  {
+    name: "media.history.get",
+    target: "smartspec.media.history.get",
+    description: "Get detailed status of a media task",
+    inputSchema: {
+      type: "object",
+      required: ["task_id"],
+      properties: { task_id: { type: "string" } },
       additionalProperties: false,
     },
   },
@@ -3114,7 +4376,7 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
     family: "knowledge",
     namespace: "knowledge",
     toolGroup: "knowledge_read",
-    description: "Search the owner-bound Library scope granted to this worker job",
+    description: "คุณกำลังเชื่อมต่อกับ SmartAIHub MCP Server สำหรับการค้นหาไฟล์ใน Library ให้ใช้ smartaihub_library_search ระบบจะจำกัดผลลัพธ์ตามสิทธิ์และ Tenant ของผู้ใช้โดยอัตโนมัติ ห้ามส่ง tenant_id จากผู้ใช้โดยตรง หากไม่แน่ใจเกี่ยวกับ filter ให้เรียก smartaihub_help โดยใช้ topic library.search หรือเปิด resource smartaihub://help/library-search หากต้องการเปิดไฟล์ ให้ใช้ resource URI หรือ smartaihub_library_get_file",
     requiredScope: "library:search",
     readWrite: "Read",
     delegatedWorkerEligible: true,
@@ -3122,16 +4384,7 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
     resultSafetyClass: "structured_json",
     idempotencyMode: "none",
     actionClass: "read",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: { type: "string" },
-        limit: { type: "integer" },
-        offset: { type: "integer" },
-        item_type: { type: "string" },
-      },
-      additionalProperties: false,
-    },
+    inputSchema: LIBRARY_SEARCH_INPUT_SCHEMA,
     listVisibleWhen: (ctx) => Boolean(ctx.delegatedManifest?.knowledgeAccess.librarySearch || ctx.session.authMode !== "delegated_worker"),
     execute: searchOwnerLibrary,
   },
@@ -3140,7 +4393,7 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
     family: "knowledge",
     namespace: "knowledge",
     toolGroup: "knowledge_read",
-    description: "Read a specific owner Library item already granted to this worker job",
+    description: "Read a specific owner Library item already granted to this worker job (supports smartaihub_library_get_file)",
     requiredScope: "library:read",
     readWrite: "Read",
     delegatedWorkerEligible: true,
@@ -3150,14 +4403,42 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
     actionClass: "read",
     inputSchema: {
       type: "object",
-      required: ["library_item_id"],
-      properties: { library_item_id: { type: "integer" } },
-      additionalProperties: false,
+      properties: {
+        item_id: { type: "integer", description: "ID ของไฟล์ใน Library" },
+        library_item_id: { type: "integer", description: "ID ของไฟล์ใน Library (ชื่อเดิม)" },
+      },
+      additionalProperties: true,
     },
     listVisibleWhen: (ctx) =>
       ctx.session.authMode !== "delegated_worker"
       || ((ctx.delegatedManifest?.grantSummary.libraryItemIds?.length ?? 0) > 0 || ctx.delegatedManifest?.knowledgeAccess.libraryRead === true),
     execute: getOwnerLibraryItem,
+  },
+  {
+    name: "smartaihub_help",
+    family: "knowledge",
+    namespace: "knowledge",
+    toolGroup: "knowledge_read",
+    description: "เรียกดูคู่มือและหัวข้อช่วยเหลือของ SmartAIHub MCP Server (เช่น topic: 'library.search', 'library.files', 'capabilities', 'errors')",
+    requiredScope: "mcp:read",
+    readWrite: "Read",
+    delegatedWorkerEligible: true,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: {
+      type: "object",
+      properties: {
+        topic: {
+          type: "string",
+          description: "หัวข้อความช่วยเหลือ เช่น library.search, library.files, capabilities, errors",
+        },
+      },
+      additionalProperties: true,
+    },
+    listVisibleWhen: () => true,
+    execute: executeSmartaihubHelp,
   },
   {
     name: "smartspec.knowledge.context_packs.list",
@@ -3483,7 +4764,7 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
     family: "media",
     namespace: "media",
     toolGroup: "media_generation",
-    description: "Generate an image through the platform media stack",
+    description: "Generate an image through SmartAIHub Media Studio with dynamic credit billing. Recommended top models: GPT Image 2 (gpt-image-2-text-to-image), Nano Banana 2 Lite (google-banana-2-lite) / Nano Banana Pro (google/nano-banana-pro), Seedream 5.0 Pro (seedream/5-pro-text-to-image)",
     requiredScope: "media:generate",
     readWrite: "Write",
     delegatedWorkerEligible: true,
@@ -3495,14 +4776,17 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
       type: "object",
       required: ["prompt"],
       properties: {
-        prompt: { type: "string" },
-        model: { type: "string" },
+        prompt: { type: "string", description: "ข้อความ Prompt สำหรับสร้างภาพ" },
+        model: { type: "string", description: "รหัสหรือชื่อโมเดล เช่น gpt-image-2-text-to-image, google-banana-2-lite, seedream/5-pro-text-to-image" },
+        aspect_ratio: { type: "string", description: "สัดส่วนภาพ เช่น 1:1, 16:9, 9:16, 4:3, 3:4" },
+        size: { type: "string", description: "ขนาดภาพ เช่น 1024x1024, 1280x720" },
+        resolution: { type: "string", description: "ความละเอียด เช่น 1k, 2k, 4k" },
+        num_images: { type: "integer", minimum: 1, maximum: 4, description: "จำนวนภาพที่ต้องการสร้าง" },
+        reference_image_urls: { type: "array", items: { type: "string" }, maxItems: 9, description: "URL ภาพอ้างอิง" },
         provider: { type: "string", enum: ["platform", "hermes"] },
         connection_id: { type: "string", minLength: 1 },
-        aspect_ratio: { type: "string" },
-        reference_image_urls: { type: "array", items: { type: "string" }, maxItems: 9 },
       },
-      additionalProperties: false,
+      additionalProperties: true,
     },
     execute: (args, ctx) => generateMedia("image", args, ctx),
   },
@@ -3511,7 +4795,7 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
     family: "media",
     namespace: "media",
     toolGroup: "media_generation",
-    description: "Generate a video through the platform media stack",
+    description: "Generate a video through SmartAIHub Media Studio with dynamic credit billing. Recommended top models: Grok Imagine Video 1.5 (grok-imagine-video-1-5-preview), Veo 3.1 Lite (veo3/generate-veo-3-video-lite), Gemini Omni Flash 1.1 (gemini-omni-flash-1-1)",
     requiredScope: "media:generate",
     readWrite: "Write",
     delegatedWorkerEligible: true,
@@ -3523,17 +4807,42 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
       type: "object",
       required: ["prompt"],
       properties: {
-        prompt: { type: "string" },
-        model: { type: "string" },
+        prompt: { type: "string", description: "ข้อความ Prompt สำหรับสร้างวิดีโอ" },
+        model: { type: "string", description: "รหัสหรือชื่อโมเดล เช่น grok-imagine-video-1-5-preview, veo3/generate-veo-3-video-lite, gemini-omni-flash-1-1" },
+        aspect_ratio: { type: "string", description: "สัดส่วนวิดีโอ เช่น 16:9, 9:16" },
+        duration_seconds: { type: "number", minimum: 1, maximum: 60, description: "ความยาววิดีโอ (วินาที)" },
+        resolution: { type: "string", description: "ความละเอียด เช่น 720p, 1080p, 4k" },
+        fps: { type: "number", description: "เฟรมต่อวินาที" },
+        reference_image_urls: { type: "array", items: { type: "string" }, maxItems: 9, description: "URL ภาพอ้างอิง" },
+        reference_video_urls: { type: "array", items: { type: "string" }, description: "URL วิดีโออ้างอิง" },
         provider: { type: "string", enum: ["platform", "hermes"] },
         connection_id: { type: "string", minLength: 1 },
-        aspect_ratio: { type: "string" },
-        duration_seconds: { type: "number", minimum: 1, maximum: 60 },
-        reference_image_urls: { type: "array", items: { type: "string" }, maxItems: 9 },
       },
-      additionalProperties: false,
+      additionalProperties: true,
     },
     execute: (args, ctx) => generateMedia("video", args, ctx),
+  },
+  {
+    name: "smartspec.media.models.list",
+    family: "media",
+    namespace: "media",
+    toolGroup: "media_generation",
+    description: "List available media models with pricing and recommended top picks in SmartAIHub",
+    requiredScope: "media:read",
+    readWrite: "Read",
+    delegatedWorkerEligible: true,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: {
+      type: "object",
+      properties: {
+        type: { type: "string", enum: ["image", "video", "audio"], description: "กรองชนิดโมเดล" },
+      },
+      additionalProperties: true,
+    },
+    execute: listMediaModels,
   },
   {
     name: "smartspec.media.generate_audio",
@@ -3603,7 +4912,7 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
     family: "media",
     namespace: "media",
     toolGroup: "media_generation",
-    description: "List the authenticated user's tenant-scoped media history",
+    description: "List and search the authenticated user's tenant-scoped media history by query, model, status, and date",
     requiredScope: "media:read",
     readWrite: "Read",
     delegatedWorkerEligible: true,
@@ -3614,11 +4923,17 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
     inputSchema: {
       type: "object",
       properties: {
-        media_type: { type: "string", enum: ["image", "video", "audio"] },
-        status: { type: "string" },
-        limit: { type: "integer", minimum: 1, maximum: 100 },
+        query: { type: "string", description: "ค้นหาข้อความใน Prompt" },
+        media_type: { type: "string", description: "image, video, audio หรือ รูปภาพ, วิดีโอ" },
+        model: { type: "string", description: "กรองตามชื่อหรือรหัสโมเดล" },
+        status: { type: "string", description: "completed, pending, processing, failed" },
+        from_date: { type: "string", description: "ช่วงเวลาเริ่มต้น (ISO format หรือ YYYY-MM-DD)" },
+        to_date: { type: "string", description: "ช่วงเวลาสิ้นสุด" },
+        recent_days: { type: "number", description: "จำนวนวันที่ผ่านมา เช่น 1, 3, 7, 15, 30" },
+        limit: { type: "integer", minimum: 1, maximum: 100, description: "จำนวนรายการ" },
+        offset: { type: "integer", minimum: 0, description: "ลำดับเริ่มต้น (pagination)" },
       },
-      additionalProperties: false,
+      additionalProperties: true,
     },
     execute: listMediaHistory,
   },
@@ -4583,7 +5898,7 @@ export function getMcpRegistryTools(): McpCatalogTool[] {
       ?? (alias.target === "__smartaihub_remotion_list__"
         ? TOOL_REGISTRY.find((entry) => entry.name === "smartspec.remotion.job.status") ?? null
         : null);
-    return target ? [projectCatalogTool(target, alias.name, alias.inputSchema)] : [];
+    return target ? [projectCatalogTool(target, alias.name, alias.inputSchema ?? target.inputSchema)] : [];
   });
   return [...canonical, ...aliases];
 }
@@ -4788,15 +6103,16 @@ export async function listMcpToolsForSession(
           hidden.push({ name: alias.name, reason: availability.reason });
           continue;
         }
+        const schema = alias.inputSchema ?? remotionTarget.inputSchema;
         tools.push({
           name: alias.name,
           description: alias.description,
-          inputSchema: alias.inputSchema,
+          inputSchema: schema,
           outputSchema: remotionTarget.outputSchema ?? { type: "object" },
           requiredScope: remotionTarget.requiredScope,
           schemaVersion: remotionTarget.schemaVersion ?? "1",
           cacheScope: remotionTarget.cacheScope ?? "private",
-          annotations: toolAnnotations(projectCatalogTool(remotionTarget, alias.name, alias.inputSchema)),
+          annotations: toolAnnotations(projectCatalogTool(remotionTarget, alias.name, schema)),
         });
       }
       continue;
@@ -4806,15 +6122,16 @@ export async function listMcpToolsForSession(
       hidden.push({ name: alias.name, reason: availability.reason });
       continue;
     }
+    const schema = alias.inputSchema ?? target.inputSchema;
     tools.push({
       name: alias.name,
       description: alias.description,
-      inputSchema: alias.inputSchema,
+      inputSchema: schema,
       outputSchema: target.outputSchema ?? { type: "object" },
       requiredScope: target.requiredScope,
       schemaVersion: target.schemaVersion ?? "1",
       cacheScope: target.cacheScope ?? (target.readWrite === "Read" ? "private" : "no-store"),
-      annotations: toolAnnotations(projectCatalogTool(target, alias.name, alias.inputSchema)),
+      annotations: toolAnnotations(projectCatalogTool(target, alias.name, schema)),
     });
   }
 

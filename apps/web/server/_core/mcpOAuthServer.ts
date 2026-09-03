@@ -530,6 +530,15 @@ function consentPage(input: {
       <input type="hidden" name="transaction_id" value="${htmlEscape(input.transactionId)}">
       ${csrfToken ? `<input type="hidden" name="csrf_token" value="${htmlEscape(csrfToken)}">` : ""}
       <div class="actions"><button class="primary" name="decision" value="approve">${htmlEscape(copy.allow)}</button><button class="secondary" name="decision" value="deny">${htmlEscape(copy.deny)}</button></div>
+      <div style="margin-top: 1.5rem; padding: 0.875rem 1rem; border-radius: 0.5rem; background: #f8fafc; border: 1px solid #e2e8f0; font-size: 0.8125rem; line-height: 1.4; color: #475569;">
+        <strong>${input.locale === "th" ? "💡 ข้อแนะนำสำหรับ Server / Container / WSL:" : "💡 Tip for Server / Container / WSL users:"}</strong>
+        <p style="margin: 0.25rem 0 0 0;">
+          ${input.locale === "th"
+            ? "หากอนุมัติแล้วเบราว์เซอร์แจ้งเตือน <code>127.0.0.1 ปฏิเสธการเชื่อมต่อ</code> (เนื่องจาก Client รันอยู่คนละเครื่องกับเบราว์เซอร์) คุณสามารถเชื่อมต่อผ่านคำสั่ง Device Code ได้ทันทีโดยไม่ต้องผ่านพอร์ต 8989:"
+            : "If your browser shows <code>127.0.0.1 connection refused</code> after approving, connect using Device Code instead without loopback ports:"}
+        </p>
+        <code style="display: block; margin-top: 0.35rem; padding: 0.35rem 0.5rem; background: #0f172a; color: #38bdf8; border-radius: 0.375rem; font-family: monospace;">${input.clientName.toLowerCase().includes("hermes") ? "hermes mcp login smartaihub --device-code" : "openclaw mcp login smartaihub --device-code"}</code>
+      </div>
     </form>`,
     input.locale
   );

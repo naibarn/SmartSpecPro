@@ -87,12 +87,20 @@ export function inferMediaModelHintFromText(mediaType: MediaType, text?: string 
     if (/\bsora\b|sora\s*2/i.test(normalized)) return "sora-2";
     if (/\bkling\b/i.test(normalized)) return "kling-2.6";
     if (/\bseedance\b/i.test(normalized)) return "seedance";
-    if (/\bgrok\b/i.test(normalized)) return "grok-video";
+    if (/grok\s*imagine.*1\.5|grok.*1\.5|grok.*preview/i.test(normalized)) return "grok-imagine-video-1-5-preview";
+    if (/\bgrok\b/i.test(normalized)) return "grok-imagine-video-1-5-preview";
+    if (/omni\s*flash|gemini\s*omni\s*flash|omni\s*flash\s*1\.1/i.test(normalized)) return "gemini-omni-flash-1-1";
+    if (/\bomni\b/i.test(normalized)) return "gemini-omni-flash-1-1";
   }
   if (mediaType === "image") {
-    if (/gpt\s*image/i.test(normalized)) return "gpt-image";
-    if (/nano\s*banana|banana\s*pro/i.test(normalized)) return "google-nano-banana-pro";
-    if (/\bseedream\b/i.test(normalized)) return "seedream";
+    if (/gpt\s*image\s*2|gpt-image-2/i.test(normalized)) return "gpt-image-2-text-to-image";
+    if (/gpt\s*image/i.test(normalized)) return "gpt-image-2-text-to-image";
+    if (/nano\s*banana\s*2\s*lite|banana\s*2\s*lite|banana\s*lite/i.test(normalized)) return "google-banana-2-lite";
+    if (/nano\s*banana\s*2|banana\s*2/i.test(normalized)) return "google-banana-2-lite";
+    if (/nano\s*banana\s*pro|banana\s*pro/i.test(normalized)) return "google/nano-banana-pro";
+    if (/nano\s*banana|banana/i.test(normalized)) return "google-banana-2-lite";
+    if (/seedream\s*5|seedream.*pro/i.test(normalized)) return "seedream/5-pro-text-to-image";
+    if (/\bseedream\b/i.test(normalized)) return "seedream/5-pro-text-to-image";
   }
   return null;
 }

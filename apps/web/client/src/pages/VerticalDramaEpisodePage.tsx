@@ -7764,6 +7764,42 @@ function EpisodeWorkspaceShell({
     });
   }
 
+  const triggerSurgicalAudioRepairMutation =
+    trpc.verticalDramaEpisodes.triggerSurgicalAudioRepair.useMutation({
+      onSuccess: data => {
+        toast.success(
+          `ส่งคำขอซ่อมเฉพาะเสียงพูดช็อตที่ ${data.shotNumber} เรียบร้อย (ตัดเครดิต ${data.creditsCharged} เครดิต)`
+        );
+        void episodeDetailQuery.refetch();
+      },
+      onError: err => {
+        toast.error(`ไม่สามารถเริ่มการซ่อมเสียงได้: ${err.message}`);
+      },
+    });
+
+  const updateShotAudioMixDeltasMutation =
+    trpc.verticalDramaEpisodes.updateShotAudioMixDeltas.useMutation({
+      onSuccess: () => {
+        void episodeDetailQuery.refetch();
+      },
+      onError: err => {
+        toast.error(`ไม่สามารถบันทึกระดับเสียงได้: ${err.message}`);
+      },
+    });
+
+  const rollbackAudioManifestTakeMutation =
+    trpc.verticalDramaEpisodes.rollbackAudioManifestTake.useMutation({
+      onSuccess: data => {
+        toast.success(
+          `ย้อนกลับไปยัง Take #${data.activeTakeVersion} เรียบร้อย (0 เครดิต)`
+        );
+        void episodeDetailQuery.refetch();
+      },
+      onError: err => {
+        toast.error(`ไม่สามารถย้อนกลับ Take ได้: ${err.message}`);
+      },
+    });
+
   /* ---- Phase 6.5 — image-to-image repair dialog (`repairShotImage`) ----
    *  Async submit + poll like every other real generation here: submit ->
    *  `taskId` -> poll `media.getTask` -> the result URL is shown as the
@@ -9875,6 +9911,32 @@ function EpisodeWorkspaceShell({
               | VerticalDramaSeasonTieInPlacementView
               | null
               | undefined,
+            onTriggerSurgicalAudioRepair: (shotNumber: number) => {
+              triggerSurgicalAudioRepairMutation.mutate({
+                seriesId,
+                episodeId,
+                shotNumber,
+              });
+            },
+            onRollbackAudioTake: (shotNumber: number, targetTakeVersion: number) => {
+              rollbackAudioManifestTakeMutation.mutate({
+                seriesId,
+                episodeId,
+                shotNumber,
+                targetTakeVersion,
+              });
+            },
+            onUpdateShotAudioMixDeltas: (
+              shotNumber: number,
+              deltas: { dialogueDb: number; foleyDb: number; ambienceDb: number }
+            ) => {
+              updateShotAudioMixDeltasMutation.mutate({
+                seriesId,
+                episodeId,
+                shotNumber,
+                mixDeltas: deltas,
+              });
+            },
           }}
           adBannerOverlayEnabled={adBannerOverlayEnabled}
           adBannerPlanPanel={adBannerPlanPanelData}

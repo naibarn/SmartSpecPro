@@ -8086,6 +8086,8 @@ export function VerticalDramaStoryboardPanel({
                                   episodeId={String(episodeNumber ?? "0")}
                                   shotNumber={shotNumber}
                                   nativeAudioEnabled={nativeAudioEnabled ?? true}
+                                  videoUrl={clip?.videoTask?.videoUrl}
+                                  audioUrl={clip?.videoTask?.audioUrl}
                                   onTriggerRepair={() => {
                                     if (onTriggerSurgicalAudioRepair) {
                                       onTriggerSurgicalAudioRepair(shotNumber);
