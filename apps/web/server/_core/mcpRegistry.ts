@@ -95,7 +95,7 @@ import {
 import { resolveAutoDraftParams } from "../services/autoDraftResolver";
 import { generateAIDraft } from "../services/aiPresentationService";
 import { resolveExportDownloadTarget } from "../routes/exportDownloadTarget";
-import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
+import { getAppRuntimeConfig, getCachedPublicAppUrl } from "../services/appRuntimeConfig";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 import {
@@ -1628,10 +1628,39 @@ async function downloadLibraryItem(
   if (ctx.session.authMode === "delegated_worker") {
     await assertDelegatedWorkerGrant(ctx.session as any, { grantType: "library_item", resourceId: itemId });
   }
-  return createLibraryDownloadRef(itemId, {
+  const ref = await createLibraryDownloadRef(itemId, {
     tenantId: ctx.session.tenantId,
     userId: ctx.session.userId,
   });
+  const base = getCachedPublicAppUrl().replace(/\/+$/, "");
+  const downloadUrl = `${base}/api/mcp/downloads/${encodeURIComponent(ref.downloadRef)}/${encodeURIComponent(ref.fileName)}`;
+  return {
+    content: [
+      {
+        type: "text",
+        text: [
+          `ไฟล์พร้อมดาวน์โหลด: ${ref.fileName}`,
+          `ประเภท: ${ref.contentType}`,
+          `ลิงก์ดาวน์โหลด (มีอายุ ${ref.expiresInSeconds} วินาที): ${downloadUrl}`,
+          `หมายเหตุ: ลิงก์นี้สามารถใช้งานได้โดยตรง ไม่ต้องใช้ Authorization header`,
+        ].join("\n"),
+      },
+      {
+        type: "resource",
+        resource: {
+          uri: downloadUrl,
+          mimeType: ref.contentType,
+          text: ref.fileName,
+        },
+      },
+    ],
+    structuredContent: {
+      download_url: downloadUrl,
+      file_name: ref.fileName,
+      content_type: ref.contentType,
+      expires_in_seconds: ref.expiresInSeconds,
+    },
+  };
 }
 
 async function downloadMediaHistoryTask(
@@ -1640,10 +1669,39 @@ async function downloadMediaHistoryTask(
 ): Promise<unknown> {
   const taskId = typeof args.task_id === "string" ? args.task_id.trim() : "";
   if (!taskId) throw new Error("task_id is required");
-  return createMediaTaskDownloadRef(taskId, {
+  const ref = await createMediaTaskDownloadRef(taskId, {
     tenantId: ctx.session.tenantId,
     userId: ctx.session.userId,
   });
+  const base = getCachedPublicAppUrl().replace(/\/+$/, "");
+  const downloadUrl = `${base}/api/mcp/downloads/${encodeURIComponent(ref.downloadRef)}/${encodeURIComponent(ref.fileName)}`;
+  return {
+    content: [
+      {
+        type: "text",
+        text: [
+          `ไฟล์พร้อมดาวน์โหลด: ${ref.fileName}`,
+          `ประเภท: ${ref.contentType}`,
+          `ลิงก์ดาวน์โหลด (มีอายุ ${ref.expiresInSeconds} วินาที): ${downloadUrl}`,
+          `หมายเหตุ: ลิงก์นี้สามารถใช้งานได้โดยตรง ไม่ต้องใช้ Authorization header`,
+        ].join("\n"),
+      },
+      {
+        type: "resource",
+        resource: {
+          uri: downloadUrl,
+          mimeType: ref.contentType,
+          text: ref.fileName,
+        },
+      },
+    ],
+    structuredContent: {
+      download_url: downloadUrl,
+      file_name: ref.fileName,
+      content_type: ref.contentType,
+      expires_in_seconds: ref.expiresInSeconds,
+    },
+  };
 }
 
 async function getOwnerLibraryItem(
