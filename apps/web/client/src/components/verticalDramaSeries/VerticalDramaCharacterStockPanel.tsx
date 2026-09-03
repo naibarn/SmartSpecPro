@@ -34,7 +34,6 @@ import {
   Trash2,
   UploadCloud,
   User,
-  UserPlus,
   Users,
   Wand2,
   X,
@@ -1205,45 +1204,6 @@ export function buildLookRenderRequestFields(params: {
     referencePolicy: "auto",
     ...(instruction ? { customInstruction: instruction } : {}),
     ...(referenceAssetLinkId ? { referenceAssetLinkId } : {}),
-  };
-}
-
-/** Exact payload shape `verticalDramaCharacters.createCharacterTwin` expects
- *  (`server/routers/verticalDramaCharacters.ts`, ~line 1057) — same rationale
- *  as `VdCreateCharacterVariantInput` above for why this isn't imported from
- *  the router file directly. */
-export interface VdCreateCharacterTwinInput {
-  seriesId: string;
-  sharesFaceWithCharacterId: string;
-  name: string;
-  role?: string;
-  customDescription?: string;
-  referenceMediaAssetId?: string;
-}
-
-/** Builds the `createCharacterTwin` mutation payload from the "เพิ่มแฝด"
- *  dialog's raw form state — same trim/omit-when-empty convention as
- *  `buildCreateCharacterVariantInput` above. */
-export function buildCreateCharacterTwinInput(params: {
-  seriesId: string;
-  sharesFaceWithCharacterId: string;
-  name: string;
-  role: string;
-  customDescription: string;
-  referenceMediaAssetId: string | null;
-}): VdCreateCharacterTwinInput {
-  const name = params.name.trim();
-  const role = params.role.trim();
-  const customDescription = params.customDescription.trim();
-  return {
-    seriesId: params.seriesId,
-    sharesFaceWithCharacterId: params.sharesFaceWithCharacterId,
-    name,
-    ...(role ? { role } : {}),
-    ...(customDescription ? { customDescription } : {}),
-    ...(params.referenceMediaAssetId
-      ? { referenceMediaAssetId: params.referenceMediaAssetId }
-      : {}),
   };
 }
 
@@ -3557,35 +3517,6 @@ export function VerticalDramaCharacterStockPanel({
   const [lookPromptInput, setLookPromptInput] = useState("");
   const closeLookPromptDialog = () => setLookPromptDialog(null);
 
-  /** "เพิ่มแฝด" dialog — same open/closed convention as the variant dialog
-   *  above, holding the SOURCE (face-sharing) character it was opened for. */
-  const [twinDialogCharacter, setTwinDialogCharacter] = useState<{
-    characterId: string;
-    name: string;
-  } | null>(null);
-  const [twinNameInput, setTwinNameInput] = useState("");
-  const [twinRoleInput, setTwinRoleInput] = useState("");
-  const [twinDescriptionInput, setTwinDescriptionInput] = useState("");
-  const [twinReferenceMediaAssetId, setTwinReferenceMediaAssetId] = useState<
-    string | null
-  >(null);
-  const [twinReferencePreviewUrl, setTwinReferencePreviewUrl] = useState<
-    string | null
-  >(null);
-  const [twinReferenceResolving, setTwinReferenceResolving] = useState(false);
-  const [twinReferenceDragOver, setTwinReferenceDragOver] = useState(false);
-  const twinReferenceInputRef = useRef<HTMLInputElement>(null);
-
-  const openTwinDialog = (character: { characterId: string; name: string }) => {
-    setTwinDialogCharacter(character);
-    setTwinNameInput("");
-    setTwinRoleInput("");
-    setTwinDescriptionInput("");
-    setTwinReferenceMediaAssetId(null);
-    setTwinReferencePreviewUrl(null);
-  };
-  const closeTwinDialog = () => setTwinDialogCharacter(null);
-
   const handleSaveLookPrompt = () => {
     if (!lookPromptDialog) return;
     const prompt = lookPromptInput.trim();
@@ -3715,17 +3646,6 @@ export function VerticalDramaCharacterStockPanel({
             )
           );
         }
-      },
-      onError,
-    });
-
-  const createTwinMutation =
-    trpc.verticalDramaCharacters.createCharacterTwin.useMutation({
-      onSuccess: res => {
-        invalidate();
-        setSelectedCharacterId(res.character.characterId);
-        toast.success(t(lang, "เพิ่มแฝดแล้ว", "Twin added"));
-        closeTwinDialog();
       },
       onError,
     });
@@ -5155,12 +5075,10 @@ export function VerticalDramaCharacterStockPanel({
    *  tile, or an already-hosted URL from Library/History) into a canonical
    *  `media_assets` id, via `resolveMediaAssetForImport` — same 2-branch
    *  resolution `assignDroppedReference` below already performed inline;
-   *  extracted here so the "เพิ่มลุค"/"เพิ่มแฝด" dialogs' optional reference-
-   *  image attach (W2, plan: vertical-drama-twin-variant-completeness) can
-   *  reuse the EXACT same resolution without also calling `linkAsset` — those
-   *  dialogs create the character first and pass `referenceMediaAssetId` to
-   *  `createCharacterVariant`/`createCharacterTwin`, which best-effort-link
-   *  it themselves server-side. */
+   *  extracted here so the "เพิ่มลุค" dialog's optional reference-image attach
+   *  can reuse the EXACT same resolution without also calling `linkAsset` —
+   *  the dialog creates the character first and passes `referenceMediaAssetId`
+   *  to `createCharacterVariant`, which best-effort-links it server-side. */
   const resolveReferenceImageToMediaAssetId = async (
     url: string
   ): Promise<string> => {
@@ -5324,15 +5242,12 @@ export function VerticalDramaCharacterStockPanel({
     }
   };
 
-  /** Factory for the "เพิ่มลุค"/"เพิ่มแฝด" dialogs' reference-image drop
-   *  zone + upload-button handlers — parameterized by that dialog's own
-   *  `mediaAssetId`/`previewUrl`/`resolving` setters so the variant and twin
-   *  dialogs can each get their own independent instance without duplicating
-   *  the drag/drop validation + resolve-and-store logic twice. Mirrors
+  /** Factory for the "เพิ่มลุค" dialog's reference-image drop zone +
+   *  upload-button handlers. Mirrors
    *  `VerticalDramaCharacterReferencePanel`'s own drop-zone + "อัปโหลดภาพ"
    *  button validation copy exactly (unsupported type / too-large / no-image
    *  messages), just resolving to a stored `mediaAssetId` instead of
-   *  immediately linking it (no character exists yet to link onto). */
+   *  immediately linking it because the look character does not exist yet. */
   const makeReferenceAttachHandlers = (
     setMediaAssetId: (id: string | null) => void,
     setPreviewUrl: (url: string | null) => void,
@@ -5418,11 +5333,6 @@ export function VerticalDramaCharacterStockPanel({
     setVariantReferenceMediaAssetId,
     setVariantReferencePreviewUrl,
     setVariantReferenceResolving
-  );
-  const twinReferenceHandlers = makeReferenceAttachHandlers(
-    setTwinReferenceMediaAssetId,
-    setTwinReferencePreviewUrl,
-    setTwinReferenceResolving
   );
 
   const characters = listQuery.data?.characters ?? [];
@@ -5830,7 +5740,6 @@ export function VerticalDramaCharacterStockPanel({
     linkMutation.isPending ||
     deleteAssetMutation.isPending ||
     createVariantMutation.isPending ||
-    createTwinMutation.isPending ||
     deleteCharacterMutation.isPending;
 
   const requireModelSelected = (): boolean => {
@@ -7509,66 +7418,37 @@ export function VerticalDramaCharacterStockPanel({
                                     />
                                   )}
                                 </Button>
-                                {/* W2 "เพิ่มลุค"/"เพิ่มแฝด" (plan: vertical-
-                              drama-twin-variant-completeness, F6) — only on
-                              BASE characters (no `sharesFaceWithCharacterId`;
+                                {/* W2 "เพิ่มลุค" (plan: vertical-drama-twin-
+                              variant-completeness, F6) — only on BASE
+                              characters (no `sharesFaceWithCharacterId`;
                               `c.parentCharacterId` is always unset here since
                               `buildCharacterRosterEntries` already filters
-                              variant rows out of the top-level list, see that
-                              function's own doc comment). A twin is an
-                              independent person, not itself a face-source for
-                              a further look/twin, so it doesn't get these. */}
+                              variant rows out of the top-level list). */}
                                 {!c.sharesFaceWithCharacterId && (
-                                  <>
-                                    <Button
-                                      type="button"
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-7 w-7 shrink-0"
-                                      disabled={mutating}
-                                      aria-label={t(
-                                        lang,
-                                        `เพิ่มลุคให้ ${c.name}`,
-                                        `Add a look for ${c.name}`
-                                      )}
-                                      title={t(lang, "เพิ่มลุค", "Add look")}
-                                      onClick={() =>
-                                        openVariantDialog({
-                                          characterId: c.characterId,
-                                          name: c.name,
-                                        })
-                                      }
-                                    >
-                                      <Shirt
-                                        aria-hidden="true"
-                                        className="h-3.5 w-3.5"
-                                      />
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-7 w-7 shrink-0"
-                                      disabled={mutating}
-                                      aria-label={t(
-                                        lang,
-                                        `เพิ่มแฝดของ ${c.name}`,
-                                        `Add a twin for ${c.name}`
-                                      )}
-                                      title={t(lang, "เพิ่มแฝด", "Add twin")}
-                                      onClick={() =>
-                                        openTwinDialog({
-                                          characterId: c.characterId,
-                                          name: c.name,
-                                        })
-                                      }
-                                    >
-                                      <UserPlus
-                                        aria-hidden="true"
-                                        className="h-3.5 w-3.5"
-                                      />
-                                    </Button>
-                                  </>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 shrink-0"
+                                    disabled={mutating}
+                                    aria-label={t(
+                                      lang,
+                                      `เพิ่มลุคให้ ${c.name}`,
+                                      `Add a look for ${c.name}`
+                                    )}
+                                    title={t(lang, "เพิ่มลุค", "Add look")}
+                                    onClick={() =>
+                                      openVariantDialog({
+                                        characterId: c.characterId,
+                                        name: c.name,
+                                      })
+                                    }
+                                  >
+                                    <Shirt
+                                      aria-hidden="true"
+                                      className="h-3.5 w-3.5"
+                                    />
+                                  </Button>
                                 )}
                                 {/* W2 delete-CHARACTER (distinct from the
                               portrait-image delete button above this card's
@@ -12292,174 +12172,6 @@ export function VerticalDramaCharacterStockPanel({
                 <ImagePlus aria-hidden="true" className="h-4 w-4" />
               )}
               {t(lang, "สร้างภาพลุค", "Generate look image")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* W2 "เพิ่มแฝด" dialog — manual counterpart of `createCharacterTwin`
-      (`server/routers/verticalDramaCharacters.ts`), same pattern as the
-      variant dialog above. */}
-      <Dialog
-        open={twinDialogCharacter !== null}
-        onOpenChange={open => {
-          if (!open) closeTwinDialog();
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {t(
-                lang,
-                `เพิ่มแฝดของ ${twinDialogCharacter?.name ?? ""}`,
-                `Add a twin for ${twinDialogCharacter?.name ?? ""}`
-              )}
-            </DialogTitle>
-            <DialogDescription>
-              {t(
-                lang,
-                "สร้างตัวละครใหม่ที่เป็นคนละคน (ชื่อ/id ของตัวเอง) แต่ใช้ใบหน้าเดียวกัน — เช่น พี่น้องแฝด",
-                "Creates a brand-new, independent character (its own name/id) that shares the same face reference — e.g. identical siblings."
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="vd-twin-name" className="text-xs">
-                {t(lang, "ชื่อ", "Name")}
-              </Label>
-              <Input
-                id="vd-twin-name"
-                value={twinNameInput}
-                onChange={e => setTwinNameInput(e.target.value)}
-                placeholder={t(lang, "เช่น มีนา", "e.g. Mina")}
-                maxLength={255}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="vd-twin-role" className="text-xs">
-                {t(lang, "บทบาท (ไม่บังคับ)", "Role (optional)")}
-              </Label>
-              <Input
-                id="vd-twin-role"
-                value={twinRoleInput}
-                onChange={e => setTwinRoleInput(e.target.value)}
-                placeholder={t(lang, "น้องสาวฝาแฝด", "Twin sister")}
-                maxLength={100}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="vd-twin-description" className="text-xs">
-                {t(lang, "คำอธิบาย (ไม่บังคับ)", "Description (optional)")}
-              </Label>
-              <Textarea
-                id="vd-twin-description"
-                value={twinDescriptionInput}
-                onChange={e => setTwinDescriptionInput(e.target.value)}
-                maxLength={2000}
-                rows={3}
-                placeholder={t(
-                  lang,
-                  "อธิบายจุดที่ทำให้แฝดคนนี้ดูต่างจากตัวต้นแบบ เช่น ทรงผม สไตล์เสื้อผ้า",
-                  "Describe what makes this twin look distinct from the source, e.g. hairstyle, clothing style"
-                )}
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label className="text-xs">
-                {t(
-                  lang,
-                  "ภาพอ้างอิง (ไม่บังคับ)",
-                  "Reference image (optional)"
-                )}
-              </Label>
-              <div
-                onDragOver={event => {
-                  event.preventDefault();
-                  setTwinReferenceDragOver(true);
-                }}
-                onDragLeave={() => setTwinReferenceDragOver(false)}
-                onDrop={event => {
-                  setTwinReferenceDragOver(false);
-                  twinReferenceHandlers.handleDrop(event);
-                }}
-                className={cn(
-                  "flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-3 text-center text-xs text-muted-foreground transition-colors",
-                  twinReferenceDragOver
-                    ? "border-purple-400 bg-purple-50/60"
-                    : "border-border"
-                )}
-              >
-                {twinReferencePreviewUrl ? (
-                  <AuthenticatedMediaImage
-                    src={twinReferencePreviewUrl}
-                    alt=""
-                    className="aspect-[9/16] h-20 w-14 rounded object-cover"
-                  />
-                ) : twinReferenceResolving ? (
-                  <Loader2
-                    aria-hidden="true"
-                    className="h-4 w-4 animate-spin"
-                  />
-                ) : (
-                  <UploadCloud aria-hidden="true" className="h-4 w-4" />
-                )}
-                <span>
-                  {t(lang, "ลากภาพมาวาง หรือ", "Drag an image here, or")}
-                </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 text-xs"
-                  disabled={twinReferenceResolving}
-                  onClick={() => twinReferenceInputRef.current?.click()}
-                >
-                  <UploadCloud aria-hidden="true" className="h-3.5 w-3.5" />
-                  {t(lang, "อัปโหลดภาพ", "Upload image")}
-                </Button>
-                <input
-                  ref={twinReferenceInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={twinReferenceHandlers.handleFileInput}
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={closeTwinDialog}>
-              {t(lang, "ยกเลิก", "Cancel")}
-            </Button>
-            <Button
-              type="button"
-              className="gap-2"
-              disabled={
-                !twinDialogCharacter ||
-                twinNameInput.trim() === "" ||
-                createTwinMutation.isPending
-              }
-              onClick={() => {
-                if (!twinDialogCharacter) return;
-                createTwinMutation.mutate(
-                  buildCreateCharacterTwinInput({
-                    seriesId,
-                    sharesFaceWithCharacterId: twinDialogCharacter.characterId,
-                    name: twinNameInput,
-                    role: twinRoleInput,
-                    customDescription: twinDescriptionInput,
-                    referenceMediaAssetId: twinReferenceMediaAssetId,
-                  })
-                );
-              }}
-            >
-              {createTwinMutation.isPending ? (
-                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-              ) : (
-                <Plus aria-hidden="true" className="h-4 w-4" />
-              )}
-              {t(lang, "เพิ่มแฝด", "Add twin")}
             </Button>
           </DialogFooter>
         </DialogContent>

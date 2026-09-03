@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCreateCharacterVariantInput,
-  buildCreateCharacterTwinInput,
   buildDetectCharacterVariantsSummaryMessage,
   buildPortraitCandidateRetryPreviewInput,
   buildPreviewCharacterPromptInput,
@@ -32,7 +31,7 @@ import type { VerticalDramaCharacterAsset } from "@shared/verticalDramaSeries/ch
 /**
  * Coverage for W2 manual CRUD
  * (planning/vertical-drama-twin-variant-completeness/plan.md, Phase F6): the
- * "เพิ่มลุค"/"เพิ่มแฝด" dialogs' mutation-payload builders, the
+ * "เพิ่มลุค" dialog's mutation-payload builder, the
  * `detectCharacterVariantsNow` success summary copy, and the shared
  * mutation-error message resolver (covers the `deleteCharacter`
  * PRECONDITION_FAILED Thai message passing straight through). A full render
@@ -91,43 +90,6 @@ describe("buildCreateCharacterVariantInput", () => {
       referenceMediaAssetId: null,
     });
     expect(withoutRef.referenceMediaAssetId).toBeUndefined();
-  });
-});
-
-describe("buildCreateCharacterTwinInput", () => {
-  it("builds the minimal payload — trims name, omits empty role/description/reference", () => {
-    const result = buildCreateCharacterTwinInput({
-      seriesId: "10",
-      sharesFaceWithCharacterId: "5",
-      name: "  อากาศ  ",
-      role: "   ",
-      customDescription: "",
-      referenceMediaAssetId: null,
-    });
-    expect(result).toEqual({
-      seriesId: "10",
-      sharesFaceWithCharacterId: "5",
-      name: "อากาศ",
-    });
-  });
-
-  it("includes trimmed role/customDescription/referenceMediaAssetId when provided", () => {
-    const result = buildCreateCharacterTwinInput({
-      seriesId: "10",
-      sharesFaceWithCharacterId: "5",
-      name: "อากาศ",
-      role: "  น้องสาวฝาแฝด  ",
-      customDescription: "  ทรงผมสั้นกว่า สไตล์ลำลอง  ",
-      referenceMediaAssetId: "media-99",
-    });
-    expect(result).toEqual({
-      seriesId: "10",
-      sharesFaceWithCharacterId: "5",
-      name: "อากาศ",
-      role: "น้องสาวฝาแฝด",
-      customDescription: "ทรงผมสั้นกว่า สไตล์ลำลอง",
-      referenceMediaAssetId: "media-99",
-    });
   });
 });
 
