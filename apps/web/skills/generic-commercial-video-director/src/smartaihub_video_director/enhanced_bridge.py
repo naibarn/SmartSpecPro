@@ -22,7 +22,7 @@ from .errors import StageExecutionError
 from .models import AssetEvidence, CostEstimate, GenerationAuthorization
 from .openai_runner import OpenAIAgentsRunner
 from .schema_registry import StageContractRegistry
-from .orchestrator import DirectorOrchestrator
+from .orchestrator import DirectorOrchestrator, StageRunResult
 from .sdk_compat import installed_sdk_version, require_openai_agents_sdk
 
 ADAPTER_VERSION = "1.0.0"
@@ -87,20 +87,62 @@ class ReadOnlyCore:
         return None
 
 
+def _extract_dialogue_list(payload: dict[str, Any], intent: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    items = None
+    if "dialogue" in payload:
+        raw = payload.get("dialogue")
+        if isinstance(raw, dict) and isinstance(raw.get("lines"), list):
+            items = raw["lines"]
+        elif isinstance(raw, list):
+            items = raw
+    elif isinstance(payload.get("shot"), dict) and "dialogue" in payload["shot"]:
+        raw = payload["shot"].get("dialogue")
+        if isinstance(raw, list):
+            items = raw
+    elif intent and isinstance(intent.get("dialogue"), list):
+        items = intent["dialogue"]
+
+    if not items:
+        return []
+
+    normalized: list[dict[str, Any]] = []
+    for idx, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        text = item.get("text") or item.get("lineTh") or item.get("dialogue_line") or item.get("line")
+        if not text or not str(text).strip():
+            continue
+        speaker = item.get("speakerHint") or item.get("speaker") or item.get("speakerId") or item.get("characterKey") or f"Character {idx + 1}"
+        speaker_id = item.get("speakerId") or item.get("characterKey") or f"char-{idx + 1}"
+        normalized.append({
+            "lineId": str(item.get("lineId") or f"shot-line-{idx + 1}"),
+            "speakerId": str(speaker_id),
+            "speakerHint": str(speaker),
+            "speaker": str(speaker),
+            "position": str(item["position"]).strip() if item.get("position") else None,
+            "text": str(text).strip(),
+            "lineTh": str(text).strip(),
+            "emotion": str(item["emotion"]).strip() if item.get("emotion") else (str(item["tone"]).strip() if item.get("tone") else None),
+            "durationSeconds": item.get("durationSeconds"),
+        })
+    return normalized
+
+
 def _package_input(payload: dict[str, Any]) -> dict[str, Any]:
     """Build the strict v11 package envelope without trusting caller policy."""
     shot = payload.get("shot") or {}
     bundle = payload.get("mediaBundle") or {}
     dialogue_lines = []
-    for index, line in enumerate(payload.get("dialogue") or []):
-        if not isinstance(line, dict):
-            continue
+    for index, line in enumerate(_extract_dialogue_list(payload)):
         text = line.get("text") or line.get("lineTh")
         if not isinstance(text, str) or not text.strip():
             continue
+        speaker = line.get("speakerHint") or line.get("speaker") or line.get("speakerId") or line.get("characterKey")
+        speaker_id = line.get("speakerId") or line.get("characterKey")
         dialogue_lines.append({
             "lineId": str(line.get("lineId") or f"shot-line-{index + 1}"),
-            "speakerId": line.get("speakerId") or line.get("characterKey"),
+            "speakerId": str(speaker_id) if speaker_id else None,
+            "speakerHint": str(speaker) if speaker else None,
             "text": text.strip(),
             "exactText": True,
             "mustBeOnScreen": True,
@@ -169,6 +211,8 @@ def _observed_start_state_text(observed: dict[str, Any] | None) -> str:
                 if isinstance(value, str) and value.strip()
             ]
             hand_text = f", {', '.join(occupied)}" if occupied else ""
+        elif isinstance(hands, str) and hands.strip():
+            hand_text = f", hands: {hands.strip()}"
         facts.append(
             f"character {character.get('characterId', 'unknown')}: "
             f"{character.get('screenPosition', 'position uncertain')}, "
@@ -240,7 +284,7 @@ def _intent_policy_conflicts(
     actions = [str(action) for action in intent.get("actions") or []]
     authored_text = "\n".join([scene, *actions])
     conflicts: list[str] = []
-    if not (payload.get("dialogue") or []) and _has_positive_speech_intent(authored_text):
+    if not _extract_dialogue_list(payload) and _has_positive_speech_intent(authored_text):
         conflicts.append(
             "Canonical dialogue is empty, but the candidate implies spoken dialogue. Rewrite as silent acting, gesture and eye contact only."
         )
@@ -261,6 +305,404 @@ def _intent_policy_conflicts(
     return conflicts
 
 
+def _observed_start_state_bullets(observed: dict[str, Any] | None) -> list[str]:
+    if not isinstance(observed, dict):
+        return ["Preserve the approved START_FRAME_IMAGE as authoritative State #0."]
+    bullets: list[str] = []
+    for character in (observed.get("characters") or [])[:6]:
+        if not isinstance(character, dict):
+            continue
+        hands = character.get("handOccupancy")
+        hand_text = ""
+        if isinstance(hands, dict):
+            occupied = [
+                f"{side} hand: {value}"
+                for side, value in (("left", hands.get("left")), ("right", hands.get("right")))
+                if isinstance(value, str) and value.strip()
+            ]
+            hand_text = f"; {', '.join(occupied)}" if occupied else ""
+        elif isinstance(hands, str) and hands.strip():
+            hand_text = f"; hands: {hands.strip()}"
+        cid = character.get("characterId", "primary character")
+        bullets.append(
+            f"Character ({cid}): {character.get('screenPosition', 'in frame')}, "
+            f"pose: {character.get('pose', 'as in frame')}, "
+            f"gaze: {character.get('gaze', 'directed as in frame')}{hand_text}."
+        )
+    for item in (observed.get("objects") or [])[:5]:
+        if not isinstance(item, dict):
+            continue
+        bullets.append(
+            f"Object ({item.get('entityId', 'prop')}): state {item.get('state', 'static')}, "
+            f"position {item.get('position', 'in scene')}."
+        )
+    env = observed.get("environment")
+    if isinstance(env, dict):
+        desc = env.get("description")
+        light = env.get("lighting")
+        if desc or light:
+            parts = [p for p in (desc, f"lighting: {light}" if light else None) if p]
+            bullets.append(f"Environment: {'; '.join(parts)}.")
+    elif isinstance(env, str) and env.strip():
+        bullets.append(f"Environment: {env.strip()}.")
+    if not bullets:
+        bullets.append("Preserve the exact character pose, wardrobe, objects, and environment from frame 0.")
+    return bullets
+
+
+def _normalize_position_bucket(pos_str: str | None) -> str | None:
+    if not pos_str or not isinstance(pos_str, str):
+        return None
+    p = pos_str.lower().strip()
+    if "viewer-left" in p:
+        return "viewer-left"
+    if "viewer-right" in p:
+        return "viewer-right"
+    if "viewer-center-left" in p:
+        return "viewer-center-left"
+    if "viewer-center-right" in p:
+        return "viewer-center-right"
+    if "viewer-center" in p:
+        return "viewer-center"
+    if "left" in p and "right" not in p:
+        return "viewer-left"
+    if "right" in p and "left" not in p:
+        return "viewer-right"
+    if "center" in p:
+        return "viewer-center"
+    return None
+
+
+def _resolve_character_positions(
+    payload: dict[str, Any],
+    observed_start_state: dict[str, Any] | None,
+) -> dict[str, str]:
+    """Map character keys/names/IDs to their viewer positions ('viewer-left', 'viewer-right', etc.)."""
+    pos_map: dict[str, str] = {}
+
+    shot = payload.get("shot") or {}
+    continuity = payload.get("continuity") or {}
+    cast_positions = (
+        shot.get("verifiedCastPositions")
+        or continuity.get("verifiedCastPositions")
+        or []
+    )
+    for entry in cast_positions:
+        if isinstance(entry, dict):
+            pos = _normalize_position_bucket(entry.get("position"))
+            if pos:
+                for k in [entry.get("characterKey"), entry.get("name")]:
+                    if k:
+                        pos_map[str(k).strip().lower()] = pos
+                        pos_map[str(k).strip()] = pos
+
+    if observed_start_state and isinstance(observed_start_state, dict):
+        chars = observed_start_state.get("characters") or []
+        for ch in chars:
+            if isinstance(ch, dict):
+                cid = ch.get("characterId")
+                pos = _normalize_position_bucket(ch.get("screenPosition"))
+                if cid and pos:
+                    cid_str = str(cid).strip()
+                    if cid_str.lower() not in pos_map:
+                        pos_map[cid_str.lower()] = pos
+                        pos_map[cid_str] = pos
+
+    return pos_map
+
+
+def _clean_physical_action(action_text: str, speaker_name: str) -> str:
+    """Strip embedded quotes or redundant speaking clauses so only physical action remains."""
+    if not action_text:
+        return ""
+    cleaned = re.sub(r'["“][^"”]*["”]', '', action_text)
+    cleaned = re.sub(
+        r'\s*(?:and\s+)?(?:speaks|says|delivers|answers|shouts|whispers)\s+(?:with|in)\s+[^:;,.!?]*[:;,.]?',
+        '',
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(r'\s*delivers line:?.*', '', cleaned, flags=re.IGNORECASE)
+    if speaker_name:
+        cleaned = re.sub(rf'^{re.escape(speaker_name)}\s+', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'\s{2,}', ' ', cleaned).strip(" ,.;:")
+    return cleaned
+
+
+def _build_motion_timeline(
+    duration: float,
+    actions: list[str],
+    dialogue: list[dict[str, Any]],
+    character_positions: dict[str, str] | None = None,
+    all_characters: list[dict[str, str]] | None = None,
+) -> list[str]:
+    blocks: list[str] = []
+    tense_keywords = (
+        "หนี", "หลบ", "ไล่", "ซ่อน", "กลัว", "แอบ", "ระแวง", "ตื่น",
+        "tense", "panic", "pursuit", "pursuer", "chase", "hide", "evade",
+        "threat", "danger", "flee", "wary", "crouch", "hurried", "trembling", "stealth"
+    )
+    is_tense = any(any(k in str(act).lower() for k in tense_keywords) for act in actions)
+
+    if is_tense:
+        blocks.append(
+            "0.0–1.5 seconds:\n"
+            "Hold the exact frame-0 pose and camera framing with alert physical tension. "
+            "The character maintains vigilant focus against immediate danger as motion begins."
+        )
+    else:
+        blocks.append(
+            "0.0–1.5 seconds:\n"
+            "Hold the exact frame-0 pose, gaze and camera framing naturally. "
+            "Settle into the beat before main action begins."
+        )
+    mid_start = 1.5
+    mid_end = max(mid_start + 1.5, duration - 2.0)
+    events: list[tuple[str, str]] = []
+
+    pos_map = character_positions or {}
+    chars_list = all_characters or []
+
+    if dialogue:
+        for idx, line in enumerate(dialogue):
+            speaker = line.get("speaker") or line.get("speakerHint") or f"Character {idx + 1}"
+            speaker_id = line.get("speakerId") or line.get("characterKey") or ""
+            pos = line.get("position")
+            if not pos:
+                pos = (
+                    pos_map.get(speaker_id.lower())
+                    or pos_map.get(speaker.lower())
+                    or pos_map.get(speaker_id)
+                    or pos_map.get(speaker)
+                )
+
+            speaker_anchor = f"{speaker} on {pos}" if pos else speaker
+            txt = line.get("text") or line.get("lineTh") or ""
+
+            emotion = line.get("emotion")
+            if emotion:
+                voice_cue = f"a {emotion} voice"
+            else:
+                voice_cue = "a clear, natural voice"
+
+            raw_act = actions[idx] if idx < len(actions) else ""
+            clean_act = _clean_physical_action(raw_act, speaker)
+            if clean_act:
+                acting_clause = f" as they {clean_act};" if not clean_act.startswith("as ") else f" {clean_act};"
+            else:
+                acting_clause = ";"
+
+            listeners: list[str] = []
+            for other in chars_list:
+                other_name = other.get("name") or other.get("id") or ""
+                other_id = other.get("id") or ""
+                if (
+                    other_name.lower() != speaker.lower()
+                    and other_id.lower() != speaker_id.lower()
+                    and other_name.lower() != speaker_id.lower()
+                ):
+                    l_pos = other.get("position") or pos_map.get(other_id.lower()) or pos_map.get(other_name.lower())
+                    l_anchor = f"{other_name} on {l_pos}" if l_pos else other_name
+                    listeners.append(f"{l_anchor} listens, mouth closed with no mouth movement.")
+
+            listeners_str = (" " + " ".join(listeners)) if listeners else ""
+
+            event_desc = (
+                f"{speaker_anchor}{acting_clause} {speaker} says with {voice_cue}, "
+                f"precise realistic lip sync: \"{txt}\".{listeners_str}"
+            )
+            events.append((event_desc, "speech"))
+
+        for act in actions[len(dialogue):]:
+            clean_remaining = _clean_physical_action(act, "")
+            if clean_remaining:
+                events.append((clean_remaining, "action"))
+    else:
+        for act in actions:
+            events.append((act, "action"))
+
+    if not events:
+        events = [("Perform the approved storyboard action with physically plausible motion.", "action")]
+
+    slice_count = len(events)
+    slice_dur = (mid_end - mid_start) / max(1, slice_count)
+    for i, (event_desc, etype) in enumerate(events):
+        t0 = mid_start + i * slice_dur
+        t1 = mid_start + (i + 1) * slice_dur
+        blocks.append(f"{t0:.1f}–{t1:.1f} seconds:\n{event_desc}")
+
+    if is_tense:
+        blocks.append(
+            f"{mid_end:.1f}–{duration:.1f} seconds:\n"
+            "Hold the resolved pose. The character remains alert with lingering dramatic tension as camera movement settles."
+        )
+    else:
+        blocks.append(
+            f"{mid_end:.1f}–{duration:.1f} seconds:\n"
+            "Hold the resolved pose. The character's expression settles as camera movement gently eases to a stop."
+        )
+    return blocks
+
+
+def _clean_acoustic_descriptor(text: str) -> str:
+    """Strip diminishing modifiers like 'faint', 'barely audible' so audio isn't rendered at -30dB."""
+    cleaned = re.sub(r'\b(faint|barely audible|subdued|quietly|distant)\s+', '', text, flags=re.IGNORECASE)
+    return re.sub(r'\s{2,}', ' ', cleaned).strip(" ,.;:")
+
+
+def _extract_audio_direction_summary(payload: dict[str, Any], intent: dict[str, Any]) -> str | None:
+    shot = payload.get("shot") or {}
+    continuity = payload.get("continuity") or {}
+    audio_intent = intent.get("audioIntent")
+
+    existing_dir = (
+        shot.get("audioDirection")
+        or continuity.get("audioDirection")
+        or (audio_intent if isinstance(audio_intent, str) and audio_intent.strip() else None)
+    )
+    if existing_dir and isinstance(existing_dir, str) and existing_dir.strip():
+        return existing_dir.strip()
+
+    if isinstance(audio_intent, dict):
+        foley = audio_intent.get("mustHearFoley") or audio_intent.get("foley") or []
+        foley_cues: list[str] = []
+        for f in foley:
+            if isinstance(f, dict) and f.get("description"):
+                desc = _clean_acoustic_descriptor(str(f["description"]))
+                if desc:
+                    foley_cues.append(desc)
+            elif isinstance(f, str) and f.strip():
+                desc = _clean_acoustic_descriptor(f.strip())
+                if desc:
+                    foley_cues.append(desc)
+
+        atm = audio_intent.get("atmosphere") or audio_intent.get("ambience")
+        atm_desc: str | None = None
+        if isinstance(atm, dict) and atm.get("description"):
+            atm_desc = str(atm["description"]).strip()
+        elif isinstance(atm, str) and atm.strip():
+            atm_desc = atm.strip()
+
+        parts = []
+        if foley_cues:
+            parts.append(f"{', '.join(foley_cues)} are audible")
+        if atm_desc:
+            parts.append(f"with {atm_desc}")
+        if parts:
+            return f"{', '.join(parts)}; no music."
+
+    return None
+
+
+def _build_native_audio_section(
+    payload: dict[str, Any],
+    intent: dict[str, Any],
+    target_id: str,
+    dialogue: list[dict[str, Any]],
+) -> list[str]:
+    shot = payload.get("shot") or {}
+    continuity = payload.get("continuity") or {}
+    audio_intent = intent.get("audioIntent")
+
+    existing_dir = (
+        shot.get("audioDirection")
+        or continuity.get("audioDirection")
+        or (audio_intent if isinstance(audio_intent, str) and audio_intent.strip() else None)
+    )
+
+    foley_cues: list[str] = []
+    atm_desc: str | None = None
+    if isinstance(audio_intent, dict):
+        foley = audio_intent.get("mustHearFoley") or audio_intent.get("foley") or []
+        for f in foley:
+            if isinstance(f, dict) and f.get("description"):
+                desc = _clean_acoustic_descriptor(str(f["description"]))
+                if desc:
+                    foley_cues.append(desc)
+            elif isinstance(f, str) and f.strip():
+                desc = _clean_acoustic_descriptor(f.strip())
+                if desc:
+                    foley_cues.append(desc)
+
+        atm = audio_intent.get("atmosphere") or audio_intent.get("ambience")
+        if isinstance(atm, dict) and atm.get("description"):
+            atm_desc = str(atm["description"]).strip()
+        elif isinstance(atm, str) and atm.strip():
+            atm_desc = atm.strip()
+
+    if not foley_cues:
+        raw_sfx = shot.get("soundEffects") or shot.get("audioNotes")
+        if isinstance(raw_sfx, list):
+            foley_cues = [_clean_acoustic_descriptor(str(x)) for x in raw_sfx if str(x).strip()]
+        elif isinstance(raw_sfx, str) and raw_sfx.strip():
+            foley_cues = [_clean_acoustic_descriptor(raw_sfx.strip())]
+
+    audio_subsections: list[str] = ["NATIVE AUDIO / SOUND DESIGN"]
+
+    # Summary Audio Direction line (concise, high impact, like Legacy)
+    if existing_dir and isinstance(existing_dir, str) and existing_dir.strip():
+        audio_subsections.append(f"AUDIO DIRECTION: {existing_dir.strip()}")
+    elif isinstance(audio_intent, dict):
+        audio_lines = []
+        if dialogue:
+            audio_lines.append("Clear synchronous spoken Thai dialogue.")
+        if foley_cues:
+            audio_lines.append("Motivated foley: " + ", ".join(foley_cues) + ".")
+        if atm_desc:
+            audio_lines.append(f"Room tone: {atm_desc}.")
+        if audio_lines:
+            audio_subsections.append("AUDIO DIRECTION: " + " ".join(audio_lines))
+    elif foley_cues or atm_desc:
+        foley_part = f"{', '.join(foley_cues)} are clearly audible in the foreground" if foley_cues else "Motivated physical prop and surface interactions"
+        atm_part = f" with {atm_desc}" if atm_desc else " with grounded environmental room tone"
+        audio_subsections.append(f"AUDIO DIRECTION: {foley_part}{atm_part}; intimate close-mic vocal presence, no music.")
+    elif dialogue:
+        audio_subsections.append("AUDIO DIRECTION: Clear synchronous spoken Thai dialogue with crisp tactile prop interactions and grounded environmental room tone; no music.")
+    else:
+        audio_subsections.append("AUDIO DIRECTION: Crisp tactile physical foley and grounded environmental room tone; no music, no spoken dialogue.")
+
+    # High Proximity Voice Direction (Fixes "เสียงเหมือนอยู่ไกลไม่ได้อารมณ์")
+    if dialogue:
+        audio_subsections.append(
+            "Speech & Vocal Presence (High Proximity):\n"
+            "Direct close-mic vocal presence with clear syllable projection and low room reverberation."
+        )
+
+    # Concrete Foley (Primary Tier)
+    if foley_cues:
+        audio_subsections.append(
+            f"Foley & Contact Sounds (Tactile & Audible):\n"
+            f"{', '.join(foley_cues)} are crisp, tactile, and clearly audible in the foreground."
+        )
+
+    # Atmosphere / Room Tone (Secondary Tier)
+    if atm_desc:
+        audio_subsections.append(f"Atmosphere & Room Tone:\n{atm_desc}.")
+
+    # Model-specific audio blocks
+    if "omni" in target_id.lower() and dialogue:
+        omni_events = []
+        cur_sec = 0
+        for idx, line in enumerate(dialogue):
+            text = line.get("text") or line.get("lineTh") or ""
+            speaker = line.get("speaker") or line.get("speakerHint") or line.get("speakerId") or f"Character {idx+1}"
+            omni_events.append(f"[{cur_sec}-{cur_sec+2}s] {speaker}: \"{text}\"")
+            cur_sec += 2
+        for f in foley_cues:
+            omni_events.append(f"[{cur_sec}s] SFX: {f}")
+            cur_sec += 1
+        audio_subsections.append("TIMECODED AUDIO EVENTS (OMNI):\n" + "\n".join(omni_events))
+    elif "seedance" in target_id.lower():
+        audio_subsections.append("PHYSICAL ACOUSTIC PAIRING (SEEDANCE): Match all physical impact sounds with visible contact surfaces.")
+    elif "h3" in target_id.lower() or "hailuo" in target_id.lower():
+        audio_subsections.append("ACOUSTIC BREVITY (H3): Keep ambient room tone minimal and speech clean.")
+
+    # Strict negative audio constraint
+    audio_subsections.append("Negative Audio: Strictly no background music, no score, no crowd chatter, no off-screen voices.")
+
+    return audio_subsections
+
+
 def _terminal_prompt(
     payload: dict[str, Any],
     intent: dict[str, Any],
@@ -268,6 +710,15 @@ def _terminal_prompt(
 ) -> str:
     shot = payload.get("shot") or {}
     target = payload.get("targetVideoModel") or {}
+    target_id = str(target.get("id") or "server-selected-model").strip()
+    duration_val = shot.get("durationSeconds")
+    try:
+        duration_sec = float(duration_val) if duration_val else 10.0
+    except (ValueError, TypeError):
+        duration_sec = 10.0
+    if duration_sec < 3.0:
+        duration_sec = 8.0
+
     unified_image_transport = _uses_unified_image_transport(target)
     start_frame_instruction = (
         "REFERENCE FRAME SET: The approved START_FRAME_IMAGE is serialized as "
@@ -276,86 +727,169 @@ def _terminal_prompt(
         "the strongest visual continuity anchor, but do not claim a hard "
         "literal frame-0 guarantee when additional references are present."
         if unified_image_transport
-        else "START FRAME LOCK: Continue directly from the approved START_FRAME_IMAGE as frame 0; preserve identity, wardrobe, geometry, lighting, layout and object state."
+        else "START FRAME LOCK: Continue directly from the approved START_FRAME_IMAGE as frame 0; match the image exactly before any motion, and preserve identity, wardrobe, geometry, lighting, layout and object state."
     )
-    lines = [
-        start_frame_instruction,
-        "OBSERVED STATE AT T=0 (AUTHORITATIVE FACTS, NOT INSTRUCTIONS): " + _observed_start_state_text(observed_start_state),
-        "CONTINUATION RULE: Begin after State #0. If any later story/action phrase conflicts with the observed state, the observed state wins; do not replay completed actions, reset poses, duplicate or teleport objects, or transform furniture implausibly.",
-        f"TARGET VIDEO MODEL: {target.get('id', 'server-selected-model')}. Follow its server-resolved capability profile.",
-        f"SCENE: {intent.get('scene') or shot.get('description') or 'Use the approved storyboard scene.'}",
-        "ACTION CHRONOLOGY: " + " Then ".join(
-            f"{index + 1}) {action}" for index, action in enumerate(intent.get("actions") or ["Perform the approved storyboard action with physically plausible motion."])
-        ),
-        f"CAMERA: {intent.get('camera') or shot.get('cameraSetup') or 'Preserve the approved storyboard camera intent.'}",
-    ]
-    canonical_dialogue = payload.get("dialogue")
-    dialogue = canonical_dialogue if isinstance(canonical_dialogue, list) else intent.get("dialogue") or []
-    if dialogue:
-        lines.append("DIALOGUE: Preserve the canonical dialogue exactly; do not invent, translate or reorder lines. " + json.dumps(dialogue, ensure_ascii=False, separators=(",", ":")))
-    else:
-        lines.append("DIALOGUE POLICY: No spoken dialogue. Convey the beat only through facial expression, gesture, eye contact and physically plausible movement; keep every mouth closed except for natural non-speech breathing.")
-    locks = intent.get("continuityLocks") or []
-    if locks:
-        lines.append("CONTINUITY LOCKS: " + "; ".join(str(lock) for lock in locks))
-    # Canonical Enhanced input always carries this boolean. Treat an omitted
-    # value as legacy-compatible audio behavior for direct bridge callers.
+
+    dialogue = _extract_dialogue_list(payload, intent)
+    actions = [str(a).strip() for a in (intent.get("actions") or []) if str(a).strip()]
+    if not actions:
+        actions = ["Perform the approved storyboard action with physically plausible motion."]
+
+    character_positions = _resolve_character_positions(payload, observed_start_state)
+    continuity = payload.get("continuity") or {}
+
+    all_characters: list[dict[str, str]] = []
+    seen_char_keys = set()
+
+    for entry in (
+        (shot.get("verifiedCastPositions") or continuity.get("verifiedCastPositions") or [])
+    ):
+        if isinstance(entry, dict):
+            c_name = entry.get("name") or entry.get("characterKey")
+            c_id = entry.get("characterKey") or c_name
+            c_pos = _normalize_position_bucket(entry.get("position"))
+            if c_name and str(c_name).lower() not in seen_char_keys:
+                seen_char_keys.add(str(c_name).lower())
+                all_characters.append({"id": str(c_id), "name": str(c_name), "position": c_pos or ""})
+
+    for ch in (observed_start_state.get("characters") if observed_start_state else []) or []:
+        if isinstance(ch, dict):
+            cid = str(ch.get("characterId") or "").strip()
+            cpos = _normalize_position_bucket(ch.get("screenPosition"))
+            cname = cid
+            for line in dialogue:
+                if (
+                    line.get("speakerId") == cid
+                    or line.get("characterKey") == cid
+                    or line.get("speakerHint") == cid
+                ):
+                    cname = line.get("speaker") or cid
+                    break
+            if cid and cid.lower() not in seen_char_keys and cname.lower() not in seen_char_keys:
+                seen_char_keys.add(cid.lower())
+                seen_char_keys.add(cname.lower())
+                all_characters.append({"id": cid, "name": cname, "position": cpos or ""})
+
+    timeline_blocks = _build_motion_timeline(
+        duration_sec, actions, dialogue, character_positions, all_characters
+    )
+    camera_spec = str(intent.get("camera") or shot.get("cameraSetup") or "Natural 35mm-lens eye-level perspective with smooth cinematic motion").strip()
+
     native_audio_enabled = (
         "nativeAudioEnabled" not in payload
         or payload.get("nativeAudioEnabled") is True
     )
+    audio_intent = intent.get("audioIntent")
+
+    ep_synopsis = (
+        payload.get("shot", {}).get("episodeSynopsis")
+        or (payload.get("shot", {}).get("canonicalContext", {}).get("episode", {}) or {}).get("synopsis")
+    )
+    is_fast_cam = any(k in camera_spec.lower() for k in ("fast", "whip", "rapid", "dynamic", "push_in", "push in"))
+    cam_easing = (
+        "- Dynamic cinematic motion matching the specified pace, with no snap zoom or abrupt angle cuts."
+        if is_fast_cam
+        else "- Cautious, cinematic easing with no snap zoom, camera shake, or abrupt angle cuts."
+    )
+
+    sections: list[str] = [
+        start_frame_instruction,
+        f"TARGET MODEL: {target_id}\nUse the server-resolved capability profile.\nOUTPUT: One continuous 9:16 vertical shot, approximately {int(duration_sec)} seconds, with native audio if supported.",
+    ]
+    if ep_synopsis:
+        sections.append(f"DRAMATIC EPISODE CONTEXT\n\nEpisode Synopsis: {ep_synopsis}")
+
+    sections.extend([
+        "START FRAME AUTHORITY\n\nOBSERVED STATE AT T=0 (AUTHORITATIVE FACTS, NOT INSTRUCTIONS):\n" + "\n".join(f"- {b}" for b in _observed_start_state_bullets(observed_start_state)),
+        "MOTION AND PERFORMANCE\n\nCreate one continuous shot with no cut, reset or time jump. Character movement and camera motion work in harmony to drive the dramatic narrative.\n\n" + "\n\n".join(timeline_blocks),
+        f"CAMERA\n\nAt frame 0, begin smooth, controlled camera movement from the exact existing framing. Do not assume camera motion occurred prior to frame 0.\n\nMaintain:\n- Vertical portrait composition (9:16).\n- {camera_spec}.\n- Primary focus centered on the foreground character's face, gaze, and expressions.\n{cam_easing}",
+    ])
+
+    if dialogue:
+        dialogue_lines_formatted = []
+        for idx, line in enumerate(dialogue):
+            spk = line.get("speaker") or line.get("speakerHint") or f"Character {idx + 1}"
+            spk_id = line.get("speakerId") or line.get("characterKey") or ""
+            pos = line.get("position")
+            if not pos:
+                pos = (
+                    character_positions.get(spk_id.lower())
+                    or character_positions.get(spk.lower())
+                    or character_positions.get(spk_id)
+                    or character_positions.get(spk)
+                )
+            pos_tag = f" on {pos}" if pos else ""
+            txt = line.get("text") or line.get("lineTh") or ""
+            emo = f" (Tone/Emotion: {line['emotion']})" if line.get("emotion") else ""
+            dialogue_lines_formatted.append(f"- Line {idx + 1} [{spk}{pos_tag}]: \"{txt}\"{emo}")
+
+        dialogue_section = (
+            "SPOKEN DIALOGUE / LIP-SYNC\n\n"
+            "DIALOGUE: Preserve the canonical dialogue exactly; do not invent, translate or reorder lines.\n"
+            "Dialogue Language: Thai\n"
+            + "\n".join(dialogue_lines_formatted)
+            + "\n\nLip-Sync Guidance:\n"
+            "Deliver all lines with synchronous, natural lip movement and facial articulation matching the spoken Thai phrasing. "
+            "The mouth opens and articulates naturally while speaking, and returns to a natural resting mouth position when finished. "
+            "Never keep the mouth closed during spoken dialogue.\n"
+            "Silent Listener Constraint: Every character not actively speaking in a beat must keep their mouth closed with no mouth movement or mumbling."
+        )
+        sections.append(dialogue_section)
+    else:
+        shot_desc = str(payload.get("shot", {}).get("description", ""))
+        is_tense_shot = any(k in shot_desc.lower() for k in ("หนี", "หลบ", "ไล่", "ซ่อน", "กลัว", "tense", "pursuit", "chase", "hide"))
+        acting_guidance = (
+            "Convey urgent dramatic tension and vigilance through sharp eye contact, guarded physical evasion, and authentic emotional stakes."
+            if is_tense_shot
+            else "Convey the beat entirely through motivated non-verbal performance, facial expression, eye contact, and authentic dramatic presence."
+        )
+        sections.append(
+            "DIALOGUE POLICY: No spoken dialogue.\n"
+            f"{acting_guidance}"
+        )
+
     if not native_audio_enabled:
         if dialogue:
-            lines.append("AUDIO POLICY: Spoken dialogue only. Do not generate any background sound effects, foley, footsteps, or room tone.")
+            sections.append(
+                "AUDIO POLICY: Spoken dialogue only.\n"
+                "Do not generate any background sound effects, foley, footsteps, or room tone. "
+                "Keep the acoustic background completely clean and silent behind the dialogue."
+            )
         else:
-            lines.append("AUDIO POLICY: Complete silence. Silent visual acting only. Do not generate any spoken voice, sound effects, or background audio.")
+            sections.append(
+                "AUDIO POLICY: Complete silence. Silent visual acting only. "
+                "Do not generate any spoken voice, sound effects, or background audio."
+            )
     else:
-        audio_intent = intent.get("audioIntent")
-        if isinstance(audio_intent, dict):
-            audio_lines = []
-            if dialogue:
-                audio_lines.append("Clear synchronous spoken dialogue.")
-            foley = audio_intent.get("mustHearFoley") or []
-            if foley:
-                foley_descriptions = [f.get("description") for f in foley if isinstance(f, dict) and f.get("description")]
-                if foley_descriptions:
-                    audio_lines.append("Motivated foley: " + ", ".join(foley_descriptions) + ".")
-            atmosphere = audio_intent.get("atmosphere")
-            if isinstance(atmosphere, dict) and atmosphere.get("description"):
-                audio_lines.append(f"Room tone: {atmosphere['description']}.")
-            if audio_lines:
-                lines.append("AUDIO DIRECTION: " + " ".join(audio_lines))
-        elif isinstance(audio_intent, str) and audio_intent.strip():
-            lines.append("AUDIO DIRECTION: " + audio_intent.strip())
-        elif dialogue:
-            lines.append("AUDIO DIRECTION: Clear synchronous spoken dialogue with motivated physical contact sounds and continuous room tone.")
+        audio_subsections = _build_native_audio_section(payload, intent, target_id, dialogue)
+        sections.append("\n\n".join(audio_subsections))
 
-        # Model Adapter formatting: Gemini Omni timecode brackets
-        target_id = str((payload.get("targetVideoModel") or {}).get("id") or "").lower()
-        if "omni" in target_id and dialogue:
-            omni_events = []
-            cur_sec = 0
-            for idx, line in enumerate(dialogue):
-                text = line.get("text") if isinstance(line, dict) else str(line)
-                speaker = line.get("speakerId") if isinstance(line, dict) else f"Character {idx+1}"
-                omni_events.append(f"[{cur_sec}-{cur_sec+2}s] {speaker}: \"{text}\"")
-                cur_sec += 2
-            if isinstance(audio_intent, dict):
-                foley = audio_intent.get("mustHearFoley") or []
-                for f in foley:
-                    if isinstance(f, dict) and f.get("description"):
-                        omni_events.append(f"[{cur_sec}s] SFX: {f['description']}")
-            lines.append("TIMECODED AUDIO EVENTS (OMNI):\n" + "\n".join(omni_events))
-        elif "seedance" in target_id:
-            lines.append("PHYSICAL ACOUSTIC PAIRING (SEEDANCE): Match all physical impact sounds with visible contact surfaces.")
-        elif "h3" in target_id or "hailuo" in target_id:
-            lines.append("ACOUSTIC BREVITY (H3): Keep ambient room tone minimal and speech clean.")
     end_bridge = intent.get("endBridge")
     if isinstance(end_bridge, str) and end_bridge.strip():
-        lines.append("END STATE: " + end_bridge.strip())
-    lines.append("REFERENCE POLICY: Use only the server-authorized Feature 170 media bundle. Do not infer unavailable video/audio content from labels or filenames.")
-    lines.append("CONSTRAINTS: No duplicate people or objects; no unexplained cuts or resets; keep hand-object interactions plausible; reserve exact small typography for post-production.")
-    return "\n\n".join(lines)
+        sections.append("END STATE: " + end_bridge.strip())
+
+    locks = intent.get("continuityLocks") or []
+    locks_text = f" Continuity locks: {'; '.join(str(lock) for lock in locks)}." if locks else ""
+    sections.append(
+        "CONTINUITY AND NEGATIVE CONSTRAINTS\n\n"
+        f"Preserve exact character identity, wardrobe, hair, wetness, lighting, environment, object geometry and positions.{locks_text}\n"
+        "Keep stationary props stable; do not duplicate, morph, or teleport objects.\n"
+        "No duplicate people, duplicate hands, or new unapproved background characters.\n"
+        "No unexplained cuts, scene resets, or time jumps.\n"
+        "Use only the server-authorized Feature 170 media bundle."
+    )
+
+    terminal_text = "\n\n".join(sections)
+    if len(terminal_text) >= 4096:
+        terminal_text = terminal_text.replace(
+            "At frame 0, begin smooth, controlled camera movement from the exact existing framing. Do not assume camera motion occurred prior to frame 0.",
+            "At frame 0, begin smooth camera movement from the existing framing."
+        )
+        terminal_text = terminal_text.replace(
+            "Create one continuous shot with no cut, reset or time jump. Character movement and camera motion work in harmony to drive the dramatic narrative.",
+            "Create one continuous shot with no cut or reset. Movement and camera work in harmony to drive the dramatic beat."
+        )
+    return terminal_text
 
 
 async def run(payload: dict[str, Any]) -> dict[str, Any]:
@@ -401,7 +935,7 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
         "locationId": (payload.get("shot") or {}).get("locationId"),
         "continuityNotes": (payload.get("shot") or {}).get("continuityNotes") or [],
         "canonicalContext": (payload.get("shot") or {}).get("canonicalContext") or {},
-        "dialogue": payload.get("dialogue") if isinstance(payload.get("dialogue"), list) else [],
+        "dialogue": _extract_dialogue_list(payload),
         "mediaBundle": payload.get("mediaBundle") or {},
         "_visionReferences": payload.get("visionReferences") or [],
         "targetVideoModel": payload.get("targetVideoModel") or {},
@@ -466,9 +1000,22 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
             payload, repair_result.payload, observed_result.payload
         )
         if remaining_conflicts:
-            raise StageExecutionError(
-                "Enhanced prompt intent still conflicts with authoritative Start Frame policy after one bounded repair: "
-                + "; ".join(remaining_conflicts)
+            repaired_payload = dict(repair_result.payload)
+            if not _extract_dialogue_list(payload):
+                cleaned_actions = []
+                for act in repaired_payload.get("actions") or []:
+                    cleaned_actions.append(_SPEECH_INTENT.sub("gestures silently to indicate", str(act)))
+                repaired_payload["actions"] = cleaned_actions
+            prompt_warnings.extend([f"Policy conflict note: {c}" for c in remaining_conflicts])
+            repair_result = StageRunResult(
+                stage=repair_result.stage,
+                payload=repaired_payload,
+                usage=repair_result.usage,
+                warnings=[*repair_result.warnings, *[f"Policy conflict note: {c}" for c in remaining_conflicts]],
+                assumptions=repair_result.assumptions,
+                needs_human_review=True,
+                confidence=repair_result.confidence,
+                attempts=repair_result.attempts,
             )
         prompt_usage = prompt_usage.plus(repair_result.usage)
         prompt_warnings.extend(repair_result.warnings)
@@ -500,9 +1047,10 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
         "nativeAudioEnabled" not in payload
         or payload.get("nativeAudioEnabled") is True
     )
-    audio_direction = result.payload.get("audioIntent")
-    if native_audio_enabled and isinstance(audio_direction, str) and audio_direction.strip():
-        bridge_result["audioDirection"] = audio_direction.strip()
+    if native_audio_enabled:
+        audio_dir = _extract_audio_direction_summary(payload, result.payload)
+        if audio_dir:
+            bridge_result["audioDirection"] = audio_dir
     return bridge_result
 
 

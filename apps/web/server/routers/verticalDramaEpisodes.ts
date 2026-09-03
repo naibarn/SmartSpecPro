@@ -1183,17 +1183,152 @@ async function loadEnhancedShotContext(input: {
     durationSeconds: storyboardShot?.durationSeconds ?? 8,
     dialogue: [],
   } as unknown as VerticalDramaMotionPromptPack["clips"][number]);
-  // Enhanced dialogue comes from canonical episode sources, never from a
-  // Legacy clip. This keeps a missing/stale Legacy projection from changing
-  // the Enhanced authoring input.
-  const enhancedDialogue = resolveShotDialogueLines({
+  const matchingClipForEnhanced = existingClip
+    ? {
+        clipNumber: existingClip.clipNumber,
+        dialogue: existingClip.dialogue as ShotDialogueLine[] | undefined,
+      }
+    : undefined;
+  const knownSpeakerKeysForShot = await loadSeriesKnownSpeakerKeys(
+    input.tenantId,
+    input.seriesId
+  );
+  const resolvedDialogueLines = resolveShotDialogueLines({
     shotNumber: input.shotNumber,
+    matchingClip: matchingClipForEnhanced,
     dialogueAudioPlan: row.dialogueAudioPlan as {
       dialogue_lines?: Array<Record<string, unknown>>;
     } | null,
     script: row.script as Record<string, unknown> | null,
     storyboardShotCount: storyboard?.shots?.length,
+    knownSpeakerKeys: knownSpeakerKeysForShot,
   });
+  const rawDialogueList =
+    resolvedDialogueLines.length > 0
+      ? resolvedDialogueLines
+      : ((existingClip?.dialogue as ShotDialogueLine[] | undefined) ?? []);
+  const bible = series.bible as {
+    visualStyle?: string;
+    pacingStyle?: string;
+    cameraGrammar?: string;
+    continuityRules?: string[];
+    characters?: Array<Record<string, unknown>>;
+    locations?: Array<Record<string, unknown>>;
+  } | null;
+  const speakerNameMap = new Map<string, string>();
+  for (const c of (bible?.characters ?? []) as Array<Record<string, unknown>>) {
+    const key = String(c.characterKey ?? c.id ?? "");
+    const name = String(c.name ?? "");
+    if (key && name) {
+      speakerNameMap.set(key, name);
+      speakerNameMap.set(key.toLowerCase(), name);
+    }
+  }
+
+  // Load roster rows directly from verticalDramaCharacters table for this series
+  const rosterRows = (await db
+    .select({
+      characterKey: verticalDramaCharacters.characterKey,
+      name: verticalDramaCharacters.name,
+      role: verticalDramaCharacters.role,
+    })
+    .from(verticalDramaCharacters)
+    .where(
+      and(
+        eq(verticalDramaCharacters.tenantId, input.tenantId),
+        eq(verticalDramaCharacters.seriesId, input.seriesId)
+      )
+    )) as Array<{
+    characterKey: string;
+    name: string;
+    role: string | null;
+  }>;
+  for (const r of rosterRows) {
+    if (r.characterKey && r.name) {
+      speakerNameMap.set(r.characterKey, r.name);
+      speakerNameMap.set(r.characterKey.toLowerCase(), r.name);
+    }
+  }
+
+  // Resolve verified cast positions from start frame lock if present
+  let verifiedCastPositions: Array<{
+    characterKey: string;
+    name: string;
+    position: string;
+  }> = [];
+  if (frame?.castPositionLock) {
+    const rawPositions = buildVerticalDramaVerifiedCastPositions({
+      lock: frame.castPositionLock,
+      characterNameByKey: speakerNameMap,
+    });
+    verifiedCastPositions = rawPositions.map(p => ({
+      characterKey: p.characterKey,
+      name: p.name,
+      position: p.position,
+    }));
+    for (const vp of verifiedCastPositions) {
+      if (vp.characterKey && vp.name) {
+        speakerNameMap.set(vp.characterKey, vp.name);
+        speakerNameMap.set(vp.characterKey.toLowerCase(), vp.name);
+      }
+    }
+  }
+
+  // If generic "character" or "character-1" is used, resolve to main protagonist if not yet mapped
+  if (!speakerNameMap.has("character")) {
+    const mainChar =
+      rosterRows.find(
+        r =>
+          /thanwa|ธันวา/i.test(r.characterKey) ||
+          /thanwa|ธันวา/i.test(r.name) ||
+          r.role === "protagonist" ||
+          r.role === "lead" ||
+          r.role === "main"
+      ) ?? rosterRows[0];
+    if (mainChar?.name) {
+      speakerNameMap.set("character", mainChar.name);
+      speakerNameMap.set("character-1", mainChar.name);
+    }
+  }
+
+  const enhancedDialogue = rawDialogueList
+    .map((line: any, idx: number) => {
+      const rawKey = String(
+        line.characterKey ?? line.speaker_character_id ?? line.speakerId ?? ""
+      );
+      const matchedPosition = verifiedCastPositions.find(
+        p =>
+          p.characterKey.toLowerCase() === rawKey.toLowerCase() ||
+          p.name.toLowerCase() === rawKey.toLowerCase()
+      );
+      const speaker =
+        speakerNameMap.get(rawKey) ??
+        speakerNameMap.get(rawKey.toLowerCase()) ??
+        matchedPosition?.name ??
+        line.speaker ??
+        line.speakerHint ??
+        rawKey;
+      const position = matchedPosition?.position ?? line.position ?? undefined;
+      const text = String(
+        line.lineTh ?? line.text ?? line.dialogue_line ?? line.line ?? ""
+      ).trim();
+      return {
+        lineId: `line-${idx + 1}`,
+        speakerId: rawKey || undefined,
+        speakerHint: speaker || undefined,
+        speaker: speaker || undefined,
+        characterKey: rawKey || undefined,
+        position,
+        text,
+        lineTh: text,
+        emotion: line.emotion ? String(line.emotion) : undefined,
+        durationSeconds:
+          typeof line.durationSeconds === "number"
+            ? line.durationSeconds
+            : undefined,
+      };
+    })
+    .filter((line: any) => Boolean(line.text));
   const validVisionReferences = visionReferences.filter(reference =>
     isUsableEnhancedVisionUrl(reference.url)
   );
@@ -1203,16 +1338,13 @@ async function loadEnhancedShotContext(input: {
     model: targetVideoModel,
     mediaBundle,
   });
-  const bible = series.bible as {
-    visualStyle?: string;
-    pacingStyle?: string;
-    cameraGrammar?: string;
-    continuityRules?: string[];
-    characters?: Array<Record<string, unknown>>;
-    locations?: Array<Record<string, unknown>>;
-  } | null;
   const characterIds = storyboardShot?.characterIds ?? [];
   const locationId = storyboardShot?.locationId;
+  const { getActiveBreakdown } = await import("../services/verticalDramaStoryBible");
+  const shotEpisodePlanItem = getActiveBreakdown(
+    (series.bible as Record<string, unknown> | null) ?? null
+  ).find(item => item.episodeNumber === Number(row.episodeNumber));
+
   const canonicalContext = {
     series: {
       id: input.seriesId,
@@ -1239,6 +1371,9 @@ async function loadEnhancedShotContext(input: {
       title: row.title,
       targetDurationSeconds: row.targetDurationSeconds,
       durationProfileId: row.durationProfileId,
+      synopsis: shotEpisodePlanItem?.logline ?? undefined,
+      keyBeats: shotEpisodePlanItem?.keyBeats ?? undefined,
+      cliffhanger: shotEpisodePlanItem?.cliffhangerLine ?? undefined,
     },
     shot: {
       ...storyboardShot,
@@ -1269,10 +1404,20 @@ async function loadEnhancedShotContext(input: {
       locationId,
       continuityNotes: storyboardShot?.continuityNotes ?? [],
       canonicalContext,
+      verifiedCastPositions,
+      episodeSynopsis: shotEpisodePlanItem?.logline ?? undefined,
+      episodeKeyBeats: shotEpisodePlanItem?.keyBeats ?? undefined,
+      audioDirection: existingClip?.audioDirection ?? clip?.audioDirection ?? undefined,
+      audioNotes: (storyboardShot as any)?.audioNotes ?? undefined,
+      soundEffects: (storyboardShot as any)?.soundEffects ?? (frame as any)?.soundEffects ?? undefined,
     },
     continuity: {
       storyboardRevision: row.updatedAt.toISOString(),
       storyboardShot,
+      verifiedCastPositions,
+      episodeSynopsis: shotEpisodePlanItem?.logline ?? undefined,
+      episodeKeyBeats: shotEpisodePlanItem?.keyBeats ?? undefined,
+      audioDirection: existingClip?.audioDirection ?? clip?.audioDirection ?? undefined,
     },
     mediaBundle,
     visionReferences,
@@ -24013,6 +24158,39 @@ export const verticalDramaEpisodesRouter = router({
           episodeId,
           input.shotNumber,
         );
+      const [localeSeriesRow] = await db
+        .select({
+          locale: verticalDramaSeries.locale,
+          bible: verticalDramaSeries.bible,
+          genre: verticalDramaSeries.genre,
+        })
+        .from(verticalDramaSeries)
+        .where(
+          and(
+            eq(verticalDramaSeries.id, seriesId),
+            eq(verticalDramaSeries.tenantId, tenantId),
+            eq(verticalDramaSeries.userId, userId)
+          )
+        )
+        .limit(1);
+
+      const { getActiveBreakdown: getBreakdownForStartFrame } = await import("../services/verticalDramaStoryBible");
+      const shotEpisodePlanItemForStartFrame = getBreakdownForStartFrame(
+        (localeSeriesRow?.bible as Record<string, unknown> | null) ?? null
+      ).find(item => item.episodeNumber === Number(row.episodeNumber));
+      const shotEpisodePlanContextForStartFrame = shotEpisodePlanItemForStartFrame
+        ? formatStoryScriptEpisodePlanContext(
+            resolveStoryScriptLangFromLocale(localeSeriesRow?.locale),
+            {
+              episodeNumber: shotEpisodePlanItemForStartFrame.episodeNumber,
+              workingTitle: shotEpisodePlanItemForStartFrame.workingTitle,
+              logline: shotEpisodePlanItemForStartFrame.logline,
+              keyBeats: shotEpisodePlanItemForStartFrame.keyBeats,
+              cliffhangerLine: undefined,
+            }
+          )
+        : undefined;
+
       let shotStartFramePromptResult: Awaited<
         ReturnType<typeof generateStartFrameShotPrompt>
       >;
@@ -24026,6 +24204,7 @@ export const verticalDramaEpisodesRouter = router({
           shotNumber: input.shotNumber,
           frameRole,
           instruction: input.instruction,
+          episodePlanContext: shotEpisodePlanContextForStartFrame,
           currentPrompt: shotStartFramePromptBasePrompt,
           currentNegativePrompt:
             frameRole === "stop"
@@ -24146,10 +24325,7 @@ export const verticalDramaEpisodesRouter = router({
             ? { speakingOrder: shotStartFramePromptSpeakingOrder }
             : {}),
           videoFaceVisibilityRequired:
-            !frame.barrierDialogue &&
-            !frame.barrierMultiView &&
-            (shotStartFramePromptPhysicalCharacterRefs.length >= 2 ||
-              shotStartFramePromptSpeakingOrder.length >= 2),
+            !frame.barrierDialogue && !frame.barrierMultiView,
           attachShotImage: input.attachShotImage,
           imageUrl: resolvedImageUrl,
           propObjectReferenceImages:

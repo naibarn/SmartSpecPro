@@ -45,6 +45,24 @@ Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Free-form 
 allowed only inside explicitly named string fields (e.g. `human_summary`, `notes`,
 `dialogue_line`, `final_prompt`, `revision_instruction`).
 
+## Episode Narrative Stakes & Dramatic Visual Tension — MANDATORY
+
+The prompt carries `บริบทฉากของตอน` (`episode_plan_context`: episode working title, logline, and key beats). Every shot must be staged with cinematic awareness of the characters' dramatic situation and stakes:
+
+1. **Dramatic Stakes & Threat Staging:**
+   - When the episode or shot involves pursuit, escape, hiding, conflict, or high danger (e.g. fleeing a coup, avoiding searchers, concealing an identity or prop):
+     - **Body Posture Tension:** Direct tense, coiled, defensive body language (crouching low, hunched behind cover, shoulders drawn, hands tightly gripping or concealing objects, vigilant stance) — NEVER generic upright standing or casual relaxed poses.
+     - **Gaze & Eye-Line:** Direct sharp, watchful, wary gaze looking toward off-screen angles or checking behind for danger (e.g. "gaze darting warily toward background shadows"), rather than blankly staring at the lens.
+     - **Cinematic Lighting & Shadow:** Use atmospheric high-contrast chiaroscuro, moody shadows, rain streaks, cold dawn or harsh sodium-vapor lighting matching the tension — avoiding flat, evenly lit studio looks.
+     - **Foreground/Background Depth:** Stage meaningful layers (foreground obstacles like crates, tarps, or raindrops, and background silhouettes or atmosphere) to create cinematic depth and visual urgency.
+2. **Arc-Aware 9-Shot Staging:**
+   - **Shot 1 (Opening Hook):** Maximum visual impact — capture the inciting crisis or tension immediately in the character's pose, environment, and eyes.
+   - **Mid-Episode Shots (Escalation & Confrontation):** Emphasize psychological power dynamics, sharp eye-lines, and physical contrast between characters.
+   - **Shot 9 (Cliffhanger):** Stage a lingering dramatic question, an arresting reveal, or a frozen moment of suspense that compels the viewer to watch the next episode.
+3. **Scene Situation Overrides Genre Look Preset (Auto-Adaptation):**
+   - The shot's concrete scene environment, weather (e.g. rain, storm), time of day (dawn, midnight), and dramatic stakes (pursuit, evasion, crisis) ALWAYS OVERRIDE any series-level genre look preset (such as "Drama / Romance" or "gentle window warmth").
+   - Individual episodes and shots vary in dramatic tension across the series. Never force cozy window warmth or romantic pastel highlights onto a rain-soaked, tense, or nighttime escape scene. The authentic physical reality and dramatic urgency of the scene take absolute priority.
+
 ## Encode emotion into every image prompt — MANDATORY
 
 The incoming storyboard shot carries `emotion`, `facial_expression`, `body_language`,
@@ -75,11 +93,14 @@ plan. Specifically, each `prompt` must include:
    the beat to be explicitly labelled "interacting" (also check
    `gaze_direction`, `dialogue_excerpt`, and `action`). Orient each involved
    character's HEAD, EYE-LINE, AND their SHOULDERS/torso toward the OTHER
-   character — angled three-quarter INWARD toward each other (or a clean
-   over-the-shoulder framing) — NEVER both squared flat to the camera, and
-   NEVER turned toward opposite sides of the frame with their profiles or
-   backs to each other (two people facing away reads as strangers ignoring
-   one another, not a conversation). Combined with the speaker-order rule
+   character — angled three-quarter INWARD toward each other in an OPEN TWO-SHOT
+   (NEVER a closed over-the-shoulder framing that shows the back of a head,
+   never full profile, and NEVER hide either character's face behind hair,
+   shoulders, or props) — BOTH characters' faces must be clearly visible and
+   readable to the camera lens at three-quarter angles so downstream video
+   face-tracking and lip-sync do not distort or morph the characters' faces.
+   NEVER have both squared flat to the camera, and NEVER turned toward opposite
+   sides of the frame with their profiles or backs to each other. Combined with the speaker-order rule
    below, the LEFT-positioned character faces toward screen-RIGHT (toward
    their partner) and the RIGHT-positioned character faces screen-LEFT, so
    their eye-lines meet across the frame; a third character angles inward

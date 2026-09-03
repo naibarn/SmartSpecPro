@@ -320,6 +320,8 @@ interface DramaShot {
   imagePrompt: string;
   negativeImagePrompt: string;
   videoPrompt: string;
+  legacyVideoPrompt?: string;
+  enhancedVideoPrompt?: string;
   negativeVideoPrompt: string;
   dialogue: string;
   /** Structured per-line dialogue (speaker + text + spoken seconds). The server
@@ -415,8 +417,8 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.140";
-const EXTENSION_BUILD_LABEL = "2026-08-31 16:04 +07";
+const EXTENSION_VERSION = "0.1.142";
+const EXTENSION_BUILD_LABEL = "2026-09-03 16:51 +07";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
@@ -4593,8 +4595,25 @@ export default function App() {
       setStatus("Copy failed");
     }
   }
-  const productionPromptBox = (label: string, value: string | undefined, empty: string, collapsible = false) => {
+  const productionPromptBox = (
+    label: string,
+    value: string | undefined,
+    empty: string,
+    collapsible = false,
+    compact = false,
+  ) => {
     const prompt = value?.trim() ?? "";
+    const promptContent = compact ? (
+      <textarea
+        className="production-prompt-content production-prompt-textarea"
+        aria-label={label}
+        readOnly
+        rows={3}
+        value={prompt || empty}
+      />
+    ) : (
+      <div className="production-prompt-content">{prompt || empty}</div>
+    );
     const promptHeader = (
       <span className="production-prompt-header">
         <strong>{label}</strong>
@@ -4618,14 +4637,14 @@ export default function App() {
       return (
         <details className="production-prompt-box production-prompt-box-collapsible">
           <summary className="production-prompt-summary">{promptHeader}</summary>
-          <div className="production-prompt-content">{prompt || empty}</div>
+          {promptContent}
         </details>
       );
     }
     return (
       <div className="production-prompt-box">
         {promptHeader}
-        <div className="production-prompt-content">{prompt || empty}</div>
+        {promptContent}
       </div>
     );
   };
@@ -6028,8 +6047,9 @@ export default function App() {
                         }
                         return null;
                       })()}
-                      {productionPromptBox("Image prompt", shot.imagePrompt, "No image prompt saved for this shot yet.", true)}
-                      {productionPromptBox("Video prompt", shot.videoPrompt, "No video prompt saved for this shot yet.")}
+                      {shot.imagePrompt.trim() ? productionPromptBox("Image prompt", shot.imagePrompt, "No image prompt saved for this shot yet.", true, true) : null}
+                      {(shot.legacyVideoPrompt ?? shot.videoPrompt).trim() ? productionPromptBox("Video Prompt (Legacy)", shot.legacyVideoPrompt ?? shot.videoPrompt, "No Legacy video prompt saved for this shot yet.", false, true) : null}
+                      {shot.enhancedVideoPrompt?.trim() ? productionPromptBox("Video Prompt (Enhanced)", shot.enhancedVideoPrompt, "No Enhanced video prompt saved for this shot yet.", false, true) : null}
                       {shot.dialogueLines.length > 0 ? (
                         <div style={{ marginTop: 8 }}>
                           <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>

@@ -59,9 +59,44 @@ import {
   projectDramaShotFrameUrlsForExtension,
   projectDramaShotDialogueLinesForExtension,
   projectDramaShotReferenceImagesForExtension,
+  projectDramaShotVideoPromptsForExtension,
   resolveDramaShotCharacterRefsForExtension,
 } from "../verticalDramaExtensionReadService";
 import { estimateVerticalDramaSpeechSeconds } from "../../../shared/verticalDramaSeries/dialogueQuality";
+import {
+  buildEnhancedOnlyVideoPromptVariantStore,
+  buildVideoPromptVariantStore,
+} from "../../../shared/verticalDramaSeries/videoPromptVariants";
+
+function enhancedVariantForExtensionTest() {
+  return {
+    variantId: "enhanced" as const,
+    status: "ready" as const,
+    prompt: "Enhanced camera motion prompt",
+    mediaBundle: {
+      contractVersion: "vd-shot-media/1",
+      bundleRevision: 1,
+      startFrame: null,
+      stopFrame: null,
+      references: [],
+      bundleFingerprint: "b".repeat(64),
+    },
+    authoringModelId: "authoring-model",
+    targetVideoModelId: "video-model",
+    targetModelSnapshot: { providerFamily: "test", modelKey: "video-model" },
+    targetModelFingerprint: "c".repeat(64),
+    providerProfileId: "provider-profile",
+    providerPlanHash: "d".repeat(64),
+    inputFingerprint: "e".repeat(64),
+    terminalPromptHash: "f".repeat(64),
+    revision: 1,
+    createdAt: "2026-09-01T00:00:00.000Z",
+    updatedAt: "2026-09-01T00:00:00.000Z",
+    skillVersion: "1.0.0",
+    adapterVersion: "1.0.0",
+    sdkVersion: "1.0.0",
+  };
+}
 
 describe("projectDramaShotFrameUrlsForExtension", () => {
   it("resolves Start and Stop independently from their approved per-shot assets", () => {
@@ -88,6 +123,46 @@ describe("projectDramaShotFrameUrlsForExtension", () => {
         [5147, { originalUrl: "/start.png", thumbnailUrl: null }],
       ]),
     }).stopFrameUrl).toBeNull();
+  });
+});
+
+describe("projectDramaShotVideoPromptsForExtension", () => {
+  it("keeps legacy prompt text for old clips without a variant store", () => {
+    expect(projectDramaShotVideoPromptsForExtension({ prompt: "  Legacy prompt  " })).toEqual({
+      legacyVideoPrompt: "Legacy prompt",
+    });
+  });
+
+  it("projects both Legacy and Enhanced prompts from a valid store", () => {
+    const store = buildVideoPromptVariantStore({
+      clip: { prompt: "Legacy camera motion prompt" },
+      enhanced: enhancedVariantForExtensionTest(),
+      inputFingerprint: "a".repeat(64),
+      createdAt: "2026-09-01T00:00:00.000Z",
+    });
+    expect(projectDramaShotVideoPromptsForExtension({ videoPromptVariants: store })).toEqual({
+      enhancedVideoPrompt: "Enhanced camera motion prompt",
+      legacyVideoPrompt: "Legacy camera motion prompt",
+    });
+  });
+
+  it("falls back to the clip prompt when a valid store has no Legacy variant", () => {
+    const store = buildEnhancedOnlyVideoPromptVariantStore({ enhanced: enhancedVariantForExtensionTest() });
+    expect(projectDramaShotVideoPromptsForExtension({ prompt: "Legacy fallback", videoPromptVariants: store })).toEqual({
+      enhancedVideoPrompt: "Enhanced camera motion prompt",
+      legacyVideoPrompt: "Legacy fallback",
+    });
+  });
+
+  it("omits Enhanced and preserves Legacy when the variant store is malformed", () => {
+    expect(projectDramaShotVideoPromptsForExtension({
+      prompt: "Legacy survives malformed store",
+      videoPromptVariants: { version: "vd-video-prompt-variants/99" },
+    })).toEqual({ legacyVideoPrompt: "Legacy survives malformed store" });
+  });
+
+  it("returns no prompt fields when the clip has no prompt data", () => {
+    expect(projectDramaShotVideoPromptsForExtension({})).toEqual({});
   });
 });
 

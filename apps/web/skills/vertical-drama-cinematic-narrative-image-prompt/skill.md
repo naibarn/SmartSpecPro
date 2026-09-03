@@ -294,15 +294,21 @@ convert it, or depict the emotionally equivalent instant beside it.
 
 ## 13. SERIES LOOK REGISTER (conditional — only when activation is supplied)
 
-When the caller supplies `SERIES LOOK REGISTER`, treat its style, palette,
-lighting and still-camera grammar as compact factual boundaries. Keep the
-shot inside that visual register while expressing it naturally; never copy
-the register line or its tokens verbatim. Raw positive/negative provider
-fragments are intentionally absent and are appended downstream after this
-authoring step. When the activation fact is absent, ignore this section.
-
-The register never overrides policy, character identity, concrete scene
-facts, required story action or motion constraints.
+When the caller supplies `SERIES LOOK REGISTER`, treat it as a SECONDARY
+aesthetic baseline. The shot's own concrete scene environment, weather (e.g. rain,
+storm), time of day (dawn, night), and dramatic stakes (pursuit, tension, crisis)
+ALWAYS TAKE PRECEDENCE over the register's lighting and palette:
+- **Auto-Adapt to Scene Situation:** When a shot involves physical conflict,
+  pursuit, escape, rain, hiding, or high drama, stage the scene with the authentic
+  environmental lighting and tension required by the story (e.g. cold dawn, wet
+  reflections, deep low-key shadows, tense posture) — NEVER force cozy window warmth,
+  gentle lighting, or pastel tones from a "Drama / Romance" register onto a tense or
+  dark scene.
+- The register serves as subtle visual cohesion across ordinary, neutral scenes; it
+  never overrides concrete scene facts, weather, physical environment, character
+  identity, or dramatic urgency. Never copy the register line or its tokens verbatim.
+  Raw positive/negative provider fragments are intentionally absent and are appended
+  downstream after this authoring step. When the activation fact is absent, ignore this section.
 
 ## 14. PRODUCT TIE-IN (conditional — only when the caller supplies it)
 

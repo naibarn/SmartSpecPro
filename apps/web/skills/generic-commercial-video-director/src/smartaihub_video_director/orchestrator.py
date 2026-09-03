@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import re
 from dataclasses import dataclass
 from typing import Any,Protocol
 from .agent_factory import AgentFactory
@@ -15,6 +16,41 @@ class StageRunResult:
     stage:str; payload:dict[str,Any]; usage:StageUsage; warnings:list[str]; assumptions:list[str]; needs_human_review:bool; confidence:float; attempts:int
 APPROVAL_GATES={"storyboard":"storyboard","high_cost_generation":"highCostGeneration","publish":"publish"}
 SHOT_SCOPED_STAGES={"observed_start_state","visualization_plan","shot_plan","dialogue_map","continuity_plan","generation_strategy","prompt_intent","qc_report","repair_plan"}
+
+def _normalize_hand_occupancy(val: Any) -> dict[str, str | None]:
+    if isinstance(val, dict):
+        left = val.get("left")
+        right = val.get("right")
+        if left is None and right is None:
+            for k in ("holding", "item", "description", "hands", "state", "occupied", "object"):
+                candidate = val.get(k)
+                if isinstance(candidate, str) and candidate.strip():
+                    right = candidate.strip()
+                    break
+        clean_left = str(left).strip() if isinstance(left, str) and left.strip() else None
+        clean_right = str(right).strip() if isinstance(right, str) and right.strip() else None
+        return {"left": clean_left, "right": clean_right}
+    if isinstance(val, str) and val.strip():
+        s = val.strip()
+        lower = s.lower()
+        if re.search(r"\b(?:empty|free|none|nothing|unoccupied)\b", lower) and not re.search(r"\b(?:holds?|holding|carries?|carrying|grips?|gripping|rests?|touch|touches)\b", lower):
+            return {"left": None, "right": None}
+        m_left = re.search(r"\bleft(?:\s+hand)?\s*(?:holds?|holding|is|:)?\s*([^,;\.]+)", s, re.IGNORECASE)
+        m_right = re.search(r"\bright(?:\s+hand)?\s*(?:holds?|holding|is|:)?\s*([^,;\.]+)", s, re.IGNORECASE)
+        if m_left or m_right:
+            return {
+                "left": m_left.group(1).strip() if m_left else None,
+                "right": m_right.group(1).strip() if m_right else None,
+            }
+        if re.search(r"\band\s+(?:the\s+)?other\b", lower):
+            parts = re.split(r"\s+and\s+(?:the\s+)?other\s+", s, flags=re.IGNORECASE)
+            return {
+                "left": parts[0].strip()[:200] if parts[0].strip() else None,
+                "right": ("other " + parts[1].strip())[:200] if len(parts) > 1 and parts[1].strip() else None,
+            }
+        return {"left": s[:200], "right": None}
+    return {"left": None, "right": None}
+
 class DirectorOrchestrator:
     def __init__(self, *, package_root:str,runner:RunnerPort,session:Any|None=None,agent_factory:Any|None=None):
         self.contracts=StageContractRegistry(package_root);self.agent_factory=agent_factory or AgentFactory(self.contracts);self.runner=runner;self.session=session
@@ -73,31 +109,140 @@ class DirectorOrchestrator:
             # Dialogue originates from the persisted shot and is immutable input,
             # not model-authored output. Binding it here also prevents providers
             # from flattening canonical dialogue objects into bare strings.
-            canonical_dialogue=input_payload.get('dialogue')
-            bound['dialogue']=canonical_dialogue if isinstance(canonical_dialogue,list) else []
+            canonical_dialogue = input_payload.get('dialogue')
+            if isinstance(canonical_dialogue, dict) and isinstance(canonical_dialogue.get('lines'), list):
+                bound['dialogue'] = [d for d in canonical_dialogue['lines'] if isinstance(d, dict)]
+            elif isinstance(canonical_dialogue, list):
+                bound['dialogue'] = [d for d in canonical_dialogue if isinstance(d, dict)]
+            else:
+                bound['dialogue'] = []
+            actions = bound.get('actions')
+            if isinstance(actions, str) and actions.strip():
+                bound['actions'] = [actions.strip()]
+            elif isinstance(actions, list):
+                clean_actions = [str(a).strip() for a in actions if str(a).strip()]
+                bound['actions'] = clean_actions or ["Perform the approved storyboard action with physically plausible motion."]
+            else:
+                bound['actions'] = ["Perform the approved storyboard action with physically plausible motion."]
+            if not isinstance(bound.get('scene'), str) or not bound['scene'].strip():
+                bound['scene'] = str(input_payload.get('scene') or 'Scene in progress.').strip()
+            else:
+                bound['scene'] = bound['scene'].strip()
+            if not isinstance(bound.get('camera'), str) or not bound['camera'].strip():
+                bound['camera'] = str(input_payload.get('camera') or 'Preserve approved storyboard camera framing and motion.').strip()
+            else:
+                bound['camera'] = bound['camera'].strip()
+            if not isinstance(bound.get('continuityLocks'), list):
+                bound['continuityLocks'] = []
+            else:
+                bound['continuityLocks'] = [str(l).strip() for l in bound['continuityLocks'] if str(l).strip()]
+            if not isinstance(bound.get('referenceBindings'), list):
+                bound['referenceBindings'] = []
+            else:
+                bound['referenceBindings'] = [b for b in bound['referenceBindings'] if isinstance(b, dict)]
+            audio_intent = bound.get('audioIntent')
+            if not (isinstance(audio_intent, (dict, str)) or audio_intent is None):
+                bound['audioIntent'] = None
+            end_bridge = bound.get('endBridge')
+            if not (isinstance(end_bridge, str) or end_bridge is None):
+                bound['endBridge'] = None
+            elif isinstance(end_bridge, str):
+                bound['endBridge'] = end_bridge.strip() or None
+            allowed_prompt_keys = {
+                'shotId', 'scene', 'actions', 'camera', 'continuityLocks',
+                'referenceBindings', 'dialogue', 'audioIntent', 'endBridge'
+            }
+            bound = {k: v for k, v in bound.items() if k in allowed_prompt_keys}
         elif stage=='observed_start_state' and input_payload.get('source') in {'start_frame','designed'}:
             # The controller knows whether this stage observes an approved
             # frame or designs a state. Do not let model prose change that
             # provenance classification.
             bound['source']=input_payload['source']
-            # A still image cannot establish camera motion. Complete this one
-            # deterministic, unobservable field locally so a provider that
-            # omits it cannot make the whole Enhanced flow fail contract
-            # validation and spend its bounded repair attempt.
-            camera=payload.get('camera')
-            if isinstance(camera,dict):
-                movement=camera.get('movementAtT0')
-                if not isinstance(movement,str) or not movement.strip():
-                    bound['camera']={**camera,'movementAtT0':'unknown from still image'}
-                    uncertainties=bound.get('uncertainties')
-                    if isinstance(uncertainties,list) and not any(
-                        isinstance(item,str) and 'movementAtT0' in item
-                        for item in uncertainties
-                    ):
-                        bound['uncertainties']=[
-                            *uncertainties,
-                            'Camera movement at t=0 is not observable from a still image.',
-                        ]
+            raw_characters = bound.get('characters')
+            if isinstance(raw_characters, list):
+                clean_characters = []
+                for idx, item in enumerate(raw_characters):
+                    if not isinstance(item, dict):
+                        continue
+                    clean_hands = _normalize_hand_occupancy(item.get('handOccupancy'))
+                    char_id = item.get('characterId')
+                    if not isinstance(char_id, str) or not char_id.strip():
+                        input_chars = input_payload.get('characterIds') or []
+                        if idx < len(input_chars) and isinstance(input_chars[idx], str) and input_chars[idx].strip():
+                            char_id = input_chars[idx].strip()
+                        else:
+                            char_id = f"character_{idx + 1}"
+                    clean_characters.append({
+                        'characterId': str(char_id).strip(),
+                        'screenPosition': str(item.get('screenPosition') or 'center').strip(),
+                        'pose': str(item.get('pose') or 'visible').strip(),
+                        'gaze': str(item.get('gaze') or 'toward scene').strip(),
+                        'handOccupancy': clean_hands,
+                    })
+                bound['characters'] = clean_characters
+            else:
+                bound['characters'] = []
+
+            raw_objects = bound.get('objects')
+            if isinstance(raw_objects, list):
+                clean_objects = []
+                for idx, item in enumerate(raw_objects):
+                    if not isinstance(item, dict):
+                        continue
+                    entity_id = item.get('entityId') or item.get('id') or item.get('name') or f"object_{idx + 1}"
+                    clean_objects.append({
+                        'entityId': str(entity_id).strip(),
+                        'state': str(item.get('state') or 'visible').strip(),
+                        'position': str(item.get('position') or 'in scene').strip(),
+                    })
+                bound['objects'] = clean_objects
+            else:
+                bound['objects'] = []
+
+            camera = bound.get('camera')
+            if not isinstance(camera, dict):
+                camera = {}
+            framing = camera.get('framing')
+            if not isinstance(framing, str) or not framing.strip():
+                framing = str(input_payload.get('camera') or 'medium shot').strip()
+            angle = camera.get('angle')
+            if not isinstance(angle, str) or not angle.strip():
+                angle = 'eye level'
+            movement = camera.get('movementAtT0')
+            if not isinstance(movement, str) or not movement.strip():
+                movement = 'unknown from still image'
+                uncertainties = bound.get('uncertainties')
+                if isinstance(uncertainties, list) and not any(
+                    isinstance(item, str) and 'movementAtT0' in item
+                    for item in uncertainties
+                ):
+                    bound['uncertainties'] = [
+                        *uncertainties,
+                        'Camera movement at t=0 is not observable from a still image.',
+                    ]
+            bound['camera'] = {
+                'framing': str(framing).strip(),
+                'angle': str(angle).strip(),
+                'movementAtT0': str(movement).strip(),
+            }
+
+            if not isinstance(bound.get('environment'), str) or not bound['environment'].strip():
+                bound['environment'] = 'interior scene'
+            else:
+                bound['environment'] = bound['environment'].strip()
+
+            if not isinstance(bound.get('lighting'), str) or not bound['lighting'].strip():
+                bound['lighting'] = 'natural ambient lighting'
+            else:
+                bound['lighting'] = bound['lighting'].strip()
+
+            if not isinstance(bound.get('uncertainties'), list):
+                bound['uncertainties'] = []
+            else:
+                bound['uncertainties'] = [str(u).strip() for u in bound['uncertainties'] if str(u).strip()]
+
+            allowed_keys = {'source', 'characters', 'objects', 'camera', 'environment', 'lighting', 'uncertainties'}
+            bound = {k: v for k, v in bound.items() if k in allowed_keys}
         return bound
     async def _authorize_output_assets(self,context,envelope):
         refs=set(envelope.evidence_asset_ids)|self._extract_asset_refs(envelope.payload)

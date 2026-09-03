@@ -219,6 +219,33 @@ async def async_tests():
     assert observed_result.payload['source']=='start_frame' and 'shotId' not in observed_result.payload
     assert observed_result.payload['camera']['movementAtT0']=='unknown from still image'
     assert any('Camera movement at t=0' in item for item in observed_result.payload['uncertainties'])
+    # Test hand occupancy string normalization and character/object/camera sanitization
+    hand_str = 'hands appear empty: one hand rests near the knee and the other is near the lower leg'
+    observed_hands_payload = {
+        'source': 'start_frame',
+        'characters': [{
+            'characterId': 'boy',
+            'screenPosition': 'center',
+            'pose': 'sitting on floor',
+            'gaze': 'downward',
+            'handOccupancy': hand_str,
+            'extraDisallowedKey': 'should be removed'
+        }],
+        'objects': [{'entityId': 'toy', 'state': 'on floor', 'position': 'near boy', 'extra': 123}],
+        'camera': {'framing': 'medium', 'angle': 'eye level', 'extra': 'lens'},
+        'environment': 'living room',
+        'lighting': 'soft light',
+        'uncertainties': []
+    }
+    hands_env = StageOutputEnvelope(stage='observed_start_state', schemaId=observed_sid, payload=observed_hands_payload)
+    hands_orch = DirectorOrchestrator(package_root=str(ROOT), runner=Runner([hands_env]), agent_factory=AgentFactory())
+    hands_ctx = DirectorRunContext('t', 'p', 'r-hands', 'actor', '11.0.0', Core(), AgentRuntimeConfig(model='gpt-test', max_contract_repair_attempts=0))
+    hands_result = await hands_orch.run_stage('observed_start_state', context=hands_ctx, input_payload={'source': 'start_frame'})
+    assert hands_result.payload['characters'][0]['handOccupancy']['left'] is not None
+    assert 'extraDisallowedKey' not in hands_result.payload['characters'][0]
+    assert 'extra' not in hands_result.payload['objects'][0]
+    assert 'extra' not in hands_result.payload['camera']
+
     # A model must not be allowed to rebind output to a different shot.
     conflicting=StageOutputEnvelope(stage='prompt_intent',schemaId=prompt_sid,payload={**prompt_payload,'shotId':'S99'})
     conflict_runner=Runner([conflicting]);conflict_orch=DirectorOrchestrator(package_root=str(ROOT),runner=conflict_runner,agent_factory=AgentFactory())
@@ -228,6 +255,49 @@ async def async_tests():
     except Exception as exc:conflict_failed='shotId' in str(exc)
     assert conflict_failed
 
+def test_bridge_handles_string_hand_occupancy():
+    hand_str = 'hands appear empty: one hand rests near the knee and the other is near the lower leg'
+    observed = {
+        'source': 'start_frame',
+        'characters': [{
+            'characterId': 'child',
+            'screenPosition': 'center',
+            'pose': 'sitting',
+            'gaze': 'forward',
+            'handOccupancy': hand_str
+        }],
+        'objects': [],
+        'camera': {'framing': 'medium', 'angle': 'eye level', 'movementAtT0': 'static'},
+        'environment': 'room',
+        'lighting': 'daylight',
+        'uncertainties': []
+    }
+    class Outcome:
+        warnings = []; assumptions = []; usage = StageUsage(requests=1, input_tokens=7, output_tokens=3, total_tokens=10)
+        def __init__(self, payload): self.payload = payload
+    class FakeOrchestrator:
+        def __init__(self, **kwargs): pass
+        async def run_stage(self, stage, *args, **kwargs):
+            if stage == 'observed_start_state':
+                return Outcome(observed)
+            return Outcome({
+                'shotId': '1', 'scene': 'A silent scene', 'actions': ['Child stays still'],
+                'camera': 'medium', 'continuityLocks': [], 'referenceBindings': [],
+                'dialogue': [], 'audioIntent': None, 'endBridge': None
+            })
+    original = enhanced_bridge.DirectorOrchestrator
+    enhanced_bridge.DirectorOrchestrator = FakeOrchestrator
+    try:
+        result = asyncio.run(enhanced_bridge.run({
+            'shot': {'shotNumber': 1, 'description': 'Silent scene', 'cameraSetup': 'medium'},
+            'dialogue': [],
+            'targetVideoModel': {'id': 'veo-3'},
+            'authoringModel': {'id': 'gpt-test'}
+        }))
+    finally:
+        enhanced_bridge.DirectorOrchestrator = original
+    assert 'hands appear empty' in result['prompt']
+
 def main():
-    test_registry();test_config();test_tool_allow_list();test_agent_tool_context_is_not_exposed_in_function_schema();test_agent_factory_uses_sdk_compatible_envelope_schema();test_bridge_preserves_canonical_dialogue_and_terminal_audio();test_bridge_uses_reference_semantics_for_unified_image_transport();test_bridge_builds_stage_input_before_reading_agent_result();test_bridge_omits_empty_optional_audio_direction();test_bridge_repairs_silent_dialogue_and_held_object_reset_once();test_session_key();test_hash();asyncio.run(async_tests());assert supported_sdk_range()=='>=0.22.0,<0.23';print('PASS: 20 v11 Agent runtime regression checks')
+    test_registry();test_config();test_tool_allow_list();test_agent_tool_context_is_not_exposed_in_function_schema();test_agent_factory_uses_sdk_compatible_envelope_schema();test_bridge_preserves_canonical_dialogue_and_terminal_audio();test_bridge_uses_reference_semantics_for_unified_image_transport();test_bridge_builds_stage_input_before_reading_agent_result();test_bridge_omits_empty_optional_audio_direction();test_bridge_repairs_silent_dialogue_and_held_object_reset_once();test_bridge_handles_string_hand_occupancy();test_session_key();test_hash();asyncio.run(async_tests());assert supported_sdk_range()=='>=0.22.0,<0.23';print('PASS: 21 v11 Agent runtime regression checks')
 if __name__=='__main__':main()

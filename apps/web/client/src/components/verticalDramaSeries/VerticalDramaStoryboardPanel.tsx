@@ -31,6 +31,8 @@ import {
   AlertTriangle,
   Award,
   Check,
+  ChevronDown,
+  ChevronUp,
   Clapperboard,
   Copy,
   Download,
@@ -2895,6 +2897,10 @@ export function VerticalDramaStoryboardPanel({
     useState<Record<number, string>>({});
   const [activeAudioInspectorShot, setActiveAudioInspectorShot] =
     useState<number | null>(null);
+  const [
+    userToggledStopFrameExpandedByShot,
+    setUserToggledStopFrameExpandedByShot,
+  ] = useState<Record<number, boolean>>({});
 
   // Split a completed multi-angle grid image into 9 candidates client-side
   // (reuses the same `imageGridSplitter` tool the character-reference
@@ -4103,6 +4109,16 @@ export function VerticalDramaStoryboardPanel({
           const stopAssetId = frame?.approvedStopFrameAssetId;
           const stopAsset = stopAssetId ? assetUrls[stopAssetId] : undefined;
           const stopFrameImageSrc = stopAsset?.thumbnailUrl ?? stopAsset?.url;
+          const hasStopFrameImage = Boolean(stopFrameImageSrc);
+          const isGeneratingStopFrame = Boolean(
+            frame?.stopFrameTask?.status === "processing" ||
+              frame?.stopFrameTask?.status === "queued" ||
+              frame?.stopFrameTask?.status === "submitted" ||
+              generatingStopFrameImageForShot.has(shotNumber)
+          );
+          const isStopFrameExpanded =
+            userToggledStopFrameExpandedByShot[shotNumber] ??
+            (hasStopFrameImage || isGeneratingStopFrame);
           const browserImageState = startFrameImageSrc
             ? imageBrowserStateByShot[shotNumber]?.src === startFrameImageSrc
               ? imageBrowserStateByShot[shotNumber].state
@@ -4675,7 +4691,10 @@ export function VerticalDramaStoryboardPanel({
                     ) : null}
                   </div>
                   <section
-                    className="flex flex-col gap-1.5 rounded-md border border-dashed border-violet-300/70 bg-violet-50/40 p-1.5 dark:border-violet-800 dark:bg-violet-950/20"
+                    className={cn(
+                      "flex flex-col rounded-md border border-dashed border-violet-300/70 bg-violet-50/40 p-1.5 dark:border-violet-800 dark:bg-violet-950/20 transition-all",
+                      isStopFrameExpanded ? "gap-1.5" : "gap-0"
+                    )}
                     data-testid={`vd-storyboard-stop-frame-slot-${shotNumber}`}
                     aria-label={t(
                       locale,
@@ -4684,116 +4703,164 @@ export function VerticalDramaStoryboardPanel({
                     )}
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] font-semibold text-violet-800 dark:text-violet-200">
-                        {t(locale, "Stop Frame (ตัวเลือก)", "Stop frame (optional)")}
-                      </span>
-                      <span className="text-[9px] text-muted-foreground">→</span>
-                    </div>
-                    <div className="relative aspect-[9/16] w-full overflow-hidden rounded border border-violet-200 bg-muted dark:border-violet-900">
-                      {stopFrameImageSrc && onClearStopFrame ? (
-                        <button
-                          type="button"
-                          onClick={() => onClearStopFrame(shotNumber)}
-                          className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-background/85 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-destructive hover:text-destructive-foreground"
-                          title={t(locale, "เอาภาพ Stop frame ออกจาก slot", "Remove stop frame from slot")}
-                          aria-label={t(locale, "เอาภาพ Stop frame ออกจาก slot", "Remove stop frame from slot")}
-                          data-testid={`vd-storyboard-clear-stop-frame-${shotNumber}`}
-                        >
-                          <X aria-hidden="true" className="h-3 w-3" />
-                        </button>
-                      ) : null}
-                      {stopFrameImageSrc ? (
-                        <AuthenticatedMediaImage
-                          src={stopFrameImageSrc}
-                          alt={t(
-                            locale,
-                            `เฟรมสุดท้าย ช็อต ${shotNumber}`,
-                            `Stop frame, shot ${shotNumber}`
-                          )}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full flex-col items-center justify-center gap-1 px-1 text-center text-[10px] text-muted-foreground">
-                          <ImageOff aria-hidden="true" className="h-4 w-4" />
-                          <span>
-                            {frame?.stopFrameStaleReason
-                              ? t(
-                                  locale,
-                                  "ภาพเดิมไม่ตรงกับ prompt ล่าสุด",
-                                  "Previous image is stale"
-                                )
-                              : t(locale, "ยังไม่มีภาพ", "No image yet")}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setUserToggledStopFrameExpandedByShot(prev => ({
+                            ...prev,
+                            [shotNumber]: !isStopFrameExpanded,
+                          }))
+                        }
+                        className="flex flex-1 items-center justify-between gap-1 text-left transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-400 rounded"
+                        aria-expanded={isStopFrameExpanded}
+                        data-testid={`vd-storyboard-toggle-stop-frame-${shotNumber}`}
+                        title={
+                          isStopFrameExpanded
+                            ? t(locale, "คลิกเพื่อยุบ Stop Frame", "Click to collapse stop frame")
+                            : t(locale, "คลิกเพื่อขยาย Stop Frame", "Click to expand stop frame")
+                        }
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-semibold text-violet-800 dark:text-violet-200">
+                            {t(locale, "Stop Frame (ตัวเลือก)", "Stop frame (optional)")}
                           </span>
-                        </div>
-                      )}
-                      {frame?.stopFrameTask?.status === "processing" ||
-                      frame?.stopFrameTask?.status === "queued" ||
-                      frame?.stopFrameTask?.status === "submitted" ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/55 text-white">
-                          <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-                          <span className="text-[9px]">{t(locale, "กำลังสร้าง…", "Generating…")}</span>
-                        </div>
-                      ) : null}
-                    </div>
-                    {frame?.stopFrameStaleReason ? (
-                      <p className="text-[9px] text-amber-700 dark:text-amber-300" role="status">
-                        {t(locale, "Stop frame ต้องสร้างใหม่ให้ตรงกับข้อมูลล่าสุด", "Stop frame needs regeneration")}
-                      </p>
-                    ) : null}
-                    {stopFrameGenerationErrorByShot[shotNumber] ? (
-                      <p className="text-[9px] text-destructive" role="alert">
-                        {stopFrameGenerationErrorByShot[shotNumber]}
-                      </p>
-                    ) : null}
-                    <div className="flex flex-wrap gap-1">
-                      {onChangeStopFrame ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-6 flex-1 px-1.5 text-[10px]"
-                          onClick={() => onChangeStopFrame(shotNumber)}
-                          data-testid={`vd-storyboard-change-stop-frame-${shotNumber}`}
-                        >
-                          {t(locale, "เลือกภาพ", "Choose image")}
-                        </Button>
-                      ) : null}
-                      {onGenerateStopFrameImage && frame?.stopFramePrompt ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-6 flex-1 gap-1 px-1.5 text-[10px]"
-                          onClick={() =>
-                            requestConfirmation({
-                              title: t(
-                                locale,
-                                "ยืนยันสร้าง Stop Frame",
-                                "Confirm stop-frame generation"
-                              ),
-                              description: t(
-                                locale,
-                                "การสร้างภาพนี้ใช้ AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
-                                "This uses AI and may spend credits. Continue?"
-                              ),
-                              confirmLabel: t(locale, "สร้างภาพ", "Generate image"),
-                              cancelLabel: t(locale, "ยกเลิก", "Cancel"),
-                              testId: `vd-credit-confirm-stop-frame-${shotNumber}`,
-                              onConfirm: () => onGenerateStopFrameImage(shotNumber),
-                            })
-                          }
-                          disabled={generatingStopFrameImageForShot.has(shotNumber)}
-                          data-testid={`vd-storyboard-generate-stop-frame-${shotNumber}`}
-                        >
-                          {generatingStopFrameImageForShot.has(shotNumber) ? (
-                            <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                          {hasStopFrameImage ? (
+                            <span className="rounded bg-emerald-100 px-1 py-0.5 text-[8.5px] font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                              {t(locale, "มีภาพแล้ว", "Has image")}
+                            </span>
+                          ) : isGeneratingStopFrame ? (
+                            <span className="rounded bg-blue-100 px-1 py-0.5 text-[8.5px] font-medium text-blue-800 dark:bg-blue-950 dark:text-blue-300 animate-pulse">
+                              {t(locale, "กำลังสร้าง…", "Generating…")}
+                            </span>
                           ) : (
-                            <Sparkles aria-hidden="true" className="h-3 w-3" />
+                            <span className="rounded bg-violet-100/70 px-1 py-0.5 text-[8.5px] text-muted-foreground dark:bg-violet-900/40">
+                              {t(locale, "ไม่มีภาพ (ยุบอยู่)", "No image (collapsed)")}
+                            </span>
                           )}
-                          {t(locale, "สร้างภาพ", "Generate")}
-                        </Button>
-                      ) : null}
+                        </div>
+                        <div className="flex items-center gap-0.5 text-[9px] font-medium text-violet-700 dark:text-violet-300">
+                          <span>
+                            {isStopFrameExpanded
+                              ? t(locale, "ยุบ", "Collapse")
+                              : t(locale, "ขยาย", "Expand")}
+                          </span>
+                          {isStopFrameExpanded ? (
+                            <ChevronUp aria-hidden="true" className="h-3 w-3" />
+                          ) : (
+                            <ChevronDown aria-hidden="true" className="h-3 w-3" />
+                          )}
+                        </div>
+                      </button>
                     </div>
+                    {isStopFrameExpanded ? (
+                      <>
+                        <div className="relative aspect-[9/16] w-full overflow-hidden rounded border border-violet-200 bg-muted dark:border-violet-900">
+                          {stopFrameImageSrc && onClearStopFrame ? (
+                            <button
+                              type="button"
+                              onClick={() => onClearStopFrame(shotNumber)}
+                              className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-background/85 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                              title={t(locale, "เอาภาพ Stop frame ออกจาก slot", "Remove stop frame from slot")}
+                              aria-label={t(locale, "เอาภาพ Stop frame ออกจาก slot", "Remove stop frame from slot")}
+                              data-testid={`vd-storyboard-clear-stop-frame-${shotNumber}`}
+                            >
+                              <X aria-hidden="true" className="h-3 w-3" />
+                            </button>
+                          ) : null}
+                          {stopFrameImageSrc ? (
+                            <AuthenticatedMediaImage
+                              src={stopFrameImageSrc}
+                              alt={t(
+                                locale,
+                                `เฟรมสุดท้าย ช็อต ${shotNumber}`,
+                                `Stop frame, shot ${shotNumber}`
+                              )}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full flex-col items-center justify-center gap-1 px-1 text-center text-[10px] text-muted-foreground">
+                              <ImageOff aria-hidden="true" className="h-4 w-4" />
+                              <span>
+                                {frame?.stopFrameStaleReason
+                                  ? t(
+                                      locale,
+                                      "ภาพเดิมไม่ตรงกับ prompt ล่าสุด",
+                                      "Previous image is stale"
+                                    )
+                                  : t(locale, "ยังไม่มีภาพ", "No image yet")}
+                              </span>
+                            </div>
+                          )}
+                          {frame?.stopFrameTask?.status === "processing" ||
+                          frame?.stopFrameTask?.status === "queued" ||
+                          frame?.stopFrameTask?.status === "submitted" ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/55 text-white">
+                              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+                              <span className="text-[9px]">{t(locale, "กำลังสร้าง…", "Generating…")}</span>
+                            </div>
+                          ) : null}
+                        </div>
+                        {frame?.stopFrameStaleReason ? (
+                          <p className="text-[9px] text-amber-700 dark:text-amber-300" role="status">
+                            {t(locale, "Stop frame ต้องสร้างใหม่ให้ตรงกับข้อมูลล่าสุด", "Stop frame needs regeneration")}
+                          </p>
+                        ) : null}
+                        {stopFrameGenerationErrorByShot[shotNumber] ? (
+                          <p className="text-[9px] text-destructive" role="alert">
+                            {stopFrameGenerationErrorByShot[shotNumber]}
+                          </p>
+                        ) : null}
+                        <div className="flex flex-wrap gap-1">
+                          {onChangeStopFrame ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-6 flex-1 px-1.5 text-[10px]"
+                              onClick={() => onChangeStopFrame(shotNumber)}
+                              data-testid={`vd-storyboard-change-stop-frame-${shotNumber}`}
+                            >
+                              {t(locale, "เลือกภาพ", "Choose image")}
+                            </Button>
+                          ) : null}
+                          {onGenerateStopFrameImage && frame?.stopFramePrompt ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-6 flex-1 gap-1 px-1.5 text-[10px]"
+                              onClick={() =>
+                                requestConfirmation({
+                                  title: t(
+                                    locale,
+                                    "ยืนยันสร้าง Stop Frame",
+                                    "Confirm stop-frame generation"
+                                  ),
+                                  description: t(
+                                    locale,
+                                    "การสร้างภาพนี้ใช้ AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                                    "This uses AI and may spend credits. Continue?"
+                                  ),
+                                  confirmLabel: t(locale, "สร้างภาพ", "Generate image"),
+                                  cancelLabel: t(locale, "ยกเลิก", "Cancel"),
+                                  testId: `vd-credit-confirm-stop-frame-${shotNumber}`,
+                                  onConfirm: () => onGenerateStopFrameImage(shotNumber),
+                                })
+                              }
+                              disabled={generatingStopFrameImageForShot.has(shotNumber)}
+                              data-testid={`vd-storyboard-generate-stop-frame-${shotNumber}`}
+                            >
+                              {generatingStopFrameImageForShot.has(shotNumber) ? (
+                                <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Sparkles aria-hidden="true" className="h-3 w-3" />
+                              )}
+                              {t(locale, "สร้างภาพ", "Generate")}
+                            </Button>
+                          ) : null}
+                        </div>
+                      </>
+                    ) : null}
                   </section>
                   {frame?.imageStaleReason === "prompt_changed" ? (
                     <Badge
@@ -7671,6 +7738,34 @@ export function VerticalDramaStoryboardPanel({
                       : clip?.prompt ?? "";
                     const viewingPreview =
                       enhancedVideoPromptUiEnabled && viewedVariant !== activeVariant;
+                    const viewedPromptModelTarget = (() => {
+                      if (viewedVariant === "enhanced" && viewedVariantData) {
+                        const rawTarget = (viewedVariantData as any).promptModelTarget;
+                        if (rawTarget && typeof rawTarget === "object" && rawTarget.family) {
+                          return rawTarget as { family: string; modelId?: string; modelName?: string };
+                        }
+                        const enhancedData = viewedVariantData as any;
+                        if (enhancedData.targetVideoModelId) {
+                          const family = resolveVideoPromptTargetFamily({
+                            modelId: enhancedData.targetVideoModelId,
+                            name: enhancedData.targetModelSnapshot?.name ?? enhancedData.targetVideoModelId,
+                            provider: enhancedData.targetModelSnapshot?.provider,
+                          });
+                          return {
+                            family,
+                            modelId: enhancedData.targetVideoModelId,
+                            modelName: enhancedData.targetModelSnapshot?.name,
+                          };
+                        }
+                      }
+                      if (viewedVariant === "legacy") {
+                        const legacyTarget = (variantRead.store?.variants?.legacy as any)?.promptModelTarget;
+                        if (legacyTarget && typeof legacyTarget === "object" && legacyTarget.family) {
+                          return legacyTarget as { family: string; modelId?: string; modelName?: string };
+                        }
+                      }
+                      return clip?.promptModelTarget;
+                    })();
                     const groupCanApply = clipsForCard.every(candidate => {
                       const candidateStore = readVideoPromptVariantStore(
                         candidate?.videoPromptVariants,
@@ -7831,19 +7926,19 @@ export function VerticalDramaStoryboardPanel({
                               : undefined
                           }
                           familyBadge={
-                            clip?.promptModelTarget ? (
+                            viewedPromptModelTarget ? (
                               <Badge
                                 variant="outline"
                                 className="gap-1 px-1.5 py-0 text-[9px]"
                                 title={`${t2.videoPromptModelFamilyBadgeTitle}: ${
-                                  clip.promptModelTarget.modelName ??
-                                  clip.promptModelTarget.modelId
+                                  viewedPromptModelTarget.modelName ??
+                                  viewedPromptModelTarget.modelId
                                 }`}
                                 data-testid={`vd-storyboard-video-prompt-${clipKey}-model-family`}
                               >
                                 {videoPromptModelFamilyLabel(
-                                  clip.promptModelTarget.family,
-                                  clip.promptModelTarget,
+                                  viewedPromptModelTarget.family,
+                                  viewedPromptModelTarget,
                                 )}
                               </Badge>
                             ) : undefined
@@ -7915,11 +8010,11 @@ export function VerticalDramaStoryboardPanel({
                           generating this prompt). Hidden for legacy clips
                           with no `promptModelTarget` and while no video
                           model is selected. */}
-                        {clip?.promptModelTarget &&
+                        {viewedPromptModelTarget &&
                         currentVideoPromptModelFamily &&
                         currentVideoPromptModelFamily !==
                           resolveStampedVideoPromptModelFamily(
-                            clip.promptModelTarget,
+                            viewedPromptModelTarget,
                           ) ? (
                           <p
                             className="text-[11px] text-amber-600 dark:text-amber-400"
@@ -7929,8 +8024,8 @@ export function VerticalDramaStoryboardPanel({
                               t2.videoPromptModelMismatchWarning,
                               {
                                 generated: videoPromptModelFamilyLabel(
-                                  clip.promptModelTarget.family,
-                                  clip.promptModelTarget,
+                                  viewedPromptModelTarget.family,
+                                  viewedPromptModelTarget,
                                 ),
                                 current: videoPromptModelFamilyLabel(
                                   currentVideoPromptModelFamily

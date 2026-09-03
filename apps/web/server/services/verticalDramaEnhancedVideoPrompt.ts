@@ -3,6 +3,7 @@ import {
   buildVideoPromptVariantStore,
   computeVideoPromptVariantFingerprint,
 } from "@shared/verticalDramaSeries/videoPromptVariants";
+import { resolveVideoPromptTargetFamily } from "@shared/verticalDramaSeries/videoPromptModelFamily";
 import type { VideoShotMediaBundle } from "@shared/verticalDramaShotMedia";
 import {
   parseVideoCapabilityProfile,
@@ -636,6 +637,18 @@ export function buildEnhancedVariantStore(input: {
     ...(input.bridge.audioDirection
       ? { audioDirection: input.bridge.audioDirection }
       : {}),
+    promptModelTarget: {
+      family: resolveVideoPromptTargetFamily({
+        modelId: input.skillInput.targetVideoModel.id,
+        name: (input.skillInput.targetVideoModel.capabilitySnapshot as Record<string, unknown> | undefined)?.name as string | undefined,
+        provider: (input.skillInput.targetVideoModel.capabilitySnapshot as Record<string, unknown> | undefined)?.provider as string | undefined,
+      }),
+      modelId: input.skillInput.targetVideoModel.id,
+      modelName:
+        ((input.skillInput.targetVideoModel.capabilitySnapshot as Record<string, unknown> | undefined)?.name as string | undefined) ??
+        input.skillInput.targetVideoModel.id,
+      generatedAt: now,
+    },
     mediaBundle: input.skillInput.mediaBundle,
     inputFingerprint: buildEnhancedInputFingerprint(input.skillInput),
     terminalPromptHash: input.bridge.terminalPromptHash,

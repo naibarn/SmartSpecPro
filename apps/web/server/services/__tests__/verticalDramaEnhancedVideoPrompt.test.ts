@@ -504,4 +504,42 @@ describe("vertical drama Enhanced prompt boundary", () => {
     expect(hashOn).toBeTruthy();
     expect(hashOff).not.toEqual(hashOn);
   });
+
+  it("preserves dialogue lines with Thai text and speaker names in buildEnhancedSkillInput", () => {
+    const thaiDialogue = [
+      {
+        lineId: "line-1",
+        characterKey: "thanwa",
+        speaker: "ธันวา",
+        speakerHint: "ธันวา",
+        text: "พอแล้ว วันนี้เป็นโชคเกินไปแบบนั้น",
+        lineTh: "พอแล้ว วันนี้เป็นโชคเกินไปแบบนั้น",
+        emotion: "ดีใจเบาๆ ปัดฝุ่น",
+      },
+      {
+        lineId: "line-2",
+        characterKey: "thanwa",
+        speaker: "ธันวา",
+        speakerHint: "ธันวา",
+        text: "จ่ายแพง ก็หาเงินไป",
+        lineTh: "จ่ายแพง ก็หาเงินไป",
+        emotion: "ตัดสินใจเด็ดขาดผสมแฝงความเหนื่อย",
+      },
+    ];
+
+    const input = buildEnhancedSkillInput({
+      shot: { shot_number: 1, dialogue: thaiDialogue },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: baseInput.targetVideoModel,
+      authoringModel: baseInput.authoringModel,
+      nativeAudioEnabled: true,
+    });
+
+    expect(input.dialogue).toHaveLength(2);
+    expect((input.dialogue as any[])[0].text).toBe("พอแล้ว วันนี้เป็นโชคเกินไปแบบนั้น");
+    expect((input.dialogue as any[])[0].speaker).toBe("ธันวา");
+    expect((input.dialogue as any[])[1].text).toBe("จ่ายแพง ก็หาเงินไป");
+    expect((input.shot.dialogue as any[])[0].text).toBe("พอแล้ว วันนี้เป็นโชคเกินไปแบบนั้น");
+  });
 });

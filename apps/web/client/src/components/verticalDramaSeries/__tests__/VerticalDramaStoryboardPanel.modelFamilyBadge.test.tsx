@@ -8,7 +8,7 @@
  * selected video model resolves to a different family. Legacy clips without
  * `promptModelTarget` show neither.
  */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { VerticalDramaStoryboardPanel } from "@/components/verticalDramaSeries/VerticalDramaStoryboardPanel";
@@ -188,6 +188,112 @@ describe("VerticalDramaStoryboardPanel — video prompt model-family badge + mis
     expect(
       screen.queryByTestId("vd-storyboard-video-prompt-1-model-family")
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-storyboard-video-prompt-1-model-mismatch")
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders Gemini Omni badge when viewing an enhanced variant even if the legacy clip was stamped for Grok", async () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          videoModels: [OMNI_MODEL],
+          selectedVideoModelId: OMNI_MODEL.modelId,
+          onSelectVideoModel: vi.fn(),
+          enhancedVideoPromptUiEnabled: true,
+          motionPromptPack: {
+            clips: [
+              {
+                clipNumber: 1,
+                sourceShotNumbers: [1],
+                prompt: "Legacy Grok prompt",
+                promptModelTarget: {
+                  family: "grok",
+                  modelId: GROK_MODEL.modelId,
+                  modelName: GROK_MODEL.name,
+                  generatedAt: "2026-07-21T00:00:00.000Z",
+                },
+                videoPromptVariants: {
+                  version: "vd-video-prompt-variants/1",
+                  activeVariant: "enhanced",
+                  revision: 1,
+                  variants: {
+                    legacy: {
+                      variantId: "legacy",
+                      status: "ready",
+                      prompt: "Legacy Grok prompt",
+                      promptModelTarget: {
+                        family: "grok",
+                        modelId: GROK_MODEL.modelId,
+                        modelName: GROK_MODEL.name,
+                        generatedAt: "2026-07-21T00:00:00.000Z",
+                      },
+                      inputFingerprint: "a".repeat(64),
+                      revision: 1,
+                      createdAt: "2026-07-21T00:00:00.000Z",
+                      updatedAt: "2026-07-21T00:00:00.000Z",
+                    },
+                    enhanced: {
+                      variantId: "enhanced",
+                      status: "ready",
+                      prompt: "Enhanced Omni prompt",
+                      targetVideoModelId: OMNI_MODEL.modelId,
+                      targetModelSnapshot: { name: OMNI_MODEL.name },
+                      targetModelFingerprint: "b".repeat(64),
+                      providerProfileId: "kie-omni",
+                      providerPlanHash: "c".repeat(64),
+                      authoringModelId: "gpt-4o",
+                      terminalPromptHash: "d".repeat(64),
+                      inputFingerprint: "e".repeat(64),
+                      mediaBundle: {
+                        contractVersion: "vd-shot-media/1",
+                        bundleRevision: 1,
+                        startFrame: null,
+                        stopFrame: null,
+                        references: [],
+                        bundleFingerprint: "f".repeat(64),
+                      },
+                      warnings: [],
+                      assumptions: [],
+                      researchProvenance: [],
+                      revision: 1,
+                      createdAt: "2026-07-21T00:00:00.000Z",
+                      updatedAt: "2026-07-21T00:00:00.000Z",
+                      skillVersion: "11.0.0",
+                      adapterVersion: "1.0.0",
+                      sdkVersion: "0.22.0",
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+
+    const badge = await screen.findByTestId(
+      "vd-storyboard-video-prompt-1-model-family"
+    );
+    expect(badge.textContent).toBe("Gemini Omni");
+    expect(
+      screen.queryByTestId("vd-storyboard-video-prompt-1-model-mismatch")
+    ).not.toBeInTheDocument();
+
+    // Now click the Legacy variant button
+    const legacyButton = screen.getByRole("button", { name: "Legacy" });
+    fireEvent.click(legacyButton);
+
+    expect(badge.textContent).toBe("Grok");
+    expect(
+      screen.getByTestId("vd-storyboard-video-prompt-1-model-mismatch")
+    ).toBeInTheDocument();
+
+    // Now click the Enhanced variant button back
+    const enhancedButton = screen.getByRole("button", { name: "Enhanced" });
+    fireEvent.click(enhancedButton);
+
+    expect(badge.textContent).toBe("Gemini Omni");
     expect(
       screen.queryByTestId("vd-storyboard-video-prompt-1-model-mismatch")
     ).not.toBeInTheDocument();

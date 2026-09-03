@@ -45,26 +45,36 @@
             "type": "string"
           },
           "handOccupancy": {
-            "type": "object",
-            "properties": {
-              "left": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "left": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "right": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "left",
+                  "right"
+                ],
+                "additionalProperties": false
               },
-              "right": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
               }
-            },
-            "required": [
-              "left",
-              "right"
-            ],
-            "additionalProperties": false
+            ]
           }
         },
         "additionalProperties": false

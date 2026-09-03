@@ -72,7 +72,9 @@ export function renderVerticalDramaShotCompositionLock(
   const lines = [
     "CURRENT SHOT COMPOSITION LOCK (MANDATORY):",
     composition.shotType ? `- Shot type: ${composition.shotType}` : "",
-    composition.angle ? `- Camera angle: ${composition.angle}` : "",
+    composition.angle
+      ? `- Camera angle: ${composition.angle === "over_the_shoulder" ? "open_over_the_shoulder (open three-quarter angle with both characters' faces clearly visible to the lens; never obscure either face from behind)" : composition.angle}`
+      : "",
     composition.movement ? `- Camera movement: ${composition.movement}` : "",
     composition.lens ? `- Lens/focal feel: ${composition.lens}` : "",
     composition.composition

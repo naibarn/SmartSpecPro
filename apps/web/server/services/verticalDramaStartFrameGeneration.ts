@@ -1086,7 +1086,7 @@ export function remapCameraSetupForRequiredCharacters(
   if (requiredCharacterCount < 2) return cameraSetup;
   const widened = widenedMultiCharacterFramingToken(requiredCharacterCount);
   let replaced = false;
-  const remapped = cameraSetup
+  let remapped = cameraSetup
     .split(",")
     .map(rawToken => {
       if (replaced) return rawToken;
@@ -1103,7 +1103,21 @@ export function remapCameraSetupForRequiredCharacters(
       return `${leading}${widened}${trailing}`;
     })
     .join(",");
-  return replaced ? remapped : cameraSetup;
+  // Also remap isolating/obscuring over-the-shoulder angles in 2+ character shots
+  // so neither character's face is hidden behind the back of the head.
+  remapped = remapped
+    .split(",")
+    .map(rawToken => {
+      const normalized = normalizeShotSizeToken(rawToken);
+      if (normalized === "overtheshoulder" || normalized === "ots") {
+        const leading = rawToken.match(/^\s*/)?.[0] ?? "";
+        const trailing = rawToken.match(/\s*$/)?.[0] ?? "";
+        return `${leading}open_two_shot_three_quarter${trailing}`;
+      }
+      return rawToken;
+    })
+    .join(",");
+  return remapped;
 }
 
 export function buildStartFrameRenderPlanUserPrompt(
@@ -2279,10 +2293,10 @@ export function buildDeterministicPolicySafeImagePrompt(params: {
 }
 
 export const VD_VIDEO_FACE_VISIBILITY_LOCK =
-  "VIDEO-FACE VISIBILITY LOCK (MANDATORY): every required in-frame character face must be approximately 75% or more visible and readable, frontal or natural three-quarter view, with both eyes, nose, mouth, jawline, and hairline unobstructed; keep every dialogue speaker's face inside the frame and large enough for reliable face matching and lip-sync; do not sacrifice face readability for hidden-profile eye-lines, extreme angles, edge crops, hands, props, shadows, or another person's head blocking the face.";
+  "VIDEO-FACE VISIBILITY LOCK (MANDATORY): every required in-frame character face must be approximately 75% or more visible and readable, frontal or natural three-quarter view, with both eyes, nose, mouth, jawline, and hairline unobstructed; keep every dialogue speaker's face inside the frame and large enough for reliable face matching and lip-sync; do not sacrifice face readability for hidden-profile eye-lines, extreme angles, edge crops, hands, props, shadows, or another person's head blocking the face. In two-shots or multi-character scenes, use an open conversational angle where BOTH characters' faces are visible to the lens — never place a character with the back of their head, hair, or shoulder blocking their face.";
 
 export const VD_VIDEO_FACE_VISIBILITY_NEGATIVE =
-  "full profile, back of head, turned-away face, hidden face, face in deep shadow, cropped face, face outside frame, tiny unreadable face, occluded face, hand covering face, prop covering face, eyes not visible, mouth not visible, extreme side angle, indistinct identity";
+  "full profile, back of head, back to camera, turned-away face, hidden face, face in deep shadow, cropped face, face outside frame, tiny unreadable face, occluded face, hand covering face, prop covering face, eyes not visible, mouth not visible, extreme side angle, indistinct identity, obscured face, hair covering face, over the shoulder from behind";
 
 export function buildVideoFaceVisibilityPromptBlock(
   required: boolean
@@ -2478,6 +2492,12 @@ export interface GenerateStartFrameShotPromptParams {
    * producing a byte-identical prompt.
    */
   location?: { name: string; description: string; hasReferenceImage: boolean };
+  /**
+   * Episode scene-setting plan context (ชื่อตอน/เรื่องย่อ/จุดดำเนินเรื่อง/จุดค้าง),
+   * built via formatStoryScriptEpisodePlanContext. Reference-only: grounds the shot's
+   * dramatic stakes and emotional context without being copied verbatim.
+   */
+  episodePlanContext?: string;
   /** Current-shot camera, staging, gaze, and expression facts. */
   shotComposition?: VerticalDramaShotComposition;
   /** Pre-rendered lock block; blank/omitted preserves the legacy prompt. */
@@ -2743,6 +2763,9 @@ export function buildStartFrameShotPromptUserPrompt(
     params.canonicalShotSummary?.trim()
       ? `canonical_shot_summary (authoritative Overview source): ${params.canonicalShotSummary.trim()}`
       : null,
+    params.episodePlanContext?.trim()
+      ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${params.episodePlanContext.trim()}`
+      : null,
     params.screenCallerCharacterRefs?.length
       ? `physical_scene_character_refs: ${params.requiredCharacterRefs?.length ? params.requiredCharacterRefs.join(", ") : "(none)"} — these are the only characters physically present in the location.`
       : null,
@@ -2786,7 +2809,7 @@ export function buildStartFrameShotPromptUserPrompt(
     // Authoring sees stable style facts, never provider-bound positive or
     // negative fragments. The final assembler applies those after authoring.
     isNewImagePromptMode && seriesLookRegister
-      ? `SERIES LOOK REGISTER (facts only; keep shot variation within this register): style="${seriesLookRegister.styleName}" palette=[${seriesLookRegister.palette.join(", ")}] lighting="${seriesLookRegister.lighting}" still_camera="${seriesLookRegister.cameraGrammar}"`
+      ? `SERIES LOOK REGISTER (secondary aesthetic baseline only — yields to the shot's actual scene environment, weather, and dramatic tension): style="${seriesLookRegister.styleName}" palette=[${seriesLookRegister.palette.join(", ")}] lighting="${seriesLookRegister.lighting}" still_camera="${seriesLookRegister.cameraGrammar}"`
       : null,
     // Two-mode start-frame image prompt switch — the two NEW skills' own §7
     // / §14 "PRODUCT TIE-IN" sections author the placement directive
@@ -2868,6 +2891,9 @@ export function buildStartFrameShotPromptUserPrompt(
     // identical regression guard.
     !barrierDialogue && !barrierMultiView && requiredCharacterCount >= 2
       ? `framing_override: ${widenedMultiCharacterFramingToken(requiredCharacterCount)} (${requiredCharacterCount} required characters must ALL be visible — do not isolate one in a close-up)`
+      : null,
+    !barrierDialogue && !barrierMultiView && requiredCharacterCount >= 2
+      ? `two_shot_face_visibility_rule: MANDATORY OPEN TWO-SHOT — both characters must be angled three-quarter toward camera and each other with BOTH faces clearly visible, readable, and well-lit. NEVER place either character with their back to camera, back of head to lens, full profile, or face hidden in deep shadow or behind hair. Both faces must remain readable for video face-matching and lip-sync.`
       : null,
     params.propObjectReferenceImages?.length
       ? "prop_object_reference_inputs: the attached prop/object reference image(s) are authoritative for the physical object's appearance; preserve their shape, materials, colors, and distinctive details when the prop is visible"

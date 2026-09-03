@@ -28,6 +28,10 @@ import type {
   VerticalDramaStartFramePlan,
   VerticalDramaMotionPromptPack,
 } from "../../shared/verticalDramaSeries/contracts";
+import {
+  readVideoPromptVariantStore,
+  type VideoPromptVariantClip,
+} from "../../shared/verticalDramaSeries/videoPromptVariants";
 // Both of these are documented (in their own header doc comments) as
 // deliberately lightweight, DB-free, non-router modules — the same
 // convention `server/routers/verticalDramaCharacters.ts` itself relies on to
@@ -391,6 +395,8 @@ export interface DramaShot {
   imagePrompt: string;
   negativeImagePrompt: string;
   videoPrompt: string;
+  legacyVideoPrompt?: string;
+  enhancedVideoPrompt?: string;
   negativeVideoPrompt: string;
   dialogue: string;
   dialogueLines: DramaShotDialogueLine[];
@@ -401,6 +407,36 @@ export interface DramaShot {
   gridImageUrl: string | null;
   gridFrames: DramaShotGridFrame[];
   referenceImages: DramaShotReferenceImage[];
+}
+
+function nonEmptyPrompt(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const prompt = value.trim();
+  return prompt || undefined;
+}
+
+/** Project only the user-facing Legacy/Enhanced prompt text from a clip. */
+export function projectDramaShotVideoPromptsForExtension(
+  clip: VideoPromptVariantClip | null | undefined,
+): Pick<DramaShot, "legacyVideoPrompt" | "enhancedVideoPrompt"> {
+  const source = clip ?? {};
+  const legacyFallback = nonEmptyPrompt(source.prompt);
+  const parsed = readVideoPromptVariantStore(source.videoPromptVariants, source);
+
+  if (!parsed.store) {
+    return { legacyVideoPrompt: legacyFallback };
+  }
+
+  const legacy = nonEmptyPrompt(parsed.store.variants.legacy?.prompt) ?? legacyFallback;
+  const enhancedVariant = parsed.store.variants.enhanced;
+  const enhanced = enhancedVariant?.status !== "invalid"
+    ? nonEmptyPrompt(enhancedVariant?.prompt)
+    : undefined;
+
+  return {
+    legacyVideoPrompt: legacy,
+    enhancedVideoPrompt: enhanced,
+  };
 }
 
 export function projectDramaShotFrameUrlsForExtension(input: {
@@ -902,6 +938,7 @@ export async function getDramaSeriesEpisodeDetailForExtension(
         characterAssetsByCharacterKey,
         assetById: referenceAssetById,
       });
+      const videoPrompts = projectDramaShotVideoPromptsForExtension(clip);
 
       return {
         shotNumber,
@@ -911,6 +948,7 @@ export async function getDramaSeriesEpisodeDetailForExtension(
         imagePrompt: frame?.imagePrompt ?? "",
         negativeImagePrompt: frame?.negativePrompt ?? "",
         videoPrompt: clip?.prompt ?? "",
+        ...videoPrompts,
         negativeVideoPrompt: clip?.negativeMotionPrompt ?? "",
         dialogue,
         dialogueLines,
