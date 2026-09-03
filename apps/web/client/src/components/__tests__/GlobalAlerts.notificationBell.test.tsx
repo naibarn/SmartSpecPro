@@ -10,6 +10,8 @@ let currentLocation = "/";
 let mockLocale: "en" | "th" = "en";
 const setLocationMock = vi.fn();
 const openWindowMock = vi.fn();
+const toastSuccessMock = vi.hoisted(() => vi.fn());
+const toastErrorMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
@@ -48,14 +50,58 @@ vi.mock("wouter", () => ({
   useLocation: () => [currentLocation, setLocationMock],
 }));
 
+vi.mock("sonner", () => ({
+  toast: {
+    success: toastSuccessMock,
+    error: toastErrorMock,
+    warning: vi.fn(),
+  },
+}));
+
 // Mock EventSource
 (globalThis as any).EventSource = class {
-  addEventListener() {}
+  static instances: any[] = [];
+  listeners: Record<string, Array<(event: MessageEvent) => void>> = {};
+  constructor() {
+    (this.constructor as typeof EventSource & { instances: any[] }).instances.push(this);
+  }
+  addEventListener(type: string, callback: (event: MessageEvent) => void) {
+    this.listeners[type] = [...(this.listeners[type] ?? []), callback];
+  }
+  emit(type: string, event: MessageEvent) {
+    this.listeners[type]?.forEach((callback) => callback(event));
+  }
   close() {}
   set onerror(_: any) {}
 };
 
-import { GlobalAlerts } from "../GlobalAlerts";
+import {
+  GlobalAlerts,
+  isJobCompletionNotification,
+  parseNotificationSSEEvent,
+} from "../GlobalAlerts";
+
+describe("job completion notification events", () => {
+  it("parses a valid SSE payload and recognizes job-completion metadata", () => {
+    const event = parseNotificationSSEEvent({
+      data: JSON.stringify({
+        id: 99,
+        title: "สร้าง Prompt เสร็จแล้ว",
+        content: "เปิดดูผลลัพธ์ได้เลย",
+        actionUrl: "/drama-series/53/episodes/248",
+        metadata: { source: "job_completion" },
+      }),
+    } as MessageEvent);
+    expect(event).toEqual(expect.objectContaining({ id: 99, actionUrl: "/drama-series/53/episodes/248" }));
+    expect(isJobCompletionNotification(event!)).toBe(true);
+    expect(isJobCompletionNotification({ id: 100, title: "Other", metadata: { source: "billing" } })).toBe(false);
+  });
+
+  it("drops malformed or incomplete SSE payloads", () => {
+    expect(parseNotificationSSEEvent({ data: "not-json" } as MessageEvent)).toBeNull();
+    expect(parseNotificationSSEEvent({ data: JSON.stringify({ title: "missing id" }) } as MessageEvent)).toBeNull();
+  });
+});
 
 describe("GlobalNotificationBell occurrence badge", () => {
   beforeEach(() => {
@@ -68,11 +114,34 @@ describe("GlobalNotificationBell occurrence badge", () => {
     mockLocale = "en";
     setLocationMock.mockClear();
     openWindowMock.mockReset();
+    toastSuccessMock.mockReset();
+    toastErrorMock.mockReset();
+    (globalThis.EventSource as any).instances = [];
     Object.defineProperty(window, "open", {
       configurable: true,
       writable: true,
       value: openWindowMock,
     });
+  });
+
+  it("shows an immediate completion toast with a result navigation action", () => {
+    render(<GlobalAlerts />);
+    const eventSource = (globalThis.EventSource as any).instances[0];
+    eventSource.emit("notification", {
+      data: JSON.stringify({
+        id: 77,
+        title: "สร้าง Prompt ตอนพิเศษ เสร็จแล้ว",
+        content: "งานพร้อมเปิดดู",
+        priority: "normal",
+        actionUrl: "/drama-series/53/episodes/248",
+        actionLabel: "เปิดตอน",
+        metadata: { source: "job_completion" },
+      }),
+    });
+    expect(toastSuccessMock).toHaveBeenCalledTimes(1);
+    const options = toastSuccessMock.mock.calls[0][1] as { action?: { onClick: () => void } };
+    options.action?.onClick();
+    expect(setLocationMock).toHaveBeenCalledWith("/drama-series/53/episodes/248");
   });
 
   it("renders occurrence badge (xN) when occurrenceCount > 1", async () => {

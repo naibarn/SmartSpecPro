@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "พรีเซนเตอร์แนะนำสินค้า โดยใช้ภาพสินค้าและตัวละคร วิดีโออ้างอิงการเคลื่อนไหว และเสียงอ้างอิงน้ำเสียง",
+  "locale": "th-TH",
+  "contentMode": "presenter",
+  "assets": [
+    {
+      "assetId": "p1",
+      "role": "product_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "product_geometry",
+        "product_label"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    },
+    {
+      "assetId": "c1",
+      "role": "character_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "identity"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    },
+    {
+      "assetId": "v1",
+      "role": "motion_reference",
+      "mediaType": "video",
+      "referencePurposes": [
+        "motion",
+        "camera_motion"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    },
+    {
+      "assetId": "a1",
+      "role": "voice_reference",
+      "mediaType": "audio",
+      "referencePurposes": [
+        "voice_timbre",
+        "voice_delivery"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    }
+  ],
+  "modelRouting": {
+    "mode": "locked",
+    "preferredModels": [
+      "MiniMax-H3"
+    ],
+    "fallbackModels": [],
+    "allowCrossProviderFallback": false,
+    "requireNativeAudio": true,
+    "requireLipSync": true,
+    "optimizeFor": "quality"
+  },
+  "providerOptions": {
+    "minimaxH3": {
+      "model": "MiniMax-H3",
+      "executionRoute": "hosted_api",
+      "referenceStrategy": "full_reference",
+      "contextIR": "official_then_validate",
+      "resolutionWorkflow": "draft_768p_then_regenerate_2k",
+      "nativeMultiShot": "auto",
+      "nativeAudio": "on",
+      "dialoguePolicy": "native_try_then_external_fallback",
+      "continuationPolicy": "auto",
+      "referenceBudgetPolicy": "quality_first"
+    }
+  }
+}

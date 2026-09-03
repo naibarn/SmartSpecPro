@@ -339,7 +339,7 @@ export const PROVIDER_TEMPLATES = [
 
 export const llmProvidersRouter = router({
   // Get all enabled mapped models from enabled providers (for Desktop App model selector)
-  availableModels: protectedProcedure.query(async () => {
+  availableModels: protectedProcedure.query(async ({ ctx }) => {
     try {
       const dbInstance = await getDb();
       if (!dbInstance) return { models: [], providers: [] };

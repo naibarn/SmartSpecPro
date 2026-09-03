@@ -169,4 +169,56 @@ describe("presentationBuilderImageJobService", () => {
       })
     );
   });
+
+  it("stops retrying when the authoritative provider task no longer exists", async () => {
+    const row = {
+      id: "pbj-missing-task",
+      tenantId: "tenant-1",
+      userId: 10,
+      deckId: 911,
+      slotId: "3:1:hero",
+      pageNumber: 3,
+      imageIndex: 1,
+      placementRole: "hero",
+      shortLabel: "Page 3 hero",
+      prompt: "Create the hero",
+      model: "gpt-image-2",
+      canvasRatio: "16:9",
+      mediaTaskId: "deleted-task",
+      status: "processing",
+      resultUrl: null,
+      errorMessage: null,
+      attemptCount: 37,
+      nextPollAt: new Date(Date.now() - 1_000),
+      lastCheckedAt: null,
+      completedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const updateSet = vi
+      .fn()
+      .mockReturnValue({ where: vi.fn().mockResolvedValue([]) });
+    mocks.getDb.mockResolvedValue({
+      select: vi
+        .fn()
+        .mockImplementationOnce(() => chain([row]))
+        .mockImplementationOnce(() => chain([{ count: 0 }])),
+      update: vi.fn().mockReturnValue({ set: updateSet }),
+    });
+    mocks.getUnifiedMediaTask.mockRejectedValue(
+      new Error("Task deleted-task not found")
+    );
+
+    const { reconcilePresentationBuilderImageJobs } =
+      await import("../presentationBuilderImageJobService");
+    const result = await reconcilePresentationBuilderImageJobs({ limit: 10 });
+
+    expect(result).toMatchObject({ checked: 1, completed: 0, failed: 1 });
+    expect(updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "failed",
+        errorMessage: "งานสร้างภาพต้นทางไม่พบแล้ว กรุณาสร้างภาพใหม่",
+      })
+    );
+  });
 });

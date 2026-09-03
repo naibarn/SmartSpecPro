@@ -4138,24 +4138,15 @@ export const mediaRouter = router({
           },
         });
 
-        // Completion is the durability boundary for async media. Copy the
-        // provider result into owner-scoped R2 before returning it to clients;
-        // otherwise a short-lived provider URL can expire before History is
-        // opened and the permanent object is never created.
-        const durableTask = task && tenantId
-          ? await ensureMediaTaskArtifactsForPolling({
-              task,
-              tenantId,
-              userId: ctx.user.id,
-            })
-          : task;
-
         // Credit reconciliation for completed or failed async tasks (non-blocking)
-        if (durableTask?.status === "completed" || durableTask?.status === "failed") {
-          reconcileTaskCredits({ task: durableTask as any, userId: ctx.user.id, tenantId: tenantId ?? undefined }).catch(() => {});
+        if (task?.status === "completed" || task?.status === "failed") {
+          reconcileTaskCredits({ task: task as any, userId: ctx.user.id, tenantId: tenantId ?? undefined }).catch(() => {});
         }
 
-        return durableTask;
+        // getUnifiedMediaTask is the single durability boundary. Domain tasks
+        // (Vertical Drama/Presentation) must keep their domain asset id and
+        // must not be passed through a second generic artifact projection.
+        return task;
       } catch (error) {
         const transientPoll = getTransientMediaPollRetryHint(error);
         if (transientPoll) {

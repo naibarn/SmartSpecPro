@@ -1,0 +1,139 @@
+{
+  "chainId": "CHAIN-OMNI-15S-CONTINUOUS",
+  "providerProfileId": "gemini-omni-1.1-flash",
+  "strategy": "extension_chain",
+  "targetTotalDurationSeconds": 15,
+  "plannedTotalDurationSeconds": 15,
+  "durationFeasibility": {
+    "exactTargetReachable": false,
+    "reason": "Creative plan targets 8s + 7s as one 15s logical shot. Exact provider turn duration is not assumed; adapter must verify/request duration if available or generate longer and trim while preserving the continuous-shot seam.",
+    "segmentDurationsSeconds": [
+      8,
+      7
+    ],
+    "turnCount": 2,
+    "nearestReachableDurationSeconds": null,
+    "deterministic": false
+  },
+  "continuityEnvelope": {
+    "identityLocks": [
+      "same approved character identity"
+    ],
+    "productLocks": [
+      "same product geometry/state"
+    ],
+    "environmentLocks": [
+      "same scene"
+    ],
+    "audioLocks": [
+      "continuous ambience/music"
+    ],
+    "doNotReset": [
+      "camera direction",
+      "completed action",
+      "hand occupancy",
+      "product state"
+    ],
+    "globalContinuityNotes": [
+      "Both turns belong to one logical continuous 15-second shot."
+    ]
+  },
+  "segments": [
+    {
+      "segmentId": "SEG-01",
+      "turnIndex": 0,
+      "segmentType": "base",
+      "durationSeconds": 8,
+      "globalStartSeconds": 0,
+      "globalEndSeconds": 8,
+      "localTimeOriginSeconds": 0,
+      "shotIds": [
+        "S01"
+      ],
+      "continuationMode": "same_shot",
+      "requiresPreviousInteractionId": false,
+      "requiresSourceVideoAsset": false,
+      "expectedContextSeconds": null,
+      "sourceDeclarations": [],
+      "prompt": "Create the first 8 seconds of one continuous unbroken product-demonstration shot. No scene cuts. [0-8s] Execute only the opening portion of the approved action and end in a stable mid-action bridge state.",
+      "promptSections": {
+        "continuationDirective": null,
+        "startStateDirective": "Begin from the approved Start Frame state.",
+        "localTimeline": [
+          "[0-8s] Opening portion of the logical 15-second action."
+        ],
+        "cameraDirective": "Single continuous shot, no cuts.",
+        "dialogueAudioDirective": "Continue approved audio naturally.",
+        "continuityDirective": "Preserve product, identity, environment and hand occupancy.",
+        "noResetDirective": "Do not complete later actions early.",
+        "endBridgeDirective": "End in the approved mid-action bridge state."
+      },
+      "stateAtStart": {},
+      "stateAtEnd": {
+        "bridge": "approved mid-action bridge state"
+      },
+      "dialogueLineIds": [],
+      "seamPolicy": {
+        "tailMayBeRewritten": true,
+        "reviewWindowSeconds": 1.0,
+        "protectExactUiOrLabelAtSeam": true,
+        "avoidDialogueWordBoundaryAtSeam": true,
+        "notes": [
+          "Seam must remain part of the same continuous camera motion."
+        ]
+      },
+      "postCompositeNotes": [],
+      "requestedDurationSeconds": 8,
+      "actualDurationSeconds": null
+    },
+    {
+      "segmentId": "SEG-02",
+      "turnIndex": 1,
+      "segmentType": "extend",
+      "durationSeconds": 7,
+      "globalStartSeconds": 8,
+      "globalEndSeconds": 15,
+      "localTimeOriginSeconds": 0,
+      "shotIds": [
+        "S01"
+      ],
+      "continuationMode": "same_shot",
+      "requiresPreviousInteractionId": true,
+      "requiresSourceVideoAsset": false,
+      "expectedContextSeconds": 10,
+      "sourceDeclarations": [],
+      "prompt": "Continue the exact same continuous unbroken shot for 7 more seconds. Do not cut, reset, repeat, or change camera axis. [0-7s] Continue from the current mid-action state through the approved completion and settle naturally on the final product state.",
+      "promptSections": {
+        "continuationDirective": "Continue the exact same continuous unbroken shot.",
+        "startStateDirective": "Start from the current mid-action end state.",
+        "localTimeline": [
+          "[0-7s] Complete the remaining action without replay."
+        ],
+        "cameraDirective": "No scene cuts; preserve camera motion and axis.",
+        "dialogueAudioDirective": "Continue audio/dialogue without a discontinuity.",
+        "continuityDirective": "Preserve identity, product, environment, lighting and motion direction.",
+        "noResetDirective": "Do not restart the action from the beginning.",
+        "endBridgeDirective": "Finish on the approved final state."
+      },
+      "stateAtStart": {
+        "bridge": "approved mid-action bridge state"
+      },
+      "stateAtEnd": {
+        "bridge": "approved final state"
+      },
+      "dialogueLineIds": [],
+      "seamPolicy": {
+        "tailMayBeRewritten": true,
+        "reviewWindowSeconds": 1.0,
+        "protectExactUiOrLabelAtSeam": true,
+        "avoidDialogueWordBoundaryAtSeam": true,
+        "notes": [
+          "Reject if a visible cut appears because the logical shot must remain continuous."
+        ]
+      },
+      "postCompositeNotes": [],
+      "requestedDurationSeconds": 7,
+      "actualDurationSeconds": null
+    }
+  ]
+}

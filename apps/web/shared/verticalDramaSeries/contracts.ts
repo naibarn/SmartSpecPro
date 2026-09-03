@@ -38,6 +38,7 @@ import type { VdSceneVisualState } from "./sceneContinuity";
 import type { VerticalDramaShotComposition } from "./shotComposition";
 import type { VerticalDramaSupportingPresence } from "./supportingPresence";
 import type { VerticalDramaCharacterLookAssignment } from "./characterLookSelection";
+import type { VideoPromptRenderProvenance } from "./videoPromptVariants";
 
 /* -------------------------------------------------------------------------- */
 /* Pipeline stages & warnings (spec §11.5)                                    */
@@ -170,7 +171,14 @@ export type VerticalDramaProductTieInConfig = {
     | "show_overlay_disclosure"
     | "caption_disclosure"
     | "manual_review";
-  regulatedCategory?: "none" | "health" | "beauty" | "finance" | "medical" | "baby_kids" | "other";
+  regulatedCategory?:
+    | "none"
+    | "health"
+    | "beauty"
+    | "finance"
+    | "medical"
+    | "baby_kids"
+    | "other";
   /**
    * Additive (2026-07-06 Thai ad-compliance upgrade) — broad product category
    * driving which MANDATORY disclosure line the tie-in dialogue must include
@@ -182,9 +190,20 @@ export type VerticalDramaProductTieInConfig = {
    * disclosure text). Optional/absent on tie-ins created before this field
    * existed — treated as "no category set" (no mandated disclosure line).
    */
-  productCategory?: "cosmetics" | "supplement" | "food_beverage" | "general_goods" | "service" | "other";
+  productCategory?:
+    | "cosmetics"
+    | "supplement"
+    | "food_beverage"
+    | "general_goods"
+    | "service"
+    | "other";
   allowedStoryFunctions: Array<
-    "memory_trigger" | "relationship_token" | "status_symbol" | "daily_use" | "plot_clue" | "soft_cta"
+    | "memory_trigger"
+    | "relationship_token"
+    | "status_symbol"
+    | "daily_use"
+    | "plot_clue"
+    | "soft_cta"
   >;
   forbiddenClaims: string[];
   maxEpisodesWithTieInPerTenEpisodes: number;
@@ -257,7 +276,8 @@ export const VERTICAL_DRAMA_GENERATION_MODES = [
   "approval_required",
   "auto_after_approval",
 ] as const;
-export type VerticalDramaGenerationMode = (typeof VERTICAL_DRAMA_GENERATION_MODES)[number];
+export type VerticalDramaGenerationMode =
+  (typeof VERTICAL_DRAMA_GENERATION_MODES)[number];
 
 /**
  * Manual LLM model override for the ENTIRE Vertical Drama content-generation
@@ -327,7 +347,8 @@ export const VERTICAL_DRAMA_SERIES_LOCALES = [
   "ms",
 ] as const;
 
-export type VerticalDramaSeriesLocale = (typeof VERTICAL_DRAMA_SERIES_LOCALES)[number];
+export type VerticalDramaSeriesLocale =
+  (typeof VERTICAL_DRAMA_SERIES_LOCALES)[number];
 
 export type VerticalDramaMinimalInput = {
   locale?: VerticalDramaSeriesLocale;
@@ -370,10 +391,7 @@ export const verticalDramaMinimalInputSchema = z.object({
   locale: z.enum(VERTICAL_DRAMA_SERIES_LOCALES).optional(),
   storyTitle: z.string().min(1),
   durationSeconds: z.literal(60).optional(),
-  shotDurationSeconds: z
-    .number()
-    .positive()
-    .optional(),
+  shotDurationSeconds: z.number().positive().optional(),
   storyBrief: z.string().min(1),
   characters: z
     .array(
@@ -381,7 +399,7 @@ export const verticalDramaMinimalInputSchema = z.object({
         characterId: z.string().min(1),
         name: z.string().min(1),
         role: z.string().min(1),
-      }),
+      })
     )
     .min(1),
   episodeCount: z.number().int().positive().optional(),
@@ -400,7 +418,9 @@ export const verticalDramaMinimalInputSchema = z.object({
  * (spec §7.2.1): preschool/children -> children, tweens/teens -> teens,
  * young_adults/adults -> adults. Unknown values fall back to `adults`.
  */
-export function mapUpstreamAgeGroup(upstream: VerticalDramaUpstreamAgeGroup): VerticalDramaAppAgeGroup {
+export function mapUpstreamAgeGroup(
+  upstream: VerticalDramaUpstreamAgeGroup
+): VerticalDramaAppAgeGroup {
   switch (upstream) {
     case "preschool":
     case "children":
@@ -564,6 +584,8 @@ export type VerticalDramaStartFramePlan = {
       submittedAt?: string;
       updatedAt?: string;
       error?: string;
+      /** Content-policy retry level already used for this task, if any. */
+      softenLevel?: 1 | 2;
     };
     /** Hash of the currently authored start prompt for stale-task/CAS checks. */
     imagePromptHash?: string;
@@ -583,16 +605,27 @@ export type VerticalDramaStartFramePlan = {
     };
     approvedStopFrameAssetId?: string;
     staleStopFrameAssetId?: string;
-    stopFrameStaleReason?: "start_prompt_changed" | "start_asset_changed" | "stop_prompt_changed";
+    stopFrameStaleReason?:
+      | "start_prompt_changed"
+      | "start_asset_changed"
+      | "stop_prompt_changed";
     stopFrameStaleAt?: string;
     stopFrameTask?: {
       pendingTaskId?: string;
       lastTaskId?: string;
-      status: "submitted" | "queued" | "processing" | "completed" | "failed" | "expired";
+      status:
+        | "submitted"
+        | "queued"
+        | "processing"
+        | "completed"
+        | "failed"
+        | "expired";
       failureStage?: "provider" | "sync" | "admission";
       submittedAt?: string;
       updatedAt?: string;
       error?: string;
+      /** Content-policy retry level already used for this task, if any. */
+      softenLevel?: 1 | 2;
     };
     /** Explicit physical dialogue through a closed barrier; distinct from phone callers. */
     barrierDialogue?: import("./barrierDialogue").VerticalDramaBarrierDialogue;
@@ -614,6 +647,14 @@ export type VerticalDramaStartFramePlan = {
     /** True after the user explicitly replaces this shot's supporting presence. */
     supportingPresenceCustomized?: boolean;
     productReferenceAssetIds: string[];
+    /** Generic non-product references; product refs stay in the dedicated track. */
+    referenceAssetIds?: string[];
+    /**
+     * Additive special tie-in scene track. This describes the primary
+     * environment generated from the story; product references remain in
+     * `productReferenceAssetIds` and never replace this scene.
+     */
+    sceneDescription?: string;
     /**
      * Additive canonical story-bible snapshot used to author this frame's
      * prompt. When present, it is the exact Overview shot summary that the
@@ -626,10 +667,10 @@ export type VerticalDramaStartFramePlan = {
     /** Set when shared or shot-level prompt facts changed after image creation. */
     imageStaleReason?:
       | "prompt_changed"
-    | "character_references_changed"
-    | "supporting_presence_changed"
-    /** The shot now uses a different approved location camera variant. */
-    | "location_variant_changed";
+      | "character_references_changed"
+      | "supporting_presence_changed"
+      /** The shot now uses a different approved location camera variant. */
+      | "location_variant_changed";
     imageStaleAt?: string;
     /**
      * Additive (2026-07-06 product-reference picker) — true once the user has
@@ -849,7 +890,12 @@ export type VerticalDramaMotionPromptClipDialogueLine = {
   characterKey?: string;
   lineTh: string;
   emotion?: string;
-  delivery?: { tone?: string; pace?: string; pauses?: string; texture?: string };
+  delivery?: {
+    tone?: string;
+    pace?: string;
+    pauses?: string;
+    texture?: string;
+  };
   subtext?: string;
   /**
    * Additive (2026-07-07 unusable-dialogue fix) — set ONLY when this line was
@@ -891,7 +937,13 @@ export type VerticalDramaPromptLanguage = "en" | "th" | "zh" | "ja" | "ko";
 export type VerticalDramaDialogueLanguage = VerticalDramaSeriesLocale;
 
 /** Runtime value list for `VerticalDramaPromptLanguage` — single source of truth for the server's Zod enum and any client validation. */
-export const VERTICAL_DRAMA_PROMPT_LANGUAGES = ["en", "th", "zh", "ja", "ko"] as const;
+export const VERTICAL_DRAMA_PROMPT_LANGUAGES = [
+  "en",
+  "th",
+  "zh",
+  "ja",
+  "ko",
+] as const;
 
 /** Runtime value list for `VerticalDramaDialogueLanguage` — aliases `VERTICAL_DRAMA_SERIES_LOCALES` (same set, single source of truth). */
 export const VERTICAL_DRAMA_DIALOGUE_LANGUAGES = VERTICAL_DRAMA_SERIES_LOCALES;
@@ -942,18 +994,23 @@ export const VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES: Record<
  * English display name for a series locale — drives "write all output in X"
  * clauses in generation prompts. Unknown/legacy values fall back to English.
  */
-export function verticalDramaLocaleEnglishName(locale: string | null | undefined): string {
+export function verticalDramaLocaleEnglishName(
+  locale: string | null | undefined
+): string {
   return (
-    VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[locale as VerticalDramaDialogueLanguage] ??
-    "English"
+    VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[
+      locale as VerticalDramaDialogueLanguage
+    ] ?? "English"
   );
 }
 
 /** Normalize a stored series locale to a valid `VerticalDramaSeriesLocale`, defaulting to `"th"`. */
 export function normalizeVerticalDramaSeriesLocale(
-  locale: string | null | undefined,
+  locale: string | null | undefined
 ): VerticalDramaSeriesLocale {
-  return (VERTICAL_DRAMA_SERIES_LOCALES as readonly string[]).includes(locale ?? "")
+  return (VERTICAL_DRAMA_SERIES_LOCALES as readonly string[]).includes(
+    locale ?? ""
+  )
     ? (locale as VerticalDramaSeriesLocale)
     : "th";
 }
@@ -1003,7 +1060,8 @@ export const VERTICAL_DRAMA_THAI_ACCENTS = [
   "neutral_thai_with_light_regional_accent",
 ] as const;
 
-export type VerticalDramaThaiAccent = (typeof VERTICAL_DRAMA_THAI_ACCENTS)[number];
+export type VerticalDramaThaiAccent =
+  (typeof VERTICAL_DRAMA_THAI_ACCENTS)[number];
 
 /**
  * English dialogue-delivery directive per Thai accent — embedded verbatim in
@@ -1041,7 +1099,10 @@ export const VERTICAL_DRAMA_THAI_ACCENT_LABELS: Record<
     en: "Mild Northern (Chiang Mai) Accent",
   },
   mild_isan_thai_accent: { th: "สำเนียงอีสานอ่อน ๆ", en: "Mild Isan Accent" },
-  mild_southern_thai_accent: { th: "สำเนียงใต้อ่อน ๆ", en: "Mild Southern Accent" },
+  mild_southern_thai_accent: {
+    th: "สำเนียงใต้อ่อน ๆ",
+    en: "Mild Southern Accent",
+  },
   neutral_thai_with_light_regional_accent: {
     th: "ไทยกลางแตะสำเนียงท้องถิ่นเบา ๆ",
     en: "Neutral Thai, Light Regional Flavor",
@@ -1099,7 +1160,7 @@ export type VerticalDramaMotionPromptPack = {
      * `generateVideoClip`'s reference-merge step in
      * `verticalDramaEpisodes.ts`). Generic field, usable by any future
      * multi-reference clip need — not exclusive to speaker-switch clips.
-    */
+     */
     extraReferenceAssetIds?: string[];
     durationSeconds: number;
     /**
@@ -1216,7 +1277,13 @@ export type VerticalDramaMotionPromptPack = {
      * round-trip unchanged.
      */
     identityQc?: {
-      status: "pending" | "sampling" | "pass" | "warn" | "fail" | "samples_unavailable";
+      status:
+        | "pending"
+        | "sampling"
+        | "pass"
+        | "warn"
+        | "fail"
+        | "samples_unavailable";
       verdict?: "consistent" | "minor_drift" | "identity_break" | "unavailable";
       characters?: Array<{
         characterKey?: string;
@@ -1255,6 +1322,12 @@ export type VerticalDramaMotionPromptPack = {
       verdict?: string;
       repaired: boolean;
     };
+    /** Feature 173 — additive Legacy/Enhanced prompt variant store. Absence
+     * preserves the pre-feature Legacy-only clip contract. */
+    videoPromptVariants?: import("./videoPromptVariants").VideoPromptVariantStore;
+    /** Additive invalidation marker retained for opted-in variant history. */
+    promptStaleReason?: string;
+    promptStaleAt?: string;
     /**
      * Additive (2026-07-06 fix — completed video renders were never
      * persisted anywhere, only shown as a transient toast) — durable record
@@ -1284,6 +1357,12 @@ export type VerticalDramaMotionPromptPack = {
        * always overwrites this back to the generated path.
        */
       source?: "generated" | "upload";
+      /** Additive Feature 173 render lineage; absent on legacy tasks. */
+      promptProvenance?: VideoPromptRenderProvenance;
+      /** Existing media is retained but no longer matches the active prompt. */
+      promptMismatch?: boolean;
+      /** Pre-feature media without a verifiable prompt lineage. */
+      provenanceUnknown?: boolean;
     };
   }>;
   warnings: VerticalDramaWarning[];
@@ -1291,7 +1370,11 @@ export type VerticalDramaMotionPromptPack = {
 
 /** Recommended dialogue/audio/subtitle plan metadata (spec §14). */
 export type VerticalDramaDialogueAudioPlan = {
-  audioStrategy: "separate_tts_voiceover" | "dialogue_tts" | "native_video_audio" | "silent";
+  audioStrategy:
+    | "separate_tts_voiceover"
+    | "dialogue_tts"
+    | "native_video_audio"
+    | "silent";
   language: "th-TH" | "en-US" | string;
   voiceContinuityMap: Array<{
     characterId: string;
@@ -1370,7 +1453,10 @@ export type VerticalDramaQcStage =
  * `repairStageOutput`) import the exact same mapping — no duplicated,
  * driftable copy on either side.
  */
-export const VERTICAL_DRAMA_QC_TO_PIPELINE_STAGE: Record<VerticalDramaQcStage, VerticalDramaPipelineStage> = {
+export const VERTICAL_DRAMA_QC_TO_PIPELINE_STAGE: Record<
+  VerticalDramaQcStage,
+  VerticalDramaPipelineStage
+> = {
   script: "plan_episode_script",
   character_visual: "update_character_visual_bible",
   storyboard: "storyboard_shotgrid",
@@ -1563,7 +1649,13 @@ export type RunResult = {
   seriesId: string;
   episodeId: string;
   stage: VerticalDramaPipelineStage;
-  status: "queued" | "running" | "approval_required" | "succeeded" | "failed" | "cancelled";
+  status:
+    | "queued"
+    | "running"
+    | "approval_required"
+    | "succeeded"
+    | "failed"
+    | "cancelled";
   next_action:
     | "approve"
     | "repair"

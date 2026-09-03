@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   mediaAssets,
@@ -253,6 +253,9 @@ export async function resolveSpecialCharacterBindings(input: {
       mediaAssetId: verticalDramaCharacterAssets.mediaAssetId,
       originalUrl: mediaAssets.originalUrl,
       status: mediaAssets.status,
+      assetType: verticalDramaCharacterAssets.assetType,
+      approved: verticalDramaCharacterAssets.approved,
+      updatedAt: verticalDramaCharacterAssets.updatedAt,
     })
     .from(verticalDramaCharacterAssets)
     .innerJoin(
@@ -266,21 +269,26 @@ export async function resolveSpecialCharacterBindings(input: {
         eq(verticalDramaCharacterAssets.seriesId, input.seriesId),
         inArray(verticalDramaCharacterAssets.characterId, ids),
         eq(verticalDramaCharacterAssets.assetType, "character_reference"),
-        eq(verticalDramaCharacterAssets.approved, true),
-        eq(mediaAssets.status, "ready")
+        ne(mediaAssets.status, "expired")
       )
     );
-  const byCharacter = new Map(
-    assets
-      .filter(asset => asset.mediaAssetId && asset.originalUrl)
-      .map(asset => [Number(asset.characterId), asset])
-  );
+  const byCharacter = new Map<number, (typeof assets)[number]>();
+  for (const asset of [...assets]
+    .filter(isUsableSpecialCharacterReference)
+    .sort((left, right) => {
+      if (left.approved !== right.approved) return left.approved ? -1 : 1;
+      return right.updatedAt.getTime() - left.updatedAt.getTime();
+    })) {
+    if (asset.characterId != null && !byCharacter.has(Number(asset.characterId))) {
+      byCharacter.set(Number(asset.characterId), asset);
+    }
+  }
   return characters.map(character => {
     const asset = byCharacter.get(Number(character.id));
     if (!asset?.originalUrl || !asset.mediaAssetId)
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: `Character ${character.name} has no approved portrait`,
+        message: `Character ${character.name} has no usable portrait`,
       });
     return {
       skillReferenceId: `character_${character.characterKey}`,
@@ -313,6 +321,7 @@ export async function assertOwnedSpecialMediaAssets(
     .select({
       id: mediaAssets.id,
       status: mediaAssets.status,
+      storageKey: mediaAssets.storageKey,
       originalUrl: mediaAssets.originalUrl,
       mimeType: mediaAssets.mimeType,
     })
@@ -329,6 +338,36 @@ export async function assertOwnedSpecialMediaAssets(
       code: "FORBIDDEN",
       message: "One or more reference images are not accessible",
     });
+  for (const mediaAssetId of mediaAssetIds) {
+    const asset = allowed.get(mediaAssetId);
+    if (
+      asset?.status !== "ready" &&
+      asset?.storageKey &&
+      asset.mimeType.toLowerCase().startsWith("image/")
+    ) {
+      console.info("[VD_SPECIAL_RETRY]", {
+        event: "reconcile_reference_asset",
+        mediaAssetId,
+        previousStatus: asset.status,
+      });
+      const reconciled = await reconcileVerticalDramaMediaAsset({
+        tenantId: actor.tenantId,
+        userId: actor.userId,
+        mediaAssetId: asset.id,
+        storageKey: asset.storageKey,
+        mediaType: "image",
+        mimeType: asset.mimeType,
+        status: asset.status,
+        originalUrl: asset.originalUrl,
+      });
+      allowed.set(mediaAssetId, {
+        ...asset,
+        status: reconciled.status,
+        originalUrl: reconciled.url || null,
+        mimeType: reconciled.mimeType,
+      });
+    }
+  }
   if (
     mediaAssetIds.some(id => {
       const asset = allowed.get(id);
@@ -510,6 +549,7 @@ export async function resolveSpecialReferenceBindings(
     .select({
       id: mediaAssets.id,
       originalUrl: mediaAssets.originalUrl,
+      storageKey: mediaAssets.storageKey,
       status: mediaAssets.status,
     })
     .from(mediaAssets)
@@ -522,11 +562,18 @@ export async function resolveSpecialReferenceBindings(
   const byId = new Map(rows.map(row => [String(row.id), row]));
   return bindings.map(binding => {
     const row = byId.get(binding.mediaAssetId);
-    if (!row || row.status !== "ready" || !row.originalUrl)
+    if (
+      !row ||
+      row.status !== "ready" ||
+      (!row.originalUrl && !row.storageKey)
+    )
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: `Reference ${binding.skillReferenceId} is unavailable`,
       });
-    return { ...binding, authorizedUrl: row.originalUrl };
+    const authorizedUrl = row.storageKey
+      ? `/api/storage/files/${encodeURI(row.storageKey.replace(/^\/+/, ""))}`
+      : row.originalUrl;
+    return { ...binding, authorizedUrl };
   });
 }

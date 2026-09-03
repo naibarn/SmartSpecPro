@@ -60,6 +60,8 @@ ENV CHROME_BIN=/usr/bin/chromium-browser
 # Install production runtime dependencies for official HTML/CSS/browser renders.
 RUN apk add --no-cache \
     tini \
+    python3 \
+    py3-pip \
     chromium \
     ffmpeg \
     postgresql-client \
@@ -67,6 +69,11 @@ RUN apk add --no-cache \
     font-noto \
     font-noto-thai \
     ttf-freefont
+
+# Enhanced Vertical Drama prompt authoring runs in the skill's locked Python
+# project. Install the pinned runner in the image so runtime health does not
+# depend on an interactive host or an environment-only configuration.
+RUN python3 -m pip install --no-cache-dir --break-system-packages "uv==0.9.28"
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
@@ -87,6 +94,12 @@ COPY --from=builder --chown=smartspec:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=smartspec:nodejs /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=builder --chown=smartspec:nodejs /app/packages/ui/node_modules ./packages/ui/node_modules
 COPY --from=builder --chown=smartspec:nodejs /app/packages ./packages
+
+RUN cd /app/apps/web/skills/generic-commercial-video-director && \
+    uv sync --frozen --no-dev
+RUN cd /app/apps/web/skills/generic-commercial-video-director && \
+    uv run --frozen --project . python -m smartaihub_video_director.enhanced_bridge --health
+RUN chown -R smartspec:nodejs /app/apps/web/skills
 
 USER smartspec
 WORKDIR /app/apps/web

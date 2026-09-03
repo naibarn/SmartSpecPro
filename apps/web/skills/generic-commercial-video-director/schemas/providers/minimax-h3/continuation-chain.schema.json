@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/providers/minimax-h3/continuation-chain.schema.json",
+  "title": "MiniMax H3 Reference Continuation Chain",
+  "type": "object",
+  "required": [
+    "targetDurationSeconds",
+    "segments",
+    "assembly",
+    "seamPolicy"
+  ],
+  "properties": {
+    "targetDurationSeconds": {
+      "type": "number",
+      "minimum": 4
+    },
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "index",
+          "durationSeconds",
+          "mode",
+          "globalStart",
+          "globalEnd",
+          "continuationSource"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "durationSeconds": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 15
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "base",
+              "ref2va_continuation"
+            ]
+          },
+          "globalStart": {
+            "type": "number",
+            "minimum": 0
+          },
+          "globalEnd": {
+            "type": "number",
+            "minimum": 0
+          },
+          "continuationSource": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "previousSegmentIndex": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tailSeconds": {
+                "type": "number",
+                "minimum": 2,
+                "maximum": 15
+              },
+              "extractAudioTrack": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "remainingBeatIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "assembly": {
+      "type": "object",
+      "required": [
+        "required",
+        "method"
+      ],
+      "properties": {
+        "required": {
+          "const": true
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "hard_concat",
+            "trim_and_concat",
+            "micro_crossfade",
+            "editor_decision"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "seamPolicy": {
+      "type": "object",
+      "required": [
+        "qcRequired",
+        "stateLedgerRequired",
+        "avoidCriticalExactTextAtSeam"
+      ],
+      "properties": {
+        "qcRequired": {
+          "const": true
+        },
+        "stateLedgerRequired": {
+          "const": true
+        },
+        "avoidCriticalExactTextAtSeam": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

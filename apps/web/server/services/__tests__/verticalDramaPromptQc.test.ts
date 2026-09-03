@@ -223,6 +223,46 @@ describe("verticalDramaPromptQc", () => {
       expect(result.prompt.match(/IMAGE NEGATIVE CONSTRAINTS/g)).toHaveLength(1);
     });
 
+    it("allows the final skill to rewrite identity-lock wording while retaining mapping anchors", async () => {
+      const identityLock = [
+        "BEGIN CHARACTER IDENTITY LOCKS (SYSTEM-GENERATED)",
+        "CHARACTER IDENTITY LOCK — ALL ATTACHED CHARACTERS (HIGHEST PRIORITY)",
+        "For every character listed below, preserve the exact facial identity and recognizable likeness from that character's own reference image.",
+        "Reference mapping:",
+        "- พิมพ์ชนก — Reference Image 1",
+        "- ภูมิ — Reference Image 2",
+        "AGE / MATURITY LOCK (NON-NEGOTIABLE): preserve the apparent age shown in each reference image.",
+        "END CHARACTER IDENTITY LOCKS",
+      ].join("\n");
+      const sourcePrompt = `A natural close family framing at home.\n${identityLock}`;
+      const optimizedPrompt = sourcePrompt
+        .replace(
+          "preserve the exact facial identity and recognizable likeness",
+          "keep a consistent visual appearance closely matching the attached reference",
+        )
+        .replace("natural close family framing", "restrained family two-shot");
+      mockExecuteRetry.mockResolvedValueOnce(refinerResult(optimizedPrompt));
+
+      const result = await ensurePromptWithinLimit({
+        kind: "image",
+        prompt: sourcePrompt,
+        semanticProtectedFragments: [identityLock],
+        maxChars: 10_000,
+        finalizeWithRefiner: true,
+        failClosed: true,
+        userId: 1,
+        seriesId: 6,
+      });
+
+      expect(result.prompt).toBe(optimizedPrompt);
+      expect(result.prompt).toContain("- พิมพ์ชนก — Reference Image 1");
+      expect(result.prompt).toContain("- ภูมิ — Reference Image 2");
+      expect(result.prompt).not.toContain("exact facial identity");
+      expect(mockExecuteRetry.mock.calls[0][0].userPrompt).toContain(
+        "SEMANTICALLY PROTECTED FRAGMENTS",
+      );
+    });
+
     it("extracts and preserves custom identity locks as protected provider fragments", async () => {
       const lock =
         "CUSTOM CHARACTER IDENTITY LOCK (AUTHORITATIVE; use instead of screen position): ไอริณ [characterKey=character]: ผู้หญิงใส่ผ้ากันเปื้อน.";

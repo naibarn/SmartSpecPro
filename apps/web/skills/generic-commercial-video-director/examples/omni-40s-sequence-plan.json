@@ -1,0 +1,155 @@
+{
+  "sequenceId": "SEQ-001",
+  "targetTotalDurationSeconds": 40,
+  "plannedTotalDurationSeconds": 40,
+  "temporalStrategy": "extension_chain",
+  "shotDurationPolicy": {
+    "mode": "allowed_values",
+    "fixedSeconds": null,
+    "allowedSeconds": [
+      8,
+      10,
+      15
+    ],
+    "preferredSeconds": 8,
+    "minShotSeconds": 8,
+    "maxShotSeconds": 15
+  },
+  "shots": [
+    {
+      "shotId": "S01",
+      "order": 1,
+      "durationSeconds": 8,
+      "globalStartSeconds": 0,
+      "globalEndSeconds": 8,
+      "shotTopology": "presenter",
+      "narrativeRole": "hook/product establish",
+      "generationChainId": "CHAIN-001",
+      "continuityFromShotId": null,
+      "mustRemainSingleContinuousShot": false,
+      "majorActionCount": 2,
+      "dialogueLineIds": [],
+      "proofMomentIds": []
+    },
+    {
+      "shotId": "S02",
+      "order": 2,
+      "durationSeconds": 8,
+      "globalStartSeconds": 8,
+      "globalEndSeconds": 16,
+      "shotTopology": "single_continuous",
+      "narrativeRole": "correct use / first feature",
+      "generationChainId": "CHAIN-001",
+      "continuityFromShotId": "S01",
+      "mustRemainSingleContinuousShot": false,
+      "majorActionCount": 3,
+      "dialogueLineIds": [],
+      "proofMomentIds": [
+        "P1"
+      ]
+    },
+    {
+      "shotId": "S03",
+      "order": 3,
+      "durationSeconds": 8,
+      "globalStartSeconds": 16,
+      "globalEndSeconds": 24,
+      "shotTopology": "cutaway",
+      "narrativeRole": "mechanism or UI proof",
+      "generationChainId": "CHAIN-001",
+      "continuityFromShotId": "S02",
+      "mustRemainSingleContinuousShot": false,
+      "majorActionCount": 2,
+      "dialogueLineIds": [],
+      "proofMomentIds": [
+        "P2"
+      ]
+    },
+    {
+      "shotId": "S04",
+      "order": 4,
+      "durationSeconds": 8,
+      "globalStartSeconds": 24,
+      "globalEndSeconds": 32,
+      "shotTopology": "single_continuous",
+      "narrativeRole": "use-case/result",
+      "generationChainId": "CHAIN-001",
+      "continuityFromShotId": "S03",
+      "mustRemainSingleContinuousShot": false,
+      "majorActionCount": 2,
+      "dialogueLineIds": [],
+      "proofMomentIds": [
+        "P3"
+      ]
+    },
+    {
+      "shotId": "S05",
+      "order": 5,
+      "durationSeconds": 8,
+      "globalStartSeconds": 32,
+      "globalEndSeconds": 40,
+      "shotTopology": "hero",
+      "narrativeRole": "hero/CTA",
+      "generationChainId": "CHAIN-001",
+      "continuityFromShotId": "S04",
+      "mustRemainSingleContinuousShot": false,
+      "majorActionCount": 1,
+      "dialogueLineIds": [],
+      "proofMomentIds": []
+    }
+  ],
+  "transitions": [
+    {
+      "fromShotId": "S01",
+      "toShotId": "S02",
+      "type": "extension_seam",
+      "notes": "planned narrative progression within extension chain"
+    },
+    {
+      "fromShotId": "S02",
+      "toShotId": "S03",
+      "type": "extension_seam",
+      "notes": "planned narrative progression within extension chain"
+    },
+    {
+      "fromShotId": "S03",
+      "toShotId": "S04",
+      "type": "extension_seam",
+      "notes": "planned narrative progression within extension chain"
+    },
+    {
+      "fromShotId": "S04",
+      "toShotId": "S05",
+      "type": "extension_seam",
+      "notes": "planned narrative progression within extension chain"
+    }
+  ],
+  "narrativeCoverage": {
+    "requiredBeatIds": [
+      "hook",
+      "use",
+      "proof",
+      "result",
+      "hero"
+    ],
+    "assignedBeatIds": [
+      "hook",
+      "use",
+      "proof",
+      "result",
+      "hero"
+    ],
+    "unassignedBeatIds": [],
+    "coverageComplete": true
+  },
+  "assemblyPlan": {
+    "mode": "provider_output",
+    "preserveNativeExtensionChain": true,
+    "finalTimelineDurationSeconds": 40,
+    "postCompositeAfterTemporalAssembly": true,
+    "notes": [
+      "Composite exact labels/UI after temporal chain when possible.",
+      "Logical timeline targets exactly 40s; provider actual segment duration must be measured and normalized in post if exact duration control is unavailable."
+    ]
+  }
+}

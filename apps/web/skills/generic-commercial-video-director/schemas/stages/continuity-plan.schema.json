@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/continuity-plan.schema.json",
+  "title": "Continuity Plan",
+  "type": "object",
+  "required": [
+    "shotId",
+    "locks",
+    "endState",
+    "carryForward"
+  ],
+  "properties": {
+    "shotId": {
+      "type": "string"
+    },
+    "locks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "endState": {
+      "type": "object"
+    },
+    "carryForward": {
+      "type": "object"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

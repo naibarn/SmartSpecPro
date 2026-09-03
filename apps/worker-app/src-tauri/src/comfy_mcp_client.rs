@@ -71,7 +71,11 @@ impl ComfyMcpSession {
             .managed_command_path
             .as_deref()
             .unwrap_or_else(|| std::path::Path::new(config.command.trim()));
-        if config.managed_command_path.as_ref().is_some_and(|path| !path.is_file()) {
+        if config
+            .managed_command_path
+            .as_ref()
+            .is_some_and(|path| !path.is_file())
+        {
             return Err("comfy_mcp_unavailable".into());
         }
         let mut command = Command::new(executable);
@@ -213,7 +217,10 @@ pub fn command_available(command: &str) -> bool {
     })
 }
 
-pub fn command_available_with_path(command: &str, managed_command_path: Option<&std::path::Path>) -> bool {
+pub fn command_available_with_path(
+    command: &str,
+    managed_command_path: Option<&std::path::Path>,
+) -> bool {
     if validate_command(command).is_err() {
         return false;
     }
@@ -261,10 +268,7 @@ pub fn parse_tools_manifest(value: &Value) -> Result<ComfyMcpManifest, String> {
             return Err("comfy_mcp_tool_schema_limit".into());
         }
         manifest.tool_names.push(name.to_string());
-        manifest.tool_schemas.push((
-            name.to_string(),
-            schema,
-        ));
+        manifest.tool_schemas.push((name.to_string(), schema));
         collect_string_values(
             tool.get("workflowIds")
                 .or_else(|| tool.get("workflow_ids"))
@@ -281,15 +285,24 @@ pub fn parse_tools_manifest(value: &Value) -> Result<ComfyMcpManifest, String> {
     manifest.workflow_ids.dedup();
     manifest.capabilities.sort();
     manifest.capabilities.dedup();
-    manifest.tool_schemas.sort_by(|left, right| left.0.cmp(&right.0));
-    manifest.tool_schemas.dedup_by(|left, right| left.0 == right.0);
+    manifest
+        .tool_schemas
+        .sort_by(|left, right| left.0.cmp(&right.0));
+    manifest
+        .tool_schemas
+        .dedup_by(|left, right| left.0 == right.0);
     Ok(manifest)
 }
 
 fn has_workflow_submit_tool(manifest: &ComfyMcpManifest) -> bool {
-    ["run_workflow", "run_template", "submit_workflow", "create_execution"]
-        .iter()
-        .any(|candidate| manifest.tool_names.iter().any(|name| name == candidate))
+    [
+        "run_workflow",
+        "run_template",
+        "submit_workflow",
+        "create_execution",
+    ]
+    .iter()
+    .any(|candidate| manifest.tool_names.iter().any(|name| name == candidate))
 }
 
 fn manifest_supports_arguments(
@@ -517,7 +530,15 @@ pub async fn run_generic_workflow_with_lifecycle<F>(
 where
     F: Fn(&str) + Send + Sync,
 {
-    run_generic_workflow_with_lifecycle_for_tool(config, arguments, None, None, cancel, on_execution_id).await
+    run_generic_workflow_with_lifecycle_for_tool(
+        config,
+        arguments,
+        None,
+        None,
+        cancel,
+        on_execution_id,
+    )
+    .await
 }
 
 /// Executes a workflow/tool selected by the Worker UI. The optional output
@@ -591,18 +612,40 @@ where
 }
 
 fn lifecycle_arguments(manifest: &ComfyMcpManifest, tool_name: &str, execution_id: &str) -> Value {
-    let schema = manifest.tool_schemas.iter().find(|(name, _)| name == tool_name).map(|(_, schema)| schema);
+    let schema = manifest
+        .tool_schemas
+        .iter()
+        .find(|(name, _)| name == tool_name)
+        .map(|(_, schema)| schema);
     let property_names = schema
         .and_then(|value| serde_json::from_str::<Value>(value).ok())
         .and_then(|value| value.get("properties").cloned())
         .and_then(|value| value.as_object().cloned())
-        .map(|properties| properties.into_iter().map(|(name, _)| name).collect::<HashSet<_>>())
+        .map(|properties| {
+            properties
+                .into_iter()
+                .map(|(name, _)| name)
+                .collect::<HashSet<_>>()
+        })
         .unwrap_or_default();
-    let key = ["executionId", "execution_id", "job_id", "jobId", "prompt_id", "promptId"]
-        .iter()
-        .find(|candidate| property_names.contains(**candidate))
-        .copied()
-        .unwrap_or_else(|| if matches!(tool_name, "job_status" | "fetch_outputs") { "prompt_id" } else { "job_id" });
+    let key = [
+        "executionId",
+        "execution_id",
+        "job_id",
+        "jobId",
+        "prompt_id",
+        "promptId",
+    ]
+    .iter()
+    .find(|candidate| property_names.contains(**candidate))
+    .copied()
+    .unwrap_or_else(|| {
+        if matches!(tool_name, "job_status" | "fetch_outputs") {
+            "prompt_id"
+        } else {
+            "job_id"
+        }
+    });
     json!({ key: execution_id })
 }
 
@@ -612,21 +655,43 @@ async fn fetch_workflow_output(
     execution_id: &str,
     output_dir: Option<&std::path::Path>,
 ) -> Result<Value, String> {
-    let Some(output_tool) = select_tool(&session.manifest, &["fetch_outputs", "get_output", "get_job_output", "get_execution_output"]) else {
+    let Some(output_tool) = select_tool(
+        &session.manifest,
+        &[
+            "fetch_outputs",
+            "get_output",
+            "get_job_output",
+            "get_execution_output",
+        ],
+    ) else {
         return Ok(Value::Null);
     };
     let mut arguments = lifecycle_arguments(&session.manifest, &output_tool, execution_id);
     if let Some(output_dir) = output_dir {
         if let Some(object) = arguments.as_object_mut() {
-            let schema = session.manifest.tool_schemas.iter().find(|(name, _)| name == &output_tool).map(|(_, schema)| schema);
+            let schema = session
+                .manifest
+                .tool_schemas
+                .iter()
+                .find(|(name, _)| name == &output_tool)
+                .map(|(_, schema)| schema);
             let properties = schema
                 .and_then(|value| serde_json::from_str::<Value>(value).ok())
                 .and_then(|value| value.get("properties").cloned())
                 .and_then(|value| value.as_object().cloned())
                 .unwrap_or_default();
-            for key in ["out_dir", "outDir", "output_dir", "outputDir", "destination"] {
+            for key in [
+                "out_dir",
+                "outDir",
+                "output_dir",
+                "outputDir",
+                "destination",
+            ] {
                 if properties.contains_key(key) {
-                    object.insert(key.to_string(), Value::String(output_dir.to_string_lossy().to_string()));
+                    object.insert(
+                        key.to_string(),
+                        Value::String(output_dir.to_string_lossy().to_string()),
+                    );
                     break;
                 }
             }
@@ -681,7 +746,12 @@ async fn read_tools_manifest(
 }
 
 fn merge_manifest(target: &mut ComfyMcpManifest, source: ComfyMcpManifest) -> Result<(), String> {
-    if target.tool_names.len().saturating_add(source.tool_names.len()) > MAX_MCP_TOOL_COUNT {
+    if target
+        .tool_names
+        .len()
+        .saturating_add(source.tool_names.len())
+        > MAX_MCP_TOOL_COUNT
+    {
         return Err("comfy_mcp_tool_count_limit".into());
     }
     target.workflow_ids.extend(source.workflow_ids);
@@ -694,8 +764,12 @@ fn merge_manifest(target: &mut ComfyMcpManifest, source: ComfyMcpManifest) -> Re
     target.capabilities.dedup();
     target.tool_names.sort();
     target.tool_names.dedup();
-    target.tool_schemas.sort_by(|left, right| left.0.cmp(&right.0));
-    target.tool_schemas.dedup_by(|left, right| left.0 == right.0);
+    target
+        .tool_schemas
+        .sort_by(|left, right| left.0.cmp(&right.0));
+    target
+        .tool_schemas
+        .dedup_by(|left, right| left.0 == right.0);
     Ok(())
 }
 
@@ -739,8 +813,8 @@ async fn read_response(
 #[cfg(test)]
 mod tests {
     use super::{
-        command_available, extract_mcp_execution_id, manifest_supports_arguments,
-        lifecycle_arguments, parse_tools_manifest, validate_command, ComfyMcpManifest,
+        command_available, extract_mcp_execution_id, lifecycle_arguments,
+        manifest_supports_arguments, parse_tools_manifest, validate_command, ComfyMcpManifest,
     };
     use serde_json::json;
 
@@ -768,8 +842,10 @@ mod tests {
     #[test]
     fn bounds_remote_tool_names_and_schemas() {
         assert_eq!(
-            parse_tools_manifest(&json!({"result":{"tools":[{"name":"bad tool","inputSchema":{"type":"object"}}]}}))
-                .expect_err("unsafe tool names must fail"),
+            parse_tools_manifest(
+                &json!({"result":{"tools":[{"name":"bad tool","inputSchema":{"type":"object"}}]}})
+            )
+            .expect_err("unsafe tool names must fail"),
             "comfy_mcp_tool_name_invalid"
         );
         assert_eq!(
@@ -850,7 +926,13 @@ mod tests {
             ],
             ..Default::default()
         };
-        assert_eq!(lifecycle_arguments(&manifest, "job_status", "p-1"), json!({"prompt_id":"p-1"}));
-        assert_eq!(lifecycle_arguments(&manifest, "fetch_outputs", "p-1"), json!({"prompt_id":"p-1"}));
+        assert_eq!(
+            lifecycle_arguments(&manifest, "job_status", "p-1"),
+            json!({"prompt_id":"p-1"})
+        );
+        assert_eq!(
+            lifecycle_arguments(&manifest, "fetch_outputs", "p-1"),
+            json!({"prompt_id":"p-1"})
+        );
     }
 }

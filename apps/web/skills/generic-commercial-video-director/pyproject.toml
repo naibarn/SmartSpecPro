@@ -1,0 +1,18 @@
+[build-system]
+requires=["setuptools>=75","wheel"]
+build-backend="setuptools.build_meta"
+
+[project]
+name="smartaihub-generic-commercial-video-director"
+version="11.0.0"
+description="Bounded OpenAI Agents SDK runtime and provider contracts for SmartAIHub Generic Commercial Video Director"
+requires-python=">=3.11"
+dependencies=[
+  "pydantic>=2.8,<3",
+  "jsonschema>=4.23,<5",
+  "packaging>=24.1",
+  "openai-agents>=0.22.0,<0.23",
+]
+
+[tool.setuptools.packages.find]
+where=["src"]

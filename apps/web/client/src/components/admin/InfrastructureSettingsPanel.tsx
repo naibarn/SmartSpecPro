@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import HermesInfrastructureSettingsCard from "./HermesInfrastructureSettingsCard";
+import VerticalDramaEnhancedRuntimeSettingsPanel from "./VerticalDramaEnhancedRuntimeSettingsPanel";
 import {
   Server,
   Save,
@@ -856,6 +857,7 @@ export default function InfrastructureSettingsPanel() {
 
   return (
     <div className="space-y-6">
+      <VerticalDramaEnhancedRuntimeSettingsPanel />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4 md:grid-cols-8">
           <TabsTrigger value="gcp" className="flex items-center gap-1">

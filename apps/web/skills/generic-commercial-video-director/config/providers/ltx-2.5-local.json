@@ -1,0 +1,207 @@
+{
+  "profileVersion": "5.0",
+  "id": "ltx-2.5-local",
+  "provider": "Lightricks Open Source",
+  "model": "Lightricks/LTX-2.5",
+  "modelFamily": "LTX-2.5 Open Source",
+  "kind": "multimodal",
+  "availability": "ga",
+  "verification": {
+    "status": "verified",
+    "verifiedAt": "2026-09-01",
+    "sources": [
+      {
+        "title": "LTX-2.5 Model Documentation",
+        "url": "https://docs.ltx.io/models/ltx-2-5",
+        "notes": "Official cloud variants, endpoint support matrix, duration/FPS/resolution matrix, native multi-shot and auto-duration."
+      },
+      {
+        "title": "LTX Image-to-Video API",
+        "url": "https://docs.ltx.io/api-documentation/api-reference/async-video-generation/submit-image-to-video",
+        "notes": "Official first frame, optional last frame, camera motion, async request contract."
+      },
+      {
+        "title": "LTX Audio-to-Video API",
+        "url": "https://docs.ltx.io/api-documentation/api-reference/async-video-generation/submit-audio-to-video",
+        "notes": "Official exact soundtrack-driven generation, optional first/last frame, audio-duration limits."
+      },
+      {
+        "title": "LTX API Changelog",
+        "url": "https://docs.ltx.io/api-changelog",
+        "notes": "Official LTX-2.5 release and camera-motion enum values."
+      },
+      {
+        "title": "LTX-2.5 Open Source Overview",
+        "url": "https://docs.ltx.io/open-source-model/getting-started/overview",
+        "notes": "Official local/open-weight execution, synchronized AV, native multi-shot, LoRA/IC-LoRA."
+      },
+      {
+        "title": "Using ComfyUI with LTX",
+        "url": "https://docs.ltx.io/open-source-model/integration-tools/comfy-ui",
+        "notes": "Official T2V/I2V/First-Last templates and advanced IC-LoRA workflows."
+      },
+      {
+        "title": "LTX Prompting Guide",
+        "url": "https://docs.ltx.io/open-source-model/usage-guides/prompting-guide",
+        "notes": "Official multi-shot prompt structure and continuity guidance."
+      }
+    ]
+  },
+  "capabilities": {
+    "text_to_video": {
+      "status": "verified",
+      "notes": "Official local ComfyUI/Python workflows."
+    },
+    "image_to_video": {
+      "status": "verified",
+      "notes": "Official local first-frame workflow."
+    },
+    "first_frame": {
+      "status": "verified",
+      "notes": "Official Image-to-Video template."
+    },
+    "last_frame": {
+      "status": "verified",
+      "notes": "Official First-Frame / Last-Frame ComfyUI template."
+    },
+    "first_last_frame": {
+      "status": "verified",
+      "notes": "Official local template interpolates between start/end frames."
+    },
+    "native_audio": {
+      "status": "verified",
+      "notes": "Separate video/audio VAEs generate synchronized audiovisual output."
+    },
+    "native_multi_shot": {
+      "status": "verified",
+      "notes": "Native multi-shot is a core LTX-2.5 capability."
+    },
+    "automatic_duration": {
+      "status": "verified",
+      "notes": "Duration-head and caption-driven auto-duration supported by 2.5 pipelines."
+    },
+    "prompt_enhancer": {
+      "status": "verified",
+      "notes": "Gemma 4 E2B prompt enhancer is available in official templates."
+    },
+    "lora": {
+      "status": "verified",
+      "notes": "Open-source local pipelines support LoRA."
+    },
+    "ic_lora": {
+      "status": "verified",
+      "notes": "Advanced local workflows support IC-LoRA control and reference conditioning."
+    },
+    "reference_video": {
+      "status": "conditional",
+      "notes": "Use a verified IC-LoRA/local workflow; not a generic zero-config reference input."
+    },
+    "reference_image": {
+      "status": "conditional",
+      "notes": "Additional reference/keyframe control requires an appropriate local workflow; standard I2V consumes first frame."
+    },
+    "reference_audio": {
+      "status": "conditional",
+      "notes": "Advanced A2V/A2A/AV conditioning is workflow-dependent; verify the configured local pipeline."
+    },
+    "video_extension": {
+      "status": "conditional",
+      "notes": "Prefix/suffix conditioning is supported in flexible/trained local workflows, but is not a standard LTX-2.5 cloud endpoint."
+    },
+    "inpainting_outpainting": {
+      "status": "conditional",
+      "notes": "Official advanced IC-LoRA workflows exist; adapter/checkpoint compatibility must be verified for LTX-2.5."
+    }
+  },
+  "limits": {
+    "durations": {
+      "minSeconds": null,
+      "maxSeconds": null,
+      "allowedSeconds": null
+    },
+    "resolutions": [],
+    "aspectRatios": [],
+    "referenceLimits": {
+      "standardBuiltInTemplates": [
+        "video_ltx2_5_t2v",
+        "video_ltx2_5_i2v",
+        "video_ltx2_5_flf2v"
+      ],
+      "recommendedComfyUiVramGB": 32,
+      "pythonMinCuda": "12.7",
+      "pipelineDimensionDivisibility": 32,
+      "twoStageFinalDimensionDivisibility": 64,
+      "numFramesRule": "8k+1 when explicitly overridden",
+      "localReferenceRequiresVerifiedWorkflow": true
+    },
+    "notes": [
+      "Local limits depend on checkpoint, workflow, VRAM and pipeline configuration.",
+      "Official docs recommend ComfyUI or native ltx-pipelines for automation."
+    ]
+  },
+  "bestFor": [
+    "local/private generation",
+    "custom LoRA/IC-LoRA control",
+    "first/last-frame interpolation",
+    "native multi-shot",
+    "workflow customization",
+    "ComfyUI/Worker integration"
+  ],
+  "knownRisks": [
+    "Do not assume every LTX-2.3 IC-LoRA adapter is validated on 2.5; check adapter documentation.",
+    "Generic reference assets require a known local workflow rather than automatic raw injection.",
+    "Local resource requirements are substantial and should be preflighted by Worker/ComfyUI."
+  ],
+  "promptProfile": "ltx-2.5",
+  "adapterId": "ltx25",
+  "temporalPlanning": {
+    "baseGeneration": {
+      "durationControl": "provider_decides",
+      "stepSeconds": null,
+      "notes": [
+        "Local pipelines can use explicit frames/FPS or auto-duration depending on checkpoint/workflow."
+      ]
+    },
+    "nativeMultiShot": {
+      "status": "verified",
+      "maxShotsPerGeneration": null,
+      "supportsExplicitTimedCuts": false,
+      "supportsSingleContinuousShotConstraint": true,
+      "notes": [
+        "Use chronological prose with explicit cuts and continuity language."
+      ]
+    },
+    "extension": {
+      "status": "conditional",
+      "appendOnly": null,
+      "minAdditionalSeconds": null,
+      "maxAdditionalSeconds": null,
+      "allowedAdditionalSeconds": null,
+      "stepSeconds": null,
+      "defaultAdditionalSeconds": null,
+      "maxCumulativeSeconds": null,
+      "contextSeconds": null,
+      "supportsGeneratedVideoMultiTurn": null,
+      "supportsUploadedVideo": true,
+      "supportsNewDialogueOnGeneratedMultiTurn": null,
+      "supportsNewDialogueOnUploadedTalkingVideo": null,
+      "tailMayBeRewritten": null,
+      "localTimecodeResetsAtExtensionStart": null,
+      "requiresStoredInteractionState": true,
+      "notes": [
+        "Only enable when the configured local prefix/suffix/extension workflow has been explicitly verified."
+      ],
+      "durationControl": "provider_decides",
+      "deterministicDurationRequest": false,
+      "extensionKind": "unknown",
+      "requiresExternalAssembly": null,
+      "sourceReferenceRole": "source_video",
+      "referenceTailMinSeconds": null,
+      "referenceTailMaxSeconds": null,
+      "supportsReferenceAudioContinuity": null,
+      "maxExtensionTurns": null,
+      "sourceInputMinSeconds": null,
+      "sourceInputMaxSeconds": null
+    }
+  }
+}

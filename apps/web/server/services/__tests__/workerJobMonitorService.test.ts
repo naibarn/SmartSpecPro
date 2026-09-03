@@ -1,11 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 
-const { mockResetVerticalDramaFfmpegAssemblyStateOnCancel } = vi.hoisted(() => ({
+const {
+  mockResetVerticalDramaFfmpegAssemblyStateOnCancel,
+  mockResetEpisodePreviewStateOnCancel,
+} = vi.hoisted(() => ({
   mockResetVerticalDramaFfmpegAssemblyStateOnCancel: vi.fn().mockResolvedValue(undefined),
+  mockResetEpisodePreviewStateOnCancel: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("../verticalDramaFfmpegAssemblyRunner", () => ({
   resetVerticalDramaFfmpegAssemblyStateOnCancel: mockResetVerticalDramaFfmpegAssemblyStateOnCancel,
+}));
+vi.mock("../verticalDramaEpisodePreview", () => ({
+  resetEpisodePreviewStateOnCancel: mockResetEpisodePreviewStateOnCancel,
 }));
 
 import {
@@ -334,6 +341,46 @@ describe("workerJobMonitorService", () => {
     expect(mockResetVerticalDramaFfmpegAssemblyStateOnCancel).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "sub_episode", owner: contractInput.owner }),
     );
+  });
+
+  it("resets the linked preview slot when a Remotion preview job is canceled", async () => {
+    mockResetEpisodePreviewStateOnCancel.mockClear();
+    const previewInput = {
+      videoProjectId: "vd-episode-preview:53:234",
+      projectRevision: 2,
+    };
+    const repo = createRepo({
+      cancelQueuedJob: vi.fn().mockResolvedValue({
+        id: "job-preview-1",
+        tenantId: "tenant-1",
+        workerId: null,
+        runtimeType: "desktop_zeroclaw_managed",
+        workflowRunId: null,
+        requestedByUserId: 7,
+        jobType: "remotion_render_video",
+        status: "canceled",
+        statusReason: "Canceled by requester",
+        resourceProfile: "cpu_heavy",
+        outputJson: null,
+        failureReason: null,
+        createdAt,
+        startedAt: null,
+        finishedAt: laterAt,
+        inputJson: previewInput,
+      }),
+    });
+
+    await expect(cancelQueuedUserWorkerJob(
+      { auth: { tenantId: "tenant-1", userId: 7 }, jobId: "job-preview-1" },
+      { repo },
+    )).resolves.toEqual({ canceled: true, jobId: "job-preview-1" });
+
+    expect(mockResetEpisodePreviewStateOnCancel).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      userId: 7,
+      jobId: "job-preview-1",
+      inputJson: previewInput,
+    });
   });
 
   it("never fails the cancel when the VD state reset throws", async () => {

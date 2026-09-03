@@ -40,6 +40,14 @@ import {
   getPublicContactProtectionAdminSettings,
   updatePublicContactProtectionSettings,
 } from "../services/publicContactProtectionSettings";
+import {
+  getVerticalDramaEnhancedRuntimeSettings,
+  writeVerticalDramaEnhancedRuntimeSettings,
+} from "../services/verticalDramaEnhancedRuntimeSettings";
+import {
+  getEnhancedRuntimeFacts,
+} from "../services/verticalDramaEnhancedVideoPrompt";
+import { loadEnabledLlmModelRows } from "../services/enabledLlmModels";
 
 // ============================================================
 // System Settings Router
@@ -686,6 +694,65 @@ export const systemSettingsRouter = router({
         isConfigured: s.isSensitive && s.value ? true : undefined,
       }));
     }),
+
+  /** Platform-level UI configuration for the isolated Vertical Drama Enhanced runtime. */
+  getVerticalDramaEnhancedRuntimeSettings: adminProcedure.query(async () => {
+    const settings = await getVerticalDramaEnhancedRuntimeSettings();
+    const [runtime, models] = await Promise.all([
+      getEnhancedRuntimeFacts(settings),
+      loadEnabledLlmModelRows(),
+    ]);
+    return {
+      settings,
+      runtime,
+      authoringModels: models
+        .filter(model => model.supportsVision === true && model.supportsStructuredOutputs === true)
+        .map(model => ({
+          id: model.modelId,
+          name: model.modelId,
+          provider: model.providerName,
+          supportsVision: model.supportsVision === true,
+          supportsStructuredOutputs: model.supportsStructuredOutputs === true,
+          enabled: true,
+        })),
+    };
+  }),
+
+  updateVerticalDramaEnhancedRuntimeSettings: adminProcedure
+    .input(z.object({
+      enabled: z.boolean(),
+      authoringModelId: z.string().trim().max(256),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.enabled && !input.authoringModelId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "เลือก Prompt Authoring Model ที่รองรับ Vision ก่อนเปิด Enhanced" });
+      }
+      if (input.authoringModelId) {
+        const model = (await loadEnabledLlmModelRows()).find(row => row.modelId === input.authoringModelId);
+        if (!model || model.supportsVision !== true || model.supportsStructuredOutputs !== true) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Authoring model ต้องเป็นโมเดลที่เปิดใช้งานและรองรับทั้ง Vision และ Structured Output" });
+        }
+      }
+      return writeVerticalDramaEnhancedRuntimeSettings({
+        enabled: input.enabled,
+        authoringModelId: input.authoringModelId,
+        updatedBy: ctx.user?.id,
+      });
+    }),
+
+  approveVerticalDramaEnhancedRuntime: adminProcedure.mutation(async ({ ctx }) => {
+    const settings = await getVerticalDramaEnhancedRuntimeSettings();
+    const runtime = await getEnhancedRuntimeFacts(settings);
+    if (!runtime.bridgeAvailable || runtime.manifestHash === "unknown" || runtime.sdkVersion === "unknown" || runtime.adapterVersion === "unknown") {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Enhanced runtime probe ไม่ผ่าน ตรวจสอบ skill package และ OpenAI Agents SDK ก่อนอนุมัติ" });
+    }
+    return writeVerticalDramaEnhancedRuntimeSettings({
+      approvedManifestHash: runtime.manifestHash,
+      approvedSdkVersion: runtime.sdkVersion,
+      approvedAdapterVersion: runtime.adapterVersion,
+      updatedBy: ctx.user?.id,
+    });
+  }),
 
   getDesktopReleaseSettings: adminProcedure.query(async () => {
     const config = await getDesktopReleaseConfig();

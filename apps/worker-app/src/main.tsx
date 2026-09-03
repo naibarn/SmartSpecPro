@@ -4,6 +4,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import {
   confirm as nativeConfirm,
   message as nativeMessage,
+  save as nativeSave,
 } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import "./styles.css";
@@ -29,6 +30,9 @@ import {
 
 const SMART_AI_HUB_CLOUD_URL = "https://smartaihub.app";
 const CONNECTION_HEALTH_RETRY_BUDGET_MS = 2 * 60 * 1000;
+const CONNECTION_HEALTH_POLL_INTERVAL_MS = 30_000;
+const CONNECTION_HEALTH_RETRY_INTERVAL_MS = 5_000;
+const WORKER_STATUS_REFRESH_INTERVAL_MS = 30_000;
 const CONNECTION_HEALTH_RETRY_INITIAL_DELAY_MS = 2_000;
 const isMacOSHost =
   typeof navigator !== "undefined" &&
@@ -71,6 +75,35 @@ type DoctorSummary = {
   officialHyperframesRuntime?: boolean | null;
   runtimeKind?: string | null;
 };
+
+const REMOTION_REQUIRED_DOCTOR_CHECKS = [
+  "runtime_manifest",
+  "runtime_host_platform",
+  "runtime_bundle",
+  "official_hyperframes_renderer",
+  "hyperframes_native_dependencies",
+  "browser_runtime",
+  "media_tools",
+  "hyperframes_sidecar",
+  "runtime_sidecar_policy",
+  "runtime_hash",
+  "runtime_signature_bundle",
+  "thai_font",
+  "tool_versions",
+  "installer_set",
+] as const;
+
+function isRemotionRuntimeReady(doctor: DoctorSummary): boolean {
+  const managed = doctor.checks.some(
+    (check) => check.id === "managed_wsl_runtime",
+  );
+  const required = managed
+    ? ["wsl2_host", "managed_wsl_runtime", "installer_set"]
+    : REMOTION_REQUIRED_DOCTOR_CHECKS;
+  return required.every((id) =>
+    doctor.checks.some((check) => check.id === id && check.status === "ok"),
+  );
+}
 
 type LastJobSummary = {
   jobId: string;
@@ -139,6 +172,7 @@ type DiagnosticsLogLocation = {
 type StartupModeStatus = {
   startWithWindows: boolean;
   serviceAvailable: boolean;
+  startupRecoveryRequired: boolean;
   message: string;
 };
 
@@ -430,6 +464,38 @@ const runtimeRequirements = isMacOSHost
     ];
 
 function App() {
+  useEffect(() => {
+    const reportFrontendError = (payload: Record<string, unknown>) => {
+      void invoke("worker_app_log_frontend_error", payload).catch(() => {
+        // Diagnostics must never create a second unhandled rejection.
+      });
+    };
+    const onError = (event: ErrorEvent) => {
+      reportFrontendError({
+        message: event.message,
+        source: event.filename || null,
+        line: event.lineno || null,
+        column: event.colno || null,
+        stack: event.error instanceof Error ? event.error.stack || null : null,
+      });
+    };
+    const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      reportFrontendError({
+        message: reason instanceof Error ? reason.message : String(reason),
+        source: "unhandledrejection",
+        line: null,
+        column: null,
+        stack: reason instanceof Error ? reason.stack || null : null,
+      });
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+    };
+  }, []);
   const [settings, setSettings] = useState<Settings>(fallbackSettings);
   const [doctor, setDoctor] = useState<DoctorSummary>(fallbackDoctor);
   const [executor, setExecutor] = useState<ExecutorState>(fallbackExecutor);
@@ -466,7 +532,6 @@ function App() {
   );
   const [runtimeSetupStatus, setRuntimeSetupStatus] =
     useState<RuntimeSetupStatus | null>(null);
-  const [renderUpdateBlocked, setRenderUpdateBlocked] = useState(false);
   const [runtimeInstallRequested, setRuntimeInstallRequested] = useState(false);
   const [settingsReady, setSettingsReady] = useState(false);
   const [appVersionReady, setAppVersionReady] = useState(false);
@@ -482,8 +547,8 @@ function App() {
   const liveLogRef = useRef<HTMLPreElement | null>(null);
   const updateCheckRunningRef = useRef(false);
   const updatePromptedRef = useRef<string | null>(null);
-  const runtimeAutoInstallKeyRef = useRef<string | null>(null);
   const runtimeInstallStartedAtRef = useRef<number | null>(null);
+  const refreshInFlightRef = useRef(false);
 
   const applyRuntimeUpdateCheck = (check: RuntimeUpdateCheck) => {
     setRuntimeVersionCheck(check);
@@ -504,70 +569,77 @@ function App() {
   async function refresh(
     options: { updateConnectionMessage?: boolean; fullDoctor?: boolean } = {},
   ) {
-    const updateConnectionMessage = options.updateConnectionMessage ?? true;
-    const doctorCommand =
-      options.fullDoctor || loopStatus.running
+    // The status poll may overlap with startup, manual actions, or a slow WSL
+    // doctor call. Overlapping refreshes used to restore the saved connection
+    // and run the full host doctor every 5 seconds, which created sustained
+    // network/WSL pressure and several thousand duplicate diagnostic events.
+    if (refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
+
+    try {
+      const updateConnectionMessage = options.updateConnectionMessage ?? true;
+      const doctorCommand = options.fullDoctor
         ? "worker_app_run_full_doctor"
         : "worker_app_run_doctor";
-    const restoredConnectionResult = invoke<SavedConnectionSession | null>(
-      "worker_app_get_saved_connection",
-    )
-      .then((connection) => ({ connection, error: null as string | null }))
-      .catch((error) => ({
-        connection: null,
-        error: formatInvokeError(error),
-      }));
-    const [
-      nextSettings,
-      nextDoctor,
-      nextExecutor,
-      nextLoopStatus,
-      restoredConnection,
-    ] = await Promise.all([
-      safeInvoke<Settings>("worker_app_get_settings", fallbackSettings),
-      safeInvoke<DoctorSummary>(doctorCommand, fallbackDoctor),
-      safeInvoke<ExecutorState>(
-        "worker_app_get_executor_state",
-        fallbackExecutor,
-      ),
-      safeInvoke<WorkerLoopStatus>(
-        "worker_app_get_worker_loop_status",
-        fallbackLoopStatus,
-      ),
-      restoredConnectionResult,
-    ]);
-    setSettings(nextSettings);
-    setRenderUpdateBlocked(
-      (current) => current || nextSettings.renderUpdateBlocked,
-    );
-    setSettingsReady(true);
-    setDoctor(nextDoctor);
-    setExecutor(nextExecutor);
-    setLoopStatus(nextLoopStatus);
+      const restoredConnectionResult = invoke<SavedConnectionSession | null>(
+        "worker_app_get_saved_connection",
+      )
+        .then((connection) => ({ connection, error: null as string | null }))
+        .catch((error) => ({
+          connection: null,
+          error: formatInvokeError(error),
+        }));
+      const [
+        nextSettings,
+        nextDoctor,
+        nextExecutor,
+        nextLoopStatus,
+        restoredConnection,
+      ] = await Promise.all([
+        safeInvoke<Settings>("worker_app_get_settings", fallbackSettings),
+        safeInvoke<DoctorSummary>(doctorCommand, fallbackDoctor),
+        safeInvoke<ExecutorState>(
+          "worker_app_get_executor_state",
+          fallbackExecutor,
+        ),
+        safeInvoke<WorkerLoopStatus>(
+          "worker_app_get_worker_loop_status",
+          fallbackLoopStatus,
+        ),
+        restoredConnectionResult,
+      ]);
+      setSettings(nextSettings);
+      setSettingsReady(true);
+      setDoctor(nextDoctor);
+      setExecutor(nextExecutor);
+      setLoopStatus(nextLoopStatus);
 
-    if (restoredConnection.error) {
-      setSavedConnection(null);
-      setConnectedWorker(null);
-      if (updateConnectionMessage) {
-        setConnectionState("error");
-        setConnectMessage(
-          `Unable to restore saved Worker App connection: ${restoredConnection.error}`,
-        );
+      if (restoredConnection.error) {
+        setSavedConnection(null);
+        setConnectedWorker(null);
+        if (updateConnectionMessage) {
+          setConnectionState("error");
+          setConnectMessage(
+            `Unable to restore saved Worker App connection: ${restoredConnection.error}`,
+          );
+        }
+        return;
       }
-      return;
-    }
 
-    setSavedConnection(restoredConnection.connection);
-    setConnectedWorker(restoredConnection.connection?.worker ?? null);
-    if (restoredConnection.connection) {
-      setConnectionState("connected");
-      if (updateConnectionMessage) {
-        setConnectMessage(
-          "Restored saved Worker App connection. Access tokens will refresh automatically.",
-        );
+      setSavedConnection(restoredConnection.connection);
+      setConnectedWorker(restoredConnection.connection?.worker ?? null);
+      if (restoredConnection.connection) {
+        setConnectionState("connected");
+        if (updateConnectionMessage) {
+          setConnectMessage(
+            "Restored saved Worker App connection. Access tokens will refresh automatically.",
+          );
+        }
+      } else if (connectionStateRef.current !== "pending") {
+        setConnectionState("not_connected");
       }
-    } else if (connectionStateRef.current !== "pending") {
-      setConnectionState("not_connected");
+    } finally {
+      refreshInFlightRef.current = false;
     }
   }
 
@@ -579,48 +651,42 @@ function App() {
     document.documentElement.lang = settings.locale === "th" ? "th" : "en";
   }, [settings.locale]);
 
-  const openManagedWslSetup = async () => {
+  const openManagedWslSetup = async (force = false) => {
     runtimeInstallStartedAtRef.current = Date.now();
     setRuntimeSetupStatus(null);
     const message = await invoke<string>(
       "worker_app_open_managed_wsl_runtime_setup",
+      { force },
     );
     setRuntimeInstallMessage(message);
     setRuntimeInstallRequested(true);
     return message;
   };
 
-  const startRuntimeInstall = async (runtimeUpdate: RuntimeUpdateCheck) => {
-    const installKey = [
-      settings.serverUrl,
-      runtimeUpdate.runtimeId,
-      runtimeUpdate.channel,
-      runtimeUpdate.latestVersion ?? "unknown",
-    ].join(":");
-    if (runtimeAutoInstallKeyRef.current === installKey) {
-      return runtimeUpdate.updateAvailable;
-    }
-
-    runtimeAutoInstallKeyRef.current = installKey;
+  const startRuntimeInstall = async (
+    runtimeUpdate: RuntimeUpdateCheck,
+    options: { force?: boolean } = {},
+  ) => {
     runtimeInstallStartedAtRef.current = Date.now();
     setRuntimeInstallError(null);
     setRuntimeUpdateCheckError(null);
     setRuntimeInstallRequested(true);
     setRuntimeInstallMessage(
-      `Downloading Worker App runtime... Installed ${runtimeUpdate.currentVersion ?? "not installed"}; latest ${runtimeUpdate.latestVersion ?? "unknown"}.`,
+      `${options.force ? "Repairing" : "Updating"} Worker App runtime... Installed ${runtimeUpdate.currentVersion ?? "not installed"}; latest ${runtimeUpdate.latestVersion ?? "unknown"}.`,
     );
 
     try {
       if (!isMacOSHost && settings.runtimeEnvironment === "managed_wsl") {
-        await openManagedWslSetup();
+        await openManagedWslSetup(Boolean(options.force));
         setRuntimeInstallMessage(
-          "Worker App runtime download and installation started automatically. Keep the setup window open; this app will verify the result and continue automatically.",
+          "Worker App runtime installation started. Keep the setup window open; this app will verify the result automatically.",
         );
         return true;
       }
 
       const result = await invoke<RuntimeInstallResult>(
         "worker_app_install_runtime_pack",
+        { force: Boolean(options.force) },
       );
       setRuntimeInstallMessage(result.message);
 
@@ -629,10 +695,6 @@ function App() {
       );
       applyRuntimeUpdateCheck(verifiedRuntime);
       const stillNeedsUpdate = verifiedRuntime.updateAvailable;
-      setRenderUpdateBlocked(stillNeedsUpdate);
-      await invoke<Settings>("worker_app_set_render_update_blocked", {
-        blocked: stillNeedsUpdate,
-      });
       if (!stillNeedsUpdate) {
         setRuntimeInstallRequested(false);
         runtimeInstallStartedAtRef.current = null;
@@ -641,20 +703,17 @@ function App() {
           fullDoctor: true,
         });
       } else {
-        runtimeAutoInstallKeyRef.current = null;
         setRuntimeInstallMessage(
-          `Worker App runtime installation finished, but version ${verifiedRuntime.currentVersion ?? "not installed"} is still below latest ${verifiedRuntime.latestVersion ?? "unknown"}.`,
+          `Worker App runtime installation finished, but the installed runtime is still not current: ${verifiedRuntime.reason}.`,
         );
       }
       return stillNeedsUpdate;
     } catch (error) {
       const message = formatInvokeError(error);
-      runtimeAutoInstallKeyRef.current = null;
       setRuntimeInstallRequested(false);
-      setRenderUpdateBlocked(true);
       setRuntimeInstallError(message);
       setRuntimeInstallMessage(
-        `Automatic Worker App runtime installation failed: ${message}`,
+        `Worker App runtime ${options.force ? "repair" : "update"} failed: ${message}`,
       );
       return true;
     }
@@ -754,30 +813,25 @@ function App() {
             "worker_app_check_runtime_update",
           );
         } catch (error) {
-          // Runtime availability is advisory, but a silent failure makes the
-          // update flow look dead. Keep the worker usable and show the reason.
-          if (!cancelled) setRuntimeUpdateCheckError(formatInvokeError(error));
+          // Runtime freshness is advisory. A network or manifest failure must
+          // not pause otherwise usable render workers.
+          if (!cancelled) {
+            const message = formatInvokeError(error);
+            setRuntimeUpdateCheckError(message);
+            setRuntimeInstallMessage(
+              `Runtime verification failed: ${message} Use Update / repair Worker runtime in the Runtime & agents tab.`,
+            );
+          }
           return;
         }
         if (cancelled) return;
         setRuntimeUpdateCheckError(null);
         applyRuntimeUpdateCheck(runtimeUpdate);
-        const runtimeUpdateRequired = runtimeUpdate.updateAvailable;
-        const shouldBlockRender =
-          runtimeUpdateRequired || (!appCheckSucceeded && renderUpdateBlocked);
-        setRenderUpdateBlocked(shouldBlockRender);
-        void invoke<Settings>("worker_app_set_render_update_blocked", {
-          blocked: shouldBlockRender,
-        })
-          .then((updatedSettings) => {
-            if (!cancelled) setSettings(updatedSettings);
-          })
-          .catch(() => undefined);
-
-        if (!runtimeUpdateRequired || !runtimeUpdate.latestVersion) return;
-
-        if (cancelled) return;
-        await startRuntimeInstall(runtimeUpdate);
+        if (runtimeUpdate.updateAvailable) {
+          setRuntimeInstallMessage(
+            `A runtime update is available (${runtimeUpdate.currentVersion ?? "not installed"} → ${runtimeUpdate.latestVersion ?? "unknown"}). Choose Update now in Runtime & agents when you are ready.`,
+          );
+        }
       } finally {
         updateCheckRunningRef.current = false;
         if (!cancelled) setStartupUpdateCheckDone(true);
@@ -796,6 +850,10 @@ function App() {
     settingsReady,
     startupUpdateCheckDone,
   ]);
+
+  // Runtime freshness is checked once at startup and again only when the user
+  // runs checks or chooses Update/Repair. It is intentionally not a polling
+  // gate for render jobs because compatible runtime versions may coexist.
 
   // Verify the RESTORED connection for real, on every launch.
   //
@@ -876,12 +934,23 @@ function App() {
     if (activeRoute === "runtime") void refreshHermesAuth();
   }, [activeRoute]);
   const [diagnosticsLogPath, setDiagnosticsLogPath] = useState<string>("");
+  const [diagnosticsExporting, setDiagnosticsExporting] = useState(false);
+  const [diagnosticsExportMessage, setDiagnosticsExportMessage] = useState("");
+  const [runtimeLogExporting, setRuntimeLogExporting] = useState(false);
+  const [runtimeLogMessage, setRuntimeLogMessage] = useState("");
   useEffect(() => {
     void safeInvoke<DiagnosticsLogLocation | null>(
       "worker_app_get_diagnostics_log",
       null,
     ).then((location) => setDiagnosticsLogPath(location?.logPath ?? ""));
   }, []);
+  useEffect(() => {
+    if (!settingsReady || isMacOSHost || settings.runtimeEnvironment !== "managed_wsl") return;
+    void safeInvoke<RuntimeSetupStatus | null>(
+      "worker_app_get_managed_wsl_runtime_setup_status",
+      null,
+    ).then((status) => setRuntimeSetupStatus(status));
+  }, [settingsReady, settings.runtimeEnvironment]);
   const openDiagnosticsLog = async () => {
     const location = await safeInvoke<DiagnosticsLogLocation | null>(
       "worker_app_get_diagnostics_log",
@@ -895,8 +964,66 @@ function App() {
       path: location.appDataDir,
     });
   };
+  const exportDiagnostics = async () => {
+    if (diagnosticsExporting) return;
+    setDiagnosticsExportMessage("");
+    setDiagnosticsExporting(true);
+    try {
+      const stamp = new Date().toISOString().replace(/[.:]/g, "-");
+      const destination = await nativeSave({
+        defaultPath: `smart-ai-hub-worker-diagnostics-${stamp}.jsonl`,
+        filters: [{ name: "Worker diagnostics", extensions: ["jsonl"] }],
+      });
+      if (!destination) return;
+      const exportedPath = await invoke<string>(
+        "worker_app_export_diagnostics",
+        { destinationPath: destination },
+      );
+      setDiagnosticsExportMessage(`Diagnostics saved to ${exportedPath}`);
+    } catch (error) {
+      setDiagnosticsExportMessage(
+        `Unable to export diagnostics: ${formatInvokeError(error)}`,
+      );
+    } finally {
+      setDiagnosticsExporting(false);
+    }
+  };
+  const openRuntimeSetupLog = async () => {
+    try {
+      const path = await invoke<string>("worker_app_open_managed_wsl_runtime_log");
+      setRuntimeLogMessage(`Opened setup log: ${path}`);
+    } catch (error) {
+      setRuntimeLogMessage(`Unable to open setup log: ${formatInvokeError(error)}`);
+    }
+  };
+  const downloadRuntimeSetupLog = async () => {
+    if (runtimeLogExporting) return;
+    setRuntimeLogMessage("");
+    setRuntimeLogExporting(true);
+    try {
+      const stamp = new Date().toISOString().replace(/[.:]/g, "-");
+      const destination = await nativeSave({
+        defaultPath: `smart-ai-hub-worker-runtime-setup-${stamp}.log`,
+        filters: [{ name: "Runtime setup log", extensions: ["log"] }],
+      });
+      if (!destination) return;
+      const exportedPath = await invoke<string>(
+        "worker_app_export_managed_wsl_runtime_log",
+        { destinationPath: destination },
+      );
+      setRuntimeLogMessage(`Runtime setup log saved to ${exportedPath}`);
+    } catch (error) {
+      setRuntimeLogMessage(
+        `Unable to export setup log: ${formatInvokeError(error)}`,
+      );
+    } finally {
+      setRuntimeLogExporting(false);
+    }
+  };
 
   const [startupActual, setStartupActual] = useState<boolean | null>(null);
+  const [startupRecoveryRequired, setStartupRecoveryRequired] = useState(false);
+  const [startupStatusReady, setStartupStatusReady] = useState(false);
   const [startupMessage, setStartupMessage] = useState<string>("");
   const refreshStartupStatus = async () => {
     const status = await safeInvoke<StartupModeStatus | null>(
@@ -905,8 +1032,10 @@ function App() {
     );
     if (status) {
       setStartupActual(status.startWithWindows);
+      setStartupRecoveryRequired(status.startupRecoveryRequired);
       setStartupMessage(status.message ?? "");
     }
+    setStartupStatusReady(true);
   };
   useEffect(() => {
     void refreshStartupStatus();
@@ -922,7 +1051,12 @@ function App() {
   const [connectionHealthStale, setConnectionHealthStale] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    const scheduleNextCheck = () => {
+    const scheduleNextCheck = (
+      delayMs =
+        connectionHealthTransientStartedAtRef.current === null
+          ? CONNECTION_HEALTH_POLL_INTERVAL_MS
+          : CONNECTION_HEALTH_RETRY_INTERVAL_MS,
+    ) => {
       if (cancelled) return;
       if (connectionHealthRetryTimerRef.current !== null) {
         window.clearTimeout(connectionHealthRetryTimerRef.current);
@@ -930,7 +1064,7 @@ function App() {
       connectionHealthRetryTimerRef.current = window.setTimeout(() => {
         connectionHealthRetryTimerRef.current = null;
         void check();
-      }, 5_000);
+      }, delayMs);
     };
     const check = async () => {
       const health = await safeInvoke<ConnectionHealth | null>(
@@ -946,7 +1080,7 @@ function App() {
       setConnectionHealthStale(false);
       setConnectionHealth(health);
       if (!health.connected) {
-        scheduleNextCheck();
+        scheduleNextCheck(CONNECTION_HEALTH_RETRY_INTERVAL_MS);
         return;
       }
       if (health.status === "transient" || health.status === "unavailable") {
@@ -979,7 +1113,10 @@ function App() {
         // De-duplicate on the reason so a persistent outage does not reopen a
         // modal every poll — only a CHANGED problem interrupts again.
         const key = `unhealthy:${health.reason ?? ""}`;
-        if (connectionHealthAlertedRef.current === key) return;
+        if (connectionHealthAlertedRef.current === key) {
+          scheduleNextCheck(CONNECTION_HEALTH_RETRY_INTERVAL_MS);
+          return;
+        }
         connectionHealthAlertedRef.current = key;
         setConnectionState("error");
         setConnectMessage(
@@ -1036,10 +1173,9 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const intervalMs = 5_000;
     const handle = window.setInterval(() => {
       void refresh({ updateConnectionMessage: false });
-    }, intervalMs);
+    }, WORKER_STATUS_REFRESH_INTERVAL_MS);
     return () => window.clearInterval(handle);
   }, [loopStatus.running]);
 
@@ -1072,18 +1208,17 @@ function App() {
   );
 
   const readinessLabel = useMemo(() => {
-    if (renderUpdateBlocked) return "Update required for render jobs";
     if (doctor.status === "ready") return "Ready for render jobs";
     if (doctor.status === "degraded") return "Needs attention";
     return "Runtime blocked";
-  }, [doctor.status, renderUpdateBlocked]);
+  }, [doctor.status]);
 
   const runtimeVersionStatus = useMemo(() => {
     if (runtimeInstallError) {
       return {
         tone: "error",
         label: "Worker App runtime installation failed",
-        detail: "Retry from the Video render tab after resolving the issue.",
+        detail: "Retry from Runtime & agents after resolving the issue.",
       };
     }
     if (runtimeInstallRequested) {
@@ -1092,29 +1227,37 @@ function App() {
         label: "Downloading Worker App runtime...",
         detail:
           runtimeInstallMessage ||
-          "The app is downloading and installing the runtime automatically.",
+          "Choose Update now in Runtime & agents to install the published runtime.",
       };
     }
     if (runtimeUpdateCheckError) {
       return {
-        tone: "error",
+        tone: "warning",
         label: "Runtime version could not be verified",
-        detail: "Run checks in the Video render tab to try again.",
+        detail:
+          "Version checking is advisory; compatible render jobs can continue. Open Runtime & agents to retry or repair the runtime.",
       };
     }
     if (!runtimeVersionCheck) {
       return {
-        tone: startupUpdateCheckDone ? "error" : "pending",
+        tone: startupUpdateCheckDone ? "warning" : "pending",
         label: startupUpdateCheckDone
           ? "Runtime version not verified"
           : "Checking runtime version...",
         detail: startupUpdateCheckDone
-          ? "The latest runtime version is unavailable right now."
+          ? "The latest runtime version is unavailable right now; compatible jobs can continue."
           : "Checking the installed runtime against the latest published version.",
       };
     }
     const installed = runtimeVersionCheck.currentVersion ?? "not installed";
     const latest = runtimeVersionCheck.latestVersion ?? "unknown";
+    if (!runtimeVersionCheck.latestAllowed) {
+      return {
+        tone: "warning",
+        label: "Latest runtime release unavailable",
+        detail: "The server has not published a latest runtime release. Existing compatible jobs can continue.",
+      };
+    }
     if (runtimeVersionCheck.updateAvailable) {
       return {
         tone: "warning",
@@ -1135,6 +1278,8 @@ function App() {
     runtimeVersionCheck,
     startupUpdateCheckDone,
   ]);
+
+  const remotionRuntimeReady = isRemotionRuntimeReady(doctor);
 
   const connectionStatus = useMemo<WorkerConnectionPresentation>(() => {
     if (connectionState === "pending") {
@@ -1201,15 +1346,14 @@ function App() {
         tone: "error",
       };
     }
-    if (renderUpdateBlocked) {
+    if (runtimeUpdateCheckError) {
       return {
-        label: "Connected · render paused",
-        detail:
-          "Access is valid. Complete the runtime update/readiness check to receive render jobs.",
+        label: "Connected · version check unavailable",
+        detail: `Runtime freshness could not be checked: ${runtimeUpdateCheckError}. Existing compatible runtime remains usable.`,
         tone: "warning",
       };
     }
-    if (loopStatus.running && executor.status === "error") {
+    if (executor.status === "error") {
       return {
         label: "Connected · worker loop error",
         detail:
@@ -1218,18 +1362,18 @@ function App() {
         tone: "error",
       };
     }
-    if (doctor.status === "ready" && loopStatus.running) {
+    if (remotionRuntimeReady && loopStatus.running) {
       return {
         label: "Ready to receive jobs",
-        detail: "Connection, runtime, and worker loop are active.",
+        detail: "Connection, Remotion runtime, and worker loop are active.",
         tone: "ready",
       };
     }
-    if (doctor.status === "ready") {
+    if (remotionRuntimeReady) {
       return {
         label: "Connected · loop stopped",
         detail:
-          "Access and runtime are valid. Start the worker loop to receive jobs.",
+          "Access and Remotion runtime are valid. Start the worker loop to receive jobs.",
         tone: "warning",
       };
     }
@@ -1245,10 +1389,11 @@ function App() {
     connectionHealthStale,
     connectionState,
     doctor.status,
+    remotionRuntimeReady,
     executor.lastMessage,
     executor.status,
     loopStatus.running,
-    renderUpdateBlocked,
+    runtimeUpdateCheckError,
     savedConnection,
   ]);
   const localizedConnectionStatus = localizeConnectionPresentation(connectionStatus, settings.locale);
@@ -1393,11 +1538,7 @@ function App() {
           }
           setConnectionState("connected");
           setConnectedWorker(result.worker ?? null);
-          setConnectMessage(
-            renderUpdateBlocked
-              ? "Connected. Render jobs remain paused until the runtime update and readiness checks pass."
-              : "Connected. This app can now receive worker jobs.",
-          );
+          setConnectMessage("Connected. This app can now receive worker jobs.");
           return;
         }
         if (
@@ -1470,17 +1611,17 @@ function App() {
         },
       );
       setLoopStatus(status);
-      setConnectMessage(
-        renderUpdateBlocked
-          ? `${status.message} Render jobs remain paused until the runtime update and readiness checks pass.`
-          : status.message,
-      );
+      setConnectMessage(status.message);
       loopTransientRetryStartedAtRef.current = null;
       if (loopTransientRetryTimerRef.current !== null) {
         window.clearTimeout(loopTransientRetryTimerRef.current);
         loopTransientRetryTimerRef.current = null;
       }
-      void refresh({ fullDoctor: status.running });
+      // Starting the loop already performs its own readiness/heartbeat pass.
+      // Do not launch a second full WSL/runtime doctor concurrently from the
+      // WebView; on Windows that can create overlapping wsl.exe processes and
+      // make a healthy Worker App look like it exited during startup.
+      void refresh();
     } catch (error) {
       const message = formatInvokeError(error);
       if (isTransientWorkerConnectionError(message)) {
@@ -1600,38 +1741,74 @@ function App() {
           "worker_app_check_runtime_update",
         );
       } catch (error) {
-        setRuntimeUpdateCheckError(formatInvokeError(error));
+        const message = formatInvokeError(error);
+        setRuntimeUpdateCheckError(message);
         setRuntimeInstallMessage(
-          `Runtime update check failed: ${formatInvokeError(error)}`,
+          `Runtime update check failed: ${message}. Existing compatible runtime can continue running.`,
         );
         return;
       }
       setRuntimeUpdateCheckError(null);
-      let runtimeUpdateRequired = nextRuntimeUpdate.updateAvailable;
       applyRuntimeUpdateCheck(nextRuntimeUpdate);
-      if (runtimeUpdateRequired) {
-        runtimeUpdateRequired = await startRuntimeInstall(nextRuntimeUpdate);
-      }
-      const shouldBlockRender =
-        runtimeUpdateRequired || (!appCheckSucceeded && renderUpdateBlocked);
-      setRenderUpdateBlocked(shouldBlockRender);
-      const updatedSettings = await invoke<Settings>(
-        "worker_app_set_render_update_blocked",
-        {
-          blocked: shouldBlockRender,
-        },
+      setRuntimeInstallRequested(false);
+      setRuntimeInstallMessage(
+        nextRuntimeUpdate.updateAvailable
+          ? `Runtime update available (${nextRuntimeUpdate.currentVersion ?? "not installed"} → ${nextRuntimeUpdate.latestVersion ?? "unknown"}). Existing compatible jobs can continue; choose Update now when convenient.`
+          : nextDoctor.status === "ready"
+            ? "Runtime check completed and render readiness checks passed."
+            : "Runtime check completed. Resolve the remaining readiness checks before rendering.",
       );
-      setSettings(updatedSettings);
-      if (!shouldBlockRender) {
-        setRuntimeInstallRequested(false);
-        setRuntimeInstallMessage(
-          nextDoctor.status === "ready"
-            ? "Runtime is current and render readiness checks passed."
-            : "Runtime version is current. Resolve the remaining readiness checks before rendering.",
-        );
-      }
     } finally {
       setDoctorRunning(false);
+    }
+  };
+
+  const repairWorkerRuntime = async () => {
+    setRuntimeInstallError(null);
+    setRuntimeUpdateCheckError(null);
+    let nextRuntimeUpdate = runtimeVersionCheck;
+    if (!nextRuntimeUpdate) {
+      try {
+        nextRuntimeUpdate = await invoke<RuntimeUpdateCheck>(
+          "worker_app_check_runtime_update",
+        );
+        applyRuntimeUpdateCheck(nextRuntimeUpdate);
+      } catch (error) {
+        const message = formatInvokeError(error);
+        setRuntimeUpdateCheckError(message);
+        setRuntimeInstallMessage(`Runtime repair check failed: ${message}`);
+        return;
+      }
+    }
+    await startRuntimeInstall(nextRuntimeUpdate, { force: true });
+  };
+
+  const updateWorkerRuntime = async () => {
+    setRuntimeInstallError(null);
+    setRuntimeUpdateCheckError(null);
+    try {
+      const nextRuntimeUpdate = await invoke<RuntimeUpdateCheck>(
+        "worker_app_check_runtime_update",
+      );
+      applyRuntimeUpdateCheck(nextRuntimeUpdate);
+      if (!nextRuntimeUpdate.updateAvailable && nextRuntimeUpdate.latestAllowed) {
+        setRuntimeInstallMessage(
+          `Runtime is already current (${nextRuntimeUpdate.currentVersion ?? "not installed"}). Use Force repair only when files may be damaged.`,
+        );
+        return;
+      }
+      if (!nextRuntimeUpdate.latestAllowed) {
+        setRuntimeInstallMessage(
+          "The server has not published an allowed runtime release yet. Existing compatible runtime can continue; run checks again after the release is published.",
+        );
+        return;
+      }
+      await startRuntimeInstall(nextRuntimeUpdate, { force: false });
+    } catch (error) {
+      const message = formatInvokeError(error);
+      setRuntimeUpdateCheckError(message);
+      setRuntimeInstallError(message);
+      setRuntimeInstallMessage(`Worker App runtime update failed: ${message}`);
     }
   };
 
@@ -1681,15 +1858,18 @@ function App() {
               );
               return;
             }
-            if (setupStatus.status === "failed") {
-              runtimeAutoInstallKeyRef.current = null;
+            if (
+              setupStatus.status === "failed" ||
+              setupStatus.status === "degraded"
+            ) {
               setRuntimeInstallRequested(false);
-              setRenderUpdateBlocked(true);
-              setRuntimeInstallError(
-                setupStatus.message || "Worker App runtime installation failed.",
-              );
+              if (setupStatus.status === "failed") {
+                setRuntimeInstallError(
+                  setupStatus.message || "Worker App runtime installation failed.",
+                );
+              }
               setRuntimeInstallMessage(
-                `Runtime installation failed. ${setupStatus.message || "Read the setup terminal and try again."}`,
+                `${setupStatus.status === "failed" ? "Runtime installation failed" : "Runtime installed with attention"}. ${setupStatus.message || "Open the setup log for details."}`,
               );
               return;
             }
@@ -1712,22 +1892,11 @@ function App() {
               : `Downloading runtime update... installed ${nextRuntimeUpdate.currentVersion ?? "not installed"}; latest ${nextRuntimeUpdate.latestVersion ?? "unknown"}.`,
           );
           if (observedSetupStatus?.status === "succeeded")
-            runtimeAutoInstallKeyRef.current = null;
-          if (observedSetupStatus?.status === "succeeded")
             setRuntimeInstallRequested(false);
           return;
         }
 
-        const shouldBlockRender = false;
-        setRenderUpdateBlocked(shouldBlockRender);
-        const updatedSettings = await invoke<Settings>(
-          "worker_app_set_render_update_blocked",
-          {
-            blocked: shouldBlockRender,
-          },
-        );
         if (cancelled) return;
-        setSettings(updatedSettings);
         setRuntimeInstallRequested(false);
         runtimeInstallStartedAtRef.current = null;
         const nextDoctor = await invoke<DoctorSummary>(
@@ -1792,15 +1961,18 @@ function App() {
     if (
       !startupUpdateCheckDone ||
       connectionState !== "connected" ||
-      !savedConnection
+      !savedConnection ||
+      !startupStatusReady ||
+      startupRecoveryRequired
     )
       return;
     void startLoop(savedConnection);
   }, [
     connectionState,
-    renderUpdateBlocked,
     savedConnection?.tokens.executionToken,
     savedConnection?.tokens.uploadToken,
+    startupRecoveryRequired,
+    startupStatusReady,
     startupUpdateCheckDone,
   ]);
 
@@ -1900,7 +2072,9 @@ function App() {
           </p>
         </div>
         <div className="hero-status-stack">
-          <div className={`readiness-pill ${doctor.status}`}>
+          <div
+            className={`readiness-pill ${doctor.status}`}
+          >
             {readinessLabel}
           </div>
           <div
@@ -1912,22 +2086,31 @@ function App() {
           </div>
         </div>
       </section>
-      {renderUpdateBlocked ? (
-        <div className="connect-message error" role="alert">
-          <strong>Worker App runtime update required.</strong>{" "}
-          {runtimeUpdate
-            ? `Latest version is ${runtimeUpdate.latestVersion ?? "unknown"}; installed version is ${runtimeUpdate.currentVersion ?? "not installed"}. The app will download it automatically.`
-            : "The app cannot prove that the Worker App runtime is current. Complete the update check before using render jobs."}
+      {runtimeUpdate?.updateAvailable ? (
+        <div className="connect-message pending" role="status">
+          <strong>Worker App runtime update available.</strong>{" "}
+          {`Installed version is ${runtimeUpdate.currentVersion ?? "not installed"}; latest is ${runtimeUpdate.latestVersion ?? "unknown"}. Existing compatible render jobs can continue.`}
+          <div className="button-row">
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => void updateWorkerRuntime()}
+              disabled={doctorRunning || runtimeInstallRequested}
+              data-testid="worker-runtime-update-overview"
+            >
+              {runtimeInstallRequested ? "Updating..." : "Update now"}
+            </button>
+          </div>
         </div>
       ) : null}
       {runtimeUpdateCheckError ? (
         <div
-          className="connect-message pending"
+          className="connect-message error"
           role="alert"
           data-testid="runtime-update-check-error"
         >
-          <strong>Worker App runtime update check incomplete.</strong>{" "}
-          {`The latest Worker App runtime could not be verified: ${runtimeUpdateCheckError} Use Run checks in the Runtime tab to try again.`}
+          <strong>Worker App runtime version check unavailable.</strong>{" "}
+          {`The latest runtime could not be verified: ${runtimeUpdateCheckError} Existing compatible runtime and render jobs can continue. Open Runtime & agents to retry or repair the runtime.`}
         </div>
       ) : null}
       {workerAppUpdate ? (
@@ -2403,6 +2586,120 @@ function App() {
           <article className="panel wide">
             <div className="panel-heading inline">
               <div>
+                <p className="eyebrow">Worker App runtime</p>
+                <h2>Runtime update &amp; repair</h2>
+              </div>
+              <span className={`status-dot ${runtimeVersionStatus.tone}`} />
+            </div>
+            <div className="readiness-card">
+              <div>
+                <strong>{runtimeVersionStatus.label}</strong>
+                <p>{runtimeVersionStatus.detail}</p>
+              </div>
+            </div>
+            <p className="subtle">
+              This runtime includes HyperFrames, browser/media tools, and the
+              bundled whisper.cpp large-v3 transcription model. Use repair when
+              files are damaged even if the installed version already matches
+              the latest release.
+            </p>
+            <div className="queue-summary" aria-label="Runtime version details">
+              <div>
+                <span>Installed version</span>
+                <strong>{runtimeVersionCheck?.currentVersion ?? "Not detected"}</strong>
+              </div>
+              <div>
+                <span>Latest published</span>
+                <strong>{runtimeVersionCheck?.latestVersion ?? "Unknown"}</strong>
+              </div>
+              <div>
+                <span>Last checked</span>
+                <strong>
+                  {runtimeVersionCheck?.checkedAt
+                    ? new Date(runtimeVersionCheck.checkedAt).toLocaleString()
+                    : "Not checked"}
+                </strong>
+              </div>
+            </div>
+            {runtimeVersionCheck?.reason ? (
+              <p className="subtle">
+                Check result: <strong>{runtimeVersionCheck.reason}</strong>
+                {runtimeVersionCheck.latestRuntimeProfileHash && runtimeVersionCheck.currentRuntimeProfileHash && runtimeVersionCheck.latestRuntimeProfileHash !== runtimeVersionCheck.currentRuntimeProfileHash
+                  ? " · Runtime profile changed"
+                  : ""}
+              </p>
+            ) : null}
+            <div className="button-row">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => void runDoctorChecks()}
+                disabled={doctorRunning || runtimeInstallRequested}
+                data-testid="worker-runtime-check"
+              >
+                {doctorRunning ? "Checking..." : "Run runtime checks"}
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => void updateWorkerRuntime()}
+                disabled={doctorRunning || runtimeInstallRequested}
+                data-testid="worker-runtime-update"
+              >
+                {runtimeInstallRequested
+                  ? "Updating..."
+                  : "Update now"}
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => void repairWorkerRuntime()}
+                disabled={doctorRunning || runtimeInstallRequested}
+                data-testid="worker-runtime-force-repair"
+              >
+                {runtimeInstallRequested ? "Working..." : "Force repair"}
+              </button>
+            </div>
+            {runtimeInstallError || runtimeUpdateCheckError ? (
+              <p className="connect-message error" role="alert">
+                {runtimeInstallError || runtimeUpdateCheckError}
+              </p>
+            ) : null}
+            {runtimeInstallMessage ? (
+              <p className="connect-message">{runtimeInstallMessage}</p>
+            ) : null}
+            {runtimeSetupStatus?.logPath ? (
+              <>
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => void openRuntimeSetupLog()}
+                  >
+                    Open setup log
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => void downloadRuntimeSetupLog()}
+                    disabled={runtimeLogExporting}
+                  >
+                    {runtimeLogExporting ? "Preparing log..." : "Download setup log"}
+                  </button>
+                </div>
+                <p className="field-help">
+                  Setup status: {runtimeSetupStatus.status}. The log records the
+                  exact download, verification, extraction, and dependency step
+                  that failed. It is kept locally and is never uploaded automatically.
+                  {runtimeLogMessage ? <><br />{runtimeLogMessage}</> : null}
+                </p>
+              </>
+            ) : null}
+          </article>
+
+          <article className="panel wide">
+            <div className="panel-heading inline">
+              <div>
                 <p className="eyebrow">Hermes agent</p>
                 <h2>Interactive terminal &amp; sign-in</h2>
               </div>
@@ -2757,6 +3054,27 @@ function App() {
                     : startupMessage}
                 </p>
               ) : null}
+              <label>
+                Diagnostics level
+                <select
+                  value={settings.diagnosticsLevel}
+                  onChange={(event) =>
+                    void saveSettings({
+                      diagnosticsLevel: event.target
+                        .value as Settings["diagnosticsLevel"],
+                    })
+                  }
+                >
+                  <option value="errors">Errors only</option>
+                  <option value="standard">Standard</option>
+                  <option value="verbose">Verbose</option>
+                </select>
+                <span className="field-help">
+                  Standard is recommended. Verbose records more runtime and
+                  worker lifecycle detail, but may create larger local logs.
+                  Credentials and private keys are redacted.
+                </span>
+              </label>
               {!isMacOSHost ? (
                 <>
                   <label>
@@ -2856,19 +3174,33 @@ function App() {
                   className="secondary-button"
                   onClick={() => void openDiagnosticsLog()}
                 >
-                  Open diagnostics log
+                  Open log folder
+                </button>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => void exportDiagnostics()}
+                  disabled={diagnosticsExporting}
+                  style={{ marginLeft: "8px" }}
+                >
+                  {diagnosticsExporting ? "Preparing diagnostics..." : "Download diagnostics"}
                 </button>
               </div>
               <p className="field-help">
-                Every run appends to <code>worker-diagnostics.jsonl</code>: app
-                start, sign-in autostart state, each token refresh and its
-                verdict, and every error. Attach this file when reporting a
-                connection problem — it records what happened before the
-                failure, which the on-screen message cannot.
+                Download creates one local JSONL file containing the current
+                log and rotated history. Nothing is uploaded automatically.
+                Attach that file when reporting a problem; it records what
+                happened before the failure, which the on-screen message cannot.
                 {diagnosticsLogPath ? (
                   <>
                     <br />
                     {diagnosticsLogPath}
+                  </>
+                ) : null}
+                {diagnosticsExportMessage ? (
+                  <>
+                    <br />
+                    {diagnosticsExportMessage}
                   </>
                 ) : null}
               </p>

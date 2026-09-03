@@ -1,82 +1,106 @@
 # Review Findings
 
-## Round 1
+This file records the ten required production-readiness review rounds for the current local Beta audit.
 
-- reviewed_files: `AuthenticatedMediaImage.tsx`, `AuthenticatedMediaImage.test.tsx`, `DocumentGridList.tsx`, `DocumentGridList.test.tsx`, `DocumentPreviewPanel.tsx`
-- findings: no MUST_FIX findings in the focused repair; tenant-safe storage proxy was not weakened
-- focused_gate: 20/20 relevant Vitest tests passed
-- formatting_gate: `git diff --check` passed; Prettier reports pre-existing formatting differences in the touched Library files, with no required functional issue identified
-- deferred: full `apps/web` typecheck timed out at 90 seconds without output; authenticated production browser waterfall, DB row 921, and R2 byte-range replay were not available
-- stop_reason: focused repair complete with evidence boundaries recorded
+## Audit target
 
-## Current task: Feedback Hub image zoom and alert navigation
+- Feature: Vertical Drama Enhanced video-prompt authoring (Feature 173)
+- Runtime target: local Debian Linux Beta; cloud/Docker packaging is future work
+- Preservation rule: existing Legacy prompt generation, projection, render selection,
+  callbacks, and credit behavior remain unchanged
+- Discovery note: SocratiCode was not exposed in this session; bounded `rg`, file
+  reads, focused tests, and local runtime commands were used as the fallback
 
-### Targeted review round 1
+## Ten review rounds
 
-- reviewed_files: `GlobalAlerts.tsx`, `GlobalAlerts.notificationBell.test.tsx`,
-  `AdminFeedbackHub.tsx`, `FeedbackLightboxZoomControls.tsx`,
-  `feedbackHubZoom.ts`, `feedbackHubNavigation.ts`, and their focused tests
-- findings: no MUST_FIX findings after correcting the navigation callback
-  dependency and the stale test description; internal URLs retain the
-  authenticated current-tab context, external safe URLs retain new-tab behavior,
-  and protected image rendering remains on `AuthenticatedAttachmentImage`
-- focused_gate: 35/35 Vitest tests passed
-- build_gate: `npm --workspace apps/web run build` passed
-- diff_gate: `git diff --check` passed
-- deferred: full typecheck is baseline-red in unrelated modules and the existing
-  reply upload callback line; authenticated browser replay was unavailable
-- stop_reason: requested local implementation complete with focused proof and
-  residual evidence boundaries recorded
+| Round | Boundary reviewed | Result | Evidence / disposition |
+|---:|---|---|---|
+| 1 | Spec coverage and Legacy isolation | PASS | Spec confirms separate image/authoring/video model roles, no silent fallback, and Legacy preservation. Enhanced changes remain additive and flag-gated. |
+| 2 | Debian local runtime and installation | PASS | Debian 13, Node 22.22.3, npm 10.9.8, Python 3.13.5, uv 0.9.28; isolated `uv sync --frozen --no-dev` is present and usable. No Enhanced setting is read from `.env`. |
+| 3 | Skill manifest, schema, bridge, and output integrity | CLOSED + PASS | Fixed the bridge stage-input ordering bug that read `result` before assignment. Bridge now validates bounded output, SDK/adapter/skill versions, and terminal prompt hash. Health and v11 regression checks pass. |
+| 4 | Backend API, auth, and tenant scope | PASS | Enhanced procedures require tenant context, load owner-scoped episode data, resolve provider credentials server-side, and keep Agent input plan-only. No browser-controlled tenant/provider/credit authority is accepted. |
+| 5 | Model capability and provider routing | PASS | Image model, authoring model, and exact video target model remain separate. Enhanced pins the server-resolved target capability/provider profile and disallows cross-provider fallback. |
+| 6 | Persistence, CAS, stale state, and Legacy compatibility | CLOSED + PASS | Added expected-revision CAS for Enhanced edit/finalize/apply paths and passed current model/media fingerprints to apply validation. Legacy projection remains the existing clip prompt when Enhanced UI is disabled. |
+| 7 | Jobs, idempotency, concurrency, and retry behavior | CLOSED + PASS | Fixed the active-job key so Legacy and Enhanced cannot overlap for the same shot; retained compatibility with pre-fix variant-scoped keys. Job retry/recovery tests pass. |
+| 8 | Frontend flags, UI states, and accessibility | CLOSED + PASS | Enhanced controls/polling are disabled when the UI flag is off; an already-active Enhanced projection remains readable with a non-interactive provenance status. Existing storyboard/reference-frame tests pass under jsdom. |
+| 9 | Security, secrets, subprocess, and tool boundary | CLOSED + PASS | Fixed Agents SDK tool allow-list propagation; Enhanced defaults to no research/cost tool and only admits authorized asset/provider evidence. Child process receives provider secret through runtime env, not prompt/JSON output. |
+| 10 | Observability, release gate, and final convergence | PASS WITH RELEASE GATES | Package validator, bridge health, Python compile/runtime checks, 54 focused web tests, and `git diff --check` pass. Live provider, authenticated browser, Redis/DB settlement, deployment, and full-worktree typecheck remain unverified external/baseline gates. |
 
-### Targeted repair round 2
+## Gap disposition
 
-- reported_regression: clicking `+` caused the lightbox content to move
-  downward instead of visibly zooming in
-- root_cause: zoom controls were positioned inside the `overflow-auto` image
-  viewport, so focus/reflow interacted with the scrollable content
-- repair: moved `FeedbackLightboxZoomControls` to the fixed Dialog overlay
-  layer while keeping only the image/navigation content scrollable
-- verification: focused suite 35/35 passed; production build passed; targeted
-  Prettier and `git diff --check` passed
-- remaining_boundary: authenticated browser replay is still unavailable, so
-  real visual pan/zoom must be smoke-tested in the admin route
+### Closed in this audit
 
-### Targeted repair round 3
+- Bridge runtime no longer fails on the pre-result `audioDirection` reference.
+- Agent SDK tool flags are enforced by the actual tool list.
+- Enhanced output is fail-closed when provenance/hash/version fields are invalid.
+- Cross-variant shot job overlap is rejected.
+- Enhanced UI kill-switch no longer hides the active prompt or accidentally exposes
+  editing/apply controls.
+- Enhanced mutation paths use revision and current model/media CAS checks.
 
-- reported_regression: after the first repair, the 150% indicator changed but
-  the screenshot stayed near its original size and appeared at the bottom of
-  the scroll area
-- root_cause: `object-contain` plus `h-full w-full` allowed the image to keep
-  fitting its flex layout even when only the surrounding wrapper was enlarged;
-  the overflow viewport also retained browser scroll anchoring
-- repair: apply the zoomed pixel dimensions directly to the authenticated
-  `<img>`, disable its max-size constraint, align enlarged content from the
-  viewport origin, and set `overflow-anchor: none`
-- verification: focused suite 35/35 passed; production build passed; new image
-  sizing helper coverage passed; targeted Prettier and `git diff --check` passed
-- remaining_boundary: authenticated browser replay is still unavailable
+### Required before paid Production certification
 
-### Targeted repair round 5
+- Run a real authenticated browser matrix with all combinations of platform runtime,
+  tenant UI/jobs/apply flags, Legacy/Enhanced active variants, and stale conflict UI.
+- Run a controlled live provider call with a test tenant and verify token settlement,
+  refund/retry behavior, Redis availability, and durable DB persistence.
+- Replace the current check-then-deduct Enhanced billing path with the existing
+  reservation/settlement ledger pattern, including queued-timeout and worker-failure
+  refunds. This is deliberately not patched blindly because it crosses shared credit
+  accounting and requires integration proof.
+- Resolve the existing full-worktree typecheck failures and run the production build
+  in a clean branch/worktree; the current workspace contains unrelated dirty changes.
 
-- reported_regression: clicking the visible `New Feedback` notification row
-  did not navigate to the ticket; it only opened an in-bell detail state
-- root_cause: row click handled read marking and detail expansion, while the
-  resolved feedback action URL was used only by a secondary action button
-- repair: feedback notification rows now resolve the ticket target and route
-  directly in the current tab; non-feedback notification rows retain detail
-  expansion behavior
-- verification: GlobalAlerts suite 32/32 passed; combined focused suite 36/36
-  passed; production build and diff/format checks passed
-- remaining_boundary: authenticated production browser replay is still unavailable
+### Safely deferred
 
-### Targeted repair round 4
+- Docker/Cloud deployment packaging and cloud runtime proof; they are not the current
+  Local Debian Beta gate.
+- Optional bounded research mode until an admitted research implementation and source
+  provenance contract are enabled.
+- A database uniqueness migration for concurrent system-setting writes, unless the
+  admin settings table is promoted to multi-admin production use.
 
-- reported_requirement: viewer must use the desktop width, zoom in smaller
-  increments, and support moving across the complete enlarged screenshot
-- repair: enabled the UI library's `fullscreen` Dialog mode, changed zoom to
-  25% increments, and added pointer drag pan with native scrollbar fallback;
-  image/index changes reset the viewport to the origin
-- verification: focused suite 35/35 passed; production build passed; full
-  typecheck still reports the pre-existing mixed-worktree errors and the
-  existing reply-upload implicit-any in `AdminFeedbackHub.tsx`
-- remaining_boundary: authenticated production browser replay is still unavailable
+## Final verdict
+
+Local Debian Beta readiness is materially improved and the Enhanced path is safe to
+exercise only when its UI, tenant, job, and runtime gates are explicitly enabled. The
+Legacy path is preserved. The feature is not certified as paid cloud/Production-ready
+until the required live browser/provider/billing/clean-build gates above are completed.
+
+## Follow-up five-round audit (2026-09-02)
+
+| Round | Boundary reviewed | Result | Evidence / disposition |
+|---:|---|---|---|
+| 1 | Feature spec, capability schema, static catalog, seed, migration | PASS | Grok profile is consistent: `reference-to-video`, unified `image_urls`, Start Frame consumes one slot, max seven images. |
+| 2 | Local Debian runtime, DB row, service health | PASS | Local DB row matches the profile and `smartspec-web.service` is active with `/healthz` OK. |
+| 3 | Enhanced/Legacy UX and readiness diagnostics | CLOSED + PASS | Replaced the generic visible `Enhanced unavailable` status with actionable localized blocker labels. Legacy callback/render path was not changed. |
+| 4 | Focused application regression | PASS | 8 files / 69 tests passed with jsdom, including capability, transport ordering, Enhanced readiness, Legacy/Enhanced UI, reference and stop-frame tests. |
+| 5 | Skill, formatting, startup, and workspace gates | PASS WITH BASELINE GATES | v11 (10), Grok (22), Python syntax, new-test formatting, diff check, restart and healthz passed. `audit-skills.sh` reports pre-existing runtime artifacts; full typecheck reports existing unrelated workspace errors. |
+
+### Additional startup gap closed
+
+The post-fix restart exposed a real local startup failure: `verticalDramaObjectReferences.ts`
+imported `buildObjectReferencePrompt` from `drizzle/schema`, although the function is
+exported by the shared object-reference contract. The import was corrected. A subsequent
+restart completed successfully and the health endpoint passed. This was required to keep
+the local Beta service usable; no Legacy prompt behavior was modified.
+
+### Post-fix convergence
+
+Two consecutive clean verification rounds completed after the repairs. The remaining
+journal lines from the failed pre-fix restart are historical; the current service is
+active and no new startup failure is present after the corrected restart.
+
+## Episode 256 readiness diagnosis (2026-09-02)
+
+- Confirmed blocker: persisted storyboard uses `shot_number`; Enhanced readiness
+  previously searched only `shotNumber`, making every shot appear to have missing
+  required storyboard data.
+- Not the blocker: Episode 256 has an approved Start Frame plan and ready image
+  assets, Legacy motion prompts exist, all three tenant Enhanced flags are true,
+  and infrastructure settings contain enabled runtime, selected authoring model,
+  approved SDK, adapter, and manifest values.
+- Closed: `normalizeEnhancedStoryboardShot` now accepts both persisted shapes and
+  maps the provider-shaped fields needed by Enhanced canonical context.
+- Verification: 3 files / 20 tests passed, `git diff --check` passed, local Node
+  service restarted successfully, and healthz passed.

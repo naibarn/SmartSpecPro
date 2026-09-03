@@ -34,6 +34,19 @@ function invokeJsonRoute(routePath: string) {
   return payload;
 }
 
+async function invokeJsonRouteAsync(routePath: string) {
+  const handler = getRouteHandler(routePath);
+  if (!handler) return null;
+  let payload: any = null;
+  const res = {
+    setHeader: () => undefined,
+    status: () => res,
+    json: (value: any) => { payload = value; return res; },
+  };
+  await handler({}, res);
+  return payload;
+}
+
 describe("SmartAIHub Companion public releases", () => {
   it("registers canonical and legacy latest/download routes", () => {
     expect(getRouteHandler("/companion-extension/latest")).toBeTypeOf("function");
@@ -77,5 +90,23 @@ describe("SmartAIHub Companion public releases", () => {
 
     expect(invokeJsonRoute("/companion-extension/latest")?.release?.fileName)
       .toBe("smartaihub-companion-extension-9.9.9.zip");
+  });
+});
+
+describe("SmartAIHub Worker App public releases", () => {
+  it("selects the highest static installer while the release catalog is unavailable", async () => {
+    const releaseDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-app-release-test-"));
+    temporaryDirs.push(releaseDir);
+    fs.writeFileSync(path.join(releaseDir, "smart-ai-hub-worker-app-0.1.208-x64-setup.exe"), "old");
+    fs.writeFileSync(path.join(releaseDir, "smart-ai-hub-worker-app-0.1.211-x64-setup.exe"), "current");
+    process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR = releaseDir;
+
+    const payload = await invokeJsonRouteAsync("/worker-app/latest");
+
+    expect(payload?.release).toMatchObject({
+      version: "0.1.211",
+      fileName: "smart-ai-hub-worker-app-0.1.211-x64-setup.exe",
+      downloadUrl: "/api/desktop-releases/worker-app/download",
+    });
   });
 });

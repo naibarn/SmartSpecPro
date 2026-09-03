@@ -56,6 +56,8 @@ pub struct WorkerHeartbeatPayload {
     pub queue_depth: u32,
     pub free_disk_bytes: Option<u64>,
     #[serde(default)]
+    pub active_job_ids: Vec<String>,
+    #[serde(default)]
     pub metrics_json: Value,
     #[serde(default)]
     pub warnings_json: Vec<String>,
@@ -159,6 +161,7 @@ pub fn build_worker_heartbeat_payload(
     status: &str,
     current_job_count: u32,
     queue_depth: u32,
+    active_job_ids: Vec<String>,
     warnings_json: Vec<String>,
     runtime_metadata_json: Value,
 ) -> WorkerHeartbeatPayload {
@@ -174,6 +177,7 @@ pub fn build_worker_heartbeat_payload(
         current_job_count,
         queue_depth,
         free_disk_bytes: None,
+        active_job_ids,
         metrics_json: serde_json::json!({}),
         warnings_json,
         runtime_metadata_json,
@@ -275,18 +279,12 @@ pub async fn upload_worker_artifact_file(
     let size_bytes = std::fs::metadata(&absolute_path)
         .map_err(|error| format!("failed to stat artifact: {error}"))?
         .len();
-    let mut file = std::fs::File::open(&absolute_path)
-        .map_err(|error| format!("failed to open artifact: {error}"))?;
-    let mut digest = Sha256::new();
-    let mut buffer = [0_u8; 1024 * 1024];
-    loop {
-        let read = file
-            .read(&mut buffer)
-            .map_err(|error| format!("failed to read artifact: {error}"))?;
-        if read == 0 { break; }
-        digest.update(&buffer[..read]);
-    }
-    let checksum_sha256 = format!("{:x}", digest.finalize());
+    // Keep the hashing buffer out of this async state machine. A fixed 1 MiB
+    // stack array here made every render-job future exceed 1 MiB and caused a
+    // process-level stack overflow on Windows as soon as the worker loop was
+    // polled. The helper also owns a heap-backed buffer so hashing large
+    // artifacts does not consume the worker thread stack.
+    let checksum_sha256 = sha256_file(&absolute_path)?;
 
     let init: WorkerArtifactInitResponse = post_json(
         connection,
@@ -546,7 +544,11 @@ pub async fn download_worker_file(
 ) -> Result<(u64, String), String> {
     let url = join_url(server_url, path)?;
     let proof_headers = build_device_proof_headers(
-        "GET", path, bearer_token, &serde_json::json!({}), device_proof,
+        "GET",
+        path,
+        bearer_token,
+        &serde_json::json!({}),
+        device_proof,
     )?;
     let client = reqwest::Client::builder()
         .timeout(Duration::from_millis(ARTIFACT_UPLOAD_TIMEOUT_MS))
@@ -554,34 +556,54 @@ pub async fn download_worker_file(
         .map_err(|error| format!("failed to build worker media client: {error}"))?;
     let mut request = client
         .get(url)
-        .header("Accept", "video/mp4,video/webm,video/quicktime,application/octet-stream")
+        .header(
+            "Accept",
+            "video/mp4,video/webm,video/quicktime,application/octet-stream",
+        )
         .header("User-Agent", "SmartAIHub-Worker-App/0.1")
         .bearer_auth(bearer_token.trim());
     for (name, value) in proof_headers {
         request = request.header(name, value);
     }
-    let mut response = request.send().await.map_err(|error| format!("worker media input request failed: {error}"))?;
+    let mut response = request
+        .send()
+        .await
+        .map_err(|error| format!("worker media input request failed: {error}"))?;
     if !response.status().is_success() {
-        return Err(format!("worker media input returned HTTP {}", response.status()));
+        return Err(format!(
+            "worker media input returned HTTP {}",
+            response.status()
+        ));
     }
-    if response.content_length().is_some_and(|length| length > max_bytes) {
+    if response
+        .content_length()
+        .is_some_and(|length| length > max_bytes)
+    {
         return Err("unsupported_media".into());
     }
     if let Some(parent) = destination.parent() {
-        std::fs::create_dir_all(parent).map_err(|error| format!("footage_workspace_failed: {error}"))?;
+        std::fs::create_dir_all(parent)
+            .map_err(|error| format!("footage_workspace_failed: {error}"))?;
     }
-    let mut file = File::create(destination).map_err(|error| format!("footage_source_write_failed: {error}"))?;
+    let mut file = File::create(destination)
+        .map_err(|error| format!("footage_source_write_failed: {error}"))?;
     let mut digest = Sha256::new();
     let mut total = 0u64;
-    while let Some(chunk) = response.chunk().await.map_err(|error| format!("worker media input body failed: {error}"))? {
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|error| format!("worker media input body failed: {error}"))?
+    {
         total = total.saturating_add(chunk.len() as u64);
         if total > max_bytes {
             return Err("unsupported_media".into());
         }
-        file.write_all(&chunk).map_err(|error| format!("footage_source_write_failed: {error}"))?;
+        file.write_all(&chunk)
+            .map_err(|error| format!("footage_source_write_failed: {error}"))?;
         digest.update(&chunk);
     }
-    file.flush().map_err(|error| format!("footage_source_write_failed: {error}"))?;
+    file.flush()
+        .map_err(|error| format!("footage_source_write_failed: {error}"))?;
     Ok((total, format!("{:x}", digest.finalize())))
 }
 
@@ -846,6 +868,23 @@ fn require_file(path: &Path) -> Result<PathBuf, String> {
     path.canonicalize().map_err(|error| error.to_string())
 }
 
+fn sha256_file(path: &Path) -> Result<String, String> {
+    let mut file =
+        std::fs::File::open(path).map_err(|error| format!("failed to open artifact: {error}"))?;
+    let mut digest = Sha256::new();
+    let mut buffer = vec![0_u8; 1024 * 1024];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .map_err(|error| format!("failed to read artifact: {error}"))?;
+        if read == 0 {
+            break;
+        }
+        digest.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", digest.finalize()))
+}
+
 fn sha256_hex(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
@@ -926,12 +965,56 @@ mod tests {
     use crate::credentials::ensure_device_proof_material;
 
     #[test]
+    fn artifact_upload_future_stays_small_enough_for_windows_worker_threads() {
+        let connection = WorkerLoopConnection {
+            server_url: "https://example.com".into(),
+            worker_id: "worker-1".into(),
+            worker_label: "Worker 1".into(),
+            tokens: WorkerApiTokens {
+                execution_token: "execution-token".into(),
+                upload_token: "upload-token".into(),
+            },
+            device_proof: empty_device_proof(),
+        };
+        let future = upload_worker_artifact_file(
+            &connection,
+            "job-1",
+            "final_video",
+            Path::new("unused.mp4"),
+            "output.mp4",
+            "video/mp4",
+            "lease-1",
+            "attempt-1",
+            Value::Null,
+        );
+
+        assert!(
+            std::mem::size_of_val(&future) < 64 * 1024,
+            "artifact upload future unexpectedly grew to {} bytes",
+            std::mem::size_of_val(&future)
+        );
+    }
+
+    #[test]
+    fn sha256_file_hashes_with_heap_backed_buffer() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("artifact.bin");
+        std::fs::write(&path, b"Smart AI Hub").unwrap();
+
+        assert_eq!(
+            sha256_file(&path).unwrap(),
+            "5b33934eb21b484cae468bcc370ae0cef64b292a381a00801ee0c4920a658849"
+        );
+    }
+
+    #[test]
     fn heartbeat_payload_uses_worker_protocol_contract() {
         let payload = build_worker_heartbeat_payload(
             "0.1.0",
             "online",
             0,
             2,
+            vec!["job-1".into()],
             vec!["runtime blocked".into()],
             serde_json::json!({ "doctorStatus": "blocked" }),
         );
@@ -942,6 +1025,7 @@ mod tests {
             WORKER_APP_PROTOCOL_VERSION
         );
         assert_eq!(payload.queue_depth, 2);
+        assert_eq!(payload.active_job_ids, vec!["job-1"]);
         assert_eq!(payload.warnings_json, vec!["runtime blocked"]);
         assert_eq!(payload.runtime_metadata_json["doctorStatus"], "blocked");
     }

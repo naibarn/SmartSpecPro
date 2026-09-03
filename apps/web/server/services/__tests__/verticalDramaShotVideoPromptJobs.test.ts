@@ -116,6 +116,55 @@ describe("vertical drama shot video prompt queue", () => {
     expect(enqueueBullmqJob).toHaveBeenCalledOnce();
   });
 
+  it("blocks a Legacy/Enhanced overlap for the same shot", async () => {
+    const redis = makeFakeRedis();
+    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
+    await enqueueVerticalDramaShotVideoPromptJob(payload(), {
+      redis,
+      enqueueBullmqJob,
+    });
+
+    await expect(
+      enqueueVerticalDramaShotVideoPromptJob(
+        payload({
+          variantId: "enhanced",
+          input: {
+            ...payload().input,
+            variantId: "enhanced",
+            idempotencyKey: "enhanced-1",
+          },
+        }),
+        { redis, enqueueBullmqJob },
+      ),
+    ).rejects.toBeInstanceOf(VerticalDramaShotVideoPromptConflictError);
+    expect(enqueueBullmqJob).toHaveBeenCalledOnce();
+  });
+
+  it("reads legacy records that stored Enhanced only inside input", async () => {
+    const redis = makeFakeRedis();
+    const submitted = await enqueueVerticalDramaShotVideoPromptJob(
+      payload({
+        input: {
+          ...payload().input,
+          variantId: "enhanced",
+          idempotencyKey: "old-enhanced-record",
+        },
+      }),
+      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
+    );
+
+    await expect(
+      getVerticalDramaShotVideoPromptJobStatus(
+        submitted.jobId,
+        { ...owner, variantId: "enhanced" },
+        { redis },
+      ),
+    ).resolves.toMatchObject({
+      jobId: submitted.jobId,
+      variantId: "enhanced",
+    });
+  });
+
   it("keeps different shots in one episode queued in sequence", async () => {
     const redis = makeFakeRedis();
     const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);

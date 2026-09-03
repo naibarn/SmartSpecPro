@@ -3,7 +3,7 @@
  * (planning/vd-video-prompt-model-family-quality/plan.md) coverage for
  * `VerticalDramaStoryboardPanel.tsx`: the storyboard video-prompt card shows
  * a small outline badge naming which model family (`grok`/`veo`/`seedance`/
- * `other`) a clip's video prompt was generated for (`clip.promptModelTarget`,
+ * `gemini_omni`/`other`) a clip's video prompt was generated for (`clip.promptModelTarget`,
  * stamped server-side), plus an amber mismatch warning when the currently-
  * selected video model resolves to a different family. Legacy clips without
  * `promptModelTarget` show neither.
@@ -27,6 +27,14 @@ const GROK_MODEL = {
   name: "Grok Imagine Video 1.5",
   type: "video",
   provider: "hermes_grok",
+};
+
+const OMNI_MODEL = {
+  id: "gemini-omni-flash-1-1",
+  modelId: "gemini-omni-flash-1-1",
+  name: "Gemini Omni Flash 1.1",
+  type: "video",
+  provider: "kie.ai",
 };
 
 function baseProps(overrides: Record<string, unknown> = {}) {
@@ -113,6 +121,41 @@ describe("VerticalDramaStoryboardPanel — video prompt model-family badge + mis
     );
     expect(mismatch.textContent).toContain("Veo");
     expect(mismatch.textContent).toContain("Grok");
+  });
+
+  it("recognizes an early Omni clip stamped as other without rewriting the persisted prompt", async () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          videoModels: [OMNI_MODEL],
+          selectedVideoModelId: OMNI_MODEL.modelId,
+          onSelectVideoModel: vi.fn(),
+          motionPromptPack: {
+            clips: [
+              {
+                clipNumber: 1,
+                sourceShotNumbers: [1],
+                prompt: "A continuous close-up move.",
+                promptModelTarget: {
+                  family: "other",
+                  modelId: OMNI_MODEL.modelId,
+                  modelName: OMNI_MODEL.name,
+                  generatedAt: "2026-09-01T00:00:00.000Z",
+                },
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+
+    const badge = await screen.findByTestId(
+      "vd-storyboard-video-prompt-1-model-family"
+    );
+    expect(badge.textContent).toBe("Gemini Omni");
+    expect(
+      screen.queryByTestId("vd-storyboard-video-prompt-1-model-mismatch")
+    ).not.toBeInTheDocument();
   });
 
   it("renders neither the family badge nor the mismatch warning when the clip has no promptModelTarget (legacy clip)", async () => {

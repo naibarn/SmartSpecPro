@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SmartAIHub Companion",
-  "version": "0.1.138",
+  "version": "0.1.140",
   "description": "Connect SmartAIHub capture, production, storyboard, drama, local AI, and supported browser workflows.",
   "permissions": [
     "activeTab",

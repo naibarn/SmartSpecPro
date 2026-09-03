@@ -36,6 +36,8 @@ export interface VerticalDramaShotVideoPromptJobInput {
   additionalImageUrls?: string[];
   qualityLoop?: boolean;
   idempotencyKey?: string;
+  /** Additive variant partition; omitted means the existing Legacy job. */
+  variantId?: "legacy" | "enhanced";
 }
 
 export interface VerticalDramaShotVideoPromptJobOwner {
@@ -44,10 +46,12 @@ export interface VerticalDramaShotVideoPromptJobOwner {
   seriesId: number;
   episodeId: number;
   shotNumber: number;
+  variantId?: "legacy" | "enhanced";
 }
 
 export interface VerticalDramaShotVideoPromptJobResult {
   prompt: string;
+  negativeMotionPrompt?: string;
   dialogue?: unknown;
   creditsUsed: number;
   usedVision: boolean;
@@ -56,6 +60,8 @@ export interface VerticalDramaShotVideoPromptJobResult {
   promptQuality?: unknown;
   /** Non-blocking policy advisories retained for the prompt review surface. */
   safetyWarnings?: string[];
+  variantId?: "legacy" | "enhanced";
+  enhancedVariant?: unknown;
 }
 
 export interface VerticalDramaShotVideoPromptJobPayload extends VerticalDramaShotVideoPromptJobOwner {
@@ -77,6 +83,7 @@ export interface VerticalDramaShotVideoPromptJobRecord extends VerticalDramaShot
 export interface VerticalDramaShotVideoPromptJobSummary {
   jobId: string;
   shotNumber: number;
+  variantId?: "legacy" | "enhanced";
   status: VerticalDramaShotVideoPromptJobStatus;
   result: VerticalDramaShotVideoPromptJobResult | null;
   error: string | null;
@@ -186,7 +193,13 @@ function recordKey(jobId: string): string {
   return `vd:shot-video-prompt-job:${jobId}`;
 }
 
-function activePointerKey(owner: VerticalDramaShotVideoPromptJobOwner): string {
+/** One active prompt-authoring job is allowed per shot, across both variants. */
+function activePointerKey(
+  owner: Pick<
+    VerticalDramaShotVideoPromptJobOwner,
+    "tenantId" | "userId" | "seriesId" | "episodeId" | "shotNumber"
+  >
+): string {
   return [
     "vd:shot-video-prompt-job:active",
     owner.tenantId,
@@ -194,6 +207,21 @@ function activePointerKey(owner: VerticalDramaShotVideoPromptJobOwner): string {
     owner.seriesId,
     owner.episodeId,
     owner.shotNumber,
+  ].join(":");
+}
+
+/** Compatibility key for records written before the cross-variant lock. */
+function variantScopedActivePointerKey(
+  owner: VerticalDramaShotVideoPromptJobOwner
+): string {
+  return [
+    "vd:shot-video-prompt-job:active",
+    owner.tenantId,
+    owner.userId,
+    owner.seriesId,
+    owner.episodeId,
+    owner.shotNumber,
+    owner.variantId ?? "legacy",
   ].join(":");
 }
 
@@ -246,6 +274,7 @@ function idempotencyPointerKey(
     owner.seriesId,
     owner.episodeId,
     owner.shotNumber,
+    owner.variantId ?? "legacy",
     digest,
   ].join(":");
 }
@@ -262,8 +291,20 @@ function requestFingerprint(
     attachShotImage: input.attachShotImage ?? true,
     additionalImageUrls: input.additionalImageUrls ?? [],
     qualityLoop: input.qualityLoop ?? null,
+    variantId: input.variantId ?? "legacy",
   });
   return createHash("sha256").update(canonical).digest("hex");
+}
+
+/**
+ * Enhanced jobs created before variantId was promoted to the job owner were
+ * persisted with the variant only inside input. Keep those records readable
+ * while all new jobs use the top-level owner field.
+ */
+function recordVariantId(
+  record: VerticalDramaShotVideoPromptJobRecord
+): "legacy" | "enhanced" {
+  return record.variantId ?? record.input.variantId ?? "legacy";
 }
 
 function ownerMatches(
@@ -275,7 +316,8 @@ function ownerMatches(
     record.userId === owner.userId &&
     record.seriesId === owner.seriesId &&
     record.episodeId === owner.episodeId &&
-    record.shotNumber === owner.shotNumber
+    record.shotNumber === owner.shotNumber &&
+    recordVariantId(record) === (owner.variantId ?? "legacy")
   );
 }
 
@@ -333,9 +375,12 @@ async function clearPointers(
   record: VerticalDramaShotVideoPromptJobRecord,
   deps: VerticalDramaShotVideoPromptJobStoreDependencies
 ): Promise<void> {
-  await deps.redis
-    .compareDelete(activePointerKey(record), record.jobId)
-    .catch(() => false);
+  await Promise.all([
+    deps.redis.compareDelete(activePointerKey(record), record.jobId).catch(() => false),
+    deps.redis
+      .compareDelete(variantScopedActivePointerKey(record), record.jobId)
+      .catch(() => false),
+  ]);
 }
 
 async function setNextSequence(
@@ -396,9 +441,11 @@ async function toSummary(
   record: VerticalDramaShotVideoPromptJobRecord,
   deps: VerticalDramaShotVideoPromptJobStoreDependencies
 ): Promise<VerticalDramaShotVideoPromptJobSummary> {
+  const variantId = recordVariantId(record);
   return {
     jobId: record.jobId,
     shotNumber: record.shotNumber,
+    ...(variantId === "enhanced" ? { variantId } : {}),
     status: record.status,
     result: record.result,
     error: record.error,
@@ -439,7 +486,11 @@ export async function getActiveVerticalDramaShotVideoPromptJobs(
     const record = await readRecord(jobId, deps);
     if (
       record &&
-      ownerMatches(record, { ...owner, shotNumber: record.shotNumber }) &&
+      ownerMatches(record, {
+        ...owner,
+        shotNumber: record.shotNumber,
+        variantId: recordVariantId(record),
+      }) &&
       isActive(record.status)
     ) {
       jobs.push(await toSummary(record, deps));
@@ -453,13 +504,28 @@ export async function getActiveVerticalDramaShotVideoPromptJob(
   dependencies?: Partial<VerticalDramaShotVideoPromptJobStoreDependencies>
 ): Promise<VerticalDramaShotVideoPromptJobSummary | null> {
   const deps = resolveDependencies(dependencies);
-  const jobId = await deps.redis.get(activePointerKey(owner));
+  const jobId =
+    (await deps.redis.get(activePointerKey(owner))) ??
+    (await deps.redis.get(variantScopedActivePointerKey({ ...owner, variantId: "legacy" }))) ??
+    (await deps.redis.get(variantScopedActivePointerKey({ ...owner, variantId: "enhanced" })));
   if (!jobId) return null;
   const record = await readRecord(jobId, deps);
-  if (!record || !ownerMatches(record, owner) || !isActive(record.status)) {
-    await deps.redis
-      .compareDelete(activePointerKey(owner), jobId)
-      .catch(() => false);
+  const sameShot = record
+    ? ownerMatches(record, { ...owner, variantId: recordVariantId(record) })
+    : false;
+  if (!record || !sameShot || !isActive(record.status)) {
+    await Promise.all([
+      deps.redis.compareDelete(activePointerKey(owner), jobId).catch(() => false),
+      deps.redis
+        .compareDelete(
+          variantScopedActivePointerKey({
+            ...owner,
+            variantId: record ? recordVariantId(record) : "legacy",
+          }),
+          jobId,
+        )
+        .catch(() => false),
+    ]);
     return null;
   }
   return toSummary(record, deps);
@@ -489,22 +555,25 @@ export async function enqueueVerticalDramaShotVideoPromptJob(
   }
 
   const activePointer = activePointerKey(payload);
-  const existingJobId = await deps.redis.get(activePointer);
-  if (existingJobId) {
+  const activeCandidates = [
+    activePointer,
+    variantScopedActivePointerKey(payload),
+    variantScopedActivePointerKey({
+      ...payload,
+      variantId: payload.variantId === "enhanced" ? "legacy" : "enhanced",
+    }),
+  ];
+  for (const candidatePointer of [...new Set(activeCandidates)]) {
+    const existingJobId = await deps.redis.get(candidatePointer);
+    if (!existingJobId) continue;
     const existing = await readRecord(existingJobId, deps);
-    if (
-      existing &&
-      ownerMatches(existing, payload) &&
-      isActive(existing.status)
-    ) {
-      if (existing.requestFingerprint !== fingerprint) {
+    if (existing && isActive(existing.status)) {
+      if (!ownerMatches(existing, payload) || existing.requestFingerprint !== fingerprint) {
         throw new VerticalDramaShotVideoPromptConflictError();
       }
       return { ...(await toSummary(existing, deps)), deduplicated: true };
     }
-    await deps.redis
-      .compareDelete(activePointer, existingJobId)
-      .catch(() => false);
+    await deps.redis.compareDelete(candidatePointer, existingJobId).catch(() => false);
   }
 
   const jobId = randomUUID();
@@ -534,7 +603,7 @@ export async function enqueueVerticalDramaShotVideoPromptJob(
     const winner = winnerId ? await readRecord(winnerId, deps) : null;
     await deps.redis.del(recordKey(jobId));
     if (winner && isActive(winner.status)) {
-      if (winner.requestFingerprint !== fingerprint) {
+      if (!ownerMatches(winner, payload) || winner.requestFingerprint !== fingerprint) {
         throw new VerticalDramaShotVideoPromptConflictError();
       }
       return { ...(await toSummary(winner, deps)), deduplicated: true };
@@ -697,6 +766,7 @@ export async function runVerticalDramaShotVideoPromptJob(
             seriesId: running.seriesId,
             episodeId: running.episodeId,
             shotNumber: running.shotNumber,
+            variantId: running.variantId,
             publicUrl: running.publicUrl,
             input: running.input,
           },

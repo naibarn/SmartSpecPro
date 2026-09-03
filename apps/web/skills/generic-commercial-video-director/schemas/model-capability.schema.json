@@ -1,0 +1,508 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/model-capability.schema.json",
+  "title": "Model Capability Profile v3 (Temporal + Continuation-aware)",
+  "type": "object",
+  "required": [
+    "profileVersion",
+    "id",
+    "provider",
+    "model",
+    "kind",
+    "availability",
+    "verification",
+    "capabilities",
+    "limits",
+    "temporalPlanning"
+  ],
+  "properties": {
+    "profileVersion": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "provider": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "modelFamily": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "video",
+        "image",
+        "multimodal"
+      ]
+    },
+    "availability": {
+      "type": "string",
+      "enum": [
+        "ga",
+        "preview",
+        "early_access",
+        "provider_specific",
+        "unknown"
+      ]
+    },
+    "verification": {
+      "type": "object",
+      "required": [
+        "status",
+        "verifiedAt",
+        "sources"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "verified",
+            "partial",
+            "unverified"
+          ]
+        },
+        "verifiedAt": {
+          "type": "string"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "title",
+              "url"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "notes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "conditional",
+              "unsupported",
+              "unknown"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "durations",
+        "resolutions",
+        "aspectRatios"
+      ],
+      "properties": {
+        "durations": {
+          "type": "object",
+          "properties": {
+            "minSeconds": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "maxSeconds": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "allowedSeconds": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "resolutions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "aspectRatios": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "referenceLimits": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "bestFor": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "knownRisks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "promptProfile": {
+      "type": "string"
+    },
+    "adapterId": {
+      "type": "string"
+    },
+    "temporalPlanning": {
+      "type": "object",
+      "required": [
+        "baseGeneration",
+        "nativeMultiShot",
+        "extension"
+      ],
+      "properties": {
+        "baseGeneration": {
+          "type": "object",
+          "required": [
+            "durationControl"
+          ],
+          "properties": {
+            "durationControl": {
+              "type": "string",
+              "enum": [
+                "exact",
+                "bounded",
+                "provider_decides",
+                "unknown",
+                "prompt_guided"
+              ]
+            },
+            "stepSeconds": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0.1
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "nativeMultiShot": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "verified",
+                "conditional",
+                "unsupported",
+                "unknown"
+              ]
+            },
+            "maxShotsPerGeneration": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "supportsExplicitTimedCuts": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "supportsSingleContinuousShotConstraint": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "extension": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "verified",
+                "conditional",
+                "unsupported",
+                "unknown"
+              ]
+            },
+            "appendOnly": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "minAdditionalSeconds": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "maxAdditionalSeconds": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "allowedAdditionalSeconds": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "stepSeconds": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0.1
+            },
+            "defaultAdditionalSeconds": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "maxCumulativeSeconds": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "contextSeconds": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "supportsGeneratedVideoMultiTurn": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "supportsUploadedVideo": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "supportsNewDialogueOnGeneratedMultiTurn": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "supportsNewDialogueOnUploadedTalkingVideo": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "tailMayBeRewritten": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "localTimecodeResetsAtExtensionStart": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "requiresStoredInteractionState": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "durationControl": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "exact",
+                "bounded",
+                "prompt_guided",
+                "provider_decides",
+                "unknown",
+                null
+              ]
+            },
+            "deterministicDurationRequest": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "extensionKind": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "native_append",
+                "reference_continuation",
+                "generated_new_segment",
+                "unknown",
+                null
+              ]
+            },
+            "requiresExternalAssembly": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "sourceReferenceRole": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "referenceTailMinSeconds": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "referenceTailMaxSeconds": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "supportsReferenceAudioContinuity": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "maxExtensionTurns": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "sourceInputMinSeconds": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "sourceInputMaxSeconds": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

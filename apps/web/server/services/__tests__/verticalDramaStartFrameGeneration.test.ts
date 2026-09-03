@@ -193,7 +193,7 @@ describe("generateStartFrameRenderPlan", () => {
     expect(userMessage).toMatch(/always takes precedence/i);
   });
 
-  it("renders the inherited cross-episode wardrobe in the start-frame planning prompt", async () => {
+  it("renders the inherited cross-episode wardrobe as context-aware start-frame guidance", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute.mockResolvedValue(successResponse(validOutput()));
 
@@ -223,7 +223,7 @@ describe("generateStartFrameRenderPlan", () => {
     };
     const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
     expect(userMessage).toContain(
-      "CROSS-EPISODE WARDROBE CONTINUITY (MANDATORY)"
+      "CROSS-EPISODE WARDROBE CONTINUITY (CONTEXT-AWARE)"
     );
     expect(userMessage).toContain("char-pim-dress");
   });

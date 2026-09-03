@@ -914,7 +914,10 @@ export function resolveFrameProductReferenceAssetIds(input: {
  * Visual Bible — at most one URL per shot), then product refs LAST (trimmed
  * first — a product tie-in already has its own independent hard gate
  * elsewhere that blocks render if missing, so it is comparatively
- * protected). Returns the merged list plus how many entries were trimmed off
+ * protected). Prop/object refs are appended after product refs and are the
+ * lowest-priority optional references, so they are dropped first when a
+ * provider has a tight capacity. Returns the merged list plus how many
+ * entries were trimmed off
  * the END (so callers can surface a "reference images were trimmed" notice,
  * matching the existing convention used for shot-reference trimming
  * elsewhere in this router).
@@ -925,12 +928,14 @@ export function mergeAndTrimReferenceImageUrls(
   sceneAnchorRefUrls: string[],
   productRefUrls: string[],
   maxReferenceImages: number | undefined,
+  propObjectRefUrls: string[] = [],
 ): { urls: string[]; trimmedCount: number } {
   const merged = [
     ...characterRefUrls,
     ...locationRefUrls,
     ...sceneAnchorRefUrls,
     ...productRefUrls,
+    ...propObjectRefUrls,
   ].filter(
     (u, i, arr) => Boolean(u) && arr.indexOf(u) === i,
   );

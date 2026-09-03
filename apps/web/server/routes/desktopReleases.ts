@@ -32,6 +32,7 @@ import {
   desktopReleaseUploadRequestSchema,
   desktopReleaseUploadFinalizeRequestSchema,
   isDesktopReleaseVersionBlockedFromPublic,
+  type DesktopReleaseAsset,
 } from "../../shared/desktopReleases";
 import {
   desktopReleaseBuildRequestSchema,
@@ -200,8 +201,13 @@ function getPublicReleaseDirs(): string[] {
     .map((value) => value.trim())
     .filter(Boolean)
     .map((value) => path.resolve(value));
+  // An explicit release directory is authoritative. Mixing it with packaged
+  // fallback directories makes tests and staged deployments accidentally
+  // discover a newer installer from another release root.
+  if (configuredDirs.length > 0) {
+    return Array.from(new Set(configuredDirs));
+  }
   const candidates = [
-    ...configuredDirs,
     path.resolve(process.cwd(), "client/public/releases"),
     path.resolve(process.cwd(), "dist/public/releases"),
     path.resolve(process.cwd(), "public/releases"),
@@ -268,7 +274,7 @@ function getLatestCompanionExtensionRelease(downloadUrl: string): PublicDashboar
   })[0] ?? null;
 }
 
-function getLatestWorkerAppRelease(): PublicDashboardRelease | null {
+function getLatestWorkerAppFileRelease(): PublicDashboardRelease | null {
   return listPublicDashboardReleases({
     filePattern: WORKER_APP_FILE_PATTERN,
     downloadUrl: "/api/desktop-releases/worker-app/download",
@@ -283,6 +289,38 @@ function getLatestWorkerAppRelease(): PublicDashboardRelease | null {
       return normalized === "msi" ? "msi" : "exe";
     },
   })[0] ?? null;
+}
+
+type WorkerAppRelease = PublicDashboardRelease | DesktopReleaseAsset;
+
+function isStoredDesktopRelease(release: WorkerAppRelease): release is DesktopReleaseAsset {
+  return typeof (release as DesktopReleaseAsset).id === "number";
+}
+
+async function getLatestWorkerAppRelease(): Promise<WorkerAppRelease | null> {
+  const staticRelease = getLatestWorkerAppFileRelease();
+  let storedRelease: DesktopReleaseAsset | null = null;
+
+  if (process.env.DATABASE_URL?.trim()) {
+    try {
+      const catalog = await listDesktopReleaseCatalog({ platform: "windows" });
+      const candidate = catalog.latestByPlatform.windows;
+      if (candidate && (candidate.installerFormat === "exe" || candidate.installerFormat === "msi")) {
+        storedRelease = candidate;
+      }
+    } catch (error) {
+      // Keep the legacy file-based release path available while the DB/storage
+      // release catalog is unavailable during a deploy or local development.
+      console.warn("[desktop-releases] Falling back to static Worker App release", error);
+    }
+  }
+
+  if (!staticRelease) return storedRelease;
+  if (!storedRelease) return staticRelease;
+
+  return compareDesktopReleaseVersions(storedRelease.version, staticRelease.version) >= 0
+    ? storedRelease
+    : staticRelease;
 }
 
 function getLatestWorkerAppMacSourceRelease(): PublicDashboardRelease | null {
@@ -414,9 +452,9 @@ export function createDesktopReleaseRouter(): Router {
   registerCompanionExtensionRoutes("companion-extension");
   registerCompanionExtensionRoutes("marketplace-extension");
 
-  router.get("/worker-app/latest", (_req, res) => {
+  router.get("/worker-app/latest", async (_req, res) => {
     try {
-      const release = getLatestWorkerAppRelease();
+      const release = await getLatestWorkerAppRelease();
       res.setHeader("Cache-Control", "no-store");
       res.json({
         generatedAt: new Date().toISOString(),
@@ -438,11 +476,16 @@ export function createDesktopReleaseRouter(): Router {
     }
   });
 
-  router.get("/worker-app/download", (_req, res) => {
+  router.get("/worker-app/download", async (_req, res) => {
     try {
-      const release = getLatestWorkerAppRelease();
+      const release = await getLatestWorkerAppRelease();
       if (!release) {
         res.status(404).json({ error: "worker_app_release_not_found" });
+        return;
+      }
+
+      if (isStoredDesktopRelease(release)) {
+        res.redirect(release.downloadUrl);
         return;
       }
 

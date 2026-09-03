@@ -1,0 +1,17 @@
+{
+  "executionRoute": "cloud_api",
+  "model": "ltx-2-5-pro",
+  "mode": "first_last_to_video",
+  "startFrameAssetId": "start",
+  "lastFrameAssetId": "end",
+  "audioDriverAssetId": null,
+  "genericImageReferences": [],
+  "genericVideoReferences": [],
+  "genericAudioReferences": [],
+  "derivedReferences": [],
+  "nonProviderReferences": [],
+  "prebakeRequired": false,
+  "localWorkflowRequired": false,
+  "blocked": false,
+  "warnings": []
+}

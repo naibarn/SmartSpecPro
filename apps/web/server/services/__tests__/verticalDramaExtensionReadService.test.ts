@@ -56,11 +56,40 @@ vi.mock("../../db", () => ({ getDb: mockGetDb }));
 
 import {
   listDramaSeriesCharactersForPicker,
+  projectDramaShotFrameUrlsForExtension,
   projectDramaShotDialogueLinesForExtension,
   projectDramaShotReferenceImagesForExtension,
   resolveDramaShotCharacterRefsForExtension,
 } from "../verticalDramaExtensionReadService";
 import { estimateVerticalDramaSpeechSeconds } from "../../../shared/verticalDramaSeries/dialogueQuality";
+
+describe("projectDramaShotFrameUrlsForExtension", () => {
+  it("resolves Start and Stop independently from their approved per-shot assets", () => {
+    expect(projectDramaShotFrameUrlsForExtension({
+      startFrameAssetId: "5147",
+      stopFrameAssetId: "5155",
+      assetById: new Map([
+        [5147, { originalUrl: "/start.png", thumbnailUrl: "/start-thumb.png" }],
+        [5155, { originalUrl: "/stop.png", thumbnailUrl: "/stop-thumb.png" }],
+      ]),
+    })).toEqual({
+      mainImageUrl: "/start.png",
+      mainImageThumbnailUrl: "/start-thumb.png",
+      stopFrameUrl: "/stop.png",
+      stopFrameThumbnailUrl: "/stop-thumb.png",
+    });
+  });
+
+  it("does not create a Stop frame when its approved asset is unavailable", () => {
+    expect(projectDramaShotFrameUrlsForExtension({
+      startFrameAssetId: 5147,
+      stopFrameAssetId: 5155,
+      assetById: new Map([
+        [5147, { originalUrl: "/start.png", thumbnailUrl: null }],
+      ]),
+    }).stopFrameUrl).toBeNull();
+  });
+});
 
 describe("projectDramaShotDialogueLinesForExtension", () => {
   it("returns only the requested shot's safe dialogue fields with planned durations", () => {
@@ -208,7 +237,7 @@ describe("projectDramaShotDialogueLinesForExtension", () => {
 });
 
 describe("projectDramaShotReferenceImagesForExtension", () => {
-  it("keeps only reference frames and one portrait for each character required by this shot", () => {
+  it("keeps every linked media reference with its modality and one portrait for each required character", () => {
     const images = projectDramaShotReferenceImagesForExtension({
       shotReferenceRows: [
         {
@@ -216,6 +245,7 @@ describe("projectDramaShotReferenceImagesForExtension", () => {
           mediaAssetId: 100,
           role: "reference",
           source: "reference_frame",
+          assetMimeType: "image/png",
           assetOriginalUrl: "/api/storage/files/reference.png",
           assetThumbnailUrl: "/api/storage/files/reference-thumb.png",
         },
@@ -224,6 +254,7 @@ describe("projectDramaShotReferenceImagesForExtension", () => {
           mediaAssetId: 101,
           role: "reference",
           source: "grid_cut",
+          assetMimeType: "video/mp4",
           assetOriginalUrl: "/api/storage/files/grid-cut.png",
           assetThumbnailUrl: null,
         },
@@ -232,6 +263,7 @@ describe("projectDramaShotReferenceImagesForExtension", () => {
           mediaAssetId: 102,
           role: "reference",
           source: "generated",
+          assetMimeType: "audio/mpeg",
           assetOriginalUrl: "/api/storage/files/generated.png",
           assetThumbnailUrl: null,
         },
@@ -258,13 +290,31 @@ describe("projectDramaShotReferenceImagesForExtension", () => {
         id: "10",
         url: "/api/storage/files/reference.png",
         thumbnailUrl: "/api/storage/files/reference-thumb.png",
+        mediaType: "image",
         role: "reference",
         source: "reference_frame",
+      },
+      {
+        id: "11",
+        url: "/api/storage/files/grid-cut.png",
+        thumbnailUrl: null,
+        mediaType: "video",
+        role: "reference",
+        source: "grid_cut",
+      },
+      {
+        id: "12",
+        url: "/api/storage/files/generated.png",
+        thumbnailUrl: null,
+        mediaType: "audio",
+        role: "reference",
+        source: "generated",
       },
       {
         id: "char-20",
         url: "/api/storage/files/hero.png",
         thumbnailUrl: "/api/storage/files/hero-thumb.png",
+        mediaType: "image",
         role: "primary_portrait",
         source: "character",
         title: "ภาคิน",
@@ -279,6 +329,7 @@ describe("projectDramaShotReferenceImagesForExtension", () => {
         mediaAssetId: 200,
         role: "reference",
         source: "reference_frame",
+        assetMimeType: "image/png",
         assetOriginalUrl: "/api/storage/files/hero.png",
         assetThumbnailUrl: null,
       }],
@@ -293,6 +344,7 @@ describe("projectDramaShotReferenceImagesForExtension", () => {
 
     expect(images).toHaveLength(1);
     expect(images[0].source).toBe("reference_frame");
+    expect(images[0].mediaType).toBe("image");
   });
 
   it("uses a protected thumbnail when a character asset has no original URL", () => {
@@ -308,6 +360,7 @@ describe("projectDramaShotReferenceImagesForExtension", () => {
     });
 
     expect(images[0]?.url).toBe("/api/storage/files/hero-thumb.png");
+    expect(images[0]?.mediaType).toBe("image");
   });
 });
 

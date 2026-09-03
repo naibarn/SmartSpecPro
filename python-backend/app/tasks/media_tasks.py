@@ -493,15 +493,6 @@ def _is_non_retryable_media_error(error: Exception) -> bool:
         "not enough credits",
         "current balance",
         "sensitive content",
-        # Reference URLs that the provider cannot fetch are deterministic
-        # input failures. Retrying the same protected URL only leaves the
-        # task pending while consuming worker capacity.
-        "image fetch failed",
-        "could not fetch image",
-        "failed to fetch image",
-        "file upload api",
-        "reference image not accessible",
-        "reference image inaccessible",
     )
     if any(marker in message for marker in permanent_markers):
         return True

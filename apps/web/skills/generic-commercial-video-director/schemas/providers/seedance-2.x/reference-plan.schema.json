@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/providers/seedance-2.x/reference-plan.schema.json",
+  "title": "Seedance 2.x Reference Plan",
+  "type": "object",
+  "required": [
+    "model",
+    "mode",
+    "hardFrames",
+    "referenceImages",
+    "referenceVideos",
+    "referenceAudios",
+    "conflictDetected",
+    "conflictResolution",
+    "materialLibraryRequirements",
+    "derivedReferences",
+    "nonProviderReferences",
+    "warnings"
+  ],
+  "properties": {
+    "model": {
+      "type": "string",
+      "enum": [
+        "dreamina-seedance-2-0-260128",
+        "dreamina-seedance-2-5-260628"
+      ]
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "text_to_video",
+        "image_to_video",
+        "first_last_to_video",
+        "reference_to_video",
+        "video_edit",
+        "video_extend"
+      ]
+    },
+    "hardFrames": {
+      "type": "object",
+      "required": [
+        "firstFrameAssetId",
+        "lastFrameAssetId"
+      ],
+      "properties": {
+        "firstFrameAssetId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastFrameAssetId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "referenceImages": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "label",
+          "semanticRoles"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "semanticRoles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "entityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "referenceVideos": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "label",
+          "semanticRoles"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "semanticRoles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "entityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "referenceAudios": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "label",
+          "semanticRoles"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "semanticRoles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "entityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "conflictDetected": {
+      "type": "boolean"
+    },
+    "conflictResolution": {
+      "type": "string",
+      "enum": [
+        "none",
+        "provider_verified_mix",
+        "prefer_hard_frames",
+        "prefer_references",
+        "prebake_hard_frame",
+        "split_generation",
+        "blocked"
+      ]
+    },
+    "materialLibraryRequirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "required",
+          "reason"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "derivedReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "sourceAssetId",
+          "derivation",
+          "resultRole"
+        ],
+        "properties": {
+          "sourceAssetId": {
+            "type": "string"
+          },
+          "derivation": {
+            "type": "string"
+          },
+          "resultRole": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "nonProviderReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "reason",
+          "preservedAs"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "preservedAs": {
+            "type": "string",
+            "enum": [
+              "derived_guidance",
+              "prebake_input",
+              "separate_stage",
+              "analysis_only",
+              "post_only",
+              "fallback_provider"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

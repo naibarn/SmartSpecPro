@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "พรีเซนเตอร์ยืนรีวิวโทรศัพท์ ExamplePhone X Pro และโชว์ตัวเครื่องกับหน้าจออย่างชัดเจน",
+  "locale": "th-TH",
+  "contentMode": "presenter",
+  "promotionTarget": {
+    "mode": "explicit",
+    "kind": "physical_product",
+    "name": "ExamplePhone X Pro",
+    "exactVisualIdentityRequired": true
+  },
+  "missingTargetAssetPolicy": {
+    "mode": "block_when_exact_identity_missing",
+    "allowGenericUnbrandedVisual": false,
+    "allowDeriveTargetFromScene": true,
+    "allowResearchFactsWithoutVisualReference": true,
+    "allowGenerateApproximateNamedProduct": false,
+    "requireReferenceForExactPackagingLogoUi": true
+  },
+  "assets": [
+    {
+      "assetId": "presenter",
+      "role": "character_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "identity"
+      ]
+    }
+  ]
+}

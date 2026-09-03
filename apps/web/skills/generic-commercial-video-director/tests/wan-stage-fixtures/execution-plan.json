@@ -1,0 +1,127 @@
+{
+  "model": "wan3.0-video",
+  "mode": "reference_to_video",
+  "durationSeconds": 10,
+  "resolution": "720P",
+  "ratio": "9:16",
+  "referencePlan": {
+    "model": "wan3.0-video",
+    "mode": "reference_to_video",
+    "hardFrames": {
+      "firstFrameAssetId": null,
+      "lastFrameAssetId": null
+    },
+    "referenceImages": [
+      {
+        "assetId": "person",
+        "label": "Image 1",
+        "semanticRoles": [
+          "identity"
+        ],
+        "entityId": "host"
+      },
+      {
+        "assetId": "product",
+        "label": "Image 2",
+        "semanticRoles": [
+          "product_geometry"
+        ],
+        "entityId": "product"
+      }
+    ],
+    "referenceVideos": [
+      {
+        "assetId": "motion",
+        "label": "Video 1",
+        "semanticRoles": [
+          "motion",
+          "camera_motion"
+        ],
+        "entityId": "host"
+      }
+    ],
+    "referenceAudios": [
+      {
+        "assetId": "voice",
+        "label": "Audio 1",
+        "semanticRoles": [
+          "voice_timbre"
+        ],
+        "entityId": "host"
+      }
+    ],
+    "documentReference": null,
+    "webReference": null,
+    "conflictDetected": false,
+    "conflictResolution": "none",
+    "derivedReferences": [],
+    "nonProviderReferences": [],
+    "warnings": []
+  },
+  "prompt": {
+    "mode": "reference_to_video",
+    "durationSeconds": 10,
+    "smartDuration": false,
+    "promptText": "REFERENCE BINDINGS: Image 1 presenter. Image 2 product. Video 1 motion. Audio 1 voice.",
+    "shotTimeline": [
+      {
+        "shotId": "S01",
+        "startSeconds": 0,
+        "endSeconds": 5,
+        "description": "Hook"
+      },
+      {
+        "shotId": "S02",
+        "startSeconds": 5,
+        "endSeconds": 10,
+        "description": "Demo"
+      }
+    ],
+    "referenceBindings": [
+      {
+        "label": "Image 1",
+        "meaning": "image reference",
+        "preserve": [
+          "identity"
+        ]
+      }
+    ],
+    "dialogueLines": [
+      {
+        "speakerId": "host",
+        "text": "ใช้งานง่ายค่ะ",
+        "lipSyncRequired": true
+      }
+    ],
+    "audioPlan": {
+      "nativeAudio": true,
+      "dialogue": true,
+      "bgm": false,
+      "soundEffects": true
+    },
+    "warnings": []
+  },
+  "generationPayload": {
+    "model": "wan3.0-video",
+    "input": {
+      "prompt": "...",
+      "media": []
+    },
+    "parameters": {
+      "resolution": "720P",
+      "ratio": "9:16",
+      "duration": 10,
+      "audio": true,
+      "prompt_extend": true
+    }
+  },
+  "postGeneration": {
+    "downloadBeforeUrlExpiry": true,
+    "postCompositeExactTextUI": true,
+    "externalAssembly": false
+  },
+  "qcRequirements": [
+    "WAN_REFERENCE_RETENTION"
+  ],
+  "warnings": []
+}

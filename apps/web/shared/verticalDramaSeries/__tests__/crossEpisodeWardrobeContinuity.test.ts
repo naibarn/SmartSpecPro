@@ -167,4 +167,75 @@ describe("cross-episode wardrobe continuity", () => {
       hasExplicitWardrobeChangeCue("the next day she changes into a new outfit")
     ).toBe(true);
   });
+
+  it("uses scene context to stop carrying wardrobe across a new event, while preserving travel continuity", () => {
+    const handoff = buildCrossEpisodeWardrobeHandoff({
+      previousEpisode: {
+        id: 249,
+        episodeNumber: 11,
+        storyboard: {
+          shots: [
+            {
+              shot_number: 9,
+              required_character_refs: ["pim-dress"],
+              location: { key: "airport", name: "สนามบิน" },
+              time_of_day: "morning",
+              narrative_purpose: "ออกจากสนามบินเพื่อเดินทางต่อ",
+            },
+          ],
+        },
+      },
+      catalog,
+    });
+
+    expect(handoff?.sourceContext).toMatchObject({
+      locationKey: "airport",
+      locationLabel: "สนามบิน",
+      timeMarker: "morning",
+    });
+
+    expect(
+      findCrossEpisodeWardrobeMismatches({
+        handoff,
+        catalog,
+        shots: [
+          {
+            shotNumber: 1,
+            text: "วันถัดไป พิมพ์ชนกเริ่มประชุมงานที่สำนักงานใหม่",
+            characterKeys: ["pim-casual"],
+            context: {
+              locationKey: "office",
+              locationLabel: "สำนักงานใหม่",
+              timeMarker: "next day",
+            },
+          },
+        ],
+      })
+    ).toEqual([]);
+
+    expect(
+      findCrossEpisodeWardrobeMismatches({
+        handoff,
+        catalog,
+        shots: [
+          {
+            shotNumber: 1,
+            text: "เธอออกจากสนามบินและขึ้นรถเพื่อเดินทางต่อ",
+            characterKeys: ["pim-casual"],
+            context: {
+              locationKey: "car",
+              locationLabel: "รถยนต์",
+              timeMarker: "morning",
+            },
+          },
+        ],
+      })
+    ).toMatchObject([
+      {
+        shotNumber: 1,
+        expectedLookKey: "pim-dress",
+        actualLookKey: "pim-casual",
+      },
+    ]);
+  });
 });

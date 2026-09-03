@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "ให้คนถือสินค้าจากภาพอ้างอิง",
+  "locale": "th-TH",
+  "assets": [
+    {
+      "assetId": "product",
+      "role": "product_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "product_geometry",
+        "product_label"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    }
+  ],
+  "providerOptions": {
+    "flux3": {
+      "mode": "auto",
+      "softReferencePolicy": "prebake_keyframe"
+    }
+  }
+}

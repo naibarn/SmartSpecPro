@@ -217,6 +217,24 @@ describe("VerticalDramaShotReferencesService", () => {
       ).rejects.toMatchObject({ reason: "media_asset_deleted" });
     });
 
+    it("rejects a media asset that exists but is not ready", async () => {
+      mockDb.select
+        .mockReturnValueOnce(selectChain([{ id: 100 }]))
+        .mockReturnValueOnce(
+          selectChain([{ id: 500, tenantId: "tenant-1", userId: 42, status: "pending" }]),
+        );
+
+      await expect(
+        service.linkReference({
+          ...owner,
+          episodeId: 100,
+          shotNumber: 1,
+          mediaAssetId: 500,
+          source: "upload",
+        }),
+      ).rejects.toMatchObject({ reason: "media_asset_not_ready" });
+    });
+
     it("throws media_asset_cross_user when the media asset belongs to another user in the same tenant", async () => {
       mockDb.select
         .mockReturnValueOnce(selectChain([{ id: 100 }])) // assertEpisodeOwned -> owned
@@ -259,7 +277,7 @@ describe("VerticalDramaShotReferencesService", () => {
       mockDb.select
         .mockReturnValueOnce(selectChain([{ id: 100 }])) // assertEpisodeOwned
         .mockReturnValueOnce(
-          selectChain([{ id: 500, tenantId: "tenant-1", userId: 42, status: "completed" }]),
+          selectChain([{ id: 500, tenantId: "tenant-1", userId: 42, status: "ready" }]),
         ) // assertMediaAssetAttachable
         .mockReturnValueOnce(selectChain([])); // idempotency check -> no existing row
       mockDb.insert.mockReturnValueOnce(insertChain([row({ id: 7 })]));
@@ -281,7 +299,7 @@ describe("VerticalDramaShotReferencesService", () => {
       mockDb.select
         .mockReturnValueOnce(selectChain([{ id: 100 }]))
         .mockReturnValueOnce(
-          selectChain([{ id: 500, tenantId: "tenant-1", userId: 42, status: "completed" }]),
+          selectChain([{ id: 500, tenantId: "tenant-1", userId: 42, status: "ready" }]),
         )
         .mockReturnValueOnce(selectChain([existing])); // idempotency check -> found
 

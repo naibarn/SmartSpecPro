@@ -1,0 +1,1095 @@
+{
+  "version": "2.0.0",
+  "purpose": "Extensible product-function taxonomy used by ProductSemanticsAgent.",
+  "functionClasses": [
+    {
+      "id": "topical_application",
+      "examples": [
+        "skincare",
+        "cream",
+        "shampoo",
+        "hair treatment",
+        "cosmetics"
+      ],
+      "defaultDemoArc": [
+        "setup",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "dispense",
+        "apply",
+        "spread",
+        "massage",
+        "rinse"
+      ],
+      "visualizationModes": [
+        "literal_demo",
+        "macro_insert",
+        "before_after"
+      ]
+    },
+    {
+      "id": "cleaning_surface",
+      "examples": [
+        "floor cleaner",
+        "glass cleaner",
+        "surface spray",
+        "wipe"
+      ],
+      "defaultDemoArc": [
+        "problem",
+        "setup",
+        "operation",
+        "mechanism_explanation",
+        "proof",
+        "outcome"
+      ],
+      "commonInteractions": [
+        "apply",
+        "spray",
+        "wipe",
+        "scrub",
+        "rinse",
+        "dry"
+      ],
+      "visualizationModes": [
+        "cleaning_lift",
+        "macro_insert",
+        "before_after",
+        "particle_flow"
+      ]
+    },
+    {
+      "id": "cleaning_appliance",
+      "examples": [
+        "washing machine",
+        "dishwasher",
+        "vacuum cleaner",
+        "robot vacuum"
+      ],
+      "defaultDemoArc": [
+        "setup",
+        "activation",
+        "operation",
+        "mechanism_explanation",
+        "proof",
+        "outcome"
+      ],
+      "commonInteractions": [
+        "load",
+        "close",
+        "select_mode",
+        "activate",
+        "internal_motion",
+        "unload"
+      ],
+      "visualizationModes": [
+        "cutaway",
+        "motion_trace",
+        "water_flow",
+        "particle_flow",
+        "time_compression"
+      ]
+    },
+    {
+      "id": "thermal_airflow",
+      "examples": [
+        "air conditioner",
+        "fan",
+        "heater",
+        "air purifier",
+        "dehumidifier"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "activation",
+        "operation",
+        "mechanism_explanation",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "power_on",
+        "set_mode",
+        "airflow",
+        "temperature_change",
+        "comfort_response"
+      ],
+      "visualizationModes": [
+        "airflow_streamlines",
+        "thermal_gradient",
+        "particle_flow",
+        "data_overlay"
+      ]
+    },
+    {
+      "id": "digital_device",
+      "examples": [
+        "smartphone",
+        "tablet",
+        "laptop",
+        "camera",
+        "smartwatch"
+      ],
+      "defaultDemoArc": [
+        "hero",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "cta"
+      ],
+      "commonInteractions": [
+        "hold",
+        "rotate",
+        "tap",
+        "swipe",
+        "open_feature",
+        "show_screen",
+        "capture"
+      ],
+      "visualizationModes": [
+        "virtual_screen",
+        "ui_composite",
+        "feature_callout",
+        "macro_insert"
+      ]
+    },
+    {
+      "id": "food_beverage",
+      "examples": [
+        "drink",
+        "snack",
+        "ingredient",
+        "cooking product"
+      ],
+      "defaultDemoArc": [
+        "setup",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "open",
+        "pour",
+        "cut",
+        "mix",
+        "serve",
+        "consume"
+      ],
+      "visualizationModes": [
+        "literal_demo",
+        "macro_insert",
+        "time_compression"
+      ]
+    },
+    {
+      "id": "tools_machinery",
+      "examples": [
+        "drill",
+        "power tool",
+        "garden tool",
+        "workshop device"
+      ],
+      "defaultDemoArc": [
+        "problem",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome"
+      ],
+      "commonInteractions": [
+        "grip",
+        "position",
+        "activate",
+        "cut",
+        "drill",
+        "fasten",
+        "release"
+      ],
+      "visualizationModes": [
+        "motion_trace",
+        "cutaway",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "mobility_transport",
+      "examples": [
+        "car",
+        "motorcycle",
+        "bicycle",
+        "mobility device"
+      ],
+      "defaultDemoArc": [
+        "hero",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome"
+      ],
+      "commonInteractions": [
+        "approach",
+        "enter",
+        "start",
+        "control",
+        "move",
+        "park"
+      ],
+      "visualizationModes": [
+        "motion_trace",
+        "feature_callout",
+        "data_overlay"
+      ]
+    },
+    {
+      "id": "toys_play",
+      "examples": [
+        "toy",
+        "building set",
+        "interactive toy"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "operation",
+        "proof",
+        "outcome"
+      ],
+      "commonInteractions": [
+        "hold",
+        "assemble",
+        "press",
+        "roll",
+        "move",
+        "play"
+      ],
+      "visualizationModes": [
+        "literal_demo",
+        "motion_trace",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "software_service",
+      "examples": [
+        "app",
+        "SaaS",
+        "digital service"
+      ],
+      "defaultDemoArc": [
+        "problem",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "cta"
+      ],
+      "commonInteractions": [
+        "open",
+        "navigate",
+        "select",
+        "submit",
+        "receive_result"
+      ],
+      "visualizationModes": [
+        "virtual_screen",
+        "ui_composite",
+        "data_overlay",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "oral_hygiene",
+      "examples": [
+        "toothpaste",
+        "toothbrush",
+        "mouthwash",
+        "flosser"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "apply",
+        "brush",
+        "rinse"
+      ],
+      "visualizationModes": [
+        "literal_demo",
+        "macro_insert",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "laundry_care_consumable",
+      "examples": [
+        "detergent",
+        "fabric softener",
+        "stain remover"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "dispense",
+        "apply",
+        "wash",
+        "rinse"
+      ],
+      "visualizationModes": [
+        "cleaning_lift",
+        "particle_flow",
+        "before_after"
+      ]
+    },
+    {
+      "id": "kitchen_appliance",
+      "examples": [
+        "air fryer",
+        "oven",
+        "microwave",
+        "blender",
+        "coffee machine",
+        "rice cooker",
+        "kettle"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "load",
+        "select_mode",
+        "activate",
+        "heat",
+        "mix",
+        "brew",
+        "serve"
+      ],
+      "visualizationModes": [
+        "cutaway",
+        "thermal_gradient",
+        "steam_flow",
+        "time_compression",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "water_fluid_system",
+      "examples": [
+        "water purifier",
+        "filter",
+        "pump",
+        "faucet",
+        "shower",
+        "humidifier"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "connect",
+        "pump",
+        "filter",
+        "dispense",
+        "flow"
+      ],
+      "visualizationModes": [
+        "water_flow",
+        "particle_flow",
+        "cutaway",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "power_energy",
+      "examples": [
+        "power bank",
+        "charger",
+        "battery",
+        "solar product",
+        "UPS"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "connect",
+        "charge",
+        "store_energy",
+        "power"
+      ],
+      "visualizationModes": [
+        "data_overlay",
+        "feature_callout",
+        "thermal_gradient"
+      ]
+    },
+    {
+      "id": "lighting_electrical",
+      "examples": [
+        "lamp",
+        "smart bulb",
+        "flashlight",
+        "switch",
+        "lighting fixture"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "power",
+        "illuminate",
+        "dim",
+        "control"
+      ],
+      "visualizationModes": [
+        "literal_demo",
+        "data_overlay",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "audio_av",
+      "examples": [
+        "headphones",
+        "speaker",
+        "microphone",
+        "projector",
+        "television"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "connect",
+        "sound_output",
+        "noise_cancel",
+        "record",
+        "project",
+        "display"
+      ],
+      "visualizationModes": [
+        "feature_callout",
+        "data_overlay",
+        "virtual_screen"
+      ]
+    },
+    {
+      "id": "smart_home_security",
+      "examples": [
+        "camera",
+        "doorbell",
+        "lock",
+        "sensor",
+        "hub",
+        "alarm"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "detect",
+        "monitor",
+        "record",
+        "connect",
+        "automate"
+      ],
+      "visualizationModes": [
+        "virtual_screen",
+        "ui_composite",
+        "data_overlay",
+        "motion_trace"
+      ]
+    },
+    {
+      "id": "fashion_wearable",
+      "examples": [
+        "clothing",
+        "shoes",
+        "bag",
+        "wearable accessory"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "wear",
+        "fit",
+        "fold",
+        "carry"
+      ],
+      "visualizationModes": [
+        "literal_demo",
+        "macro_insert",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "jewelry_watch",
+      "examples": [
+        "watch",
+        "jewelry",
+        "fashion watch"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "wear",
+        "display",
+        "inspect"
+      ],
+      "visualizationModes": [
+        "macro_insert",
+        "feature_callout",
+        "product_packshot_composite"
+      ]
+    },
+    {
+      "id": "furniture_home_living",
+      "examples": [
+        "chair",
+        "table",
+        "mattress",
+        "storage furniture",
+        "home decor"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "assemble",
+        "support",
+        "store",
+        "organize"
+      ],
+      "visualizationModes": [
+        "literal_demo",
+        "exploded_view",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "storage_packaging",
+      "examples": [
+        "container",
+        "bottle",
+        "box",
+        "organizer",
+        "vacuum bag"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "open_close",
+        "contain",
+        "seal",
+        "store",
+        "organize"
+      ],
+      "visualizationModes": [
+        "literal_demo",
+        "exploded_view",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "office_stationery",
+      "examples": [
+        "pen",
+        "printer",
+        "paper product",
+        "labeler",
+        "office accessory"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "write",
+        "print",
+        "organize",
+        "attach"
+      ],
+      "visualizationModes": [
+        "literal_demo",
+        "macro_insert",
+        "ui_composite"
+      ]
+    },
+    {
+      "id": "baby_parenting",
+      "examples": [
+        "stroller",
+        "bottle",
+        "diaper",
+        "baby gear"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "fit",
+        "support",
+        "open_close",
+        "move",
+        "clean"
+      ],
+      "visualizationModes": [
+        "literal_demo",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "pet_products",
+      "examples": [
+        "pet food",
+        "toy",
+        "grooming product",
+        "pet accessory"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "serve",
+        "consume",
+        "play",
+        "apply",
+        "wear"
+      ],
+      "visualizationModes": [
+        "literal_demo",
+        "macro_insert",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "sports_fitness",
+      "examples": [
+        "fitness equipment",
+        "sports gear",
+        "wearable trainer"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "wear",
+        "exercise",
+        "move",
+        "measure"
+      ],
+      "visualizationModes": [
+        "motion_trace",
+        "data_overlay",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "outdoor_garden",
+      "examples": [
+        "garden tool",
+        "hose",
+        "sprayer",
+        "outdoor gear"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "spray",
+        "cut",
+        "dig",
+        "pump",
+        "move",
+        "protect"
+      ],
+      "visualizationModes": [
+        "motion_trace",
+        "water_flow",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "construction_material",
+      "examples": [
+        "paint",
+        "sealant",
+        "adhesive",
+        "tile",
+        "insulation",
+        "building material"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "apply",
+        "spread",
+        "adhere",
+        "seal",
+        "protect"
+      ],
+      "visualizationModes": [
+        "macro_insert",
+        "cutaway",
+        "before_after",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "automotive_aftermarket",
+      "examples": [
+        "tire",
+        "car care",
+        "dashcam",
+        "charger",
+        "accessory"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "attach",
+        "apply",
+        "clean",
+        "record",
+        "charge",
+        "fit"
+      ],
+      "visualizationModes": [
+        "motion_trace",
+        "virtual_screen",
+        "feature_callout"
+      ]
+    },
+    {
+      "id": "industrial_b2b",
+      "examples": [
+        "industrial machine",
+        "pump",
+        "compressor",
+        "conveyor",
+        "factory equipment"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "activate",
+        "rotate",
+        "pump",
+        "move",
+        "measure",
+        "automate"
+      ],
+      "visualizationModes": [
+        "cutaway",
+        "motion_trace",
+        "data_overlay",
+        "thermal_gradient"
+      ]
+    },
+    {
+      "id": "regulated_healthcare",
+      "examples": [
+        "medical device",
+        "health monitor",
+        "regulated wellness product"
+      ],
+      "defaultDemoArc": [
+        "context",
+        "setup",
+        "activation",
+        "operation",
+        "proof",
+        "outcome",
+        "hero"
+      ],
+      "commonInteractions": [
+        "measure",
+        "monitor",
+        "apply",
+        "wear"
+      ],
+      "visualizationModes": [
+        "literal_demo",
+        "ui_composite",
+        "data_overlay"
+      ]
+    }
+  ],
+  "coverageModel": "composable_behavior_primitives_plus_product_families",
+  "behaviorPrimitives": [
+    "open_close",
+    "contain",
+    "dispense",
+    "pour",
+    "spray",
+    "pump",
+    "apply",
+    "spread",
+    "rub",
+    "wipe",
+    "scrub",
+    "rinse",
+    "wash",
+    "dry",
+    "filter",
+    "vacuum",
+    "suction",
+    "airflow",
+    "cool",
+    "heat",
+    "humidify",
+    "dehumidify",
+    "rotate",
+    "spin",
+    "oscillate",
+    "vibrate",
+    "mix",
+    "blend",
+    "grind",
+    "cut",
+    "drill",
+    "fasten",
+    "press",
+    "fold",
+    "assemble",
+    "attach",
+    "adhere",
+    "seal",
+    "protect",
+    "wear",
+    "fit",
+    "support",
+    "move",
+    "roll",
+    "drive",
+    "fly",
+    "float",
+    "illuminate",
+    "charge",
+    "power",
+    "store_energy",
+    "measure",
+    "sense",
+    "detect",
+    "monitor",
+    "display",
+    "capture",
+    "record",
+    "communicate",
+    "connect",
+    "navigate",
+    "compute",
+    "automate",
+    "store",
+    "organize",
+    "serve",
+    "consume",
+    "play",
+    "exercise",
+    "clean",
+    "cook",
+    "bake",
+    "fry",
+    "boil",
+    "steam",
+    "brew",
+    "iron",
+    "sterilize",
+    "scan",
+    "print",
+    "project",
+    "sound_output",
+    "noise_cancel",
+    "track_location",
+    "activate",
+    "approach",
+    "brush",
+    "carry",
+    "close",
+    "comfort_response",
+    "control",
+    "dig",
+    "dim",
+    "enter",
+    "flow",
+    "grip",
+    "hold",
+    "inspect",
+    "internal_motion",
+    "load",
+    "massage",
+    "open",
+    "open_feature",
+    "park",
+    "position",
+    "power_on",
+    "receive_result",
+    "release",
+    "select",
+    "select_mode",
+    "set_mode",
+    "show_screen",
+    "start",
+    "submit",
+    "swipe",
+    "tap",
+    "temperature_change",
+    "unload",
+    "write"
+  ],
+  "mechanismDomains": [
+    "mechanical",
+    "fluid",
+    "airflow",
+    "thermal",
+    "electrical",
+    "electronic",
+    "optical",
+    "acoustic",
+    "digital",
+    "chemical",
+    "material",
+    "ergonomic",
+    "structural",
+    "biological_or_health_related",
+    "service_process"
+  ],
+  "fallbackResolution": {
+    "rule": "If no product family matches, compose the product from behaviorPrimitives + mechanismDomains + target surfaces/systems + verified evidence.",
+    "requiresResearchForNamedSpecificFeatures": true,
+    "regulatedOrSafetyCriticalRequiresHumanApproval": true
+  }
+}

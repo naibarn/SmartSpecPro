@@ -1,0 +1,50 @@
+{
+  "provider": "Alibaba Cloud Model Studio",
+  "model": "wan3.0-video",
+  "targetDurationSeconds": 30,
+  "strategy": "provider_native_multishot",
+  "resolution": "1080P",
+  "ratio": "9:16",
+  "shots": [
+    {
+      "shotId": "S01",
+      "startSeconds": 0,
+      "endSeconds": 5,
+      "purpose": "hook"
+    },
+    {
+      "shotId": "S02",
+      "startSeconds": 5,
+      "endSeconds": 10,
+      "purpose": "product setup"
+    },
+    {
+      "shotId": "S03",
+      "startSeconds": 10,
+      "endSeconds": 15,
+      "purpose": "demonstration"
+    },
+    {
+      "shotId": "S04",
+      "startSeconds": 15,
+      "endSeconds": 20,
+      "purpose": "proof"
+    },
+    {
+      "shotId": "S05",
+      "startSeconds": 20,
+      "endSeconds": 25,
+      "purpose": "result"
+    },
+    {
+      "shotId": "S06",
+      "startSeconds": 25,
+      "endSeconds": 30,
+      "purpose": "hero_cta"
+    }
+  ],
+  "preflight": {
+    "hardFrameReferenceFamilyMustBeResolved": true,
+    "videoInputPlusOutputMaxSeconds": 30
+  }
+}

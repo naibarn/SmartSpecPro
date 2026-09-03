@@ -1,71 +1,72 @@
-loop_policy:
-  purpose: coding webapp with an agent loop
-  max_iterations: 12
-  max_dispatch_waves: 6
-  max_active_subagents: 0
-  max_parallel_writers: 1
-  iteration: 2/12
-  tool_call_batch: 1
+Loop policy:
+  orchestra_id: enhanced-production-readiness-20260902
+  purpose: production-readiness audit and repair for Feature 173
+  iteration: 10/12
+  tool_call_batches: 8/30
+  estimated_cost_usd: negligible <= 0.50
   dispatch_waves: 0/6
-  repair_rounds: 0
-  cost_proxy: unknown exact telemetry unavailable
-  stop_condition: continue until evidence-backed fix and focused verification, or external data access blocks safe repair
-  active_agents: none
-  closed_agents: none
+  active_subagents: 0/4
+  parallel_writers: 0/2
+  repair_rounds: 5/5
+  stop_conditions: ten_review_rounds, required_gates_passed, no_open_must_do_now_gaps
+  stop_reason: ten review rounds completed; local gates passed; live release gates remain explicitly recorded
 
-[COMPLETED] wave-1-discovery — SocratiCode unavailable; shell fallback confirmed DB state, audit history, lifecycle writers/readers, and prompt failure path.
+[COMPLETED] wave-0-preflight - fresh local Beta production-readiness audit initialized
 
-[COMPLETED] wave-2-repair — corrected canonical DNA presence check and made candidate-first prompt generation fall back to a single prompt when no safe age profile exists.
+Discovery:
+  socraticode: unavailable; no codebase_* MCP tools exposed
+  fallback: targeted rg, find, bounded file reads, local runtime commands
+  worktree: unrelated dirty application changes preserved
 
-Evidence ledger:
-  source: local DB + audit log
-  identifier: series 57 / character IDs 204-208
-  observed failure: Character DNA absent and downstream DNA/prompt actions fail
-  data state: 204/205 have valid visualBible.designDna, 206/207/208 do not; only 204/205 have portrait assets and media tasks.
-  confidence: high
-  next evidence needed: browser/provider run after deployment; owner must run the now-unblocked generation action to create real DNA for 206-208.
+Review rounds:
+  completed: 10/10
+  current: final convergence
 
-Verification ledger:
-  commands: needsSetup test 8 passed; no-safe-age prompt fallback test 1 passed; visual-bible service tests 193 passed; Prettier passed for edited tests; full TypeScript check failed on existing unrelated errors across the dirty worktree.
-  result: focused verification passed; one broader customInstruction suite remains baseline-red due stale fixtures expecting implicit image-model fallback and invalid snapshot keys; no type error was reported in the edited server/test lines.
-  browser/live-production: not run
+Closed gaps:
+  bridge stage-input ordering, SDK tool allow-list propagation, output hash/version
+  validation, cross-variant active-job lock, UI kill-switch isolation, Enhanced
+  edit/finalize/apply revision and model/media CAS
 
-[COMPLETED] verification-review — TypeScript check passed; focused DNA-state and no-safe-age fallback regressions passed. No deployment or live-provider call was made.
+Verification:
+  focused web: 4 files / 29 tests passed
+  focused storyboard jsdom: 2 files / 25 tests passed
+  Python v11 runtime: 10 checks passed
+  package validator: passed
+  bridge health: passed
+  git diff --check: passed
 
-[COMPLETED] worker-transcription-runtime — added the bundled whisper.cpp +
-ggml-large-v3 runtime contract, HyperFrames transcript-file normalization,
-Managed WSL/native execution, isolated output workspace, and release/doctor
-guards. Hardened WSL path quoting and made the HyperFrames compatibility patch
-idempotent. Worker version is 0.1.196.
+External evidence not available:
+  authenticated browser session, live provider call, production database, deployment
 
-Verification ledger:
-  commands: cargo test --manifest-path apps/worker-app/src-tauri/Cargo.toml --lib (203 passed); npm --workspace apps/worker-app run build (passed); Node syntax and git diff checks (passed); runtime-pack SHA256SUMS verification (passed); real HyperFrames transcribe smoke (ok=true, wordCount=5, transcriptWords=5)
-  runtime evidence: whisper.cpp 1.9.3-dev; large-v3 model 3,095,033,483 bytes; binary/model hashes are declared in runtime-pack/manifest.json and SHA256SUMS
-  release gate: correctly blocked because SHA256SUMS.sig is still the explicit placeholder; official signing/deployment/platform installer verification remains external
-  socraticode: unavailable; targeted shell discovery fallback used
+## Follow-up audit loop (2026-09-02)
 
-[IN-PROGRESS] repository-reconciliation — origin/main was fetched and confirmed
-at the same SHA as local main before publication. Full inventory classified
-generated cache/build/release payloads separately from eligible source/spec/doc/
-test/config changes; generated paths were added to .gitignore and will remain
-local. `git diff --check HEAD` now passes. Targeted secret scan of the full
-worktree exceeded 120 seconds; added-line pattern review found no credential
-match, with test/package `sk-` matches classified as false positives from words
-such as task/ask.
+Requested review rounds: 5/5 completed
+Post-fix clean convergence: 2/2 completed
+State-changing repairs in this loop: 2
+  - Enhanced readiness blocker reasons are now visible in the storyboard status line.
+  - Fixed the local Node startup blocker caused by the object-reference prompt import.
 
-[COMPLETED] repository-reconciliation — committed eligible repository changes
-as `13a313d47` and the exact scratch ignore follow-up as `a1cd6a4ad`; both were
-pushed to `origin/main`. Final local and remote SHA match is verified and the
-working tree is clean. Generated cache/build/release payloads remain local and
-ignored; the zero-byte `=.*new` scratch file is ignored by an exact root rule.
+Round ledger:
+  1: spec/catalog/migration parity — pass
+  2: local runtime/database/provider profile — pass after correcting a probe column name
+  3: Enhanced/Legacy isolation and UI readiness — gap found and closed
+  4: focused regression suite — 8 files / 69 tests passed
+  5: skill/runtime/format/typecheck gates — skill tests and syntax passed; audit-skills and full typecheck remain baseline-blocked
+  convergence-1: restart + healthz + focused regression — pass
+  convergence-2: DB parity + formatting of new test + diff check + healthz — pass
 
-Final verification ledger:
-  git parity: local HEAD == origin/main == a1cd6a4ad25f6cf31ff5606cec907db29408fea0
-  git status: clean; ahead/behind 0/0
-  diff check: code diff clean; pre-existing Markdown trailing-space warnings
-    remain in committed documentation line-break metadata
-  typecheck: failed with existing aggregate TypeScript errors in the broad
-    accumulated worktree; no repair was requested for this publication task
-  Python lint: not run because `ruff` is not installed in the environment
-  secret scan: full scanner exceeded 120 seconds; targeted added-line scan
-    found no high-confidence credential pattern
+Current stop reason:
+  five requested review rounds and two clean post-fix rounds completed; no open
+  in-scope must-do-now gap remains. Full typecheck, skill artifact cleanup, live
+  provider/browser/billing/deployment evidence remain separate release gates.
+
+## Episode 256 readiness incident (2026-09-02)
+
+Root cause confirmed from local PostgreSQL: `storyboard.shots[]` persisted
+`shot_number` while `loadEnhancedShotContext` matched only `shotNumber`, so
+`storyboardShot` was undefined and readiness emitted `SHOT_PRECONDITION_FAILED`.
+All Episode 256 Start Frame assets checked were ready images; tenant Enhanced
+flags and infrastructure runtime settings were enabled.
+
+Repair: added a server-side snake_case/camelCase storyboard normalizer and
+restarted `smartspec-web.service`; current service is active and `/healthz` is OK.

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "ผู้หญิงเริ่มจากภาพแรกที่กำหนดไว้ แล้วยกขวดขึ้นอธิบายอย่างเป็นธรรมชาติ",
+  "locale": "th-TH",
+  "assets": [
+    {
+      "assetId": "start",
+      "role": "start_frame",
+      "mediaType": "image",
+      "sourceOfTruth": true,
+      "referencePurposes": [
+        "first_frame"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    }
+  ],
+  "modelRouting": {
+    "mode": "locked",
+    "preferredModels": [
+      "grok-imagine-video-1.5"
+    ],
+    "fallbackModels": [],
+    "allowCrossProviderFallback": false,
+    "requireNativeAudio": true,
+    "requireLipSync": false,
+    "optimizeFor": "quality"
+  },
+  "providerOptions": {
+    "grokImagineVideo15": {
+      "mode": "image_to_video",
+      "resolution": "1080p",
+      "startFrameAspectPolicy": "normalize_before_generation"
+    }
+  }
+}

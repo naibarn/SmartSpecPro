@@ -16,6 +16,7 @@ import { getTraceId } from "./traceContext";
 // ---------------------------------------------------------------------------
 
 export type AuditEventType =
+  | "vd_special_tie_in_event"
   | "llm_request"
   | "llm_response"
   | "llm_stream_end"

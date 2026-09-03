@@ -171,6 +171,11 @@ export interface CompiledVideoState {
   assembledAt?: string;
   status?: CompiledVideoStatus;
   error?: string;
+  /** True when the playable artifact no longer matches the saved footage
+   * timeline and should be replaced by a fresh assembly. */
+  stale?: boolean;
+  footageApplied?: boolean;
+  timelineRevision?: number;
   /** True when the compiled artifact already contains the active B-roll
    * projection. Production assembly must not overlay the same track again. */
   brollApplied?: boolean;
@@ -1373,6 +1378,7 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
       assembledAt: new Date().toISOString(),
       status: "completed",
       error: undefined,
+      stale: false,
     });
 
     if (finalRenderSummary) {

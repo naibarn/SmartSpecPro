@@ -1,0 +1,113 @@
+{
+  "productNature": "physical",
+  "categoryFamily": "cleaning_appliance",
+  "primaryFunction": "wash laundry",
+  "secondaryFunctions": [
+    "spin"
+  ],
+  "targetSurfacesOrSystems": [
+    "laundry"
+  ],
+  "preconditions": [
+    "laundry loaded",
+    "door closed"
+  ],
+  "affordances": [
+    {
+      "action": "load",
+      "target": "drum",
+      "conditions": [],
+      "evidenceLevel": "category_convention",
+      "confidence": 0.9
+    },
+    {
+      "action": "select_mode",
+      "target": "control panel",
+      "conditions": [],
+      "evidenceLevel": "category_convention",
+      "confidence": 0.8
+    }
+  ],
+  "functionalChain": [
+    {
+      "stage": "setup",
+      "description": "load laundry",
+      "visibility": "directly_visible",
+      "truthStatus": "supported",
+      "evidenceRefs": []
+    },
+    {
+      "stage": "activation",
+      "description": "start selected cycle",
+      "visibility": "directly_visible",
+      "truthStatus": "supported",
+      "evidenceRefs": []
+    },
+    {
+      "stage": "internal_mechanism",
+      "description": "drum rotation/agitation as verified for this model",
+      "visibility": "partially_visible",
+      "truthStatus": "supported",
+      "evidenceRefs": [
+        "product-doc"
+      ]
+    },
+    {
+      "stage": "outcome",
+      "description": "completed laundry cycle",
+      "visibility": "directly_visible",
+      "truthStatus": "supported",
+      "evidenceRefs": []
+    }
+  ],
+  "internalMotion": [
+    {
+      "component": "drum",
+      "motion": "rotate/spin",
+      "visibility": "partially_visible",
+      "speedCharacter": "varies by cycle",
+      "evidenceRefs": [
+        "product-doc"
+      ]
+    }
+  ],
+  "observableOutcomes": [
+    "laundry cycle completes"
+  ],
+  "hiddenOrInvisibleMechanisms": [
+    "water/detergent movement may be hidden"
+  ],
+  "requiredProofMoments": [
+    "drum motion",
+    "finished laundry"
+  ],
+  "safetyCriticalSteps": [
+    "door closed before operation"
+  ],
+  "forbiddenAssumptions": [
+    "do not invent cycle performance metrics"
+  ],
+  "recommendedDemoArc": [
+    "setup",
+    "activation",
+    "operation",
+    "mechanism_explanation",
+    "proof",
+    "outcome",
+    "hero"
+  ],
+  "recommendedVisualizationModes": [
+    "cutaway",
+    "motion_trace",
+    "time_compression"
+  ],
+  "evidenceBindings": [
+    {
+      "fact": "drum rotates/spins",
+      "basis": "verified_research",
+      "reference": "product-doc",
+      "confidence": 0.95
+    }
+  ],
+  "researchNeeded": false
+}

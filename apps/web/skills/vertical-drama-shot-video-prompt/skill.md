@@ -578,7 +578,7 @@ none of these entries.
 
 The caller supplies a `TARGET VIDEO MODEL` fact block naming the exact video
 model this prompt will be rendered on and its family: `grok`, `veo`,
-`seedance`, `minimax_h3`, `flux3`, or `other`. Your `prompt` is consumed by THAT model — shape the
+`seedance`, `minimax_h3`, `flux3`, `gemini_omni`, or `other`. Your `prompt` is consumed by THAT model — shape the
 writing for it. Every Hard Rule above still applies for every family; this
 section tunes how you spend the budget and phrase the direction. Never name
 the model or its family inside `prompt` itself.
@@ -652,6 +652,15 @@ the model or its family inside `prompt` itself.
 - Keep effects bounded by the declared genre and preserve facial geometry,
   wardrobe, body proportions, and the exact cast; never let an effect create a
   duplicate or an accidental background person.
+
+### family: gemini_omni (Gemini Omni Flash / Gemini Omni Video)
+
+- Keep first-frame and last-frame intent explicit and preserve the continuous
+  action between them; treat attached image references as additive visual
+  context, not replacements for the scene or established identities.
+- Use concrete multimodal direction for the exact cast, prop continuity, camera
+  movement, and diegetic sound. Keep dialogue tied to the named visible
+  speaker and never ask the model to create subtitles or on-screen text.
 
 ### family: other
 

@@ -34,13 +34,16 @@ export async function listSpecialTieInModels(input: {
   dialogueMode: "none" | "character_dialogue";
   referenceType?: "product" | "location" | "store" | "mixed";
   referenceImageCount?: number;
+  /** Character portraits are attached in addition to product/location refs. */
+  characterReferenceCount?: number;
   connectedMcpProviderKeys: ReadonlySet<string>;
 }) {
   const [images, videos] = await Promise.all([
     getModelsByTypeAsync("image"),
     getModelsByTypeAsync("video"),
   ]);
-  const referenceImageCount = input.referenceImageCount ?? 1;
+  const referenceImageCount =
+    (input.referenceImageCount ?? 1) + (input.characterReferenceCount ?? 0);
   const aspectRatio = input.aspectRatio ?? "9:16";
   const imageModels = filterModelsByMcpProviderAccess(
     images,

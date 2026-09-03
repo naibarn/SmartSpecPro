@@ -74,6 +74,8 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 ENV CHROME_BIN=/usr/bin/chromium-browser
 
 RUN apk add --no-cache \
+    python3 \
+    py3-pip \
     chromium \
     ffmpeg \
     postgresql-client \
@@ -81,6 +83,8 @@ RUN apk add --no-cache \
     font-noto \
     font-noto-thai \
     ttf-freefont
+
+RUN python3 -m pip install --no-cache-dir --break-system-packages "uv==0.9.28"
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 smartspec
@@ -101,6 +105,12 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/web/node_modules ./node_modules
 COPY --from=builder /app/packages/ui/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
+
+RUN cd /app/skills/generic-commercial-video-director && \
+    uv sync --frozen --no-dev
+RUN cd /app/skills/generic-commercial-video-director && \
+    uv run --frozen --project . python -m smartaihub_video_director.enhanced_bridge --health
+RUN chown -R smartspec:nodejs /app/skills
 
 RUN chown -R smartspec:nodejs /app
 

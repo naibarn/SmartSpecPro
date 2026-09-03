@@ -121,6 +121,7 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set<TenantFeat
   "mcpAutoFallbackToGatewayApiEnabled",
   "mcpProviderCreditsTrackedEnabled",
   "META_CHANNELS_ENABLED",
+  "verticalDramaSpecialEpisodes",
 ]);
 
 /**
@@ -189,6 +190,35 @@ export function isFeatureEnabled(
     return FEATURE_FLAG_DEFAULTS[flag];
   }
   return storedFlags[flag];
+}
+
+/**
+ * Read one tenant flag from the database, which is the source of truth for
+ * tenant-scoped route guards. Missing flags intentionally use the shared
+ * default, while an unavailable database fails closed.
+ */
+export async function isTenantFeatureEnabled(
+  tenantId: string,
+  flag: TenantFeatureFlagKey,
+): Promise<boolean> {
+  try {
+    const db = await getDb();
+    if (!db) return false;
+
+    const [row] = await db
+      .select({ featureFlags: tenants.featureFlags })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1);
+
+    if (!row) return false;
+    return isFeatureEnabled(
+      row.featureFlags as Record<string, boolean> | null,
+      flag,
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   enqueueVerticalDramaInteractiveJob,
   getActiveVerticalDramaInteractiveJob,
@@ -49,24 +49,30 @@ describe("vertical drama interactive jobs", () => {
       now: () => 1_700_000_000_000,
       enqueueBullmqJob: async () => undefined,
     };
-    const first = await enqueueVerticalDramaInteractiveJob(payload, dependencies);
-    const duplicate = await enqueueVerticalDramaInteractiveJob(payload, dependencies);
+    const first = await enqueueVerticalDramaInteractiveJob(
+      payload,
+      dependencies
+    );
+    const duplicate = await enqueueVerticalDramaInteractiveJob(
+      payload,
+      dependencies
+    );
     expect(first.status).toBe("queued");
     expect(duplicate).toMatchObject({ jobId: first.jobId, deduped: true });
 
     await runVerticalDramaInteractiveJob(
       first.jobId,
       async (_job, execution) => ({ ok: true, execution }),
-      dependencies,
+      dependencies
     );
     const status = await getVerticalDramaInteractiveJobStatus(
       first.jobId,
       payload,
-      dependencies,
+      dependencies
     );
     expect(status).toMatchObject({ status: "succeeded", result: { ok: true } });
     expect(
-      await getActiveVerticalDramaInteractiveJob(payload, dependencies),
+      await getActiveVerticalDramaInteractiveJob(payload, dependencies)
     ).toBeNull();
   });
 
@@ -77,24 +83,94 @@ describe("vertical drama interactive jobs", () => {
       now: () => 1_700_000_000_000,
       enqueueBullmqJob: async () => undefined,
     };
-    const first = await enqueueVerticalDramaInteractiveJob(payload, dependencies);
+    const first = await enqueueVerticalDramaInteractiveJob(
+      payload,
+      dependencies
+    );
     await runVerticalDramaInteractiveJob(
       first.jobId,
       async () => {
         throw new Error("provider unavailable");
       },
-      dependencies,
+      dependencies
     );
     const failed = await getVerticalDramaInteractiveJobStatus(
       first.jobId,
       payload,
-      dependencies,
+      dependencies
     );
-    expect(failed).toMatchObject({ status: "failed", error: "provider unavailable" });
+    expect(failed).toMatchObject({
+      status: "failed",
+      error: "provider unavailable",
+    });
     const retry = await enqueueVerticalDramaInteractiveJob(
       { ...payload, idempotencyKey: "expansion:7:2" },
-      dependencies,
+      dependencies
     );
     expect(retry.deduped).toBe(false);
+  });
+
+  it("notifies the owner after a successful terminal write", async () => {
+    const redis = createRedis();
+    const notifyCompletion = vi.fn().mockResolvedValue(undefined);
+    const dependencies = {
+      redis,
+      now: () => 1_700_000_000_000,
+      enqueueBullmqJob: async () => undefined,
+      notifyCompletion,
+    };
+    const first = await enqueueVerticalDramaInteractiveJob(
+      {
+        ...payload,
+        kind: "special_tie_in_prompt",
+        input: { seriesId: 53, episodeId: 248 },
+      },
+      dependencies
+    );
+
+    await runVerticalDramaInteractiveJob(
+      first.jobId,
+      async () => ({ ok: true }),
+      dependencies
+    );
+
+    expect(notifyCompletion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: first.jobId,
+        status: "succeeded",
+        kind: "special_tie_in_prompt",
+      })
+    );
+  });
+
+  it("notifies the owner after a failed terminal write", async () => {
+    const redis = createRedis();
+    const notifyCompletion = vi.fn().mockResolvedValue(undefined);
+    const dependencies = {
+      redis,
+      now: () => 1_700_000_000_000,
+      enqueueBullmqJob: async () => undefined,
+      notifyCompletion,
+    };
+    const first = await enqueueVerticalDramaInteractiveJob(
+      payload,
+      dependencies
+    );
+
+    await runVerticalDramaInteractiveJob(
+      first.jobId,
+      async () => {
+        throw new Error("provider unavailable");
+      },
+      dependencies
+    );
+
+    expect(notifyCompletion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: first.jobId,
+        status: "failed",
+        error: "provider unavailable",
+      })
+    );
   });
 });

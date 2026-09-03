@@ -169,6 +169,7 @@ export async function listDramaSeriesProjectsForExtension(
         eq(verticalDramaEpisodes.tenantId, tenantId),
         eq(verticalDramaEpisodes.userId, auth.userId),
         inArray(verticalDramaEpisodes.seriesId, seriesIds),
+        eq(verticalDramaEpisodes.episodeKind, "normal"),
       ))
       .groupBy(verticalDramaEpisodes.seriesId);
     for (const row of aggRows) {
@@ -362,6 +363,7 @@ export interface DramaShotReferenceImage {
   id: string;
   url: string;
   thumbnailUrl: string | null;
+  mediaType: "image" | "video" | "audio";
   role: string;
   source: string;
   title?: string;
@@ -427,6 +429,7 @@ interface ExtensionShotReferenceRow {
   mediaAssetId: number;
   role: string;
   source: string;
+  assetMimeType?: string | null;
   assetOriginalUrl: string | null;
   assetThumbnailUrl: string | null;
 }
@@ -439,10 +442,10 @@ interface ExtensionCharacterAsset {
 }
 
 /**
- * Keep the extension's shot payload aligned with the storyboard card: only
- * user-created reference frames plus one approved portrait for each character
- * that belongs to this shot. Grid cuts, generation history, product images,
- * unused cast, and additional looks remain server-side.
+ * Keep the extension's shot payload aligned with the storyboard card: expose
+ * every linked image/video/audio reference plus one approved portrait for each
+ * character that belongs to this shot. The media asset join remains scoped by
+ * tenant and user, so an unresolved or unsupported asset is omitted.
  */
 export function projectDramaShotReferenceImagesForExtension(input: {
   shotReferenceRows: ExtensionShotReferenceRow[];
@@ -454,13 +457,15 @@ export function projectDramaShotReferenceImagesForExtension(input: {
   const includedMediaAssetIds = new Set<number>();
 
   for (const row of input.shotReferenceRows) {
-    if (row.source !== "reference_frame") continue;
     const url = row.assetOriginalUrl ?? row.assetThumbnailUrl;
     if (!url || includedMediaAssetIds.has(row.mediaAssetId)) continue;
+    const mediaType = mediaTypeFromMimeType(row.assetMimeType);
+    if (!mediaType) continue;
     images.push({
       id: String(row.id),
       url,
       thumbnailUrl: row.assetThumbnailUrl,
+      mediaType,
       role: row.role,
       source: row.source,
     });
@@ -486,6 +491,7 @@ export function projectDramaShotReferenceImagesForExtension(input: {
       id: `char-${characterAsset.assetRowId}`,
       url,
       thumbnailUrl: asset.thumbnailUrl,
+      mediaType: "image",
       role: characterAsset.role ?? "character_reference",
       source: "character",
       title: characterAsset.characterName,
@@ -494,6 +500,14 @@ export function projectDramaShotReferenceImagesForExtension(input: {
   }
 
   return images;
+}
+
+function mediaTypeFromMimeType(mimeType: string | null | undefined): "image" | "video" | "audio" | null {
+  if (!mimeType) return null;
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  return null;
 }
 
 export function resolveDramaShotCharacterRefsForExtension(
@@ -689,7 +703,9 @@ export async function getDramaSeriesEpisodeDetailForExtension(
   for (const shot of storyboardShots) shotNumbers.add(shot.shotNumber);
   for (const frame of frames) shotNumbers.add(frame.shotNumber);
 
-  // Load shot references (LEFT JOIN media_assets, scoped by tenant+user on the join side too).
+  // Load every linked shot reference (LEFT JOIN media_assets, scoped by
+  // tenant+user on the join side too). The MIME type is required by the
+  // extension to render image/video/audio references correctly.
   const referenceRows = await db
     .select({
       id: verticalDramaShotReferences.id,
@@ -699,6 +715,7 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       sortOrder: verticalDramaShotReferences.sortOrder,
       createdAt: verticalDramaShotReferences.createdAt,
       mediaAssetId: verticalDramaShotReferences.mediaAssetId,
+      assetMimeType: mediaAssets.mimeType,
       assetOriginalUrl: mediaAssets.originalUrl,
       assetThumbnailUrl: mediaAssets.thumbnailUrl,
     })
@@ -716,7 +733,6 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       eq(verticalDramaShotReferences.userId, auth.userId),
       eq(verticalDramaShotReferences.seriesId, seriesId),
       eq(verticalDramaShotReferences.episodeId, episodeId),
-      eq(verticalDramaShotReferences.source, "reference_frame"),
     ))
     .orderBy(
       asc(verticalDramaShotReferences.shotNumber),

@@ -2,7 +2,7 @@
 name: cinematic-prompt-refiner-pro
 description: Imported from shared skill bundle (cinematic-prompt-refiner-pro.zip)
 category: other
-version: 1.0.0
+version: 1.2.0
 icon: sparkles
 tags:
   - shared-skill
@@ -39,6 +39,49 @@ Convert any user-provided prompt into a complete cinematic prompt for image gene
 This skill is designed for workflows where reference images may already be attached. Therefore, the refined prompt should not waste space describing character appearance, clothing, face identity, product details, or location details unless those details are story-critical or explicitly requested by the source prompt.
 
 The main focus is cinematic expression: movement, acting, emotion, micro-expression, gaze, blocking, camera language, framing, pacing, lighting mood, and continuity.
+
+## Final Provider-Safe Wording Pass
+
+This is the last semantic pass before `optimized_prompt` is returned. Perform it
+inside the skill output itself. The caller must be able to send the returned
+prompt directly to the image provider without a later string replacement or
+code-authored sentence append.
+
+When the target is an image and the source includes attached reference images,
+a minor/child, or a strong face-likeness instruction, rewrite risk-sensitive
+wording naturally while preserving the scene and the visual continuity:
+
+- Replace absolute likeness language such as “exact facial identity,” “exact
+  likeness,” “identical,” “flawless,” or “recognizable likeness” with wording
+  such as “closely matching the attached reference,” “consistent visual
+  appearance,” or “the same character appearance based on the reference.”
+- In a child or family context, prefer “natural close family framing,” “a
+  restrained family two-shot,” or “close dramatic framing” instead of
+  “intimate framing” when the latter could be read as romantic or sexual.
+- Describe private staging neutrally: prefer “keeps the phone angled away while
+  reading the message” over wording that makes a child appear to be involved in
+  a secretive or unsafe act, while preserving the requested blocking and story
+  meaning.
+- Keep all children age-appropriate, fully clothed, non-sexualized, and in a
+  safe ordinary context. Never remove, weaken, or invert a child-safety clause
+  supplied by the source prompt.
+
+Do not apply this pass mechanically. Rewrite the complete sentence so it remains
+grammatical and natural. Do not weaken numeric, count, aspect-ratio, or shot
+format constraints merely because they contain an absolute word such as
+“exactly.” Do not remove required characters, props, actions, or continuity
+facts. Exact protected fragments (for example, verbatim dialogue) must remain
+verbatim. A semantic-protected identity block is different: preserve its
+reference mapping, character names, image indexes, required character count,
+age/maturity facts, and other structural anchors, but rewrite risky likeness or
+framing wording inside the block when needed for provider safety. Never append
+the original block after producing `optimized_prompt`; the skill's returned
+prompt is the complete provider-ready prompt.
+
+Before returning the structured result, silently verify that the final prompt has
+one coherent meaning, contains no unnecessary absolute likeness claims, does not
+introduce romantic/sexual framing around a minor, and is ready to send as-is.
+Never mention this review or policy reasoning inside `optimized_prompt`.
 
 ## Character Limits
 - Image prompt: aim to stay under 3500 characters.

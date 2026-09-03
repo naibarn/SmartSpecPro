@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { DragEvent } from "react";
 import {
   isUsableImageUrl,
+  readDroppedMediaFiles,
+  readDroppedMediaInput,
   mergeRecentUploadedImages,
   normalizeMediaHistoryImageItems,
   normalizeRecentUploadedImageItems,
@@ -15,6 +18,41 @@ describe("isUsableImageUrl", () => {
 
   it("rejects unsupported URL schemes", () => {
     expect(isUsableImageUrl("javascript:alert(1)")).toBe(false);
+  });
+});
+
+describe("readDroppedMediaInput", () => {
+  it("accepts OS audio files and library video URLs", () => {
+    const audio = new File(["audio"], "voice.mp3", { type: "audio/mpeg" });
+    const audioResult = readDroppedMediaInput({
+      dataTransfer: { files: [audio], getData: () => "" },
+    } as unknown as DragEvent);
+    expect(audioResult.input).toMatchObject({ kind: "file", mediaType: "audio" });
+
+    const videoResult = readDroppedMediaInput({
+      dataTransfer: {
+        files: [],
+        getData: (type: string) => type.includes("media-type") ? "video" : "https://cdn.example.com/library-item",
+      },
+    } as unknown as DragEvent);
+    expect(videoResult.input).toEqual({ kind: "url", mediaType: "video", url: "https://cdn.example.com/library-item" });
+  });
+});
+
+describe("readDroppedMediaFiles", () => {
+  it("preserves multiple mixed image, video, and audio files", () => {
+    const files = [
+      new File(["image"], "frame.png", { type: "image/png" }),
+      new File(["video"], "motion.mp4", { type: "video/mp4" }),
+      new File(["audio"], "voice.mp3", { type: "audio/mpeg" }),
+    ];
+    const result = readDroppedMediaFiles(files);
+    expect(result.error).toBeNull();
+    expect(result.inputs.map(input => input.mediaType)).toEqual([
+      "image",
+      "video",
+      "audio",
+    ]);
   });
 });
 

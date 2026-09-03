@@ -10,8 +10,13 @@ export type RuntimeUpdateCheck = {
   runtimeId: string;
   channel: "stable" | "preview" | string;
   currentVersion: string | null;
+  currentRuntimeProfileHash: string | null;
   latestVersion: string | null;
+  latestRuntimeProfileHash: string | null;
+  latestAllowed: boolean;
   updateAvailable: boolean;
+  reason: "not_installed" | "version_older" | "profile_changed" | "current" | "latest_unavailable" | string;
+  checkedAt: string;
 };
 
 export type RuntimeSetupStatus = {

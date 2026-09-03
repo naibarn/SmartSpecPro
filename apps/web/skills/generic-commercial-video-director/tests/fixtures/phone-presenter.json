@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "ยืนบรรยายรายละเอียดโทรศัพท์มือถือ ยี่ห้อ xxxx รุ่น xxxx",
+  "locale": "th-TH",
+  "contentMode": "presenter",
+  "product": {
+    "productId": "phone1",
+    "name": "xxxx",
+    "brand": "xxxx",
+    "category": "smartphone",
+    "description": null,
+    "formFactor": "smartphone",
+    "features": [],
+    "approvedClaims": [],
+    "prohibitedClaims": [],
+    "requiredVisualProof": [
+      "front",
+      "back",
+      "camera module"
+    ],
+    "sourceOfTruthAssetIds": []
+  },
+  "dialogue": {
+    "mode": "agent_draft",
+    "language": "th-TH",
+    "allowAgentToDraft": true,
+    "lines": []
+  }
+}

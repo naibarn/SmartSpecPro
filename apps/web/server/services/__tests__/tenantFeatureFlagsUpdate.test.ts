@@ -120,4 +120,18 @@ describe("updateTenantFeatureFlags", () => {
       true,
     );
   });
+
+  it("syncs the special tie-in flag for legacy Redis-backed readers", async () => {
+    const { updateTenantFeatureFlags } = await import("../tenantFeatureFlagService");
+
+    await updateTenantFeatureFlags("tenant-special", {
+      verticalDramaSpecialEpisodes: false,
+    });
+
+    expect(mockSetTenantFeatureFlag).toHaveBeenCalledWith(
+      "verticalDramaSpecialEpisodes",
+      "tenant-special",
+      false,
+    );
+  });
 });

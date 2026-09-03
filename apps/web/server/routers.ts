@@ -225,8 +225,8 @@ const aiRouter = router({
           fileBase64: z.string().min(1),
         })
         .refine(
-          (v) => v.fileType.startsWith("image/") || v.fileType.startsWith("video/"),
-          { message: "Only image/* or video/* uploads are supported" }
+          (v) => v.fileType.startsWith("image/") || v.fileType.startsWith("video/") || v.fileType.startsWith("audio/"),
+          { message: "Only image/*, video/*, or audio/* uploads are supported" }
         )
     )
     .mutation(async ({ input, ctx }) => {
@@ -234,14 +234,15 @@ const aiRouter = router({
       const b64 = parts.length === 2 ? parts[1] : input.fileBase64;
       const buf = Buffer.from(b64, "base64");
       const isVideoUpload = input.fileType.startsWith("video/");
-      const max = isVideoUpload ? GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES : GEMINI_OMNI_MAX_IMAGE_UPLOAD_BYTES;
+      const isAudioUpload = input.fileType.startsWith("audio/");
+      const max = isVideoUpload || isAudioUpload ? GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES : GEMINI_OMNI_MAX_IMAGE_UPLOAD_BYTES;
       if (buf.length > max) {
         const maxMb = Math.round(max / 1024 / 1024);
         throw new Error(`File too large (max ${maxMb}MB)`);
       }
 
       // Whitelist allowed extensions
-      const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp", "svg", "mp4", "webm", "mov", "avi"]);
+      const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp", "svg", "mp4", "webm", "mov", "avi", "m4v", "mp3", "wav", "m4a", "aac", "ogg", "flac", "opus"]);
       const ext = (input.fileName.split(".").pop() || "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
       if (ext && !ALLOWED_EXTENSIONS.has(ext)) {
         throw new Error(`File extension .${ext} is not allowed. Allowed: ${[...ALLOWED_EXTENSIONS].join(", ")}`);
@@ -261,12 +262,22 @@ const aiRouter = router({
         (magicBytes[0] === 0x1A && magicBytes[1] === 0x45 && magicBytes[2] === 0xDF && magicBytes[3] === 0xA3) || // WEBM (EBML)
         (magicBytes[0] === 0x52 && magicBytes[1] === 0x49 && magicBytes[2] === 0x46 && magicBytes[3] === 0x46) // AVI (RIFF)
       );
+      const isValidAudio = (
+        (magicBytes[0] === 0x49 && magicBytes[1] === 0x44 && magicBytes[2] === 0x33) || // ID3
+        (magicBytes[0] === 0x52 && magicBytes[1] === 0x49 && magicBytes[2] === 0x46 && magicBytes[3] === 0x46) || // WAV
+        (magicBytes[0] === 0x4f && magicBytes[1] === 0x67 && magicBytes[2] === 0x67 && magicBytes[3] === 0x53) || // OGG
+        (magicBytes[0] === 0x66 && magicBytes[1] === 0x4c && magicBytes[2] === 0x61 && magicBytes[3] === 0x43) || // FLAC
+        (magicBytes[0] === 0xff && (magicBytes[1] & 0xe0) === 0xe0) // MP3/AAC frame
+      );
 
       if (input.fileType.startsWith("image/") && !isValidImage) {
         throw new Error("File content does not match claimed image type");
       }
       if (input.fileType.startsWith("video/") && !isValidVideo) {
         throw new Error("File content does not match claimed video type");
+      }
+      if (input.fileType.startsWith("audio/") && !isValidAudio) {
+        throw new Error("File content does not match claimed audio type");
       }
 
       const id = nanoid(10);

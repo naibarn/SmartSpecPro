@@ -18,6 +18,10 @@ const REASSIGNABLE_STATUSES: WorkerJobStatus[] = [
   "running",
   "uploading",
 ];
+export const WORKER_STALL_WATCHDOG_JOB_TYPES = [
+  "hyperframes_final_composite",
+  "remotion_render_video",
+] as const;
 
 type WorkerJobRecord = Record<string, any>;
 type ReassignActor = "user" | "admin" | "watchdog";
@@ -166,7 +170,7 @@ export const defaultWorkerStallWatchdogRepo: WorkerStallWatchdogRepository = {
       .from(workerJobs)
       .where(and(
         eq(workerJobs.tenantId, input.tenantId),
-        eq(workerJobs.jobType, "hyperframes_final_composite"),
+        inArray(workerJobs.jobType, WORKER_STALL_WATCHDOG_JOB_TYPES),
         inArray(workerJobs.status, REASSIGNABLE_STATUSES),
       ))
       .limit(input.limit);

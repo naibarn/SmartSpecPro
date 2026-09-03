@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "ผู้หญิงถือสินค้าจากภาพสินค้าและสาธิตการใช้งาน",
+  "locale": "th-TH",
+  "assets": [
+    {
+      "assetId": "person",
+      "role": "character_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "identity"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    },
+    {
+      "assetId": "product",
+      "role": "product_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "product_geometry",
+        "product_label"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    }
+  ],
+  "providerOptions": {
+    "ltx25": {
+      "executionRoute": "cloud_api",
+      "model": "ltx-2-5-pro",
+      "mode": "auto",
+      "referencePolicy": "prebake_start_frame",
+      "resolution": "1080x1920",
+      "fps": 24
+    }
+  }
+}

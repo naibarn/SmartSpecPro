@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { DesktopReleaseConfigPanel } from "@/features/desktop-releases/DesktopReleaseConfigPanel";
 import { DesktopReleasePanel } from "@/features/desktop-releases/DesktopReleasePanel";
+import { WorkerRuntimeReleasePanel } from "@/features/desktop-releases/WorkerRuntimeReleasePanel";
 
 function roleLabel(role?: string | null) {
   if (role === "admin") {
@@ -32,13 +33,19 @@ export default function AdminDesktopHost() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const desktopHostEnabled = useTenantFeatureFlag("desktopHostEnabled");
-  const desktopAdvancedLocalModeEnabled = useTenantFeatureFlag("desktopAdvancedLocalMode");
+  const desktopAdvancedLocalModeEnabled = useTenantFeatureFlag(
+    "desktopAdvancedLocalMode"
+  );
   const canManageReleaseSettings = user?.role === "admin";
 
-  const releaseWorkspacePath = user?.role === "admin" ? "/admin/desktop-host" : "/domain-admin/desktop-host";
-  const governancePath = user?.role === "admin"
-    ? "/admin/desktop-host/governance"
-    : "/domain-admin/desktop-host/governance";
+  const releaseWorkspacePath =
+    user?.role === "admin"
+      ? "/admin/desktop-host"
+      : "/domain-admin/desktop-host";
+  const governancePath =
+    user?.role === "admin"
+      ? "/admin/desktop-host/governance"
+      : "/domain-admin/desktop-host/governance";
 
   const heroBadges = useMemo(
     () => [
@@ -47,17 +54,21 @@ export default function AdminDesktopHost() {
         className: "border-sky-200 bg-white text-sky-700",
       },
       {
-        label: desktopHostEnabled ? "Desktop Host enabled" : "Desktop Host preview",
+        label: desktopHostEnabled
+          ? "Desktop Host enabled"
+          : "Desktop Host preview",
         className: desktopHostEnabled
           ? "border-emerald-200 bg-white text-emerald-700"
           : "border-amber-200 bg-white text-amber-700",
       },
       {
-        label: desktopAdvancedLocalModeEnabled ? "Advanced local mode" : "Managed release mode",
+        label: desktopAdvancedLocalModeEnabled
+          ? "Advanced local mode"
+          : "Managed release mode",
         className: "border-slate-200 bg-white text-slate-700",
       },
     ],
-    [desktopAdvancedLocalModeEnabled, desktopHostEnabled, user?.role],
+    [desktopAdvancedLocalModeEnabled, desktopHostEnabled, user?.role]
   );
 
   return (
@@ -81,7 +92,7 @@ export default function AdminDesktopHost() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {heroBadges.map((badge) => (
+                {heroBadges.map(badge => (
                   <Badge
                     key={badge.label}
                     variant="outline"
@@ -90,10 +101,16 @@ export default function AdminDesktopHost() {
                     {badge.label}
                   </Badge>
                 ))}
-                <Badge variant="outline" className="border-indigo-200 bg-white text-indigo-700">
+                <Badge
+                  variant="outline"
+                  className="border-indigo-200 bg-white text-indigo-700"
+                >
                   Windows / macOS / Linux
                 </Badge>
-                <Badge variant="outline" className="border-cyan-200 bg-white text-cyan-700">
+                <Badge
+                  variant="outline"
+                  className="border-cyan-200 bg-white text-cyan-700"
+                >
                   Build + publish
                 </Badge>
               </div>
@@ -132,7 +149,8 @@ export default function AdminDesktopHost() {
                 Focus
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Release preparation, progress, and publishing live together here.
+                Release preparation, progress, and publishing live together
+                here.
               </p>
             </div>
             <div className="rounded-2xl border border-sky-100 bg-white/90 p-4 shadow-sm">
@@ -175,7 +193,8 @@ export default function AdminDesktopHost() {
                       Configuration and publishing
                     </h2>
                     <p className="mt-1 text-sm leading-6 text-slate-600">
-                      Keep the repository, workflow, ref, and token in one place.
+                      Keep the repository, workflow, ref, and token in one
+                      place.
                     </p>
                   </div>
                   <Badge
@@ -192,6 +211,8 @@ export default function AdminDesktopHost() {
             </DashboardSurface>
           ) : null}
 
+          {canManageReleaseSettings ? <WorkerRuntimeReleasePanel /> : null}
+
           <DashboardSurface>
             <div className="border-b border-slate-200/80 px-5 pt-5 sm:px-6 sm:pt-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -206,7 +227,10 @@ export default function AdminDesktopHost() {
                     A clear path from configuration to upload and publication.
                   </p>
                 </div>
-                <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
+                <Badge
+                  variant="outline"
+                  className="border-slate-200 bg-slate-50 text-slate-700"
+                >
                   <Download className="mr-1 h-3.5 w-3.5" />
                   Installer ready
                 </Badge>
@@ -234,7 +258,7 @@ export default function AdminDesktopHost() {
                   title: "Publish and share",
                   text: "Mark the release live so dashboard users can download it immediately.",
                 },
-              ].map((item) => (
+              ].map(item => (
                 <div
                   key={item.step}
                   className="flex gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4"
@@ -243,8 +267,12 @@ export default function AdminDesktopHost() {
                     {item.step}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-sm font-semibold text-slate-900">{item.title}</h3>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">{item.text}</p>
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      {item.title}
+                    </h3>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                      {item.text}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -254,7 +282,8 @@ export default function AdminDesktopHost() {
                   Governance is separate
                 </div>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Device posture, local roots, and rollout controls now live in the dedicated governance console.
+                  Device posture, local roots, and rollout controls now live in
+                  the dedicated governance console.
                 </p>
                 <Button
                   type="button"

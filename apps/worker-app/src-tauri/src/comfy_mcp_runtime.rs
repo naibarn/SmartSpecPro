@@ -276,7 +276,10 @@ async fn find_python(app_data_dir: &Path) -> Result<PythonLauncher, String> {
             if python_version_supported(&output) {
                 return Ok(PythonLauncher {
                     executable: PathBuf::from(executable),
-                    prefix_args: prefix_args.iter().map(|value| (*value).to_string()).collect(),
+                    prefix_args: prefix_args
+                        .iter()
+                        .map(|value| (*value).to_string())
+                        .collect(),
                     version: output.trim().to_string(),
                 });
             }
@@ -309,10 +312,7 @@ fn normalize_cli_version(value: &str) -> String {
         {
             return version.to_string();
         }
-        if let Some(version) = parsed
-            .get("version")
-            .and_then(serde_json::Value::as_str)
-        {
+        if let Some(version) = parsed.get("version").and_then(serde_json::Value::as_str) {
             return version.to_string();
         }
     }
@@ -414,6 +414,9 @@ mod tests {
             normalize_cli_version(r#"{"data":{"version":"1.18.0"}}"#),
             "1.18.0"
         );
-        assert_eq!(normalize_cli_version("comfy version 1.18.0"), "comfy version 1.18.0");
+        assert_eq!(
+            normalize_cli_version("comfy version 1.18.0"),
+            "comfy version 1.18.0"
+        );
     }
 }

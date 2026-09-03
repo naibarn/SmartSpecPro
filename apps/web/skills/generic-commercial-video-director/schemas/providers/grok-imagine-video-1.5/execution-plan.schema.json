@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/providers/grok-imagine-video-1.5/execution-plan.schema.json",
+  "title": "Grok Imagine Video 1.5 Execution Plan",
+  "type": "object",
+  "required": [
+    "model",
+    "mode",
+    "durationSeconds",
+    "resolution",
+    "aspectRatio",
+    "referencePlan",
+    "prompt",
+    "generationPayload",
+    "preProcessing",
+    "postGeneration",
+    "qcRequirements",
+    "warnings"
+  ],
+  "properties": {
+    "model": {
+      "const": "grok-imagine-video-1.5"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "text_to_video",
+        "image_to_video",
+        "reference_to_video"
+      ]
+    },
+    "durationSeconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 15
+    },
+    "resolution": {
+      "type": "string",
+      "enum": [
+        "480p",
+        "720p",
+        "1080p"
+      ]
+    },
+    "aspectRatio": {
+      "type": "string",
+      "enum": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4",
+        "3:2",
+        "2:3"
+      ]
+    },
+    "referencePlan": {
+      "$ref": "https://smartaihub.app/schemas/providers/grok-imagine-video-1.5/reference-plan.schema.json"
+    },
+    "prompt": {
+      "$ref": "https://smartaihub.app/schemas/providers/grok-imagine-video-1.5/prompt.schema.json"
+    },
+    "generationPayload": {
+      "type": "object"
+    },
+    "preProcessing": {
+      "type": "object",
+      "required": [
+        "normalizeStartFrame",
+        "prebakeStartFrame",
+        "deriveVideoReferences"
+      ],
+      "properties": {
+        "normalizeStartFrame": {
+          "type": "boolean"
+        },
+        "prebakeStartFrame": {
+          "type": "boolean"
+        },
+        "deriveVideoReferences": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "postGeneration": {
+      "type": "object",
+      "required": [
+        "externalAudioOrLipSync",
+        "postComposite",
+        "companionExtensionModel"
+      ],
+      "properties": {
+        "externalAudioOrLipSync": {
+          "type": "boolean"
+        },
+        "postComposite": {
+          "type": "boolean"
+        },
+        "companionExtensionModel": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "qcRequirements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

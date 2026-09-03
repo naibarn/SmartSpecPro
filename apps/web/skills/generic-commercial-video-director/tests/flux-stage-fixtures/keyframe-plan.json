@@ -1,0 +1,23 @@
+{
+  "mode": "i2v",
+  "keyframes": [
+    {
+      "assetId": "start",
+      "timeSeconds": 0,
+      "purpose": "start_frame"
+    },
+    {
+      "assetId": "end",
+      "timeSeconds": 10,
+      "purpose": "end_frame"
+    }
+  ],
+  "startVideoAssetId": null,
+  "softReferences": [],
+  "derivedReferences": [],
+  "prebakeRequired": false,
+  "nonProviderReferences": [],
+  "continuationTailSeconds": null,
+  "blocked": false,
+  "warnings": []
+}

@@ -10,6 +10,11 @@ vi.mock("../../storage", () => ({
   storageResolveUrl: vi.fn(),
 }));
 
+vi.mock("../durableMediaAssetService", () => ({
+  copyMediaBufferToR2: vi.fn(),
+  copyMediaSourceToR2: vi.fn(),
+}));
+
 vi.mock("sharp", () => ({
   default: vi.fn(),
 }));
@@ -22,6 +27,7 @@ import {
   fetchAsset,
   generateSignedUrl,
   validateImage,
+  validateMediaAttachment,
   computePerceptualHash,
   findSimilarAssets,
   deleteAsset,
@@ -94,6 +100,17 @@ describe("mediaAssetService", () => {
       // Unknown size should not be rejected at validation time
       const result = validateImage("image/jpeg", undefined);
       expect(result.valid).toBe(true);
+    });
+  });
+
+  describe("validateMediaAttachment", () => {
+    it("accepts video and audio references within their media limits", () => {
+      expect(validateMediaAttachment("video", "video/mp4", 10 * 1024 * 1024).valid).toBe(true);
+      expect(validateMediaAttachment("audio", "audio/mpeg", 10 * 1024 * 1024).valid).toBe(true);
+    });
+
+    it("rejects unsupported attachment types", () => {
+      expect(validateMediaAttachment("file", "application/pdf", 1024).valid).toBe(false);
     });
   });
 

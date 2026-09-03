@@ -15,5 +15,11 @@ describe("Comfy MCP adapter", () => {
     expect(call.arguments.startFrame?.assetId).toBe("start-1");
     expect(JSON.stringify(call)).not.toMatch(/workflowJson|\/tmp|https?:/i);
   });
+  it("preserves an image-only stop frame in the worker tool call", () => {
+    const frame = { assetId: "stop-1", revision: "r2", fingerprint: hash, storageKey: "stop-frame-1", width: 1080, height: 1920, contentType: "image/png" as const };
+    const request = { intent: "shot_generation" as const, workflowFamily: "video", requestedWorkflowId: "wf-minimax_h3_i2v", startFrame: { ...frame, assetId: "start-1" }, stopFrame: frame, referenceFrames: null, policyRevision: "p1" };
+    const call = buildComfyMcpShotToolCall({ workflowId: "wf-minimax_h3_i2v", request, durationMs: 5000, modelRoute: "minimax_h3_i2v" });
+    expect(call.arguments.stopFrame?.assetId).toBe("stop-1");
+  });
   it("converts the pinned manifest into the shared capability probe", () => { expect(capabilityProbeFromManifest(manifest).adapter).toBe("comfy_mcp"); });
 });

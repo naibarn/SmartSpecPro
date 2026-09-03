@@ -1,0 +1,158 @@
+{
+  "id": "generic-commercial-video-director",
+  "name": "Generic Commercial Video Director",
+  "version": "11.0.0",
+  "type": "hybrid-agent-skill",
+  "entrypoint": "SKILL.md",
+  "schemas": {
+    "input": "schemas/input.schema.json",
+    "ui": "schemas/ui.schema.json",
+    "output": "schemas/output.schema.json",
+    "modelCapability": "schemas/model-capability.schema.json",
+    "stages": [
+      "schemas/stages/place-experience.schema.json",
+      "schemas/stages/promotion-target.schema.json",
+      "schemas/stages/experience-model.schema.json",
+      "schemas/stages/expanded-intent.schema.json",
+      "schemas/stages/observed-start-state.schema.json",
+      "schemas/stages/shot-plan.schema.json",
+      "schemas/stages/qc-report.schema.json",
+      "schemas/stages/repair-plan.schema.json",
+      "schemas/stages/product-mechanism.schema.json",
+      "schemas/stages/visualization-plan.schema.json",
+      "schemas/stages/sequence-plan.schema.json",
+      "schemas/stages/prompt-chain.schema.json",
+      "schemas/stages/cast-resolution.schema.json",
+      "schemas/stages/research-summary.schema.json",
+      "schemas/stages/concept.schema.json",
+      "schemas/stages/script.schema.json",
+      "schemas/stages/breakdown.schema.json",
+      "schemas/stages/dialogue-map.schema.json",
+      "schemas/stages/continuity-plan.schema.json",
+      "schemas/stages/generation-strategy.schema.json",
+      "schemas/stages/prompt-intent.schema.json",
+      "schemas/stages/storyboard.schema.json"
+    ],
+    "providerSpecific": {
+      "minimaxH3": [
+        "schemas/providers/minimax-h3/reference-plan.schema.json",
+        "schemas/providers/minimax-h3/prompt.schema.json",
+        "schemas/providers/minimax-h3/execution-plan.schema.json",
+        "schemas/providers/minimax-h3/continuation-chain.schema.json"
+      ],
+      "grokImagineVideo15": [
+        "schemas/providers/grok-imagine-video-1.5/reference-plan.schema.json",
+        "schemas/providers/grok-imagine-video-1.5/prompt.schema.json",
+        "schemas/providers/grok-imagine-video-1.5/execution-plan.schema.json"
+      ],
+      "wan3": [
+        "schemas/providers/wan3.0/reference-plan.schema.json",
+        "schemas/providers/wan3.0/prompt.schema.json",
+        "schemas/providers/wan3.0/execution-plan.schema.json"
+      ],
+      "flux3": [
+        "schemas/providers/flux-3-video/keyframe-plan.schema.json",
+        "schemas/providers/flux-3-video/prompt.schema.json",
+        "schemas/providers/flux-3-video/execution-plan.schema.json"
+      ],
+      "seedance": [
+        "schemas/providers/seedance-2.x/reference-plan.schema.json",
+        "schemas/providers/seedance-2.x/prompt.schema.json",
+        "schemas/providers/seedance-2.x/execution-plan.schema.json"
+      ],
+      "ltx25": [
+        "schemas/providers/ltx-2.5/input-plan.schema.json",
+        "schemas/providers/ltx-2.5/prompt.schema.json",
+        "schemas/providers/ltx-2.5/execution-plan.schema.json"
+      ]
+    }
+  },
+  "providerProfilesDir": "config/providers",
+  "adapterRegistry": "adapters/registry.py",
+  "workflowContract": "SKILL.md",
+  "reviewReport": "docs/GAP_REVIEW_V11_12_ROUNDS.md",
+  "productFunctionTaxonomy": "config/product-function-taxonomy.json",
+  "visualizationPatterns": "config/visualization-patterns.json",
+  "coverageReport": "docs/PRODUCT_COVERAGE_V5.md",
+  "temporalPlanner": "adapters/temporal_planner.py",
+  "promptProfilesDir": "config/prompt-profiles",
+  "h3Support": {
+    "adapter": "adapters/minimax_h3.py",
+    "referencePlanner": "adapters/h3_reference_planner.py",
+    "promptCompiler": "adapters/minimax_h3_prompt_compiler.py",
+    "providerProfiles": [
+      "config/providers/minimax-h3.json",
+      "config/providers/minimax-h3-max.json"
+    ],
+    "promptProfile": "config/prompt-profiles/minimax-h3.json",
+    "providerSchemasDir": "schemas/providers/minimax-h3",
+    "documentation": "docs/MINIMAX_H3_FULL_SUPPORT.md",
+    "routingMatrix": "docs/H3_REFERENCE_ROUTING_MATRIX.md"
+  },
+  "aliases": [
+    "generic-product-video-director"
+  ],
+  "promotionTargetResolver": "schemas/stages/promotion-target.schema.json",
+  "placeExperienceModel": "schemas/stages/place-experience.schema.json",
+  "userGuide": "docs/USER_GUIDE_TH.md",
+  "grokImagineVideo15Support": {
+    "adapter": "adapters/grok_imagine_video_1_5.py",
+    "referencePlanner": "adapters/grok_reference_planner.py",
+    "promptCompiler": "adapters/grok_prompt_compiler.py",
+    "providerProfile": "config/providers/grok-imagine-video-1.5.json",
+    "companionProfile": "config/providers/grok-imagine-video.json",
+    "promptProfile": "config/prompt-profiles/grok-imagine-video-1.5.json",
+    "providerSchemasDir": "schemas/providers/grok-imagine-video-1.5",
+    "documentation": "docs/GROK_IMAGINE_VIDEO_1_5_FULL_SUPPORT.md"
+  },
+  "wan3Support": {
+    "adapter": "adapters/wan3.py",
+    "referencePlanner": "adapters/wan3_reference_planner.py",
+    "promptCompiler": "adapters/wan3_prompt_compiler.py",
+    "providerProfiles": [
+      "config/providers/wan3.0-video.json",
+      "config/providers/wan3.0-video-prime.json"
+    ],
+    "providerSchemasDir": "schemas/providers/wan3.0",
+    "documentation": "docs/WAN3_FULL_SUPPORT.md"
+  },
+  "flux3Support": {
+    "adapter": "adapters/flux3.py",
+    "promptCompiler": "adapters/flux3_prompt_compiler.py",
+    "providerProfile": "config/providers/flux-3-video.json",
+    "providerSchemasDir": "schemas/providers/flux-3-video",
+    "documentation": "docs/FLUX3_FULL_SUPPORT.md"
+  },
+  "seedanceSupport": {
+    "adapter": "adapters/seedance.py",
+    "referencePlanner": "adapters/seedance_reference_planner.py",
+    "promptCompiler": "adapters/seedance_prompt_compiler.py",
+    "providerProfiles": [
+      "config/providers/seedance-2.0-byteplus.json",
+      "config/providers/seedance-2.5-byteplus.json"
+    ],
+    "providerSchemasDir": "schemas/providers/seedance-2.x",
+    "documentation": "docs/SEEDANCE_2X_FULL_SUPPORT.md"
+  },
+  "ltx25Support": {
+    "adapter": "adapters/ltx25.py",
+    "referencePlanner": "adapters/ltx25_reference_planner.py",
+    "promptCompiler": "adapters/ltx25_prompt_compiler.py",
+    "providerProfiles": [
+      "config/providers/ltx-2.5-fast.json",
+      "config/providers/ltx-2.5-pro.json",
+      "config/providers/ltx-2.5-local.json"
+    ],
+    "promptProfile": "config/prompt-profiles/ltx-2.5.json",
+    "providerSchemasDir": "schemas/providers/ltx-2.5",
+    "documentation": "docs/LTX_2_5_FULL_SUPPORT.md"
+  },
+  "agentRuntime": {
+    "runtimePackage": "src/smartaihub_video_director",
+    "sdkCompatibility": "openai-agents>=0.22.0,<0.23",
+    "documentation": "docs/OPENAI_AGENTS_SDK_RUNTIME.md",
+    "tests": "tests/test_agent_runtime_v11.py",
+    "canonicalStateOwner": "SmartAIHub Core / Workflow Controller",
+    "paidSideEffectOwner": "SmartAIHub Core / Workflow Controller"
+  }
+}

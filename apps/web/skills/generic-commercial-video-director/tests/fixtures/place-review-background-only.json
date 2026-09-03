@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "พาชมร้านตามภาพนี้ เน้นบรรยากาศภายใน มุมที่น่านั่ง และความรู้สึกเวลาเข้ามาใช้บริการ",
+  "locale": "th-TH",
+  "contentMode": "store_review",
+  "assets": [
+    {
+      "assetId": "shop_scene",
+      "role": "environment_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "environment"
+      ],
+      "sourceOfTruth": true
+    }
+  ],
+  "promotionTarget": {
+    "mode": "auto",
+    "kind": "place_venue",
+    "exactVisualIdentityRequired": true
+  },
+  "placePromotionPolicy": {
+    "mode": "review",
+    "unseenAreaPolicy": "visible_only",
+    "allowEnvironmentImageAsTargetEvidence": true,
+    "allowDerivedCropsAndDetailShots": true,
+    "allowVirtualMapOrCallout": true,
+    "requireEvidenceForFacilityClaims": true,
+    "preserveStorefrontOrSignage": true
+  }
+}

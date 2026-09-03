@@ -23,6 +23,10 @@ import {
   GEMINI_3_1_FLASH_TTS_VOICES,
   buildGemini31FlashTtsInputFields,
 } from "./falGeminiTts";
+import {
+  parseVideoCapabilityProfile,
+  type VideoCapabilityProfile,
+} from "./verticalDramaVideoCapabilityProfile";
 
 export type MediaType = "image" | "video" | "audio";
 
@@ -59,6 +63,9 @@ export interface ModelDefinition {
 
   /** Provider-specific config (e.g., kieModelId, apiEndpoint) */
   configJson?: Record<string, any>;
+
+  /** Feature 170: versioned mode/limit contract for multimodal video inputs. */
+  videoCapabilityProfile?: VideoCapabilityProfile;
 
   /**
    * Video-only capability metadata (Vertical Drama Storyboard plan, Phase 0).
@@ -306,6 +313,51 @@ const GROK_IMAGINE_VIDEO_15_RESOLUTION_OPTIONS = [
 
 const GROK_IMAGINE_VIDEO_15_DURATIONS = Array.from({ length: 15 }, (_, index) => index + 1);
 
+// SmartAIHub's market transport sends the approved Start Frame and all
+// selected image references through one ordered `image_urls` array. This is
+// deliberately an app transport profile: it does not claim that Grok's raw
+// provider API has hard frame-0 semantics when references are present.
+const GROK_IMAGINE_VIDEO_15_CAPABILITY_PROFILE: VideoCapabilityProfile = {
+  providerFamily: "grok-imagine-video",
+  modelKey: "grok-imagine-video-1-5-preview",
+  displayName: "Grok Imagine Video 1.5 (SmartAIHub image transport)",
+  capabilityProfileVersion: "grok-imagine-video/1.5-app-transport-1",
+  capabilitySource: "runtime_catalog",
+  modes: [
+    {
+      id: "reference-to-video",
+      acceptsStartFrame: true,
+      acceptsStopFrame: false,
+      acceptsReferenceImages: true,
+      acceptsReferenceVideos: false,
+      acceptsReferenceAudio: false,
+      allowsMixedReferences: false,
+      maxImages: 7,
+      maxVideos: 0,
+      maxAudio: 0,
+      maxTotalReferences: 7,
+      maxPayloadBytes: null,
+      maxVideoDurationSec: 15,
+      startFrameConsumesImageSlot: true,
+      requiresVisualReferenceForAudio: false,
+      supportedReferenceRoles: [
+        "reference",
+        "character",
+        "location",
+        "prop",
+        "style",
+        "continuity",
+        "action",
+        "barrier_reference",
+        "soundscape",
+      ],
+      preservesStartStopSemanticsWithReferences: false,
+      transport: "kie",
+      nativeFieldMap: { startFrame: "image_urls", images: "image_urls" },
+    },
+  ],
+};
+
 const GEMINI_OMNI_PRICING_TIERS = {
   default: 120,
   "720p-4s-without-video": 90,
@@ -477,7 +529,7 @@ export function deriveVerticalDramaCapabilities(model: {
     // Latent-bug fix (confirmed 2026-07-14): this branch used to return
     // BEFORE ever parsing the image-reference limit, so
     // `imageCapabilities.maxReferenceImages` was ALWAYS `undefined` for
-    // every image model — even ones (e.g. `google-banana-2-lite: 10`, see
+    // every image model — even ones (e.g. `google-banana-2-lite: 14`, see
     // the `STATIC_MODEL_REGISTRY` entry below) that explicitly declare it.
     // That silently no-op'd the fail-closed capacity guard
     // (`assertRequiredCharacterReferenceCapacity` in
@@ -951,7 +1003,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
         negativePromptMode: "inline_only",
       },
       inputFields: [
-        { key: "image_input", label: "Reference Images", type: "image_urls", syncWith: "none" },
+        { key: "image_input", label: "Reference Images", type: "image_urls", syncWith: "none", maxItems: 14 },
       ],
     },
     isEnabled: true,
@@ -981,7 +1033,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       apiPayloadFormat: "market",
       kieModelId: "nano-banana-2-lite",
       generateType: "text-to-image",
-      maxReferenceImages: 10,
+      maxReferenceImages: 14,
       maxPromptLength: 20_000,
       verticalDramaCharacterPromptContract: {
         family: "nano_banana",
@@ -990,7 +1042,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       reference_image_input_key: "image_urls",
       reference_image_input_type: "array",
       inputFields: [
-        { key: "image_urls", label: "Reference Images", type: "image_urls", syncWith: "reference_images" },
+        { key: "image_urls", label: "Reference Images", type: "image_urls", syncWith: "reference_images", maxItems: 14 },
         {
           key: "aspect_ratio",
           label: "Aspect Ratio",
@@ -1342,9 +1394,10 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     // 7`, i.e. image-to-video only, no text-to-video mode), which the generic
     // "market" `/api/v1/jobs/createTask` dispatch (same code path as
     // `gemini-omni-video`/HappyHorse below) already supports via
-    // `image_urls`. No dedicated first/last-frame bridge mode is documented
-    // for this model; the first image remains the start frame in managed
-    // storyboard flows. Grok Imagine v1.x
+    // `image_urls`. In SmartAIHub's managed storyboard transport, the
+    // approved Start Frame is serialized first in that array and additional
+    // image references follow; this is a visual continuity anchor, not a
+    // separate hard first/last-frame bridge mode. Grok Imagine v1.x
     // generates native in-video audio including speech (xAI added
     // synchronized audio in late 2025; user-confirmed 2026-07-06), so
     // dialogue is embedded verbatim for Vertical Drama.
@@ -1371,6 +1424,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       apiQueryEndpoint: "/api/v1/jobs/recordInfo",
       apiPayloadFormat: "market",
       kieModelId: "grok-imagine-video-1-5-preview",
+      providerProfileId: "grok-imagine-video-1.5",
       generateType: "image-to-video",
       hasAudio: true,
       maxDuration: 15,
@@ -1383,6 +1437,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
         reference_image_input_key: "image_urls",
         reference_image_input_type: "array",
       },
+      videoCapabilityProfile: GROK_IMAGINE_VIDEO_15_CAPABILITY_PROFILE,
       inputFields: [
         { key: "image_urls", label: "Reference Images (required)", type: "image_urls", required: true, syncWith: "reference_images", maxItems: 7 },
         {
@@ -1409,6 +1464,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     },
     supportsStartFrame: true,
     maxReferenceImages: 7,
+    videoCapabilityProfile: GROK_IMAGINE_VIDEO_15_CAPABILITY_PROFILE,
     nativeAudioDialogue: true,
     // Task #36 — see this entry's own comment above: xAI added synchronized
     // in-video audio (incl. speech) to Grok Imagine v1.x in late 2025,
@@ -1684,6 +1740,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       apiQueryEndpoint: "/api/v1/jobs/recordInfo",
       apiPayloadFormat: "market",
       kieModelId: "gemini-omni-video",
+      providerProfileId: "gemini-omni-video",
       generateType: "multimodal-video",
       hasAudio: true,
       maxDuration: 10,
@@ -1699,6 +1756,34 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
         reference_image_input_type: "array",
         reference_video_input_key: "video_list",
         reference_video_input_type: "object_array",
+      },
+      videoCapabilityProfile: {
+        providerFamily: "gemini-omni",
+        modelKey: "gemini-omni-video",
+        displayName: "Gemini Omni Video",
+        capabilityProfileVersion: "gemini-omni/1",
+        capabilitySource: "runtime_catalog",
+        modes: [
+          {
+            id: "mixed-references",
+            acceptsStartFrame: true,
+            acceptsStopFrame: true,
+            acceptsReferenceImages: true,
+            acceptsReferenceVideos: true,
+            acceptsReferenceAudio: true,
+            allowsMixedReferences: true,
+            maxImages: 7,
+            maxVideos: 1,
+            maxAudio: 1,
+            maxTotalReferences: null,
+            maxPayloadBytes: null,
+            maxVideoDurationSec: 10,
+            supportedReferenceRoles: ["reference", "character", "location", "prop", "style", "continuity", "action", "barrier_reference", "soundscape"],
+            preservesStartStopSemanticsWithReferences: true,
+            transport: "kie",
+            nativeFieldMap: { startFrame: "first_frame_url", stopFrame: "last_frame_url", images: "image_urls", videos: "video_list", audio: "audio_ids" },
+          },
+        ],
       },
       inputFields: GEMINI_OMNI_INPUT_FIELDS,
       pricingTiers: GEMINI_OMNI_PRICING_TIERS,
@@ -1737,6 +1822,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       apiQueryEndpoint: "/api/v1/jobs/recordInfo",
       apiPayloadFormat: "market",
       kieModelId: "google/gemini-omni-flash-1-1",
+      providerProfileId: "google/gemini-omni-flash-1-1",
       generateType: "multimodal-video",
       hasAudio: true,
       maxDuration: 10,
@@ -1753,6 +1839,34 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
         reference_video_input_key: "video_list",
         reference_video_input_type: "object_array",
       },
+      videoCapabilityProfile: {
+        providerFamily: "gemini-omni",
+        modelKey: "gemini-omni-flash-1-1",
+        displayName: "Gemini Omni Flash 1.1",
+        capabilityProfileVersion: "gemini-omni/1",
+        capabilitySource: "runtime_catalog",
+        modes: [
+          {
+            id: "mixed-references",
+            acceptsStartFrame: true,
+            acceptsStopFrame: true,
+            acceptsReferenceImages: true,
+            acceptsReferenceVideos: true,
+            acceptsReferenceAudio: true,
+            allowsMixedReferences: true,
+            maxImages: 7,
+            maxVideos: 1,
+            maxAudio: 3,
+            maxTotalReferences: null,
+            maxPayloadBytes: null,
+            maxVideoDurationSec: 10,
+            supportedReferenceRoles: ["reference", "character", "location", "prop", "style", "continuity", "action", "barrier_reference", "soundscape"],
+            preservesStartStopSemanticsWithReferences: true,
+            transport: "kie",
+            nativeFieldMap: { startFrame: "first_frame_url", stopFrame: "last_frame_url", images: "image_urls", videos: "video_list", audio: "audio_ids" },
+          },
+        ],
+      },
       inputFields: GEMINI_OMNI_FLASH_1_1_INPUT_FIELDS,
       pricingTiers: GEMINI_OMNI_FLASH_1_1_PRICING_TIERS,
       pricingFormula: "matrix",
@@ -1764,6 +1878,19 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     verticalDramaReady: true,
   },
 ];
+
+// Keep static fallback entries compatible with the DB-backed shape. A few
+// legacy catalog definitions store this contract inside configJson; Enhanced
+// readiness consumes the typed top-level field.
+const STATIC_MODEL_REGISTRY_WITH_PARSED_CAPABILITIES = STATIC_MODEL_REGISTRY.map(
+  model => {
+    if (model.videoCapabilityProfile) return model;
+    const profile = parseVideoCapabilityProfile(
+      model.configJson?.videoCapabilityProfile,
+    );
+    return profile ? { ...model, videoCapabilityProfile: profile } : model;
+  },
+);
 
 // ==================== Cache Management ====================
 
@@ -2063,6 +2190,9 @@ function dbModelToDefinition(dbModel: any): ModelDefinition {
           }
         })()
       : dbModel.configJson || undefined;
+  const videoCapabilityProfile = parseVideoCapabilityProfile(
+    configJson?.videoCapabilityProfile,
+  );
 
   const capabilities = resolveVerticalDramaCapabilities(dbModel.modelId, {
     type: modelType,
@@ -2085,6 +2215,7 @@ function dbModelToDefinition(dbModel: any): ModelDefinition {
     isEnabled: dbModel.isEnabled,
     priority: dbModel.priority,
     configJson,
+    ...(videoCapabilityProfile ? { videoCapabilityProfile } : {}),
     ...capabilities,
   };
 }
@@ -2167,7 +2298,7 @@ function getModelRegistry(): ModelDefinition[] {
 
   _registryCounters.staticFallbackHits += 1;
   reportStaticFallback("cache_miss_or_refresh_pending");
-  return STATIC_MODEL_REGISTRY;
+  return STATIC_MODEL_REGISTRY_WITH_PARSED_CAPABILITIES;
 }
 
 /**
@@ -2249,7 +2380,7 @@ export function getStaticModelById(id: string): ModelDefinition | undefined {
  * Useful for admin tooling that needs to show importable templates.
  */
 export function getStaticFallbackModels(): ModelDefinition[] {
-  return STATIC_MODEL_REGISTRY.map((model) => ({
+  return STATIC_MODEL_REGISTRY_WITH_PARSED_CAPABILITIES.map((model) => ({
     ...model,
     aliases: [...model.aliases],
     aspectRatios: model.aspectRatios ? [...model.aspectRatios] : undefined,

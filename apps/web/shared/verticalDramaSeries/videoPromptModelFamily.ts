@@ -5,7 +5,7 @@ import type { VerticalDramaSupportingPresence } from "./supportingPresence";
  *
  * Classifies the episode's currently-selected VIDEO model into the prompt-
  * shaping family the `vertical-drama-shot-video-prompt[-subshots]` skills
- * understand (`grok` / `veo` / `seedance` / `other`), and carries the small
+ * understand (`grok` / `veo` / `seedance` / `gemini_omni` / `other`), and carries the small
  * per-family facts TypeScript owns (the skills own all creative guidance).
  *
  * This module is imported from BOTH the server (generation-time fact block +
@@ -23,6 +23,7 @@ export type VideoPromptModelFamily =
   | "seedance"
   | "minimax_h3"
   | "flux3"
+  | "gemini_omni"
   | "other";
 
 export const VIDEO_PROMPT_MODEL_FAMILIES: readonly VideoPromptModelFamily[] = [
@@ -31,6 +32,7 @@ export const VIDEO_PROMPT_MODEL_FAMILIES: readonly VideoPromptModelFamily[] = [
   "seedance",
   "minimax_h3",
   "flux3",
+  "gemini_omni",
   "other",
 ] as const;
 
@@ -41,6 +43,7 @@ export const VIDEO_PROMPT_MODEL_FAMILY_LABELS: Record<VideoPromptModelFamily, st
   seedance: "Seedance",
   minimax_h3: "MiniMax H3",
   flux3: "Flux3",
+  gemini_omni: "Gemini Omni",
   other: "Other",
 };
 
@@ -81,6 +84,7 @@ const VEO_TOKEN = /(^|[^a-z])veo([^a-z]|$)/i;
 const SEEDANCE_TOKEN = /seedance/i;
 const MINIMAX_H3_TOKEN = /(?:minimax|mini[ -]?max)[^\n]{0,24}\bh3\b|\bh3\b[^\n]{0,24}(?:minimax|mini[ -]?max)/i;
 const FLUX3_TOKEN = /\bflux[ -]?3(?:\b|[-_.])/i;
+const GEMINI_OMNI_TOKEN = /(?:gemini[ -]?omni|omni[ -]?flash)/i;
 /** Seedance ships via ByteDance's BytePlus / ModelArk platforms. */
 const SEEDANCE_PROVIDER_TOKEN = /byteplus|modelark/i;
 
@@ -116,6 +120,7 @@ export function resolveVideoPromptTargetFamily(
   }
   if (MINIMAX_H3_TOKEN.test(haystack)) return "minimax_h3";
   if (FLUX3_TOKEN.test(haystack)) return "flux3";
+  if (GEMINI_OMNI_TOKEN.test(haystack)) return "gemini_omni";
   return "other";
 }
 

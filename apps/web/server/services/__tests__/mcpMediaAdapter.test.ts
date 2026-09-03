@@ -213,6 +213,27 @@ describe("mcpMediaAdapter", () => {
     });
   });
 
+  it("preserves mixed reference arrays and temporal frame fields for generic video MCP", () => {
+    expect(
+      buildMcpToolArguments("video", "Bridge the attached references", {
+        providerModelId: "seedance-2.5",
+        referenceImageUrls: ["https://cdn.example.com/ref.png"],
+        referenceVideoUrls: ["https://cdn.example.com/ref.mp4"],
+        referenceAudioUrls: ["https://cdn.example.com/ref.mp3"],
+        firstFrameUrl: "https://cdn.example.com/start.png",
+        lastFrameUrl: "https://cdn.example.com/stop.png",
+      }),
+    ).toMatchObject({
+      video: {
+        imageUrls: ["https://cdn.example.com/ref.png"],
+        videoUrls: ["https://cdn.example.com/ref.mp4"],
+        reference_audio_urls: ["https://cdn.example.com/ref.mp3"],
+        first_frame_url: "https://cdn.example.com/start.png",
+        last_frame_url: "https://cdn.example.com/stop.png",
+      },
+    });
+  });
+
   it("passes Higgsfield upstream video model ids through unchanged", () => {
     for (const providerModelId of [
       "seedance_2_0_fast",

@@ -81,6 +81,23 @@ export type PhysicalLlmAttemptEvent = {
   outputTokens?: number | null;
 };
 
+/** Opt-in raw transport observer. The caller owns redaction and persistence. */
+export type RawLlmPayloadEvent = {
+  phase: "request_started" | "response_received";
+  providerCallId: string;
+  attemptOrdinal: number;
+  providerId: number;
+  providerName: string;
+  model: string;
+  statusCode?: number;
+  contentType?: string;
+  requestBody?: string;
+  responseBody?: string;
+  responseCharCount?: number;
+  elapsedMs?: number;
+  planningAttemptNumber?: number;
+};
+
 interface AttemptFailureDetail {
   providerId: number;
   providerName: string;
@@ -147,6 +164,11 @@ export async function getProviderForModel(
     }
     return eligibleCandidates[0];
   }
+
+  // A strict pin is an explicit no-fallback contract. Do not fall through to
+  // the legacy first-enabled provider, which could silently send a selected
+  // model to a different provider or credential set.
+  if (hints?.strictProviderPin) return null;
 
   // 2. Fall back to legacy: first enabled provider
   const db = await getDb();
@@ -614,19 +636,13 @@ function extractAnyAssistantText(rawData: any): string {
       .join("");
   }
 
-  if (typeof rawData?.content === "string") {
-    return rawData.content;
-  }
+  if (typeof rawData?.content === "string") return rawData.content;
   if (Array.isArray(rawData?.content)) {
     return rawData.content
       .flatMap((part: unknown) => {
         if (!part || typeof part !== "object") return [];
         const record = part as Record<string, unknown>;
-        return typeof record.text === "string"
-          ? [record.text]
-          : typeof record.content === "string"
-            ? [record.content]
-            : [];
+        return typeof record.text === "string" ? [record.text] : typeof record.content === "string" ? [record.content] : [];
       })
       .join("");
   }
@@ -785,6 +801,7 @@ export async function executeWithFallback(params: {
   messages: Message[];
   stream: boolean;
   userId: number;
+  tenantId?: string;
   conversationId?: number;
   preferredProvider?: number;
   strictProviderPin?: boolean;
@@ -819,6 +836,8 @@ export async function executeWithFallback(params: {
   timeoutMs?: number;
   /** Optional refs-only observer; omitted callers retain the current behavior. */
   physicalAttemptObserver?: (event: PhysicalLlmAttemptEvent) => Promise<void> | void;
+  /** Optional raw transport observer; omitted callers retain the current behavior. */
+  rawPayloadObserver?: (event: RawLlmPayloadEvent) => Promise<void> | void;
 }): Promise<ExecuteResult> {
   if (/^wllm_[A-Za-z0-9_-]{8,128}$/.test(params.model)) {
     if (!params.tenantId) {
@@ -845,6 +864,18 @@ export async function executeWithFallback(params: {
     // The only current observer is the authoritative Vertical Drama billing
     // hook. If it fails, do not return a successful but unbilled LLM result.
     await params.physicalAttemptObserver?.(event);
+  };
+  const notifyRawPayload = async (event: RawLlmPayloadEvent) => {
+    try {
+      await params.rawPayloadObserver?.(event);
+    } catch (error) {
+      // Diagnostics must never change billing, retry, or provider behavior.
+      console.warn("[LLM_RAW_OBSERVER] observer failed", {
+        phase: event.phase,
+        providerCallId: event.providerCallId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
   };
   const resolvedModel = await resolveEnabledLlmModelId([params.model]);
   if (!resolvedModel) {
@@ -1141,13 +1172,23 @@ export async function executeWithFallback(params: {
       const headersTimeoutMs = params.timeoutMs ?? 120_000; // unchanged default
       const bodyTimeoutMs = params.timeoutMs ?? 600_000; // NEW — was unbounded
       timeoutHandle = setTimeout(() => abortController.abort(), headersTimeoutMs);
+      const serializedRequestBody = JSON.stringify(requestBody);
+      await notifyRawPayload({
+        phase: "request_started",
+        providerCallId,
+        attemptOrdinal: i,
+        providerId: candidate.providerId,
+        providerName: candidate.providerName,
+        model: candidate.providerModelId,
+        requestBody: serializedRequestBody,
+      });
       const response = await fetch(url, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${candidate.apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(requestBody),
+        body: serializedRequestBody,
         signal: abortController.signal,
       });
       // Headers arrived — switch from the headers-phase deadline to the
@@ -1166,6 +1207,19 @@ export async function executeWithFallback(params: {
         } else if (typeof response.json === "function") {
           responseText = JSON.stringify(await response.json());
         }
+        await notifyRawPayload({
+          phase: "response_received",
+          providerCallId,
+          attemptOrdinal: i,
+          providerId: candidate.providerId,
+          providerName: candidate.providerName,
+          model: candidate.providerModelId,
+          statusCode: response.status,
+          contentType: response.headers?.get?.("content-type") || "unknown",
+          responseBody: responseText,
+          responseCharCount: responseText.length,
+          elapsedMs: Date.now() - startTime,
+        });
         let data: any;
         try {
           data = responseText ? JSON.parse(responseText) : {};
@@ -1344,6 +1398,19 @@ export async function executeWithFallback(params: {
       const statusCode = response.status;
       const errorText = await response.text().catch(() => "Unknown error");
       const contentType = response.headers?.get?.("content-type") || "unknown";
+      await notifyRawPayload({
+        phase: "response_received",
+        providerCallId,
+        attemptOrdinal: i,
+        providerId: candidate.providerId,
+        providerName: candidate.providerName,
+        model: candidate.providerModelId,
+        statusCode,
+        contentType,
+        responseBody: errorText,
+        responseCharCount: errorText.length,
+        elapsedMs: Date.now() - startTime,
+      });
       const parsedProviderError = parseProviderErrorMessage(errorText);
       const parsedErrorMessage = parsedProviderError.code
         ? `${parsedProviderError.code}: ${parsedProviderError.message}`

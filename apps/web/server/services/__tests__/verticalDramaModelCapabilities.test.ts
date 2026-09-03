@@ -301,15 +301,15 @@ describe("deriveVerticalDramaCapabilities", () => {
       expect(caps.verticalDramaReady).toBe(true);
     });
 
-    it("the static google-banana-2-lite catalog entry (configJson.maxReferenceImages: 10) now resolves a defined maxReferenceImages via deriveVerticalDramaCapabilities", () => {
+    it("the static google-banana-2-lite catalog entry (configJson.maxReferenceImages: 14) now resolves a defined maxReferenceImages via deriveVerticalDramaCapabilities", () => {
       const staticModel = getStaticModelById("google-banana-2-lite");
-      expect(staticModel?.configJson?.maxReferenceImages).toBe(10);
+      expect(staticModel?.configJson?.maxReferenceImages).toBe(14);
       const caps = deriveVerticalDramaCapabilities({
         type: "image",
         aspectRatios: staticModel?.aspectRatios,
         configJson: staticModel?.configJson,
       });
-      expect(caps.maxReferenceImages).toBe(10);
+      expect(caps.maxReferenceImages).toBe(14);
     });
 
     it("treats a non-numeric configJson.maxReferenceImages on an image model as unknown (undefined), mirroring the video branch", () => {

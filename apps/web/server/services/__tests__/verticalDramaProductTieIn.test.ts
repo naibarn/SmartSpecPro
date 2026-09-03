@@ -314,6 +314,19 @@ describe("mergeAndTrimReferenceImageUrls", () => {
     expect(urls).toEqual(["a", "b", "c"]);
   });
 
+  it("appends prop/object refs and trims them before higher-priority refs", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["character"],
+      ["location"],
+      [],
+      [],
+      2,
+      ["locked-box"],
+    );
+    expect(urls).toEqual(["character", "location"]);
+    expect(trimmedCount).toBe(1);
+  });
+
   it("trims from the end (product refs) when over maxReferenceImages, prioritizing character refs", () => {
     const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
       ["char-1", "char-2", "char-3"],

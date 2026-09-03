@@ -298,6 +298,8 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
       .set({
         status: "canceled",
         statusReason: "Canceled by requester",
+        leaseOwnerToken: null,
+        leaseExpiresAt: null,
         finishedAt: new Date(),
       })
       .where(and(
@@ -591,6 +593,17 @@ export async function cancelQueuedUserWorkerJob(
       );
       const contract = verticalDramaFfmpegAssemblyJobContractSchema.parse(updated.inputJson);
       await resetVerticalDramaFfmpegAssemblyStateOnCancel(contract);
+    }
+    if (updated.jobType === "remotion_render_video") {
+      const { resetEpisodePreviewStateOnCancel } = await import(
+        "./verticalDramaEpisodePreview"
+      );
+      await resetEpisodePreviewStateOnCancel({
+        tenantId: input.auth.tenantId,
+        userId: input.auth.userId,
+        jobId: updated.id,
+        inputJson: updated.inputJson,
+      });
     }
   } catch (error) {
     console.error(

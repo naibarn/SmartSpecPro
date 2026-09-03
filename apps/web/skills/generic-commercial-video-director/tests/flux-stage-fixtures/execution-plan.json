@@ -1,0 +1,78 @@
+{
+  "model": "flux-3-video",
+  "mode": "i2v",
+  "durationSeconds": 10,
+  "resolution": "hd",
+  "aspectRatio": "9:16",
+  "keyframePlan": {
+    "mode": "i2v",
+    "keyframes": [
+      {
+        "assetId": "start",
+        "timeSeconds": 0,
+        "purpose": "start_frame"
+      },
+      {
+        "assetId": "end",
+        "timeSeconds": 10,
+        "purpose": "end_frame"
+      }
+    ],
+    "startVideoAssetId": null,
+    "softReferences": [],
+    "derivedReferences": [],
+    "prebakeRequired": false,
+    "nonProviderReferences": [],
+    "continuationTailSeconds": null,
+    "blocked": false,
+    "warnings": []
+  },
+  "prompt": {
+    "mode": "i2v",
+    "durationSeconds": 10,
+    "promptText": "KEYFRAME CONTINUITY: move naturally from start to end.",
+    "dialogueLines": [],
+    "audioPlan": {
+      "nativeAudio": true
+    },
+    "continuityLocks": [
+      "preserve product"
+    ],
+    "warnings": []
+  },
+  "generationPayload": {
+    "mode": "i2v",
+    "prompt": "...",
+    "aspect_ratio": "9:16",
+    "duration": 10,
+    "resolution": "hd",
+    "version": "latest",
+    "generate_audio": true,
+    "safety_tolerance": 2,
+    "draft": true,
+    "keyframes": [
+      [
+        0,
+        "start"
+      ],
+      [
+        10,
+        "end"
+      ]
+    ]
+  },
+  "draftStrategy": {
+    "workflow": "draft_then_enhance",
+    "initialDraft": true,
+    "enhanceSelectedDraft": true
+  },
+  "postGeneration": {
+    "postCompositeExactTextUI": true,
+    "optionalVideoUpscale": true,
+    "downloadResultPromptly": true
+  },
+  "qcRequirements": [
+    "FLUX_KEYFRAME_ADHERENCE"
+  ],
+  "warnings": []
+}

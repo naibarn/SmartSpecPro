@@ -297,6 +297,12 @@ export function buildMcpToolArguments(
     "referenceVideoUrl",
     "reference_video_url",
   ]);
+  const referenceAudioUrls = readStringArrayParameter(parameters, [
+    "referenceAudioUrls",
+    "reference_audio_urls",
+    "audio_urls",
+    "audioUrls",
+  ]);
   const aspectRatio =
     typeof parameters.aspectRatio === "string"
       ? parameters.aspectRatio
@@ -370,6 +376,14 @@ export function buildMcpToolArguments(
           referenceVideoUrls.length > 0 ? referenceVideoUrls : undefined,
         reference_video_urls:
           referenceVideoUrls.length > 0 ? referenceVideoUrls : undefined,
+        audioUrls:
+          referenceAudioUrls.length > 0 ? referenceAudioUrls : undefined,
+        reference_audio_urls:
+          referenceAudioUrls.length > 0 ? referenceAudioUrls : undefined,
+        firstFrameUrl: parameters.firstFrameUrl ?? parameters.first_frame_url,
+        lastFrameUrl: parameters.lastFrameUrl ?? parameters.last_frame_url,
+        first_frame_url: parameters.firstFrameUrl ?? parameters.first_frame_url,
+        last_frame_url: parameters.lastFrameUrl ?? parameters.last_frame_url,
       },
     };
   }

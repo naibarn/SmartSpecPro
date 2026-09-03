@@ -84,6 +84,99 @@ export type ReconcileEpisodePreviewResult = {
   status?: "completed" | "failed";
 };
 
+type EpisodePreviewJobReference = {
+  seriesId: number;
+  episodeId: number;
+  slotId: 1 | 2 | 3 | 4;
+};
+
+function readEpisodePreviewJobReference(
+  inputJson: unknown,
+): EpisodePreviewJobReference | null {
+  if (!inputJson || typeof inputJson !== "object" || Array.isArray(inputJson)) {
+    return null;
+  }
+  const input = inputJson as Record<string, unknown>;
+  const projectId = typeof input.videoProjectId === "string"
+    ? input.videoProjectId.trim()
+    : "";
+  const match = /^vd-episode-preview:(\d+):(\d+)$/.exec(projectId);
+  const seriesId = Number(match?.[1]);
+  const episodeId = Number(match?.[2]);
+  const slotId = Number(input.projectRevision);
+  if (
+    !match ||
+    !Number.isSafeInteger(seriesId) ||
+    seriesId <= 0 ||
+    !Number.isSafeInteger(episodeId) ||
+    episodeId <= 0 ||
+    !Number.isInteger(slotId) ||
+    slotId < 1 ||
+    slotId > 4
+  ) {
+    return null;
+  }
+  return { seriesId, episodeId, slotId: slotId as 1 | 2 | 3 | 4 };
+}
+
+/**
+ * Immediately releases a canceled preview slot. The episode-detail read path
+ * still reconciles failed/expired jobs, but cancellation happens from the
+ * separate Render Jobs page, so waiting for the user to revisit the episode
+ * leaves the preview card showing "pending" and blocks the retry button.
+ *
+ * The persisted slot's pending job id is checked before writing so canceling
+ * an old job cannot clear a newer retry that has already claimed the same slot.
+ */
+export async function resetEpisodePreviewStateOnCancel(input: {
+  tenantId: string;
+  userId: number;
+  jobId: string;
+  inputJson: unknown;
+}): Promise<boolean> {
+  const reference = readEpisodePreviewJobReference(input.inputJson);
+  if (!reference) return false;
+
+  const owner: AssembleEpisodeVideoOwner = {
+    tenantId: input.tenantId,
+    userId: input.userId,
+    seriesId: reference.seriesId,
+    episodeId: reference.episodeId,
+  };
+  const [row] = await db
+    .select({ assemblyManifest: verticalDramaEpisodes.assemblyManifest })
+    .from(verticalDramaEpisodes)
+    .where(
+      and(
+        eq(verticalDramaEpisodes.id, owner.episodeId),
+        eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+        eq(verticalDramaEpisodes.userId, owner.userId),
+        eq(verticalDramaEpisodes.seriesId, owner.seriesId),
+      ),
+    )
+    .limit(1);
+  if (!row) return false;
+
+  const current = readEpisodePreviewStates(row.assemblyManifest).find(
+    preview => preview.slotId === reference.slotId,
+  );
+  if (
+    !current ||
+    current.status !== "pending" ||
+    current.pendingJobId !== input.jobId
+  ) {
+    return false;
+  }
+
+  await persistEpisodePreviewState(owner, {
+    ...current,
+    status: "failed",
+    pendingJobId: undefined,
+    error: "ยกเลิกงาน preview แล้ว — กดสร้างชุดนี้ใหม่ได้",
+  });
+  return true;
+}
+
 /** Resolve one preview's worker row and merge its terminal result into the
  * slot. This intentionally mirrors the full-assembly reconciler but writes
  * only `episodePreviews[slotId]`, so a preview cannot overwrite the main

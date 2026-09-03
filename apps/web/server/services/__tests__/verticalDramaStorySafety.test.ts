@@ -138,6 +138,53 @@ describe("vertical drama story safety", () => {
     expect(result.findings).toEqual([]);
   });
 
+  it("does not treat negated motion constraints as coercion", () => {
+    const result = analyzeVerticalDramaStorySafety({
+      shots: [
+        {
+          imagePrompt:
+            "A child plays with a colorful toy while an adult supervises; no forced movement or forced assembly.",
+          videoPrompt:
+            "The child reaches at their own pace; do not force the motion.",
+        },
+      ],
+    });
+
+    expect(result.level).toBe("low");
+    expect(result.findings).toEqual([]);
+  });
+
+  it("does not flag a Thai negative statement that says the adult does not force the child", () => {
+    const result = analyzeVerticalDramaStorySafety(
+      "ผู้ใหญ่หยิบของเล่นมาให้เด็กดู แต่ยังไม่ยื่นบังคับ เด็กเลือกเข้าหาเองได้"
+    );
+
+    expect(result.level).toBe("low");
+    expect(result.findings).toEqual([]);
+  });
+
+  it("still blocks a positive forced action involving a child", () => {
+    const result = analyzeVerticalDramaStorySafety(
+      "An adult forced the child to move before the child was ready."
+    );
+
+    expect(result.level).toBe("high");
+    expect(result.findings.map(finding => finding.code)).toContain(
+      "abuse_or_coercion"
+    );
+  });
+
+  it("still blocks a positive Thai forced action involving a child", () => {
+    const result = analyzeVerticalDramaStorySafety(
+      "ผู้ใหญ่บังคับเด็กให้หยิบของเล่นก่อนที่เด็กจะพร้อม"
+    );
+
+    expect(result.level).toBe("high");
+    expect(result.findings.map(finding => finding.code)).toContain(
+      "abuse_or_coercion"
+    );
+  });
+
   it("does not treat cinematic restrained tension as physical restraint", () => {
     const result = analyzeVerticalDramaStorySafety(
       "The child hears a sudden cry with restrained tension and quiet camera movement."

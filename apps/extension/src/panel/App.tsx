@@ -295,6 +295,7 @@ interface DramaShotReferenceImage {
   id: string;
   url: string;
   thumbnailUrl: string | null;
+  mediaType: "image" | "video" | "audio";
   role: string;
   source: string;
   title?: string;
@@ -393,7 +394,8 @@ interface ProductionMediaPreviewEntry {
   objectUrl?: string;
 }
 
-type ProductionMediaPrepareJob = { url?: string | null; title: string; kind?: "image" | "video" };
+type ProductionMediaKind = "image" | "video" | "audio";
+type ProductionMediaPrepareJob = { url?: string | null; title: string; kind?: ProductionMediaKind };
 
 const CAPTURE_STEPS = [
   "Detecting page",
@@ -413,8 +415,8 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.138";
-const EXTENSION_BUILD_LABEL = "2026-08-18 10:18 +07";
+const EXTENSION_VERSION = "0.1.140";
+const EXTENSION_BUILD_LABEL = "2026-08-31 16:04 +07";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
@@ -946,7 +948,7 @@ function fileNameFromUrl(url: string, fallback: string): string {
     const lastSegment = decodeURIComponent(parsed.pathname.split("/").filter(Boolean).at(-1) || "");
     const cleaned = lastSegment.replace(/[\\/:*?"<>|]+/g, "-");
     const fallbackExtension = fallback.match(/\.([a-z0-9]+)$/i)?.[1] || "";
-    if (cleaned.length <= 180 && /\.(jpe?g|png|webp|gif|mp4|webm|mov)$/i.test(cleaned)) return cleaned;
+    if (cleaned.length <= 180 && /\.(jpe?g|png|webp|gif|mp4|webm|mov|mp3|wav|m4a|ogg|aac)$/i.test(cleaned)) return cleaned;
     if (cleaned && fallbackExtension && !cleaned.includes(";base64")) return `${cleaned}.${fallbackExtension}`;
     return fallback;
   } catch {
@@ -980,7 +982,7 @@ function startDragMediaBridge(input: { id: string; dataUrl?: string; file: File;
     .then(() => start().catch(() => undefined));
 }
 
-function startProductionMediaDrag(event: DragEvent<HTMLElement>, input: { url: string; title: string; kind: "image" | "video"; file?: File; dragId?: string; dataUrl?: string; headers?: Record<string, string> }) {
+function startProductionMediaDrag(event: DragEvent<HTMLElement>, input: { url: string; title: string; kind: ProductionMediaKind; file?: File; dragId?: string; dataUrl?: string; headers?: Record<string, string> }) {
   event.dataTransfer.effectAllowed = "copy";
   if (input.file) {
     try {
@@ -4114,8 +4116,6 @@ export default function App() {
           ...shot,
           gridImageUrl: null,
           gridFrames: [],
-          referenceImages: shot.referenceImages.filter((image) =>
-            image.source === "character" || image.source === "reference_frame"),
         })),
       } satisfies DramaEpisodeDetail : null;
       setSelectedDramaEpisode(detail ?? null);
@@ -4236,8 +4236,12 @@ export default function App() {
     }
   }
 
-  function productionMediaFileName(url: string, title: string, kind: "image" | "video", mimeType: string) {
-    const fallbackExtension = kind === "video" ? "mp4" : mimeType.includes("jpeg") ? "jpg" : mimeType.includes("webp") ? "webp" : "png";
+  function productionMediaFileName(url: string, title: string, kind: ProductionMediaKind, mimeType: string) {
+    const fallbackExtension = kind === "video"
+      ? "mp4"
+      : kind === "audio"
+        ? mimeType.includes("mpeg") ? "mp3" : mimeType.includes("wav") ? "wav" : mimeType.includes("ogg") ? "ogg" : "m4a"
+        : mimeType.includes("jpeg") ? "jpg" : mimeType.includes("webp") ? "webp" : "png";
     const fallback = `${title || kind}.${fallbackExtension}`.replace(/[\\/:*?"<>|]+/g, "-");
     return fileNameFromUrl(url, fallback);
   }
@@ -4302,7 +4306,7 @@ export default function App() {
     }
   }
 
-  async function downloadProductionMedia(rawUrl: string | null | undefined, title: string, kind: "image" | "video" = "video") {
+  async function downloadProductionMedia(rawUrl: string | null | undefined, title: string, kind: ProductionMediaKind = "video") {
     const sourceUrl = rawUrl?.trim();
     if (!sourceUrl) throw new Error("No media URL to download");
     const url = resolveServerUrl(serverBaseUrl, sourceUrl);
@@ -4312,7 +4316,7 @@ export default function App() {
     }
     if (!response.ok) throw new Error(`Unable to download media ${response.status}`);
     const blob = await response.blob();
-    const mimeType = blob.type || (kind === "video" ? "video/mp4" : "image/png");
+    const mimeType = blob.type || (kind === "video" ? "video/mp4" : kind === "audio" ? "audio/mpeg" : "image/png");
     const objectUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = objectUrl;
@@ -4324,7 +4328,7 @@ export default function App() {
     setStatus("Media download started");
   }
 
-  async function prepareProductionMediaFile(rawUrl: string | null | undefined, title: string, kind: "image" | "video" = "image") {
+  async function prepareProductionMediaFile(rawUrl: string | null | undefined, title: string, kind: ProductionMediaKind = "image") {
     const sourceUrl = rawUrl?.trim();
     if (!sourceUrl) return;
     const url = resolveServerUrl(serverBaseUrl, sourceUrl);
@@ -4362,7 +4366,7 @@ export default function App() {
         if (!response?.ok) throw new Error(`Unable to fetch media ${response?.status ?? "network"}`);
         blob = await response.blob();
       }
-      const mimeType = blob.type || (kind === "video" ? "video/mp4" : "image/png");
+      const mimeType = blob.type || (kind === "video" ? "video/mp4" : kind === "audio" ? "audio/mpeg" : "image/png");
       const file = new File([blob], productionMediaFileName(url, title, kind, mimeType), { type: mimeType });
       const objectUrl = URL.createObjectURL(blob);
       let dragId: string | undefined = createDragMediaId();
@@ -4589,16 +4593,38 @@ export default function App() {
       setStatus("Copy failed");
     }
   }
-  const productionPromptBox = (label: string, value: string | undefined, empty: string) => {
+  const productionPromptBox = (label: string, value: string | undefined, empty: string, collapsible = false) => {
     const prompt = value?.trim() ?? "";
+    const promptHeader = (
+      <span className="production-prompt-header">
+        <strong>{label}</strong>
+        <button
+          className="button production-copy-button"
+          type="button"
+          disabled={!prompt}
+          onClick={(event) => {
+            if (collapsible) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            void copyProductionPrompt(label, prompt);
+          }}
+        >
+          Copy
+        </button>
+      </span>
+    );
+    if (collapsible) {
+      return (
+        <details className="production-prompt-box production-prompt-box-collapsible">
+          <summary className="production-prompt-summary">{promptHeader}</summary>
+          <div className="production-prompt-content">{prompt || empty}</div>
+        </details>
+      );
+    }
     return (
       <div className="production-prompt-box">
-        <div className="production-prompt-header">
-          <strong>{label}</strong>
-          <button className="button production-copy-button" type="button" disabled={!prompt} onClick={() => copyProductionPrompt(label, prompt)}>
-            Copy
-          </button>
-        </div>
+        {promptHeader}
         <div className="production-prompt-content">{prompt || empty}</div>
       </div>
     );
@@ -4628,7 +4654,7 @@ export default function App() {
       />
     );
   };
-  const productionMediaCard = (input: { label: string; url?: string | null; urls?: Array<string | null | undefined>; title: string; kind?: "image" | "video" }) => {
+  const productionMediaCard = (input: { label: string; url?: string | null; urls?: Array<string | null | undefined>; thumbnailUrl?: string | null; title: string; kind?: ProductionMediaKind }) => {
     const candidateUrls = (input.urls ?? [input.url])
       .map((candidate) => candidate?.trim() ?? "")
       .filter(Boolean)
@@ -4653,6 +4679,10 @@ export default function App() {
     const url = resolveServerUrl(serverBaseUrl, rawUrl);
     const kind = input.kind ?? "image";
     const previewEntry = productionMediaPreviews[url];
+    const thumbnailRawUrl = input.thumbnailUrl?.trim() || "";
+    const thumbnailUrl = thumbnailRawUrl ? resolveServerUrl(serverBaseUrl, thumbnailRawUrl) : "";
+    const thumbnailEntry = thumbnailUrl ? productionMediaPreviews[thumbnailUrl] : undefined;
+    const displayThumbnailUrl = thumbnailEntry?.objectUrl || thumbnailUrl;
     const dragRawUrl = input.url?.trim() || rawUrl;
     const dragUrl = resolveServerUrl(serverBaseUrl, dragRawUrl);
     const dragFileEntry = productionMediaFiles[dragUrl];
@@ -4693,7 +4723,23 @@ export default function App() {
         title={dragFileEntry?.file ? `Drag this ${kind} as a file into an upload drop zone. Double-click to open.` : `Preparing ${kind} drag. Wait for file ready, or double-click to open.`}
       >
         {kind === "video" ? (
-          <div className="production-video-thumb">▶</div>
+          <div className="production-video-thumb">
+            {displayThumbnailUrl ? (
+              <img
+                src={displayThumbnailUrl}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                draggable={false}
+                onError={() => {
+                  if (!thumbnailEntry) void prepareAuthenticatedMediaPreview(thumbnailRawUrl);
+                }}
+              />
+            ) : null}
+            <span aria-hidden="true">▶</span>
+          </div>
+        ) : kind === "audio" ? (
+          <div className="production-audio-thumb" aria-label="Audio reference">🔊</div>
         ) : (
           <img
             src={displayUrl}
@@ -5982,7 +6028,7 @@ export default function App() {
                         }
                         return null;
                       })()}
-                      {productionPromptBox("Image prompt", shot.imagePrompt, "No image prompt saved for this shot yet.")}
+                      {productionPromptBox("Image prompt", shot.imagePrompt, "No image prompt saved for this shot yet.", true)}
                       {productionPromptBox("Video prompt", shot.videoPrompt, "No video prompt saved for this shot yet.")}
                       {shot.dialogueLines.length > 0 ? (
                         <div style={{ marginTop: 8 }}>
@@ -6013,82 +6059,28 @@ export default function App() {
                           <div className="muted" style={{ whiteSpace: "pre-wrap", marginTop: 4 }}>{shot.dialogue}</div>
                         </div>
                       ) : null}
-                      {(() => {
-                        // The extension episode contract is intentionally limited to
-                        // this shot's character portraits and user-created reference
-                        // frames. Keep the two categories visually distinct.
-                        const referenceFrameImages = shot.referenceImages.filter((image) => image.source === "reference_frame");
-                        const standardReferenceImages = shot.referenceImages.filter((image) => image.source === "character");
-                        const renderDramaReferenceCard = (image: DramaShotReferenceImage, dragTitle: string, displayLabel: string) => {
-                          const imageUrl = resolveServerUrl(serverBaseUrl, image.url);
-                          const fileEntry = productionMediaFiles[imageUrl];
-                          return (
-                            <div
-                              role="button"
-                              tabIndex={0}
-                              className="production-reference-image"
-                              draggable
-                              onPointerDown={() => void prepareProductionMediaFile(image.url, dragTitle)}
-                              onMouseEnter={() => void prepareProductionMediaFile(image.url, dragTitle)}
-                              onDragStart={(event) => startProductionMediaDrag(event, {
-                                url: imageUrl,
-                                title: dragTitle,
-                                kind: "image",
-                                file: fileEntry?.file,
-                                dragId: fileEntry?.dragId,
-                                dataUrl: fileEntry?.dataUrl,
-                                headers: fileEntry?.authHeaders,
-                              })}
-                              onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
-                              onDoubleClick={() => chrome.tabs.create({ url: imageUrl })}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter") chrome.tabs.create({ url: imageUrl });
-                              }}
-                              key={`${shot.shotNumber}-${image.id}`}
-                            >
-                              {authenticatedPreviewImage({
-                                url: image.thumbnailUrl || image.url,
-                                alt: displayLabel,
-                                title: dragTitle,
-                              })}
-                              <span>{displayLabel}{fileEntry?.status === "ready" ? " · file" : ""}</span>
-                            </div>
-                          );
-                        };
-                        return (
-                          <>
-                            {standardReferenceImages.length > 0 ? (
-                              <div className="production-reference-strip shot">
-                                {standardReferenceImages.map((image, index) =>
-                                  renderDramaReferenceCard(
-                                    image,
-                                    `drama-shot-${shot.shotNumber}-ref-${index + 1}`,
-                                    image.title || image.source || image.role,
-                                  ),
-                                )}
-                              </div>
-                            ) : referenceFrameImages.length === 0 ? (
-                              <div className="muted">No reference images uploaded for this shot.</div>
-                            ) : null}
-                            {referenceFrameImages.length > 0 ? (
-                              <>
-                                <div className="muted" style={{ marginTop: 8 }}>
-                                  เฟรมอ้างอิงที่สร้างเพิ่ม ({referenceFrameImages.length}) · ลากไปวางใน Grok ได้
-                                </div>
-                                <div className="production-reference-strip shot">
-                                  {referenceFrameImages.map((image, index) =>
-                                    renderDramaReferenceCard(
-                                      image,
-                                      `drama-shot-${shot.shotNumber}-reference-frame-${index + 1}`,
-                                      `เฟรมอ้างอิง ${index + 1}`,
-                                    ),
-                                  )}
-                                </div>
-                              </>
-                            ) : null}
-                          </>
-                        );
-                      })()}
+                      {shot.referenceImages.length > 0 ? (
+                        <>
+                          <div className="muted" style={{ marginTop: 8 }}>
+                            Reference media ({shot.referenceImages.length}) · image / video / audio
+                          </div>
+                          <div className="production-shot-assets">
+                            {shot.referenceImages.map((image, index) => {
+                              const mediaType = image.mediaType ?? "image";
+                              const label = image.title || image.role || `${mediaType} reference ${index + 1}`;
+                              return productionMediaCard({
+                                label,
+                                url: image.url,
+                                thumbnailUrl: image.thumbnailUrl,
+                                title: `drama-shot-${shot.shotNumber}-reference-${index + 1}`,
+                                kind: mediaType,
+                              });
+                            })}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="muted">No reference media attached for this shot.</div>
+                      )}
                     </div>
                   )) : (
                     <div className="muted">This episode has no shots yet.</div>
@@ -6203,7 +6195,7 @@ export default function App() {
                           kind: "video",
                         }) : null}
                       </div>
-                      {productionPromptBox("Image prompt", shot.imagePrompt ?? undefined, "No image prompt saved for this shot yet.")}
+                      {productionPromptBox("Image prompt", shot.imagePrompt ?? undefined, "No image prompt saved for this shot yet.", true)}
                       {productionPromptBox("Video prompt", shot.videoPrompt ?? undefined, "No video prompt saved for this shot yet.")}
                     </div>
                   )) : (

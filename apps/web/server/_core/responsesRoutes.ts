@@ -777,6 +777,8 @@ export function registerResponsesRoutes(
       if (shouldUseSelectionRouting) {
         try {
           resolvedSelection = await resolveChatModelSelection({
+            tenantId,
+            userId,
             bodyModel: bodyModelSelection != null ? (sanitizedBody.model as string | null) : null,
             bodyPreferredProvider,
             bodyModelSelection,

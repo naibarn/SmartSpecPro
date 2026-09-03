@@ -25,12 +25,20 @@ export type CrossEpisodeWardrobeLook = {
   wardrobe: string;
 };
 
+export type CrossEpisodeWardrobeContext = {
+  locationKey?: string;
+  locationLabel?: string;
+  timeMarker?: string;
+  text?: string;
+};
+
 export type CrossEpisodeWardrobeHandoff = {
   schemaVersion: "1.0";
   continuityMode: "continue";
   sourceEpisodeId: number;
   sourceEpisodeNumber: number;
   sourceShotNumber: number;
+  sourceContext?: CrossEpisodeWardrobeContext;
   characterLooks: CrossEpisodeWardrobeLook[];
 };
 
@@ -38,6 +46,7 @@ export type CrossEpisodeWardrobeShot = {
   shotNumber: number;
   text?: string | null;
   characterKeys: string[];
+  context?: CrossEpisodeWardrobeContext;
 };
 
 export type CrossEpisodeWardrobeMismatch = {
@@ -99,6 +108,149 @@ function isWardrobeEntry(entry: CrossEpisodeWardrobeCatalogEntry): boolean {
   return entry.variantType === "outfit" || entry.variantType == null;
 }
 
+function storyboardLocationContexts(
+  storyboard: unknown
+): Map<number, { locationKey?: string; locationLabel?: string }> {
+  const root = record(storyboard);
+  const locations = Array.isArray(root?.distinct_locations)
+    ? root.distinct_locations
+    : [];
+  const byShot = new Map<
+    number,
+    { locationKey?: string; locationLabel?: string }
+  >();
+  for (const raw of locations) {
+    const group = record(raw);
+    if (!group || !Array.isArray(group.shot_numbers)) continue;
+    const locationKey = clean(group.location_key ?? group.locationKey);
+    const locationLabel = clean(
+      group.location_name ?? group.locationName ?? group.description
+    );
+    for (const rawShotNumber of group.shot_numbers) {
+      const number = positiveInteger(rawShotNumber);
+      if (number === undefined) continue;
+      byShot.set(number, {
+        ...(locationKey ? { locationKey } : {}),
+        ...(locationLabel ? { locationLabel } : {}),
+      });
+    }
+  }
+  return byShot;
+}
+
+function shotContext(
+  shot: Record<string, unknown>,
+  locationFallback?: { locationKey?: string; locationLabel?: string }
+): CrossEpisodeWardrobeContext {
+  const location = record(shot.location);
+  const locationKey = clean(
+    shot.location_key ??
+      shot.locationKey ??
+      location?.location_key ??
+      location?.key ??
+      locationFallback?.locationKey
+  );
+  const locationLabel = clean(
+    shot.location_name ??
+      shot.locationName ??
+      (location?.name as unknown) ??
+      (location?.description as unknown) ??
+      (typeof shot.location === "string" ? shot.location : undefined) ??
+      locationFallback?.locationLabel
+  );
+  const timeMarker = clean(
+    shot.time_of_day ??
+      shot.timeOfDay ??
+      shot.time_marker ??
+      shot.timeMarker ??
+      shot.day_marker ??
+      shot.dayMarker
+  );
+  const text = [
+    shot.narrative_purpose,
+    shot.visual_description,
+    shot.description,
+    shot.action,
+    shot.scene_summary,
+    shot.story_summary,
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ")
+    .trim();
+  return {
+    ...(locationKey ? { locationKey } : {}),
+    ...(locationLabel ? { locationLabel } : {}),
+    ...(timeMarker ? { timeMarker } : {}),
+    ...(text ? { text } : {}),
+  };
+}
+
+function hasTimeBoundaryCue(text: unknown): boolean {
+  const value = clean(text).toLocaleLowerCase();
+  return [
+    /วันถัดไป/u,
+    /วันรุ่งขึ้น/u,
+    /เช้าวันใหม่/u,
+    /หลายวันต่อมา/u,
+    /หลายสัปดาห์ต่อมา/u,
+    /เวลาผ่านไป/u,
+    /the next day/u,
+    /the following day/u,
+    /days later/u,
+    /weeks later/u,
+    /time passes/u,
+  ].some(pattern => pattern.test(value));
+}
+
+function hasTravelContinuationCue(text: unknown): boolean {
+  const value = clean(text).toLocaleLowerCase();
+  return [
+    /เดินทางต่อ/u,
+    /ต่อเนื่อง/u,
+    /ขึ้นรถ/u,
+    /นั่งรถ/u,
+    /ลงจาก(?:เครื่องบิน|รถ)/u,
+    /ออกจากสนามบิน/u,
+    /กำลังไป/u,
+    /ระหว่างทาง/u,
+    /ต่อรถ/u,
+    /มาถึง/u,
+    /continues? (?:the )?journey/u,
+    /gets? into the car/u,
+    /travels? on/u,
+    /arrives? at/u,
+    /on the way/u,
+    /after leaving the airport/u,
+  ].some(pattern => pattern.test(value));
+}
+
+function shouldContinueAcrossEpisodeBoundary(
+  handoff: CrossEpisodeWardrobeHandoff,
+  shot: CrossEpisodeWardrobeShot
+): boolean {
+  const source = handoff.sourceContext;
+  const current = shot.context;
+  const combinedText = `${source?.text ?? ""} ${shot.text ?? ""} ${current?.text ?? ""}`;
+  if (hasTimeBoundaryCue(combinedText)) return false;
+
+  const sourceLocation = source?.locationKey ?? source?.locationLabel;
+  const currentLocation = current?.locationKey ?? current?.locationLabel;
+  const locationChanged = Boolean(
+    sourceLocation && currentLocation && sourceLocation !== currentLocation
+  );
+  if (locationChanged && !hasTravelContinuationCue(combinedText)) return false;
+
+  const timeChanged = Boolean(
+    source?.timeMarker &&
+    current?.timeMarker &&
+    source.timeMarker.toLocaleLowerCase() !==
+      current.timeMarker.toLocaleLowerCase()
+  );
+  if (timeChanged && !hasTravelContinuationCue(combinedText)) return false;
+
+  return true;
+}
+
 /**
  * Find the last shot that contains a resolvable outfit/base look. A final shot
  * with no relevant character does not erase the last known wardrobe state.
@@ -112,7 +264,11 @@ export function buildCrossEpisodeWardrobeHandoff(params: {
   const catalogByKey = new Map(
     params.catalog.map(entry => [entry.characterKey, entry])
   );
-  const shots = storyboardShots(params.previousEpisode.storyboard)
+  const shots = storyboardShots(params.previousEpisode.storyboard);
+  const locationByShotNumber = storyboardLocationContexts(
+    params.previousEpisode.storyboard
+  );
+  const sortedShots = shots
     .map(shot => ({ shot, number: shotNumber(shot) }))
     .filter(
       (item): item is { shot: Record<string, unknown>; number: number } =>
@@ -120,7 +276,7 @@ export function buildCrossEpisodeWardrobeHandoff(params: {
     )
     .sort((a, b) => b.number - a.number);
 
-  for (const item of shots) {
+  for (const item of sortedShots) {
     const refs = stringArray(
       item.shot.required_character_refs ?? item.shot.characters
     );
@@ -155,6 +311,10 @@ export function buildCrossEpisodeWardrobeHandoff(params: {
       sourceEpisodeId: params.previousEpisode.id,
       sourceEpisodeNumber: params.previousEpisode.episodeNumber,
       sourceShotNumber: item.number,
+      sourceContext: shotContext(
+        item.shot,
+        locationByShotNumber.get(item.number)
+      ),
       characterLooks,
     };
   }
@@ -224,10 +384,16 @@ export function findCrossEpisodeWardrobeMismatches(params: {
     params.handoff.characterLooks.map(look => [look.familyKey, look])
   );
   const issues: CrossEpisodeWardrobeMismatch[] = [];
+  let continuityActive = true;
 
   for (const shot of [...params.shots].sort(
     (a, b) => a.shotNumber - b.shotNumber
   )) {
+    if (!continuityActive) continue;
+    if (!shouldContinueAcrossEpisodeBoundary(params.handoff, shot)) {
+      continuityActive = false;
+      continue;
+    }
     const visibleEntries = shot.characterKeys
       .map(key => catalogByKey.get(key))
       .filter(
@@ -270,8 +436,14 @@ export function renderCrossEpisodeWardrobeHandoff(
       `- ${look.familyKey}: use ${look.lookKey} (${look.lookLabel}) — ${look.wardrobe}`
   );
   return [
-    "CROSS-EPISODE WARDROBE CONTINUITY (MANDATORY):",
-    `This episode continues episode ${handoff.sourceEpisodeNumber}, source shot ${handoff.sourceShotNumber}. The listed look is the authoritative opening wardrobe for each visible character family. Keep it unchanged from shot 1 onward unless the episode text explicitly describes changing clothes or a clear time jump. A descriptive garment word alone is not permission to change the inherited look. Use the exact look key when that character appears:`,
+    "CROSS-EPISODE WARDROBE CONTINUITY (CONTEXT-AWARE):",
+    `This episode follows episode ${handoff.sourceEpisodeNumber}, source shot ${handoff.sourceShotNumber}. First inspect the episode synopsis, scene summaries, locations, time markers, and action flow to decide whether shot 1 is the same continuous event. Keep the inherited look when the event continues directly (including travel such as leaving an airport and getting into a car). If this is a new day/time, unrelated event, or a separate location/event without a travel continuation, choose the appropriate look for the new context and do not force the inherited wardrobe. A descriptive garment word alone is not permission to change the inherited look. When continuity applies, use the exact look key when that character appears:`,
+    ...(handoff.sourceContext?.locationLabel
+      ? [`Previous scene location: ${handoff.sourceContext.locationLabel}`]
+      : []),
+    ...(handoff.sourceContext?.timeMarker
+      ? [`Previous scene time marker: ${handoff.sourceContext.timeMarker}`]
+      : []),
     ...lines,
   ].join("\n");
 }

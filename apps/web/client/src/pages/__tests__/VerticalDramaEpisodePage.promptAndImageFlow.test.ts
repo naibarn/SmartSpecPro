@@ -20,6 +20,99 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     expect(handler).toContain("submitAndWaitForShotStartFramePrompt");
   });
 
+  it("keeps episode-level image and video model pickers available for special tie-ins", () => {
+    const pageSource = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+    const storyboardPropStart = pageSource.lastIndexOf(
+      "onOpenStoredAngleGrid:"
+    );
+    const storyboardProps = pageSource.slice(
+      storyboardPropStart,
+      pageSource.indexOf("mcpConnectionId,", storyboardPropStart)
+    );
+    expect(storyboardProps).toContain("imageModels,");
+    expect(storyboardProps).toContain("videoModels,");
+    expect(storyboardProps).toContain("onSelectImageModel: handleSelectImageModel");
+    expect(storyboardProps).toContain("onSelectVideoModel: handleSelectVideoModel");
+
+    const routerSource = fs.readFileSync(
+      path.resolve(__dirname, "../../../../server/routers/verticalDramaEpisodes.ts"),
+      "utf8"
+    );
+    const selectionMutation = routerSource.slice(
+      routerSource.indexOf("setEpisodeModelSelection:"),
+      routerSource.indexOf("setEpisodeVideoPromptLanguage:")
+    );
+    expect(selectionMutation).not.toContain(
+      "Special tie-in models are episode-local; edit the special episode brief instead"
+    );
+
+    const workspaceSource = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../components/verticalDramaSeries/VerticalDramaEpisodeWorkspace.tsx"
+      ),
+      "utf8"
+    );
+    expect(workspaceSource).toContain(
+      "advancedMetaOpen={specialEpisode || advancedStagesOpen}"
+    );
+  });
+
+  it("keeps every episode type on the same two-button image flow", () => {
+    const pageSource = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+    const storyboardProps = pageSource.slice(
+      pageSource.lastIndexOf("storyboardPanel={{"),
+      pageSource.indexOf("qualityReview:", pageSource.lastIndexOf("storyboardPanel={{"))
+    );
+
+    expect(storyboardProps).toContain(
+      "onGeneratePromptAndImage: handleGeneratePromptAndImage"
+    );
+    expect(storyboardProps).toContain(
+      "storyboard: unifiedStoryboardData.storyboard"
+    );
+    expect(storyboardProps).toContain(
+      "canonicalShotDrafts: unifiedStoryboardData.canonicalShotDrafts"
+    );
+
+    const panelSource = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../components/verticalDramaSeries/VerticalDramaStoryboardPanel.tsx"
+      ),
+      "utf8"
+    );
+    expect(panelSource).toContain("onGenerateStartFrameImage &&\n                  frame?.imagePrompt");
+
+    const handler = pageSource.slice(
+      pageSource.indexOf("async function handleGeneratePromptAndImage("),
+      pageSource.indexOf(
+        "/* ---- Video prompt pack",
+        pageSource.indexOf("async function handleGeneratePromptAndImage(")
+      )
+    );
+    expect(handler).toContain("if (reauthor) {");
+    expect(handler).toContain("ยังไม่มี prompt ภาพ กรุณากด ‘สร้าง prompt + ภาพ’ ก่อน");
+  });
+
+  it("bridges special tie-in clip dialogue into the canonical storyboard preview", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+    expect(source).toContain("buildVerticalDramaUnifiedStoryboardData");
+    expect(source).toContain("dialogueLines");
+    expect(source).toContain(
+      "canonicalShotDrafts: unifiedStoryboardData.canonicalShotDrafts"
+    );
+  });
+
   it("polls a background prompt job to terminal success before image admission", () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
@@ -135,7 +228,34 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     expect(source).toContain("utils.media.getTask.fetch({ taskId })");
   });
 
-  it("treats provider policy failures as terminal and never auto-submits a softened task", () => {
+  it("repairs old sync failures from the durable task result without paid rerender", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+
+    expect(source).toContain("readVerticalDramaTaskMediaAssetId");
+    expect(source).toContain("shouldAutoRepairFrameSync");
+    expect(source).toContain("autoRepairPersistedFrameSync");
+    expect(source).toContain("task.failureStage === \"sync\"");
+    expect(source).toContain("verticalDramaMediaAssetId");
+    expect(source).toContain("never starts a new provider generation");
+  });
+
+  it("does not run a second generic artifact pass in media.getTask", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../../../../server/routers/media.ts"),
+      "utf8"
+    );
+    const getTask = source.slice(
+      source.indexOf("getTask: protectedProcedure"),
+      source.indexOf("// Persist a failed provider-capacity task", source.indexOf("getTask: protectedProcedure"))
+    );
+    expect(getTask).toContain("return task;");
+    expect(getTask).not.toContain("ensureMediaTaskArtifactsForPolling({");
+  });
+
+  it("automatically retries one start-frame provider policy failure with a softened prompt", () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
       "utf8"
@@ -153,9 +273,16 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
       source.indexOf("function handleSubmitRepairImage", source.indexOf("async function pollRepairImageTask("))
     );
 
-    for (const poll of [startFramePoll, anglePoll, repairPoll]) {
-      expect(poll).not.toContain("softenLevel + 1");
+    expect(startFramePoll).toContain("shouldAutoRetryPolicyFailure");
+    expect(startFramePoll).toContain('"single"');
+    expect(startFramePoll).toContain("setTimeout");
+    expect(startFramePoll).toContain("hasRetried: softenLevel !== undefined");
+    expect(source).toContain("softenLevel: taskSoftenLevel");
+    expect(source).toContain("imageTask?.softenLevel");
+    expect(source).toContain("false,\n                false,\n                1");
+    for (const poll of [anglePoll, repairPoll]) {
       expect(poll).not.toContain("crypto.randomUUID()");
+      expect(poll).not.toContain("softenLevel: 1");
     }
     expect(startFramePoll).toContain("persistTerminalImageFailure");
     expect(anglePoll).toContain("persistAngleGrid(shotNumber, null)");

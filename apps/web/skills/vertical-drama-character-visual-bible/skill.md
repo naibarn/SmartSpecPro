@@ -262,6 +262,9 @@ Required top-level snake_case keys are: `version`, `design_intent`,
 in the normal complete Character DNA output skeleton; in particular, `anti_clone_checks`
 must contain `distinct_facial_dimensions`, `distinct_hair_dimensions`,
 `distinct_body_language_dimensions`, and `signature_difference`.
+Every Character DNA string list is bounded: emit no more than 12 concise, non-empty items,
+selecting only the highest-value entries. Never duplicate a field under both snake_case and
+camelCase keys.
 
 This mode is deliberately lean. Return only:
 

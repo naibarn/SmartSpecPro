@@ -1,0 +1,13 @@
+{
+  "scenario": "Presenter + product packshot should preserve product identity without making packshot itself a literal video frame.",
+  "provider": "Black Forest Labs",
+  "model": "flux-3-video",
+  "strategy": "prebake_references_to_keyframes",
+  "workflow": [
+    "Analyze presenter/product references",
+    "Create production shot keyframe containing both correctly",
+    "Approve identity/product/composition",
+    "Submit approved shot keyframe as FLUX I2V keyframe",
+    "Run keyframe/product QC"
+  ]
+}

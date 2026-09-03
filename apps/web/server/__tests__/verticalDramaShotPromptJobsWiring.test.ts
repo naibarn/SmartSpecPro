@@ -48,4 +48,15 @@ describe("Vertical Drama shot prompt background-job wiring", () => {
     );
     expect(workerProcedure).toContain('code: "FORBIDDEN"');
   });
+
+  it("brokers Enhanced vision references before crossing the provider boundary", () => {
+    const source = read("../routers/verticalDramaEpisodes.ts");
+    const start = source.indexOf("const rawVisionReferences = [");
+    const end = source.indexOf("const storyboard = row.storyboard", start);
+    const enhancedContext = source.slice(start, end);
+
+    expect(enhancedContext).toContain("resolveExternalMediaReferenceUrls");
+    expect(enhancedContext).toContain("tenantId: input.tenantId");
+    expect(enhancedContext).toContain("providerUrls?.[index]");
+  });
 });

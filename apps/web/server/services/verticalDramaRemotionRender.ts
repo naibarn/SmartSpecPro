@@ -88,6 +88,7 @@ import {
   type WorkerJob,
 } from "../../drizzle/schema";
 import type { HyperframesFinalCompositeSubtitlePresetSchema } from "@shared/hyperframes/runtimeApiSchemas";
+import { parseShotBrollTransform, type ShotBrollTransform } from "@shared/verticalDramaSeries/visualSource";
 import type { z } from "zod";
 
 type VdRemotionCaptionPresetId = z.infer<
@@ -338,6 +339,19 @@ export interface VdRemotionResolvedClip {
   parentShotNumber?: number;
 }
 
+/** A prepared external-footage segment on the final episode timeline. The
+ * segment is already split around the 9-shot compound by the router; the
+ * Worker only needs to render this exact source range. */
+export interface VdRemotionFootageInput {
+  segmentId: string;
+  mediaUrl: string;
+  sourceInSec: number;
+  sourceOutSec: number;
+  fitMode?: "cover" | "contain";
+  audioPolicy?: "keep" | "mute";
+  title?: string;
+}
+
 /** A canonical still/footage source that is composited over the assembled
  * episode timeline. `startSec/endSec` are destination coordinates; `inSec`
  * is a coordinate inside the source video. The caller must provide a
@@ -352,6 +366,7 @@ export interface VdRemotionBrollInput {
   outSeconds?: number | null;
   displayDurationSeconds?: number | null;
   fitMode?: "cover" | "contain" | "crop_safe";
+  transform?: ShotBrollTransform;
   audioPolicy?: "keep" | "mute" | "replace";
   [key: string]: unknown;
 }
@@ -364,6 +379,7 @@ export interface VdRemotionResolvedBrollLayer {
   endSec: number;
   sourceInSec?: number;
   fitMode: "cover" | "contain" | "crop_safe";
+  transform?: ShotBrollTransform;
   audioPolicy: "keep" | "mute" | "replace";
 }
 
@@ -379,6 +395,9 @@ export interface VdRemotionResolvedBanner extends RunAssemblyJobBannerInput {
 export interface BuildVdRemotionTemplateInput {
   clips: VdRemotionResolvedClip[];
   videoDurationSeconds: number;
+  footage?: Array<
+    VdRemotionFootageInput & { resolvedMediaUrl: string }
+  >;
   brollLayers?: VdRemotionResolvedBrollLayer[];
   banners?: VdRemotionResolvedBanner[];
   overlays?: RunAssemblyJobTextOverlayEventInput[];
@@ -470,8 +489,44 @@ export function buildVdRemotionTemplate(
 
   const layers: RemotionLayer[] = [];
 
-  // 1) Video layers (real durations, cumulative startFrame).
+  // 1) Main-track video layers (external footage first, then the compound's
+  // 9-shot clips). The optional footage path is additive: with no footage it
+  // produces the exact pre-existing clip-only timeline.
   let cursorFrame = 0;
+  const footageDurationFrames = (input.footage ?? []).reduce(
+    (sum, footage) =>
+      sum +
+      Math.max(
+        1,
+        Math.round(Math.max(0, footage.sourceOutSec - footage.sourceInSec) * fps),
+      ),
+    0,
+  );
+  for (const [index, footage] of (input.footage ?? []).entries()) {
+    const durationFrames = Math.max(
+      1,
+      Math.round(Math.max(0, footage.sourceOutSec - footage.sourceInSec) * fps),
+    );
+    layers.push({
+      id: `footage-${footage.segmentId}-${index}`,
+      type: "video",
+      startFrame: cursorFrame,
+      durationFrames,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      rotationDeg: 0,
+      opacity: 1,
+      zIndex: 0,
+      src: footage.resolvedMediaUrl,
+      trimStartSec: Math.max(0, footage.sourceInSec),
+      volume: footage.audioPolicy === "keep" ? 1 : 0,
+      muted: footage.audioPolicy !== "keep",
+    });
+    cursorFrame += durationFrames;
+  }
+  const compoundOffsetSec = footageDurationFrames / fps;
   for (const clip of input.clips) {
     const durationFrames = Math.max(1, Math.round(clip.durationSec * fps));
     layers.push({
@@ -633,27 +688,35 @@ export function buildVdRemotionTemplate(
     });
   }
 
-  // 3) B-roll layers. These are deliberately full-frame and sit above the
-  // base shot but below text/brand overlays. Their start/end frames are
-  // absolute episode coordinates, while sourceInSec remains source-media
-  // coordinates for footage trimming.
+  // 3) B-roll layers. They sit above the base shot but below text/brand
+  // overlays. Their start/end frames are absolute episode coordinates, while
+  // sourceInSec remains source-media coordinates for footage trimming. The
+  // persisted transform controls custom placement without replacing the base
+  // shot/background.
   for (const [index, broll] of (input.brollLayers ?? []).entries()) {
-    const startFrame = Math.max(0, Math.round(broll.startSec * fps));
+    const startFrame = Math.max(
+      0,
+      Math.round((compoundOffsetSec + broll.startSec) * fps),
+    );
     const endFrame = Math.min(
       durationInFrames,
-      Math.max(startFrame + 1, Math.round(broll.endSec * fps)),
+      Math.max(
+        startFrame + 1,
+        Math.round((compoundOffsetSec + broll.endSec) * fps),
+      ),
     );
     if (endFrame <= startFrame) continue;
+    const transform = parseShotBrollTransform(broll.transform);
     const base = {
       id: `broll-${broll.bindingId}-${index}`,
       startFrame,
       durationFrames: endFrame - startFrame,
-      x: 0,
-      y: 0,
-      width: 100,
-      height: 100,
-      rotationDeg: 0,
-      opacity: 1,
+      x: transform.x,
+      y: transform.y,
+      width: transform.width,
+      height: transform.height,
+      rotationDeg: transform.rotationDeg,
+      opacity: transform.opacity,
       zIndex: 6,
       src: broll.resolvedMediaUrl,
     };
@@ -679,7 +742,10 @@ export function buildVdRemotionTemplate(
   //    same convention as `RunAssemblyJobDialogueAudioInput.segments`).
   if (input.dialogueAudio) {
     input.dialogueAudio.segments.forEach((segment, index) => {
-      const startFrame = Math.max(0, Math.round(segment.startSec * fps));
+      const startFrame = Math.max(
+        0,
+        Math.round((compoundOffsetSec + segment.startSec) * fps),
+      );
       const remainingFrames = Math.max(1, durationInFrames - startFrame);
       const gainDb = segment.gainDb ?? 0;
       const volume = Math.min(1, Math.max(0, Math.pow(10, gainDb / 20)));
@@ -809,8 +875,16 @@ export function buildVdRemotionTemplate(
   //    secondary line, verbatim text/timing — see `resolveVdTextOverlayWindow`).
   for (const [index, overlay] of (input.overlays ?? []).entries()) {
     const window = resolveVdTextOverlayWindow(overlay, totalDurationSeconds);
-    const startFrame = Math.max(0, Math.round(window.startSec * fps));
-    const endFrame = Math.max(startFrame + 1, Math.round(window.endSec * fps));
+    const overlayOffsetSec =
+      overlay.entireClip || overlay.endAnchored ? 0 : compoundOffsetSec;
+    const startFrame = Math.max(
+      0,
+      Math.round((overlayOffsetSec + window.startSec) * fps),
+    );
+    const endFrame = Math.max(
+      startFrame + 1,
+      Math.round((overlayOffsetSec + window.endSec) * fps),
+    );
     const layout = layoutForOverlayKind(overlay.kind, overlay.variant);
     layers.push({
       id: `overlay-${overlay.kind}-${index}`,
@@ -1098,6 +1172,11 @@ export function absoluteVdAssetUrl(url: string, baseUrl: string): string {
 export interface SubmitVdRemotionAssemblyInput {
   owner: AssembleEpisodeVideoOwner;
   clips: EpisodeClipSource[];
+  /** Optional main-track footage segments. Their order already includes the
+   *  split-before/compound/split-after expansion; absent means the original
+   *  clip-only assembly path. */
+  footage?: VdRemotionFootageInput[];
+  timelineRevision?: number;
   internalBaseUrl: string;
   /** Publicly reachable origin the WORKER will fetch assets from. Falls back
    *  to `internalBaseUrl` only when absent (single-machine setups). */
@@ -1273,9 +1352,69 @@ export async function submitVdRemotionAssembly(
     })
   );
   const clipHashes: string[] = probedClips.map(c => c.sha256);
+  let resolvedFootage: Array<
+    VdRemotionFootageInput & { resolvedMediaUrl: string }
+  > = [];
+  const footageHashes: string[] = [];
+  if (input.footage?.length) {
+    const stagedFootage = await Promise.all(
+      input.footage.map(footage => {
+        if (
+          !footage.mediaUrl.trim() ||
+          !Number.isFinite(footage.sourceInSec) ||
+          !Number.isFinite(footage.sourceOutSec) ||
+          footage.sourceInSec < 0 ||
+          footage.sourceOutSec <= footage.sourceInSec
+        ) {
+          throw new VdRemotionRenderError(
+            "footage_timeline_invalid",
+            `Footage segment ${footage.segmentId} has an invalid source range`,
+          );
+        }
+        return stageAsset(footage.mediaUrl, input.internalBaseUrl, true);
+      }),
+    );
+    stagedFootage.forEach((staged, index) => {
+      const footage = input.footage![index];
+      throwIfStagedAssetFailed(staged, `Footage ${footage.segmentId}`);
+      if (
+        staged.durationSec == null ||
+        staged.durationSec <= 0 ||
+        footage.sourceOutSec > staged.durationSec + 0.05
+      ) {
+        throw new VdRemotionRenderError(
+          "footage_duration_probe_failed",
+          `Footage ${footage.segmentId} trim end exceeds the staged source duration`,
+        );
+      }
+      footageHashes.push(staged.sha256);
+    });
+    const workerFootageUrls = await resolveVdWorkerAssetUrls(
+      input.footage.map(footage =>
+        absoluteVdAssetUrl(footage.mediaUrl, assetBaseUrl),
+      ),
+      resolveWorkerAssetUrls,
+      workerViewer,
+      assetBaseUrl,
+      "episode footage",
+    );
+    resolvedFootage = input.footage.map((footage, index) => ({
+      ...footage,
+      resolvedMediaUrl: workerFootageUrls[index],
+    }));
+  }
+  const footageDurationSeconds = resolvedFootage.reduce(
+    (sum, footage) =>
+      sum + Math.max(0, footage.sourceOutSec - footage.sourceInSec),
+    0,
+  );
   const videoDurationSeconds = resolvedClips.reduce(
     (sum, c) => sum + c.durationSec,
-    0
+    footageDurationSeconds,
+  );
+  const compoundDurationSeconds = resolvedClips.reduce(
+    (sum, c) => sum + c.durationSec,
+    0,
   );
 
   const projectedBroll = projectBrollPlacements(
@@ -1286,7 +1425,7 @@ export async function submitVdRemotionAssembly(
       sourceShotNumbers: clip.sourceShotNumbers,
       parentShotNumber: clip.parentShotNumber,
     })),
-    videoDurationSeconds,
+    compoundDurationSeconds,
   );
   if (projectedBroll.errors.length > 0) {
     throw new VdRemotionRenderError(
@@ -1327,6 +1466,7 @@ export async function submitVdRemotionAssembly(
         ? { sourceInSec: source.inSeconds }
         : {}),
       fitMode: source.fitMode ?? "cover",
+      transform: parseShotBrollTransform(source.transform),
       audioPolicy: source.audioPolicy ?? "mute",
     });
   }
@@ -1441,6 +1581,7 @@ export async function submitVdRemotionAssembly(
   const { template, durationInFrames, layerCount } = buildVdRemotionTemplate({
     clips: resolvedClips,
     videoDurationSeconds,
+    footage: resolvedFootage.length > 0 ? resolvedFootage : undefined,
     brollLayers: resolvedBrollLayers.length > 0 ? resolvedBrollLayers : undefined,
     banners: resolvedBanners.length > 0 ? resolvedBanners : undefined,
     overlays: input.overlays ?? input.subtitles?.overlays,
@@ -1464,6 +1605,12 @@ export async function submitVdRemotionAssembly(
     : input.subtitles;
 
   const captionLines = buildVdCaptionLines(retimedSubtitles);
+  const compoundOffsetSeconds = footageDurationSeconds;
+  const shiftedCaptionLines = captionLines.map(line => ({
+    ...line,
+    startSec: line.startSec + compoundOffsetSeconds,
+    endSec: line.endSec + compoundOffsetSeconds,
+  }));
   const captionPresetId = mapVdSubtitlePresetToRemotion(
     input.subtitles?.preset
   );
@@ -1475,6 +1622,12 @@ export async function submitVdRemotionAssembly(
       role: "video" as const,
       url: clip.url,
       sha256: clipHashes[index] ?? fallbackAssetSourceHash(clip.url),
+    })),
+    ...resolvedFootage.map((footage, index) => ({
+      role: "video" as const,
+      url: footage.resolvedMediaUrl,
+      sha256:
+        footageHashes[index] ?? fallbackAssetSourceHash(footage.resolvedMediaUrl),
     })),
     ...resolvedBanners.map((banner, index) => ({
       role: "image" as const,
@@ -1534,7 +1687,9 @@ export async function submitVdRemotionAssembly(
     segmentPlan: null,
     remotionTemplateHash,
     durationInFrames,
-    ...(captionsEnabled ? { captionLines, captionPresetId } : {}),
+    ...(captionsEnabled
+      ? { captionLines: shiftedCaptionLines, captionPresetId }
+      : {}),
   };
 
   const { created, job } = await queueJob({
@@ -1558,6 +1713,10 @@ export async function submitVdRemotionAssembly(
     // `reconcileVdRemotionAssembly` needs to know which queue to poll.
     renderEngine: "remotion_queue",
     brollApplied: (input.broll?.length ?? 0) > 0,
+    footageApplied: resolvedFootage.length > 0,
+    ...(input.timelineRevision != null
+      ? { timelineRevision: input.timelineRevision }
+      : {}),
     // Stamped so the 60-minute queued-TTL fallback in `reconcileVdRemotionAssembly`
     // knows how long this job has been waiting for a Lane B claim.
     renderSubmittedAt: Date.now(),
@@ -2253,6 +2412,34 @@ export async function reconcileVdRemotionAssembly(
   if (!job) return { reconciled: false };
   if (job.status === "running") return { reconciled: false };
 
+  // A user can save a new footage timeline and start a replacement assembly
+  // while this older worker job is still finishing. Never let that late
+  // terminal event overwrite the newer job's durable result.
+  const [currentEpisode] = await db
+    .select({ assemblyManifest: verticalDramaEpisodes.assemblyManifest })
+    .from(verticalDramaEpisodes)
+    .where(
+      and(
+        eq(verticalDramaEpisodes.id, owner.episodeId),
+        eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+        eq(verticalDramaEpisodes.userId, owner.userId),
+        eq(verticalDramaEpisodes.seriesId, owner.seriesId),
+      ),
+    )
+    .limit(1);
+  const currentCompiledVideo =
+    currentEpisode?.assemblyManifest &&
+    typeof currentEpisode.assemblyManifest === "object" &&
+    (currentEpisode.assemblyManifest as Record<string, unknown>).compiledVideo &&
+    typeof (currentEpisode.assemblyManifest as Record<string, unknown>)
+      .compiledVideo === "object"
+      ? ((currentEpisode.assemblyManifest as Record<string, unknown>)
+          .compiledVideo as Record<string, unknown>)
+      : null;
+  if (currentCompiledVideo?.pendingJobId !== jobId) {
+    return { reconciled: false };
+  }
+
   if (job.status === "queued") {
     const submittedMs = Number(submittedAt);
     const timedOut =
@@ -2324,6 +2511,7 @@ export async function reconcileVdRemotionAssembly(
     assembledAt: new Date().toISOString(),
     status: "completed",
     error: undefined,
+    stale: false,
   });
   return { reconciled: true, status: "completed" };
 }

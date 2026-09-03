@@ -1004,6 +1004,7 @@ describe("lead-quality rubric — skill/TS vocabulary sync", () => {
     expect(content).toMatch(/at least one role-specific star phrase/i);
     expect(content).toMatch(/at least two appeal signals/i);
     expect(content).toMatch(/at least two role-drift\s+guard phrases/i);
+    expect(content).toMatch(/no more than 12 .*items/i);
   });
 });
 
@@ -1797,6 +1798,41 @@ describe("generateCharacterVisualPrompts", () => {
         alias: "movementRhythm",
         canonical: "movement_rhythm",
         collision: true,
+      }),
+    );
+  });
+
+  it("bounds overlong DNA lists after canonicalizing camelCase aliases", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const character = validCharacter() as any;
+    const forbiddenDrift = Array.from({ length: 13 }, (_, index) => `drift-${index + 1}`);
+    character.character_design_dna.forbidden_drift = forbiddenDrift;
+    character.character_design_dna.forbiddenDrift = [
+      ...forbiddenDrift,
+      "alias-only drift",
+    ];
+    mockExecute.mockResolvedValue(successResponse(validOutput([character])));
+
+    const result = await generateCharacterVisualPrompts(baseParams());
+
+    expect(result.visualBibleSnapshot.designDna.forbiddenDrift).toEqual(
+      forbiddenDrift.slice(0, 12),
+    );
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "skill_execute",
+        metadata: expect.objectContaining({
+          operation: "normalize_character_dna_bounds",
+          corrections: expect.arrayContaining([
+            expect.objectContaining({
+              path: "characters.0.character_design_dna.forbidden_drift",
+              reportedCount: 13,
+              keptCount: 12,
+            }),
+          ]),
+        }),
       }),
     );
   });

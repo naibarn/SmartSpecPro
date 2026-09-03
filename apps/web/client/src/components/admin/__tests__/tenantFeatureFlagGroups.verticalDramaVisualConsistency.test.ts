@@ -15,6 +15,19 @@ describe("Vertical Drama visual-consistency admin flags", () => {
     }
   });
 
+  it("lists all Enhanced rollout controls in the tenant admin UI", () => {
+    const group = BASE_TENANT_FLAG_GROUPS.find(
+      (candidate) => candidate.title === "Vertical Drama Series",
+    );
+    for (const key of [
+      "verticalDramaEnhancedVideoPromptUi",
+      "verticalDramaEnhancedVideoPromptJobs",
+      "verticalDramaEnhancedVideoPromptApply",
+    ]) {
+      expect(group?.flags.filter((flag) => flag.key === key)).toHaveLength(1);
+    }
+  });
+
   it("provides traceable Thai-first descriptions", () => {
     const group = BASE_TENANT_FLAG_GROUPS.find(
       (candidate) => candidate.title === "Vertical Drama Series",

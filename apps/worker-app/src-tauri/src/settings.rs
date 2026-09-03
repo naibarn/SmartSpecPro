@@ -96,6 +96,8 @@ pub struct WorkerAppSettings {
     pub workspace_dir: String,
     pub runtime_channel: RuntimeChannel,
     pub runtime_version: String,
+    /// Legacy compatibility field. Runtime freshness is advisory and is no
+    /// longer used to pause render claims; keep it only to read old settings.
     #[serde(default)]
     pub render_update_blocked: bool,
     pub diagnostics_level: DiagnosticsLevel,
@@ -261,9 +263,8 @@ pub fn load_settings(app_data_dir: &Path) -> WorkerAppSettings {
     };
     // Older builds wrote the pre-standard command names. Keep existing
     // settings usable while making every newly persisted setting canonical.
-    settings.comfyui_mcp_command = crate::comfy_mcp_runtime::normalize_command(
-        &settings.comfyui_mcp_command,
-    );
+    settings.comfyui_mcp_command =
+        crate::comfy_mcp_runtime::normalize_command(&settings.comfyui_mcp_command);
     if cfg!(target_os = "macos") {
         // A settings file copied from Windows must not make a Mac attempt WSL2.
         settings.runtime_environment = RuntimeEnvironment::RuntimePack;
@@ -310,7 +311,10 @@ mod tests {
 
     #[test]
     fn local_comfy_mcp_defaults_to_the_standard_command() {
-        assert_eq!(WorkerAppSettings::default().comfyui_mcp_command, "comfy-mcp");
+        assert_eq!(
+            WorkerAppSettings::default().comfyui_mcp_command,
+            "comfy-mcp"
+        );
     }
 
     #[test]

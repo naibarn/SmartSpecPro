@@ -342,6 +342,20 @@ describe("buildMediaRequestAuditPayload", () => {
 });
 
 describe("resolveReferenceImageUrlsForModel webp vs jpg rules", () => {
+  it("preserves the complete validated order for profile-backed video bundles", () => {
+    const input = Array.from({ length: 8 }, (_, index) =>
+      `https://smartaihub.app/api/storage/files/ref-${index}.png`,
+    );
+    expect(
+      resolveReferenceImageUrlsForModelForTest(
+        "future-profile-video",
+        input,
+        "https://smartaihub.app",
+        true,
+      ),
+    ).toEqual(input);
+  });
+
   it("converts .webp reference image URLs to .jpg for gpt-image models", () => {
     const input = [
       "https://smartaihub.app/api/storage/files/marketplace-captures/cap-1/images/asset_01.webp",

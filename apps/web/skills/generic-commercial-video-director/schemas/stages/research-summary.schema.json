@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/research-summary.schema.json",
+  "title": "Research Summary",
+  "type": "object",
+  "required": [
+    "facts",
+    "unknowns",
+    "claimRisks",
+    "researchComplete"
+  ],
+  "properties": {
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "statement",
+          "evidenceLevel"
+        ],
+        "properties": {
+          "statement": {
+            "type": "string"
+          },
+          "evidenceLevel": {
+            "type": "string",
+            "enum": [
+              "user_fact",
+              "reference_observed",
+              "verified_research",
+              "category_convention",
+              "hypothesis"
+            ]
+          },
+          "sourceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "claimRisks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "researchComplete": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

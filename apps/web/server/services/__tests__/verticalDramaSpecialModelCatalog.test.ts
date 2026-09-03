@@ -23,4 +23,27 @@ describe("special model catalog", () => {
     expect(result.imageModels.every(model => !/^(higgsfield|higgsfield-mcp|magnific-mcp)\//i.test(model.modelId))).toBe(true);
     expect(result.videoModels.every(model => !/^(higgsfield|higgsfield-mcp|magnific-mcp)\//i.test(model.modelId))).toBe(true);
   });
+
+  it("counts selected character portraits in addition to product references", async () => {
+    const result = await listSpecialTieInModels({
+      durationSeconds: 12,
+      dialogueMode: "none",
+      referenceImageCount: 3,
+      characterReferenceCount: 4,
+      connectedMcpProviderKeys: new Set(),
+    });
+
+    expect(
+      result.imageModels.every(
+        model =>
+          model.maxReferenceImages == null || model.maxReferenceImages >= 7
+      )
+    ).toBe(true);
+    expect(
+      result.videoModels.every(
+        model =>
+          model.maxReferenceImages == null || model.maxReferenceImages >= 7
+      )
+    ).toBe(true);
+  });
 });

@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "เด็กนั่งเล่นของเล่นกับแม่ในห้องนั่งเล่น คุยกันสั้น ๆ แล้วหัวเราะ",
+  "locale": "th-TH",
+  "contentMode": "cinematic",
+  "promotionTarget": {
+    "mode": "explicit",
+    "kind": "narrative_no_promotion",
+    "exactVisualIdentityRequired": false
+  },
+  "assets": [
+    {
+      "assetId": "mother",
+      "role": "character_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "identity"
+      ]
+    },
+    {
+      "assetId": "child",
+      "role": "character_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "identity"
+      ]
+    },
+    {
+      "assetId": "living_room",
+      "role": "environment_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "environment"
+      ]
+    }
+  ]
+}

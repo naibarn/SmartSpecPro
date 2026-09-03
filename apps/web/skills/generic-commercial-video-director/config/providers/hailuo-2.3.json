@@ -1,0 +1,121 @@
+{
+  "profileVersion": "1.0",
+  "id": "hailuo-2.3",
+  "provider": "MiniMax/Hailuo",
+  "model": "MiniMax-Hailuo-2.3",
+  "modelFamily": "Hailuo 2.3",
+  "kind": "video",
+  "availability": "ga",
+  "verification": {
+    "status": "partial",
+    "verifiedAt": "2026-09-01",
+    "sources": [
+      {
+        "title": "MiniMax Hailuo 2.3",
+        "url": "https://www.minimax.io/news/minimax-hailuo-23",
+        "notes": "Official model overview"
+      },
+      {
+        "title": "MiniMax and VEED: Hailuo-2.3",
+        "url": "https://www.minimax.io/news/minimax-and-veed-hailuo-23-for-pro-level-ai-video",
+        "notes": "Documents text/image input, 6/10s and 768p/1080p"
+      }
+    ]
+  },
+  "capabilities": {
+    "text_to_video": {
+      "status": "verified",
+      "notes": null
+    },
+    "image_to_video": {
+      "status": "verified",
+      "notes": null
+    },
+    "first_frame": {
+      "status": "verified",
+      "notes": "Image input can act as starting visual reference"
+    },
+    "first_last_frame": {
+      "status": "conditional",
+      "notes": "Hailuo 02 had official start/end support; verify availability for the exact Hailuo 2.3 API endpoint"
+    },
+    "native_audio": {
+      "status": "unknown",
+      "notes": null
+    },
+    "dialogue_lipsync": {
+      "status": "unknown",
+      "notes": null
+    },
+    "multi_shot": {
+      "status": "unknown",
+      "notes": null
+    }
+  },
+  "limits": {
+    "durations": {
+      "minSeconds": 6,
+      "maxSeconds": 10,
+      "allowedSeconds": [
+        6,
+        10
+      ]
+    },
+    "resolutions": [
+      "768p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "provider-dependent"
+    ],
+    "referenceLimits": {},
+    "notes": [
+      "Treat advanced controls as endpoint-dependent until adapter introspection confirms them."
+    ]
+  },
+  "bestFor": [
+    "human motion",
+    "physics-heavy short clips",
+    "simple start-frame continuation"
+  ],
+  "knownRisks": [
+    "do not assume native audio/lip-sync without endpoint confirmation"
+  ],
+  "promptProfile": "compact-explicit-motion",
+  "adapterId": "hailuo",
+  "temporalPlanning": {
+    "baseGeneration": {
+      "durationControl": "exact",
+      "stepSeconds": null,
+      "notes": []
+    },
+    "nativeMultiShot": {
+      "status": "unknown",
+      "maxShotsPerGeneration": null,
+      "supportsExplicitTimedCuts": null,
+      "supportsSingleContinuousShotConstraint": null,
+      "notes": []
+    },
+    "extension": {
+      "status": "unknown",
+      "appendOnly": null,
+      "minAdditionalSeconds": null,
+      "maxAdditionalSeconds": null,
+      "allowedAdditionalSeconds": null,
+      "stepSeconds": null,
+      "defaultAdditionalSeconds": null,
+      "maxCumulativeSeconds": null,
+      "contextSeconds": null,
+      "supportsGeneratedVideoMultiTurn": null,
+      "supportsUploadedVideo": null,
+      "supportsNewDialogueOnGeneratedMultiTurn": null,
+      "supportsNewDialogueOnUploadedTalkingVideo": null,
+      "tailMayBeRewritten": null,
+      "localTimecodeResetsAtExtensionStart": null,
+      "requiresStoredInteractionState": null,
+      "notes": [],
+      "durationControl": "unknown",
+      "deterministicDurationRequest": false
+    }
+  }
+}

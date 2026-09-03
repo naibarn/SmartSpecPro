@@ -179,7 +179,7 @@ fn sidecar_command_uses_bundled_wsl2_node_and_runtime_paths() {
             .envs
             .get("SMARTAIHUB_ENABLE_GPU_ENCODING")
             .map(String::as_str),
-        Some("1")
+        Some("0")
     );
     assert_eq!(
         command
@@ -314,7 +314,7 @@ fn sidecar_command_can_use_managed_wsl_runtime_root() {
             .envs
             .get("SMARTAIHUB_ENABLE_GPU_ENCODING")
             .map(String::as_str),
-        Some("1")
+        Some("0")
     );
 }
 

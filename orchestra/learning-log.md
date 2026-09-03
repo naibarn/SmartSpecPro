@@ -1,16 +1,18 @@
-# Loop learning log
+# Learning Log
 
-## Active run
+## 2026-09-02 — Feature 173 follow-up audit
 
-- route: data-first debug with inline implementation
-- discovery limitation: SocratiCode transport/tools unavailable; shell fallback required
-- worktree: heavily dirty; owned paths must remain narrowly scoped
-- current stop reason: in progress
-
-## Evidence and gap review
-
-- DB: series 57 has five rows. IDs 204/205 have valid canonical DNA, three portrait assets each, and completed media tasks. IDs 206/207/208 have story descriptions only, no canonical DNA, no character assets, and no media tasks.
-- Audit: series-57 character generation events exist for character IDs 204 and 205 only; no prompt-generation failure is logged for 206-208. This supports an unstarted/rejected-before-submit lifecycle, not silent DNA loss.
-- Root cause: first-portrait candidate mode required an age profile; 206-208 have no age fact and were rejected before the single visual-bible prompt path could create DNA.
-- Prevention: server-side canonical DNA check and regression coverage; candidate mode is now optional and safely falls back to the single prompt path. No placeholder DNA or paid backfill was written to real data.
-- Verification gap: no browser/live provider/deployment run. The existing full customInstruction router suite is baseline-red from unrelated stale fixtures (implicit model fallback and snapshot character-key mismatch). Full TypeScript check is also baseline-red across unrelated dirty files; the edited paths had no reported type errors. The new fallback test passes independently.
+- A disabled Enhanced button without a visible readiness reason is operationally
+  ambiguous even when the server returns structured blocker codes. Keep the reason
+  visible in the storyboard while preserving the disabled state and Legacy path.
+- A local service restart is a meaningful production-readiness gate for Beta. A
+  missing ESM export can prevent the entire Node process from starting, so startup
+  must be rechecked after any touched runtime/UI change.
+- Grok's app transport profile remains distinct from the raw provider skill adapter:
+  SmartAIHub sends Start + image references in one ordered array, while the raw
+  provider contract remains unchanged to avoid widening scope or invalidating its
+  manifest assumptions.
+- Readiness errors can be caused by persisted JSON naming drift rather than missing
+  media. When a typed projection is camelCase but stored storyboard output is
+  provider-shaped snake_case, normalize at the Enhanced boundary and test the
+  actual stored shape.

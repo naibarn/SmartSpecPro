@@ -1,0 +1,35 @@
+{
+  "model": "dreamina-seedance-2-5-260628",
+  "mode": "reference_to_video",
+  "durationSeconds": 30,
+  "promptText": "REFERENCE BINDINGS: @Image 1 host; @Video 1 motion; @Audio 1 voice.",
+  "timeline": [
+    {
+      "startSeconds": 0,
+      "endSeconds": 10,
+      "description": "Hook"
+    },
+    {
+      "startSeconds": 10,
+      "endSeconds": 30,
+      "description": "Story/demo"
+    }
+  ],
+  "referenceBindings": [
+    {
+      "label": "@Image 1",
+      "meaning": "image reference",
+      "preserve": [
+        "identity"
+      ]
+    }
+  ],
+  "dialogueLines": [
+    {
+      "speakerId": "host",
+      "text": "ลองดูฟีเจอร์นี้ค่ะ",
+      "lipSyncRequired": true
+    }
+  ],
+  "warnings": []
+}

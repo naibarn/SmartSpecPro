@@ -175,11 +175,15 @@ const CHARACTER_DESIGN_DNA_ROLE_TIER_OUTPUT_VALUES = Array.from(
     ...ROLE_TIER_VALUES,
   ]),
 ) as [string, ...string[]];
+const CHARACTER_DNA_OUTPUT_LIST_MAX = 12;
 
 const characterDesignDnaOutputSchema = z.object({
   version: z.literal(1),
   design_intent: z.string().min(1),
-  series_dna_alignment: z.array(z.string().min(1)).min(1).max(12),
+  series_dna_alignment: z
+    .array(z.string().min(1))
+    .min(1)
+    .max(CHARACTER_DNA_OUTPUT_LIST_MAX),
   role_tier: z.enum(CHARACTER_DESIGN_DNA_ROLE_TIER_OUTPUT_VALUES),
   beauty_archetype: z.string().min(1),
   age_range: z.string().min(1),
@@ -211,11 +215,23 @@ const characterDesignDnaOutputSchema = z.object({
   hidden_truth: z.string().min(1),
   narrative_promise: z.string().min(1),
   attractive_contradiction: z.string().min(1),
-  forbidden_drift: z.array(z.string().min(1)).min(1).max(12),
+  forbidden_drift: z
+    .array(z.string().min(1))
+    .min(1)
+    .max(CHARACTER_DNA_OUTPUT_LIST_MAX),
   anti_clone_checks: z.object({
-    distinct_facial_dimensions: z.array(z.string().min(1)).min(3).max(12),
-    distinct_hair_dimensions: z.array(z.string().min(1)).min(2).max(12),
-    distinct_body_language_dimensions: z.array(z.string().min(1)).min(2).max(12),
+    distinct_facial_dimensions: z
+      .array(z.string().min(1))
+      .min(3)
+      .max(CHARACTER_DNA_OUTPUT_LIST_MAX),
+    distinct_hair_dimensions: z
+      .array(z.string().min(1))
+      .min(2)
+      .max(CHARACTER_DNA_OUTPUT_LIST_MAX),
+    distinct_body_language_dimensions: z
+      .array(z.string().min(1))
+      .min(2)
+      .max(CHARACTER_DNA_OUTPUT_LIST_MAX),
     signature_difference: z.string().min(1),
   }),
   scores: z.object({
@@ -1534,6 +1550,7 @@ const CHARACTER_VISUAL_BIBLE_SCHEMA_REPAIR_CONTRACT = [
   "If the input contains role_tier, copy that canonical tier into character_design_dna.role_tier exactly; never replace it with child, support, villain, or another tier inferred from free-form description text.",
   "For a lead_male, lead_female, or lead tier, make primary_portrait_prompt unmistakably camera-ready and principal-lead appropriate with one role-specific star marker and at least two appeal signals.",
   "For a lead tier, negative_prompt must contain at least two explicit role-drift guards against villain gaze, menace, calculation, or thriller-grade drift.",
+  "Every Character DNA string list must contain no more than 12 concise, non-empty items; choose the highest-value items instead of emitting extra entries or camelCase duplicates.",
   "Return a complete replacement object that satisfies every required schema field. Do not return a patch, partial object, markdown, or commentary.",
 ].join("\n");
 
@@ -2534,6 +2551,20 @@ type CharacterDnaKeyCorrection = {
   collision: boolean;
 };
 
+type CharacterDnaBoundsCorrection = {
+  path: string;
+  reportedCount: number;
+  keptCount: number;
+};
+
+const CHARACTER_DNA_BOUNDED_LIST_KEYS = [
+  "series_dna_alignment",
+  "forbidden_drift",
+  "distinct_facial_dimensions",
+  "distinct_hair_dimensions",
+  "distinct_body_language_dimensions",
+] as const;
+
 const CHARACTER_DNA_KEY_ALIASES: Readonly<Record<string, string>> = {
   designIntent: "design_intent",
   seriesDnaAlignment: "series_dna_alignment",
@@ -2657,6 +2688,81 @@ export function normalizeCharacterVisualBibleDnaKeys(
       )
     : undefined;
 
+  const rawBatch = rawOutput.portrait_candidate_batch;
+  const batch =
+    isUnknownRecord(rawBatch) && Array.isArray(rawBatch.candidates)
+      ? {
+          ...rawBatch,
+          candidates: rawBatch.candidates.map((candidate, index) =>
+            normalizeDnaOwner(
+              candidate,
+              `portrait_candidate_batch.candidates.${index}`,
+            ),
+          ),
+        }
+      : undefined;
+
+  if (corrections.length === 0) {
+    return { output: rawOutput, corrections };
+  }
+
+  return {
+    output: {
+      ...rawOutput,
+      ...(characters ? { characters } : {}),
+      ...(batch ? { portrait_candidate_batch: batch } : {}),
+    },
+    corrections,
+  };
+}
+
+/**
+ * Keep model-authored Character DNA lists within the same bounded contract as
+ * the persisted DTO. Extra entries are lower-priority avoidance/dimension
+ * hints, so retaining the first twelve preserves the model's ordering while
+ * allowing an otherwise usable visual bible to continue through validation.
+ * This runs after alias canonicalization and never mutates the raw response.
+ */
+export function normalizeCharacterVisualBibleDnaBounds(
+  rawOutput: unknown,
+): { output: unknown; corrections: CharacterDnaBoundsCorrection[] } {
+  if (!isUnknownRecord(rawOutput)) {
+    return { output: rawOutput, corrections: [] };
+  }
+
+  const corrections: CharacterDnaBoundsCorrection[] = [];
+  const normalizeDnaOwner = (rawOwner: unknown, path: string): unknown => {
+    if (!isUnknownRecord(rawOwner) || !isUnknownRecord(rawOwner.character_design_dna)) {
+      return rawOwner;
+    }
+
+    const rawDna = rawOwner.character_design_dna;
+    const normalizedDna = { ...rawDna };
+    let changed = false;
+    for (const key of CHARACTER_DNA_BOUNDED_LIST_KEYS) {
+      const value = normalizedDna[key];
+      if (!Array.isArray(value) || value.length <= CHARACTER_DNA_OUTPUT_LIST_MAX) {
+        continue;
+      }
+      normalizedDna[key] = value.slice(0, CHARACTER_DNA_OUTPUT_LIST_MAX);
+      corrections.push({
+        path: `${path}.character_design_dna.${key}`,
+        reportedCount: value.length,
+        keptCount: CHARACTER_DNA_OUTPUT_LIST_MAX,
+      });
+      changed = true;
+    }
+
+    return changed
+      ? { ...rawOwner, character_design_dna: normalizedDna }
+      : rawOwner;
+  };
+
+  const characters = Array.isArray(rawOutput.characters)
+    ? rawOutput.characters.map((rawCharacter, index) =>
+        normalizeDnaOwner(rawCharacter, `characters.${index}`),
+      )
+    : undefined;
   const rawBatch = rawOutput.portrait_candidate_batch;
   const batch =
     isUnknownRecord(rawBatch) && Array.isArray(rawBatch.candidates)
@@ -2935,6 +3041,7 @@ export async function generateCharacterVisualPrompts(
     : undefined;
   let evidenceCorrections: AuthoritativeEvidenceCorrection[] = [];
   let keyCorrections: CharacterDnaKeyCorrection[] = [];
+  let dnaBoundCorrections: CharacterDnaBoundsCorrection[] = [];
   // Region/ethnicity anchor enforcement (D1, planning/vd-per-character-
   // ethnicity/plan.md) — counts how many times `responseSchema.safeParse`
   // has run (once per `executeJsonPlanningCallWithRetry` attempt). The
@@ -2953,7 +3060,9 @@ export async function generateCharacterVisualPrompts(
     const envelopeNormalized = normalizeCharacterVisualBibleEnvelope(rawOutput);
     const keyNormalized = normalizeCharacterVisualBibleDnaKeys(envelopeNormalized);
     keyCorrections = keyNormalized.corrections;
-    let normalized: unknown = keyNormalized.output;
+    const bounded = normalizeCharacterVisualBibleDnaBounds(keyNormalized.output);
+    dnaBoundCorrections = bounded.corrections;
+    let normalized: unknown = bounded.output;
     if (authoritativeEvidence) {
       const evidenceNormalized = normalizeCharacterVisualBibleAuthoritativeEvidence(
         normalized,
@@ -3292,6 +3401,21 @@ export async function generateCharacterVisualPrompts(
     });
   }
 
+  if (dnaBoundCorrections.length > 0) {
+    auditLogger.log({
+      eventType: "skill_execute",
+      userId: params.userId,
+      tenantId: params.tenantId,
+      skillSlug: SKILL_SLUG,
+      metadata: {
+        operation: "normalize_character_dna_bounds",
+        seriesId: params.seriesId,
+        characterKey: params.characterKey,
+        corrections: dnaBoundCorrections.slice(0, 128),
+      },
+    });
+  }
+
   // Identity-pin corrections stay observable: this is the ONLY signal that the
   // model tried to re-author an approved canonical identity. Silently pinning
   // without a trail would hide genuine model drift behind a green render.
@@ -3541,6 +3665,7 @@ export async function generateCharacterPortraitCandidates(
     : undefined;
   let evidenceCorrections: AuthoritativeEvidenceCorrection[] = [];
   let keyCorrections: CharacterDnaKeyCorrection[] = [];
+  let dnaBoundCorrections: CharacterDnaBoundsCorrection[] = [];
   // Region/ethnicity anchor enforcement (D1) — see
   // `generateCharacterVisualPrompts`'s identical `regionAnchorCheckAttempts`
   // doc comment for why this only fires on the first attempt.
@@ -3548,12 +3673,14 @@ export async function generateCharacterPortraitCandidates(
   const normalizedOutputSchema = z.preprocess((rawOutput) => {
     const keyNormalized = normalizeCharacterVisualBibleDnaKeys(rawOutput);
     keyCorrections = keyNormalized.corrections;
+    const bounded = normalizeCharacterVisualBibleDnaBounds(keyNormalized.output);
+    dnaBoundCorrections = bounded.corrections;
     if (!authoritativeEvidence) {
       evidenceCorrections = [];
-      return keyNormalized.output;
+      return bounded.output;
     }
     const evidenceNormalized = normalizeCandidateAuthoritativeEvidence(
-      keyNormalized.output,
+      bounded.output,
       params.characterKey,
       authoritativeEvidence,
     );
@@ -3842,6 +3969,20 @@ export async function generateCharacterPortraitCandidates(
         seriesId: params.seriesId,
         characterKey: params.characterKey,
         corrections: keyCorrections.slice(0, 128),
+      },
+    });
+  }
+  if (dnaBoundCorrections.length > 0) {
+    auditLogger.log({
+      eventType: "skill_execute",
+      userId: params.userId,
+      tenantId: params.tenantId,
+      skillSlug: SKILL_SLUG,
+      metadata: {
+        operation: "normalize_portrait_candidate_dna_bounds",
+        seriesId: params.seriesId,
+        characterKey: params.characterKey,
+        corrections: dnaBoundCorrections.slice(0, 128),
       },
     });
   }

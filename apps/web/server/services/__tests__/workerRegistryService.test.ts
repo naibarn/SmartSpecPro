@@ -601,6 +601,7 @@ describe("workerRegistryService", () => {
       runtimeType: "openclaw_gateway",
       status: "online",
       currentJobCount: 1,
+      activeJobIds: ["job-1"],
       queueDepth: 0,
       freeDiskBytes: 1024,
       metricsJson: { gpu: "ok" },
@@ -624,9 +625,52 @@ describe("workerRegistryService", () => {
     expect(repo.renewActiveJobLeasesForWorker).toHaveBeenCalledWith(expect.objectContaining({
       tenantId: "tenant-1",
       workerId: "worker-1",
+      jobIds: ["job-1"],
       leaseExpiresAt: expect.any(Date),
       heartbeatAt: expect.any(Date),
     }));
+  });
+
+  it("does not renew server jobs when the worker reports no active local job ids", async () => {
+    const { recordWorkerHeartbeat } = await import("../workerRegistryService");
+    const worker = {
+      id: "worker-1",
+      tenantId: "tenant-1",
+      runtimeType: "openclaw_gateway",
+      status: "online",
+    };
+    const repo = {
+      getWorkerById: vi.fn().mockResolvedValue(worker),
+      updateWorker: vi.fn().mockResolvedValue(worker),
+      insertHeartbeat: vi.fn().mockResolvedValue(undefined),
+      renewActiveJobLeasesForWorker: vi.fn().mockResolvedValue(1),
+    };
+
+    await recordWorkerHeartbeat({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "openclaw_gateway",
+      } as any,
+      workerId: "worker-1",
+      payload: {
+        compatibility: {
+          protocolVersion: "2026-04-06",
+          runtimeVersion: "1.2.3",
+        },
+        runtimeType: "openclaw_gateway",
+        status: "online",
+        currentJobCount: 0,
+        activeJobIds: [],
+        queueDepth: 0,
+        freeDiskBytes: null,
+        metricsJson: {},
+        warningsJson: [],
+        runtimeMetadataJson: {},
+      },
+    }, { repo } as any);
+
+    expect(repo.renewActiveJobLeasesForWorker).not.toHaveBeenCalled();
   });
 
   it("promotes live ComfyUI readiness from heartbeat metadata", async () => {

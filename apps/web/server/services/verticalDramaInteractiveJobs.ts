@@ -7,6 +7,13 @@
 import { randomUUID } from "node:crypto";
 import { debugError } from "../_core/logger";
 import { getRedisClient } from "./redis";
+import { createSpecialTieInForensicRecorder } from "./verticalDramaSpecialTieInForensics";
+import { purgeExpiredSpecialTieInForensicEvents } from "./verticalDramaSpecialTieInForensics";
+import {
+  buildVerticalDramaEpisodeUrl,
+  notifyJobCompletion,
+  type JobCompletionNotificationInput,
+} from "./jobCompletionNotificationService";
 
 export const VERTICAL_DRAMA_INTERACTIVE_JOBS_QUEUE =
   "vertical_drama_interactive_jobs";
@@ -80,6 +87,9 @@ export interface VerticalDramaInteractiveJobRedisAdapter {
 
 export interface VerticalDramaInteractiveJobDependencies extends Partial<VerticalDramaInteractiveJobStoreDependencies> {
   enqueueBullmqJob?: (jobId: string) => Promise<void>;
+  notifyCompletion?: (
+    record: VerticalDramaInteractiveJobRecord
+  ) => Promise<void>;
 }
 
 export interface VerticalDramaInteractiveJobStoreDependencies {
@@ -151,6 +161,80 @@ function boundedError(error: unknown): string {
   return (message.trim() || "Interactive LLM job failed").slice(
     0,
     MAX_ERROR_CHARS
+  );
+}
+
+function interactiveJobLabel(kind: VerticalDramaInteractiveJobKind): string {
+  const labels: Record<VerticalDramaInteractiveJobKind, string> = {
+    prompt_expansion: "ขยาย Prompt",
+    preset_synthesis: "สร้างชุดคำสั่ง",
+    lineage_carry_over: "ส่งต่อความต่อเนื่อง",
+    special_edition_brief: "สร้างบรีฟตอนพิเศษ",
+    source_analysis: "วิเคราะห์แหล่งอ้างอิง",
+    location_detection: "วิเคราะห์สถานที่",
+    character_variants: "สร้างตัวละครหลายแบบ",
+    character_duplicates: "ตรวจสอบตัวละครซ้ำ",
+    reference_frame_prompt: "สร้าง Prompt ภาพอ้างอิง",
+    special_tie_in_prompt: "สร้าง storyboard ตอนพิเศษ",
+  };
+  return labels[kind];
+}
+
+async function notifyInteractiveJobTerminal(
+  record: VerticalDramaInteractiveJobRecord
+): Promise<void> {
+  try {
+    const { getDb } = await import("../db");
+    const db = await getDb();
+    if (!db) return;
+    const input: JobCompletionNotificationInput = {
+      db,
+      userId: record.userId,
+      tenantId: record.tenantId,
+      jobId: record.jobId,
+      jobType: `vertical_drama_interactive:${record.kind}`,
+      status: record.status === "succeeded" ? "succeeded" : "failed",
+      title: interactiveJobLabel(record.kind),
+      successMessage: `${interactiveJobLabel(record.kind)} เสร็จแล้ว กลับไปดูผลลัพธ์ได้เลย`,
+      failureMessage: `${interactiveJobLabel(record.kind)} ไม่สำเร็จ${record.error ? `: ${record.error.slice(0, 500)}` : ""}`,
+      actionUrl: buildVerticalDramaEpisodeUrl(
+        record.input.seriesId,
+        record.input.episodeId
+      ),
+      actionLabel: "เปิดตอน",
+      traceId: record.traceId,
+      startedAt: record.createdAt,
+      finishedAt: record.updatedAt,
+      errorMessage: record.error,
+      source: "vertical_drama_interactive_jobs",
+      relatedItems: {
+        kind: record.kind,
+        scopeKey: record.scopeKey,
+      },
+    };
+    await notifyJobCompletion(input);
+  } catch (error) {
+    console.error(
+      "[VerticalDramaInteractiveJobs] terminal_notification_bridge_failed",
+      {
+        jobId: record.jobId,
+        userId: record.userId,
+        tenantId: record.tenantId,
+        kind: record.kind,
+        status: record.status,
+        traceId: record.traceId,
+        error: error instanceof Error ? error.message : String(error),
+      }
+    );
+  }
+}
+
+async function notifyInteractiveTerminalWithDependencies(
+  record: VerticalDramaInteractiveJobRecord,
+  dependencies?: VerticalDramaInteractiveJobDependencies
+): Promise<void> {
+  await (dependencies?.notifyCompletion ?? notifyInteractiveJobTerminal)(
+    record
   );
 }
 
@@ -252,6 +336,32 @@ export async function enqueueVerticalDramaInteractiveJob(
     createdAt: now,
     updatedAt: now,
   };
+  const specialForensicRecorder =
+    payload.kind === "special_tie_in_prompt"
+      ? createSpecialTieInForensicRecorder({
+          tenantId: payload.tenantId,
+          userId: payload.userId,
+          seriesId: Number(payload.input.seriesId),
+          episodeId: Number(payload.input.episodeId),
+          jobId,
+          traceId,
+          createIntentId:
+            typeof payload.input.createIntentId === "string"
+              ? payload.input.createIntentId
+              : undefined,
+          inputVersion:
+            typeof payload.input.inputVersion === "number"
+              ? payload.input.inputVersion
+              : undefined,
+          skillSlug: payload.skillSlug,
+        })
+      : null;
+  await specialForensicRecorder?.emit({
+    eventType: "job_queued",
+    stage: "queue",
+    outcome: "queued",
+    metadata: { scopeKey: payload.scopeKey, kind: payload.kind },
+  });
   await writeRecord(record, dependencies);
   const claimed = await deps.redis.setNx(
     activePointer,
@@ -273,13 +383,23 @@ export async function enqueueVerticalDramaInteractiveJob(
   try {
     await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
   } catch (error) {
-    await writeRecord(
-      {
-        ...record,
-        status: "failed",
-        error: boundedError(error),
-        updatedAt: new Date(deps.now()).toISOString(),
-      },
+    await specialForensicRecorder?.emit({
+      eventType: "job_failed",
+      stage: "queue",
+      outcome: "enqueue_failed",
+      errorCode: "INTERACTIVE_JOB_ENQUEUE_FAILED",
+      errorMessage: boundedError(error),
+      completedAt: new Date(),
+    });
+    const terminalRecord = {
+      ...record,
+      status: "failed",
+      error: boundedError(error),
+      updatedAt: new Date(deps.now()).toISOString(),
+    } satisfies VerticalDramaInteractiveJobRecord;
+    await writeRecord(terminalRecord, dependencies);
+    await notifyInteractiveTerminalWithDependencies(
+      terminalRecord,
       dependencies
     );
     await deps.redis.compareDelete(activePointer, jobId).catch(() => false);
@@ -321,7 +441,7 @@ export async function getActiveVerticalDramaInteractiveJob(
 export async function runVerticalDramaInteractiveJob(
   jobId: string,
   executor: VerticalDramaInteractiveJobExecutor,
-  dependencies?: Partial<VerticalDramaInteractiveJobStoreDependencies>
+  dependencies?: VerticalDramaInteractiveJobDependencies
 ): Promise<void> {
   const deps = resolveDependencies(dependencies);
   const record = await readRecord(jobId, dependencies);
@@ -333,34 +453,49 @@ export async function runVerticalDramaInteractiveJob(
     updatedAt: new Date(deps.now()).toISOString(),
   };
   await writeRecord(running, dependencies);
+  const heartbeatTimer = setInterval(() => {
+    writeRecord(
+      {
+        ...running,
+        updatedAt: new Date(deps.now()).toISOString(),
+      },
+      dependencies
+    ).catch(() => {});
+  }, 15_000);
+  heartbeatTimer.unref?.();
   try {
     const result = await executor(running, {
       jobId,
       traceId: running.traceId,
     });
-    await writeRecord(
-      {
-        ...running,
-        status: "succeeded",
-        progress: 100,
-        result,
-        error: null,
-        updatedAt: new Date(deps.now()).toISOString(),
-      },
+    const terminalRecord = {
+      ...running,
+      status: "succeeded",
+      progress: 100,
+      result,
+      error: null,
+      updatedAt: new Date(deps.now()).toISOString(),
+    } satisfies VerticalDramaInteractiveJobRecord;
+    await writeRecord(terminalRecord, dependencies);
+    await notifyInteractiveTerminalWithDependencies(
+      terminalRecord,
       dependencies
     );
   } catch (error) {
-    await writeRecord(
-      {
-        ...running,
-        status: "failed",
-        result: null,
-        error: boundedError(error),
-        updatedAt: new Date(deps.now()).toISOString(),
-      },
+    const terminalRecord = {
+      ...running,
+      status: "failed",
+      result: null,
+      error: boundedError(error),
+      updatedAt: new Date(deps.now()).toISOString(),
+    } satisfies VerticalDramaInteractiveJobRecord;
+    await writeRecord(terminalRecord, dependencies).catch(() => {});
+    await notifyInteractiveTerminalWithDependencies(
+      terminalRecord,
       dependencies
-    ).catch(() => {});
+    );
   } finally {
+    clearInterval(heartbeatTimer);
     await deps.redis
       .compareDelete(activePointerKey(running), jobId)
       .catch(() => false);
@@ -371,6 +506,7 @@ export async function runVerticalDramaInteractiveJob(
 let queue: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let worker: any = null;
+let specialDebugCleanupTimer: ReturnType<typeof setInterval> | null = null;
 
 async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
   if (!queue) {
@@ -392,6 +528,21 @@ async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
 
 export async function initVerticalDramaInteractiveJobsQueue(): Promise<void> {
   if (queue) return;
+  if (!specialDebugCleanupTimer) {
+    specialDebugCleanupTimer = setInterval(
+      () => {
+        purgeExpiredSpecialTieInForensicEvents().catch(error => {
+          debugError(
+            "verticalDramaInteractiveJobs",
+            "Special tie-in debug retention cleanup failed",
+            error
+          );
+        });
+      },
+      6 * 60 * 60 * 1000
+    );
+    specialDebugCleanupTimer.unref?.();
+  }
   try {
     const { Queue, Worker } = await import("bullmq");
     const connection = getRedisClient();
@@ -433,5 +584,7 @@ export async function closeVerticalDramaInteractiveJobsQueue(): Promise<void> {
   } finally {
     worker = null;
     queue = null;
+    if (specialDebugCleanupTimer) clearInterval(specialDebugCleanupTimer);
+    specialDebugCleanupTimer = null;
   }
 }

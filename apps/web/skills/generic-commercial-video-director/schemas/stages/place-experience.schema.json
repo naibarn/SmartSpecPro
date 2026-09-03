@@ -1,0 +1,254 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/place-experience.schema.json",
+  "title": "Place / Venue Experience Model",
+  "type": "object",
+  "required": [
+    "placeType",
+    "promotionalFocus",
+    "visibleAreas",
+    "visibleFeatures",
+    "verifiedFacts",
+    "unseenOrUnverifiedFeatures",
+    "visitorJourney",
+    "recommendedBeats",
+    "spatialTruthPolicy",
+    "cameraOpportunities",
+    "proofMoments",
+    "ctaOptions",
+    "warnings"
+  ],
+  "properties": {
+    "placeType": {
+      "type": "string",
+      "enum": [
+        "store",
+        "shop",
+        "restaurant",
+        "cafe",
+        "hotel",
+        "resort",
+        "clinic",
+        "salon",
+        "showroom",
+        "office",
+        "attraction",
+        "museum",
+        "event_venue",
+        "property",
+        "mall",
+        "market",
+        "workshop",
+        "studio",
+        "school",
+        "fitness",
+        "other"
+      ]
+    },
+    "promotionalFocus": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "visibleAreas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "area",
+          "evidenceAssetIds",
+          "confidence"
+        ],
+        "properties": {
+          "area": {
+            "type": "string"
+          },
+          "evidenceAssetIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "visibleFeatures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "feature",
+          "evidenceAssetIds",
+          "safeToDescribe"
+        ],
+        "properties": {
+          "feature": {
+            "type": "string"
+          },
+          "evidenceAssetIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "safeToDescribe": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "verifiedFacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "fact",
+          "basis"
+        ],
+        "properties": {
+          "fact": {
+            "type": "string"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "user",
+              "asset",
+              "verified_research"
+            ]
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "unseenOrUnverifiedFeatures": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "visitorJourney": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "phase",
+          "description",
+          "requiresVisibleEvidence"
+        ],
+        "properties": {
+          "phase": {
+            "type": "string",
+            "enum": [
+              "establish",
+              "approach",
+              "enter",
+              "orient",
+              "highlight_area",
+              "interact",
+              "service",
+              "experience",
+              "detail",
+              "proof",
+              "reaction",
+              "hero",
+              "cta"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "requiresVisibleEvidence": {
+            "type": "boolean"
+          },
+          "evidenceAssetIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "recommendedBeats": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "spatialTruthPolicy": {
+      "type": "string",
+      "enum": [
+        "visible_only",
+        "research_verified",
+        "allow_clearly_stylized_reconstruction",
+        "request_more_views_for_unseen_areas"
+      ]
+    },
+    "cameraOpportunities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "static_presenter",
+          "slow_push_in",
+          "slow_pull_out",
+          "pan",
+          "tilt",
+          "arc",
+          "walkthrough",
+          "parallax",
+          "detail_insert",
+          "signage_insert",
+          "counter_interaction",
+          "seated_experience",
+          "entrance_reveal",
+          "interior_reveal",
+          "exterior_establish",
+          "virtual_map_callout",
+          "text_callout"
+        ]
+      }
+    },
+    "proofMoments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ctaOptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

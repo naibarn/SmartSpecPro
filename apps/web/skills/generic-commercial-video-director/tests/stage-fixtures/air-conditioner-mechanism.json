@@ -1,0 +1,84 @@
+{
+  "productNature": "physical",
+  "categoryFamily": "thermal_airflow",
+  "primaryFunction": "condition indoor air",
+  "secondaryFunctions": [],
+  "targetSurfacesOrSystems": [
+    "indoor air"
+  ],
+  "preconditions": [
+    "unit powered"
+  ],
+  "affordances": [
+    {
+      "action": "power_on",
+      "target": "air conditioner",
+      "conditions": [],
+      "evidenceLevel": "category_convention",
+      "confidence": 0.95
+    }
+  ],
+  "functionalChain": [
+    {
+      "stage": "activation",
+      "description": "unit turns on",
+      "visibility": "partially_visible",
+      "truthStatus": "supported",
+      "evidenceRefs": []
+    },
+    {
+      "stage": "operation",
+      "description": "conditioned air moves into room",
+      "visibility": "invisible",
+      "truthStatus": "supported",
+      "evidenceRefs": [
+        "product-doc"
+      ]
+    },
+    {
+      "stage": "outcome",
+      "description": "occupant experiences comfort",
+      "visibility": "directly_visible",
+      "truthStatus": "supported",
+      "evidenceRefs": []
+    }
+  ],
+  "internalMotion": [],
+  "observableOutcomes": [
+    "airflow response",
+    "occupant comfort response"
+  ],
+  "hiddenOrInvisibleMechanisms": [
+    "airflow",
+    "temperature distribution"
+  ],
+  "requiredProofMoments": [
+    "unit activation",
+    "supported airflow direction"
+  ],
+  "safetyCriticalSteps": [],
+  "forbiddenAssumptions": [
+    "do not invent measured cooling speed"
+  ],
+  "recommendedDemoArc": [
+    "context",
+    "activation",
+    "operation",
+    "mechanism_explanation",
+    "outcome",
+    "hero"
+  ],
+  "recommendedVisualizationModes": [
+    "airflow_streamlines",
+    "thermal_gradient"
+  ],
+  "evidenceBindings": [
+    {
+      "fact": "airflow direction",
+      "basis": "verified_research",
+      "reference": "product-doc",
+      "confidence": 0.9
+    }
+  ],
+  "researchNeeded": false
+}

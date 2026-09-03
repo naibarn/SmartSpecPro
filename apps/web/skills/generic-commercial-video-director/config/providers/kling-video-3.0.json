@@ -1,0 +1,126 @@
+{
+  "profileVersion": "1.0",
+  "id": "kling-video-3.0",
+  "provider": "Kling AI",
+  "model": "Kling VIDEO 3.0",
+  "modelFamily": "Kling 3.0",
+  "kind": "video",
+  "availability": "ga",
+  "verification": {
+    "status": "verified",
+    "verifiedAt": "2026-09-01",
+    "sources": [
+      {
+        "title": "Kling VIDEO 3.0 Model User Guide",
+        "url": "https://kling.ai/quickstart/klingai-video-3-model-user-guide",
+        "notes": "Official model guide"
+      }
+    ]
+  },
+  "capabilities": {
+    "text_to_video": {
+      "status": "verified",
+      "notes": null
+    },
+    "image_to_video": {
+      "status": "verified",
+      "notes": null
+    },
+    "first_last_frame": {
+      "status": "verified",
+      "notes": null
+    },
+    "native_audio": {
+      "status": "verified",
+      "notes": null
+    },
+    "multi_shot": {
+      "status": "verified",
+      "notes": null
+    },
+    "element_reference": {
+      "status": "verified",
+      "notes": null
+    },
+    "multi_character_coreference": {
+      "status": "verified",
+      "notes": null
+    },
+    "dialogue_lipsync": {
+      "status": "conditional",
+      "notes": "Native audio and multilingual dialogue are documented; production lip-sync should be QC-gated"
+    }
+  },
+  "limits": {
+    "durations": {
+      "minSeconds": 3,
+      "maxSeconds": 15,
+      "allowedSeconds": [
+        3,
+        5,
+        8,
+        10,
+        15
+      ]
+    },
+    "resolutions": [
+      "provider-dependent",
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "referenceLimits": {},
+    "notes": [
+      "Exact API parameter surface may differ between official endpoint tiers."
+    ]
+  },
+  "bestFor": [
+    "multi-shot social ads",
+    "multi-character scenes",
+    "native-audio product storytelling"
+  ],
+  "knownRisks": [
+    "provider/API tier differences must be normalized by adapter"
+  ],
+  "promptProfile": "shot-structured",
+  "adapterId": "kling",
+  "temporalPlanning": {
+    "baseGeneration": {
+      "durationControl": "exact",
+      "stepSeconds": null,
+      "notes": []
+    },
+    "nativeMultiShot": {
+      "status": "verified",
+      "maxShotsPerGeneration": null,
+      "supportsExplicitTimedCuts": null,
+      "supportsSingleContinuousShotConstraint": null,
+      "notes": []
+    },
+    "extension": {
+      "status": "unknown",
+      "appendOnly": null,
+      "minAdditionalSeconds": null,
+      "maxAdditionalSeconds": null,
+      "allowedAdditionalSeconds": null,
+      "stepSeconds": null,
+      "defaultAdditionalSeconds": null,
+      "maxCumulativeSeconds": null,
+      "contextSeconds": null,
+      "supportsGeneratedVideoMultiTurn": null,
+      "supportsUploadedVideo": null,
+      "supportsNewDialogueOnGeneratedMultiTurn": null,
+      "supportsNewDialogueOnUploadedTalkingVideo": null,
+      "tailMayBeRewritten": null,
+      "localTimecodeResetsAtExtensionStart": null,
+      "requiresStoredInteractionState": null,
+      "notes": [],
+      "durationControl": "unknown",
+      "deterministicDurationRequest": false
+    }
+  }
+}

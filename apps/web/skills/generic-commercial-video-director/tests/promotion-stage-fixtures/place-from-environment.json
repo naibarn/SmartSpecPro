@@ -1,0 +1,43 @@
+{
+  "targetKind": "place_venue",
+  "promotionIntent": "review",
+  "targetId": null,
+  "displayName": null,
+  "category": "shop",
+  "resolutionSource": [
+    "idea_text",
+    "environment_reference"
+  ],
+  "confidence": 0.97,
+  "sourceOfTruthAssetIds": [
+    "shop_scene"
+  ],
+  "supportingAssetIds": [],
+  "reclassifiedAssets": [
+    {
+      "assetId": "shop_scene",
+      "fromRole": "environment_reference",
+      "toSemanticRole": "place_identity",
+      "reason": "The idea explicitly asks to review the place shown in the image."
+    }
+  ],
+  "visualIdentityStatus": "visible_in_scene",
+  "exactVisualIdentityRequired": true,
+  "facts": [
+    {
+      "fact": "The uploaded image is the promoted shop/venue view.",
+      "basis": "asset",
+      "assetId": "shop_scene",
+      "reference": null,
+      "confidence": 0.97
+    }
+  ],
+  "missingEvidence": [
+    "Unseen areas are not evidenced."
+  ],
+  "branch": "place_experience",
+  "continuationPolicy": "derive_from_scene",
+  "warnings": [
+    "Do not claim unseen facilities as factual."
+  ]
+}

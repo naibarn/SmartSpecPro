@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "ใช้ผลิตภัณฑ์ทำความสะอาดพื้นให้เห็นวิธีใช้และผลลัพธ์ชัดเจน",
+  "locale": "th-TH",
+  "contentMode": "tutorial",
+  "product": {
+    "name": "Floor Cleaner Example",
+    "category": "floor cleaner",
+    "targetSurfacesOrSystems": [
+      "floor"
+    ],
+    "usageInstructions": [
+      "Apply according to verified label instructions",
+      "Wipe or mop the target floor surface"
+    ],
+    "mechanismFacts": [],
+    "approvedClaims": [],
+    "prohibitedClaims": []
+  },
+  "demonstrationPolicy": {
+    "mode": "hybrid",
+    "requireCorrectUsage": true,
+    "preferProofMoment": true
+  },
+  "visualExplanationPolicy": {
+    "mode": "balanced",
+    "allowIllustrativeEffects": true,
+    "requireTruthClassification": true
+  }
+}

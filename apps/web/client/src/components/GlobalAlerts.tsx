@@ -179,6 +179,67 @@ export function resolveNotificationActionUrl(notification: {
   return `/admin/feedback-hub?ticketId=${ticketMatch[1]}`;
 }
 
+type JobCompletionNotification = {
+  id?: number | string;
+  title?: string | null;
+  content?: string | null;
+  priority?: string | null;
+  actionUrl?: string | null;
+  actionLabel?: string | null;
+  relatedResourceType?: string | null;
+  relatedResourceId?: string | null;
+  groupKey?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+export function parseNotificationSSEEvent(event: MessageEvent | null | undefined): JobCompletionNotification | null {
+  if (!event?.data || typeof event.data !== "string") return null;
+  try {
+    const parsed = JSON.parse(event.data) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const notification = parsed as Record<string, unknown>;
+    const metadata = notification.metadata;
+    const normalizedMetadata = metadata && typeof metadata === "object" && !Array.isArray(metadata)
+      ? metadata as Record<string, unknown>
+      : null;
+    const id = notification.id;
+    if ((typeof id !== "number" && typeof id !== "string") || !notification.title) return null;
+    return {
+      id,
+      title: typeof notification.title === "string" ? notification.title : null,
+      content: typeof notification.content === "string" ? notification.content : null,
+      priority: typeof notification.priority === "string" ? notification.priority : null,
+      actionUrl: typeof notification.actionUrl === "string" ? notification.actionUrl : null,
+      actionLabel: typeof notification.actionLabel === "string" ? notification.actionLabel : null,
+      relatedResourceType: typeof notification.relatedResourceType === "string" ? notification.relatedResourceType : null,
+      relatedResourceId: typeof notification.relatedResourceId === "string" ? notification.relatedResourceId : null,
+      groupKey: typeof notification.groupKey === "string" ? notification.groupKey : null,
+      metadata: normalizedMetadata,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function isJobCompletionNotification(notification: JobCompletionNotification): boolean {
+  const source = typeof notification.metadata?.source === "string"
+    ? notification.metadata.source
+    : "";
+  const relatedItems = notification.metadata?.relatedItems;
+  const notificationType = relatedItems && typeof relatedItems === "object" && !Array.isArray(relatedItems)
+    ? (relatedItems as Record<string, unknown>).notificationType
+    : undefined;
+  return source === "job_completion" ||
+    notificationType === "job_completion" ||
+    notification.groupKey?.startsWith("job_completion:") === true ||
+    source === "vertical_drama_story_jobs";
+}
+
+function jobCompletionToastKey(notification: JobCompletionNotification): string | null {
+  if (notification.id === undefined || notification.id === null) return null;
+  return `job-completion:${String(notification.id)}`;
+}
+
 export function shouldShowUrgentReminderOnRoute(
   reminder: {
     relatedResourceType?: string | null;
@@ -1305,6 +1366,8 @@ function GlobalNotificationBell() {
   const bellRootRef = useRef<HTMLDivElement>(null);
   const dragStateRef = useRef<BellDragState | null>(null);
   const suppressNextClickRef = useRef(false);
+  const shownJobCompletionToastKeysRef = useRef<Set<string>>(new Set());
+  const pollingBaselineReadyRef = useRef(false);
   const [bellPlacement, setBellPlacement] = useState<BellPlacement>(() => getInitialBellPlacement());
   const [isBellDragging, setIsBellDragging] = useState(false);
 
@@ -1409,6 +1472,14 @@ function GlobalNotificationBell() {
     { enabled: showDropdown }
   );
 
+  const { data: recentNotifications } = trpc.scheduledMessages.getNotifications.useQuery(
+    { limit: 10 },
+    {
+      refetchInterval: 30000,
+      refetchIntervalInBackground: false,
+    },
+  );
+
   const markAllRead = trpc.scheduledMessages.markAllRead.useMutation({
     onSuccess: () => {
       utils.scheduledMessages.getNotificationCount.invalidate();
@@ -1434,14 +1505,41 @@ function GlobalNotificationBell() {
       ? `No unread alerts, but ${recentCount} recent item${recentCount !== 1 ? "s" : ""} available`
       : "No notifications yet";
 
+  const showJobCompletionToast = useCallback((notification: JobCompletionNotification) => {
+    if (!isJobCompletionNotification(notification)) return;
+    const key = jobCompletionToastKey(notification);
+    if (!key || shownJobCompletionToastKeysRef.current.has(key)) return;
+    shownJobCompletionToastKeysRef.current.add(key);
+
+    const actionUrl = resolveNotificationActionUrl(notification);
+    const toastOptions = {
+      description: (notification.content || "").slice(0, 240),
+      duration: 12000,
+      ...(actionUrl
+        ? {
+            action: {
+              label: notification.actionLabel || "เปิดผลลัพธ์",
+              onClick: () => navigateNotificationAction(actionUrl, setLocation),
+            },
+          }
+        : {}),
+    };
+    if (notification.priority === "high" || notification.priority === "critical" || /ไม่สำเร็จ|ล้มเหลว|failed|error/i.test(notification.title || "")) {
+      toast.error(notification.title || "งานไม่สำเร็จ", toastOptions);
+    } else {
+      toast.success(notification.title || "งานเสร็จแล้ว", toastOptions);
+    }
+  }, [setLocation]);
+
   // Real-time SSE for instant notification updates (with exponential backoff)
-  const handleSSEMessage = useCallback(() => {
+  const handleSSEMessage = useCallback((event: MessageEvent) => {
     utils.scheduledMessages.getNotificationCount.invalidate();
     utils.scheduledMessages.getUrgentReminders.invalidate();
     if (showDropdown) {
       utils.scheduledMessages.getNotifications.invalidate();
     }
-  }, [showDropdown, utils]);
+    showJobCompletionToast(parseNotificationSSEEvent(event) ?? {});
+  }, [showDropdown, showJobCompletionToast, utils]);
 
   useSSEReconnect({
     url: "/api/notifications/stream",
@@ -1449,6 +1547,22 @@ function GlobalNotificationBell() {
     eventType: "notification",
     enabled: true,
   });
+
+  useEffect(() => {
+    if (!recentNotifications) return;
+    const jobNotifications = recentNotifications
+      .filter((notification: any) => isJobCompletionNotification(notification))
+      .map((notification: any) => notification as JobCompletionNotification);
+    if (!pollingBaselineReadyRef.current) {
+      jobNotifications.forEach((notification) => {
+        const key = jobCompletionToastKey(notification);
+        if (key) shownJobCompletionToastKeysRef.current.add(key);
+      });
+      pollingBaselineReadyRef.current = true;
+      return;
+    }
+    jobNotifications.forEach((notification) => showJobCompletionToast(notification));
+  }, [recentNotifications, showJobCompletionToast]);
 
   // Close dropdown when clicking outside
   useEffect(() => {

@@ -119,6 +119,17 @@ const COERCION_MARKERS = [
   "บังคับ",
 ];
 
+// Prompt authors routinely describe prohibited motion as a negative
+// constraint (for example, "no forced movement"). Those instructions are
+// not an authored coercion event and must not be combined with a child/minor
+// marker to block an otherwise safe shot. Remove only a bounded negated
+// phrase; a positive marker elsewhere in the same story segment must remain
+// detectable.
+const NEGATED_ENGLISH_COERCION_PATTERN =
+  /\b(?:no|not|never|without|avoid|do\s+not|don't)\b(?:\s+[a-z0-9_-]+){0,4}\s+\b(?:abuse|assault|hostage|kidnap|forced)\b/gi;
+const NEGATED_THAI_COERCION_PATTERN =
+  /(?:ห้าม|อย่า|ไม่ต้อง|ไม่ให้|โดยไม่|ยังไม่|ไม่ได้|มิได้|ไม่)(?:\s*[^\s,.;:()]+){0,4}\s*(?:ทำร้ายเด็ก|ทารุณ|จับตัว|บังคับ)/g;
+
 const CONTEXTUAL_RESTRAINT_PATTERNS = [
   /\b(?:physically|tightly|forcibly|securely)\s+restrained\b/i,
   /\brestrained\s+(?:by|with|to|inside|in)\b/i,
@@ -187,9 +198,12 @@ function containsAny(text: string, markers: string[]): boolean {
 }
 
 function containsCoercionMarker(text: string): boolean {
+  const storyText = text
+    .replace(NEGATED_ENGLISH_COERCION_PATTERN, " ")
+    .replace(NEGATED_THAI_COERCION_PATTERN, " ");
   return (
-    containsAny(text, COERCION_MARKERS) ||
-    CONTEXTUAL_RESTRAINT_PATTERNS.some(pattern => pattern.test(text))
+    containsAny(storyText, COERCION_MARKERS) ||
+    CONTEXTUAL_RESTRAINT_PATTERNS.some(pattern => pattern.test(storyText))
   );
 }
 

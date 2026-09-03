@@ -1037,6 +1037,27 @@ describe("buildStartFrameShotPromptVisionImages — mode-2 vision attachment (c)
     ]);
   });
 
+  it("mode 2: attaches selected product references as additive labeled inputs after the location", () => {
+    const images = buildStartFrameShotPromptVisionImages(
+      undefined,
+      undefined,
+      {
+        characterReferenceImages: [
+          { url: "https://cdn/hero.png", label: "Hero" },
+        ],
+        locationReferenceImage: { url: "https://cdn/cafe.png", label: "Café" },
+        productReferenceImages: [
+          { url: "https://cdn/shampoo.png", label: "Selected product reference 1" },
+        ],
+      },
+    );
+    expect(images).toEqual([
+      { url: "https://cdn/hero.png", label: "Image 1 reference: Hero" },
+      { url: "https://cdn/cafe.png", label: "Location reference: Café" },
+      { url: "https://cdn/shampoo.png", label: "Product reference: Selected product reference 1" },
+    ]);
+  });
+
   it("mode 2 labels 'Image 1' for the first portrait even when the shot has NO own current image (no images[0] shift)", () => {
     const images = buildStartFrameShotPromptVisionImages(undefined, undefined, {
       characterReferenceImages: [

@@ -644,6 +644,11 @@ export function VerticalDramaEpisodePreviewPanel({
                         <Check className="h-3 w-3" aria-hidden="true" />
                         พร้อมดู
                       </Badge>
+                    ) : preview?.status === "failed" ? (
+                      <Badge variant="destructive" className="gap-1 text-[10px]">
+                        <VideoOff className="h-3 w-3" aria-hidden="true" />
+                        {lang === "th" ? "สร้างไม่สำเร็จ" : "Render failed"}
+                      </Badge>
                     ) : preview?.status === "pending" ? (
                       <Badge variant="outline" className="gap-1 text-[10px]">
                         <Loader2

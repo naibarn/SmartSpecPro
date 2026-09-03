@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   resolveEffectiveShotLocationKey,
   resolveStoryboardLocationRoster,
+  resolveShotProductReferenceDisplayUrls,
   type VerticalDramaStoryboardDistinctLocationView,
 } from "@/components/verticalDramaSeries/VerticalDramaStoryboardPanel";
 
@@ -73,6 +74,41 @@ describe("resolveEffectiveShotLocationKey", () => {
       { location_key: "office", location_name: "Office", shot_numbers: [] },
     ];
     expect(resolveEffectiveShotLocationKey(groups, 1)).toBeUndefined();
+  });
+});
+
+describe("resolveShotProductReferenceDisplayUrls", () => {
+  it("keeps direct product URLs and resolves legacy media ids from the asset map", () => {
+    expect(
+      resolveShotProductReferenceDisplayUrls(
+        [
+          "https://cdn.example/product-a.png",
+          "/api/storage/files/direct-product.png",
+          "4974",
+          "missing",
+        ],
+        {
+          "4974": {
+            url: "/api/storage/files/product-a.png",
+            thumbnailUrl: null,
+          },
+        }
+      )
+    ).toEqual([
+      "https://cdn.example/product-a.png",
+      "/api/storage/files/direct-product.png",
+      "/api/storage/files/product-a.png",
+    ]);
+  });
+
+  it("does not resolve or replace scene/location references", () => {
+    const productUrls = resolveShotProductReferenceDisplayUrls(
+      ["4974"],
+      { "4974": { url: "/api/storage/files/product.png", thumbnailUrl: null } }
+    );
+
+    expect(productUrls).toEqual(["/api/storage/files/product.png"]);
+    expect(productUrls).not.toContain("scene-location.jpg");
   });
 });
 

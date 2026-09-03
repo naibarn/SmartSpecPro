@@ -1,0 +1,639 @@
+{
+  "schemaVersion": "11.0.0",
+  "status": "awaiting_storyboard_approval",
+  "projectRun": {
+    "projectId": "demo",
+    "runId": "run-1",
+    "workflowVersion": "11.0.0",
+    "currentStage": "Final Storyboard",
+    "traceId": null
+  },
+  "normalizedBrief": {},
+  "productContext": null,
+  "productInteractionModel": {
+    "productType": "bottle",
+    "affordances": [
+      "hold",
+      "tilt",
+      "dispense"
+    ],
+    "forbiddenAssumptions": [
+      "do not invent pump"
+    ],
+    "requiredProofMoments": [
+      "dispense visibly"
+    ]
+  },
+  "castResolution": {
+    "detectedCount": 1,
+    "characters": [
+      {
+        "characterId": "c1"
+      }
+    ],
+    "unresolvedMappings": []
+  },
+  "expandedIntent": {
+    "summary": "Demonstrate product use clearly",
+    "commercialObjective": "Natural product demo",
+    "presentationMode": "silent_demo",
+    "actionChain": [
+      {
+        "stepId": "A1",
+        "actor": "c1",
+        "action": "tilt bottle",
+        "target": "left palm",
+        "purpose": "show dispensing",
+        "risk": "high"
+      }
+    ],
+    "cameraIntent": [
+      "medium close-up then hand insert"
+    ],
+    "dialogueStrategy": {
+      "mode": "silent",
+      "reason": "Action explains use without speech"
+    },
+    "unknowns": [],
+    "assumptions": [],
+    "researchRecommended": false,
+    "demonstrationArc": [
+      "setup",
+      "operation",
+      "proof",
+      "outcome",
+      "hero"
+    ],
+    "proofMoments": [
+      "dispense product visibly into palm"
+    ],
+    "visualExplanationIntent": {
+      "needed": false,
+      "reasons": [],
+      "candidateModes": [
+        "literal_demo",
+        "macro_insert"
+      ]
+    },
+    "targetKind": "physical_product",
+    "commercialArc": [
+      "setup",
+      "operation",
+      "proof",
+      "outcome",
+      "hero"
+    ]
+  },
+  "research": null,
+  "concept": null,
+  "script": null,
+  "breakdown": null,
+  "shots": [],
+  "storyboard": null,
+  "approvals": {
+    "expandedIdea": "not_required",
+    "storyboard": "pending",
+    "highCostGeneration": "pending",
+    "publish": "pending"
+  },
+  "postProduction": null,
+  "publishPlan": null,
+  "analyticsPlan": null,
+  "optimizationPlan": null,
+  "costEstimate": null,
+  "lineage": null,
+  "warnings": [],
+  "assumptions": [],
+  "productMechanismModel": {
+    "productNature": "physical",
+    "categoryFamily": "topical_application",
+    "primaryFunction": "dispense and apply product",
+    "secondaryFunctions": [],
+    "targetSurfacesOrSystems": [
+      "hair"
+    ],
+    "preconditions": [],
+    "affordances": [
+      {
+        "action": "tilt",
+        "target": "container",
+        "conditions": [],
+        "evidenceLevel": "category_convention",
+        "confidence": 0.8
+      },
+      {
+        "action": "dispense",
+        "target": "palm",
+        "conditions": [],
+        "evidenceLevel": "user_fact",
+        "confidence": 1.0
+      }
+    ],
+    "functionalChain": [
+      {
+        "stage": "operation",
+        "description": "dispense product into palm",
+        "visibility": "directly_visible",
+        "truthStatus": "supported",
+        "evidenceRefs": [
+          "idea"
+        ]
+      },
+      {
+        "stage": "outcome",
+        "description": "product is ready to be applied to hair",
+        "visibility": "directly_visible",
+        "truthStatus": "supported",
+        "evidenceRefs": [
+          "idea"
+        ]
+      }
+    ],
+    "internalMotion": [],
+    "observableOutcomes": [
+      "product visible in palm"
+    ],
+    "hiddenOrInvisibleMechanisms": [],
+    "requiredProofMoments": [
+      "dispense visibly"
+    ],
+    "safetyCriticalSteps": [],
+    "forbiddenAssumptions": [
+      "do not invent pump"
+    ],
+    "recommendedDemoArc": [
+      "setup",
+      "operation",
+      "proof",
+      "outcome",
+      "hero"
+    ],
+    "recommendedVisualizationModes": [
+      "literal_demo",
+      "macro_insert"
+    ],
+    "evidenceBindings": [
+      {
+        "fact": "product is dispensed to palm",
+        "basis": "user",
+        "reference": "idea",
+        "confidence": 1.0
+      }
+    ],
+    "researchNeeded": false
+  },
+  "visualizationStrategySummary": null,
+  "sequencePlan": {
+    "sequenceId": "SEQ-001",
+    "targetTotalDurationSeconds": 40,
+    "plannedTotalDurationSeconds": 40,
+    "temporalStrategy": "extension_chain",
+    "shotDurationPolicy": {
+      "mode": "allowed_values",
+      "fixedSeconds": null,
+      "allowedSeconds": [
+        8,
+        10,
+        15
+      ],
+      "preferredSeconds": 8,
+      "minShotSeconds": 8,
+      "maxShotSeconds": 15
+    },
+    "shots": [
+      {
+        "shotId": "S01",
+        "order": 1,
+        "durationSeconds": 8,
+        "globalStartSeconds": 0,
+        "globalEndSeconds": 8,
+        "shotTopology": "presenter",
+        "narrativeRole": "hook/product establish",
+        "generationChainId": "CHAIN-001",
+        "continuityFromShotId": null,
+        "mustRemainSingleContinuousShot": false,
+        "majorActionCount": 2,
+        "dialogueLineIds": [],
+        "proofMomentIds": []
+      },
+      {
+        "shotId": "S02",
+        "order": 2,
+        "durationSeconds": 8,
+        "globalStartSeconds": 8,
+        "globalEndSeconds": 16,
+        "shotTopology": "single_continuous",
+        "narrativeRole": "correct use / first feature",
+        "generationChainId": "CHAIN-001",
+        "continuityFromShotId": "S01",
+        "mustRemainSingleContinuousShot": false,
+        "majorActionCount": 3,
+        "dialogueLineIds": [],
+        "proofMomentIds": [
+          "P1"
+        ]
+      },
+      {
+        "shotId": "S03",
+        "order": 3,
+        "durationSeconds": 8,
+        "globalStartSeconds": 16,
+        "globalEndSeconds": 24,
+        "shotTopology": "cutaway",
+        "narrativeRole": "mechanism or UI proof",
+        "generationChainId": "CHAIN-001",
+        "continuityFromShotId": "S02",
+        "mustRemainSingleContinuousShot": false,
+        "majorActionCount": 2,
+        "dialogueLineIds": [],
+        "proofMomentIds": [
+          "P2"
+        ]
+      },
+      {
+        "shotId": "S04",
+        "order": 4,
+        "durationSeconds": 8,
+        "globalStartSeconds": 24,
+        "globalEndSeconds": 32,
+        "shotTopology": "single_continuous",
+        "narrativeRole": "use-case/result",
+        "generationChainId": "CHAIN-001",
+        "continuityFromShotId": "S03",
+        "mustRemainSingleContinuousShot": false,
+        "majorActionCount": 2,
+        "dialogueLineIds": [],
+        "proofMomentIds": [
+          "P3"
+        ]
+      },
+      {
+        "shotId": "S05",
+        "order": 5,
+        "durationSeconds": 8,
+        "globalStartSeconds": 32,
+        "globalEndSeconds": 40,
+        "shotTopology": "hero",
+        "narrativeRole": "hero/CTA",
+        "generationChainId": "CHAIN-001",
+        "continuityFromShotId": "S04",
+        "mustRemainSingleContinuousShot": false,
+        "majorActionCount": 1,
+        "dialogueLineIds": [],
+        "proofMomentIds": []
+      }
+    ],
+    "transitions": [
+      {
+        "fromShotId": "S01",
+        "toShotId": "S02",
+        "type": "extension_seam",
+        "notes": "planned narrative progression within extension chain"
+      },
+      {
+        "fromShotId": "S02",
+        "toShotId": "S03",
+        "type": "extension_seam",
+        "notes": "planned narrative progression within extension chain"
+      },
+      {
+        "fromShotId": "S03",
+        "toShotId": "S04",
+        "type": "extension_seam",
+        "notes": "planned narrative progression within extension chain"
+      },
+      {
+        "fromShotId": "S04",
+        "toShotId": "S05",
+        "type": "extension_seam",
+        "notes": "planned narrative progression within extension chain"
+      }
+    ],
+    "narrativeCoverage": {
+      "requiredBeatIds": [
+        "hook",
+        "use",
+        "proof",
+        "result",
+        "hero"
+      ],
+      "assignedBeatIds": [
+        "hook",
+        "use",
+        "proof",
+        "result",
+        "hero"
+      ],
+      "unassignedBeatIds": [],
+      "coverageComplete": true
+    },
+    "assemblyPlan": {
+      "mode": "provider_output",
+      "preserveNativeExtensionChain": true,
+      "finalTimelineDurationSeconds": 40,
+      "postCompositeAfterTemporalAssembly": true,
+      "notes": [
+        "Composite exact labels/UI after temporal chain when possible."
+      ]
+    }
+  },
+  "promptChains": [
+    {
+      "chainId": "CHAIN-OMNI-40S-TIEIN",
+      "providerProfileId": "gemini-omni-1.1-flash",
+      "strategy": "extension_chain",
+      "targetTotalDurationSeconds": 40,
+      "plannedTotalDurationSeconds": 40,
+      "durationFeasibility": {
+        "exactTargetReachable": true,
+        "reason": "8-second base plus four 8-second extensions fits the verified 3-10 second extension range and 40-second cumulative limit.",
+        "segmentDurationsSeconds": [
+          8,
+          8,
+          8,
+          8,
+          8
+        ],
+        "turnCount": 5,
+        "nearestReachableDurationSeconds": 40
+      },
+      "continuityEnvelope": {
+        "identityLocks": [
+          "approved cast identities"
+        ],
+        "productLocks": [
+          "product geometry and branding source-of-truth"
+        ],
+        "environmentLocks": [
+          "approved environment continuity"
+        ],
+        "audioLocks": [
+          "music/ambience continuity unless explicitly changed"
+        ],
+        "doNotReset": [
+          "completed product usage steps",
+          "product state",
+          "speaker ownership"
+        ],
+        "globalContinuityNotes": [
+          "Extension local timecodes reset to 0 at each turn."
+        ]
+      },
+      "segments": [
+        {
+          "segmentId": "SEG-01",
+          "turnIndex": 0,
+          "segmentType": "base",
+          "durationSeconds": 8,
+          "globalStartSeconds": 0,
+          "globalEndSeconds": 8,
+          "localTimeOriginSeconds": 0,
+          "shotIds": [
+            "S01"
+          ],
+          "continuationMode": "same_shot",
+          "requiresPreviousInteractionId": false,
+          "requiresSourceVideoAsset": false,
+          "expectedContextSeconds": null,
+          "sourceDeclarations": [],
+          "prompt": "Create the opening 8-second segment. [0-8s] The presenter naturally establishes the product and the usage context. Preserve cast identity, product geometry, environment, and established audio continuity. End bridge state: The product is clearly visible in the presenter’s hand, ready for demonstration.",
+          "promptSections": {
+            "continuationDirective": null,
+            "startStateDirective": "Continue from the prior end-state without reset.",
+            "localTimeline": [
+              "[0-8s] The presenter naturally establishes the product and the usage context."
+            ],
+            "cameraDirective": "Use the approved shot design for this beat.",
+            "dialogueAudioDirective": "Use only approved dialogue/VO for this segment; continue ambience/music coherently.",
+            "continuityDirective": "Preserve approved cast, product, wardrobe, environment and lighting continuity.",
+            "noResetDirective": "Do not repeat completed product actions.",
+            "endBridgeDirective": "The product is clearly visible in the presenter’s hand, ready for demonstration."
+          },
+          "stateAtStart": {},
+          "stateAtEnd": {
+            "bridge": "The product is clearly visible in the presenter’s hand, ready for demonstration."
+          },
+          "dialogueLineIds": [],
+          "seamPolicy": {
+            "tailMayBeRewritten": true,
+            "reviewWindowSeconds": 1.0,
+            "protectExactUiOrLabelAtSeam": true,
+            "avoidDialogueWordBoundaryAtSeam": true,
+            "notes": [
+              "Composite exact UI/labels after the extension chain when practical."
+            ]
+          },
+          "postCompositeNotes": []
+        },
+        {
+          "segmentId": "SEG-02",
+          "turnIndex": 1,
+          "segmentType": "extend",
+          "durationSeconds": 8,
+          "globalStartSeconds": 8,
+          "globalEndSeconds": 16,
+          "localTimeOriginSeconds": 0,
+          "shotIds": [
+            "S02"
+          ],
+          "continuationMode": "new_shot_same_scene",
+          "requiresPreviousInteractionId": true,
+          "requiresSourceVideoAsset": false,
+          "expectedContextSeconds": 10,
+          "sourceDeclarations": [],
+          "prompt": "Continue this video from its current ending. Do not replay or reset completed actions. [0-8s] Continue into the first clear product-use or feature demonstration beat. Preserve cast identity, product geometry, environment, and established audio continuity. End bridge state: The first feature/action is complete; the product remains in a stable demonstrable state.",
+          "promptSections": {
+            "continuationDirective": "Continue this video from its current ending.",
+            "startStateDirective": "Continue from the prior end-state without reset.",
+            "localTimeline": [
+              "[0-8s] Continue into the first clear product-use or feature demonstration beat."
+            ],
+            "cameraDirective": "Use the approved shot design for this beat.",
+            "dialogueAudioDirective": "Use only approved dialogue/VO for this segment; continue ambience/music coherently.",
+            "continuityDirective": "Preserve approved cast, product, wardrobe, environment and lighting continuity.",
+            "noResetDirective": "Do not repeat completed product actions.",
+            "endBridgeDirective": "The first feature/action is complete; the product remains in a stable demonstrable state."
+          },
+          "stateAtStart": {},
+          "stateAtEnd": {
+            "bridge": "The first feature/action is complete; the product remains in a stable demonstrable state."
+          },
+          "dialogueLineIds": [],
+          "seamPolicy": {
+            "tailMayBeRewritten": true,
+            "reviewWindowSeconds": 1.0,
+            "protectExactUiOrLabelAtSeam": true,
+            "avoidDialogueWordBoundaryAtSeam": true,
+            "notes": [
+              "Composite exact UI/labels after the extension chain when practical."
+            ]
+          },
+          "postCompositeNotes": []
+        },
+        {
+          "segmentId": "SEG-03",
+          "turnIndex": 2,
+          "segmentType": "extend",
+          "durationSeconds": 8,
+          "globalStartSeconds": 16,
+          "globalEndSeconds": 24,
+          "localTimeOriginSeconds": 0,
+          "shotIds": [
+            "S03"
+          ],
+          "continuationMode": "planned_cut",
+          "requiresPreviousInteractionId": true,
+          "requiresSourceVideoAsset": false,
+          "expectedContextSeconds": 10,
+          "sourceDeclarations": [],
+          "prompt": "Continue this video from its current ending. Do not replay or reset completed actions. [0-8s] Continue into the proof or explanatory mechanism beat; use a planned cut if the mechanism is better shown with an insert/cutaway. Preserve cast identity, product geometry, environment, and established audio continuity. End bridge state: The proof beat is complete; return to a clean product/presenter state.",
+          "promptSections": {
+            "continuationDirective": "Continue this video from its current ending.",
+            "startStateDirective": "Continue from the prior end-state without reset.",
+            "localTimeline": [
+              "[0-8s] Continue into the proof or explanatory mechanism beat; use a planned cut if the mechanism is better shown with an insert/cutaway."
+            ],
+            "cameraDirective": "Use the approved shot design for this beat.",
+            "dialogueAudioDirective": "Use only approved dialogue/VO for this segment; continue ambience/music coherently.",
+            "continuityDirective": "Preserve approved cast, product, wardrobe, environment and lighting continuity.",
+            "noResetDirective": "Do not repeat completed product actions.",
+            "endBridgeDirective": "The proof beat is complete; return to a clean product/presenter state."
+          },
+          "stateAtStart": {},
+          "stateAtEnd": {
+            "bridge": "The proof beat is complete; return to a clean product/presenter state."
+          },
+          "dialogueLineIds": [],
+          "seamPolicy": {
+            "tailMayBeRewritten": true,
+            "reviewWindowSeconds": 1.0,
+            "protectExactUiOrLabelAtSeam": true,
+            "avoidDialogueWordBoundaryAtSeam": true,
+            "notes": [
+              "Composite exact UI/labels after the extension chain when practical."
+            ]
+          },
+          "postCompositeNotes": []
+        },
+        {
+          "segmentId": "SEG-04",
+          "turnIndex": 3,
+          "segmentType": "extend",
+          "durationSeconds": 8,
+          "globalStartSeconds": 24,
+          "globalEndSeconds": 32,
+          "localTimeOriginSeconds": 0,
+          "shotIds": [
+            "S04"
+          ],
+          "continuationMode": "new_shot_same_scene",
+          "requiresPreviousInteractionId": true,
+          "requiresSourceVideoAsset": false,
+          "expectedContextSeconds": 10,
+          "sourceDeclarations": [],
+          "prompt": "Continue this video from its current ending. Do not replay or reset completed actions. [0-8s] Continue into the real-world result or benefit demonstration without repeating earlier usage steps. Preserve cast identity, product geometry, environment, and established audio continuity. End bridge state: The use-case outcome is visible and the presenter/product are ready for the close.",
+          "promptSections": {
+            "continuationDirective": "Continue this video from its current ending.",
+            "startStateDirective": "Continue from the prior end-state without reset.",
+            "localTimeline": [
+              "[0-8s] Continue into the real-world result or benefit demonstration without repeating earlier usage steps."
+            ],
+            "cameraDirective": "Use the approved shot design for this beat.",
+            "dialogueAudioDirective": "Use only approved dialogue/VO for this segment; continue ambience/music coherently.",
+            "continuityDirective": "Preserve approved cast, product, wardrobe, environment and lighting continuity.",
+            "noResetDirective": "Do not repeat completed product actions.",
+            "endBridgeDirective": "The use-case outcome is visible and the presenter/product are ready for the close."
+          },
+          "stateAtStart": {},
+          "stateAtEnd": {
+            "bridge": "The use-case outcome is visible and the presenter/product are ready for the close."
+          },
+          "dialogueLineIds": [],
+          "seamPolicy": {
+            "tailMayBeRewritten": true,
+            "reviewWindowSeconds": 1.0,
+            "protectExactUiOrLabelAtSeam": true,
+            "avoidDialogueWordBoundaryAtSeam": true,
+            "notes": [
+              "Composite exact UI/labels after the extension chain when practical."
+            ]
+          },
+          "postCompositeNotes": []
+        },
+        {
+          "segmentId": "SEG-05",
+          "turnIndex": 4,
+          "segmentType": "extend",
+          "durationSeconds": 8,
+          "globalStartSeconds": 32,
+          "globalEndSeconds": 40,
+          "localTimeOriginSeconds": 0,
+          "shotIds": [
+            "S05"
+          ],
+          "continuationMode": "planned_cut",
+          "requiresPreviousInteractionId": true,
+          "requiresSourceVideoAsset": false,
+          "expectedContextSeconds": 10,
+          "sourceDeclarations": [],
+          "prompt": "Continue this video from its current ending. Do not replay or reset completed actions. [0-8s] Continue to a concise hero-product close and CTA; avoid unverified claims. Preserve cast identity, product geometry, environment, and established audio continuity. End bridge state: Finish on a stable hero composition suitable for final branding/composite.",
+          "promptSections": {
+            "continuationDirective": "Continue this video from its current ending.",
+            "startStateDirective": "Continue from the prior end-state without reset.",
+            "localTimeline": [
+              "[0-8s] Continue to a concise hero-product close and CTA; avoid unverified claims."
+            ],
+            "cameraDirective": "Use the approved shot design for this beat.",
+            "dialogueAudioDirective": "Use only approved dialogue/VO for this segment; continue ambience/music coherently.",
+            "continuityDirective": "Preserve approved cast, product, wardrobe, environment and lighting continuity.",
+            "noResetDirective": "Do not repeat completed product actions.",
+            "endBridgeDirective": "Finish on a stable hero composition suitable for final branding/composite."
+          },
+          "stateAtStart": {},
+          "stateAtEnd": {
+            "bridge": "Finish on a stable hero composition suitable for final branding/composite."
+          },
+          "dialogueLineIds": [],
+          "seamPolicy": {
+            "tailMayBeRewritten": true,
+            "reviewWindowSeconds": 1.0,
+            "protectExactUiOrLabelAtSeam": true,
+            "avoidDialogueWordBoundaryAtSeam": true,
+            "notes": [
+              "Composite exact UI/labels after the extension chain when practical."
+            ]
+          },
+          "postCompositeNotes": []
+        }
+      ]
+    }
+  ],
+  "coverageAssessment": {
+    "mode": "composable",
+    "knownProductFamily": "topical_application",
+    "limitations": []
+  },
+  "promotionTargetResolution": {
+    "targetKind": "physical_product",
+    "promotionIntent": "demonstrate",
+    "targetId": null,
+    "displayName": null,
+    "category": null,
+    "resolutionSource": [
+      "explicit_input"
+    ],
+    "confidence": 1.0,
+    "sourceOfTruthAssetIds": [],
+    "supportingAssetIds": [],
+    "reclassifiedAssets": [],
+    "visualIdentityStatus": "generic_allowed",
+    "exactVisualIdentityRequired": false,
+    "facts": [],
+    "missingEvidence": [],
+    "branch": "product_mechanism",
+    "continuationPolicy": "continue_generic",
+    "warnings": []
+  },
+  "placeExperienceModel": null,
+  "targetExperienceModel": null
+}

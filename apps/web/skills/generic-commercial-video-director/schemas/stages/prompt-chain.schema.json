@@ -1,0 +1,327 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/prompt-chain.schema.json",
+  "title": "Provider Prompt / Extension Chain",
+  "type": "object",
+  "required": [
+    "chainId",
+    "providerProfileId",
+    "strategy",
+    "targetTotalDurationSeconds",
+    "plannedTotalDurationSeconds",
+    "durationFeasibility",
+    "continuityEnvelope",
+    "segments"
+  ],
+  "properties": {
+    "chainId": {
+      "type": "string"
+    },
+    "providerProfileId": {
+      "type": "string"
+    },
+    "strategy": {
+      "type": "string",
+      "enum": [
+        "single_generation",
+        "native_multishot",
+        "extension_chain",
+        "hybrid"
+      ]
+    },
+    "targetTotalDurationSeconds": {
+      "type": "number",
+      "minimum": 1
+    },
+    "plannedTotalDurationSeconds": {
+      "type": "number",
+      "minimum": 1
+    },
+    "durationFeasibility": {
+      "type": "object",
+      "required": [
+        "exactTargetReachable",
+        "reason",
+        "segmentDurationsSeconds",
+        "turnCount"
+      ],
+      "properties": {
+        "exactTargetReachable": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "segmentDurationsSeconds": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "turnCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "nearestReachableDurationSeconds": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "deterministic": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "continuityEnvelope": {
+      "type": "object",
+      "required": [
+        "identityLocks",
+        "productLocks",
+        "environmentLocks",
+        "audioLocks",
+        "doNotReset"
+      ],
+      "properties": {
+        "identityLocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "productLocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "environmentLocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "audioLocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "doNotReset": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "globalContinuityNotes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "segmentId",
+          "turnIndex",
+          "segmentType",
+          "durationSeconds",
+          "globalStartSeconds",
+          "globalEndSeconds",
+          "localTimeOriginSeconds",
+          "shotIds",
+          "continuationMode",
+          "prompt",
+          "stateAtStart",
+          "stateAtEnd",
+          "seamPolicy"
+        ],
+        "properties": {
+          "segmentId": {
+            "type": "string"
+          },
+          "turnIndex": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "segmentType": {
+            "type": "string",
+            "enum": [
+              "base",
+              "extend"
+            ]
+          },
+          "durationSeconds": {
+            "type": "number",
+            "minimum": 1
+          },
+          "globalStartSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "globalEndSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "localTimeOriginSeconds": {
+            "type": "number",
+            "const": 0
+          },
+          "shotIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "continuationMode": {
+            "type": "string",
+            "enum": [
+              "same_shot",
+              "planned_cut",
+              "new_shot_same_scene",
+              "new_scene",
+              "montage_progression"
+            ]
+          },
+          "requiresPreviousInteractionId": {
+            "type": "boolean",
+            "default": false
+          },
+          "requiresSourceVideoAsset": {
+            "type": "boolean",
+            "default": false
+          },
+          "expectedContextSeconds": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "sourceDeclarations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "prompt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "promptSections": {
+            "type": "object",
+            "properties": {
+              "continuationDirective": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "startStateDirective": {
+                "type": "string"
+              },
+              "localTimeline": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "cameraDirective": {
+                "type": "string"
+              },
+              "dialogueAudioDirective": {
+                "type": "string"
+              },
+              "continuityDirective": {
+                "type": "string"
+              },
+              "noResetDirective": {
+                "type": "string"
+              },
+              "endBridgeDirective": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "stateAtStart": {
+            "type": "object"
+          },
+          "stateAtEnd": {
+            "type": "object"
+          },
+          "dialogueLineIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "seamPolicy": {
+            "type": "object",
+            "required": [
+              "tailMayBeRewritten",
+              "reviewWindowSeconds",
+              "protectExactUiOrLabelAtSeam",
+              "avoidDialogueWordBoundaryAtSeam"
+            ],
+            "properties": {
+              "tailMayBeRewritten": {
+                "type": "boolean"
+              },
+              "reviewWindowSeconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "protectExactUiOrLabelAtSeam": {
+                "type": "boolean"
+              },
+              "avoidDialogueWordBoundaryAtSeam": {
+                "type": "boolean"
+              },
+              "notes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "postCompositeNotes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "requestedDurationSeconds": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "actualDurationSeconds": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

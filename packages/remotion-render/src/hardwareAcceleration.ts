@@ -1,10 +1,10 @@
 /**
  * GPU encoding policy for every `renderMedia()` call in this repo.
  *
- * `renderMedia()` defaults `hardwareAcceleration` to `"disable"`, which pins
- * the H.264 encode to libx264 regardless of what hardware is present —
- * measured 2026-08-02 on a worker with an RTX 5060 Ti, Task Manager's Video
- * Encode graph sat at 0% for the whole render while the CPU carried it.
+ * `renderMedia()` defaults `hardwareAcceleration` to `"disable"`, which is
+ * the safe choice for desktop workers. The bundled FFmpeg can advertise
+ * NVENC even when the host has no usable NVIDIA device; Remotion may then
+ * write to a closed encoder pipe (EPIPE) and terminate the sidecar.
  *
  * Kept as a function rather than a constant so the environment is read at
  * render time: the worker sets these variables per job, not at import.
@@ -12,11 +12,10 @@
 export type RemotionHardwareAcceleration = "disable" | "if-possible" | "required";
 
 /**
- * `"if-possible"`, never `"required"`: a machine with no NVENC then falls back
- * to libx264 silently instead of failing the job outright. Set
- * `SMARTAIHUB_ENABLE_GPU_ENCODING=0` to force software encoding — the same
- * switch the HyperFrames lane reads (Rust `DEFAULT_RENDER_ENV` sets it to
- * "1"), so GPU encoding has ONE operator knob across both renderers.
+ * GPU encoding is an explicit opt-in. Set
+ * `SMARTAIHUB_ENABLE_GPU_ENCODING=1` only after validating the worker's
+ * GPU/driver. The same switch is used by the HyperFrames lane, so GPU
+ * encoding has ONE operator knob across both renderers.
  *
  * CAUTION when touching the other `renderMedia()` options: Remotion silently
  * drops back to software encoding whenever `crf`, `encodingMaxRate`, or
@@ -27,5 +26,5 @@ export type RemotionHardwareAcceleration = "disable" | "if-possible" | "required
 export function resolveHardwareAcceleration(
   env: NodeJS.ProcessEnv = process.env,
 ): RemotionHardwareAcceleration {
-  return env.SMARTAIHUB_ENABLE_GPU_ENCODING === "0" ? "disable" : "if-possible";
+  return env.SMARTAIHUB_ENABLE_GPU_ENCODING === "1" ? "if-possible" : "disable";
 }

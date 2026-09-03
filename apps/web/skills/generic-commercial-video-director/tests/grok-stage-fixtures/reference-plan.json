@@ -1,0 +1,48 @@
+{
+  "mode": "reference_to_video",
+  "startFrameAssetId": null,
+  "referenceImages": [
+    {
+      "assetId": "person",
+      "label": "<IMAGE_1>",
+      "semanticRoles": [
+        "identity"
+      ],
+      "entityId": "host"
+    },
+    {
+      "assetId": "product",
+      "label": "<IMAGE_2>",
+      "semanticRoles": [
+        "product_geometry",
+        "product_label"
+      ],
+      "entityId": "product"
+    },
+    {
+      "assetId": "venue",
+      "label": "<IMAGE_3>",
+      "semanticRoles": [
+        "place_identity",
+        "venue_layout"
+      ],
+      "entityId": "venue"
+    }
+  ],
+  "referenceAudios": [
+    {
+      "label": "<AUDIO_0>",
+      "sourceType": "preset_voice",
+      "voiceId": "eve",
+      "assetId": null,
+      "speakerId": "host",
+      "providerEntitlementVerified": true
+    }
+  ],
+  "derivedReferences": [],
+  "nonProviderReferences": [],
+  "conflictDetected": false,
+  "conflictResolution": "none",
+  "resolutionLimit": "720p",
+  "warnings": []
+}

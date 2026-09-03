@@ -10,6 +10,7 @@
 
 import type { VerticalDramaSubShotPolicy } from "./subShots";
 import type { VerticalDramaArtifactAssuranceLineage } from "./assurance";
+import type { ShotBrollTransform } from "./visualSource";
 
 /** Target episode duration in seconds (fixed for the MVP). */
 export const VERTICAL_DRAMA_TARGET_DURATION_SECONDS = 60 as const;
@@ -156,6 +157,7 @@ export type VerticalDramaAssemblyManifest = {
     startSeconds: number;
     endSeconds: number;
     fitMode: "cover" | "contain" | "crop_safe";
+    transform?: ShotBrollTransform;
     audioPolicy: "keep" | "mute" | "replace";
     labelMode: "none" | "source" | "archive" | "ai_illustration";
     sourceLabel?: string;
@@ -241,6 +243,12 @@ export type VerticalDramaCompiledVideoState = {
   error?: string;
   /** True when the compiled Sub-Episode already contains its active B-roll. */
   brollApplied?: boolean;
+  /** True when the compiled output contains the persisted main footage track. */
+  footageApplied?: boolean;
+  /** Revision of `assemblyManifest.footageTimeline` used for this render. */
+  timelineRevision?: number;
+  /** The output remains playable but no longer matches the saved timeline. */
+  stale?: boolean;
 };
 
 /**

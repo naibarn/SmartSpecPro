@@ -138,6 +138,12 @@ export function validateBrollBinding(input: ShotBrollBinding, context: { snapsho
   }
   if (binding.usage.semanticRole === "b_roll_footage") {
     if (binding.usage.mediaType !== "video" || !binding.usage.segmentId || binding.usage.inSeconds == null || binding.usage.outSeconds == null) {
+      if (binding.usage.mediaType === "video" && binding.usage.sourceAssetId == null && binding.usage.segmentId == null && binding.usage.inSeconds != null && binding.usage.outSeconds != null && binding.usage.outSeconds > binding.usage.inSeconds) {
+        const { assuranceLineage: _rawLineage, ...baseBinding } = binding;
+        return assuranceLineage === undefined
+          ? baseBinding
+          : { ...baseBinding, assuranceLineage };
+      }
       throw new TRPCError({ code: "BAD_REQUEST", message: "Footage B-roll requires one video segment with in/out bounds" });
     }
     if (!context.segment) throw new TRPCError({ code: "NOT_FOUND", message: "B-roll segment not found" });

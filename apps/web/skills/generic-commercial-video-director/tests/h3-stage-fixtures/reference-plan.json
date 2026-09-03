@@ -1,0 +1,91 @@
+{
+  "mode": "ref2va",
+  "model": "MiniMax-H3",
+  "hardFrames": {
+    "firstFrameAssetId": null,
+    "lastFrameAssetId": null
+  },
+  "rawReferences": {
+    "images": [
+      "product_img",
+      "person_img"
+    ],
+    "videos": [
+      "motion_vid"
+    ],
+    "audio": [
+      "voice_audio"
+    ]
+  },
+  "referenceLabels": [
+    {
+      "label": "<Picture 1>",
+      "assetId": "product_img",
+      "kind": "Picture",
+      "semanticRoles": [
+        "product_geometry",
+        "product_label"
+      ],
+      "entityId": "product"
+    },
+    {
+      "label": "<Picture 2>",
+      "assetId": "person_img",
+      "kind": "Picture",
+      "semanticRoles": [
+        "identity"
+      ],
+      "entityId": "person"
+    },
+    {
+      "label": "<Video 1>",
+      "assetId": "motion_vid",
+      "kind": "Video",
+      "semanticRoles": [
+        "motion",
+        "camera_motion"
+      ],
+      "entityId": "person"
+    },
+    {
+      "label": "<Audio 1>",
+      "assetId": "voice_audio",
+      "kind": "Audio",
+      "semanticRoles": [
+        "voice_timbre"
+      ],
+      "entityId": "person"
+    }
+  ],
+  "contentOrder": [
+    {
+      "assetId": "product_img",
+      "providerType": "image_url",
+      "providerRole": "reference_image",
+      "ordinal": 1
+    },
+    {
+      "assetId": "person_img",
+      "providerType": "image_url",
+      "providerRole": "reference_image",
+      "ordinal": 2
+    },
+    {
+      "assetId": "motion_vid",
+      "providerType": "video_url",
+      "providerRole": "reference_video",
+      "ordinal": 3
+    },
+    {
+      "assetId": "voice_audio",
+      "providerType": "audio_url",
+      "providerRole": "reference_audio",
+      "ordinal": 4
+    }
+  ],
+  "conflictDetected": false,
+  "conflictResolution": "none",
+  "derivedReferences": [],
+  "warnings": [],
+  "nonProviderReferences": []
+}

@@ -325,7 +325,11 @@ describe("workerRuntime routes", () => {
     return app;
   }
 
-  function writeRuntimeZip(filePath: string, runtimeId = "hyperframes-wsl2") {
+  function writeRuntimeZip(
+    filePath: string,
+    runtimeId = "hyperframes-wsl2",
+    signature = "fixture-signature",
+  ) {
     const zip = new AdmZip();
     const common = [
       "runtime-pack/manifest.json",
@@ -334,6 +338,10 @@ describe("workerRuntime routes", () => {
       "runtime-pack/hyperframes-sidecar/render.mjs",
       "runtime-pack/SHA256SUMS",
       "runtime-pack/SHA256SUMS.sig",
+      runtimeId === "hyperframes-windows-x64"
+        ? "runtime-pack/whisper/whisper-cli.exe"
+        : "runtime-pack/whisper/whisper-cli",
+      "runtime-pack/whisper/.cache/hyperframes/whisper/models/ggml-large-v3.bin",
       runtimeId === "hyperframes-macos-arm64" ? "sidecars/hyperframes-render" : "sidecars/hyperframes-render.exe",
     ];
     const platformFiles = runtimeId === "hyperframes-wsl2"
@@ -361,7 +369,12 @@ describe("workerRuntime routes", () => {
           ]
       : ["runtime-pack/node/node.exe", "runtime-pack/bin/ffmpeg.exe", "runtime-pack/bin/ffprobe.exe"];
     for (const entry of [...common, ...platformFiles]) {
-      zip.addFile(entry, Buffer.from(`fixture:${entry}`));
+      zip.addFile(
+        entry,
+        entry === "runtime-pack/SHA256SUMS.sig"
+          ? Buffer.from(signature)
+          : Buffer.from(`fixture:${entry}`),
+      );
     }
     zip.writeZip(filePath);
   }
@@ -424,6 +437,16 @@ describe("workerRuntime routes", () => {
       sidecarSha256: "abc",
       checksumFile: "SHA256SUMS",
       signatureFile: "SHA256SUMS.sig",
+      transcription: {
+        engine: "whisper.cpp",
+        version: "1.9.3",
+        binaryPath: runtimeId === "hyperframes-windows-x64" ? "whisper/whisper-cli.exe" : "whisper/whisper-cli",
+        binarySha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        model: "large-v3",
+        modelPath: "whisper/.cache/hyperframes/whisper/models/ggml-large-v3.bin",
+        modelSha256: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        modelUrl: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin",
+      },
       licenseNotices: ["THIRD_PARTY_NOTICES.txt"],
       runtimePlatform: runtimeId === "hyperframes-wsl2" ? "wsl2-linux-x64" : runtimeId === "hyperframes-macos-arm64" ? "macos-arm64" : "windows-x64",
       architecture: runtimeId === "hyperframes-macos-arm64" ? "arm64" : "x64",
@@ -1121,6 +1144,62 @@ describe("workerRuntime routes", () => {
     expect(downloadRes.status).toBe(200);
     expect(downloadRes.headers["content-type"]).toContain("application/zip");
     expect(Number(downloadRes.headers["content-length"])).toBe(fs.statSync(filePath).size);
+  });
+
+  it("does not admit a runtime pack whose signature is still a release placeholder", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-placeholder-signature-"));
+    const fileName = "smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.06.25.3.zip";
+    const filePath = path.join(tempDir, fileName);
+    writeRuntimeZip(filePath, "hyperframes-wsl2", "placeholder-signature-required-before-release\n");
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      ...officialRuntimeManifest("hyperframes-wsl2"),
+      version: "2026.06.25.3",
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest");
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("runtime_pack_not_published");
+  });
+
+  it("does not admit an otherwise official runtime pack without transcription metadata", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-no-transcription-"));
+    const fileName = "smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.06.25.4.zip";
+    const filePath = path.join(tempDir, fileName);
+    writeRuntimeZip(filePath, "hyperframes-wsl2");
+    const manifest = officialRuntimeManifest("hyperframes-wsl2");
+    delete (manifest as Record<string, unknown>).transcription;
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      ...manifest,
+      version: "2026.06.25.4",
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest");
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("runtime_pack_not_published");
+  });
+
+  it("does not admit a manifest that claims transcription when the archive omits Whisper", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-missing-whisper-"));
+    const fileName = "smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.06.25.5.zip";
+    const filePath = path.join(tempDir, fileName);
+    writeRuntimeZip(filePath, "hyperframes-wsl2");
+    const zip = new AdmZip(filePath);
+    zip.deleteFile("runtime-pack/whisper/whisper-cli");
+    zip.writeZip(filePath);
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      ...officialRuntimeManifest("hyperframes-wsl2"),
+      version: "2026.06.25.5",
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest");
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("runtime_pack_not_published");
   });
 
   it("serves only a structurally complete native macOS arm64 HyperFrames pack", async () => {

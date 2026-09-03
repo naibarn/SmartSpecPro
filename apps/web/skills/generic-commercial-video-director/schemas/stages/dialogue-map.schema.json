@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/dialogue-map.schema.json",
+  "title": "Dialogue Map",
+  "type": "object",
+  "required": [
+    "lines",
+    "warnings"
+  ],
+  "properties": {
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "lineId",
+          "speakerId",
+          "text",
+          "lipSyncRequired"
+        ],
+        "properties": {
+          "lineId": {
+            "type": "string"
+          },
+          "speakerId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "lipSyncRequired": {
+            "type": "boolean"
+          },
+          "onScreen": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

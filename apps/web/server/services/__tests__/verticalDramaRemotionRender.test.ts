@@ -212,6 +212,75 @@ describe("buildVdRemotionTemplate", () => {
     expect(durationInFrames).toBe(360);
   });
 
+  it("places main-track footage before and after the 9-shot compound", () => {
+    const { template, durationInFrames } = buildVdRemotionTemplate({
+      clips: [
+        { clipNumber: 1, url: "https://cdn.example.com/shot-1.mp4", durationSec: 8 },
+        { clipNumber: 2, url: "https://cdn.example.com/shot-2.mp4", durationSec: 4 },
+      ],
+      footage: [
+        {
+          segmentId: "footage-before",
+          mediaUrl: "https://cdn.example.com/footage.mp4",
+          resolvedMediaUrl: "https://cdn.example.com/footage.mp4",
+          sourceInSec: 2,
+          sourceOutSec: 5,
+          audioPolicy: "mute",
+        },
+        {
+          segmentId: "footage-after",
+          mediaUrl: "https://cdn.example.com/footage.mp4",
+          resolvedMediaUrl: "https://cdn.example.com/footage.mp4",
+          sourceInSec: 12,
+          sourceOutSec: 14,
+          audioPolicy: "keep",
+        },
+      ],
+      videoDurationSeconds: 17,
+    });
+    const mainTrack = template.layers.filter(
+      layer => layer.type === "video" && layer.zIndex === 0,
+    );
+
+    expect(mainTrack.map(layer => ({
+      id: layer.id,
+      startFrame: layer.startFrame,
+      durationFrames: layer.durationFrames,
+      trimStartSec: layer.trimStartSec,
+      muted: layer.muted,
+    }))).toEqual([
+      {
+        id: "footage-footage-before-0",
+        startFrame: 0,
+        durationFrames: 90,
+        trimStartSec: 2,
+        muted: true,
+      },
+      {
+        id: "footage-footage-after-1",
+        startFrame: 90,
+        durationFrames: 60,
+        trimStartSec: 12,
+        muted: false,
+      },
+        {
+          id: "clip-1",
+          startFrame: 150,
+          durationFrames: 240,
+          trimStartSec: 0,
+          muted: false,
+      },
+        {
+          id: "clip-2",
+          startFrame: 390,
+          durationFrames: 120,
+          trimStartSec: 0,
+          muted: false,
+      },
+    ]);
+    expect(durationInFrames).toBe(510);
+  });
+
   it("renders still and footage B-roll at explicit destination seconds with source trim", () => {
     const { template } = buildVdRemotionTemplate({
       clips: [
@@ -237,6 +306,7 @@ describe("buildVdRemotionTemplate", () => {
           endSec: 12,
           sourceInSec: 14.5,
           fitMode: "crop_safe",
+          transform: { x: 12, y: 8, width: 50, height: 40, rotationDeg: 3, opacity: 0.8 },
           audioPolicy: "keep",
         },
       ],
@@ -253,6 +323,51 @@ describe("buildVdRemotionTemplate", () => {
       durationFrames: 60,
       trimStartSec: 14.5,
       muted: false,
+      x: 12,
+      y: 8,
+      width: 50,
+      height: 40,
+      rotationDeg: 3,
+      opacity: 0.8,
+    });
+  });
+
+  it("shifts shot-local B-roll after main-track footage without replacing the compound scene", () => {
+    const { template } = buildVdRemotionTemplate({
+      clips: [
+        { clipNumber: 1, url: "https://cdn.example.com/1.mp4", durationSec: 8 },
+      ],
+      footage: [
+        {
+          segmentId: "intro-footage",
+          mediaUrl: "https://cdn.example.com/intro.mp4",
+          resolvedMediaUrl: "https://cdn.example.com/intro.mp4",
+          sourceInSec: 4,
+          sourceOutSec: 7,
+        },
+      ],
+      videoDurationSeconds: 11,
+      brollLayers: [
+        {
+          bindingId: "product-1",
+          mediaType: "image",
+          resolvedMediaUrl: "https://cdn.example.com/product.jpg",
+          startSec: 1,
+          endSec: 3,
+          fitMode: "contain",
+          audioPolicy: "mute",
+        },
+      ],
+    });
+
+    expect(template.layers.find(layer => layer.id === "clip-1")).toMatchObject({
+      startFrame: 90,
+      durationFrames: 240,
+    });
+    expect(template.layers.find(layer => layer.id === "broll-product-1-0")).toMatchObject({
+      startFrame: 120,
+      durationFrames: 60,
+      zIndex: 6,
     });
   });
 
@@ -1474,6 +1589,28 @@ describe("reconcileVdRemotionAssembly", () => {
     expect((episodeRow.assemblyManifest as any).compiledVideo).toMatchObject({
       status: "completed",
       videoUrl: "https://cdn.example.com/final.mp4",
+      stale: false,
+    });
+  });
+
+  it("ignores a late terminal event from an older assembly job", async () => {
+    episodeRow = {
+      assemblyManifest: {
+        compiledVideo: { status: "pending", pendingJobId: "job-new" },
+      },
+    };
+    workerJobRow = {
+      id: "job-old",
+      status: "completed",
+      outputJson: { outputUrl: "https://cdn.example.com/old.mp4" },
+    };
+
+    const result = await reconcileVdRemotionAssembly(owner, "job-old");
+
+    expect(result).toEqual({ reconciled: false });
+    expect((episodeRow.assemblyManifest as any).compiledVideo).toEqual({
+      status: "pending",
+      pendingJobId: "job-new",
     });
   });
 

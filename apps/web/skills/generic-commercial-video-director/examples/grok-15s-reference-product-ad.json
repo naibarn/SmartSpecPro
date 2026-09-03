@@ -1,0 +1,15 @@
+{
+  "provider": "xAI",
+  "model": "grok-imagine-video-1.5",
+  "mode": "reference_to_video",
+  "durationSeconds": 15,
+  "resolution": "720p",
+  "aspectRatio": "9:16",
+  "bindings": {
+    "<IMAGE_1>": "presenter identity",
+    "<IMAGE_2>": "product geometry and visible brand",
+    "<IMAGE_3>": "venue identity",
+    "<AUDIO_0>": "presenter preset voice"
+  },
+  "note": "Reference mode does not guarantee a literal Start Frame."
+}

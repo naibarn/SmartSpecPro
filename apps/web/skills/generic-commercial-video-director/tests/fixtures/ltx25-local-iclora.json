@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "ใช้วิดีโอ motion reference ควบคุมการเคลื่อนไหวด้วย LTX local",
+  "locale": "th-TH",
+  "assets": [
+    {
+      "assetId": "motion",
+      "role": "motion_reference",
+      "mediaType": "video",
+      "referencePurposes": [
+        "motion",
+        "camera_motion"
+      ],
+      "providerUsePolicy": "must_use_raw",
+      "providerHints": {
+        "ltx": {
+          "useAsIcLoraReference": true,
+          "localReferenceWorkflowVerified": true
+        }
+      }
+    }
+  ],
+  "providerOptions": {
+    "ltx25": {
+      "executionRoute": "worker_comfyui",
+      "model": "Lightricks/LTX-2.5",
+      "mode": "local_ic_lora",
+      "referencePolicy": "local_ic_lora",
+      "localReferenceWorkflowVerified": true,
+      "localWorkflowId": "ltx25_motion_ic_lora"
+    }
+  }
+}

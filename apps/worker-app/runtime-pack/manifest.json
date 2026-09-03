@@ -1,13 +1,13 @@
 {
   "runtimeId": "hyperframes-wsl2",
-  "version": "2026.08.30.1",
+  "version": "2026.08.31.1",
   "hyperframesVersion": "hyperframes@0.7.5; @hyperframes/producer@0.7.5",
-  "browserVersion": "Chrome for Testing 150.0.7871.24 linux64",
-  "ffmpegVersion": "johnvansickle ffmpeg 7.0.2 linux static",
-  "ffprobeVersion": "johnvansickle ffmpeg 7.0.2 linux static",
+  "browserVersion": "managed",
+  "ffmpegVersion": "managed",
+  "ffprobeVersion": "managed",
   "transcription": {
     "engine": "whisper.cpp",
-    "version": "1.9.3-dev",
+    "version": "managed",
     "binaryPath": "whisper/whisper-cli",
     "binarySha256": "d328c1d6a8ffa2001e78c99dfc7619c86f07aa5409af67bc1446aa85dc0468f0",
     "model": "large-v3",
@@ -24,6 +24,7 @@
     "THIRD_PARTY_NOTICES.txt"
   ],
   "runtimePlatform": "wsl2-linux-x64",
+  "architecture": "x64",
   "nodeVersion": "bundled-node-linux-x64",
   "rendererKind": "hyperframes_cli_official",
   "sidecarLauncher": "smart-ai-hub-hyperframes-node-launcher",
@@ -34,8 +35,16 @@
   "supportedContractVersions": [
     "2026-06-22"
   ],
-  "runtimeProfileHash": "67f53d9d23dba832629c536812d5766810d73c4fe5b21bced8bc699624abb876",
+  "runtimeProfileHash": "47f7cba64c3dd75019a5dcc966e1bd5c80b25e00d9220c0096712e295e5951fc",
   "allowed": true,
   "denyReason": null,
-  "rollbackToVersion": null
+  "rollbackToVersion": null,
+  "comfyMcp": {
+    "command": "comfy-mcp",
+    "package": "comfy-mcp",
+    "packageVersion": "0.10.0",
+    "comfyCliRequirement": ">=1.14.0",
+    "pythonRequirement": ">=3.10",
+    "installMode": "worker-managed-venv"
+  }
 }

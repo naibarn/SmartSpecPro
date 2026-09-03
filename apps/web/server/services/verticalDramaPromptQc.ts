@@ -197,9 +197,41 @@ function imageNegativeSectionFragments(prompt: string): string[] {
     .filter(line => line.startsWith(IMAGE_NEGATIVE_SECTION_LABEL));
 }
 
+/**
+ * Identity-lock blocks contain both hard mapping facts and policy-sensitive
+ * prose.  The mapping facts must survive refinement, but wording such as
+ * "exact facial identity" must be available to the final skill's provider-
+ * safe wording pass.  Keep only the structural/factual lines as validation
+ * anchors; never append the original block after the skill returns.
+ */
+function semanticProtectedMarkers(fragment: string): string[] {
+  const lines = fragment
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+  const markers = lines.filter(line =>
+    /^(?:BEGIN CHARACTER IDENTITY LOCKS|END CHARACTER IDENTITY LOCKS|CHARACTER IDENTITY LOCK —|Reference mapping:|- .+ — Reference Images? \d)/.test(
+      line,
+    ),
+  );
+  return markers.length > 0 ? markers : lines.slice(0, 1);
+}
+
+function hasSemanticProtectedMarkers(
+  prompt: string,
+  fragments: string[] | undefined,
+): boolean {
+  return (fragments ?? []).every(fragment =>
+    semanticProtectedMarkers(fragment).every(marker =>
+      prompt.includes(marker),
+    ),
+  );
+}
+
 function isValidFinalImagePrompt(
   prompt: string,
   protectedFragments: string[] | undefined,
+  semanticProtectedFragments: string[] | undefined,
   maxChars: number,
 ): boolean {
   const trimmed = prompt.trim();
@@ -209,6 +241,9 @@ function isValidFinalImagePrompt(
       fragment => countExactOccurrences(trimmed, fragment) !== 1,
     )
   ) {
+    return false;
+  }
+  if (!hasSemanticProtectedMarkers(trimmed, semanticProtectedFragments)) {
     return false;
   }
   // The optimizer must return the canonical one-prompt representation itself;
@@ -240,6 +275,13 @@ export interface EnsurePromptWithinLimitParams {
   context?: string;
   /** Exact fragments (normally native-audio dialogue) that must survive every refinement/truncation pass. */
   protectedFragments?: string[];
+  /**
+   * Fragments whose factual anchors must survive, while the final skill may
+   * rewrite policy-sensitive wording inside them (for example identity-lock
+   * likeness language). This is intentionally separate from exact dialogue
+   * protection so the provider-safe skill remains the last prompt author.
+   */
+  semanticProtectedFragments?: string[];
   /** Optional selected-provider cap for this call; widening-only. */
   maxChars?: number;
   /** Provider-ready paths must never silently truncate semantic clauses. */
@@ -399,8 +441,17 @@ function buildRefinerUserPrompt(params: {
   maxChars: number;
   strict: boolean;
   protectedFragments?: string[];
+  semanticProtectedFragments?: string[];
 }): string {
-  const { kind, prompt, context, maxChars, strict, protectedFragments } = params;
+  const {
+    kind,
+    prompt,
+    context,
+    maxChars,
+    strict,
+    protectedFragments,
+    semanticProtectedFragments,
+  } = params;
   return [
     `Source prompt (${kind} generation, currently ${prompt.length} characters, target type = ${kind}):`,
     prompt,
@@ -409,6 +460,12 @@ function buildRefinerUserPrompt(params: {
       ? [
           "MANDATORY PROTECTED FRAGMENTS: preserve each fragment exactly in the optimized_prompt. Do not omit, paraphrase, duplicate, or move these fragments into a separate field:",
           ...protectedFragments.map((fragment, index) => `${index + 1}. ${fragment}`),
+        ].join("\n")
+      : null,
+    semanticProtectedFragments?.length
+      ? [
+          "SEMANTICALLY PROTECTED FRAGMENTS: preserve every factual/structural anchor in these fragments, especially reference-image mapping, character names, image indexes, required character count, and age/maturity facts. The final provider-safe wording pass MAY naturally rewrite policy-sensitive wording inside these fragments (such as absolute likeness wording or intimate framing); it MUST NOT omit, duplicate, reorder, or contradict the anchors, and MUST return them in the single optimized_prompt field:",
+          ...semanticProtectedFragments.map((fragment, index) => `${index + 1}. ${fragment}`),
         ].join("\n")
       : null,
     `HARD LIMIT: the "optimized_prompt" you return MUST be ${maxChars} characters or fewer (this is a hard cap enforced by the caller, not a soft target).`,
@@ -439,6 +496,7 @@ async function refineOnce(params: {
   maxChars: number;
   strict: boolean;
   protectedFragments?: string[];
+  semanticProtectedFragments?: string[];
   userId: number;
   tenantId?: string;
   seriesId: number;
@@ -462,6 +520,7 @@ async function refineOnce(params: {
     maxChars: params.maxChars,
     strict: params.strict,
     protectedFragments: params.protectedFragments,
+    semanticProtectedFragments: params.semanticProtectedFragments,
   });
 
   const { data, response } = await executeJsonPlanningCallWithRetry({
@@ -560,6 +619,7 @@ export async function ensurePromptWithinLimit(
       maxChars,
       strict: false,
       protectedFragments: finalProtectedFragments,
+      semanticProtectedFragments: params.semanticProtectedFragments,
       userId,
       tenantId,
       seriesId,
@@ -572,9 +632,14 @@ export async function ensurePromptWithinLimit(
         ? isValidFinalImagePrompt(
             first.optimizedPrompt,
             finalProtectedFragments,
+            params.semanticProtectedFragments,
             maxChars,
           )
-        : first.optimizedPrompt.length <= maxChars
+        : first.optimizedPrompt.length <= maxChars &&
+          hasSemanticProtectedMarkers(
+            first.optimizedPrompt,
+            params.semanticProtectedFragments,
+          )
     ) {
       if (params.finalizeWithRefiner) {
         return {
@@ -605,6 +670,7 @@ export async function ensurePromptWithinLimit(
       maxChars,
       strict: true,
       protectedFragments: finalProtectedFragments,
+      semanticProtectedFragments: params.semanticProtectedFragments,
       userId,
       tenantId,
       seriesId,
@@ -617,9 +683,14 @@ export async function ensurePromptWithinLimit(
         ? isValidFinalImagePrompt(
             second.optimizedPrompt,
             finalProtectedFragments,
+            params.semanticProtectedFragments,
             maxChars,
           )
-        : second.optimizedPrompt.length <= maxChars
+        : second.optimizedPrompt.length <= maxChars &&
+          hasSemanticProtectedMarkers(
+            second.optimizedPrompt,
+            params.semanticProtectedFragments,
+          )
     ) {
       if (params.finalizeWithRefiner) {
         return {

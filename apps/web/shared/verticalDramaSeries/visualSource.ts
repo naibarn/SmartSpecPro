@@ -40,6 +40,28 @@ export type VisualAudioPolicy = (typeof VISUAL_AUDIO_POLICIES)[number];
 export const VISUAL_FIT_MODES = ["cover", "contain", "crop_safe"] as const;
 export type VisualFitMode = (typeof VISUAL_FIT_MODES)[number];
 
+/** Fine-grained, canvas-relative B-roll placement. Values are percentages of
+ * the 9:16 composition so the same binding remains portable across render
+ * resolutions. */
+export const shotBrollTransformSchema = z.object({
+  x: z.number().finite().min(-200).max(200).default(0),
+  y: z.number().finite().min(-200).max(200).default(0),
+  width: z.number().finite().positive().max(300).default(100),
+  height: z.number().finite().positive().max(300).default(100),
+  rotationDeg: z.number().finite().min(-360).max(360).default(0),
+  opacity: z.number().finite().min(0).max(1).default(1),
+}).strict();
+export type ShotBrollTransform = z.infer<typeof shotBrollTransformSchema>;
+
+/** Optional presentation metadata must never make a legacy binding unusable.
+ * Invalid/missing transform JSON falls back to the full-frame default; the
+ * media binding itself remains subject to the stricter ownership/timeline
+ * validation below. */
+export function parseShotBrollTransform(input: unknown): ShotBrollTransform {
+  const parsed = shotBrollTransformSchema.safeParse(input ?? {});
+  return parsed.success ? parsed.data : shotBrollTransformSchema.parse({});
+}
+
 const boundedId = z.string().trim().min(1).max(128);
 const boundedText = z.string().trim().max(5000);
 const finiteSeconds = z.number().finite().min(0).max(86_400);
@@ -184,6 +206,14 @@ export const shotBrollBindingSchema = z.object({
   usage: visualUsageRefSchema,
   order: z.number().int().min(0).max(100_000),
   fitMode: z.enum(VISUAL_FIT_MODES).default("cover"),
+  transform: shotBrollTransformSchema.default({
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    rotationDeg: 0,
+    opacity: 1,
+  }),
   active: z.boolean().default(true),
   status: z.enum(["draft", "ready", "stale", "blocked"]).default("draft"),
   /** Additive JSONB projection; legacy bindings omit it. */

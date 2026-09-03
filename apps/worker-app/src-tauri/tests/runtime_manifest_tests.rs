@@ -38,7 +38,8 @@ fn manifest(sidecar_sha256: String) -> RuntimePackManifest {
             model: "large-v3".into(),
             model_path: "whisper/.cache/hyperframes/whisper/models/ggml-large-v3.bin".into(),
             model_sha256: "model-hash".into(),
-            model_url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin".into(),
+            model_url:
+                "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin".into(),
         }),
     }
 }
@@ -260,6 +261,7 @@ fn wsl2_runtime_requires_linux_node_browser_and_media_tools() {
     wsl_manifest.runtime_id = "hyperframes-wsl2".into();
     wsl_manifest.runtime_platform = Some("wsl2-linux-x64".into());
     wsl_manifest.sidecar_script_path = Some("hyperframes-sidecar/render.mjs".into());
+    wsl_manifest.transcription.as_mut().unwrap().binary_path = "whisper/whisper-cli".into();
 
     let summary = doctor_from_manifest(&wsl_manifest, dir.path());
 
@@ -350,9 +352,10 @@ fn doctor_blocks_placeholder_runtime_signature() {
     let summary = doctor_from_manifest(&manifest(file_sha256(&sidecar).unwrap()), dir.path());
 
     assert_eq!(summary.status, "blocked");
-    assert!(summary.checks.iter().any(|check| {
-        check.id == "runtime_signature_bundle" && check.status == "error"
-    }));
+    assert!(summary
+        .checks
+        .iter()
+        .any(|check| { check.id == "runtime_signature_bundle" && check.status == "error" }));
 }
 
 #[test]

@@ -860,6 +860,12 @@ export interface GenerateVideoMotionPromptPackParams {
     dualViewReferenceImage?: { url: string; name?: string };
     /** The labeled portraits visible/required in this shot, attached after its start frame. */
     characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[];
+    /** Actual approved stop-frame image, when one exists for this shot. */
+    stopFrameImage?: { url: string; name?: string };
+    /** Image subset of the complete multimodal reference bundle. */
+    referenceImageUrls?: string[];
+    /** Fact block naming every image/video/audio reference in the bundle. */
+    mediaReferenceInstruction?: string;
   }>;
   storyboardShots: Array<{
     shotNumber: number;
@@ -1069,6 +1075,9 @@ function buildUserPrompt(
     visionBundleFacts.length
       ? `${visionBundleFacts.join("\n")} For every spoken line, bind the exact named character to the observed screen position using viewer-left/viewer-center-left/viewer-center/viewer-center-right/viewer-right, always from the viewer/camera side; never use anatomical left/right or left/right hand. All other established characters remain silent with mouths fully closed. Never infer identity from gender, clothing, or requested layout when the attached images disagree.`
       : null,
+    ...(params.startFrameImages ?? [])
+      .map(frame => frame.mediaReferenceInstruction)
+      .filter((value): value is string => Boolean(value?.trim())),
     `When a shot has a "dialogue" line, the resulting clip's "prompt" must explicitly mention the character speaking it and describe mouth/lip movement matching that line — do not produce a silent/mute description for a shot that has dialogue.`,
     `PROMPT LANGUAGE (MANDATORY): write every "video_clip_requests[].prompt" and "negative_motion_prompt" entirely in ${promptLanguageName} — all motion/acting/camera direction must be in ${promptLanguageName}, regardless of what language the dialogue is in.`,
     `SPEECH LANGUAGE (MANDATORY): the character(s) speak in ${dialogueLanguageName} in this video — any literal quoted dialogue embedded in a clip's prompt (native-audio models) or returned as a dialogue line must be in ${dialogueLanguageName}, adapted/translated naturally into ${dialogueLanguageName} if the source line above is shown in a different language.`,
@@ -1253,6 +1262,9 @@ export async function generateVideoMotionPromptPack(
               url: frame.url,
               label: `Shot ${frame.shotNumber} start frame`,
             },
+            ...(frame.stopFrameImage
+              ? [{ url: frame.stopFrameImage.url, label: `Shot ${frame.shotNumber} STOP FRAME image` }]
+              : []),
             ...(frame.dualViewReferenceImage
               ? [
                   {
@@ -1264,6 +1276,10 @@ export async function generateVideoMotionPromptPack(
             ...(frame.characterReferenceImages ?? []).map(ref => ({
               url: ref.url,
               label: `Shot ${frame.shotNumber} character reference: ${ref.name ?? ref.characterKey} (${ref.characterKey})`,
+            })),
+            ...(frame.referenceImageUrls ?? []).map((url, index) => ({
+              url,
+              label: `Shot ${frame.shotNumber} reference image ${index + 1}`,
             })),
           ]),
         userId: params.userId,
@@ -1632,6 +1648,7 @@ function buildShotVideoPromptVisionImages(
   locationReferenceImage?: { url: string; name?: string },
   barrierReferenceImage?: { url: string; name?: string },
   additionalImageUrls?: string[],
+  shotMediaReferenceImages?: VisionAwareImageInput[],
 ): VisionAwareImageInput[] {
   return [
     {
@@ -1660,6 +1677,7 @@ function buildShotVideoPromptVisionImages(
           },
         ]
       : []),
+    ...(shotMediaReferenceImages ?? []),
     // VideoPromptAiEditDialog — user-supplied additional reference images;
     // appended after all system-resolved reference images so the model
     // always sees the start frame first.
@@ -2880,6 +2898,11 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
    */
   attachShotImage?: boolean;
   additionalImageUrls?: string[];
+  /** Server-resolved, asset-backed media manifest. This is a factual input to
+   * the skill and is intentionally not rewritten after final optimization. */
+  shotMediaReferenceInstruction?: string;
+  /** Actual image members of the canonical bundle, with stable labels. */
+  shotMediaReferenceImages?: VisionAwareImageInput[];
 }
 
 export interface GenerateVerticalDramaShotVideoPromptResult {
@@ -2913,7 +2936,7 @@ export interface GenerateVerticalDramaShotVideoPromptResult {
   /**
    * Model-family-aware, vision-grounded video prompt quality upgrade
    * (`planning/vd-video-prompt-model-family-quality/plan.md`) — the video-
-   * prompt-shaping family (grok/veo/seedance/other) this call's fact block
+   * prompt-shaping family (grok/veo/seedance/gemini_omni/other) this call's fact block
    * resolved for `params.selectedVideoModel`/`selectedVideoModelId`. Always
    * present (never throws — see `resolveShotVideoPromptModelFamily`); the
    * router stamps this onto the persisted clip's `promptModelTarget.family`
@@ -3137,6 +3160,9 @@ export function buildShotVideoPromptUserPrompt(
     speakerFaceBindingInstruction,
     params.locationReferenceImage && params.attachShotImage !== false
       ? `Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: ${locationReferenceImageName}.`
+      : null,
+    params.shotMediaReferenceInstruction && params.attachShotImage !== false
+      ? params.shotMediaReferenceInstruction
       : null,
     shotContext.barrierMultiView
       ? renderVerticalDramaBarrierMultiViewFactBlock(shotContext.barrierMultiView)
@@ -3453,6 +3479,7 @@ export async function generateVerticalDramaShotVideoPrompt(
       params.locationReferenceImage,
       params.barrierReferenceImage,
       params.additionalImageUrls,
+      params.shotMediaReferenceImages,
     ),
     userId: params.userId,
     tenantId: params.tenantId,
@@ -3615,6 +3642,7 @@ export async function generateVerticalDramaShotVideoPrompt(
         params.locationReferenceImage,
         params.barrierReferenceImage,
         params.additionalImageUrls,
+        params.shotMediaReferenceImages,
       );
       const agentRepair = await tryRunVideoPromptRepairAgent({
         tenantId: params.tenantId,
@@ -3813,6 +3841,7 @@ export async function generateVerticalDramaShotVideoPrompt(
       params.locationReferenceImage,
       params.barrierReferenceImage,
       params.additionalImageUrls,
+      params.shotMediaReferenceImages,
     );
     const agentRepair = await tryRunVideoPromptRepairAgent({
       tenantId: params.tenantId,
@@ -4045,6 +4074,8 @@ export interface GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams
    * `buildSpeakerSwitchUserPrompt`.
    */
   locationReferenceImage?: { url: string; name?: string };
+  /** Server-resolved, asset-backed media manifest passed to the skill as facts. */
+  shotMediaReferenceInstruction?: string;
 }
 
 export interface GenerateVerticalDramaShotVideoPromptSpeakerSwitchResult {
@@ -4263,6 +4294,9 @@ function buildSpeakerSwitchUserPrompt(
     sceneContinuityLockBlock?.trim()
       ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${sceneContinuityLockBlock.trim()}`
       : null,
+    params.shotMediaReferenceInstruction && params.attachShotImage !== false
+      ? params.shotMediaReferenceInstruction
+      : null,
     // VideoPromptAiEditDialog — factual announcement of user-supplied
     // additional images (same purely-factual convention as character/location
     // reference images above; the actual creative use is in the
@@ -4470,6 +4504,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       params.locationReferenceImage,
       params.barrierReferenceImage,
       params.additionalImageUrls,
+      params.shotMediaReferenceImages,
     ),
     userId: params.userId,
     tenantId: params.tenantId,
@@ -4595,6 +4630,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
         params.locationReferenceImage,
         params.barrierReferenceImage,
         params.additionalImageUrls,
+        params.shotMediaReferenceImages,
       );
       const agentRepair = await tryRunVideoPromptRepairAgent({
         tenantId: params.tenantId,
@@ -4780,6 +4816,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       params.locationReferenceImage,
       params.barrierReferenceImage,
       params.additionalImageUrls,
+      params.shotMediaReferenceImages,
     );
     const agentRepair = await tryRunVideoPromptRepairAgent({
       tenantId: params.tenantId,
@@ -5270,6 +5307,7 @@ async function callVerticalDramaVideoPromptJudge(args: {
   barrierReferenceImage?: { url: string; name?: string };
   additionalImageUrls?: string[];
   attachShotImage?: boolean;
+  shotMediaReferenceImages?: VisionAwareImageInput[];
   idempotencyKey?: string;
   userPromptText: string;
 }): Promise<{ data: JudgeOutput; creditsUsed: number; model: string } | null> {
@@ -5295,6 +5333,7 @@ async function callVerticalDramaVideoPromptJudge(args: {
               args.locationReferenceImage,
               args.barrierReferenceImage,
               args.additionalImageUrls,
+              args.shotMediaReferenceImages,
             )
           : [],
       userId: args.userId,

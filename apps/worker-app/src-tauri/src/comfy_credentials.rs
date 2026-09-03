@@ -21,26 +21,35 @@ fn validate_reference(reference: &str) -> Result<&str, String> {
 
 pub fn store(reference: &str, secret: &str) -> Result<(), String> {
     let account = validate_reference(reference)?;
-    if secret.trim().is_empty() || secret.len() > 16 * 1024 || secret.chars().any(|ch| ch == '\n' || ch == '\r') {
+    if secret.trim().is_empty()
+        || secret.len() > 16 * 1024
+        || secret.chars().any(|ch| ch == '\n' || ch == '\r')
+    {
         return Err("comfy_credential_value_invalid".into());
     }
     let entry = keyring::Entry::new(SERVICE_NAME, account)
         .map_err(|_| "comfy_secure_store_unavailable".to_string())?;
-    entry.set_password(secret).map_err(|_| "comfy_secure_store_write_failed".to_string())
+    entry
+        .set_password(secret)
+        .map_err(|_| "comfy_secure_store_write_failed".to_string())
 }
 
 pub fn resolve(reference: &str) -> Result<String, String> {
     let account = validate_reference(reference)?;
     let entry = keyring::Entry::new(SERVICE_NAME, account)
         .map_err(|_| "comfy_secure_store_unavailable".to_string())?;
-    entry.get_password().map_err(|_| "comfy_secure_credential_missing".to_string())
+    entry
+        .get_password()
+        .map_err(|_| "comfy_secure_credential_missing".to_string())
 }
 
 pub fn delete(reference: &str) -> Result<(), String> {
     let account = validate_reference(reference)?;
     let entry = keyring::Entry::new(SERVICE_NAME, account)
         .map_err(|_| "comfy_secure_store_unavailable".to_string())?;
-    entry.delete_credential().map_err(|_| "comfy_secure_store_delete_failed".to_string())
+    entry
+        .delete_credential()
+        .map_err(|_| "comfy_secure_store_delete_failed".to_string())
 }
 
 #[cfg(test)]

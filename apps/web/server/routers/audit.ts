@@ -19,6 +19,10 @@ import {
 } from "../../drizzle/schema";
 import { eq, and, gte, lte, desc, sql, isNotNull, ilike, or } from "drizzle-orm";
 import { auditLogger } from "../services/auditLogger";
+import {
+  getSpecialTieInForensicEvent,
+  listSpecialTieInForensicEvents,
+} from "../services/verticalDramaSpecialTieInForensics";
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -413,6 +417,33 @@ export const auditRouter = router({
       });
       return { entries };
     }),
+
+  /**
+   * Admin-only forensic timeline for one exact special tie-in correlation.
+   * Raw request/response bodies are intentionally excluded from this list.
+   */
+  specialTieInDebugTimeline: adminProcedure
+    .input(
+      z.object({
+        episodeId: z.number().int().positive().optional(),
+        jobId: z.string().min(1).max(64).optional(),
+        traceId: z.string().min(1).max(128).optional(),
+        tenantId: z.string().min(1).max(36).optional(),
+        userId: z.number().int().positive().optional(),
+        limit: z.number().int().min(1).max(200).default(100),
+      }).refine(value => value.episodeId !== undefined || value.jobId !== undefined || value.traceId !== undefined, {
+        message: "An exact episodeId, jobId, or traceId is required",
+      })
+    )
+    .query(async ({ input }) => {
+      const rows = await listSpecialTieInForensicEvents(input);
+      return rows.map(({ requestPayload, responsePayload, ...summary }) => summary);
+    }),
+
+  /** Admin-only detail endpoint for one durable, already-redacted forensic event. */
+  specialTieInDebugEvent: adminProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .query(async ({ input }) => getSpecialTieInForensicEvent(input.id)),
 
   /**
    * Search orchestration audit events from JSONL logs.

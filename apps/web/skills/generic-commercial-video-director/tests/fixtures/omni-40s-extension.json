@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "สร้างรีวิวสินค้าแบบ tie-in ต่อเนื่อง 40 วินาที เริ่มจาก start frame และแบ่งเนื้อหาเป็นหลายช่วง",
+  "locale": "th-TH",
+  "contentMode": "presenter",
+  "format": {
+    "durationSeconds": 40,
+    "aspectRatio": "9:16",
+    "shotDurationPolicy": {
+      "mode": "allowed_values",
+      "allowedSeconds": [
+        8,
+        10,
+        15
+      ],
+      "preferredSeconds": 8
+    },
+    "multiShotStrategy": "extension_chain",
+    "extensionPolicy": {
+      "mode": "on",
+      "targetCumulativeDurationSeconds": 40,
+      "preferMinimumTurns": true,
+      "allowPlannedCutsBetweenExtensions": true,
+      "preserveDialogueAcrossTurns": true
+    }
+  },
+  "modelRouting": {
+    "mode": "locked",
+    "preferredModels": [
+      "gemini-omni-1.1-flash"
+    ],
+    "fallbackModels": [],
+    "allowCrossProviderFallback": false,
+    "requireNativeAudio": false,
+    "requireLipSync": false,
+    "optimizeFor": "quality"
+  }
+}

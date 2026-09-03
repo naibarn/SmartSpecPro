@@ -162,6 +162,34 @@ describe("executeJsonPlanningCallWithRetry", () => {
     expect(mockExecute).toHaveBeenCalledTimes(2);
   });
 
+  it("records the exact schema retry decision and remaining retry budget", async () => {
+    mockExecute
+      .mockResolvedValueOnce(successWith(TRUNCATED_JSON))
+      .mockResolvedValueOnce(successWith(VALID_JSON));
+    const retries: Array<Record<string, unknown>> = [];
+
+    await executeJsonPlanningCallWithRetry(
+      baseArgs({
+        maxSchemaRetries: 1,
+        maxTransientRetries: 0,
+        retryDecisionObserver: event => retries.push(event as unknown as Record<string, unknown>),
+      })
+    );
+
+    expect(retries).toHaveLength(1);
+    expect(retries[0]).toMatchObject({
+      classification: "schema",
+      planningAttemptNumber: 1,
+      schemaRetryNumber: 1,
+      remainingBudget: {
+        schemaRetries: 0,
+        transientRetries: 0,
+        totalAttempts: expect.any(Number),
+      },
+    });
+    expect(mockExecute.mock.calls[0][0].rawPayloadObserver).toEqual(expect.any(Function));
+  });
+
   it("forwards structured-output and provider-pinning controls to the router", async () => {
     mockExecute.mockResolvedValue(successWith(VALID_JSON));
 

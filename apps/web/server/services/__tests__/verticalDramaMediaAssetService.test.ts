@@ -74,6 +74,31 @@ describe("Vertical Drama media asset durability", () => {
     expect(mocks.storagePutFromPath).not.toHaveBeenCalled();
   });
 
+  it("reuses an existing ready managed result without creating a duplicate", async () => {
+    const db = makeDb([
+      {
+        id: 5187,
+        storageKey: "vertical-drama/57/image/start_frame/shot-1.png",
+        mimeType: "image/png",
+        status: "ready",
+      },
+    ]);
+    mocks.getDb.mockReturnValue(db);
+    mocks.storageExists.mockResolvedValue(true);
+
+    const result = await ensureVerticalDramaManagedMediaAsset({
+      tenantId: "tenant-1",
+      userId: 24,
+      sourceUrl:
+        "/api/storage/files/vertical-drama/57/image/start_frame/shot-1.png",
+      mediaType: "image",
+    });
+
+    expect(result?.mediaAssetId).toBe(5187);
+    expect(db.insert).not.toHaveBeenCalled();
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
   it("does not allow an unregistered managed URL to become asset ID zero", async () => {
     mocks.getDb.mockReturnValue(makeDb([]));
 

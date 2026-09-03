@@ -803,7 +803,12 @@ pub fn run_allowlisted_ffmpeg_segments(
                     literal("crop=if(gt(iw/ih\\,0.5625)\\,ih*9/16\\,iw):if(gt(iw/ih\\,0.5625)\\,ih\\,iw*16/9):if(gt(iw/ih\\,0.5625)\\,(iw-ih*9/16)/2\\,0):if(gt(iw/ih\\,0.5625)\\,0\\,(ih-iw*16/9)/2),scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2"),
                 ]);
             }
-            args.extend([literal("-c:v"), literal("libx264"), literal("-c:a"), literal("aac")]);
+            args.extend([
+                literal("-c:v"),
+                literal("libx264"),
+                literal("-c:a"),
+                literal("aac"),
+            ]);
             if mute_audio {
                 args.push(literal("-an"));
             }

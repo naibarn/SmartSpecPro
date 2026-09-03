@@ -1,0 +1,4 @@
+pydantic>=2.8,<3
+jsonschema>=4.23,<5
+packaging>=24.1
+openai-agents>=0.22.0,<0.23

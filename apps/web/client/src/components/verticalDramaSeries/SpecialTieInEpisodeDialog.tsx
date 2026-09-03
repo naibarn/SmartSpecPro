@@ -90,7 +90,7 @@ export const DEFAULT_SPECIAL_TIE_IN_DIALOGUE_MODE =
   "character_dialogue" as const;
 
 export function resolveSpecialTieInDialogueMode(
-  initialInput?: Pick<SpecialTieInInput, "dialogueMode"> | null,
+  initialInput?: Pick<SpecialTieInInput, "dialogueMode"> | null
 ): "none" | "character_dialogue" {
   return initialInput?.dialogueMode ?? DEFAULT_SPECIAL_TIE_IN_DIALOGUE_MODE;
 }
@@ -107,8 +107,7 @@ export function resolveSpecialTieInActionState(input: {
   materializeMutationPending: boolean;
 }) {
   return {
-    finalSubmitPending:
-      input.createMutationPending || input.finalSubmitPending,
+    finalSubmitPending: input.createMutationPending || input.finalSubmitPending,
     materializeReferencesPending: input.materializeMutationPending,
   };
 }
@@ -134,12 +133,30 @@ function parseEditableDialogueScript(
 
 type CharacterPortraitAsset = {
   characterId?: string;
+  assetType?: string;
   role?: string;
   approved?: boolean;
   state?: string;
   thumbnailUrl?: string;
   updatedAt?: string;
 };
+
+export function isUsableSpecialTieInPortrait(
+  asset: CharacterPortraitAsset | undefined
+) {
+  return Boolean(
+    asset?.characterId &&
+    asset.thumbnailUrl &&
+    asset.assetType === "character_reference" &&
+    (asset.role === "primary_portrait" ||
+      asset.role === "primary_reference" ||
+      asset.role === "casting_reference") &&
+    (asset.approved === true ||
+      asset.state === "approved" ||
+      asset.state === "generated" ||
+      asset.state === "imported")
+  );
+}
 
 type PublicMediaModel = {
   modelId: string;
@@ -195,7 +212,8 @@ function SpecialTieInModelCombobox({
           className="h-auto min-h-9 w-full justify-between gap-2 text-left font-normal"
         >
           <span className="min-w-0 flex-1 truncate">
-            {(selectedModel?.label ?? selectedModel?.modelId ?? value) || placeholder}
+            {(selectedModel?.label ?? selectedModel?.modelId ?? value) ||
+              placeholder}
           </span>
           <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -258,9 +276,12 @@ function IdeaLlmModelCombobox({
 }) {
   const [open, setOpen] = useState(false);
   const selected = models.find(model => model.modelId === value);
-  const selectedLabel = value === "auto"
-    ? lang === "th" ? "อัตโนมัติ (แนะนำ)" : "Automatic (recommended)"
-    : selected?.label ?? value;
+  const selectedLabel =
+    value === "auto"
+      ? lang === "th"
+        ? "อัตโนมัติ (แนะนำ)"
+        : "Automatic (recommended)"
+      : (selected?.label ?? value);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -270,7 +291,9 @@ function IdeaLlmModelCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          aria-label={lang === "th" ? "เลือก LLM สร้างไอเดีย" : "Select idea LLM"}
+          aria-label={
+            lang === "th" ? "เลือก LLM สร้างไอเดีย" : "Select idea LLM"
+          }
           disabled={disabled}
           className="h-auto min-h-9 w-full justify-between gap-2 text-left font-normal"
         >
@@ -278,11 +301,22 @@ function IdeaLlmModelCombobox({
           <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[min(30rem,calc(100vw-2rem))] p-0">
+      <PopoverContent
+        align="start"
+        className="w-[min(30rem,calc(100vw-2rem))] p-0"
+      >
         <Command>
-          <CommandInput placeholder={lang === "th" ? "ค้นหา LLM สร้างไอเดีย..." : "Search idea LLMs..."} />
+          <CommandInput
+            placeholder={
+              lang === "th" ? "ค้นหา LLM สร้างไอเดีย..." : "Search idea LLMs..."
+            }
+          />
           <CommandList className="max-h-[min(60vh,28rem)]">
-            <CommandEmpty>{lang === "th" ? "ไม่พบ LLM ที่เลือกได้" : "No eligible LLM found"}</CommandEmpty>
+            <CommandEmpty>
+              {lang === "th"
+                ? "ไม่พบ LLM ที่เลือกได้"
+                : "No eligible LLM found"}
+            </CommandEmpty>
             <CommandItem
               value="auto automatic recommended"
               onSelect={() => {
@@ -290,10 +324,20 @@ function IdeaLlmModelCombobox({
                 setOpen(false);
               }}
             >
-              <Check className={`mr-2 h-4 w-4 ${value === "auto" ? "opacity-100" : "opacity-0"}`} />
+              <Check
+                className={`mr-2 h-4 w-4 ${value === "auto" ? "opacity-100" : "opacity-0"}`}
+              />
               <span>
-                <span className="block font-medium">{lang === "th" ? "อัตโนมัติ (แนะนำ)" : "Automatic (recommended)"}</span>
-                <span className="block text-xs text-muted-foreground">{lang === "th" ? "ระบบเลือกจาก model ที่ admin แนะนำและพร้อมใช้งาน" : "Choose from admin-recommended, routable models"}</span>
+                <span className="block font-medium">
+                  {lang === "th"
+                    ? "อัตโนมัติ (แนะนำ)"
+                    : "Automatic (recommended)"}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {lang === "th"
+                    ? "ระบบเลือกจาก model ที่ admin แนะนำและพร้อมใช้งาน"
+                    : "Choose from admin-recommended, routable models"}
+                </span>
               </span>
             </CommandItem>
             {models.map(model => (
@@ -305,13 +349,24 @@ function IdeaLlmModelCombobox({
                   setOpen(false);
                 }}
               >
-                <Check className={`mr-2 h-4 w-4 ${value === model.modelId ? "opacity-100" : "opacity-0"}`} />
+                <Check
+                  className={`mr-2 h-4 w-4 ${value === model.modelId ? "opacity-100" : "opacity-0"}`}
+                />
                 <span className="min-w-0">
                   <span className="block truncate font-medium">
                     {model.label}
-                    {model.isRecommended ? <Badge variant="secondary" className="ml-2">{lang === "th" ? "แนะนำ" : "Recommended"}</Badge> : null}
+                    {model.isRecommended ? (
+                      <Badge variant="secondary" className="ml-2">
+                        {lang === "th" ? "แนะนำ" : "Recommended"}
+                      </Badge>
+                    ) : null}
                   </span>
-                  <span className="block truncate text-xs text-muted-foreground">{model.provider}{model.isDefault ? ` · ${lang === "th" ? "ค่าเริ่มต้น" : "default"}` : ""}</span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {model.provider}
+                    {model.isDefault
+                      ? ` · ${lang === "th" ? "ค่าเริ่มต้น" : "default"}`
+                      : ""}
+                  </span>
                 </span>
               </CommandItem>
             ))}
@@ -334,8 +389,13 @@ function readAsDataUrl(file: File): Promise<string> {
 
 async function sha256Fingerprint(value: string): Promise<string> {
   if (typeof crypto !== "undefined" && crypto.subtle) {
-    const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-    return Array.from(new Uint8Array(bytes)).map(byte => byte.toString(16).padStart(2, "0")).join("");
+    const bytes = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(value)
+    );
+    return Array.from(new Uint8Array(bytes))
+      .map(byte => byte.toString(16).padStart(2, "0"))
+      .join("");
   }
   // Browser crypto is available in supported production browsers. This
   // deterministic fallback keeps the editor usable in older test harnesses;
@@ -349,6 +409,7 @@ export function SpecialTieInEpisodeDialog({
   open,
   onOpenChange,
   onCreated,
+  onOpenCharacterSettings,
   initialInput,
   onSubmitInput,
 }: {
@@ -357,6 +418,7 @@ export function SpecialTieInEpisodeDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: (episodeId: string) => void;
+  onOpenCharacterSettings?: () => void;
   initialInput?: SpecialTieInInput | null;
   onSubmitInput?: (input: SpecialTieInInput) => Promise<void>;
 }) {
@@ -368,7 +430,7 @@ export function SpecialTieInEpisodeDialog({
   const [durationSeconds, setDurationSeconds] = useState(10);
   const [dialogueMode, setDialogueMode] = useState<
     "none" | "character_dialogue"
-  >("none");
+  >(() => resolveSpecialTieInDialogueMode(initialInput));
   const [dialogueBrief, setDialogueBrief] = useState("");
   const [allowAdditionalCharacters, setAllowAdditionalCharacters] =
     useState(false);
@@ -395,8 +457,12 @@ export function SpecialTieInEpisodeDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMaterializingReferences, setIsMaterializingReferences] =
     useState(false);
-  const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
-  const [ideaHistory, setIdeaHistory] = useState<Array<{ runId: string; ideas: MarketplaceReviewIdea[] }>>([]);
+  const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(
+    null
+  );
+  const [ideaHistory, setIdeaHistory] = useState<
+    Array<{ runId: string; ideas: MarketplaceReviewIdea[] }>
+  >([]);
   const [freshIdeaRunId, setFreshIdeaRunId] = useState<string | null>(null);
   const [showIdeaHistory, setShowIdeaHistory] = useState(false);
   const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null);
@@ -404,9 +470,15 @@ export function SpecialTieInEpisodeDialog({
     useState<MarketplaceReviewIdea | null>(null);
   const [footageAssetId, setFootageAssetId] = useState<number | null>(null);
   const [footageFileName, setFootageFileName] = useState("");
-  const [footagePreviewUrl, setFootagePreviewUrl] = useState<string | null>(null);
-  const [footageAnalysisJobId, setFootageAnalysisJobId] = useState<string | null>(null);
-  const [footagePrepareJobId, setFootagePrepareJobId] = useState<string | null>(null);
+  const [footagePreviewUrl, setFootagePreviewUrl] = useState<string | null>(
+    null
+  );
+  const [footageAnalysisJobId, setFootageAnalysisJobId] = useState<
+    string | null
+  >(null);
+  const [footagePrepareJobId, setFootagePrepareJobId] = useState<string | null>(
+    null
+  );
   const [footageTrimStartMs, setFootageTrimStartMs] = useState(0);
   const [footageTrimEndMs, setFootageTrimEndMs] = useState(0);
   const [footageFullscreen, setFootageFullscreen] = useState(false);
@@ -414,7 +486,9 @@ export function SpecialTieInEpisodeDialog({
   const [brollStartMs, setBrollStartMs] = useState(0);
   const [brollEndMs, setBrollEndMs] = useState(5000);
   const [brollSourceInMs, setBrollSourceInMs] = useState(0);
-  const [brollPlacements, setBrollPlacements] = useState<FootageBrollPlacement[]>([]);
+  const [brollPlacements, setBrollPlacements] = useState<
+    FootageBrollPlacement[]
+  >([]);
   const [brollRenderJobId, setBrollRenderJobId] = useState<string | null>(null);
   const [brollFullscreen, setBrollFullscreen] = useState(false);
   const debouncedProductQuery = useDebouncedValue(productQuery, 300);
@@ -511,6 +585,11 @@ export function SpecialTieInEpisodeDialog({
     trpc.verticalDramaEpisodes.materializeSpecialMarketplaceImage.useMutation();
   const createMutation =
     trpc.verticalDramaEpisodes.createSpecialTieInEpisode.useMutation();
+  // Feature 174 bridge: keep the existing Special Tie-in input and create a
+  // shared commercial object in the background. Catalog failure must never
+  // block episode creation or spend a second generation attempt.
+  const ensureCommercialObjectReferenceMutation =
+    trpc.verticalDramaSeries.ensureCommercialObjectReference.useMutation();
   const generateIdeasMutation =
     trpc.verticalDramaEpisodes.generateMarketplaceReviewIdeas.useMutation();
   const selectIdeaMutation =
@@ -526,7 +605,11 @@ export function SpecialTieInEpisodeDialog({
   const brollAssetsQuery =
     trpc.verticalDramaEpisodes.listSpecialTieInFootageAssets.useQuery(
       { seriesId },
-      { enabled: open && Boolean(footagePrepareJobId), staleTime: 15_000, refetchOnWindowFocus: false }
+      {
+        enabled: open && Boolean(footagePrepareJobId),
+        staleTime: 15_000,
+        refetchOnWindowFocus: false,
+      }
     );
   const brollRenderJobQuery =
     trpc.verticalDramaEpisodes.getSpecialTieInFootageJob.useQuery(
@@ -535,7 +618,16 @@ export function SpecialTieInEpisodeDialog({
         enabled: open && Boolean(brollRenderJobId),
         refetchInterval: query => {
           const status = query.state.data?.status;
-          return brollRenderJobId && !["completed", "published", "failed", "canceled", "expired"].includes(status ?? "") ? 2500 : false;
+          return brollRenderJobId &&
+            ![
+              "completed",
+              "published",
+              "failed",
+              "canceled",
+              "expired",
+            ].includes(status ?? "")
+            ? 2500
+            : false;
         },
         refetchOnWindowFocus: false,
       }
@@ -547,7 +639,17 @@ export function SpecialTieInEpisodeDialog({
         enabled: open && Boolean(footageAnalysisJobId),
         refetchInterval: query => {
           const status = query.state.data?.status;
-          return footageAnalysisJobId && !["completed", "published", "failed", "canceled", "expired", "quarantined"].includes(status ?? "") ? 2500 : false;
+          return footageAnalysisJobId &&
+            ![
+              "completed",
+              "published",
+              "failed",
+              "canceled",
+              "expired",
+              "quarantined",
+            ].includes(status ?? "")
+            ? 2500
+            : false;
         },
         refetchOnWindowFocus: false,
       }
@@ -559,7 +661,16 @@ export function SpecialTieInEpisodeDialog({
         enabled: open && Boolean(footagePrepareJobId),
         refetchInterval: query => {
           const status = query.state.data?.status;
-          return footagePrepareJobId && !["completed", "published", "failed", "canceled", "expired"].includes(status ?? "") ? 2500 : false;
+          return footagePrepareJobId &&
+            ![
+              "completed",
+              "published",
+              "failed",
+              "canceled",
+              "expired",
+            ].includes(status ?? "")
+            ? 2500
+            : false;
         },
         refetchOnWindowFocus: false,
       }
@@ -569,21 +680,44 @@ export function SpecialTieInEpisodeDialog({
       { seriesId, productId: selectedProductId ?? undefined },
       { enabled: open && Boolean(selectedProductId), staleTime: 10_000 }
     );
-  const footageAnalysisOutput = footageAnalysisJobQuery.data?.outputJson as {
-    guide?: { probe?: { durationMs?: number | null }; status?: { guide?: string; warnings?: string[] } };
-  } | null | undefined;
-  const footageDurationMs = Number(footageAnalysisOutput?.guide?.probe?.durationMs ?? 0);
-  const footageAnalysisDone = ["published", "completed"].includes(footageAnalysisJobQuery.data?.status ?? "");
-  const footagePrepared = ["completed", "published"].includes(footagePrepareJobQuery.data?.status ?? "");
-  const preparedSource = mediaSourceManifestSchema.safeParse(
-    (footagePrepareJobQuery.data?.outputJson as { preparedSource?: unknown } | null | undefined)?.preparedSource
+  const footageAnalysisOutput = footageAnalysisJobQuery.data?.outputJson as
+    | {
+        guide?: {
+          probe?: { durationMs?: number | null };
+          status?: { guide?: string; warnings?: string[] };
+        };
+      }
+    | null
+    | undefined;
+  const footageDurationMs = Number(
+    footageAnalysisOutput?.guide?.probe?.durationMs ?? 0
   );
-  const preparedDurationMs = preparedSource.success && preparedSource.data.durationMs != null
-    ? preparedSource.data.durationMs
-    : footageDurationMs;
-  const brollAssets = (brollAssetsQuery.data?.assets ?? []) as FootageBrollAsset[];
-  const brollOutput = brollRenderJobQuery.data?.outputJson as { outputUrl?: string } | null | undefined;
-  const brollOutputUrl = typeof brollOutput?.outputUrl === "string" ? brollOutput.outputUrl : null;
+  const footageAnalysisDone = ["published", "completed"].includes(
+    footageAnalysisJobQuery.data?.status ?? ""
+  );
+  const footagePrepared = ["completed", "published"].includes(
+    footagePrepareJobQuery.data?.status ?? ""
+  );
+  const preparedSource = mediaSourceManifestSchema.safeParse(
+    (
+      footagePrepareJobQuery.data?.outputJson as
+        | { preparedSource?: unknown }
+        | null
+        | undefined
+    )?.preparedSource
+  );
+  const preparedDurationMs =
+    preparedSource.success && preparedSource.data.durationMs != null
+      ? preparedSource.data.durationMs
+      : footageDurationMs;
+  const brollAssets = (brollAssetsQuery.data?.assets ??
+    []) as FootageBrollAsset[];
+  const brollOutput = brollRenderJobQuery.data?.outputJson as
+    | { outputUrl?: string }
+    | null
+    | undefined;
+  const brollOutputUrl =
+    typeof brollOutput?.outputUrl === "string" ? brollOutput.outputUrl : null;
 
   useEffect(() => {
     if (!open || !initialInput) return;
@@ -605,7 +739,9 @@ export function SpecialTieInEpisodeDialog({
     setSelectedSceneLocationKey(initialInput.sceneLocationKey ?? null);
     setSceneSuggestions([]);
     if (initialInput.footage) {
-      setFootageAssetId(Number(initialInput.footage.sourceMediaAssetId.replace(/^media-/, "")));
+      setFootageAssetId(
+        Number(initialInput.footage.sourceMediaAssetId.replace(/^media-/, ""))
+      );
       setFootageAnalysisJobId(initialInput.footage.analysisJobId);
       setFootagePrepareJobId(initialInput.footage.prepareJobId);
       setFootageTrimEndMs(initialInput.footage.guide.probe.durationMs ?? 0);
@@ -618,7 +754,9 @@ export function SpecialTieInEpisodeDialog({
 
   useEffect(() => {
     if (footageAssetId && !footagePreviewUrl) {
-      const source = brollAssets.find(asset => asset.manifest.assetId === `media-${footageAssetId}`);
+      const source = brollAssets.find(
+        asset => asset.manifest.assetId === `media-${footageAssetId}`
+      );
       if (source?.previewUrl) setFootagePreviewUrl(source.previewUrl);
     }
   }, [brollAssets, footageAssetId, footagePreviewUrl]);
@@ -645,7 +783,8 @@ export function SpecialTieInEpisodeDialog({
 
   useEffect(() => {
     return () => {
-      if (footagePreviewUrl?.startsWith("blob:")) URL.revokeObjectURL(footagePreviewUrl);
+      if (footagePreviewUrl?.startsWith("blob:"))
+        URL.revokeObjectURL(footagePreviewUrl);
     };
   }, [footagePreviewUrl]);
 
@@ -664,17 +803,7 @@ export function SpecialTieInEpisodeDialog({
           | { manifest?: { assets?: CharacterPortraitAsset[] } }
           | undefined
       )?.manifest?.assets ?? []
-    ).filter(
-      asset =>
-        Boolean(asset.characterId && asset.thumbnailUrl) &&
-        (asset.role === "primary_portrait" ||
-          asset.role === "primary_reference" ||
-          asset.role === "casting_reference") &&
-        (asset.approved ||
-          asset.state === "approved" ||
-          asset.state === "generated" ||
-          asset.state === "imported")
-    );
+    ).filter(asset => isUsableSpecialTieInPortrait(asset));
     const portraitByCharacterId = new Map<string, CharacterPortraitAsset>();
     for (const asset of [...assets].sort((left, right) => {
       if (left.approved !== right.approved) return left.approved ? -1 : 1;
@@ -705,13 +834,20 @@ export function SpecialTieInEpisodeDialog({
   const approvedLocationAssets = (
     locationAssetsQuery.data?.assets ?? []
   ).filter(asset => asset.approved && asset.mediaAssetId);
+  const selectedCharacterIdsWithoutUsablePortrait = characterIds.filter(
+    id => !characterPortraitById.has(id)
+  );
   const fallbackImageModels = useMemo<SpecialModelSnapshot[]>(() => {
-    const models = (publicImageModelsQuery.data?.models ?? []) as unknown as PublicMediaModel[];
+    const models = (publicImageModelsQuery.data?.models ??
+      []) as unknown as PublicMediaModel[];
     return models
-      .filter(model =>
-        (!model.aspectRatios?.length || model.aspectRatios.includes("9:16")) &&
-        (model.maxReferenceImages == null ||
-          model.maxReferenceImages >= Math.max(1, references.length))
+      .filter(
+        model =>
+          (!model.aspectRatios?.length ||
+            model.aspectRatios.includes("9:16")) &&
+          (model.maxReferenceImages == null ||
+            model.maxReferenceImages >=
+              Math.max(1, references.length) + characterIds.length)
       )
       .map(model => ({
         modelId: model.modelId,
@@ -727,17 +863,26 @@ export function SpecialTieInEpisodeDialog({
         maxReferenceImages: model.maxReferenceImages ?? undefined,
         supportsDialogueAudio: false,
       }));
-  }, [publicImageModelsQuery.data?.models, references.length]);
+  }, [
+    characterIds.length,
+    publicImageModelsQuery.data?.models,
+    references.length,
+  ]);
   const fallbackVideoModels = useMemo<SpecialModelSnapshot[]>(() => {
-    const models = (publicVideoModelsQuery.data?.models ?? []) as unknown as PublicMediaModel[];
+    const models = (publicVideoModelsQuery.data?.models ??
+      []) as unknown as PublicMediaModel[];
     return models
-      .filter(model =>
-        (!model.aspectRatios?.length || model.aspectRatios.includes("9:16")) &&
-        (!model.durations?.length || model.durations.includes(durationSeconds)) &&
-        (model.maxReferenceImages == null ||
-          model.maxReferenceImages >= Math.max(1, references.length)) &&
-        model.supportsStartFrame === true &&
-        (dialogueMode === "none" || model.nativeAudioDialogue === true)
+      .filter(
+        model =>
+          (!model.aspectRatios?.length ||
+            model.aspectRatios.includes("9:16")) &&
+          (!model.durations?.length ||
+            model.durations.includes(durationSeconds)) &&
+          (model.maxReferenceImages == null ||
+            model.maxReferenceImages >=
+              Math.max(1, references.length) + characterIds.length) &&
+          model.supportsStartFrame === true &&
+          (dialogueMode === "none" || model.nativeAudioDialogue === true)
       )
       .map(model => ({
         modelId: model.modelId,
@@ -756,19 +901,19 @@ export function SpecialTieInEpisodeDialog({
   }, [
     dialogueMode,
     durationSeconds,
+    characterIds.length,
     publicVideoModelsQuery.data?.models,
     references.length,
   ]);
-  const imageModels =
-    modelsQuery.data?.imageModels?.length
-      ? modelsQuery.data.imageModels
-      : fallbackImageModels;
-  const videoModels =
-    modelsQuery.data?.videoModels?.length
-      ? modelsQuery.data.videoModels
-      : fallbackVideoModels;
+  const imageModels = modelsQuery.data?.imageModels?.length
+    ? modelsQuery.data.imageModels
+    : fallbackImageModels;
+  const videoModels = modelsQuery.data?.videoModels?.length
+    ? modelsQuery.data.videoModels
+    : fallbackVideoModels;
   const usingPublicModelFallback =
-    !modelsQuery.data?.imageModels?.length || !modelsQuery.data?.videoModels?.length;
+    !modelsQuery.data?.imageModels?.length ||
+    !modelsQuery.data?.videoModels?.length;
   const selectedImageModelIsValid = imageModels.some(
     model => model.modelId === imageModelId
   );
@@ -782,10 +927,19 @@ export function SpecialTieInEpisodeDialog({
     references.length <= 3 &&
     selectedImageModelIsValid &&
     selectedVideoModelIsValid &&
-    (!footageAssetId || ["completed", "published"].includes(footagePrepareJobQuery.data?.status ?? "")) &&
+    selectedCharacterIdsWithoutUsablePortrait.length === 0 &&
+    (!footageAssetId ||
+      ["completed", "published"].includes(
+        footagePrepareJobQuery.data?.status ?? ""
+      )) &&
     !(
       dialogueMode === "character_dialogue" && speakerCharacterIds.length === 0
     );
+  const actionState = resolveSpecialTieInActionState({
+    createMutationPending: createMutation.isPending,
+    finalSubmitPending: isSubmitting,
+    materializeMutationPending: isMaterializingReferences,
+  });
 
   useEffect(() => {
     if (!imageModelId && imageModels.length > 0)
@@ -804,14 +958,21 @@ export function SpecialTieInEpisodeDialog({
     ) {
       setDurationSeconds(fallbackDuration);
     }
-  }, [durationSeconds, modelsQuery.data, modelsQuery.isLoading, videoModels.length]);
+  }, [
+    durationSeconds,
+    modelsQuery.data,
+    modelsQuery.isLoading,
+    videoModels.length,
+  ]);
 
   useEffect(() => {
     if (!ideaHistoryQuery.data) return;
-    const nextHistory = ideaHistoryQuery.data.map((run: { id: string; ideas: MarketplaceReviewIdea[] }) => ({
-      runId: run.id,
-      ideas: run.ideas,
-    }));
+    const nextHistory = ideaHistoryQuery.data.map(
+      (run: { id: string; ideas: MarketplaceReviewIdea[] }) => ({
+        runId: run.id,
+        ideas: run.ideas,
+      })
+    );
     setIdeaHistory(nextHistory);
     setFreshIdeaRunId(current =>
       current && nextHistory.some(run => run.runId === current) ? current : null
@@ -825,11 +986,7 @@ export function SpecialTieInEpisodeDialog({
   const ideaRunsToShow = useMemo(() => {
     if (freshIdeaRunId) {
       const freshRun = ideaHistory.find(run => run.runId === freshIdeaRunId);
-      return showIdeaHistory
-        ? ideaHistory
-        : freshRun
-          ? [freshRun]
-          : [];
+      return showIdeaHistory ? ideaHistory : freshRun ? [freshRun] : [];
     }
     return showIdeaHistory ? ideaHistory : [];
   }, [freshIdeaRunId, ideaHistory, showIdeaHistory]);
@@ -888,43 +1045,105 @@ export function SpecialTieInEpisodeDialog({
 
   const uploadFootage = async (file: File) => {
     if (!file.type.startsWith("video/")) {
-      throw new Error(lang === "th" ? "รองรับเฉพาะไฟล์วิดีโอ" : "Only video files are supported");
+      throw new Error(
+        lang === "th"
+          ? "รองรับเฉพาะไฟล์วิดีโอ"
+          : "Only video files are supported"
+      );
     }
     if (file.size > 2 * 1024 * 1024 * 1024) {
-      throw new Error(lang === "th" ? "ไฟล์วิดีโอต้องมีขนาดไม่เกิน 2 GB" : "Video must be 2 GB or smaller");
+      throw new Error(
+        lang === "th"
+          ? "ไฟล์วิดีโอต้องมีขนาดไม่เกิน 2 GB"
+          : "Video must be 2 GB or smaller"
+      );
     }
     const initResponse = await fetch("/api/media-jobs/upload/init", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ filename: file.name, contentType: file.type, fileSize: file.size }),
+      body: JSON.stringify({
+        filename: file.name,
+        contentType: file.type,
+        fileSize: file.size,
+      }),
     });
-    if (!initResponse.ok) throw new Error(lang === "th" ? "เริ่มอัปโหลด Footage ไม่สำเร็จ" : "Could not initialize footage upload");
-    const init = (await initResponse.json()) as { method?: string; assetId?: string; key?: string; uploadUrl?: string };
+    if (!initResponse.ok)
+      throw new Error(
+        lang === "th"
+          ? "เริ่มอัปโหลด Footage ไม่สำเร็จ"
+          : "Could not initialize footage upload"
+      );
+    const init = (await initResponse.json()) as {
+      method?: string;
+      assetId?: string;
+      key?: string;
+      uploadUrl?: string;
+    };
     let mediaAssetId: string | number | undefined;
     let previewUrl: string | undefined;
-    if (init.method === "presigned" && init.assetId && init.key && init.uploadUrl) {
-      const putResponse = await fetch(init.uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-      if (!putResponse.ok) throw new Error(lang === "th" ? "อัปโหลด Footage ไป Storage ไม่สำเร็จ" : "Could not upload footage to storage");
+    if (
+      init.method === "presigned" &&
+      init.assetId &&
+      init.key &&
+      init.uploadUrl
+    ) {
+      const putResponse = await fetch(init.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!putResponse.ok)
+        throw new Error(
+          lang === "th"
+            ? "อัปโหลด Footage ไป Storage ไม่สำเร็จ"
+            : "Could not upload footage to storage"
+        );
       const completeResponse = await fetch("/api/media-jobs/upload/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ assetId: init.assetId, key: init.key, contentType: file.type, fileSize: file.size }),
+        body: JSON.stringify({
+          assetId: init.assetId,
+          key: init.key,
+          contentType: file.type,
+          fileSize: file.size,
+        }),
       });
-      if (!completeResponse.ok) throw new Error(lang === "th" ? "ยืนยัน Footage ไม่สำเร็จ" : "Could not finalize footage upload");
-      const complete = (await completeResponse.json()) as { mediaAssetId?: string; uri?: string };
+      if (!completeResponse.ok)
+        throw new Error(
+          lang === "th"
+            ? "ยืนยัน Footage ไม่สำเร็จ"
+            : "Could not finalize footage upload"
+        );
+      const complete = (await completeResponse.json()) as {
+        mediaAssetId?: string;
+        uri?: string;
+      };
       mediaAssetId = complete.mediaAssetId;
       previewUrl = complete.uri;
     } else {
       // Local-storage fallback retains the existing authenticated upload path.
       const dataUrl = await readAsDataUrl(file);
-      const uploaded = await uploadMutation.mutateAsync({ fileName: file.name, fileType: file.type, fileBase64: dataUrl });
-      const managed = await registerUploadMutation.mutateAsync({ storageKey: uploaded.key, mediaType: "video", mimeType: file.type });
+      const uploaded = await uploadMutation.mutateAsync({
+        fileName: file.name,
+        fileType: file.type,
+        fileBase64: dataUrl,
+      });
+      const managed = await registerUploadMutation.mutateAsync({
+        storageKey: uploaded.key,
+        mediaType: "video",
+        mimeType: file.type,
+      });
       mediaAssetId = managed.mediaAssetId;
       previewUrl = uploaded.url;
     }
-    if (!mediaAssetId) throw new Error(lang === "th" ? "ไม่พบ Media Asset หลังอัปโหลด" : "No managed media asset was returned");
+    if (!mediaAssetId)
+      throw new Error(
+        lang === "th"
+          ? "ไม่พบ Media Asset หลังอัปโหลด"
+          : "No managed media asset was returned"
+      );
     setFootageAssetId(Number(mediaAssetId));
     setFootageFileName(file.name);
     setFootagePreviewUrl(previewUrl ?? URL.createObjectURL(file));
@@ -949,16 +1168,40 @@ export function SpecialTieInEpisodeDialog({
 
   const prepareFootage = async () => {
     if (!footageAssetId || !footageAnalysisJobQuery.data) return;
-    const guide = (footageAnalysisJobQuery.data.outputJson as { guide?: { sourceRevision?: string; probe?: { durationMs?: number | null }; silenceRanges?: Array<{ startMs: number; endMs: number }> } } | null)?.guide;
-    const durationMs = Math.max(1000, Number(guide?.probe?.durationMs ?? footageTrimEndMs ?? 60_000));
-    const endMs = Math.min(durationMs, Math.max(footageTrimEndMs || durationMs, footageTrimStartMs + 1000));
+    const guide = (
+      footageAnalysisJobQuery.data.outputJson as {
+        guide?: {
+          sourceRevision?: string;
+          probe?: { durationMs?: number | null };
+          silenceRanges?: Array<{ startMs: number; endMs: number }>;
+        };
+      } | null
+    )?.guide;
+    const durationMs = Math.max(
+      1000,
+      Number(guide?.probe?.durationMs ?? footageTrimEndMs ?? 60_000)
+    );
+    const endMs = Math.min(
+      durationMs,
+      Math.max(footageTrimEndMs || durationMs, footageTrimStartMs + 1000)
+    );
     const startMs = Math.min(Math.max(0, footageTrimStartMs), endMs - 1000);
-    const approvalFingerprint = await sha256Fingerprint(`${footageAssetId}:${guide?.sourceRevision ?? footageAnalysisJobQuery.data.id}:${startMs}:${endMs}:preserve:9:16_cover`);
+    const approvalFingerprint = await sha256Fingerprint(
+      `${footageAssetId}:${guide?.sourceRevision ?? footageAnalysisJobQuery.data.id}:${startMs}:${endMs}:preserve:9:16_cover`
+    );
     const result = await footagePrepareMutation.mutateAsync({
       seriesId,
       mediaAssetId: footageAssetId,
-      analysisRevision: guide?.sourceRevision ?? footageAnalysisJobQuery.data.id,
-      segments: [{ sourceInMs: startMs, sourceOutMs: endMs, keep: true, reason: "user_approved_primary_window" }],
+      analysisRevision:
+        guide?.sourceRevision ?? footageAnalysisJobQuery.data.id,
+      segments: [
+        {
+          sourceInMs: startMs,
+          sourceOutMs: endMs,
+          keep: true,
+          reason: "user_approved_primary_window",
+        },
+      ],
       silenceRanges: guide?.silenceRanges ?? [],
       removeDeadAir: true,
       baseAudioPolicy: "preserve",
@@ -970,19 +1213,37 @@ export function SpecialTieInEpisodeDialog({
   };
 
   const addBrollPlacement = () => {
-    const asset = brollAssets.find(item => item.manifest.assetId === brollAssetId);
+    const asset = brollAssets.find(
+      item => item.manifest.assetId === brollAssetId
+    );
     const startMs = Math.max(0, Math.round(brollStartMs));
     const endMs = Math.min(preparedDurationMs, Math.round(brollEndMs));
     if (!asset) {
-      toast.error(lang === "th" ? "เลือกวิดีโอ B-roll ก่อน" : "Choose a B-roll video first");
+      toast.error(
+        lang === "th"
+          ? "เลือกวิดีโอ B-roll ก่อน"
+          : "Choose a B-roll video first"
+      );
       return;
     }
-    if (!preparedSource.success || preparedDurationMs <= 0 || endMs <= startMs) {
-      toast.error(lang === "th" ? "ช่วงเวลาวาง B-roll ไม่ถูกต้อง" : "The B-roll placement range is invalid");
+    if (
+      !preparedSource.success ||
+      preparedDurationMs <= 0 ||
+      endMs <= startMs
+    ) {
+      toast.error(
+        lang === "th"
+          ? "ช่วงเวลาวาง B-roll ไม่ถูกต้อง"
+          : "The B-roll placement range is invalid"
+      );
       return;
     }
     if (brollPlacements.length >= 32) {
-      toast.error(lang === "th" ? "เพิ่ม B-roll ได้ไม่เกิน 32 ช่วง" : "You can add at most 32 B-roll placements");
+      toast.error(
+        lang === "th"
+          ? "เพิ่ม B-roll ได้ไม่เกิน 32 ช่วง"
+          : "You can add at most 32 B-roll placements"
+      );
       return;
     }
     const durationMs = endMs - startMs;
@@ -999,7 +1260,12 @@ export function SpecialTieInEpisodeDialog({
       brollAudioPolicy: "mute",
     });
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? (lang === "th" ? "ข้อมูล B-roll ไม่ถูกต้อง" : "Invalid B-roll placement"));
+      toast.error(
+        parsed.error.issues[0]?.message ??
+          (lang === "th"
+            ? "ข้อมูล B-roll ไม่ถูกต้อง"
+            : "Invalid B-roll placement")
+      );
       return;
     }
     setBrollPlacements(current => [...current, parsed.data]);
@@ -1008,25 +1274,48 @@ export function SpecialTieInEpisodeDialog({
   };
 
   const renderBroll = async () => {
-    if (!preparedSource.success || !selectedMarketplaceIdea || brollPlacements.length === 0) {
-      toast.error(lang === "th" ? "เลือกไอเดีย ตรวจเรื่อง และเพิ่มตำแหน่ง B-roll ก่อน render" : "Select and review an idea, then add a B-roll placement before rendering");
+    if (
+      !preparedSource.success ||
+      !selectedMarketplaceIdea ||
+      brollPlacements.length === 0
+    ) {
+      toast.error(
+        lang === "th"
+          ? "เลือกไอเดีย ตรวจเรื่อง และเพิ่มตำแหน่ง B-roll ก่อน render"
+          : "Select and review an idea, then add a B-roll placement before rendering"
+      );
       return;
     }
     const assetManifest = brollPlacements
-      .map(placement => brollAssets.find(item => item.manifest.assetId === placement.sourceMediaAssetId)?.manifest)
+      .map(
+        placement =>
+          brollAssets.find(
+            item => item.manifest.assetId === placement.sourceMediaAssetId
+          )?.manifest
+      )
       .filter((asset): asset is MediaSourceManifest => Boolean(asset));
-    if (assetManifest.length !== new Set(brollPlacements.map(placement => placement.sourceMediaAssetId)).size) {
-      toast.error(lang === "th" ? "ไม่พบ source ของ B-roll บางรายการ กรุณาโหลดรายการใหม่" : "Some B-roll sources are unavailable; refresh the list");
+    if (
+      assetManifest.length !==
+      new Set(brollPlacements.map(placement => placement.sourceMediaAssetId))
+        .size
+    ) {
+      toast.error(
+        lang === "th"
+          ? "ไม่พบ source ของ B-roll บางรายการ กรุณาโหลดรายการใหม่"
+          : "Some B-roll sources are unavailable; refresh the list"
+      );
       return;
     }
     try {
-      const storyRevisionId = await sha256Fingerprint(JSON.stringify({
-        idea: idea.trim(),
-        dialogueBrief: dialogueBrief.trim(),
-        dialogueMode,
-        characterIds,
-        selectedIdeaId,
-      }));
+      const storyRevisionId = await sha256Fingerprint(
+        JSON.stringify({
+          idea: idea.trim(),
+          dialogueBrief: dialogueBrief.trim(),
+          dialogueMode,
+          characterIds,
+          selectedIdeaId,
+        })
+      );
       const result = await brollRenderMutation.mutateAsync({
         seriesId,
         preparedSource: preparedSource.data,
@@ -1038,9 +1327,19 @@ export function SpecialTieInEpisodeDialog({
         assetManifest,
       });
       setBrollRenderJobId(result.job?.id ?? null);
-      toast.success(lang === "th" ? "ส่งงาน render B-roll ให้ Worker แล้ว" : "B-roll render was sent to the Worker");
+      toast.success(
+        lang === "th"
+          ? "ส่งงาน render B-roll ให้ Worker แล้ว"
+          : "B-roll render was sent to the Worker"
+      );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : lang === "th" ? "ส่งงาน render B-roll ไม่สำเร็จ" : "Could not start B-roll render");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : lang === "th"
+            ? "ส่งงาน render B-roll ไม่สำเร็จ"
+            : "Could not start B-roll render"
+      );
     }
   };
 
@@ -1053,15 +1352,32 @@ export function SpecialTieInEpisodeDialog({
         label: reference.label,
       }));
     if (!selectedProductId || marketplaceReferenceImages.length === 0) {
-      toast.error(lang === "th" ? "เลือกสินค้าและภาพจาก Marketplace ก่อน" : "Choose a Marketplace product and image first");
+      toast.error(
+        lang === "th"
+          ? "เลือกสินค้าและภาพจาก Marketplace ก่อน"
+          : "Choose a Marketplace product and image first"
+      );
       return;
     }
-    if (footageAssetId && !["completed", "published"].includes(footagePrepareJobQuery.data?.status ?? "")) {
-      toast.error(lang === "th" ? "สร้าง Footage พร้อมใช้ให้เสร็จก่อนสร้างไอเดีย" : "Prepare the footage before generating ideas");
+    if (
+      footageAssetId &&
+      !["completed", "published"].includes(
+        footagePrepareJobQuery.data?.status ?? ""
+      )
+    ) {
+      toast.error(
+        lang === "th"
+          ? "สร้าง Footage พร้อมใช้ให้เสร็จก่อนสร้างไอเดีย"
+          : "Prepare the footage before generating ideas"
+      );
       return;
     }
     if (characterIds.length === 0) {
-      toast.error(lang === "th" ? "เลือกตัวละครที่จะใช้สร้างไอเดียอย่างน้อย 1 คน" : "Choose at least one character for the idea");
+      toast.error(
+        lang === "th"
+          ? "เลือกตัวละครที่จะใช้สร้างไอเดียอย่างน้อย 1 คน"
+          : "Choose at least one character for the idea"
+      );
       return;
     }
     try {
@@ -1072,7 +1388,8 @@ export function SpecialTieInEpisodeDialog({
         dialogueMode,
         selectedCharacterIds: characterIds.slice(0, 4),
         customerJourney: selectedProduct?.supportingInsights ?? undefined,
-        footageGuide: footageGuideSchema.safeParse(footageAnalysisOutput?.guide).success
+        footageGuide: footageGuideSchema.safeParse(footageAnalysisOutput?.guide)
+          .success
           ? footageAnalysisOutput?.guide
           : undefined,
         direction:
@@ -1089,20 +1406,44 @@ export function SpecialTieInEpisodeDialog({
       setFreshIdeaRunId(result.runId);
       setSelectedIdeaId(null);
       setSelectedMarketplaceIdea(null);
+      setSceneSuggestions([]);
+      setSelectedSceneLocationKey(null);
       setShowIdeaHistory(false);
-      toast.success(lang === "th" ? "สร้างไอเดียซีรีย์ 3 ใบแล้ว" : "Generated 3 series ideas");
+      toast.success(
+        lang === "th"
+          ? "สร้างไอเดียซีรีย์ 3 ใบแล้ว"
+          : "Generated 3 series ideas"
+      );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : lang === "th" ? "สร้างไอเดียไม่สำเร็จ" : "Could not generate ideas");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : lang === "th"
+            ? "สร้างไอเดียไม่สำเร็จ"
+            : "Could not generate ideas"
+      );
     }
   };
 
-  const chooseMarketplaceIdea = async (runId: string, candidate: MarketplaceReviewIdea) => {
+  const chooseMarketplaceIdea = async (
+    runId: string,
+    candidate: MarketplaceReviewIdea
+  ) => {
     try {
-      const result = await selectIdeaMutation.mutateAsync({ seriesId, runId, ideaId: candidate.ideaId, selectedCharacterIds: characterIds.slice(0, 4) });
-      const suggestions = (result.slotRequests.sceneSuggestions ?? []) as SceneSuggestion[];
-      const normalizedPrimaryLabel = candidate.scene.location.trim().toLocaleLowerCase();
+      const result = await selectIdeaMutation.mutateAsync({
+        seriesId,
+        runId,
+        ideaId: candidate.ideaId,
+        selectedCharacterIds: characterIds.slice(0, 4),
+      });
+      const suggestions = (result.slotRequests.sceneSuggestions ??
+        []) as SceneSuggestion[];
+      const normalizedPrimaryLabel = candidate.scene.location
+        .trim()
+        .toLocaleLowerCase();
       const primaryScene = result.slotRequests.scenes.find(
-        scene => scene.label.trim().toLocaleLowerCase() === normalizedPrimaryLabel
+        scene =>
+          scene.label.trim().toLocaleLowerCase() === normalizedPrimaryLabel
       );
       setSceneSuggestions(suggestions);
       setSelectedSceneLocationKey(primaryScene?.locationKey ?? null);
@@ -1111,9 +1452,12 @@ export function SpecialTieInEpisodeDialog({
       setIdea(candidate.episodeStory);
       const selectedCharacterIdSet = new Set(characterIds);
       const matchedSpeakerIds = characters
-        .filter(character =>
-          selectedCharacterIdSet.has(resolveSpecialTieInCharacterId(character)) &&
-          candidate.dialogue.some(line => line.speaker === character.name)
+        .filter(
+          character =>
+            selectedCharacterIdSet.has(
+              resolveSpecialTieInCharacterId(character)
+            ) &&
+            candidate.dialogue.some(line => line.speaker === character.name)
         )
         .slice(0, 3)
         .map(resolveSpecialTieInCharacterId)
@@ -1122,7 +1466,9 @@ export function SpecialTieInEpisodeDialog({
         Array.from(new Set([...current, ...matchedSpeakerIds])).slice(0, 4)
       );
       setSpeakerCharacterIds(matchedSpeakerIds);
-      setDialogueMode(matchedSpeakerIds.length > 0 ? "character_dialogue" : "none");
+      setDialogueMode(
+        matchedSpeakerIds.length > 0 ? "character_dialogue" : "none"
+      );
       setDialogueBrief(candidate.dialogueScript);
       toast.success(
         lang === "th"
@@ -1134,14 +1480,20 @@ export function SpecialTieInEpisodeDialog({
             : "Idea selected and missing look/scene slots were added"
       );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : lang === "th" ? "เลือกไอเดียไม่สำเร็จ" : "Could not select idea");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : lang === "th"
+            ? "เลือกไอเดียไม่สำเร็จ"
+            : "Could not select idea"
+      );
     }
   };
 
   const resolveSceneSuggestion = async (
     suggestion: SceneSuggestion,
     decision: "reuse" | "create",
-    locationId?: string,
+    locationId?: string
   ) => {
     try {
       const result = await resolveSceneMutation.mutateAsync({
@@ -1193,7 +1545,7 @@ export function SpecialTieInEpisodeDialog({
       );
       return;
     }
-    setIsSubmitting(true);
+    setIsMaterializingReferences(true);
     try {
       const added: Reference[] = [];
       for (const imageId of pendingImageIds) {
@@ -1253,13 +1605,15 @@ export function SpecialTieInEpisodeDialog({
         }
       : undefined;
     const storyRevisionId = selectedMarketplaceIdea
-      ? await sha256Fingerprint(JSON.stringify({
-          idea: idea.trim(),
-          dialogueBrief: dialogueBrief.trim(),
-          dialogueMode,
-          characterIds,
-          selectedIdeaId,
-        }))
+      ? await sha256Fingerprint(
+          JSON.stringify({
+            idea: idea.trim(),
+            dialogueBrief: dialogueBrief.trim(),
+            dialogueMode,
+            characterIds,
+            selectedIdeaId,
+          })
+        )
       : null;
     const parsed = specialTieInInputSchema.safeParse({
       schemaVersion: 1,
@@ -1280,8 +1634,16 @@ export function SpecialTieInEpisodeDialog({
       sceneLocationKey: selectedSceneLocationKey ?? undefined,
       marketplaceReviewIdea: reviewedMarketplaceIdea,
       footage: (() => {
-        const guide = footageGuideSchema.safeParse(footageAnalysisOutput?.guide);
-        if (!footageAssetId || !footageAnalysisJobId || !footagePrepareJobId || !guide.success) return undefined;
+        const guide = footageGuideSchema.safeParse(
+          footageAnalysisOutput?.guide
+        );
+        if (
+          !footageAssetId ||
+          !footageAnalysisJobId ||
+          !footagePrepareJobId ||
+          !guide.success
+        )
+          return undefined;
         return {
           sourceMediaAssetId: `media-${footageAssetId}`,
           analysisJobId: footageAnalysisJobId,
@@ -1291,11 +1653,23 @@ export function SpecialTieInEpisodeDialog({
         };
       })(),
       broll: (() => {
-        if (!preparedSource.success || brollPlacements.length === 0) return undefined;
+        if (!preparedSource.success || brollPlacements.length === 0)
+          return undefined;
         const assetManifest = brollPlacements
-          .map(placement => brollAssets.find(asset => asset.manifest.assetId === placement.sourceMediaAssetId)?.manifest)
+          .map(
+            placement =>
+              brollAssets.find(
+                asset => asset.manifest.assetId === placement.sourceMediaAssetId
+              )?.manifest
+          )
           .filter((asset): asset is MediaSourceManifest => Boolean(asset));
-        if (assetManifest.length !== new Set(brollPlacements.map(placement => placement.sourceMediaAssetId)).size) return undefined;
+        if (
+          assetManifest.length !==
+          new Set(
+            brollPlacements.map(placement => placement.sourceMediaAssetId)
+          ).size
+        )
+          return undefined;
         return {
           preparedSource: preparedSource.data,
           preparedRevision: preparedSource.data.sourceRevision,
@@ -1316,6 +1690,23 @@ export function SpecialTieInEpisodeDialog({
             : "Complete the required fields")
       );
       return;
+    }
+    if (
+      selectedProductId &&
+      references.some(reference => reference.source === "marketplace_capture")
+    ) {
+      void ensureCommercialObjectReferenceMutation
+        .mutateAsync({
+          seriesId,
+          name: selectedProduct?.productName?.trim() || "Marketplace product",
+          marketplaceProductId: selectedProductId,
+          mediaAssetIds: references
+            .filter(reference => reference.source === "marketplace_capture")
+            .map(reference => reference.mediaAssetId),
+        })
+        .catch(error => {
+          console.warn("[special-tie-in] object catalog bridge skipped", error);
+        });
     }
     setIsSubmitting(true);
     try {
@@ -1447,29 +1838,86 @@ export function SpecialTieInEpisodeDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <section className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-3" aria-labelledby="special-tie-in-footage-heading">
+        <section
+          className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-3"
+          aria-labelledby="special-tie-in-footage-heading"
+        >
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <h3 id="special-tie-in-footage-heading" className="font-medium">
                 {lang === "th" ? "Footage จริงของผู้ใช้" : "Your real footage"}
               </h3>
               <p className="text-xs text-muted-foreground">
-                {lang === "th" ? "อัปโหลดก่อน แล้วให้ Worker วิเคราะห์/ตัดช่วงที่เลือก เพื่อให้เรื่อง Tie-in สอดคล้องกับภาพจริง" : "Upload first, then let the Worker analyze and prepare the usable footage before writing the tie-in story."}
+                {lang === "th"
+                  ? "อัปโหลดก่อน แล้วให้ Worker วิเคราะห์/ตัดช่วงที่เลือก เพื่อให้เรื่อง Tie-in สอดคล้องกับภาพจริง"
+                  : "Upload first, then let the Worker analyze and prepare the usable footage before writing the tie-in story."}
               </p>
             </div>
-            <Badge variant={footagePrepared ? "secondary" : "outline"} role="status">
-              {footagePrepared ? (lang === "th" ? "พร้อมใช้" : "Prepared") : footageAnalysisJobId ? (lang === "th" ? "กำลังทำงาน" : "Processing") : (lang === "th" ? "ยังไม่มี footage" : "No footage")}
+            <Badge
+              variant={footagePrepared ? "secondary" : "outline"}
+              role="status"
+            >
+              {footagePrepared
+                ? lang === "th"
+                  ? "พร้อมใช้"
+                  : "Prepared"
+                : footageAnalysisJobId
+                  ? lang === "th"
+                    ? "กำลังทำงาน"
+                    : "Processing"
+                  : lang === "th"
+                    ? "ยังไม่มี footage"
+                    : "No footage"}
             </Badge>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" disabled={uploadMutation.isPending || registerUploadMutation.isPending} onClick={() => document.getElementById("special-tie-in-footage-upload")?.click()}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={
+                uploadMutation.isPending || registerUploadMutation.isPending
+              }
+              onClick={() =>
+                document
+                  .getElementById("special-tie-in-footage-upload")
+                  ?.click()
+              }
+            >
               <Upload className="mr-2 h-4 w-4" />
               {lang === "th" ? "อัปโหลด Footage จริง" : "Upload real footage"}
             </Button>
-            <input id="special-tie-in-footage-upload" className="hidden" type="file" accept="video/*" onChange={event => { const file = event.target.files?.[0]; event.currentTarget.value = ""; if (file) void uploadFootage(file).catch(error => toast.error(error instanceof Error ? error.message : "Upload failed")); }} />
+            <input
+              id="special-tie-in-footage-upload"
+              className="hidden"
+              type="file"
+              accept="video/*"
+              onChange={event => {
+                const file = event.target.files?.[0];
+                event.currentTarget.value = "";
+                if (file)
+                  void uploadFootage(file).catch(error =>
+                    toast.error(
+                      error instanceof Error ? error.message : "Upload failed"
+                    )
+                  );
+              }}
+            />
             {footageAssetId ? (
-              <Button type="button" variant="secondary" disabled={footageAnalysisMutation.isPending} onClick={() => void analyzeFootage().catch(error => toast.error(error instanceof Error ? error.message : "Analysis failed"))}>
-                {footageAnalysisMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={footageAnalysisMutation.isPending}
+                onClick={() =>
+                  void analyzeFootage().catch(error =>
+                    toast.error(
+                      error instanceof Error ? error.message : "Analysis failed"
+                    )
+                  )
+                }
+              >
+                {footageAnalysisMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
                 {lang === "th" ? "วิเคราะห์ Footage" : "Analyze footage"}
               </Button>
             ) : null}
@@ -1477,8 +1925,20 @@ export function SpecialTieInEpisodeDialog({
           {footagePreviewUrl ? (
             <div className="grid gap-3 md:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
               <div className="relative overflow-hidden rounded-md border bg-black">
-                <video className="aspect-[9/16] max-h-64 w-full object-contain" src={footagePreviewUrl} controls preload="metadata" aria-label={footageFileName || "Footage preview"} />
-                <Button type="button" size="sm" variant="secondary" className="absolute right-2 top-2" onClick={() => setFootageFullscreen(true)}>
+                <video
+                  className="aspect-[9/16] max-h-64 w-full object-contain"
+                  src={footagePreviewUrl}
+                  controls
+                  preload="metadata"
+                  aria-label={footageFileName || "Footage preview"}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="absolute right-2 top-2"
+                  onClick={() => setFootageFullscreen(true)}
+                >
                   <Expand className="mr-1 h-3.5 w-3.5" />
                   {lang === "th" ? "ดูเต็มจอ" : "Fullscreen"}
                 </Button>
@@ -1486,85 +1946,309 @@ export function SpecialTieInEpisodeDialog({
               <div className="space-y-3 text-sm">
                 <p className="truncate font-medium">{footageFileName}</p>
                 <p className="text-xs text-muted-foreground" role="status">
-                  {footageAnalysisJobQuery.data ? `${lang === "th" ? "ผลวิเคราะห์" : "Analysis"}: ${footageAnalysisJobQuery.data.status}` : (lang === "th" ? "ยังไม่ได้วิเคราะห์" : "Not analyzed yet")}
+                  {footageAnalysisJobQuery.data
+                    ? `${lang === "th" ? "ผลวิเคราะห์" : "Analysis"}: ${footageAnalysisJobQuery.data.status}`
+                    : lang === "th"
+                      ? "ยังไม่ได้วิเคราะห์"
+                      : "Not analyzed yet"}
                 </p>
                 {footageAnalysisDone ? (
                   <div className="space-y-2 rounded-md border p-2">
-                    <p className="text-xs">{lang === "th" ? "ช่วงตัดหลัก (มิลลิวินาที)" : "Primary trim window (milliseconds)"}</p>
+                    <p className="text-xs">
+                      {lang === "th"
+                        ? "ช่วงตัดหลัก (มิลลิวินาที)"
+                        : "Primary trim window (milliseconds)"}
+                    </p>
                     <div className="grid grid-cols-2 gap-2">
-                      <Input aria-label={lang === "th" ? "เริ่มต้น footage มิลลิวินาที" : "Footage start milliseconds"} type="number" min={0} value={footageTrimStartMs} onChange={event => setFootageTrimStartMs(Math.max(0, Number(event.target.value) || 0))} />
-                      <Input aria-label={lang === "th" ? "สิ้นสุด footage มิลลิวินาที" : "Footage end milliseconds"} type="number" min={1000} value={footageTrimEndMs || footageDurationMs || ""} onChange={event => setFootageTrimEndMs(Math.max(0, Number(event.target.value) || 0))} />
+                      <Input
+                        aria-label={
+                          lang === "th"
+                            ? "เริ่มต้น footage มิลลิวินาที"
+                            : "Footage start milliseconds"
+                        }
+                        type="number"
+                        min={0}
+                        value={footageTrimStartMs}
+                        onChange={event =>
+                          setFootageTrimStartMs(
+                            Math.max(0, Number(event.target.value) || 0)
+                          )
+                        }
+                      />
+                      <Input
+                        aria-label={
+                          lang === "th"
+                            ? "สิ้นสุด footage มิลลิวินาที"
+                            : "Footage end milliseconds"
+                        }
+                        type="number"
+                        min={1000}
+                        value={footageTrimEndMs || footageDurationMs || ""}
+                        onChange={event =>
+                          setFootageTrimEndMs(
+                            Math.max(0, Number(event.target.value) || 0)
+                          )
+                        }
+                      />
                     </div>
-                    <Button type="button" size="sm" disabled={footagePrepareMutation.isPending || footagePrepared} onClick={() => void prepareFootage().catch(error => toast.error(error instanceof Error ? error.message : "Preparation failed"))}>
-                      {footagePrepareMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      {footagePrepared ? (lang === "th" ? "Footage พร้อมใช้แล้ว" : "Footage prepared") : (lang === "th" ? "สร้าง Footage พร้อมใช้" : "Prepare footage")}
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={
+                        footagePrepareMutation.isPending || footagePrepared
+                      }
+                      onClick={() =>
+                        void prepareFootage().catch(error =>
+                          toast.error(
+                            error instanceof Error
+                              ? error.message
+                              : "Preparation failed"
+                          )
+                        )
+                      }
+                    >
+                      {footagePrepareMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      {footagePrepared
+                        ? lang === "th"
+                          ? "Footage พร้อมใช้แล้ว"
+                          : "Footage prepared"
+                        : lang === "th"
+                          ? "สร้าง Footage พร้อมใช้"
+                          : "Prepare footage"}
                     </Button>
                   </div>
                 ) : null}
-                {footageAnalysisOutput?.guide?.status?.warnings?.length ? <p className="text-xs text-amber-700 dark:text-amber-400" role="alert">{lang === "th" ? "ผลวิเคราะห์บางส่วนยังไม่สมบูรณ์ ระบบจะแนบคำเตือนไปกับไอเดีย" : "Some analysis is partial; its warnings remain attached to the idea input."}</p> : null}
+                {footageAnalysisOutput?.guide?.status?.warnings?.length ? (
+                  <p
+                    className="text-xs text-amber-700 dark:text-amber-400"
+                    role="alert"
+                  >
+                    {lang === "th"
+                      ? "ผลวิเคราะห์บางส่วนยังไม่สมบูรณ์ ระบบจะแนบคำเตือนไปกับไอเดีย"
+                      : "Some analysis is partial; its warnings remain attached to the idea input."}
+                  </p>
+                ) : null}
               </div>
             </div>
           ) : null}
         </section>
 
         {footagePrepared && preparedSource.success ? (
-          <section className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-3" aria-labelledby="special-tie-in-broll-heading">
+          <section
+            className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-3"
+            aria-labelledby="special-tie-in-broll-heading"
+          >
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <h3 id="special-tie-in-broll-heading" className="font-medium">
-                  {lang === "th" ? "วางวีดีโอ B-roll จาก AI/คลังวีดีโอ" : "Place AI/library video B-roll"}
+                  {lang === "th"
+                    ? "วางวีดีโอ B-roll จาก AI/คลังวีดีโอ"
+                    : "Place AI/library video B-roll"}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  {lang === "th" ? `เลือกวีดีโอแล้วกำหนดจุดเริ่ม–จบใน Footage ที่ตัดแล้ว (${(preparedDurationMs / 1000).toFixed(1)} วินาที) ระบบจะส่งงานหนักให้ Worker` : `Choose a video and set its start/end on the prepared footage (${(preparedDurationMs / 1000).toFixed(1)}s). Heavy rendering runs on the Worker.`}
+                  {lang === "th"
+                    ? `เลือกวีดีโอแล้วกำหนดจุดเริ่ม–จบใน Footage ที่ตัดแล้ว (${(preparedDurationMs / 1000).toFixed(1)} วินาที) ระบบจะส่งงานหนักให้ Worker`
+                    : `Choose a video and set its start/end on the prepared footage (${(preparedDurationMs / 1000).toFixed(1)}s). Heavy rendering runs on the Worker.`}
                 </p>
               </div>
               <Badge variant="outline">{brollPlacements.length}/32</Badge>
             </div>
             <div className="grid gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(7rem,0.6fr)_minmax(7rem,0.6fr)_minmax(7rem,0.6fr)_auto] md:items-end">
               <div className="space-y-1">
-                <Label htmlFor="special-tie-in-broll-source">{lang === "th" ? "วีดีโอ B-roll" : "B-roll video"}</Label>
+                <Label htmlFor="special-tie-in-broll-source">
+                  {lang === "th" ? "วีดีโอ B-roll" : "B-roll video"}
+                </Label>
                 <select
                   id="special-tie-in-broll-source"
                   className="h-9 w-full rounded-md border bg-background px-3 text-sm"
                   value={brollAssetId}
                   onChange={event => setBrollAssetId(event.target.value)}
-                  disabled={brollAssetsQuery.isLoading || brollAssets.length === 0}
+                  disabled={
+                    brollAssetsQuery.isLoading || brollAssets.length === 0
+                  }
                 >
-                  <option value="">{brollAssetsQuery.isLoading ? (lang === "th" ? "กำลังโหลด…" : "Loading…") : lang === "th" ? "เลือกวีดีโอที่พร้อมใช้" : "Select an available video"}</option>
-                  {brollAssets.map(asset => <option key={asset.manifest.assetId} value={asset.manifest.assetId}>{asset.manifest.fileName}</option>)}
+                  <option value="">
+                    {brollAssetsQuery.isLoading
+                      ? lang === "th"
+                        ? "กำลังโหลด…"
+                        : "Loading…"
+                      : lang === "th"
+                        ? "เลือกวีดีโอที่พร้อมใช้"
+                        : "Select an available video"}
+                  </option>
+                  {brollAssets.map(asset => (
+                    <option
+                      key={asset.manifest.assetId}
+                      value={asset.manifest.assetId}
+                    >
+                      {asset.manifest.fileName}
+                    </option>
+                  ))}
                 </select>
               </div>
-              <div className="space-y-1"><Label htmlFor="special-tie-in-broll-start">{lang === "th" ? "เริ่ม (ms)" : "Start (ms)"}</Label><Input id="special-tie-in-broll-start" type="number" min={0} max={Math.max(0, preparedDurationMs - 1000)} value={brollStartMs} onChange={event => setBrollStartMs(Number(event.target.value) || 0)} /></div>
-              <div className="space-y-1"><Label htmlFor="special-tie-in-broll-end">{lang === "th" ? "จบ (ms)" : "End (ms)"}</Label><Input id="special-tie-in-broll-end" type="number" min={1000} max={preparedDurationMs} value={brollEndMs} onChange={event => setBrollEndMs(Number(event.target.value) || 0)} /></div>
-              <div className="space-y-1"><Label htmlFor="special-tie-in-broll-source-in">{lang === "th" ? "เริ่ม source (ms)" : "Source in (ms)"}</Label><Input id="special-tie-in-broll-source-in" type="number" min={0} value={brollSourceInMs} onChange={event => setBrollSourceInMs(Number(event.target.value) || 0)} /></div>
-              <Button type="button" variant="outline" onClick={addBrollPlacement} disabled={!brollAssetId || brollAssetsQuery.isError}><span aria-hidden="true">+</span>{lang === "th" ? "เพิ่มช่วง" : "Add"}</Button>
+              <div className="space-y-1">
+                <Label htmlFor="special-tie-in-broll-start">
+                  {lang === "th" ? "เริ่ม (ms)" : "Start (ms)"}
+                </Label>
+                <Input
+                  id="special-tie-in-broll-start"
+                  type="number"
+                  min={0}
+                  max={Math.max(0, preparedDurationMs - 1000)}
+                  value={brollStartMs}
+                  onChange={event =>
+                    setBrollStartMs(Number(event.target.value) || 0)
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="special-tie-in-broll-end">
+                  {lang === "th" ? "จบ (ms)" : "End (ms)"}
+                </Label>
+                <Input
+                  id="special-tie-in-broll-end"
+                  type="number"
+                  min={1000}
+                  max={preparedDurationMs}
+                  value={brollEndMs}
+                  onChange={event =>
+                    setBrollEndMs(Number(event.target.value) || 0)
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="special-tie-in-broll-source-in">
+                  {lang === "th" ? "เริ่ม source (ms)" : "Source in (ms)"}
+                </Label>
+                <Input
+                  id="special-tie-in-broll-source-in"
+                  type="number"
+                  min={0}
+                  value={brollSourceInMs}
+                  onChange={event =>
+                    setBrollSourceInMs(Number(event.target.value) || 0)
+                  }
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addBrollPlacement}
+                disabled={!brollAssetId || brollAssetsQuery.isError}
+              >
+                <span aria-hidden="true">+</span>
+                {lang === "th" ? "เพิ่มช่วง" : "Add"}
+              </Button>
             </div>
-            {brollAssetsQuery.isError ? <p className="text-xs text-destructive" role="alert">{lang === "th" ? "โหลดวีดีโอ B-roll ไม่สำเร็จ กรุณาลองใหม่" : "Could not load B-roll videos. Try again."}</p> : null}
-            {brollAssets.length === 0 && !brollAssetsQuery.isLoading && !brollAssetsQuery.isError ? <p className="text-xs text-muted-foreground" role="status">{lang === "th" ? "ยังไม่พบวีดีโอที่เป็น managed media และมี checksum สำหรับใช้เป็น B-roll" : "No managed, checksum-backed videos are available for B-roll."}</p> : null}
+            {brollAssetsQuery.isError ? (
+              <p className="text-xs text-destructive" role="alert">
+                {lang === "th"
+                  ? "โหลดวีดีโอ B-roll ไม่สำเร็จ กรุณาลองใหม่"
+                  : "Could not load B-roll videos. Try again."}
+              </p>
+            ) : null}
+            {brollAssets.length === 0 &&
+            !brollAssetsQuery.isLoading &&
+            !brollAssetsQuery.isError ? (
+              <p className="text-xs text-muted-foreground" role="status">
+                {lang === "th"
+                  ? "ยังไม่พบวีดีโอที่เป็น managed media และมี checksum สำหรับใช้เป็น B-roll"
+                  : "No managed, checksum-backed videos are available for B-roll."}
+              </p>
+            ) : null}
             {brollPlacements.length > 0 ? (
               <div className="space-y-2 rounded-md border bg-background p-2">
-                <p className="text-xs font-medium">{lang === "th" ? "ตำแหน่งที่เลือก" : "Selected placements"}</p>
+                <p className="text-xs font-medium">
+                  {lang === "th" ? "ตำแหน่งที่เลือก" : "Selected placements"}
+                </p>
                 {brollPlacements.map((placement, index) => (
-                  <div key={placement.storyBeatId} className="flex flex-wrap items-center justify-between gap-2 rounded border px-2 py-1 text-xs">
-                    <span>{index + 1}. {brollAssets.find(asset => asset.manifest.assetId === placement.sourceMediaAssetId)?.manifest.fileName ?? placement.sourceMediaAssetId}</span>
-                    <span>{placement.startMs}–{placement.endMs} ms</span>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setBrollPlacements(current => current.filter(item => item.storyBeatId !== placement.storyBeatId))}>{lang === "th" ? "ลบ" : "Remove"}</Button>
+                  <div
+                    key={placement.storyBeatId}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded border px-2 py-1 text-xs"
+                  >
+                    <span>
+                      {index + 1}.{" "}
+                      {brollAssets.find(
+                        asset =>
+                          asset.manifest.assetId ===
+                          placement.sourceMediaAssetId
+                      )?.manifest.fileName ?? placement.sourceMediaAssetId}
+                    </span>
+                    <span>
+                      {placement.startMs}–{placement.endMs} ms
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setBrollPlacements(current =>
+                          current.filter(
+                            item => item.storyBeatId !== placement.storyBeatId
+                          )
+                        )
+                      }
+                    >
+                      {lang === "th" ? "ลบ" : "Remove"}
+                    </Button>
                   </div>
                 ))}
               </div>
             ) : null}
             <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" variant="secondary" onClick={() => void renderBroll()} disabled={brollRenderMutation.isPending || brollPlacements.length === 0 || !selectedMarketplaceIdea}>
-                {brollRenderMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {lang === "th" ? "Render B-roll ตามเรื่องที่ตรวจแล้ว" : "Render B-roll for reviewed story"}
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void renderBroll()}
+                disabled={
+                  brollRenderMutation.isPending ||
+                  brollPlacements.length === 0 ||
+                  !selectedMarketplaceIdea
+                }
+              >
+                {brollRenderMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                {lang === "th"
+                  ? "Render B-roll ตามเรื่องที่ตรวจแล้ว"
+                  : "Render B-roll for reviewed story"}
               </Button>
-              {!selectedMarketplaceIdea ? <span className="text-xs text-amber-700 dark:text-amber-400">{lang === "th" ? "ต้องเลือกและตรวจไอเดียละครก่อน" : "Select and review a series idea first."}</span> : null}
-              {brollRenderJobQuery.data ? <span className="text-xs text-muted-foreground" role="status">{lang === "th" ? `สถานะ Worker: ${brollRenderJobQuery.data.status}` : `Worker status: ${brollRenderJobQuery.data.status}`}</span> : null}
+              {!selectedMarketplaceIdea ? (
+                <span className="text-xs text-amber-700 dark:text-amber-400">
+                  {lang === "th"
+                    ? "ต้องเลือกและตรวจไอเดียละครก่อน"
+                    : "Select and review a series idea first."}
+                </span>
+              ) : null}
+              {brollRenderJobQuery.data ? (
+                <span className="text-xs text-muted-foreground" role="status">
+                  {lang === "th"
+                    ? `สถานะ Worker: ${brollRenderJobQuery.data.status}`
+                    : `Worker status: ${brollRenderJobQuery.data.status}`}
+                </span>
+              ) : null}
             </div>
             {brollOutputUrl ? (
               <div className="relative max-w-sm overflow-hidden rounded-md border bg-black">
-                <video className="aspect-[9/16] max-h-80 w-full object-contain" src={brollOutputUrl} controls preload="metadata" aria-label="Rendered B-roll preview" />
-                <Button type="button" size="sm" variant="secondary" className="absolute right-2 top-2" onClick={() => setBrollFullscreen(true)}><Expand className="mr-1 h-3.5 w-3.5" />{lang === "th" ? "ดูเต็มจอ" : "Fullscreen"}</Button>
+                <video
+                  className="aspect-[9/16] max-h-80 w-full object-contain"
+                  src={brollOutputUrl}
+                  controls
+                  preload="metadata"
+                  aria-label="Rendered B-roll preview"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="absolute right-2 top-2"
+                  onClick={() => setBrollFullscreen(true)}
+                >
+                  <Expand className="mr-1 h-3.5 w-3.5" />
+                  {lang === "th" ? "ดูเต็มจอ" : "Fullscreen"}
+                </Button>
               </div>
             ) : null}
           </section>
@@ -1707,17 +2391,38 @@ export function SpecialTieInEpisodeDialog({
                           src={reference.previewUrl}
                           alt={reference.label ?? reference.source}
                           className="mr-2 h-24 w-24 shrink-0 rounded object-cover md:mb-2 md:mr-0 md:h-44 md:w-full"
-                          loadingLabel={lang === "th" ? "กำลังโหลดภาพ..." : "Loading image..."}
-                          errorLabel={lang === "th" ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"}
+                          loadingLabel={
+                            lang === "th"
+                              ? "กำลังโหลดภาพ..."
+                              : "Loading image..."
+                          }
+                          errorLabel={
+                            lang === "th"
+                              ? "โหลดภาพไม่สำเร็จ"
+                              : "Image unavailable"
+                          }
                         />
                         <Button
                           type="button"
                           size="icon"
                           variant="secondary"
-                          className="absolute right-1 top-1 h-7 w-7"
-                          aria-label={lang === "th" ? "ขยายภาพเต็มจอ" : "Open image fullscreen"}
-                          title={lang === "th" ? "ขยายภาพเต็มจอ" : "Open image fullscreen"}
-                          onClick={() => setLightbox({ src: reference.previewUrl!, alt: reference.label ?? reference.source })}
+                          className="absolute right-2 top-2 h-10 w-10"
+                          aria-label={
+                            lang === "th"
+                              ? "ขยายภาพเต็มจอ"
+                              : "Open image fullscreen"
+                          }
+                          title={
+                            lang === "th"
+                              ? "ขยายภาพเต็มจอ"
+                              : "Open image fullscreen"
+                          }
+                          onClick={() =>
+                            setLightbox({
+                              src: reference.previewUrl!,
+                              alt: reference.label ?? reference.source,
+                            })
+                          }
                         >
                           <Expand className="h-3.5 w-3.5" />
                         </Button>
@@ -1813,13 +2518,29 @@ export function SpecialTieInEpisodeDialog({
             <div className="space-y-3 rounded-md border border-primary/30 bg-primary/5 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <Label>{lang === "th" ? "Skill: สร้างไอเดียรีวิวแบบละครซีรีย์" : "Skill: series tie-in review ideas"}</Label>
+                  <Label>
+                    {lang === "th"
+                      ? "Skill: สร้างไอเดียรีวิวแบบละครซีรีย์"
+                      : "Skill: series tie-in review ideas"}
+                  </Label>
                   <p className="text-xs text-muted-foreground">
-                    {lang === "th" ? "ใช้สินค้าเป็นส่วนหนึ่งของเหตุการณ์ ไม่ยืนขายตรง ๆ ระบบจะสร้าง 3 ใบใหม่ทุกครั้ง" : "The product belongs inside the story, not a direct sales review. Each run creates 3 new cards."}
+                    {lang === "th"
+                      ? "ใช้สินค้าเป็นส่วนหนึ่งของเหตุการณ์ ไม่ยืนขายตรง ๆ ระบบจะสร้าง 3 ใบใหม่ทุกครั้ง"
+                      : "The product belongs inside the story, not a direct sales review. Each run creates 3 new cards."}
                   </p>
                 </div>
-                <Button type="button" size="sm" variant="secondary" disabled={generateIdeasMutation.isPending || characterIds.length === 0} onClick={() => void generateMarketplaceIdeas()}>
-                  {generateIdeasMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={
+                    generateIdeasMutation.isPending || characterIds.length === 0
+                  }
+                  onClick={() => void generateMarketplaceIdeas()}
+                >
+                  {generateIdeasMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
                   {lang === "th" ? "สร้างไอเดีย 3 ใบ" : "Generate 3 ideas"}
                 </Button>
               </div>
@@ -1831,20 +2552,30 @@ export function SpecialTieInEpisodeDialog({
                 </p>
                 <div className="space-y-1">
                   <Label className="text-xs">
-                    {lang === "th" ? "LLM สำหรับสร้างไอเดีย" : "LLM for idea generation"}
+                    {lang === "th"
+                      ? "LLM สำหรับสร้างไอเดีย"
+                      : "LLM for idea generation"}
                   </Label>
                   <div data-testid="special-tie-in-idea-llm-model">
                     <IdeaLlmModelCombobox
-                      models={(ideaLlmModelsQuery.data?.models ?? []) as IdeaLlmModel[]}
+                      models={
+                        (ideaLlmModelsQuery.data?.models ??
+                          []) as IdeaLlmModel[]
+                      }
                       value={ideaLlmModelId}
                       onValueChange={setIdeaLlmModelId}
                       lang={lang}
-                      disabled={ideaLlmModelsQuery.isLoading || ideaLlmModelsQuery.isError}
+                      disabled={
+                        ideaLlmModelsQuery.isLoading ||
+                        ideaLlmModelsQuery.isError
+                      }
                     />
                   </div>
                   {ideaLlmModelsQuery.isError ? (
                     <p className="text-xs text-destructive" role="alert">
-                      {lang === "th" ? "โหลดรายการ LLM ไม่สำเร็จ ระบบยังลองเลือกอัตโนมัติได้เมื่อกดสร้าง" : "Could not load LLM options; automatic selection will still be attempted."}
+                      {lang === "th"
+                        ? "โหลดรายการ LLM ไม่สำเร็จ ระบบยังลองเลือกอัตโนมัติได้เมื่อกดสร้าง"
+                        : "Could not load LLM options; automatic selection will still be attempted."}
                     </p>
                   ) : null}
                 </div>
@@ -1864,23 +2595,72 @@ export function SpecialTieInEpisodeDialog({
                     <div key={run.runId} className="space-y-2">
                       {showIdeaHistory && runIndex > 0 ? (
                         <p className="text-xs font-medium text-muted-foreground">
-                          {lang === "th" ? `รอบก่อนหน้า ${runIndex}` : `Previous round ${runIndex}`}
+                          {lang === "th"
+                            ? `รอบก่อนหน้า ${runIndex}`
+                            : `Previous round ${runIndex}`}
                         </p>
                       ) : null}
                       <div className="grid gap-2 lg:grid-cols-3">
                         {run.ideas.map((candidate, ideaIndex) => {
                           const selected = selectedIdeaId === candidate.ideaId;
                           return (
-                            <button key={candidate.ideaId} type="button" aria-pressed={selected} className={`rounded-md border bg-background p-3 text-left transition-colors ${selected ? "border-primary ring-2 ring-primary/30" : "hover:border-primary/60"}`} onClick={() => void chooseMarketplaceIdea(run.runId, candidate)}>
-                              <span className="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{lang === "th" ? `ไอเดียที่ ${ideaIndex + 1}` : `Idea ${ideaIndex + 1}`}</span>
-                              <span className="block font-medium">{candidate.title}</span>
-                              <span className="mt-1 block text-xs text-muted-foreground">{candidate.logline}</span>
-                              <span className="mt-3 block text-[11px] font-medium uppercase tracking-wide text-primary">{lang === "th" ? "เรื่องละคร" : "Episode story"}</span>
-                              <span className="mt-1 block max-h-36 overflow-y-auto whitespace-pre-wrap text-xs leading-5">{candidate.episodeStory || candidate.logline}</span>
-                              <span className="mt-3 block text-[11px] font-medium uppercase tracking-wide text-primary">{dialogueMode === "none" ? lang === "th" ? "ท่าทางและการกระทำ (ไม่มีบทพูด)" : "Actions and body language (no dialogue)" : lang === "th" ? "บทพูดและท่าทาง" : "Dialogue and actions"}</span>
-                              <span className="mt-1 block max-h-20 overflow-y-auto whitespace-pre-wrap text-xs leading-5 text-muted-foreground">{dialogueMode === "none" ? candidate.actions.join("\n") : candidate.dialogueScript || candidate.dialogue.map(line => `${line.speaker}: ${line.line}`).join("\n")}</span>
-                              <span className="mt-2 block text-xs text-muted-foreground">{candidate.scene.location} · {candidate.productMentionReason}</span>
-                              {candidate.lookSlotRequests.length || candidate.sceneSlotRequests.length ? <Badge variant="outline" className="mt-2">{lang === "th" ? `เพิ่ม slot ลุค ${candidate.lookSlotRequests.length} / ฉาก ${candidate.sceneSlotRequests.length}` : `Add ${candidate.lookSlotRequests.length} look / ${candidate.sceneSlotRequests.length} scene slots`}</Badge> : null}
+                            <button
+                              key={candidate.ideaId}
+                              type="button"
+                              aria-pressed={selected}
+                              className={`rounded-md border bg-background p-3 text-left transition-colors ${selected ? "border-primary ring-2 ring-primary/30" : "hover:border-primary/60"}`}
+                              onClick={() =>
+                                void chooseMarketplaceIdea(run.runId, candidate)
+                              }
+                            >
+                              <span className="mb-2 block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                {lang === "th"
+                                  ? `ไอเดียที่ ${ideaIndex + 1}`
+                                  : `Idea ${ideaIndex + 1}`}
+                              </span>
+                              <span className="block font-medium">
+                                {candidate.title}
+                              </span>
+                              <span className="mt-1 block text-xs text-muted-foreground">
+                                {candidate.logline}
+                              </span>
+                              <span className="mt-3 block text-[11px] font-medium uppercase tracking-wide text-primary">
+                                {lang === "th" ? "เรื่องละคร" : "Episode story"}
+                              </span>
+                              <span className="mt-1 block max-h-36 overflow-y-auto whitespace-pre-wrap text-xs leading-5">
+                                {candidate.episodeStory || candidate.logline}
+                              </span>
+                              <span className="mt-3 block text-[11px] font-medium uppercase tracking-wide text-primary">
+                                {dialogueMode === "none"
+                                  ? lang === "th"
+                                    ? "ท่าทางและการกระทำ (ไม่มีบทพูด)"
+                                    : "Actions and body language (no dialogue)"
+                                  : lang === "th"
+                                    ? "บทพูดและท่าทาง"
+                                    : "Dialogue and actions"}
+                              </span>
+                              <span className="mt-1 block max-h-20 overflow-y-auto whitespace-pre-wrap text-xs leading-5 text-muted-foreground">
+                                {dialogueMode === "none"
+                                  ? candidate.actions.join("\n")
+                                  : candidate.dialogueScript ||
+                                    candidate.dialogue
+                                      .map(
+                                        line => `${line.speaker}: ${line.line}`
+                                      )
+                                      .join("\n")}
+                              </span>
+                              <span className="mt-2 block text-xs text-muted-foreground">
+                                {candidate.scene.location} ·{" "}
+                                {candidate.productMentionReason}
+                              </span>
+                              {candidate.lookSlotRequests.length ||
+                              candidate.sceneSlotRequests.length ? (
+                                <Badge variant="outline" className="mt-2">
+                                  {lang === "th"
+                                    ? `เพิ่ม slot ลุค ${candidate.lookSlotRequests.length} / ฉาก ${candidate.sceneSlotRequests.length}`
+                                    : `Add ${candidate.lookSlotRequests.length} look / ${candidate.sceneSlotRequests.length} scene slots`}
+                                </Badge>
+                              ) : null}
                             </button>
                           );
                         })}
@@ -1932,7 +2712,9 @@ export function SpecialTieInEpisodeDialog({
                     key={suggestion.sceneLabel}
                     className="space-y-2 rounded-md border bg-background p-3"
                   >
-                    <p className="text-sm font-medium">{suggestion.sceneLabel}</p>
+                    <p className="text-sm font-medium">
+                      {suggestion.sceneLabel}
+                    </p>
                     <div className="space-y-2">
                       {suggestion.candidates.map(candidate => (
                         <div
@@ -2073,19 +2855,48 @@ export function SpecialTieInEpisodeDialog({
                   ? "ตัวละครจากซีรีย์ (เลือกได้สูงสุด 4 คน)"
                   : "Series characters (up to 4)"}
               </Label>
+              {selectedCharacterIdsWithoutUsablePortrait.length > 0 ? (
+                <div
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-sm text-destructive"
+                  role="alert"
+                >
+                  <span>
+                    {lang === "th"
+                      ? "ตัวละครที่เลือกยังไม่มีภาพที่พร้อมใช้งาน กรุณาเพิ่มภาพตัวละครก่อนสร้างตอนพิเศษ"
+                      : "A selected character has no usable portrait. Add a character portrait before creating the special episode."}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onOpenCharacterSettings?.();
+                    }}
+                  >
+                    {lang === "th"
+                      ? "ตั้งค่าภาพตัวละคร"
+                      : "Configure character portrait"}
+                  </Button>
+                </div>
+              ) : null}
               <div className="grid gap-2 sm:grid-cols-2">
                 {characters.map(character => {
                   const id = resolveSpecialTieInCharacterId(character);
                   if (!id) return null;
                   const portraitUrl =
                     characterPortraitById.get(id)?.thumbnailUrl;
+                  const hasUsablePortrait = Boolean(portraitUrl);
                   const selected = selectedCharacters.has(id);
                   return (
                     <div
                       key={id}
                       role="checkbox"
                       aria-checked={selected}
-                      aria-label={String(character.name ?? character.characterName ?? id)}
+                      aria-label={String(
+                        character.name ?? character.characterName ?? id
+                      )}
                       tabIndex={0}
                       onClick={event => {
                         const target = event.target as HTMLElement;
@@ -2127,9 +2938,7 @@ export function SpecialTieInEpisodeDialog({
                             setLightbox({
                               src: portraitUrl,
                               alt:
-                                character.name ??
-                                character.characterName ??
-                                id,
+                                character.name ?? character.characterName ?? id,
                             });
                           }}
                         >
@@ -2165,9 +2974,13 @@ export function SpecialTieInEpisodeDialog({
                             ? lang === "th"
                               ? "เลือกใช้ในตอนนี้"
                               : "Selected for this episode"
-                            : lang === "th"
-                              ? "แตะเพื่อเลือก"
-                              : "Tap to select"}
+                            : !hasUsablePortrait
+                              ? lang === "th"
+                                ? "เพิ่มภาพตัวละครก่อนสร้าง"
+                                : "Add a character portrait before creating"
+                              : lang === "th"
+                                ? "แตะเพื่อเลือก"
+                                : "Tap to select"}
                         </span>
                       </label>
                       {selected ? (
@@ -2311,13 +3124,19 @@ export function SpecialTieInEpisodeDialog({
                       modelsQuery.isLoading ? "Loading…" : "Select model"
                     }
                     searchPlaceholder={
-                      lang === "th" ? "ค้นหา model สร้างภาพ..." : "Search image models..."
+                      lang === "th"
+                        ? "ค้นหา model สร้างภาพ..."
+                        : "Search image models..."
                     }
                     emptyLabel={
-                      lang === "th" ? "ไม่พบ model สร้างภาพ" : "No image models found"
+                      lang === "th"
+                        ? "ไม่พบ model สร้างภาพ"
+                        : "No image models found"
                     }
                     ariaLabel={
-                      lang === "th" ? "เลือก model สร้างภาพ" : "Select image model"
+                      lang === "th"
+                        ? "เลือก model สร้างภาพ"
+                        : "Select image model"
                     }
                   />
                 </div>
@@ -2337,13 +3156,19 @@ export function SpecialTieInEpisodeDialog({
                       modelsQuery.isLoading ? "Loading…" : "Select model"
                     }
                     searchPlaceholder={
-                      lang === "th" ? "ค้นหา model สร้างวีดีโอ..." : "Search video models..."
+                      lang === "th"
+                        ? "ค้นหา model สร้างวีดีโอ..."
+                        : "Search video models..."
                     }
                     emptyLabel={
-                      lang === "th" ? "ไม่พบ model สร้างวีดีโอ" : "No video models found"
+                      lang === "th"
+                        ? "ไม่พบ model สร้างวีดีโอ"
+                        : "No video models found"
                     }
                     ariaLabel={
-                      lang === "th" ? "เลือก model สร้างวีดีโอ" : "Select video model"
+                      lang === "th"
+                        ? "เลือก model สร้างวีดีโอ"
+                        : "Select video model"
                     }
                   />
                 </div>
@@ -2356,7 +3181,10 @@ export function SpecialTieInEpisodeDialog({
                   : "Could not load special tie-in models. Try again."}
               </p>
             ) : modelsQuery.isError && usingPublicModelFallback ? (
-              <p className="text-sm text-amber-700 dark:text-amber-400" role="status">
+              <p
+                className="text-sm text-amber-700 dark:text-amber-400"
+                role="status"
+              >
                 {lang === "th"
                   ? "ใช้รายการ model กลางชั่วคราว เลือกได้ตามรายการที่แสดง"
                   : "Using the public model catalog temporarily; choose from the models shown."}
@@ -2428,10 +3256,10 @@ export function SpecialTieInEpisodeDialog({
           </Button>
           <Button
             type="button"
-            disabled={!canSubmit || createMutation.isPending || isSubmitting}
+            disabled={!canSubmit || actionState.finalSubmitPending}
             onClick={() => void submit()}
           >
-            {createMutation.isPending || isSubmitting ? (
+            {actionState.finalSubmitPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : null}
             {onSubmitInput
@@ -2596,7 +3424,9 @@ export function SpecialTieInEpisodeDialog({
                             onClick={() =>
                               setPendingImageIds(current =>
                                 selected
-                                  ? current.filter(id => id !== String(image.id))
+                                  ? current.filter(
+                                      id => id !== String(image.id)
+                                    )
                                   : current.length >= 3 - references.length
                                     ? current
                                     : [...current, String(image.id)]
@@ -2607,8 +3437,16 @@ export function SpecialTieInEpisodeDialog({
                               src={image.url}
                               alt={image.imageType ?? "Marketplace image"}
                               className="aspect-square w-full object-cover"
-                              loadingLabel={lang === "th" ? "กำลังโหลดภาพ..." : "Loading image..."}
-                              errorLabel={lang === "th" ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"}
+                              loadingLabel={
+                                lang === "th"
+                                  ? "กำลังโหลดภาพ..."
+                                  : "Loading image..."
+                              }
+                              errorLabel={
+                                lang === "th"
+                                  ? "โหลดภาพไม่สำเร็จ"
+                                  : "Image unavailable"
+                              }
                             />
                           </button>
                           <Button
@@ -2616,11 +3454,24 @@ export function SpecialTieInEpisodeDialog({
                             size="icon"
                             variant="secondary"
                             className="absolute right-1 top-1 h-7 w-7"
-                            aria-label={lang === "th" ? "ขยายภาพสินค้าเต็มจอ" : "Open product image fullscreen"}
-                            title={lang === "th" ? "ขยายภาพเต็มจอ" : "Open fullscreen"}
-                            onClick={() => setLightbox({ src: image.url, alt: image.imageType ?? "Marketplace image" })}
+                            aria-label={
+                              lang === "th"
+                                ? "ขยายภาพสินค้าเต็มจอ"
+                                : "Open product image fullscreen"
+                            }
+                            title={
+                              lang === "th"
+                                ? "ขยายภาพเต็มจอ"
+                                : "Open fullscreen"
+                            }
+                            onClick={() =>
+                              setLightbox({
+                                src: image.url,
+                                alt: image.imageType ?? "Marketplace image",
+                              })
+                            }
                           >
-                            <Expand className="h-3.5 w-3.5" />
+                            <Expand className="h-4 w-4" />
                           </Button>
                           <span className="flex items-center justify-between gap-1 p-2 text-xs">
                             <span className="truncate">
@@ -2695,11 +3546,13 @@ export function SpecialTieInEpisodeDialog({
               <Button
                 type="button"
                 disabled={
-                  pendingImageIds.length === 0 || materializeMutation.isPending
+                  pendingImageIds.length === 0 ||
+                  materializeMutation.isPending ||
+                  isMaterializingReferences
                 }
                 onClick={() => void confirmMarketplaceImages()}
               >
-                {materializeMutation.isPending ? (
+                {isMaterializingReferences || materializeMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
                 {lang === "th" ? "เพิ่มภาพที่เลือก" : "Add selected images"}
@@ -2709,14 +3562,34 @@ export function SpecialTieInEpisodeDialog({
         </Dialog>
         <Dialog open={footageFullscreen} onOpenChange={setFootageFullscreen}>
           <DialogContent className="max-w-[95vw] p-3">
-            <DialogTitle className="sr-only">{lang === "th" ? "Footage เต็มจอ" : "Fullscreen footage"}</DialogTitle>
-            {footagePreviewUrl ? <video className="max-h-[88dvh] w-full object-contain" src={footagePreviewUrl} controls autoPlay aria-label={footageFileName || "Footage preview"} /> : null}
+            <DialogTitle className="sr-only">
+              {lang === "th" ? "Footage เต็มจอ" : "Fullscreen footage"}
+            </DialogTitle>
+            {footagePreviewUrl ? (
+              <video
+                className="max-h-[88dvh] w-full object-contain"
+                src={footagePreviewUrl}
+                controls
+                autoPlay
+                aria-label={footageFileName || "Footage preview"}
+              />
+            ) : null}
           </DialogContent>
         </Dialog>
         <Dialog open={brollFullscreen} onOpenChange={setBrollFullscreen}>
           <DialogContent className="max-w-[95vw] p-3">
-            <DialogTitle className="sr-only">{lang === "th" ? "B-roll เต็มจอ" : "Fullscreen B-roll"}</DialogTitle>
-            {brollOutputUrl ? <video className="max-h-[88dvh] w-full object-contain" src={brollOutputUrl} controls autoPlay aria-label="Rendered B-roll preview" /> : null}
+            <DialogTitle className="sr-only">
+              {lang === "th" ? "B-roll เต็มจอ" : "Fullscreen B-roll"}
+            </DialogTitle>
+            {brollOutputUrl ? (
+              <video
+                className="max-h-[88dvh] w-full object-contain"
+                src={brollOutputUrl}
+                controls
+                autoPlay
+                aria-label="Rendered B-roll preview"
+              />
+            ) : null}
           </DialogContent>
         </Dialog>
         <Dialog
@@ -2732,8 +3605,12 @@ export function SpecialTieInEpisodeDialog({
                 src={lightbox.src}
                 alt={lightbox.alt}
                 className="max-h-[88dvh] max-w-full object-contain"
-                loadingLabel={lang === "th" ? "กำลังโหลดภาพ..." : "Loading image..."}
-                errorLabel={lang === "th" ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"}
+                loadingLabel={
+                  lang === "th" ? "กำลังโหลดภาพ..." : "Loading image..."
+                }
+                errorLabel={
+                  lang === "th" ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"
+                }
               />
             ) : null}
           </DialogContent>

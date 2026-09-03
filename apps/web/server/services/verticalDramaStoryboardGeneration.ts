@@ -994,7 +994,7 @@ export async function generateStoryboardShotgrid(
   // same one-retry-on-truncated/invalid-JSON safety net as the sibling
   // start-frame/motion-prompt/script generators — see
   // `executeJsonPlanningCallWithRetry`'s doc comment.
-  const { data: storyboardData, response } =
+  let { data: storyboardData, response } =
     await executeJsonPlanningCallWithRetry({
       model,
       systemPrompt,
@@ -1022,14 +1022,50 @@ export async function generateStoryboardShotgrid(
 
   const storyboardSafety = analyzeVerticalDramaStorySafety(storyboardData);
   if (isBlockingVerticalDramaStorySafety(storyboardSafety)) {
-    const error = new Error(
-      "Storyboard contains a high-risk policy context; rewrite before media generation."
-    ) as Error & { code?: string; safety?: unknown };
-    error.code = "VD_STORY_POLICY_RISK";
-    error.safety = storyboardSafety;
-    (error as Error & { candidate?: StoryboardShotgridOutput }).candidate =
-      storyboardData;
-    throw error;
+    // A model can introduce a risky phrase that is absent from the authored
+    // episode plan (for example, an unsafe interpretation of an otherwise
+    // ordinary child-and-parent scene). Give the planner one bounded,
+    // zero-credit-deduction rewrite chance before surfacing a real safety
+    // block. The second pass keeps the original story facts and explicitly
+    // requires neutral, non-graphic framing; it does not weaken the final
+    // safety gate below.
+    const safetyRepairParams: GenerateStoryboardShotgridParams = {
+      ...params,
+      policySafetyContext: [
+        params.policySafetyContext,
+        ...storyboardSafety.findings.map(finding => finding.message),
+        "SAFE REWRITE REQUIRED: the previous storyboard draft introduced a high-risk interpretation. Rewrite the complete 9-shot storyboard using neutral, non-graphic actions that preserve the authored episode facts and plot purpose. Do not include sexual content, nudity, abuse, coercion, graphic injury, surveillance, or a child in danger. Keep ordinary care, play, conversation, and adult boundaries safe and non-threatening.",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    };
+    const repaired = await executeJsonPlanningCallWithRetry({
+      model,
+      systemPrompt,
+      userPrompt: buildUserPrompt(safetyRepairParams),
+      temperature: 0.2,
+      userId: params.userId,
+      maxTokens: 16000,
+      schema: storyboardShotgridOutputSchema,
+      label: "Storyboard shotgrid safe rewrite",
+      planningAttemptObserver: params.planningAttemptObserver,
+    });
+    storyboardData = repaired.data;
+    response = repaired.response;
+    const repairedSafety = analyzeVerticalDramaStorySafety(storyboardData);
+    if (!isBlockingVerticalDramaStorySafety(repairedSafety)) {
+      // Continue through the normal deterministic normalization and credit
+      // accounting below using the safe replacement.
+    } else {
+      const error = new Error(
+        "Storyboard contains a high-risk policy context; rewrite before media generation."
+      ) as Error & { code?: string; safety?: unknown };
+      error.code = "VD_STORY_POLICY_RISK";
+      error.safety = repairedSafety;
+      (error as Error & { candidate?: StoryboardShotgridOutput }).candidate =
+        storyboardData;
+      throw error;
+    }
   }
 
   // Normalize `characters` / `required_character_refs` / `screen_caller_refs` per shot — the LLM is

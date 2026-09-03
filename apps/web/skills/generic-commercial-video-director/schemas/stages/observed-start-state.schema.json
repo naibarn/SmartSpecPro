@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/observed-start-state.schema.json",
+  "title": "Observed Start State",
+  "type": "object",
+  "required": [
+    "source",
+    "characters",
+    "objects",
+    "camera",
+    "environment",
+    "lighting",
+    "uncertainties"
+  ],
+  "properties": {
+    "source": {
+      "type": "string",
+      "enum": [
+        "start_frame",
+        "designed"
+      ]
+    },
+    "characters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "characterId",
+          "screenPosition",
+          "pose",
+          "gaze",
+          "handOccupancy"
+        ],
+        "properties": {
+          "characterId": {
+            "type": "string"
+          },
+          "screenPosition": {
+            "type": "string"
+          },
+          "pose": {
+            "type": "string"
+          },
+          "gaze": {
+            "type": "string"
+          },
+          "handOccupancy": {
+            "type": "object",
+            "properties": {
+              "left": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "right": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "left",
+              "right"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "entityId",
+          "state",
+          "position"
+        ],
+        "properties": {
+          "entityId": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "position": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "camera": {
+      "type": "object",
+      "required": [
+        "framing",
+        "angle",
+        "movementAtT0"
+      ],
+      "properties": {
+        "framing": {
+          "type": "string"
+        },
+        "angle": {
+          "type": "string"
+        },
+        "movementAtT0": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "environment": {
+      "type": "string"
+    },
+    "lighting": {
+      "type": "string"
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,35 @@
+{
+  "provider": "BytePlus/ByteDance",
+  "model": "dreamina-seedance-2-5-260628",
+  "targetDurationSeconds": 90,
+  "strategy": "bounded_reference_continuation",
+  "segments": [
+    {
+      "index": 0,
+      "durationSeconds": 30,
+      "mode": "base"
+    },
+    {
+      "index": 1,
+      "durationSeconds": 30,
+      "mode": "reference_video_continuation",
+      "continuationTailSeconds": 4
+    },
+    {
+      "index": 2,
+      "durationSeconds": 30,
+      "mode": "reference_video_continuation",
+      "continuationTailSeconds": 4
+    }
+  ],
+  "maxAutomaticExtensionTurns": 2,
+  "requires": [
+    "state_ledger",
+    "last_frame",
+    "dialogue_state",
+    "audio_state",
+    "segment_qc",
+    "seam_qc",
+    "external_assembly"
+  ]
+}

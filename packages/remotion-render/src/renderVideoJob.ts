@@ -20,10 +20,10 @@
 import { createHash } from "node:crypto";
 import {
   closeSync,
+  createReadStream,
   existsSync,
   mkdtempSync,
   openSync,
-  readFileSync,
   readSync,
   rmSync,
   statSync,
@@ -226,8 +226,10 @@ function verifyRemotionRenderMp4Sanity(filePath: string): {
   }
 }
 
-function contentHashId(buffer: Buffer): string {
-  return `hf_${createHash("sha256").update(buffer).digest("hex").slice(0, 48)}`;
+async function contentHashId(filePath: string): Promise<string> {
+  const hash = createHash("sha256");
+  for await (const chunk of createReadStream(filePath)) hash.update(chunk);
+  return `hf_${hash.digest("hex").slice(0, 48)}`;
 }
 
 export interface RemotionRenderVideoRenderInput {
@@ -530,8 +532,7 @@ export async function runRemotionRenderVideoJob(
         sanity.message ?? "output sanity check failed",
       );
     }
-    const fileBuffer = readFileSync(finalOutputPath);
-    const contentHash = contentHashId(fileBuffer);
+    const contentHash = await contentHashId(finalOutputPath);
 
     await emit("upload_artifacts");
     const storageKey = [
@@ -562,7 +563,7 @@ export async function runRemotionRenderVideoJob(
         url: stored.url,
         contentHash,
         mimeType: "video/mp4",
-        sizeBytes: fileBuffer.byteLength,
+        sizeBytes: sanity.sizeBytes,
       },
       {
         artifactType: "remotion_render_manifest",
@@ -590,7 +591,7 @@ export async function runRemotionRenderVideoJob(
       tenantId: input.tenantId,
       traceId: payload.traceId,
       renderJobId: input.renderJobId,
-      metadata: { contentHash, sizeBytes: fileBuffer.byteLength, durationSec },
+      metadata: { contentHash, sizeBytes: sanity.sizeBytes, durationSec },
     });
 
     return {

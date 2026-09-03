@@ -78,7 +78,6 @@ export interface VerticalDramaProductTieIn {
   productCategory?: VerticalDramaProductCategory;
   [key: string]: unknown;
 }
-
 export interface VerticalDramaProductTieInTabProps {
   lang: "th" | "en";
   seriesId: string;
@@ -182,7 +181,7 @@ export function VerticalDramaProductTieInTab({
       <CardHeader>
         <CardTitle className="text-base">{pickCopy(lang, verticalDramaCopy.productTieIn)}</CardTitle>
       </CardHeader>
-      <CardContent className="grid max-w-md gap-4">
+      <CardContent className="grid w-full max-w-none gap-4">
         {readOnly && (
           <Badge variant="outline" className="w-fit">
             {pickCopy(lang, verticalDramaCopy.readOnly)}

@@ -191,6 +191,11 @@ export function videoPromptModelFamilyDirectives(family: VideoPromptModelFamily)
         "Flux3: use concrete cinematic composition and physically grounded temporal continuity; repeat identity anchors at each action or cut.",
         "Do not trade face readability or cast count for spectacle; effects must be bounded to the declared genre.",
       ];
+    case "gemini_omni":
+      return [
+        "Gemini Omni: keep first-frame and last-frame intent explicit and preserve the continuous action between them.",
+        "Treat attached image references as additive visual context; keep dialogue tied to the named visible speaker and preserve prop and identity continuity.",
+      ];
     default:
       return [
         "Unknown video model: use the conservative provider-neutral contract; state all critical identity, cast, face, motion, and physics constraints positively.",

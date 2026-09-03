@@ -4,7 +4,7 @@
  * for `resolveVideoPromptTargetFamily`/`videoPromptFamilySupportsNegativePrompt`,
  * the single source of truth both the server (fact block + persist stamping)
  * and the client (badge/mismatch) use to classify a video model into the
- * `grok | veo | seedance | other` prompt-shaping family.
+ * `grok | veo | seedance | gemini_omni | other` prompt-shaping family.
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -100,6 +100,7 @@ describe("videoPromptFamilySupportsNegativePrompt", () => {
     expect(videoPromptFamilySupportsNegativePrompt("veo")).toBe(true);
     expect(videoPromptFamilySupportsNegativePrompt("seedance")).toBe(true);
     expect(videoPromptFamilySupportsNegativePrompt("other")).toBe(true);
+    expect(videoPromptFamilySupportsNegativePrompt("gemini_omni")).toBe(true);
   });
 });
 
@@ -111,6 +112,7 @@ describe("VIDEO_PROMPT_MODEL_FAMILIES / VIDEO_PROMPT_MODEL_FAMILY_LABELS", () =>
       "seedance",
       "minimax_h3",
       "flux3",
+      "gemini_omni",
       "other",
     ]);
     const families: VideoPromptModelFamily[] = [
@@ -119,6 +121,7 @@ describe("VIDEO_PROMPT_MODEL_FAMILIES / VIDEO_PROMPT_MODEL_FAMILY_LABELS", () =>
       "seedance",
       "minimax_h3",
       "flux3",
+      "gemini_omni",
       "other",
     ];
     for (const family of families) {
@@ -130,5 +133,13 @@ describe("VIDEO_PROMPT_MODEL_FAMILIES / VIDEO_PROMPT_MODEL_FAMILY_LABELS", () =>
   it("recognizes MiniMax H3 and Flux3 video model aliases", () => {
     expect(resolveVideoPromptTargetFamily({ modelId: "minimax-h3-video", name: "MiniMax H3" })).toBe("minimax_h3");
     expect(resolveVideoPromptTargetFamily({ modelId: "fal-ai/flux-3-video", name: "Flux3" })).toBe("flux3");
+  });
+
+  it("classifies Gemini Omni Flash 1.1 as gemini_omni", () => {
+    expect(resolveVideoPromptTargetFamily({
+      modelId: "gemini-omni-flash-1-1",
+      name: "Gemini Omni Flash 1.1",
+      provider: "kie.ai",
+    })).toBe("gemini_omni");
   });
 });

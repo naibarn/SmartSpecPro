@@ -1411,6 +1411,8 @@ export interface VideoGenerationRequest {
   referenceVideoUrl?: string;
   /** Reference audio clips (minimax-h3 reference-to-video cites them by order) */
   referenceAudioUrls?: string[];
+  /** Server-only signal: a validated typed video bundle owns ordering/limits. */
+  preserveReferenceOrder?: boolean;
   /** Optional audit metadata for end-to-end traceability */
   auditContext?: MediaAuditContext;
   /** Optional MCP/Gateway transport metadata for direct service callers */
@@ -2253,14 +2255,30 @@ function isBananaModel(modelId: string): boolean {
 function resolveReferenceImageUrlsForModel(
   modelId: string,
   urls: string[] | undefined,
-  publicUrl?: string | null
+  publicUrl?: string | null,
+  preserveReferenceOrder = false,
 ): string[] | undefined {
   if (!urls || urls.length === 0) {
     return undefined;
   }
 
-  const limit = getReferenceImageLimitForModel(modelId);
-  const sliced = urls.slice(0, limit);
+  const model =
+    getModelById(mapToApiModelId(modelId)) ||
+    getModelById(modelId) ||
+    MEDIA_MODELS[modelId];
+  const hasDeclarativeVideoCapabilityProfile = Boolean(
+    model?.configJson &&
+    typeof model.configJson === "object" &&
+    !Array.isArray(model.configJson) &&
+    "videoCapabilityProfile" in model.configJson,
+  );
+  // Profile-backed video routes already validated the complete typed bundle
+  // against per-modality/total limits. Do not apply the legacy image-only cap
+  // here, otherwise mixed-reference providers lose ordered image items before
+  // their adapter receives the bundle. Legacy models retain the old trim.
+  const sliced = preserveReferenceOrder || hasDeclarativeVideoCapabilityProfile
+    ? urls
+    : urls.slice(0, getReferenceImageLimitForModel(modelId));
   const isGptImage = isGptImageModel(modelId) && !isBananaModel(modelId);
 
   return sliced.map(url => {
@@ -2275,9 +2293,10 @@ function resolveReferenceImageUrlsForModel(
 export function resolveReferenceImageUrlsForModelForTest(
   modelId: string,
   urls: string[] | undefined,
-  publicUrl?: string | null
+  publicUrl?: string | null,
+  preserveReferenceOrder = false,
 ): string[] | undefined {
-  return resolveReferenceImageUrlsForModel(modelId, urls, publicUrl);
+  return resolveReferenceImageUrlsForModel(modelId, urls, publicUrl, preserveReferenceOrder);
 }
 
 type ReferenceImageInputType = "array" | "url";
@@ -2599,6 +2618,20 @@ function buildMcpServiceParameters(
     ...common,
     duration: videoRequest.duration,
     fps: videoRequest.fps,
+    referenceVideoUrls:
+      videoRequest.referenceVideoUrls?.length
+        ? videoRequest.referenceVideoUrls.map(url => resolveReferenceUrl(url, request.publicUrl))
+        : undefined,
+    referenceAudioUrls:
+      videoRequest.referenceAudioUrls?.length
+        ? videoRequest.referenceAudioUrls.map(url => resolveReferenceUrl(url, request.publicUrl))
+        : undefined,
+    firstFrameUrl: typeof videoRequest.extraParams?.first_frame_url === "string"
+      ? resolveReferenceUrl(videoRequest.extraParams.first_frame_url, request.publicUrl)
+      : undefined,
+    lastFrameUrl: typeof videoRequest.extraParams?.last_frame_url === "string"
+      ? resolveReferenceUrl(videoRequest.extraParams.last_frame_url, request.publicUrl)
+      : undefined,
     referenceVideoCount:
       videoRequest.referenceVideoUrls?.length ??
       (videoRequest.referenceVideoUrl ? 1 : 0),
@@ -2867,6 +2900,19 @@ export class MediaGenerationService {
           "",
           request.publicUrl,
         )) ?? parameters.referenceImageUrls;
+    }
+    for (const key of ["referenceVideoUrls", "referenceAudioUrls"] as const) {
+      if (Array.isArray(parameters[key])) {
+        parameters[key] =
+          (await resolveProviderReferenceUrls(
+            parameters[key].filter(
+              (value): value is string => typeof value === "string",
+            ),
+            request,
+            "",
+            request.publicUrl,
+          )) ?? parameters[key];
+      }
     }
     return submitMcpMediaGeneration({
       tenantId,
@@ -3238,7 +3284,7 @@ export class MediaGenerationService {
       resolveReferenceImageUrlsForModel(
       modelId,
       request.referenceImageUrls,
-      publicUrl
+      publicUrl,
       ),
       request,
       userToken,
@@ -3403,7 +3449,7 @@ export class MediaGenerationService {
       resolveReferenceImageUrlsForModel(
       modelId,
       request.referenceImageUrls,
-      publicUrl
+      publicUrl,
       ),
       request,
       userToken,
@@ -3734,7 +3780,7 @@ export class MediaGenerationService {
       resolveReferenceImageUrlsForModel(
       modelId,
       request.referenceImageUrls,
-      publicUrl
+      publicUrl,
       ),
       request,
       userToken,
@@ -3891,9 +3937,10 @@ export class MediaGenerationService {
     // Add reference images for img2vid
     const resolvedReferenceImageUrls = await resolveProviderReferenceUrls(
       resolveReferenceImageUrlsForModel(
-      modelId,
-      request.referenceImageUrls,
-      publicUrl
+        modelId,
+        request.referenceImageUrls,
+        publicUrl,
+        request.preserveReferenceOrder === true,
       ),
       request,
       userToken,

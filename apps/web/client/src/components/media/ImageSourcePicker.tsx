@@ -47,6 +47,8 @@ export interface ImageSourcePickerProps {
   selectionMode?: "append" | "replace";
   /** Disable picker interactions */
   disabled?: boolean;
+  /** Render a prominent full-width drop zone instead of the compact add tile */
+  dropZone?: boolean;
 }
 
 const LIBRARY_SCOPES = [
@@ -190,6 +192,134 @@ export function getDraggedImageUrl(dataTransfer: DataTransfer): string | null {
  *  — this is a fast client-side guard, the server still enforces its own
  *  limit independently via `ai.upload`). */
 export const DROPPED_IMAGE_FILE_MAX_BYTES = 15 * 1024 * 1024;
+
+/** Shared limit for shot references. Video/audio references are uploaded
+ * through the same managed-media path, but need a larger client-side guard
+ * than image-only drop targets. The server remains authoritative. */
+export const DROPPED_MEDIA_FILE_MAX_BYTES = 100 * 1024 * 1024;
+
+export type DroppedShotMediaType = "image" | "video" | "audio";
+
+export type DroppedMediaInput =
+  | { kind: "url"; url: string; mediaType: DroppedShotMediaType }
+  | { kind: "file"; file: File; mediaType: DroppedShotMediaType };
+
+export type DroppedMediaInputError =
+  | { kind: "unsupported-file-type" }
+  | { kind: "file-too-large"; maxBytes: number };
+
+export interface ReadDroppedMediaInputResult {
+  input: DroppedMediaInput | null;
+  error: DroppedMediaInputError | null;
+}
+
+export interface ReadDroppedMediaInputsResult {
+  inputs: DroppedMediaInput[];
+  error: DroppedMediaInputError | null;
+}
+
+function mediaTypeFromMimeOrUrl(value: string): DroppedShotMediaType | null {
+  const normalized = value.trim().toLowerCase();
+  if (
+    normalized === "image" ||
+    normalized === "video" ||
+    normalized === "audio"
+  )
+    return normalized;
+  if (
+    normalized.startsWith("image/") ||
+    /\.(jpe?g|png|gif|webp|svg|avif|bmp)([?#].*)?$/.test(normalized)
+  )
+    return "image";
+  if (
+    normalized.startsWith("video/") ||
+    /\.(mp4|webm|mov|m4v|avi|mkv)([?#].*)?$/.test(normalized)
+  )
+    return "video";
+  if (
+    normalized.startsWith("audio/") ||
+    /\.(mp3|wav|m4a|aac|ogg|flac|opus)([?#].*)?$/.test(normalized)
+  )
+    return "audio";
+  return null;
+}
+
+/** Reads OS files and the unified Library/History URL drag contract for all
+ * three supported shot-reference media kinds. */
+export function readDroppedMediaInput(
+  event: React.DragEvent
+): ReadDroppedMediaInputResult {
+  const files = event.dataTransfer.files;
+  if (files && files.length > 0) {
+    const file = files[0];
+    const mediaType = mediaTypeFromMimeOrUrl(file.type || file.name);
+    if (!mediaType)
+      return { input: null, error: { kind: "unsupported-file-type" } };
+    if (file.size > DROPPED_MEDIA_FILE_MAX_BYTES) {
+      return {
+        input: null,
+        error: {
+          kind: "file-too-large",
+          maxBytes: DROPPED_MEDIA_FILE_MAX_BYTES,
+        },
+      };
+    }
+    return { input: { kind: "file", file, mediaType }, error: null };
+  }
+
+  const mediaTypeRaw = (
+    event.dataTransfer.getData("application/x-smartspec-media-type") ||
+    event.dataTransfer.getData("text/x-smartspec-media-type")
+  )
+    .trim()
+    .toLowerCase();
+  const rawUrl = (
+    event.dataTransfer.getData("text/uri-list") ||
+    event.dataTransfer.getData("text/plain")
+  ).trim();
+  const url = rawUrl
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .find(line => line && !line.startsWith("#"));
+  if (!url) return { input: null, error: null };
+  if (url.startsWith("data:")) {
+    const dataType = mediaTypeFromMimeOrUrl(url.slice(5).split(";", 1)[0]);
+    return dataType
+      ? { input: { kind: "url", url, mediaType: dataType }, error: null }
+      : { input: null, error: { kind: "unsupported-file-type" } };
+  }
+  if (!isUsableImageUrl(url)) return { input: null, error: null };
+  const mediaType =
+    mediaTypeFromMimeOrUrl(mediaTypeRaw) ?? mediaTypeFromMimeOrUrl(url);
+  if (!mediaType)
+    return { input: null, error: { kind: "unsupported-file-type" } };
+  return { input: { kind: "url", url, mediaType }, error: null };
+}
+
+/** Read every OS file in a drop/picker selection. URL-based library drops stay
+ * single-input because the browser drag contract carries one media URL. */
+export function readDroppedMediaFiles(
+  files: FileList | File[]
+): ReadDroppedMediaInputsResult {
+  const inputs: DroppedMediaInput[] = [];
+  let error: DroppedMediaInputError | null = null;
+  for (const file of Array.from(files)) {
+    const mediaType = mediaTypeFromMimeOrUrl(file.type || file.name);
+    if (!mediaType) {
+      error ??= { kind: "unsupported-file-type" };
+      continue;
+    }
+    if (file.size > DROPPED_MEDIA_FILE_MAX_BYTES) {
+      error ??= {
+        kind: "file-too-large",
+        maxBytes: DROPPED_MEDIA_FILE_MAX_BYTES,
+      };
+      continue;
+    }
+    inputs.push({ kind: "file", file, mediaType });
+  }
+  return { inputs, error };
+}
 
 export type DroppedImageInput =
   | { kind: "url"; url: string }
@@ -435,6 +565,7 @@ export function ImageSourcePicker({
   language = "th",
   selectionMode = "append",
   disabled = false,
+  dropZone = false,
 }: ImageSourcePickerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -712,7 +843,9 @@ export function ImageSourcePicker({
                 variant="outline"
                 aria-label={isTh ? "เพิ่มรูปภาพ" : "Add image"}
                 className={cn(
-                  "h-16 w-16",
+                  dropZone
+                    ? "min-h-24 w-full flex-col gap-1.5 border-dashed px-4 py-4 text-sm"
+                    : "h-16 w-16",
                   isDragActive && "border-sky-400 bg-sky-50 text-sky-600 ring-2 ring-sky-200",
                 )}
                 disabled={disabled || isUploading}
@@ -725,6 +858,18 @@ export function ImageSourcePicker({
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <ImagePlus className="h-5 w-5" />
+                )}
+                {dropZone && !isUploading && (
+                  <>
+                    <span className="font-medium">
+                      {isTh ? "ลากภาพมาวางที่นี่" : "Drop reference images here"}
+                    </span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {isTh
+                        ? "จากเครื่องหรือ Library แล้วคลิกเพื่อเลือกแหล่งภาพ"
+                        : "From your device or Library, or click to choose a source"}
+                    </span>
+                  </>
                 )}
               </Button>
             </PopoverTrigger>

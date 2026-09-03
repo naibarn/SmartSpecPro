@@ -6,6 +6,10 @@ import { mediaAssets } from "../../drizzle/schema";
 import { storagePresignGet, storageResolveUrl } from "../storage";
 import { extractVerticalDramaManagedMediaKey } from "./verticalDramaMediaAssetService";
 import { copyMediaBufferToR2, copyMediaSourceToR2 } from "./durableMediaAssetService";
+import {
+  GEMINI_OMNI_MAX_IMAGE_UPLOAD_BYTES,
+  GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES,
+} from "../../shared/geminiOmni";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,6 +56,30 @@ export function validateImage(mimeType: string | undefined, fileSize: number | u
   }
   if (fileSize !== undefined && fileSize > MAX_FILE_SIZE) {
     return { valid: false, reason: `File size ${fileSize} bytes exceeds 20 MB limit.` };
+  }
+  return { valid: true };
+}
+
+/** Validate media that may be attached as a Vertical Drama reference. */
+export function validateMediaAttachment(
+  type: AttachmentInput["type"],
+  mimeType: string | undefined,
+  fileSize: number | undefined,
+): ValidationResult {
+  const normalizedMime = mimeType?.split(";", 1)[0].trim().toLowerCase();
+  const mediaType = normalizedMime?.split("/", 1)[0] ?? type;
+  if (mediaType !== "image" && mediaType !== "video" && mediaType !== "audio") {
+    return { valid: false, reason: "Only image, video, or audio attachments are supported." };
+  }
+  if (mediaType === "image") return validateImage(mimeType, fileSize);
+  const maxBytes = mediaType === "image"
+    ? GEMINI_OMNI_MAX_IMAGE_UPLOAD_BYTES
+    : GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES;
+  if (fileSize !== undefined && fileSize > maxBytes) {
+    return {
+      valid: false,
+      reason: `File size ${fileSize} bytes exceeds ${Math.round(maxBytes / 1024 / 1024)} MB limit.`,
+    };
   }
   return { valid: true };
 }
@@ -138,9 +166,20 @@ export async function createAssetFromAttachment(
   context: AssetContext,
 ): Promise<{ assetId: number }> {
   // 1. Validate
-  const validation = validateImage(attachment.mimeType, attachment.size);
+  const attachmentMediaType = attachment.mimeType?.toLowerCase().startsWith("video/")
+    ? "video"
+    : attachment.mimeType?.toLowerCase().startsWith("audio/")
+      ? "audio"
+      : attachment.type === "video" || attachment.type === "audio"
+        ? attachment.type
+        : "image";
+  const validation = validateMediaAttachment(
+    attachmentMediaType,
+    attachment.mimeType,
+    attachment.size,
+  );
   if (!validation.valid) {
-    throw new Error(`Image validation failed: ${validation.reason}`);
+    throw new Error(`Media validation failed: ${validation.reason}`);
   }
 
   const db = await getDb();
@@ -151,37 +190,44 @@ export async function createAssetFromAttachment(
   const externalProviderUrl = /^https?:\/\//i.test(attachment.url.trim())
     ? attachment.url.trim()
     : null;
-  const dataImageMatch = attachment.url.match(
-    /^data:(image\/(?:jpeg|png|webp|gif));base64,([a-z0-9+/=\s]+)$/i,
+  const dataMediaMatch = attachment.url.match(
+    /^data:((?:image|video|audio)\/[^;,]+);base64,([a-z0-9+/=\s]+)$/i,
   );
-  const dataImageBuffer = dataImageMatch
-    ? Buffer.from(dataImageMatch[2].replace(/\s+/g, ""), "base64")
+  const dataMediaBuffer = dataMediaMatch
+    ? Buffer.from(dataMediaMatch[2].replace(/\s+/g, ""), "base64")
     : null;
-  if (dataImageBuffer && dataImageBuffer.byteLength > MAX_FILE_SIZE) {
-    throw new Error("Image validation failed: inline image exceeds 20 MB limit.");
+  if (dataMediaBuffer) {
+    const inlineValidation = validateMediaAttachment(
+      attachmentMediaType,
+      dataMediaMatch[1],
+      dataMediaBuffer.byteLength,
+    );
+    if (!inlineValidation.valid) {
+      throw new Error(`Media validation failed: ${inlineValidation.reason}`);
+    }
   }
   const durableCopy = externalProviderUrl
     ? await copyMediaSourceToR2({
         tenantId: context.tenantId,
         userId: context.userId,
-        mediaType: "image",
+        mediaType: attachmentMediaType,
         sourceType: "chat_attachment",
         sourceUrl: externalProviderUrl,
         originalUrl: externalProviderUrl,
         mimeType: attachment.mimeType,
       })
     : null;
-  const durableBufferCopy = dataImageBuffer
+  const durableBufferCopy = dataMediaBuffer
     ? await copyMediaBufferToR2(
         {
           tenantId: context.tenantId,
           userId: context.userId,
-          mediaType: "image",
+          mediaType: attachmentMediaType,
           sourceType: "chat_attachment",
           originalUrl: attachment.url,
-          mimeType: dataImageMatch?.[1] ?? attachment.mimeType,
+          mimeType: dataMediaMatch?.[1] ?? attachment.mimeType,
         },
-        dataImageBuffer,
+        dataMediaBuffer,
       )
     : null;
   const durableStorageKey = durableCopy?.storageKey ?? durableBufferCopy?.storageKey ?? managedStorageKey;

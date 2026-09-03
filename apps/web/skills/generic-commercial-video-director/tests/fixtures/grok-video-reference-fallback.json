@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "ให้ตัวละครเคลื่อนไหวตามวิดีโออ้างอิง แต่สร้างด้วย Grok Imagine Video 1.5",
+  "locale": "th-TH",
+  "assets": [
+    {
+      "assetId": "person",
+      "role": "character_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "identity"
+      ]
+    },
+    {
+      "assetId": "motion",
+      "role": "motion_reference",
+      "mediaType": "video",
+      "referencePurposes": [
+        "motion",
+        "camera_motion"
+      ],
+      "providerUsePolicy": "may_derive"
+    }
+  ],
+  "providerOptions": {
+    "grokImagineVideo15": {
+      "mode": "auto",
+      "videoReferencePolicy": "derive_to_prompt"
+    }
+  }
+}

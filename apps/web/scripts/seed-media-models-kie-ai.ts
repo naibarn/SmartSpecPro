@@ -319,6 +319,47 @@ const GEMINI_OMNI_FLASH_1_1_INPUT_FIELDS: InputField[] = [
   { key: "last_frame_url", label: "Last Frame URL", type: "text", required: false, advancedOnly: true, providerPayloadKey: "last_frame_url" },
 ];
 
+function buildGeminiOmniCapabilityProfile(input: {
+  modelKey: string;
+  displayName: string;
+  maxAudio: number;
+}) {
+  return {
+    providerFamily: "gemini-omni",
+    modelKey: input.modelKey,
+    displayName: input.displayName,
+    capabilityProfileVersion: "gemini-omni/1",
+    capabilitySource: "runtime_catalog",
+    modes: [{
+      id: "mixed-references",
+      acceptsStartFrame: true,
+      acceptsStopFrame: true,
+      acceptsReferenceImages: true,
+      acceptsReferenceVideos: true,
+      acceptsReferenceAudio: true,
+      allowsMixedReferences: true,
+      maxImages: 7,
+      maxVideos: 1,
+      maxAudio: input.maxAudio,
+      maxTotalReferences: null,
+      maxPayloadBytes: null,
+      maxVideoDurationSec: 10,
+      startFrameConsumesImageSlot: false,
+      requiresVisualReferenceForAudio: false,
+      supportedReferenceRoles: ["reference", "character", "location", "prop", "style", "continuity", "action", "barrier_reference", "soundscape"],
+      preservesStartStopSemanticsWithReferences: true,
+      transport: "kie",
+      nativeFieldMap: {
+        startFrame: "first_frame_url",
+        stopFrame: "last_frame_url",
+        images: "image_urls",
+        videos: "video_list",
+        audio: "audio_ids",
+      },
+    }],
+  };
+}
+
 function buildHappyHorseConfig(
   kieModelId: "happyhorse/text-to-video" | "happyhorse/image-to-video" | "happyhorse/reference-to-video" | "happyhorse/video-edit",
   generateType: "text-to-video" | "image-to-video" | "reference-to-video" | "video-edit",
@@ -759,6 +800,7 @@ const VIDEO_MODELS = [
       apiQueryEndpoint: "/api/v1/jobs/recordInfo",
       apiPayloadFormat: "market",
       kieModelId: "gemini-omni-video",
+      providerProfileId: "gemini-omni-video",
       generateType: "multimodal-video",
       hasAudio: true,
       maxDuration: 10,
@@ -775,6 +817,11 @@ const VIDEO_MODELS = [
         reference_video_input_key: "video_list",
         reference_video_input_type: "object_array",
       },
+      videoCapabilityProfile: buildGeminiOmniCapabilityProfile({
+        modelKey: "gemini-omni-video",
+        displayName: "Gemini Omni Video",
+        maxAudio: 1,
+      }),
       inputFields: GEMINI_OMNI_INPUT_FIELDS,
       pricingTiers: GEMINI_OMNI_PRICING_TIERS,
       pricingFormula: "matrix",
@@ -803,6 +850,7 @@ const VIDEO_MODELS = [
       apiQueryEndpoint: "/api/v1/jobs/recordInfo",
       apiPayloadFormat: "market",
       kieModelId: "google/gemini-omni-flash-1-1",
+      providerProfileId: "google/gemini-omni-flash-1-1",
       generateType: "multimodal-video",
       hasAudio: true,
       maxDuration: 10,
@@ -819,6 +867,11 @@ const VIDEO_MODELS = [
         reference_video_input_key: "video_list",
         reference_video_input_type: "object_array",
       },
+      videoCapabilityProfile: buildGeminiOmniCapabilityProfile({
+        modelKey: "gemini-omni-flash-1-1",
+        displayName: "Gemini Omni Flash 1.1",
+        maxAudio: 3,
+      }),
       inputFields: GEMINI_OMNI_FLASH_1_1_INPUT_FIELDS,
       pricingTiers: GEMINI_OMNI_FLASH_1_1_PRICING_TIERS,
       pricingFormula: "matrix",
@@ -1438,6 +1491,7 @@ const VIDEO_MODELS = [
       apiEndpoint: "/api/v1/jobs/createTask",
       apiPayloadFormat: "market",
       kieModelId: "grok-imagine-video-1-5-preview",
+      providerProfileId: "grok-imagine-video-1.5",
       documentationUrl: "https://docs.kie.ai/market/grok-imagine/1-5-preview",
       generateType: "image-to-video",
       hasAudio: true,
@@ -1481,6 +1535,34 @@ const VIDEO_MODELS = [
       ],
       pricingTiers: { default: 125 },
       pricingFormula: "flat",
+      videoCapabilityProfile: {
+        providerFamily: "grok-imagine-video",
+        modelKey: "grok-imagine-video-1-5-preview",
+        displayName: "Grok Imagine Video 1.5 (SmartAIHub image transport)",
+        capabilityProfileVersion: "grok-imagine-video/1.5-app-transport-1",
+        capabilitySource: "runtime_catalog",
+        modes: [{
+          id: "reference-to-video",
+          acceptsStartFrame: true,
+          acceptsStopFrame: false,
+          acceptsReferenceImages: true,
+          acceptsReferenceVideos: false,
+          acceptsReferenceAudio: false,
+          allowsMixedReferences: false,
+          maxImages: 7,
+          maxVideos: 0,
+          maxAudio: 0,
+          maxTotalReferences: 7,
+          maxPayloadBytes: null,
+          maxVideoDurationSec: 15,
+          startFrameConsumesImageSlot: true,
+          requiresVisualReferenceForAudio: false,
+          supportedReferenceRoles: ["reference", "character", "location", "prop", "style", "continuity", "action", "barrier_reference", "soundscape"],
+          preservesStartStopSemanticsWithReferences: false,
+          transport: "kie",
+          nativeFieldMap: { startFrame: "image_urls", images: "image_urls" },
+        }],
+      },
     } as ModelDefinition,
   },
 
@@ -1871,7 +1953,7 @@ const IMAGE_MODELS = [
       // marketplace-auto-review reference cap in sync on every re-seed.
       maxReferenceImages: 14,
       inputFields: [
-        { key: "image_input", label: "Reference Images", type: "image_urls" },
+        { key: "image_input", label: "Reference Images", type: "image_urls", maxItems: 14 },
         { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
           options: [
             { value: "1:1", label: "1:1" }, { value: "1:4", label: "1:4" }, { value: "1:8", label: "1:8" },
@@ -1896,7 +1978,7 @@ const IMAGE_MODELS = [
   {
     modelId: "google-banana-2-lite",
     name: "Nano Banana 2 Lite",
-    description: "Nano Banana 2 Lite - Fast, cost-effective image generation and editing with up to 10 reference images.",
+    description: "Nano Banana 2 Lite - Fast, cost-effective image generation and editing with up to 14 reference images.",
     modelType: "image",
     provider: "kie.ai",
     aliases: ["google banana 2 lite", "banana-2-lite", "nano-banana-2-lite", "google/nano-banana-2-lite", "gemini-3.1-flash-lite-image"],
@@ -1915,11 +1997,11 @@ const IMAGE_MODELS = [
         family: "nano_banana",
         negativePromptMode: "inline_only",
       },
-      maxReferenceImages: 10,
+      maxReferenceImages: 14,
       reference_image_input_key: "image_urls",
       reference_image_input_type: "array",
       inputFields: [
-        { key: "image_urls", label: "Reference Images", type: "image_urls", syncWith: "reference_images" },
+        { key: "image_urls", label: "Reference Images", type: "image_urls", syncWith: "reference_images", maxItems: 14 },
         { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
           options: [
             { value: "1:1", label: "1:1" }, { value: "1:4", label: "1:4" }, { value: "1:8", label: "1:8" },

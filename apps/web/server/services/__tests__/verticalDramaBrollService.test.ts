@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { projectBrollPlacements } from "../verticalDramaBrollService";
+import {
+  parseShotBrollBinding,
+  projectBrollPlacements,
+  validateBrollBinding,
+} from "../verticalDramaBrollService";
+import { parseShotBrollTransform } from "@shared/verticalDramaSeries/visualSource";
 
 describe("projectBrollPlacements", () => {
   const still = (bindingId: string, shotNumber: number, order = 0, duration = 2) => ({
@@ -40,5 +45,93 @@ describe("projectBrollPlacements", () => {
       [{ clipNumber: 1, durationSeconds: 8, sourceShotNumbers: [1] }],
     );
     expect(result.errors).toContain("broll_shot_overflow:too-long:9s>8s");
+  });
+
+  it("accepts direct episode footage without a source-pack segment", () => {
+    const binding = parseShotBrollBinding({
+      bindingId: "episode-footage-1",
+      episodeId: 12,
+      shotNumber: 1,
+      usage: {
+        usageId: "episode-footage-1",
+        slotId: "episode-footage-99",
+        semanticRole: "b_roll_footage",
+        mediaType: "video",
+        sourceAssetId: null,
+        mediaAssetId: 99,
+        segmentId: null,
+        segmentRevision: null,
+        inSeconds: 0,
+        outSeconds: 2.5,
+        displayDurationSeconds: null,
+        audioPolicy: "mute",
+        labelMode: "source",
+        snapshotRevision: 1,
+        snapshotFingerprint: "a".repeat(64),
+      },
+      order: 0,
+      transform: { x: 12, y: 8, width: 50, height: 40, rotationDeg: 3, opacity: 0.8 },
+      active: true,
+      status: "ready",
+    });
+    const validated = validateBrollBinding(binding, {
+      snapshotRevision: 1,
+      snapshotFingerprint: "a".repeat(64),
+      segment: null,
+    });
+    expect(validated.usage.segmentId).toBeNull();
+    expect(validated.transform).toMatchObject({ x: 12, width: 50, opacity: 0.8 });
+  });
+
+  it("does not accept an image as direct footage", () => {
+    const binding = parseShotBrollBinding({
+      bindingId: "invalid-direct-image",
+      episodeId: 12,
+      shotNumber: 1,
+      usage: {
+        usageId: "invalid-direct-image",
+        slotId: "episode-footage-99",
+        semanticRole: "b_roll_footage",
+        mediaType: "image",
+        sourceAssetId: null,
+        mediaAssetId: 99,
+        segmentId: null,
+        segmentRevision: null,
+        inSeconds: 0,
+        outSeconds: 2,
+        displayDurationSeconds: null,
+        snapshotRevision: 1,
+        snapshotFingerprint: "b".repeat(64),
+      },
+      order: 0,
+      active: true,
+      status: "ready",
+    });
+    expect(() => validateBrollBinding(binding, {
+      snapshotRevision: 1,
+      snapshotFingerprint: "b".repeat(64),
+      segment: null,
+    })).toThrow("Footage B-roll requires one video segment with in/out bounds");
+  });
+});
+
+describe("parseShotBrollTransform", () => {
+  it("falls back to the full-frame transform for missing or malformed legacy data", () => {
+    expect(parseShotBrollTransform(undefined)).toEqual({
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      rotationDeg: 0,
+      opacity: 1,
+    });
+    expect(parseShotBrollTransform({ width: "100" })).toEqual({
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      rotationDeg: 0,
+      opacity: 1,
+    });
   });
 });

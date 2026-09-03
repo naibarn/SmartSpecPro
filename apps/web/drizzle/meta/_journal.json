@@ -1802,10 +1802,94 @@
       "breakpoints": true
     },
     {
+      "idx": 257,
+      "version": "7",
+      "when": 1788145205500,
+      "tag": "0271_worker_runtime_releases",
+      "breakpoints": true
+    },
+    {
+      "idx": 258,
+      "version": "7",
+      "when": 1788145205501,
+      "tag": "0272_vertical_drama_video_capability_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 259,
+      "version": "7",
+      "when": 1788158320151,
+      "tag": "0273_vertical_drama_special_tie_in_debug_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 260,
+      "version": "7",
+      "when": 1788158320152,
+      "tag": "0274_nano_banana_2_reference_limits",
+      "breakpoints": true
+    },
+    {
       "idx": 261,
+      "version": "7",
+      "when": 1788230000000,
+      "tag": "0275_vertical_drama_shot_broll_transforms",
+      "breakpoints": true
+    },
+    {
+      "idx": 262,
       "version": "7",
       "when": 1788230000001,
       "tag": "0276_worker_local_llm_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 263,
+      "version": "7",
+      "when": 1788310000000,
+      "tag": "0277_vertical_drama_object_references",
+      "breakpoints": true
+    },
+    {
+      "idx": 264,
+      "version": "7",
+      "when": 1788310000002,
+      "tag": "0278_grok_imagine_video_unified_reference_transport",
+      "breakpoints": true
+    },
+    {
+      "idx": 265,
+      "version": "7",
+      "when": 1788345976000,
+      "tag": "0279_vertical_drama_object_reference_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 266,
+      "version": "7",
+      "when": 1788362564524,
+      "tag": "0280_gemini_omni_enhanced_capability_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 267,
+      "version": "7",
+      "when": 1788362564525,
+      "tag": "0281_gemini_omni_reference_field_correction",
+      "breakpoints": true
+    },
+    {
+      "idx": 268,
+      "version": "7",
+      "when": 1788362564526,
+      "tag": "0282_gemini_omni_duration_correction",
+      "breakpoints": true
+    },
+    {
+      "idx": 269,
+      "version": "7",
+      "when": 1788396160727,
+      "tag": "0283_credit_source_api_enum_repair",
       "breakpoints": true
     }
   ]

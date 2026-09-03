@@ -179,17 +179,19 @@ describe("getActiveGenerationJob", () => {
 describe("runVideoIntelligenceJob", () => {
   it("clears the active pointer on terminal (succeeded) outcome — only its own jobId", async () => {
     const redis = makeFakeRedis();
+    const notifyCompletion = vi.fn().mockResolvedValue(undefined);
     const { jobId } = await enqueueVideoIntelligenceJob(basePayload(), {
       redis,
       enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
     });
 
     const executor = vi.fn().mockResolvedValue({ ok: true });
-    await runVideoIntelligenceJob(jobId, executor, { redis });
+    await runVideoIntelligenceJob(jobId, executor, { redis, notifyCompletion });
 
     const record = await getGenerationJobStatus(jobId, { tenantId: "tenant-1", userId: 42, projectId: 10 }, { redis });
     expect(record?.status).toBe("succeeded");
     expect(record?.result).toEqual({ ok: true });
+    expect(notifyCompletion).toHaveBeenCalledWith(expect.objectContaining({ jobId, status: "succeeded", projectId: 10 }));
 
     const active = await getActiveGenerationJob({ tenantId: "tenant-1", userId: 42, projectId: 10 }, { redis });
     expect(active).toBeNull();
@@ -197,17 +199,19 @@ describe("runVideoIntelligenceJob", () => {
 
   it("clears the active pointer on terminal (failed) outcome and records the error", async () => {
     const redis = makeFakeRedis();
+    const notifyCompletion = vi.fn().mockResolvedValue(undefined);
     const { jobId } = await enqueueVideoIntelligenceJob(basePayload(), {
       redis,
       enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
     });
 
     const executor = vi.fn().mockRejectedValue(new Error("boom"));
-    await runVideoIntelligenceJob(jobId, executor, { redis });
+    await runVideoIntelligenceJob(jobId, executor, { redis, notifyCompletion });
 
     const record = await getGenerationJobStatus(jobId, { tenantId: "tenant-1", userId: 42, projectId: 10 }, { redis });
     expect(record?.status).toBe("failed");
     expect(record?.error).toBe("boom");
+    expect(notifyCompletion).toHaveBeenCalledWith(expect.objectContaining({ jobId, status: "failed", error: "boom" }));
 
     const active = await getActiveGenerationJob({ tenantId: "tenant-1", userId: 42, projectId: 10 }, { redis });
     expect(active).toBeNull();

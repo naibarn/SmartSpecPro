@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/prompt-intent.schema.json",
+  "title": "Provider Neutral Prompt Intent",
+  "type": "object",
+  "required": [
+    "shotId",
+    "scene",
+    "actions",
+    "camera",
+    "continuityLocks",
+    "referenceBindings",
+    "dialogue"
+  ],
+  "properties": {
+    "shotId": {
+      "type": "string"
+    },
+    "scene": {
+      "type": "string"
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "camera": {
+      "type": "string"
+    },
+    "continuityLocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "referenceBindings": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "dialogue": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "audioIntent": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "endBridge": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

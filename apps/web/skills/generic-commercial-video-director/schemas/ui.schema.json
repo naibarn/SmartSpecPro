@@ -1,0 +1,832 @@
+{
+  "uiSchemaVersion": "11.0.0",
+  "schemaRef": "schemas/input.schema.json",
+  "title": "Generic Commercial Video Director v11",
+  "layout": "wizard+review-panels",
+  "steps": [
+    {
+      "id": "idea",
+      "title": "1. Idea",
+      "fields": [
+        "idea",
+        "contentMode",
+        "goal",
+        "targetAudience",
+        "callToAction",
+        "promotionTarget",
+        "missingTargetAssetPolicy",
+        "placePromotionPolicy"
+      ],
+      "derivedPanels": [
+        "expandedIdeaPreview",
+        "productInteractionPreview",
+        "productMechanismPreview",
+        "demonstrationArcPreview",
+        "visualExplanationPreview",
+        "promotionTargetResolutionPreview",
+        "missingTargetAssetDecision",
+        "commercialBranchPreview"
+      ],
+      "actions": [
+        "expand_idea",
+        "accept_expanded_idea",
+        "edit_expanded_idea",
+        "review_product_mechanism",
+        "review_visual_explanation"
+      ]
+    },
+    {
+      "id": "assets",
+      "title": "2. Start Frame / Product / Cast",
+      "fields": [
+        "product",
+        "assets",
+        "cast",
+        "startFramePolicy"
+      ],
+      "derivedPanels": [
+        "startFrameAnalysis",
+        "detectedCast",
+        "castPositionMapping",
+        "productReferenceMapping",
+        "referenceSemanticMap",
+        "providerReferenceCompatibility",
+        "sceneAsPromotionTargetPreview",
+        "placeEvidencePreview",
+        "unseenAreaRiskPreview"
+      ],
+      "actions": [
+        "analyze_start_frame",
+        "confirm_cast_mapping",
+        "normalize_start_frame"
+      ]
+    },
+    {
+      "id": "dialogue",
+      "title": "3. Dialogue / Voice",
+      "fields": [
+        "dialogue"
+      ],
+      "derivedPanels": [
+        "speakerMapping",
+        "estimatedSpeechDuration"
+      ],
+      "conditions": [
+        {
+          "when": "dialogue.mode != none",
+          "show": [
+            "speakerMapping"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "format",
+      "title": "4. Format & Model Routing",
+      "fields": [
+        "format",
+        "modelRouting",
+        "researchMode",
+        "demonstrationPolicy",
+        "visualExplanationPolicy",
+        "format.shotDurationPolicy",
+        "format.multiShotStrategy",
+        "format.extensionPolicy",
+        "providerOptions"
+      ],
+      "derivedPanels": [
+        "capabilityMatch",
+        "shotRiskPreview",
+        "routingRecommendation",
+        "visualizationCapabilityMatch",
+        "postCompositeRecommendation",
+        "sequenceTimelinePreview",
+        "durationFeasibilityPreview",
+        "promptChainPreview",
+        "minimaxH3ModePreview",
+        "minimaxH3ReferenceConflictPreview",
+        "minimaxH32KWorkflowPreview",
+        "grokImagine15ModePreview",
+        "grokImagine15StartReferenceConflictPreview",
+        "grokImagine15ReferenceBudgetPreview",
+        "grokImagine15ResolutionPreview",
+        "grokImagine15AudioPreview",
+        "wan3ModePreview",
+        "wan3ReferenceConflictPreview",
+        "wan3BudgetDurationPreview",
+        "flux3ModePreview",
+        "flux3KeyframeSemanticPreview",
+        "flux3DraftContinuationPreview",
+        "seedanceModelPreview",
+        "seedanceReferenceBudgetPreview",
+        "seedanceHardReferenceConflictPreview",
+        "seedanceMaterialLibraryPreview",
+        "seedanceExtensionPreview",
+        "ltx25RoutePreview",
+        "ltx25ModePreview",
+        "ltx25DurationMatrixPreview",
+        "ltx25ReferenceSemanticPreview",
+        "ltx25AudioDriverPreview",
+        "ltx25LocalWorkflowPreview"
+      ],
+      "actions": [
+        "replan_durations",
+        "preview_extension_chain"
+      ]
+    },
+    {
+      "id": "execution",
+      "title": "5. Approval / Budget / QC",
+      "fields": [
+        "agentExecutionProfile",
+        "generationMode",
+        "approvalPolicy",
+        "budget",
+        "qcPolicy",
+        "constraints"
+      ]
+    }
+  ],
+  "widgets": {
+    "idea": {
+      "type": "textarea",
+      "rows": 4,
+      "placeholder": "เช่น เธอหยิบครีมมาทาหน้า / เด็กนั่งเล่นของเล่น / ยืนอธิบายโทรศัพท์รุ่น..."
+    },
+    "assets": {
+      "type": "multi-asset-mapper",
+      "roles": [
+        "product_reference",
+        "character_reference",
+        "environment_reference",
+        "style_reference",
+        "start_frame",
+        "end_frame",
+        "mid_keyframe",
+        "logo",
+        "audio_reference",
+        "voice_reference",
+        "video_reference",
+        "brand_guide",
+        "other"
+      ],
+      "enableDragOrder": true,
+      "enableEntityBinding": true
+    },
+    "cast": {
+      "type": "cast-mapper",
+      "max": 12,
+      "allowDetectFromStartFrame": true
+    },
+    "dialogue.lines": {
+      "type": "speaker-line-editor",
+      "allowReorder": true,
+      "showLipSyncToggle": true
+    },
+    "modelRouting.preferredModels": {
+      "type": "model-profile-multiselect",
+      "registry": "config/providers"
+    },
+    "constraints": {
+      "type": "tag-list"
+    },
+    "product.usageInstructions": {
+      "type": "ordered-text-list",
+      "help": "Optional verified usage steps. If absent, the agent may infer category-level steps but must mark the evidence level."
+    },
+    "product.mechanismFacts": {
+      "type": "fact-list",
+      "help": "Verified facts about how the product works. Useful for appliances, electronics, HVAC, cleaners and tools."
+    },
+    "demonstrationPolicy": {
+      "type": "demo-policy-editor"
+    },
+    "visualExplanationPolicy": {
+      "type": "visual-explanation-policy-editor",
+      "previewModes": [
+        "airflow",
+        "thermal",
+        "cutaway",
+        "virtual_screen",
+        "cleaning_lift",
+        "motion_trace"
+      ]
+    },
+    "agentExecutionProfile": {
+      "type": "segmented-control",
+      "options": [
+        "fast",
+        "balanced",
+        "production"
+      ],
+      "help": "Same workflow contract; changes how many specialist roles are consolidated per model call."
+    },
+    "format.shotDurationPolicy": {
+      "type": "shot-duration-planner",
+      "presets": [
+        8,
+        10,
+        15
+      ],
+      "help": "Controls logical shot durations. Provider generation may split one logical shot into multiple temporal segments when needed."
+    },
+    "format.multiShotStrategy": {
+      "type": "select",
+      "options": [
+        "auto",
+        "independent_shots",
+        "provider_native_multishot",
+        "extension_chain",
+        "hybrid"
+      ]
+    },
+    "format.extensionPolicy": {
+      "type": "extension-policy-editor",
+      "showGlobalAndLocalTimecodes": true,
+      "showProviderMaxCumulativeDuration": true
+    },
+    "assets.referencePurposes": {
+      "type": "multi-select",
+      "help": "หนึ่ง reference สามารถมีหลายหน้าที่ เช่น วิดีโอเดียวใช้ล็อก motion + camera + temporal rhythm หรือ audio ใช้ล็อก voice timbre + delivery."
+    },
+    "assets.providerUsePolicy": {
+      "type": "select",
+      "help": "กำหนดว่า reference ต้องถูกส่ง raw ถึง provider หรืออนุญาตให้วิเคราะห์เป็น structured guidance / ใช้เฉพาะ post-production ได้."
+    },
+    "providerOptions.minimaxH3": {
+      "type": "minimax-h3-settings",
+      "groups": [
+        "model",
+        "executionRoute",
+        "referenceStrategy",
+        "hardFrameConflictPolicy",
+        "contextIR",
+        "resolutionWorkflow",
+        "nativeMultiShot",
+        "nativeAudio",
+        "dialoguePolicy",
+        "continuationPolicy",
+        "continuationTailSeconds",
+        "referenceBudgetPolicy"
+      ]
+    },
+    "promotionTarget": {
+      "type": "promotion-target-editor",
+      "help": "ปล่อย Auto ได้ ระบบจะตัดสินจาก Idea + Start Frame + ภาพฉาก/สถานที่ + ภาพสินค้า ว่าเป้าหมายคือสินค้า ร้าน/สถานที่ บริการ ประสบการณ์ หรือไม่มีสิ่งที่โปรโมต"
+    },
+    "missingTargetAssetPolicy": {
+      "type": "missing-target-policy-editor",
+      "help": "กำหนดวิธีทำงานเมื่อไม่มีภาพสินค้าหรือ reference ของสิ่งที่กำลังโปรโมต"
+    },
+    "placePromotionPolicy": {
+      "type": "place-promotion-policy-editor",
+      "help": "สำหรับรีวิว/ชมร้าน/สถานที่ กำหนดว่าจะพูดเฉพาะสิ่งที่มองเห็น ยอม research ข้อมูลเพิ่ม หรือขอภาพมุมอื่นก่อน"
+    },
+    "providerOptions.grokImagineVideo15": {
+      "type": "grok-imagine-video-1-5-settings",
+      "groups": [
+        "mode",
+        "startReferenceConflictPolicy",
+        "resolution",
+        "startFrameAspectPolicy",
+        "generateAudio",
+        "referenceImagePolicy",
+        "videoReferencePolicy",
+        "customVoicePolicy",
+        "presetVoiceMappings",
+        "preferIndependentShots",
+        "allowCompanionEditExtendModel"
+      ],
+      "help": "Grok 1.5 has separate Image-to-Video (Start Frame) and Reference-to-Video modes. The UI must show which mode will actually be sent and must never silently mix them."
+    },
+    "providerOptions.wan3": {
+      "type": "wan3-settings",
+      "groups": [
+        "model",
+        "mode",
+        "hardFrameReferenceConflictPolicy",
+        "resolution",
+        "ratio",
+        "durationPolicy",
+        "promptExtend",
+        "generateAudio",
+        "referenceBudgetPolicy",
+        "extensionDirection"
+      ],
+      "help": "Wan 3.0 รองรับ hard first/last frame และ multimodal refs แต่สอง family นี้ห้ามผสม raw ใน request เดียว; Video input ต้องผ่าน input+output <=30s preflight."
+    },
+    "providerOptions.flux3": {
+      "type": "flux3-video-settings",
+      "groups": [
+        "mode",
+        "resolution",
+        "aspectRatio",
+        "keyframeStrategy",
+        "timedKeyframes",
+        "softReferencePolicy",
+        "draftWorkflow",
+        "generateAudio",
+        "continuationTailSeconds",
+        "postUpscale",
+        "safetyTolerance"
+      ],
+      "help": "FLUX 3 public API ใช้ภาพ I2V เป็น literal keyframes ใน timeline ไม่ใช่ soft identity/style refs; character/product refs ควร prebake เป็น shot keyframe หรือ derive/fallback."
+    },
+    "providerOptions.seedance": {
+      "type": "seedance-2x-settings",
+      "groups": [
+        "model",
+        "mode",
+        "hardFrameReferenceConflictPolicy",
+        "directHardFrameReferenceMixVerified",
+        "resolution",
+        "ratio",
+        "generateAudio",
+        "returnLastFrame",
+        "referenceBudgetPolicy",
+        "realHumanFacePolicy",
+        "extensionPolicy"
+      ],
+      "help": "Seedance 2.0 และ 2.5 มี capability ต่างกันมาก: 2.0 สูงสุด 15s/4K/9-3-3 refs; 2.5 สูงสุด 30s/720p/30-10-10 refs และรองรับ extension ต่อเนื่อง."
+    },
+    "providerOptions.ltx25": {
+      "type": "ltx-2-5-settings",
+      "groups": [
+        "executionRoute",
+        "model",
+        "mode",
+        "durationPolicy",
+        "resolution",
+        "fps",
+        "cameraMotion",
+        "generateAudio",
+        "audioDriverAssetId",
+        "referencePolicy",
+        "cloudApiMode",
+        "localPipeline",
+        "localWorkflowId",
+        "localReferenceWorkflowVerified",
+        "localExtensionWorkflowVerified",
+        "promptEnhanceLocal",
+        "localWidth",
+        "localHeight",
+        "localFps",
+        "localNumFrames"
+      ],
+      "help": "LTX 2.5 Cloud และ Local มี capability ต่างกัน: Cloud รองรับ T2V/I2V/A2V, Start/Last, native multi-shot/audio แต่ไม่มี 2.5 Retake/Extend/Reframe; Local รองรับ official ComfyUI/Python workflows และ reference/extension ขั้นสูงเฉพาะ workflow ที่ verify แล้ว."
+    },
+    "agentRuntime": {
+      "type": "agent-runtime-settings",
+      "groups": [
+        "model",
+        "maxTurnsPerStage",
+        "maxContractRepairAttempts",
+        "maxTotalTokensPerStage",
+        "maxTotalTokensPerRun",
+        "useSessions",
+        "sessionHistoryLimit",
+        "tracingEnabled"
+      ],
+      "help": "OpenAI Agents SDK is a bounded reasoning runtime only. SmartAIHub Core owns state, credits, approvals, paid generation and publishing."
+    }
+  },
+  "reviewPanels": [
+    {
+      "id": "expandedIdeaPreview",
+      "title": "Expanded Idea",
+      "editable": true
+    },
+    {
+      "id": "actionChain",
+      "title": "Action Chain",
+      "editable": true
+    },
+    {
+      "id": "visualExplanationPreview",
+      "title": "Visual Explanation / VFX Plan",
+      "editable": true
+    },
+    {
+      "id": "demonstrationArcPreview",
+      "title": "Usage & Demonstration Arc",
+      "editable": true
+    },
+    {
+      "id": "productMechanismPreview",
+      "title": "Product Function / Mechanism",
+      "editable": true
+    },
+    {
+      "id": "startState",
+      "title": "Start State #0",
+      "editable": false
+    },
+    {
+      "id": "speakerMapping",
+      "title": "Dialogue & Speaker Mapping",
+      "editable": true
+    },
+    {
+      "id": "storyboard",
+      "title": "Final Storyboard",
+      "editable": true,
+      "approvalGate": "storyboard"
+    },
+    {
+      "id": "modelRouting",
+      "title": "Model Routing",
+      "editable": true
+    },
+    {
+      "id": "qc",
+      "title": "QC / Repair",
+      "editable": false
+    },
+    {
+      "id": "sequenceTimelinePreview",
+      "title": "Multi-shot Timeline",
+      "editable": true
+    },
+    {
+      "id": "durationFeasibilityPreview",
+      "title": "Duration / Provider Feasibility",
+      "editable": false
+    },
+    {
+      "id": "promptChainPreview",
+      "title": "Base + Extend Prompt Chain",
+      "editable": true
+    },
+    {
+      "id": "referenceSemanticMap",
+      "title": "Reference Semantic Map",
+      "editable": true
+    },
+    {
+      "id": "providerReferenceCompatibility",
+      "title": "Provider Reference Compatibility",
+      "editable": false
+    },
+    {
+      "id": "minimaxH3ModePreview",
+      "title": "MiniMax H3 Mode / Reference Plan",
+      "editable": false
+    },
+    {
+      "id": "minimaxH3ReferenceConflictPreview",
+      "title": "MiniMax H3 Hard-Frame vs Ref2VA Resolution",
+      "editable": true
+    },
+    {
+      "id": "minimaxH32KWorkflowPreview",
+      "title": "MiniMax H3 768P → 2K Workflow",
+      "editable": true
+    },
+    {
+      "id": "promotionTargetResolutionPreview",
+      "title": "Promotion Target Resolution",
+      "editable": true
+    },
+    {
+      "id": "missingTargetAssetDecision",
+      "title": "Missing Target Asset Decision",
+      "editable": true
+    },
+    {
+      "id": "commercialBranchPreview",
+      "title": "Commercial Planning Branch",
+      "editable": false
+    },
+    {
+      "id": "sceneAsPromotionTargetPreview",
+      "title": "Scene / Venue as Promoted Subject",
+      "editable": true
+    },
+    {
+      "id": "placeEvidencePreview",
+      "title": "Visible Place Evidence",
+      "editable": true
+    },
+    {
+      "id": "unseenAreaRiskPreview",
+      "title": "Unseen / Unverified Place Features",
+      "editable": false
+    },
+    {
+      "id": "grokImagine15ModePreview",
+      "title": "Grok Imagine Video 1.5 — Resolved Mode",
+      "editable": false
+    },
+    {
+      "id": "grokImagine15StartReferenceConflictPreview",
+      "title": "Grok Start Frame vs References",
+      "editable": true
+    },
+    {
+      "id": "grokImagine15ReferenceBudgetPreview",
+      "title": "Grok Reference Budget (max 7 images / 3 voices)",
+      "editable": true
+    },
+    {
+      "id": "grokImagine15ResolutionPreview",
+      "title": "Grok Resolution / Aspect Strategy",
+      "editable": true
+    },
+    {
+      "id": "grokImagine15AudioPreview",
+      "title": "Grok Native Audio / Voice Strategy",
+      "editable": true
+    },
+    {
+      "id": "wan3ModePreview",
+      "title": "Wan 3.0 — Resolved Mode",
+      "editable": false
+    },
+    {
+      "id": "wan3ReferenceConflictPreview",
+      "title": "Wan Hard Frame vs Multimodal Reference",
+      "editable": true
+    },
+    {
+      "id": "wan3BudgetDurationPreview",
+      "title": "Wan Reference Budget / Input+Output Duration",
+      "editable": false
+    },
+    {
+      "id": "flux3ModePreview",
+      "title": "FLUX 3 — T2V / Literal Keyframe I2V / V2V",
+      "editable": false
+    },
+    {
+      "id": "flux3KeyframeSemanticPreview",
+      "title": "FLUX Keyframe vs Soft Reference Decision",
+      "editable": true
+    },
+    {
+      "id": "flux3DraftContinuationPreview",
+      "title": "FLUX Draft / Enhance / Continuation Plan",
+      "editable": true
+    },
+    {
+      "id": "seedanceModelPreview",
+      "title": "Seedance 2.0 vs 2.5 Capability Resolution",
+      "editable": true
+    },
+    {
+      "id": "seedanceReferenceBudgetPreview",
+      "title": "Seedance Multimodal Reference Budget",
+      "editable": false
+    },
+    {
+      "id": "seedanceHardReferenceConflictPreview",
+      "title": "Seedance Hard Frame + Reference Preflight",
+      "editable": true
+    },
+    {
+      "id": "seedanceMaterialLibraryPreview",
+      "title": "BytePlus Real-Human Material Library Requirements",
+      "editable": false
+    },
+    {
+      "id": "seedanceExtensionPreview",
+      "title": "Seedance Extension / Last Frame Chain",
+      "editable": true
+    },
+    {
+      "id": "ltx25RoutePreview",
+      "title": "LTX 2.5 — Cloud vs Local Execution Route",
+      "editable": true
+    },
+    {
+      "id": "ltx25ModePreview",
+      "title": "LTX 2.5 — Resolved T2V / I2V / FLF2V / A2V / Local IC-LoRA",
+      "editable": false
+    },
+    {
+      "id": "ltx25DurationMatrixPreview",
+      "title": "LTX Model / Resolution / FPS / Duration Matrix",
+      "editable": false
+    },
+    {
+      "id": "ltx25ReferenceSemanticPreview",
+      "title": "LTX Generic Reference → Prebake / Derive / Local IC-LoRA Decision",
+      "editable": true
+    },
+    {
+      "id": "ltx25AudioDriverPreview",
+      "title": "LTX Audio Driver — Exact Soundtrack vs Reference Audio",
+      "editable": true
+    },
+    {
+      "id": "ltx25LocalWorkflowPreview",
+      "title": "LTX Local ComfyUI/Python Workflow Preflight",
+      "editable": true
+    }
+  ],
+  "conditionalRules": [
+    {
+      "when": "assets contains role=start_frame",
+      "then": "show startFrameAnalysis + use authoritative State #0"
+    },
+    {
+      "when": "dialogue.lines length > 0",
+      "then": "require speaker mapping before prompt engineering"
+    },
+    {
+      "when": "modelRouting.requireLipSync == true",
+      "then": "filter routing to native or external lip-sync capable pipelines"
+    },
+    {
+      "when": "shot risk == high",
+      "then": "show safer-plan recommendation before generation"
+    },
+    {
+      "when": "product mechanism contains hidden or invisible stage",
+      "then": "require visual explanation strategy or explicit decision to explain by dialogue/VO only"
+    },
+    {
+      "when": "product category is cleaning_surface",
+      "then": "require target surface + correct application sequence + proof moment; consider cleaning_lift/before_after visualization"
+    },
+    {
+      "when": "product contains internal moving mechanism",
+      "then": "consider cutaway/motion_trace/xray-style explanation and validate mechanism facts before visualization"
+    },
+    {
+      "when": "product affects air/temperature/humidity",
+      "then": "use supported explanatory airflow/thermal visualization; do not present illustrative particles as literal measured output"
+    },
+    {
+      "when": "product is phone/tablet/computer/display device",
+      "then": "prefer exact UI/virtual screen compositing in post when screen text or interface fidelity matters"
+    },
+    {
+      "when": "logical shot duration exceeds selected provider direct max",
+      "then": "plan extension chain when verified; otherwise split shot or route model"
+    },
+    {
+      "when": "format.multiShotStrategy = extension_chain",
+      "then": "show base prompt plus each extension prompt with local and global timecodes"
+    },
+    {
+      "when": "provider extension tail may be rewritten",
+      "then": "avoid exact UI/label/dialogue word boundaries near extension seam and require seam QC"
+    },
+    {
+      "when": "target duration cannot be reached exactly",
+      "then": "show nearest reachable duration and require user/policy decision before paid generation"
+    },
+    {
+      "when": "MiniMax-H3 selected and raw image/video/audio references exist",
+      "then": "run H3 reference semantic mapping before prompt compilation"
+    },
+    {
+      "when": "MiniMax-H3 request contains start_frame/end_frame plus raw reference image/video/audio",
+      "then": "do not build one mixed API request; require explicit H3 conflict resolution"
+    },
+    {
+      "when": "MiniMax-H3 target duration > 15 seconds and continuity is required",
+      "then": "plan independent clips or a Ref2VA reference-video continuation chain; never label this as native append extension"
+    },
+    {
+      "when": "MiniMax-H3 dialogue language is outside the stable language list",
+      "then": "use native_try_then_external_fallback and perform speech/lipsync QC at 768P before 2K finalization"
+    },
+    {
+      "when": "MiniMax-H3 exact label/UI/CTA fidelity is required",
+      "then": "prefer clean generated plate plus post composite after temporal generation"
+    },
+    {
+      "when": "no product_reference exists and idea clearly refers to a physical product",
+      "then": "resolve whether product visual identity is generic, visible in another scene asset, researchable, or exact identity is blocked until a reference is supplied"
+    },
+    {
+      "when": "environment/place image is the subject of praise, tour, review, recommendation or visit",
+      "then": "reclassify the image as place/venue source-of-truth evidence, not only environment_reference"
+    },
+    {
+      "when": "place/venue branch has only one view",
+      "then": "do not invent unseen rooms/facilities as factual; use visible-area shots, derived crops, presenter movement, research-verified facts, or request more views"
+    },
+    {
+      "when": "named product has no product image and exact packaging/logo is required",
+      "then": "do not hallucinate exact visual identity; require source-of-truth asset or verified external asset"
+    },
+    {
+      "when": "generic product has no image and exact brand identity is not required",
+      "then": "allow a generic/unbranded product visual and mark visualIdentityStatus=generic_allowed"
+    },
+    {
+      "when": "no commercial target is detected",
+      "then": "use narrative_only branch and do not force product mechanics or CTA"
+    },
+    {
+      "when": "grok-imagine-video-1.5 selected and a Start Frame exists with no reference-to-video inputs",
+      "then": "route to image_to_video and treat the image as literal frame 0"
+    },
+    {
+      "when": "grok-imagine-video-1.5 selected and reference images or preset voices exist without a Start Frame",
+      "then": "route to reference_to_video; show that references guide identity/style but do not lock frame 0"
+    },
+    {
+      "when": "grok-imagine-video-1.5 has Start Frame plus reference images or reference voices",
+      "then": "block direct mixed request and require prefer_start_frame, prefer_references, prebake_start_frame, split_generation, or block"
+    },
+    {
+      "when": "grok-imagine-video-1.5 reference_to_video requests 1080p",
+      "then": "reject or change to 720p; never claim 1080p reference-to-video"
+    },
+    {
+      "when": "grok-imagine-video-1.5 receives a reference video",
+      "then": "do not pass it as reference-to-video input; derive motion/camera guidance, route fallback provider, or block according to policy"
+    },
+    {
+      "when": "grok-imagine-video-1.5 uses an authoritative Start Frame whose aspect differs from output",
+      "then": "prefer pre-normalizing crop/pad/resize before API submission rather than provider stretching"
+    },
+    {
+      "when": "a user-uploaded custom voice reference is intended for Grok 1.5 but trusted-partner entitlement is not verified",
+      "then": "route to external voice/lipsync or block; do not invent unsupported reference_audios payload"
+    },
+    {
+      "when": "Wan 3.0 has first_frame/last_frame plus reference image/video/audio/file/link",
+      "then": "never construct one mixed raw request; require explicit hard-frame/reference conflict resolution"
+    },
+    {
+      "when": "Wan 3.0 contains reference video and duration is exact",
+      "then": "require video duration metadata and validate total input-video duration + output duration <=30 seconds"
+    },
+    {
+      "when": "Wan 3.0 has 2+ storyboard shots",
+      "then": "allow provider-native timestamped multi-shot planning, typically 4-6 seconds per shot"
+    },
+    {
+      "when": "FLUX 3 receives a Start Frame",
+      "then": "map it to i2v keyframes at t=0; do not use a separate fictitious first_frame API field"
+    },
+    {
+      "when": "FLUX 3 receives character/product/place reference images that are not intended as literal timeline frames",
+      "then": "prebake them into approved shot keyframes, derive prompt guidance, route fallback, or block according to policy"
+    },
+    {
+      "when": "FLUX 3 receives arbitrary motion/reference video",
+      "then": "do not call it generic video reference; only v2v start_video continuation is currently public, otherwise derive/fallback"
+    },
+    {
+      "when": "Seedance 2.0 has audio refs but no image/video reference",
+      "then": "block because Seedance 2.0 audio-only reference is unsupported"
+    },
+    {
+      "when": "Seedance 2.5 is selected",
+      "then": "cap direct generation at 30s and resolution at 720p; allow up to 30 image / 10 video / 10 audio references"
+    },
+    {
+      "when": "Seedance 2.0 is selected",
+      "then": "cap direct generation at 15s; allow up to 9 image / 3 video / 3 audio refs; 4K is available but 1080p is invalid in reference-image scenarios"
+    },
+    {
+      "when": "BytePlus Seedance input image/video contains a real human face",
+      "then": "require an approved LAS material-library asset ID before raw provider submission"
+    },
+    {
+      "when": "Seedance hard Start/End Frame and arbitrary multimodal refs are both present and direct mix is not explicitly verified",
+      "then": "use prebake/split/prefer policy; fail closed rather than assume the endpoint supports the mix"
+    },
+    {
+      "when": "LTX 2.5 cloud is selected with Start Frame",
+      "then": "route to image-to-video; the Start Frame is image_uri and literal frame 0"
+    },
+    {
+      "when": "LTX 2.5 cloud has Start + Last Frame",
+      "then": "route to image-to-video with last_frame_uri and require fixed duration; automatic duration is invalid"
+    },
+    {
+      "when": "LTX 2.5 cloud receives generic character/product/place reference images",
+      "then": "do not send them as a fictitious soft-reference array; prebake into an approved first frame, derive to prompt, use verified local IC-LoRA, fallback, or block"
+    },
+    {
+      "when": "LTX Audio-to-Video is selected",
+      "then": "require exactly one explicit audio driver; treat it as the real soundtrack/timing source, not a voice embedding"
+    },
+    {
+      "when": "LTX cloud receives arbitrary raw video reference or must-use-raw generic audio reference",
+      "then": "route local verified workflow/fallback or block; cloud 2.5 has no generic video/audio reference bundle"
+    },
+    {
+      "when": "LTX cloud model/resolution/fps/duration combination is illegal",
+      "then": "reject before credit reservation / provider submission"
+    },
+    {
+      "when": "LTX 2.5 cloud Extend/Retake/Reframe is requested",
+      "then": "block/fallback because the current 2.5 model matrix marks these endpoints unsupported"
+    },
+    {
+      "when": "LTX local IC-LoRA or extension mode is requested",
+      "then": "require explicit local workflow ID/capability verification; do not assume every IC-LoRA from older LTX versions is 2.5-compatible"
+    },
+    {
+      "when": "LTX native multi-shot is used",
+      "then": "compile chronological prose with explicit cut transitions, repeated subject identity, and audio-continuity language rather than a screenplay-style numbered shot list"
+    }
+  ]
+}

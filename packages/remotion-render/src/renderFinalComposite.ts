@@ -22,8 +22,11 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import {
   existsSync,
+  closeSync,
   mkdirSync,
+  openSync,
   readFileSync,
+  readSync,
   statSync,
   writeFileSync,
 } from "node:fs";
@@ -90,7 +93,21 @@ function pathInside(root: string, candidate: string): boolean {
 }
 
 function sha256File(filePath: string): string {
-  return createHash("sha256").update(readFileSync(filePath)).digest("hex");
+  const fd = openSync(filePath, "r");
+  const hash = createHash("sha256");
+  const buffer = Buffer.alloc(1024 * 1024);
+  try {
+    let offset = 0;
+    let bytesRead = 0;
+    do {
+      bytesRead = readSync(fd, buffer, 0, buffer.length, offset);
+      if (bytesRead > 0) hash.update(buffer.subarray(0, bytesRead));
+      offset += bytesRead;
+    } while (bytesRead > 0);
+    return hash.digest("hex");
+  } finally {
+    closeSync(fd);
+  }
 }
 
 function probeVideo(

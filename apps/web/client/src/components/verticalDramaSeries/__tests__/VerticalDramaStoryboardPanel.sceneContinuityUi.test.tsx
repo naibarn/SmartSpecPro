@@ -31,6 +31,39 @@ const baseProps = {
 };
 
 describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
+  it("renders the special tie-in scene track before the product track", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        locale="th"
+        storyboard={{
+          shots: [{ shot_number: 1, visual_description: "เด็กเล่นของเล่น", characters: [] }],
+        }}
+        startFramePlan={{
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "scene then product",
+              sceneDescription: "สถานที่: ห้องนั่งเล่น; เวลา: ตอนเช้า",
+              productReferenceAssetIds: ["https://cdn.example/product.png"],
+            },
+          ],
+        }}
+        productTieInByShot={{
+          1: { productName: "ของเล่น", placementStyle: "in_use_moment" },
+        }}
+      />
+    );
+
+    const scene = screen.getByTestId("vd-storyboard-scene-description-1");
+    const product = screen.getByTestId("vd-storyboard-product-tie-in-chip-1");
+    expect(scene).toBeInTheDocument();
+    expect(scene).toHaveTextContent("ฉากหลัง");
+    expect(product).toBeInTheDocument();
+    expect(
+      Boolean(scene.compareDocumentPosition(product) & Node.DOCUMENT_POSITION_FOLLOWING)
+    ).toBe(true);
+  });
+
   it("hides scene affordances while the flag is off", () => {
     render(<VerticalDramaStoryboardPanel {...baseProps} />);
     expect(

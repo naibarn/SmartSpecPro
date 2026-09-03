@@ -1363,7 +1363,10 @@ export const usersRouter = router({
           .where(and(
             eq(userGroups.tenantId, tenantId),
             isNull(userGroups.deletedAt),
-            or(eq(userGroups.ownerId, ctx.user.id), sql`${groupMembers.id} is not null`),
+            // Local LLM Worker sharing is intentionally limited to Groups
+            // created by the Worker owner. Membership in someone else's Group
+            // must never grant the owner a way to publish that Group's users.
+            eq(userGroups.ownerId, ctx.user.id),
           )),
       ]);
 
@@ -1485,10 +1488,7 @@ export const usersRouter = router({
             eq(userGroups.tenantId, tenantId),
             isNull(userGroups.deletedAt),
             inArray(userGroups.id, normalizedGroupIds),
-            // Local LLM Worker sharing is intentionally limited to Groups
-            // created by the Worker owner. Membership in someone else's Group
-            // must never grant the owner a way to publish that Group's users.
-            eq(userGroups.ownerId, ctx.user.id),
+            or(eq(userGroups.ownerId, ctx.user.id), sql`${groupMembers.id} is not null`),
           ));
 
       if (normalizedGroupIds.length !== allowedGroups.length) {

@@ -23,6 +23,7 @@ export const comfyMcpToolCallSchema = z.object({
     workflowId: z.string().regex(/^[A-Za-z0-9._:-]+$/),
     operation: z.enum(["text_to_video", "image_to_video", "reference_to_video", "first_last_frame_to_video"]),
     startFrame: startFrameAssetSchema.nullable(),
+    stopFrame: startFrameAssetSchema.nullable().optional(),
     referenceFrames: referenceFramePackSchema.nullable(),
     durationMs: z.number().int().min(1000).max(90_000),
     aspectRatio: z.literal("9:16"),
@@ -39,7 +40,8 @@ export function buildComfyMcpShotToolCall(input: {
 }): ComfyMcpToolCall {
   const request = mediaWorkflowRequestSchema.parse(input.request);
   if (input.modelRoute !== "generic" && request.intent !== "shot_generation") throw new Error("workflow_capability_blocked");
-  if (input.modelRoute === "minimax_h3_t2v" && (request.startFrame || request.referenceFrames)) throw new Error("workflow_capability_blocked");
+  if (input.modelRoute === "minimax_h3_t2v" && (request.startFrame || request.stopFrame || request.referenceFrames)) throw new Error("workflow_capability_blocked");
+  if (request.stopFrame && !request.startFrame) throw new Error("workflow_capability_blocked");
   if (input.modelRoute === "minimax_h3_i2v" && !request.startFrame) throw new Error("workflow_capability_blocked");
   if (input.modelRoute === "minimax_h3_reference_to_video" && !request.referenceFrames) throw new Error("workflow_capability_blocked");
   return comfyMcpToolCallSchema.parse({
@@ -48,6 +50,7 @@ export function buildComfyMcpShotToolCall(input: {
       workflowId: input.workflowId,
       operation: input.modelRoute === "minimax_h3_t2v" ? "text_to_video" : input.modelRoute === "minimax_h3_reference_to_video" ? "reference_to_video" : "first_last_frame_to_video",
       startFrame: request.startFrame,
+      ...(request.stopFrame ? { stopFrame: request.stopFrame } : {}),
       referenceFrames: request.referenceFrames,
       durationMs: input.durationMs,
       aspectRatio: "9:16",

@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "ผู้หญิงหยิบครีมขึ้นมาทาบนใบหน้าอย่างเป็นธรรมชาติ แล้วอธิบายความรู้สึกหลังใช้",
+  "locale": "th-TH",
+  "contentMode": "presenter",
+  "cast": [
+    {
+      "characterId": "woman_01",
+      "referenceAssetIds": [
+        "char_img"
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "assetId": "char_img",
+      "role": "character_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "identity"
+      ]
+    },
+    {
+      "assetId": "room_img",
+      "role": "environment_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "environment"
+      ]
+    }
+  ],
+  "promotionTarget": {
+    "mode": "auto",
+    "kind": "physical_product",
+    "exactVisualIdentityRequired": false
+  },
+  "missingTargetAssetPolicy": {
+    "mode": "continue_generic",
+    "allowGenericUnbrandedVisual": true,
+    "allowDeriveTargetFromScene": true,
+    "allowResearchFactsWithoutVisualReference": true,
+    "allowGenerateApproximateNamedProduct": false,
+    "requireReferenceForExactPackagingLogoUi": true
+  }
+}

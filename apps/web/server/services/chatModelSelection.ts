@@ -42,6 +42,8 @@ export interface StoredChatModelSelectionState {
 }
 
 export interface ResolveChatModelSelectionInput {
+  tenantId?: string | null;
+  userId?: number | null;
   bodyModel?: string | null;
   bodyPreferredProvider?: number | null;
   bodyModelSelection?: unknown;

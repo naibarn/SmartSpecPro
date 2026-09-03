@@ -210,6 +210,25 @@ describe("generateStoryboardShotgrid", () => {
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
+  it("tries one neutral safe rewrite when the model introduces high-risk wording, then continues when the rewrite is safe", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const unsafe = validOutput();
+    unsafe.shots[0]!.visual_description =
+      "A child is unaware while someone secretly photographs the room.";
+    mockExecute
+      .mockResolvedValueOnce(successResponse(unsafe))
+      .mockResolvedValueOnce(successResponse(validOutput()));
+
+    const result = await generateStoryboardShotgrid(baseParams());
+
+    expect(result.storyboard.shots).toHaveLength(9);
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(mockExecute.mock.calls[1]![0].messages.at(-1).content).toContain(
+      "SAFE REWRITE REQUIRED"
+    );
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
   it("injects the shared spoken-English profile for dialogue excerpts and subtitles", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute.mockResolvedValue(successResponse(validOutput()));
@@ -789,7 +808,7 @@ describe("generateStoryboardShotgrid", () => {
       );
     });
 
-    it("renders the inherited cross-episode wardrobe as a mandatory opening fact", async () => {
+    it("renders the inherited cross-episode wardrobe as context-aware opening guidance", async () => {
       mockHasEnoughCredits.mockResolvedValue(true);
       mockExecute.mockResolvedValue(successResponse(validOutput()));
 
@@ -818,7 +837,7 @@ describe("generateStoryboardShotgrid", () => {
         (m: { role: string }) => m.role === "user"
       ).content;
       expect(userMessage).toContain(
-        "CROSS-EPISODE WARDROBE CONTINUITY (MANDATORY)"
+        "CROSS-EPISODE WARDROBE CONTINUITY (CONTEXT-AWARE)"
       );
       expect(userMessage).toContain("char-pim-dress");
       expect(userMessage).toContain("source shot 9");

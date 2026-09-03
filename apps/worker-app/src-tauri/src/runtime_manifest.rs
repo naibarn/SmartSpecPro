@@ -532,10 +532,10 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
     }
 
     let transcription = manifest.transcription.as_ref();
-    let transcription_binary = transcription
-        .map(|item| safe_join(&runtime_pack_dir, &item.binary_path));
-    let transcription_model = transcription
-        .map(|item| safe_join(&runtime_pack_dir, &item.model_path));
+    let transcription_binary =
+        transcription.map(|item| safe_join(&runtime_pack_dir, &item.binary_path));
+    let transcription_model =
+        transcription.map(|item| safe_join(&runtime_pack_dir, &item.model_path));
     let transcription_contract_ok = transcription.is_some_and(|item| {
         item.engine == "whisper.cpp"
             && !item.version.trim().is_empty()
@@ -545,9 +545,14 @@ pub fn doctor_from_manifest(manifest: &RuntimePackManifest, sidecar_root: &Path)
             && !item.model_url.trim().is_empty()
     });
     let transcription_files_ok = transcription_contract_ok
-        && transcription_binary.as_ref().is_some_and(|path| path.is_file())
+        && transcription_binary
+            .as_ref()
+            .is_some_and(|path| path.is_file())
         && transcription_model.as_ref().is_some_and(|path| {
-            path.is_file() && fs::metadata(path).map(|metadata| metadata.len() > 100_000_000).unwrap_or(false)
+            path.is_file()
+                && fs::metadata(path)
+                    .map(|metadata| metadata.len() > 100_000_000)
+                    .unwrap_or(false)
         });
     checks.push(DoctorCheck {
         id: "transcription_runtime".into(),

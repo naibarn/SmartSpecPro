@@ -5,6 +5,7 @@ import {
   requeueStalledWorkerJobs,
   requestWorkerJobReassignment,
   WORKER_HARD_STALL_THRESHOLD_MS,
+  WORKER_STALL_WATCHDOG_JOB_TYPES,
   WORKER_USER_REASSIGN_THRESHOLD_MS,
   type WorkerStallWatchdogRepository,
 } from "../workerStallWatchdogService";
@@ -47,6 +48,13 @@ function createRepo(job = hyperframesJob(), candidates = [job]): WorkerStallWatc
 }
 
 describe("workerStallWatchdogService", () => {
+  it("includes Remotion render jobs in the watchdog contract", () => {
+    expect(WORKER_STALL_WATCHDOG_JOB_TYPES).toEqual([
+      "hyperframes_final_composite",
+      "remotion_render_video",
+    ]);
+  });
+
   it("allows user reassignment only after the slow threshold", async () => {
     const slowJob = hyperframesJob();
     const repo = createRepo(slowJob);

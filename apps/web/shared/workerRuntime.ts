@@ -1195,6 +1195,8 @@ export const workerHeartbeatPayloadSchema = z.object({
   runtimeType: workerRuntimeTypeSchema,
   status: workerStatusSchema,
   currentJobCount: z.number().int().min(0).default(0),
+  /** Job ids this worker is actively executing in its local executor. */
+  activeJobIds: z.array(z.string().min(1)).max(10).optional(),
   queueDepth: z.number().int().min(0).default(0),
   freeDiskBytes: z.number().int().min(0).nullable().optional().default(null),
   metricsJson: z.record(z.string(), z.unknown()).default({}),

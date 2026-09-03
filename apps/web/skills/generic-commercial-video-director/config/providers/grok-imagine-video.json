@@ -1,0 +1,143 @@
+{
+  "profileVersion": "3.0",
+  "id": "grok-imagine-video",
+  "provider": "xAI",
+  "model": "grok-imagine-video",
+  "modelFamily": "Grok Imagine Video",
+  "kind": "multimodal",
+  "availability": "ga",
+  "verification": {
+    "status": "verified",
+    "verifiedAt": "2026-09-01",
+    "sources": [
+      {
+        "title": "xAI Video Editing",
+        "url": "https://docs.x.ai/developers/model-capabilities/video/editing",
+        "notes": "Official edit-video workflow and limits."
+      },
+      {
+        "title": "xAI Video Extension",
+        "url": "https://docs.x.ai/developers/model-capabilities/video/extension",
+        "notes": "Official extend-video workflow and limits."
+      },
+      {
+        "title": "xAI grok-imagine-video model page",
+        "url": "https://docs.x.ai/developers/models/grok-imagine-video",
+        "notes": "Official companion model page."
+      }
+    ]
+  },
+  "capabilities": {
+    "video_edit": {
+      "status": "verified",
+      "notes": "Existing video modification."
+    },
+    "video_extend": {
+      "status": "verified",
+      "notes": "Appends 2-10 seconds from the last frame of a 2-15 second source video."
+    },
+    "reference_to_video": {
+      "status": "unsupported",
+      "notes": "Use grok-imagine-video-1.5 for reference-to-video."
+    },
+    "native_audio": {
+      "status": "verified",
+      "notes": "Video workflow preserves/generates audio as supported by endpoint."
+    }
+  },
+  "limits": {
+    "durations": {
+      "minSeconds": null,
+      "maxSeconds": null,
+      "allowedSeconds": null
+    },
+    "resolutions": [
+      "480p",
+      "720p"
+    ],
+    "aspectRatios": [],
+    "referenceLimits": {
+      "editInputMaxSeconds": 8.7,
+      "extensionInputMinSeconds": 2,
+      "extensionInputMaxSeconds": 15,
+      "extensionMinSeconds": 2,
+      "extensionMaxSeconds": 10,
+      "extensionOutputResolutionCap": "720p",
+      "editOutputResolutionCap": "720p"
+    },
+    "notes": [
+      "Edit duration/aspect/resolution are inherited from the source; edit input is capped at 8.7s.",
+      "Extension source must be 2-15s; extension adds 2-10s; output matches source aspect/resolution up to 720p."
+    ]
+  },
+  "bestFor": [
+    "editing an existing Grok/video clip",
+    "continuing an existing clip from its last frame"
+  ],
+  "knownRisks": [
+    "This is a companion model, not the 1.5 reference-to-video model.",
+    "Long extension chains require careful temporal planning because the extension source itself is limited to 15 seconds."
+  ],
+  "promptProfile": "context-aware-continuation",
+  "adapterId": "grok_imagine_video_1_5",
+  "temporalPlanning": {
+    "baseGeneration": {
+      "durationControl": "provider_decides",
+      "stepSeconds": null,
+      "notes": [
+        "Use this profile mainly for edit/extend rather than base 1.5 generation."
+      ]
+    },
+    "nativeMultiShot": {
+      "status": "unknown",
+      "maxShotsPerGeneration": null,
+      "supportsExplicitTimedCuts": null,
+      "supportsSingleContinuousShotConstraint": true,
+      "notes": []
+    },
+    "extension": {
+      "status": "verified",
+      "appendOnly": true,
+      "minAdditionalSeconds": 2,
+      "maxAdditionalSeconds": 10,
+      "allowedAdditionalSeconds": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "stepSeconds": 1,
+      "defaultAdditionalSeconds": 6,
+      "maxCumulativeSeconds": 25,
+      "contextSeconds": 15,
+      "supportsGeneratedVideoMultiTurn": false,
+      "supportsUploadedVideo": true,
+      "supportsNewDialogueOnGeneratedMultiTurn": null,
+      "supportsNewDialogueOnUploadedTalkingVideo": null,
+      "tailMayBeRewritten": false,
+      "localTimecodeResetsAtExtensionStart": true,
+      "requiresStoredInteractionState": false,
+      "notes": [
+        "Source input must be 2-15 seconds. A single extension may add 2-10 seconds.",
+        "Do not assume unlimited repeated extension because the next source would exceed the 15-second input limit.",
+        "For longer chains, trim/select a continuation source and externally assemble with Seam QC."
+      ],
+      "durationControl": "exact",
+      "deterministicDurationRequest": true,
+      "extensionKind": "native_append",
+      "requiresExternalAssembly": false,
+      "sourceReferenceRole": "video",
+      "referenceTailMinSeconds": 2,
+      "referenceTailMaxSeconds": 15,
+      "supportsReferenceAudioContinuity": true,
+      "maxExtensionTurns": 1,
+      "sourceInputMinSeconds": 2,
+      "sourceInputMaxSeconds": 15
+    }
+  }
+}

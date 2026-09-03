@@ -189,6 +189,10 @@ export interface TenantFeatureFlags {
   verticalDramaSeriesCharacterStock: boolean; // F131C — Series character stock + visual bible surfaces
   verticalDramaSeriesMemory: boolean; // F131D — Series memory summary/seed surfaces
   verticalDramaSeriesProductTieIn: boolean; // F131E — Product tie-in configuration surfaces
+  verticalDramaObjectReferences: boolean; // F174 — shared story-object/Product tie-in catalog
+  verticalDramaObjectDetection: boolean; // F174 — advisory object detection and suggestions
+  verticalDramaObjectImageGeneration: boolean; // F174 — explicit paid object image generation
+  verticalDramaObjectLegacyBackfill: boolean; // F174 — report-first legacy Product tie-in backfill
   verticalDramaSeriesStartFrames: boolean; // F131F — Start-frame render/plan surfaces
   verticalDramaSeriesFirstLastFrameBridge: boolean; // F131G — First/last frame bridge motion mode
   verticalDramaSeriesStoryboardReviewHandoff: boolean; // F131H — Storyboard Review project handoff
@@ -221,6 +225,9 @@ export interface TenantFeatureFlags {
   verticalDramaSeriesTextOverlaySuite: boolean; // F131AB — Text Overlay Suite: end-card teaser/opener recap/title bumper/episode indicator/character intro cards/mid-episode cards + series watermark, all rendered through the existing ASS subtitle channel + a dedicated top-most watermark overlay input (fail-closed)
   verticalDramaSeriesNativeAudioPrompts: boolean; // F131AC — native audio direction in shot video prompts: SFX cues tied to visible actions (primary) + ambient soundscape (secondary) for video models with supportsNativeAudio; hard rules: no speech/voices, no music — 3-layer audio architecture layer 1 (fail-closed)
   verticalDramaSeriesLineage: boolean; // planning/vd-series-memory-and-lineage/plan.md Part 2 — season 2/sequel + special-edition create modes: parentSeriesId/createMode/seasonNumber/lineage columns, season carry-over planner, clone-on-create cast/location roster (fail-closed; gates the wizard UI + the create/proposeSeasonCarryOver lineage BRANCH only — never the underlying schema read path)
+  verticalDramaEnhancedVideoPromptUi: boolean; // F173 — paired Enhanced video-prompt UI
+  verticalDramaEnhancedVideoPromptJobs: boolean; // F173 — Enhanced prompt job admission
+  verticalDramaEnhancedVideoPromptApply: boolean; // F173 — Enhanced active projection Apply
   verticalDramaUserPremise: boolean; // F132A — spec 132 §4 user premise field + premise-primary synthesis (fail-closed)
   verticalDramaQualityLedgers: boolean; // F132B — spec 132 §5 ledgers + story state + deterministic checks (fail-closed)
   verticalDramaSceneContracts: boolean; // F132C — spec 132 §6 scene contracts in drafts/pipeline validation (fail-closed)
@@ -445,6 +452,10 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "verticalDramaSeriesCharacterStock",
   "verticalDramaSeriesMemory",
   "verticalDramaSeriesProductTieIn",
+  "verticalDramaObjectReferences",
+  "verticalDramaObjectDetection",
+  "verticalDramaObjectImageGeneration",
+  "verticalDramaObjectLegacyBackfill",
   "verticalDramaSeriesStartFrames",
   "verticalDramaSeriesFirstLastFrameBridge",
   "verticalDramaSeriesStoryboardReviewHandoff",
@@ -477,6 +488,9 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "verticalDramaSeriesTextOverlaySuite",
   "verticalDramaSeriesNativeAudioPrompts",
   "verticalDramaSeriesLineage",
+  "verticalDramaEnhancedVideoPromptUi",
+  "verticalDramaEnhancedVideoPromptJobs",
+  "verticalDramaEnhancedVideoPromptApply",
   "verticalDramaUserPremise",
   "verticalDramaQualityLedgers",
   "verticalDramaSceneContracts",
@@ -687,6 +701,10 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   verticalDramaSeriesCharacterStock: false,
   verticalDramaSeriesMemory: false,
   verticalDramaSeriesProductTieIn: false,
+  verticalDramaObjectReferences: false,
+  verticalDramaObjectDetection: false,
+  verticalDramaObjectImageGeneration: false,
+  verticalDramaObjectLegacyBackfill: false,
   verticalDramaSeriesStartFrames: false,
   verticalDramaSeriesFirstLastFrameBridge: false,
   verticalDramaSeriesStoryboardReviewHandoff: false,
@@ -719,6 +737,9 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   verticalDramaSeriesTextOverlaySuite: false,
   verticalDramaSeriesNativeAudioPrompts: true,
   verticalDramaSeriesLineage: false,
+  verticalDramaEnhancedVideoPromptUi: false,
+  verticalDramaEnhancedVideoPromptJobs: false,
+  verticalDramaEnhancedVideoPromptApply: false,
   verticalDramaUserPremise: false,
   verticalDramaQualityLedgers: false,
   verticalDramaSceneContracts: false,
@@ -768,6 +789,10 @@ export const VERTICAL_DRAMA_SERIES_FEATURE_FLAG_KEYS = [
   "verticalDramaSeriesCharacterStock",
   "verticalDramaSeriesMemory",
   "verticalDramaSeriesProductTieIn",
+  "verticalDramaObjectReferences",
+  "verticalDramaObjectDetection",
+  "verticalDramaObjectImageGeneration",
+  "verticalDramaObjectLegacyBackfill",
   "verticalDramaSeriesStartFrames",
   "verticalDramaSeriesFirstLastFrameBridge",
   "verticalDramaSeriesStoryboardReviewHandoff",
@@ -800,6 +825,9 @@ export const VERTICAL_DRAMA_SERIES_FEATURE_FLAG_KEYS = [
   "verticalDramaSeriesTextOverlaySuite",
   "verticalDramaSeriesNativeAudioPrompts",
   "verticalDramaSeriesLineage",
+  "verticalDramaEnhancedVideoPromptUi",
+  "verticalDramaEnhancedVideoPromptJobs",
+  "verticalDramaEnhancedVideoPromptApply",
 ] as const satisfies readonly TenantFeatureFlagKey[];
 
 export type VerticalDramaSeriesFeatureFlagKey =

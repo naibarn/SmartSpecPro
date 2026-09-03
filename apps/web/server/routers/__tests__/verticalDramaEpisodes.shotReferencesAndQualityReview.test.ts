@@ -848,7 +848,7 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
   it("demotes the previous main image into the reference strip and removes the new asset from the strip", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithFrame("900")])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 901 }])) // mediaAssets ownership lookup for the new asset
+      .mockReturnValueOnce(selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])) // mediaAssets ownership lookup for the new asset
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
 
@@ -891,7 +891,7 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
   it("does not demote or promote-dedup when there was no previous main image", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithFrame(undefined)])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 901 }])) // mediaAssets ownership lookup
+      .mockReturnValueOnce(selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])) // mediaAssets ownership lookup
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
 
@@ -920,7 +920,7 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
   it("is a no-op for demotion/promotion when the new asset is the same as the current main image", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithFrame("900")])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 900 }])) // mediaAssets ownership lookup (same asset)
+      .mockReturnValueOnce(selectChain([{ id: 900, mimeType: "image/png", status: "ready" }])) // mediaAssets ownership lookup (same asset)
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
 
@@ -963,7 +963,7 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
     };
     mockDb.select
       .mockReturnValueOnce(selectChain([row])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 901 }])) // mediaAssets ownership
+      .mockReturnValueOnce(selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])) // mediaAssets ownership
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
     const update = updateChain([{}]);
     mockDb.update.mockReturnValueOnce(update);
@@ -987,7 +987,7 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
   it("still completes the swap even if demoting the previous asset throws a shot-reference error (best-effort)", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithFrame("900")])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 901 }])) // mediaAssets ownership lookup
+      .mockReturnValueOnce(selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])) // mediaAssets ownership lookup
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
     mockShotReferencesService.linkReference.mockRejectedValue(
@@ -1038,7 +1038,7 @@ describe("recordShotAngleGridAsset — persisted alternate-angle backup stills (
       .mockReturnValueOnce(
         selectChain([episodeRowWithAngleGridFrame(undefined)])
       ) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 901 }])) // mediaAssets ownership lookup
+      .mockReturnValueOnce(selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])) // mediaAssets ownership lookup
       .mockReturnValueOnce(
         selectChain([{ id: 901, originalUrl: "https://cdn/901.png" }])
       ); // resolveMediaAssetUrlsByIds
@@ -1181,7 +1181,7 @@ describe("recordShotAngleGridAsset — persisted alternate-angle backup stills (
           },
         ])
       ) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 901 }])); // mediaAssets ownership lookup
+      .mockReturnValueOnce(selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])); // mediaAssets ownership lookup
 
     await expect(
       router.recordShotAngleGridAsset({
@@ -1199,7 +1199,7 @@ describe("recordShotAngleGridAsset — persisted alternate-angle backup stills (
   it("throws NOT_FOUND when no start-frame plan entry exists for the requested shot", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithAngleGridFrame([])])) // loadOwnedEpisode — only shot 1 exists
-      .mockReturnValueOnce(selectChain([{ id: 901 }])); // mediaAssets ownership lookup
+      .mockReturnValueOnce(selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])); // mediaAssets ownership lookup
 
     await expect(
       router.recordShotAngleGridAsset({

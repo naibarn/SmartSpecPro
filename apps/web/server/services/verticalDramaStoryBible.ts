@@ -19,7 +19,7 @@ import {
   resolveSkillDirCandidates,
   resolveSkillManifestPath,
 } from "./skillFiles";
-import { executeWithFallback, type PhysicalLlmAttemptEvent } from "./llmRouter";
+import { executeWithFallback, type PhysicalLlmAttemptEvent, type RawLlmPayloadEvent } from "./llmRouter";
 import { isAvailable } from "./providerHealth";
 import { resolveExternalMediaReferenceUrls } from "./mediaGenerationService";
 import { ensureExternalMediaAssetDurable } from "./durableMediaAssetService";
@@ -973,6 +973,24 @@ export type JsonPlanningAttemptEvent = {
   schemaIssues?: unknown;
 };
 
+export type JsonPlanningRetryEvent = {
+  label: string;
+  planningAttemptNumber: number;
+  classification: "schema" | "transient" | "provider_fallback";
+  reason: string;
+  currentModel: string;
+  nextModel?: string;
+  schemaRetryNumber: number;
+  transientRetryNumber: number;
+  modelFallbackAttempt: number;
+  remainingBudget: {
+    schemaRetries: number;
+    transientRetries: number;
+    modelFallbacks: number;
+    totalAttempts: number;
+  };
+};
+
 function extractPlanningAssistantText(response: unknown): string {
   const message =
     response && typeof response === "object" && "choices" in response
@@ -1593,6 +1611,10 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
   planningAttemptObserver?: (
     event: JsonPlanningAttemptEvent
   ) => Promise<void> | void;
+  /** Optional raw request/response observer for forensic special-job logging. */
+  rawPayloadObserver?: (event: RawLlmPayloadEvent) => Promise<void> | void;
+  /** Optional retry-decision observer; never changes retry behavior. */
+  retryDecisionObserver?: (event: JsonPlanningRetryEvent) => Promise<void> | void;
   /** After transient retries, rotate into the admin-curated LLM Recommend set. */
   modelFallbackPolicy?: "recommended";
   /** Also rotate after schema retries; intended for quality-critical Draft planning. */
@@ -1715,6 +1737,15 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
       );
     }
   };
+  const notifyRetryDecision = async (event: JsonPlanningRetryEvent) => {
+    try {
+      await params.retryDecisionObserver?.(event);
+    } catch (error) {
+      debugError("vd_planning_retry_audit", `${params.label}: retry observer failed`, {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
 
   const attempt = async (
     userPrompt: string,
@@ -1741,6 +1772,9 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
       physicalAttemptObserver: async event => {
         physicalAttempts.push(event);
         await params.physicalAttemptObserver?.(event);
+      },
+      rawPayloadObserver: async event => {
+        await params.rawPayloadObserver?.({ ...event, planningAttemptNumber });
       },
       modelFallbackFrom,
       modelFallbackReason: modelFallbackFrom
@@ -1960,6 +1994,22 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
         attemptNumber < planningMaxAttempts
       ) {
         schemaRetriesUsed++;
+        await notifyRetryDecision({
+          label: params.label,
+          planningAttemptNumber: attemptNumber,
+          classification: "schema",
+          reason: errorMessage,
+          currentModel: activeModel,
+          schemaRetryNumber: schemaRetriesUsed,
+          transientRetryNumber: transientRetriesUsed,
+          modelFallbackAttempt: modelFallbackAttempts,
+          remainingBudget: {
+            schemaRetries: effectiveMaxSchemaRetries - schemaRetriesUsed,
+            transientRetries: effectiveMaxTransientRetries - transientRetriesUsed,
+            modelFallbacks: maxModelFallbackAttempts - modelFallbackAttempts,
+            totalAttempts: planningMaxAttempts - attemptNumber,
+          },
+        });
         debugError(
           "vd_planning_retry",
           `${params.label}: attempt ${attemptNumber} failed schema validation for model ${activeModel}, retrying with stricter instruction + higher token ceiling (schema retry ${schemaRetriesUsed}/${effectiveMaxSchemaRetries})`,
@@ -1998,6 +2048,23 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
           transientRetriesUsed = 0;
           currentUserPrompt = params.userPrompt;
           currentMaxTokens = params.maxTokens;
+          await notifyRetryDecision({
+            label: params.label,
+            planningAttemptNumber: attemptNumber,
+            classification: "provider_fallback",
+            reason: "schema_retries_exhausted",
+            currentModel: previousModel,
+            nextModel: fallbackModel,
+            schemaRetryNumber: schemaRetriesUsed,
+            transientRetryNumber: transientRetriesUsed,
+            modelFallbackAttempt: modelFallbackAttempts,
+            remainingBudget: {
+              schemaRetries: effectiveMaxSchemaRetries - schemaRetriesUsed,
+              transientRetries: effectiveMaxTransientRetries - transientRetriesUsed,
+              modelFallbacks: maxModelFallbackAttempts - modelFallbackAttempts,
+              totalAttempts: planningMaxAttempts - attemptNumber,
+            },
+          });
           debugLog(
             "vd_planning_retry",
             `${params.label}: rotating from schema-incompatible model ${previousModel} to recommended fallback ${fallbackModel}`,
@@ -2024,6 +2091,22 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
       ) {
         const backoffMs = VD_TRANSIENT_RETRY_BACKOFFS_MS[transientRetriesUsed];
         transientRetriesUsed++;
+        await notifyRetryDecision({
+          label: params.label,
+          planningAttemptNumber: attemptNumber,
+          classification: "transient",
+          reason: errorMessage,
+          currentModel: activeModel,
+          schemaRetryNumber: schemaRetriesUsed,
+          transientRetryNumber: transientRetriesUsed,
+          modelFallbackAttempt: modelFallbackAttempts,
+          remainingBudget: {
+            schemaRetries: effectiveMaxSchemaRetries - schemaRetriesUsed,
+            transientRetries: effectiveMaxTransientRetries - transientRetriesUsed,
+            modelFallbacks: maxModelFallbackAttempts - modelFallbackAttempts,
+            totalAttempts: planningMaxAttempts - attemptNumber,
+          },
+        });
         debugError(
           "vd_planning_retry",
           `${params.label}: attempt ${attemptNumber} failed with a transient error for model ${params.model}, retrying after ${backoffMs}ms (transient retry ${transientRetriesUsed}/${effectiveMaxTransientRetries})`,
@@ -2055,6 +2138,23 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
           transientRetriesUsed = 0;
           currentUserPrompt = params.userPrompt;
           currentMaxTokens = params.maxTokens;
+          await notifyRetryDecision({
+            label: params.label,
+            planningAttemptNumber: attemptNumber,
+            classification: "provider_fallback",
+            reason: "transient_retries_exhausted",
+            currentModel: previousModel,
+            nextModel: fallbackModel,
+            schemaRetryNumber: schemaRetriesUsed,
+            transientRetryNumber: transientRetriesUsed,
+            modelFallbackAttempt: modelFallbackAttempts,
+            remainingBudget: {
+              schemaRetries: effectiveMaxSchemaRetries - schemaRetriesUsed,
+              transientRetries: effectiveMaxTransientRetries - transientRetriesUsed,
+              modelFallbacks: maxModelFallbackAttempts - modelFallbackAttempts,
+              totalAttempts: planningMaxAttempts - attemptNumber,
+            },
+          });
           debugLog(
             "vd_planning_retry",
             `${params.label}: rotating from failed model ${previousModel} to recommended fallback ${fallbackModel}`,

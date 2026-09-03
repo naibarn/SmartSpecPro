@@ -2403,6 +2403,8 @@ async function proxyChatWithCredits(
   let resolvedChatSelection;
   try {
     resolvedChatSelection = await resolveChatModelSelection({
+      tenantId,
+      userId,
       bodyModel: req.body?.model,
       bodyPreferredProvider: req.body?.preferredProvider ? Number(req.body.preferredProvider) : null,
       bodyModelSelection: req.body?.modelSelection,

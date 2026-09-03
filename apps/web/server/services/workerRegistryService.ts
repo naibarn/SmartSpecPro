@@ -101,6 +101,10 @@ import {
   sanitizeWorkerWarningFlags,
 } from "./workerPayloadSanitizer";
 import { getHermesWorkerSettings } from "./hermesWorkerSettings";
+import {
+  buildWorkerJobActionUrl,
+  notifyJobCompletion,
+} from "./jobCompletionNotificationService";
 
 const DEFAULT_LEASE_TTL_MS = 5 * 60 * 1000;
 
@@ -350,6 +354,58 @@ function sanitizeDashboardUrl(url: string | null | undefined): string | null {
   }
 }
 
+async function notifyWorkerJobTerminal(input: {
+  job: WorkerJobRecord;
+  status: "succeeded" | "failed" | "canceled";
+  finishedAt: Date;
+  errorMessage?: string | null;
+}): Promise<void> {
+  if (!input.job.requestedByUserId) return;
+
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const actionUrl = buildWorkerJobActionUrl({
+      inputJson: input.job.inputJson,
+      outputJson: input.job.outputJson,
+      workflowRunId: input.job.workflowRunId,
+    });
+    await notifyJobCompletion({
+      db,
+      userId: Number(input.job.requestedByUserId),
+      tenantId: input.job.tenantId ? String(input.job.tenantId) : null,
+      jobId: String(input.job.id),
+      jobType: `worker:${String(input.job.jobType)}`,
+      status: input.status,
+      title: `งาน ${String(input.job.jobType)}`,
+      successMessage: `งาน ${String(input.job.jobType)} เสร็จเรียบร้อยแล้ว กลับไปดูผลลัพธ์ได้เลย`,
+      failureMessage: `งาน ${String(input.job.jobType)} ${input.status === "canceled" ? "ถูกยกเลิก" : "ไม่สำเร็จ"}${input.errorMessage ? `: ${String(input.errorMessage).slice(0, 500)}` : ""}`,
+      actionUrl,
+      actionLabel: actionUrl ? "เปิดผลลัพธ์" : undefined,
+      traceId: isPlainObject(input.job.instructionsJson) && typeof input.job.instructionsJson.traceId === "string"
+        ? input.job.instructionsJson.traceId
+        : null,
+      startedAt: input.job.startedAt,
+      finishedAt: input.finishedAt,
+      errorMessage: input.errorMessage,
+      source: "worker_registry",
+      relatedItems: {
+        workerId: String(input.job.workerId ?? ""),
+        runtimeType: String(input.job.runtimeType ?? ""),
+      },
+    });
+  } catch (error) {
+    console.error("[WorkerRegistry] terminal_notification_bridge_failed", {
+      tenantId: input.job.tenantId ?? null,
+      userId: input.job.requestedByUserId,
+      jobId: input.job.id,
+      jobType: input.job.jobType,
+      status: input.status,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 function readWorkerControlPlaneState(worker: WorkerRecord): Record<string, unknown> {
   if (!isPlainObject(worker?.healthSummaryJson)) {
     return {};
@@ -396,7 +452,7 @@ export interface WorkerRuntimeRepository {
     tenantId: string;
     connectionId: string;
   }) => Promise<string | null>;
-  renewActiveJobLeasesForWorker?: (input: { tenantId: string; workerId: string; leaseExpiresAt: Date; heartbeatAt: Date }) => Promise<number>;
+  renewActiveJobLeasesForWorker?: (input: { tenantId: string; workerId: string; jobIds: string[]; leaseExpiresAt: Date; heartbeatAt: Date }) => Promise<number>;
   tryClaimJob: (jobId: string, workerId: string, leaseOwnerToken: string, leaseExpiresAt: Date) => Promise<WorkerJobRecord | null>;
   updateJob: (jobId: string, values: Record<string, any>) => Promise<WorkerJobRecord>;
   updateWorker: (workerId: string, values: Record<string, any>) => Promise<WorkerRecord>;
@@ -502,12 +558,12 @@ function mergeRuntimeMetadata(
   const existingRuntimeMetadata = isPlainObject(capabilitiesWithHeartbeatPolicy.runtimeMetadata)
     ? capabilitiesWithHeartbeatPolicy.runtimeMetadata
     : {};
-  const existingWorkerAccessPolicy = isPlainObject(existingRuntimeMetadata.workerAccessPolicy)
-    ? existingRuntimeMetadata.workerAccessPolicy
-    : null;
-  const existingWorkerSharingPolicy = isPlainObject(existingRuntimeMetadata.workerSharingPolicy)
-    ? existingRuntimeMetadata.workerSharingPolicy
-    : null;
+    const existingWorkerAccessPolicy = isPlainObject(existingRuntimeMetadata.workerAccessPolicy)
+      ? existingRuntimeMetadata.workerAccessPolicy
+      : null;
+    const existingWorkerSharingPolicy = isPlainObject(existingRuntimeMetadata.workerSharingPolicy)
+      ? existingRuntimeMetadata.workerSharingPolicy
+      : null;
   const mergedRuntimeMetadata = {
     ...existingRuntimeMetadata,
     ...sanitizedRuntimeMetadata,
@@ -1185,6 +1241,7 @@ const defaultRepo: WorkerRuntimeRepository = {
       .where(and(
         eq(workerJobs.tenantId, input.tenantId),
         eq(workerJobs.workerId, input.workerId),
+        inArray(workerJobs.id, input.jobIds),
         inArray(workerJobs.status, RECLAIMABLE_JOB_STATUSES),
         isNotNull(workerJobs.leaseOwnerToken),
       ))
@@ -1600,10 +1657,12 @@ export async function recordWorkerHeartbeat(
     freeDiskBytes: input.payload.freeDiskBytes,
   });
 
-  if (input.payload.currentJobCount > 0 && typeof repo.renewActiveJobLeasesForWorker === "function") {
+  const activeJobIds = input.payload.activeJobIds ?? [];
+  if (activeJobIds.length > 0 && typeof repo.renewActiveJobLeasesForWorker === "function") {
     await repo.renewActiveJobLeasesForWorker({
       tenantId: worker.tenantId,
       workerId: worker.id,
+      jobIds: activeJobIds,
       heartbeatAt: new Date(),
       leaseExpiresAt: new Date(Date.now() + DEFAULT_LEASE_TTL_MS),
     });
@@ -1947,9 +2006,28 @@ export async function recordWorkerJobEvent(
             },
           }).catch(() => undefined);
         }
+        await notifyWorkerJobTerminal({
+          job,
+          status: "failed",
+          finishedAt: eventAt,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
       }
       throw error;
     }
+
+    await notifyWorkerJobTerminal({
+      job,
+      status: nextStatus === "completed"
+        ? "succeeded"
+        : nextStatus === "canceled"
+          ? "canceled"
+          : "failed",
+      finishedAt: eventAt,
+      errorMessage: nextStatus === "failed" || nextStatus === "canceled"
+        ? String(sanitizedPayloadJson?.error ?? sanitizedPayloadJson?.message ?? job.failureReason ?? "")
+        : null,
+    });
   }
 
   if (nextStatus && TERMINAL_JOB_STATUSES.includes(nextStatus)) {

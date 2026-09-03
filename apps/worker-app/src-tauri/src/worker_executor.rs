@@ -29,7 +29,12 @@ pub const VERTICAL_DRAMA_FOOTAGE_ANALYSIS_CAPABILITY: &str = "vd-footage-analysi
 pub const VERTICAL_DRAMA_FOOTAGE_PREPARE_CAPABILITY: &str = "vd-footage-prepare";
 pub const VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_CAPABILITY: &str = "vd-footage-broll-render";
 pub const VERTICAL_DRAMA_MEDIA_CAPABILITY: &str = "vertical-drama-media";
-pub const COMFY_CAPABILITY_FAMILIES: [&str; 4] = ["comfyui-image-generate", "comfyui-video-generate", "comfyui-workflow-run", "comfyui-mcp"];
+pub const COMFY_CAPABILITY_FAMILIES: [&str; 4] = [
+    "comfyui-image-generate",
+    "comfyui-video-generate",
+    "comfyui-workflow-run",
+    "comfyui-mcp",
+];
 pub const COMFY_PROGRESS_STAGES: [&str; 7] = [
     "validate_service",
     "submit_workflow",
@@ -217,7 +222,9 @@ pub fn classify_job_type(job_type: &str) -> WorkerJobKind {
         VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE
         | VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE
         | VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE => WorkerJobKind::VerticalDramaMedia,
-        VERTICAL_DRAMA_FOOTAGE_PROBE_JOB_TYPE | VERTICAL_DRAMA_FOOTAGE_PREPARE_JOB_TYPE => WorkerJobKind::VerticalDramaMedia,
+        VERTICAL_DRAMA_FOOTAGE_PROBE_JOB_TYPE | VERTICAL_DRAMA_FOOTAGE_PREPARE_JOB_TYPE => {
+            WorkerJobKind::VerticalDramaMedia
+        }
         VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE => WorkerJobKind::VerticalDramaFootageRender,
         HERMES_MEDIA_IMAGE_JOB_TYPE => WorkerJobKind::HermesMediaImage,
         HERMES_MEDIA_VIDEO_JOB_TYPE => WorkerJobKind::HermesMediaVideo,
@@ -413,9 +420,15 @@ pub struct SidecarCleanupPlan {
 }
 
 const DEFAULT_RENDER_ENV: &[(&str, &str)] = &[
-    ("SMARTAIHUB_ENABLE_GPU_ENCODING", "1"),
+    // Software encoding is the safe desktop default. The bundled FFmpeg can
+    // advertise NVENC even when the host has no usable NVIDIA device;
+    // Remotion then writes to a closed encoder pipe (EPIPE).
+    ("SMARTAIHUB_ENABLE_GPU_ENCODING", "0"),
     ("SMARTAIHUB_DISABLE_BROWSER_GPU", "1"),
-    ("SMARTAIHUB_RENDER_WORKERS", ""),
+    // Remotion otherwise defaults to the machine's CPU count. A render job
+    // must not be able to consume every browser/ffmpeg slot and take the GUI
+    // process down with it on smaller worker machines.
+    ("SMARTAIHUB_RENDER_WORKERS", "1"),
     ("SMARTAIHUB_HYPERFRAMES_DEBUG", "0"),
     ("PRODUCER_LOW_MEMORY_MODE", "false"),
 ];
@@ -957,7 +970,7 @@ fn build_sidecar_command_for_kind(
                 \n\
                 export SMARTAIHUB_RUNTIME_ROOT=\"$ROOT\"\n\
                 export SMARTAIHUB_MANAGED_WSL_JOB_WORKSPACE=\"$WSL_JOB_WORKSPACE\"\n\
-                export SMARTAIHUB_ENABLE_GPU_ENCODING=\"${{SMARTAIHUB_ENABLE_GPU_ENCODING:-1}}\"\n\
+                export SMARTAIHUB_ENABLE_GPU_ENCODING=\"${{SMARTAIHUB_ENABLE_GPU_ENCODING:-0}}\"\n\
                 export SMARTAIHUB_DISABLE_BROWSER_GPU=\"${{SMARTAIHUB_DISABLE_BROWSER_GPU:-1}}\"\n\
                 \n\
                 export FFMPEG_PATH=\"$ROOT/runtime-pack/bin/ffmpeg\"\n\
@@ -1163,6 +1176,7 @@ fn build_sidecar_command_for_kind(
                 "HYPERFRAMES_NO_AUTO_INSTALL",
                 "SMARTAIHUB_ENABLE_GPU_ENCODING",
                 "SMARTAIHUB_DISABLE_BROWSER_GPU",
+                "SMARTAIHUB_RENDER_WORKERS",
                 "SMARTAIHUB_HYPERFRAMES_DEBUG",
             ]
             .join(":"),
@@ -1780,9 +1794,6 @@ mod tests {
         }))
         .unwrap();
 
-        assert_eq!(
-            job.created_at.as_deref(),
-            Some("2026-08-27T07:00:00.000Z")
-        );
+        assert_eq!(job.created_at.as_deref(), Some("2026-08-27T07:00:00.000Z"));
     }
 }

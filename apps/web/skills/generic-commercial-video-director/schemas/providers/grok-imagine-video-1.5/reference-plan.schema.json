@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/providers/grok-imagine-video-1.5/reference-plan.schema.json",
+  "title": "Grok Imagine Video 1.5 Reference Plan",
+  "type": "object",
+  "required": [
+    "mode",
+    "startFrameAssetId",
+    "referenceImages",
+    "referenceAudios",
+    "derivedReferences",
+    "nonProviderReferences",
+    "conflictDetected",
+    "conflictResolution",
+    "resolutionLimit",
+    "warnings"
+  ],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": [
+        "text_to_video",
+        "image_to_video",
+        "reference_to_video"
+      ]
+    },
+    "startFrameAssetId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "referenceImages": {
+      "type": "array",
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "label",
+          "semanticRoles"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "pattern": "^<IMAGE_[1-7]>$"
+          },
+          "semanticRoles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "entityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "referenceAudios": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "label",
+          "sourceType",
+          "speakerId"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "pattern": "^<AUDIO_[0-2]>$"
+          },
+          "sourceType": {
+            "type": "string",
+            "enum": [
+              "preset_voice",
+              "custom_audio"
+            ]
+          },
+          "voiceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "assetId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "speakerId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "providerEntitlementVerified": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "derivedReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "sourceAssetId",
+          "derivation",
+          "resultRole"
+        ],
+        "properties": {
+          "sourceAssetId": {
+            "type": "string"
+          },
+          "derivation": {
+            "type": "string",
+            "enum": [
+              "visual_description",
+              "identity_description",
+              "product_description",
+              "place_description",
+              "motion_description",
+              "camera_description",
+              "voice_description",
+              "prebaked_start_frame"
+            ]
+          },
+          "resultRole": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "nonProviderReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "reason",
+          "preservedAs"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "preservedAs": {
+            "type": "string",
+            "enum": [
+              "derived_guidance",
+              "external_audio",
+              "fallback_provider",
+              "prebake_input",
+              "post_only",
+              "analysis_only",
+              "separate_stage"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "conflictDetected": {
+      "type": "boolean"
+    },
+    "conflictResolution": {
+      "type": "string",
+      "enum": [
+        "none",
+        "prefer_start_frame",
+        "prefer_references",
+        "prebake_start_frame",
+        "split_generation",
+        "blocked"
+      ]
+    },
+    "resolutionLimit": {
+      "type": "string",
+      "enum": [
+        "720p",
+        "1080p"
+      ]
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

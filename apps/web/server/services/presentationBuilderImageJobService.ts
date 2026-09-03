@@ -185,6 +185,11 @@ function errorText(error: unknown): string {
     .slice(0, 500);
 }
 
+/** A missing provider task cannot become available by polling again. */
+export function isMissingPresentationMediaTaskError(error: unknown): boolean {
+  return /\btask\b[\s\S]{0,120}\bnot found\b/i.test(errorText(error));
+}
+
 export async function reconcilePresentationBuilderImageJobs(
   input: {
     limit?: number;
@@ -300,19 +305,27 @@ export async function reconcilePresentationBuilderImageJobs(
         .where(eq(presentationBuilderImageJobs.id, row.id));
     } catch (error) {
       const attemptCount = row.attemptCount + 1;
+      const missingTask = isMissingPresentationMediaTaskError(error);
       await db
         .update(presentationBuilderImageJobs)
         .set({
-          status: "processing",
-          errorMessage: errorText(error),
+          status: missingTask ? "failed" : "processing",
+          errorMessage: missingTask
+            ? "งานสร้างภาพต้นทางไม่พบแล้ว กรุณาสร้างภาพใหม่"
+            : errorText(error),
           attemptCount,
-          nextPollAt: new Date(
-            checkedAt.getTime() + nextPollDelayMs(attemptCount)
-          ),
+          ...(missingTask
+            ? { nextPollAt: checkedAt }
+            : {
+                nextPollAt: new Date(
+                  checkedAt.getTime() + nextPollDelayMs(attemptCount)
+                ),
+              }),
           lastCheckedAt: checkedAt,
           updatedAt: checkedAt,
         })
         .where(eq(presentationBuilderImageJobs.id, row.id));
+      if (missingTask) failed += 1;
     }
   }
 

@@ -1234,6 +1234,12 @@ async function loadEnhancedShotContext(input: {
       description: storyboardShot?.description ?? "",
       cameraSetup: storyboardShot?.cameraSetup ?? "",
       dialogue: clip.dialogue ?? [],
+      // Existing Legacy vision analysis is useful corroborating evidence for
+      // the dedicated Enhanced observed-state stage. The approved Start Frame
+      // remains authoritative and the Agent is instructed to override stale
+      // or conflicting analysis with what is actually visible.
+      frameAnalysis:
+        (clip as { frameAnalysis?: unknown }).frameAnalysis ?? null,
       durationSeconds: storyboardShot?.durationSeconds ?? clip.durationSeconds,
       characterIds,
       locationId,

@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "ใช้ภาพคน ภาพสินค้า วิดีโอการเคลื่อนไหว และเสียงอ้างอิงทำโฆษณา",
+  "locale": "th-TH",
+  "assets": [
+    {
+      "assetId": "person",
+      "role": "character_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "identity"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    },
+    {
+      "assetId": "product",
+      "role": "product_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "product_geometry"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    },
+    {
+      "assetId": "motion",
+      "role": "motion_reference",
+      "mediaType": "video",
+      "referencePurposes": [
+        "motion",
+        "camera_motion"
+      ],
+      "providerUsePolicy": "must_use_raw",
+      "mediaMetadata": {
+        "durationSeconds": 4
+      }
+    },
+    {
+      "assetId": "voice",
+      "role": "voice_reference",
+      "mediaType": "audio",
+      "referencePurposes": [
+        "voice_timbre"
+      ],
+      "providerUsePolicy": "must_use_raw",
+      "mediaMetadata": {
+        "durationSeconds": 4
+      }
+    }
+  ],
+  "providerOptions": {
+    "wan3": {
+      "model": "wan3.0-video-prime",
+      "mode": "reference_to_video",
+      "referenceBudgetPolicy": "quality_first"
+    }
+  }
+}

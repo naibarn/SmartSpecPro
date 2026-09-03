@@ -322,7 +322,9 @@ export function validateGeminiOmniVideoInput(input: GeminiOmniVideoValidationInp
   if (firstFrameUrl && !isFlash11) {
     issues.push({ code: "first_last_frame_conflict", field: "first_frame_url", message: "First and last frame inputs are supported only by Gemini Omni Flash 1.1." });
   }
-  if ((firstFrameUrl || lastFrameUrl) && (imageUrls.length || videoList.length || characterIds.length || audioIds.length)) {
+  const supportsFrameAndReferenceCombination =
+    isFlash11 && Boolean(firstFrameUrl && lastFrameUrl);
+  if ((firstFrameUrl || lastFrameUrl) && !supportsFrameAndReferenceCombination && (imageUrls.length || videoList.length || characterIds.length || audioIds.length)) {
     issues.push({ code: "first_last_frame_conflict", field: "first_frame_url", message: "Frame inputs cannot be combined with image, video, character, or audio references." });
   }
   if (videoList.length > GEMINI_OMNI_MAX_SOURCE_VIDEOS) {
@@ -403,6 +405,10 @@ export function buildGeminiOmniProviderExtraParams(input: GeminiOmniVideoValidat
     ...(hasFrameInput ? {
       ...(validation.normalized.firstFrameUrl ? { first_frame_url: validation.normalized.firstFrameUrl } : {}),
       ...(validation.normalized.lastFrameUrl ? { last_frame_url: validation.normalized.lastFrameUrl } : {}),
+      ...(validation.normalized.imageUrls.length > 0 ? { image_urls: validation.normalized.imageUrls } : {}),
+      ...(providerVideoList.length > 0 ? { video_list: providerVideoList } : {}),
+      ...(validation.normalized.characterIds.length > 0 ? { character_ids: validation.normalized.characterIds } : {}),
+      ...(validation.normalized.audioIds.length > 0 ? { audio_ids: validation.normalized.audioIds } : {}),
     } : {
       image_urls: validation.normalized.imageUrls,
       video_list: providerVideoList,

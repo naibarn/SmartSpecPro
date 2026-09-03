@@ -3,6 +3,7 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs;
+use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{
@@ -10,17 +11,21 @@ use std::sync::{
     Arc, Mutex,
 };
 use std::time::{Duration, Instant, SystemTime};
-use tauri::async_runtime::JoinHandle;
+#[cfg(test)]
+use tauri::async_runtime::JoinHandle as AsyncJoinHandle;
 
+use crate::comfy_execution_ledger::{ExecutionLedger, ExecutionLedgerEntry, ExecutionLedgerState};
 use crate::comfy_executor;
 use crate::comfy_mcp_client::{
-    command_available_with_path, discover_manifest, extract_mcp_execution_id, run_generic_workflow_with_lifecycle,
-    run_workflow_with_lifecycle,
-    ComfyMcpConfig, ComfyMcpManifest,
+    command_available_with_path, discover_manifest, extract_mcp_execution_id,
+    run_generic_workflow_with_lifecycle, run_workflow_with_lifecycle, ComfyMcpConfig,
+    ComfyMcpManifest,
 };
 use crate::comfy_mcp_transport::ComfyHttpMcpTransport;
-use crate::comfy_profiles::{resolve_bridge_args, ComfyConnectionProfile, ComfyCredentialKind, ComfyProfileStore, ComfyTransportKind};
-use crate::comfy_execution_ledger::{ExecutionLedger, ExecutionLedgerEntry, ExecutionLedgerState};
+use crate::comfy_profiles::{
+    resolve_bridge_args, ComfyConnectionProfile, ComfyCredentialKind, ComfyProfileStore,
+    ComfyTransportKind,
+};
 use crate::credentials::{clear_connection, load_connection};
 use crate::diagnostics::append_diagnostic_event;
 use crate::executor_state::{ExecutorState, ExecutorStatus};
@@ -37,8 +42,9 @@ use crate::hermes_runtime::{
 };
 use crate::media_pipeline::{
     analyze_media_file, build_media_plan, collect_media_manifest, probe_media_file,
-    qc_derived_output_with_probe, run_allowlisted_ffmpeg, run_allowlisted_ffmpeg_segments, write_checkpoint_atomic, LocalMediaQc,
-    LocalMediaAnalysis, LocalMediaProbe, MediaCheckpoint, MediaFocusKeyframe, MediaPlanOptions, MediaToolchain,
+    qc_derived_output_with_probe, run_allowlisted_ffmpeg, run_allowlisted_ffmpeg_segments,
+    write_checkpoint_atomic, LocalMediaAnalysis, LocalMediaProbe, LocalMediaQc, MediaCheckpoint,
+    MediaFocusKeyframe, MediaPlanOptions, MediaToolchain,
 };
 use crate::runtime_manifest::{
     doctor_from_manifest_path, read_runtime_pack_manifest, runtime_pack_paths,
@@ -49,8 +55,8 @@ use crate::series_workspace::{load_root_state, load_root_state_for_series, valid
 use crate::settings::WorkerAppSettings;
 use crate::local_llm_registry::{load_registry, LocalLlmRegistry};
 use crate::worker_control_plane::{
-    build_worker_heartbeat_payload, claim_worker_job, download_worker_bytes, download_worker_file, get_worker_json, post_worker_json_with_idempotency,
-    publish_vertical_drama_media, report_worker_job_event, send_worker_heartbeat,
+    build_worker_heartbeat_payload, claim_worker_job, download_worker_bytes, download_worker_file,
+    get_worker_json, post_worker_json_with_idempotency, publish_vertical_drama_media, report_worker_job_event, send_worker_heartbeat,
     upload_worker_artifact_file, WorkerClaimRequest, WorkerClaimResponse, WorkerJobEventPayload,
     WorkerLoopConnection,
 };
@@ -66,16 +72,15 @@ use crate::worker_executor::{
     remotion_render_video_content_hash, sanitize_segment, validate_final_video_artifact,
     validate_workspace_path, ArtifactUploadPlan, ClaimedWorkerJob, RemotionSidecarEvent,
     SidecarCommandPlan, WorkerEventPlan, WorkerJobKind, COMFY_CAPABILITY_FAMILIES,
-    COMFY_IMAGE_GENERATION_JOB_TYPE, COMFY_VIDEO_GENERATION_JOB_TYPE,
-    COMFY_WORKFLOW_RUN_JOB_TYPE,
+    COMFY_IMAGE_GENERATION_JOB_TYPE, COMFY_VIDEO_GENERATION_JOB_TYPE, COMFY_WORKFLOW_RUN_JOB_TYPE,
     HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, HYPERFRAMES_JOB_TYPE,
     REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES, REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
     REMOTION_RENDER_VIDEO_JOB_TYPE, REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
-    VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE, VERTICAL_DRAMA_MEDIA_CAPABILITY,
+    VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE, VERTICAL_DRAMA_FOOTAGE_ANALYSIS_CAPABILITY,
+    VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_CAPABILITY, VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE,
+    VERTICAL_DRAMA_FOOTAGE_PREPARE_CAPABILITY, VERTICAL_DRAMA_FOOTAGE_PREPARE_JOB_TYPE,
+    VERTICAL_DRAMA_FOOTAGE_PROBE_JOB_TYPE, VERTICAL_DRAMA_MEDIA_CAPABILITY,
     VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE, VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE,
-    VERTICAL_DRAMA_FOOTAGE_PROBE_JOB_TYPE, VERTICAL_DRAMA_FOOTAGE_PREPARE_JOB_TYPE,
-    VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE, VERTICAL_DRAMA_FOOTAGE_ANALYSIS_CAPABILITY,
-    VERTICAL_DRAMA_FOOTAGE_PREPARE_CAPABILITY, VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_CAPABILITY,
 };
 
 /// Feature 135 §11 — hermes has its own single-job slot, independent of the
@@ -89,11 +94,13 @@ const HERMES_MEDIA_MAX_CONCURRENT_JOBS: u32 = 1;
 /// an otherwise healthy render.
 const WORKER_EVENT_MAX_ATTEMPTS: u8 = 3;
 const WORKER_EVENT_RETRY_BACKOFF_MS: [u64; 2] = [250, 750];
+const HYPERFRAMES_SOURCE_MAX_BYTES: u64 = 2_000 * 1024 * 1024;
 
 static COMFY_MCP_MANIFEST_CACHE: std::sync::OnceLock<Mutex<Option<(String, ComfyMcpManifest)>>> =
     std::sync::OnceLock::new();
-static COMFY_MCP_PROBE_FAILURE_CACHE: std::sync::OnceLock<Mutex<Option<(String, Instant, String)>>> =
-    std::sync::OnceLock::new();
+static COMFY_MCP_PROBE_FAILURE_CACHE: std::sync::OnceLock<
+    Mutex<Option<(String, Instant, String)>>,
+> = std::sync::OnceLock::new();
 
 /// Feature 135 §11 — claim `capability_hints` construction. Render hints are
 /// included only when the render (HyperFrames) doctor is ready; `hermes_media`
@@ -225,18 +232,55 @@ fn local_media_runtime_ready(app_data_dir: &Path, settings: &WorkerAppSettings) 
     MediaToolchain::from_settings(settings, app_data_dir).is_ready()
 }
 
-fn active_comfy_profile(app_data_dir: &Path, settings: &WorkerAppSettings, requested_id: Option<&str>) -> Result<ComfyConnectionProfile, String> {
+fn active_comfy_profile(
+    app_data_dir: &Path,
+    settings: &WorkerAppSettings,
+    requested_id: Option<&str>,
+) -> Result<ComfyConnectionProfile, String> {
     let store = ComfyProfileStore::load(app_data_dir)?;
-    let paired_worker_id = load_connection(app_data_dir).ok().flatten().map(|connection| connection.worker.id);
+    let paired_worker_id = load_connection(app_data_dir)
+        .ok()
+        .flatten()
+        .map(|connection| connection.worker.id);
     let belongs_to_this_worker = |profile: &ComfyConnectionProfile| {
-        profile.enabled && paired_worker_id.as_deref().is_none_or(|worker_id| worker_id == profile.worker_id)
+        profile.enabled
+            && paired_worker_id
+                .as_deref()
+                .is_none_or(|worker_id| worker_id == profile.worker_id)
     };
     if let Some(profile_id) = requested_id {
-        return store.profiles().find(|profile| profile.profile_id == profile_id && belongs_to_this_worker(profile)).cloned().ok_or_else(|| "comfy_profile_not_found_or_disabled".into());
+        return store
+            .profiles()
+            .find(|profile| profile.profile_id == profile_id && belongs_to_this_worker(profile))
+            .cloned()
+            .ok_or_else(|| "comfy_profile_not_found_or_disabled".into());
     }
-    if let Some(profile) = store.active_profile().filter(|profile| belongs_to_this_worker(profile)) { return Ok(profile.clone()); }
+    if let Some(profile) = store
+        .active_profile()
+        .filter(|profile| belongs_to_this_worker(profile))
+    {
+        return Ok(profile.clone());
+    }
     if settings.comfyui_mcp_enabled {
-        let profile = ComfyConnectionProfile { profile_id: "legacy-local-comfy".into(), worker_id: "legacy-local-worker".into(), display_name: "Legacy local ComfyUI".into(), transport: ComfyTransportKind::LocalStdio, endpoint: None, command: Some(settings.comfyui_mcp_command.clone()), args: Vec::new(), credential_kind: ComfyCredentialKind::None, credential_ref: None, enabled: true, profile_revision: 1, permission_revision: 1, policy_revision: 1, projection_revision: 1, expires_at: None, last_probe_at: None, last_probe_status: None };
+        let profile = ComfyConnectionProfile {
+            profile_id: "legacy-local-comfy".into(),
+            worker_id: "legacy-local-worker".into(),
+            display_name: "Legacy local ComfyUI".into(),
+            transport: ComfyTransportKind::LocalStdio,
+            endpoint: None,
+            command: Some(settings.comfyui_mcp_command.clone()),
+            args: Vec::new(),
+            credential_kind: ComfyCredentialKind::None,
+            credential_ref: None,
+            enabled: true,
+            profile_revision: 1,
+            permission_revision: 1,
+            policy_revision: 1,
+            projection_revision: 1,
+            expires_at: None,
+            last_probe_at: None,
+            last_probe_status: None,
+        };
         profile.validate()?;
         return Ok(profile);
     }
@@ -265,11 +309,12 @@ async fn probe_active_comfy_mcp_profile(
             let Some(command) = profile.command.clone() else {
                 return (false, "comfy_profile_command_missing".into(), None);
             };
-            let managed_command_path = (matches!(profile.transport, ComfyTransportKind::LocalStdio)
-                && crate::comfy_mcp_runtime::normalize_command(&command)
-                    == crate::comfy_mcp_runtime::STANDARD_COMMAND)
-                .then(|| crate::comfy_mcp_runtime::managed_command_path(app_data_dir))
-                .flatten();
+            let managed_command_path =
+                (matches!(profile.transport, ComfyTransportKind::LocalStdio)
+                    && crate::comfy_mcp_runtime::normalize_command(&command)
+                        == crate::comfy_mcp_runtime::STANDARD_COMMAND)
+                    .then(|| crate::comfy_mcp_runtime::managed_command_path(app_data_dir))
+                    .flatten();
             if !command_available_with_path(&command, managed_command_path.as_deref()) {
                 return (false, "comfy_mcp_unavailable".into(), None);
             }
@@ -281,7 +326,9 @@ async fn probe_active_comfy_mcp_profile(
                     Ok(args) => args,
                     Err(error) => return (false, error, None),
                 }
-            } else { profile.args.clone() };
+            } else {
+                profile.args.clone()
+            };
             discover_manifest(&ComfyMcpConfig {
                 command,
                 managed_command_path,
@@ -307,10 +354,12 @@ async fn probe_active_comfy_mcp_profile(
                 None
             };
             let _ssh_tunnel = match ssh_key.as_deref() {
-                Some(key) => match crate::comfy_ssh_tunnel::open_with_identity(&profile.args, key) {
-                    Ok(tunnel) => Some(tunnel),
-                    Err(error) => return (false, error, None),
-                },
+                Some(key) => {
+                    match crate::comfy_ssh_tunnel::open_with_identity(&profile.args, key) {
+                        Ok(tunnel) => Some(tunnel),
+                        Err(error) => return (false, error, None),
+                    }
+                }
                 None => None,
             };
             let Some(endpoint) = profile.endpoint.clone() else {
@@ -331,13 +380,15 @@ async fn probe_active_comfy_mcp_profile(
                     Err(error) => return (false, error, None),
                 }
             };
-            let mut transport = match ComfyHttpMcpTransport::new(endpoint, token, Duration::from_secs(15)) {
-                Ok(transport) => transport,
-                Err(error) => return (false, error, None),
-            };
-            transport.discover_tools().await.and_then(|response| {
-                crate::comfy_mcp_client::parse_tools_manifest(&response)
-            })
+            let mut transport =
+                match ComfyHttpMcpTransport::new(endpoint, token, Duration::from_secs(15)) {
+                    Ok(transport) => transport,
+                    Err(error) => return (false, error, None),
+                };
+            transport
+                .discover_tools()
+                .await
+                .and_then(|response| crate::comfy_mcp_client::parse_tools_manifest(&response))
         }
     };
     match result {
@@ -388,6 +439,44 @@ pub fn remotion_render_video_contract_ready(doctor: &DoctorSummary) -> bool {
                     contract.as_str() == Some(REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION)
                 })
             })
+    })
+}
+
+/// Remotion is compatible with runtime packs that predate the optional
+/// transcription lane. Keep the render admission gate focused on the files
+/// that Remotion/HyperFrames actually needs; transcription has its own doctor
+/// check and must not take an otherwise usable render worker offline.
+pub fn render_runtime_ready(doctor: &DoctorSummary) -> bool {
+    let managed_wsl = doctor
+        .checks
+        .iter()
+        .any(|check| check.id == "managed_wsl_runtime");
+    let required = if managed_wsl {
+        &["wsl2_host", "managed_wsl_runtime", "installer_set"][..]
+    } else {
+        &[
+            "runtime_manifest",
+            "runtime_host_platform",
+            "runtime_bundle",
+            "official_hyperframes_renderer",
+            "hyperframes_native_dependencies",
+            "browser_runtime",
+            "media_tools",
+            "hyperframes_sidecar",
+            "runtime_sidecar_policy",
+            "runtime_hash",
+            "runtime_signature_bundle",
+            "thai_font",
+            "tool_versions",
+            "installer_set",
+        ][..]
+    };
+    required.iter().all(|id| {
+        doctor
+            .checks
+            .iter()
+            .find(|check| check.id == *id)
+            .is_some_and(|check| check.status == "ok")
     })
 }
 
@@ -445,6 +534,14 @@ struct HermesDoctorCache {
 
 const HERMES_DOCTOR_REFRESH_INTERVAL: Duration = Duration::from_secs(60);
 const COMFY_MCP_PROBE_FAILURE_RETRY_INTERVAL: Duration = Duration::from_secs(60);
+const RUNTIME_DOCTOR_REFRESH_INTERVAL: Duration = Duration::from_secs(60);
+
+#[derive(Debug, Clone)]
+struct RuntimeDoctorCache {
+    checked_at: Instant,
+    settings_key: String,
+    doctor: DoctorSummary,
+}
 
 fn hermes_doctor_cached(
     app_data_dir: &Path,
@@ -480,9 +577,68 @@ const SIDECAR_WORKER_EVENT_PREFIX: &str = "SMARTAIHUB_EVENT ";
 #[derive(Debug)]
 pub struct WorkerLoopHandle {
     pub cancel: Arc<AtomicBool>,
+    pub started: Arc<AtomicBool>,
     pub stopped: Arc<AtomicBool>,
     pub connection: Arc<Mutex<WorkerLoopConnection>>,
-    pub handle: JoinHandle<()>,
+    pub handle: std::thread::JoinHandle<()>,
+}
+
+/// Owns an async task for the task-failure unit test. Production uses a
+/// dedicated OS thread to keep loop scheduling and diagnostics isolated.
+#[cfg(test)]
+struct WorkerLoopTaskGuard {
+    task: Option<AsyncJoinHandle<()>>,
+}
+
+#[cfg(test)]
+impl WorkerLoopTaskGuard {
+    async fn wait(mut self) -> Result<(), String> {
+        let result = self
+            .task
+            .as_mut()
+            .expect("worker loop task guard must contain a task")
+            .await;
+        self.task.take();
+        result.map_err(|error| error.to_string())
+    }
+}
+
+#[cfg(test)]
+impl Drop for WorkerLoopTaskGuard {
+    fn drop(&mut self) {
+        if let Some(task) = self.task.as_ref() {
+            task.abort();
+        }
+    }
+}
+
+/// Makes an abnormal async-task panic visible to the UI and guarantees that
+/// Stop loop does not wait forever. Tokio isolates task panics from the app
+/// process, while the process-level panic hook records the backtrace.
+struct WorkerLoopLifecycleGuard {
+    executor: Arc<Mutex<ExecutorState>>,
+    app_data_dir: PathBuf,
+    stopped: Arc<AtomicBool>,
+}
+
+impl Drop for WorkerLoopLifecycleGuard {
+    fn drop(&mut self) {
+        if std::thread::panicking() {
+            append_diagnostic_event(
+                &self.app_data_dir,
+                "worker_loop.task_panicked",
+                json!({
+                    "message": "Worker loop task panicked; the Worker App process remains open.",
+                    "sessionId": crate::diagnostics::session_id(),
+                }),
+            );
+            set_executor_error(
+                &self.executor,
+                "Worker loop stopped unexpectedly because the loop task panicked. Check Diagnostics for the panic backtrace.".into(),
+            );
+        }
+        self.stopped.store(true, Ordering::Relaxed);
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -499,31 +655,146 @@ pub fn start_worker_loop(
     resource_dir: PathBuf,
     app_data_dir: PathBuf,
     connection: WorkerLoopConnection,
-) -> WorkerLoopHandle {
+) -> Result<WorkerLoopHandle, String> {
     let cancel = Arc::new(AtomicBool::new(false));
+    let started = Arc::new(AtomicBool::new(false));
     let stopped = Arc::new(AtomicBool::new(false));
     let connection = Arc::new(Mutex::new(connection));
     let loop_cancel = cancel.clone();
+    let loop_started = started.clone();
     let loop_stopped = stopped.clone();
     let loop_connection = connection.clone();
-    let handle = tauri::async_runtime::spawn(async move {
-        run_worker_loop(
-            settings,
-            executor,
-            resource_dir,
-            app_data_dir,
-            loop_connection,
-            loop_cancel,
-            loop_stopped,
-        )
-        .await;
-    });
-    WorkerLoopHandle {
+    // Run the loop from a dedicated OS thread and enter Tauri's async runtime
+    // from there. The previous implementation scheduled the whole lifecycle
+    // with `tauri::async_runtime::spawn`; on Windows the process disappeared
+    // immediately after `worker_loop.start.ok`, before the first task event
+    // could be written. Keeping the public UI command on the Tauri runtime but
+    // moving the loop root to a named thread isolates that start boundary and
+    // lets us record ordinary thread panics. Process-level failures such as a
+    // Windows stack overflow still require keeping async futures small.
+    let thread_executor = executor.clone();
+    let thread_app_data_dir = app_data_dir.clone();
+    let thread_stopped = loop_stopped.clone();
+    let handle = std::thread::Builder::new()
+        .name("smartaihub-worker-loop".into())
+        .spawn(move || {
+            let panic_executor = thread_executor.clone();
+            let panic_app_data_dir = thread_app_data_dir.clone();
+            let panic_stopped = thread_stopped.clone();
+            append_diagnostic_event(
+                &panic_app_data_dir,
+                "worker_loop.thread.started",
+                json!({
+                    "sessionId": crate::diagnostics::session_id(),
+                    "thread": "smartaihub-worker-loop",
+                }),
+            );
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let runtime = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|error| error.to_string())
+                    .expect("failed to create Worker App loop runtime");
+                runtime.block_on(async move {
+                    let lifecycle_guard = WorkerLoopLifecycleGuard {
+                        executor: thread_executor.clone(),
+                        app_data_dir: thread_app_data_dir.clone(),
+                        stopped: thread_stopped.clone(),
+                    };
+                    append_diagnostic_event(
+                        &thread_app_data_dir,
+                        "worker_loop.supervisor.spawned",
+                        json!({
+                            "sessionId": crate::diagnostics::session_id(),
+                            "thread": "smartaihub-worker-loop",
+                        }),
+                    );
+                    append_diagnostic_event(
+                        &thread_app_data_dir,
+                        "worker_loop.supervisor.task_created",
+                        json!({
+                            "sessionId": crate::diagnostics::session_id(),
+                            "thread": "smartaihub-worker-loop",
+                        }),
+                    );
+                    run_worker_loop(
+                        settings,
+                        thread_executor,
+                        resource_dir,
+                        thread_app_data_dir,
+                        loop_connection,
+                        loop_cancel,
+                        loop_started,
+                        thread_stopped,
+                    )
+                    .await;
+                    drop(lifecycle_guard);
+                });
+            }));
+            if result.is_err() {
+                append_diagnostic_event(
+                    &panic_app_data_dir,
+                    "worker_loop.thread_panicked",
+                    json!({
+                        "message": "Worker loop thread panicked; the Worker App process remains open.",
+                        "sessionId": crate::diagnostics::session_id(),
+                    }),
+                );
+                set_executor_error(
+                    &panic_executor,
+                    "Worker loop thread stopped unexpectedly. Check Diagnostics for the panic backtrace.".into(),
+                );
+                panic_stopped.store(true, Ordering::Relaxed);
+            }
+        })
+        .map_err(|error| format!("failed to spawn Worker App loop thread: {error}"))?;
+    Ok(WorkerLoopHandle {
         cancel,
+        started,
         stopped,
         connection,
         handle,
+    })
+}
+
+#[cfg(test)]
+fn worker_loop_task_failure_message(error: &str) -> String {
+    format!(
+        "Worker loop stopped unexpectedly, but the app remains open. Check Diagnostics for the task error. {error}"
+    )
+}
+
+#[cfg(test)]
+async fn supervise_worker_loop(
+    loop_task: AsyncJoinHandle<()>,
+    executor: Arc<Mutex<ExecutorState>>,
+    app_data_dir: PathBuf,
+    stopped: Arc<AtomicBool>,
+) {
+    append_diagnostic_event(
+        &app_data_dir,
+        "worker_loop.supervisor.started",
+        json!({"sessionId": crate::diagnostics::session_id()}),
+    );
+    let task_result = WorkerLoopTaskGuard {
+        task: Some(loop_task),
     }
+    .wait()
+    .await;
+    if let Err(error) = task_result {
+        let message = worker_loop_task_failure_message(&error);
+        append_diagnostic_event(
+            &app_data_dir,
+            "worker_loop.task_failed",
+            json!({
+                "error": error,
+                "message": message,
+                "sessionId": crate::diagnostics::session_id(),
+            }),
+        );
+        set_executor_error(&executor, message);
+    }
+    stopped.store(true, Ordering::Relaxed);
 }
 
 fn is_failure_signal_line(line: &str) -> bool {
@@ -720,9 +991,24 @@ async fn run_worker_loop(
     app_data_dir: PathBuf,
     connection: Arc<Mutex<WorkerLoopConnection>>,
     cancel: Arc<AtomicBool>,
+    started: Arc<AtomicBool>,
     stopped: Arc<AtomicBool>,
 ) {
+    started.store(true, Ordering::Relaxed);
+    append_diagnostic_event(
+        &app_data_dir,
+        "worker_loop.task.started",
+        json!({"sessionId": crate::diagnostics::session_id()}),
+    );
     set_executor_polling(&executor, "Worker loop started.");
+    append_diagnostic_event(
+        &app_data_dir,
+        "worker_loop.started",
+        json!({
+            "runtimeResourceDir": resource_dir.to_string_lossy(),
+            "sessionId": crate::diagnostics::session_id(),
+        }),
+    );
     let mut stopped_for_terminal_error = false;
     // Feature 135 §11 — one profile store per loop lifetime (restored from
     // disk so `verify_connection_affinity` survives a restart) and a
@@ -731,6 +1017,7 @@ async fn run_worker_loop(
         app_data_dir.join("hermes-profiles"),
     )));
     let mut hermes_doctor_cache: Option<HermesDoctorCache> = None;
+    let mut runtime_doctor_cache: Option<RuntimeDoctorCache> = None;
     // FIX E — independent render/hermes "a job of this kind is in flight"
     // flags. Job execution is SPAWNED (not awaited inline in the tick — see
     // `worker_loop_tick`'s dispatch below), so a hermes job running under
@@ -758,6 +1045,7 @@ async fn run_worker_loop(
             &cancel,
             &hermes_profiles,
             &mut hermes_doctor_cache,
+            &mut runtime_doctor_cache,
             &render_active,
             &hermes_active,
             &terminal_error,
@@ -788,6 +1076,14 @@ async fn run_worker_loop(
     if !stopped_for_terminal_error {
         set_executor_idle(&executor, "Worker loop stopped.");
     }
+    append_diagnostic_event(
+        &app_data_dir,
+        "worker_loop.stopped",
+        json!({
+            "terminalError": stopped_for_terminal_error,
+            "cancelled": cancel.load(Ordering::Relaxed),
+        }),
+    );
     stopped.store(true, Ordering::Relaxed);
 }
 
@@ -839,6 +1135,7 @@ async fn handle_worker_loop_error(
         );
         return true;
     }
+    crate::diagnostics::log_error(app_data_dir, "worker_loop.error", json!({ "error": error }));
     set_executor_error(executor, format!("Worker loop error: {error}"));
     false
 }
@@ -852,6 +1149,7 @@ async fn worker_loop_tick(
     cancel: &Arc<AtomicBool>,
     hermes_profiles: &Arc<Mutex<HermesProfileStore>>,
     hermes_doctor_cache: &mut Option<HermesDoctorCache>,
+    runtime_doctor_cache: &mut Option<RuntimeDoctorCache>,
     render_active: &Arc<AtomicBool>,
     hermes_active: &Arc<AtomicBool>,
     terminal_error: &Arc<Mutex<Option<String>>>,
@@ -866,14 +1164,56 @@ async fn worker_loop_tick(
         PathBuf::from(settings_snapshot.runtime_dir.trim())
     };
     let (manifest_path, sidecar_root) = runtime_pack_paths(resource_dir, &effective_runtime_dir);
-    let mut doctor = doctor_from_manifest_path(&manifest_path, &sidecar_root);
-    crate::commands::annotate_runtime_doctor_for_settings(
-        &mut doctor,
-        &settings_snapshot,
-        true,
-        &effective_runtime_dir,
+    let runtime_settings_key = format!(
+        "{:?}|{}|{}",
+        settings_snapshot.runtime_environment,
+        effective_runtime_dir.display(),
+        settings_snapshot.managed_wsl_root,
     );
-    let render_ready = doctor.status == "ready";
+    let use_cached_runtime_doctor = runtime_doctor_cache.as_ref().is_some_and(|cache| {
+        cache.settings_key == runtime_settings_key
+            && cache.checked_at.elapsed() < RUNTIME_DOCTOR_REFRESH_INTERVAL
+    });
+    let doctor = if use_cached_runtime_doctor {
+        runtime_doctor_cache
+            .as_ref()
+            .map(|cache| cache.doctor.clone())
+            .ok_or_else(|| "runtime doctor cache disappeared".to_string())?
+    } else {
+        append_diagnostic_event(
+            app_data_dir,
+            "worker_loop.runtime_check.started",
+            json!({
+                "fullHostChecks": true,
+                "settingsKey": runtime_settings_key,
+                "sessionId": crate::diagnostics::session_id(),
+            }),
+        );
+        let mut fresh_doctor = doctor_from_manifest_path(&manifest_path, &sidecar_root);
+        crate::commands::annotate_runtime_doctor_for_settings(
+            &mut fresh_doctor,
+            &settings_snapshot,
+            true,
+            &effective_runtime_dir,
+        );
+        append_diagnostic_event(
+            app_data_dir,
+            "worker_loop.runtime_check.completed",
+            json!({
+                "status": fresh_doctor.status,
+                "checkCount": fresh_doctor.checks.len(),
+                "sessionId": crate::diagnostics::session_id(),
+            }),
+        );
+        *runtime_doctor_cache = Some(RuntimeDoctorCache {
+            checked_at: Instant::now(),
+            settings_key: runtime_settings_key,
+            doctor: fresh_doctor.clone(),
+        });
+        fresh_doctor
+    };
+    let render_ready = render_runtime_ready(&doctor);
+    let render_active_now = render_active.load(Ordering::Relaxed);
 
     // Feature 135 §11 FIX 1/A — hermes doctor probed (cached, see
     // `HERMES_DOCTOR_REFRESH_INTERVAL`) and folded into the heartbeat's
@@ -883,7 +1223,18 @@ async fn worker_loop_tick(
     // between full re-registrations.
     let (hermes_doctor, hermes_version) = hermes_doctor_cached(app_data_dir, hermes_doctor_cache);
     let hermes_ready = hermes_doctor.status == "ready";
-    let legacy_comfy_readiness = if settings_snapshot.comfyui_enabled {
+    // Once a render has been claimed, do not start unrelated WSL/Comfy
+    // probes from the 10-second polling tick. The Transcribe/media addition
+    // introduced these probes into the shared loop; on Windows this meant
+    // ffmpeg/ffprobe and MCP processes could be launched alongside Chromium
+    // and the Remotion sidecar. Render owns the render lane, so its heartbeat
+    // is enough until the job finishes.
+    let legacy_comfy_readiness = if render_active_now {
+        comfy_executor::ComfyReadiness {
+            ready: false,
+            reason: "probe_skipped_while_render_active".into(),
+        }
+    } else if settings_snapshot.comfyui_enabled {
         comfy_executor::check_readiness(&settings_snapshot.comfyui_base_url).await
     } else {
         comfy_executor::ComfyReadiness {
@@ -893,8 +1244,11 @@ async fn worker_loop_tick(
     };
     let comfy_ready = legacy_comfy_readiness.ready;
 
-    let media_ready = local_media_runtime_ready(app_data_dir, &settings_snapshot);
-    let render_active_now = render_active.load(Ordering::Relaxed);
+    let media_ready = if render_active_now {
+        false
+    } else {
+        local_media_runtime_ready(app_data_dir, &settings_snapshot)
+    };
     let active_profile_id = active_comfy_profile(app_data_dir, &settings_snapshot, None)
         .ok()
         .map(|profile| profile.profile_id);
@@ -903,28 +1257,51 @@ async fn worker_loop_tick(
             .get_or_init(|| Mutex::new(None))
             .lock()
             .ok()
-            .and_then(|cache| cache.as_ref().filter(|(cached_id, _)| cached_id == profile_id).map(|(_, manifest)| manifest.clone()))
+            .and_then(|cache| {
+                cache
+                    .as_ref()
+                    .filter(|(cached_id, _)| cached_id == profile_id)
+                    .map(|(_, manifest)| manifest.clone())
+            })
     });
     let cached_probe_failure = active_profile_id.as_deref().and_then(|profile_id| {
         COMFY_MCP_PROBE_FAILURE_CACHE
             .get_or_init(|| Mutex::new(None))
             .lock()
             .ok()
-            .and_then(|cache| cache.as_ref().filter(|(cached_id, checked_at, _)| {
-                cached_id == profile_id && checked_at.elapsed() < COMFY_MCP_PROBE_FAILURE_RETRY_INTERVAL
-            }).map(|(_, _, reason)| reason.clone()))
+            .and_then(|cache| {
+                cache
+                    .as_ref()
+                    .filter(|(cached_id, checked_at, _)| {
+                        cached_id == profile_id
+                            && checked_at.elapsed() < COMFY_MCP_PROBE_FAILURE_RETRY_INTERVAL
+                    })
+                    .map(|(_, _, reason)| reason.clone())
+            })
     });
     let had_cached_probe_failure = cached_probe_failure.is_some();
     let (_mcp_probe_ready, mcp_probe_reason, mcp_manifest) = if render_active_now {
         if let Some(manifest) = cached_manifest.as_ref() {
-            (true, "mcp_manifest_cached_while_job_active".to_string(), Some(manifest.clone()))
+            (
+                true,
+                "mcp_manifest_cached_while_job_active".to_string(),
+                Some(manifest.clone()),
+            )
         } else if let Some(reason) = cached_probe_failure.as_ref() {
             (false, reason.clone(), None)
         } else {
-            probe_active_comfy_mcp_profile(app_data_dir, &settings_snapshot).await
+            (
+                false,
+                "mcp_probe_skipped_while_render_active".to_string(),
+                None,
+            )
         }
     } else if let Some(manifest) = cached_manifest.as_ref() {
-        (true, "mcp_manifest_cached".to_string(), Some(manifest.clone()))
+        (
+            true,
+            "mcp_manifest_cached".to_string(),
+            Some(manifest.clone()),
+        )
     } else if let Some(reason) = cached_probe_failure.as_ref() {
         (false, reason.clone(), None)
     } else {
@@ -967,9 +1344,9 @@ async fn worker_loop_tick(
         Some((&hermes_doctor, hermes_version.as_deref())),
         render_active_now,
         hermes_active_now,
-        Some(&heartbeat_comfy_readiness),
-        Some(media_ready),
-        Some(mcp_ready),
+        (!render_active_now).then_some(&heartbeat_comfy_readiness),
+        (!render_active_now).then_some(media_ready),
+        (!render_active_now).then_some(mcp_ready),
     )
     .await?;
 
@@ -990,20 +1367,19 @@ async fn worker_loop_tick(
     // `can_claim_render_job`/`can_claim_hermes_media_job` are the same
     // pure functions the unit tests exercise directly.
     let max_jobs = settings_snapshot.max_concurrent_jobs.max(1) as u32;
-    let can_claim_render = render_ready
-        && !settings_snapshot.render_update_blocked
-        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    // Runtime version freshness is advisory. Only the doctor capability state
+    // determines whether a render lane can claim work; an older compatible
+    // runtime must not pause the queue until a user chooses to update it.
+    let can_claim_render =
+        render_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
     let can_claim_hermes =
         hermes_ready && can_claim_hermes_media_job(if hermes_active_now { 1 } else { 0 });
-    let can_claim_comfy = comfy_ready
-        && !settings_snapshot.render_update_blocked
-        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
-    let can_claim_media = media_ready
-        && !settings_snapshot.render_update_blocked
-        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
-    let can_claim_mcp = mcp_ready
-        && !settings_snapshot.render_update_blocked
-        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_comfy =
+        comfy_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_media =
+        media_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_mcp =
+        mcp_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
 
     if !can_claim_render
         && !can_claim_hermes
@@ -1076,6 +1452,26 @@ async fn worker_loop_tick(
         return Ok(());
     };
 
+    append_diagnostic_event(
+        app_data_dir,
+        "job.claimed",
+        json!({
+            "jobId": job.id,
+            "jobType": job.job_type,
+            "assignmentAttempt": job.assignment_attempt,
+        }),
+    );
+    append_diagnostic_event(
+        app_data_dir,
+        "job.dispatch",
+        json!({
+            "jobId": job.id,
+            "jobType": job.job_type,
+            "assignmentAttempt": job.assignment_attempt,
+            "renderLane": matches!(classify_job_type(&job.job_type), WorkerJobKind::Hyperframes | WorkerJobKind::RemotionRenderVideo | WorkerJobKind::VerticalDramaFootageRender),
+        }),
+    );
+
     match classify_job_type(&job.job_type) {
         WorkerJobKind::Hyperframes => {
             render_active.store(true, Ordering::Relaxed);
@@ -1088,9 +1484,19 @@ async fn worker_loop_tick(
             let cancel = cancel.clone();
             let render_active = render_active.clone();
             let terminal_error = terminal_error.clone();
+            let monitored_executor = executor.clone();
+            let monitored_connection = connection.clone();
+            // The render payload can contain a large Remotion template and
+            // asset manifest. Keep only the lease identity for the panic
+            // reporter; cloning the full `ClaimedWorkerJob` here doubles the
+            // payload immediately before the task is scheduled and can make
+            // Windows terminate the process under memory pressure.
+            let monitored_job = job_failure_report_view(&job);
+            let monitored_app_data_dir = app_data_dir.to_path_buf();
+            let monitored_render_active = render_active.clone();
             // FIX E — spawned (not awaited inline) so a render job in
             // flight never blocks a hermes claim on the NEXT tick.
-            tauri::async_runtime::spawn(async move {
+            let task = tauri::async_runtime::spawn(async move {
                 let result = execute_hyperframes_job(
                     &executor,
                     &resource_dir_owned,
@@ -1105,6 +1511,26 @@ async fn worker_loop_tick(
                 render_active.store(false, Ordering::Relaxed);
                 record_terminal_error_if_needed(&terminal_error, result);
             });
+            let monitored_job_id = monitored_job.id.clone();
+            append_diagnostic_event(
+                app_data_dir,
+                "job.render.task_spawned",
+                json!({ "jobId": monitored_job_id, "jobType": HYPERFRAMES_JOB_TYPE }),
+            );
+            tauri::async_runtime::spawn(async move {
+                if let Err(error) = task.await {
+                    monitored_render_active.store(false, Ordering::Relaxed);
+                    report_render_task_failure(
+                        &monitored_executor,
+                        &monitored_connection,
+                        &monitored_app_data_dir,
+                        &monitored_job,
+                        HYPERFRAMES_JOB_TYPE,
+                        error.to_string(),
+                    )
+                    .await;
+                }
+            });
             Ok(())
         }
         WorkerJobKind::RemotionRenderVideo => {
@@ -1114,30 +1540,35 @@ async fn worker_loop_tick(
             // binaries), so it participates in the same `render_active`
             // accounting `can_claim_render_job` gates on.
             render_active.store(true, Ordering::Relaxed);
-            let executor = executor.clone();
-            let resource_dir_owned = resource_dir.to_path_buf();
-            let app_data_dir_owned = app_data_dir.to_path_buf();
-            let connection = connection.clone();
-            let doctor_owned = doctor.clone();
-            let settings_owned = settings_snapshot.clone();
-            let cancel = cancel.clone();
-            let render_active = render_active.clone();
-            let terminal_error = terminal_error.clone();
-            tauri::async_runtime::spawn(async move {
-                let result = execute_remotion_render_video_job(
-                    &executor,
-                    &resource_dir_owned,
-                    &app_data_dir_owned,
-                    &connection,
-                    job,
-                    &doctor_owned,
-                    &settings_owned,
-                    &cancel,
-                )
-                .await;
-                render_active.store(false, Ordering::Relaxed);
-                record_terminal_error_if_needed(&terminal_error, result);
-            });
+            // Remotion owns the worker's only Chromium/FFmpeg lane. Keep this
+            // job on the loop's awaited path so a failure during dispatch,
+            // workspace preparation, WSL startup, or sidecar monitoring cannot
+            // disappear with an unobserved detached task. The sidecar runner
+            // emits its own active heartbeats while this call is in flight.
+            let render_job_id = job.id.clone();
+            append_diagnostic_event(
+                app_data_dir,
+                "job.render.inline_started",
+                json!({ "jobId": render_job_id.clone(), "jobType": REMOTION_RENDER_VIDEO_JOB_TYPE }),
+            );
+            let result = execute_remotion_render_video_job(
+                executor,
+                resource_dir,
+                app_data_dir,
+                connection,
+                job,
+                &doctor,
+                &settings_snapshot,
+                cancel,
+            )
+            .await;
+            render_active.store(false, Ordering::Relaxed);
+            record_terminal_error_if_needed(terminal_error, result);
+            append_diagnostic_event(
+                app_data_dir,
+                "job.render.inline_finished",
+                json!({ "jobId": render_job_id, "jobType": REMOTION_RENDER_VIDEO_JOB_TYPE }),
+            );
             Ok(())
         }
         WorkerJobKind::VerticalDramaFootageRender => {
@@ -1328,6 +1759,76 @@ fn record_terminal_error_if_needed(
     }
 }
 
+/// The task monitor only needs the lease identity to report a panic. Keeping
+/// this view deliberately payload-free is important for Remotion jobs: their
+/// `input_json` may contain a large template and many asset references, and a
+/// second deep clone at dispatch time can turn a recoverable render failure
+/// into an OS-level process termination before the task even starts.
+fn job_failure_report_view(job: &ClaimedWorkerJob) -> ClaimedWorkerJob {
+    ClaimedWorkerJob {
+        id: job.id.clone(),
+        job_type: job.job_type.clone(),
+        created_at: job.created_at.clone(),
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        input_json: Value::Null,
+        capability_requirements_json: Value::Null,
+        reference_urls: Vec::new(),
+    }
+}
+
+/// A render task runs outside the worker-loop tick so the loop can continue
+/// heartbeats while Chromium/FFmpeg is active. If that task panics, the
+/// `JoinError` must become a durable job failure as well; logging only the
+/// panic leaves the server job stuck in `running` and makes the app appear to
+/// have disappeared when the UI refreshes.
+async fn report_render_task_failure(
+    executor: &Arc<Mutex<ExecutorState>>,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    app_data_dir: &Path,
+    job: &ClaimedWorkerJob,
+    job_type: &str,
+    error: String,
+) {
+    let failure_message = format!("Worker render task terminated unexpectedly: {error}");
+    let failure = if job_type == REMOTION_RENDER_VIDEO_JOB_TYPE {
+        build_remotion_render_video_failure_event(
+            job,
+            FAILURE_EVENT_SEQUENCE_NUMBER,
+            "render_failed",
+            &failure_message,
+        )
+    } else {
+        build_failure_event(
+            job,
+            FAILURE_EVENT_SEQUENCE_NUMBER,
+            "render_failed",
+            &failure_message,
+        )
+    };
+    if let Err(report_error) =
+        send_event_with_refresh(app_data_dir, connection, &job.id, failure).await
+    {
+        crate::diagnostics::log_error(
+            app_data_dir,
+            "job.task_failure_report_failed",
+            json!({ "jobId": job.id, "jobType": job_type, "error": report_error }),
+        );
+    }
+    crate::diagnostics::log_error(
+        app_data_dir,
+        "job.task_panicked",
+        json!({
+            "jobId": job.id,
+            "jobType": job_type,
+            "error": error,
+            "failureReported": true,
+        }),
+    );
+    set_executor_last_job(executor, job, "error", &failure_message, None);
+    set_executor_job_error(executor, &job.id, failure_message);
+}
+
 async fn claim_worker_job_with_watchdog(
     connection: WorkerLoopConnection,
     payload: WorkerClaimRequest,
@@ -1401,7 +1902,6 @@ fn build_heartbeat_runtime_metadata(
         "doctorStatus": doctor_status,
         "acceptJobs": settings.accept_jobs,
         "claimEnabled": accepts_jobs,
-        "renderUpdateBlocked": settings.render_update_blocked,
         "sharingMode": settings.sharing_mode,
         "runtimeChannel": settings.runtime_channel,
         "runtimeVersion": runtime_version,
@@ -1486,6 +1986,7 @@ async fn heartbeat(
 ) -> Result<(), String> {
     let current_job_count =
         active_worker_job_count(has_active_job(executor)?, render_active, hermes_active);
+    let active_job_ids = active_worker_job_ids(executor)?;
     let status = if doctor.status == "ready" || accepts_jobs {
         "online"
     } else {
@@ -1501,6 +2002,7 @@ async fn heartbeat(
         status,
         current_job_count,
         current_queue_depth(executor)?,
+        active_job_ids,
         warnings,
         build_heartbeat_runtime_metadata(
             settings,
@@ -1515,19 +2017,10 @@ async fn heartbeat(
     );
     let response = send_worker_heartbeat(connection, &payload).await?;
     apply_hermes_heartbeat_warning(executor, &response.warning_flags_json);
-    if let Err(error) = sync_local_llm_inventory(
-        connection,
-        &load_registry(app_data_dir).unwrap_or_default(),
-    )
-    .await
-    {
+    if let Err(error) = sync_local_llm_inventory(connection, &load_registry(app_data_dir).unwrap_or_default()).await {
         // Inventory is an auxiliary projection. A temporary sync failure must
         // not take the control-plane heartbeat or legacy job lanes offline.
-        crate::diagnostics::log_error(
-            app_data_dir,
-            "local_llm.inventory_sync_failed",
-            json!({ "error": error }),
-        );
+        crate::diagnostics::log_error(app_data_dir, "local_llm.inventory_sync_failed", json!({ "error": error }));
     }
     Ok(())
 }
@@ -1573,9 +2066,22 @@ async fn sync_local_llm_inventory(
         &inventory,
         &connection.device_proof,
         &idempotency_key,
-    )
-    .await?;
+    ).await?;
     Ok(())
+}
+
+fn active_worker_job_ids(executor: &Arc<Mutex<ExecutorState>>) -> Result<Vec<String>, String> {
+    executor
+        .lock()
+        .map(|state| {
+            state
+                .active_jobs
+                .iter()
+                .map(|job| job.job_id.clone())
+                .take(10)
+                .collect()
+        })
+        .map_err(|_| "executor lock poisoned".to_string())
 }
 
 fn active_worker_job_count(
@@ -1737,13 +2243,32 @@ fn extract_mcp_artifact_path(value: &Value) -> Option<String> {
 }
 
 fn extract_mcp_artifact_url(value: &Value) -> Option<String> {
-    if let Some(url) = value.get("artifactUrl").or_else(|| value.get("artifact_url")).or_else(|| value.get("outputUrl")).or_else(|| value.get("output_url")).and_then(Value::as_str) {
+    if let Some(url) = value
+        .get("artifactUrl")
+        .or_else(|| value.get("artifact_url"))
+        .or_else(|| value.get("outputUrl"))
+        .or_else(|| value.get("output_url"))
+        .and_then(Value::as_str)
+    {
         return Some(url.to_string());
     }
     if let Some(structured) = value.get("structuredContent") {
-        if let Some(url) = extract_mcp_artifact_url(structured) { return Some(url); }
+        if let Some(url) = extract_mcp_artifact_url(structured) {
+            return Some(url);
+        }
     }
-    value.get("content").and_then(Value::as_array).and_then(|blocks| blocks.iter().find_map(|block| block.get("text").and_then(Value::as_str).and_then(|text| serde_json::from_str::<Value>(text).ok()).and_then(|parsed| extract_mcp_artifact_url(&parsed))))
+    value
+        .get("content")
+        .and_then(Value::as_array)
+        .and_then(|blocks| {
+            blocks.iter().find_map(|block| {
+                block
+                    .get("text")
+                    .and_then(Value::as_str)
+                    .and_then(|text| serde_json::from_str::<Value>(text).ok())
+                    .and_then(|parsed| extract_mcp_artifact_url(&parsed))
+            })
+        })
 }
 
 fn ensure_portrait_9x16_qc(qc: &LocalMediaQc) -> Result<(), String> {
@@ -1790,22 +2315,24 @@ fn is_supported_frame_bytes(bytes: &[u8]) -> bool {
         || bytes.len() >= 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP"
 }
 
-async fn materialize_shot_frame(
+async fn materialize_shot_media_asset(
     root_path: &Path,
     connection: &WorkerLoopConnection,
     job: &ClaimedWorkerJob,
     series_id: &str,
-    frame: &Value,
+    asset: &Value,
     label: &str,
     index: usize,
+    media_type: &str,
+    max_bytes: usize,
 ) -> Result<Value, String> {
-    let asset_id = frame
+    let asset_id = asset
         .get("assetId")
         .and_then(Value::as_str)
         .and_then(|value| value.strip_prefix("media-"))
         .filter(|value| !value.is_empty() && value.chars().all(|ch| ch.is_ascii_digit()))
         .ok_or_else(|| "shot_frame_asset_id_missing".to_string())?;
-    let expected = frame
+    let expected = asset
         .get("fingerprint")
         .and_then(Value::as_str)
         .filter(|value| value.len() == 64)
@@ -1821,14 +2348,27 @@ async fn materialize_shot_frame(
         &connection.device_proof,
     )
     .await?;
-    if bytes.is_empty() || bytes.len() > 64 * 1024 * 1024 || !is_supported_frame_bytes(&bytes) {
+    if bytes.is_empty()
+        || bytes.len() > max_bytes
+        || (media_type == "image" && !is_supported_frame_bytes(&bytes))
+        || !matches!(media_type, "image" | "video" | "audio")
+    {
         return Err("shot_frame_format_invalid".into());
     }
     let digest = format!("{:x}", Sha256::digest(&bytes));
     if digest != expected {
         return Err("shot_frame_checksum_mismatch".into());
     }
-    let relative = format!("derived/.inputs/{}/{}-{}.img", job.id, label, index);
+    let extension = match media_type {
+        "image" => "img",
+        "video" => "video",
+        "audio" => "audio",
+        _ => return Err("shot_media_type_invalid".into()),
+    };
+    let relative = format!(
+        "derived/.inputs/{}/{}-{}.{}",
+        job.id, label, index, extension
+    );
     let output = root_path.join(&relative);
     validate_workspace_path(root_path, &output)?;
     if let Some(parent) = output.parent() {
@@ -1836,13 +2376,36 @@ async fn materialize_shot_frame(
             .map_err(|error| format!("shot_frame_workspace_failed: {error}"))?;
     }
     fs::write(&output, &bytes).map_err(|error| format!("shot_frame_write_failed: {error}"))?;
-    let mut materialized = frame.clone();
+    let mut materialized = asset.clone();
     let object = materialized
         .as_object_mut()
         .ok_or_else(|| "shot_frame_contract_invalid".to_string())?;
     object.insert("materializedPath".into(), Value::String(relative));
     object.remove("storageKey");
     Ok(materialized)
+}
+
+async fn materialize_shot_frame(
+    root_path: &Path,
+    connection: &WorkerLoopConnection,
+    job: &ClaimedWorkerJob,
+    series_id: &str,
+    frame: &Value,
+    label: &str,
+    index: usize,
+) -> Result<Value, String> {
+    materialize_shot_media_asset(
+        root_path,
+        connection,
+        job,
+        series_id,
+        frame,
+        label,
+        index,
+        "image",
+        64 * 1024 * 1024,
+    )
+    .await
 }
 
 async fn materialize_shot_inputs(
@@ -1896,6 +2459,27 @@ async fn materialize_shot_inputs(
                 .await?;
             }
         }
+        if let Some(references) = object.get_mut("references").and_then(Value::as_array_mut) {
+            for (index, reference) in references.iter_mut().enumerate() {
+                let media_type = reference
+                    .get("mediaType")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| "shot_reference_media_type_missing".to_string())?
+                    .to_string();
+                *reference = materialize_shot_media_asset(
+                    root_path,
+                    connection,
+                    job,
+                    series_id,
+                    reference,
+                    "reference-media",
+                    index,
+                    &media_type,
+                    512 * 1024 * 1024,
+                )
+                .await?;
+            }
+        }
         pack
     };
     Ok((materialized_start, materialized_refs))
@@ -1933,7 +2517,10 @@ async fn materialize_footage_source(
         .and_then(|value| value.to_str())
         .filter(|value| value.len() <= 8 && value.chars().all(|ch| ch.is_ascii_alphanumeric()))
         .unwrap_or("mp4");
-    let relative = format!("derived/.inputs/{}/source.{extension}", sanitize_segment(&job.id));
+    let relative = format!(
+        "derived/.inputs/{}/source.{extension}",
+        sanitize_segment(&job.id)
+    );
     let output = root_path.join(&relative);
     validate_workspace_path(root_path, &output)?;
     let (size_bytes, digest) = download_worker_file(
@@ -1946,14 +2533,25 @@ async fn materialize_footage_source(
         // upload contract (2 GiB). The file is streamed to the private root,
         // so this limit does not turn the download into an in-memory buffer.
         2_000 * 1024 * 1024,
-    ).await?;
-    if size_bytes == 0 { return Err("unsupported_media".into()); }
-    if digest != expected { return Err("source_fingerprint_mismatch".into()); }
+    )
+    .await?;
+    if size_bytes == 0 {
+        return Err("unsupported_media".into());
+    }
+    if digest != expected {
+        return Err("source_fingerprint_mismatch".into());
+    }
     Ok(output)
 }
 
 fn footage_silence_kind(index: usize, total: usize) -> &'static str {
-    if index == 0 { "leading" } else if index + 1 == total { "trailing" } else { "middle" }
+    if index == 0 {
+        "leading"
+    } else if index + 1 == total {
+        "trailing"
+    } else {
+        "middle"
+    }
 }
 
 fn transcript_text_and_tokens(value: &Value) -> (String, Vec<Value>) {
@@ -1968,18 +2566,41 @@ fn transcript_text_and_tokens(value: &Value) -> (String, Vec<Value>) {
         .collect::<String>();
     let mut tokens = Vec::new();
     let mut collect = |item: &Value| {
-        if tokens.len() >= 12_000 { return; }
-        let token_text = item.get("text").or_else(|| item.get("word")).and_then(Value::as_str).unwrap_or_default().trim();
-        let start = item.get("startMs").and_then(Value::as_u64).or_else(|| item.get("start").and_then(Value::as_f64).map(|v| (v * 1000.0) as u64));
-        let end = item.get("endMs").and_then(Value::as_u64).or_else(|| item.get("end").and_then(Value::as_f64).map(|v| (v * 1000.0) as u64));
+        if tokens.len() >= 12_000 {
+            return;
+        }
+        let token_text = item
+            .get("text")
+            .or_else(|| item.get("word"))
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .trim();
+        let start = item.get("startMs").and_then(Value::as_u64).or_else(|| {
+            item.get("start")
+                .and_then(Value::as_f64)
+                .map(|v| (v * 1000.0) as u64)
+        });
+        let end = item.get("endMs").and_then(Value::as_u64).or_else(|| {
+            item.get("end")
+                .and_then(Value::as_f64)
+                .map(|v| (v * 1000.0) as u64)
+        });
         if !token_text.is_empty() && start.is_some() && end.is_some() && end > start {
             tokens.push(json!({ "text": token_text.chars().take(500).collect::<String>(), "startMs": start.unwrap(), "endMs": end.unwrap(), "confidence": item.get("confidence").or_else(|| item.get("probability")).and_then(Value::as_f64) }));
         }
     };
-    if let Some(items) = value.get("words").and_then(Value::as_array) { for item in items { collect(item); } }
+    if let Some(items) = value.get("words").and_then(Value::as_array) {
+        for item in items {
+            collect(item);
+        }
+    }
     if let Some(segments) = value.get("segments").and_then(Value::as_array) {
         for segment in segments {
-            if let Some(items) = segment.get("words").and_then(Value::as_array) { for item in items { collect(item); } }
+            if let Some(items) = segment.get("words").and_then(Value::as_array) {
+                for item in items {
+                    collect(item);
+                }
+            }
         }
     }
     (text, tokens)
@@ -2099,7 +2720,11 @@ fn execute_hyperframes_transcription_process(
         );
         let mut command = Command::new("wsl.exe");
         command.args([
-            "-e", "bash", "-lc", &script, "smartaihub-transcribe",
+            "-e",
+            "bash",
+            "-lc",
+            &script,
+            "smartaihub-transcribe",
             &windows_path_to_wsl(&source_path),
             &windows_path_to_wsl(&output_dir),
             &language,
@@ -2146,7 +2771,9 @@ fn build_footage_guide(
     runtime_transcription: Option<&RuntimeTranscriptionManifest>,
 ) -> Value {
     let duration = probe.duration_ms.unwrap_or(0);
-    let silence_segments = analysis.map(|item| item.silence_segments.as_slice()).unwrap_or(&[]);
+    let silence_segments = analysis
+        .map(|item| item.silence_segments.as_slice())
+        .unwrap_or(&[]);
     let silence_ranges: Vec<Value> = silence_segments.iter().enumerate().filter_map(|(index, item)| {
         let end = item.end_ms.or(Some(duration)).filter(|value| *value > item.start_ms)?;
         Some(json!({ "startMs": item.start_ms, "endMs": end, "kind": footage_silence_kind(index, silence_segments.len()), "confidence": item.confidence }))
@@ -2154,13 +2781,22 @@ fn build_footage_guide(
     let mut speech_ranges = Vec::new();
     let mut cursor = 0u64;
     for item in &silence_ranges {
-        let start = item.get("startMs").and_then(Value::as_u64).unwrap_or(cursor);
-        if start > cursor { speech_ranges.push(json!({ "startMs": cursor, "endMs": start, "confidence": 0.6 })); }
+        let start = item
+            .get("startMs")
+            .and_then(Value::as_u64)
+            .unwrap_or(cursor);
+        if start > cursor {
+            speech_ranges.push(json!({ "startMs": cursor, "endMs": start, "confidence": 0.6 }));
+        }
         cursor = item.get("endMs").and_then(Value::as_u64).unwrap_or(cursor);
     }
-    if duration > cursor { speech_ranges.push(json!({ "startMs": cursor, "endMs": duration, "confidence": 0.5 })); }
+    if duration > cursor {
+        speech_ranges.push(json!({ "startMs": cursor, "endMs": duration, "confidence": 0.5 }));
+    }
     let scene_ranges = analysis.map(|item| item.scene_candidates.iter().filter_map(|scene| Some(json!({ "startMs": scene.start_ms, "endMs": scene.end_ms?, "confidence": scene.confidence, "keyframeAssetId": Value::Null }))).collect::<Vec<_>>()).unwrap_or_default();
-    let runtime_model = runtime_transcription.map(|item| item.model.as_str()).unwrap_or("large-v3");
+    let runtime_model = runtime_transcription
+        .map(|item| item.model.as_str())
+        .unwrap_or("large-v3");
     let transcript_json = transcript.map(|raw| {
         let (text, tokens) = transcript_text_and_tokens(raw);
         let status = raw.get("status").and_then(Value::as_str).unwrap_or("ready");
@@ -2168,21 +2804,41 @@ fn build_footage_guide(
     });
     let mut warnings = Vec::<Value>::new();
     let visual_ready = analysis.is_some();
-    if !visual_ready { warnings.push(json!("visual_analysis_unavailable")); }
+    if !visual_ready {
+        warnings.push(json!("visual_analysis_unavailable"));
+    }
     if transcript_json.is_none() {
         warnings.push(json!("transcription_unavailable"));
-    } else if transcript_json.as_ref().and_then(|value| value.get("status")).and_then(Value::as_str) == Some("empty") {
+    } else if transcript_json
+        .as_ref()
+        .and_then(|value| value.get("status"))
+        .and_then(Value::as_str)
+        == Some("empty")
+    {
         warnings.push(json!("transcription_empty"));
     }
-    if silence_ranges.is_empty() { warnings.push(json!("silence_detection_empty")); }
-    let warning_strings = warnings.iter().filter_map(Value::as_str).map(str::to_string).collect::<Vec<_>>();
-    let unknowns = warning_strings.iter().map(|value| json!(value)).collect::<Vec<_>>();
+    if silence_ranges.is_empty() {
+        warnings.push(json!("silence_detection_empty"));
+    }
+    let warning_strings = warnings
+        .iter()
+        .filter_map(Value::as_str)
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    let unknowns = warning_strings
+        .iter()
+        .map(|value| json!(value))
+        .collect::<Vec<_>>();
     let transcript_status = transcript_json
         .as_ref()
         .and_then(|value| value.get("status"))
         .and_then(Value::as_str)
         .unwrap_or("unavailable");
-    let guide_status = if warning_strings.is_empty() { "ready" } else { "partial" };
+    let guide_status = if warning_strings.is_empty() {
+        "ready"
+    } else {
+        "partial"
+    };
     json!({
         "schemaVersion": "vd-footage-guide-v1",
         "sourceAssetId": source.get("assetId").cloned().unwrap_or(Value::Null),
@@ -2218,28 +2874,55 @@ async fn run_hyperframes_transcription(
     language: &str,
     policy: &str,
 ) -> Result<Option<Value>, String> {
-    if policy == "disabled" { return Ok(None); }
-    let effective_runtime_dir = if settings.runtime_dir.trim().is_empty() { app_data_dir.to_path_buf() } else { PathBuf::from(settings.runtime_dir.trim()) };
+    if policy == "disabled" {
+        return Ok(None);
+    }
+    let effective_runtime_dir = if settings.runtime_dir.trim().is_empty() {
+        app_data_dir.to_path_buf()
+    } else {
+        PathBuf::from(settings.runtime_dir.trim())
+    };
     let (manifest_path, sidecar_root) = runtime_pack_paths(resource_dir, &effective_runtime_dir);
     let runtime_root = runtime_pack_root_for_sidecars(&sidecar_root);
     let manifest = read_runtime_pack_manifest(&manifest_path)?;
     let Some(transcription) = manifest.transcription.as_ref() else {
-        return if policy == "required" { Err("transcription_unavailable".into()) } else { Ok(None) };
+        return if policy == "required" {
+            Err("transcription_unavailable".into())
+        } else {
+            Ok(None)
+        };
     };
-    let Some(whisper_path) = runtime_relative_path(&runtime_root, &transcription.binary_path) else {
-        return if policy == "required" { Err("transcription_unavailable".into()) } else { Ok(None) };
+    let Some(whisper_path) = runtime_relative_path(&runtime_root, &transcription.binary_path)
+    else {
+        return if policy == "required" {
+            Err("transcription_unavailable".into())
+        } else {
+            Ok(None)
+        };
     };
     let Some(model_path) = runtime_relative_path(&runtime_root, &transcription.model_path) else {
-        return if policy == "required" { Err("transcription_unavailable".into()) } else { Ok(None) };
+        return if policy == "required" {
+            Err("transcription_unavailable".into())
+        } else {
+            Ok(None)
+        };
     };
-    let node = if settings.runtime_environment.is_managed_wsl() || cfg!(target_os = "macos") { runtime_root.join("node/bin/node") } else { runtime_root.join("node/node.exe") };
+    let node = if settings.runtime_environment.is_managed_wsl() || cfg!(target_os = "macos") {
+        runtime_root.join("node/bin/node")
+    } else {
+        runtime_root.join("node/node.exe")
+    };
     let cli = runtime_root.join("hyperframes/node_modules/hyperframes/dist/cli.js");
     let output_dir = transcription_output_dir(app_data_dir, source_path);
     fs::create_dir_all(&output_dir).map_err(|_| "transcription_unavailable".to_string())?;
     if !settings.runtime_environment.is_managed_wsl()
         && (!whisper_path.is_file() || !model_path.is_file() || !node.is_file() || !cli.is_file())
     {
-        return if policy == "required" { Err("transcription_unavailable".into()) } else { Ok(None) };
+        return if policy == "required" {
+            Err("transcription_unavailable".into())
+        } else {
+            Ok(None)
+        };
     }
     let output = tauri::async_runtime::spawn_blocking({
         let managed_wsl = settings.runtime_environment.is_managed_wsl();
@@ -2251,25 +2934,40 @@ async fn run_hyperframes_transcription(
         let whisper_path = whisper_path.clone();
         let node = node.clone();
         let cli = cli.clone();
-        move || execute_hyperframes_transcription_process(
-            managed_wsl,
-            managed_wsl_root,
-            source_path,
-            output_dir,
-            language,
-            model,
-            whisper_path,
-            node,
-            cli,
-        )
+        move || {
+            execute_hyperframes_transcription_process(
+                managed_wsl,
+                managed_wsl_root,
+                source_path,
+                output_dir,
+                language,
+                model,
+                whisper_path,
+                node,
+                cli,
+            )
+        }
     })
     .await
     .map_err(|_| "transcription_unavailable".to_string())??;
-    if !output.status.success() { return if policy == "required" { Err("transcription_failed".into()) } else { Ok(None) }; }
-    let raw: Value = serde_json::from_slice(&output.stdout).map_err(|_| "transcription_failed".to_string())?;
+    if !output.status.success() {
+        return if policy == "required" {
+            Err("transcription_failed".into())
+        } else {
+            Ok(None)
+        };
+    }
+    let raw: Value =
+        serde_json::from_slice(&output.stdout).map_err(|_| "transcription_failed".to_string())?;
     match normalize_hyperframes_transcript_output(&raw, &output_dir) {
         Ok(value) => Ok(Some(value)),
-        Err(error) => if policy == "required" { Err(error) } else { Ok(None) },
+        Err(error) => {
+            if policy == "required" {
+                Err(error)
+            } else {
+                Ok(None)
+            }
+        }
     }
 }
 
@@ -2586,29 +3284,54 @@ fn read_media_binding_projection(value: &Value) -> (Option<u64>, Option<String>)
 fn media_failure_code(error: &str) -> &'static str {
     let code = error.split(':').next().unwrap_or_default().trim();
     const KNOWN_CODES: &[&str] = &[
-        "invalid_contract", "root_not_bound", "root_revision_stale",
-        "source_not_stable", "unsupported_media", "dead_air_detection_failed",
-        "focus_track_failed", "duration_budget_exceeded", "qc_failed",
-        "workflow_capability_blocked", "artifact_checksum_mismatch",
-        "artifact_ownership_failed", "publication_rejected", "index_enqueue_failed",
-        "source_reference_expired", "source_fingerprint_mismatch",
-        "transcription_unavailable", "transcription_failed",
-        "unsupported_composition_executor", "placement_out_of_bounds",
-        "placement_source_not_ready", "approval_required", "render_contract_mismatch",
+        "invalid_contract",
+        "root_not_bound",
+        "root_revision_stale",
+        "source_not_stable",
+        "unsupported_media",
+        "dead_air_detection_failed",
+        "focus_track_failed",
+        "duration_budget_exceeded",
+        "qc_failed",
+        "workflow_capability_blocked",
+        "artifact_checksum_mismatch",
+        "artifact_ownership_failed",
+        "publication_rejected",
+        "index_enqueue_failed",
+        "source_reference_expired",
+        "source_fingerprint_mismatch",
+        "transcription_unavailable",
+        "transcription_failed",
+        "unsupported_composition_executor",
+        "placement_out_of_bounds",
+        "placement_source_not_ready",
+        "approval_required",
+        "render_contract_mismatch",
     ];
-    KNOWN_CODES.iter().copied().find(|candidate| *candidate == code).unwrap_or("unsupported_job_type")
+    KNOWN_CODES
+        .iter()
+        .copied()
+        .find(|candidate| *candidate == code)
+        .unwrap_or("unsupported_job_type")
 }
 
-fn remove_approved_silence(segments: &[(u64, u64)], silence_ranges: &[(u64, u64)], padding_ms: u64) -> Vec<(u64, u64)> {
+fn remove_approved_silence(
+    segments: &[(u64, u64)],
+    silence_ranges: &[(u64, u64)],
+    padding_ms: u64,
+) -> Vec<(u64, u64)> {
     const MIN_RENDER_SEGMENT_MS: u64 = 250;
     let mut result = Vec::new();
     for &(segment_start, segment_end) in segments {
         let mut cursor = segment_start;
-        let mut silences = silence_ranges.iter().filter_map(|&(silence_start, silence_end)| {
-            let start = silence_start.max(segment_start);
-            let end = silence_end.min(segment_end);
-            (end > start).then_some((start, end))
-        }).collect::<Vec<_>>();
+        let mut silences = silence_ranges
+            .iter()
+            .filter_map(|&(silence_start, silence_end)| {
+                let start = silence_start.max(segment_start);
+                let end = silence_end.min(segment_end);
+                (end > start).then_some((start, end))
+            })
+            .collect::<Vec<_>>();
         silences.sort_unstable();
         for (silence_start, silence_end) in silences {
             let cut_start = silence_start.saturating_sub(padding_ms).max(segment_start);
@@ -2637,7 +3360,16 @@ async fn execute_comfy_job_inner(
     if job.input_json.get("adapter").and_then(Value::as_str) == Some("comfy_mcp")
         || job.input_json.get("connectionResolution").is_some()
     {
-        return execute_comfy_mcp_job(executor, resource_dir, app_data_dir, connection, job, settings, cancel).await;
+        return execute_comfy_mcp_job(
+            executor,
+            resource_dir,
+            app_data_dir,
+            connection,
+            job,
+            settings,
+            cancel,
+        )
+        .await;
     }
     let service_input = job.input_json.get("service");
     let service = comfy_executor::ComfyServiceBinding {
@@ -2885,12 +3617,20 @@ async fn execute_comfy_mcp_job(
     settings: &WorkerAppSettings,
     cancel: &Arc<AtomicBool>,
 ) -> Result<(), String> {
-    let selected_id = job.input_json.get("connectionResolution")
+    let selected_id = job
+        .input_json
+        .get("connectionResolution")
         .and_then(|value| value.get("selectedProfileId"))
         .and_then(Value::as_str);
     let profile = active_comfy_profile(app_data_dir, settings, selected_id)?;
-    let workflow_id = job.input_json.get("workflowResolution")
-        .and_then(|value| value.get("workflowId").or_else(|| value.get("selectedWorkflowId")))
+    let workflow_id = job
+        .input_json
+        .get("workflowResolution")
+        .and_then(|value| {
+            value
+                .get("workflowId")
+                .or_else(|| value.get("selectedWorkflowId"))
+        })
         .and_then(Value::as_str)
         .or_else(|| job.input_json.get("workflowId").and_then(Value::as_str))
         .filter(|value| !value.trim().is_empty())
@@ -2900,113 +3640,413 @@ async fn execute_comfy_mcp_job(
         "inputs": job.input_json.get("inputs").cloned().unwrap_or_else(|| json!({})),
         "outputPolicy": job.input_json.get("outputPolicy").cloned().unwrap_or_else(|| json!({ "saveLocally": true })),
     }));
-    if let Some(object) = arguments.as_object_mut() { object.entry("workflowId").or_insert_with(|| json!(workflow_id)); }
-    if arguments.get("workflowId").and_then(Value::as_str) != Some(workflow_id) { return Err("comfy_workflow_resolution_mismatch".into()); }
+    if let Some(object) = arguments.as_object_mut() {
+        object
+            .entry("workflowId")
+            .or_insert_with(|| json!(workflow_id));
+    }
+    if arguments.get("workflowId").and_then(Value::as_str) != Some(workflow_id) {
+        return Err("comfy_workflow_resolution_mismatch".into());
+    }
     let workspace_root = workspace_root(settings, resource_dir, app_data_dir)?;
-    let workspace = workspace_root.join("comfy-mcp").join(sanitize_segment(&job.id));
+    let workspace = workspace_root
+        .join("comfy-mcp")
+        .join(sanitize_segment(&job.id));
     fs::create_dir_all(&workspace).map_err(|_| "comfy_mcp_workspace_failed".to_string())?;
     let mut sequence = 1_u32;
-    for (stage, percent, message) in [("validate_service", 5, "Checking the selected ComfyUI MCP connection."), ("submit_workflow", 15, "Submitting the resolved workflow through MCP.")] {
-        let event = build_comfy_progress_event(job, sequence, stage, percent, Some(message)).ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
-        send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, event, &mut sequence).await?;
+    for (stage, percent, message) in [
+        (
+            "validate_service",
+            5,
+            "Checking the selected ComfyUI MCP connection.",
+        ),
+        (
+            "submit_workflow",
+            15,
+            "Submitting the resolved workflow through MCP.",
+        ),
+    ] {
+        let event = build_comfy_progress_event(job, sequence, stage, percent, Some(message))
+            .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+        send_progress_event_with_next_sequence(
+            app_data_dir,
+            connection,
+            &job.id,
+            event,
+            &mut sequence,
+        )
+        .await?;
     }
-    update_executor_progress(executor, &job.id, 20, "Running ComfyUI workflow through MCP.");
+    update_executor_progress(
+        executor,
+        &job.id,
+        20,
+        "Running ComfyUI workflow through MCP.",
+    );
     let mut ledger = ExecutionLedger::load(app_data_dir)?;
     let profile_revision = profile.profile_revision;
-    let workflow_version = job.input_json.get("workflowResolution").and_then(|value| value.get("version")).and_then(Value::as_str).unwrap_or("unversioned").to_string();
+    let workflow_version = job
+        .input_json
+        .get("workflowResolution")
+        .and_then(|value| value.get("version"))
+        .and_then(Value::as_str)
+        .unwrap_or("unversioned")
+        .to_string();
     let now = format!("{:?}", SystemTime::now());
-    ledger.upsert(ExecutionLedgerEntry { job_id: job.id.clone(), attempt: job.assignment_attempt.clone(), profile_id: profile.profile_id.clone(), profile_revision, workflow_version: workflow_version.clone(), remote_execution_id: None, state: ExecutionLedgerState::Claimed, event_sequence: sequence as u64, output_fingerprints: Vec::new(), upload_session_id: None, updated_at: now })?;
+    ledger.upsert(ExecutionLedgerEntry {
+        job_id: job.id.clone(),
+        attempt: job.assignment_attempt.clone(),
+        profile_id: profile.profile_id.clone(),
+        profile_revision,
+        workflow_version: workflow_version.clone(),
+        remote_execution_id: None,
+        state: ExecutionLedgerState::Claimed,
+        event_sequence: sequence as u64,
+        output_fingerprints: Vec::new(),
+        upload_session_id: None,
+        updated_at: now,
+    })?;
     let remote_execution_id = Arc::new(Mutex::new(None::<String>));
     let record_execution_id = {
         let remote_execution_id = Arc::clone(&remote_execution_id);
         move |execution_id: &str| {
-            if let Ok(mut recorded) = remote_execution_id.lock() { *recorded = Some(execution_id.to_string()); }
+            if let Ok(mut recorded) = remote_execution_id.lock() {
+                *recorded = Some(execution_id.to_string());
+            }
         }
     };
     let result = match profile.transport {
         ComfyTransportKind::LocalStdio | ComfyTransportKind::SelfHostedStdioBridge => {
-            let command = profile.command.clone().ok_or_else(|| "comfy_profile_command_missing".to_string())?;
-            let managed_command_path = (matches!(profile.transport, ComfyTransportKind::LocalStdio)
-                && crate::comfy_mcp_runtime::normalize_command(&command)
-                    == crate::comfy_mcp_runtime::STANDARD_COMMAND)
-                .then(|| crate::comfy_mcp_runtime::managed_command_path(app_data_dir))
-                .flatten();
-            if !command_available_with_path(&command, managed_command_path.as_deref()) { return Err("comfy_mcp_unavailable".into()); }
-            let args = if matches!(profile.transport, ComfyTransportKind::SelfHostedStdioBridge) { resolve_bridge_args(&profile.args, profile.endpoint.as_deref().ok_or_else(|| "comfy_bridge_endpoint_missing".to_string())?)? } else { profile.args.clone() };
-            run_generic_workflow_with_lifecycle(&ComfyMcpConfig { command, managed_command_path, args, timeout_ms: job_timeout_ms(job) }, arguments, cancel, record_execution_id).await
+            let command = profile
+                .command
+                .clone()
+                .ok_or_else(|| "comfy_profile_command_missing".to_string())?;
+            let managed_command_path =
+                (matches!(profile.transport, ComfyTransportKind::LocalStdio)
+                    && crate::comfy_mcp_runtime::normalize_command(&command)
+                        == crate::comfy_mcp_runtime::STANDARD_COMMAND)
+                    .then(|| crate::comfy_mcp_runtime::managed_command_path(app_data_dir))
+                    .flatten();
+            if !command_available_with_path(&command, managed_command_path.as_deref()) {
+                return Err("comfy_mcp_unavailable".into());
+            }
+            let args = if matches!(profile.transport, ComfyTransportKind::SelfHostedStdioBridge) {
+                resolve_bridge_args(
+                    &profile.args,
+                    profile
+                        .endpoint
+                        .as_deref()
+                        .ok_or_else(|| "comfy_bridge_endpoint_missing".to_string())?,
+                )?
+            } else {
+                profile.args.clone()
+            };
+            run_generic_workflow_with_lifecycle(
+                &ComfyMcpConfig {
+                    command,
+                    managed_command_path,
+                    args,
+                    timeout_ms: job_timeout_ms(job),
+                },
+                arguments,
+                cancel,
+                record_execution_id,
+            )
+            .await
         }
-        ComfyTransportKind::SelfHostedHttpMcp | ComfyTransportKind::ComfyCloud | ComfyTransportKind::SshTunnel => {
-            let ssh_key = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) { Some(crate::comfy_credentials::resolve(profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?) } else { None };
-            let _ssh_tunnel = if let Some(key) = ssh_key.as_deref() { Some(crate::comfy_ssh_tunnel::open_with_identity(&profile.args, key)?) } else { None };
-            let endpoint = profile.endpoint.clone().ok_or_else(|| "comfy_endpoint_missing".to_string())?;
-            let token = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) || profile.credential_kind == ComfyCredentialKind::None { None } else { Some(crate::comfy_credentials::resolve(profile.credential_ref.as_deref().ok_or_else(|| "comfy_credential_ref_missing".to_string())?)?) };
-            let mut transport = ComfyHttpMcpTransport::new(endpoint, token, Duration::from_millis(job_timeout_ms(job)))?;
-            transport.run_workflow_with_lifecycle_and_callback(arguments, Arc::clone(cancel), record_execution_id).await
+        ComfyTransportKind::SelfHostedHttpMcp
+        | ComfyTransportKind::ComfyCloud
+        | ComfyTransportKind::SshTunnel => {
+            let ssh_key = if matches!(&profile.transport, ComfyTransportKind::SshTunnel) {
+                Some(crate::comfy_credentials::resolve(
+                    profile
+                        .credential_ref
+                        .as_deref()
+                        .ok_or_else(|| "comfy_credential_ref_missing".to_string())?,
+                )?)
+            } else {
+                None
+            };
+            let _ssh_tunnel = if let Some(key) = ssh_key.as_deref() {
+                Some(crate::comfy_ssh_tunnel::open_with_identity(
+                    &profile.args,
+                    key,
+                )?)
+            } else {
+                None
+            };
+            let endpoint = profile
+                .endpoint
+                .clone()
+                .ok_or_else(|| "comfy_endpoint_missing".to_string())?;
+            let token = if matches!(&profile.transport, ComfyTransportKind::SshTunnel)
+                || profile.credential_kind == ComfyCredentialKind::None
+            {
+                None
+            } else {
+                Some(crate::comfy_credentials::resolve(
+                    profile
+                        .credential_ref
+                        .as_deref()
+                        .ok_or_else(|| "comfy_credential_ref_missing".to_string())?,
+                )?)
+            };
+            let mut transport = ComfyHttpMcpTransport::new(
+                endpoint,
+                token,
+                Duration::from_millis(job_timeout_ms(job)),
+            )?;
+            transport
+                .run_workflow_with_lifecycle_and_callback(
+                    arguments,
+                    Arc::clone(cancel),
+                    record_execution_id,
+                )
+                .await
         }
     };
     let result = match result {
         Ok(result) => result,
         Err(error) => {
-            let _ = ledger.upsert(ExecutionLedgerEntry { job_id: job.id.clone(), attempt: job.assignment_attempt.clone(), profile_id: profile.profile_id.clone(), profile_revision: profile.profile_revision, workflow_version: workflow_version.clone(), remote_execution_id: None, state: ExecutionLedgerState::Failed, event_sequence: sequence as u64, output_fingerprints: Vec::new(), upload_session_id: None, updated_at: format!("{:?}", SystemTime::now()) });
+            let _ = ledger.upsert(ExecutionLedgerEntry {
+                job_id: job.id.clone(),
+                attempt: job.assignment_attempt.clone(),
+                profile_id: profile.profile_id.clone(),
+                profile_revision: profile.profile_revision,
+                workflow_version: workflow_version.clone(),
+                remote_execution_id: None,
+                state: ExecutionLedgerState::Failed,
+                event_sequence: sequence as u64,
+                output_fingerprints: Vec::new(),
+                upload_session_id: None,
+                updated_at: format!("{:?}", SystemTime::now()),
+            });
             return Err(error);
         }
     };
-    let recorded_execution_id = remote_execution_id.lock().ok().and_then(|value| value.clone()).or_else(|| extract_mcp_execution_id(&result));
+    let recorded_execution_id = remote_execution_id
+        .lock()
+        .ok()
+        .and_then(|value| value.clone())
+        .or_else(|| extract_mcp_execution_id(&result));
     if let Some(execution_id) = recorded_execution_id.as_ref() {
         let now = format!("{:?}", SystemTime::now());
-        ledger.upsert(ExecutionLedgerEntry { job_id: job.id.clone(), attempt: job.assignment_attempt.clone(), profile_id: profile.profile_id.clone(), profile_revision: profile.profile_revision, workflow_version: job.input_json.get("workflowResolution").and_then(|value| value.get("version")).and_then(Value::as_str).unwrap_or("unversioned").into(), remote_execution_id: Some(execution_id.clone()), state: ExecutionLedgerState::Collected, event_sequence: sequence as u64, output_fingerprints: Vec::new(), upload_session_id: None, updated_at: now })?;
+        ledger.upsert(ExecutionLedgerEntry {
+            job_id: job.id.clone(),
+            attempt: job.assignment_attempt.clone(),
+            profile_id: profile.profile_id.clone(),
+            profile_revision: profile.profile_revision,
+            workflow_version: job
+                .input_json
+                .get("workflowResolution")
+                .and_then(|value| value.get("version"))
+                .and_then(Value::as_str)
+                .unwrap_or("unversioned")
+                .into(),
+            remote_execution_id: Some(execution_id.clone()),
+            state: ExecutionLedgerState::Collected,
+            event_sequence: sequence as u64,
+            output_fingerprints: Vec::new(),
+            upload_session_id: None,
+            updated_at: now,
+        })?;
     }
     let output_path = extract_mcp_artifact_path(&result);
     let output_url = extract_mcp_artifact_url(&result);
     let local_path = if let Some(path) = output_path {
-        let candidate = if Path::new(&path).is_absolute() { PathBuf::from(path) } else { workspace.join(path) };
+        let candidate = if Path::new(&path).is_absolute() {
+            PathBuf::from(path)
+        } else {
+            workspace.join(path)
+        };
         validate_workspace_path(&workspace, &candidate)?;
-        candidate.canonicalize().map_err(|_| "comfy_mcp_output_missing".to_string())?
+        candidate
+            .canonicalize()
+            .map_err(|_| "comfy_mcp_output_missing".to_string())?
     } else if let Some(url) = output_url {
         download_mcp_output(&url, &workspace).await?
     } else {
         return Err("comfy_mcp_output_missing".into());
     };
-    if !local_path.is_file() { return Err("comfy_mcp_output_missing".into()); }
+    if !local_path.is_file() {
+        return Err("comfy_mcp_output_missing".into());
+    }
     let digest = file_sha256(&local_path)?;
-    let file_name = local_path.file_name().and_then(|value| value.to_str()).unwrap_or("comfy-output.bin").to_string();
+    let file_name = local_path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("comfy-output.bin")
+        .to_string();
     let content_type = content_type_for_file(&file_name);
-    let upload_library = job.input_json
+    let upload_library = job
+        .input_json
         .get("outputPolicy")
         .and_then(|value| value.get("uploadLibrary"))
         .and_then(Value::as_bool)
         .unwrap_or(true);
     if !upload_library {
-        update_executor_progress(executor, &job.id, 95, &format!("Saved locally: {}", local_path.display()));
-        ledger.upsert(ExecutionLedgerEntry { job_id: job.id.clone(), attempt: job.assignment_attempt.clone(), profile_id: profile.profile_id.clone(), profile_revision: profile.profile_revision, workflow_version, remote_execution_id: recorded_execution_id.clone(), state: ExecutionLedgerState::Saved, event_sequence: sequence as u64, output_fingerprints: vec![digest.clone()], upload_session_id: None, updated_at: format!("{:?}", SystemTime::now()) })?;
+        update_executor_progress(
+            executor,
+            &job.id,
+            95,
+            &format!("Saved locally: {}", local_path.display()),
+        );
+        ledger.upsert(ExecutionLedgerEntry {
+            job_id: job.id.clone(),
+            attempt: job.assignment_attempt.clone(),
+            profile_id: profile.profile_id.clone(),
+            profile_revision: profile.profile_revision,
+            workflow_version,
+            remote_execution_id: recorded_execution_id.clone(),
+            state: ExecutionLedgerState::Saved,
+            event_sequence: sequence as u64,
+            output_fingerprints: vec![digest.clone()],
+            upload_session_id: None,
+            updated_at: format!("{:?}", SystemTime::now()),
+        })?;
         send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, build_comfy_completed_event(job, sequence, json!({ "status": "saved_locally", "profileId": profile.profile_id, "workflowId": workflow_id, "fileName": file_name, "contentType": content_type, "sha256": digest })), &mut sequence).await?;
         return Ok(());
     }
-    ledger.upsert(ExecutionLedgerEntry { job_id: job.id.clone(), attempt: job.assignment_attempt.clone(), profile_id: profile.profile_id.clone(), profile_revision: profile.profile_revision, workflow_version: workflow_version.clone(), remote_execution_id: recorded_execution_id.clone(), state: ExecutionLedgerState::Saved, event_sequence: sequence as u64, output_fingerprints: vec![digest.clone()], upload_session_id: None, updated_at: format!("{:?}", SystemTime::now()) })?;
-    let collect = build_comfy_progress_event(job, sequence, "collect_outputs", 75, Some("Validating the local ComfyUI output.")) .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
-    send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, collect, &mut sequence).await?;
-    let upload = build_comfy_progress_event(job, sequence, "upload_artifacts", 85, Some("Uploading the verified artifact.")) .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
-    send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, upload, &mut sequence).await?;
-    let uploaded = match upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, if content_type.starts_with("video/") { "comfy_video_output" } else { "comfy_image_output" }, &local_path, &file_name, content_type, &job.lease_owner_token, &job.assignment_attempt, json!({ "sha256": digest, "profileId": profile.profile_id, "workflowId": workflow_id })).await {
+    ledger.upsert(ExecutionLedgerEntry {
+        job_id: job.id.clone(),
+        attempt: job.assignment_attempt.clone(),
+        profile_id: profile.profile_id.clone(),
+        profile_revision: profile.profile_revision,
+        workflow_version: workflow_version.clone(),
+        remote_execution_id: recorded_execution_id.clone(),
+        state: ExecutionLedgerState::Saved,
+        event_sequence: sequence as u64,
+        output_fingerprints: vec![digest.clone()],
+        upload_session_id: None,
+        updated_at: format!("{:?}", SystemTime::now()),
+    })?;
+    let collect = build_comfy_progress_event(
+        job,
+        sequence,
+        "collect_outputs",
+        75,
+        Some("Validating the local ComfyUI output."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        collect,
+        &mut sequence,
+    )
+    .await?;
+    let upload = build_comfy_progress_event(
+        job,
+        sequence,
+        "upload_artifacts",
+        85,
+        Some("Uploading the verified artifact."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        upload,
+        &mut sequence,
+    )
+    .await?;
+    let uploaded = match upload_worker_artifact_file_with_refresh(
+        app_data_dir,
+        connection,
+        &job.id,
+        if content_type.starts_with("video/") {
+            "comfy_video_output"
+        } else {
+            "comfy_image_output"
+        },
+        &local_path,
+        &file_name,
+        content_type,
+        &job.lease_owner_token,
+        &job.assignment_attempt,
+        json!({ "sha256": digest, "profileId": profile.profile_id, "workflowId": workflow_id }),
+    )
+    .await
+    {
         Ok(uploaded) => uploaded,
         Err(error) => {
-            let _ = ledger.upsert(ExecutionLedgerEntry { job_id: job.id.clone(), attempt: job.assignment_attempt.clone(), profile_id: profile.profile_id.clone(), profile_revision: profile.profile_revision, workflow_version: workflow_version.clone(), remote_execution_id: recorded_execution_id.clone(), state: ExecutionLedgerState::Failed, event_sequence: sequence as u64, output_fingerprints: vec![digest.clone()], upload_session_id: None, updated_at: format!("{:?}", SystemTime::now()) });
+            let _ = ledger.upsert(ExecutionLedgerEntry {
+                job_id: job.id.clone(),
+                attempt: job.assignment_attempt.clone(),
+                profile_id: profile.profile_id.clone(),
+                profile_revision: profile.profile_revision,
+                workflow_version: workflow_version.clone(),
+                remote_execution_id: recorded_execution_id.clone(),
+                state: ExecutionLedgerState::Failed,
+                event_sequence: sequence as u64,
+                output_fingerprints: vec![digest.clone()],
+                upload_session_id: None,
+                updated_at: format!("{:?}", SystemTime::now()),
+            });
             return Err(format!("artifact upload failed: {error}"));
         }
     };
-    ledger.upsert(ExecutionLedgerEntry { job_id: job.id.clone(), attempt: job.assignment_attempt.clone(), profile_id: profile.profile_id.clone(), profile_revision: profile.profile_revision, workflow_version, remote_execution_id: recorded_execution_id.clone(), state: ExecutionLedgerState::Published, event_sequence: sequence as u64, output_fingerprints: vec![digest.clone()], upload_session_id: None, updated_at: format!("{:?}", SystemTime::now()) })?;
-    let publish = build_comfy_progress_event(job, sequence, "publish_artifacts", 95, Some("ComfyUI artifact accepted by SmartAIHub.")) .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
-    send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, publish, &mut sequence).await?;
-    let index = build_comfy_progress_event(job, sequence, "trigger_indexing", 100, Some("ComfyUI output is ready.")) .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
-    send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, index, &mut sequence).await?;
+    ledger.upsert(ExecutionLedgerEntry {
+        job_id: job.id.clone(),
+        attempt: job.assignment_attempt.clone(),
+        profile_id: profile.profile_id.clone(),
+        profile_revision: profile.profile_revision,
+        workflow_version,
+        remote_execution_id: recorded_execution_id.clone(),
+        state: ExecutionLedgerState::Published,
+        event_sequence: sequence as u64,
+        output_fingerprints: vec![digest.clone()],
+        upload_session_id: None,
+        updated_at: format!("{:?}", SystemTime::now()),
+    })?;
+    let publish = build_comfy_progress_event(
+        job,
+        sequence,
+        "publish_artifacts",
+        95,
+        Some("ComfyUI artifact accepted by SmartAIHub."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(
+        app_data_dir,
+        connection,
+        &job.id,
+        publish,
+        &mut sequence,
+    )
+    .await?;
+    let index = build_comfy_progress_event(
+        job,
+        sequence,
+        "trigger_indexing",
+        100,
+        Some("ComfyUI output is ready."),
+    )
+    .ok_or_else(|| "invalid ComfyUI progress stage".to_string())?;
+    send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, index, &mut sequence)
+        .await?;
     send_progress_event_with_next_sequence(app_data_dir, connection, &job.id, build_comfy_completed_event(job, sequence, json!({ "profileId": profile.profile_id, "workflowId": workflow_id, "artifacts": [{ "fileName": file_name, "contentType": content_type, "sha256": digest, "artifact": uploaded.artifact }] })), &mut sequence).await?;
     Ok(())
 }
 
-fn job_timeout_ms(job: &ClaimedWorkerJob) -> u64 { job.input_json.get("timeoutMs").and_then(Value::as_u64).unwrap_or(10 * 60 * 1000).clamp(5_000, 60 * 60 * 1000) }
+fn job_timeout_ms(job: &ClaimedWorkerJob) -> u64 {
+    job.input_json
+        .get("timeoutMs")
+        .and_then(Value::as_u64)
+        .unwrap_or(10 * 60 * 1000)
+        .clamp(5_000, 60 * 60 * 1000)
+}
 
 fn content_type_for_file(file_name: &str) -> &'static str {
-    match Path::new(file_name).extension().and_then(|value| value.to_str()).unwrap_or_default().to_ascii_lowercase().as_str() {
+    match Path::new(file_name)
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase()
+        .as_str()
+    {
         "mp4" | "webm" | "mov" | "mkv" => "video/mp4",
         "jpg" | "jpeg" => "image/jpeg",
         "png" => "image/png",
@@ -3026,7 +4066,13 @@ fn safe_output_extension(url: &reqwest::Url, content_type: Option<&str>) -> &'st
         Some("jpg") | Some("jpeg") => "jpg",
         Some("png") => "png",
         Some("webp") => "webp",
-        _ => match content_type.unwrap_or_default().split(';').next().unwrap_or_default().trim() {
+        _ => match content_type
+            .unwrap_or_default()
+            .split(';')
+            .next()
+            .unwrap_or_default()
+            .trim()
+        {
             "video/webm" => "webm",
             "video/quicktime" => "mov",
             "image/jpeg" => "jpg",
@@ -3038,15 +4084,43 @@ fn safe_output_extension(url: &reqwest::Url, content_type: Option<&str>) -> &'st
 }
 
 async fn download_mcp_output(url: &str, workspace: &Path) -> Result<PathBuf, String> {
-    let parsed = reqwest::Url::parse(url).map_err(|_| "comfy_mcp_output_url_invalid".to_string())?;
-    if parsed.scheme() != "https" && !matches!(parsed.host_str(), Some("localhost" | "127.0.0.1" | "::1")) { return Err("comfy_mcp_output_url_invalid".into()); }
-    let response = reqwest::Client::builder().timeout(Duration::from_secs(30 * 60)).redirect(reqwest::redirect::Policy::none()).build().map_err(|_| "comfy_mcp_output_download_failed".to_string())?.get(parsed.clone()).send().await.map_err(|_| "comfy_mcp_output_download_failed".to_string())?;
-    if !response.status().is_success() { return Err("comfy_mcp_output_download_failed".into()); }
-    if response.content_length().is_some_and(|size| size > 4 * 1024 * 1024 * 1024) { return Err("comfy_mcp_output_too_large".into()); }
-    let content_type = response.headers().get(reqwest::header::CONTENT_TYPE).and_then(|value| value.to_str().ok());
+    let parsed =
+        reqwest::Url::parse(url).map_err(|_| "comfy_mcp_output_url_invalid".to_string())?;
+    if parsed.scheme() != "https"
+        && !matches!(parsed.host_str(), Some("localhost" | "127.0.0.1" | "::1"))
+    {
+        return Err("comfy_mcp_output_url_invalid".into());
+    }
+    let response = reqwest::Client::builder()
+        .timeout(Duration::from_secs(30 * 60))
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|_| "comfy_mcp_output_download_failed".to_string())?
+        .get(parsed.clone())
+        .send()
+        .await
+        .map_err(|_| "comfy_mcp_output_download_failed".to_string())?;
+    if !response.status().is_success() {
+        return Err("comfy_mcp_output_download_failed".into());
+    }
+    if response
+        .content_length()
+        .is_some_and(|size| size > 4 * 1024 * 1024 * 1024)
+    {
+        return Err("comfy_mcp_output_too_large".into());
+    }
+    let content_type = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok());
     let extension = safe_output_extension(&parsed, content_type);
-    let bytes = response.bytes().await.map_err(|_| "comfy_mcp_output_download_failed".to_string())?;
-    if bytes.is_empty() { return Err("comfy_mcp_output_empty".into()); }
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|_| "comfy_mcp_output_download_failed".to_string())?;
+    if bytes.is_empty() {
+        return Err("comfy_mcp_output_empty".into());
+    }
     let path = workspace.join(format!("comfy-output.{extension}"));
     fs::write(&path, bytes).map_err(|_| "comfy_mcp_output_write_failed".to_string())?;
     Ok(path)
@@ -3519,6 +4593,15 @@ async fn execute_hyperframes_job(
     cancel: &Arc<AtomicBool>,
 ) -> Result<(), String> {
     set_executor_job(executor, &job);
+    append_diagnostic_event(
+        app_data_dir,
+        "job.render.started",
+        json!({
+            "jobId": job.id,
+            "jobType": job.job_type,
+            "runtimeEnvironment": settings.runtime_environment,
+        }),
+    );
     let workspace_root = workspace_root(settings, resource_dir, app_data_dir)?;
     let result = execute_hyperframes_job_inner(
         executor,
@@ -3532,6 +4615,16 @@ async fn execute_hyperframes_job(
         cancel,
     )
     .await;
+    append_diagnostic_event(
+        app_data_dir,
+        "job.render.result",
+        json!({
+            "jobId": job.id,
+            "jobType": job.job_type,
+            "success": result.is_ok(),
+            "error": result.as_ref().err(),
+        }),
+    );
     let workspace_dir = workspace_root.join(crate::worker_executor::sanitize_segment(&job.id));
     let render_log_path = workspace_dir.join("render.log");
 
@@ -3899,16 +4992,36 @@ async fn execute_footage_broll_render_job(
         )
         .await;
     }
-    let result = if job.input_json.get("kind").and_then(Value::as_str) != Some(VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE) {
+    let result = if job.input_json.get("kind").and_then(Value::as_str)
+        != Some(VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE)
+    {
         Err("render_contract_mismatch".to_string())
-    } else if job.input_json.get("renderProfile").and_then(|value| value.get("compositionExecutor")).and_then(Value::as_str) != Some("remotion_render_video") {
+    } else if job
+        .input_json
+        .get("renderProfile")
+        .and_then(|value| value.get("compositionExecutor"))
+        .and_then(Value::as_str)
+        != Some("remotion_render_video")
+    {
         Err("unsupported_composition_executor".to_string())
     } else {
-        Err("unsupported_composition_executor: Remotion asset URLs are required before render".to_string())
+        Err(
+            "unsupported_composition_executor: Remotion asset URLs are required before render"
+                .to_string(),
+        )
     };
     if let Err(error) = &result {
-        let failure_code = error.split(':').next().unwrap_or("unsupported_composition_executor");
-        let _ = send_event_with_refresh(app_data_dir, connection, &job.id, build_failure_event(&job, FAILURE_EVENT_SEQUENCE_NUMBER, failure_code, error)).await;
+        let failure_code = error
+            .split(':')
+            .next()
+            .unwrap_or("unsupported_composition_executor");
+        let _ = send_event_with_refresh(
+            app_data_dir,
+            connection,
+            &job.id,
+            build_failure_event(&job, FAILURE_EVENT_SEQUENCE_NUMBER, failure_code, error),
+        )
+        .await;
         set_executor_last_job(executor, &job, "error", error, None);
         set_executor_job_error(executor, &job.id, error.clone());
     }
@@ -3931,6 +5044,15 @@ async fn execute_remotion_render_video_job(
     cancel: &Arc<AtomicBool>,
 ) -> Result<(), String> {
     set_executor_job(executor, &job);
+    append_diagnostic_event(
+        app_data_dir,
+        "job.render.started",
+        json!({
+            "jobId": job.id,
+            "jobType": job.job_type,
+            "runtimeEnvironment": settings.runtime_environment,
+        }),
+    );
     let workspace_root = workspace_root(settings, resource_dir, app_data_dir)?;
     let result = execute_remotion_render_video_job_inner(
         executor,
@@ -3944,6 +5066,16 @@ async fn execute_remotion_render_video_job(
         cancel,
     )
     .await;
+    append_diagnostic_event(
+        app_data_dir,
+        "job.render.result",
+        json!({
+            "jobId": job.id,
+            "jobType": job.job_type,
+            "success": result.is_ok(),
+            "error": result.as_ref().err(),
+        }),
+    );
     let workspace_dir = workspace_root.join(crate::worker_executor::sanitize_segment(&job.id));
     let render_log_path = workspace_dir.join("render.log");
 
@@ -4293,9 +5425,38 @@ async fn run_remotion_sidecar_and_collect(
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
     }
 
-    let mut child = cmd
-        .spawn()
-        .map_err(|error| format!("failed to start Remotion render-video sidecar: {error}"))?;
+    let mut child = match cmd.spawn() {
+        Ok(child) => child,
+        Err(error) => {
+            crate::diagnostics::log_error(
+                app_data_dir,
+                "sidecar.spawn_failed",
+                json!({
+                    "kind": "remotion_render_video",
+                    "jobId": job.id,
+                    "executable": command.executable.to_string_lossy(),
+                    "arguments": command.args,
+                    "currentDir": command.current_dir.to_string_lossy(),
+                    "logPath": log_path.to_string_lossy(),
+                    "error": error.to_string(),
+                }),
+            );
+            return Err(format!(
+                "failed to start Remotion render-video sidecar: {error}"
+            ));
+        }
+    };
+    crate::diagnostics::append_diagnostic_event(
+        app_data_dir,
+        "sidecar.started",
+        json!({
+            "kind": "remotion_render_video",
+            "jobId": job.id,
+            "executable": command.executable.to_string_lossy(),
+            "logPath": log_path.to_string_lossy(),
+            "arguments": command.args,
+        }),
+    );
 
     if let Some(stdin_data) = &command.stdin_data {
         if let Some(mut stdin) = child.stdin.take() {
@@ -4318,10 +5479,20 @@ async fn run_remotion_sidecar_and_collect(
     loop {
         if cancel.load(Ordering::Relaxed) {
             terminate_sidecar_child(&mut child, command);
+            crate::diagnostics::log_warn(
+                app_data_dir,
+                "sidecar.stopped",
+                json!({ "kind": "remotion_render_video", "jobId": job.id, "reason": "cancelled" }),
+            );
             return Err("worker loop stopped while Remotion sidecar was running".into());
         }
         if started_at.elapsed() >= timeout {
             terminate_sidecar_child(&mut child, command);
+            crate::diagnostics::log_error(
+                app_data_dir,
+                "sidecar.timeout",
+                json!({ "kind": "remotion_render_video", "jobId": job.id, "elapsedMs": started_at.elapsed().as_millis() as u64 }),
+            );
             return Err("Remotion render-video sidecar timed out after 1 hour".into());
         }
         if last_heartbeat.elapsed() >= ACTIVE_HEARTBEAT_INTERVAL {
@@ -4443,12 +5614,30 @@ async fn run_remotion_sidecar_and_collect(
                     &tail_lines,
                     status.to_string(),
                 );
+                crate::diagnostics::append_diagnostic_event(
+                    app_data_dir,
+                    "sidecar.exited",
+                    json!({
+                        "kind": "remotion_render_video",
+                        "jobId": job.id,
+                        "success": status.success(),
+                        "status": status.to_string(),
+                        "elapsedMs": started_at.elapsed().as_millis() as u64,
+                        "capturedLogLines": tail_lines.len(),
+                        "outputTail": build_failure_log_excerpt(tail_lines.clone()),
+                    }),
+                );
                 return Ok((outcome, next_sequence_number));
             }
             Ok(None) => {
                 sleep_cancelable(Duration::from_millis(500), cancel).await;
             }
             Err(error) => {
+                crate::diagnostics::log_error(
+                    app_data_dir,
+                    "sidecar.monitor_failed",
+                    json!({ "kind": "remotion_render_video", "jobId": job.id, "error": error.to_string() }),
+                );
                 return Err(format!("failed to monitor Remotion sidecar: {error}"));
             }
         }
@@ -4633,10 +5822,19 @@ async fn stage_hyperframes_source_videos(
                 next_sequence_number,
             )
             .await?;
-            download_source_asset(&url, &local_path).await?;
+            let digest = download_source_asset(&url, &local_path).await?;
+            source_video["checksumSha256"] = json!(digest);
         }
 
-        let digest = file_sha256(&local_path)?;
+        let digest = if used_download_cache {
+            file_sha256(&local_path)?
+        } else {
+            source_video
+                .get("checksumSha256")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string()
+        };
         if let Some(expected) = expected_digest.as_deref() {
             if !digest.eq_ignore_ascii_case(expected) {
                 return Err(format!("source video {shot_id} checksum mismatch"));
@@ -4719,7 +5917,7 @@ fn resolve_worker_download_url(
     Err("asset downloadUrl must be absolute http(s) or server-relative".into())
 }
 
-async fn download_source_asset(url: &reqwest::Url, path: &Path) -> Result<(), String> {
+async fn download_source_asset(url: &reqwest::Url, path: &Path) -> Result<String, String> {
     let response = reqwest::Client::builder()
         .timeout(Duration::from_secs(30 * 60))
         .build()
@@ -4735,20 +5933,78 @@ async fn download_source_asset(url: &reqwest::Url, path: &Path) -> Result<(), St
             response.status()
         ));
     }
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|error| format!("failed to read source video asset body: {error}"))?;
-    if bytes.len() < HYPERFRAMES_FINAL_VIDEO_MIN_BYTES as usize {
-        return Err("source video asset is too small to be a real video".into());
+
+    if response
+        .content_length()
+        .is_some_and(|size| size > HYPERFRAMES_SOURCE_MAX_BYTES)
+    {
+        return Err(format!(
+            "source video asset is too large (maximum {} bytes)",
+            HYPERFRAMES_SOURCE_MAX_BYTES
+        ));
     }
-    fs::write(path, &bytes).map_err(|error| format!("failed to write staged source video: {error}"))
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|error| format!("failed to create staged source directory: {error}"))?;
+    }
+    let partial_path = path.with_extension("part");
+    let _ = fs::remove_file(&partial_path);
+    let result = async {
+        let mut file = fs::File::create(&partial_path)
+            .map_err(|error| format!("failed to create partial source video: {error}"))?;
+        let mut digest = Sha256::new();
+        let mut total_bytes = 0_u64;
+        let mut response = response;
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(|error| format!("failed to read source video asset body: {error}"))?
+        {
+            total_bytes = total_bytes.saturating_add(chunk.len() as u64);
+            if total_bytes > HYPERFRAMES_SOURCE_MAX_BYTES {
+                return Err(format!(
+                    "source video asset is too large (maximum {} bytes)",
+                    HYPERFRAMES_SOURCE_MAX_BYTES
+                ));
+            }
+            file.write_all(&chunk)
+                .map_err(|error| format!("failed to write staged source video: {error}"))?;
+            digest.update(&chunk);
+        }
+        if total_bytes < HYPERFRAMES_FINAL_VIDEO_MIN_BYTES {
+            return Err("source video asset is too small to be a real video".into());
+        }
+        file.flush()
+            .map_err(|error| format!("failed to flush staged source video: {error}"))?;
+        drop(file);
+        let _ = fs::remove_file(path);
+        fs::rename(&partial_path, path)
+            .map_err(|error| format!("failed to finalize staged source video: {error}"))?;
+        Ok(format!("{:x}", digest.finalize()))
+    }
+    .await;
+    if result.is_err() {
+        let _ = fs::remove_file(&partial_path);
+    }
+    result
 }
 
 fn file_sha256(path: &Path) -> Result<String, String> {
-    let bytes =
-        fs::read(path).map_err(|error| format!("failed to read staged source video: {error}"))?;
-    Ok(format!("{:x}", Sha256::digest(&bytes)))
+    let file = fs::File::open(path)
+        .map_err(|error| format!("failed to read staged source video: {error}"))?;
+    let mut reader = BufReader::with_capacity(1024 * 1024, file);
+    let mut digest = Sha256::new();
+    let mut buffer = vec![0_u8; 1024 * 1024];
+    loop {
+        let bytes_read = reader
+            .read(&mut buffer)
+            .map_err(|error| format!("failed to hash staged source video: {error}"))?;
+        if bytes_read == 0 {
+            break;
+        }
+        digest.update(&buffer[..bytes_read]);
+    }
+    Ok(format!("{:x}", digest.finalize()))
 }
 
 fn sanitize_file_stem(value: &str, fallback_index: usize) -> String {
@@ -4825,6 +6081,16 @@ async fn run_sidecar_with_active_heartbeat(
     let mut child = cmd
         .spawn()
         .map_err(|error| format!("failed to start HyperFrames sidecar: {error}"))?;
+    crate::diagnostics::append_diagnostic_event(
+        app_data_dir,
+        "sidecar.started",
+        json!({
+            "kind": "hyperframes",
+            "jobId": job.id,
+            "executable": command.executable.to_string_lossy(),
+            "logPath": log_path.to_string_lossy(),
+        }),
+    );
 
     if let Some(stdin_data) = &command.stdin_data {
         if let Some(mut stdin) = child.stdin.take() {
@@ -4876,11 +6142,21 @@ async fn run_sidecar_with_active_heartbeat(
     loop {
         if cancel.load(Ordering::Relaxed) {
             terminate_sidecar_child(&mut child, command);
+            crate::diagnostics::log_warn(
+                app_data_dir,
+                "sidecar.stopped",
+                json!({ "kind": "hyperframes", "jobId": job.id, "reason": "cancelled" }),
+            );
             return Err("worker loop stopped while HyperFrames sidecar was running".into());
         }
 
         if started_at.elapsed() >= timeout {
             terminate_sidecar_child(&mut child, command);
+            crate::diagnostics::log_error(
+                app_data_dir,
+                "sidecar.timeout",
+                json!({ "kind": "hyperframes", "jobId": job.id, "elapsedMs": started_at.elapsed().as_millis() as u64 }),
+            );
             return Err("HyperFrames sidecar timed out after 1 hour of rendering".into());
         }
 
@@ -4926,8 +6202,36 @@ async fn run_sidecar_with_active_heartbeat(
         }
 
         match child.try_wait() {
-            Ok(Some(status)) if status.success() => return Ok(next_sequence_number),
+            Ok(Some(status)) if status.success() => {
+                crate::diagnostics::append_diagnostic_event(
+                    app_data_dir,
+                    "sidecar.exited",
+                    json!({
+                        "kind": "hyperframes",
+                        "jobId": job.id,
+                        "success": true,
+                        "status": status.to_string(),
+                        "elapsedMs": started_at.elapsed().as_millis() as u64,
+                        "capturedLogLines": live_log_tail_lines.len(),
+                        "outputTail": build_failure_log_excerpt(live_log_tail_lines.clone()),
+                    }),
+                );
+                return Ok(next_sequence_number);
+            }
             Ok(Some(status)) => {
+                crate::diagnostics::log_error(
+                    app_data_dir,
+                    "sidecar.exited",
+                    json!({
+                        "kind": "hyperframes",
+                        "jobId": job.id,
+                        "success": false,
+                        "status": status.to_string(),
+                        "elapsedMs": started_at.elapsed().as_millis() as u64,
+                        "capturedLogLines": live_log_tail_lines.len(),
+                        "outputTail": build_failure_log_excerpt(live_log_tail_lines.clone()),
+                    }),
+                );
                 let mut error_msg = format!("HyperFrames sidecar exited with {status}.");
                 if let Some(reader) = &mut log_reader {
                     use std::io::BufRead;
@@ -5012,6 +6316,11 @@ async fn run_sidecar_with_active_heartbeat(
                     .await
                     {
                         terminate_sidecar_child(&mut child, command);
+                        crate::diagnostics::log_error(
+                            app_data_dir,
+                            "sidecar.progress_failed",
+                            json!({ "kind": "hyperframes", "jobId": job.id, "error": error.to_string() }),
+                        );
                         return Err(format!(
                             "Active render progress event failed while HyperFrames sidecar was running: {error}"
                         ));
@@ -5020,7 +6329,14 @@ async fn run_sidecar_with_active_heartbeat(
 
                 sleep_cancelable(Duration::from_millis(500), cancel).await;
             }
-            Err(error) => return Err(format!("failed to monitor HyperFrames sidecar: {error}")),
+            Err(error) => {
+                crate::diagnostics::log_error(
+                    app_data_dir,
+                    "sidecar.monitor_failed",
+                    json!({ "kind": "hyperframes", "jobId": job.id, "error": error.to_string() }),
+                );
+                return Err(format!("failed to monitor HyperFrames sidecar: {error}"));
+            }
         }
     }
 }
@@ -5556,11 +6872,35 @@ mod tests {
     }
 
     #[test]
+    fn render_task_failure_view_does_not_clone_job_payload() {
+        let job = ClaimedWorkerJob {
+            id: "job-123".into(),
+            job_type: REMOTION_RENDER_VIDEO_JOB_TYPE.into(),
+            created_at: Some("2026-08-31T00:00:00Z".into()),
+            lease_owner_token: "lease".into(),
+            assignment_attempt: "attempt".into(),
+            input_json: json!({ "remotionTemplate": { "composition": "large" } }),
+            capability_requirements_json: json!({ "capability": "render" }),
+            reference_urls: vec![],
+        };
+
+        let view = job_failure_report_view(&job);
+
+        assert_eq!(view.id, job.id);
+        assert_eq!(view.lease_owner_token, job.lease_owner_token);
+        assert_eq!(view.assignment_attempt, job.assignment_attempt);
+        assert!(view.input_json.is_null());
+        assert!(view.capability_requirements_json.is_null());
+        assert!(view.reference_urls.is_empty());
+    }
+
+    #[test]
     fn hyperframes_transcript_output_is_normalized_from_transcript_file() {
         let dir = tempfile::tempdir().unwrap();
         fs::write(
             dir.path().join("transcript.json"),
-            r#"[{"text":"สวัสดี","start":0.1,"end":0.8},{"word":"ครับ","start":0.9,"end":1.2}]"#.as_bytes(),
+            r#"[{"text":"สวัสดี","start":0.1,"end":0.8},{"word":"ครับ","start":0.9,"end":1.2}]"#
+                .as_bytes(),
         )
         .unwrap();
         let normalized = normalize_hyperframes_transcript_output(
@@ -5577,11 +6917,8 @@ mod tests {
     fn empty_hyperframes_transcript_is_reported_without_false_success() {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("transcript.json"), b"[]").unwrap();
-        let normalized = normalize_hyperframes_transcript_output(
-            &json!({ "ok": true }),
-            dir.path(),
-        )
-        .unwrap();
+        let normalized =
+            normalize_hyperframes_transcript_output(&json!({ "ok": true }), dir.path()).unwrap();
 
         assert_eq!(normalized["status"], "empty");
         assert_eq!(normalized["text"], "");
@@ -5593,7 +6930,10 @@ mod tests {
         let root = Path::new("/runtime-pack");
         assert!(runtime_relative_path(root, "/etc/passwd").is_none());
         assert!(runtime_relative_path(root, "../outside").is_none());
-        assert_eq!(runtime_relative_path(root, "whisper/whisper-cli").unwrap(), root.join("whisper/whisper-cli"));
+        assert_eq!(
+            runtime_relative_path(root, "whisper/whisper-cli").unwrap(),
+            root.join("whisper/whisper-cli")
+        );
     }
 
     #[test]
@@ -5611,13 +6951,23 @@ mod tests {
 
     #[test]
     fn comfy_output_extension_comes_from_url_or_content_type() {
-        let video_url = reqwest::Url::parse("https://comfy.example/output/result.mp4?token=redacted").unwrap();
-        assert_eq!(safe_output_extension(&video_url, Some("application/octet-stream")), "mp4");
+        let video_url =
+            reqwest::Url::parse("https://comfy.example/output/result.mp4?token=redacted").unwrap();
+        assert_eq!(
+            safe_output_extension(&video_url, Some("application/octet-stream")),
+            "mp4"
+        );
 
         let image_url = reqwest::Url::parse("https://comfy.example/output/result").unwrap();
-        assert_eq!(safe_output_extension(&image_url, Some("image/png; charset=binary")), "png");
+        assert_eq!(
+            safe_output_extension(&image_url, Some("image/png; charset=binary")),
+            "png"
+        );
 
-        assert_eq!(safe_output_extension(&image_url, Some("application/octet-stream")), "bin");
+        assert_eq!(
+            safe_output_extension(&image_url, Some("application/octet-stream")),
+            "bin"
+        );
     }
 
     #[test]
@@ -5654,6 +7004,121 @@ mod tests {
 
         assert!(message.starts_with("No local Worker capability is ready."));
         assert!(!message.contains("HyperFrames"));
+    }
+
+    #[test]
+    fn worker_loop_task_failure_is_recorded_without_panicking_the_app() {
+        let dir = tempfile::tempdir().unwrap();
+        let executor = Arc::new(Mutex::new(ExecutorState::default()));
+        let stopped = Arc::new(AtomicBool::new(false));
+        let loop_task = tauri::async_runtime::spawn(async {
+            panic!("simulated worker loop task panic");
+        });
+        let supervisor = tauri::async_runtime::spawn(supervise_worker_loop(
+            loop_task,
+            executor.clone(),
+            dir.path().to_path_buf(),
+            stopped.clone(),
+        ));
+
+        tauri::async_runtime::block_on(async {
+            supervisor.await.unwrap();
+        });
+
+        assert!(stopped.load(Ordering::Relaxed));
+        let state = executor.lock().unwrap();
+        assert_eq!(state.status, ExecutorStatus::Error);
+        assert!(state.last_message.contains("stopped unexpectedly"));
+        drop(state);
+
+        let log = fs::read_to_string(crate::diagnostics::diagnostic_log_path(dir.path())).unwrap();
+        assert!(log.contains("worker_loop.task_failed"));
+    }
+
+    #[test]
+    fn render_runtime_readiness_does_not_block_on_transcription_lane() {
+        let legacy_required = [
+            "runtime_manifest",
+            "runtime_host_platform",
+            "runtime_bundle",
+            "official_hyperframes_renderer",
+            "hyperframes_native_dependencies",
+            "browser_runtime",
+            "media_tools",
+            "hyperframes_sidecar",
+            "runtime_sidecar_policy",
+            "runtime_hash",
+            "runtime_signature_bundle",
+            "thai_font",
+            "tool_versions",
+            "installer_set",
+        ];
+        let mut checks = legacy_required
+            .iter()
+            .map(|id| crate::runtime_manifest::DoctorCheck {
+                id: (*id).into(),
+                status: "ok".into(),
+                message: "ready".into(),
+                details_json: json!({}),
+            })
+            .collect::<Vec<_>>();
+        checks.push(crate::runtime_manifest::DoctorCheck {
+            id: "transcription_runtime".into(),
+            status: "error".into(),
+            message: "not installed".into(),
+            details_json: json!({}),
+        });
+        let legacy = DoctorSummary {
+            status: "blocked".into(),
+            checks,
+            recommended_actions: vec![],
+            official_hyperframes_runtime: Some(true),
+            runtime_kind: Some("official_hyperframes".into()),
+        };
+        assert!(render_runtime_ready(&legacy));
+
+        let managed = DoctorSummary {
+            status: "blocked".into(),
+            checks: vec![
+                crate::runtime_manifest::DoctorCheck {
+                    id: "wsl2_host".into(),
+                    status: "ok".into(),
+                    message: "ready".into(),
+                    details_json: json!({}),
+                },
+                crate::runtime_manifest::DoctorCheck {
+                    id: "managed_wsl_runtime".into(),
+                    status: "ok".into(),
+                    message: "ready".into(),
+                    details_json: json!({}),
+                },
+                crate::runtime_manifest::DoctorCheck {
+                    id: "installer_set".into(),
+                    status: "ok".into(),
+                    message: "ready".into(),
+                    details_json: json!({}),
+                },
+                crate::runtime_manifest::DoctorCheck {
+                    id: "transcription_runtime".into(),
+                    status: "error".into(),
+                    message: "not installed".into(),
+                    details_json: json!({}),
+                },
+            ],
+            recommended_actions: vec![],
+            official_hyperframes_runtime: Some(true),
+            runtime_kind: Some("official_hyperframes".into()),
+        };
+        assert!(render_runtime_ready(&managed));
+
+        let mut render_blocked = legacy.clone();
+        render_blocked
+            .checks
+            .iter_mut()
+            .find(|check| check.id == "browser_runtime")
+            .unwrap()
+            .status = "error".into();
+        assert!(!render_runtime_ready(&render_blocked));
     }
 
     #[test]
@@ -6310,7 +7775,13 @@ mod tests {
 
     #[test]
     fn media_failure_code_keeps_typed_errors_and_hides_unknowns() {
-        assert_eq!(media_failure_code("source_fingerprint_mismatch: bad bytes"), "source_fingerprint_mismatch");
-        assert_eq!(media_failure_code("unexpected private path"), "unsupported_job_type");
+        assert_eq!(
+            media_failure_code("source_fingerprint_mismatch: bad bytes"),
+            "source_fingerprint_mismatch"
+        );
+        assert_eq!(
+            media_failure_code("unexpected private path"),
+            "unsupported_job_type"
+        );
     }
 }

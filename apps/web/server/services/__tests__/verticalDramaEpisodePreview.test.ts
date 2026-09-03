@@ -31,7 +31,10 @@ vi.mock("../verticalDramaRemotionRender", () => ({
   resolveRemotionOutputRef: mocks.resolveRemotionOutputRef,
 }));
 
-import { reconcileEpisodePreview } from "../verticalDramaEpisodePreview";
+import {
+  reconcileEpisodePreview,
+  resetEpisodePreviewStateOnCancel,
+} from "../verticalDramaEpisodePreview";
 
 describe("Vertical Drama episode preview durability", () => {
   beforeEach(() => {
@@ -111,6 +114,48 @@ describe("Vertical Drama episode preview durability", () => {
     );
   });
 
+  it.each(["failed", "canceled", "expired"] as const)(
+    "releases a preview when the worker job is %s",
+    async status => {
+      mocks.db.limit
+        .mockResolvedValueOnce([{
+          id: "preview-job-terminal",
+          status,
+          failureReason: status === "failed" ? "render_failed" : null,
+        }])
+        .mockResolvedValueOnce([
+          { assemblyManifest: { episodePreviews: [] } },
+        ]);
+
+      await expect(reconcileEpisodePreview(
+        { tenantId: "tenant-1", userId: 7, seriesId: 21, episodeId: 141 },
+        {
+          slotId: 1,
+          selectedShotNumbers: [1, 2],
+          status: "pending",
+          pendingJobId: "preview-job-terminal",
+        },
+      )).resolves.toEqual({ reconciled: true, status: "failed" });
+
+      expect(mocks.db.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assemblyManifest: {
+            episodePreviews: [
+              expect.objectContaining({
+                slotId: 1,
+                status: "failed",
+                pendingJobId: undefined,
+                error: status === "failed"
+                  ? "render_failed"
+                  : "Remotion preview render failed",
+              }),
+            ],
+          },
+        }),
+      );
+    },
+  );
+
   it("repairs a legacy completed preview on read and persists its asset identity", async () => {
     mocks.db.limit
       .mockResolvedValueOnce([
@@ -150,5 +195,73 @@ describe("Vertical Drama episode preview durability", () => {
     expect(mocks.reconcileVerticalDramaMediaAsset).toHaveBeenCalledWith(
       expect.objectContaining({ mediaAssetId: 501, tenantId: "tenant-1", userId: 7 }),
     );
+  });
+
+  it("releases the matching pending slot when its Remotion job is canceled", async () => {
+    const preview = {
+      slotId: 2 as const,
+      selectedShotNumbers: [3, 4] as [number, number],
+      status: "pending" as const,
+      pendingJobId: "preview-job-2",
+    };
+    mocks.db.limit
+      .mockResolvedValueOnce([
+        { assemblyManifest: { episodePreviews: [preview] } },
+      ])
+      .mockResolvedValueOnce([
+        { assemblyManifest: { episodePreviews: [preview] } },
+      ]);
+
+    await expect(resetEpisodePreviewStateOnCancel({
+      tenantId: "tenant-1",
+      userId: 7,
+      jobId: "preview-job-2",
+      inputJson: {
+        videoProjectId: "vd-episode-preview:21:141",
+        projectRevision: 2,
+      },
+    })).resolves.toBe(true);
+
+    expect(mocks.db.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assemblyManifest: {
+          episodePreviews: [
+            expect.objectContaining({
+              slotId: 2,
+              status: "failed",
+              pendingJobId: undefined,
+              error: "ยกเลิกงาน preview แล้ว — กดสร้างชุดนี้ใหม่ได้",
+            }),
+          ],
+        },
+      }),
+    );
+  });
+
+  it("does not clear a newer retry when an old preview job is canceled", async () => {
+    mocks.db.limit.mockResolvedValueOnce([
+      {
+        assemblyManifest: {
+          episodePreviews: [{
+            slotId: 2,
+            selectedShotNumbers: [3, 4],
+            status: "pending",
+            pendingJobId: "new-preview-job-2",
+          }],
+        },
+      },
+    ]);
+
+    await expect(resetEpisodePreviewStateOnCancel({
+      tenantId: "tenant-1",
+      userId: 7,
+      jobId: "old-preview-job-2",
+      inputJson: {
+        videoProjectId: "vd-episode-preview:21:141",
+        projectRevision: 2,
+      },
+    })).resolves.toBe(false);
+
+    expect(mocks.db.update).not.toHaveBeenCalled();
   });
 });

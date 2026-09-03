@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/generation-strategy.schema.json",
+  "title": "Generation Strategy",
+  "type": "object",
+  "required": [
+    "shotId",
+    "preferredProviderProfileIds",
+    "strategy",
+    "reasoningSummary",
+    "fallbackPolicy"
+  ],
+  "properties": {
+    "shotId": {
+      "type": "string"
+    },
+    "preferredProviderProfileIds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "strategy": {
+      "type": "string"
+    },
+    "reasoningSummary": {
+      "type": "string"
+    },
+    "fallbackPolicy": {
+      "type": "string"
+    },
+    "requiresHighCostApproval": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

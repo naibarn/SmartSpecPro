@@ -1,0 +1,140 @@
+{
+  "model": "grok-imagine-video-1.5",
+  "mode": "reference_to_video",
+  "durationSeconds": 10,
+  "resolution": "720p",
+  "aspectRatio": "9:16",
+  "referencePlan": {
+    "mode": "reference_to_video",
+    "startFrameAssetId": null,
+    "referenceImages": [
+      {
+        "assetId": "person",
+        "label": "<IMAGE_1>",
+        "semanticRoles": [
+          "identity"
+        ],
+        "entityId": "host"
+      },
+      {
+        "assetId": "product",
+        "label": "<IMAGE_2>",
+        "semanticRoles": [
+          "product_geometry",
+          "product_label"
+        ],
+        "entityId": "product"
+      },
+      {
+        "assetId": "venue",
+        "label": "<IMAGE_3>",
+        "semanticRoles": [
+          "place_identity",
+          "venue_layout"
+        ],
+        "entityId": "venue"
+      }
+    ],
+    "referenceAudios": [
+      {
+        "label": "<AUDIO_0>",
+        "sourceType": "preset_voice",
+        "voiceId": "eve",
+        "assetId": null,
+        "speakerId": "host",
+        "providerEntitlementVerified": true
+      }
+    ],
+    "derivedReferences": [],
+    "nonProviderReferences": [],
+    "conflictDetected": false,
+    "conflictResolution": "none",
+    "resolutionLimit": "720p",
+    "warnings": []
+  },
+  "prompt": {
+    "mode": "reference_to_video",
+    "durationSeconds": 10,
+    "promptText": "REFERENCE BINDINGS: <IMAGE_1> is the presenter. <IMAGE_2> is the product. <AUDIO_0> is the presenter voice.",
+    "referenceBindings": [
+      {
+        "label": "<IMAGE_1>",
+        "meaning": "character identity reference",
+        "preserve": [
+          "identity"
+        ]
+      },
+      {
+        "label": "<IMAGE_2>",
+        "meaning": "product identity/geometry reference",
+        "preserve": [
+          "product_geometry",
+          "product_label"
+        ]
+      },
+      {
+        "label": "<AUDIO_0>",
+        "meaning": "speaker voice reference",
+        "preserve": [
+          "voice_identity"
+        ]
+      }
+    ],
+    "dialogueLines": [
+      {
+        "speakerId": "host",
+        "text": "รุ่นนี้ใช้งานง่ายค่ะ",
+        "voiceLabel": "<AUDIO_0>",
+        "lipSyncRequired": true
+      }
+    ],
+    "cameraIntent": "Slow push-in from medium shot.",
+    "continuityLocks": [
+      "preserve presenter identity",
+      "preserve product geometry"
+    ],
+    "warnings": [
+      "Reference-to-video guides subject/style consistency but does not lock frame 0."
+    ]
+  },
+  "generationPayload": {
+    "model": "grok-imagine-video-1.5",
+    "prompt": "REFERENCE BINDINGS...",
+    "duration": 10,
+    "resolution": "720p",
+    "aspect_ratio": "9:16",
+    "generate_audio": true,
+    "reference_images": [
+      {
+        "url": "https://example.com/person.png"
+      },
+      {
+        "url": "https://example.com/product.png"
+      },
+      {
+        "url": "https://example.com/venue.png"
+      }
+    ],
+    "reference_audios": [
+      {
+        "voice_id": "eve"
+      }
+    ]
+  },
+  "preProcessing": {
+    "normalizeStartFrame": false,
+    "prebakeStartFrame": false,
+    "deriveVideoReferences": false
+  },
+  "postGeneration": {
+    "externalAudioOrLipSync": false,
+    "postComposite": true,
+    "companionExtensionModel": "grok-imagine-video"
+  },
+  "qcRequirements": [
+    "GROK_REFERENCE_RETENTION",
+    "GROK_REFERENCE_BINDING",
+    "GROK_DIALOGUE_EXACTNESS"
+  ],
+  "warnings": []
+}

@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/providers/ltx-2.5/prompt.schema.json",
+  "title": "LTX 2.5 Compiled Prompt",
+  "type": "object",
+  "required": [
+    "mode",
+    "durationSeconds",
+    "automaticDuration",
+    "promptText",
+    "multiShot",
+    "dialogueLines",
+    "audioPlan",
+    "cameraMotion",
+    "continuityLocks",
+    "warnings"
+  ],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": [
+        "text_to_video",
+        "image_to_video",
+        "first_last_to_video",
+        "audio_to_video",
+        "local_ic_lora",
+        "local_extension"
+      ]
+    },
+    "durationSeconds": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "maximum": 120
+    },
+    "automaticDuration": {
+      "type": "boolean"
+    },
+    "promptText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 10000
+    },
+    "multiShot": {
+      "type": "boolean"
+    },
+    "dialogueLines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "speakerId",
+          "text",
+          "lipSyncRequired"
+        ],
+        "properties": {
+          "speakerId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "lipSyncRequired": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "audioPlan": {
+      "type": "object",
+      "required": [
+        "mode",
+        "nativeGeneratedAudio",
+        "audioDriverAssetId"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "generated",
+            "exact_driver",
+            "silent",
+            "external"
+          ]
+        },
+        "nativeGeneratedAudio": {
+          "type": "boolean"
+        },
+        "audioDriverAssetId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "cameraMotion": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "continuityLocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

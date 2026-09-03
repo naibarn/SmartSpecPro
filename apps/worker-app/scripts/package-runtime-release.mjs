@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, createPrivateKey, sign } from "node:crypto";
 import {
   cpSync,
   copyFileSync,
+  createReadStream,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -39,7 +40,13 @@ function requiredPath(name, fallback = "") {
 }
 
 function sha256File(path) {
-  return createHash("sha256").update(readFileSync(path)).digest("hex");
+  return new Promise((resolve, reject) => {
+    const hash = createHash("sha256");
+    const stream = createReadStream(path);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("error", reject);
+    stream.on("end", () => resolve(hash.digest("hex")));
+  });
 }
 
 function bufferIncludes(buffer, text) {
@@ -368,12 +375,14 @@ function createZipArchive(archivePath, sourceRoot) {
   // build hosts where `zip` is missing — a silent, build-clean,
   // run-time-fatal difference between two supposedly equivalent code paths.
   // Carry st_mode through `external_attr` (high 16 bits) so both paths
-  // produce an identical archive. Symlinks are materialised as regular
-  // files by `zf.write`, matching `zip` without `-y`.
+  // preserve executable bits. Stream file contents so a multi-gigabyte
+  // Whisper model never has to be loaded into RAM; very large binary assets
+  // are stored without compression because they are already compact enough
+  // and compressing them would make the fallback unnecessarily expensive.
   execFileSync("python3", [
     "-c",
     [
-      "import os, sys, zipfile",
+      "import os, sys, shutil, zipfile",
       "from pathlib import Path",
       "archive_path = Path(sys.argv[1])",
       "source_root = Path(sys.argv[2])",
@@ -385,9 +394,10 @@ function createZipArchive(archivePath, sourceRoot) {
       "            st = full_path.lstat()",
       "            info = zipfile.ZipInfo.from_file(full_path, arcname)",
       "            info.external_attr = (st.st_mode & 0xFFFF) << 16",
-      "            info.compress_type = zipfile.ZIP_DEFLATED",
-      "            with open(full_path, 'rb') as src:",
-      "                zf.writestr(info, src.read())",
+            "            info.compress_type = zipfile.ZIP_STORED if st.st_size >= 1073741824 else zipfile.ZIP_DEFLATED",
+            "            with open(full_path, 'rb') as src:",
+            "                with zf.open(info, 'w') as dst:",
+            "                    shutil.copyfileobj(src, dst, length=1024 * 1024)",
     ].join("\n"),
     archivePath,
     sourceRoot,
@@ -413,7 +423,8 @@ Required arguments:
   --whisper-model PATH
   --thai-fonts-dir PATH
   --notices PATH
-  --signature-file PATH
+  --signature-file PATH (precomputed Ed25519 signature; optional)
+  --signing-private-key-file PATH (build-only; optional)
   --comfy-mcp-manifest PATH
 
 Mac full-render arguments:
@@ -518,7 +529,15 @@ const whisperModel = requiredPath("--whisper-model");
 assertWhisperModel(whisperModel);
 const thaiFontsDir = requiredPath("--thai-fonts-dir");
 const notices = requiredPath("--notices");
-const signatureFile = requiredPath("--signature-file");
+const signatureFileArg = argValue("--signature-file");
+const signingPrivateKeyFileArg = argValue("--signing-private-key-file");
+if (signatureFileArg && signingPrivateKeyFileArg) {
+  throw new Error("Use either --signature-file or --signing-private-key-file, not both");
+}
+const signatureFile = signatureFileArg ? requiredPath("--signature-file") : "";
+const signingPrivateKeyFile = signingPrivateKeyFileArg
+  ? requiredPath("--signing-private-key-file")
+  : "";
 const comfyMcpManifest = requiredPath(
   "--comfy-mcp-manifest",
   resolve(appRoot, "src-tauri/resources/comfy-mcp/manifest.json"),
@@ -547,7 +566,16 @@ mkdirSync(join(stagingRoot, "runtime-pack/comfy-mcp"), { recursive: true });
 mkdirSync(join(stagingRoot, "runtime-pack/whisper/.cache/hyperframes/whisper/models"), { recursive: true });
 
 copyFileInto(hyperframesSidecar, join(stagingRoot, "sidecars"), isMacRuntime ? "hyperframes-render" : "hyperframes-render.exe");
-cpSync(nodeDir, join(stagingRoot, "runtime-pack/node"), { recursive: true });
+// The Worker App invokes the bundled Node executable directly. Shipping the
+// complete Node distribution also duplicates HyperFrames/npm trees and can
+// push the archive into ZIP64, which the server validator intentionally does
+// not accept. Keep only the platform executable required by the runtime
+// contract.
+copyFileInto(
+  nodeBinary,
+  join(stagingRoot, "runtime-pack/node", isWsl2Runtime || isMacRuntime ? "bin" : ""),
+  isWsl2Runtime || isMacRuntime ? "node" : "node.exe",
+);
 cpSync(hyperframesDir, join(stagingRoot, "runtime-pack/hyperframes"), { recursive: true });
 rmSync(join(stagingRoot, "runtime-pack/hyperframes/node_modules/.bin"), { recursive: true, force: true });
 applyHyperframesWhisperCompatibilityPatch(
@@ -620,17 +648,45 @@ copyFileInto(
 );
 cpSync(thaiFontsDir, join(stagingRoot, "runtime-pack/fonts"), { recursive: true });
 copyFileInto(notices, join(stagingRoot, "runtime-pack"), "THIRD_PARTY_NOTICES.txt");
-copyFileInto(signatureFile, join(stagingRoot, "runtime-pack"), "SHA256SUMS.sig");
 copyFileInto(comfyMcpManifest, join(stagingRoot, "runtime-pack/comfy-mcp"), "manifest.json");
 
-const sidecarSha256 = sha256File(
+const sidecarSha256 = await sha256File(
   join(stagingRoot, "sidecars", isMacRuntime ? "hyperframes-render" : "hyperframes-render.exe"),
 );
-const checksumLines = walkFiles(stagingRoot)
-  .filter((file) => file !== "runtime-pack/SHA256SUMS")
-  .map((file) => `${sha256File(join(stagingRoot, file))}  ${file}`)
-  .join("\n");
-writeFileSync(join(stagingRoot, "runtime-pack/SHA256SUMS"), `${checksumLines}\n`);
+const checksumEntries = await Promise.all(walkFiles(stagingRoot)
+  .filter((file) => file !== "runtime-pack/SHA256SUMS" && file !== "runtime-pack/SHA256SUMS.sig")
+  .map(async (file) => `${await sha256File(join(stagingRoot, file))}  ${file}`));
+const checksumLines = checksumEntries.join("\n");
+const checksumText = `${checksumLines}\n`;
+writeFileSync(join(stagingRoot, "runtime-pack/SHA256SUMS"), checksumText);
+
+let signatureContents = "";
+if (signatureFile) {
+  signatureContents = readFileSync(signatureFile, "utf8").trim();
+} else {
+  const privateKeySource = signingPrivateKeyFile
+    ? readFileSync(signingPrivateKeyFile, "utf8")
+    : process.env.SMARTAIHUB_RUNTIME_PACK_SIGNING_PRIVATE_KEY || "";
+  if (!privateKeySource.trim()) {
+    throw new Error(
+      "A real Ed25519 signature is required. Provide --signature-file, --signing-private-key-file, or SMARTAIHUB_RUNTIME_PACK_SIGNING_PRIVATE_KEY in the build environment.",
+    );
+  }
+  let privateKey;
+  try {
+    privateKey = createPrivateKey(privateKeySource);
+  } catch {
+    throw new Error("The Worker Runtime signing private key is invalid or unreadable.");
+  }
+  if (privateKey.asymmetricKeyType !== "ed25519") {
+    throw new Error("The Worker Runtime signing private key must be Ed25519.");
+  }
+  signatureContents = sign(null, Buffer.from(checksumText, "utf8"), privateKey).toString("base64");
+}
+if (!signatureContents || signatureContents.includes("placeholder-signature-required-before-release")) {
+  throw new Error("The Worker Runtime signature must be a real Ed25519 signature; placeholder signatures cannot be published");
+}
+writeFileSync(join(stagingRoot, "runtime-pack/SHA256SUMS.sig"), `${signatureContents}\n`);
 const runtimeProfileHash = createHash("sha256").update(checksumLines).digest("hex");
 
 const manifest = {
@@ -646,10 +702,10 @@ const manifest = {
     engine: "whisper.cpp",
     version: argValue("--whisper-version") || "managed",
     binaryPath: isWsl2Runtime || isMacRuntime ? "whisper/whisper-cli" : "whisper/whisper-cli.exe",
-    binarySha256: sha256File(join(stagingRoot, "runtime-pack/whisper", isWsl2Runtime || isMacRuntime ? "whisper-cli" : "whisper-cli.exe")),
+    binarySha256: await sha256File(join(stagingRoot, "runtime-pack/whisper", isWsl2Runtime || isMacRuntime ? "whisper-cli" : "whisper-cli.exe")),
     model: "large-v3",
     modelPath: "whisper/.cache/hyperframes/whisper/models/ggml-large-v3.bin",
-    modelSha256: sha256File(join(stagingRoot, "runtime-pack/whisper/.cache/hyperframes/whisper/models", "ggml-large-v3.bin")),
+    modelSha256: await sha256File(join(stagingRoot, "runtime-pack/whisper/.cache/hyperframes/whisper/models", "ggml-large-v3.bin")),
     modelUrl: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin",
   },
   thaiFontFamily,
@@ -698,7 +754,7 @@ rmSync(archivePath, { force: true });
 const archiveEntries = walkFiles(stagingRoot);
 createZipArchive(archivePath, stagingRoot);
 const archiveStat = statSync(archivePath);
-const archiveSha256 = sha256File(archivePath);
+const archiveSha256 = await sha256File(archivePath);
 writeFileSync(
   `${archivePath}.manifest.json`,
   `${JSON.stringify({ ...manifest, archiveFileName: archiveName, archiveSha256, archiveSizeBytes: archiveStat.size, archiveEntries }, null, 2)}\n`,

@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/providers/flux-3-video/keyframe-plan.schema.json",
+  "title": "FLUX 3 Video Keyframe / Continuation Plan",
+  "type": "object",
+  "required": [
+    "mode",
+    "keyframes",
+    "startVideoAssetId",
+    "softReferences",
+    "derivedReferences",
+    "prebakeRequired",
+    "warnings",
+    "nonProviderReferences",
+    "continuationTailSeconds",
+    "blocked"
+  ],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": [
+        "t2v",
+        "i2v",
+        "v2v",
+        "draft_enhance"
+      ]
+    },
+    "keyframes": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "timeSeconds",
+          "purpose"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "timeSeconds": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "start_frame",
+              "end_frame",
+              "timed_keyframe",
+              "storyboard_keyframe",
+              "prebaked_shot_frame"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "startVideoAssetId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "softReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "semanticRoles"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "semanticRoles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "derivedReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "sourceAssetId",
+          "derivation",
+          "resultRole"
+        ],
+        "properties": {
+          "sourceAssetId": {
+            "type": "string"
+          },
+          "derivation": {
+            "type": "string"
+          },
+          "resultRole": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "prebakeRequired": {
+      "type": "boolean"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "nonProviderReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "reason",
+          "preservedAs"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "preservedAs": {
+            "type": "string",
+            "enum": [
+              "derived_guidance",
+              "prebake_input",
+              "fallback_provider",
+              "separate_stage",
+              "analysis_only",
+              "post_only"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "continuationTailSeconds": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 1,
+      "maximum": 4
+    },
+    "blocked": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

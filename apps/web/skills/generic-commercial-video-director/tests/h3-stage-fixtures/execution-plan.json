@@ -1,0 +1,168 @@
+{
+  "model": "MiniMax-H3",
+  "route": "hosted_api",
+  "generationMode": "ref2va",
+  "durationSeconds": 10,
+  "resolutionWorkflow": "draft_768p_then_regenerate_2k",
+  "contextIR": null,
+  "referencePlan": {
+    "mode": "ref2va",
+    "model": "MiniMax-H3",
+    "hardFrames": {
+      "firstFrameAssetId": null,
+      "lastFrameAssetId": null
+    },
+    "rawReferences": {
+      "images": [
+        "product_img",
+        "person_img"
+      ],
+      "videos": [
+        "motion_vid"
+      ],
+      "audio": [
+        "voice_audio"
+      ]
+    },
+    "referenceLabels": [
+      {
+        "label": "<Picture 1>",
+        "assetId": "product_img",
+        "kind": "Picture",
+        "semanticRoles": [
+          "product_geometry",
+          "product_label"
+        ],
+        "entityId": "product"
+      },
+      {
+        "label": "<Picture 2>",
+        "assetId": "person_img",
+        "kind": "Picture",
+        "semanticRoles": [
+          "identity"
+        ],
+        "entityId": "person"
+      },
+      {
+        "label": "<Video 1>",
+        "assetId": "motion_vid",
+        "kind": "Video",
+        "semanticRoles": [
+          "motion",
+          "camera_motion"
+        ],
+        "entityId": "person"
+      },
+      {
+        "label": "<Audio 1>",
+        "assetId": "voice_audio",
+        "kind": "Audio",
+        "semanticRoles": [
+          "voice_timbre"
+        ],
+        "entityId": "person"
+      }
+    ],
+    "contentOrder": [
+      {
+        "assetId": "product_img",
+        "providerType": "image_url",
+        "providerRole": "reference_image",
+        "ordinal": 1
+      },
+      {
+        "assetId": "person_img",
+        "providerType": "image_url",
+        "providerRole": "reference_image",
+        "ordinal": 2
+      },
+      {
+        "assetId": "motion_vid",
+        "providerType": "video_url",
+        "providerRole": "reference_video",
+        "ordinal": 3
+      },
+      {
+        "assetId": "voice_audio",
+        "providerType": "audio_url",
+        "providerRole": "reference_audio",
+        "ordinal": 4
+      }
+    ],
+    "conflictDetected": false,
+    "conflictResolution": "none",
+    "derivedReferences": [],
+    "warnings": [],
+    "nonProviderReferences": []
+  },
+  "prompt": {
+    "mode": "ref2va",
+    "compilerMode": "smartaihub_native",
+    "durationSeconds": 10,
+    "keyframeAlignmentInstruction": null,
+    "subjectDefinitions": "<Subject 1> is the presenter in <Picture 2>. <Subject 2> is the product in <Picture 1>.",
+    "summary": "[reference generation + audio reference] Presenter demonstrates product while retaining product and voice reference.",
+    "retentionAnalysis": "<Subject 1>: fully_preserved. <Subject 2>: fully_preserved. <Audio 1>: reference.",
+    "integratedMultimodalDescription": null,
+    "detailedDescription": "[Shot 1] Presenter demonstrates product. (S1) says: <d>[Thai] ใช้งานง่ายและเห็นรายละเอียดชัดเจน</d>",
+    "overallSoundscape": "Quiet studio ambience and subtle product handling sounds.",
+    "nonDiegeticMusic": "Soft modern electronic pulse.",
+    "promptText": "subject_definitions:\n...\nsummary:\n...\nretention_analysis:\n...\ndetailed_description:\n...\noverall_soundscape: ...\nnon_diegetic_music: ...",
+    "shotMap": [
+      {
+        "shotId": "S01",
+        "shotIndex": 1,
+        "startSeconds": 0,
+        "cutTimestamp": null
+      }
+    ],
+    "speakerMap": [
+      {
+        "speakerId": "presenter",
+        "h3SpeakerId": "S1",
+        "lineIds": [
+          "L1"
+        ],
+        "language": "Thai",
+        "languageSupport": "variable"
+      }
+    ],
+    "audioPlan": {
+      "nativeDialogue": true,
+      "nativeDiegeticSound": true,
+      "nativeMusic": true,
+      "externalFallbackRecommended": true,
+      "fallbackReason": "Thai quality is variable."
+    },
+    "warnings": [
+      "Thai dialogue requires QC/fallback."
+    ]
+  },
+  "generationPayload": {
+    "model": "MiniMax-H3",
+    "content": [
+      {
+        "type": "text",
+        "text": "..."
+      }
+    ],
+    "resolution": "768P",
+    "duration": 10,
+    "ratio": "9:16"
+  },
+  "localWorkerPlan": null,
+  "postGeneration": {
+    "regenerate2K": true,
+    "externalAssembly": false,
+    "externalAudioOrLipSync": true,
+    "postComposite": true
+  },
+  "qcRequirements": [
+    "H3_REFERENCE_RETENTION",
+    "H3_NATIVE_AUDIO_SYNC",
+    "H3_DIALOGUE_EXACTNESS",
+    "H3_2K_REGENERATION_PRESERVATION"
+  ],
+  "warnings": []
+}

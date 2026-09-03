@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/providers/minimax-h3/execution-plan.schema.json",
+  "title": "MiniMax H3 Execution Plan",
+  "type": "object",
+  "required": [
+    "model",
+    "route",
+    "generationMode",
+    "durationSeconds",
+    "resolutionWorkflow",
+    "referencePlan",
+    "prompt",
+    "generationPayload",
+    "postGeneration",
+    "qcRequirements"
+  ],
+  "properties": {
+    "model": {
+      "type": "string",
+      "enum": [
+        "MiniMax-H3",
+        "MiniMax-H3-Max"
+      ]
+    },
+    "route": {
+      "type": "string",
+      "enum": [
+        "hosted_api",
+        "local_worker",
+        "hybrid_local_768p_cloud_2k"
+      ]
+    },
+    "generationMode": {
+      "type": "string",
+      "enum": [
+        "t2va",
+        "i2va",
+        "l2va",
+        "fl2va",
+        "ref2va"
+      ]
+    },
+    "durationSeconds": {
+      "type": "integer",
+      "minimum": 4,
+      "maximum": 15
+    },
+    "resolutionWorkflow": {
+      "type": "string",
+      "enum": [
+        "direct_768p",
+        "direct_2k",
+        "draft_768p_then_regenerate_2k"
+      ]
+    },
+    "contextIR": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "official",
+            "official_then_validate"
+          ]
+        },
+        "payload": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "referencePlan": {
+      "$ref": "https://smartaihub.app/schemas/providers/minimax-h3/reference-plan.schema.json"
+    },
+    "prompt": {
+      "$ref": "https://smartaihub.app/schemas/providers/minimax-h3/prompt.schema.json"
+    },
+    "generationPayload": {
+      "type": "object"
+    },
+    "localWorkerPlan": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "postGeneration": {
+      "type": "object",
+      "required": [
+        "regenerate2K",
+        "externalAssembly",
+        "externalAudioOrLipSync",
+        "postComposite"
+      ],
+      "properties": {
+        "regenerate2K": {
+          "type": "boolean"
+        },
+        "externalAssembly": {
+          "type": "boolean"
+        },
+        "externalAudioOrLipSync": {
+          "type": "boolean"
+        },
+        "postComposite": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "qcRequirements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -51,6 +51,7 @@ import {
   type VerticalDramaRunArtifactRow,
   type VerticalDramaEpisodeRunRow,
 } from "../../drizzle/schema";
+import { parseShotBrollTransform } from "@shared/verticalDramaSeries/visualSource";
 import {
   artifactChecksumSha256,
   VERTICAL_DRAMA_ARTIFACT_LEDGER,
@@ -791,6 +792,7 @@ export class VerticalDramaAssemblyService {
             ...(row.outSeconds == null ? {} : { outSeconds: row.outSeconds }),
             ...(row.displayDurationSeconds == null ? {} : { displayDurationSeconds: row.displayDurationSeconds }),
             fitMode: row.fitMode as "cover" | "contain" | "crop_safe",
+            transform: parseShotBrollTransform(row.transformJson),
             audioPolicy: row.audioPolicy as "keep" | "mute" | "replace",
             labelMode: row.labelMode as "none" | "source" | "archive" | "ai_illustration",
             startSeconds: 0,

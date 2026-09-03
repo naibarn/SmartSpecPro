@@ -284,7 +284,7 @@ pub fn import_files_into_root(
         let mut reader =
             fs::File::open(&source).map_err(|_| "media_import_source_unreadable".to_string())?;
         let mut hasher = Sha256::new();
-        let mut buffer = [0u8; 1024 * 1024];
+        let mut buffer = vec![0u8; 1024 * 1024];
         loop {
             let read = reader
                 .read(&mut buffer)

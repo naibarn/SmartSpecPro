@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "สร้างวิดีโอให้การเคลื่อนไหวและบทพูดตรงกับไฟล์เสียงนี้",
+  "locale": "th-TH",
+  "assets": [
+    {
+      "assetId": "voice_mix",
+      "role": "audio_reference",
+      "mediaType": "audio",
+      "mediaMetadata": {
+        "durationSeconds": 18
+      },
+      "providerHints": {
+        "ltx": {
+          "useAsAudioDriver": true
+        }
+      }
+    },
+    {
+      "assetId": "start",
+      "role": "start_frame",
+      "mediaType": "image"
+    }
+  ],
+  "providerOptions": {
+    "ltx25": {
+      "executionRoute": "cloud_api",
+      "model": "ltx-2-5-fast",
+      "mode": "audio_to_video",
+      "durationPolicy": "audio_driven",
+      "resolution": "1080x1920",
+      "fps": 24,
+      "audioDriverAssetId": "voice_mix"
+    }
+  }
+}

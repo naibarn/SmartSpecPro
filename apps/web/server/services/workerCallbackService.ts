@@ -390,8 +390,10 @@ async function publishUserNotification(
     relatedResourceId: extractJobContext(job).runId ?? String(job.id),
     actionUrl: firstActionUrl,
     actionLabel: firstActionUrl ? "Open result" : undefined,
+    groupKey: `job_completion:worker:${job.jobType}:${job.id}`,
     metadata: {
       source: "worker_callback",
+      eventId: `job-completion:worker:${job.jobType}:${job.id}`,
       relatedItems: links.reduce<Record<string, string>>((acc, link, index) => {
         acc[`link_${index + 1}`] = link.url;
         return acc;

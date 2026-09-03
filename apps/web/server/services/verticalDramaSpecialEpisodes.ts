@@ -33,6 +33,7 @@ import {
   resolveSpecialCharacterBindings,
   resolveSpecialReferenceBindings,
 } from "./verticalDramaSpecialReferences";
+import { preserveVideoPromptVariantsOnLegacyReplacement } from "../../shared/verticalDramaSeries/videoPromptVariants";
 import { listSpecialTieInModels } from "./verticalDramaSpecialModelCatalog";
 import { listConnectedMcpProviderKeys } from "./mcpConnectionService";
 import {
@@ -779,10 +780,19 @@ export async function materializeRecoverableSpecialTieInOutput(input: {
             return clip;
           }
           changed = true;
-          return {
+          const nextClip = {
             ...clip,
             prompt: `${clip.prompt.trim()}\n\n${sceneInstruction}`,
           };
+          return clip.videoPromptVariants
+            ? preserveVideoPromptVariantsOnLegacyReplacement({
+                previousClip: clip,
+                nextClip,
+                selectedVideoModelId: typeof motionPromptPack?.selectedVideoModelId === "string"
+                  ? motionPromptPack.selectedVideoModelId
+                  : undefined,
+              })
+            : nextClip;
         })
       : motionPromptPack?.clips;
     const expectedStoryboard = specialLocationKey

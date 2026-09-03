@@ -48,7 +48,7 @@ import {
   markVideoIntelligenceQueueRegistered,
   reportVideoIntelligenceSweepFindings,
 } from "./videoIntelligenceObservability";
-import { db } from "../db";
+import { db, getDb } from "../db";
 import { workerJobs, type WorkerJob } from "../../drizzle/schema";
 import {
   remotionRenderVideoWorkerInputSchema,
@@ -60,6 +60,10 @@ import {
   type ProjectAuthScope,
 } from "./videoProjectRepo";
 import { createLibraryItem as defaultCreateLibraryItem } from "./libraryService";
+import {
+  notifyJobCompletion,
+  type JobCompletionNotificationInput,
+} from "./jobCompletionNotificationService";
 
 export const VIDEO_INTELLIGENCE_JOBS_QUEUE = "video_intelligence_jobs";
 
@@ -192,6 +196,7 @@ export interface VideoIntelligenceJobRedisAdapter {
 export interface VideoIntelligenceJobStoreDependencies {
   redis: VideoIntelligenceJobRedisAdapter;
   now: () => number;
+  notifyCompletion?: (record: VideoIntelligenceJobRecord) => Promise<void>;
 }
 
 function defaultRedisAdapter(): VideoIntelligenceJobRedisAdapter {
@@ -240,6 +245,61 @@ async function writeRecord(
   deps: VideoIntelligenceJobStoreDependencies,
 ): Promise<void> {
   await deps.redis.set(jobRecordKey(record.jobId), JSON.stringify(record), "EX", JOB_RECORD_TTL_SECONDS);
+}
+
+function videoIntelligenceJobLabel(kind: VideoIntelligenceJobKind): string {
+  const labels: Record<VideoIntelligenceJobKind, string> = {
+    scene_plan: "วางแผนฉากวิดีโอ",
+    narration: "สร้างบทบรรยายวิดีโอ",
+    quality_review: "ตรวจคุณภาพวิดีโอ",
+    quality_repair: "ซ่อมคุณภาพวิดีโอ",
+    auto_draft: "สร้างร่างวิดีโออัตโนมัติ",
+    content_draft: "สร้างเนื้อหาวิดีโอ",
+    motion: "สร้างรูปแบบการเคลื่อนไหว",
+  };
+  return labels[kind];
+}
+
+async function notifyVideoIntelligenceJobTerminal(record: VideoIntelligenceJobRecord): Promise<void> {
+  try {
+    const label = videoIntelligenceJobLabel(record.kind);
+    const input: JobCompletionNotificationInput = {
+      db: getDb(),
+      userId: record.userId,
+      tenantId: record.tenantId,
+      jobId: record.jobId,
+      jobType: `video_intelligence:${record.kind}`,
+      status: record.status === "succeeded" ? "succeeded" : "failed",
+      title: label,
+      successMessage: `${label} เสร็จแล้ว กลับไปดูผลลัพธ์ได้เลย`,
+      failureMessage: `${label} ไม่สำเร็จ${record.error ? `: ${record.error.slice(0, 500)}` : ""}`,
+      actionUrl: `/video-studio/${record.projectId}`,
+      actionLabel: "เปิดโปรเจกต์",
+      startedAt: record.createdAt,
+      finishedAt: record.updatedAt,
+      errorMessage: record.error,
+      source: "video_intelligence_jobs",
+      relatedItems: { projectId: String(record.projectId), kind: record.kind },
+    };
+    await notifyJobCompletion(input);
+  } catch (error) {
+    console.error("[VideoIntelligenceJobs] terminal_notification_bridge_failed", {
+      jobId: record.jobId,
+      userId: record.userId,
+      tenantId: record.tenantId,
+      projectId: record.projectId,
+      kind: record.kind,
+      status: record.status,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+async function notifyVideoIntelligenceTerminalWithDependencies(
+  record: VideoIntelligenceJobRecord,
+  dependencies?: Partial<VideoIntelligenceJobStoreDependencies>,
+): Promise<void> {
+  await (dependencies?.notifyCompletion ?? notifyVideoIntelligenceJobTerminal)(record);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -306,16 +366,15 @@ export async function enqueueVideoIntelligenceJob(
     debugError("videoIntelligenceJobs", `Failed to enqueue BullMQ job for video intelligence job ${jobId}`, error);
 
     const message = error instanceof Error ? error.message : String(error);
+    const terminalRecord = {
+      ...record,
+      status: "failed",
+      error: `VI_QUEUE_UNAVAILABLE: ${message}`,
+      updatedAt: new Date(deps.now()).toISOString(),
+    } satisfies VideoIntelligenceJobRecord;
     try {
-      await writeRecord(
-        {
-          ...record,
-          status: "failed",
-          error: `VI_QUEUE_UNAVAILABLE: ${message}`,
-          updatedAt: new Date(deps.now()).toISOString(),
-        },
-        deps,
-      );
+      await writeRecord(terminalRecord, deps);
+      await notifyVideoIntelligenceTerminalWithDependencies(terminalRecord, dependencies);
     } catch (writeError) {
       debugError(
         "videoIntelligenceJobs",
@@ -429,16 +488,25 @@ export async function runVideoIntelligenceJob(
       },
       onProgress,
     );
-    await writeRecord(
-      { ...record, status: "succeeded", result, error: null, updatedAt: new Date(deps.now()).toISOString() },
-      deps,
-    );
+    const terminalRecord = {
+      ...record,
+      status: "succeeded",
+      result,
+      error: null,
+      updatedAt: new Date(deps.now()).toISOString(),
+    } satisfies VideoIntelligenceJobRecord;
+    await writeRecord(terminalRecord, deps);
+    await notifyVideoIntelligenceTerminalWithDependencies(terminalRecord, dependencies);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await writeRecord(
-      { ...record, status: "failed", error: message, updatedAt: new Date(deps.now()).toISOString() },
-      deps,
-    ).catch(() => {});
+    const terminalRecord = {
+      ...record,
+      status: "failed",
+      error: message,
+      updatedAt: new Date(deps.now()).toISOString(),
+    } satisfies VideoIntelligenceJobRecord;
+    await writeRecord(terminalRecord, deps).catch(() => {});
+    await notifyVideoIntelligenceTerminalWithDependencies(terminalRecord, dependencies);
   } finally {
     const pointerKey = activePointerKey(record.tenantId, record.projectId);
     const currentPointer = await deps.redis.get(pointerKey).catch(() => null);

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "สร้างโฆษณาจากภาพสินค้า วิดีโอ motion และ voice reference",
+  "locale": "th-TH",
+  "assets": [
+    {
+      "assetId": "product",
+      "role": "product_reference",
+      "mediaType": "image",
+      "referencePurposes": [
+        "product_geometry"
+      ]
+    },
+    {
+      "assetId": "motion",
+      "role": "motion_reference",
+      "mediaType": "video",
+      "referencePurposes": [
+        "motion"
+      ],
+      "mediaMetadata": {
+        "durationSeconds": 5
+      }
+    },
+    {
+      "assetId": "voice",
+      "role": "voice_reference",
+      "mediaType": "audio",
+      "referencePurposes": [
+        "voice_timbre"
+      ],
+      "mediaMetadata": {
+        "durationSeconds": 5
+      }
+    }
+  ],
+  "providerOptions": {
+    "seedance": {
+      "model": "dreamina-seedance-2-0-260128",
+      "mode": "reference_to_video",
+      "resolution": "720p"
+    }
+  }
+}

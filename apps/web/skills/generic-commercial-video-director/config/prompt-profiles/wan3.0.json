@@ -1,0 +1,47 @@
+{
+  "id": "wan3.0",
+  "version": "1.0.0",
+  "provider": "Alibaba Cloud Model Studio",
+  "modelFamily": "Wan 3.0",
+  "languagePolicy": {
+    "bodyLanguage": "English",
+    "preserveDialogueOriginalLanguage": true,
+    "preserveVisibleTextOriginalLanguage": true
+  },
+  "modes": {
+    "hard_frame": {
+      "openingRule": "Continue from first_frame as literal State #0; never replay completed action.",
+      "lastFrameRule": "When last_frame exists, land on it at the exact end."
+    },
+    "reference": {
+      "labels": [
+        "Image N",
+        "Video N",
+        "Audio N",
+        "File 1",
+        "Link 1"
+      ],
+      "rule": "Bind each reference to explicit identity/product/place/motion/audio purpose."
+    },
+    "multi_shot": {
+      "timestampStyle": "(MM:SS - MM:SS)",
+      "recommendedShotSeconds": [
+        4,
+        5,
+        6
+      ]
+    },
+    "video_edit": {
+      "rule": "State exactly what changes and what remains unchanged."
+    },
+    "video_extend": {
+      "rule": "State direction and continue audiovisual state without replay."
+    }
+  },
+  "productionRules": [
+    "Never mix first_frame/last_frame with reference_xx/file/link in one request.",
+    "If a reference video is supplied, preflight input-video + requested output <=30 seconds.",
+    "Use Image 1 / Video 1 / Audio 1 labels according to separate media-type order.",
+    "Use prompt_extend only as provider prompt rewrite; canonical SmartAIHub state remains authoritative."
+  ]
+}

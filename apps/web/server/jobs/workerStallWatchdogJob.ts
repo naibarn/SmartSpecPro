@@ -1,8 +1,11 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, inArray } from "drizzle-orm";
 
 import { workerJobs } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { requeueStalledWorkerJobs } from "../services/workerStallWatchdogService";
+import {
+  requeueStalledWorkerJobs,
+  WORKER_STALL_WATCHDOG_JOB_TYPES,
+} from "../services/workerStallWatchdogService";
 
 const WATCHDOG_INTERVAL_MS = 5 * 60 * 1000;
 const ACTIVE_WORKER_JOB_STATUSES = [
@@ -11,7 +14,6 @@ const ACTIVE_WORKER_JOB_STATUSES = [
   "running",
   "uploading",
 ] as const;
-
 let intervalId: ReturnType<typeof setInterval> | null = null;
 
 export async function runWorkerStallWatchdogOnce(now = new Date()) {
@@ -20,7 +22,7 @@ export async function runWorkerStallWatchdogOnce(now = new Date()) {
     .selectDistinct({ tenantId: workerJobs.tenantId })
     .from(workerJobs)
     .where(and(
-      eq(workerJobs.jobType, "hyperframes_final_composite"),
+      inArray(workerJobs.jobType, WORKER_STALL_WATCHDOG_JOB_TYPES),
       inArray(workerJobs.status, ACTIVE_WORKER_JOB_STATUSES),
     ))
     .limit(100);

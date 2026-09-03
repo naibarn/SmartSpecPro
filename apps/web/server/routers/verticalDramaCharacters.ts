@@ -115,7 +115,11 @@ import {
   type VerticalDramaCharacterPromptJobPayload,
 } from "../services/verticalDramaCharacterPromptJobs";
 import { createAssetFromAttachment } from "../services/mediaAssetService";
-import { ingestVerticalDramaMediaAsset } from "../services/verticalDramaMediaAssetService";
+import {
+  ensureVerticalDramaManagedMediaAsset,
+  extractVerticalDramaManagedMediaKey,
+  ingestVerticalDramaMediaAsset,
+} from "../services/verticalDramaMediaAssetService";
 import {
   getTransientMediaPollRetryHint,
   getUnifiedMediaTask,
@@ -4281,6 +4285,7 @@ export const verticalDramaCharactersRouter = router({
         let mimeType: string;
         if (item.itemType === "image") mimeType = "image/jpeg";
         else if (item.itemType === "video") mimeType = "video/mp4";
+        else if (item.itemType === "audio") mimeType = "audio/mpeg";
         else {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -4294,15 +4299,44 @@ export const verticalDramaCharactersRouter = router({
         // this mirrors the `as any` cast `chat.ts` itself uses at its own
         // call site rather than modifying the (out-of-scope) service file.
         const { assetId } = await createAssetFromAttachment(
-          { type: "image", url: item.sourceUrl, mimeType } as any,
+          { type: item.itemType === "video" ? "video" : "image", url: item.sourceUrl, mimeType } as any,
           { tenantId, userId } as any
         );
         return { mediaAssetId: String(assetId) };
       }
 
       // source === "url"
+      // A completed Vertical Drama task already points at an owner-scoped
+      // managed object. Re-register/reuse that ready asset directly instead
+      // of sending the managed URL through the generic attachment importer,
+      // which would create a pending chat_attachment duplicate.
+      const managedStorageKey = extractVerticalDramaManagedMediaKey(input.url);
+      if (managedStorageKey) {
+        const managedAsset = await ensureVerticalDramaManagedMediaAsset({
+          tenantId,
+          userId,
+          sourceUrl: input.url,
+          mediaType: input.mimeType.toLowerCase().startsWith("video/")
+            ? "video"
+            : "image",
+          mimeType: input.mimeType,
+        });
+        if (managedAsset) return { mediaAssetId: String(managedAsset.mediaAssetId) };
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Managed media result is missing or expired",
+        });
+      }
       const { assetId } = await createAssetFromAttachment(
-        { type: "image", url: input.url, mimeType: input.mimeType } as any,
+        {
+          type: input.mimeType.toLowerCase().startsWith("video/")
+            ? "video"
+            : input.mimeType.toLowerCase().startsWith("audio/")
+              ? "audio"
+              : "image",
+          url: input.url,
+          mimeType: input.mimeType,
+        } as any,
         { tenantId, userId } as any
       );
       return { mediaAssetId: String(assetId) };

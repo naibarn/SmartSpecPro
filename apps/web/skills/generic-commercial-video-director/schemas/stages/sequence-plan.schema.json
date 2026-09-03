@@ -1,0 +1,292 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/sequence-plan.schema.json",
+  "title": "Sequence & Multi-Shot Plan",
+  "type": "object",
+  "required": [
+    "sequenceId",
+    "targetTotalDurationSeconds",
+    "plannedTotalDurationSeconds",
+    "temporalStrategy",
+    "shotDurationPolicy",
+    "shots",
+    "transitions",
+    "narrativeCoverage",
+    "assemblyPlan"
+  ],
+  "properties": {
+    "sequenceId": {
+      "type": "string"
+    },
+    "targetTotalDurationSeconds": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "plannedTotalDurationSeconds": {
+      "type": "number",
+      "minimum": 1
+    },
+    "temporalStrategy": {
+      "type": "string",
+      "enum": [
+        "independent_shots",
+        "provider_native_multishot",
+        "extension_chain",
+        "hybrid"
+      ]
+    },
+    "shotDurationPolicy": {
+      "type": "object",
+      "required": [
+        "mode",
+        "allowedSeconds"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "fixed",
+            "allowed_values",
+            "per_shot_custom"
+          ]
+        },
+        "fixedSeconds": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "allowedSeconds": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 1
+          },
+          "uniqueItems": true
+        },
+        "preferredSeconds": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "minShotSeconds": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "maxShotSeconds": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "shots": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "shotId",
+          "order",
+          "durationSeconds",
+          "globalStartSeconds",
+          "globalEndSeconds",
+          "shotTopology",
+          "narrativeRole",
+          "generationChainId"
+        ],
+        "properties": {
+          "shotId": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "durationSeconds": {
+            "type": "number",
+            "minimum": 1
+          },
+          "globalStartSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "globalEndSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "shotTopology": {
+            "type": "string",
+            "enum": [
+              "single_continuous",
+              "planned_cut",
+              "insert",
+              "cutaway",
+              "reaction",
+              "presenter",
+              "hero",
+              "montage"
+            ]
+          },
+          "narrativeRole": {
+            "type": "string"
+          },
+          "generationChainId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "continuityFromShotId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mustRemainSingleContinuousShot": {
+            "type": "boolean",
+            "default": false
+          },
+          "majorActionCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "dialogueLineIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "proofMomentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "transitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "fromShotId",
+          "toShotId",
+          "type"
+        ],
+        "properties": {
+          "fromShotId": {
+            "type": "string"
+          },
+          "toShotId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "hard_cut",
+              "match_cut",
+              "motivated_cut",
+              "dissolve",
+              "continuous_motion",
+              "extension_seam",
+              "graphic_transition"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "narrativeCoverage": {
+      "type": "object",
+      "required": [
+        "requiredBeatIds",
+        "assignedBeatIds",
+        "unassignedBeatIds",
+        "coverageComplete"
+      ],
+      "properties": {
+        "requiredBeatIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "assignedBeatIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unassignedBeatIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "coverageComplete": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "assemblyPlan": {
+      "type": "object",
+      "required": [
+        "mode",
+        "preserveNativeExtensionChain",
+        "finalTimelineDurationSeconds"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "provider_output",
+            "external_edit",
+            "hybrid"
+          ]
+        },
+        "preserveNativeExtensionChain": {
+          "type": "boolean"
+        },
+        "finalTimelineDurationSeconds": {
+          "type": "number",
+          "minimum": 1
+        },
+        "postCompositeAfterTemporalAssembly": {
+          "type": "boolean",
+          "default": true
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

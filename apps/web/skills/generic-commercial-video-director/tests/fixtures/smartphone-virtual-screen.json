@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "พรีเซนเตอร์ยืนอธิบายโทรศัพท์และใช้ virtual screen แสดงฟีเจอร์บนหน้าจอ",
+  "locale": "th-TH",
+  "contentMode": "presenter",
+  "product": {
+    "name": "Phone Model Example",
+    "category": "smartphone",
+    "supportedUIFlows": [
+      "Only show UI flows supplied or verified by product documentation"
+    ],
+    "approvedClaims": []
+  },
+  "visualExplanationPolicy": {
+    "mode": "explicit",
+    "allowVirtualScreen": true,
+    "preferPostCompositeForExactTextOrUI": true,
+    "requireEvidenceForFeatureVisualization": true
+  }
+}

@@ -212,6 +212,38 @@ export const referenceFrameSchema = z.object({
   weight: z.number().min(0).max(1),
   materializedPath: z.string().trim().min(1).max(256).optional(),
 }).strict();
+/** Feature 170: ordered multimodal references. Optional on the pack so legacy
+ * image-only workers remain readable during the contract migration. */
+export const multimodalReferenceAssetSchema = z.object({
+  assetId: id,
+  fingerprint: checksum,
+  mediaType: z.enum(["image", "video", "audio"]),
+  role: z.enum([
+    "reference",
+    "character",
+    "location",
+    "prop",
+    "style",
+    "continuity",
+    "action",
+    "barrier_reference",
+    "soundscape",
+  ]),
+  order: z.number().int().nonnegative().max(49),
+  label: label.max(120),
+  materializedPath: z.string().trim().min(1).max(256).optional(),
+  segment: z.object({
+    inPointSec: z.number().finite().min(0),
+    outPointSec: z.number().finite().positive(),
+  }).strict().optional(),
+}).strict().superRefine((value, context) => {
+  if (value.segment && value.mediaType !== "video") {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["segment"], message: "segments are supported for video references only" });
+  }
+  if (value.segment && value.segment.outPointSec <= value.segment.inPointSec) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["segment", "outPointSec"], message: "segment end must be after segment start" });
+  }
+});
 export const referenceFramePackSchema = z.object({
   packId: id,
   packRevision: revision,
@@ -219,11 +251,20 @@ export const referenceFramePackSchema = z.object({
   lastFrame: referenceFrameSchema.nullable(),
   referenceVideoAssetId: id.nullable(),
   referenceAudioAssetId: id.nullable(),
+  contractVersion: z.literal("vd-shot-media/1").optional(),
+  bundleRevision: z.number().int().positive().optional(),
+  bundleFingerprint: checksum.optional(),
+  references: z.array(multimodalReferenceAssetSchema).max(50).optional(),
 }).strict().superRefine((value, context) => {
   const orders = new Set<number>();
   for (const frame of value.frames) {
     if (orders.has(frame.order)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["frames"], message: "reference frame order must be unique" });
     orders.add(frame.order);
+  }
+  const referenceOrders = new Set<number>();
+  for (const reference of value.references ?? []) {
+    if (referenceOrders.has(reference.order)) context.addIssue({ code: z.ZodIssueCode.custom, path: ["references"], message: "multimodal reference order must be unique" });
+    referenceOrders.add(reference.order);
   }
 });
 
@@ -232,6 +273,7 @@ export const mediaWorkflowRequestSchema = z.object({
   workflowFamily: id,
   requestedWorkflowId: id.nullable(),
   startFrame: startFrameAssetSchema.nullable(),
+  stopFrame: startFrameAssetSchema.nullable().optional(),
   referenceFrames: referenceFramePackSchema.nullable(),
   policyRevision: revision,
 }).strict();
@@ -297,6 +339,7 @@ export const shotVideoGenerationJobPayloadSchema = z.object({
   shotId: id,
   shotRevision: revision,
   startFrame: startFrameAssetSchema.nullable(),
+  stopFrame: startFrameAssetSchema.nullable().optional(),
   referenceFrames: referenceFramePackSchema.nullable(),
   workflowRequest: mediaWorkflowRequestSchema,
   workflowResolution: mediaWorkflowResolutionSchema,
