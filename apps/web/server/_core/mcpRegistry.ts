@@ -801,6 +801,8 @@ const ALLOWED_LIBRARY_FILTER_KEYS = new Set([
   "projectId",
   "owner_user_id",
   "ownerUserId",
+  "include_failed",
+  "includeFailed",
 ]);
 
 async function searchOwnerLibrary(
@@ -924,11 +926,14 @@ async function searchOwnerLibrary(
     ? rawSource.map(String).filter(Boolean)
     : typeof rawSource === "string" && rawSource.trim() ? rawSource.trim() : undefined;
 
-  // Status (single or array)
+  // Status (single or array, default to ["ready", "processing"] so failed/expired items are excluded unless requested)
   const rawStatus = rawFilters?.status ?? args.status;
+  const includeFailed = Boolean(rawFilters?.include_failed ?? rawFilters?.includeFailed ?? args.include_failed ?? args.includeFailed);
   const status = Array.isArray(rawStatus)
     ? (rawStatus as any[])
-    : typeof rawStatus === "string" && rawStatus.trim() ? (rawStatus as any) : undefined;
+    : typeof rawStatus === "string" && rawStatus.trim()
+      ? [rawStatus.trim() as any]
+      : (includeFailed ? undefined : ["ready", "processing"]);
 
   // Date filters
   const rawCreatedAt = rawFilters?.created_at ?? rawFilters?.createdAt;
@@ -1012,6 +1017,14 @@ async function searchOwnerLibrary(
     const textSummary = itemsCount === 0
       ? (query ? `ไม่พบไฟล์ที่ตรงกับคำค้นหา "${query}"` : "ไม่พบไฟล์ใน Library ตามเงื่อนไขที่ระบุ")
       : `พบไฟล์ ${itemsCount} รายการ จากทั้งหมด ${totalCount} รายการ${query ? ` สำหรับคำค้นหา "${query}"` : ""}`;
+    const textLines = [
+      textSummary,
+      ...items.slice(0, 15).map((it: any, idx: number) => {
+        const thumbUrl = it.thumbnail_url || it.source_url;
+        const thumbPart = thumbUrl ? ` | 🖼️ Thumbnail: ${thumbUrl}` : "";
+        return `${idx + 1}. [${it.item_type || "file"}] ${it.title} (ID: ${it.item_id}, สถานะ: ${it.status})${thumbPart}`;
+      }),
+    ];
 
     const nextCursor = searchResponse?.has_more
       ? String((searchResponse.offset ?? offset) + itemsCount)
@@ -1021,7 +1034,7 @@ async function searchOwnerLibrary(
       content: [
         {
           type: "text",
-          text: textSummary,
+          text: textLines.join("\n"),
         },
       ],
       structuredContent: {
@@ -1289,6 +1302,9 @@ function safeMediaHistoryTask(task: any): Record<string, unknown> {
   const resultData = task?.resultData && typeof task.resultData === "object" ? task.resultData : {};
   const durablePlayback = Array.isArray(task?.artifacts)
     && task.artifacts.some((artifact: any) => artifact?.r2Status === "ready" && typeof artifact?.r2Url === "string");
+  const rawUrl = task.resultUrl
+    || (Array.isArray(task.artifacts) ? task.artifacts.find((a: any) => typeof a?.r2Url === "string")?.r2Url : undefined)
+    || (typeof resultData.url === "string" ? resultData.url : undefined);
   return {
     id: task.id,
     media_type: task.mediaType,
@@ -1302,6 +1318,8 @@ function safeMediaHistoryTask(task: any): Record<string, unknown> {
     credits_used: task.creditsUsed ?? null,
     download_available: task.status === "completed" && Boolean(durablePlayback || task.resultUrl?.startsWith?.("/api/storage/files/")),
     resource_uri: `smartaihub://media/tasks/${task.id}`,
+    result_url: task.status === "completed" ? (rawUrl ?? null) : null,
+    thumbnail_url: task.status === "completed" ? (rawUrl ?? null) : null,
   };
 }
 

@@ -1037,10 +1037,11 @@ async function resolveLibraryUploadFile(
     if (!head || !Number.isFinite(head.contentLength)) {
       throw new Error("Uploaded file was not found in storage");
     }
-    if (head.contentLength > MAX_LIBRARY_UPLOAD_BYTES) {
+    const contentLength = head.contentLength as number;
+    if (contentLength > MAX_LIBRARY_UPLOAD_BYTES) {
       throw new Error("File too large (max 50MB)");
     }
-    if (input.fileSizeBytes !== undefined && head.contentLength !== input.fileSizeBytes) {
+    if (input.fileSizeBytes !== undefined && contentLength !== input.fileSizeBytes) {
       throw new Error("Uploaded file size does not match the upload request");
     }
 
@@ -4644,8 +4645,13 @@ function itemMatchesDocumentFilters(
     }
   }
   if (filters.ownerUserId !== undefined && item.ownerUserId !== filters.ownerUserId) return false;
-  if (filters.projectId !== undefined && item.projectId !== filters.projectId) return false;
-  if (filters.status && item.status !== filters.status) return false;
+  if (filters.status) {
+    if (Array.isArray(filters.status)) {
+      if (filters.status.length > 0 && !filters.status.includes(item.status as any)) return false;
+    } else if (item.status !== filters.status) {
+      return false;
+    }
+  }
   if (filters.fromDate && item.createdAt < filters.fromDate) return false;
   if (filters.toDate && item.createdAt > filters.toDate) return false;
   const recentCutoff = getRecentCutoffDate(filters.recentDays);
