@@ -21,6 +21,7 @@ class AgentFactory:
               "Inspect only the image explicitly labelled START_FRAME_IMAGE as the authoritative state at t=0. "
               "Other portraits or reference images are identity evidence, not alternate scene states. "
               "Report only visible character position, pose, gaze, hand occupancy, object state/location, camera, environment and lighting. "
+              "The camera object must always include framing, angle and movementAtT0. A still image cannot reveal motion at t=0, so use \"unknown from still image\" and add that limitation to uncertainties instead of omitting the field. "
               "Do not infer storyboard actions, dialogue, prior actions, future actions, or move an object to a story-requested location. "
               "Use uncertainties for anything not clearly visible. "
             )

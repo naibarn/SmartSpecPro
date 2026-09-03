@@ -104,3 +104,10 @@ active and no new startup failure is present after the corrected restart.
   maps the provider-shaped fields needed by Enhanced canonical context.
 - Verification: 3 files / 20 tests passed, `git diff --check` passed, local Node
   service restarted successfully, and healthz passed.
+
+## Enhanced observed-state contract repair (2026-09-03)
+
+| Round | Boundary reviewed | Result | Evidence / disposition |
+|---:|---|---|---|
+| 11 | `observed_start_state` camera contract and bridge result assembly | CLOSED + PASS | A missing `camera.movementAtT0` is completed as `unknown from still image` with an uncertainty; the stale `audio_direction` reference was restored safely. Runtime and service tests passed. |
+| 12 | Clean post-fix targeted convergence | PASS | Package validator, bridge health, Python compile, v11 runtime checks, audio bridge tests, Enhanced service tests, and diff check passed. |

@@ -1753,6 +1753,18 @@ function EpisodeWorkspaceShell({
       },
       onError: err => toast.error(err.message),
     });
+  const clearShotStopFrameMutation =
+    trpc.verticalDramaEpisodes.clearShotStopFrame.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th"
+            ? "เอา Stop frame ออกจาก slot แล้ว"
+            : "Stop frame removed from slot."
+        );
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+      },
+      onError: err => toast.error(err.message),
+    });
   const [runningFrameContinuityQcForShot, setRunningFrameContinuityQcForShot] =
     useState<number | null>(null);
   const [runningVideoSafetyQcForShot, setRunningVideoSafetyQcForShot] =

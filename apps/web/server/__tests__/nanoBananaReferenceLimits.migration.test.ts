@@ -18,7 +18,8 @@ describe("Nano Banana reference-image limits", () => {
     const journal = JSON.parse(fs.readFileSync(journalPath, "utf8")) as {
       entries: Array<{ idx: number; tag: string }>;
     };
-    expect(journal.entries.at(-1)).toMatchObject({
+    const entry = journal.entries.find((e) => e.tag === "0274_nano_banana_2_reference_limits");
+    expect(entry).toMatchObject({
       idx: 260,
       tag: "0274_nano_banana_2_reference_limits",
     });

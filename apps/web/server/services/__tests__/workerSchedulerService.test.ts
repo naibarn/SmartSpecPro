@@ -563,6 +563,18 @@ describe("workerSchedulerService", () => {
         ["browser-automation"]
       )
     ).toBe(false);
+
+    expect(
+      workerJobMatchesSelection(
+        {
+          capabilityRequirementsJson: {
+            capabilityFamilies: ["plugin-automation"],
+          },
+        },
+        "worker-1",
+        []
+      )
+    ).toBe(false);
   });
 
   it("uses requiredClaimCapability as the claim gate when a job also carries descriptive capability families", () => {

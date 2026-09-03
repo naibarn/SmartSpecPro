@@ -298,9 +298,58 @@ def _terminal_prompt(
     locks = intent.get("continuityLocks") or []
     if locks:
         lines.append("CONTINUITY LOCKS: " + "; ".join(str(lock) for lock in locks))
-    audio_intent = intent.get("audioIntent")
-    if isinstance(audio_intent, str) and audio_intent.strip():
-        lines.append("AUDIO DIRECTION: " + audio_intent.strip())
+    # Canonical Enhanced input always carries this boolean. Treat an omitted
+    # value as legacy-compatible audio behavior for direct bridge callers.
+    native_audio_enabled = (
+        "nativeAudioEnabled" not in payload
+        or payload.get("nativeAudioEnabled") is True
+    )
+    if not native_audio_enabled:
+        if dialogue:
+            lines.append("AUDIO POLICY: Spoken dialogue only. Do not generate any background sound effects, foley, footsteps, or room tone.")
+        else:
+            lines.append("AUDIO POLICY: Complete silence. Silent visual acting only. Do not generate any spoken voice, sound effects, or background audio.")
+    else:
+        audio_intent = intent.get("audioIntent")
+        if isinstance(audio_intent, dict):
+            audio_lines = []
+            if dialogue:
+                audio_lines.append("Clear synchronous spoken dialogue.")
+            foley = audio_intent.get("mustHearFoley") or []
+            if foley:
+                foley_descriptions = [f.get("description") for f in foley if isinstance(f, dict) and f.get("description")]
+                if foley_descriptions:
+                    audio_lines.append("Motivated foley: " + ", ".join(foley_descriptions) + ".")
+            atmosphere = audio_intent.get("atmosphere")
+            if isinstance(atmosphere, dict) and atmosphere.get("description"):
+                audio_lines.append(f"Room tone: {atmosphere['description']}.")
+            if audio_lines:
+                lines.append("AUDIO DIRECTION: " + " ".join(audio_lines))
+        elif isinstance(audio_intent, str) and audio_intent.strip():
+            lines.append("AUDIO DIRECTION: " + audio_intent.strip())
+        elif dialogue:
+            lines.append("AUDIO DIRECTION: Clear synchronous spoken dialogue with motivated physical contact sounds and continuous room tone.")
+
+        # Model Adapter formatting: Gemini Omni timecode brackets
+        target_id = str((payload.get("targetVideoModel") or {}).get("id") or "").lower()
+        if "omni" in target_id and dialogue:
+            omni_events = []
+            cur_sec = 0
+            for idx, line in enumerate(dialogue):
+                text = line.get("text") if isinstance(line, dict) else str(line)
+                speaker = line.get("speakerId") if isinstance(line, dict) else f"Character {idx+1}"
+                omni_events.append(f"[{cur_sec}-{cur_sec+2}s] {speaker}: \"{text}\"")
+                cur_sec += 2
+            if isinstance(audio_intent, dict):
+                foley = audio_intent.get("mustHearFoley") or []
+                for f in foley:
+                    if isinstance(f, dict) and f.get("description"):
+                        omni_events.append(f"[{cur_sec}s] SFX: {f['description']}")
+            lines.append("TIMECODED AUDIO EVENTS (OMNI):\n" + "\n".join(omni_events))
+        elif "seedance" in target_id:
+            lines.append("PHYSICAL ACOUSTIC PAIRING (SEEDANCE): Match all physical impact sounds with visible contact surfaces.")
+        elif "h3" in target_id or "hailuo" in target_id:
+            lines.append("ACOUSTIC BREVITY (H3): Keep ambient room tone minimal and speech clean.")
     end_bridge = intent.get("endBridge")
     if isinstance(end_bridge, str) and end_bridge.strip():
         lines.append("END STATE: " + end_bridge.strip())
@@ -426,14 +475,16 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
         prompt_assumptions.extend(repair_result.assumptions)
         result = repair_result
     prompt = _terminal_prompt(payload, result.payload, observed_result.payload)
-    audio_direction = str(result.payload.get("audioIntent") or "").strip() or None
+    negative_prompt_parts = [
+        "Do not change identity, wardrobe, approved object geometry, "
+        + ("reference-image continuity" if _uses_unified_image_transport(payload.get("targetVideoModel") or {}) else "frame-0 composition")
+        + ", or canonical dialogue; no duplicate subjects, no reset, no invented text."
+    ]
+    if not (payload.get("nativeAudioEnabled") is True):
+        negative_prompt_parts.append("Do not generate background music, ambient sound effects, foley, footsteps, or room tone.")
     bridge_result = {
         "prompt": prompt,
-        "negativeMotionPrompt": (
-            "Do not change identity, wardrobe, approved object geometry, "
-            + ("reference-image continuity" if _uses_unified_image_transport(payload.get("targetVideoModel") or {}) else "frame-0 composition")
-            + ", or canonical dialogue; no duplicate subjects, no reset, no invented text."
-        ),
+        "negativeMotionPrompt": " ".join(negative_prompt_parts),
         "dialogue": payload.get("dialogue") or [],
         "warnings": list(dict.fromkeys([*observed_result.warnings, *prompt_warnings])),
         "assumptions": list(dict.fromkeys([*observed_result.assumptions, *prompt_assumptions])),
@@ -445,8 +496,13 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
         "adapterVersion": ADAPTER_VERSION,
         "sdkVersion": installed_sdk_version(),
     }
-    if audio_direction:
-        bridge_result["audioDirection"] = audio_direction
+    native_audio_enabled = (
+        "nativeAudioEnabled" not in payload
+        or payload.get("nativeAudioEnabled") is True
+    )
+    audio_direction = result.payload.get("audioIntent")
+    if native_audio_enabled and isinstance(audio_direction, str) and audio_direction.strip():
+        bridge_result["audioDirection"] = audio_direction.strip()
     return bridge_result
 
 

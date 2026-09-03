@@ -607,8 +607,11 @@ export function workerJobMatchesSelection(
           typeof value === "string" && value.trim().length > 0
       )
     : [];
-  if (requiredFamilies.length === 0 || capabilityHints.length === 0) {
+  if (requiredFamilies.length === 0) {
     return true;
+  }
+  if (capabilityHints.length === 0) {
+    return false;
   }
 
   // Feature 133 section-04 fix (anti-mis-claim safety mechanism, spec §6.3):

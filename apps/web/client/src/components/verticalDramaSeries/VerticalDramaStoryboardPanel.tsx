@@ -216,6 +216,7 @@ import {
   type VerticalDramaShotSceneAnchorView,
 } from "./VerticalDramaSceneLockRow";
 import { VerticalDramaSupportingPresenceEditor } from "./VerticalDramaSupportingPresenceEditor";
+import { VerticalDramaAudioInspector } from "./VerticalDramaAudioInspector";
 
 export type {
   VerticalDramaSceneVisualStatePatch,
@@ -1388,6 +1389,8 @@ interface VerticalDramaStoryboardPanelProps {
   onChangeStartFrame?: (shotNumber: number) => void;
   /** Opens the same authorized media picker for the optional stop frame. */
   onChangeStopFrame?: (shotNumber: number) => void;
+  /** Clears the stop-frame image from the slot (does NOT delete the media asset). */
+  onClearStopFrame?: (shotNumber: number) => void;
   /** Error from an image admission/submission path that has not produced a task id. */
   imageGenerationErrorByShot?: Record<number, string>;
   /** Retry the paid image render; composition-lock failures can request prompt recovery. */
@@ -1675,6 +1678,12 @@ interface VerticalDramaStoryboardPanelProps {
    *  rollout flag, see `VerticalDramaEpisodePage.tsx`. */
   nativeAudioEnabled?: boolean;
   onSelectNativeAudioEnabled?: (enabled: boolean) => void;
+  /** Feature 175: Trigger Stage 4b surgical audio repair (5 credits) */
+  onTriggerSurgicalAudioRepair?: (shotNumber: number) => void;
+  /** Feature 175: Rollback audio take version (0 credits) */
+  onRollbackAudioTake?: (shotNumber: number, takeNumber: number) => void;
+  /** Feature 175: Update 3-stem mix deltas (Dialogue, Foley, Ambience) */
+  onUpdateShotAudioMixDeltas?: (shotNumber: number, deltas: { dialogueDb: number; foleyDb: number; ambienceDb: number }) => void;
 
   /* ---- Phase 2.5 — per-shot reference strip ---- */
   /** `listShotReferences` result, keyed by shot number (Phase 2/D contract). */
@@ -2251,6 +2260,7 @@ export function VerticalDramaStoryboardPanel({
   generatingStartFramePlan = false,
   onEditStartFramePrompt,
   onChangeStopFrame,
+  onClearStopFrame,
   onGenerateVideoPromptPack,
   generatingVideoPromptPack = false,
   onRepairMissingShotCharacters,
@@ -2308,6 +2318,9 @@ export function VerticalDramaStoryboardPanel({
   onSelectThaiAccent,
   nativeAudioEnabled = false,
   onSelectNativeAudioEnabled,
+  onTriggerSurgicalAudioRepair,
+  onRollbackAudioTake,
+  onUpdateShotAudioMixDeltas,
   imagePromptMode = "auto",
   onSelectImagePromptMode,
   shotReferencesByShot = {},
@@ -2880,6 +2893,8 @@ export function VerticalDramaStoryboardPanel({
    *  previous shot's typed text. */
   const [repairImageInstructionByShot, setRepairImageInstructionByShot] =
     useState<Record<number, string>>({});
+  const [activeAudioInspectorShot, setActiveAudioInspectorShot] =
+    useState<number | null>(null);
 
   // Split a completed multi-angle grid image into 9 candidates client-side
   // (reuses the same `imageGridSplitter` tool the character-reference
@@ -4672,7 +4687,19 @@ export function VerticalDramaStoryboardPanel({
                       <span className="text-[10px] font-semibold text-violet-800 dark:text-violet-200">
                         {t(locale, "Stop Frame (ตัวเลือก)", "Stop frame (optional)")}
                       </span>
-                      <span className="text-[9px] text-muted-foreground">→</span>
+                      {stopFrameImageSrc && onClearStopFrame ? (
+                        <button
+                          type="button"
+                          onClick={() => onClearStopFrame(shotNumber)}
+                          className="flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          title={t(locale, "เอาภาพ Stop frame ออกจาก slot", "Remove stop frame from slot")}
+                          data-testid={`vd-storyboard-clear-stop-frame-${shotNumber}`}
+                        >
+                          <X aria-hidden="true" className="h-3 w-3" />
+                        </button>
+                      ) : (
+                        <span className="text-[9px] text-muted-foreground">→</span>
+                      )}
                     </div>
                     <div className="relative aspect-[9/16] w-full overflow-hidden rounded border border-violet-200 bg-muted dark:border-violet-900">
                       {stopFrameImageSrc ? (
@@ -7918,15 +7945,74 @@ export function VerticalDramaStoryboardPanel({
                           is purely informational here. Absent for every clip that
                           never opted into the option. */}
                         {clip?.audioDirection ? (
-                          <p
-                            className="text-[11px] text-muted-foreground"
-                            data-testid={`vd-storyboard-audio-direction-${clipKey}`}
-                          >
-                            <span className="font-medium">
-                              {t2.nativeAudioDirectionChipLabel}
-                            </span>{" "}
-                            {clip.audioDirection}
-                          </p>
+                          <div className="flex flex-col gap-1">
+                            <p
+                              className="text-[11px] text-muted-foreground"
+                              data-testid={`vd-storyboard-audio-direction-${clipKey}`}
+                            >
+                              <span className="font-medium">
+                                {t2.nativeAudioDirectionChipLabel}
+                              </span>{" "}
+                              {clip.audioDirection}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium"
+                                data-testid={`vd-storyboard-audio-status-${clipKey}`}
+                              >
+                                🔊 Native Audio (EBU R128: -14 LUFS)
+                              </span>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={activeAudioInspectorShot === shotNumber ? "secondary" : "outline"}
+                                className="h-6 text-[10px] px-2 py-0.5 font-medium cursor-pointer"
+                                onClick={() =>
+                                  setActiveAudioInspectorShot(
+                                    activeAudioInspectorShot === shotNumber ? null : shotNumber
+                                  )
+                                }
+                                data-testid={`vd-storyboard-open-audio-inspector-${clipKey}`}
+                              >
+                                {activeAudioInspectorShot === shotNumber
+                                  ? "ปิดสตูดิโอมิกซ์"
+                                  : "🎚 สตูดิโอมิกซ์"}
+                              </Button>
+                            </div>
+                            {activeAudioInspectorShot === shotNumber ? (
+                              <div
+                                className="mt-2 rounded-lg border border-primary/20 bg-card/60 p-0.5"
+                                data-testid={`vd-storyboard-audio-inspector-container-${clipKey}`}
+                              >
+                                <VerticalDramaAudioInspector
+                                  seriesId={String(seriesId ?? "")}
+                                  episodeId={String(episodeNumber ?? "0")}
+                                  shotNumber={shotNumber}
+                                  nativeAudioEnabled={nativeAudioEnabled ?? true}
+                                  onTriggerRepair={() => {
+                                    if (onTriggerSurgicalAudioRepair) {
+                                      onTriggerSurgicalAudioRepair(shotNumber);
+                                    } else {
+                                      toast.info("เริ่มดำเนินการซ่อมเฉพาะเสียงพูด (5 เครดิต)...");
+                                    }
+                                  }}
+                                  onRollbackTake={(takeNum) => {
+                                    if (onRollbackAudioTake) {
+                                      onRollbackAudioTake(shotNumber, takeNum);
+                                    } else {
+                                      toast.success(`ย้อนกลับไปยัง Take #${takeNum} เรียบร้อย (0 เครดิต)`);
+                                    }
+                                  }}
+                                  onUpdateMixDeltas={(deltas) => {
+                                    if (onUpdateShotAudioMixDeltas) {
+                                      onUpdateShotAudioMixDeltas(shotNumber, deltas);
+                                    }
+                                  }}
+                                  onClose={() => setActiveAudioInspectorShot(null)}
+                                />
+                              </div>
+                            ) : null}
+                          </div>
                         ) : null}
 
                         {/* Per-shot video prompt generation (Phase 6.6) — the

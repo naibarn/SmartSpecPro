@@ -47,9 +47,18 @@
       }
     },
     "audioIntent": {
-      "type": [
-        "string",
-        "null"
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "Structured ShotAudioIntent for Feature 175"
+        },
+        {
+          "type": "string",
+          "description": "Legacy freeform audio intent string"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "endBridge": {

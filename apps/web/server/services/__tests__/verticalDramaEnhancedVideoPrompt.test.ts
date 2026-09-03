@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import {
   buildEnhancedSkillInput,
   buildEnhancedJobKey,
+  buildEnhancedInputFingerprint,
   evaluateEnhancedVideoPromptReadiness,
   getEnhancedBridgeResultValidationError,
   isEnhancedJobResultApplicable,
@@ -274,5 +275,31 @@ describe("vertical drama Enhanced prompt boundary", () => {
         flagEnabled: true,
       })
     ).toBe(false);
+  });
+
+  it("differentiates input fingerprints when nativeAudioEnabled changes", () => {
+    const offInput = buildEnhancedSkillInput({
+      shot: { shot_number: 1, dialogue: [] },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: baseInput.targetVideoModel,
+      authoringModel: baseInput.authoringModel,
+      nativeAudioEnabled: false,
+    });
+    const onInput = buildEnhancedSkillInput({
+      shot: { shot_number: 1, dialogue: [] },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: baseInput.targetVideoModel,
+      authoringModel: baseInput.authoringModel,
+      nativeAudioEnabled: true,
+    });
+
+    const hashOff = buildEnhancedInputFingerprint(offInput);
+    const hashOn = buildEnhancedInputFingerprint(onInput);
+
+    expect(hashOff).toBeTruthy();
+    expect(hashOn).toBeTruthy();
+    expect(hashOff).not.toEqual(hashOn);
   });
 });

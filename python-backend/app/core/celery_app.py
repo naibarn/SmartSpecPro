@@ -14,7 +14,7 @@ import os
 _celery_logger = logging.getLogger(__name__)
 
 # Required queues — worker MUST consume from all of these
-REQUIRED_QUEUES = ["celery", "video", "media", "thumbnail_backfill", "presentation_export", "presentation_import", "sandbox", "vision"]
+REQUIRED_QUEUES = ["celery", "video", "media", "thumbnail_backfill", "presentation_export", "presentation_import", "sandbox", "vision", "audio"]
 ONEDRIVE_SCHEDULE_REQUIRED_VARS = (
     "MICROSOFT_CLIENT_ID",
     "MICROSOFT_CLIENT_SECRET",
@@ -54,6 +54,7 @@ celery_app.conf.update(
         Queue("presentation_import"),
         Queue("sandbox"),  # OpenSandbox job execution
         Queue("vision"),  # Vision analysis tasks
+        Queue("audio"),  # Feature 175 Vertical Drama Native Cinematic Audio worker
     ],
     task_create_missing_queues=True,
     # Queue routing: isolate FFmpeg video tasks from API-based media tasks
@@ -127,12 +128,16 @@ celery_app.conf.update(
         "app.tasks.vision_tasks.analyze_image_task": {"queue": "vision"},
         # System health monitor -> celery queue (lightweight, periodic)
         "app.tasks.system_health_task.monitor_system_health": {"queue": "celery"},
+        # Feature 175: Vertical Drama Cinematic Audio (heavy Demucs GPU stem separation & repair)
+        "app.workers.vertical_drama_audio_worker.execute_audio_separation_and_qc": {"queue": "audio"},
+        "app.workers.vertical_drama_audio_worker.execute_surgical_audio_repair": {"queue": "audio"},
     },
     # Ensure non-default task modules are always loaded at worker startup.
     imports=(
         "app.tasks.google_drive_tasks",
         "app.tasks.workflow_tasks",
         "app.workers.sandbox_job_worker",
+        "app.workers.vertical_drama_audio_worker",
     ),
 )
 

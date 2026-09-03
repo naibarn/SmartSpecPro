@@ -65,6 +65,12 @@ const JOB_TYPE_LABELS: Record<string, string> = {
   hermes_connection_authorize: "เชื่อมต่อบัญชี Grok (Hermes)",
   hermes_connection_probe: "ตรวจสอบการเชื่อมต่อ Grok (Hermes)",
   hermes_connection_disconnect: "ยกเลิกการเชื่อมต่อ Grok (Hermes)",
+  // Feature 175 (Vertical Drama Native Cinematic Audio) worker job types
+  vertical_drama_ffmpeg_assembly: "รวมวิดีโอตอนย่อยซีรีส์แนวตั้ง (FFmpeg)",
+  vd_audio_demucs_separation: "แยกสเต็มเสียง Demucs v4 (GPU)",
+  vd_audio_surgical_repair: "ซ่อมเสียงเฉพาะจุด Stage 4b (TTS + IR)",
+  vd_audio_qc_inspection: "ตรวจคุณภาพเสียงและซิงก์ปาก (QC)",
+  vd_audio_mastering: "มาสเตอร์เสียงมาตรฐาน EBU R128",
 };
 
 function formatJobType(jobType: string): string {
@@ -656,12 +662,22 @@ export default function RenderJobsPage() {
                                 </div>
                                 <div className="flex shrink-0 flex-wrap gap-2">
                                   {downloadUrl ? (
-                                    <Button asChild variant="outline" size="sm" className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10">
-                                      <a href={downloadUrl} target="_blank" rel="noreferrer" download>
-                                        <Download className="mr-2 h-4 w-4" />
-                                        ดาวน์โหลด
-                                      </a>
-                                    </Button>
+                                    <>
+                                      {/\.(wav|flac|mp3|aac|m4a|ogg)$/i.test(downloadUrl) || String(ref.artifactType).toLowerCase().includes("audio") ? (
+                                        <audio
+                                          controls
+                                          src={downloadUrl}
+                                          className="h-8 max-w-[200px]"
+                                          data-testid="worker-job-audio-preview"
+                                        />
+                                      ) : null}
+                                      <Button asChild variant="outline" size="sm" className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10">
+                                        <a href={downloadUrl} target="_blank" rel="noreferrer" download>
+                                          <Download className="mr-2 h-4 w-4" />
+                                          ดาวน์โหลด
+                                        </a>
+                                      </Button>
+                                    </>
                                   ) : null}
                                   {videoEditorRoute ? (
                                     <Button asChild variant="outline" size="sm" className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10">

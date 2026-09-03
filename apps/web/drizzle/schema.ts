@@ -24524,3 +24524,91 @@ export type VerticalDramaPromptExpansionRun =
   typeof verticalDramaPromptExpansionRuns.$inferSelect;
 export type InsertVerticalDramaPromptExpansionRun =
   typeof verticalDramaPromptExpansionRuns.$inferInsert;
+
+/** Feature 175: Series-wide Sound Bible */
+export const verticalDramaSeriesSoundBibles = pgTable(
+  "vertical_drama_series_sound_bibles",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: text("tenantId").notNull(),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    version: integer("version").notNull().default(1),
+    audioStyle: jsonb("audioStyle").notNull(),
+    characterVoiceProfiles: jsonb("characterVoiceProfiles").notNull().default([]),
+    locationSoundProfiles: jsonb("locationSoundProfiles").notNull().default([]),
+    transitionPolicy: jsonb("transitionPolicy").notNull().default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("vd_sound_bible_series_version_idx").on(t.seriesId, t.version),
+    index("vd_sound_bible_tenant_series_idx").on(t.tenantId, t.seriesId),
+  ]
+);
+
+export type VerticalDramaSeriesSoundBible = typeof verticalDramaSeriesSoundBibles.$inferSelect;
+export type InsertVerticalDramaSeriesSoundBible = typeof verticalDramaSeriesSoundBibles.$inferInsert;
+
+/** Feature 175: Granular Audio QC Reports per clip */
+export const verticalDramaAudioQcReports = pgTable(
+  "vertical_drama_audio_qc_reports",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: text("tenantId").notNull(),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    episodeId: bigint("episodeId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+    shotNumber: integer("shotNumber").notNull(),
+    clipNumber: integer("clipNumber").notNull(),
+    overallScore: integer("overallScore").notNull(),
+    asrCer: text("asrCer"),
+    vadSpeechRatio: text("vadSpeechRatio"),
+    avSyncOffsetMs: integer("avSyncOffsetMs"),
+    integratedLufs: text("integratedLufs"),
+    truePeakDb: text("truePeakDb"),
+    phaseCorrelation: text("phaseCorrelation"),
+    bgmBleedDetected: boolean("bgmBleedDetected").default(false).notNull(),
+    flags: jsonb("flags").default([]).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    index("vd_audio_qc_episode_shot_idx").on(t.episodeId, t.shotNumber),
+  ]
+);
+
+export type VerticalDramaAudioQcReportRow = typeof verticalDramaAudioQcReports.$inferSelect;
+export type InsertVerticalDramaAudioQcReportRow = typeof verticalDramaAudioQcReports.$inferInsert;
+
+/** Feature 175: Multi-Stem Audio Manifests per shot */
+export const verticalDramaAudioManifests = pgTable(
+  "vertical_drama_audio_manifests",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: text("tenantId").notNull(),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    episodeId: bigint("episodeId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+    shotNumber: integer("shotNumber").notNull(),
+    version: integer("version").notNull().default(1),
+    nativeAudioMode: varchar("nativeAudioMode", { length: 32 }).notNull().default("native_baked"),
+    stems: jsonb("stems").notNull().default({}),
+    mixDeltas: jsonb("mixDeltas").notNull().default({}),
+    takeHistory: jsonb("takeHistory").notNull().default([]),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("vd_audio_manifest_shot_version_idx").on(t.episodeId, t.shotNumber, t.version),
+  ]
+);
+
+export type VerticalDramaAudioManifestRow = typeof verticalDramaAudioManifests.$inferSelect;
+export type InsertVerticalDramaAudioManifestRow = typeof verticalDramaAudioManifests.$inferInsert;

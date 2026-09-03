@@ -168,9 +168,9 @@ describe("Sandbox Schema Definitions", () => {
 
     it("sandboxFeatureTypeEnum should have all expected values", () => {
       expect(sandboxFeatureTypeEnum.enumValues).toEqual(
-        expect.arrayContaining(["chat", "skill", "workflow", "library", "media", "presentation", "connector"])
+        expect.arrayContaining(["chat", "skill", "workflow", "library", "media", "presentation", "connector", "agency"])
       );
-      expect(sandboxFeatureTypeEnum.enumValues).toHaveLength(7);
+      expect(sandboxFeatureTypeEnum.enumValues).toHaveLength(8);
     });
   });
 

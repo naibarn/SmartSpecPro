@@ -13,10 +13,9 @@ describe("funnel_events migration", () => {
       entries: Array<{ idx: number; tag: string }>;
     };
 
-    const latest = journal.entries[journal.entries.length - 1];
-    expect(latest).toBeDefined();
-    expect(latest.idx).toBe(26);
-    expect(latest.tag).toBe("0026_add_funnel_events");
+    const entry = journal.entries.find((e) => e.tag === "0026_add_funnel_events");
+    expect(entry).toBeDefined();
+    expect(entry?.idx).toBe(26);
   });
 
   it("creates funnel_events and required supporting indexes", () => {

@@ -2349,6 +2349,26 @@ export type VerticalDramaFfmpegAssemblyJobContract = z.infer<
   typeof verticalDramaFfmpegAssemblyJobContractSchema
 >;
 
+/**
+ * Feature 175 (Vertical Drama Native Cinematic Audio)
+ * Worker runtime job types & capability families.
+ */
+export const VERTICAL_DRAMA_AUDIO_DEMUCS_JOB_TYPE =
+  "vd_audio_demucs_separation" as const;
+export const VERTICAL_DRAMA_AUDIO_REPAIR_JOB_TYPE =
+  "vd_audio_surgical_repair" as const;
+export const VERTICAL_DRAMA_AUDIO_QC_JOB_TYPE =
+  "vd_audio_qc_inspection" as const;
+export const VERTICAL_DRAMA_AUDIO_MASTERING_JOB_TYPE =
+  "vd_audio_mastering" as const;
+
+export const VERTICAL_DRAMA_AUDIO_CAPABILITY_FAMILIES = [
+  "vertical-drama-audio-dsp",
+  "vertical-drama-demucs-gpu",
+] as const;
+
+export const VERTICAL_DRAMA_AUDIO_CONTRACT_VERSION = 1 as const;
+
 export const localFolderIngestJobContractSchema = z
   .object({
     roots: z

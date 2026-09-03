@@ -117,6 +117,8 @@ process.on("unhandledRejection", reason => {
   console.error(
     `[remotion-sidecar] unhandledRejection: ${reason instanceof Error ? reason.stack || reason.message : String(reason)}`,
   );
+  process.exitCode = 1;
+  setImmediate(() => process.exit(1));
 });
 
 const REMOTION_STAGED_ASSET_DIRNAME = "remotion-assets";
@@ -351,13 +353,13 @@ export async function startLocalRemotionAssetServer(rootDir) {
 /**
  * Whether Remotion may hand H.264 encoding to the GPU.
  *
- * `renderMedia()` defaults `hardwareAcceleration` to `"disable"`, which is
- * the safe choice for a desktop worker. The bundled FFmpeg can advertise
- * NVENC even when the host has no usable NVIDIA device; Remotion may then
- * write to a closed encoder pipe (EPIPE) and terminate the sidecar.
+ * `renderMedia()` defaults `hardwareAcceleration` to `"disable"`, which pins
+ * the encode to libx264 regardless of what hardware is present — measured
+ * 2026-08-02 on a worker with an RTX 5060 Ti, Task Manager's Video Encode
+ * graph sat at 0% for the whole render while the CPU carried it.
  *
- * GPU encoding is an explicit opt-in. A worker must set
- * `SMARTAIHUB_ENABLE_GPU_ENCODING=1` only after validating its GPU/driver.
+ * `"if-possible"`, never `"required"`: a machine with no NVENC then falls
+ * back to libx264 silently instead of failing the job outright.
  *
  * CAUTION when touching the other `renderMedia()` options: Remotion drops
  * back to software encoding whenever `crf`, `encodingMaxRate`, or
@@ -367,11 +369,11 @@ export async function startLocalRemotionAssetServer(rootDir) {
  * it.
  *
  * Shares `SMARTAIHUB_ENABLE_GPU_ENCODING` with the HyperFrames lane (Rust
- * `DEFAULT_RENDER_ENV` sets it to "0") so the default is stable across both
- * renderers and GPU encoding still has ONE operator switch.
+ * `DEFAULT_RENDER_ENV` sets it to "1") so GPU encoding has ONE operator
+ * switch across both renderers, not two.
  */
 function resolveHardwareAcceleration() {
-  return process.env.SMARTAIHUB_ENABLE_GPU_ENCODING === "1" ? "if-possible" : "disable";
+  return process.env.SMARTAIHUB_ENABLE_GPU_ENCODING === "0" ? "disable" : "if-possible";
 }
 
 function argValue(name) {
@@ -673,7 +675,6 @@ export async function runRenderVideoMode(
   const resolvePaths = deps.resolveRuntimePackPaths ?? resolveRuntimePackPaths;
   const mkdir = deps.mkdirSync ?? mkdirSync;
   const readFile = deps.readFileSync ?? readFileSync;
-  const hashSha256 = deps.sha256 ?? (bytes => createHash("sha256").update(bytes).digest("hex"));
   const probeDuration = deps.probeDurationSeconds ?? probeDurationSeconds;
   const sleep = deps.sleep;
   const stageAssetsLocally = deps.stageAssetsLocally ?? stageRemotionAssetsLocally;
@@ -786,8 +787,7 @@ export async function runRenderVideoMode(
     }
 
     const outputPath = result.outputArtifactRef.url;
-    const bytes = readFile(outputPath);
-    const sha256 = hashSha256(bytes);
+    const sha256 = await hashFileSha256(outputPath);
     const durationSec =
       (await probeDuration(outputPath)) ??
       result.artifacts?.find(a => a.artifactType === "remotion_render_probe_report")?.inline

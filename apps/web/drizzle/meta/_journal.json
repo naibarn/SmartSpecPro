@@ -1891,6 +1891,13 @@
       "when": 1788396160727,
       "tag": "0283_credit_source_api_enum_repair",
       "breakpoints": true
+    },
+    {
+      "idx": 270,
+      "version": "7",
+      "when": 1788414000000,
+      "tag": "0284_vertical_drama_native_audio_tables",
+      "breakpoints": true
     }
   ]
 }

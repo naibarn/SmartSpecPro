@@ -439,6 +439,7 @@ export type EnhancedSkillInput = {
   authoringModel: EnhancedModelFacts;
   generationMode: "plan_only";
   researchMode: "off" | "bounded";
+  nativeAudioEnabled?: boolean;
 };
 
 export type EnhancedBridgeResult = {
@@ -557,7 +558,7 @@ export async function invokeEnhancedVideoDirectorBridge(
         `Enhanced Agent bridge returned an invalid prompt bundle: ${validationError}`,
       );
     }
-    return parsed;
+    return parsed as EnhancedBridgeResult;
   } finally {
     clearTimeout(timeout);
   }
@@ -571,6 +572,7 @@ export function buildEnhancedSkillInput(input: {
   targetVideoModel: EnhancedModelFacts;
   authoringModel: EnhancedModelFacts;
   researchMode?: "off" | "bounded";
+  nativeAudioEnabled?: boolean;
 }): EnhancedSkillInput {
   const dialogue = Array.isArray(input.shot.dialogue) ? input.shot.dialogue : [];
   return {
@@ -589,6 +591,7 @@ export function buildEnhancedSkillInput(input: {
     authoringModel: { ...input.authoringModel },
     generationMode: "plan_only",
     researchMode: input.researchMode ?? "off",
+    nativeAudioEnabled: input.nativeAudioEnabled ?? false,
   };
 }
 
@@ -682,6 +685,7 @@ export function buildEnhancedInputFingerprint(input: EnhancedSkillInput): string
     authoringModel: input.authoringModel,
     generationMode: input.generationMode,
     researchMode: input.researchMode,
+    nativeAudioEnabled: input.nativeAudioEnabled ?? false,
   });
 }
 

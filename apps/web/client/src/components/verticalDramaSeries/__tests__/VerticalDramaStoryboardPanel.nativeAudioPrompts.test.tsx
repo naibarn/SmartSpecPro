@@ -192,4 +192,79 @@ describe("VerticalDramaStoryboardPanel — per-clip audioDirection display (task
       screen.queryByTestId("vd-storyboard-audio-direction-1")
     ).not.toBeInTheDocument();
   });
+
+  it("toggles the 3-stem audio inspector when audio inspector button is clicked", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          motionPromptPack: {
+            clips: [
+              {
+                clipNumber: 1,
+                sourceShotNumbers: [1],
+                prompt: "Slow push-in on the hallway.",
+                audioDirection:
+                  "Door slams shut; distant rain patters against the window.",
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+
+    const openBtn = screen.getByTestId("vd-storyboard-open-audio-inspector-1");
+    expect(openBtn.textContent).toContain("สตูดิโอมิกซ์");
+    expect(screen.queryByTestId("vd-storyboard-audio-inspector-container-1")).not.toBeInTheDocument();
+
+    fireEvent.click(openBtn);
+    expect(screen.getByTestId("vd-storyboard-audio-inspector-container-1")).toBeInTheDocument();
+    expect(openBtn.textContent).toContain("ปิดสตูดิโอมิกซ์");
+
+    fireEvent.click(openBtn);
+    expect(screen.queryByTestId("vd-storyboard-audio-inspector-container-1")).not.toBeInTheDocument();
+  });
+
+  it("invokes onTriggerSurgicalAudioRepair and onRollbackAudioTake and onUpdateShotAudioMixDeltas when user interacts", () => {
+    const onTriggerSurgicalAudioRepair = vi.fn();
+    const onRollbackAudioTake = vi.fn();
+    const onUpdateShotAudioMixDeltas = vi.fn();
+
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          videoModels: [VEO_MODEL_WITH_NATIVE_AUDIO],
+          selectedVideoModelId: VEO_MODEL_WITH_NATIVE_AUDIO.id,
+          nativeAudioEnabled: true,
+          onTriggerSurgicalAudioRepair,
+          onRollbackAudioTake,
+          onUpdateShotAudioMixDeltas,
+          motionPromptPack: {
+            clips: [
+              {
+                clipNumber: 1,
+                sourceShotNumbers: [1],
+                prompt: "Slow push-in on the hallway.",
+                audioDirection:
+                  "Door slams shut; distant rain patters against the window.",
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+
+    // Open inspector
+    fireEvent.click(screen.getByTestId("vd-storyboard-open-audio-inspector-1"));
+    expect(screen.getByTestId("vd-storyboard-audio-inspector-container-1")).toBeInTheDocument();
+
+    // Trigger repair
+    const repairBtn = screen.getByTestId("vd-audio-trigger-repair-btn");
+    fireEvent.click(repairBtn);
+    expect(onTriggerSurgicalAudioRepair).toHaveBeenCalledWith(1);
+
+    // Reset faders (triggers onUpdateShotAudioMixDeltas)
+    const resetBtn = screen.getByTestId("vd-audio-reset-faders-btn");
+    fireEvent.click(resetBtn);
+    expect(onUpdateShotAudioMixDeltas).toHaveBeenCalledWith(1, { dialogueDb: 0, foleyDb: -2, ambienceDb: -6 });
+  });
 });

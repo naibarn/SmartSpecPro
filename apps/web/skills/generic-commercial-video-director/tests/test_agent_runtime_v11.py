@@ -211,12 +211,14 @@ async def async_tests():
     # Observed-state provenance is controller-owned while the canonical
     # observed-state schema deliberately has no shotId field.
     observed_sid=schema.schema_id('observed_start_state')
-    observed_payload={'source':'designed','characters':[],'objects':[],'camera':{'framing':'wide','angle':'eye level','movementAtT0':'static'},'environment':'room','lighting':'daylight','uncertainties':[]}
+    observed_payload={'source':'designed','characters':[],'objects':[],'camera':{'framing':'wide','angle':'eye level'},'environment':'room','lighting':'daylight','uncertainties':[]}
     observed_env=StageOutputEnvelope(stage='observed_start_state',schemaId=observed_sid,payload=observed_payload)
     observed_runner=Runner([observed_env]);observed_orch=DirectorOrchestrator(package_root=str(ROOT),runner=observed_runner,agent_factory=AgentFactory())
     observed_ctx=DirectorRunContext('t','p','r-observed','actor','11.0.0',Core(),AgentRuntimeConfig(model='gpt-test',max_contract_repair_attempts=0))
     observed_result=await observed_orch.run_stage('observed_start_state',context=observed_ctx,input_payload={'source':'start_frame'})
     assert observed_result.payload['source']=='start_frame' and 'shotId' not in observed_result.payload
+    assert observed_result.payload['camera']['movementAtT0']=='unknown from still image'
+    assert any('Camera movement at t=0' in item for item in observed_result.payload['uncertainties'])
     # A model must not be allowed to rebind output to a different shot.
     conflicting=StageOutputEnvelope(stage='prompt_intent',schemaId=prompt_sid,payload={**prompt_payload,'shotId':'S99'})
     conflict_runner=Runner([conflicting]);conflict_orch=DirectorOrchestrator(package_root=str(ROOT),runner=conflict_runner,agent_factory=AgentFactory())

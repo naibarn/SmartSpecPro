@@ -35,6 +35,9 @@ import {
   billingEffects,
   messages,
   verticalDramaDraftLedgers,
+  verticalDramaSeriesSoundBibles,
+  verticalDramaAudioQcReports,
+  verticalDramaAudioManifests,
 } from './schema';
 
 describe('vertical_drama_draft_ledgers Series ownership schema', () => {
@@ -876,5 +879,51 @@ describe('messages.attachments assetId extension', () => {
     const cols = getTableColumns(messages);
     expect(cols.runtimeMetadata).toBeDefined();
     expect(cols.runtimeMetadata.notNull).toBeFalsy();
+  });
+});
+
+describe('Feature 175: Native Cinematic Audio tables schema', () => {
+  test('vertical_drama_series_sound_bibles has all required columns', () => {
+    const cols = getTableColumns(verticalDramaSeriesSoundBibles);
+    expect(cols.id).toBeDefined();
+    expect(cols.tenantId.notNull).toBe(true);
+    expect(cols.seriesId.notNull).toBe(true);
+    expect(cols.version.notNull).toBe(true);
+    expect(cols.audioStyle.notNull).toBe(true);
+    expect(cols.characterVoiceProfiles).toBeDefined();
+    expect(cols.locationSoundProfiles).toBeDefined();
+    expect(cols.transitionPolicy).toBeDefined();
+    expect(cols.createdAt.notNull).toBe(true);
+    expect(cols.updatedAt.notNull).toBe(true);
+  });
+
+  test('vertical_drama_audio_qc_reports has all required columns', () => {
+    const cols = getTableColumns(verticalDramaAudioQcReports);
+    expect(cols.id).toBeDefined();
+    expect(cols.tenantId.notNull).toBe(true);
+    expect(cols.seriesId.notNull).toBe(true);
+    expect(cols.episodeId.notNull).toBe(true);
+    expect(cols.shotNumber.notNull).toBe(true);
+    expect(cols.clipNumber.notNull).toBe(true);
+    expect(cols.overallScore.notNull).toBe(true);
+    expect(cols.bgmBleedDetected.notNull).toBe(true);
+    expect(cols.flags.notNull).toBe(true);
+    expect(cols.createdAt.notNull).toBe(true);
+  });
+
+  test('vertical_drama_audio_manifests has all required columns', () => {
+    const cols = getTableColumns(verticalDramaAudioManifests);
+    expect(cols.id).toBeDefined();
+    expect(cols.tenantId.notNull).toBe(true);
+    expect(cols.seriesId.notNull).toBe(true);
+    expect(cols.episodeId.notNull).toBe(true);
+    expect(cols.shotNumber.notNull).toBe(true);
+    expect(cols.version.notNull).toBe(true);
+    expect(cols.nativeAudioMode.notNull).toBe(true);
+    expect(cols.stems.notNull).toBe(true);
+    expect(cols.mixDeltas.notNull).toBe(true);
+    expect(cols.takeHistory.notNull).toBe(true);
+    expect(cols.createdAt.notNull).toBe(true);
+    expect(cols.updatedAt.notNull).toBe(true);
   });
 });

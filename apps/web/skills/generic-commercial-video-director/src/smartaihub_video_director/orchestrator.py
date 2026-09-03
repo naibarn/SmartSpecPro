@@ -80,6 +80,24 @@ class DirectorOrchestrator:
             # frame or designs a state. Do not let model prose change that
             # provenance classification.
             bound['source']=input_payload['source']
+            # A still image cannot establish camera motion. Complete this one
+            # deterministic, unobservable field locally so a provider that
+            # omits it cannot make the whole Enhanced flow fail contract
+            # validation and spend its bounded repair attempt.
+            camera=payload.get('camera')
+            if isinstance(camera,dict):
+                movement=camera.get('movementAtT0')
+                if not isinstance(movement,str) or not movement.strip():
+                    bound['camera']={**camera,'movementAtT0':'unknown from still image'}
+                    uncertainties=bound.get('uncertainties')
+                    if isinstance(uncertainties,list) and not any(
+                        isinstance(item,str) and 'movementAtT0' in item
+                        for item in uncertainties
+                    ):
+                        bound['uncertainties']=[
+                            *uncertainties,
+                            'Camera movement at t=0 is not observable from a still image.',
+                        ]
         return bound
     async def _authorize_output_assets(self,context,envelope):
         refs=set(envelope.evidence_asset_ids)|self._extract_asset_refs(envelope.payload)

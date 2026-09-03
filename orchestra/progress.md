@@ -70,3 +70,10 @@ flags and infrastructure runtime settings were enabled.
 
 Repair: added a server-side snake_case/camelCase storyboard normalizer and
 restarted `smartspec-web.service`; current service is active and `/healthz` is OK.
+
+## Enhanced prompt error diagnosis (2026-09-03)
+
+- Evidence: Episode 182 / Series 26 has persisted Start Frame assets and camera intent; the failure was the model's `observed_start_state` payload omitting required `camera.movementAtT0`.
+- Repair: strengthened observer instructions and added a bounded controller completion for the still-image-only camera-motion fact; fixed the post-audio-change `audio_direction` NameError path.
+- Verification: v11 runtime checks, audio bridge tests, package validator, bridge health, Python compile, Enhanced service tests, and focused diff check passed.
+- External evidence still not run: authenticated browser retry and live provider execution; no paid generation or database mutation performed.

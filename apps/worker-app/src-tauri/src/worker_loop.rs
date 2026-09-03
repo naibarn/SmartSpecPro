@@ -1126,14 +1126,15 @@ async fn handle_worker_loop_error(
                 "serverUrl": connection_snapshot.as_ref().map(|connection| connection.server_url.as_str()),
             }),
         );
-        cancel.store(true, Ordering::Relaxed);
-        set_executor_error(
+        // Do NOT cancel the worker loop (`cancel.store(true)`).
+        // A stale/expired lease on a single job during heavy rendering or network delays
+        // must not terminate the entire Worker App. Instead, reset the executor to polling
+        // so the worker continues servicing new jobs smoothly.
+        set_executor_polling(
             executor,
-            format!(
-                "Worker loop stopped because the active job lease was lost during render. This prevents claiming the same job again before the control plane settles. {error}"
-            ),
+            "Job lease expired during render; continuing to poll for next available jobs.",
         );
-        return true;
+        return false;
     }
     crate::diagnostics::log_error(app_data_dir, "worker_loop.error", json!({ "error": error }));
     set_executor_error(executor, format!("Worker loop error: {error}"));
@@ -1749,7 +1750,7 @@ fn record_terminal_error_if_needed(
     result: Result<(), String>,
 ) {
     if let Err(error) = result {
-        if is_terminal_worker_auth_error(&error) || is_stale_worker_lease_error(&error) {
+        if is_terminal_worker_auth_error(&error) {
             if let Ok(mut guard) = terminal_error.lock() {
                 if guard.is_none() {
                     *guard = Some(error);
@@ -7631,7 +7632,7 @@ mod tests {
     }
 
     #[test]
-    fn stale_worker_lease_errors_stop_the_loop_instead_of_retrying_claims() {
+    fn stale_worker_lease_errors_detected_for_unretryable_events_without_stopping_app() {
         assert!(is_stale_worker_lease_error(
             "worker control plane returned HTTP 409 Conflict: Worker lease token is stale or invalid"
         ));

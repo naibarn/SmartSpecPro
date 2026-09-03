@@ -12,10 +12,9 @@ describe("prompt media generation category migration", () => {
       entries: Array<{ idx: number; tag: string }>;
     };
 
-    const latest = journal.entries[journal.entries.length - 1];
-    expect(latest).toBeDefined();
-    expect(latest.idx).toBe(58);
-    expect(latest.tag).toBe("0058_prompt_media_generation_categories");
+    const entry = journal.entries.find((e) => e.tag === "0058_prompt_media_generation_categories");
+    expect(entry).toBeDefined();
+    expect(entry?.idx).toBe(58);
   });
 
   it("adds image and video prompt generation categories to the enum", () => {

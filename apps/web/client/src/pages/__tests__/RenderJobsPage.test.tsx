@@ -177,6 +177,62 @@ describe("RenderJobsPage — Feature 135 (Hermes Grok media worker) section 12 j
   });
 });
 
+describe("RenderJobsPage — Feature 175 (Vertical Drama Native Cinematic Audio) worker job types & preview", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    detailQueryMock.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+    cancelMutationMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
+  });
+
+  it.each([
+    ["vd_audio_demucs_separation", "แยกสเต็มเสียง Demucs v4 (GPU)"],
+    ["vd_audio_surgical_repair", "ซ่อมเสียงเฉพาะจุด Stage 4b (TTS + IR)"],
+    ["vd_audio_qc_inspection", "ตรวจคุณภาพเสียงและซิงก์ปาก (QC)"],
+    ["vd_audio_mastering", "มาสเตอร์เสียงมาตรฐาน EBU R128"],
+  ] as const)("renders the Thai label for %s", (jobType, label) => {
+    listQueryMock.mockReturnValue({
+      data: { items: [{ ...REMOTION_JOB, id: `job-${jobType}`, jobType }] },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    render(<RenderJobsPage />);
+    expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+  });
+
+  it("renders an audio element when an audio outputRef is present in detailQuery", () => {
+    listQueryMock.mockReturnValue({
+      data: { items: [{ ...REMOTION_JOB, id: "job-audio-detail", jobType: "vd_audio_demucs_separation" }] },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    detailQueryMock.mockReturnValue({
+      data: {
+        id: "job-audio-detail",
+        jobType: "vd_audio_demucs_separation",
+        status: "completed",
+        canCancel: false,
+        outputRefs: [
+          {
+            artifactId: "art-1",
+            artifactType: "audio_stem",
+            storageRef: "audio/vocals.flac",
+            downloadUrl: "https://cdn.example.com/audio/vocals.flac",
+          },
+        ],
+        events: [],
+      },
+      isLoading: false,
+      isError: false,
+    });
+    render(<RenderJobsPage />);
+    expect(screen.getByTestId("worker-job-audio-preview")).toBeInTheDocument();
+  });
+});
+
 describe("RenderJobsPage — job-type filter (spec 143 §5 R1)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
