@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
 import { useWorkerAppContext } from "./app/workerContext";
 import { MediaWorkspaceHost } from "./screens/media-workspace/MediaWorkspaceHost";
+import { SeriesSwitcherModal } from "./screens/media-workspace/SeriesSwitcherModal";
 import type { CanonicalWorkerRouteId } from "./app/workerRoutes";
 
 type SeriesProjection = {
@@ -137,7 +138,13 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
   const [selectedSeriesId, setSelectedSeriesId] = useState(contextSeriesId ?? "");
   const [seriesQuery, setSeriesQuery] = useState("");
   const [nextSeriesCursor, setNextSeriesCursor] = useState<string | null>(null);
-  const [rootPath, setRootPath] = useState("");
+  const [rootPath, setRootPath] = useState<string>(() => {
+    try {
+      return localStorage.getItem("smartspec_last_project_folder") || "";
+    } catch {
+      return "";
+    }
+  });
   const [workspace, setWorkspace] = useState<WorkspaceStatus>(null);
   const [scan, setScan] = useState<ScanPreview | null>(null);
   const [sourceRelativeName, setSourceRelativeName] = useState("");
@@ -168,6 +175,8 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
     outputRelativeName: string;
   } | null>(null);
   const [isIntentModalOpen, setIsIntentModalOpen] = useState(false);
+  const [isSeriesModalOpen, setIsSeriesModalOpen] = useState(false);
+  const [copiedPath, setCopiedPath] = useState(false);
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -184,7 +193,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
       );
       setSeries((current) => options?.append ? [...current, ...response.items] : response.items);
       setNextSeriesCursor(response.nextCursor);
-      if (!options?.append && response.items[0]) setSelectedSeriesId((current) => {
+      if (!options?.append && response.items[0] && !isMedia) setSelectedSeriesId((current) => {
         if (current) return current;
         setContextSeriesId(response.items[0].seriesId);
         return response.items[0].seriesId;
@@ -201,9 +210,6 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
   useEffect(() => {
     if (contextSeriesId && contextSeriesId !== selectedSeriesId) {
       setSelectedSeriesId(contextSeriesId);
-      setWorkspace(null);
-      setSelectedRootId(null);
-      setRootPath("");
       setScan(null);
       setSelectedEntries(new Set());
       setPlan(null);
@@ -211,16 +217,60 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
       setProcessingByEntry({});
       setAnalysisByEntry({});
     }
-  }, [contextSeriesId, selectedSeriesId, setSelectedRootId]);
+  }, [contextSeriesId, selectedSeriesId]);
   useEffect(() => {
     if (!selectedSeriesId) return;
+
+    const currentFolder = rootPath || (() => {
+      try {
+        return localStorage.getItem("smartspec_last_project_folder") || "";
+      } catch {
+        return "";
+      }
+    })();
+
     void invoke<WorkspaceStatus>("worker_app_select_series_workspace", { seriesId: selectedSeriesId })
-      .then(value => {
-        setWorkspace(value);
-        setSelectedRootId(value?.rootId ?? null);
-        setRootPath(value?.localPath ?? "");
+      .then((value) => {
+        if (value?.localPath) {
+          setWorkspace(value);
+          setSelectedRootId(value.rootId ?? null);
+          setRootPath(value.localPath);
+          try {
+            localStorage.setItem("smartspec_last_project_folder", value.localPath);
+          } catch {}
+        } else if (currentFolder) {
+          setRootPath(currentFolder);
+          void invoke<WorkspaceStatus>("worker_app_pick_local_root", {
+            seriesId: selectedSeriesId,
+            path: currentFolder.trim(),
+          })
+            .then((projection) => {
+              setWorkspace(projection);
+              setSelectedRootId(projection?.rootId ?? null);
+            })
+            .catch(() => {});
+        } else {
+          setWorkspace(null);
+          setSelectedRootId(null);
+        }
       })
-      .catch(() => { setWorkspace(null); setSelectedRootId(null); setRootPath(""); });
+      .catch(() => {
+        if (currentFolder) {
+          setRootPath(currentFolder);
+          void invoke<WorkspaceStatus>("worker_app_pick_local_root", {
+            seriesId: selectedSeriesId,
+            path: currentFolder.trim(),
+          })
+            .then((projection) => {
+              setWorkspace(projection);
+              setSelectedRootId(projection?.rootId ?? null);
+            })
+            .catch(() => {});
+        } else {
+          setWorkspace(null);
+          setSelectedRootId(null);
+        }
+      });
   }, [selectedSeriesId, setSelectedRootId]);
 
   const selected =
@@ -228,11 +278,6 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
   const selectSeries = (seriesId: string) => {
     setSelectedSeriesId(seriesId);
     setContextSeriesId(seriesId);
-    // Never leave actions enabled against the previously selected Series while
-    // the native Worker loads the new local workspace projection.
-    setWorkspace(null);
-    setSelectedRootId(null);
-    setRootPath("");
     setScan(null);
     setSelectedEntries(new Set());
     setPlan(null);
@@ -240,6 +285,32 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
     setProcessingByEntry({});
     setAnalysisByEntry({});
   };
+
+  const handleWorkspacePathChange = useCallback(
+    (newPath: string) => {
+      if (!newPath) return;
+      const clean = newPath.trim();
+      if (!clean) return;
+      setRootPath(clean);
+      try {
+        localStorage.setItem("smartspec_last_project_folder", clean);
+      } catch {}
+      if (selected) {
+        void invoke<WorkspaceStatus>("worker_app_pick_local_root", {
+          seriesId: selected.seriesId,
+          path: clean,
+        })
+          .then((projection) => {
+            setWorkspace(projection);
+            setSelectedRootId(projection?.rootId ?? null);
+          })
+          .catch((err) => {
+            console.warn("Failed to auto-bind picked root to selected series:", err);
+          });
+      }
+    },
+    [selected, setSelectedRootId],
+  );
   const selectRoot = async () => {
     if (!selected || !rootPath.trim()) return;
     setBusy(true);
@@ -263,9 +334,32 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
     const selectedPath = await openFolderDialog({
       directory: true,
       multiple: false,
-      title: locale === "th" ? "เลือกโฟลเดอร์ footage ของ Series" : "Choose the Series footage folder",
+      title: locale === "th" ? "เลือกโฟลเดอร์ทำงานของ Project" : "Choose the Project workspace folder",
     });
-    if (typeof selectedPath === "string") setRootPath(selectedPath);
+    if (typeof selectedPath === "string") {
+      setRootPath(selectedPath);
+      try {
+        localStorage.setItem("smartspec_last_project_folder", selectedPath);
+      } catch {}
+      if (selected) {
+        setBusy(true);
+        setError("");
+        setMessage("");
+        try {
+          const projection = await invoke<WorkspaceStatus>(
+            "worker_app_pick_local_root",
+            { seriesId: selected.seriesId, path: selectedPath.trim() },
+          );
+          setWorkspace(projection);
+          setSelectedRootId(projection?.rootId ?? null);
+          setMessage(locale === "th" ? `ผูกโฟลเดอร์ทำงานสำเร็จ: ${selectedPath}` : `Folder bound successfully: ${selectedPath}`);
+        } catch (caught) {
+          setError(invokeError(caught));
+        } finally {
+          setBusy(false);
+        }
+      }
+    }
   };
   const createSeriesFolder = async () => {
     if (!selected) return;
@@ -678,35 +772,62 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
           </section> : null}
           <section aria-labelledby={isMedia ? "media-context-heading" : "root-heading"}>
             {isMedia ? (
-              <div className="media-studio-header-bar">
-                <div className="studio-meta-group">
-                  <div className="studio-meta-pill series-pill">
-                    <span className="pill-icon">📺</span>
-                    <div>
-                      <strong>{selected ? selected.title : copy.noSelectedSeries}</strong>
-                      {selected && <span className="pill-sub">ID: {selected.seriesId} · {selected.accessMode === "operate" ? copy.canOperate : copy.readOnlyAccess}</span>}
+              <>
+                <SeriesSwitcherModal
+                  isOpen={isSeriesModalOpen}
+                  onClose={() => setIsSeriesModalOpen(false)}
+                  currentSeriesId={selectedSeriesId}
+                  onSelectSeries={(seriesId) => selectSeries(seriesId)}
+                />
+                <div className="media-studio-header-bar">
+                  <div className="studio-meta-group">
+                    <div
+                      className="studio-meta-pill series-pill"
+                      onClick={() => setIsSeriesModalOpen(true)}
+                      style={{ cursor: "pointer" }}
+                      title="คลิกเพื่อเลือก / สลับ Series ที่ผูกกับโปรเจกต์"
+                    >
+                      <span className="pill-icon">📺</span>
+                      <div>
+                        <strong>{selected ? selected.title : copy.noSelectedSeries}</strong>
+                        {selected ? (
+                          <span className="pill-sub">ID: {selected.seriesId} · {selected.accessMode === "operate" ? copy.canOperate : copy.readOnlyAccess}</span>
+                        ) : (
+                          <span className="pill-sub" style={{ color: "#fbbf24" }}>⚠️ กดที่นี่เพื่อเลือก Series</span>
+                        )}
+                      </div>
+                    </div>
+                    <div
+                      className="studio-meta-pill folder-pill"
+                      onClick={() => void chooseRoot()}
+                      style={{ cursor: "pointer" }}
+                      title="คลิกเพื่อเปลี่ยนโฟลเดอร์ทำงานของโปรเจกต์"
+                    >
+                      <span className="pill-icon">📁</span>
+                      <div>
+                        <strong>{workspace?.localPath || rootPath || "โฟลเดอร์โปรเจกต์"}</strong>
+                        {workspace?.localPath || rootPath ? (
+                          <span className="pill-sub">
+                            {workspace
+                              ? `${workspace.fileCount} ไฟล์ · Root: ${workspace.rootId}`
+                              : `Path: ${rootPath}`}
+                          </span>
+                        ) : (
+                          <span className="pill-sub">โฟลเดอร์ทำงานของโปรเจกต์</span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="studio-meta-pill folder-pill">
-                    <span className="pill-icon">📁</span>
-                    <div>
-                      <strong>{workspace ? workspace.localPath : copy.noFolder}</strong>
-                      {workspace && <span className="pill-sub">{workspace.fileCount} ไฟล์ · Root: {workspace.rootId}</span>}
-                    </div>
-                  </div>
-                </div>
 
-                <div className="studio-action-group">
-                  {onNavigate && (
+                  <div className="studio-action-group">
                     <button
                       type="button"
                       className="studio-btn-subtle"
-                      onClick={() => onNavigate("series")}
-                      title={copy.manageSeries}
+                      onClick={() => setIsSeriesModalOpen(true)}
+                      title="เลือก / สลับ Series จาก Server (smartaihub.app)"
                     >
                       🔄 สลับ Series
                     </button>
-                  )}
                   <button
                     type="button"
                     className="studio-btn-subtle"
@@ -729,9 +850,9 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
                     type="button"
                     className="studio-btn-settings"
                     onClick={() => setIsIntentModalOpen(true)}
-                    title="เปิดหน้าต่างตั้งค่า AI Preprocessing Intent"
+                    title="เปิดหน้าต่างตั้งค่าแผนและสัดส่วนโปรเจกต์"
                   >
-                    ⚙️ ตั้งค่าแผน AI
+                    ⚙️ ตั้งค่าโปรเจกต์
                   </button>
                   {plan && (
                     <div className="studio-plan-badge">
@@ -758,7 +879,71 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
                   )}
                 </div>
               </div>
-            ) : null}
+
+              {/* Full Project Folder Disk Path Banner */}
+              <div className="project-full-path-banner">
+                <div className="path-banner-left">
+                  <span className="path-title">📍 โฟลเดอร์ Project (Full Path):</span>
+                  <span className={`path-status-badge ${workspace?.localPath || rootPath ? "active" : ""}`}>
+                    {workspace?.localPath || rootPath ? "Active Workspace" : "Workspace"}
+                  </span>
+                </div>
+
+                <div className="path-banner-middle">
+                  <code className="path-code-display" title={workspace?.localPath || rootPath || "โฟลเดอร์ทำงานของโปรเจกต์"}>
+                    {workspace?.localPath || rootPath || "โฟลเดอร์ทำงานของโปรเจกต์"}
+                  </code>
+                </div>
+
+                <div className="path-banner-actions">
+                  <button
+                    type="button"
+                    className="path-action-btn primary"
+                    onClick={() => void chooseRoot()}
+                    title="เลือก / สลับโฟลเดอร์ทำงานของโปรเจกต์"
+                  >
+                    📂 เลือก / สลับโฟลเดอร์
+                  </button>
+                  {(workspace?.localPath || rootPath) && (
+                    <>
+                      <button
+                        type="button"
+                        className="path-action-btn"
+                        onClick={async () => {
+                          const targetPath = workspace?.localPath || rootPath;
+                          if (targetPath) {
+                            try {
+                              await invoke("worker_app_reveal_file", { path: targetPath });
+                            } catch (err) {
+                              console.warn("Failed to reveal folder:", err);
+                            }
+                          }
+                        }}
+                        title="เปิดโฟลเดอร์นี้ใน File Explorer บนระบบปฏิบัติการ"
+                      >
+                        📁 เปิดในเครื่อง
+                      </button>
+                      <button
+                        type="button"
+                        className="path-action-btn"
+                        onClick={() => {
+                          const targetPath = workspace?.localPath || rootPath;
+                          if (targetPath) {
+                            navigator.clipboard.writeText(targetPath);
+                            setCopiedPath(true);
+                            setTimeout(() => setCopiedPath(false), 2000);
+                          }
+                        }}
+                        title="คัดลอก Path เต็มเข้า Clipboard"
+                      >
+                        {copiedPath ? "✅ คัดลอกแล้ว!" : "📋 คัดลอก Path"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : null}
 
             {!isMedia ? <>
             <h3 id="root-heading">{copy.root}</h3>
@@ -878,7 +1063,14 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
                       status: workspace.status,
                       fileCount: workspace.fileCount,
                       totalBytes: workspace.totalBytes,
-                      localPath: workspace.localPath,
+                      localPath: workspace.localPath || rootPath,
+                    }
+                  : rootPath
+                  ? {
+                      status: "ready",
+                      fileCount: 0,
+                      totalBytes: 0,
+                      localPath: rootPath,
                     }
                   : null
               }
@@ -908,6 +1100,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
               onRemoveDeadAirChange={setRemoveDeadAir}
               onOpenIntentSettings={() => setIsIntentModalOpen(true)}
               onBuildPlan={() => void buildPlan()}
+              onWorkspacePathChange={handleWorkspacePathChange}
             /> : null}
 
             {/* AI-assisted Preprocessing Intent Modal Dialog */}

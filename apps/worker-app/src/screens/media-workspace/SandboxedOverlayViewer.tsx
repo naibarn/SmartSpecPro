@@ -1,22 +1,74 @@
 import { useEffect, useRef } from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { safeConvertFileSrc } from "./projectPersistence";
 import { buildOverlayDocument } from "./overlayDocument";
 import type { NleClip } from "../../types/nleProject";
 
 function getMediaSource(clip: NleClip): string {
-  if (clip.sourceUrl && clip.sourceUrl.trim().length > 0) return clip.sourceUrl;
-  if (clip.sourcePath && clip.sourcePath.trim().length > 0) {
-    try {
-      let clean = clip.sourcePath.trim();
-      if (clean.startsWith("\\\\?\\") || clean.startsWith("//?/")) {
-        clean = clean.slice(4);
-      }
-      return convertFileSrc(clean);
-    } catch {
-      return clip.sourcePath;
+  const path = (clip.sourcePath || clip.sourceUrl || "").trim();
+  if (!path) return "";
+  return safeConvertFileSrc(path);
+}
+
+function BRollVideoItem({
+  src,
+  clip,
+  currentTimeMs,
+  isPlaying,
+  volume = 1.0,
+  isMuted = false,
+}: {
+  src: string;
+  clip: NleClip;
+  currentTimeMs: number;
+  isPlaying: boolean;
+  volume?: number;
+  isMuted?: boolean;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const clipTimeSec = Math.max(0, (currentTimeMs - clip.timelineStartMs) / 1000);
+
+  // Sync seek position
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    if (Math.abs(el.currentTime - clipTimeSec) > 0.25) {
+      el.currentTime = clipTimeSec;
     }
-  }
-  return "";
+  }, [clipTimeSec]);
+
+  // Sync play / pause
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    if (isPlaying) {
+      if (el.paused) {
+        el.play().catch(() => {});
+      }
+    } else {
+      if (!el.paused) {
+        el.pause();
+      }
+    }
+  }, [isPlaying]);
+
+  // Sync volume & mute
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    const clipVol = clip.volume !== undefined ? clip.volume : 1.0;
+    el.volume = Math.min(1.0, Math.max(0, volume * clipVol));
+    el.muted = isMuted || clipVol === 0;
+  }, [volume, isMuted, clip.volume]);
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      playsInline
+      muted={isMuted || (clip.volume ?? 1.0) === 0}
+      className="broll-overlay-media"
+    />
+  );
 }
 
 export interface SandboxedOverlayViewerProps {
@@ -27,6 +79,9 @@ export interface SandboxedOverlayViewerProps {
   focusX?: number;
   focusY?: number;
   productPin?: { x: number; y: number } | null;
+  isPlaying?: boolean;
+  volume?: number;
+  isMuted?: boolean;
 }
 
 export function SandboxedOverlayViewer({
@@ -37,6 +92,9 @@ export function SandboxedOverlayViewer({
   focusX = 0.5,
   focusY = 0.5,
   productPin = null,
+  isPlaying = false,
+  volume = 1.0,
+  isMuted = false,
 }: SandboxedOverlayViewerProps) {
   const threeCanvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number | null>(null);
@@ -360,9 +418,12 @@ export function SandboxedOverlayViewer({
             }
           }
 
+          // Detect video vs image: strip query string / fragment before checking extension.
+          // For cloud URLs (no extension), fall back to durationMs heuristic (>3 s = video).
+          const srcPath = mediaSrc.split("?")[0].split("#")[0];
           const isVideo =
-            mediaSrc.match(/\.(mp4|webm|mov|mkv)$/i) ||
-            (!mediaSrc.match(/\.(png|jpg|jpeg|webp|gif|svg)$/i) && clip.durationMs > 5000);
+            srcPath.match(/\.(mp4|webm|mov|mkv|avi|m4v)$/i) ||
+            (!srcPath.match(/\.(png|jpg|jpeg|webp|gif|svg|avif|bmp)$/i) && clip.durationMs > 3000);
 
           return (
             <div
@@ -375,13 +436,13 @@ export function SandboxedOverlayViewer({
               }}
             >
               {isVideo ? (
-                <video
+                <BRollVideoItem
                   src={mediaSrc}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="broll-overlay-media"
+                  clip={clip}
+                  currentTimeMs={currentTimeMs}
+                  isPlaying={isPlaying}
+                  volume={volume}
+                  isMuted={isMuted}
                 />
               ) : (
                 <img

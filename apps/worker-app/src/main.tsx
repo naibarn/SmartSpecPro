@@ -560,6 +560,64 @@ function App() {
   const runtimeInstallStartedAtRef = useRef<number | null>(null);
   const refreshInFlightRef = useRef(false);
 
+  // Manual Version Check States & Handlers
+  const [isCheckingManualUpdate, setIsCheckingManualUpdate] = useState(false);
+  const [manualUpdateMsg, setManualUpdateMsg] = useState<string | null>(null);
+
+  const handleManualAppUpdateCheck = async () => {
+    setIsCheckingManualUpdate(true);
+    setManualUpdateMsg("กำลังตรวจสอบเวอร์ชั่นใหม่ล่าสุด...");
+
+    try {
+      let release: WorkerAppRelease | null = null;
+      if (settings.serverUrl.trim()) {
+        const payload = await fetchJsonWithTimeout<{
+          release: WorkerAppRelease | null;
+        }>(
+          `${settings.serverUrl.trim().replace(/\/$/, "")}/api/desktop-releases/worker-app/latest`,
+        );
+        release = payload.release ?? null;
+      }
+
+      if (release && appVersion && isNewerVersion(appVersion, release.version)) {
+        setWorkerAppUpdate(release);
+        setManualUpdateMsg(`🚀 พบเวอร์ชั่นใหม่: v${release.version} (เวอร์ชั่นที่ติดตั้งอยู่: v${appVersion})`);
+      } else {
+        setWorkerAppUpdate(null);
+        setManualUpdateMsg(`✅ แอพของคุณเป็นเวอร์ชั่นล่าสุดแล้ว (v${appVersion || "0.1.271"})`);
+      }
+    } catch (err) {
+      setManualUpdateMsg(`⚠️ ไม่สามารถตรวจสอบเวอร์ชั่นได้: ${formatInvokeError(err)}`);
+    } finally {
+      setIsCheckingManualUpdate(false);
+    }
+  };
+
+  const handleTriggerAppUpdate = async (targetRelease?: WorkerAppRelease | null) => {
+    const release = targetRelease || workerAppUpdate;
+    if (!release) return;
+
+    const downloadUrl = resolveSameOriginUrl(settings.serverUrl, release.downloadUrl);
+    if (!downloadUrl) return;
+
+    setWorkerAppUpdateStatus("กำลังดาวน์โหลดและเปิดตัวติดตั้ง (Installer)...");
+    try {
+      await invoke("worker_app_install_update", {
+        url: downloadUrl,
+        version: release.version,
+      });
+    } catch (error) {
+      setWorkerAppUpdateStatus(null);
+      await nativeMessage(
+        `เกิดข้อผิดพลาดในการเปิดตัวติดตั้งอัปเดต:\n\n${formatInvokeError(error)}\n\nคุณสามารถดาวน์โหลดตัวติดตั้งได้โดยตรงจาก Dashboard`,
+        {
+          title: "Smart AI Hub Worker — อัปเดตไม่สำเร็จ",
+          kind: "error",
+        },
+      ).catch(() => undefined);
+    }
+  };
+
   const applyRuntimeUpdateCheck = (check: RuntimeUpdateCheck) => {
     setRuntimeVersionCheck(check);
     setRuntimeUpdate(check.updateAvailable ? check : null);
@@ -2061,9 +2119,27 @@ function App() {
         <div>
           <p className="eyebrow">Lightweight worker helper</p>
           <h1>Smart AI Hub Worker App</h1>
-          {appVersion ? (
-            <p className="app-version">Version {appVersion}</p>
+          <div className="worker-app-version-row">
+            <span className="app-version-tag">
+              📌 เวอร์ชั่นแอพ: <strong>{appVersion ? `v${appVersion}` : "v0.1.271"}</strong>
+            </span>
+            <button
+              type="button"
+              className="btn-manual-version-check"
+              onClick={() => void handleManualAppUpdateCheck()}
+              disabled={isCheckingManualUpdate}
+              title="กดเพื่อตรวจสอบเวอร์ชั่นใหม่จาก Dashboard"
+            >
+              {isCheckingManualUpdate ? "⏳ กำลังเช็ค..." : "🔄 เช็คเวอร์ชั่นล่าสุด"}
+            </button>
+          </div>
+
+          {manualUpdateMsg ? (
+            <div className="version-check-status-badge">
+              <span>{manualUpdateMsg}</span>
+            </div>
           ) : null}
+
           <div
             className={`runtime-version-card ${runtimeVersionStatus.tone}`}
             data-testid="runtime-version-status"
@@ -2123,10 +2199,25 @@ function App() {
           {`The latest runtime could not be verified: ${runtimeUpdateCheckError} Existing compatible runtime and render jobs can continue. Open Runtime & agents to retry or repair the runtime.`}
         </div>
       ) : null}
-      {workerAppUpdate ? (
+      {workerAppUpdate && isNewerVersion(appVersion, workerAppUpdate.version) ? (
         <div className="connect-message pending" role="status">
-          <strong>Worker App update available.</strong>{" "}
-          {`Installed ${appVersion || "unknown"}; latest ${workerAppUpdate.version}. Confirm the update to download and open the Windows installer.`}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <strong style={{ fontSize: "0.95rem" }}>🚀 พบ Worker App เวอร์ชั่นใหม่! (v{workerAppUpdate.version})</strong>
+              <div style={{ fontSize: "0.82rem", color: "#cbd5e1", marginTop: 2 }}>
+                เวอร์ชั่นปัจจุบัน: v{appVersion || "0.1.271"} → เวอร์ชั่นใหม่: v{workerAppUpdate.version}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="primary-button"
+              style={{ background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)", border: "1px solid #38bdf8", padding: "6px 14px", fontWeight: 700 }}
+              onClick={() => void handleTriggerAppUpdate(workerAppUpdate)}
+              disabled={Boolean(workerAppUpdateStatus)}
+            >
+              {workerAppUpdateStatus ? "⏳ กำลังดาวน์โหลด..." : `⚡ อัปเดตเป็น v${workerAppUpdate.version} ทันที`}
+            </button>
+          </div>
         </div>
       ) : null}
       {workerAppUpdateStatus ? (
@@ -2263,8 +2354,7 @@ function App() {
         </section>
       ) : null}
 
-      {activeRoute === "series" ? <SeriesWorkspacePanel /> : null}
-      {activeRoute === "media-workspace" ? <MediaWorkspacePanel onNavigate={navigateWorkerRoute} /> : null}
+      {activeRoute === "series" || activeRoute === "media-workspace" ? <MediaWorkspacePanel onNavigate={navigateWorkerRoute} /> : null}
       {activeRoute === "comfy" ? <ComfyConnectionsScreen onNavigate={route => navigateWorkerRoute(route)} /> : null}
       {activeRoute === "workflows" ? <ComfyWorkflowsScreen /> : null}
       {activeRoute === "comfy-jobs" ? <ComfyJobsScreen /> : null}

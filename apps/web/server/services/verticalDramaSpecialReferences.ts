@@ -21,6 +21,7 @@ import {
   reconcileVerticalDramaMediaAsset,
 } from "./verticalDramaMediaAssetService";
 import type { SpecialReferenceBinding } from "../../shared/verticalDramaSeries/specialTieInContracts";
+import { resolveSpecialDialogueSpeakerEligibility } from "../../shared/verticalDramaSeries/advertisingDialoguePolicy";
 
 export type SpecialReferenceActor = { tenantId: string; userId: number };
 
@@ -232,6 +233,9 @@ export async function resolveSpecialCharacterBindings(input: {
       id: verticalDramaCharacters.id,
       characterKey: verticalDramaCharacters.characterKey,
       name: verticalDramaCharacters.name,
+      role: verticalDramaCharacters.role,
+      narrativeRole: verticalDramaCharacters.narrativeRole,
+      data: verticalDramaCharacters.data,
     })
     .from(verticalDramaCharacters)
     .where(
@@ -298,6 +302,19 @@ export async function resolveSpecialCharacterBindings(input: {
         source: "series_character",
         characterId: String(character.id),
         characterKey: character.characterKey,
+        characterName: character.name,
+        dialogueSpeakerEligible: resolveSpecialDialogueSpeakerEligibility({
+          name: character.name,
+          role: character.role,
+          narrativeRole: character.narrativeRole,
+          data: character.data,
+        }).eligible,
+        dialogueSpeakerIsMinor: resolveSpecialDialogueSpeakerEligibility({
+          name: character.name,
+          role: character.role,
+          narrativeRole: character.narrativeRole,
+          data: character.data,
+        }).isMinor,
       },
       authorizedUrl: asset.originalUrl,
     };

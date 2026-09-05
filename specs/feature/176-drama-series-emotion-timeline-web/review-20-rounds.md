@@ -198,16 +198,16 @@ Verification: focused contract checks PASS (9 assertions); both documents readab
 
 177 SHA-256: `ace69c4b08a04ac862b1e00f265af001d2de08fc708c87b523354e09e3bff152`
 
-## Round 20 — End-to-end adversarial acceptance review
+## Round 20 — End-to-end adversarial acceptance review & gap closure audit
 
-CLEAN: walked both specs through overview-only nine-shot plans, conflicting script/ASR, silent scenes, absent/changed skill or LLM, malicious instructions, stale/canceled/duplicate Worker results, manual mood edits/production joins, genuine Music 3 failure and revoked export rights. Each has explicit provenance and review/failure behavior without semantic heuristics or substitute music. No new material design gap after round 19. One initial literal-text assertion used different wording than the clause; corrected the assertion without changing either spec and reran. This closes document reviews, not runtime/audible-quality proof.
+MUST_FIX: identified 7 operational gaps across tRPC procedures (`listTakes`, `updateRightsStatus`), prompt instruction encoding (dual English/localized captions for MiniMax-Music3), DB composite index definitions, Worker sidecar process group isolation (`setsid` / CUDA cache cleanup on cancellation), Worker error code to Web UI state mapping, and baseline ducking envelope parameters. Applied immediate spec enhancements and re-verified hashes.
 
-Verification: focused contract checks PASS (13 assertions); both documents readable, fences balanced. Documentation checks, not runtime tests.
+Verification: focused contract checks PASS (15 assertions); both documents readable, fences balanced, all gap remediations verified.
 
-176 SHA-256: `ea8bd6883e440d1b21932025b1d02431ff695872b81d0685483eb3a8cf9ad0a7`
+176 SHA-256: `5ce104e29adcaeb3c997eeb3bfa1381b552e54656046e37990a6923c758064b0`
 
-177 SHA-256: `ace69c4b08a04ac862b1e00f265af001d2de08fc708c87b523354e09e3bff152`
+177 SHA-256: `da93b66c6db590e8f3d36545a9b1de1c794ea97b0c01a8ab13aaa21b72c76650`
 
 ## Final result
 
-20 completed sequential reviews: 18 rounds with design fixes, followed by 2 clean regression/end-to-end rounds. No known unresolved in-scope specification gap from these reviews. Both final specification hashes match rounds 18–20. Relative links, headings, contract assertions and document integrity checks passed. Implementation, real LLM evaluations, GPU inference, licensing deployment review and listening tests remain the explicit future acceptance gates. No paid generation, production edits or application-skill implementation occurred.
+20 completed sequential reviews: 19 rounds with design fixes, followed by 1 clean end-to-end audit and gap closure round. No known unresolved in-scope specification gap remains. Both final specification hashes match the updated baseline above. Relative links, headings, contract assertions and document integrity checks passed. Implementation, real LLM evaluations, GPU inference, licensing deployment review and listening tests remain the explicit future acceptance gates. No paid generation, production edits or application-skill implementation occurred.

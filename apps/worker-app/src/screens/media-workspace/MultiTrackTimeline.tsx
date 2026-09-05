@@ -1,4 +1,5 @@
 import { splitTimelineClip, trimTimelineClip } from "./timelineEdits";
+import { isProjectFilePath } from "./projectPersistence";
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import type { SmartSpecProjectDraft, NleTrack, NleClip, ProjectAsset } from "../../types/nleProject";
 
@@ -217,9 +218,15 @@ export function MultiTrackTimeline({
 
 
   const handlePlaceAssetOnTimeline = (asset: ProjectAsset) => {
-    const targetTrackId =
-      asset.mediaType === "audio" ? "track_a2" : "track_v2";
+    const candidateTrack = project.tracks.find((t) => {
+      if (t.locked) return false;
+      if (asset.mediaType === "audio") {
+        return t.type === "audio_music" || t.type === "audio_sfx" || t.type === "audio_voice" || t.id === "track_a2" || t.id === "track_a1";
+      }
+      return t.type === "video_broll" || t.type === "video_main" || t.id === "track_v2" || t.id === "track_v1";
+    }) ?? project.tracks.find((t) => !t.locked && (asset.mediaType === "audio" ? t.type?.startsWith("audio") : t.type?.startsWith("video")));
 
+    const targetTrackId = candidateTrack?.id ?? (asset.mediaType === "audio" ? "track_a2" : "track_v2");
     const defaultDuration = asset.durationMs && asset.durationMs > 0 ? asset.durationMs : 5000;
     const newClip: NleClip = {
       id: `clip_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -256,15 +263,64 @@ export function MultiTrackTimeline({
   const handleImportLocalFiles = async () => {
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");
+      const { convertFileSrc } = await import("@tauri-apps/api/core");
       const selected = await open({ multiple: true, filters: [{ name: "Media", extensions: ["mp4", "mov", "mkv", "webm", "avi", "mp3", "wav", "m4a", "aac", "flac", "ogg", "png", "jpg", "jpeg", "webp", "gif", "svg"] }] });
       if (!selected) return;
-      const paths = typeof selected === "string" ? [selected] : selected;
-      const assets: ProjectAsset[] = paths.map((path, index) => {
-        const extension = path.split(".").pop()?.toLowerCase() ?? "";
-        const mediaType = ["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(extension) ? "image" : ["mp3", "wav", "m4a", "aac", "flac", "ogg"].includes(extension) ? "audio" : "video";
-        return { id: `asset_${Date.now()}_${index}`, name: path.split(/[/\\]/).pop() || path, filePath: path, mediaType, importedAt: new Date().toISOString() };
+      const rawPaths = typeof selected === "string" ? [selected] : selected;
+      const paths = rawPaths.filter((p) => !isProjectFilePath(p));
+      if (paths.length < rawPaths.length) {
+        window.alert("ไฟล์โปรเจกต์ (.json/.videoproject.json) ไม่สามารถนำเข้าสู่ Media Bin ได้");
+      }
+      if (paths.length === 0) return;
+      
+      const newAssets: ProjectAsset[] = await Promise.all(
+        paths.map(async (path, index) => {
+          const extension = path.split(".").pop()?.toLowerCase() ?? "";
+          const mediaType: "video" | "audio" | "image" = ["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(extension)
+            ? "image"
+            : ["mp3", "wav", "m4a", "aac", "flac", "ogg"].includes(extension)
+            ? "audio"
+            : "video";
+
+          let durationMs: number | undefined = undefined;
+          if (mediaType !== "image") {
+            try {
+              const src = convertFileSrc(path);
+              durationMs = await new Promise<number | undefined>((resolve) => {
+                const mediaEl = document.createElement(mediaType === "audio" ? "audio" : "video");
+                mediaEl.preload = "metadata";
+                mediaEl.src = src;
+                mediaEl.onloadedmetadata = () => {
+                  if (mediaEl.duration && !isNaN(mediaEl.duration) && isFinite(mediaEl.duration)) {
+                    resolve(Math.round(mediaEl.duration * 1000));
+                  } else {
+                    resolve(undefined);
+                  }
+                };
+                mediaEl.onerror = () => resolve(undefined);
+              });
+            } catch {
+              // ignore measurement error
+            }
+          }
+
+          return {
+            id: `asset_${Date.now()}_${index}`,
+            name: path.split(/[/\\]/).pop() || path,
+            filePath: path,
+            mediaType,
+            durationMs,
+            importedAt: new Date().toISOString(),
+          };
+        })
+      );
+
+      const existingPaths = new Set((project.mediaPool ?? []).map((a) => a.filePath));
+      const filtered = newAssets.filter((a) => !existingPaths.has(a.filePath));
+      onUpdateProject({
+        ...project,
+        mediaPool: [...(project.mediaPool ?? []), ...filtered],
       });
-      onUpdateProject({ ...project, mediaPool: [...(project.mediaPool ?? []), ...assets.filter((asset) => !project.mediaPool?.some((existing) => existing.filePath === asset.filePath))] });
     } catch (err) {
       window.alert(`นำเข้าไฟล์ไม่สำเร็จ: ${String(err)}`);
     }
@@ -403,7 +459,7 @@ export function MultiTrackTimeline({
     return ticks;
   }, [effectiveDurationMs, zoom]);
 
-  const mediaPool = project.mediaPool ?? [];
+  const mediaPool = (project.mediaPool ?? []).filter((a) => !isProjectFilePath(a.filePath));
 
   return (
     <div className="nle-timeline-container">
@@ -613,7 +669,7 @@ export function MultiTrackTimeline({
             type="button"
             className="nle-tool-btn project-btn"
             onClick={onSaveProjectFile}
-            title="บันทึกโครงสร้างโปรเจกต์เป็นไฟล์ smartspec-project.json"
+            title="บันทึกโครงสร้างโปรเจกต์เป็นไฟล์ videoproject.json"
           >
             💾 บันทึก
           </button>
@@ -638,112 +694,121 @@ export function MultiTrackTimeline({
         </div>
       </div>
 
-      {/* Project Media Bin Panel */}
-      {isMediaBinOpen && (
-        <div className="nle-media-bin-panel">
-          <div className="media-bin-header">
-            <div className="bin-header-left">
-              <span className="bin-title">
-                📥 Project Media Bin ({mediaPool.length} สื่อในโปรเจกต์)
-              </span>
-              <button
-                type="button"
-                className="bin-import-action-btn"
-                onClick={() => void handleImportLocalFiles()}
-                title="เลือกไฟล์วิดีโอ รูปภาพ หรือเสียงจากเครื่องคอมพิวเตอร์เข้าสู่โปรเจกต์"
-              >
-                ＋ เพิ่มไฟล์จากเครื่อง
-              </button>
-              <button
-                type="button"
-                className="bin-import-action-btn cloud-btn"
-                onClick={onOpenAssetDrawer}
-                title="ดึงไฟล์จาก Cloud Library หรือประวัติการสร้าง"
-              >
-                ☁️ ดึงจาก Library
-              </button>
-
-            </div>
-            <button
-              type="button"
-              className="bin-close-btn"
-              onClick={() => setIsMediaBinOpen(false)}
-            >
-              ✕
-            </button>
-          </div>
-          <div className="media-bin-content">
-            {mediaPool.length === 0 ? (
-              <div className="bin-empty">
-                <span>ยังไม่มีสื่อใน Media Bin ของโปรเจกต์นี้</span>
-                <div className="bin-empty-btn-row">
-                  <button
-                    type="button"
-                    className="bin-import-action-btn"
-                    onClick={() => void handleImportLocalFiles()}
-                  >
-                    ＋ เพิ่มไฟล์จากเครื่อง
-                  </button>
-                  <button
-                    type="button"
-                    className="bin-import-action-btn cloud-btn"
-                    onClick={onOpenAssetDrawer}
-                  >
-                    ☁️ ดึงจาก Library
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="bin-items-grid">
-                {mediaPool.map((asset) => (
-                  <div
-                    key={asset.id}
-                    className="bin-item-card"
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData("application/json", JSON.stringify(asset));
-                    }}
-                  >
-                    <div className="bin-item-icon">
-                      {asset.mediaType === "video" ? "🎬" : asset.mediaType === "audio" ? "🎵" : "🖼️"}
-                    </div>
-                    <div className="bin-item-details">
-                      <strong className="bin-item-name" title={asset.filePath}>
-                        {asset.name}
-                      </strong>
-                      <span className="bin-item-meta">
-                        {asset.mediaType.toUpperCase()}
-                        {asset.durationMs ? ` · ${(asset.durationMs / 1000).toFixed(1)}s` : ""}
-                      </span>
-                    </div>
-                    <div className="bin-item-actions">
-                      <button
-                        type="button"
-                        className="btn-place-timeline"
-                        onClick={() => handlePlaceAssetOnTimeline(asset)}
-                        title="วางคลิปนี้ลงใน Timeline ที่ตำแหน่งหัวอ่าน (Playhead)"
-                      >
-                        ＋ วางที่ Playhead
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-remove-bin"
-                        onClick={() => handleRemoveAssetFromBin(asset.id)}
-                        title="ลบออกจาก Bin"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Main Multi-Track Stage: Body Split with Fixed Height & Scroll */}
       <div className="nle-timeline-body">
+        {/* Leftmost: Media Bin Side Panel (Collapsible) */}
+        {isMediaBinOpen && (
+          <div className="nle-media-bin-sidebar">
+            <div className="media-bin-sidebar-header">
+              <span className="bin-title">
+                📥 Media Bin ({mediaPool.length})
+              </span>
+              <div className="media-bin-sidebar-actions">
+                <button
+                  type="button"
+                  className="bin-btn-compact"
+                  onClick={() => void handleImportLocalFiles()}
+                  title="เลือกไฟล์จากเครื่องคอมพิวเตอร์เข้าสู่โปรเจกต์"
+                >
+                  ＋ เครื่อง
+                </button>
+                <button
+                  type="button"
+                  className="bin-btn-compact cloud-btn"
+                  onClick={onOpenAssetDrawer}
+                  title="ดึงไฟล์จาก Cloud Library หรือประวัติการสร้าง"
+                >
+                  ☁️ Lib
+                </button>
+                <button
+                  type="button"
+                  className="bin-close-btn"
+                  onClick={() => setIsMediaBinOpen(false)}
+                  title="ปิดแถบ Media Bin"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="media-bin-sidebar-content">
+              {mediaPool.length === 0 ? (
+                <div className="bin-empty-sidebar">
+                  <span className="bin-empty-icon">📂</span>
+                  <span>ยังไม่มีสื่อใน Bin</span>
+                  <div className="bin-empty-actions">
+                    <button
+                      type="button"
+                      className="bin-btn-compact"
+                      onClick={() => void handleImportLocalFiles()}
+                    >
+                      ＋ เพิ่มไฟล์
+                    </button>
+                    <button
+                      type="button"
+                      className="bin-btn-compact cloud-btn"
+                      onClick={onOpenAssetDrawer}
+                    >
+                      ☁️ Library
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bin-items-sidebar-list">
+                  {mediaPool.map((asset) => (
+                    <div
+                      key={asset.id}
+                      className="bin-item-card-sidebar"
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("application/json", JSON.stringify(asset));
+                      }}
+                      title={`คลิกค้างแล้วลากไปวางบน Timeline แทร็ก V1, V2, A1 ได้ทันที\nพาธ: ${asset.filePath}`}
+                    >
+                      <div className="bin-card-top-row">
+                        <span className="bin-item-icon">
+                          {asset.mediaType === "video" ? "🎬" : asset.mediaType === "audio" ? "🎵" : "🖼️"}
+                        </span>
+                        <div className="bin-item-details">
+                          <strong className="bin-item-name" title={asset.filePath}>
+                            {asset.name}
+                          </strong>
+                          <span className="bin-item-meta">
+                            {asset.mediaType.toUpperCase()}
+                            {asset.durationMs ? ` · ${(asset.durationMs / 1000).toFixed(1)}s` : ""}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-remove-bin"
+                          onClick={() => handleRemoveAssetFromBin(asset.id)}
+                          title="ลบออกจาก Bin"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+
+                      <div className="bin-card-actions-row">
+                        <button
+                          type="button"
+                          className="btn-place-timeline-compact"
+                          onClick={() => handlePlaceAssetOnTimeline(asset)}
+                          title="วางคลิปนี้ลงใน Timeline ที่ตำแหน่งหัวอ่าน (Playhead)"
+                        >
+                          ＋ วางที่ Playhead
+                        </button>
+                        <span className="drag-hint" title="คลิกค้างแล้วลากไปวางบนแทร็ก Timeline ทางขวา">
+                          ลากลงแทร็ก ➔
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Left Track Headers (Controls: Mute, Solo, Volume, Ducking) */}
         <div className="nle-track-headers-column">
           <div className="ruler-header-spacer">TRACKS</div>

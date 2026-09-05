@@ -57,6 +57,11 @@ export async function runVerticalDramaInteractiveJobExecutor(
         await import("./verticalDramaSpecialEpisodes");
       return runSpecialTieInPromptJob(payload, execution);
     }
+    case "marketplace_review_ideas": {
+      const { runMarketplaceReviewIdeasJob } =
+        await import("./verticalDramaMarketplaceReviewSkillAdapter");
+      return runMarketplaceReviewIdeasJob(payload, execution);
+    }
     default: {
       const exhaustive: never = payload.kind;
       throw new Error(

@@ -5,6 +5,9 @@ const boundedText = (max: number) => z.string().trim().min(1).max(max);
 
 export const marketplaceReviewIdeaInputSchema = z.object({
   schemaVersion: z.literal(1).default(1),
+  productSource: z
+    .enum(["marketplace_capture", "upload"])
+    .default("marketplace_capture"),
   product: z.object({
     productId: boundedText(128),
     name: boundedText(255),
@@ -43,6 +46,16 @@ export const marketplaceReviewIdeaInputSchema = z.object({
   excludedCharacterNames: z
     .array(boundedText(255))
     .max(100)
+    .default([]),
+  /** Adult, known-age characters that are allowed to speak in an advertising tie-in. */
+  dialogueSpeakerCharacterNames: z
+    .array(boundedText(255))
+    .max(4)
+    .default([]),
+  /** Selected characters that must remain silent because they are minors or age-unknown. */
+  dialogueProhibitedCharacterNames: z
+    .array(boundedText(255))
+    .max(4)
     .default([]),
   characters: z
     .array(
@@ -95,6 +108,27 @@ export const marketplaceReviewIdeaSchema = z.object({
       })
     )
     .max(12),
+  /** Structured dialogue shown and reviewed one shot at a time before a
+   * special tie-in episode is created. Older idea runs may omit this field;
+   * new character-dialogue runs are rejected by the server unless it has all
+   * nine ordered shots. */
+  shotDialogues: z
+    .array(
+      z.object({
+        shotNumber: z.number().int().min(1).max(9),
+        lines: z
+          .array(
+            z.object({
+              speaker: boundedText(255),
+              line: boundedText(2000),
+              delivery: z.string().trim().max(500).optional(),
+            })
+          )
+          .max(3),
+      })
+    )
+    .max(9)
+    .default([]),
   actions: z.array(boundedText(1000)).min(1).max(12),
   benefitsMentioned: z.array(boundedText(500)).max(8).default([]),
   claimsGuard: z.object({

@@ -272,6 +272,28 @@ export async function createSpecialTieInEpisode(input: {
     seriesId: input.seriesId,
     characterIds: parsed.characterIds,
   });
+  const bindingByCharacterId = new Map(
+    characterBindings.map(binding => [
+      String(binding.provenance.characterId ?? ""),
+      binding,
+    ])
+  );
+  if (parsed.dialogueMode === "character_dialogue") {
+    if (!parsed.shotDialogues || parsed.shotDialogues.length !== 9) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "โหมดบทพูดต้องมีบทพูดตรวจครบทั้ง 9 ช็อตก่อนสร้างตอนพิเศษ",
+      });
+    }
+    for (const speakerId of parsed.speakerCharacterIds) {
+      if (bindingByCharacterId.get(speakerId)?.provenance.dialogueSpeakerEligible !== true) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "ตัวละครอายุต่ำกว่า 18 ปีหรือไม่ทราบอายุไม่สามารถพูดในวิดีโอโฆษณาได้",
+        });
+      }
+    }
+  }
   const { image: imageModel, video: videoModel } =
     await resolveSpecialModelSelections(input.actor, parsed);
   if (!/^[A-Za-z0-9_-]{8,128}$/.test(input.createIntentId))
@@ -1130,6 +1152,31 @@ export async function updateSpecialTieInInput(input: {
     seriesId: Number(current.seriesId),
     characterIds: parsed.characterIds,
   });
+  if (parsed.dialogueMode === "character_dialogue") {
+    const bindingByCharacterId = new Map(
+      characterBindings.map(binding => [
+        String(binding.provenance.characterId ?? ""),
+        binding,
+      ])
+    );
+    if (!parsed.shotDialogues || parsed.shotDialogues.length !== 9) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "โหมดบทพูดต้องมีบทพูดตรวจครบทั้ง 9 ช็อตก่อนบันทึกตอนพิเศษ",
+      });
+    }
+    if (
+      parsed.speakerCharacterIds.some(
+        speakerId =>
+          bindingByCharacterId.get(speakerId)?.provenance.dialogueSpeakerEligible !== true
+      )
+    ) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "ตัวละครอายุต่ำกว่า 18 ปีหรือไม่ทราบอายุไม่สามารถพูดในวิดีโอโฆษณาได้",
+      });
+    }
+  }
   const { image: imageModel, video: videoModel } =
     await resolveSpecialModelSelections(input.actor, parsed);
   const referenceBindings = buildSpecialReferenceBindings(

@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useMemo, useCallback, type SetStateAction } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
+import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
 import type { DirectoryEntry } from "./MediaExplorerView";
-import type { SmartSpecProjectDraft, NleClip, ProjectAsset, NleCanvas } from "../../types/nleProject";
+import type { SmartSpecProjectDraft, NleClip, ProjectAsset, NleCanvas, NleTrack } from "../../types/nleProject";
 import { createDefaultProjectDraft } from "../../types/nleProject";
 import { preserveLockedClips } from "./timelineEdits";
 import { useProjectAutosave } from "./useProjectAutosave";
-import { parseProjectDraft, saveNleProject, saveCapCutDraft } from "./projectPersistence";
+import { parseProjectDraft, saveNleProject, saveCapCutDraft, isProjectFilePath, safeConvertFileSrc } from "./projectPersistence";
 import { MultiTrackTimeline } from "./MultiTrackTimeline";
 import { SandboxedOverlayViewer } from "./SandboxedOverlayViewer";
 import { AutoSubtitleModal } from "./AutoSubtitleModal";
@@ -21,6 +22,9 @@ import { AiMediaStudioModal } from "./AiMediaStudioModal";
 
 export interface MediaVideoEditorPlayerProps {
   videoFile: DirectoryEntry | null;
+  onSelectVideoFile?: (entry: DirectoryEntry) => void;
+  onOpenProjectFile?: (entry: DirectoryEntry) => void;
+  workspacePath?: string;
   seriesId?: string | null;
   onClose?: () => void;
   onUploadSuccess?: (libraryItemId: string) => void;
@@ -45,6 +49,7 @@ export interface MediaVideoEditorPlayerProps {
   canSubmitJob?: boolean;
   isBusy?: boolean;
   loadedProjectDraft?: SmartSpecProjectDraft | null;
+  onProjectDraftChange?: (draft: SmartSpecProjectDraft | null) => void;
   importedAsset?: ProjectAsset | null;
 }
 
@@ -127,8 +132,104 @@ function formatBytes(bytes: number): string {
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 }
 
+function AudioClipElement({
+  src,
+  offsetSec,
+  isPlaying,
+  volume,
+  isMuted,
+}: {
+  src: string;
+  offsetSec: number;
+  isPlaying: boolean;
+  volume: number;
+  isMuted: boolean;
+}) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (Math.abs(el.currentTime - offsetSec) > 0.25) {
+      el.currentTime = offsetSec;
+    }
+  }, [offsetSec]);
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (isPlaying) {
+      if (el.paused) el.play().catch(() => {});
+    } else {
+      if (!el.paused) el.pause();
+    }
+  }, [isPlaying]);
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    el.volume = volume;
+    el.muted = isMuted;
+  }, [volume, isMuted]);
+
+  return <audio ref={audioRef} src={src} style={{ display: "none" }} preload="auto" />;
+}
+
+function MultiTrackAudioSync({
+  project,
+  currentTime,
+  isPlaying,
+  masterVolume = 1.0,
+  isMasterMuted = false,
+}: {
+  project: SmartSpecProjectDraft | null;
+  currentTime: number;
+  isPlaying: boolean;
+  masterVolume?: number;
+  isMasterMuted?: boolean;
+}) {
+  if (!project) return null;
+  const curMs = currentTime * 1000;
+  const activeAudioClips: { clip: NleClip; track: NleTrack }[] = [];
+
+  for (const track of project.tracks) {
+    if (track.muted || !track.id.startsWith("track_a")) continue;
+    for (const clip of track.clips) {
+      if (curMs >= clip.timelineStartMs && curMs <= clip.timelineStartMs + clip.durationMs) {
+        activeAudioClips.push({ clip, track });
+      }
+    }
+  }
+
+  return (
+    <>
+      {activeAudioClips.map(({ clip, track }) => {
+        const path = clip.sourcePath || clip.sourceUrl || "";
+        if (!path) return null;
+        const src = safeConvertFileSrc(path);
+        const clipOffsetSec = Math.max(0, (curMs - clip.timelineStartMs) / 1000);
+        const trackVol = track.volume ?? 1.0;
+        const clipVol = clip.volume ?? 1.0;
+        const effectiveVol = Math.min(1.0, Math.max(0, masterVolume * trackVol * clipVol));
+        return (
+          <AudioClipElement
+            key={clip.id}
+            src={src}
+            offsetSec={clipOffsetSec}
+            isPlaying={isPlaying}
+            volume={effectiveVol}
+            isMuted={isMasterMuted}
+          />
+        );
+      })}
+    </>
+  );
+}
+
 export function MediaVideoEditorPlayer({
   videoFile,
+  onSelectVideoFile,
+  onOpenProjectFile,
   seriesId,
   onClose,
   onUploadSuccess,
@@ -149,6 +250,7 @@ export function MediaVideoEditorPlayer({
   canSubmitJob,
   isBusy,
   loadedProjectDraft,
+  onProjectDraftChange,
   importedAsset,
 }: MediaVideoEditorPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -175,7 +277,7 @@ export function MediaVideoEditorPlayer({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [silenceSegments, setSilenceSegments] = useState<LocalMediaAnalysisSegment[]>([]);
   const [waveformPeaks, setWaveformPeaks] = useState<number[]>([]);
-  const [cutCount, setCutCount] = useState<number>(0);
+  const [detectedCutCount, setCutCount] = useState<number>(0);
   const [timeSavedMs, setTimeSavedMs] = useState<number>(0);
 
   // Timeline view controls
@@ -188,6 +290,7 @@ export function MediaVideoEditorPlayer({
   );
   const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState<boolean>(false);
+  const [isRenderModalOpen, setIsRenderModalOpen] = useState<boolean>(false);
   const videoStageRef = useRef<HTMLDivElement | null>(null);
   const [focusMode, setFocusMode] = useState<"auto_person" | "auto_object" | "manual_region">(() => {
     if (propsFocusMode === "manual_region") return "manual_region";
@@ -295,10 +398,27 @@ export function MediaVideoEditorPlayer({
 
   // Pro Multi-Track NLE Studio states
   const [editorMode, setEditorMode] = useState<"multitrack" | "basic">("multitrack");
-  const [nleProject, setProjectState] = useState<SmartSpecProjectDraft | null>(null);
+  const [nleProject, setProjectState] = useState<SmartSpecProjectDraft | null>(() => loadedProjectDraft || null);
   const setNleProject = useCallback((update: SetStateAction<SmartSpecProjectDraft | null>) => {
     setProjectState((previous) => preserveLockedClips(previous, typeof update === "function" ? update(previous) : update));
   }, []);
+
+  // Derive maximum timeline span from all tracks & clips
+  const timelineMaxDurationSec = useMemo(() => {
+    if (!nleProject) return 0;
+    let maxMs = nleProject.canvas?.durationMs || 0;
+    for (const track of nleProject.tracks) {
+      for (const clip of track.clips) {
+        const endMs = clip.timelineStartMs + clip.durationMs;
+        if (endMs > maxMs) maxMs = endMs;
+      }
+    }
+    return maxMs > 0 ? maxMs / 1000 : 0;
+  }, [nleProject]);
+
+  const effectiveDuration = useMemo(() => {
+    return Math.max(duration, timelineMaxDurationSec);
+  }, [duration, timelineMaxDurationSec]);
   const [isAutoSubModalOpen, setIsAutoSubModalOpen] = useState(false);
   const [isCodeOverlayModalOpen, setIsCodeOverlayModalOpen] = useState(false);
   const [isAssetDrawerOpen, setIsAssetDrawerOpen] = useState(false);
@@ -311,6 +431,19 @@ export function MediaVideoEditorPlayer({
   const [projectStatusMsg, setProjectStatusMsg] = useState<string | null>(null);
   const [isDuckingActive, setIsDuckingActive] = useState(false);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [isRenderPanelCollapsed, setIsRenderPanelCollapsed] = useState(false);
+  const [activeProjectFilePath, setActiveProjectFilePath] = useState<string | null>(() => {
+    if (videoFile && isProjectFilePath(videoFile.path)) {
+      return videoFile.path;
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (videoFile && isProjectFilePath(videoFile.path)) {
+      setActiveProjectFilePath(videoFile.path);
+    }
+  }, [videoFile]);
 
   // Smart AI Director & Dynamic Camera Motion states
   const [smartDirectorMode, setSmartDirectorMode] = useState<"off" | "auto" | "product_focus" | "face_focus">("off");
@@ -400,6 +533,18 @@ export function MediaVideoEditorPlayer({
   const [viewportZoom, setViewportZoom] = useState<number | "fit">("fit");
   const [isFullscreenPreview, setIsFullscreenPreview] = useState(false);
   const [overrideVideoSrc, setOverrideVideoSrc] = useState<string | null>(null);
+
+  // Render duration & cut calculation helpers
+  const cutCount = silenceSegments.length;
+  const totalCutTimeSavedSec = silenceSegments.reduce((acc, seg) => {
+    const s = seg.startMs / 1000;
+    const e = (seg.endMs ?? duration * 1000) / 1000;
+    return acc + Math.max(0, e - s);
+  }, 0);
+  const rawDuration = Math.max(0, (trimEnd || duration) - (trimStart || 0));
+  const speedRatio = playbackRate && playbackRate > 0 ? playbackRate : 1.0;
+  const finalNormalRenderDurationSec = rawDuration / speedRatio;
+  const finalCutRenderDurationSec = Math.max(0, rawDuration - totalCutTimeSavedSec) / speedRatio;
 
   // Workspace Splitter State: Height percentage for video stage (Default 62%)
   const [stageHeightPercent, setStageHeightPercent] = useState<number>(() => {
@@ -509,7 +654,7 @@ export function MediaVideoEditorPlayer({
 
   // Auto-Save Engine: Save project draft to LocalStorage with 2s debounce
   const draftStorageKey = videoFile ? `smartspec_nle_draft_${videoFile.path}${loadedProjectDraft ? `:project:${loadedProjectDraft.projectId}` : ""}` : null;
-  useProjectAutosave(nleProject, draftStorageKey, setAutoSaveStatus);
+  useProjectAutosave(nleProject, draftStorageKey, activeProjectFilePath, setAutoSaveStatus);
 
   // Support loading external/saved project draft
   useEffect(() => {
@@ -542,7 +687,7 @@ export function MediaVideoEditorPlayer({
   // Initialize NLE Project draft from video + silence cuts (with automatic draft restoration)
   useEffect(() => {
     if (loadedProjectDraft) return; // Don't override if explicit draft was provided
-    if (videoFile && duration > 0) {
+    if (videoFile && !isProjectFilePath(videoFile.path) && duration > 0) {
       setNleProject((prev) => {
         if (!prev || prev.metadata?.originalSourceVideo !== videoFile.path) {
           // 1. Check if there is an existing auto-saved draft for this exact video file
@@ -552,7 +697,7 @@ export function MediaVideoEditorPlayer({
               if (saved) {
                 const parsed = parseProjectDraft(saved);
                 if (parsed.metadata?.originalSourceVideo === videoFile.path) {
-                  // Ensure mediaPool contains the active video file
+                  // Ensure mediaPool contains the active video file (if not a project file)
                   if (!parsed.mediaPool || parsed.mediaPool.length === 0) {
                     parsed.mediaPool = [
                       {
@@ -617,22 +762,42 @@ export function MediaVideoEditorPlayer({
     setIsDuckingActive(Boolean(isVoiceSpeaking));
   }, [isPlaying, currentTime, nleProject]);
 
-  const handleSaveProject = async () => {
-    if (!nleProject || !videoFile) return;
+  const handleSaveProject = async (forceDialog = false) => {
+    if (!nleProject) return;
     try {
-      const { save } = await import("@tauri-apps/plugin-dialog");
-      const projectPath = await save({
-        defaultPath: videoFile.path.replace(/\.[^/.\\]+$/, "") + ".smartspec.json",
-        filters: [{ name: "SmartSpec Project", extensions: ["json", "ssproj"] }],
-      });
-      if (!projectPath) return;
-      const filePath = await saveNleProject(nleProject, projectPath);
-      setProjectStatusMsg(`💾 บันทึกโปรเจกต์สำเร็จ: ${filePath}`);
-      setTimeout(() => setProjectStatusMsg(null), 5000);
+      let targetPath = !forceDialog ? activeProjectFilePath : null;
+
+      if (!targetPath) {
+        const { save } = await import("@tauri-apps/plugin-dialog");
+        const defaultName = activeProjectFilePath
+          ? activeProjectFilePath
+          : videoFile
+          ? (isProjectFilePath(videoFile.path) ? videoFile.path : videoFile.path.replace(/\.[^/.\\]+$/, "") + ".videoproject.json")
+          : `${(nleProject.title || "project").replace(/[\\/:*?"<>|]/g, "_")}.videoproject.json`;
+        const projectPath = await save({
+          defaultPath: defaultName,
+          filters: [{ name: "Video Project", extensions: ["videoproject.json", "json", "vproj"] }],
+        });
+        if (!projectPath) return;
+        targetPath = projectPath;
+      }
+
+      const filePath = await saveNleProject(nleProject, targetPath);
+      setActiveProjectFilePath(filePath);
+      if (draftStorageKey) {
+        localStorage.setItem(draftStorageKey, JSON.stringify(nleProject));
+      }
+      const fileName = filePath.split(/[/\\]/).pop() || filePath;
+      setProjectStatusMsg(`💾 บันทึกโปรเจกต์สำเร็จ: ${fileName}`);
+      setTimeout(() => setProjectStatusMsg(null), 4000);
     } catch (err: unknown) {
       setProjectStatusMsg(`❌ บันทึกโปรเจกต์ล้มเหลว: ${err instanceof Error ? err.message : String(err)}`);
       setTimeout(() => setProjectStatusMsg(null), 5000);
     }
+  };
+
+  const handleRemotionRender = () => {
+    setIsRenderModalOpen(true);
   };
 
   const handleExportCapCutDraft = async () => {
@@ -893,13 +1058,30 @@ export function MediaVideoEditorPlayer({
   };
 
   const videoSrc = useMemo(() => {
-    if (!videoFile) return "";
-    let clean = videoFile.path.trim();
-    if (clean.startsWith("\\\\?\\") || clean.startsWith("//?/")) {
-      clean = clean.slice(4);
+    if (videoFile && !isProjectFilePath(videoFile.path)) {
+      return safeConvertFileSrc(videoFile.path);
     }
-    return convertFileSrc(clean);
-  }, [videoFile]);
+    if (nleProject?.metadata?.originalSourceVideo && !isProjectFilePath(nleProject.metadata.originalSourceVideo)) {
+      return safeConvertFileSrc(nleProject.metadata.originalSourceVideo);
+    }
+    const v1Track = nleProject?.tracks?.find((t) => t.id === "track_v1");
+    if (v1Track && v1Track.clips.length > 0) {
+      const firstClip = v1Track.clips[0];
+      const clipPath = firstClip.sourcePath || firstClip.sourceUrl;
+      if (clipPath && !isProjectFilePath(clipPath)) {
+        return safeConvertFileSrc(clipPath);
+      }
+    }
+    if (nleProject?.mediaPool && nleProject.mediaPool.length > 0) {
+      for (const item of nleProject.mediaPool) {
+        const itemPath = item.filePath;
+        if (itemPath && !isProjectFilePath(itemPath) && item.mediaType === "video") {
+          return safeConvertFileSrc(itemPath);
+        }
+      }
+    }
+    return "";
+  }, [videoFile, nleProject]);
 
   // Derived dB from Volume Threshold Percentage
   const thresholdDb = useMemo(() => {
@@ -1552,13 +1734,15 @@ export function MediaVideoEditorPlayer({
   const handleDropAssetOnTrack = useCallback((trackId: string, asset: any, dropTimeMs?: number) => {
     if (!asset || !asset.title) return;
     const timeMs = dropTimeMs !== undefined ? dropTimeMs : Math.round(currentTime * 1000);
+    const clipPath = asset.filePath || asset.sourceUrl || "";
     const clip: NleClip = {
       id: `drag_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       name: asset.title,
       timelineStartMs: timeMs,
       durationMs: asset.durationMs || 4000,
-      sourceType: "smartaihub_library",
-      sourceUrl: asset.sourceUrl || "",
+      sourceType: asset.filePath ? "local_file" : "smartaihub_library",
+      sourcePath: asset.filePath || undefined,
+      sourceUrl: clipPath,
       volume: trackId.startsWith("track_a") ? 0.4 : 1.0,
       transform: trackId === "track_v2" ? { x: 0.5, y: 0.5, scale: 1.0, opacity: 1.0 } : undefined,
     };
@@ -1601,26 +1785,76 @@ export function MediaVideoEditorPlayer({
     }
   };
 
+  // Virtual Timeline Playback Loop when there is no master video file
+  useEffect(() => {
+    if (!isPlaying || videoSrc) return;
+    let lastTime = performance.now();
+    let frameId: number;
+
+    const tick = (now: number) => {
+      const deltaSec = ((now - lastTime) / 1000) * playbackRate;
+      lastTime = now;
+      setCurrentTime((prev) => {
+        const maxDur = effectiveDuration > 0 ? effectiveDuration : (nleProject?.canvas?.durationMs ? nleProject.canvas.durationMs / 1000 : 30);
+        const next = prev + deltaSec;
+        if (next >= maxDur) {
+          setIsPlaying(false);
+          return maxDur;
+        }
+        return next;
+      });
+      frameId = requestAnimationFrame(tick);
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [isPlaying, videoSrc, playbackRate, effectiveDuration, nleProject]);
+
+  // Sync Master Video Volume & Mute States
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const v1Track = nleProject?.tracks?.find((t) => t.id === "track_v1");
+    const isMasterMuted = isMuted || Boolean(v1Track?.muted);
+    const masterVol = Math.min(1, Math.max(0, volume * (v1Track?.volume ?? 1.0)));
+    video.muted = isMasterMuted;
+    video.volume = masterVol;
+  }, [volume, isMuted, nleProject]);
+
   const togglePlay = () => {
-    if (!videoRef.current) return;
     if (isPlaying) {
-      videoRef.current.pause();
+      if (videoRef.current && videoSrc) {
+        videoRef.current.pause();
+      }
       setIsPlaying(false);
     } else {
-      const video = videoRef.current;
-      void video.play().then(() => {
-        if (videoRef.current === video) setIsPlaying(!video.paused);
-      }).catch((err: unknown) => {
-        setIsPlaying(false);
-        setPlaybackError(err instanceof Error ? err.message : String(err));
-      });
+      const maxDur = effectiveDuration > 0 ? effectiveDuration : (duration > 0 ? duration : 30);
+      if (currentTime >= maxDur - 0.05) {
+        handleSeek(0);
+      }
+
+      if (videoRef.current && videoSrc) {
+        const video = videoRef.current;
+        const v1Track = nleProject?.tracks?.find((t) => t.id === "track_v1");
+        video.muted = isMuted || Boolean(v1Track?.muted);
+        video.volume = Math.min(1, Math.max(0, volume * (v1Track?.volume ?? 1.0)));
+        void video.play().then(() => {
+          if (videoRef.current === video) setIsPlaying(!video.paused);
+        }).catch((err: unknown) => {
+          console.warn("Video play error, falling back to timeline timer:", err);
+          setIsPlaying(true);
+        });
+      } else {
+        setIsPlaying(true);
+      }
     }
   };
 
   const handleStop = () => {
-    if (!videoRef.current) return;
-    videoRef.current.pause();
-    videoRef.current.currentTime = 0;
+    if (videoRef.current && videoSrc) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
     setIsPlaying(false);
     setCurrentTime(0);
   };
@@ -1659,9 +1893,16 @@ export function MediaVideoEditorPlayer({
     }
   };
 
-  // Keyboard Shortcuts (Space, ArrowLeft, ArrowRight, Escape)
+  // Keyboard Shortcuts (Ctrl+S, Space, ArrowLeft, ArrowRight, Escape)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Manual Save Project Shortcut (Ctrl+S or Cmd+S)
+      if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+        e.preventDefault();
+        void handleSaveProject(e.shiftKey);
+        return;
+      }
+
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
@@ -1706,7 +1947,7 @@ export function MediaVideoEditorPlayer({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentTime, duration, isPlaying, trimStart, trimEnd, onClose]);
+  }, [currentTime, duration, isPlaying, trimStart, trimEnd, onClose, nleProject, activeProjectFilePath, videoFile, draftStorageKey]);
 
   // Mouse Drag Scrubbing on Timeline
   const tracksContentRef = useRef<HTMLDivElement>(null);
@@ -1740,9 +1981,13 @@ export function MediaVideoEditorPlayer({
   };
 
   const handleSeek = (timeSec: number) => {
-    if (!videoRef.current) return;
-    const clamped = Math.max(0, Math.min(duration || 0, timeSec));
-    videoRef.current.currentTime = clamped;
+    const maxDur = effectiveDuration > 0 ? effectiveDuration : (duration > 0 ? duration : 3600);
+    const clamped = Math.max(0, Math.min(maxDur, timeSec));
+    if (videoRef.current && videoSrc) {
+      try {
+        videoRef.current.currentTime = clamped;
+      } catch {}
+    }
     setCurrentTime(clamped);
   };
 
@@ -1962,6 +2207,8 @@ export function MediaVideoEditorPlayer({
           volumeThresholdPct: volumeThreshold,
           minDurationSec: minDuration,
           softeningBufferSec: softeningBuffer,
+          targetWidth: nleProject?.canvas?.width || 1080,
+          targetHeight: nleProject?.canvas?.height || 1920,
         },
       });
       setProcessResult(res);
@@ -2619,12 +2866,88 @@ export function MediaVideoEditorPlayer({
 
   const activePin = activePinIdx >= 0 ? productPins[activePinIdx] : null;
 
-  if (!videoFile) {
+  if (!videoFile && !nleProject) {
     return (
-      <div className="player-empty-container">
-        <div className="empty-player-icon">🎬</div>
-        <h3>เลือกไฟล์วิดีโอ MP4 เพื่อเริ่มเล่นและตัดต่อ</h3>
-        <p>คลิกเลือกไฟล์วิดีโอจากรายการ Windows Explorer ด้านซ้ายเพื่อเปิดดูและตั้งค่า</p>
+      <div className="silence-detection-window welcome-window">
+        <div className="media-studio-welcome-screen">
+          <div className="welcome-card">
+            <div className="welcome-header-badge">
+              <span>🎬 Smart AI Hub Media Studio</span>
+            </div>
+
+            <h2 className="welcome-title">ยินดีต้อนรับสู่ระบบตัดต่อวิดีโอ & Media Studio</h2>
+            <p className="welcome-subtitle">
+              เริ่มต้นสร้างโปรเจกต์ใหม่ หรือเลือกเปิดไฟล์สื่อจาก Explorer ทางด้านซ้ายเพื่อเริ่มทำงาน
+            </p>
+
+            <div className="welcome-actions-grid">
+              <button
+                type="button"
+                className="welcome-action-card primary"
+                onClick={() => {
+                  if (onClose) onClose();
+                }}
+              >
+                <div className="action-icon">✨</div>
+                <div className="action-content">
+                  <h3>สร้างโปรเจกต์ใหม่ (New Project)</h3>
+                  <p>สร้างไฟล์โปรเจกต์ .videoproject.json ใน Workspace และบันทึกบนดิสก์</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="welcome-action-card secondary"
+                onClick={async () => {
+                  try {
+                    const selected = await openFolderDialog({
+                      directory: false,
+                      multiple: false,
+                      title: "เลือกไฟล์โปรเจกต์ (.videoproject.json หรือ .ssproj)",
+                      filters: [{ name: "SmartSpec Project", extensions: ["videoproject.json", "ssproj", "json"] }],
+                    });
+                    if (selected && typeof selected === "string") {
+                      const name = selected.split(/[\/\\]/).pop() || selected;
+                      const ext = name.split(".").pop()?.toLowerCase() || "";
+                      const entry: DirectoryEntry = {
+                        name,
+                        path: selected,
+                        isDirectory: false,
+                        sizeBytes: 0,
+                        modifiedUnixMs: Date.now(),
+                        extension: ext,
+                        isVideo: false,
+                      };
+                      if (onOpenProjectFile) {
+                        onOpenProjectFile(entry);
+                      } else {
+                        const json = await invoke<string>("worker_app_load_nle_project", { projectPath: selected });
+                        const draft = parseProjectDraft(json);
+                        setNleProject(draft);
+                        if (onProjectDraftChange) onProjectDraftChange(draft);
+                      }
+                    }
+                  } catch (err) {
+                    console.warn("Open project file dialog failed:", err);
+                  }
+                }}
+              >
+                <div className="action-icon">📁</div>
+                <div className="action-content">
+                  <h3>เปิดไฟล์โปรเจกต์เดิม (Open Project File)</h3>
+                  <p>เลือกไฟล์โปรเจกต์ .videoproject.json หรือ .ssproj เดิมที่เคยบันทึกไว้ในเครื่อง</p>
+                </div>
+              </button>
+            </div>
+
+            <div className="welcome-tip-banner">
+              <span className="tip-icon">💡</span>
+              <span>
+                <strong>คำแนะนำ:</strong> เลือกโฟลเดอร์ Workspace ทางด้านซ้าย แล้วดับเบิลคลิกไฟล์วิดีโอ หรือกดปุ่ม <strong>"+ โปรเจกต์ใหม่"</strong> เพื่อเริ่มต้น
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -2635,10 +2958,18 @@ export function MediaVideoEditorPlayer({
       <div className="window-titlebar">
         <div className="window-title">
           <span className="window-icon">🎙️</span>
-          <span>Silence Detection</span>
-          <span className="window-subfilename">— {videoFile.name}</span>
+          <span>Silence Detection & NLE Studio</span>
+          <span className="window-subfilename">— {videoFile?.name || nleProject?.title || "โปรเจกต์ใหม่"}</span>
         </div>
         <div className="window-actions">
+          <button
+            type="button"
+            className="btn-manual-save-header"
+            onClick={() => void handleSaveProject(false)}
+            title="บันทึกโปรเจกต์ลงไฟล์ทันที (Ctrl+S / Cmd+S)"
+          >
+            💾 บันทึก Project
+          </button>
           <button
             type="button"
             className="btn-header-project-settings"
@@ -2664,7 +2995,7 @@ export function MediaVideoEditorPlayer({
           >
             {showSettingsPanel ? "⚙️ ซ่อนตั้งค่า" : "⚙️ แสดงตั้งค่า"}
           </button>
-          <span className="window-badge">{formatBytes(videoFile.sizeBytes)}</span>
+          <span className="window-badge">{videoFile ? formatBytes(videoFile.sizeBytes) : "Project Draft"}</span>
           {onClose && (
             <button type="button" className="window-close-btn" onClick={onClose} title="ปิดหน้าต่าง">
               ✕
@@ -2996,6 +3327,23 @@ export function MediaVideoEditorPlayer({
 
             {/* Cluster 4: Quick Action & Settings Toggles */}
             <div className="canvas-toolbar-cluster right-cluster">
+              <button
+                type="button"
+                className="toolbar-pill-btn manual-save-btn"
+                onClick={() => void handleSaveProject(false)}
+                style={{
+                  background: "linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.35) 100%)",
+                  border: "1px solid rgba(52, 211, 153, 0.5)",
+                  color: "#a7f3d0",
+                  fontWeight: 600,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+                title="บันทึกโครงสร้างโปรเจกต์ลงไฟล์ทันที (Ctrl+S / Cmd+S)"
+              >
+                💾 บันทึก Project
+              </button>
               {autoSaveStatus && (
                 <span className="auto-save-mini" title="ระบบบันทึกโครงสร้างโปรเจกต์ลงเครื่องอัตโนมัติ">
                   💾 {autoSaveStatus}
@@ -3341,7 +3689,7 @@ export function MediaVideoEditorPlayer({
                 ref={videoRef}
                 src={overrideVideoSrc || videoSrc}
                 style={wysiwygVideoStyle}
-                crossOrigin="anonymous"
+                muted={isMuted || Boolean(nleProject?.tracks?.find((t) => t.id === "track_v1")?.muted)}
                 onLoadedMetadata={handleLoadedMetadata}
                 onLoadedData={() => {
                   if (focusMode === "auto_person") detectPersonCenter(true);
@@ -3354,11 +3702,13 @@ export function MediaVideoEditorPlayer({
                   if (focusMode === "auto_person") detectPersonCenter(true);
                 }}
                 onEnded={() => setIsPlaying(false)}
-                onError={() =>
-                  setPlaybackError(
-                    "เบราว์เซอร์ไม่สามารถเล่นไฟล์นี้โดยตรงได้ (อาจเป็น Codec พิเศษ) แต่ระบบสามารถ Render ตัดต่อผ่าน FFmpeg ได้ตามปกติ"
-                  )
-                }
+                onError={() => {
+                  if (overrideVideoSrc || videoSrc) {
+                    setPlaybackError(
+                      "เบราว์เซอร์ไม่สามารถเล่นไฟล์นี้โดยตรงได้ (อาจเป็น Codec พิเศษ) แต่ระบบสามารถ Render ตัดต่อผ่าน FFmpeg ได้ตามปกติ"
+                    );
+                  }
+                }}
                 playsInline
               />
               {playbackError && (
@@ -3377,8 +3727,20 @@ export function MediaVideoEditorPlayer({
                   focusX={focusX}
                   focusY={focusY}
                   productPin={productPin}
+                  isPlaying={isPlaying}
+                  volume={volume}
+                  isMuted={isMuted}
                 />
               )}
+
+              {/* Synchronized Multi-Track Audio Engine */}
+              <MultiTrackAudioSync
+                project={nleProject}
+                currentTime={currentTime}
+                isPlaying={isPlaying}
+                masterVolume={volume}
+                isMasterMuted={isMuted}
+              />
 
               {/* Crop Overlay (Only shown in crop_guide mode) */}
               {cropBoxStyle && previewMode === "crop_guide" && (
@@ -4047,7 +4409,7 @@ export function MediaVideoEditorPlayer({
         <MultiTrackTimeline
           project={nleProject}
           currentTimeMs={currentTime * 1000}
-          durationMs={Math.max(1000, duration * 1000)}
+          durationMs={Math.max(1000, effectiveDuration * 1000)}
           isPlaying={isPlaying}
           onSeek={(ms) => handleSeek(ms / 1000)}
           onTogglePlay={togglePlay}
@@ -4304,157 +4666,308 @@ export function MediaVideoEditorPlayer({
     )}
 
       {/* Bottom Actions & Render Panel */}
-      <div className="export-controls-bar">
-        {/* Export, AI Plan, and Upload Actions */}
-        <div className="export-action-group">
-          {/* AI Preprocessing Intent & Plan Action Pills */}
-          <div className="ai-intent-action-pills">
-            {onOpenIntentSettings && (
-              <button
-                type="button"
-                className="ai-settings-pill-btn"
-                onClick={onOpenIntentSettings}
-                title="เปิดหน้าต่างตั้งค่า AI Preprocessing Intent (Reframe 9:16, Dead Air, Focus, Plan)"
+      <div className={`export-controls-panel ${isRenderPanelCollapsed ? "collapsed" : ""}`}>
+        {/* Collapsible Panel Header Bar */}
+        <div
+          className="export-controls-bar-header"
+          onClick={() => setIsRenderPanelCollapsed((prev) => !prev)}
+          title={isRenderPanelCollapsed ? "คลิกเพื่อขยายแผงควบคุม Render & Export" : "คลิกเพื่อยุบแผงควบคุม"}
+        >
+          <div className="bar-header-title">
+            <span className="bar-header-icon">🎬</span>
+            <span>แผงควบคุม Render & ส่งออก</span>
+            <span className="bar-res-badge">
+              {nleProject?.canvas?.aspectRatio || aspectRatio} · {nleProject?.canvas?.width || 1080}×{nleProject?.canvas?.height || 1920}
+            </span>
+            {activeProjectFilePath && (
+              <span
+                style={{
+                  fontSize: "0.74rem",
+                  color: "#94a3b8",
+                  background: "rgba(30, 41, 59, 0.8)",
+                  padding: "2px 8px",
+                  borderRadius: "4px",
+                  maxWidth: "200px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+                title={activeProjectFilePath}
               >
-                ⚙️ ตั้งค่าแผน AI
-              </button>
-            )}
-            {onBuildPlan && (
-              <button
-                type="button"
-                className="ai-build-pill-btn"
-                onClick={onBuildPlan}
-                disabled={isBusy}
-                title="สร้างแผนตัดต่อ Preprocessing Plan ด้วยพารามิเตอร์ปัจจุบัน"
-              >
-                {isBusy ? "⏳ กำลังสร้าง..." : "⚡ สร้างแผนตัดต่อ AI"}
-              </button>
+                📁 {activeProjectFilePath.split(/[/\\]/).pop()}
+              </span>
             )}
             {plan && (
-              <div className="ai-plan-status-badge" title={`Plan ID: ${plan.planId}`}>
-                <span className="badge-dot" />
-                <span>แผน {plan.planId.slice(-6)} · {Math.round(plan.trimEndMs / 1000)}s</span>
-              </div>
+              <span className="bar-plan-pill" title={`Plan ID: ${plan.planId}`}>
+                ⚡ แผน AI {plan.planId.slice(-6)} · {Math.round(plan.trimEndMs / 1000)}s
+              </span>
             )}
-            {plan && onSubmitJob && (
-              <button
-                type="button"
-                className="ai-submit-queue-btn"
-                onClick={onSubmitJob}
-                disabled={!canSubmitJob || isBusy}
-                title="ส่งแผน AI เข้า Worker GPU Queue"
-              >
-                🚀 ส่งงาน GPU Queue
-              </button>
+            {isProcessing && (
+              <span className="bar-rendering-pill">
+                ⚙️ กำลัง Render...
+              </span>
             )}
           </div>
 
-          <input
-            type="text"
-            className="export-title-input"
-            value={customTitle}
-            onChange={(e) => setCustomTitle(e.target.value)}
-            placeholder="ชื่อคลิปที่จะบันทึก..."
-          />
+          <div className="bar-header-actions" onClick={(e) => e.stopPropagation()}>
+            <div className="bar-quick-actions">
+              <button
+                type="button"
+                className="quick-action-btn"
+                style={{
+                  background: "rgba(14, 165, 233, 0.15)",
+                  borderColor: "rgba(56, 189, 248, 0.4)",
+                  color: "#38bdf8",
+                }}
+                onClick={() => setIsProjectSettingsOpen(true)}
+                title="ตั้งค่าสัดส่วนภาพ ความละเอียด และ FPS"
+              >
+                ⚙️ ตั้งค่า
+              </button>
 
-          <p role="note">Render ด้านล่างส่งออกเฉพาะต้นฉบับตาม Trim / Reframe / Dead Air ยังไม่รวมแทร็ก NLE, เสียงเพิ่ม, ข้อความ หรือ Blur</p>
-          <div className="render-buttons-group" style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="quick-action-btn"
+                style={{
+                  background: "rgba(16, 185, 129, 0.18)",
+                  borderColor: "rgba(52, 211, 153, 0.4)",
+                  color: "#34d399",
+                }}
+                onClick={() => void handleSaveProject(false)}
+                title="บันทึกโปรเจกต์ลงไฟล์ทันที (Ctrl+S / Cmd+S)"
+              >
+                💾 บันทึก
+              </button>
+
+              {/* Requirement 2: ต้องมีปุ่ม Render แบบ Remotion */}
+              <button
+                type="button"
+                className="quick-action-btn remotion-quick-btn"
+                onClick={handleRemotionRender}
+                disabled={isBusy}
+                title="Render วิดีโอรวมทุกองค์ประกอบด้วย Remotion (Full Composition NLE)"
+              >
+                ⚛️ Render Remotion
+              </button>
+
+              <button
+                type="button"
+                className="quick-action-btn deadair-quick-btn"
+                disabled={isProcessing || duration === 0}
+                onClick={() => void handleProcessVideo(true)}
+                title="ตัดช่วงเงียบ (Dead Air) อัตโนมัติ เน้นเสียงพูดกระชับ"
+              >
+                ⚡ ตัด Dead Air
+              </button>
+
+              <button
+                type="button"
+                className="quick-action-btn normal-quick-btn"
+                disabled={isProcessing || duration === 0}
+                onClick={() => void handleProcessVideo(false)}
+                title="Render ปกติ (ไม่ตัด Dead Air)"
+              >
+                🎬 Render ปกติ
+              </button>
+
+              <button
+                type="button"
+                className="quick-action-btn"
+                style={{
+                  background: "rgba(15, 23, 42, 0.8)",
+                  borderColor: "rgba(148, 163, 184, 0.3)",
+                  color: "#cbd5e1",
+                }}
+                onClick={() => setIsRenderModalOpen(true)}
+                title="เปิดหน้าต่างตัวเลือก Render ทั้งหมด"
+              >
+                🚀 ตัวเลือก Export
+              </button>
+            </div>
+
             <button
               type="button"
-              className="render-clip-btn render-btn-deadair"
-              style={{
-                flex: "1 1 180px",
-                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                boxShadow: "0 4px 14px rgba(16, 185, 129, 0.35)",
-              }}
-              disabled={isProcessing || duration === 0}
-              onClick={() => void handleProcessVideo(true)}
-              title="ตัดช่วงเงียบ (Dead Air) อัตโนมัติ ตัดหัว-ท้ายพอดีคำพูดเพื่อความกระชับ"
+              className="bar-toggle-btn"
+              onClick={() => setIsRenderPanelCollapsed((prev) => !prev)}
+              title={isRenderPanelCollapsed ? "ขยายแผง Render" : "ยุบแผง Render"}
             >
-              {isProcessing && lastRenderHadDeadAirCut ? "⚙️ กำลัง Render..." : "⚡ Render ตัด Dead Air (เน้นเสียงพูด)"}
-            </button>
-
-            <button
-              type="button"
-              className="render-clip-btn render-btn-normal"
-              style={{
-                flex: "1 1 180px",
-                background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-                boxShadow: "0 4px 14px rgba(59, 130, 246, 0.35)",
-              }}
-              disabled={isProcessing || duration === 0}
-              onClick={() => void handleProcessVideo(false)}
-              title="Render วิดีโอเต็มคลิปหรือตามช่วงที่ Trim โดยไม่ตัดต่อเสียงช่วงเงียบ"
-            >
-              {isProcessing && !lastRenderHadDeadAirCut ? "⚙️ กำลัง Render..." : "🎬 Render ปกติ (ไม่ตัด Dead Air)"}
+              {isRenderPanelCollapsed ? "▲ ขยายแผง" : "▼ ยุบแผง"}
             </button>
           </div>
         </div>
 
-        {/* Render Result Action Card with Download, Reveal Folder, and Play buttons */}
-        {processResult && (
-          <div className="render-success-card">
-            <div className="render-success-header">
-              <span className="success-badge-icon">✅</span>
-              <div className="render-success-meta">
-                <h4>
-                  Render เสร็จสมบูรณ์: <strong>{processResult.fileName}</strong>{" "}
-                  <span style={{ fontSize: "0.82em", fontWeight: 600, color: lastRenderHadDeadAirCut ? "#34d399" : "#60a5fa" }}>
-                    ({lastRenderHadDeadAirCut ? "⚡ ตัด Dead Air กระชับเสียงพูด" : "🎬 Render ปกติไม่ตัด Dead Air"})
-                  </span>
-                </h4>
-                <p>
-                  ความยาว: <strong>{formatSeconds(processResult.durationMs / 1000)}</strong>
-                  {lastRenderHadDeadAirCut && (
-                    <>
-                      {" "}· ตัด Dead Air ไป{" "}
-                      <strong>{processResult.silenceCutCount} จุด</strong> (ประหยัดเวลา{" "}
-                      {(processResult.timeSavedMs / 1000).toFixed(1)}s)
-                    </>
-                  )}
-                  {" "}· ขนาด: <strong>{formatBytes(processResult.sizeBytes)}</strong>
-                </p>
+        {/* Collapsible Panel Body */}
+        {!isRenderPanelCollapsed && (
+          <div className="export-controls-bar-body">
+            {/* Remotion Pro Render Card */}
+            <div className="panel-remotion-card">
+              <div className="remotion-card-header">
+                <span className="remotion-icon">⚛️</span>
+                <div>
+                  <h4>Render แบบ Remotion (Full NLE Composition)</h4>
+                  <p>
+                    รวมทุกองค์ประกอบบน Timeline ออกมาเป็นคลิปเดียว: ซับไตเติล (Subtitles), ข้อความ Text Overlays, Three.js / CSS Overlays, ซาวด์เอฟเฟกต์ และมัลติแทร็กเสียง
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <button
+                  type="button"
+                  className="btn-remotion-render-main"
+                  disabled={isBusy}
+                  onClick={handleRemotionRender}
+                  title="เริ่มส่งงาน Render ด้วย Remotion Engine รวมทุกเลเยอร์"
+                >
+                  ⚛️ {isBusy ? "⏳ กำลังประมวลผล..." : "Render แบบ Remotion"}
+                </button>
               </div>
             </div>
 
-            <div className="render-action-btn-row">
-              <button
-                type="button"
-                className="render-action-btn btn-download-file"
-                onClick={() => void handleDownloadRenderedFile()}
-                title="เลือกตำแหน่งโฟลเดอร์และบันทึกไฟล์ MP4 ลงเครื่อง"
-              >
-                📥 บันทึกไฟล์ลงเครื่อง (Download / Save As)
-              </button>
+            {/* Fast FFmpeg Direct Cut Section */}
+            <div className="panel-ffmpeg-group">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: "1 1 300px" }}>
+                  <input
+                    type="text"
+                    className="export-title-input"
+                    value={customTitle}
+                    onChange={(e) => setCustomTitle(e.target.value)}
+                    placeholder="ชื่อคลิปที่จะบันทึก..."
+                    style={{ margin: 0, flex: 1 }}
+                  />
+                  {onBuildPlan && (
+                    <button
+                      type="button"
+                      className="ai-build-pill-btn"
+                      onClick={onBuildPlan}
+                      disabled={isBusy}
+                      title="สร้างแผนตัดต่อ Preprocessing Plan ด้วยพารามิเตอร์ปัจจุบัน"
+                    >
+                      {isBusy ? "⏳ กำลังสร้าง..." : "⚡ สร้างแผนตัดต่อ AI"}
+                    </button>
+                  )}
+                  {plan && onSubmitJob && (
+                    <button
+                      type="button"
+                      className="ai-submit-queue-btn"
+                      onClick={onSubmitJob}
+                      disabled={!canSubmitJob || isBusy}
+                      title="ส่งแผน AI เข้า Worker GPU Queue"
+                    >
+                      🚀 ส่ง GPU Queue
+                    </button>
+                  )}
+                </div>
 
-              <button
-                type="button"
-                className="render-action-btn btn-open-folder"
-                onClick={() => void handleOpenRenderFolder()}
-                title="เปิดโฟลเดอร์ในเครื่องที่เก็บไฟล์นี้ (Windows Explorer)"
-              >
-                📂 เปิดโฟลเดอร์ไฟล์ (Open Folder)
-              </button>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="render-clip-btn render-btn-deadair"
+                    style={{
+                      background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                      boxShadow: "0 4px 14px rgba(16, 185, 129, 0.35)",
+                      padding: "6px 14px",
+                      fontSize: "0.82rem",
+                    }}
+                    disabled={isProcessing || duration === 0}
+                    onClick={() => void handleProcessVideo(true)}
+                    title="ตัดช่วงเงียบ (Dead Air) อัตโนมัติ เน้นเสียงพูดกระชับ (FFmpeg Native Cut)"
+                  >
+                    {isProcessing && lastRenderHadDeadAirCut ? "⚙️ กำลัง Render..." : "⚡ Render ตัด Dead Air (FFmpeg)"}
+                  </button>
 
-              <button
-                type="button"
-                className="render-action-btn btn-play-result"
-                onClick={handlePlayRenderedVideo}
-                title="เปิดเล่นวิดีโอผลลัพธ์ที่เพิ่ง Render เสร็จทันทีใน Player"
-              >
-                🎬 เล่นวิดีโอผลลัพธ์ (Play Result)
-              </button>
+                  <button
+                    type="button"
+                    className="render-clip-btn render-btn-normal"
+                    style={{
+                      background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                      boxShadow: "0 4px 14px rgba(59, 130, 246, 0.35)",
+                      padding: "6px 14px",
+                      fontSize: "0.82rem",
+                    }}
+                    disabled={isProcessing || duration === 0}
+                    onClick={() => void handleProcessVideo(false)}
+                    title="Render วิดีโอเต็มคลิปหรือตามช่วง Trim โดยไม่ตัดต่อเสียงช่วงเงียบ"
+                  >
+                    {isProcessing && !lastRenderHadDeadAirCut ? "⚙️ กำลัง Render..." : "🎬 Render ปกติ (FFmpeg)"}
+                  </button>
+                </div>
+              </div>
 
-              <button
-                type="button"
-                className="render-action-btn btn-upload-cloud"
-                disabled={isUploading}
-                onClick={() => void handleUploadToLibrary()}
-                title="ส่งไฟล์ขึ้นระบบคลังสื่อ SmartAIHub Cloud"
-              >
-                {isUploading ? "☁️ กำลังส่งขึ้น Cloud..." : "🚀 ส่งเข้า Library ที่ smartaihub.app"}
-              </button>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "0.74rem", color: "#94a3b8" }}>
+                <span>💡 FFmpeg ด้านบนส่งออกเฉพาะคลิปต้นฉบับตาม Trim / Reframe / Dead Air (ความเร็วสูง) หากต้องการรวม Subtitle & Overlay ให้ใช้ <strong>Render แบบ Remotion</strong></span>
+                <span style={{ cursor: "pointer", color: "#60a5fa", textDecoration: "underline" }} onClick={() => void handleSaveProject(true)}>
+                  💾 บันทึกเป็น (Save As...)
+                </span>
+              </div>
             </div>
+
+            {/* Render Result Action Card */}
+            {processResult && (
+              <div className="render-success-card" style={{ marginTop: "4px" }}>
+                <div className="render-success-header">
+                  <span className="success-badge-icon">✅</span>
+                  <div className="render-success-meta">
+                    <h4>
+                      Render เสร็จสมบูรณ์: <strong>{processResult.fileName}</strong>{" "}
+                      <span style={{ fontSize: "0.82em", fontWeight: 600, color: lastRenderHadDeadAirCut ? "#34d399" : "#60a5fa" }}>
+                        ({lastRenderHadDeadAirCut ? "⚡ ตัด Dead Air กระชับเสียงพูด" : "🎬 Render ปกติไม่ตัด Dead Air"})
+                      </span>
+                    </h4>
+                    <p>
+                      ความยาว: <strong>{formatSeconds(processResult.durationMs / 1000)}</strong>
+                      {lastRenderHadDeadAirCut && (
+                        <>
+                          {" "}· ตัด Dead Air ไป{" "}
+                          <strong>{processResult.silenceCutCount} จุด</strong> (ประหยัดเวลา{" "}
+                          {(processResult.timeSavedMs / 1000).toFixed(1)}s)
+                        </>
+                      )}
+                      {" "}· ขนาด: <strong>{formatBytes(processResult.sizeBytes)}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="render-action-btn-row">
+                  <button
+                    type="button"
+                    className="render-action-btn btn-download-file"
+                    onClick={() => void handleDownloadRenderedFile()}
+                    title="เลือกตำแหน่งโฟลเดอร์และบันทึกไฟล์ MP4 ลงเครื่อง"
+                  >
+                    📥 บันทึกไฟล์ลงเครื่อง (Download / Save As)
+                  </button>
+
+                  <button
+                    type="button"
+                    className="render-action-btn btn-open-folder"
+                    onClick={() => void handleOpenRenderFolder()}
+                    title="เปิดโฟลเดอร์ในเครื่องที่เก็บไฟล์นี้ (Windows Explorer)"
+                  >
+                    📂 เปิดโฟลเดอร์ไฟล์ (Open Folder)
+                  </button>
+
+                  <button
+                    type="button"
+                    className="render-action-btn btn-play-result"
+                    onClick={handlePlayRenderedVideo}
+                    title="เปิดเล่นวิดีโอผลลัพธ์ที่เพิ่ง Render เสร็จทันทีใน Player"
+                  >
+                    🎬 เล่นวิดีโอผลลัพธ์ (Play Result)
+                  </button>
+
+                  <button
+                    type="button"
+                    className="render-action-btn btn-upload-cloud"
+                    disabled={isUploading}
+                    onClick={() => void handleUploadToLibrary()}
+                    title="ส่งไฟล์ขึ้นระบบคลังสื่อ SmartAIHub Cloud"
+                  >
+                    {isUploading ? "☁️ กำลังส่งขึ้น Cloud..." : "🚀 ส่งเข้า Library ที่ smartaihub.app"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -4512,6 +5025,377 @@ export function MediaVideoEditorPlayer({
             setTimeout(() => setProjectStatusMsg(null), 5000);
           }}
         />
+      )}
+
+      {/* Render & Export Studio Popup Modal */}
+      {isRenderModalOpen && (
+        <div className="nle-modal-backdrop" onClick={() => setIsRenderModalOpen(false)}>
+          <div
+            className="project-settings-modal"
+            style={{ maxWidth: "700px", width: "92%", maxHeight: "90vh", overflowY: "auto" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="project-settings-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", borderBottom: "1px solid rgba(148, 163, 184, 0.15)" }}>
+              <h3 style={{ display: "flex", alignItems: "center", gap: "8px", margin: 0, color: "#f8fafc", fontSize: "1.1rem" }}>
+                <span>🚀</span> Render & Export Studio
+              </h3>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setIsRenderModalOpen(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#94a3b8",
+                  fontSize: "1.2rem",
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="project-settings-body" style={{ padding: "18px", display: "flex", flexDirection: "column", gap: "14px" }}>
+              {/* Output Filename Input */}
+              <div>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#cbd5e1", marginBottom: "6px" }}>
+                  ชื่อคลิปที่จะบันทึก (Output Filename):
+                </label>
+                <input
+                  type="text"
+                  className="export-title-input"
+                  value={customTitle}
+                  onChange={(e) => setCustomTitle(e.target.value)}
+                  placeholder="ชื่อคลิปที่จะบันทึก..."
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", background: "#1e293b", border: "1px solid #334155", color: "#f8fafc" }}
+                />
+              </div>
+
+              {/* Resolution & Canvas Specs Summary Card */}
+              <div
+                className="render-canvas-info-card"
+                style={{
+                  background: "linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%)",
+                  border: "1px solid rgba(56, 189, 248, 0.35)",
+                  borderRadius: "8px",
+                  padding: "12px 14px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "0.78rem", color: "#94a3b8", fontWeight: 600 }}>
+                    📐 ขนาดและความละเอียดพิกเซลที่จะ Render (Render Canvas Specs):
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "4px", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: "1.1rem", fontWeight: 800, color: "#38bdf8", fontFamily: "monospace" }}>
+                      {nleProject?.canvas?.width || 1080} × {nleProject?.canvas?.height || 1920} px
+                    </span>
+                    <span style={{ fontSize: "0.76rem", padding: "2px 8px", borderRadius: "4px", background: "rgba(56, 189, 248, 0.2)", color: "#38bdf8", fontWeight: 700 }}>
+                      สัดส่วน {nleProject?.canvas?.aspectRatio || aspectRatio}
+                    </span>
+                    <span style={{ fontSize: "0.76rem", color: "#cbd5e1" }}>
+                      · {nleProject?.canvas?.fps || 30} FPS · 48 kHz AAC
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRenderModalOpen(false);
+                    setIsProjectSettingsOpen(true);
+                  }}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "6px",
+                    background: "rgba(51, 65, 85, 0.7)",
+                    border: "1px solid rgba(148, 163, 184, 0.3)",
+                    color: "#38bdf8",
+                    fontSize: "0.78rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                  title="เปิดหน้าต่างแก้ไขขนาดความละเอียดและสัดส่วนโปรเจกต์"
+                >
+                  ⚙️ แก้ไขตั้งค่าโปรเจกต์
+                </button>
+              </div>
+
+              {/* Remotion Full Composition Render Section (High Priority for Subtitles & Overlays) */}
+              <div
+                className="remotion-render-section"
+                style={{
+                  background: "linear-gradient(135deg, rgba(88, 28, 135, 0.35) 0%, rgba(30, 27, 75, 0.6) 100%)",
+                  border: "1px solid rgba(168, 85, 247, 0.45)",
+                  borderRadius: "10px",
+                  padding: "14px 16px",
+                  boxShadow: "0 4px 14px rgba(126, 34, 206, 0.25)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                  <span style={{ fontSize: "1.2rem" }}>⚛️</span>
+                  <h4 style={{ margin: 0, color: "#e9d5ff", fontSize: "0.95rem", fontWeight: 700 }}>
+                    Render รวมทุกองค์ประกอบด้วย Remotion (Full NLE Composition Render)
+                  </h4>
+                </div>
+                <p style={{ margin: "0 0 12px 0", fontSize: "0.78rem", color: "#c084fc", lineHeight: 1.45 }}>
+                  ใช้ตัวเลือกนี้เมื่อโปรเจกต์มี <strong>ซับไตเติล (Subtitle), ข้อความ Text Overlay, 3D / CSS Overlay (React / Three.js / SVG), ซาวด์/เพลงประกอบ MiniMax หรือ Blur</strong> เพื่อรวมทุกแทร็กบน Timeline ออกมาเป็นวิดีโอสมบูรณ์แบบ
+                </p>
+
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+                  <button
+                    type="button"
+                    className="btn-remotion-render"
+                    onClick={() => {
+                      setIsRenderModalOpen(false);
+                      if (onSubmitJob) {
+                        onSubmitJob();
+                      } else if (onBuildPlan) {
+                        onBuildPlan();
+                      } else {
+                        alert("โปรดสร้างแผนตัดต่อหรือเลือกวิดีโอก่อนส่ง Render ด้วย Remotion GPU Worker Queue");
+                      }
+                    }}
+                    disabled={isBusy}
+                    style={{
+                      flex: "1 1 240px",
+                      background: "linear-gradient(135deg, #7e22ce 0%, #6b21a8 100%)",
+                      border: "1px solid rgba(192, 132, 252, 0.5)",
+                      boxShadow: "0 4px 14px rgba(126, 34, 206, 0.35)",
+                      color: "#ffffff",
+                      padding: "10px 18px",
+                      borderRadius: "6px",
+                      fontWeight: 700,
+                      fontSize: "0.86rem",
+                      cursor: isBusy ? "not-allowed" : "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                    }}
+                    title="ส่งงานเข้า Remotion Engine รวมซับไตเติล, Text Overlays, Audio Tracks และ React / Three.js Overlays ครบถ้วน"
+                  >
+                    <span>⚛️</span> {isBusy ? "⏳ กำลังส่งงาน Remotion..." : "🚀 Render รวมทุกองค์ประกอบด้วย Remotion (Full Composition)"}
+                  </button>
+                  <div style={{ fontSize: "0.74rem", color: "#a855f7", flex: "1 1 180px" }}>
+                    ✨ รองรับ React, Subtitle, Audio Music & Three.js Overlays ครบถ้วน
+                  </div>
+                </div>
+              </div>
+
+              {/* Warning Notice Box for Direct FFmpeg Render */}
+              <div
+                style={{
+                  background: "rgba(245, 158, 11, 0.12)",
+                  border: "1px solid rgba(245, 158, 11, 0.35)",
+                  borderRadius: "8px",
+                  padding: "10px 14px",
+                  display: "flex",
+                  gap: "10px",
+                  alignItems: "flex-start",
+                }}
+              >
+                <span style={{ fontSize: "1.2rem" }}>⚠️</span>
+                <div style={{ fontSize: "0.78rem", color: "#fbbf24", lineHeight: 1.45 }}>
+                  <strong>คำเตือน:</strong> การ Render ตัด Dead Air / Render ปกติ ด้วย FFmpeg ด้านล่าง เป็นการส่งออกเฉพาะคลิปต้นฉบับความเร็วสูง <strong>จะไม่รวมข้อมูล Subtitle, ข้อความ Text Overlay, ซาวด์เอฟเฟกต์ หรือ 3D/CSS Overlays (React / CSS / Three.js) บน Timeline ไปด้วย</strong> (หากต้องการรวมข้อมูลเหล่านี้ ให้ใช้ปุ่ม Render ด้วย Remotion ด้านบน)
+                </div>
+              </div>
+
+              {/* Live Render Duration Breakdown Card */}
+              <div
+                className="render-breakdown-card"
+                style={{
+                  background: "rgba(15, 23, 42, 0.85)",
+                  border: "1px solid rgba(56, 189, 248, 0.3)",
+                  borderRadius: "8px",
+                  padding: "12px 14px",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                  <span style={{ color: "#38bdf8", fontWeight: 700, fontSize: "0.88rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span>⏱️</span> สรุปความยาวคลิปที่จะได้หลัง Render ต้นฉบับ:
+                  </span>
+                  <span style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
+                    ความยาวต้นฉบับ: <strong style={{ color: "#e2e8f0" }}>{formatSmpteTime(duration)}</strong> ({formatSeconds(duration)})
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                  {/* Option A: Render Cut Dead Air */}
+                  <div
+                    style={{
+                      flex: "1 1 200px",
+                      background: "rgba(16, 185, 129, 0.12)",
+                      border: "1px solid rgba(16, 185, 129, 0.3)",
+                      borderRadius: "6px",
+                      padding: "8px 12px",
+                      borderLeft: "4px solid #10b981",
+                    }}
+                  >
+                    <div style={{ color: "#34d399", fontWeight: 700, fontSize: "0.84rem" }}>
+                      ⚡ ความยาวหลังตัด Dead Air + Trim + สปีด ({playbackRate.toFixed(2)}x):
+                    </div>
+                    <div style={{ fontSize: "1.15rem", fontWeight: 800, color: "#ffffff", marginTop: "3px" }}>
+                      {formatSmpteTime(finalCutRenderDurationSec)}{" "}
+                      <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#a7f3d0" }}>
+                        ({formatSeconds(finalCutRenderDurationSec)})
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "0.76rem", color: "#94a3b8", marginTop: "2px" }}>
+                      {totalCutTimeSavedSec > 0
+                        ? `ประหยัดเวลาได้ -${totalCutTimeSavedSec.toFixed(1)}s (ตัด ${cutCount} ช่วง)`
+                        : "ไม่มีช่วงตัด"}
+                    </div>
+                  </div>
+
+                  {/* Option B: Render Normal */}
+                  <div
+                    style={{
+                      flex: "1 1 200px",
+                      background: "rgba(59, 130, 246, 0.12)",
+                      border: "1px solid rgba(59, 130, 246, 0.3)",
+                      borderRadius: "6px",
+                      padding: "8px 12px",
+                      borderLeft: "4px solid #3b82f6",
+                    }}
+                  >
+                    <div style={{ color: "#60a5fa", fontWeight: 700, fontSize: "0.84rem" }}>
+                      🎬 ความยาวกรณี Render ปกติ + สปีด ({playbackRate.toFixed(2)}x):
+                    </div>
+                    <div style={{ fontSize: "1.15rem", fontWeight: 800, color: "#ffffff", marginTop: "3px" }}>
+                      {formatSmpteTime(finalNormalRenderDurationSec)}{" "}
+                      <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#bfdbfe" }}>
+                        ({formatSeconds(finalNormalRenderDurationSec)})
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "0.76rem", color: "#94a3b8", marginTop: "2px" }}>
+                      {trimStart > 0 || (trimEnd > 0 && trimEnd < duration) ? "มี Trim หัว/ท้าย" : "ตามความยาวคลิปเต็ม"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="render-buttons-group" style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="render-clip-btn render-btn-deadair"
+                  style={{
+                    flex: "1 1 200px",
+                    background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                    boxShadow: "0 4px 14px rgba(16, 185, 129, 0.35)",
+                    padding: "10px 16px",
+                    borderRadius: "6px",
+                    color: "#fff",
+                    fontWeight: 700,
+                    cursor: duration === 0 || isProcessing ? "not-allowed" : "pointer",
+                    border: "none",
+                  }}
+                  disabled={isProcessing || duration === 0}
+                  onClick={() => void handleProcessVideo(true)}
+                  title="ตัดช่วงเงียบ (Dead Air) อัตโนมัติ เฉพาะคลิปต้นฉบับ"
+                >
+                  {isProcessing && lastRenderHadDeadAirCut ? "⚙️ กำลัง Render..." : "⚡ Render ต้นฉบับตัด Dead Air"}
+                </button>
+
+                <button
+                  type="button"
+                  className="render-clip-btn render-btn-normal"
+                  style={{
+                    flex: "1 1 200px",
+                    background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                    boxShadow: "0 4px 14px rgba(59, 130, 246, 0.35)",
+                    padding: "10px 16px",
+                    borderRadius: "6px",
+                    color: "#fff",
+                    fontWeight: 700,
+                    cursor: duration === 0 || isProcessing ? "not-allowed" : "pointer",
+                    border: "none",
+                  }}
+                  disabled={isProcessing || duration === 0}
+                  onClick={() => void handleProcessVideo(false)}
+                  title="Render คลิปต้นฉบับเต็มหรือตามช่วงที่ Trim"
+                >
+                  {isProcessing && !lastRenderHadDeadAirCut ? "⚙️ กำลัง Render..." : "🎬 Render ต้นฉบับปกติ (ไม่ตัด Dead Air)"}
+                </button>
+              </div>
+
+              {/* Render Result Action Card with Download, Reveal Folder, and Play buttons */}
+              {processResult && (
+                <div className="render-success-card" style={{ marginTop: "10px" }}>
+                  <div className="render-success-header">
+                    <span className="success-badge-icon">✅</span>
+                    <div className="render-success-meta">
+                      <h4>
+                        Render เสร็จสมบูรณ์: <strong>{processResult.fileName}</strong>{" "}
+                        <span style={{ fontSize: "0.82em", fontWeight: 600, color: lastRenderHadDeadAirCut ? "#34d399" : "#60a5fa" }}>
+                          ({lastRenderHadDeadAirCut ? "⚡ ตัด Dead Air กระชับเสียงพูด" : "🎬 Render ปกติไม่ตัด Dead Air"})
+                        </span>
+                      </h4>
+                      <p>
+                        ความยาว: <strong>{formatSeconds(processResult.durationMs / 1000)}</strong>
+                        {lastRenderHadDeadAirCut && (
+                          <>
+                            {" "}· ตัด Dead Air ไป{" "}
+                            <strong>{processResult.silenceCutCount} จุด</strong> (ประหยัดเวลา{" "}
+                            {(processResult.timeSavedMs / 1000).toFixed(1)}s)
+                          </>
+                        )}
+                        {" "}· ขนาด: <strong>{formatBytes(processResult.sizeBytes)}</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="render-action-btn-row" style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "10px" }}>
+                    <button
+                      type="button"
+                      className="render-action-btn btn-download-file"
+                      onClick={() => void handleDownloadRenderedFile()}
+                      title="เลือกตำแหน่งโฟลเดอร์และบันทึกไฟล์ MP4 ลงเครื่อง"
+                    >
+                      📥 บันทึกไฟล์ลงเครื่อง (Download / Save As)
+                    </button>
+
+                    <button
+                      type="button"
+                      className="render-action-btn btn-open-folder"
+                      onClick={() => void handleOpenRenderFolder()}
+                      title="เปิดโฟลเดอร์ในเครื่องที่เก็บไฟล์นี้ (Windows Explorer)"
+                    >
+                      📂 เปิดโฟลเดอร์ไฟล์ (Open Folder)
+                    </button>
+
+                    <button
+                      type="button"
+                      className="render-action-btn btn-play-result"
+                      onClick={handlePlayRenderedVideo}
+                      title="เปิดเล่นวิดีโอผลลัพธ์ที่เพิ่ง Render เสร็จทันทีใน Player"
+                    >
+                      🎬 เล่นวิดีโอผลลัพธ์ (Play Result)
+                    </button>
+
+                    <button
+                      type="button"
+                      className="render-action-btn btn-upload-cloud"
+                      disabled={isUploading}
+                      onClick={() => void handleUploadToLibrary()}
+                      title="ส่งไฟล์ขึ้นระบบคลังสื่อ SmartAIHub Cloud"
+                    >
+                      {isUploading ? "☁️ กำลังส่งขึ้น Cloud..." : "🚀 ส่งเข้า Library ที่ smartaihub.app"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Project Settings Modal */}

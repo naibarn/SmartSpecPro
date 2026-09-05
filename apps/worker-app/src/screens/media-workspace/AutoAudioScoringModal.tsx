@@ -8,12 +8,15 @@ import { extractSfxEvents } from "../../services/audioScoring/sfxExtractor";
 import { resolveMusicCueAudio } from "../../services/audioScoring/audioProviderRouter";
 import { applySoundPlanToProjectTimeline } from "../../services/audioScoring/audioPlacementEngine";
 import { runAudioQualityControl, autoRemixForQcCompliance } from "../../services/audioScoring/audioQcEngine";
+import { executeSubtitleMoodScoringSkill } from "../../services/audioScoring/smartAiHubSkillClient";
 
 export interface AutoAudioScoringModalProps {
   isOpen: boolean;
   onClose: () => void;
   project: SmartSpecProjectDraft;
   onApplyScoredProject: (updated: SmartSpecProjectDraft) => void;
+  seriesId?: string | null;
+  workspacePath?: string | null;
 }
 
 export function AutoAudioScoringModal({
@@ -21,12 +24,15 @@ export function AutoAudioScoringModal({
   onClose,
   project,
   onApplyScoredProject,
+  seriesId,
+  workspacePath,
 }: AutoAudioScoringModalProps) {
   const [genre, setGenre] = useState<DramaGenre>("romance_ceo");
-  const [runtimeStatus, setRuntimeStatus] = useState<string>("กำลังตรวจสอบ MiniMax Runtime...");
+  const [runtimeStatus, setRuntimeStatus] = useState<string>("กำลังตรวจสอบ MiniMax Local Engine...");
   const [isRuntimeReady, setIsRuntimeReady] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
   const [progressStep, setProgressStep] = useState<string>("");
+  const [creditInfo, setCreditInfo] = useState<{ deducted: number; remaining: number } | null>(null);
   const [soundPlan, setSoundPlan] = useState<EpisodeSoundPlan | null>(null);
   const [qcReport, setQcReport] = useState<AudioQCReport | null>(null);
   const [scoredProject, setScoredProject] = useState<SmartSpecProjectDraft | null>(null);
@@ -41,7 +47,7 @@ export function AutoAudioScoringModal({
         setRuntimeStatus(res.ready ? `● Online (${res.device})` : `Standby (${res.message})`);
       })
       .catch((err) => {
-        setRuntimeStatus(`Local Fallback Mode (${String(err)})`);
+        setRuntimeStatus(`Local Engine Error (${String(err)})`);
       });
   }, [isOpen]);
 
@@ -68,30 +74,60 @@ export function AutoAudioScoringModal({
 
   const handleRunAutoScoring = async () => {
     setIsScoring(true);
-    setProgressStep("วิเคราะห์อารมณ์และจังหวะของเนื้อเรื่อง (Dramatic Beat Extraction)...");
+    setCreditInfo(null);
+    setProgressStep("เรียกใช้ SmartAIHub Server Skill วิเคราะห์อารมณ์จาก Subtitle Timeline...");
 
     try {
-      // 1. Build script shots from main video track clips
+      // 1. Check for Subtitle Track or Video Track clips to construct Subtitle inputs
+      const subTrack = project.tracks.find((t) => t.id === "track_subtitle" || t.type === "text_subtitle");
       const v1Track = project.tracks.find((t) => t.id === "track_v1");
       const durationMs = project.canvas.durationMs || 60000;
 
-      const scriptShots: ScriptShotInput[] = (v1Track?.clips && v1Track.clips.length > 0)
+      const subtitles = (subTrack?.clips && subTrack.clips.length > 0)
+        ? subTrack.clips.map((clip, idx) => ({
+            index: idx + 1,
+            startMs: clip.timelineStartMs,
+            endMs: clip.timelineStartMs + clip.durationMs,
+            text: clip.name,
+          }))
+        : (v1Track?.clips && v1Track.clips.length > 0)
         ? v1Track.clips.map((clip, idx) => ({
-            shotIndex: idx + 1,
-            description: clip.name,
-            durationSeconds: clip.durationMs / 1000,
+            index: idx + 1,
+            startMs: clip.timelineStartMs,
+            endMs: clip.timelineStartMs + clip.durationMs,
+            text: clip.name,
           }))
         : [
-            { shotIndex: 1, description: "เปิดฉาก แนะนำตัวละคร", durationSeconds: durationMs / 3000 },
-            { shotIndex: 2, description: "ความขัดแย้งและจุดเปลี่ยนระทึกขวัญ", durationSeconds: durationMs / 3000 },
-            { shotIndex: 3, description: "จุดคลี่คลายและ Cliffhanger", durationSeconds: durationMs / 3000 },
+            { index: 1, startMs: 0, endMs: Math.floor(durationMs / 3), text: "เปิดฉาก แนะนำตัวละคร" },
+            { index: 2, startMs: Math.floor(durationMs / 3), endMs: Math.floor((durationMs * 2) / 3), text: "ความขัดแย้งและจุดเปลี่ยนระทึกขวัญ" },
+            { index: 3, startMs: Math.floor((durationMs * 2) / 3), endMs: durationMs, text: "จุดคลี่คลายและ Cliffhanger" },
           ];
 
-      // 2. Extract Emotion Vectors & Segmentation
-      const shotIntents = extractDramaticBeats(scriptShots, genre);
-      setProgressStep("จัดกลุ่ม Music Cues และออกแบบ Sound Plan แบบภาพยนตร์...");
-      await new Promise((r) => setTimeout(r, 400));
 
+      // 2. Call SmartAIHub Subtitle Mood Scoring Skill REST API & deduct credits
+      setProgressStep("กำลังประมวลผลผ่าน SmartAIHub Skill REST API (หักเครดิตตามระบบปกติ)...");
+      const skillRes = await executeSubtitleMoodScoringSkill({
+        projectId: project.projectId,
+        genre,
+        outputFormat: "mp3",
+        subtitles,
+      });
+
+      if (skillRes.success) {
+        setCreditInfo({
+          deducted: skillRes.creditsDeducted,
+          remaining: skillRes.remainingCredits,
+        });
+      }
+
+      // Convert Skill cues to EpisodeSoundPlan
+      const scriptShots: ScriptShotInput[] = subtitles.map((s) => ({
+        shotIndex: s.index,
+        description: s.text,
+        durationSeconds: (s.endMs - s.startMs) / 1000,
+      }));
+
+      const shotIntents = extractDramaticBeats(scriptShots, genre);
       const plan = segmentEpisodeSoundPlan({
         episodeId: project.projectId,
         seriesId: "series_vertical_drama",
@@ -104,14 +140,15 @@ export function AutoAudioScoringModal({
       // 3. Extract SFX Events
       const sfxEvents = extractSfxEvents(scriptShots);
 
-      // 4. Resolve Music Cues via MiniMax Music 3 Sidecar
-      setProgressStep(`กำลังสร้างเพลงประกอบ MiniMax Music 3 (${plan.cues.length} Cues)...`);
+      // 4. Resolve Music Cues via Local MiniMax Music 3 Engine (Harddisk Model Weights)
+      setProgressStep(`กำลังสร้างเพลงประกอบบนเครื่องด้วย MiniMax-Music3 Open-Source Engine (${plan.cues.length} Cues)...`);
       const generatedCues: Array<{ cueId: string; audioPath: string; durationSeconds: number }> = [];
 
       for (let i = 0; i < plan.cues.length; i++) {
         const cue = plan.cues[i];
-        setProgressStep(`กำลัง Generate Music Cue #${i + 1}/${plan.cues.length} (${cue.placement})...`);
-        const resolved = await resolveMusicCueAudio(cue, project.mediaPool);
+        const cueLabel = cue.displayCaption ? `${cue.displayCaption}` : cue.placement;
+        setProgressStep(`กำลังสร้าง Music Cue #${i + 1}/${plan.cues.length} (${cueLabel}) ด้วย MiniMax-Music3...`);
+        const resolved = await resolveMusicCueAudio(cue, project.mediaPool, workspacePath);
         generatedCues.push({
           cueId: cue.cueId,
           audioPath: resolved.audioPath,
@@ -119,8 +156,8 @@ export function AutoAudioScoringModal({
         });
       }
 
-      // 5. Automatic Timecode Placement to Timeline Tracks (A2 & A3)
-      setProgressStep("จัดวางคลิปเสียงลงบน Timeline (A2 BGM + Auto Ducking & A3 SFX)...");
+      // 5. Automatic Timecode Placement to Dedicated Sound Tracks (A2 BGM & A3 SFX, keeping A1 speech untouched!)
+      setProgressStep("จัดวางไฟล์เสียงลงบน Sound Tracks (A2 BGM + Auto Ducking & A3 SFX) โดยไม่แตะ A1 เสียงพูด...");
       const mappedProject = applySoundPlanToProjectTimeline({
         project,
         soundPlan: plan,
@@ -136,13 +173,14 @@ export function AutoAudioScoringModal({
       // If QC issues, apply safe auto-remix
       const finalProject = qc.passed ? mappedProject : autoRemixForQcCompliance(mappedProject);
       setScoredProject(finalProject);
-      setProgressStep("✅ การสร้างดนตรีประกอบและตรวจสอบคุณภาพสำเร็จสมบูรณ์!");
+      setProgressStep("✅ สร้างเพลงประกอบด้วย MiniMax-Music3 และลง Sound Tracks สำเร็จ!");
     } catch (err) {
       setProgressStep(`❌ เกิดข้อผิดพลาด: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setIsScoring(false);
     }
   };
+
 
   const handleApplyToTimeline = () => {
     if (scoredProject) {
@@ -157,7 +195,11 @@ export function AutoAudioScoringModal({
         <div className="nle-modal-header">
           <div className="nle-modal-title">
             <span>🎵</span>
-            <span>MiniMax Music 3 Auto Audio Scoring (Phase 2 - 6)</span>
+            <span>
+              {seriesId
+                ? `MiniMax Music 3 Spec 176 & 177 Series Scoring (Series #${seriesId})`
+                : "MiniMax Music 3 Auto Audio Scoring"}
+            </span>
           </div>
           <button type="button" className="nle-modal-close-btn" onClick={onClose}>
             ✕
@@ -222,6 +264,15 @@ export function AutoAudioScoringModal({
               </div>
             </div>
           )}
+
+          {/* SmartAIHub Skill Credit Ledger Info */}
+          {creditInfo && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(6, 182, 212, 0.12)", padding: "8px 12px", borderRadius: "6px", border: "1px solid rgba(6, 182, 212, 0.3)", fontSize: "0.76rem", color: "#67e8f9" }}>
+              <span>💳 SmartAIHub Skill Credit Deduction: <strong>-{creditInfo.deducted} Credits</strong></span>
+              <span>เครดิตคงเหลือ: <strong>{creditInfo.remaining} Credits</strong></span>
+            </div>
+          )}
+
 
           {/* QC Report Summary */}
           {qcReport && (

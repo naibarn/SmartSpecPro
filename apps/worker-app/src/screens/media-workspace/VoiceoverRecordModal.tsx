@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createRecordingClock } from "./recordingClock";
 import type { NleClip } from "../../types/nleProject";
+import { invoke } from "@tauri-apps/api/core";
 
 interface VoiceoverRecordModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface VoiceoverRecordModalProps {
   videoDurationMs: number;
   onAddAudioClip: (clip: NleClip) => void;
   onSyncPlayVideo?: (play: boolean, seekToMs?: number) => void;
+  workspacePath?: string | null;
 }
 
 interface AudioInputDevice {
@@ -31,6 +33,7 @@ export function VoiceoverRecordModal({
   videoDurationMs,
   onAddAudioClip,
   onSyncPlayVideo,
+  workspacePath,
 }: VoiceoverRecordModalProps) {
   const [devices, setDevices] = useState<AudioInputDevice[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
@@ -266,6 +269,8 @@ export function VoiceoverRecordModal({
   const handleApplyTakeToTimeline = async (take: RecordedTake) => {
     const request = requestRef.current;
     let sourceUrl: string;
+    let sourcePath: string | undefined = undefined;
+    let sourceType: "local_file" | "smartaihub_library" = "smartaihub_library";
     try {
       sourceUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -273,6 +278,20 @@ export function VoiceoverRecordModal({
         reader.onerror = () => reject(reader.error);
         reader.readAsDataURL(take.blob);
       });
+      // Save recorded take strictly into workspace directory on harddisk
+      const targetFolder = workspacePath ? `${workspacePath.replace(/[\/\\]$/, "")}/voiceovers` : "voiceovers";
+      const voFileName = `voiceover_${take.id}.wav`;
+      const voPath = `${targetFolder}/${voFileName}`;
+      try {
+        const savedPath = await invoke<string>("worker_app_save_binary_file", {
+          filePath: voPath,
+          base64Data: sourceUrl,
+        });
+        sourcePath = savedPath;
+        sourceType = "local_file";
+      } catch (err) {
+        console.warn("Failed to persist voiceover to workspace folder:", err);
+      }
     } catch {
       if (openRef.current) alert("ไม่สามารถจัดเก็บเสียงบันทึกได้ กรุณาลองอีกครั้ง");
       return;
@@ -283,8 +302,9 @@ export function VoiceoverRecordModal({
       name: `🎙️ บรรยาย (${(take.durationMs / 1000).toFixed(1)}s)`,
       timelineStartMs: Math.round(take.startMs),
       durationMs: Math.round(take.durationMs),
-      sourceType: "smartaihub_library",
+      sourceType,
       sourceUrl,
+      sourcePath,
       volume: 1.0,
     };
     onAddAudioClip(newAudioClip);

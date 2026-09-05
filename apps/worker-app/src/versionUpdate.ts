@@ -66,8 +66,7 @@ export function compareVersionStrings(left: string, right: string): number {
 }
 
 export function isNewerVersion(current: string | null | undefined, latest: string | null | undefined): boolean {
-  if (!latest?.trim()) return false;
-  if (!current?.trim()) return true;
+  if (!latest?.trim() || !current?.trim()) return false;
   return compareVersionStrings(latest, current) > 0;
 }
 

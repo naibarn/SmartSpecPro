@@ -163,6 +163,9 @@ export function resolveCharacterCastingAgeProfile(
   if (/(วัยทำงาน|พนักงาน|ออฟฟิศ|เริ่มทำงาน|young professional|entry[- ]level|working adult|intern)/i.test(facts)) {
     return profile({ min: 22, max: 25 }, "role_context", "inferred", "บทบาทวัยทำงานช่วงต้นของตัวละคร");
   }
+  if (/(สูงวัย|ผู้สูงอายุ|วัยชรา|older adult|elderly|seventies|เจ็ดสิบ)/i.test(facts)) {
+    return profile({ min: 60, max: 100 }, "role_context", "inferred", "คำอธิบายระบุว่าตัวละครเป็นผู้สูงวัย");
+  }
   if (/(ผู้ใหญ่|อาวุโส|หัวหน้า|ผู้บริหาร|พ่อ|แม่|mentor|senior|parent|ceo|established|older|อายุมากกว่า)/i.test(facts)) {
     return profile({ min: 30, max: 35 }, "role_context", "inferred", "บทบาทผู้ใหญ่/อาวุโสของตัวละคร");
   }

@@ -47,23 +47,29 @@ export function applySoundPlanToProjectTimeline(options: {
     fadeOutMs: 150,
   }));
 
-  // 3. Insert or update tracks in Project Draft
+  // 3. Insert or update tracks in Project Draft (Non-destructive)
+  let hasA2 = false;
+  let hasA3 = false;
+
   const updatedTracks = project.tracks.map((track) => {
     if (track.id === "track_a2") {
+      hasA2 = true;
       return {
         ...track,
         ducking: {
           enabled: true,
           sidechainSourceTrackId: "track_a1",
-          attenuationDb: -16.0,
+          attenuationDb: -12.0,
           thresholdDb: -28.0,
-          attackMs: 40,
-          releaseMs: 350,
+          attackMs: 50,
+          releaseMs: 300,
+          holdMs: 100,
         },
         clips: bgmClips,
       };
     }
     if (track.id === "track_a3") {
+      hasA3 = true;
       return {
         ...track,
         clips: sfxClips,
@@ -71,6 +77,39 @@ export function applySoundPlanToProjectTimeline(options: {
     }
     return track;
   });
+
+  if (!hasA2) {
+    updatedTracks.push({
+      id: "track_a2",
+      name: "BGM (Audio Track 2)",
+      type: "audio_music",
+      volume: 0.35,
+      muted: false,
+      locked: false,
+      ducking: {
+        enabled: true,
+        sidechainSourceTrackId: "track_a1",
+        attenuationDb: -12.0,
+        thresholdDb: -28.0,
+        attackMs: 50,
+        releaseMs: 300,
+        holdMs: 100,
+      },
+      clips: bgmClips,
+    });
+  }
+
+  if (!hasA3) {
+    updatedTracks.push({
+      id: "track_a3",
+      name: "SFX (Audio Track 3)",
+      type: "audio_sfx",
+      volume: 0.8,
+      muted: false,
+      locked: false,
+      clips: sfxClips,
+    });
+  }
 
   return {
     ...project,

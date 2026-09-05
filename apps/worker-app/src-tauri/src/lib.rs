@@ -325,6 +325,7 @@ pub fn run() {
             commands::worker_app_get_local_workspace_status,
             commands::worker_app_revoke_local_root,
             commands::worker_app_list_series,
+            commands::worker_app_list_ai_models,
             commands::worker_app_execute_series_quick_action,
             commands::worker_app_get_series_media_workspace,
             commands::worker_app_get_series_queue,
@@ -342,6 +343,10 @@ pub fn run() {
             commands::worker_app_export_capcut_draft,
             commands::worker_app_get_audio_runtime_status,
             commands::worker_app_generate_music_cue,
+            commands::worker_app_transcribe_audio,
+            commands::worker_app_save_binary_file,
+            commands::worker_app_get_media_history,
+            commands::worker_app_get_server_library,
         ])
         .build(tauri::generate_context!())
         .expect("failed to build Smart AI Hub Worker App")

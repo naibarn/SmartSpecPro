@@ -189,7 +189,11 @@ describe("special skill output contract", () => {
         skillReferenceId: "character_main",
         role: "person" as const,
         mediaAssetId: "4676",
-        provenance: { characterId: "1", characterKey: "main" },
+        provenance: {
+          characterId: "1",
+          characterKey: "main",
+          dialogueSpeakerEligible: true,
+        },
       },
       {
         skillReferenceId: "character_child",
@@ -672,7 +676,11 @@ describe("special skill output contract", () => {
         skillReferenceId: "character_main",
         role: "person" as const,
         mediaAssetId: "4676",
-        provenance: { characterId: "1", characterKey: "main" },
+        provenance: {
+          characterId: "1",
+          characterKey: "main",
+          dialogueSpeakerEligible: true,
+        },
       },
     ];
     const output = {

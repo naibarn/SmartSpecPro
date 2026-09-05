@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
 import { useWorkerAppContext } from "../../app/workerContext";
-import { MediaExplorerView, isAudioFile, isImageFile, type DirectoryEntry } from "./MediaExplorerView";
-import { parseProjectDraft } from "./projectPersistence";
+import { MediaExplorerView, isAudioFile, isImageFile, isProjectFile, type DirectoryEntry } from "./MediaExplorerView";
+import { parseProjectDraft, saveNleProject, isProjectFilePath } from "./projectPersistence";
 import { MediaVideoEditorPlayer } from "./MediaVideoEditorPlayer";
 import type { SmartSpecProjectDraft, ProjectAsset } from "../../types/nleProject";
 
@@ -57,6 +58,7 @@ export interface MediaWorkspaceHostProps {
   onRemoveDeadAirChange?: (enabled: boolean) => void;
   onOpenIntentSettings?: () => void;
   onBuildPlan?: () => void;
+  onWorkspacePathChange?: (path: string) => void;
 }
 
 export function MediaWorkspaceHost({
@@ -82,6 +84,7 @@ export function MediaWorkspaceHost({
   onRemoveDeadAirChange,
   onOpenIntentSettings,
   onBuildPlan,
+  onWorkspacePathChange,
 }: MediaWorkspaceHostProps) {
   const { locale } = useWorkerAppContext();
   const [activeTab, setActiveTab] = useState<"explorer" | "stages">("explorer");
@@ -91,10 +94,56 @@ export function MediaWorkspaceHost({
   const [importedAsset, setImportedAsset] = useState<ProjectAsset | null>(null);
   const [isExplorerCollapsed, setIsExplorerCollapsed] = useState<boolean>(false);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const [explorerWidth, setExplorerWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem("smartspec_explorer_width");
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 320 && parsed <= 850) return parsed;
+      }
+    } catch {
+      // Fallback to default width
+    }
+    return 360;
+  });
 
+  const [isResizing, setIsResizing] = useState<boolean>(false);
+  const [copiedPath, setCopiedPath] = useState<boolean>(false);
   const [projectError, setProjectError] = useState<string | null>(null);
   const projectRequest = useRef(0);
   const workspacePath = useRef(workspace?.localPath);
+
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.max(320, Math.min(850, e.clientX));
+      setExplorerWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      try {
+        localStorage.setItem("smartspec_explorer_width", String(explorerWidth));
+      } catch {
+        // Ignore storage errors
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing, explorerWidth]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isMenuOpen) {
@@ -108,30 +157,39 @@ export function MediaWorkspaceHost({
   useEffect(() => {
     if (workspacePath.current !== workspace?.localPath) {
       workspacePath.current = workspace?.localPath;
-      handleNewProject();
+      setSelectedVideo(null);
+      setLoadedProjectDraft(null);
     }
     return () => { projectRequest.current += 1; };
   }, [workspace?.localPath]);
 
   const handleSelectVideo = (entry: DirectoryEntry) => {
-    projectRequest.current += 1;
-    setProjectError(null);
+    // If it's a project file or JSON, redirect directly to handleOpenProjectFile
+    if (isProjectFile(entry) || isProjectFilePath(entry.path) || entry.extension?.toLowerCase() === "json") {
+      void handleOpenProjectFile(entry);
+      return;
+    }
+    setSelectedVideo(entry);
     setLoadedProjectDraft(null);
     setImportedAsset(null);
-    setSelectedVideo(entry);
     if (onSelectSourceFile) {
-      let relName = entry.name;
-      const root = workspace?.localPath?.replace(/\\/g, "/").replace(/\/+$/, "");
-      const entryPath = entry.path.replace(/\\/g, "/");
-      if (root && entryPath.startsWith(`${root}/`)) {
-        relName = entryPath.slice(root.length).replace(/^[/\\]+/, "");
+      let relativeName = entry.name;
+      const root = workspace?.localPath?.replace(/[\/\\]+$/, "");
+      if (root) {
+        const prefixSlash = `${root}/`;
+        const prefixBackslash = `${root}\\`;
+        if (entry.path.startsWith(prefixSlash)) {
+          relativeName = entry.path.slice(prefixSlash.length);
+        } else if (entry.path.startsWith(prefixBackslash)) {
+          relativeName = entry.path.slice(prefixBackslash.length);
+        }
       }
-      onSelectSourceFile(relName, entry.path);
+      onSelectSourceFile(relativeName, entry.path);
     }
   };
 
   const handleOpenProjectFile = async (entry: DirectoryEntry) => {
-    const requestId = ++projectRequest.current;
+    const requestId = (projectRequest.current += 1);
     setProjectError(null);
     try {
       const jsonContent = await invoke<string>("worker_app_load_nle_project", {
@@ -139,8 +197,11 @@ export function MediaWorkspaceHost({
       });
       const draft = parseProjectDraft(jsonContent);
       if (requestId !== projectRequest.current) return;
-      const sourcePath = draft.metadata?.originalSourceVideo || draft.tracks.find((track) => track.type === "video_main")?.clips.find((clip) => clip.sourcePath)?.sourcePath;
-      if (!sourcePath) throw new Error("โปรเจกต์นี้ไม่มีไฟล์วิดีโอต้นฉบับสำหรับเปิดใน editor");
+
+      // Ensure raw source video is never a project file
+      const rawSource = draft.metadata?.originalSourceVideo || draft.tracks.find((track) => track.type === "video_main")?.clips.find((clip) => clip.sourcePath)?.sourcePath;
+      const sourcePath = rawSource && !isProjectFilePath(rawSource) ? rawSource : null;
+
       setLoadedProjectDraft(draft);
       setImportedAsset(null);
       if (sourcePath) {
@@ -150,8 +211,18 @@ export function MediaWorkspaceHost({
           isDirectory: false,
           sizeBytes: 0,
           modifiedUnixMs: Date.now(),
-          extension: "mp4",
+          extension: sourcePath.split(".").pop() || "mp4",
           isVideo: true,
+        });
+      } else {
+        setSelectedVideo({
+          name: draft.title || entry.name.replace(/\.[^/.]+$/, ""),
+          path: entry.path,
+          isDirectory: false,
+          sizeBytes: entry.sizeBytes || 0,
+          modifiedUnixMs: entry.modifiedUnixMs || Date.now(),
+          extension: entry.extension || "json",
+          isVideo: false,
         });
       }
     } catch (err) {
@@ -160,7 +231,11 @@ export function MediaWorkspaceHost({
   };
 
   const handleImportMedia = (entry: DirectoryEntry) => {
-    if (!selectedVideo) {
+    if (isProjectFile(entry) || isProjectFilePath(entry.path) || entry.extension?.toLowerCase() === "json") {
+      setProjectError("ไฟล์โปรเจกต์ (.json/.videoproject.json) ไม่สามารถนำเข้าสู่ Media Bin ได้");
+      return;
+    }
+    if (!selectedVideo && !loadedProjectDraft) {
       setProjectError("กรุณาเปิดวิดีโอหรือโปรเจกต์ก่อนนำเข้าสื่อเพิ่ม");
       return;
     }
@@ -177,10 +252,89 @@ export function MediaWorkspaceHost({
     setImportedAsset(asset);
   };
 
-  const handleNewProject = () => {
+  const handleNewProject = async (folderPath?: string) => {
     projectRequest.current += 1;
     setProjectError(null);
-    setLoadedProjectDraft(null);
+
+    let targetDir = folderPath;
+
+    // Prompt user to pick/select working directory with native folder dialog if not provided directly
+    if (!targetDir) {
+      try {
+        const selected = await openFolderDialog({
+          directory: true,
+          multiple: false,
+          title: "เลือกโฟลเดอร์ทำงานสำหรับโปรเจกต์ใหม่ (Select Project Working Directory)",
+        });
+        if (selected && typeof selected === "string") {
+          targetDir = selected;
+        } else {
+          // User cancelled folder selection dialog
+          return;
+        }
+      } catch (err) {
+        console.warn("Folder picker error:", err);
+        targetDir = workspace?.localPath;
+      }
+    }
+
+    if (!targetDir) {
+      setProjectError("กรุณาเลือกโฟลเดอร์ทำงานก่อนสร้างโปรเจกต์ใหม่");
+      return;
+    }
+
+    try {
+      localStorage.setItem("smartspec_last_project_folder", targetDir);
+    } catch {}
+
+    if (onWorkspacePathChange) {
+      onWorkspacePathChange(targetDir);
+    }
+
+    const folderTitle = targetDir
+      ? targetDir.replace(/\\/g, "/").split("/").filter(Boolean).pop() || "โปรเจกต์ใหม่"
+      : "โปรเจกต์ใหม่";
+
+    const emptyDraft: SmartSpecProjectDraft = {
+      projectId: `proj_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      version: "1.0.0",
+      title: folderTitle,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      canvas: {
+        aspectRatio: "9:16",
+        width: 1080,
+        height: 1920,
+        fps: 30,
+        durationMs: 0,
+      },
+      tracks: [
+        { id: "track_code", name: "01 Code Overlay (Reframe)", type: "code_overlay", muted: false, locked: false, volume: 1.0, clips: [] },
+        { id: "track_captions", name: "T1 Captions & Text Host", type: "text_subtitle", muted: false, locked: false, volume: 1.0, clips: [] },
+        { id: "track_v2", name: "V2 B-Roll Overlay (Clips & Images)", type: "video_broll", muted: false, locked: false, volume: 1.0, clips: [] },
+        { id: "track_v1", name: "V1 Main Video (A-Roll)", type: "video_main", muted: false, locked: false, volume: 1.0, clips: [] },
+        { id: "track_a1", name: "A1 Dialogue / Speech", type: "audio_voice", muted: false, locked: false, volume: 1.0, clips: [] },
+      ],
+      mediaPool: [],
+      metadata: {
+        originalSourceVideo: "",
+        seriesId: seriesId || undefined,
+        workspacePath: targetDir,
+      },
+    };
+
+    // Save project file directly to chosen workspace directory on harddisk
+    if (targetDir) {
+      try {
+        const cleanTitle = folderTitle.replace(/[\\/:*?"<>|]/g, "_");
+        const diskPath = `${targetDir.replace(/[\/\\]+$/, "")}/${cleanTitle}.videoproject.json`;
+        await saveNleProject(emptyDraft, diskPath);
+      } catch (err) {
+        console.warn("Failed to save initial project file on disk:", err);
+      }
+    }
+
+    setLoadedProjectDraft(emptyDraft);
     setImportedAsset(null);
     setSelectedVideo(null);
   };
@@ -334,15 +488,32 @@ export function MediaWorkspaceHost({
             <span className="crumb-mode">
               {activeTab === "explorer" ? "Media Studio" : "Pipeline"}
             </span>
-            {selectedVideo && (
+            {(loadedProjectDraft?.title || selectedVideo?.name) ? (
               <>
                 <span className="crumb-sep">›</span>
-                <span className="crumb-file" title={selectedVideo.path}>
-                  📹 {selectedVideo.name}
+                <span
+                  className="crumb-file"
+                  title={`ชื่อ Project ที่ต้องการบันทึก: ${(loadedProjectDraft?.title || selectedVideo?.name || "").replace(/\.[^/.\\]+$/, "")}`}
+                  style={{ color: "#38bdf8", fontWeight: 700 }}
+                >
+                  ✨ Project: {(loadedProjectDraft?.title || selectedVideo?.name || "").replace(/\.[^/.\\]+$/, "")}
                 </span>
               </>
-            )}
+            ) : null}
+            {workspace?.localPath ? (
+              <>
+                <span className="crumb-sep">›</span>
+                <span
+                  className="crumb-file"
+                  title={`ตำแหน่ง Workspace บน Harddisk: ${workspace.localPath}`}
+                  style={{ color: "#cbd5e1", background: "rgba(15, 23, 42, 0.7)", borderColor: "rgba(148, 163, 184, 0.3)" }}
+                >
+                  📂 Workspace: {workspace.localPath}
+                </span>
+              </>
+            ) : null}
           </div>
+
         </div>
 
         <div className="studio-topbar-right">
@@ -351,11 +522,39 @@ export function MediaWorkspaceHost({
             <span className="folder-name">Space / M / F</span>
           </div>
           {workspace?.localPath && (
-            <div className="studio-path-chip" title={workspace.localPath}>
-              <span className="folder-icon">📂</span>
-              <span className="folder-name">
-                {workspace.localPath.replace(/\\/g, "/").split("/").filter(Boolean).slice(-2).join("/")}
-              </span>
+            <div className="studio-path-banner-inline" title={`ตำแหน่งโฟลเดอร์ Workspace บน Disk: ${workspace.localPath}`}>
+              <span className="path-label">📍 Path:</span>
+              <code className="path-text">{workspace.localPath}</code>
+              <button
+                type="button"
+                className="path-inline-btn"
+                onClick={async () => {
+                  if (workspace?.localPath) {
+                    try {
+                      await invoke("worker_app_reveal_file", { path: workspace.localPath });
+                    } catch (err) {
+                      console.warn("Failed to reveal file/folder:", err);
+                    }
+                  }
+                }}
+                title="เปิดตำแหน่งโฟลเดอร์นี้ใน File Explorer บนระบบปฏิบัติการ"
+              >
+                📁 เปิดในเครื่อง
+              </button>
+              <button
+                type="button"
+                className="path-inline-btn"
+                onClick={() => {
+                  if (workspace?.localPath) {
+                    navigator.clipboard.writeText(workspace.localPath);
+                    setCopiedPath(true);
+                    setTimeout(() => setCopiedPath(false), 2000);
+                  }
+                }}
+                title="คัดลอก Path เต็มเข้า Clipboard"
+              >
+                {copiedPath ? "✅ คัดลอกแล้ว!" : "📋 คัดลอก Path"}
+              </button>
             </div>
           )}
 
@@ -376,7 +575,10 @@ export function MediaWorkspaceHost({
       {/* Explorer & Video Studio Workspace */}
       {activeTab === "explorer" && (
         <div className={`media-studio-layout ${isExplorerCollapsed ? "explorer-collapsed" : ""}`}>
-          <div className={`studio-explorer-pane ${isExplorerCollapsed ? "collapsed" : ""}`}>
+          <div
+            className={`studio-explorer-pane ${isExplorerCollapsed ? "collapsed" : ""}`}
+            style={isExplorerCollapsed ? undefined : { width: `${explorerWidth}px`, minWidth: `${explorerWidth}px` }}
+          >
             {isExplorerCollapsed ? (
               <div
                 className="explorer-collapsed-rail"
@@ -399,17 +601,49 @@ export function MediaWorkspaceHost({
                 onSelectVideoFile={handleSelectVideo}
                 onOpenProjectFile={handleOpenProjectFile}
                 onImportMediaToProject={handleImportMedia}
-                onNewProject={handleNewProject}
+                onNewProject={(folderPath) => {
+                  if (folderPath) {
+                    try {
+                      localStorage.setItem("smartspec_last_project_folder", folderPath);
+                    } catch {}
+                    if (onWorkspacePathChange) {
+                      onWorkspacePathChange(folderPath);
+                    }
+                  }
+                  void handleNewProject(folderPath);
+                }}
+                onDirectoryChange={(path) => {
+                  if (path) {
+                    try {
+                      localStorage.setItem("smartspec_last_project_folder", path);
+                    } catch {}
+                    if (onWorkspacePathChange) {
+                      onWorkspacePathChange(path);
+                    }
+                  }
+                }}
                 selectedFilePath={selectedVideo?.path}
                 onCollapse={() => setIsExplorerCollapsed(true)}
               />
             )}
           </div>
+
+          {!isExplorerCollapsed && (
+            <div
+              className="studio-explorer-resizer"
+              onMouseDown={handleResizeMouseDown}
+              title="ลากเพื่อปรับขนาดความกว้างแผงไฟล์ (Drag to resize File Explorer panel)"
+            />
+          )}
+
           <div className="studio-player-pane">
             <MediaVideoEditorPlayer
               key={`${selectedVideo?.path ?? "empty"}:${loadedProjectDraft?.projectId ?? "source"}`}
               videoFile={selectedVideo}
-              seriesId={seriesId}
+              onSelectVideoFile={handleSelectVideo}
+              onOpenProjectFile={handleOpenProjectFile}
+              seriesId={seriesId || loadedProjectDraft?.metadata?.seriesId}
+              workspacePath={workspace?.localPath}
               onClose={handleNewProject}
               reframe9x16={reframe9x16}
               onReframe9x16Change={onReframe9x16Change}
@@ -429,6 +663,7 @@ export function MediaWorkspaceHost({
               isBusy={busy}
               loadedProjectDraft={loadedProjectDraft}
               importedAsset={importedAsset}
+              onProjectDraftChange={setLoadedProjectDraft}
             />
           </div>
         </div>

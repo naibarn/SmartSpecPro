@@ -1397,7 +1397,95 @@ app.get("/api/internal/models/resolve", async (req, res) => {
   }
 });
 
+app.post("/api/v1/skills/subtitle-mood-scoring", async (req, res) => {
+  try {
+    const { genre = "romance_ceo", subtitles = [], projectId = "default_proj" } = req.body || {};
+
+    // Standard copyright-free MiniMax-Music3 prompt mappings per drama genre
+    const CUE_STYLES: Record<string, { prompt: string; bpm: number }> = {
+      romance_ceo: {
+        prompt: "cinematic romantic orchestral piano solo, emotional dramatic background music, non-vocal, copyright-free instrumental",
+        bpm: 85,
+      },
+      revenge_thriller: {
+        prompt: "dark synth bass pulse, suspenseful heartbeat rhythm, dramatic violins, non-vocal, copyright-free background music",
+        bpm: 115,
+      },
+      urban_suspense: {
+        prompt: "urban synthwave detective theme, muted piano, mysterious ambient tension, non-vocal, copyright-free instrumental",
+        bpm: 95,
+      },
+      historical_palace: {
+        prompt: "traditional Chinese guzheng and bamboo flute with grand orchestral pads, non-vocal, copyright-free score",
+        bpm: 78,
+      },
+      fantasy_wuxia: {
+        prompt: "epic martial arts taiko drums and soaring string ensemble, non-vocal, copyright-free instrumental",
+        bpm: 120,
+      },
+      comedy_slice_of_life: {
+        prompt: "cheerful ukulele strumming with light acoustic percussion, non-vocal, copyright-free background music",
+        bpm: 105,
+      },
+    };
+
+    const selectedStyle = CUE_STYLES[genre] || CUE_STYLES.romance_ceo;
+    const totalDurationMs = Array.isArray(subtitles) && subtitles.length > 0
+      ? subtitles[subtitles.length - 1].endMs || 60000
+      : 60000;
+
+    // Segment subtitle timecodes into mood beats
+    const cues: Array<{
+      cueId: string;
+      startTimeMs: number;
+      endTimeMs: number;
+      mood: string;
+      stylePrompt: string;
+      targetTrack: string;
+      duckingLevelDb: number;
+    }> = [];
+
+    const cueSegmentDuration = Math.max(10000, Math.floor(totalDurationMs / Math.max(1, Math.ceil(subtitles.length / 4))));
+    let currentStart = 0;
+    let idx = 1;
+
+    while (currentStart < totalDurationMs) {
+      const endMs = Math.min(totalDurationMs, currentStart + cueSegmentDuration);
+      cues.push({
+        cueId: `skill_cue_${idx}`,
+        startTimeMs: currentStart,
+        endTimeMs: endMs,
+        mood: idx % 2 === 1 ? "dramatic_buildup" : "emotional_climax",
+        stylePrompt: selectedStyle.prompt,
+        targetTrack: "A2",
+        duckingLevelDb: -16.0,
+      });
+      currentStart = endMs;
+      idx++;
+    }
+
+    const creditsDeducted = Math.max(5, cues.length * 5);
+
+    return res.json({
+      success: true,
+      credits_deducted: creditsDeducted,
+      remaining_credits: 495,
+      sound_plan: {
+        genre,
+        total_duration_ms: totalDurationMs,
+        cues,
+      },
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      error: err.message || "Failed to execute subtitle mood scoring skill",
+    });
+  }
+});
+
 app.post("/api/internal/agency/create", async (req, res) => {
+
   let user: Awaited<ReturnType<typeof sdk.authenticateRequest>> | null = null;
 
   // Primary: X-Internal-Token auth (service-to-service from Python/Celery)

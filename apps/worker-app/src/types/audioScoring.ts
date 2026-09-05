@@ -64,13 +64,17 @@ export interface MusicCue {
   timelineDurationMs: number;
   placement: MusicCuePlacement;
   stylePrompt: string;
+  displayCaption?: string;
   lyricsPrompt?: string;          // instrumental vs vocal lyric tags
   tempoBpm?: number;
   intensity: number;              // 0.0 - 1.0
   sourceAssetId?: string;
   audioFilePath?: string;
   duckingRequired: boolean;
-  duckingLevelDb?: number;        // e.g. -16.0 dB
+  duckingLevelDb?: number;        // e.g. -12.0 dB
+  duckingAttackMs?: number;       // default 50 ms (Spec 177 §8.2)
+  duckingReleaseMs?: number;      // default 300 ms (Spec 177 §8.2)
+  duckingHoldMs?: number;         // default 100 ms (Spec 177 §8.2)
   fadeInMs: number;
   fadeOutMs: number;
 }

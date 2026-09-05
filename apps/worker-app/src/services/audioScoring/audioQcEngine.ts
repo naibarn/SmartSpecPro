@@ -40,7 +40,7 @@ export function runAudioQualityControl(project: SmartSpecProjectDraft): AudioQCR
   if (bgmVolume > 0.45 && (!a2Track?.ducking || !a2Track.ducking.enabled)) {
     dialogueScore = 0.65;
     issues.push("ระดับเสียงเพลง BGM สูงเกินไป และไม่ได้เปิดใช้ Auto-Ducking ทำให้กลบเสียงพูด");
-    recommendations.push("เปิดใช้ Auto-Ducking บน Track A2 โดยลดเสียงลงอย่างน้อย -16 dB ขณะมีเสียงพูด");
+    recommendations.push("เปิดใช้ Auto-Ducking บน Track A2 โดยลดเสียงลงอย่างน้อย -12 dB ขณะมีเสียงพูด");
   }
 
   // 4. Vocal Bleed Check (MiniMax Music prompt verification)
@@ -81,10 +81,11 @@ export function autoRemixForQcCompliance(project: SmartSpecProjectDraft): SmartS
         ducking: {
           enabled: true,
           sidechainSourceTrackId: "track_a1",
-          attenuationDb: -16.0,
+          attenuationDb: -12.0,
           thresholdDb: -28.0,
-          attackMs: 40,
-          releaseMs: 350,
+          attackMs: 50,
+          releaseMs: 300,
+          holdMs: 100,
         },
       };
     }

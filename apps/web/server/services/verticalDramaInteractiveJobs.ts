@@ -33,7 +33,8 @@ export type VerticalDramaInteractiveJobKind =
   | "character_variants"
   | "character_duplicates"
   | "reference_frame_prompt"
-  | "special_tie_in_prompt";
+  | "special_tie_in_prompt"
+  | "marketplace_review_ideas";
 
 export type VerticalDramaInteractiveJobStatus =
   | "queued"
@@ -176,6 +177,7 @@ function interactiveJobLabel(kind: VerticalDramaInteractiveJobKind): string {
     character_duplicates: "ตรวจสอบตัวละครซ้ำ",
     reference_frame_prompt: "สร้าง Prompt ภาพอ้างอิง",
     special_tie_in_prompt: "สร้าง storyboard ตอนพิเศษ",
+    marketplace_review_ideas: "สร้างไอเดีย tie-in สินค้า",
   };
   return labels[kind];
 }

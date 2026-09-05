@@ -74,16 +74,16 @@ export function scoreAudioCandidate(
 /**
  * Route and resolve audio cues:
  * 1. Check Project Media Bin for matching BGM
- * 2. Invoke MiniMax Music 3 Direct Sidecar via Tauri IPC
- * 3. Fallback to harmonic generation
+ * 2. Invoke MiniMax Music 3 Local Engine Sidecar via Tauri IPC
  */
 export async function resolveMusicCueAudio(
   cue: MusicCue,
-  mediaPool: ProjectAsset[] = []
+  mediaPool: ProjectAsset[] = [],
+  workspacePath?: string | null
 ): Promise<{
   audioPath: string;
   durationSeconds: number;
-  provider: "minimax_direct" | "project_bin" | "harmonic_fallback";
+  provider: "minimax_direct" | "project_bin";
   score: CandidateScoreBreakdown;
 }> {
   // 1. Check if user already imported a matching audio asset in Project Media Bin
@@ -100,38 +100,30 @@ export async function resolveMusicCueAudio(
     };
   }
 
-  // 2. Invoke MiniMax Music 3 Direct Sidecar via Tauri IPC
-  try {
-    const durationSeconds = Math.max(5, cue.timelineDurationMs / 1000);
-    const res = await invoke<RustMusicCueResult>("worker_app_generate_music_cue", {
-      req: {
-        cue_id: cue.cueId,
-        style_prompt: cue.stylePrompt,
-        lyrics_prompt: cue.lyricsPrompt || null,
-        tempo_bpm: cue.tempoBpm || 100,
-        duration_seconds: durationSeconds,
-        intensity: cue.intensity,
-        fade_in_ms: cue.fadeInMs,
-        fade_out_ms: cue.fadeOutMs,
-        target_lufs: cue.duckingLevelDb || -16.0,
-      },
-    });
+  // 2. Invoke MiniMax Music 3 Local Engine Sidecar via Tauri IPC
+  const durationSeconds = Math.max(5, cue.timelineDurationMs / 1000);
+  const musicDir = workspacePath ? `${workspacePath.replace(/[\/\\]$/, "")}/music` : "music";
+  const res = await invoke<RustMusicCueResult>("worker_app_generate_music_cue", {
+    req: {
+      cue_id: cue.cueId,
+      style_prompt: cue.stylePrompt,
+      lyrics_prompt: cue.lyricsPrompt || null,
+      tempo_bpm: cue.tempoBpm || 100,
+      duration_seconds: durationSeconds,
+      intensity: cue.intensity,
+      fade_in_ms: cue.fadeInMs,
+      fade_out_ms: cue.fadeOutMs,
+      target_lufs: cue.duckingLevelDb || -16.0,
+      output_dir: musicDir,
+    },
+  });
 
-    const score = scoreAudioCandidate(cue, `MiniMax3_${cue.cueId}`, res.output_duration_seconds);
-    return {
-      audioPath: res.output_wav_path,
-      durationSeconds: res.output_duration_seconds,
-      provider: res.job_id.startsWith("job_fallback") ? "harmonic_fallback" : "minimax_direct",
-      score,
-    };
-  } catch (err) {
-    console.warn("MiniMax generation fallback:", err);
-    const fallbackScore = scoreAudioCandidate(cue, "Harmonic_Fallback", cue.timelineDurationMs / 1000);
-    return {
-      audioPath: "",
-      durationSeconds: cue.timelineDurationMs / 1000,
-      provider: "harmonic_fallback",
-      score: fallbackScore,
-    };
-  }
+  const score = scoreAudioCandidate(cue, `MiniMax3_${cue.cueId}`, res.output_duration_seconds);
+  return {
+    audioPath: res.output_wav_path,
+    durationSeconds: res.output_duration_seconds,
+    provider: "minimax_direct",
+    score,
+  };
 }
+

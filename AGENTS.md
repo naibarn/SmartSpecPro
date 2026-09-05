@@ -6,6 +6,7 @@
 - Prefer minimal, focused changes.
 - Do not rewrite unrelated files.
 - Preserve existing code style.
+- Do not remove or delete any functions, features, or UI capabilities unless explicitly requested by the user.
 - Use the package manager already used by this repo.
 - Do not add new dependencies unless necessary.
 - If you discover issues directly related to the requested work, required

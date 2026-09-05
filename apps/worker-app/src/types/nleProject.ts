@@ -149,7 +149,7 @@ export interface ProjectAsset {
   importedAt: string;
 }
 
-export interface SmartSpecProjectDraft {
+export interface VideoProjectDraft {
   version: "1.0.0";
   projectId: string;
   title: string;
@@ -165,8 +165,12 @@ export interface SmartSpecProjectDraft {
     timeSavedMs?: number;
     aiPlanId?: string;
     transcriptionSummary?: string;
+    seriesId?: string | null;
+    workspacePath?: string | null;
   };
 }
+
+export type SmartSpecProjectDraft = VideoProjectDraft;
 
 /**
  * Creates a default, production-grade project draft from an active video file.
@@ -189,19 +193,36 @@ export function createDefaultProjectDraft(options: {
   const mainClips: NleClip[] = [];
   const voiceClips: NleClip[] = [];
 
-  const sorted = (options.deadAirSegments ?? [])
-    .filter((seg) => Number.isFinite(seg.startMs) && Number.isFinite(seg.endMs))
-    .map((seg) => ({ startMs: Math.max(0, seg.startMs), endMs: Math.min(options.videoDurationMs, seg.endMs) }))
-    .filter((seg) => seg.endMs > seg.startMs)
-    .sort((a, b) => a.startMs - b.startMs)
-    .reduce<Array<{ startMs: number; endMs: number }>>((merged, seg) => {
-      const last = merged[merged.length - 1];
-      if (last && seg.startMs <= last.endMs) last.endMs = Math.max(last.endMs, seg.endMs);
-      else merged.push({ ...seg });
-      return merged;
-    }, []);
+  const isProjectFile = (path?: string) => {
+    if (!path) return false;
+    const l = path.toLowerCase().trim();
+    return (
+      l.endsWith(".videoproject.json") ||
+      l.endsWith("videoproject-project.json") ||
+      l.endsWith(".vproj") ||
+      l.endsWith(".smartspec.json") ||
+      l.endsWith(".ssproj") ||
+      l.endsWith(".json")
+    );
+  };
 
-  if (sorted.length > 0) {
+  const hasValidVideo = Boolean(options.videoPath && !isProjectFile(options.videoPath));
+
+  const sorted = hasValidVideo
+    ? (options.deadAirSegments ?? [])
+        .filter((seg) => Number.isFinite(seg.startMs) && Number.isFinite(seg.endMs))
+        .map((seg) => ({ startMs: Math.max(0, seg.startMs), endMs: Math.min(options.videoDurationMs, seg.endMs) }))
+        .filter((seg) => seg.endMs > seg.startMs)
+        .sort((a, b) => a.startMs - b.startMs)
+        .reduce<Array<{ startMs: number; endMs: number }>>((merged, seg) => {
+          const last = merged[merged.length - 1];
+          if (last && seg.startMs <= last.endMs) last.endMs = Math.max(last.endMs, seg.endMs);
+          else merged.push({ ...seg });
+          return merged;
+        }, [])
+    : [];
+
+  if (hasValidVideo && sorted.length > 0) {
     let currentIn = 0;
     let timelineOffset = 0;
 
@@ -279,7 +300,7 @@ export function createDefaultProjectDraft(options: {
 
       timelineOffset += segDuration;
     }
-  } else {
+  } else if (hasValidVideo) {
     // Single continuous clip
     mainClips.push({
       id: "v1_clip_master",
@@ -402,18 +423,20 @@ export function createDefaultProjectDraft(options: {
       backgroundColor: "#000000",
     },
     tracks,
-    mediaPool: [
-      {
-        id: "media_main_source",
-        name: options.title || "Main Video Source",
-        filePath: options.videoPath,
-        mediaType: "video",
-        durationMs: options.videoDurationMs,
-        importedAt: new Date().toISOString(),
-      },
-    ],
+    mediaPool: hasValidVideo
+      ? [
+          {
+            id: "media_main_source",
+            name: options.title || "Main Video Source",
+            filePath: options.videoPath,
+            mediaType: "video",
+            durationMs: options.videoDurationMs,
+            importedAt: new Date().toISOString(),
+          },
+        ]
+      : [],
     metadata: {
-      originalSourceVideo: options.videoPath,
+      originalSourceVideo: hasValidVideo ? options.videoPath : "",
       deadAirCutCount: sorted.length,
     },
   };

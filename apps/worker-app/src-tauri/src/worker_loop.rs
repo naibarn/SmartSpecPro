@@ -2699,7 +2699,7 @@ fn normalize_hyperframes_transcript_output(
     }))
 }
 
-fn execute_hyperframes_transcription_process(
+pub(crate) fn execute_hyperframes_transcription_process(
     managed_wsl: bool,
     managed_wsl_root: String,
     source_path: PathBuf,

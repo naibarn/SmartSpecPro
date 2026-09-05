@@ -77,7 +77,7 @@ Out of scope: new TTS/voice cloning, video regeneration, fully automated publish
 8. Audition returned takes at matched listening loudness. Show actual measured QC and provenance; reject or select a take. Apply as a new mix revision. No replacement of unrelated manual A2/A3 content.
 9. In **ตอนเต็ม (Production)**, reuse subepisode cue assets but build a NEW composition timeline/hash from actual episode trims/transitions. Review joins and remeasure the entire program. No assumption that summing target durations gives production timing.
 
-States shown to users must distinguish: no plan, analysis queued/running/failed, planned timing, partially observed, observed timing, needs review, approved, stale, generating, awaiting audition, and render complete. Use text/icons as well as color; keyboard editing, accessible table navigation and mobile layouts are required. Follow repo Astryx discovery before implementing UI; this task creates no UI code.
+States shown to users must distinguish: no plan, analysis queued/running/failed, planned timing, partially observed, observed timing, needs review, approved, stale, generating, awaiting audition, and render complete. Worker error codes map deterministically to user states (`MODEL_NOT_INSTALLED` / `GPU_UNAVAILABLE` / `RUNTIME_INCOMPATIBLE` -> worker setup blocked; `PLAN_STALE` -> needs replan/review; `VOCALS_DETECTED` / `TAKE_TOO_SHORT` / `QC_FAILED` -> take rejected; `RIGHTS_REVIEW_REQUIRED` / `LICENSE_REVIEW_REQUIRED` -> rights action required). Use text/icons as well as color; keyboard editing, accessible table navigation and mobile layouts are required. Follow repo Astryx discovery before implementing UI; this task creates no UI code.
 
 ## 5. Source precedence and semantic analysis
 
@@ -163,7 +163,7 @@ Initial budget ceiling is seven total LLM calls for one authorized analysis/capt
 | `EpisodeAudioAnalysisV1` | source snapshot hash, immutable asset checksum, actual runtime/model/version, status ready/partial/empty/unavailable/failed, coordinate space, token artifact ref + checksum, speech intervals, optional speaker mapping/evidence, alignment quality and unmatched lines, measured media probe, generatedAt |
 | `EmotionTimelinePlanV1` | plan ID/revision/parent, source snapshot hash, analysis refs, timeline hash, scope, timing coverage, semantic model/prompt version, regions, cue proposals, music silence windows, manual locks, approval actor/time, warnings, createdAt |
 | Region | stable region ID, start/end or untimed shot anchor for an overview-only draft, shot/occurrence/line IDs, semantic fields from §5.2, music action, source evidence and separate confidences |
-| Cue proposal | cue ID, covered region IDs, start/end, anchor event + allowed offset, approved palette/motif ID, instrumental-only caption, generation duration including handles, permitted edit operations, gain/ducking envelope ref, rights-policy verdict; no dialogue lyrics |
+| Cue proposal | cue ID, covered region IDs, start/end, anchor event + allowed offset, approved palette/motif ID, dual instrumental captions (displayCaption in localized language for UI review, modelInstruction in English for model prompt conditioning), generation duration including handles, permitted edit operations, gain/ducking envelope ref, rights-policy verdict; no dialogue lyrics |
 | `MusicScoringJobV1` | `kind`, contract version, plan ID/revision/hash, source/timeline hashes, selected cue IDs, model requirement, binding revision, rights snapshot, authorization/budget ID, idempotency key, artifact refs; exclude user-supplied executable paths/commands |
 | `MusicScoringResultV1` | matching request/plan/timeline identity, per-cue take artifacts + hashes, genuine model/runtime provenance, actual probes, QC artifact refs, generation timings/resource usage, rights status, failures; no empty-path successful takes |
 | `EpisodeScoreMixV1` | plan/timeline hashes, selected take IDs, exact edits/envelopes, native-source/stem refs, processing versions, pre/post-encode measurement reports, final mix artifact + checksum, approval and rights manifest refs |
@@ -194,10 +194,10 @@ Approval and apply use compare-and-swap against plan revision, source/timeline h
 
 Proposed tables (new migrations, never `db:push`):
 
-1. `vertical_drama_audio_analyses`: ID, tenant/series, nullable episodeId + planning key, source/timeline fingerprints, analysis version/status, typed artifact references, metrics/coverage metadata, worker job ID, timestamps. Immutable successful rows; unique cache identity within tenant + source audio hash + edit-map hash + ASR/alignment version.
-2. `vertical_drama_emotion_plans`: ID, tenant/series, nullable episodeId + planning key, revision/parent ID, source and analysis refs, source/timeline hashes, typed plan JSON, status/approval/audit, timestamps. Unique scope + revision and indexed tenant/series/episode-or-key/status queries. App and DB constraints enforce exactly one stable scope and legal series/episode relations.
+1. `vertical_drama_audio_analyses`: ID, tenant/series, nullable episodeId + planning key, source/timeline fingerprints, analysis version/status, typed artifact references, metrics/coverage metadata, worker job ID, timestamps. Immutable successful rows; unique cache identity within tenant + source audio hash + edit-map hash + ASR/alignment version. Composite indexes: `(tenant_id, series_id, episode_id, status)`, `(tenant_id, series_id, planning_key, status)`.
+2. `vertical_drama_emotion_plans`: ID, tenant/series, nullable episodeId + planning key, revision/parent ID, source and analysis refs, source/timeline hashes, typed plan JSON, status/approval/audit, timestamps. Unique scope + revision and indexed tenant/series/episode-or-key/status queries. Composite indexes: `(tenant_id, series_id, episode_id, revision)`, `(tenant_id, series_id, planning_key, revision)`.
 
-Use existing worker jobs/artifacts and managed media for music takes and mix files. Add versioned music-generation/mix metadata and artifact kinds to their schemas; do not squeeze episode-level results into Feature 175's required per-shot `shotNumber` rows. Extend the existing sound-bible representation with a versioned `scorePolicy` (palette, motif refs, default opt-in, delivery profile) through an explicit DB/shared-schema serializer. Current DB `audioStyle` shape is not identical to `seriesSoundBibleSchema.globalRules`; do not assume direct casts work.
+Use existing worker jobs/artifacts and managed media for music takes and mix files. Add versioned music-generation/mix metadata and artifact kinds to their schemas; do not squeeze episode-level results into Feature 175's required per-shot `shotNumber` rows. Takes are indexed in media job result metadata by `(tenant_id, series_id, episode_id/planning_key, cue_id)` for immediate lookup during audition without full job scans. Extend the existing sound-bible representation with a versioned `scorePolicy` (palette, motif refs, default opt-in, delivery profile) through an explicit DB/shared-schema serializer. Current DB `audioStyle` shape is not identical to `seriesSoundBibleSchema.globalRules`; do not assume direct casts work.
 
 Approved music assets may be reused only with exact genuine-model provenance, same tenant/authorized series, compatible plan intent, reviewed rights and explicit take selection. Content hashing does not authorize cross-tenant deduplication/access.
 
@@ -207,8 +207,8 @@ Implement a narrow `verticalDramaMusicScoring` tRPC router and service modules, 
 
 - `getSources`, `getPlan`, `listPlanRevisions`, `estimateAnalysis`, `generatePlanFromScript`.
 - `requestAudioAnalysis`, `revisePlanFromAnalysis`, `updatePlan` (expected revision), `approvePlan`.
-- `estimateMusicGeneration`, `generateApprovedCues`, `getScoringJob`, `cancelScoringJob`.
-- `selectTake`, `requestScoreMix`, `applyScoreMix` (current cut/plan comparison), `getRightsManifest`.
+- `estimateMusicGeneration`, `generateApprovedCues`, `getScoringJob`, `cancelScoringJob`, `listTakes`.
+- `selectTake`, `requestScoreMix`, `applyScoreMix` (current cut/plan comparison), `getRightsManifest`, `updateRightsStatus`.
 
 Read authorization follows tenant and series ownership/binding rules, not knowledge of an episode ID. Mutation handlers reload canonical source snapshots on the server. User text cannot choose another tenant, arbitrary model, cloud endpoint, filesystem location or executable.
 

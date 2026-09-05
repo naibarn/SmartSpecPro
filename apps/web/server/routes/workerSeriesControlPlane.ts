@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import crypto from "crypto";
-import { and, desc, eq, gt, ilike, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, ilike, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
 import {
   workerSeriesBindings,
@@ -14,6 +14,7 @@ import {
   verticalDramaMediaIndexRecords,
   verticalDramaEpisodes,
   verticalDramaShotReferences,
+  libraryItems,
 } from "../../drizzle/schema";
 import {
   buildWorkerSeriesFilterHash,
@@ -605,8 +606,369 @@ export function registerWorkerSeriesControlPlaneRoutes(app: Express): void {
       if (series && !projectWorkerSeries({ series, principal })) return fail(res, req, 404, "SERIES_NOT_FOUND");
       if (!series) return fail(res, req, 404, "SERIES_NOT_FOUND");
       const [binding] = await db.select({ id: workerSeriesBindings.id, rootId: workerSeriesBindings.rootId, bindingRevision: workerSeriesBindings.bindingRevision, status: workerSeriesBindings.status }).from(workerSeriesBindings).where(and(eq(workerSeriesBindings.tenantId, claims.tenantId), eq(workerSeriesBindings.workerId, claims.workerId), eq(workerSeriesBindings.seriesId, series.id), isNull(workerSeriesBindings.revokedAt))).limit(1);
-      const assets = await db.select({ id: verticalDramaMediaAssets.id, sourceAssetId: verticalDramaMediaAssets.sourceAssetId, sourceRevision: verticalDramaMediaAssets.sourceRevision, assetKind: verticalDramaMediaAssets.assetKind, pipelineState: verticalDramaMediaAssets.pipelineState, sourceMetadataJson: verticalDramaMediaAssets.sourceMetadataJson, derivedArtifactJson: verticalDramaMediaAssets.derivedArtifactJson, qcReportJson: verticalDramaMediaAssets.qcReportJson, vectorIndexStatus: verticalDramaMediaAssets.vectorIndexStatus, updatedAt: verticalDramaMediaAssets.updatedAt }).from(verticalDramaMediaAssets).where(and(eq(verticalDramaMediaAssets.tenantId, claims.tenantId), eq(verticalDramaMediaAssets.seriesId, series.id))).orderBy(desc(verticalDramaMediaAssets.updatedAt)).limit(500);
-      return res.status(200).json({ contractVersion: "2026-08-25.1", series: { seriesId: String(series.id), title: series.title }, binding: binding ? { bindingId: binding.id, rootId: binding.rootId, bindingRevision: binding.bindingRevision, status: binding.status } : null, assets });
+
+      // Query real episodes belonging to this series
+      const episodeRows = await db
+        .select({
+          id: verticalDramaEpisodes.id,
+          episodeNumber: verticalDramaEpisodes.episodeNumber,
+          title: verticalDramaEpisodes.title,
+          status: verticalDramaEpisodes.status,
+          motionPromptPack: verticalDramaEpisodes.motionPromptPack,
+          assemblyManifest: verticalDramaEpisodes.assemblyManifest,
+          startFramePlan: verticalDramaEpisodes.startFramePlan,
+          updatedAt: verticalDramaEpisodes.updatedAt,
+        })
+        .from(verticalDramaEpisodes)
+        .where(
+          and(
+            eq(verticalDramaEpisodes.seriesId, series.id),
+            eq(verticalDramaEpisodes.tenantId, claims.tenantId)
+          )
+        )
+        .orderBy(asc(verticalDramaEpisodes.episodeNumber));
+
+      const episodes = episodeRows.map((ep) => ({
+        episodeId: String(ep.id),
+        episodeNumber: ep.episodeNumber,
+        title: ep.title ? `EP ${String(ep.episodeNumber).padStart(2, "0")} - ${ep.title}` : `EP ${String(ep.episodeNumber).padStart(2, "0")}`,
+        status: ep.status,
+      }));
+
+      const dynamicAssets: Array<Record<string, any>> = [];
+
+      for (const ep of episodeRows) {
+        const epIdStr = String(ep.id);
+        const epTitleFormatted = ep.title
+          ? `EP ${String(ep.episodeNumber).padStart(2, "0")}: ${ep.title}`
+          : `EP ${String(ep.episodeNumber).padStart(2, "0")}`;
+
+        // 1. Compound 9-Shot Video
+        const manifest = ep.assemblyManifest as Record<string, any> | null;
+        const compiled = manifest?.compiledVideo;
+        if (compiled && compiled.videoUrl) {
+          const thumbUrl = compiled.thumbnailUrl
+            || (ep.startFramePlan as any)?.frames?.[0]?.url
+            || (ep.motionPromptPack as any)?.clips?.[0]?.videoTask?.thumbnailUrl
+            || undefined;
+          const durMs = Number(compiled.durationSeconds || 72) * 1000;
+
+          dynamicAssets.push({
+            id: `compound_ep_${ep.id}`,
+            sourceAssetId: `compound_ep_${ep.id}`,
+            sourceRevision: compiled.assembledAt || "v1",
+            assetKind: "compound_9_shots",
+            pipelineState: compiled.status || "completed",
+            episodeId: epIdStr,
+            episodeNumber: ep.episodeNumber,
+            episodeTitle: epTitleFormatted,
+            isCompoundShot: true,
+            isShotClip: false,
+            shotNumber: null,
+            sourceUrl: compiled.videoUrl,
+            thumbnailUrl: thumbUrl,
+            durationMs: durMs,
+            sourceMetadataJson: {
+              title: `[วิดีโอรวม 9 ช็อต] EP ${String(ep.episodeNumber).padStart(2, "0")} - ${ep.title || "ตอนที่ " + ep.episodeNumber}`,
+              videoUrl: compiled.videoUrl,
+              url: compiled.videoUrl,
+              thumbnailUrl: thumbUrl,
+              durationMs: durMs,
+              format: "mp4",
+              type: "video",
+              stage: "compound_9_shot",
+              status: compiled.status,
+              episodeId: epIdStr,
+              episodeTitle: epTitleFormatted,
+              isCompoundShot: true,
+            },
+            derivedArtifactJson: {
+              videoUrl: compiled.videoUrl,
+              thumbnailUrl: thumbUrl,
+              durationMs: durMs,
+            },
+            updatedAt: compiled.assembledAt || ep.updatedAt,
+          });
+        }
+
+        // 2. Individual Shot Clips (e.g. 9 clips)
+        const motionPack = ep.motionPromptPack as Record<string, any> | null;
+        const clips = Array.isArray(motionPack?.clips) ? motionPack.clips : [];
+        for (const clip of clips) {
+          const vTask = clip.videoTask;
+          const clipVideoUrl = vTask?.videoUrl || clip.videoUrl;
+          if (clipVideoUrl) {
+            const clipNumber = Number(clip.clipNumber || 1);
+            const clipThumb = vTask?.thumbnailUrl || clip.thumbnailUrl || undefined;
+            const durSec = Number(clip.durationSeconds || 8);
+            const durMs = durSec * 1000;
+
+            dynamicAssets.push({
+              id: `shot_ep_${ep.id}_clip_${clipNumber}`,
+              sourceAssetId: `shot_ep_${ep.id}_clip_${clipNumber}`,
+              sourceRevision: "v1",
+              assetKind: "shot_clip",
+              pipelineState: vTask?.status || "completed",
+              episodeId: epIdStr,
+              episodeNumber: ep.episodeNumber,
+              episodeTitle: epTitleFormatted,
+              isCompoundShot: false,
+              isShotClip: true,
+              shotNumber: clipNumber,
+              sourceUrl: clipVideoUrl,
+              thumbnailUrl: clipThumb,
+              durationMs: durMs,
+              sourceMetadataJson: {
+                title: `[EP ${String(ep.episodeNumber).padStart(2, "0")}] ช็อต ${clipNumber}${clip.prompt ? " · " + clip.prompt.slice(0, 45) : ""}`,
+                videoUrl: clipVideoUrl,
+                url: clipVideoUrl,
+                thumbnailUrl: clipThumb,
+                durationMs: durMs,
+                format: "mp4",
+                type: "video",
+                prompt: clip.prompt,
+                model: vTask?.selectedVideoModelId || motionPack?.selectedVideoModelId,
+                status: vTask?.status || "completed",
+                episodeId: epIdStr,
+                episodeTitle: epTitleFormatted,
+                isShotClip: true,
+                shotNumber: clipNumber,
+              },
+              derivedArtifactJson: {
+                videoUrl: clipVideoUrl,
+                thumbnailUrl: clipThumb,
+                durationMs: durMs,
+              },
+              updatedAt: ep.updatedAt,
+            });
+          }
+        }
+      }
+
+      const dbAssets = await db.select({ id: verticalDramaMediaAssets.id, sourceAssetId: verticalDramaMediaAssets.sourceAssetId, sourceRevision: verticalDramaMediaAssets.sourceRevision, assetKind: verticalDramaMediaAssets.assetKind, pipelineState: verticalDramaMediaAssets.pipelineState, sourceMetadataJson: verticalDramaMediaAssets.sourceMetadataJson, derivedArtifactJson: verticalDramaMediaAssets.derivedArtifactJson, qcReportJson: verticalDramaMediaAssets.qcReportJson, vectorIndexStatus: verticalDramaMediaAssets.vectorIndexStatus, updatedAt: verticalDramaMediaAssets.updatedAt }).from(verticalDramaMediaAssets).where(and(eq(verticalDramaMediaAssets.tenantId, claims.tenantId), eq(verticalDramaMediaAssets.seriesId, series.id))).orderBy(desc(verticalDramaMediaAssets.updatedAt)).limit(500);
+
+      const assets = [...dynamicAssets, ...dbAssets];
+      return res.status(200).json({ contractVersion: "2026-08-25.1", series: { seriesId: String(series.id), title: series.title }, binding: binding ? { bindingId: binding.id, rootId: binding.rootId, bindingRevision: binding.bindingRevision, status: binding.status } : null, episodes, assets });
+    } catch (error) {
+      if (error instanceof WorkerAuthError) return fail(res, req, error.statusCode, error.code === "worker_permission_denied" ? "WORKER_PERMISSION_DENIED" : "WORKER_AUTH_REQUIRED");
+      return fail(res, req, 500, "ACTION_NOT_ALLOWED", true);
+    }
+  });
+
+  app.get("/api/workers/:workerId/media-history", limiter, async (req, res) => {
+    try {
+      const claims = await auth(req, ["series:read"]);
+      if (claims.workerId !== req.params.workerId) return fail(res, req, 403, "WORKER_SCOPE_DENIED");
+      const db = getDb();
+      const [worker] = await db
+        .select({ id: workers.id, tenantId: workers.tenantId, registeredByUserId: workers.registeredByUserId })
+        .from(workers)
+        .where(and(eq(workers.id, claims.workerId), eq(workers.tenantId, claims.tenantId)))
+        .limit(1);
+      if (!worker) return fail(res, req, 404, "WORKER_NOT_FOUND");
+      if (!worker.registeredByUserId) {
+        return res.status(200).json({ contractVersion: "2026-08-25.1", tasks: [], total: 0 });
+      }
+
+      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
+      const mediaType = typeof req.query.media_type === "string" ? req.query.media_type.trim() : null;
+      const query = typeof req.query.q === "string" ? req.query.q.trim().toLowerCase() : null;
+
+      const conditions = [sql`user_id = ${Number(worker.registeredByUserId)}`];
+      if (mediaType && mediaType !== "all") {
+        conditions.push(sql`media_type = ${mediaType}`);
+      }
+      if (query) {
+        conditions.push(sql`(lower(prompt) LIKE ${`%${query}%`} OR lower(model) LIKE ${`%${query}%`})`);
+      }
+
+      const whereClause = sql.join(conditions, sql` AND `);
+
+      const queryResult = await db.execute(sql`
+        SELECT id, task_id, media_type, status, model, prompt, parameters, result_url, result_data, error_message, created_at, completed_at
+        FROM media_tasks
+        WHERE ${whereClause}
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `).catch(() => ({ rows: [] } as any));
+
+      const rows = (queryResult as any).rows || (Array.isArray(queryResult) ? queryResult : []);
+
+      // Also query mcp_media_tasks if table exists
+      const mcpResult = await db.execute(sql`
+        SELECT id, provider_task_id as task_id, media_type, status, model, prompt, parameters, NULL as result_url, result_data, error_message, created_at, completed_at
+        FROM mcp_media_tasks
+        WHERE ${whereClause}
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `).catch(() => ({ rows: [] } as any));
+
+      const mcpRows = (mcpResult as any).rows || (Array.isArray(mcpResult) ? mcpResult : []);
+
+      const combinedRows = [...rows, ...mcpRows].sort((a: any, b: any) => {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return timeB - timeA;
+      }).slice(0, limit);
+
+      const tasks = combinedRows.map((row: any) => {
+        let resultData: Record<string, unknown> | undefined = undefined;
+        try {
+          resultData = typeof row.result_data === "string" ? JSON.parse(row.result_data) : (row.result_data || undefined);
+        } catch {
+          resultData = undefined;
+        }
+
+        let parameters: Record<string, unknown> | undefined = undefined;
+        try {
+          parameters = typeof row.parameters === "string" ? JSON.parse(row.parameters) : (row.parameters || undefined);
+        } catch {
+          parameters = undefined;
+        }
+
+        let resultUrl = typeof row.result_url === "string" && row.result_url.trim() ? row.result_url.trim() : "";
+        let thumbUrl = "";
+        if (resultData) {
+          resultUrl = resultUrl || (resultData.resultUrl || resultData.result_url || resultData.url || resultData.videoUrl || resultData.video_url || resultData.imageUrl || resultData.image_url || (Array.isArray(resultData.urls) ? resultData.urls[0] : "") || "") as string;
+          thumbUrl = (resultData.thumbnailUrl || resultData.thumbnail_url || resultData.previewUrl || resultData.preview_url || resultData.posterUrl || resultData.poster_url || "") as string;
+        }
+        if (!thumbUrl) thumbUrl = resultUrl;
+
+        return {
+          id: String(row.id),
+          taskId: row.task_id ? String(row.task_id) : undefined,
+          mediaType: String(row.media_type || "image"),
+          status: String(row.status || "completed"),
+          model: row.model ? String(row.model) : undefined,
+          prompt: row.prompt ? String(row.prompt) : undefined,
+          parameters,
+          resultUrl,
+          thumbnailUrl: thumbUrl,
+          errorMessage: row.error_message ? String(row.error_message) : undefined,
+          createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+          completedAt: row.completed_at ? new Date(row.completed_at).toISOString() : undefined,
+        };
+      });
+
+      return res.status(200).json({ contractVersion: "2026-08-25.1", tasks, total: tasks.length });
+    } catch (error) {
+      if (error instanceof WorkerAuthError) return fail(res, req, error.statusCode, error.code === "worker_permission_denied" ? "WORKER_PERMISSION_DENIED" : "WORKER_AUTH_REQUIRED");
+      return fail(res, req, 500, "ACTION_NOT_ALLOWED", true);
+    }
+  });
+
+  app.get("/api/workers/:workerId/library", limiter, async (req, res) => {
+    try {
+      const claims = await auth(req, ["series:read"]);
+      if (claims.workerId !== req.params.workerId) return fail(res, req, 403, "WORKER_SCOPE_DENIED");
+      const db = getDb();
+      const [worker] = await db
+        .select({ id: workers.id, tenantId: workers.tenantId, registeredByUserId: workers.registeredByUserId })
+        .from(workers)
+        .where(and(eq(workers.id, claims.workerId), eq(workers.tenantId, claims.tenantId)))
+        .limit(1);
+      if (!worker) return fail(res, req, 404, "WORKER_NOT_FOUND");
+
+      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
+      const itemType = typeof req.query.item_type === "string" ? req.query.item_type.trim().toLowerCase() : null;
+      const query = typeof req.query.q === "string" ? req.query.q.trim().toLowerCase() : null;
+
+      const conditions = [
+        eq(libraryItems.tenantId, claims.tenantId),
+        isNull(libraryItems.deletedAt),
+        ne(libraryItems.itemType, "folder"),
+      ];
+
+      if (worker.registeredByUserId) {
+        conditions.push(
+          or(
+            eq(libraryItems.ownerUserId, worker.registeredByUserId),
+            inArray(libraryItems.visibility, ["team", "public"])
+          )!
+        );
+      } else {
+        conditions.push(inArray(libraryItems.visibility, ["team", "public"]));
+      }
+
+      if (itemType && itemType !== "all") {
+        if (itemType === "video") {
+          conditions.push(eq(libraryItems.itemType, "video"));
+        } else if (itemType === "audio") {
+          conditions.push(inArray(libraryItems.itemType, ["audio", "music", "sfx"]));
+        } else if (itemType === "music") {
+          conditions.push(inArray(libraryItems.itemType, ["music", "audio"]));
+        } else if (itemType === "sfx") {
+          conditions.push(eq(libraryItems.itemType, "sfx"));
+        } else if (itemType === "image") {
+          conditions.push(eq(libraryItems.itemType, "image"));
+        } else if (itemType === "broll") {
+          conditions.push(inArray(libraryItems.itemType, ["video", "image"]));
+        } else {
+          conditions.push(eq(libraryItems.itemType, itemType));
+        }
+      }
+
+      if (query) {
+        conditions.push(
+          or(
+            ilike(libraryItems.title, `%${query}%`),
+            ilike(libraryItems.description, `%${query}%`)
+          )!
+        );
+      }
+
+      const rows = await db
+        .select({
+          id: libraryItems.id,
+          tenantId: libraryItems.tenantId,
+          ownerUserId: libraryItems.ownerUserId,
+          itemType: libraryItems.itemType,
+          source: libraryItems.source,
+          projectId: libraryItems.projectId,
+          title: libraryItems.title,
+          description: libraryItems.description,
+          status: libraryItems.status,
+          visibility: libraryItems.visibility,
+          metadata: libraryItems.metadata,
+          sourceUrl: libraryItems.sourceUrl,
+          thumbnailUrl: libraryItems.thumbnailUrl,
+          createdAt: libraryItems.createdAt,
+          updatedAt: libraryItems.updatedAt,
+        })
+        .from(libraryItems)
+        .where(and(...conditions))
+        .orderBy(desc(libraryItems.updatedAt), desc(libraryItems.createdAt), desc(libraryItems.id))
+        .limit(limit);
+
+      const items = rows.map((row) => {
+        const meta = (row.metadata && typeof row.metadata === "object" ? row.metadata : {}) as Record<string, any>;
+        let sourceUrl = row.sourceUrl || (meta.sourceUrl || meta.url || meta.videoUrl || meta.audioUrl || meta.fileUrl || "") as string;
+        let thumbUrl = row.thumbnailUrl || (meta.thumbnailUrl || meta.previewUrl || meta.posterUrl || "") as string;
+        if (!thumbUrl && row.itemType === "image") {
+          thumbUrl = sourceUrl;
+        }
+        if (!thumbUrl && row.itemType === "video") {
+          thumbUrl = (meta.previewUrl || meta.posterUrl || "") as string;
+        }
+
+        return {
+          id: String(row.id),
+          title: row.title,
+          itemType: row.itemType,
+          source: row.source,
+          projectId: row.projectId || undefined,
+          description: row.description || undefined,
+          status: row.status,
+          visibility: row.visibility,
+          sourceUrl: sourceUrl || undefined,
+          thumbnailUrl: thumbUrl || undefined,
+          metadata: meta,
+          createdAt: row.createdAt ? row.createdAt.toISOString() : new Date().toISOString(),
+          updatedAt: row.updatedAt ? row.updatedAt.toISOString() : new Date().toISOString(),
+        };
+      });
+
+      return res.status(200).json({ contractVersion: "2026-08-25.1", items, total: items.length });
     } catch (error) {
       if (error instanceof WorkerAuthError) return fail(res, req, error.statusCode, error.code === "worker_permission_denied" ? "WORKER_PERMISSION_DENIED" : "WORKER_AUTH_REQUIRED");
       return fail(res, req, 500, "ACTION_NOT_ALLOWED", true);

@@ -88,6 +88,37 @@ pub fn doctor_from_default_paths(resource_dir: &Path) -> DoctorSummary {
     doctor_from_manifest_path(&manifest_path, &sidecar_root)
 }
 
+pub fn compare_version_strings(left: &str, right: &str) -> std::cmp::Ordering {
+    let left_segments: Vec<&str> = left
+        .trim()
+        .split(['.', '+', '-'])
+        .filter(|segment| !segment.is_empty())
+        .collect();
+    let right_segments: Vec<&str> = right
+        .trim()
+        .split(['.', '+', '-'])
+        .filter(|segment| !segment.is_empty())
+        .collect();
+    let length = left_segments.len().max(right_segments.len());
+
+    for index in 0..length {
+        let left_segment = left_segments.get(index).copied().unwrap_or("0");
+        let right_segment = right_segments.get(index).copied().unwrap_or("0");
+        let left_num = left_segment.parse::<u64>().ok();
+        let right_num = right_segment.parse::<u64>().ok();
+        let ordering = match (left_num, right_num) {
+            (Some(l), Some(r)) => l.cmp(&r),
+            _ => left_segment
+                .to_ascii_lowercase()
+                .cmp(&right_segment.to_ascii_lowercase()),
+        };
+        if ordering != std::cmp::Ordering::Equal {
+            return ordering;
+        }
+    }
+    std::cmp::Ordering::Equal
+}
+
 pub fn runtime_pack_paths(resource_dir: &Path, app_data_dir: &Path) -> (PathBuf, PathBuf) {
     let installed_manifest_path = app_data_dir.join("runtime-pack").join("manifest.json");
 
@@ -119,7 +150,7 @@ pub fn runtime_pack_paths(resource_dir: &Path, app_data_dir: &Path) -> (PathBuf,
         .map(|m| m.version);
 
     if let (Some(ref iv), Some(ref bv)) = (installed_version, bundled_version) {
-        if bv >= iv {
+        if compare_version_strings(bv, iv).is_ge() {
             return (bundled_manifest_path, bundled_resource_dir.join("sidecars"));
         }
     }
@@ -844,4 +875,16 @@ pub fn runtime_pack_root_for_sidecars(sidecar_root: &Path) -> PathBuf {
         }
     }
     sidecar_root.to_path_buf()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compare_version_strings_handles_semver_numerically() {
+        assert_eq!(compare_version_strings("0.1.10", "0.1.9"), std::cmp::Ordering::Greater);
+        assert_eq!(compare_version_strings("0.1.9", "0.1.10"), std::cmp::Ordering::Less);
+        assert_eq!(compare_version_strings("0.1.9", "0.1.9"), std::cmp::Ordering::Equal);
+    }
 }

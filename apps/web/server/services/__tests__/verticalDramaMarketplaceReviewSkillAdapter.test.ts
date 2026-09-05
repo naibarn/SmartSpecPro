@@ -19,6 +19,13 @@ function idea(ideaId: string, episodeStory: string, dialogueScript: string) {
       { speaker: "แม่", line: "ลองชิ้นนี้กันไหม" },
       { speaker: "ลุง", line: "ค่อย ๆ เล่นและสังเกตกันไป" },
     ],
+    shotDialogues: Array.from({ length: 9 }, (_, index) => ({
+      shotNumber: index + 1,
+      lines: [
+        { speaker: "แม่", line: `เราค่อย ๆ ดูกันในช็อตที่ ${index + 1}` },
+        { speaker: "ลุง", line: "ได้เลย เราจะสังเกตไปด้วยกัน" },
+      ],
+    })),
     actions: ["เก็บของที่เสียหาย", "สาธิตการเล่น"],
     benefitsMentioned: ["ช่วยฝึกการใช้มือ"],
     claimsGuard: {
@@ -74,6 +81,10 @@ describe("Marketplace review idea output gate", () => {
         ...candidate,
         dialogue: [],
         dialogueScript: "",
+        shotDialogues: Array.from({ length: 9 }, (_, index) => ({
+          shotNumber: index + 1,
+          lines: [],
+        })),
         actions: ["พิมพ์ชนกค่อย ๆ เก็บของที่แตกออกจากพื้นที่เล่น", "ภูมิใช้นิ้วหมุนชิ้นส่วนตามเกลียวทีละชั้น"],
       })),
     };
@@ -154,5 +165,27 @@ describe("Marketplace review idea output gate", () => {
         excludedCharacterNames: ["ธีร์"],
       })
     ).toThrow('unselected character "ธีร์" was used');
+  });
+
+  it("requires every speaking idea to carry dialogue for all nine shots", () => {
+    const output = {
+      schemaVersion: 1,
+      ideas: [idea("idea-1", paragraphs, "แม่: เราค่อย ๆ ลองชิ้นนี้กันนะ แล้วสังเกตว่าภูมิรู้สึกอย่างไรโดยไม่ต้องรีบ\nลุง: ได้เลย เราจะอยู่ข้าง ๆ และดูวิธีเล่นไปพร้อมกันอย่างใจเย็น"), idea("idea-2", paragraphs, "แม่: เราค่อย ๆ ลองชิ้นนี้กันนะ แล้วสังเกตว่าภูมิรู้สึกอย่างไรโดยไม่ต้องรีบ\nลุง: ได้เลย เราจะอยู่ข้าง ๆ และดูวิธีเล่นไปพร้อมกันอย่างใจเย็น"), idea("idea-3", paragraphs, "แม่: เราค่อย ๆ ลองชิ้นนี้กันนะ แล้วสังเกตว่าภูมิรู้สึกอย่างไรโดยไม่ต้องรีบ\nลุง: ได้เลย เราจะอยู่ข้าง ๆ และดูวิธีเล่นไปพร้อมกันอย่างใจเย็น")],
+    };
+    output.ideas[1].shotDialogues[8]!.lines = [];
+    expect(() => validateMarketplaceReviewIdeaOutput(output)).toThrow(
+      "episode story or dialogue script is not usable"
+    );
+  });
+
+  it("rejects hard-sell wording in any shot dialogue", () => {
+    const output = {
+      schemaVersion: 1,
+      ideas: [idea("idea-1", paragraphs, "แม่: เราค่อย ๆ ลองชิ้นนี้กันนะ แล้วสังเกตว่าภูมิรู้สึกอย่างไรโดยไม่ต้องรีบ\nลุง: ได้เลย เราจะอยู่ข้าง ๆ และดูวิธีเล่นไปพร้อมกันอย่างใจเย็น"), idea("idea-2", paragraphs, "แม่: เราค่อย ๆ ลองชิ้นนี้กันนะ แล้วสังเกตว่าภูมิรู้สึกอย่างไรโดยไม่ต้องรีบ\nลุง: ได้เลย เราจะอยู่ข้าง ๆ และดูวิธีเล่นไปพร้อมกันอย่างใจเย็น"), idea("idea-3", paragraphs, "แม่: เราค่อย ๆ ลองชิ้นนี้กันนะ แล้วสังเกตว่าภูมิรู้สึกอย่างไรโดยไม่ต้องรีบ\nลุง: ได้เลย เราจะอยู่ข้าง ๆ และดูวิธีเล่นไปพร้อมกันอย่างใจเย็น")],
+    };
+    output.ideas[2].shotDialogues[0]!.lines[0]!.line = "ซื้อเลยตอนนี้";
+    expect(() => validateMarketplaceReviewIdeaOutput(output)).toThrow(
+      "advertising dialogue compliance failed"
+    );
   });
 });

@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
+import { isProjectFilePath } from "./projectPersistence";
 
 export interface DirectoryEntry {
   name: string;
@@ -32,9 +33,10 @@ export interface MediaExplorerViewProps {
   onSelectVideoFile: (entry: DirectoryEntry) => void;
   onOpenProjectFile?: (entry: DirectoryEntry) => void;
   onImportMediaToProject?: (entry: DirectoryEntry) => void;
-  onNewProject?: () => void;
+  onNewProject?: (folderPath?: string) => void;
   selectedFilePath?: string | null;
   onCollapse?: () => void;
+  onDirectoryChange?: (path: string) => void;
 }
 
 type SortField = "name" | "type" | "size" | "date";
@@ -71,13 +73,7 @@ export function stripVerbatimPrefix(pathStr: string): string {
 
 export function isProjectFile(entry: DirectoryEntry): boolean {
   if (entry.isDirectory) return false;
-  const name = entry.name.toLowerCase();
-  const ext = entry.extension?.toLowerCase();
-  return (
-    name.endsWith(".smartspec.json") ||
-    name.endsWith(".ssproj") ||
-    (ext === "json" && (name.includes("project") || name.includes("draft") || name.includes("nle")))
-  );
+  return isProjectFilePath(entry.path) || isProjectFilePath(entry.name);
 }
 
 export function isAudioFile(entry: DirectoryEntry): boolean {
@@ -100,6 +96,7 @@ export function MediaExplorerView({
   onNewProject,
   selectedFilePath,
   onCollapse,
+  onDirectoryChange,
 }: MediaExplorerViewProps) {
   const [currentPath, setCurrentPath] = useState<string | null>(initialPath ? stripVerbatimPrefix(initialPath) : null);
   const [browseData, setBrowseData] = useState<DirectoryBrowseResult | null>(null);
@@ -114,11 +111,22 @@ export function MediaExplorerView({
   // View Mode: Details vs Grid Preview
   const [viewMode, setViewMode] = useState<ViewMode>("details");
 
+  // Category Filter Tab: projects (default), media, all
+  const [fileCategoryFilter, setFileCategoryFilter] = useState<"projects" | "media" | "all">("projects");
+
   // Sorting State
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortAsc, setSortAsc] = useState<boolean>(true);
 
   const browseRequest = useRef(0);
+
+  const projectCount = useMemo(() => {
+    return (browseData?.entries || []).filter((e) => !e.isDirectory && isProjectFile(e)).length;
+  }, [browseData?.entries]);
+
+  const mediaCount = useMemo(() => {
+    return (browseData?.entries || []).filter((e) => !e.isDirectory && (e.isVideo || isAudioFile(e) || isImageFile(e))).length;
+  }, [browseData?.entries]);
 
   const loadDirectory = async (path?: string | null) => {
     const requestId = ++browseRequest.current;
@@ -136,10 +144,12 @@ export function MediaExplorerView({
         parentPath: res.parentPath ? stripVerbatimPrefix(res.parentPath) : null,
         breadcrumbs: (res.breadcrumbs || []).map((b) => ({
           ...b,
+          name: stripVerbatimPrefix(b.name),
           path: stripVerbatimPrefix(b.path),
         })),
         entries: (res.entries || []).map((e) => ({
           ...e,
+          name: stripVerbatimPrefix(e.name),
           path: stripVerbatimPrefix(e.path),
         })),
       };
@@ -147,6 +157,9 @@ export function MediaExplorerView({
       setCurrentPath(cleaned.currentPath);
       setPathInputValue(cleaned.currentPath);
       setIsEditingPath(false);
+      if (cleaned.currentPath && onDirectoryChange) {
+        onDirectoryChange(cleaned.currentPath);
+      }
     } catch (err) {
       if (requestId === browseRequest.current) setError(String(err));
     } finally {
@@ -155,6 +168,10 @@ export function MediaExplorerView({
   };
 
   useEffect(() => {
+    const cleanInitial = initialPath ? stripVerbatimPrefix(initialPath) : null;
+    if (cleanInitial && cleanInitial === currentPath) {
+      return;
+    }
     void loadDirectory(initialPath ?? null);
     return () => { browseRequest.current += 1; };
   }, [initialPath]);
@@ -196,6 +213,13 @@ export function MediaExplorerView({
     if (!browseData?.entries) return [];
     let list = browseData.entries;
 
+    // Filter by selected category tab
+    if (fileCategoryFilter === "projects") {
+      list = list.filter((entry) => entry.isDirectory || isProjectFile(entry));
+    } else if (fileCategoryFilter === "media") {
+      list = list.filter((entry) => entry.isDirectory || entry.isVideo || isAudioFile(entry) || isImageFile(entry));
+    }
+
     // Filter by search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -224,17 +248,38 @@ export function MediaExplorerView({
     });
   }, [browseData?.entries, searchQuery, sortField, sortAsc]);
 
+  const handleCreateNewProject = async () => {
+    try {
+      const selected = await openFolderDialog({
+        directory: true,
+        multiple: false,
+        title: "เลือกโฟลเดอร์ทำงานสำหรับโปรเจกต์ใหม่ (Working Directory)",
+      });
+      if (selected && typeof selected === "string") {
+        try {
+          localStorage.setItem("smartspec_last_project_folder", selected);
+        } catch {}
+        void loadDirectory(selected);
+        if (onNewProject) {
+          onNewProject(selected);
+        }
+      }
+    } catch (err) {
+      setError(`ไม่สามารถเลือกโฟลเดอร์โปรเจกต์ได้: ${String(err)}`);
+    }
+  };
+
   return (
-    <div className="explorer-container">
-      {/* Top Explorer Action Bar */}
+    <div className="media-explorer-view">
+      {/* Top Action Toolbar */}
       <div className="explorer-toolbar">
         {onNewProject && (
           <div className="explorer-top-action-row">
             <button
               type="button"
               className="explorer-new-project-top-btn"
-              onClick={onNewProject}
-              title="สร้างโปรเจกต์ NLE ใหม่ (New Project)"
+              onClick={() => void handleCreateNewProject()}
+              title="เลือกโฟลเดอร์และสร้างโปรเจกต์ NLE ใหม่ (New Project)"
             >
               ✨ ＋ โปรเจกต์ใหม่ (New Project)
             </button>
@@ -376,6 +421,84 @@ export function MediaExplorerView({
               </button>
             </div>
           )}
+        </div>
+
+        {/* Category Filter Tabs (Projects vs Media vs All) */}
+        <div
+          className="explorer-category-tabs"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            padding: "4px 8px",
+            background: "rgba(15, 23, 42, 0.9)",
+            borderRadius: "6px",
+            border: "1px solid rgba(148, 163, 184, 0.25)",
+            margin: "4px 0",
+          }}
+        >
+          <button
+            type="button"
+            className={`cat-tab-btn ${fileCategoryFilter === "projects" ? "active" : ""}`}
+            onClick={() => setFileCategoryFilter("projects")}
+            style={{
+              flex: 1,
+              padding: "4px 6px",
+              fontSize: "0.76rem",
+              fontWeight: 700,
+              borderRadius: "4px",
+              border: "none",
+              cursor: "pointer",
+              background: fileCategoryFilter === "projects" ? "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)" : "transparent",
+              color: fileCategoryFilter === "projects" ? "#ffffff" : "#94a3b8",
+              boxShadow: fileCategoryFilter === "projects" ? "0 2px 6px rgba(2, 132, 199, 0.4)" : "none",
+              transition: "all 0.15s ease",
+            }}
+            title="แสดงเฉพาะ Video Project และโฟลเดอร์ใน Workspace"
+          >
+            ⭐ โปรเจกต์ ({projectCount})
+          </button>
+          <button
+            type="button"
+            className={`cat-tab-btn ${fileCategoryFilter === "media" ? "active" : ""}`}
+            onClick={() => setFileCategoryFilter("media")}
+            style={{
+              flex: 1,
+              padding: "4px 6px",
+              fontSize: "0.76rem",
+              fontWeight: 700,
+              borderRadius: "4px",
+              border: "none",
+              cursor: "pointer",
+              background: fileCategoryFilter === "media" ? "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)" : "transparent",
+              color: fileCategoryFilter === "media" ? "#ffffff" : "#94a3b8",
+              boxShadow: fileCategoryFilter === "media" ? "0 2px 6px rgba(2, 132, 199, 0.4)" : "none",
+              transition: "all 0.15s ease",
+            }}
+            title="แสดงเฉพาะไฟล์สื่อ (วิดีโอ/เสียง/ภาพ)"
+          >
+            🎬 สื่อดิบ ({mediaCount})
+          </button>
+          <button
+            type="button"
+            className={`cat-tab-btn ${fileCategoryFilter === "all" ? "active" : ""}`}
+            onClick={() => setFileCategoryFilter("all")}
+            style={{
+              padding: "4px 8px",
+              fontSize: "0.76rem",
+              fontWeight: 600,
+              borderRadius: "4px",
+              border: "none",
+              cursor: "pointer",
+              background: fileCategoryFilter === "all" ? "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)" : "transparent",
+              color: fileCategoryFilter === "all" ? "#ffffff" : "#94a3b8",
+              boxShadow: fileCategoryFilter === "all" ? "0 2px 6px rgba(2, 132, 199, 0.4)" : "none",
+              transition: "all 0.15s ease",
+            }}
+            title="แสดงไฟล์ทั้งหมดในโฟลเดอร์"
+          >
+            📂 ทั้งหมด ({browseData?.entries?.length ?? 0})
+          </button>
         </div>
 
         {/* Search Input */}

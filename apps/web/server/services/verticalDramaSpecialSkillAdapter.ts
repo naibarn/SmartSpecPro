@@ -33,6 +33,7 @@ import {
   specialTieInInputSchema,
   type SpecialEpisodeData,
 } from "../../shared/verticalDramaSeries/specialTieInContracts";
+import { screenSpecialDialogueCompliance } from "../../shared/verticalDramaSeries/advertisingDialoguePolicy";
 import type { VerticalDramaInteractiveJobPayload } from "./verticalDramaInteractiveJobs";
 
 const SPECIAL_TIE_IN_STAGES = [
@@ -374,6 +375,81 @@ export function buildSpecialTieInPromptArtifacts(input: {
           })),
         }
       : null,
+  };
+}
+
+/** Persist the same shot-local dialogue contract consumed by normal episode
+ * prompt/audio generation. Keeping this next to the special adapter prevents
+ * the special workflow from losing dialogue after its story-only planning pass. */
+export function buildSpecialTieInDialogueAudioPlan(input: {
+  specialData: SpecialEpisodeData;
+  output: SpecialSkillOutput;
+}): Record<string, unknown> {
+  const mode = input.specialData.input.dialogueMode;
+  const personBindings = input.specialData.referenceBindings.filter(
+    binding => binding.role === "person"
+  );
+  const bindingByReferenceId = new Map(
+    personBindings.map(binding => [binding.skillReferenceId, binding])
+  );
+  const dialogueLines =
+    mode === "none"
+      ? []
+      : input.output.shots.flatMap(shot =>
+          shot.speaking_turns.map((turn, lineIndex) => {
+            const binding = bindingByReferenceId.get(turn.speaker_reference_id);
+            const characterId = String(binding?.provenance.characterId ?? "");
+            const characterKey = String(
+              binding?.provenance.characterKey ?? turn.speaker_reference_id
+            );
+            return {
+              shot_number: shot.shot_number,
+              clip_number: shot.shot_number,
+              line_index: lineIndex,
+              // The normal resolver's `characterKey` field is populated from
+              // speaker_character_id; keep the stable character key here so
+              // prompt/name lookup works without a special-case ID branch.
+              speaker_character_id: characterKey,
+              speaker_character_key: characterKey,
+              speaker_name: binding?.provenance.characterName,
+              dialogue_line: turn.exact_dialogue,
+              delivery: "natural, conversational, modest advertising tone",
+            };
+          })
+        );
+  return {
+    schemaVersion: 1,
+    audioStrategy: mode === "none" ? "silent" : "dialogue_tts",
+    language: mode === "none" ? "none" : "th-TH",
+    dialogue_lines: dialogueLines,
+    shotLines: dialogueLines.map(line => ({
+      shotNumber: line.shot_number,
+      clipNumber: line.clip_number,
+      speakerCharacterId: line.speaker_character_id,
+      speakerCharacterKey: line.speaker_character_key,
+      speakerName: line.speaker_name,
+      text: line.dialogue_line,
+      delivery: line.delivery,
+    })),
+    voiceContinuityMap: personBindings
+      .filter(binding => binding.provenance.dialogueSpeakerEligible === true)
+      .map(binding => ({
+        characterId: String(binding.provenance.characterId ?? ""),
+        characterKey: String(
+          binding.provenance.characterKey ?? binding.skillReferenceId
+        ),
+        characterName: binding.provenance.characterName,
+        voiceRole: "adult_advertising_speaker",
+      })),
+    subtitleSafeArea: {
+      position: "bottom_safe",
+      maxLines: 2,
+      avoidFaceArea: true,
+    },
+    warnings:
+      mode === "none"
+        ? ["ตอนพิเศษนี้ตั้งใจสร้างเป็นวิดีโอเงียบ ไม่มีบทพูดและเสียงพากย์"]
+        : [],
   };
 }
 
@@ -1065,6 +1141,7 @@ export function buildSpecialPrompt(
       speaker_count: speakerReferenceIds.length,
       speaker_reference_ids: speakerReferenceIds,
       dialogue_constraints: input.dialogueBrief ?? "",
+      dialogue_shot_plan: input.shotDialogues ?? [],
       exact_dialogue_lines: exactDialogueLines,
       // The special episode contract is intentionally stricter than the
       // generic skill input: selected-cast isolation is mandatory here.
@@ -1078,6 +1155,7 @@ export function buildSpecialPrompt(
             episodeStory: input.marketplaceReviewIdea.episodeStory,
             dialogueScript: input.marketplaceReviewIdea.dialogueScript,
             dialogue: input.marketplaceReviewIdea.dialogue,
+            shotDialogues: input.marketplaceReviewIdea.shotDialogues,
             scene: input.marketplaceReviewIdea.scene,
             productMentionReason: input.marketplaceReviewIdea.productMentionReason,
             actions: input.marketplaceReviewIdea.actions,
@@ -1091,7 +1169,7 @@ export function buildSpecialPrompt(
     }),
   };
   prompt.systemPrompt +=
-    "\n\nDIALOGUE DENSITY OVERRIDE: In character_dialogue mode, return exactly 2 short speaking_turns for every shot (18 total). Use only the selected speaker_reference_ids. Preserve every reviewed line verbatim and add a natural response or bridge; never leave shots 5-9 silent or with only one sentence.";
+    "\n\nDIALOGUE DENSITY OVERRIDE: In character_dialogue mode, return exactly 2 short speaking_turns for every shot (18 total). Use only the selected speaker_reference_ids whose binding provenance.dialogueSpeakerEligible is true. Preserve every reviewed line verbatim and add a natural response or bridge; never leave shots 5-9 silent or with only one sentence. This is an advertising video: never use overclaim, medical/cure/guarantee/absolute/hard-sell language, and never let a child or age-unknown character speak. In none mode, every shot must be silent.";
   return prompt;
 }
 
@@ -1163,9 +1241,8 @@ export function validateSpecialTieInStoryOutput(input: {
     input.bindings
       .filter(binding => binding.role === "person")
       .filter(binding =>
-        input.specialInput.speakerCharacterIds.includes(
-          String(binding.provenance.characterId ?? "")
-        )
+        input.specialInput.speakerCharacterIds.includes(String(binding.provenance.characterId ?? "")) &&
+        binding.provenance.dialogueSpeakerEligible === true
       )
       .map(binding => binding.skillReferenceId)
   );
@@ -1286,6 +1363,14 @@ export function validateSpecialTieInStoryOutput(input: {
   const shotDialogueTurns = input.output.shots.flatMap(
     shot => shot.speaking_turns
   );
+  const compliance = screenSpecialDialogueCompliance(
+    shotDialogueTurns.map(turn => turn.exact_dialogue)
+  );
+  if (compliance.hasViolations) {
+    throw new Error(
+      `SPECIAL_OUTPUT_INVALID: advertising dialogue compliance failed (${compliance.violations.map(item => item.matchedPattern).join(", ")})`
+    );
+  }
   const expectedDialogue = extractSpecialDialogueLines(input.specialInput);
   if (input.specialInput.dialogueMode === "none") {
     if (shotDialogueTurns.length > 0) {
@@ -2133,6 +2218,10 @@ export async function executeSpecialTieInSkill(
       ),
       locationKey: specialLocationKey,
     });
+  const dialogueAudioPlan = buildSpecialTieInDialogueAudioPlan({
+    specialData,
+    output,
+  });
   const specialStoryboard = specialLocationKey
     ? buildSpecialTieInStoryboard(
         specialData.input,
@@ -2170,6 +2259,24 @@ export async function executeSpecialTieInSkill(
     },
     output: {
       shotCount: output.shot_count,
+      shotDialogues: output.shots.map(shot => ({
+        shotNumber: shot.shot_number,
+        lines: shot.speaking_turns.map(turn => {
+          const binding = specialData.referenceBindings.find(
+            candidate => candidate.skillReferenceId === turn.speaker_reference_id
+          );
+          return {
+            speakerCharacterKey: String(
+              binding?.provenance.characterKey ?? turn.speaker_reference_id
+            ),
+            speakerName:
+              typeof binding?.provenance.characterName === "string"
+                ? binding.provenance.characterName
+                : undefined,
+            line: turn.exact_dialogue,
+          };
+        }),
+      })),
       storySummaries: output.shots.map(shot => ({
         shotNumber: shot.shot_number,
         summary:
@@ -2204,6 +2311,7 @@ export async function executeSpecialTieInSkill(
         specialData: nextData,
         startFramePlan,
         motionPromptPack,
+        dialogueAudioPlan,
         storyboard: specialStoryboard,
         updatedAt: new Date(),
       })

@@ -137,7 +137,6 @@ import { materializeMarketplaceImageReference } from "../services/verticalDramaS
 import { specialTieInInputSchema } from "../../shared/verticalDramaSeries/specialTieInContracts";
 import {
   buildMarketplaceReviewIdeaInput,
-  generateMarketplaceReviewIdeas,
   listMarketplaceReviewIdeaModels,
   listMarketplaceReviewIdeaRuns,
   resolveMarketplaceReviewScene,
@@ -11336,7 +11335,10 @@ export const verticalDramaEpisodesRouter = router({
     .input(
       z.object({
       seriesId: z.string().min(1),
-      productId: z.string().min(1).max(128),
+      productId: z.string().min(1).max(128).optional(),
+      productSource: z
+        .enum(["marketplace_capture", "upload"])
+        .default("marketplace_capture"),
         referenceImages: z
           .array(
             z.object({
@@ -11355,6 +11357,7 @@ export const verticalDramaEpisodesRouter = router({
       customerJourney: z.unknown().optional(),
       footageGuide: z.unknown().optional(),
       direction: z.string().trim().max(2000).optional(),
+      productBrief: z.string().trim().max(8000).optional(),
       llmModelId: z.string().trim().min(1).max(160).optional(),
       variationSeed: z.string().trim().min(1).max(128),
       })
@@ -11365,12 +11368,41 @@ export const verticalDramaEpisodesRouter = router({
         userId: ctx.user.id,
       };
       const seriesId = parseId(input.seriesId, "series id");
+      if (input.productSource === "marketplace_capture" && !input.productId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "กรุณาเลือกสินค้าจาก Marketplace Capture ก่อนสร้างไอเดีย",
+        });
+      }
+      if (input.productSource === "upload" && input.productId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "สินค้าที่อัปโหลดเองต้องไม่มี Marketplace product id",
+        });
+      }
       const request = await buildMarketplaceReviewIdeaInput({
         ...input,
         actor,
         seriesId,
       });
-      return generateMarketplaceReviewIdeas({ actor, seriesId, request });
+      const sourceKey =
+        input.productSource === "marketplace_capture"
+          ? input.productId!
+          : `upload:${request.product.productId}`;
+      const job = await enqueueVerticalDramaInteractiveJob({
+        kind: "marketplace_review_ideas",
+        tenantId: actor.tenantId,
+        userId: actor.userId,
+        scopeKey: `marketplace-review-ideas:${seriesId}:${sourceKey}`,
+        skillSlug: "vertical-drama-marketplace-review-story-planner",
+        modelId: request.llmModelId,
+        idempotencyKey: `marketplace-review-ideas:${seriesId}:${sourceKey}:${request.variationSeed}`,
+        input: { seriesId, request },
+      });
+      return {
+        ...job,
+        scopeKey: `marketplace-review-ideas:${seriesId}:${sourceKey}`,
+      };
     }),
 
   listMarketplaceReviewIdeas: verticalDramaSpecialTieInProcedure
@@ -27155,6 +27187,23 @@ export const verticalDramaEpisodesRouter = router({
         sourceBeatIndexes: shotSourceBeatIndexes,
         deepDraftShot: deepDraftShotForDialogue,
       });
+      const specialDialogueMode = isSpecialTieInEpisode
+        ? (row.specialData as { input?: { dialogueMode?: string } } | null)?.input
+            ?.dialogueMode
+        : undefined;
+      if (isSpecialTieInEpisode && specialDialogueMode === "none") {
+        dialogueLines = [];
+      }
+      if (
+        isSpecialTieInEpisode &&
+        specialDialogueMode === "character_dialogue" &&
+        dialogueLines.length === 0
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "บทพูดของตอนพิเศษช็อตนี้ยังไม่พร้อม จึงไม่สร้าง Prompt ต่อเพื่อป้องกันงานเงียบ",
+        });
+      }
       // Speaker-aware sub-shots (speaker-aware sub-shots task, Package 3) —
       // resolve the tenant's opt-in flag right after dialogue resolution
       // (existing `resolveSubShotPolicy` helper, unchanged). The actual
@@ -27187,7 +27236,9 @@ export const verticalDramaEpisodesRouter = router({
       const nativeAudioPromptsEnabled =
         await resolveVerticalDramaNativeAudioPromptsFlag(tenantId);
       const requestedNativeAudioEnabled =
-        input.nativeAudioEnabled ?? pack?.nativeAudioEnabled ?? false;
+        specialDialogueMode === "none"
+          ? false
+          : input.nativeAudioEnabled ?? pack?.nativeAudioEnabled ?? false;
       const effectiveNativeAudioEnabled =
         nativeAudioPromptsEnabled && requestedNativeAudioEnabled;
 

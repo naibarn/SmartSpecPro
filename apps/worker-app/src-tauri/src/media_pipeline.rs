@@ -854,11 +854,12 @@ pub fn detect_audio_silence_custom(
                     }
 
                     // Auto dead-air trimming for speech:
-                    // 1. If first speech starts after 2000ms, ensure leading dead air is recorded (leaving 2.0s buffer before speech)
+                    // Use softening_buffer_s (default ~200-300ms) to tightly trim pre-speech walking noise and post-speech trailing dead air.
+                    let speech_buffer_ms = ((buf_s * 1000.0) as u64).clamp(100, 600);
                     if let Some(first_sp) = detected_first_speech {
-                        if first_sp > 2000 {
-                            let lead_cut_end = first_sp.saturating_sub(2000);
-                            let has_lead_silence = segments.iter().any(|s| s.start_ms <= 800 && s.end_ms.map_or(false, |e| e >= lead_cut_end.saturating_sub(500)));
+                        if first_sp > speech_buffer_ms {
+                            let lead_cut_end = first_sp.saturating_sub(speech_buffer_ms);
+                            let has_lead_silence = segments.iter().any(|s| s.start_ms <= 800 && s.end_ms.map_or(false, |e| e >= lead_cut_end.saturating_sub(300)));
                             if !has_lead_silence {
                                 segments.insert(0, MediaAnalysisSegment {
                                     start_ms: 0,
@@ -870,11 +871,10 @@ pub fn detect_audio_silence_custom(
                         }
                     }
 
-                    // 2. If last speech ends before duration - 2000ms, ensure trailing dead air is recorded (leaving 1.8s buffer after speech)
                     if let Some(last_sp) = detected_last_speech {
-                        let trail_cut_start = (last_sp + 1800).min(duration_ms);
-                        if duration_ms.saturating_sub(trail_cut_start) >= 1200 {
-                            let has_trail_silence = segments.iter().any(|s| s.end_ms.map_or(false, |e| e >= duration_ms.saturating_sub(600)));
+                        let trail_cut_start = (last_sp + speech_buffer_ms).min(duration_ms);
+                        if duration_ms.saturating_sub(trail_cut_start) >= 300 {
+                            let has_trail_silence = segments.iter().any(|s| s.end_ms.map_or(false, |e| e >= duration_ms.saturating_sub(300)));
                             if !has_trail_silence {
                                 push_segment(&mut segments, trail_cut_start, Some(duration_ms), "silence");
                             }
@@ -1277,10 +1277,16 @@ pub fn run_allowlisted_ffmpeg_segments(
         let list_path = scratch.join("concat.txt");
         let list = files
             .iter()
-            .map(|path| format!("file '{}'\n", path.to_string_lossy().replace('\'', "'\\''")))
+            .map(|path| {
+                let filename = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_else(|| path.to_string_lossy().replace('\\', "/"));
+                format!("file '{}'\n", filename.replace('\'', "'\\''"))
+            })
             .collect::<String>();
         fs::write(&list_path, list).map_err(|_| "derived_workspace_create_failed".to_string())?;
-        let mut args = vec![
+        let args = vec![
             literal("-hide_banner"),
             literal("-loglevel"),
             literal("error"),
@@ -1293,18 +1299,58 @@ pub fn run_allowlisted_ffmpeg_segments(
             media_path(&list_path),
             literal("-c"),
             literal("copy"),
+            literal("-fflags"),
+            literal("+genpts"),
+            media_path(&output),
         ];
-        args.push(media_path(&output));
         let status = tools
             .status(MediaBinary::Ffmpeg, args)
             .map_err(|_| "ffmpeg_unavailable".to_string())?;
         if !status.success() {
-            return Err("ffmpeg_concat_failed".into());
+            let fallback_args = vec![
+                literal("-hide_banner"),
+                literal("-loglevel"),
+                literal("error"),
+                literal("-y"),
+                literal("-f"),
+                literal("concat"),
+                literal("-safe"),
+                literal("0"),
+                literal("-i"),
+                media_path(&list_path),
+                literal("-c:v"),
+                literal("libx264"),
+                literal("-preset"),
+                literal("fast"),
+                literal("-c:a"),
+                literal("aac"),
+                media_path(&output),
+            ];
+            let fb_status = tools
+                .status(MediaBinary::Ffmpeg, fallback_args)
+                .map_err(|_| "ffmpeg_unavailable".to_string())?;
+            if !fb_status.success() {
+                return Err("ffmpeg_concat_failed".into());
+            }
         }
         Ok(output.clone())
     })();
     let _ = fs::remove_dir_all(&scratch);
     Ok(result?)
+}
+
+fn build_atempo_filter(speed: f64) -> String {
+    let s = speed.clamp(0.25, 4.0);
+    if (s - 1.0).abs() < 0.001 {
+        return "aresample=async=1000".to_string();
+    }
+    if s >= 0.5 && s <= 2.0 {
+        format!("aresample=async=1000,atempo={:.4}", s)
+    } else if s > 2.0 {
+        format!("aresample=async=1000,atempo=2.0,atempo={:.4}", s / 2.0)
+    } else {
+        format!("aresample=async=1000,atempo=0.5,atempo={:.4}", s / 0.5)
+    }
 }
 
 pub fn run_interactive_media_render(
@@ -1314,7 +1360,10 @@ pub fn run_interactive_media_render(
     aspect_ratio: &str,
     focus_x: f64,
     focus_y: f64,
+    playback_speed: f64,
     tools: &MediaToolchain,
+    target_width: Option<u32>,
+    target_height: Option<u32>,
 ) -> Result<(), String> {
     if segments.is_empty() {
         return Err("no_segments_to_render".into());
@@ -1325,16 +1374,39 @@ pub fn run_interactive_media_render(
 
     let fx = focus_x.clamp(0.0, 1.0);
     let fy = focus_y.clamp(0.0, 1.0);
+    let speed = playback_speed.clamp(0.25, 4.0);
+    let pts_factor = 1.0 / speed;
 
-    let crop_filter = match aspect_ratio {
-        "9:16" => Some(format!(
-            "crop=if(gt(iw/ih\\,0.5625)\\,ih*9/16\\,iw):if(gt(iw/ih\\,0.5625)\\,ih\\,iw*16/9):if(gt(iw/ih\\,0.5625)\\,max(0\\,min(iw-ih*9/16\\,(iw-ih*9/16)*({fx:.3})))\\,0):if(gt(iw/ih\\,0.5625)\\,0\\,max(0\\,min(ih-iw*16/9\\,(ih-iw*16/9)*({fy:.3})))),scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1"
-        )),
-        "16:9" => Some(format!(
-            "crop=if(gt(iw/ih\\,1.7777)\\,ih*16/9\\,iw):if(gt(iw/ih\\,1.7777)\\,ih\\,iw*9/16):if(gt(iw/ih\\,1.7777)\\,max(0\\,min(iw-ih*16/9\\,(iw-ih*16/9)*({fx:.3})))\\,0):if(gt(iw/ih\\,1.7777)\\,0\\,max(0\\,min(ih-iw*9/16\\,(ih-iw*9/16)*({fy:.3})))),scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1"
-        )),
-        _ => Some("pad=ceil(iw/2)*2:ceil(ih/2)*2,setsar=1".to_string()),
+    let speed_vf_suffix = if (speed - 1.0).abs() >= 0.001 {
+        format!(",setpts={:.6}*PTS", pts_factor)
+    } else {
+        "".to_string()
     };
+
+    let (out_w, out_h) = match (target_width, target_height) {
+        (Some(w), Some(h)) if w >= 200 && h >= 200 => (w & !1, h & !1),
+        _ => match aspect_ratio {
+            "9:16" => (1080, 1920),
+            "16:9" => (1920, 1080),
+            "1:1" => (1080, 1080),
+            "4:5" => (1080, 1350),
+            _ => (0, 0),
+        },
+    };
+
+    let crop_filter = if out_w > 0 && out_h > 0 {
+        let ar = out_w as f64 / out_h as f64;
+        Some(format!(
+            "crop=if(gt(iw/ih\\,{ar:.6})\\,ih*{ar:.6}\\,iw):if(gt(iw/ih\\,{ar:.6})\\,ih\\,iw/{ar:.6}):if(gt(iw/ih\\,{ar:.6})\\,max(0\\,min(iw-ih*{ar:.6}\\,(iw-ih*{ar:.6})*({fx:.3})))\\,0):if(gt(iw/ih\\,{ar:.6})\\,0\\,max(0\\,min(ih-iw/{ar:.6}\\,(ih-iw/{ar:.6})*({fy:.3})))),scale={out_w}:{out_h}:force_original_aspect_ratio=decrease,pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2,setsar=1{speed_vf_suffix}"
+        ))
+    } else {
+        Some(format!(
+            "pad=ceil(iw/2)*2:ceil(ih/2)*2,setsar=1{}",
+            speed_vf_suffix
+        ))
+    };
+
+    let audio_filter = build_atempo_filter(speed);
 
     if segments.len() == 1 {
         let (seg_start, seg_end) = segments[0];
@@ -1368,7 +1440,7 @@ pub fn run_interactive_media_render(
             literal("-b:a"),
             literal("192k"),
             literal("-af"),
-            literal("aresample=async=1000"),
+            literal(&audio_filter),
             media_path(output),
         ]);
         let status = tools
@@ -1419,7 +1491,7 @@ pub fn run_interactive_media_render(
                     literal("-c:a"),
                     literal("aac"),
                     literal("-af"),
-                    literal("aresample=async=1000"),
+                    literal(&audio_filter),
                     media_path(&part),
                 ]);
                 let s = tools.status(MediaBinary::Ffmpeg, part_args)
@@ -1433,7 +1505,13 @@ pub fn run_interactive_media_render(
             let list_path = scratch.join("concat.txt");
             let list = files
                 .iter()
-                .map(|path| format!("file '{}'\n", path.to_string_lossy().replace('\'', "'\\''")))
+                .map(|path| {
+                    let filename = path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_else(|| path.to_string_lossy().replace('\\', "/"));
+                    format!("file '{}'\n", filename.replace('\'', "'\\''"))
+                })
                 .collect::<String>();
             fs::write(&list_path, list).map_err(|_| "cannot_write_concat_list".to_string())?;
 
@@ -1450,13 +1528,38 @@ pub fn run_interactive_media_render(
                 media_path(&list_path),
                 literal("-c"),
                 literal("copy"),
+                literal("-fflags"),
+                literal("+genpts"),
                 media_path(output),
             ];
             let status = tools.status(MediaBinary::Ffmpeg, concat_args)
                 .map_err(|_| "ffmpeg_unavailable".to_string())?;
 
             if !status.success() {
-                return Err("ffmpeg_concat_failed".into());
+                let fallback_args = vec![
+                    literal("-hide_banner"),
+                    literal("-loglevel"),
+                    literal("error"),
+                    literal("-y"),
+                    literal("-f"),
+                    literal("concat"),
+                    literal("-safe"),
+                    literal("0"),
+                    literal("-i"),
+                    media_path(&list_path),
+                    literal("-c:v"),
+                    literal("libx264"),
+                    literal("-preset"),
+                    literal("fast"),
+                    literal("-c:a"),
+                    literal("aac"),
+                    media_path(output),
+                ];
+                let fb_status = tools.status(MediaBinary::Ffmpeg, fallback_args)
+                    .map_err(|_| "ffmpeg_unavailable".to_string())?;
+                if !fb_status.success() {
+                    return Err("ffmpeg_concat_failed".into());
+                }
             }
             Ok(())
         })();
@@ -1946,6 +2049,8 @@ mod tests {
             noise_threshold_db: -45.0,
             min_duration_s: 0.5,
             softening_buffer_s: 0.2,
+            first_speech_ms: Some(2000),
+            last_speech_ms: Some(8000),
         };
         let json = serde_json::to_string(&result).expect("serialization failed");
         assert!(json.contains("\"noiseThresholdDb\":-45.0"));

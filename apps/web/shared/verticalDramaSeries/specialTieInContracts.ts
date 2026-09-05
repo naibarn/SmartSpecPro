@@ -68,6 +68,27 @@ export const specialTieInInputSchema = z
     dialogueMode: z.enum(["none", "character_dialogue"]),
     dialogueBrief: z.string().trim().max(12_000).optional(),
     speakerCharacterIds: z.array(z.string().min(1).max(128)).max(3).default([]),
+    /** Structured nine-shot dialogue selected/reviewed in the idea dialog.
+     * Optional only for legacy/manual inputs; selected Marketplace ideas and
+     * all new character-dialogue submissions must provide it at the service
+     * gate before episode allocation. */
+    shotDialogues: z
+      .array(
+        z.object({
+          shotNumber: z.number().int().min(1).max(9),
+          dialogueLines: z
+            .array(
+              z.object({
+                speakerCharacterId: z.string().min(1).max(128),
+                line: z.string().trim().min(1).max(2_000),
+                delivery: z.string().trim().max(500).optional(),
+              })
+            )
+            .max(3),
+        })
+      )
+      .length(9)
+      .optional(),
     allowAdditionalCharacters: z.boolean().default(false),
     lockCharacterReferences: z.boolean().default(true),
     lockReferenceImages: z.boolean().default(true),
@@ -109,6 +130,46 @@ export const specialTieInInputSchema = z
         code: z.ZodIssueCode.custom,
         path: ["speakerCharacterIds"],
         message: "Speakers are not allowed when dialogue is disabled",
+      });
+    }
+    if (
+      value.dialogueMode === "none" &&
+      value.shotDialogues?.some(shot => shot.dialogueLines.length > 0)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["shotDialogues"],
+        message: "Silent episodes must not contain shot dialogue",
+      });
+    }
+    if (value.shotDialogues) {
+      value.shotDialogues.forEach((shot, index) => {
+        if (shot.shotNumber !== index + 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["shotDialogues", index, "shotNumber"],
+            message: "Shot dialogue entries must be ordered from 1 to 9",
+          });
+        }
+        if (
+          value.dialogueMode === "character_dialogue" &&
+          shot.dialogueLines.length === 0
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["shotDialogues", index, "dialogueLines"],
+            message: "Every speaking-mode shot must contain dialogue",
+          });
+        }
+        for (const line of shot.dialogueLines) {
+          if (!value.speakerCharacterIds.includes(line.speakerCharacterId)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["shotDialogues", index, "dialogueLines"],
+              message: "Shot dialogue speakers must be selected speakers",
+            });
+          }
+        }
       });
     }
     if (
@@ -169,6 +230,17 @@ export type SpecialEpisodeData = {
     storySummaries?: Array<{
       shotNumber: number;
       summary: string;
+    }>;
+    /** Structured dialogue projection retained for review, repair, and the
+     * normal dialogue/audio prompt flow. */
+    shotDialogues?: Array<{
+      shotNumber: number;
+      lines: Array<{
+        speakerCharacterKey: string;
+        speakerName?: string;
+        line: string;
+        delivery?: string;
+      }>;
     }>;
     assumptions?: string[];
     qualityControl?: unknown;

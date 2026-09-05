@@ -1682,6 +1682,7 @@ pub async fn worker_app_select_series_workspace(
     let projection = redacted_projection(&root, None, "selected");
     workspace.root = Some(root);
     workspace.projection = Some(projection.clone());
+    let _ = persist_root_state(&app_data_dir, workspace.root.as_ref().unwrap());
     Ok(Some(projection))
 }
 
@@ -1888,6 +1889,212 @@ pub struct WorkerSeriesListResponse {
     pub next_cursor: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkerAiModelItem {
+    pub model_id: String,
+    pub name: String,
+    pub category: String,
+    pub is_enabled: bool,
+    pub description: Option<String>,
+    pub supports_image_input: bool,
+    pub max_image_inputs: usize,
+    pub supports_video_input: bool,
+    pub supports_audio_input: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkerAiModelListResponse {
+    pub contract_version: String,
+    pub items: Vec<WorkerAiModelItem>,
+}
+
+#[tauri::command]
+pub async fn worker_app_list_ai_models(
+    app: tauri::AppHandle,
+    category: Option<String>,
+) -> Result<WorkerAiModelListResponse, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+
+    let mut models_from_server: Option<Vec<WorkerAiModelItem>> = None;
+
+    if let Ok(connection) = load_series_control_plane_connection(&app_data_dir) {
+        let path = format!("/api/workers/{}/ai-models", connection.worker_id);
+        if let Ok(res) = get_worker_json::<WorkerAiModelListResponse>(
+            &connection.server_url,
+            &path,
+            &connection.tokens.execution_token,
+            &connection.device_proof,
+        )
+        .await
+        {
+            models_from_server = Some(res.items);
+        }
+    }
+
+    let all_models = models_from_server.unwrap_or_else(|| {
+        vec![
+            // Text to Image Models
+            WorkerAiModelItem {
+                model_id: "gpt-image-2".into(),
+                name: "🌟 GPT Image 2 / DALL-E 3 (แนะนำ - คมชัดสูง)".into(),
+                category: "text_to_image".into(),
+                is_enabled: true,
+                description: Some("คมชัดสูง รองรับภาษาไทย สังเคราะห์ภาพกราฟิกสมจริง".into()),
+                supports_image_input: false,
+                max_image_inputs: 0,
+                supports_video_input: false,
+                supports_audio_input: false,
+            },
+            WorkerAiModelItem {
+                model_id: "flux-1-schnell".into(),
+                name: "⚡ FLUX.1 Schnell (ความเร็วสูง รายละเอียดภาพชัด)".into(),
+                category: "text_to_image".into(),
+                is_enabled: true,
+                description: Some("ความเร็วสูง วาดภาพเร็ว ชัดทุกรายละเอียด".into()),
+                supports_image_input: false,
+                max_image_inputs: 0,
+                supports_video_input: false,
+                supports_audio_input: false,
+            },
+            WorkerAiModelItem {
+                model_id: "stable-diffusion-3".into(),
+                name: "🎨 Stable Diffusion 3 Medium".into(),
+                category: "text_to_image".into(),
+                is_enabled: true,
+                description: Some("ภาพศิลปะหลากหลายสไตล์ เสมือนจริง".into()),
+                supports_image_input: false,
+                max_image_inputs: 0,
+                supports_video_input: false,
+                supports_audio_input: false,
+            },
+
+            // Image to Image Models
+            WorkerAiModelItem {
+                model_id: "gpt-image-2-img2img".into(),
+                name: "🖼️ GPT Image 2 Remix & Restyle (แนบ 1-5 ภาพ)".into(),
+                category: "image_to_image".into(),
+                is_enabled: true,
+                description: Some("ดัดแปลงและต่อยอดจากภาพต้นฉบับ แนบไฟล์ได้สูงสุด 5 ภาพ".into()),
+                supports_image_input: true,
+                max_image_inputs: 5,
+                supports_video_input: false,
+                supports_audio_input: false,
+            },
+            WorkerAiModelItem {
+                model_id: "flux-1-img2img".into(),
+                name: "🎨 FLUX.1 Image-to-Image Variation (แนบ 1-5 ภาพ)".into(),
+                category: "image_to_image".into(),
+                is_enabled: true,
+                description: Some("สร้างเวอร์ชันใหม่ของภาพต้นฉบับตามแนบ 1-5 ภาพ".into()),
+                supports_image_input: true,
+                max_image_inputs: 5,
+                supports_video_input: false,
+                supports_audio_input: false,
+            },
+
+            // Video Models
+            WorkerAiModelItem {
+                model_id: "minimax-video-01".into(),
+                name: "🎬 MiniMax Video-01 (สมจริง ฟิสิกส์ธรรมชาติ)".into(),
+                category: "video".into(),
+                is_enabled: true,
+                description: Some("สร้างวิดีโอจากข้อความ ภาพ 1-5 ภาพ หรือคลิปวิดีโอ/เสียง".into()),
+                supports_image_input: true,
+                max_image_inputs: 5,
+                supports_video_input: true,
+                supports_audio_input: true,
+            },
+            WorkerAiModelItem {
+                model_id: "kling-v1".into(),
+                name: "🚀 Kling AI Video v1.5 HD".into(),
+                category: "video".into(),
+                is_enabled: true,
+                description: Some("วิดีโอความละเอียดสูง แนบภาพต้นฉบับ 1-5 ภาพ หรือวิดีโออ้างอิง".into()),
+                supports_image_input: true,
+                max_image_inputs: 5,
+                supports_video_input: true,
+                supports_audio_input: false,
+            },
+            WorkerAiModelItem {
+                model_id: "runway-gen3".into(),
+                name: "🎥 Runway Gen-3 Alpha".into(),
+                category: "video".into(),
+                is_enabled: true,
+                description: Some("การเคลื่อนไหวคุณภาพฮอลลีวูด รองรับภาพ/วิดีโอ/เสียงอ้างอิง".into()),
+                supports_image_input: true,
+                max_image_inputs: 5,
+                supports_video_input: true,
+                supports_audio_input: true,
+            },
+            WorkerAiModelItem {
+                model_id: "luma-ray".into(),
+                name: "🌌 Luma Ray Dream Machine".into(),
+                category: "video".into(),
+                is_enabled: true,
+                description: Some("ความลึก 3D สมจริง รองรับแนบภาพ 1-5 ภาพ".into()),
+                supports_image_input: true,
+                max_image_inputs: 5,
+                supports_video_input: false,
+                supports_audio_input: false,
+            },
+
+            // Audio Models
+            WorkerAiModelItem {
+                model_id: "openai-tts-1-hd".into(),
+                name: "🎙️ OpenAI TTS-1-HD (เสียงพูดคมชัดระดับโปรดักชัน)".into(),
+                category: "audio".into(),
+                is_enabled: true,
+                description: Some("เสียงพากย์เสมือนมนุษย์ระดับสตูดิโอ".into()),
+                supports_image_input: false,
+                max_image_inputs: 0,
+                supports_video_input: false,
+                supports_audio_input: false,
+            },
+            WorkerAiModelItem {
+                model_id: "minimax-music-3".into(),
+                name: "🎵 MiniMax Music 3 Spec 176 & 177 (สร้างดนตรีประกอบ)".into(),
+                category: "audio".into(),
+                is_enabled: true,
+                description: Some("แต่งและเรียบเรียงเพลงประกอบจากคำบรรยายสไตล์".into()),
+                supports_image_input: false,
+                max_image_inputs: 0,
+                supports_video_input: false,
+                supports_audio_input: false,
+            },
+            WorkerAiModelItem {
+                model_id: "elevenlabs-v2".into(),
+                name: "🗣️ ElevenLabs Multilingual v2".into(),
+                category: "audio".into(),
+                is_enabled: true,
+                description: Some("เสียงพากย์หลากภาษาอารมณ์เป็นธรรมชาติ".into()),
+                supports_image_input: false,
+                max_image_inputs: 0,
+                supports_video_input: false,
+                supports_audio_input: false,
+            },
+        ]
+    });
+
+    let target_cat = category.map(|c| c.trim().to_string()).filter(|c| !c.is_empty());
+
+    let filtered: Vec<WorkerAiModelItem> = all_models
+        .into_iter()
+        .filter(|m| {
+            m.is_enabled && target_cat.as_ref().map_or(true, |cat| &m.category == cat)
+        })
+        .collect();
+
+    Ok(WorkerAiModelListResponse {
+        contract_version: "1.0.0".into(),
+        items: filtered,
+    })
+}
+
 fn load_series_control_plane_connection(
     app_data_dir: &Path,
 ) -> Result<WorkerLoopConnection, String> {
@@ -2017,6 +2224,8 @@ pub async fn worker_app_execute_series_quick_action(
 pub async fn worker_app_get_series_media_workspace(
     app: tauri::AppHandle,
     series_id: String,
+    query: Option<String>,
+    limit: Option<usize>,
 ) -> Result<Value, String> {
     if series_id.trim().is_empty() {
         return Err("series_id_required".into());
@@ -2026,17 +2235,278 @@ pub async fn worker_app_get_series_media_workspace(
         .app_data_dir()
         .map_err(|error| format!("app data directory unavailable: {error}"))?;
     let connection = load_series_control_plane_connection(&app_data_dir)?;
-    get_worker_json(
+
+    let max_limit = limit.unwrap_or(100).min(500);
+    let mut params = vec![format!("limit={}", max_limit)];
+
+    if let Some(value) = query
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+    {
+        params.push(format!("q={}", urlencoding::encode(&value)));
+    }
+
+    let path = format!(
+        "/api/workers/{}/series/{}/media-workspace?{}",
+        connection.worker_id,
+        urlencoding::encode(series_id.trim()),
+        params.join("&")
+    );
+
+    let mut res: Value = get_worker_json(
         &connection.server_url,
-        &format!(
-            "/api/workers/{}/series/{}/media-workspace",
-            connection.worker_id,
-            urlencoding::encode(&series_id)
-        ),
+        &path,
         &connection.tokens.execution_token,
         &connection.device_proof,
     )
-    .await
+    .await?;
+
+    let base_server = connection.server_url.trim_end_matches('/');
+    if let Some(assets) = res.get_mut("assets").and_then(|a| a.as_array_mut()) {
+        for asset in assets {
+            if let Some(url) = asset.get("sourceUrl").and_then(|u| u.as_str()) {
+                if url.starts_with('/') {
+                    let full_url = format!("{}{}", base_server, url);
+                    asset["sourceUrl"] = json!(full_url);
+                }
+            }
+            if let Some(thumb) = asset.get("thumbnailUrl").and_then(|u| u.as_str()) {
+                if thumb.starts_with('/') {
+                    let full_thumb = format!("{}{}", base_server, thumb);
+                    asset["thumbnailUrl"] = json!(full_thumb);
+                }
+            }
+            if let Some(meta) = asset.get_mut("sourceMetadataJson") {
+                if let Some(video_url) = meta.get("videoUrl").and_then(|u| u.as_str()) {
+                    if video_url.starts_with('/') {
+                        meta["videoUrl"] = json!(format!("{}{}", base_server, video_url));
+                    }
+                }
+                if let Some(url) = meta.get("url").and_then(|u| u.as_str()) {
+                    if url.starts_with('/') {
+                        meta["url"] = json!(format!("{}{}", base_server, url));
+                    }
+                }
+                if let Some(thumb) = meta.get("thumbnailUrl").and_then(|u| u.as_str()) {
+                    if thumb.starts_with('/') {
+                        meta["thumbnailUrl"] = json!(format!("{}{}", base_server, thumb));
+                    }
+                }
+            }
+            if let Some(derived) = asset.get_mut("derivedArtifactJson") {
+                if let Some(video_url) = derived.get("videoUrl").and_then(|u| u.as_str()) {
+                    if video_url.starts_with('/') {
+                        derived["videoUrl"] = json!(format!("{}{}", base_server, video_url));
+                    }
+                }
+                if let Some(thumb) = derived.get("thumbnailUrl").and_then(|u| u.as_str()) {
+                    if thumb.starts_with('/') {
+                        derived["thumbnailUrl"] = json!(format!("{}{}", base_server, thumb));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(res)
+}
+
+#[tauri::command]
+pub async fn worker_app_get_media_history(
+    app: tauri::AppHandle,
+    media_type: Option<String>,
+    query: Option<String>,
+    limit: Option<usize>,
+) -> Result<Value, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let connection = load_series_control_plane_connection(&app_data_dir)?;
+
+    let max_limit = limit.unwrap_or(50).min(100);
+    let mut params = vec![format!("limit={}", max_limit)];
+
+    if let Some(value) = media_type
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty() && v != "all")
+    {
+        params.push(format!("media_type={}", urlencoding::encode(&value)));
+    }
+
+    if let Some(value) = query
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+    {
+        params.push(format!("q={}", urlencoding::encode(&value)));
+    }
+
+    let path = format!(
+        "/api/workers/{}/media-history?{}",
+        connection.worker_id,
+        params.join("&")
+    );
+
+    let mut res: Value = get_worker_json(
+        &connection.server_url,
+        &path,
+        &connection.tokens.execution_token,
+        &connection.device_proof,
+    )
+    .await?;
+
+    let base_server = connection.server_url.trim_end_matches('/');
+    if let Some(tasks) = res.get_mut("tasks").and_then(|t| t.as_array_mut()) {
+        for task in tasks {
+            if let Some(url) = task.get("resultUrl").and_then(|u| u.as_str()) {
+                if url.starts_with('/') {
+                    let full_url = format!("{}{}", base_server, url);
+                    task["resultUrl"] = json!(full_url);
+                }
+            }
+            if let Some(thumb) = task.get("thumbnailUrl").and_then(|u| u.as_str()) {
+                if thumb.starts_with('/') {
+                    let full_thumb = format!("{}{}", base_server, thumb);
+                    task["thumbnailUrl"] = json!(full_thumb);
+                }
+            }
+        }
+    }
+
+    Ok(res)
+}
+
+#[tauri::command]
+pub async fn worker_app_get_server_library(
+    app: tauri::AppHandle,
+    item_type: Option<String>,
+    query: Option<String>,
+    limit: Option<usize>,
+) -> Result<Value, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let connection = load_series_control_plane_connection(&app_data_dir)?;
+
+    let max_limit = limit.unwrap_or(50).min(100);
+    let mut params = vec![format!("limit={}", max_limit)];
+
+    if let Some(value) = item_type
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty() && v != "all")
+    {
+        params.push(format!("item_type={}", urlencoding::encode(&value)));
+    }
+
+    if let Some(value) = query
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+    {
+        params.push(format!("q={}", urlencoding::encode(&value)));
+    }
+
+    let path = format!(
+        "/api/workers/{}/library?{}",
+        connection.worker_id,
+        params.join("&")
+    );
+
+    let mut res: Value = get_worker_json(
+        &connection.server_url,
+        &path,
+        &connection.tokens.execution_token,
+        &connection.device_proof,
+    )
+    .await?;
+
+    let base_server = connection.server_url.trim_end_matches('/');
+    if let Some(items) = res.get_mut("items").and_then(|t| t.as_array_mut()) {
+        for item in items {
+            if let Some(url) = item.get("sourceUrl").and_then(|u| u.as_str()) {
+                if url.starts_with('/') {
+                    let full_url = format!("{}{}", base_server, url);
+                    item["sourceUrl"] = json!(full_url);
+                }
+            }
+            if let Some(thumb) = item.get("thumbnailUrl").and_then(|u| u.as_str()) {
+                if thumb.starts_with('/') {
+                    let full_thumb = format!("{}{}", base_server, thumb);
+                    item["thumbnailUrl"] = json!(full_thumb);
+                }
+            }
+        }
+    }
+
+    Ok(res)
+}
+
+#[tauri::command]
+pub async fn worker_app_transcribe_audio(
+    app: tauri::AppHandle,
+    video_path: String,
+    language: Option<String>,
+    model: Option<String>,
+) -> Result<Value, String> {
+    let source_path = PathBuf::from(video_path.trim());
+    if !source_path.exists() {
+        return Err(format!("Source video file not found: {}", video_path));
+    }
+
+    let lang = language.unwrap_or_else(|| "th".to_string());
+    let mdl = model.unwrap_or_else(|| "small".to_string());
+
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let temp_dir = app_data_dir.join("cache").join("transcriptions");
+    std::fs::create_dir_all(&temp_dir).map_err(|error| format!("failed to create temp dir: {error}"))?;
+
+    let runtime_root = app_data_dir.join("runtime-pack");
+    let managed_wsl = false;
+    let managed_wsl_root = String::new();
+    let whisper_path = runtime_root.join("whisper").join(if cfg!(target_os = "windows") { "whisper-cli.exe" } else { "whisper-cli" });
+    let node_path = runtime_root.join("node").join(if cfg!(target_os = "windows") { "node.exe" } else { "bin/node" });
+    let cli_path = runtime_root.join("hyperframes").join("node_modules").join("hyperframes").join("dist").join("cli.js");
+
+    let output = crate::worker_loop::execute_hyperframes_transcription_process(
+        managed_wsl,
+        managed_wsl_root,
+        source_path.clone(),
+        temp_dir.clone(),
+        lang,
+        mdl,
+        whisper_path,
+        node_path,
+        cli_path,
+    )?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Transcription failed: {}", stderr));
+    }
+
+    let stem = source_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("transcript");
+    let json_path = temp_dir.join(format!("{}.json", stem));
+
+    if json_path.exists() {
+        let content = std::fs::read_to_string(&json_path)
+            .map_err(|e| format!("Failed to read transcript json: {e}"))?;
+        let parsed: Value = serde_json::from_str(&content)
+            .map_err(|e| format!("Failed to parse transcript json: {e}"))?;
+        return Ok(parsed);
+    }
+
+    let stdout_str = String::from_utf8_lossy(&output.stdout);
+    if let Ok(parsed) = serde_json::from_str::<Value>(&stdout_str) {
+        return Ok(parsed);
+    }
+
+    Err("Transcription completed but output transcript file was not found".to_string())
 }
 
 #[tauri::command]
@@ -7184,55 +7654,57 @@ fn validate_windows_installer(path: &Path) -> Result<u64, String> {
 
 #[cfg(target_os = "windows")]
 fn launch_windows_installer(installer_path: &Path) -> Result<(), String> {
-    let mut last_sharing_error = None;
-    for attempt in 0..5_u64 {
-        match std::process::Command::new(installer_path).spawn() {
-            Ok(_) => return Ok(()),
-            Err(error) if error.raw_os_error() == Some(32) => {
-                last_sharing_error = Some(error.to_string());
-                std::thread::sleep(Duration::from_millis(400 * (attempt + 1)));
-            }
-            Err(error) => {
-                return Err(format!("failed to open Worker App installer: {error}"));
-            }
-        }
-    }
+    let installer_str = installer_path.to_string_lossy().to_string();
 
-    // Antivirus/indexer software can keep a newly downloaded PE file open
-    // longer than the short retry window above. Hand off to a detached
-    // PowerShell process that waits for a readable handle before launching
-    // the installer; this process survives the current Worker App exiting.
-    let wait_and_launch_script = r#"
-$path = $args[0]
-for ($attempt = 0; $attempt -lt 60; $attempt++) {
-  try {
-    $stream = [System.IO.File]::Open($path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
-    $stream.Dispose()
-    Start-Process -FilePath $path
-    exit 0
-  } catch {
+    // 1. Try PowerShell detached wait-and-launch script first.
+    // Inlining the installer path into the script string avoids `$args[0]` binding issues
+    // when executing multi-line scripts via `-Command`.
+    let ps_script = format!(
+        r#"
+Start-Sleep -Milliseconds 1500
+$path = '{}'
+for ($attempt = 0; $attempt -lt 60; $attempt++) {{
+  try {{
+    if (Test-Path -Path $path) {{
+      $stream = [System.IO.File]::Open($path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
+      $stream.Dispose()
+      Start-Process -FilePath $path
+      exit 0
+    }}
+  }} catch {{
     Start-Sleep -Milliseconds 500
-  }
-}
+  }}
+}}
 exit 1
-"#;
-    std::process::Command::new("powershell.exe")
+"#,
+        installer_str.replace('\'', "''")
+    );
+
+    let ps_result = std::process::Command::new("powershell.exe")
         .args([
             "-NoProfile",
             "-NonInteractive",
             "-WindowStyle",
             "Hidden",
             "-Command",
-            wait_and_launch_script,
+            &ps_script,
         ])
-        .arg(installer_path)
+        .spawn();
+
+    if ps_result.is_ok() {
+        return Ok(());
+    }
+
+    // 2. Fallback to native Windows cmd.exe start command if PowerShell is unavailable or restricted
+    let cmd_line = format!(
+        "ping 127.0.0.1 -n 3 >nul & start \"\" \"{}\"",
+        installer_str.replace('"', "\"\"")
+    );
+    std::process::Command::new("cmd.exe")
+        .args(["/C", &cmd_line])
         .spawn()
-        .map_err(|fallback_error| {
-            format!(
-                "failed to open Worker App installer after sharing violation ({}) and fallback launch also failed: {fallback_error}",
-                last_sharing_error.unwrap_or_else(|| "unknown sharing violation".into()),
-            )
-        })?;
+        .map_err(|error| format!("failed to launch Worker App installer script: {error}"))?;
+
     Ok(())
 }
 
@@ -8219,12 +8691,13 @@ pub async fn worker_app_browse_directory(
     let mut segments = Vec::new();
     let mut curr: Option<&Path> = Some(&canonical);
     while let Some(p) = curr {
+        let clean_p = crate::media_pipeline::strip_verbatim_prefix(p);
         let name = p.file_name().map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_else(|| p.to_string_lossy().to_string());
+            .unwrap_or_else(|| clean_p.to_string_lossy().to_string());
         if !name.is_empty() {
             segments.push(DirectoryBreadcrumb {
                 name,
-                path: crate::media_pipeline::strip_verbatim_prefix(p).to_string_lossy().to_string(),
+                path: clean_p.to_string_lossy().to_string(),
             });
         }
         curr = p.parent();
@@ -8246,6 +8719,13 @@ pub async fn worker_app_browse_directory(
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CustomSilenceSegmentInput {
+    pub start_ms: u64,
+    pub end_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InteractiveProcessRequest {
     pub source_path: String,
     pub trim_start_ms: Option<u64>,
@@ -8262,6 +8742,14 @@ pub struct InteractiveProcessRequest {
     pub min_duration_sec: Option<f64>,
     #[serde(default)]
     pub softening_buffer_sec: Option<f64>,
+    #[serde(default)]
+    pub custom_silence_segments: Option<Vec<CustomSilenceSegmentInput>>,
+    #[serde(default)]
+    pub playback_speed: Option<f64>,
+    #[serde(default)]
+    pub target_width: Option<u32>,
+    #[serde(default)]
+    pub target_height: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -8376,30 +8864,48 @@ pub async fn worker_app_process_media_interactive(
     let mut speech_start = 0u64;
     let mut speech_end = source_duration_ms;
     let mut silence_intervals: Vec<(u64, u64)> = Vec::new();
+    let has_custom_silence = request
+        .custom_silence_segments
+        .as_ref()
+        .map_or(false, |s| !s.is_empty());
 
     if request.remove_dead_air {
-        if let Ok(sil_res) = crate::media_pipeline::detect_audio_silence_custom(
-            &source,
-            &tools,
-            request.volume_threshold_pct.unwrap_or(25.0),
-            request.min_duration_sec.unwrap_or(0.5),
-            request.softening_buffer_sec.unwrap_or(0.2),
-        ) {
-            for seg in &sil_res.silence_segments {
+        if let Some(ref custom_segs) = request.custom_silence_segments {
+            for seg in custom_segs {
                 let start = seg.start_ms;
                 let end = seg.end_ms.unwrap_or(source_duration_ms);
                 if end > start {
                     silence_intervals.push((start, end));
                 }
             }
-            if let Some(first_sp) = sil_res.first_speech_ms {
-                if first_sp > 2000 {
-                    speech_start = first_sp.saturating_sub(2000);
+            silence_intervals.sort_by_key(|k| k.0);
+        }
+
+        if silence_intervals.is_empty() {
+            if let Ok(sil_res) = crate::media_pipeline::detect_audio_silence_custom(
+                &source,
+                &tools,
+                request.volume_threshold_pct.unwrap_or(25.0),
+                request.min_duration_sec.unwrap_or(0.5),
+                request.softening_buffer_sec.unwrap_or(0.2),
+            ) {
+                for seg in &sil_res.silence_segments {
+                    let start = seg.start_ms;
+                    let end = seg.end_ms.unwrap_or(source_duration_ms);
+                    if end > start {
+                        silence_intervals.push((start, end));
+                    }
                 }
-            }
-            if let Some(last_sp) = sil_res.last_speech_ms {
-                if source_duration_ms > last_sp.saturating_add(1800) {
-                    speech_end = (last_sp + 1800).min(source_duration_ms);
+                let speech_buf_ms = (request.softening_buffer_sec.unwrap_or(0.3).clamp(0.05, 1.0) * 1000.0) as u64;
+                if let Some(first_sp) = sil_res.first_speech_ms {
+                    if first_sp > speech_buf_ms {
+                        speech_start = first_sp.saturating_sub(speech_buf_ms);
+                    }
+                }
+                if let Some(last_sp) = sil_res.last_speech_ms {
+                    if source_duration_ms > last_sp.saturating_add(speech_buf_ms) {
+                        speech_end = (last_sp + speech_buf_ms).min(source_duration_ms);
+                    }
                 }
             }
         }
@@ -8413,19 +8919,21 @@ pub async fn worker_app_process_media_interactive(
         }
     }
 
-    if let Some(first_silence) = silence_intervals.first() {
-        if first_silence.0 <= 1000 && speech_start == 0 {
-            speech_start = first_silence.1.min(source_duration_ms);
+    if !has_custom_silence {
+        if let Some(first_silence) = silence_intervals.first() {
+            if first_silence.0 <= 1000 && speech_start == 0 {
+                speech_start = first_silence.1.min(source_duration_ms);
+            }
         }
-    }
-    if let Some(last_silence) = silence_intervals.last() {
-        if last_silence.1 >= source_duration_ms.saturating_sub(1000) && speech_end == source_duration_ms {
-            speech_end = last_silence.0.max(speech_start.saturating_add(250));
+        if let Some(last_silence) = silence_intervals.last() {
+            if last_silence.1 >= source_duration_ms.saturating_sub(1000) && speech_end == source_duration_ms {
+                speech_end = last_silence.0.max(speech_start.saturating_add(250));
+            }
         }
     }
 
     let req_trim_start = request.trim_start_ms.unwrap_or(0);
-    let effective_trim_start = if request.remove_dead_air {
+    let effective_trim_start = if request.remove_dead_air && !has_custom_silence {
         if req_trim_start <= 500 && speech_start > 0 {
             speech_start
         } else {
@@ -8436,7 +8944,7 @@ pub async fn worker_app_process_media_interactive(
     }.min(source_duration_ms);
 
     let req_trim_end = request.trim_end_ms.unwrap_or(source_duration_ms);
-    let effective_trim_end = if request.remove_dead_air {
+    let effective_trim_end = if request.remove_dead_air && !has_custom_silence {
         if req_trim_end >= source_duration_ms.saturating_sub(600) && speech_end < source_duration_ms {
             speech_end
         } else {
@@ -8453,25 +8961,49 @@ pub async fn worker_app_process_media_interactive(
     let mut time_saved_ms = 0u64;
 
     if request.remove_dead_air && !silence_intervals.is_empty() {
-        let buffer_ms = (request.softening_buffer_sec.unwrap_or(0.2).clamp(0.0, 2.0) * 1000.0) as u64;
+        let buffer_ms = if has_custom_silence {
+            0u64
+        } else {
+            (request.softening_buffer_sec.unwrap_or(0.2).clamp(0.0, 2.0) * 1000.0) as u64
+        };
+
+        // Merge overlapping or adjacent silence intervals
+        let mut merged_silence: Vec<(u64, u64)> = Vec::new();
+        for &(s, e) in &silence_intervals {
+            let clamped_start = s.clamp(effective_trim_start, effective_trim_end);
+            let clamped_end = e.clamp(effective_trim_start, effective_trim_end);
+            if clamped_end <= clamped_start {
+                continue;
+            }
+            if let Some(last) = merged_silence.last_mut() {
+                if clamped_start <= last.1.saturating_add(50) {
+                    last.1 = last.1.max(clamped_end);
+                } else {
+                    merged_silence.push((clamped_start, clamped_end));
+                }
+            } else {
+                merged_silence.push((clamped_start, clamped_end));
+            }
+        }
+
         let mut cursor = effective_trim_start;
-        for &(sil_start, sil_end) in &silence_intervals {
-            let buffered_start = if sil_start <= 400 {
-                0
+        for &(sil_start, sil_end) in &merged_silence {
+            let buffered_start = if sil_start <= 400 || has_custom_silence {
+                sil_start
             } else {
                 sil_start.saturating_add(buffer_ms)
             };
-            let buffered_end = if sil_end >= source_duration_ms.saturating_sub(600) {
-                source_duration_ms
+            let buffered_end = if sil_end >= source_duration_ms.saturating_sub(600) || has_custom_silence {
+                sil_end
             } else {
                 sil_end.saturating_sub(buffer_ms)
             };
             if buffered_end <= buffered_start {
                 continue;
             }
-            let s_start = buffered_start.max(effective_trim_start);
+            let s_start = buffered_start.max(cursor);
             let s_end = buffered_end.min(effective_trim_end);
-            if s_end > s_start && s_start >= cursor {
+            if s_end > s_start {
                 if s_start.saturating_sub(cursor) >= 150 {
                     active_segments.push((cursor, s_start));
                 }
@@ -8484,7 +9016,9 @@ pub async fn worker_app_process_media_interactive(
             active_segments.push((cursor, effective_trim_end));
         }
     } else {
-        active_segments.push((effective_trim_start, effective_trim_end));
+        if effective_trim_end.saturating_sub(effective_trim_start) >= 150 {
+            active_segments.push((effective_trim_start, effective_trim_end));
+        }
     }
 
     if active_segments.is_empty() {
@@ -8507,6 +9041,8 @@ pub async fn worker_app_process_media_interactive(
     let fx = request.focus_x.unwrap_or(0.5).clamp(0.0, 1.0);
     let fy = request.focus_y.unwrap_or(0.5).clamp(0.0, 1.0);
 
+    let speed = request.playback_speed.unwrap_or(1.0);
+
     run_interactive_media_render(
         &source,
         &output_path,
@@ -8514,7 +9050,10 @@ pub async fn worker_app_process_media_interactive(
         &request.aspect_ratio,
         fx,
         fy,
+        speed,
         &tools,
+        request.target_width,
+        request.target_height,
     )?;
 
     let out_probe = probe_media_file(&output_path, &tools)?;
@@ -8745,6 +9284,31 @@ pub async fn worker_app_generate_music_cue(
     use tauri::Manager;
     let app_dir = app_handle.path().app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
     crate::audio_runtime_sidecar::execute_music_cue_generation(req, app_dir).await
+}
+
+#[tauri::command]
+pub async fn worker_app_save_binary_file(
+    file_path: String,
+    base64_data: String,
+) -> Result<String, String> {
+    use base64::Engine as _;
+    let clean_buf = crate::media_pipeline::strip_verbatim_prefix(&std::path::PathBuf::from(file_path.trim()));
+    if let Some(parent) = clean_buf.parent() {
+        if !parent.exists() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+    }
+    let raw_b64 = if let Some(idx) = base64_data.find(";base64,") {
+        &base64_data[idx + 8..]
+    } else {
+        base64_data.trim()
+    };
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(raw_b64.trim())
+        .map_err(|e| format!("decode_base64_failed: {e}"))?;
+    std::fs::write(&clean_buf, &decoded)
+        .map_err(|e| format!("write_binary_file_failed: {e}"))?;
+    Ok(clean_buf.to_string_lossy().to_string())
 }
 
 

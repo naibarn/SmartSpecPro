@@ -49,7 +49,6 @@ const ROUTE_COPY: Record<CanonicalWorkerRouteId, { th: [string, string]; en: [st
 export const WORKER_ROUTES: readonly WorkerRoute[] = [
   { id: "overview", label: "Overview", hint: "Worker health" },
   { id: "connection", label: "Connection", hint: "Link this machine" },
-  { id: "series", label: "Series workspace", hint: "Series and local folder" },
   { id: "media-workspace", label: "Media Workspace", hint: "Intake to publish" },
   { id: "queue", label: "Queue", hint: "Jobs & progress" },
   { id: "workflows", label: "ComfyUI Workbench", hint: "Inspect and run MCP workflows" },
@@ -70,7 +69,8 @@ export function localizedWorkerRoutes(locale: WorkerLocale): readonly WorkerRout
 
 export const WORKER_ROUTE_ALIASES: Record<string, CanonicalWorkerRouteId> = {
   home: "overview",
-  binding: "series",
+  series: "media-workspace",
+  binding: "media-workspace",
   render: "queue",
   hermes: "runtime",
   footage: "media-workspace",

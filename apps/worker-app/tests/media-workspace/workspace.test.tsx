@@ -10,6 +10,7 @@ vi.mock("../../src/app/workerContext", () => ({ useWorkerAppContext: () => ({loc
 vi.mock("../../src/screens/media-workspace/MediaExplorerView", () => ({
   MediaExplorerView: (props: any) => { state.explorer = props; return null; },
   isAudioFile: (entry: any) => entry.extension === "wav", isImageFile: () => false,
+  isProjectFile: (entry: any) => entry.extension === "json" || entry.path?.endsWith(".json"),
 }));
 vi.mock("../../src/screens/media-workspace/MediaVideoEditorPlayer", () => ({
   MediaVideoEditorPlayer: (props: any) => { state.player = props; useEffect(() => { state.mounts++; return () => { state.unmounts++; }; }, []); return null; },
