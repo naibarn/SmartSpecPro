@@ -132,10 +132,28 @@ export function ensureVerticalDramaShotCompositionLock(input: {
   composition?: VerticalDramaShotComposition;
 }): string {
   const lock = renderVerticalDramaShotCompositionLock(input.composition);
-  if (!lock || input.prompt.includes("CURRENT SHOT COMPOSITION LOCK")) {
+  if (
+    !lock ||
+    hasVerticalDramaGroundingMarker(
+      input.prompt,
+      "CURRENT SHOT COMPOSITION LOCK"
+    )
+  ) {
     return input.prompt;
   }
   return `${input.prompt.trimEnd()}\n\n${lock}`;
+}
+
+function hasVerticalDramaGroundingMarker(
+  prompt: string,
+  marker: string
+): boolean {
+  const normalize = (value: string) =>
+    value
+      .toLocaleLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
+  return normalize(prompt).includes(normalize(marker));
 }
 
 export function findVerticalDramaShotGroundingIssues(input: {
@@ -146,17 +164,26 @@ export function findVerticalDramaShotGroundingIssues(input: {
   const issues: string[] = [];
   if (
     input.composition &&
-    !input.prompt.includes("CURRENT SHOT COMPOSITION LOCK")
+    !hasVerticalDramaGroundingMarker(
+      input.prompt,
+      "CURRENT SHOT COMPOSITION LOCK"
+    )
   ) {
     issues.push("missing_current_shot_composition_lock");
   }
   const hasContinuityProps =
-    input.continuityLockBlock?.includes("Active props") ||
-    input.prompt.includes("Active props") ||
-    input.prompt.includes("Continuity prop candidates");
+    hasVerticalDramaGroundingMarker(
+      input.continuityLockBlock ?? "",
+      "Active props"
+    ) ||
+    hasVerticalDramaGroundingMarker(input.prompt, "Active props") ||
+    hasVerticalDramaGroundingMarker(input.prompt, "Continuity prop candidates");
   if (
     hasContinuityProps &&
-    !input.prompt.includes("CURRENT SHOT PROP VISIBILITY RULE")
+    !hasVerticalDramaGroundingMarker(
+      input.prompt,
+      "CURRENT SHOT PROP VISIBILITY RULE"
+    )
   ) {
     issues.push("missing_current_shot_prop_visibility_rule");
   }

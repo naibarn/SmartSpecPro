@@ -157,9 +157,10 @@ export function MultiTrackTimeline({
   const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!timelineTracksRef.current) return;
     const rect = timelineTracksRef.current.getBoundingClientRect();
+    if (rect.width <= 0) return;
     const clickX = e.clientX - rect.left;
     const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-    onSeek(ratio * effectiveDurationMs);
+    onSeek(Math.round(ratio * effectiveDurationMs));
   };
 
   const handleTrackVolumeChange = (trackId: string, volume: number) => {
@@ -589,6 +590,13 @@ export function MultiTrackTimeline({
         </div>
 
         <div className="toolbar-right-group">
+          <span
+            className="track-badge"
+            title="ระบบดูดขอบคลิปและ Playhead อัตโนมัติ (Magnet Snap Active)"
+            style={{ background: "rgba(56, 189, 248, 0.15)", borderColor: "#38bdf8", color: "#38bdf8", cursor: "default" }}
+          >
+            🧲 Snap
+          </span>
           <div className="zoom-slider-wrap">
             <span className="zoom-icon">🔍</span>
             <input

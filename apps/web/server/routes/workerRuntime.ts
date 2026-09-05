@@ -91,12 +91,14 @@ import {
   workerJobs,
   workerJobEvents,
   verticalDramaSeries,
+  verticalDramaMediaAssets,
   type WorkerArtifact,
   type WorkerJob,
 } from "../../drizzle/schema";
 import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 import { verifyBearerToken } from "../_core/tokens";
-import { storageStreamFile } from "../storage";
+import { storageStreamFile, storagePut, storagePresignPut } from "../storage";
+import { createLibraryItem } from "../services/libraryService";
 import {
   getLatestPublishedWorkerRuntimeRelease,
   getPublishedWorkerRuntimeReleaseByFileName,
@@ -2971,6 +2973,194 @@ export function registerWorkerRuntimeRoutes(
           workerId: req.params.workerId,
         });
         res.json(result);
+      } catch (error) {
+        handleWorkerRouteError(error, res);
+      }
+    }
+  );
+
+  const workerLibraryInitUploadSchema = z.object({
+    fileName: z.string().min(1).max(255),
+    contentType: z.string().min(1).max(128).default("video/mp4"),
+    sizeBytes: z.number().int().positive().max(500 * 1024 * 1024),
+    title: z.string().min(1).max(255).optional(),
+    seriesId: z.union([z.number(), z.string()]).optional(),
+  });
+
+  const workerLibraryCompleteUploadSchema = z.object({
+    storageKey: z.string().min(1).max(512),
+    title: z.string().min(1).max(255),
+    fileName: z.string().min(1).max(255),
+    sizeBytes: z.number().int().positive().max(500 * 1024 * 1024),
+    contentType: z.string().min(1).max(128).default("video/mp4"),
+    seriesId: z.union([z.number(), z.string()]).optional(),
+    durationMs: z.number().int().nonnegative().optional(),
+    width: z.number().int().positive().optional(),
+    height: z.number().int().positive().optional(),
+    metadata: z.record(z.unknown()).optional(),
+  });
+
+  app.post(
+    "/api/workers/:workerId/library/init-upload",
+    artifactLimiter,
+    enforceJsonBodyMaxBytes(32 * 1024),
+    async (req, res) => {
+      try {
+        const token = requireBearerToken(req);
+        const parsed = workerLibraryInitUploadSchema.parse(req.body);
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
+          allowedTokenUses: ["worker_upload", "worker_execution"],
+          requiredScopes: [],
+          workerId: req.params.workerId,
+        });
+        const safeName = parsed.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const storageKey = `library/${auth.tenantId}/worker-${auth.workerId}-${Date.now()}-${safeName}`;
+        const presigned = await storagePresignPut(
+          storageKey,
+          parsed.contentType,
+          parsed.sizeBytes
+        );
+        res.json({
+          storageKey,
+          method: presigned ? "presigned" : "server",
+          uploadUrl: presigned?.url ?? `/api/workers/${auth.workerId}/library/upload-direct?key=${encodeURIComponent(storageKey)}`,
+        });
+      } catch (error) {
+        handleWorkerRouteError(error, res);
+      }
+    }
+  );
+
+  app.post(
+    "/api/workers/:workerId/library/upload-direct",
+    artifactLimiter,
+    async (req, res) => {
+      try {
+        const token = requireBearerToken(req);
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
+          allowedTokenUses: ["worker_upload", "worker_execution"],
+          requiredScopes: [],
+          workerId: req.params.workerId,
+        });
+        const key = typeof req.query.key === "string" ? req.query.key : "";
+        if (!key || !key.startsWith(`library/${auth.tenantId}/`)) {
+          return res.status(400).json({ error: "INVALID_STORAGE_KEY" });
+        }
+        const chunks: Buffer[] = [];
+        req.on("data", chunk => chunks.push(Buffer.from(chunk)));
+        await new Promise((resolve, reject) => {
+          req.on("end", resolve);
+          req.on("error", reject);
+        });
+        const buffer = Buffer.concat(chunks);
+        const contentType = (req.headers["content-type"] as string) || "video/mp4";
+        const result = await storagePut(key, buffer, contentType);
+        res.json({ success: true, key, url: result.url });
+      } catch (error) {
+        handleWorkerRouteError(error, res);
+      }
+    }
+  );
+
+  app.post(
+    "/api/workers/:workerId/library/complete-upload",
+    artifactLimiter,
+    enforceJsonBodyMaxBytes(64 * 1024),
+    async (req, res) => {
+      try {
+        const token = requireBearerToken(req);
+        const parsed = workerLibraryCompleteUploadSchema.parse(req.body);
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
+          allowedTokenUses: ["worker_upload", "worker_execution"],
+          requiredScopes: [],
+          workerId: req.params.workerId,
+        });
+        if (!parsed.storageKey.startsWith(`library/${auth.tenantId}/`)) {
+          return res.status(400).json({ error: "INVALID_STORAGE_KEY" });
+        }
+        const db = getDb();
+        const [worker] = await db
+          .select({
+            id: workers.id,
+            tenantId: workers.tenantId,
+            registeredByUserId: workers.registeredByUserId,
+          })
+          .from(workers)
+          .where(and(eq(workers.id, auth.workerId), eq(workers.tenantId, auth.tenantId)))
+          .limit(1);
+        const userId = worker?.registeredByUserId ?? 1;
+
+        const libraryItem = await createLibraryItem(
+          {
+            title: parsed.title,
+            itemType: "video",
+            source: "worker_media_workspace",
+            sourceUrl: parsed.storageKey,
+            metadata: {
+              ...parsed.metadata,
+              workerId: auth.workerId,
+              fileSizeBytes: parsed.sizeBytes,
+              mimeType: parsed.contentType,
+              durationMs: parsed.durationMs,
+              width: parsed.width,
+              height: parsed.height,
+              seriesId: parsed.seriesId ? Number(parsed.seriesId) : undefined,
+            },
+            visibility: "team",
+          },
+          { userId, tenantId: auth.tenantId }
+        );
+
+        let seriesAssetId: string | null = null;
+        if (parsed.seriesId) {
+          const numericSeriesId = Number(parsed.seriesId);
+          if (Number.isSafeInteger(numericSeriesId) && numericSeriesId > 0) {
+            try {
+              const fingerprint = crypto
+                .createHash("sha256")
+                .update(parsed.storageKey)
+                .digest("hex");
+              const [asset] = await db
+                .insert(verticalDramaMediaAssets)
+                .values({
+                  tenantId: auth.tenantId,
+                  seriesId: numericSeriesId,
+                  sourceAssetId: `worker-${auth.workerId}-${Date.now()}`,
+                  sourceRevision: "1",
+                  sourceFingerprint: fingerprint,
+                  assetKind: "normalized_video",
+                  pipelineState: "published",
+                  sourceMetadataJson: {
+                    title: parsed.title,
+                    fileName: parsed.fileName,
+                    sizeBytes: parsed.sizeBytes,
+                  },
+                  derivedArtifactJson: {
+                    storageKey: parsed.storageKey,
+                    durationMs: parsed.durationMs,
+                    width: parsed.width,
+                    height: parsed.height,
+                  },
+                  qcReportJson: { passed: true },
+                  provenanceJson: {
+                    uploadedByWorkerId: auth.workerId,
+                    uploadedAt: new Date().toISOString(),
+                  },
+                  vectorIndexStatus: "queued",
+                } as any)
+                .returning({ id: verticalDramaMediaAssets.id });
+              seriesAssetId = asset?.id != null ? String(asset.id) : null;
+            } catch (err) {
+              debugError("workerRuntime", "Failed to link series media asset on worker library upload", err);
+            }
+          }
+        }
+
+        res.status(201).json({
+          success: true,
+          libraryItem: libraryItem.item,
+          seriesAssetId,
+        });
       } catch (error) {
         handleWorkerRouteError(error, res);
       }

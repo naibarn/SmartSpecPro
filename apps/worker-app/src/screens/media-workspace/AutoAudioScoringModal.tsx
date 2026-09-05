@@ -45,7 +45,26 @@ export function AutoAudioScoringModal({
       });
   }, [isOpen]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen && !isScoring) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isScoring, onClose]);
+
   if (!isOpen) return null;
+
+  const GENRE_DESCRIPTIONS: Record<DramaGenre, string> = {
+    romance_ceo: "ดนตรีเปียโนสดใส ออร์เคสตราป๊อปหวานละมุน พร้อมจังหวะตกหลุมรัก",
+    revenge_thriller: "เบสดาร์กซินธ์ จังหวะหัวใจเต้นเร็ว สตริงส์เสียดสีสร้างความระทึก",
+    urban_suspense: "ซินธ์เวฟแนวสืบสวน เปียโนเงียบขรึม สะท้อนความชิงไหวพริบในเมืองใหญ่",
+    historical_palace: "เครื่องสายจีนดั้งเดิม (กู่เจิง, ขลุ่ยผิว) ผสมผสานออร์เคสตราอลังการ",
+    fantasy_wuxia: "กลองศึกดังก้อง เครื่องสายตระการตา และเสียงโฮรัสปลุกพลังยุทธภพ",
+    comedy_slice_of_life: "จังหวะอูคูเลเล่-พลาคสดใส ป๊อปบิตเบาๆ สร้างเสียงหัวเราะและรอยยิ้ม",
+  };
 
   const handleRunAutoScoring = async () => {
     setIsScoring(true);
@@ -171,6 +190,7 @@ export function AutoAudioScoringModal({
                 <button
                   key={item.id}
                   type="button"
+                  aria-pressed={genre === item.id}
                   onClick={() => setGenre(item.id as DramaGenre)}
                   style={{
                     padding: "8px 10px",
@@ -187,6 +207,9 @@ export function AutoAudioScoringModal({
                   {item.label}
                 </button>
               ))}
+            </div>
+            <div style={{ marginTop: "6px", fontSize: "0.74rem", color: "#94a3b8", fontStyle: "italic" }}>
+              💡 {GENRE_DESCRIPTIONS[genre]}
             </div>
           </div>
 
@@ -207,8 +230,8 @@ export function AutoAudioScoringModal({
                 <strong style={{ fontSize: "0.84rem", color: qcReport.passed ? "#34d399" : "#fbbf24" }}>
                   {qcReport.passed ? "✅ Audio QC ผ่านมาตรฐาน EBU R128" : "⚠️ ตรวจพบประเด็น และทำการ Auto-Remix แล้ว"}
                 </strong>
-                <span style={{ fontSize: "0.78rem", color: "#94a3b8" }}>
-                  LUFS: <strong>{qcReport.integratedLufs}</strong> (Target: -16.0) · True Peak: <strong>{qcReport.maxTruePeakDb} dBTP</strong>
+                <span style={{ fontSize: "0.78rem", color: "#94a3b8" }} title="มาตรฐานแพลตฟอร์มวิดีโอสั้น (TikTok/Reels/Shorts) -16.0 LUFS ±1.0">
+                  LUFS: <strong>{Number(qcReport.integratedLufs ?? -16.0).toFixed(1)}</strong> (Target: -16.0) · True Peak: <strong>{Number(qcReport.maxTruePeakDb ?? -1.0).toFixed(1)} dBTP</strong>
                 </span>
               </div>
               <small style={{ color: "#94a3b8", fontSize: "0.72rem" }}>

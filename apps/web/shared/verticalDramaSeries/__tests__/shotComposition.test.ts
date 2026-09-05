@@ -107,6 +107,16 @@ describe("vertical drama shot composition grounding", () => {
     ).toEqual([]);
   });
 
+  it("accepts legacy casing and hyphenation for the current-shot prop rule", () => {
+    expect(
+      findVerticalDramaShotGroundingIssues({
+        prompt:
+          "CURRENT SHOT COMPOSITION LOCK\n- Continuity prop candidates\n- Current-shot prop visibility rule: show only explicitly required props.",
+        composition,
+      })
+    ).toEqual([]);
+  });
+
   it("also detects an old prompt that lists continuity props as visible facts", () => {
     expect(
       findVerticalDramaShotGroundingIssues({

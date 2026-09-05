@@ -36,7 +36,7 @@ export class AudioDuckingEngine {
   };
 
   public init(audioContext?: AudioContext): AudioContext {
-    if (!this.ctx) {
+    if (!this.ctx || this.ctx.state === "closed") {
       const AudioCtxClass =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -45,7 +45,7 @@ export class AudioDuckingEngine {
       // Master voice path
       this.voiceGainNode = this.ctx.createGain();
       this.voiceAnalyser = this.ctx.createAnalyser();
-      this.voiceAnalyser.fftSize = 512;
+      this.voiceAnalyser.fftSize = 256;
       this.voiceAnalyser.smoothingTimeConstant = 0.3;
       this.voiceGainNode.connect(this.voiceAnalyser);
       this.voiceAnalyser.connect(this.ctx.destination);
@@ -57,6 +57,9 @@ export class AudioDuckingEngine {
       this.musicDuckerNode.connect(this.ctx.destination);
 
       this.startEnvelopeFollower();
+      if (this.ctx.state === "suspended") {
+        void this.resume();
+      }
     }
     return this.ctx;
   }
@@ -73,19 +76,22 @@ export class AudioDuckingEngine {
 
   public setVoiceVolume(volume: number, muted = false) {
     if (!this.voiceGainNode || !this.ctx) return;
-    const target = muted ? 0 : Math.max(0, Math.min(2.0, volume));
+    const target = muted ? 0 : Math.max(0, Math.min(2.0, Number.isFinite(volume) ? volume : 1.0));
+    this.voiceGainNode.gain.cancelScheduledValues(this.ctx.currentTime);
     this.voiceGainNode.gain.setTargetAtTime(target, this.ctx.currentTime, 0.02);
   }
 
   public setMusicVolume(volume: number, muted = false) {
     if (!this.musicGainNode || !this.ctx) return;
-    const target = muted ? 0 : Math.max(0, Math.min(2.0, volume));
+    const target = muted ? 0 : Math.max(0, Math.min(2.0, Number.isFinite(volume) ? volume : 1.0));
+    this.musicGainNode.gain.cancelScheduledValues(this.ctx.currentTime);
     this.musicGainNode.gain.setTargetAtTime(target, this.ctx.currentTime, 0.02);
   }
 
   public setDuckingEnabled(enabled: boolean) {
     this.duckingConfig.enabled = enabled;
     if (!enabled && this.musicDuckerNode && this.ctx) {
+      this.musicDuckerNode.gain.cancelScheduledValues(this.ctx.currentTime);
       this.musicDuckerNode.gain.setTargetAtTime(1.0, this.ctx.currentTime, 0.05);
       this.isDuckingActive = false;
     }
@@ -106,7 +112,7 @@ export class AudioDuckingEngine {
   private startEnvelopeFollower() {
     if (this.pollIntervalId) return;
 
-    const buffer = new Float32Array(512);
+    const buffer = new Float32Array(256);
 
     this.pollIntervalId = window.setInterval(() => {
       if (!this.duckingConfig.enabled || !this.voiceAnalyser || !this.musicDuckerNode || !this.ctx) {
@@ -114,40 +120,38 @@ export class AudioDuckingEngine {
       }
 
       this.voiceAnalyser.getFloatTimeDomainData(buffer);
+      if (!buffer || buffer.length === 0) return;
 
       // Calculate RMS power of voice
       let sumSq = 0;
       for (let i = 0; i < buffer.length; i++) {
-        sumSq += buffer[i] * buffer[i];
+        const val = buffer[i];
+        if (Number.isFinite(val)) {
+          sumSq += val * val;
+        }
       }
       const rms = Math.sqrt(sumSq / buffer.length);
-      const rmsDb = rms > 0.00001 ? 20 * Math.log10(rms) : -100;
+      const rmsDb = Number.isFinite(rms) && rms > 0.00001 ? 20 * Math.log10(rms) : -100;
 
       const now = this.ctx.currentTime;
-      const targetGainLinear = Math.pow(10, this.duckingConfig.attenuationDb / 20);
+      const targetGainLinear = Math.pow(10, (this.duckingConfig.attenuationDb || -16) / 20);
+      const attackSec = Math.max(0.01, Math.min(0.5, (this.duckingConfig.attackMs || 40) / 1000));
+      const releaseSec = Math.max(0.1, Math.min(2.0, (this.duckingConfig.releaseMs || 350) / 1000));
 
-      if (rmsDb > this.duckingConfig.thresholdDb) {
+      if (rmsDb > (this.duckingConfig.thresholdDb || -28)) {
         // Voice is active -> Duck music down smoothly (Attack)
         if (!this.isDuckingActive) {
           this.isDuckingActive = true;
-          this.musicDuckerNode.gain.setTargetAtTime(
-            targetGainLinear,
-            now,
-            this.duckingConfig.attackMs / 1000,
-          );
+          this.musicDuckerNode.gain.setTargetAtTime(targetGainLinear, now, attackSec);
         }
       } else {
         // Voice is quiet -> Restore music gain smoothly (Release)
         if (this.isDuckingActive) {
           this.isDuckingActive = false;
-          this.musicDuckerNode.gain.setTargetAtTime(
-            1.0,
-            now,
-            this.duckingConfig.releaseMs / 1000,
-          );
+          this.musicDuckerNode.gain.setTargetAtTime(1.0, now, releaseSec);
         }
       }
-    }, 40); // 25 Hz poll rate for responsive envelope tracking
+    }, 40);
   }
 
   public dispose() {
@@ -155,9 +159,19 @@ export class AudioDuckingEngine {
       clearInterval(this.pollIntervalId);
       this.pollIntervalId = null;
     }
+    this.voiceGainNode = null;
+    this.musicGainNode = null;
+    this.musicDuckerNode = null;
+    this.voiceAnalyser = null;
+    this.isDuckingActive = false;
     if (this.ctx && this.ctx.state !== "closed") {
-      void this.ctx.close();
+      void this.ctx.close().catch(() => {});
       this.ctx = null;
     }
   }
+
+  public destroy() {
+    this.dispose();
+  }
 }
+

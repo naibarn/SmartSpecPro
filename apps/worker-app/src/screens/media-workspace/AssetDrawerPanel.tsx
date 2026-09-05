@@ -21,6 +21,7 @@ export interface MediaAssetItem {
   sourceUrl: string;
   filePath?: string;
   isSeriesMedia?: boolean;
+  isCloudOnly?: boolean;
   assetKind?: string;
   updatedAt?: string | null;
   fileSizeLabel?: string;
@@ -86,8 +87,10 @@ export function AssetDrawerPanel({
   const [storageMode, setStorageMode] = useState<"local" | "cloud">("local");
   const [tab, setTab] = useState<"all" | "bin" | "history" | "broll" | "music" | "sfx">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [seriesAssets, setSeriesAssets] = useState<MediaAssetItem[]>([]);
+  const [cloudAssets, setCloudAssets] = useState<MediaAssetItem[]>([]);
+  const [localHistoryAssets, setLocalHistoryAssets] = useState<MediaAssetItem[]>([]);
   const [isLoadingSeries, setIsLoadingSeries] = useState(false);
+  const [cloudError, setCloudError] = useState<string | null>(null);
 
   const binAssets: MediaAssetItem[] = useMemo(() => {
     if (!projectAssets) return [];
@@ -99,18 +102,18 @@ export function AssetDrawerPanel({
       sourceUrl: convertFileSrc(pa.filePath),
       filePath: pa.filePath,
       isSeriesMedia: false,
+      isCloudOnly: false,
       updatedAt: pa.importedAt,
     }));
   }, [projectAssets]);
 
-  // Fetch real SmartAIHub Media Workspace / History for this series + local render history & custom imports
+  // 1. Load Local Harddisk Assets (Source video, Render History, Custom Local Imports)
   useEffect(() => {
-    let isCancelled = false;
-    const localHistoryItems: MediaAssetItem[] = [];
+    const localItems: MediaAssetItem[] = [];
 
-    // 1. Current Working Video File (if open)
+    // Current Working Local Video File (if open)
     if (sourceVideoFile?.path) {
-      localHistoryItems.push({
+      localItems.push({
         id: `current_source_${sourceVideoFile.path}`,
         title: `[ไฟล์ปัจจุบัน] ${sourceVideoFile.name}`,
         category: "video",
@@ -118,6 +121,7 @@ export function AssetDrawerPanel({
         sourceUrl: convertFileSrc(sourceVideoFile.path),
         filePath: sourceVideoFile.path,
         isSeriesMedia: true,
+        isCloudOnly: false,
         updatedAt: new Date().toISOString(),
         fileSizeLabel: sourceVideoFile.sizeBytes
           ? `${(sourceVideoFile.sizeBytes / 1024 / 1024).toFixed(1)} MB`
@@ -125,14 +129,14 @@ export function AssetDrawerPanel({
       });
     }
 
-    // 2. Previously Rendered Files from LocalStorage
+    // Previously Rendered Files from LocalStorage
     try {
       const historyStr = localStorage.getItem("smartspec_render_history");
       if (historyStr) {
         const parsed = JSON.parse(historyStr);
         if (Array.isArray(parsed)) {
           for (const item of parsed) {
-            localHistoryItems.push({
+            localItems.push({
               id: item.id || `local_render_${Math.random().toString(36).slice(2, 6)}`,
               title: item.fileName || item.title || "Rendered Video",
               category: "video",
@@ -141,6 +145,7 @@ export function AssetDrawerPanel({
               sourceUrl: item.outputPath ? convertFileSrc(item.outputPath) : item.sourceUrl || "",
               filePath: item.outputPath,
               isSeriesMedia: true,
+              isCloudOnly: false,
               updatedAt: item.timestamp,
               fileSizeLabel: item.sizeBytes ? `${(item.sizeBytes / 1024 / 1024).toFixed(1)} MB` : undefined,
             });
@@ -151,15 +156,15 @@ export function AssetDrawerPanel({
       console.warn("Error reading local render history:", e);
     }
 
-    // 3. Custom Imported Local Assets from LocalStorage
+    // Custom Imported Local Assets from LocalStorage
     try {
       const customStr = localStorage.getItem("smartspec_custom_assets");
       if (customStr) {
         const parsed = JSON.parse(customStr);
         if (Array.isArray(parsed)) {
           for (const item of parsed) {
-            if (!localHistoryItems.some((x) => x.filePath === item.filePath)) {
-              localHistoryItems.push(item);
+            if (!localItems.some((x) => x.filePath === item.filePath)) {
+              localItems.push({ ...item, isCloudOnly: false });
             }
           }
         }
@@ -168,13 +173,21 @@ export function AssetDrawerPanel({
       console.warn("Error reading custom assets:", e);
     }
 
+    setLocalHistoryAssets(localItems);
+  }, [sourceVideoFile?.path]);
+
+  // 2. Query Real SmartAIHub Server REST API for Series Cloud Media Workspace
+  useEffect(() => {
     if (!seriesId) {
+      setCloudAssets([]);
       setIsLoadingSeries(false);
-      setSeriesAssets(localHistoryItems);
+      setCloudError("กรุณาระบุ Series ID เพื่อดึงข้อมูลจาก SmartAIHub Server");
       return;
     }
 
+    let isCancelled = false;
     setIsLoadingSeries(true);
+    setCloudError(null);
 
     invoke<{
       series?: { seriesId: string; title: string };
@@ -220,25 +233,27 @@ export function AssetDrawerPanel({
           const src = (derived.videoUrl as string) || (meta.url as string) || (meta.path as string) || "";
 
           return {
-            id: `series_${a.id || idx}`,
+            id: `server_cloud_${a.id || idx}`,
             title,
             category: cat,
             durationMs: dur,
             thumbnailUrl: thumb,
             sourceUrl: src,
             isSeriesMedia: true,
+            isCloudOnly: true,
             assetKind: a.assetKind,
             updatedAt: a.updatedAt,
             fileSizeLabel: meta.size ? `${Math.round(Number(meta.size) / 1024 / 1024)} MB` : undefined,
           };
         });
 
-        setSeriesAssets([...localHistoryItems, ...cloudMapped]);
+        setCloudAssets(cloudMapped);
       })
       .catch((err) => {
         if (isCancelled) return;
-        console.warn("Series media workspace fetch fallback:", err);
-        setSeriesAssets(localHistoryItems);
+        console.warn("Series media workspace REST API fetch error:", err);
+        setCloudError(`ไม่สามารถดึงข้อมูลจาก SmartAIHub Server: ${String(err)}`);
+        setCloudAssets([]);
       })
       .finally(() => {
         if (!isCancelled) setIsLoadingSeries(false);
@@ -247,34 +262,35 @@ export function AssetDrawerPanel({
     return () => {
       isCancelled = true;
     };
-  }, [seriesId, sourceVideoFile?.path]);
+  }, [seriesId, storageMode]);
 
-  // Only persisted local/Series assets are offered. A stock catalog needs verified media metadata.
+  // Persistent stock catalog
   const stockAssets: MediaAssetItem[] = useMemo(() => [], []);
 
-  // Combined asset list
-  const allAssets = useMemo(() => {
-    return [...binAssets, ...seriesAssets, ...stockAssets];
-  }, [binAssets, seriesAssets, stockAssets]);
+  // Mode-based base assets list
+  const activeModeAssets = useMemo(() => {
+    if (storageMode === "cloud") {
+      // Strictly real SmartAIHub Server cloud assets
+      return [...cloudAssets, ...stockAssets];
+    }
+    // Local mode: Bin assets + Local harddisk history assets
+    return [...binAssets, ...localHistoryAssets];
+  }, [storageMode, cloudAssets, stockAssets, binAssets, localHistoryAssets]);
 
   const filteredAssets = useMemo(() => {
-    return allAssets.filter((item) => {
-      // Storage mode filtering
-      if (storageMode === "local" && !item.filePath && !binAssets.some((b) => b.id === item.id)) {
-        return false;
-      }
+    return activeModeAssets.filter((item) => {
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         if (!item.title.toLowerCase().includes(q)) return false;
       }
       if (tab === "bin") return binAssets.some((b) => b.id === item.id);
-      if (tab === "history") return item.isSeriesMedia === true;
+      if (tab === "history") return item.isSeriesMedia === true || localHistoryAssets.some((h) => h.id === item.id);
       if (tab === "broll") return item.category === "video" || item.category === "broll" || item.category === "image";
       if (tab === "music") return item.category === "music";
       if (tab === "sfx") return item.category === "sfx";
       return true;
     });
-  }, [allAssets, binAssets, searchQuery, tab, storageMode]);
+  }, [activeModeAssets, binAssets, localHistoryAssets, searchQuery, tab]);
 
   if (!isOpen) return null;
 
@@ -319,7 +335,7 @@ export function AssetDrawerPanel({
         console.warn("Save custom assets error:", e);
       }
 
-      setSeriesAssets((prev) => [...newItems, ...prev]);
+      setLocalHistoryAssets((prev) => [...newItems, ...prev]);
       setTab("history");
     } catch (err) {
       console.warn("Import files error:", err);
@@ -336,7 +352,7 @@ export function AssetDrawerPanel({
       name: asset.title,
       timelineStartMs: currentTimeMs,
       durationMs: asset.durationMs,
-      sourceType: asset.filePath ? "local_file" : "smartaihub_library",
+      sourceType: asset.isCloudOnly ? "smartaihub_library" : asset.filePath ? "local_file" : "smartaihub_library",
       sourcePath: asset.filePath,
       sourceUrl: asset.sourceUrl,
       volume: asset.category === "music" ? 0.35 : 0.85,
@@ -353,6 +369,8 @@ export function AssetDrawerPanel({
 
     onAddClip(targetTrack, clip);
   };
+
+  const historyAssetCount = storageMode === "cloud" ? cloudAssets.length : localHistoryAssets.length;
 
   return (
     <aside className="asset-drawer-right-panel" onClick={(e) => e.stopPropagation()}>
@@ -433,7 +451,7 @@ export function AssetDrawerPanel({
           className={`drawer-tab-chip ${tab === "all" ? "active" : ""}`}
           onClick={() => setTab("all")}
         >
-          📋 ทั้งหมด ({allAssets.length})
+          📋 ทั้งหมด ({activeModeAssets.length})
         </button>
         <button
           type="button"
@@ -448,7 +466,7 @@ export function AssetDrawerPanel({
           className={`drawer-tab-chip ${tab === "history" ? "active" : ""}`}
           onClick={() => setTab("history")}
         >
-          🕒 Media History {seriesAssets.length > 0 ? `(${seriesAssets.length})` : ""}
+          🕒 Media History {historyAssetCount > 0 ? `(${historyAssetCount})` : ""}
         </button>
         <button
           type="button"
@@ -477,24 +495,46 @@ export function AssetDrawerPanel({
       <div className="drawer-items-container">
         {isLoadingSeries && (
           <div className="drawer-loading-indicator">
-            <span>⏳ กำลังดึงประวัติ Media จาก SmartAIHub Series...</span>
+            <span>⏳ กำลังดึงประวัติ Media จาก SmartAIHub Server ผ่าน REST API...</span>
+          </div>
+        )}
+
+        {storageMode === "cloud" && cloudError && !isLoadingSeries && (
+          <div
+            className="drawer-cloud-error-box"
+            style={{
+              margin: "8px 12px",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              backgroundColor: "rgba(239, 68, 68, 0.15)",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+              color: "#f87171",
+              fontSize: "12px",
+            }}
+          >
+            ⚠️ {cloudError}
           </div>
         )}
 
         {filteredAssets.length === 0 ? (
           <div className="drawer-empty-state">
             <span className="drawer-empty-icon">📂</span>
-            <p>ไม่พบรายการสื่อที่ตรงกับเงื่อนไข</p>
-            <button
-              type="button"
-              className="drawer-empty-import-btn"
-              onClick={() => void handleImportLocalFiles()}
-            >
-              ➕ เลือกไฟล์จากเครื่องเข้าสู่ Library
-            </button>
-            {tab === "history" && (
+            <p>
+              {storageMode === "cloud"
+                ? "ไม่พบสื่อบน SmartAIHub Server สำหรับ Series นี้"
+                : "ไม่พบรายการสื่อในเครื่องที่ตรงกับเงื่อนไข"}
+            </p>
+            {storageMode === "local" ? (
+              <button
+                type="button"
+                className="drawer-empty-import-btn"
+                onClick={() => void handleImportLocalFiles()}
+              >
+                ➕ เลือกไฟล์จากเครื่องเข้าสู่ Library
+              </button>
+            ) : (
               <span className="drawer-empty-hint">
-                วิดีโอที่ Render เสร็จในเครื่อง หรือไฟล์ที่นำเข้ามาจะปรากฏที่นี่โดยอัตโนมัติ
+                กรุณาตรวจสอบว่าเซิร์ฟเวอร์ SmartAIHub Online และ Series มีการเชื่อมต่อเรียบร้อยแล้ว
               </span>
             )}
           </div>
@@ -514,18 +554,17 @@ export function AssetDrawerPanel({
                 className="drawer-asset-item-card"
                 draggable={true}
                 onDragStart={(e) => {
-                  e.dataTransfer.setData(
-                    "application/json",
-                    JSON.stringify({
-                      type: "smartaihub_asset",
-                      id: item.id,
-                      title: item.title,
-                      category: item.category,
-                      sourceUrl: item.sourceUrl,
-                      durationMs: item.durationMs,
-                      thumbnailUrl: item.thumbnailUrl,
-                    })
-                  );
+                  const assetPayload = JSON.stringify({
+                    type: "smartaihub_asset",
+                    id: item.id,
+                    title: item.title,
+                    category: item.category,
+                    sourceUrl: item.sourceUrl,
+                    durationMs: item.durationMs,
+                    thumbnailUrl: item.thumbnailUrl,
+                  });
+                  e.dataTransfer.setData("application/json", assetPayload);
+                  e.dataTransfer.setData("text/plain", assetPayload);
                   e.dataTransfer.effectAllowed = "copy";
                 }}
                 title="สามารถคลิกปุ่มวาง หรือลากการ์ดนี้ไปวางบน Timeline / Canvas ได้ทันที"
@@ -537,9 +576,16 @@ export function AssetDrawerPanel({
                 <div className="drawer-card-content">
                   <div className="drawer-card-top-row">
                     <strong className="drawer-card-title">{item.title}</strong>
-                    {item.isSeriesMedia && (
+                    {item.isCloudOnly ? (
+                      <span
+                        className="drawer-history-tag cloud-tag"
+                        style={{ background: "#2563eb", color: "#ffffff", padding: "2px 6px", borderRadius: "4px", fontSize: "10px" }}
+                      >
+                        Cloud Server
+                      </span>
+                    ) : item.isSeriesMedia ? (
                       <span className="drawer-history-tag">Series Hub</span>
-                    )}
+                    ) : null}
                   </div>
 
                   <div className="drawer-card-meta">

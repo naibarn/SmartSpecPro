@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { NleClip } from "../../types/nleProject";
 
 interface BlurOverlayModalProps {
@@ -30,19 +30,33 @@ export function BlurOverlayModal({
   const [manualX, setManualX] = useState(0.5);
   const [manualY, setManualY] = useState(0.5);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleCreateClip = () => {
-    let initialX = manualX;
-    let initialY = manualY;
+    let initialX = Math.min(Math.max(manualX, 0.05), 0.95);
+    let initialY = Math.min(Math.max(manualY, 0.05), 0.95);
 
     if (autoTrack === "auto_person") {
-      initialX = currentFocusX;
-      initialY = currentFocusY;
+      initialX = Math.min(Math.max(currentFocusX, 0.05), 0.95);
+      initialY = Math.min(Math.max(currentFocusY, 0.05), 0.95);
     } else if (autoTrack === "auto_product" && productPin) {
-      initialX = productPin.x;
-      initialY = productPin.y;
+      initialX = Math.min(Math.max(productPin.x, 0.05), 0.95);
+      initialY = Math.min(Math.max(productPin.y, 0.05), 0.95);
     }
+
+    const effectiveRadius = borderRadiusPx >= 90
+      ? Math.round(heightPx / 2)
+      : Math.min(borderRadiusPx, Math.round(heightPx / 2));
 
     const typeLabel =
       blurType === "gaussian"
@@ -71,7 +85,7 @@ export function BlurOverlayModal({
       blurAutoTrack: autoTrack,
       blurWidth: widthPx,
       blurHeight: heightPx,
-      blurRadius: borderRadiusPx,
+      blurRadius: effectiveRadius,
       transform: {
         x: initialX,
         y: initialY,

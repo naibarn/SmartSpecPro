@@ -96,6 +96,16 @@ export function MediaWorkspaceHost({
   const projectRequest = useRef(0);
   const workspacePath = useRef(workspace?.localPath);
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isMenuOpen) {
+        setIsMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isMenuOpen]);
+
+  useEffect(() => {
     if (workspacePath.current !== workspace?.localPath) {
       workspacePath.current = workspace?.localPath;
       handleNewProject();
@@ -336,6 +346,10 @@ export function MediaWorkspaceHost({
         </div>
 
         <div className="studio-topbar-right">
+          <div className="studio-path-chip" title="ปุ่มลัด: Space (เล่น/หยุด) · M (ปิดเสียง) · F (เต็มจอ) · J/L (กรอเวลา)">
+            <span className="folder-icon">⌨️</span>
+            <span className="folder-name">Space / M / F</span>
+          </div>
           {workspace?.localPath && (
             <div className="studio-path-chip" title={workspace.localPath}>
               <span className="folder-icon">📂</span>

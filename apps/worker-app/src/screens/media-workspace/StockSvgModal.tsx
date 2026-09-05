@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { NleClip } from "../../types/nleProject";
 
 interface StockSvgModalProps {
@@ -231,6 +231,7 @@ export function StockSvgModal({
 }: StockSvgModalProps) {
   const [selectedCategory, setSelectedCategory] = useState<"all" | "social" | "sales" | "arrows" | "badges" | "ui">("all");
   const [selectedSvg, setSelectedSvg] = useState<StockSvgItem>(STOCK_SVGS[0]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [size, setSize] = useState(140);
   const [colorTint, setColorTint] = useState<string>(STOCK_SVGS[0].defaultColor);
   const [animation, setAnimation] = useState<"none" | "bounce" | "pulse" | "spin" | "float">("bounce");
@@ -238,16 +239,48 @@ export function StockSvgModal({
   const [posX, setPosX] = useState(0.5);
   const [posY, setPosY] = useState(0.35);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
-  const filtered = selectedCategory === "all"
-    ? STOCK_SVGS
-    : STOCK_SVGS.filter((s) => s.category === selectedCategory);
+  const categoryCounts = {
+    all: STOCK_SVGS.length,
+    social: STOCK_SVGS.filter((s) => s.category === "social").length,
+    sales: STOCK_SVGS.filter((s) => s.category === "sales").length,
+    arrows: STOCK_SVGS.filter((s) => s.category === "arrows").length,
+    badges: STOCK_SVGS.filter((s) => s.category === "badges").length,
+    ui: STOCK_SVGS.filter((s) => s.category === "ui").length,
+  };
+
+  const filtered = STOCK_SVGS.filter((s) => {
+    if (selectedCategory !== "all" && s.category !== selectedCategory) return false;
+    if (searchQuery.trim()) {
+      return s.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
+    }
+    return true;
+  });
 
   const handleSelectSvg = (svg: StockSvgItem) => {
     setSelectedSvg(svg);
     setColorTint(svg.defaultColor);
   };
+
+  // Dynamically apply color tint to SVG fill/stroke
+  const applySvgTint = (rawSvg: string, tintColor: string): string => {
+    if (!tintColor) return rawSvg;
+    return rawSvg
+      .replace(/fill="([^"]+)"/g, (match, p1) => (p1 === "none" || p1 === "white" || p1 === "#ffffff" ? match : `fill="${tintColor}"`))
+      .replace(/stroke="([^"]+)"/g, (match, p1) => (p1 === "none" || p1 === "white" || p1 === "#ffffff" ? match : `stroke="${tintColor}"`));
+  };
+
+  const tintedSvgRaw = applySvgTint(selectedSvg.svgRaw, colorTint);
 
   const handleCreateClip = () => {
     const newClip: NleClip = {
@@ -257,7 +290,7 @@ export function StockSvgModal({
       durationMs: Math.round(durationSec * 1000),
       sourceType: "generated_code",
       codeEngine: "react_css",
-      svgContent: selectedSvg.svgRaw,
+      svgContent: tintedSvgRaw,
       svgColor: colorTint,
       animationEffect: animation as any,
       transform: {
@@ -280,55 +313,67 @@ export function StockSvgModal({
             <span className="modal-icon">⭐</span>
             <h3>คลังสติกเกอร์ / เวกเตอร์กราฟิก (Stock SVG Library)</h3>
           </div>
-          <button type="button" className="modal-close-btn" onClick={onClose}>
+          <button type="button" className="modal-close-btn" onClick={onClose} title="ปิดหน้าต่าง (Esc)">
             ✕
           </button>
         </div>
 
         <div className="nle-modal-body">
-          {/* Category Tabs */}
+          {/* Search Box */}
+          <div className="modal-form-group" style={{ marginBottom: "10px" }}>
+            <input
+              type="text"
+              className="font-select-field"
+              placeholder="🔍 ค้นหาไอคอนเวกเตอร์ / สติกเกอร์..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          {/* Category Tabs with Badges */}
           <div className="svg-category-tabs">
             <button
               type="button"
               className={`svg-cat-btn ${selectedCategory === "all" ? "active" : ""}`}
               onClick={() => setSelectedCategory("all")}
             >
-              ทั้งหมด
+              ทั้งหมด ({categoryCounts.all})
             </button>
             <button
               type="button"
               className={`svg-cat-btn ${selectedCategory === "social" ? "active" : ""}`}
               onClick={() => setSelectedCategory("social")}
             >
-              📱 โซเชียล & CTA
+              📱 โซเชียล ({categoryCounts.social})
             </button>
             <button
               type="button"
               className={`svg-cat-btn ${selectedCategory === "sales" ? "active" : ""}`}
               onClick={() => setSelectedCategory("sales")}
             >
-              🏷️ โปรโมชั่น & ขาย
+              🏷️ ขาย ({categoryCounts.sales})
             </button>
             <button
               type="button"
               className={`svg-cat-btn ${selectedCategory === "arrows" ? "active" : ""}`}
               onClick={() => setSelectedCategory("arrows")}
             >
-              🎯 ลูกศร & ไฮไลต์
+              🎯 ลูกศร ({categoryCounts.arrows})
             </button>
             <button
               type="button"
               className={`svg-cat-btn ${selectedCategory === "badges" ? "active" : ""}`}
               onClick={() => setSelectedCategory("badges")}
             >
-              🛡️ ตรา & รับรอง
+              🛡️ ตรา ({categoryCounts.badges})
             </button>
             <button
               type="button"
               className={`svg-cat-btn ${selectedCategory === "ui" ? "active" : ""}`}
               onClick={() => setSelectedCategory("ui")}
             >
-              📹 กล้อง & UI
+              📹 กล้อง ({categoryCounts.ui})
             </button>
           </div>
 

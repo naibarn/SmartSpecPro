@@ -34,6 +34,21 @@ const {
   mockConnectedWorkerEffectiveScopes: vi.fn(),
 }));
 
+const { mockCreateLibraryItem, mockStoragePut, mockStoragePresignPut } = vi.hoisted(() => ({
+  mockCreateLibraryItem: vi.fn(),
+  mockStoragePut: vi.fn(),
+  mockStoragePresignPut: vi.fn(),
+}));
+
+vi.mock("../../storage", () => ({
+  storagePut: mockStoragePut,
+  storagePresignPut: mockStoragePresignPut,
+}));
+
+vi.mock("../../services/libraryService", () => ({
+  createLibraryItem: mockCreateLibraryItem,
+}));
+
 vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: mockGetTenantFeatureFlags,
 }));
@@ -1545,5 +1560,73 @@ describe("workerRuntime routes", () => {
     expect(res.status).toBe(200);
     expect(res.body.version).toBe("2026.06.24.5");
     expect(res.body.archiveFileName).toBe(validName);
+  });
+
+  it("handles library init-upload, upload-direct, and complete-upload flow", async () => {
+    const { issueWorkerAccessTokens } = await import("../../services/workerAuthService");
+    const tokens = issueWorkerAccessTokens({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+    });
+
+    mockStoragePresignPut.mockResolvedValue(null);
+    mockStoragePut.mockResolvedValue({ key: "worker-media/tenant-1/worker-1/uuid.mp4" });
+    mockGetDb.mockReturnValue({
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: async () => [{ registeredByUserId: 1 }],
+          }),
+        }),
+      }),
+    });
+    mockCreateLibraryItem.mockResolvedValue({
+      item: { id: "lib-item-1", title: "Edited Clip" },
+      wasDeduplicated: false,
+    });
+
+    const app = await makeApp();
+
+    // 1. Init upload
+    const initRes = await request(app)
+      .post("/api/workers/worker-1/library/init-upload")
+      .set("Authorization", `Bearer ${tokens.uploadToken}`)
+      .send({
+        fileName: "clip.mp4",
+        contentType: "video/mp4",
+        sizeBytes: 1024,
+        title: "Edited Clip",
+      });
+
+    expect(initRes.status).toBe(200);
+    expect(initRes.body.storageKey).toContain("library/tenant-1/worker-worker-1");
+    expect(initRes.body.uploadUrl).toContain("/api/workers/worker-1/library/upload-direct");
+
+    // 2. Direct binary upload
+    const uploadRes = await request(app)
+      .post(initRes.body.uploadUrl)
+      .set("Authorization", `Bearer ${tokens.uploadToken}`)
+      .set("Content-Type", "video/mp4")
+      .send(Buffer.from("fake-video-bytes"));
+
+    expect(uploadRes.status).toBe(200);
+    expect(uploadRes.body.success).toBe(true);
+
+    // 3. Complete upload
+    const completeRes = await request(app)
+      .post("/api/workers/worker-1/library/complete-upload")
+      .set("Authorization", `Bearer ${tokens.uploadToken}`)
+      .send({
+        storageKey: initRes.body.storageKey,
+        title: "Edited Clip",
+        fileName: "clip.mp4",
+        sizeBytes: 1024,
+        contentType: "video/mp4",
+      });
+
+    expect(completeRes.status).toBe(201);
+    expect(completeRes.body.success).toBe(true);
+    expect(completeRes.body.libraryItem.id).toBe("lib-item-1");
   });
 });

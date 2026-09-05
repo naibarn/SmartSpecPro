@@ -1,3 +1,4 @@
+pub mod audio_runtime_sidecar;
 pub mod comfy_credentials;
 pub mod comfy_execution_ledger;
 pub mod comfy_executor;
@@ -309,6 +310,8 @@ pub fn run() {
             commands::worker_app_export_diagnostics,
             commands::worker_app_log_frontend_error,
             commands::worker_app_open_file,
+            commands::worker_app_reveal_file,
+            commands::worker_app_save_copy,
             commands::worker_app_install_update,
             commands::worker_app_open_url,
             commands::worker_app_run_manual_command,
@@ -330,6 +333,15 @@ pub fn run() {
             commands::worker_app_process_media_asset,
             commands::worker_app_submit_media_job,
             commands::worker_app_submit_media_ingest_job,
+            commands::worker_app_browse_directory,
+            commands::worker_app_detect_silence_custom,
+            commands::worker_app_process_media_interactive,
+            commands::worker_app_upload_to_library,
+            commands::worker_app_save_nle_project,
+            commands::worker_app_load_nle_project,
+            commands::worker_app_export_capcut_draft,
+            commands::worker_app_get_audio_runtime_status,
+            commands::worker_app_generate_music_cue,
         ])
         .build(tauri::generate_context!())
         .expect("failed to build Smart AI Hub Worker App")

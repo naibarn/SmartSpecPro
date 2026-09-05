@@ -111,6 +111,17 @@ export function ProjectSettingsModal({
   const [backgroundColor, setBackgroundColor] = useState<string>("#000000");
 
   useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
     if (project?.canvas) {
       setWidth(project.canvas.width || 1080);
       setHeight(project.canvas.height || 1920);
@@ -182,7 +193,7 @@ export function ProjectSettingsModal({
               </p>
             </div>
           </div>
-          <button type="button" className="modal-close-btn" onClick={onClose} title="ปิดหน้าต่าง">
+          <button type="button" className="modal-close-btn" onClick={onClose} title="ปิดหน้าต่าง (Esc)">
             ✕
           </button>
         </div>
@@ -209,10 +220,8 @@ export function ProjectSettingsModal({
             <label className="field-label">สัดส่วนและพรีเซ็ตยอดนิยม (Presets)</label>
             <div className="presets-cards-grid">
               {PRESET_OPTIONS.map((p) => {
-                const isSelected =
-                  p.id !== "custom"
-                    ? width === p.width && height === p.height
-                    : selectedRatio === "custom";
+                const isMatch = p.id !== "custom" && width === p.width && height === p.height;
+                const isSelected = isMatch || (p.id === "custom" && (selectedRatio === "custom" || !PRESET_OPTIONS.some(opt => opt.id !== "custom" && opt.width === width && opt.height === height)));
 
                 return (
                   <button
@@ -276,6 +285,35 @@ export function ProjectSettingsModal({
             </div>
           </div>
 
+          <div style={{ marginBottom: "16px", display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              className="btn-flip-orientation"
+              onClick={() => {
+                const temp = width;
+                setWidth(height);
+                setHeight(temp);
+                setSelectedRatio("custom");
+              }}
+              title="สลับแนวตั้งและแนวนอน (Flip Width & Height)"
+              style={{
+                padding: "6px 14px",
+                borderRadius: "6px",
+                background: "rgba(51, 65, 85, 0.6)",
+                border: "1px solid rgba(148, 163, 184, 0.3)",
+                color: "#38bdf8",
+                fontSize: "0.78rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              🔄 สลับแนวตั้ง/แนวนอน ({width}×{height} → {height}×{width})
+            </button>
+          </div>
+
           {/* FPS & Background */}
           <div className="settings-two-col">
             <div className="settings-field-group">
@@ -296,7 +334,7 @@ export function ProjectSettingsModal({
 
             <div className="settings-field-group">
               <label className="field-label">สีพื้นหลัง Canvas (Background)</label>
-              <div className="bg-picker-row">
+              <div className="bg-picker-row" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                 <button
                   type="button"
                   className={`bg-color-btn ${backgroundColor === "#000000" ? "active" : ""}`}
@@ -324,9 +362,17 @@ export function ProjectSettingsModal({
                 >
                   ◼️ Slate
                 </button>
+                <input
+                  type="color"
+                  value={backgroundColor.startsWith("#") ? backgroundColor : "#000000"}
+                  onChange={(e) => setBackgroundColor(e.target.value)}
+                  title="เลือกสีพื้นหลังแบบกำหนดเอง"
+                  style={{ width: "36px", height: "32px", border: "none", borderRadius: "6px", cursor: "pointer", padding: 0 }}
+                />
               </div>
             </div>
           </div>
+
 
           {/* Quick Summary Banner */}
           <div className="settings-summary-banner">

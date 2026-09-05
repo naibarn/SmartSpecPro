@@ -30,8 +30,8 @@ export function resolveConfiguredImagePromptMax(
 
 /**
  * Resolve the display/enforcement budget from a catalog model row.
- * Kie.ai's current image API allowance is 390,000 characters; the legacy
- * 3,800-character value remains the safe fallback for unknown providers.
+ * Model-specific catalog limits take precedence. Kie.ai's 390,000-character
+ * allowance is only the fallback when the catalog row has no limit.
  */
 export function resolveVdImagePromptBudgetForCatalogModel(params: {
   provider?: unknown;
@@ -41,9 +41,15 @@ export function resolveVdImagePromptBudgetForCatalogModel(params: {
     params.provider ??
     params.configJson?.provider ??
     params.configJson?.providerName;
+  const configured = resolveConfiguredImagePromptMax(params.configJson);
+  if (configured !== null && isKieAiProvider(provider)) {
+    return Math.min(
+      VD_IMAGE_PROMPT_ABSOLUTE_MAX,
+      Math.max(1, Math.floor(configured)),
+    );
+  }
   if (isKieAiProvider(provider)) return VD_IMAGE_PROMPT_ABSOLUTE_MAX;
 
-  const configured = resolveConfiguredImagePromptMax(params.configJson);
   const requested = configured ?? VD_IMAGE_PROMPT_MAX;
   return Math.min(
     VD_IMAGE_PROMPT_ABSOLUTE_MAX,

@@ -122,7 +122,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
     series: "Series ที่เข้าถึงได้", search: "ค้นหา", searchPlaceholder: "ค้นหา Series…", noSeries: "ยังไม่พบ Series หรือยังไม่ได้เชื่อมต่อ Worker", loadMore: "โหลด Series เพิ่ม", operate: "จัดการได้", readOnly: "ดูได้อย่างเดียว",
     root: "โฟลเดอร์ต้นฉบับของ Series", localPath: "Local folder path", pathPlaceholder: "เลือกโฟลเดอร์ หรือกรอก path", pathHelp: "path นี้อยู่บนเครื่อง Worker และส่งให้ native Worker ตรวจสอบเท่านั้น ไม่แสดงในข้อมูลที่ส่งกลับ server", choose: "เลือกโฟลเดอร์", create: "สร้างโฟลเดอร์ย่อย", validate: "ตรวจสอบและเลือกโฟลเดอร์", bind: "ผูกกับ Series", revoke: "ยกเลิกการผูก", folder: "โฟลเดอร์", files: "ไฟล์ทั้งหมด", bytes: "ขนาด",
     scan: "Scan preview", import: "เพิ่มไฟล์เข้า incoming", scanFound: "พบสื่อที่รองรับ", skipped: "ข้ามไฟล์", total: "รวม", nextStep: "ขั้นต่อไป: เลือก profile preprocessing และส่งงาน GPU", inventory: "รายการสื่อที่พบ", selectAll: "เลือกทั้งหมด", clearSelection: "ล้างการเลือก", analyze: "วิเคราะห์สื่อที่เลือก", notAnalyzed: "ยังไม่วิเคราะห์", analyzing: "กำลังวิเคราะห์ในเครื่อง…", analysisFailed: "วิเคราะห์ไม่สำเร็จ", processing: "สถานะงาน", submitSelected: "ส่งรายการที่เลือกเข้า preprocessing", cancelRemaining: "ยกเลิกการส่งรายการที่เหลือ",
-    intentHeading: "AI-assisted preprocessing intent", sourceFile: "ไฟล์ใน root (relative name)", editingMode: "Editing mode", guided: "Guided / Manual intent", automated: "Automated AI editing (ต้องผ่าน AI plan/QC)", removeDeadAir: "ตัด dead air", reframe: "Reframe 9:16", focus: "Focus", autoSubject: "AI เลือก subject (ต้องมี vision worker)", autoPerson: "บุคคลอัตโนมัติ (ต้องมี vision worker)", autoObject: "วัตถุอัตโนมัติ (ต้องมี vision worker)", manualRegion: "กำหนด focus เอง", maxDuration: "ความยาวสูงสุด", seconds: "วินาที", focusX: "Focus X", focusY: "Focus Y", stillMotion: "Still motion", noMotion: "ไม่ขยับ", buildPlan: "สร้างแผนตัดต่อ", planReady: "พร้อมส่งขั้นตอน GPU/QC", focusWarning: "โหมด AI focus จะส่งต่อได้เมื่อ Worker มี subject/face/object track ที่ผ่านการตรวจสอบแล้ว ขณะนี้เลือก “กำหนด focus เอง” เพื่อสร้าง 9:16 แบบปลอดภัย", automatedWarning: "Automated AI เป็น intent ที่ต้องผ่าน planner และ QC; Worker รุ่นนี้จะไม่ apply อัตโนมัติหากยังไม่มี AI plan/subject track ที่ตรวจสอบแล้ว",
+    intentHeading: "AI-assisted preprocessing intent", sourceFile: "ไฟล์ใน root (relative name)", editingMode: "Editing mode", guided: "Guided / Manual intent", automated: "Automated AI editing (ต้องผ่าน AI plan/QC)", removeDeadAir: "ตัด dead air", reframe: "Reframe 9:16", focus: "Focus", autoSubject: "AI เลือก subject (ต้องมี vision worker)", autoPerson: "บุคคลอัตโนมัติ (ต้องมี vision worker)", autoObject: "วัตถุอัตโนมัติ (ต้องมี vision worker)", manualRegion: "กำหนด focus เอง", maxDuration: "ความยาวสูงสุด", seconds: "วินาที", focusX: "Focus X", focusY: "Focus Y", stillMotion: "Still motion", noMotion: "ไม่ขยับ", buildPlan: "สร้างแผนตัดต่อ", planReady: "พร้อมส่งขั้นตอน GPU/QC", focusWarning: "โหมด AI focus จะส่งต่อได้เมื่อ Worker มี subject/face/object track ที่ผ่านการตรวจสอบแล้ว ขณะนี้เลือก “กำหนด focus เอง” เพื่อสร้าง 9:16 แบบปลอดภัย", automatedWarning: "Automated AI เป็น intent ที่ต้องผ่าน planner และ QC; Worker รุ่นนี้จะไม่ apply อัตโนมัติหากยังไม่มี AI plan/subject track ที่ตรวจสอบแล้ว", submit: "ส่งงานเข้า Worker queue",
     selectedSeries: "Series ที่เลือก", noSelectedSeries: "ยังไม่ได้เลือก Series", chooseSeries: "เลือก Series ก่อนจึงจะ scan หรือส่งงาน preprocessing ได้", manageSeries: "จัดการ Series และโฟลเดอร์", goSelectSeries: "ไปเลือก Series", noFolder: "ยังไม่ได้เลือกโฟลเดอร์สำหรับ Series นี้", chooseFolderFirst: "กลับไป Series workspace เพื่อเลือกหรือสร้างโฟลเดอร์", canOperate: "จัดการได้", readOnlyAccess: "ดูได้อย่างเดียว"
   } : {
     refresh: "Refresh Series", heading: "Manage Series and folders", mediaHeading: "Prepare media for this Series", description: "Select a Series and manage its local source folder here. Scanning, analysis, and preprocessing belong in Media Workspace.",
@@ -130,7 +130,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
     series: "Accessible Series", search: "Search", searchPlaceholder: "Search Series…", noSeries: "No Series found or the Worker is not connected", loadMore: "Load more Series", operate: "Can operate", readOnly: "Read only",
     root: "Series source folder", localPath: "Local folder path", pathPlaceholder: "Choose a folder or enter a path", pathHelp: "This path stays on the Worker machine and is only validated by the native Worker; it is never returned to the server.", choose: "Choose folder", create: "Create subfolder", validate: "Validate and select folder", bind: "Bind to Series", revoke: "Unbind", folder: "Folder", files: "Files", bytes: "Size",
     scan: "Scan preview", import: "Add files to incoming", scanFound: "Supported media", skipped: "Skipped", total: "Total", nextStep: "Next: choose a preprocessing profile and submit the GPU job.", inventory: "Media found", selectAll: "Select all", clearSelection: "Clear selection", analyze: "Analyze selected media", notAnalyzed: "Not analyzed", analyzing: "Analyzing locally…", analysisFailed: "Analysis failed", processing: "Job status", submitSelected: "Submit selected for preprocessing", cancelRemaining: "Cancel remaining submissions",
-    intentHeading: "AI-assisted preprocessing intent", sourceFile: "File in root (relative name)", editingMode: "Editing mode", guided: "Guided / Manual intent", automated: "Automated AI editing (requires AI plan/QC)", removeDeadAir: "Remove dead air", reframe: "Reframe 9:16", focus: "Focus", autoSubject: "AI subject selection (requires vision Worker)", autoPerson: "Automatic person (requires vision Worker)", autoObject: "Automatic object (requires vision Worker)", manualRegion: "Set focus manually", maxDuration: "Maximum duration", seconds: "seconds", focusX: "Focus X", focusY: "Focus Y", stillMotion: "Still motion", noMotion: "No motion", buildPlan: "Build edit plan", planReady: "Ready for GPU/QC", focusWarning: "AI focus requires a verified subject/face/object track. Choose “Set focus manually” to create a safe 9:16 output.", automatedWarning: "Automated AI is an intent that must pass the planner and QC; this Worker will not apply it automatically without a verified AI plan/subject track.",
+    intentHeading: "AI-assisted preprocessing intent", sourceFile: "File in root (relative name)", editingMode: "Editing mode", guided: "Guided / Manual intent", automated: "Automated AI editing (requires AI plan/QC)", removeDeadAir: "Remove dead air", reframe: "Reframe 9:16", focus: "Focus", autoSubject: "AI subject selection (requires vision Worker)", autoPerson: "Automatic person (requires vision Worker)", autoObject: "Automatic object (requires vision Worker)", manualRegion: "Set focus manually", maxDuration: "Maximum duration", seconds: "seconds", focusX: "Focus X", focusY: "Focus Y", stillMotion: "Still motion", noMotion: "No motion", buildPlan: "Build edit plan", planReady: "Ready for GPU/QC", focusWarning: "AI focus requires a verified subject/face/object track. Choose “Set focus manually” to create a safe 9:16 output.", automatedWarning: "Automated AI is an intent that must pass the planner and QC; this Worker will not apply it automatically without a verified AI plan/subject track.", submit: "Submit to Worker queue",
     selectedSeries: "Selected Series", noSelectedSeries: "No Series selected", chooseSeries: "Select a Series before scanning or submitting preprocessing jobs.", manageSeries: "Manage Series and folders", goSelectSeries: "Select a Series", noFolder: "No folder selected for this Series", chooseFolderFirst: "Return to Series workspace to choose or create a folder", canOperate: "Can operate", readOnlyAccess: "Read only"
   };
   const [series, setSeries] = useState<SeriesProjection[]>([]);
@@ -143,7 +143,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
   const [sourceRelativeName, setSourceRelativeName] = useState("");
   const [removeDeadAir, setRemoveDeadAir] = useState(true);
   const [reframe9x16, setReframe9x16] = useState(true);
-  const [focusMode, setFocusMode] = useState("manual_region");
+  const [focusMode, setFocusMode] = useState("auto_person");
   const [focusX, setFocusX] = useState(0.5);
   const [focusY, setFocusY] = useState(0.5);
   const [stillMotion, setStillMotion] = useState<string | null>(null);
@@ -167,10 +167,12 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
     trimEndMs: number;
     outputRelativeName: string;
   } | null>(null);
+  const [isIntentModalOpen, setIsIntentModalOpen] = useState(false);
+  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const focusNeedsVisionWorker = reframe9x16 && focusMode !== "manual_region";
+  const focusNeedsVisionWorker = !isMedia && reframe9x16 && focusMode !== "manual_region";
 
   const loadSeries = useCallback(async (options: { append?: boolean; cursor?: string | null; query: string }) => {
     setBusy(true);
@@ -676,25 +678,88 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
           </section> : null}
           <section aria-labelledby={isMedia ? "media-context-heading" : "root-heading"}>
             {isMedia ? (
-              <>
-                <h3 id="media-context-heading">Selected Series</h3>
-                {selected ? (
-                  <div className="workspace-status-card media-series-context" role="status">
-                    <strong>{selected.title}</strong>
-                    <span>ID {selected.seriesId} · {selected.status} · {selected.accessMode === "operate" ? copy.canOperate : copy.readOnlyAccess}</span>
-                    <span>{workspace ? `${copy.folder}: ${workspace.localPath}` : copy.noFolder}</span>
-                    <span>{workspace ? `Root ${workspace.rootId} · ${workspace.fileCount.toLocaleString()} files` : copy.chooseFolderFirst}</span>
-                    {onNavigate ? <button type="button" className="secondary-button" onClick={() => onNavigate("series")}>{copy.manageSeries}</button> : null}
+              <div className="media-studio-header-bar">
+                <div className="studio-meta-group">
+                  <div className="studio-meta-pill series-pill">
+                    <span className="pill-icon">📺</span>
+                    <div>
+                      <strong>{selected ? selected.title : copy.noSelectedSeries}</strong>
+                      {selected && <span className="pill-sub">ID: {selected.seriesId} · {selected.accessMode === "operate" ? copy.canOperate : copy.readOnlyAccess}</span>}
+                    </div>
                   </div>
-                ) : (
-                  <div className="workspace-status-card" role="status">
-                    <strong>{copy.noSelectedSeries}</strong>
-                    <span>{copy.chooseSeries}</span>
-                    {onNavigate ? <button type="button" className="secondary-button" onClick={() => onNavigate("series")}>{copy.goSelectSeries}</button> : null}
+                  <div className="studio-meta-pill folder-pill">
+                    <span className="pill-icon">📁</span>
+                    <div>
+                      <strong>{workspace ? workspace.localPath : copy.noFolder}</strong>
+                      {workspace && <span className="pill-sub">{workspace.fileCount} ไฟล์ · Root: {workspace.rootId}</span>}
+                    </div>
                   </div>
-                )}
-              </>
+                </div>
+
+                <div className="studio-action-group">
+                  {onNavigate && (
+                    <button
+                      type="button"
+                      className="studio-btn-subtle"
+                      onClick={() => onNavigate("series")}
+                      title={copy.manageSeries}
+                    >
+                      🔄 สลับ Series
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="studio-btn-subtle"
+                    onClick={() => void scanRoot()}
+                    disabled={!workspace || busy}
+                    title="Scan ตรวจสอบไฟล์ในโฟลเดอร์"
+                  >
+                    🔍 {copy.scan} {scan ? `(${scan.supportedFileCount})` : ""}
+                  </button>
+                  {scan?.entries.length ? (
+                    <button
+                      type="button"
+                      className={`studio-btn-subtle ${isInventoryOpen ? "active" : ""}`}
+                      onClick={() => setIsInventoryOpen(!isInventoryOpen)}
+                    >
+                      📦 Inventory ({scan.entries.length})
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="studio-btn-settings"
+                    onClick={() => setIsIntentModalOpen(true)}
+                    title="เปิดหน้าต่างตั้งค่า AI Preprocessing Intent"
+                  >
+                    ⚙️ ตั้งค่าแผน AI
+                  </button>
+                  {plan && (
+                    <div className="studio-plan-badge">
+                      <span className="badge-pulse" />
+                      <span>แผน {plan.planId.slice(-6)} ({Math.round(plan.trimEndMs / 1000)}s)</span>
+                    </div>
+                  )}
+                  {plan && (
+                    <button
+                      type="button"
+                      className="studio-btn-submit"
+                      onClick={() => void submitJob()}
+                      disabled={
+                        !workspace ||
+                        !sourceRelativeName.trim() ||
+                        !selected?.bindingRevision ||
+                        focusNeedsVisionWorker ||
+                        busy
+                      }
+                      title="ส่งงานเข้า Worker GPU Queue"
+                    >
+                      🚀 {copy.submit}
+                    </button>
+                  )}
+                </div>
+              </div>
             ) : null}
+
             {!isMedia ? <>
             <h3 id="root-heading">{copy.root}</h3>
             <label className="field-label" htmlFor="series-root-path">
@@ -768,42 +833,15 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
               </div>
             ) : null}
             </> : null}
-            {isMedia ? (
-              <div className="button-row media-intake-actions">
-                <button
-                  type="button"
-                  className="primary-button"
-                  onClick={() => void scanRoot()}
-                  disabled={!workspace || busy}
-                >
-                  {copy.scan}
-                </button>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => void importFiles()}
-                  disabled={!workspace || busy}
-                >
-                  {copy.import}
-                </button>
-              </div>
-            ) : null}
-            {isMedia && scan ? (
-              <div className="workspace-status-card">
-                <strong>{copy.scanFound} {scan.supportedFileCount}</strong>
-                <span>
-                  {copy.skipped} {scan.skippedFileCount} · {copy.total} {scan.fileCount}
-                </span>
-                <span>{copy.nextStep}</span>
-              </div>
-            ) : null}
-            {isMedia && scan?.entries.length ? (
-              <div className="workspace-inventory" aria-label={copy.inventory}>
+
+            {isMedia && isInventoryOpen && scan?.entries.length ? (
+              <div className="workspace-inventory collapsible-inventory" aria-label={copy.inventory}>
                 <div className="button-row">
                   <strong>{copy.inventory} {selectedEntries.size}/{scan.entries.length}</strong>
                   <button type="button" className="secondary-button" onClick={() => setSelectedEntries(new Set(scan.entries.map(entry => entry.relativeName)))}>{copy.selectAll}</button>
                   <button type="button" className="secondary-button" onClick={() => setSelectedEntries(new Set())}>{copy.clearSelection}</button>
                   <button type="button" className="secondary-button" onClick={() => void analyzeSelected()} disabled={busy || selectedEntries.size === 0}>{copy.analyze}</button>
+                  <button type="button" className="secondary-button" onClick={() => setIsInventoryOpen(false)}>✕ ซ่อน</button>
                 </div>
                 <ul className="series-list">
                   {scan.entries.slice(0, 200).map(entry => (
@@ -832,136 +870,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
                 </div>
               </div>
             ) : null}
-            {isMedia ? <div className="media-plan-card">
-              <h3>{copy.intentHeading}</h3>
-              <label className="field-label" htmlFor="source-relative-name">
-                {copy.sourceFile}
-              </label>
-              <input
-                id="source-relative-name"
-                value={sourceRelativeName}
-                onChange={(event) => setSourceRelativeName(event.target.value)}
-                placeholder="incoming/clip-01.mp4"
-              />
-              <div className="plan-options">
-                <label>
-                  {copy.editingMode}
-                  <select value={processingMode} onChange={(event) => setProcessingMode(event.target.value as "manual_intent" | "automated_ai_editing")}>
-                    <option value="manual_intent">{copy.guided}</option>
-                    <option value="automated_ai_editing">{copy.automated}</option>
-                  </select>
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={removeDeadAir}
-                    onChange={(event) => setRemoveDeadAir(event.target.checked)}
-                  />{" "}
-                  {copy.removeDeadAir}
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={reframe9x16}
-                    onChange={(event) => setReframe9x16(event.target.checked)}
-                  />{" "}
-                  {copy.reframe}
-                </label>
-                <label>
-                  {copy.focus}
-                  <select
-                    value={focusMode}
-                    onChange={(event) => setFocusMode(event.target.value)}
-                  >
-                    <option value="auto_subject">{copy.autoSubject}</option>
-                    <option value="auto_person">{copy.autoPerson}</option>
-                    <option value="auto_object">{copy.autoObject}</option>
-                    <option value="manual_region">{copy.manualRegion}</option>
-                  </select>
-                </label>
-                <label>
-                  {copy.maxDuration}
-                  <select
-                    value={maxDurationMs}
-                    onChange={(event) =>
-                      setMaxDurationMs(Number(event.target.value))
-                    }
-                  >
-                    <option value={30000}>30 {copy.seconds}</option>
-                    <option value={60000}>60 {copy.seconds}</option>
-                    <option value={90000}>90 {copy.seconds}</option>
-                  </select>
-                </label>
-                <label>
-                  {copy.focusX}
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={focusX}
-                    onChange={(event) => setFocusX(Number(event.target.value))}
-                  />
-                </label>
-                <label>
-                  {copy.focusY}
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={focusY}
-                    onChange={(event) => setFocusY(Number(event.target.value))}
-                  />
-                </label>
-                <label>
-                  {copy.stillMotion}
-                  <select
-                    value={stillMotion ?? "none"}
-                    onChange={(event) =>
-                      setStillMotion(
-                        event.target.value === "none"
-                          ? null
-                          : event.target.value,
-                      )
-                    }
-                  >
-                    <option value="none">{copy.noMotion}</option>
-                    <option value="zoom_in">Zoom in</option>
-                    <option value="zoom_out">Zoom out</option>
-                    <option value="pan_left">Pan left</option>
-                    <option value="pan_right">Pan right</option>
-                    <option value="pan_up">Pan up</option>
-                    <option value="pan_down">Pan down</option>
-                  </select>
-                </label>
-              </div>
-              <button
-                type="button"
-                className="primary-button"
-                onClick={() => void buildPlan()}
-                disabled={!workspace || !sourceRelativeName.trim() || busy || focusNeedsVisionWorker}
-              >
-                {copy.buildPlan}
-              </button>
-              {plan ? (
-                <p className="field-help" role="status">
-                  Plan {plan.planId} · {locale === "th" ? "ตัดถึง" : "trimmed to"}{" "}
-                  {Math.round(plan.trimEndMs / 1000)}s · output{" "}
-                  {plan.outputRelativeName} · {copy.planReady}
-                </p>
-              ) : null}
-              {focusNeedsVisionWorker ? (
-                <p className="field-help warning" role="note">
-                  {copy.focusWarning}
-                </p>
-              ) : null}
-              {processingMode === "automated_ai_editing" ? (
-                <p className="field-help warning" role="note">
-                  {copy.automatedWarning}
-                </p>
-              ) : null}
-            </div> : null}
+
             {isMedia ? <MediaWorkspaceHost
               workspace={
                 workspace
@@ -969,12 +878,14 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
                       status: workspace.status,
                       fileCount: workspace.fileCount,
                       totalBytes: workspace.totalBytes,
+                      localPath: workspace.localPath,
                     }
                   : null
               }
               scan={scan}
               plan={plan}
               busy={busy}
+              seriesId={selectedSeriesId}
               canSubmit={Boolean(
                 workspace &&
                 sourceRelativeName.trim() &&
@@ -983,7 +894,249 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
               )}
               onSubmit={() => void submitJob()}
               onIngest={() => void submitIngest()}
+              sourceRelativeName={sourceRelativeName}
+              onSelectSourceFile={(relName) => setSourceRelativeName(relName)}
+              reframe9x16={reframe9x16}
+              onReframe9x16Change={setReframe9x16}
+              focusX={focusX}
+              onFocusXChange={setFocusX}
+              focusY={focusY}
+              onFocusYChange={setFocusY}
+              focusMode={focusMode}
+              onFocusModeChange={setFocusMode}
+              removeDeadAir={removeDeadAir}
+              onRemoveDeadAirChange={setRemoveDeadAir}
+              onOpenIntentSettings={() => setIsIntentModalOpen(true)}
+              onBuildPlan={() => void buildPlan()}
             /> : null}
+
+            {/* AI-assisted Preprocessing Intent Modal Dialog */}
+            {isIntentModalOpen && (
+              <div
+                className="media-intent-modal-backdrop"
+                onClick={() => setIsIntentModalOpen(false)}
+              >
+                <div
+                  className="media-intent-modal-card"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="media-intent-modal-header">
+                    <div className="modal-title-group">
+                      <span className="modal-title-icon">⚙️</span>
+                      <div>
+                        <h3>{copy.intentHeading}</h3>
+                        <p className="modal-subtitle">
+                          {locale === "th"
+                            ? "กำหนดค่า AI Preprocessing Intent ให้สอดคล้องกับ Media Studio"
+                            : "Configure AI preprocessing intent in sync with Media Studio"}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="modal-close-button"
+                      onClick={() => setIsIntentModalOpen(false)}
+                      aria-label="Close"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="media-intent-modal-body">
+                    <div className="modal-field-block">
+                      <div className="field-label-row">
+                        <label className="field-label" htmlFor="source-relative-name">
+                          {copy.sourceFile}
+                        </label>
+                        <span className="sync-badge">⚡ ซิงค์อัตโนมัติจาก Media Explorer</span>
+                      </div>
+                      <input
+                        id="source-relative-name"
+                        value={sourceRelativeName}
+                        onChange={(event) => setSourceRelativeName(event.target.value)}
+                        placeholder="incoming/clip-01.mp4"
+                      />
+                    </div>
+
+                    <div className="modal-grid-two">
+                      <div className="modal-field-block">
+                        <label className="field-label">{copy.editingMode}</label>
+                        <select
+                          value={processingMode}
+                          onChange={(event) =>
+                            setProcessingMode(
+                              event.target.value as "manual_intent" | "automated_ai_editing",
+                            )
+                          }
+                        >
+                          <option value="manual_intent">{copy.guided}</option>
+                          <option value="automated_ai_editing">{copy.automated}</option>
+                        </select>
+                      </div>
+
+                      <div className="modal-field-block">
+                        <label className="field-label">{copy.maxDuration}</label>
+                        <select
+                          value={maxDurationMs}
+                          onChange={(event) => setMaxDurationMs(Number(event.target.value))}
+                        >
+                          <option value={30000}>30 {copy.seconds}</option>
+                          <option value={60000}>60 {copy.seconds}</option>
+                          <option value={90000}>90 {copy.seconds}</option>
+                          <option value={120000}>120 {copy.seconds}</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="modal-toggles-row">
+                      <label className="modal-checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={removeDeadAir}
+                          onChange={(event) => setRemoveDeadAir(event.target.checked)}
+                        />
+                        <span>🔇 {copy.removeDeadAir}</span>
+                      </label>
+                      <label className="modal-checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={reframe9x16}
+                          onChange={(event) => setReframe9x16(event.target.checked)}
+                        />
+                        <span>📱 {copy.reframe}</span>
+                      </label>
+                    </div>
+
+                    <div className="modal-grid-two">
+                      <div className="modal-field-block">
+                        <label className="field-label">{copy.focus}</label>
+                        <select
+                          value={focusMode}
+                          onChange={(event) => setFocusMode(event.target.value)}
+                        >
+                          <option value="auto_subject">{copy.autoSubject}</option>
+                          <option value="auto_person">{copy.autoPerson}</option>
+                          <option value="auto_object">{copy.autoObject}</option>
+                          <option value="manual_region">{copy.manualRegion}</option>
+                        </select>
+                      </div>
+
+                      <div className="modal-field-block">
+                        <label className="field-label">{copy.stillMotion}</label>
+                        <select
+                          value={stillMotion ?? "none"}
+                          onChange={(event) =>
+                            setStillMotion(
+                              event.target.value === "none" ? null : event.target.value,
+                            )
+                          }
+                        >
+                          <option value="none">{copy.noMotion}</option>
+                          <option value="zoom_in">Zoom in</option>
+                          <option value="zoom_out">Zoom out</option>
+                          <option value="pan_left">Pan left</option>
+                          <option value="pan_right">Pan right</option>
+                          <option value="pan_down">Pan down</option>
+                          <option value="pan_up">Pan up</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="modal-sliders-block">
+                      <div className="modal-slider-row">
+                        <div className="slider-label-wrap">
+                          <span>{copy.focusX}</span>
+                          <strong className="slider-val">{(focusX * 100).toFixed(0)}%</strong>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                          value={focusX}
+                          onChange={(event) => setFocusX(Number(event.target.value))}
+                        />
+                      </div>
+                      <div className="modal-slider-row">
+                        <div className="slider-label-wrap">
+                          <span>{copy.focusY}</span>
+                          <strong className="slider-val">{(focusY * 100).toFixed(0)}%</strong>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                          value={focusY}
+                          onChange={(event) => setFocusY(Number(event.target.value))}
+                        />
+                      </div>
+                    </div>
+
+                    {focusNeedsVisionWorker ? (
+                      <p className="field-help warning" role="note">
+                        {copy.focusWarning}
+                      </p>
+                    ) : null}
+                    {processingMode === "automated_ai_editing" ? (
+                      <p className="field-help warning" role="note">
+                        {copy.automatedWarning}
+                      </p>
+                    ) : null}
+
+                    {plan ? (
+                      <div className="modal-plan-result" role="status">
+                        <div className="plan-badge-icon">✅</div>
+                        <div>
+                          <strong>แผน {plan.planId} พร้อมส่งเข้าคิว</strong>
+                          <p>
+                            {locale === "th" ? "ตัดถึง" : "Trimmed to"}{" "}
+                            {Math.round(plan.trimEndMs / 1000)}s · Output: {plan.outputRelativeName} · {copy.planReady}
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="media-intent-modal-footer">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => setIsIntentModalOpen(false)}
+                    >
+                      {locale === "th" ? "ปิด" : "Close"}
+                    </button>
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={() => void buildPlan()}
+                      disabled={!workspace || !sourceRelativeName.trim() || busy || focusNeedsVisionWorker}
+                    >
+                      {busy ? "กำลังสร้างแผน..." : copy.buildPlan}
+                    </button>
+                    {plan ? (
+                      <button
+                        type="button"
+                        className="modal-submit-job-btn"
+                        onClick={() => {
+                          setIsIntentModalOpen(false);
+                          void submitJob();
+                        }}
+                        disabled={
+                          !workspace ||
+                          !sourceRelativeName.trim() ||
+                          !selected?.bindingRevision ||
+                          focusNeedsVisionWorker ||
+                          busy
+                        }
+                      >
+                        🚀 {copy.submit}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
         </div>
       </article>

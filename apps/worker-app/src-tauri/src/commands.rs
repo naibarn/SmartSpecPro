@@ -46,7 +46,7 @@ use crate::control_plane::{
 use crate::executor_state::ExecutorStatus;
 use crate::media_pipeline::{
     analyze_media_file, build_media_plan, probe_media_file, qc_derived_output_with_probe,
-    run_allowlisted_ffmpeg, LocalMediaAnalysis, LocalMediaEditPlan, LocalMediaQc, MediaPlanOptions,
+    run_allowlisted_ffmpeg, run_interactive_media_render, LocalMediaAnalysis, LocalMediaEditPlan, LocalMediaQc, MediaPlanOptions,
     MediaToolchain,
 };
 use crate::series_workspace::{
@@ -7140,6 +7140,21 @@ pub async fn worker_app_open_file(app: tauri::AppHandle, path: String) -> Result
         .map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub async fn worker_app_reveal_file(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .reveal_item_in_dir(path)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn worker_app_save_copy(source_path: String, destination_path: String) -> Result<(), String> {
+    fs::copy(&source_path, &destination_path)
+        .map_err(|e| format!("save_copy_failed: {e}"))?;
+    Ok(())
+}
+
 #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
 fn is_windows_installer_payload(bytes: &[u8]) -> bool {
     bytes.len() >= 2 && bytes[0] == b'M' && bytes[1] == b'Z'
@@ -7993,6 +8008,69 @@ mod tests {
         );
         assert_eq!(decoded.expires_at, Some(123));
     }
+
+    #[test]
+    fn directory_browse_entry_sort_order_puts_folders_first() {
+        let mut entries = vec![
+            super::DirectoryBrowseEntry {
+                name: "b_video.mp4".into(),
+                path: "/tmp/b_video.mp4".into(),
+                is_directory: false,
+                size_bytes: 1000,
+                modified_unix_ms: 0,
+                extension: Some("mp4".into()),
+                is_video: true,
+            },
+            super::DirectoryBrowseEntry {
+                name: "z_folder".into(),
+                path: "/tmp/z_folder".into(),
+                is_directory: true,
+                size_bytes: 0,
+                modified_unix_ms: 0,
+                extension: None,
+                is_video: false,
+            },
+            super::DirectoryBrowseEntry {
+                name: "a_folder".into(),
+                path: "/tmp/a_folder".into(),
+                is_directory: true,
+                size_bytes: 0,
+                modified_unix_ms: 0,
+                extension: None,
+                is_video: false,
+            },
+        ];
+
+        entries.sort_by(|a, b| match (a.is_directory, b.is_directory) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+        });
+
+        assert_eq!(entries[0].name, "a_folder");
+        assert_eq!(entries[1].name, "z_folder");
+        assert_eq!(entries[2].name, "b_video.mp4");
+    }
+
+    #[test]
+    fn interactive_process_request_serialization() {
+        let json_str = r#"{
+            "sourcePath": "/tmp/test.mp4",
+            "trimStartMs": 1000,
+            "trimEndMs": 5000,
+            "removeDeadAir": true,
+            "aspectRatio": "9:16",
+            "focusMode": "auto_person",
+            "focusX": 0.45,
+            "focusY": 0.55
+        }"#;
+        let req: super::InteractiveProcessRequest = serde_json::from_str(json_str).unwrap();
+        assert_eq!(req.source_path, "/tmp/test.mp4");
+        assert_eq!(req.trim_start_ms, Some(1000));
+        assert_eq!(req.remove_dead_air, true);
+        assert_eq!(req.aspect_ratio, "9:16");
+        assert_eq!(req.focus_x, Some(0.45));
+    }
 }
 
 #[tauri::command]
@@ -8022,3 +8100,651 @@ pub async fn worker_app_run_manual_command(command: String) -> Result<String, St
         Err(format!("Exited {}:\n{stdout}\n{stderr}", output.status))
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DirectoryBrowseEntry {
+    pub name: String,
+    pub path: String,
+    pub is_directory: bool,
+    pub size_bytes: u64,
+    pub modified_unix_ms: u128,
+    pub extension: Option<String>,
+    pub is_video: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DirectoryBreadcrumb {
+    pub name: String,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DirectoryBrowseResult {
+    pub current_path: String,
+    pub parent_path: Option<String>,
+    pub entries: Vec<DirectoryBrowseEntry>,
+    pub breadcrumbs: Vec<DirectoryBreadcrumb>,
+    pub total_folders: usize,
+    pub total_files: usize,
+    pub total_video_files: usize,
+}
+
+#[tauri::command]
+pub async fn worker_app_browse_directory(
+    state: tauri::State<'_, WorkerAppState>,
+    path: Option<String>,
+) -> Result<DirectoryBrowseResult, String> {
+    let target_path = match path.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        Some(p) => PathBuf::from(p),
+        None => {
+            let workspace = state
+                .series_workspace
+                .lock()
+                .map_err(|_| "workspace lock poisoned".to_string())?;
+            if let Some(root) = &workspace.root {
+                root.root_path.clone()
+            } else {
+                std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+            }
+        }
+    };
+
+    let canonical = target_path
+        .canonicalize()
+        .map_err(|e| format!("folder_not_found: {e}"))?;
+
+    if !canonical.is_dir() {
+        return Err("path_is_not_a_directory".to_string());
+    }
+
+    let mut entries = Vec::new();
+    let read_dir = fs::read_dir(&canonical)
+        .map_err(|e| format!("cannot_read_directory: {e}"))?;
+
+    for entry_res in read_dir {
+        let entry = match entry_res {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        let file_name = entry.file_name().to_string_lossy().to_string();
+        if file_name.starts_with('.') && file_name != ".derived" {
+            continue;
+        }
+        let metadata = match entry.metadata() {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+        let is_dir = metadata.is_dir();
+        let size_bytes = if is_dir { 0 } else { metadata.len() };
+        let modified_unix_ms = metadata
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_millis())
+            .unwrap_or(0);
+        let ext = entry.path().extension()
+            .and_then(|s| s.to_str())
+            .map(|s| s.to_ascii_lowercase());
+        let is_video = match ext.as_deref() {
+            Some("mp4" | "mov" | "mkv" | "webm" | "avi" | "m4v" | "flv" | "wmv" | "ts") => true,
+            _ => false,
+        };
+
+        entries.push(DirectoryBrowseEntry {
+            name: file_name,
+            path: crate::media_pipeline::strip_verbatim_prefix(&entry.path()).to_string_lossy().to_string(),
+            is_directory: is_dir,
+            size_bytes,
+            modified_unix_ms,
+            extension: ext,
+            is_video,
+        });
+    }
+
+    entries.sort_by(|a, b| {
+        match (a.is_directory, b.is_directory) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+        }
+    });
+
+    let total_folders = entries.iter().filter(|e| e.is_directory).count();
+    let total_files = entries.iter().filter(|e| !e.is_directory).count();
+    let total_video_files = entries.iter().filter(|e| e.is_video).count();
+
+    let mut segments = Vec::new();
+    let mut curr: Option<&Path> = Some(&canonical);
+    while let Some(p) = curr {
+        let name = p.file_name().map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| p.to_string_lossy().to_string());
+        if !name.is_empty() {
+            segments.push(DirectoryBreadcrumb {
+                name,
+                path: crate::media_pipeline::strip_verbatim_prefix(p).to_string_lossy().to_string(),
+            });
+        }
+        curr = p.parent();
+    }
+    segments.reverse();
+
+    let parent_path = canonical.parent().map(|p| crate::media_pipeline::strip_verbatim_prefix(p).to_string_lossy().to_string());
+
+    Ok(DirectoryBrowseResult {
+        current_path: crate::media_pipeline::strip_verbatim_prefix(&canonical).to_string_lossy().to_string(),
+        parent_path,
+        entries,
+        breadcrumbs: segments,
+        total_folders,
+        total_files,
+        total_video_files,
+    })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InteractiveProcessRequest {
+    pub source_path: String,
+    pub trim_start_ms: Option<u64>,
+    pub trim_end_ms: Option<u64>,
+    pub remove_dead_air: bool,
+    pub aspect_ratio: String, // "9:16", "16:9", "source"
+    pub focus_mode: String,   // "auto_person", "manual_region"
+    pub focus_x: Option<f64>,
+    pub focus_y: Option<f64>,
+    pub series_id: Option<String>,
+    #[serde(default)]
+    pub volume_threshold_pct: Option<f64>,
+    #[serde(default)]
+    pub min_duration_sec: Option<f64>,
+    #[serde(default)]
+    pub softening_buffer_sec: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InteractiveProcessResult {
+    pub output_path: String,
+    pub output_relative_name: String,
+    pub file_name: String,
+    pub duration_ms: u64,
+    pub size_bytes: u64,
+    pub width: u32,
+    pub height: u32,
+    pub checksum: String,
+    pub silence_cut_count: usize,
+    pub time_saved_ms: u64,
+}
+
+#[tauri::command]
+pub async fn worker_app_detect_silence_custom(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    source_path: String,
+    volume_threshold_pct: Option<f64>,
+    min_duration_sec: Option<f64>,
+    softening_buffer_sec: Option<f64>,
+) -> Result<crate::media_pipeline::CustomSilenceDetectionResult, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let settings = state
+        .settings
+        .lock()
+        .map_err(|_| "settings lock poisoned".to_string())?
+        .clone();
+    let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+
+    let raw_source_path = crate::media_pipeline::strip_verbatim_prefix(&PathBuf::from(source_path.trim()));
+    let source = if raw_source_path.is_absolute() {
+        if raw_source_path.exists() {
+            raw_source_path
+        } else {
+            crate::media_pipeline::strip_verbatim_prefix(&raw_source_path.canonicalize().map_err(|e| format!("source_not_found: {e}"))?)
+        }
+    } else {
+        let workspace = state
+            .series_workspace
+            .lock()
+            .map_err(|_| "workspace lock poisoned".to_string())?;
+        let root = workspace.root.as_ref().ok_or_else(|| "local_root_not_selected".to_string())?;
+        let target = root.root_path.join(raw_source_path);
+        if target.exists() {
+            crate::media_pipeline::strip_verbatim_prefix(&target)
+        } else {
+            crate::media_pipeline::strip_verbatim_prefix(&target.canonicalize().map_err(|e| format!("source_not_found: {e}"))?)
+        }
+    };
+
+    crate::media_pipeline::detect_audio_silence_custom(
+        &source,
+        &tools,
+        volume_threshold_pct.unwrap_or(25.0),
+        min_duration_sec.unwrap_or(0.5),
+        softening_buffer_sec.unwrap_or(0.2),
+    )
+}
+
+#[tauri::command]
+pub async fn worker_app_process_media_interactive(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    request: InteractiveProcessRequest,
+) -> Result<InteractiveProcessResult, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let settings = state
+        .settings
+        .lock()
+        .map_err(|_| "settings lock poisoned".to_string())?
+        .clone();
+    let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+
+    let raw_source_path = crate::media_pipeline::strip_verbatim_prefix(&PathBuf::from(request.source_path.trim()));
+    let source = if raw_source_path.is_absolute() {
+        if raw_source_path.exists() {
+            raw_source_path
+        } else {
+            crate::media_pipeline::strip_verbatim_prefix(&raw_source_path.canonicalize().map_err(|e| format!("source_not_found: {e}"))?)
+        }
+    } else {
+        let workspace = state
+            .series_workspace
+            .lock()
+            .map_err(|_| "workspace lock poisoned".to_string())?;
+        let root = workspace.root.as_ref().ok_or_else(|| "local_root_not_selected".to_string())?;
+        let target = root.root_path.join(raw_source_path);
+        if target.exists() {
+            crate::media_pipeline::strip_verbatim_prefix(&target)
+        } else {
+            crate::media_pipeline::strip_verbatim_prefix(&target.canonicalize().map_err(|e| format!("source_not_found: {e}"))?)
+        }
+    };
+
+    let probe = probe_media_file(&source, &tools)?;
+    let source_duration_ms = probe.duration_ms.unwrap_or(0);
+    if source_duration_ms == 0 {
+        return Err("cannot_determine_video_duration".into());
+    }
+
+    let mut speech_start = 0u64;
+    let mut speech_end = source_duration_ms;
+    let mut silence_intervals: Vec<(u64, u64)> = Vec::new();
+
+    if request.remove_dead_air {
+        if let Ok(sil_res) = crate::media_pipeline::detect_audio_silence_custom(
+            &source,
+            &tools,
+            request.volume_threshold_pct.unwrap_or(25.0),
+            request.min_duration_sec.unwrap_or(0.5),
+            request.softening_buffer_sec.unwrap_or(0.2),
+        ) {
+            for seg in &sil_res.silence_segments {
+                let start = seg.start_ms;
+                let end = seg.end_ms.unwrap_or(source_duration_ms);
+                if end > start {
+                    silence_intervals.push((start, end));
+                }
+            }
+            if let Some(first_sp) = sil_res.first_speech_ms {
+                if first_sp > 2000 {
+                    speech_start = first_sp.saturating_sub(2000);
+                }
+            }
+            if let Some(last_sp) = sil_res.last_speech_ms {
+                if source_duration_ms > last_sp.saturating_add(1800) {
+                    speech_end = (last_sp + 1800).min(source_duration_ms);
+                }
+            }
+        }
+    } else if let Ok(ana) = analyze_media_file(&source, &tools) {
+        for seg in &ana.silence_segments {
+            let start = seg.start_ms;
+            let end = seg.end_ms.unwrap_or(source_duration_ms);
+            if end > start {
+                silence_intervals.push((start, end));
+            }
+        }
+    }
+
+    if let Some(first_silence) = silence_intervals.first() {
+        if first_silence.0 <= 1000 && speech_start == 0 {
+            speech_start = first_silence.1.min(source_duration_ms);
+        }
+    }
+    if let Some(last_silence) = silence_intervals.last() {
+        if last_silence.1 >= source_duration_ms.saturating_sub(1000) && speech_end == source_duration_ms {
+            speech_end = last_silence.0.max(speech_start.saturating_add(250));
+        }
+    }
+
+    let req_trim_start = request.trim_start_ms.unwrap_or(0);
+    let effective_trim_start = if request.remove_dead_air {
+        if req_trim_start <= 500 && speech_start > 0 {
+            speech_start
+        } else {
+            req_trim_start.max(speech_start)
+        }
+    } else {
+        req_trim_start
+    }.min(source_duration_ms);
+
+    let req_trim_end = request.trim_end_ms.unwrap_or(source_duration_ms);
+    let effective_trim_end = if request.remove_dead_air {
+        if req_trim_end >= source_duration_ms.saturating_sub(600) && speech_end < source_duration_ms {
+            speech_end
+        } else {
+            req_trim_end.min(speech_end)
+        }
+    } else {
+        req_trim_end
+    }
+    .max(effective_trim_start.saturating_add(250))
+    .min(source_duration_ms);
+
+    let mut active_segments = Vec::new();
+    let mut silence_cut_count = 0usize;
+    let mut time_saved_ms = 0u64;
+
+    if request.remove_dead_air && !silence_intervals.is_empty() {
+        let buffer_ms = (request.softening_buffer_sec.unwrap_or(0.2).clamp(0.0, 2.0) * 1000.0) as u64;
+        let mut cursor = effective_trim_start;
+        for &(sil_start, sil_end) in &silence_intervals {
+            let buffered_start = if sil_start <= 400 {
+                0
+            } else {
+                sil_start.saturating_add(buffer_ms)
+            };
+            let buffered_end = if sil_end >= source_duration_ms.saturating_sub(600) {
+                source_duration_ms
+            } else {
+                sil_end.saturating_sub(buffer_ms)
+            };
+            if buffered_end <= buffered_start {
+                continue;
+            }
+            let s_start = buffered_start.max(effective_trim_start);
+            let s_end = buffered_end.min(effective_trim_end);
+            if s_end > s_start && s_start >= cursor {
+                if s_start.saturating_sub(cursor) >= 150 {
+                    active_segments.push((cursor, s_start));
+                }
+                silence_cut_count += 1;
+                time_saved_ms = time_saved_ms.saturating_add(s_end - s_start);
+                cursor = s_end;
+            }
+        }
+        if effective_trim_end.saturating_sub(cursor) >= 150 {
+            active_segments.push((cursor, effective_trim_end));
+        }
+    } else {
+        active_segments.push((effective_trim_start, effective_trim_end));
+    }
+
+    if active_segments.is_empty() {
+        active_segments.push((effective_trim_start, effective_trim_end));
+    }
+
+    let parent_dir = source.parent().unwrap_or(Path::new("."));
+    let derived_dir = parent_dir.join("derived");
+    fs::create_dir_all(&derived_dir).map_err(|e| format!("cannot_create_derived_dir: {e}"))?;
+
+    let timestamp = OffsetDateTime::now_utc().unix_timestamp();
+    let aspect_token = match request.aspect_ratio.as_str() {
+        "9:16" => "9x16",
+        "16:9" => "16x9",
+        _ => "source",
+    };
+    let out_name = format!("clip_{}_{}.mp4", aspect_token, timestamp);
+    let output_path = derived_dir.join(&out_name);
+
+    let fx = request.focus_x.unwrap_or(0.5).clamp(0.0, 1.0);
+    let fy = request.focus_y.unwrap_or(0.5).clamp(0.0, 1.0);
+
+    run_interactive_media_render(
+        &source,
+        &output_path,
+        &active_segments,
+        &request.aspect_ratio,
+        fx,
+        fy,
+        &tools,
+    )?;
+
+    let out_probe = probe_media_file(&output_path, &tools)?;
+    let out_meta = fs::metadata(&output_path).map_err(|e| format!("output_missing: {e}"))?;
+    let bytes = fs::read(&output_path).unwrap_or_default();
+    let checksum = format!("{:x}", Sha256::digest(&bytes));
+
+    Ok(InteractiveProcessResult {
+        output_path: output_path.to_string_lossy().to_string(),
+        output_relative_name: format!("derived/{}", out_name),
+        file_name: out_name,
+        duration_ms: out_probe.duration_ms.unwrap_or(0),
+        size_bytes: out_meta.len(),
+        width: out_probe.width.unwrap_or(1080),
+        height: out_probe.height.unwrap_or(1920),
+        checksum,
+        silence_cut_count,
+        time_saved_ms,
+    })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LibraryUploadResult {
+    pub success: bool,
+    pub library_item_id: Option<String>,
+    pub title: String,
+    pub message: String,
+    pub series_asset_id: Option<String>,
+}
+
+#[tauri::command]
+pub async fn worker_app_upload_to_library(
+    app: tauri::AppHandle,
+    _state: tauri::State<'_, WorkerAppState>,
+    file_path: String,
+    title: Option<String>,
+    series_id: Option<String>,
+) -> Result<LibraryUploadResult, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("app_data_dir_unavailable: {e}"))?;
+
+    let connection = load_connection(&app_data_dir)?
+        .ok_or_else(|| "Worker ยังไม่ได้เชื่อมต่อกับ smartaihub.app กรุณาเชื่อมต่อในหน้า Connection ก่อน".to_string())?;
+
+    let path = PathBuf::from(file_path.trim());
+    let canonical = path.canonicalize().map_err(|e| format!("file_not_found: {e}"))?;
+    let meta = fs::metadata(&canonical).map_err(|e| format!("cannot_read_metadata: {e}"))?;
+    let file_size = meta.len();
+    let file_name = canonical.file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "video.mp4".to_string());
+    let item_title = title.filter(|t| !t.trim().is_empty())
+        .unwrap_or_else(|| file_name.clone());
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(300))
+        .build()
+        .map_err(|e| format!("cannot_create_http_client: {e}"))?;
+
+    let base_url = connection.server_url.trim_end_matches('/');
+
+    let series_id_val = if let Some(ref s) = series_id {
+        if let Ok(num) = s.parse::<i64>() {
+            serde_json::json!(num)
+        } else {
+            serde_json::json!(s)
+        }
+    } else {
+        Value::Null
+    };
+
+    let init_url = format!("{}/api/workers/{}/library/init-upload", base_url, connection.worker.id);
+    let init_payload = serde_json::json!({
+        "fileName": file_name,
+        "contentType": "video/mp4",
+        "sizeBytes": file_size,
+        "title": item_title,
+        "seriesId": series_id_val,
+    });
+
+    let init_resp = client
+        .post(&init_url)
+        .header("Authorization", format!("Bearer {}", connection.tokens.upload_token))
+        .json(&init_payload)
+        .send()
+        .await
+        .map_err(|e| format!("init_upload_request_failed: {e}"))?;
+
+    if !init_resp.status().is_success() {
+        let err_text = init_resp.text().await.unwrap_or_default();
+        return Err(format!("init_upload_failed: {err_text}"));
+    }
+
+    let init_data: Value = init_resp.json().await.map_err(|e| format!("init_json_failed: {e}"))?;
+    let storage_key = init_data.get("storageKey").and_then(Value::as_str).ok_or("missing_storage_key")?;
+    let upload_url_raw = init_data.get("uploadUrl").and_then(Value::as_str).ok_or("missing_upload_url")?;
+
+    let full_upload_url = if upload_url_raw.starts_with('/') {
+        format!("{}{}", base_url, upload_url_raw)
+    } else {
+        upload_url_raw.to_string()
+    };
+
+    let file_bytes = fs::read(&canonical).map_err(|e| format!("cannot_read_file: {e}"))?;
+    let method = init_data.get("method").and_then(Value::as_str).unwrap_or("server");
+
+    let upload_resp = if method == "presigned" {
+        client
+            .put(&full_upload_url)
+            .header("Content-Type", "video/mp4")
+            .body(file_bytes)
+            .send()
+            .await
+            .map_err(|e| format!("presigned_upload_failed: {e}"))?
+    } else {
+        client
+            .post(&full_upload_url)
+            .header("Authorization", format!("Bearer {}", connection.tokens.upload_token))
+            .header("Content-Type", "video/mp4")
+            .body(file_bytes)
+            .send()
+            .await
+            .map_err(|e| format!("direct_upload_failed: {e}"))?
+    };
+
+    if !upload_resp.status().is_success() {
+        let err_text = upload_resp.text().await.unwrap_or_default();
+        return Err(format!("upload_failed: {err_text}"));
+    }
+
+    let complete_url = format!("{}/api/workers/{}/library/complete-upload", base_url, connection.worker.id);
+    let complete_payload = serde_json::json!({
+        "storageKey": storage_key,
+        "title": item_title,
+        "fileName": file_name,
+        "sizeBytes": file_size,
+        "contentType": "video/mp4",
+        "seriesId": series_id_val,
+    });
+
+    let complete_resp = client
+        .post(&complete_url)
+        .header("Authorization", format!("Bearer {}", connection.tokens.upload_token))
+        .json(&complete_payload)
+        .send()
+        .await
+        .map_err(|e| format!("complete_upload_request_failed: {e}"))?;
+
+    if !complete_resp.status().is_success() {
+        let err_text = complete_resp.text().await.unwrap_or_default();
+        return Err(format!("complete_upload_failed: {err_text}"));
+    }
+
+    let complete_data: Value = complete_resp.json().await.map_err(|e| format!("complete_json_failed: {e}"))?;
+    let library_item_id = complete_data
+        .get("libraryItem")
+        .and_then(|item| item.get("id"))
+        .map(|id| id.to_string());
+    let series_asset_id = complete_data
+        .get("seriesAssetId")
+        .and_then(Value::as_str)
+        .map(|s| s.to_string());
+
+    Ok(LibraryUploadResult {
+        success: true,
+        library_item_id,
+        title: item_title,
+        message: "อัปโหลดเข้า Library ที่ smartaihub.app สำเร็จแล้ว".into(),
+        series_asset_id,
+    })
+}
+
+#[tauri::command]
+pub async fn worker_app_save_nle_project(
+    project_path: String,
+    project_json: String,
+) -> Result<String, String> {
+    let clean_buf = crate::media_pipeline::strip_verbatim_prefix(&std::path::PathBuf::from(project_path.trim()));
+    if let Some(parent) = clean_buf.parent() {
+        if !parent.exists() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+    }
+    std::fs::write(&clean_buf, &project_json)
+        .map_err(|e| format!("save_project_failed: {e}"))?;
+    Ok(clean_buf.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub async fn worker_app_load_nle_project(
+    project_path: String,
+) -> Result<String, String> {
+    let clean_buf = crate::media_pipeline::strip_verbatim_prefix(&std::path::PathBuf::from(project_path.trim()));
+    let content = std::fs::read_to_string(&clean_buf)
+        .map_err(|e| format!("load_project_failed: {e}"))?;
+    Ok(content)
+}
+
+#[tauri::command]
+pub async fn worker_app_export_capcut_draft(
+    draft_dir: String,
+    draft_json: String,
+) -> Result<String, String> {
+    let clean_buf = crate::media_pipeline::strip_verbatim_prefix(&std::path::PathBuf::from(draft_dir.trim()));
+    if !clean_buf.exists() {
+        std::fs::create_dir_all(&clean_buf)
+            .map_err(|e| format!("create_draft_dir_failed: {e}"))?;
+    }
+    let draft_file = clean_buf.join("draft_content.json");
+    std::fs::write(&draft_file, &draft_json)
+        .map_err(|e| format!("write_capcut_draft_failed: {e}"))?;
+    Ok(draft_file.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub async fn worker_app_get_audio_runtime_status() -> Result<crate::audio_runtime_sidecar::AudioRuntimeStatus, String> {
+    Ok(crate::audio_runtime_sidecar::probe_audio_runtime_status().await)
+}
+
+#[tauri::command]
+pub async fn worker_app_generate_music_cue(
+    app_handle: tauri::AppHandle,
+    req: crate::audio_runtime_sidecar::MusicCueGenerateRequest,
+) -> Result<crate::audio_runtime_sidecar::MusicCueGenerateResult, String> {
+    use tauri::Manager;
+    let app_dir = app_handle.path().app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    crate::audio_runtime_sidecar::execute_music_cue_generation(req, app_dir).await
+}
+
+

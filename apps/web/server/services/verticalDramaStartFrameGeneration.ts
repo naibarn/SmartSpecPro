@@ -2292,6 +2292,31 @@ export function buildDeterministicPolicySafeImagePrompt(params: {
   });
 }
 
+function appendAttachedObjectReferencePromptLocks(params: {
+  prompt: string;
+  productReferenceImages?: readonly { url: string; label: string }[];
+  propObjectReferenceImages?: readonly { url: string; label: string }[];
+}): string {
+  const locks = [
+    params.productReferenceImages?.length
+      ? "ATTACHED PRODUCT REFERENCE LOCK: the selected product/object must match the attached product reference image(s) in visible design, color, shape, materials, and distinctive details. Let the image model choose its natural placement, scale, and interaction for this shot; do not redesign or replace it."
+      : null,
+    params.propObjectReferenceImages?.length
+      ? "ATTACHED PROP/OBJECT REFERENCE LOCK: when the referenced prop/object is visible, preserve the attached image(s)' visible design, color, shape, materials, and distinctive details. Let the image model choose natural placement and action for this shot; do not redesign or replace it."
+      : null,
+  ].filter((line): line is string => Boolean(line));
+  if (locks.length === 0) return params.prompt;
+
+  const normalizedPrompt = params.prompt.toLocaleLowerCase();
+  const missingLocks = locks.filter(lock => {
+    const marker = lock.slice(0, lock.indexOf(":"));
+    return !normalizedPrompt.includes(marker.toLocaleLowerCase());
+  });
+  return missingLocks.length > 0
+    ? `${params.prompt.trimEnd()}\n${missingLocks.join("\n")}`
+    : params.prompt;
+}
+
 export const VD_VIDEO_FACE_VISIBILITY_LOCK =
   "VIDEO-FACE VISIBILITY LOCK (MANDATORY): every required in-frame character face must be approximately 75% or more visible and readable, frontal or natural three-quarter view, with both eyes, nose, mouth, jawline, and hairline unobstructed; keep every dialogue speaker's face inside the frame and large enough for reliable face matching and lip-sync; do not sacrifice face readability for hidden-profile eye-lines, extreme angles, edge crops, hands, props, shadows, or another person's head blocking the face. In two-shots or multi-character scenes, use an open conversational angle where BOTH characters' faces are visible to the lens — never place a character with the back of their head, hair, or shoulder blocking their face.";
 
@@ -2574,12 +2599,12 @@ export interface GenerateStartFrameShotPromptParams {
    * attachment + `character_reference_manifest` grounding — MUST be in the
    * same order as `characterReferenceManifest` (index N's label is derived
    * from this array's Nth entry, 1-based) so the "Image N" labels the model
-   * SEES match the "Image N" indices the prompt TEXT claims. Ignored by
-   * every other mode (mode 1 attaches images exactly as it does today — the
-   * shot's own current image + `additionalImageUrls` only).
+   * SEES match the "Image N" indices the prompt TEXT claims. Character and
+   * location references remain cinematic-mode-only; product and prop/object
+   * references are attached for every non-policy-safe mode when supplied.
    */
   characterReferenceImages?: { url: string; label: string }[];
-  /** Location reference image for `cinematic_narrative` mode's vision attachment. Ignored by every other mode. */
+  /** Location reference image for `cinematic_narrative` mode's vision attachment. */
   locationReferenceImage?: { url: string; label: string };
   /** Selected product reference images for special tie-in vision grounding. */
   productReferenceImages?: { url: string; label: string }[];
@@ -2895,17 +2920,16 @@ export function buildStartFrameShotPromptUserPrompt(
     !barrierDialogue && !barrierMultiView && requiredCharacterCount >= 2
       ? `two_shot_face_visibility_rule: MANDATORY OPEN TWO-SHOT — both characters must be angled three-quarter toward camera and each other with BOTH faces clearly visible, readable, and well-lit. NEVER place either character with their back to camera, back of head to lens, full profile, or face hidden in deep shadow or behind hair. Both faces must remain readable for video face-matching and lip-sync.`
       : null,
-    params.propObjectReferenceImages?.length
-      ? "prop_object_reference_inputs: the attached prop/object reference image(s) are authoritative for the physical object's appearance; preserve their shape, materials, colors, and distinctive details when the prop is visible"
+    params.productReferenceImages?.length
+      ? "product_reference_inputs: the attached product reference image(s) are the visual source of truth for the selected product/object; the final prompt must reference the attached image(s) and preserve the visible design, color, shape, materials, and distinctive details, while the image model chooses natural placement, scale, and interaction for this shot"
       : null,
-    // Two-mode start-frame image prompt switch — `cinematic_narrative`-only:
-    // a FACT (not an instruction) telling the skill the portraits + location
-    // image it needs to interpret are attached below as vision inputs — see
-    // `buildStartFrameShotPromptVisionImages`'s mode-2 branch for the actual
-    // attachment. `null` (filtered out entirely) for every other mode,
-    // including legacy, which does not attach the character/location mode-two
-    // images. Prop/object references are an explicit exception and are
-    // attached for every non-policy-safe prompt mode when supplied.
+    params.propObjectReferenceImages?.length
+      ? "prop_object_reference_inputs: the attached prop/object reference image(s) are the visual source of truth for the physical object; the final prompt must reference the attached image(s) and preserve their visible shape, materials, colors, and distinctive details when the prop is visible, while the image model chooses natural placement and action"
+      : null,
+    // Vision grounding fact for the image references attached below. Character
+    // portraits/location/scene anchors remain cinematic-mode-only; selected
+    // product and prop/object references are attached for every non-policy-safe
+    // prompt mode when supplied.
     isNewImagePromptMode && params.imagePromptMode === "cinematic_narrative"
       ? `frame_analysis_inputs: character portraits, the location image, ${params.productReferenceImages?.length ? "selected product reference image(s), " : ""}${params.propObjectReferenceImages?.length ? "prop/object reference image(s), " : ""}and any scene continuity reference are ATTACHED as images below`
       : null,
@@ -3003,9 +3027,10 @@ export function formatSceneContinuityVisionLabel(
 
 /**
  * Build the vision images attached to a start-frame shot-prompt LLM call.
- * Mode 1 (`policy_safe_rewrite`) / legacy (no mode) attach images exactly as
- * before this feature: the shot's own current image (`images[0]`,
- * unlabeled) then the caller's `additionalImageUrls`.
+ * Mode 1 (`policy_safe_rewrite`) / legacy (no mode) attach the shot's own
+ * current image (`images[0]`, unlabeled) and caller's `additionalImageUrls`
+ * as before. Product and prop/object references are also attached whenever
+ * supplied and the call is not policy-safe.
  *
  * `cinematic_narrative` mode ADDITIONALLY inserts the character portraits
  * (in `character_reference_manifest` index order, labeled `"Image N
@@ -3197,10 +3222,13 @@ export async function generateStartFrameShotPrompt(
   // explicitly image-grounded (D3, `planning/vd-start-frame-prompt-modes/
   // plan.md`): it wants vision even when the shot has no existing image yet,
   // as long as character portraits/a location image are available to attach.
+  // Product and prop/object references are also vision inputs for the legacy
+  // and other non-policy-safe modes when supplied.
   // `referenceFrameMode` never combines with a mode in practice (only
   // `generateShotReferenceFramePrompt` sets it, and that caller never sets
   // `imagePromptMode`), but is excluded here too for logical correctness —
-  // the legacy skill this mode forces never asks for these vision inputs.
+  // the legacy skill this mode forces does not ask for character/location
+  // vision inputs, but still receives product/prop references below.
   const isCinematicNarrativeMode =
     params.imagePromptMode === "cinematic_narrative" &&
     !params.referenceFrameMode;
@@ -3212,14 +3240,15 @@ export async function generateStartFrameShotPrompt(
       params.productReferenceImages?.length ||
       params.sceneAnchorImage
     );
-  const hasPropObjectVisionInputs = Boolean(
+  const hasProductOrPropVisionInputs = Boolean(
+    params.productReferenceImages?.length ||
     params.propObjectReferenceImages?.length
   );
   const wantsVision =
     !isPolicySafeSynopsisMode &&
     (Boolean(params.imageUrl) ||
       (hasModeTwoVisionInputs && params.attachShotImage !== false) ||
-      (hasPropObjectVisionInputs && params.attachShotImage !== false));
+      (hasProductOrPropVisionInputs && params.attachShotImage !== false));
 
   const resolvedModel = await resolveStartFrameShotPromptModel(
     params.seriesId,
@@ -3259,9 +3288,12 @@ export async function generateStartFrameShotPrompt(
           sceneAnchorImage: params.sceneAnchorImage,
           sceneContinuityEnabled: params.sceneContinuityEnabled,
         }
-      : hasPropObjectVisionInputs
-        ? { propObjectReferenceImages: params.propObjectReferenceImages }
-      : undefined
+      : hasProductOrPropVisionInputs
+        ? {
+            productReferenceImages: params.productReferenceImages,
+            propObjectReferenceImages: params.propObjectReferenceImages,
+          }
+        : undefined
   );
 
   if (isPolicySafeSynopsisMode) {
@@ -3339,6 +3371,11 @@ export async function generateStartFrameShotPrompt(
     });
     const policySafePrompt = [
       outputPrompt,
+      appendAttachedObjectReferencePromptLocks({
+        prompt: "",
+        productReferenceImages: params.productReferenceImages,
+        propObjectReferenceImages: params.propObjectReferenceImages,
+      }).trim(),
       renderSupportingPresencePromptBlock(params.supportingPresence ?? []),
       buildVideoFaceVisibilityPromptBlock(
         params.videoFaceVisibilityRequired === true
@@ -3648,6 +3685,12 @@ export async function generateStartFrameShotPrompt(
       currentSceneLock
     );
   }
+
+  outputPrompt = appendAttachedObjectReferencePromptLocks({
+    prompt: outputPrompt,
+    productReferenceImages: params.productReferenceImages,
+    propObjectReferenceImages: params.propObjectReferenceImages,
+  });
 
   const finalSafety = analyzeVerticalDramaStorySafety({
     prompt: outputPrompt,

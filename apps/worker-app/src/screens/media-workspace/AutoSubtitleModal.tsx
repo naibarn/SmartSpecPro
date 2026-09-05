@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { NleClip, TextPresetStyle } from "../../types/nleProject";
 
 export interface AutoSubtitleModalProps {
@@ -20,6 +20,17 @@ export function AutoSubtitleModal({
   const [transcribeProgress] = useState(0);
 
   const [transcribeError, setTranscribeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen && !isTranscribing) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, isTranscribing, onClose]);
+
   if (!isOpen) return null;
 
   const handleGenerateSubtitles = () => {
@@ -40,8 +51,24 @@ export function AutoSubtitleModal({
           <button type="button" className="modal-close-button" onClick={onClose}>✕</button>
         </div>
 
-        {transcribeError && <p role="alert">{transcribeError}</p>}
         <div className="media-intent-modal-body">
+          {transcribeError && (
+            <div
+              className="transcribe-error-banner"
+              role="alert"
+              style={{
+                background: "rgba(239, 68, 68, 0.15)",
+                color: "#f87171",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
+                padding: "10px 14px",
+                borderRadius: "8px",
+                fontSize: "0.8rem",
+                marginBottom: "12px",
+              }}
+            >
+              ⚠️ {transcribeError}
+            </div>
+          )}
           <div className="modal-grid-two">
             <div className="modal-field-block">
               <label className="field-label">ภาษาเสียงพูด (Spoken Language)</label>

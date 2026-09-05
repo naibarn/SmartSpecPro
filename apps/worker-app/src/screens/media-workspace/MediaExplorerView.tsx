@@ -389,13 +389,19 @@ export function MediaExplorerView({
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {searchQuery && (
-            <button
-              type="button"
-              className="search-clear-btn"
-              onClick={() => setSearchQuery("")}
-            >
-              ✕
-            </button>
+            <>
+              <span style={{ fontSize: "0.75rem", color: "#38bdf8", marginRight: "6px" }}>
+                ({sortedAndFilteredEntries.length})
+              </span>
+              <button
+                type="button"
+                className="search-clear-btn"
+                onClick={() => setSearchQuery("")}
+                title="ล้างคำค้นหา"
+              >
+                ✕
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -477,6 +483,18 @@ export function MediaExplorerView({
                         onSelectVideoFile(entry);
                       }
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        if (entry.isDirectory) {
+                          void loadDirectory(entry.path);
+                        } else if (isProj && onOpenProjectFile) {
+                          onOpenProjectFile(entry);
+                        } else if (entry.isVideo) {
+                          onSelectVideoFile(entry);
+                        }
+                      }
+                    }}
                     role="button"
                     tabIndex={0}
                   >
@@ -508,6 +526,17 @@ export function MediaExplorerView({
                       {entry.isDirectory ? "—" : formatBytes(entry.sizeBytes)}
                     </div>
                     <div className="col col-actions" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="btn-action-copy-path"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(entry.path);
+                        }}
+                        title="คัดลอก Path ของไฟล์ลง Clipboard"
+                        style={{ fontSize: "0.75rem", padding: "2px 6px", marginRight: "4px", cursor: "pointer" }}
+                      >
+                        📋 พาธ
+                      </button>
                       {isProj && onOpenProjectFile && (
                         <button
                           type="button"

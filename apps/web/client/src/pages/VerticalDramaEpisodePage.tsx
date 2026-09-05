@@ -8342,6 +8342,20 @@ function EpisodeWorkspaceShell({
       .filter((shotNumber): shotNumber is number => typeof shotNumber === "number" && Number.isInteger(shotNumber) && shotNumber > 0)))
       .sort((a, b) => a - b);
   }, [episodeDetailQuery.data?.storyboard]);
+  // Enhanced readiness can be fetched while the storyboard is already
+  // present but the approved start-frame plan is still being synchronized.
+  // Include the persisted frame anchors in the dependency key so a later
+  // approval/refetch clears the stale "no start frame" readiness result.
+  const enhancedReadinessFrameKey = useMemo(
+    () =>
+      (episodeDetailQuery.data?.startFramePlan?.frames ?? [])
+        .map(
+          frame =>
+            `${frame.shotNumber}:${frame.approvedMediaAssetId ?? ""}:${frame.approvedStopFrameAssetId ?? ""}`
+        )
+        .join("|"),
+    [episodeDetailQuery.data?.startFramePlan?.frames]
+  );
   useEffect(() => {
     if (!enhancedVideoPromptUiEnabled || !enabled || enhancedShotNumbers.length === 0) {
       setEnhancedReadinessByShot({});
@@ -8366,7 +8380,15 @@ function EpisodeWorkspaceShell({
       if (!cancelled) setEnhancedReadinessByShot(Object.fromEntries(entries));
     });
     return () => { cancelled = true; };
-  }, [enabled, enhancedShotNumbers, enhancedVideoPromptUiEnabled, episodeId, seriesId, utils]);
+  }, [
+    enabled,
+    enhancedReadinessFrameKey,
+    enhancedShotNumbers,
+    enhancedVideoPromptUiEnabled,
+    episodeId,
+    seriesId,
+    utils,
+  ]);
   const enhancedUpdateMutation = trpc.verticalDramaEpisodes.updateVideoPromptVariant.useMutation();
   const enhancedFinalizeMutation = trpc.verticalDramaEpisodes.finalizeVideoPromptVariant.useMutation();
   const enhancedApplyMutation = trpc.verticalDramaEpisodes.applyVideoPromptVariant.useMutation();

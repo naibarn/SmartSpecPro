@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { buildOverlayDocument } from "./overlayDocument";
 import type { NleClip } from "../../types/nleProject";
 
@@ -26,6 +26,16 @@ export function CodeOverlayModal({
   const [durationSec, setDurationSec] = useState(5);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handlePromptGenerate = async () => {
@@ -51,16 +61,18 @@ export function CodeOverlayModal({
   };
 
   const handleSaveOverlay = () => {
-    if (!Number.isFinite(durationSec) || durationSec < 1 || durationSec > 60) return;
+    const validDuration = Math.max(1, Math.min(60, Number.isFinite(durationSec) ? Math.round(durationSec) : 5));
+    const finalMarkup = componentCode.trim() || `<div style="padding:12px;color:#38bdf8;font-weight:bold;text-align:center;">✨ Overlay Preview</div>`;
+
     const newClip: NleClip = {
       id: `code_overlay_${Date.now()}`,
       name: prompt.trim() || (engine === "three_js" ? "3D WebGL Overlay" : "React/CSS Overlay"),
-      timelineStartMs: currentTimeMs,
-      durationMs: durationSec * 1000,
+      timelineStartMs: Math.round(currentTimeMs),
+      durationMs: validDuration * 1000,
       sourceType: "generated_code",
       codeEngine: engine,
       prompt,
-      componentCode,
+      componentCode: finalMarkup,
       customCss,
       transform: {
         x: 0.5,
@@ -85,7 +97,7 @@ export function CodeOverlayModal({
               <p className="modal-subtitle">สร้างจากเทมเพลตบนเครื่อง หรือแก้ HTML / CSS เพื่อดูตัวอย่างแบบแยก sandbox</p>
             </div>
           </div>
-          <button type="button" className="modal-close-button" onClick={onClose}>✕</button>
+          <button type="button" className="modal-close-button" onClick={onClose} title="ปิดหน้าต่าง (Esc)">✕</button>
         </div>
 
         <div className="media-intent-modal-body">
@@ -161,13 +173,37 @@ export function CodeOverlayModal({
                   <span>ตัวอย่างไอคอนเหรียญหมุน</span>
                 </div>
               ) : (
-                <iframe title="HTML / CSS preview" sandbox="" referrerPolicy="no-referrer" srcDoc={buildOverlayDocument(componentCode, customCss)} />
+                <iframe
+                  title="HTML / CSS preview"
+                  sandbox=""
+                  referrerPolicy="no-referrer"
+                  srcDoc={buildOverlayDocument(
+                    componentCode.trim() || `<div style="padding:16px;color:#38bdf8;font-weight:bold;text-align:center;">✨ พิมพ์ HTML Markup เพื่อเริ่มพรีวิว</div>`,
+                    customCss
+                  )}
+                />
               )}
             </div>
           </div>
         </div>
 
         <div className="media-intent-modal-footer">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              setEngine("react_css");
+              setComponentCode(
+                `<div class="hologram-card">\n  <span class="holo-tag">EXCLUSIVE</span>\n  <h3>โปรโมชั่นพิเศษ 50%</h3>\n  <p>สั่งซื้อเลยวันนี้</p>\n</div>`
+              );
+              setCustomCss(
+                `.hologram-card {\n  background: rgba(15, 23, 42, 0.85);\n  border: 2px solid #38bdf8;\n  box-shadow: 0 0 20px rgba(56, 189, 248, 0.6);\n  padding: 16px;\n  border-radius: 12px;\n  color: #fff;\n  text-align: center;\n  animation: floatCard 3s ease-in-out infinite;\n}\n@keyframes floatCard {\n  0%, 100% { transform: translateY(0); }\n  50% { transform: translateY(-8px); }\n}`
+              );
+            }}
+            title="คืนค่าโค้ด HTML / CSS กลับสู่เทมเพลตเริ่มต้น"
+          >
+            🔄 รีเซ็ตโค้ด
+          </button>
           <button type="button" className="secondary-button" onClick={onClose}>
             ยกเลิก
           </button>

@@ -4,7 +4,7 @@
  * `generateStartFrameShotPrompt`'s mode dispatch (legacy skill / mode 1
  * `policy_safe_rewrite` / mode 2 `cinematic_narrative`), the new
  * `TARGET IMAGE MODEL` / `SERIES LOOK REGISTER` / `PRODUCT TIE-IN` /
- * `frame_analysis_inputs` fact lines, the mode-2-only vision attachment
+ * `frame_analysis_inputs` fact lines, the reference vision attachment
  * (`buildStartFrameShotPromptVisionImages`), and the lenient extras
  * (`safety_adjustments` / `analysis_summary` / `quality_score` /
  * `quality_flags`) normalization.
@@ -652,6 +652,23 @@ describe("generateStartFrameShotPrompt — mode 2 vision resolution (D3: image-g
     expect(result.usedVision).toBe(false);
     expect(mockLoadEnabledLlmModelRows).not.toHaveBeenCalled();
   });
+
+  it("keeps attached product references in the final prompt even when the author omits them", async () => {
+    mockExecute.mockResolvedValue(
+      successResponse({ prompt: "a cinematic shot", negative_prompt: "" })
+    );
+    const result = await generateStartFrameShotPrompt(
+      baseShotParams({
+        productReferenceImages: [
+          { url: "https://cdn/bicycle.png", label: "Selected product 1" },
+        ],
+      })
+    );
+
+    expect(userMessageContent()).toContain("product_reference_inputs");
+    expect(result.prompt).toContain("ATTACHED PRODUCT REFERENCE LOCK");
+    expect(result.prompt).toContain("attached product reference image(s)");
+  });
 });
 
 describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", () => {
@@ -1004,7 +1021,7 @@ describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", ()
   });
 });
 
-describe("buildStartFrameShotPromptVisionImages — mode-2 vision attachment (c)", () => {
+describe("buildStartFrameShotPromptVisionImages — reference vision attachment (c)", () => {
   it("mode 1 / legacy: attaches only the shot's own image + additionalImageUrls, unchanged from today", () => {
     const images = buildStartFrameShotPromptVisionImages(
       "https://cdn/shot.png",
@@ -1055,6 +1072,28 @@ describe("buildStartFrameShotPromptVisionImages — mode-2 vision attachment (c)
       { url: "https://cdn/hero.png", label: "Image 1 reference: Hero" },
       { url: "https://cdn/cafe.png", label: "Location reference: Café" },
       { url: "https://cdn/shampoo.png", label: "Product reference: Selected product reference 1" },
+    ]);
+  });
+
+  it("attaches product and prop/object references even without cinematic mode", () => {
+    const images = buildStartFrameShotPromptVisionImages(undefined, undefined, {
+      productReferenceImages: [
+        { url: "https://cdn/bicycle.png", label: "Selected product 1" },
+      ],
+      propObjectReferenceImages: [
+        { url: "https://cdn/phone.png", label: "Prop reference 1" },
+      ],
+    });
+
+    expect(images).toEqual([
+      {
+        url: "https://cdn/bicycle.png",
+        label: "Product reference: Selected product 1",
+      },
+      {
+        url: "https://cdn/phone.png",
+        label: "Prop/object reference: Prop reference 1",
+      },
     ]);
   });
 

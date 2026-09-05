@@ -492,7 +492,12 @@ export function MediaVideoEditorPlayer({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement)?.isContentEditable
+      ) return;
+
       if (e.key === "f" || e.key === "F") {
         e.preventDefault();
         handleToggleFullscreen();
@@ -1688,6 +1693,9 @@ export function MediaVideoEditorPlayer({
       } else if (e.key === "]" || e.key.toLowerCase() === "o") {
         e.preventDefault();
         setTrimEnd(Math.min(duration, Math.max(trimStart + 0.2, currentTime)));
+      } else if (e.key === "m" || e.key === "M") {
+        e.preventDefault();
+        setIsMuted((prev) => !prev);
       } else if (e.key === "Escape") {
         e.preventDefault();
         if (onClose) {
@@ -3625,6 +3633,15 @@ export function MediaVideoEditorPlayer({
               >
                 ▶▶
               </button>
+              <button
+                type="button"
+                className={`transport-btn ${isMuted ? "muted" : ""}`}
+                onClick={() => setIsMuted(!isMuted)}
+                title={isMuted ? "เปิดเสียง (M)" : "ปิดเสียง (M)"}
+                style={{ color: isMuted ? "#ef4444" : undefined }}
+              >
+                {isMuted ? "🔇" : "🔊"}
+              </button>
             </div>
 
             {/* Scrubber slider line */}
@@ -3667,6 +3684,9 @@ export function MediaVideoEditorPlayer({
               <span className="current-tc">{formatSmpteTime(currentTime)}</span>
               <span className="divider">/</span>
               <span className="total-tc">{formatSmpteTime(duration)}</span>
+              <span style={{ fontSize: "0.72rem", opacity: 0.75, marginLeft: "6px", color: "#38bdf8" }}>
+                (F:{Math.floor(currentTime * 30)}/{Math.floor(duration * 30)})
+              </span>
             </div>
           </div>
         </div>

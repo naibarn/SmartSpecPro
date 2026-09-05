@@ -19879,10 +19879,16 @@ export const verticalDramaEpisodesRouter = router({
         composition: renderShotComposition,
       });
       if (groundingIssues.length > 0) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: `พรอมต์ภาพของช็อต ${input.shotNumber} ยังไม่มีข้อมูลจัดองค์ประกอบช็อตปัจจุบันครบถ้วน (${groundingIssues.join(", ")}) — กรุณาสร้างพรอมต์ช็อตนี้ใหม่ก่อน เพื่อป้องกันภาพผิดธรรมชาติและการใส่อุปกรณ์ซ้ำซ้อน`,
-        });
+        console.warn(
+          "[vd_start_frame] prompt grounding advisory — continuing to image generation",
+          {
+            episodeId,
+            shotNumber: input.shotNumber,
+            groundingIssues,
+            productReferenceCount:
+              frame.productReferenceAssetIds?.length ?? 0,
+          }
+        );
       }
       const sceneNeighborAnchorsEnabled =
         (await resolveVerticalDramaSceneNeighborAnchorsFlag(tenantId)) &&

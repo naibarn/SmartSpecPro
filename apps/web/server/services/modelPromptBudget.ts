@@ -53,8 +53,9 @@ export function resolveVdImagePromptBudget(modelMax: number | null): number {
 }
 
 /**
- * Effective Vertical Drama allowance. The legacy 3800-character budget is a
- * floor, making this capability change widening-only for low-cap model rows.
+ * Effective Vertical Drama allowance. Explicit model limits are honored as
+ * written; the legacy 3800-character floor remains for non-Kie rows without
+ * a usable provider limit.
  */
 export function resolveVdImagePromptBudgetForModel(params: {
   modelId: string;
@@ -73,10 +74,12 @@ export function resolveVdImagePromptBudgetForModel(params: {
     params.configJson?.provider ??
     params.configJson?.providerName ??
     staticModel?.provider;
+  const modelMax = resolveModelMaxPromptLength(params.modelId, params.configJson);
+  if (modelMax !== null && isKieAiProvider(provider)) {
+    return resolveVdImagePromptBudget(modelMax);
+  }
   if (isKieAiProvider(provider)) {
     return VD_IMAGE_PROMPT_ABSOLUTE_MAX;
   }
-
-  const modelMax = resolveModelMaxPromptLength(params.modelId, params.configJson);
   return Math.max(VD_IMAGE_PROMPT_MAX, resolveVdImagePromptBudget(modelMax));
 }

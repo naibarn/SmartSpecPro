@@ -7,6 +7,7 @@ import {
   save as nativeSave,
 } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./styles.css";
 import { MediaWorkspacePanel, SeriesWorkspacePanel } from "./SeriesWorkspacePanel";
 import { WorkerAppShell } from "./app/WorkerAppShell";
@@ -465,6 +466,14 @@ const runtimeRequirements = isMacOSHost
     ];
 
 function App() {
+  useEffect(() => {
+    try {
+      void getCurrentWindow().maximize();
+    } catch {
+      // ignore if running outside Tauri
+    }
+  }, []);
+
   useEffect(() => {
     const reportFrontendError = (payload: Record<string, unknown>) => {
       void invoke("worker_app_log_frontend_error", payload).catch(() => {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { NleClip } from "../../types/nleProject";
 
 interface TextOverlayModalProps {
@@ -152,8 +152,20 @@ export function TextOverlayModal({
   >("pop");
   const [positionPreset, setPositionPreset] = useState<"top" | "center" | "lower_third" | "custom">("top");
   const [posX, setPosX] = useState(0.5);
-  const [posY, setPosY] = useState(0.22);
+  const [posY, setPosY] = useState(0.20);
+  const [letterSpacingPx, setLetterSpacingPx] = useState(0);
+  const [isUppercase, setIsUppercase] = useState(false);
   const [durationSec, setDurationSec] = useState(4.0);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 

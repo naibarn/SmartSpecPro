@@ -2,8 +2,8 @@
  * Vertical Drama Series — final-prompt quality control (hard length caps).
  *
  * Enforces the legacy `VD_IMAGE_PROMPT_MAX` (3800 chars) / `VD_VIDEO_PROMPT_MAX`
- * (2000 chars) defaults, widened only by a selected provider's explicit
- * allowance (currently 390000 for Kie.ai image and 4096 for Kie.ai video), on any FINAL prompt string
+ * (2000 chars) defaults, widened only by a selected model/provider's explicit
+ * allowance (for example, the catalog-specific Kie.ai image limit), on any FINAL prompt string
  * BEFORE it is used for real generation or
  * persisted/displayed in the UI. When a prompt is already within its cap this
  * is a zero-cost, zero-LLM-call no-op (`refined: false`, `creditsUsed: 0`) —

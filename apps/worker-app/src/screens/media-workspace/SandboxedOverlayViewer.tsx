@@ -200,8 +200,10 @@ export function SandboxedOverlayViewer({
         if (clip.svgContent) {
           const posX = clip.transform?.x ?? 0.5;
           const posY = clip.transform?.y ?? 0.5;
-          const scale = clip.transform?.scale ?? 1.0;
-          const opacity = clip.transform?.opacity ?? 1.0;
+          const rawScale = clip.transform?.scale ?? 1.0;
+          const scale = Number.isFinite(rawScale) && rawScale > 0 ? Math.max(0.01, rawScale) : 1.0;
+          const rawOpacity = clip.transform?.opacity ?? 1.0;
+          const opacity = Number.isFinite(rawOpacity) ? Math.max(0, Math.min(1, rawOpacity)) : 1.0;
           const animClass = clip.animationEffect && clip.animationEffect !== "none"
             ? `anim-svg-${clip.animationEffect}`
             : "";
@@ -229,7 +231,6 @@ export function SandboxedOverlayViewer({
 
         // 3. Text & Subtitle Clips (with Google Fonts, Stroke, Shadows, Background Pill & Animations)
         if (clip.sourceType === "text" || clip.text) {
-          const hasCustomTransform = clip.transform && (clip.transform.x !== 0.5 || clip.transform.y !== 0.5);
           const posX = clip.transform?.x ?? 0.5;
           const posY = clip.transform?.y ?? 0.82;
           const animClass = clip.animationEffect && clip.animationEffect !== "none"
@@ -265,6 +266,9 @@ export function SandboxedOverlayViewer({
                     ? `${clip.shadowOffsetX || 0}px ${clip.shadowOffsetY || 0}px ${clip.shadowBlur || 0}px ${clip.shadowColor || "rgba(0,0,0,0.8)"}`
                     : undefined,
                 textAlign: clip.textAlign || "center",
+                lineHeight: 1.35,
+                wordBreak: "break-word",
+                whiteSpace: "pre-wrap",
                 zIndex: 40,
                 maxWidth: "92%",
               }}
@@ -343,7 +347,8 @@ export function SandboxedOverlayViewer({
           let translateY = clip.transform?.y !== undefined ? clip.transform.y * 100 - 50 : 0;
 
           if (clip.kenBurns?.enabled) {
-            const kbProgress = Math.max(0, Math.min(1, (currentTimeMs - clip.timelineStartMs) / clip.durationMs));
+            const kbDuration = Math.max(1, clip.durationMs);
+            const kbProgress = Math.max(0, Math.min(1, (currentTimeMs - clip.timelineStartMs) / kbDuration));
             scale = clip.kenBurns.startScale + (clip.kenBurns.endScale - clip.kenBurns.startScale) * kbProgress;
             if (clip.kenBurns.panDirection === "left_to_right") {
               translateX += (kbProgress - 0.5) * 15;

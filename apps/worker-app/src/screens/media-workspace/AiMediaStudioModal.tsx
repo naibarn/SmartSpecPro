@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import type { NleClip } from "../../types/nleProject";
 
 interface AiMediaStudioModalProps {
@@ -51,6 +51,16 @@ export function AiMediaStudioModal({
 
   const [generationError, setGenerationError] = useState<string | null>(null);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -134,8 +144,6 @@ export function AiMediaStudioModal({
   return (
     <div className="nle-modal-overlay" onClick={onClose}>
       <div className="nle-modal-card ai-media-studio-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "860px" }}>
-        {generationError && <p role="alert">{generationError}</p>}
-        <p role="status">การสร้างภาพ วิดีโอ และเสียง AI จากหน้าต่างนี้ยังไม่พร้อมใช้งาน</p>
         <div className="nle-modal-header">
           <div className="modal-header-title">
             <span className="modal-icon">✨</span>
@@ -150,6 +158,12 @@ export function AiMediaStudioModal({
             ✕
           </button>
         </div>
+
+        {generationError && (
+          <div className="ai-modal-error-banner" role="alert" style={{ background: "rgba(239, 68, 68, 0.15)", color: "#f87171", border: "1px solid rgba(239, 68, 68, 0.3)", padding: "10px 16px", margin: "12px 16px 0 16px", borderRadius: "8px", fontSize: "0.82rem" }}>
+            ⚠️ {generationError}
+          </div>
+        )}
 
         {/* Tab Navigation */}
         <div className="ai-studio-tabs" style={{ display: "flex", background: "#090d16", borderBottom: "1px solid #334155", padding: "8px 16px", gap: "10px" }}>

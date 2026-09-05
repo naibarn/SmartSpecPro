@@ -341,6 +341,16 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     expect(handler).toContain("refreshEpisodeDetailAfterPromptMutation");
   });
 
+  it("rechecks Enhanced readiness when an approved frame arrives after the storyboard", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+    expect(source).toContain("const enhancedReadinessFrameKey = useMemo(");
+    expect(source).toContain("frame.approvedMediaAssetId");
+    expect(source).toContain("enhancedReadinessFrameKey,");
+  });
+
   it("shows the actual video-prompt precondition instead of always claiming the main image is missing", () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
