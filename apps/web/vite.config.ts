@@ -77,6 +77,10 @@ export default defineConfig(({ command, mode }) => {
         ? path.resolve(process.env.SSP_BUILD_OUT_DIR)
         : path.resolve(import.meta.dirname, "dist/public"),
       emptyOutDir: true,
+      // Atomic production builds copy public files themselves so the very
+      // large release artifacts stay shared instead of being duplicated.
+      // Direct/local Vite builds keep the normal copy behavior.
+      copyPublicDir: process.env.SSP_SKIP_PUBLIC_COPY !== "1",
       sourcemap: "hidden",
       // Route-based code splitting is in place. 2000 kB gives headroom for large
       // vendor chunks (Radix, Konva) while still catching regressions early.

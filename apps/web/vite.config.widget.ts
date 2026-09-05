@@ -29,6 +29,9 @@ const outDir = process.env.SSP_BUILD_OUT_DIR
 
 export default defineConfig({
   plugins: [react()],
+  // The widget has no standalone public assets. In an atomic build the main
+  // script populates public files once at the staging root.
+  publicDir: false,
   build: {
     outDir,
     emptyOutDir: false,
