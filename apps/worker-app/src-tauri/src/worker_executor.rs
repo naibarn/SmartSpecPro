@@ -8,9 +8,9 @@ use crate::hermes_executor::{
     HERMES_CONNECTION_AUTHORIZE_JOB_TYPE, HERMES_CONNECTION_DISCONNECT_JOB_TYPE,
     HERMES_CONNECTION_PROBE_JOB_TYPE, HERMES_MEDIA_IMAGE_JOB_TYPE, HERMES_MEDIA_VIDEO_JOB_TYPE,
 };
-use crate::runtime_manifest::DoctorSummary;
 use crate::local_llm_adapter::{execute_openai_compatible, LocalLlmRequest};
 use crate::local_llm_registry::load_registry;
+use crate::runtime_manifest::DoctorSummary;
 use std::sync::atomic::AtomicBool;
 
 pub const HYPERFRAMES_JOB_TYPE: &str = "hyperframes_final_composite";
@@ -29,6 +29,18 @@ pub const VERTICAL_DRAMA_FOOTAGE_ANALYSIS_CAPABILITY: &str = "vd-footage-analysi
 pub const VERTICAL_DRAMA_FOOTAGE_PREPARE_CAPABILITY: &str = "vd-footage-prepare";
 pub const VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_CAPABILITY: &str = "vd-footage-broll-render";
 pub const VERTICAL_DRAMA_MEDIA_CAPABILITY: &str = "vertical-drama-media";
+/// Feature 176/177 contract registration. These capabilities are deliberately
+/// not advertised by the current Worker until the genuine runtime, ASR and
+/// mix executors are installed and wired end-to-end.
+pub const VERTICAL_DRAMA_AUDIO_ANALYSIS_JOB_TYPE: &str = "episode_audio_analyze";
+pub const VERTICAL_DRAMA_MUSIC3_GENERATION_JOB_TYPE: &str = "minimax_music3_generate";
+pub const VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE: &str = "episode_score_mix";
+pub const VERTICAL_DRAMA_AUDIO_ANALYSIS_CAPABILITY: &str = "episode-audio-analysis-v1";
+pub const VERTICAL_DRAMA_MUSIC3_GENERATION_CAPABILITY: &str = "minimax-music3-generation-v1";
+pub const VERTICAL_DRAMA_SCORE_MIX_CAPABILITY: &str = "episode-score-mix-v1";
+pub const VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE: &str = "speaker_aware_media_scan";
+pub const VERTICAL_DRAMA_SPEAKER_AWARE_EDIT_PLAN_JOB_TYPE: &str = "speaker_aware_edit_plan";
+pub const VERTICAL_DRAMA_SPEAKER_AWARE_CAPABILITY: &str = "speaker-aware-media-v1";
 pub const COMFY_CAPABILITY_FAMILIES: [&str; 4] = [
     "comfyui-image-generate",
     "comfyui-video-generate",
@@ -203,6 +215,8 @@ pub enum WorkerJobKind {
     ComfyWorkflowRun,
     VerticalDramaMedia,
     VerticalDramaFootageRender,
+    VerticalDramaAudioScoring,
+    VerticalDramaSpeakerAware,
     HermesMediaImage,
     HermesMediaVideo,
     HermesConnectionAuthorize,
@@ -226,6 +240,11 @@ pub fn classify_job_type(job_type: &str) -> WorkerJobKind {
             WorkerJobKind::VerticalDramaMedia
         }
         VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE => WorkerJobKind::VerticalDramaFootageRender,
+        VERTICAL_DRAMA_AUDIO_ANALYSIS_JOB_TYPE
+        | VERTICAL_DRAMA_MUSIC3_GENERATION_JOB_TYPE
+        | VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE => WorkerJobKind::VerticalDramaAudioScoring,
+        VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE
+        | VERTICAL_DRAMA_SPEAKER_AWARE_EDIT_PLAN_JOB_TYPE => WorkerJobKind::VerticalDramaSpeakerAware,
         HERMES_MEDIA_IMAGE_JOB_TYPE => WorkerJobKind::HermesMediaImage,
         HERMES_MEDIA_VIDEO_JOB_TYPE => WorkerJobKind::HermesMediaVideo,
         HERMES_CONNECTION_AUTHORIZE_JOB_TYPE => WorkerJobKind::HermesConnectionAuthorize,
@@ -246,20 +265,31 @@ pub async fn execute_local_llm_job(
     let request: LocalLlmRequest = serde_json::from_value(job.input_json.clone())
         .map_err(|error| format!("invalid llm_invoke input: {error}"))?;
     let registry = load_registry(app_data_dir)?;
-    let provider = registry.providers.iter()
+    let provider = registry
+        .providers
+        .iter()
         .find(|item| item.local_provider_id == request.local_provider_id && item.enabled)
         .ok_or_else(|| "local provider binding is unavailable".to_string())?;
-    let model = registry.models.iter()
-        .find(|item| item.local_provider_id == request.local_provider_id && item.local_model_id == request.local_model_id && item.enabled)
+    let model = registry
+        .models
+        .iter()
+        .find(|item| {
+            item.local_provider_id == request.local_provider_id
+                && item.local_model_id == request.local_model_id
+                && item.enabled
+        })
         .ok_or_else(|| "local model binding is unavailable".to_string())?;
     if request.model_ref.trim().is_empty() || request.inventory_revision < 0 {
         return Err("invalid model binding".into());
     }
-    let api_key = provider.credential_ref.as_deref().and_then(|credential_ref| {
-        keyring::Entry::new("smartaihub-worker-local-llm", credential_ref)
-            .ok()
-            .and_then(|entry| entry.get_password().ok())
-    });
+    let api_key = provider
+        .credential_ref
+        .as_deref()
+        .and_then(|credential_ref| {
+            keyring::Entry::new("smartaihub-worker-local-llm", credential_ref)
+                .ok()
+                .and_then(|entry| entry.get_password().ok())
+        });
     execute_openai_compatible(provider, model, &request, api_key.as_deref(), cancel).await
 }
 
@@ -1764,6 +1794,18 @@ mod tests {
         assert_eq!(
             classify_job_type(HERMES_CONNECTION_DISCONNECT_JOB_TYPE),
             WorkerJobKind::HermesConnectionDisconnect
+        );
+        assert_eq!(
+            classify_job_type(VERTICAL_DRAMA_AUDIO_ANALYSIS_JOB_TYPE),
+            WorkerJobKind::VerticalDramaAudioScoring
+        );
+        assert_eq!(
+            classify_job_type(VERTICAL_DRAMA_MUSIC3_GENERATION_JOB_TYPE),
+            WorkerJobKind::VerticalDramaAudioScoring
+        );
+        assert_eq!(
+            classify_job_type(VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE),
+            WorkerJobKind::VerticalDramaAudioScoring
         );
         assert_eq!(classify_job_type("video_assembly"), WorkerJobKind::Unknown);
     }

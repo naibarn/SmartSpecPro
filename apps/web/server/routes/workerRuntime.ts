@@ -90,12 +90,14 @@ import {
   workers,
   workerJobs,
   workerJobEvents,
+  workerArtifacts,
+  workerSeriesBindings,
   verticalDramaSeries,
   verticalDramaMediaAssets,
   type WorkerArtifact,
   type WorkerJob,
 } from "../../drizzle/schema";
-import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, or } from "drizzle-orm";
 import { verifyBearerToken } from "../_core/tokens";
 import { storageStreamFile, storagePut, storagePresignPut } from "../storage";
 import { createLibraryItem } from "../services/libraryService";
@@ -1217,6 +1219,7 @@ export function registerWorkerRuntimeRoutes(
   });
   const eventLimiter = rateLimit("worker-job-events", { rpm: 240 });
   const artifactLimiter = rateLimit("worker-job-artifacts", { rpm: 120 });
+  const audioInputLimiter = rateLimit("worker-audio-inputs", { rpm: 240 });
   const diagnosticsLimiter = rateLimit("worker-diagnostics", { rpm: 30 });
   const callbackLimiter = rateLimit("worker-job-callbacks", { rpm: 60 });
   const connectLimiter = rateLimit("worker-connect", { rpm: 60 });
@@ -2838,6 +2841,138 @@ export function registerWorkerRuntimeRoutes(
       }
     }
   );
+
+  /** Feature 176/177 — stream only a claimed job's server-bound audio input. */
+  app.get("/api/worker-jobs/:jobId/audio-inputs/:artifactId", audioInputLimiter, async (req, res) => {
+    try {
+      const token = requireBearerToken(req);
+      const auth = await verifyWorkerRouteAccessToken(req, token, {
+        allowedTokenUses: ["worker_execution"],
+        requiredScopes: ["series:media:process"],
+      });
+      const database = getDb();
+      const [job] = await database.select({ id: workerJobs.id, workerId: workerJobs.workerId, status: workerJobs.status, inputJson: workerJobs.inputJson, workerSeriesBindingId: workerJobs.workerSeriesBindingId, workerSeriesBindingRevision: workerJobs.workerSeriesBindingRevision })
+        .from(workerJobs)
+        .where(and(eq(workerJobs.id, req.params.jobId), eq(workerJobs.tenantId, auth.tenantId), eq(workerJobs.workerId, auth.workerId)))
+        .limit(1);
+      if (!job || !["claimed", "preparing", "running", "uploading", "publishing"].includes(job.status)) throw new WorkerRuntimeServiceError("worker_state_invalid", 409, "Worker job is not active");
+      if (!job.workerSeriesBindingId) throw new WorkerRuntimeServiceError("worker_permission_denied", 403, "Audio job is not bound to a worker series root");
+      const [binding] = await database.select({ seriesId: workerSeriesBindings.seriesId, status: workerSeriesBindings.status, bindingRevision: workerSeriesBindings.bindingRevision, revokedAt: workerSeriesBindings.revokedAt })
+        .from(workerSeriesBindings)
+        .where(and(eq(workerSeriesBindings.id, job.workerSeriesBindingId), eq(workerSeriesBindings.tenantId, auth.tenantId), eq(workerSeriesBindings.workerId, auth.workerId)))
+        .limit(1);
+      if (!binding || binding.status !== "active" || binding.revokedAt || binding.bindingRevision !== job.workerSeriesBindingRevision) throw new WorkerRuntimeServiceError("worker_permission_denied", 403, "Audio job binding is stale");
+      const input = job.inputJson && typeof job.inputJson === "object" && !Array.isArray(job.inputJson) ? job.inputJson as Record<string, any> : {};
+      const candidates = [
+        input.cutMedia,
+        ...(Array.isArray(input.sourceRefs) ? input.sourceRefs : []),
+        input.analysisArtifacts?.transcript,
+        input.analysisArtifacts?.editMap,
+      ].filter(value => value && typeof value === "object");
+      const source = candidates.find(value => value.artifactId === req.params.artifactId);
+      if (!source || typeof source.storageRef !== "string" || typeof source.checksum !== "string") throw new WorkerRuntimeServiceError("worker_permission_denied", 403, "Audio source is not part of this job");
+      const storageRef = source.storageRef.trim();
+      let contentType = "application/octet-stream";
+      if (source.kind === "media") {
+        const seriesId = String(input.seriesId ?? "");
+        const episodeId = String(input.episodeId ?? "");
+        if (!storageRef.startsWith(`vertical-drama/compiled/${seriesId}/${episodeId}/`)) throw new WorkerRuntimeServiceError("worker_permission_denied", 403, "Compiled audio source is outside the episode scope");
+        contentType = "video/mp4";
+      } else if (source.kind === "music_take") {
+        const [artifact] = await database.select({ storageRef: workerArtifacts.storageRef, metadataJson: workerArtifacts.metadataJson, jobStatus: workerJobs.status })
+          .from(workerArtifacts).innerJoin(workerJobs, eq(workerJobs.id, workerArtifacts.workerJobId))
+          .where(and(eq(workerArtifacts.id, req.params.artifactId), eq(workerArtifacts.storageRef, storageRef), eq(workerJobs.tenantId, auth.tenantId), inArray(workerJobs.status, ["completed", "published"])))
+          .limit(1);
+        if (!artifact || String(artifact.metadataJson?.checksumSha256 ?? "") !== source.checksum) throw new WorkerRuntimeServiceError("worker_permission_denied", 403, "Music take is not published for this job");
+        contentType = String(artifact.metadataJson?.contentType ?? "audio/wav");
+      } else if (source.kind === "transcript" || source.kind === "edit_map") {
+        const [artifact] = await database.select({ storageRef: workerArtifacts.storageRef, metadataJson: workerArtifacts.metadataJson, jobStatus: workerJobs.status, jobType: workerJobs.jobType })
+          .from(workerArtifacts).innerJoin(workerJobs, eq(workerJobs.id, workerArtifacts.workerJobId))
+          .where(and(eq(workerArtifacts.id, req.params.artifactId), eq(workerArtifacts.storageRef, storageRef), eq(workerJobs.tenantId, auth.tenantId), eq(workerJobs.jobType, "episode_audio_analyze"), inArray(workerJobs.status, ["completed", "published"])))
+          .limit(1);
+        if (!artifact || String(artifact.metadataJson?.checksumSha256 ?? "") !== source.checksum) throw new WorkerRuntimeServiceError("worker_permission_denied", 403, "Analysis artifact is not published for this job");
+        contentType = "application/json";
+      } else {
+        throw new WorkerRuntimeServiceError("invalid_request", 400, "Unsupported audio source kind");
+      }
+      const stored = await storageStreamFile(storageRef);
+      if (!stored) throw new WorkerRuntimeServiceError("not_found", 404, "Audio artifact not found");
+      res.status(200).setHeader("Content-Type", contentType).setHeader("Cache-Control", "private, no-store").setHeader("X-Asset-Sha256", source.checksum);
+      if (stored.contentLength) res.setHeader("Content-Length", String(stored.contentLength));
+      const nodeStream = stored.stream as NodeJS.ReadableStream;
+      if (typeof (nodeStream as any).pipe === "function") return (nodeStream as any).pipe(res);
+      const reader = (stored.stream as ReadableStream).getReader();
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        res.write(Buffer.from(chunk.value));
+      }
+      return res.end();
+    } catch (error) {
+      handleWorkerRouteError(error, res);
+    }
+  });
+
+  /** Feature 179 — stream a published media or analysis artifact referenced by
+   * a claimed speaker-aware job. This is intentionally separate from the
+   * binding-scoped audio route: speaker-aware jobs are tenant-owned artifact
+   * workflows and do not silently inherit a local-series binding. */
+  app.get("/api/worker-jobs/:jobId/media-inputs/:artifactId", audioInputLimiter, async (req, res) => {
+    try {
+      const token = requireBearerToken(req);
+      const auth = await verifyWorkerRouteAccessToken(req, token, {
+        allowedTokenUses: ["worker_execution"],
+        requiredScopes: ["series:media:process"],
+      });
+      const database = getDb();
+      const [job] = await database.select({ id: workerJobs.id, inputJson: workerJobs.inputJson, status: workerJobs.status })
+        .from(workerJobs)
+        .where(and(eq(workerJobs.id, req.params.jobId), eq(workerJobs.tenantId, auth.tenantId), eq(workerJobs.workerId, auth.workerId)))
+        .limit(1);
+      if (!job || !["claimed", "preparing", "running", "uploading", "publishing"].includes(job.status)) {
+        throw new WorkerRuntimeServiceError("worker_state_invalid", 409, "Speaker-aware job is not active");
+      }
+      const input = job.inputJson && typeof job.inputJson === "object" && !Array.isArray(job.inputJson) ? job.inputJson as Record<string, any> : {};
+      const candidates = [
+        input.inputArtifact,
+        ...(Array.isArray(input.analysisArtifacts) ? input.analysisArtifacts : []),
+      ].filter(value => value && typeof value === "object");
+      const source = candidates.find(value => value.artifactId === req.params.artifactId);
+      if (!source || typeof source.checksum !== "string") {
+        throw new WorkerRuntimeServiceError("worker_permission_denied", 403, "Artifact is not referenced by this speaker-aware job");
+      }
+      const [artifact] = await database.select({ storageRef: workerArtifacts.storageRef, metadataJson: workerArtifacts.metadataJson, jobStatus: workerJobs.status })
+        .from(workerArtifacts)
+        .innerJoin(workerJobs, eq(workerJobs.id, workerArtifacts.workerJobId))
+        .where(and(
+          eq(workerArtifacts.id, req.params.artifactId),
+          eq(workerJobs.tenantId, auth.tenantId),
+          inArray(workerJobs.status, ["completed", "published"]),
+        ))
+        .limit(1);
+      const metadata = artifact?.metadataJson ?? {};
+      const storedChecksum = String(metadata.checksumSha256 ?? metadata.outputSha256 ?? "");
+      if (!artifact || storedChecksum !== source.checksum) {
+        throw new WorkerRuntimeServiceError("worker_permission_denied", 403, "Artifact is not a published checksum-matching artifact");
+      }
+      const stored = await storageStreamFile(artifact.storageRef);
+      if (!stored) throw new WorkerRuntimeServiceError("not_found", 404, "Speaker-aware artifact not found");
+      const contentType = String(metadata.contentType ?? (source.kind.includes("json") || source.kind.includes("scan") || source.kind.includes("edit_map") ? "application/json" : "application/octet-stream"));
+      res.status(200).setHeader("Content-Type", contentType).setHeader("Cache-Control", "private, no-store").setHeader("X-Asset-Sha256", source.checksum);
+      if (stored.contentLength) res.setHeader("Content-Length", String(stored.contentLength));
+      const nodeStream = stored.stream as NodeJS.ReadableStream;
+      if (typeof (nodeStream as any).pipe === "function") return (nodeStream as any).pipe(res);
+      const reader = (stored.stream as ReadableStream).getReader();
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        res.write(Buffer.from(chunk.value));
+      }
+      return res.end();
+    } catch (error) {
+      handleWorkerRouteError(error, res);
+    }
+  });
 
   app.post(
     "/api/worker-jobs/:jobId/artifacts/init-upload",

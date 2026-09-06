@@ -14,12 +14,13 @@ pub mod diagnostics;
 pub mod executor_state;
 pub mod hermes_executor;
 pub mod hermes_runtime;
-pub mod media_pipeline;
 pub mod local_llm_adapter;
 pub mod local_llm_registry;
+pub mod media_pipeline;
 pub mod runtime_manifest;
 pub mod series_workspace;
 pub mod settings;
+pub mod speaker_aware_adapters;
 pub mod worker_control_plane;
 pub mod worker_executor;
 pub mod worker_loop;
@@ -316,6 +317,7 @@ pub fn run() {
             commands::worker_app_open_url,
             commands::worker_app_run_manual_command,
             commands::worker_app_pick_local_root,
+            commands::worker_app_pick_standalone_local_root,
             commands::worker_app_select_series_workspace,
             commands::worker_app_create_series_folder,
             commands::worker_app_validate_local_root,
@@ -333,6 +335,7 @@ pub fn run() {
             commands::worker_app_build_media_plan,
             commands::worker_app_process_media_asset,
             commands::worker_app_submit_media_job,
+            commands::worker_app_submit_speaker_aware_job,
             commands::worker_app_submit_media_ingest_job,
             commands::worker_app_browse_directory,
             commands::worker_app_detect_silence_custom,
@@ -343,6 +346,7 @@ pub fn run() {
             commands::worker_app_export_capcut_draft,
             commands::worker_app_get_audio_runtime_status,
             commands::worker_app_generate_music_cue,
+            commands::worker_app_cancel_music_cue,
             commands::worker_app_transcribe_audio,
             commands::worker_app_save_binary_file,
             commands::worker_app_get_media_history,

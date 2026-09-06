@@ -11,10 +11,12 @@ import {
   queueHermesWorkerJob,
   queueNemoClawWorkerJob,
   queueDesktopVideoAssemblyJob,
+  queueSpeakerAwareWorkerJob,
   queueOpenClawWorkerJob,
   queueWorkerJobByRuntime,
   workerJobMatchesSelection,
 } from "../workerSchedulerService";
+import { hashAdapterPolicy } from "../../../shared/verticalDramaMedia/speakerAwareContracts";
 
 describe("workerSchedulerService", () => {
   const repo = {
@@ -96,6 +98,36 @@ describe("workerSchedulerService", () => {
       })
     );
     expect(result.created).toBe(true);
+  });
+
+  it("rejects a speaker-aware idempotency key reused with a different payload", async () => {
+    const policy = {
+      contractVersion: "feature-179-v1" as const,
+      vad: { enabledAdapters: ["SileroOnnx" as const], primary: "SileroOnnx" as const, fallbackPolicy: "deny" as const, fallbackAllowList: [], required: true },
+      diarization: { enabledAdapters: [], primary: "PyannoteDiarization" as const, fallbackPolicy: "deny" as const, fallbackAllowList: [], required: false },
+      face: { enabledAdapters: [], primary: "MediaPipeFace" as const, fallbackPolicy: "deny" as const, fallbackAllowList: [], required: false },
+      person: { enabledAdapters: [], primary: "PersonBody" as const, fallbackPolicy: "deny" as const, fallbackAllowList: [], required: false },
+      activeSpeaker: { enabledAdapters: [], primary: "ActiveSpeakerFusion" as const, fallbackPolicy: "deny" as const, fallbackAllowList: [], required: false },
+      maxScanWindowMs: 1000,
+      maxConcurrentProcesses: 1,
+    };
+    const firstPayload = {
+      kind: "speaker_aware_media_scan" as const,
+      seriesId: "53",
+      inputArtifact: { artifactId: "local-1", revision: "r-1", checksum: "a".repeat(64), kind: "local_media" },
+      analysisArtifacts: [],
+      localSourceRelativeName: "clip.mp4",
+      workflowMode: "subtitle_first" as const,
+      requestedStages: ["subtitle_editorial_cut" as const, "manual_review" as const],
+      parentEditMapHash: null,
+      adapterPolicy: policy,
+      adapterPolicyHash: hashAdapterPolicy(policy),
+      outputStage: "manual_review" as const,
+      idempotencyKey: "speaker-aware-idempotency",
+      approvalRequired: true,
+    };
+    repo.findJobByIdempotencyKey.mockResolvedValueOnce({ jobType: firstPayload.kind, inputJson: firstPayload });
+    await expect(queueSpeakerAwareWorkerJob({ tenantId: "tenant-1", requestedByUserId: 7, payload: { ...firstPayload, seriesId: "54" } }, { repo: repo as any })).rejects.toThrow("idempotency key is already bound");
   });
 
   it("returns an existing idempotent worker job without double-reserving credits", async () => {

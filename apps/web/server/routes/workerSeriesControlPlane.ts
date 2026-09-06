@@ -28,6 +28,11 @@ import {
   mediaArtifactManifestSchema,
   mediaQcReportSchema,
 } from "../../shared/verticalDramaMedia/contracts";
+import {
+  hashAdapterPolicy,
+  hashSpeakerAwarePayload,
+  speakerAwareJobPayloadSchema,
+} from "../../shared/verticalDramaMedia/speakerAwareContracts";
 import { storageStreamFile } from "../storage";
 import {
   buildMediaCapabilityProbe,
@@ -152,6 +157,56 @@ async function auth(req: Request, requiredScopes: string[], allowedTokenUses?: A
 
 export function registerWorkerSeriesControlPlaneRoutes(app: Express): void {
   const limiter = rateLimit("worker-series-control-plane", { rpm: 120 });
+
+  /** Feature 179 — local Worker submission. The source remains on the bound
+   * Worker root; the server stores only the validated relative path and job
+   * contract. The Worker later re-checks the root boundary before reading it. */
+  app.post("/api/workers/:workerId/speaker-aware-jobs", limiter, enforceJsonBodyMaxBytes(256 * 1024), async (req, res) => {
+    try {
+      const claims = await auth(req, ["series:media:process"]);
+      if (claims.workerId !== req.params.workerId) return fail(res, req, 403, "WORKER_SCOPE_DENIED");
+      const payload = speakerAwareJobPayloadSchema.parse(req.body?.payload);
+      if (payload.inputArtifact.kind !== "local_media" || !payload.localSourceRelativeName) return fail(res, req, 400, "ACTION_NOT_ALLOWED");
+      if (payload.adapterPolicyHash !== hashAdapterPolicy(payload.adapterPolicy)) return fail(res, req, 400, "ACTION_NOT_ALLOWED");
+      const db = getDb();
+      const [worker] = await db.select().from(workers).where(and(eq(workers.id, claims.workerId), eq(workers.tenantId, claims.tenantId))).limit(1);
+      const principal = worker && resolveWorkerSeriesPrincipal({ worker, grantedScopes: claims.scopes, authorityRevision: claims.workerConnectionId || "worker-current", policyRevision: "tenant-current" });
+      if (!principal || !isWorkerSeriesActionAllowed(principal, "process")) return fail(res, req, 403, "SERIES_ACCESS_DENIED");
+      let binding: typeof workerSeriesBindings.$inferSelect | null = null;
+      if (payload.seriesId !== null) {
+        const parsedSeriesId = Number(payload.seriesId);
+        if (!Number.isSafeInteger(parsedSeriesId) || parsedSeriesId <= 0) return fail(res, req, 400, "ACTION_NOT_ALLOWED");
+        [binding] = await db.select().from(workerSeriesBindings).where(and(eq(workerSeriesBindings.tenantId, claims.tenantId), eq(workerSeriesBindings.workerId, claims.workerId), eq(workerSeriesBindings.seriesId, parsedSeriesId), isNull(workerSeriesBindings.revokedAt))).limit(1);
+        if (!binding || binding.status !== "active") return fail(res, req, 409, "ROOT_NOT_ALLOWED");
+      }
+      const [existing] = await db.select({ id: workerJobs.id, inputJson: workerJobs.inputJson }).from(workerJobs).where(and(eq(workerJobs.tenantId, claims.tenantId), eq(workerJobs.workerId, claims.workerId), eq(workerJobs.idempotencyKey, payload.idempotencyKey))).limit(1);
+      if (existing) {
+        if (hashSpeakerAwarePayload(existing.inputJson) !== hashSpeakerAwarePayload(payload)) return fail(res, req, 409, "IDEMPOTENCY_CONFLICT");
+        return res.status(200).json({ contractVersion: "feature-179-v1", status: "accepted", replayed: true, jobId: existing.id });
+      }
+      const [job] = await db.insert(workerJobs).values({
+        tenantId: claims.tenantId,
+        workerId: claims.workerId,
+        workerSeriesBindingId: binding?.id ?? null,
+        workerSeriesBindingRevision: binding?.bindingRevision ?? null,
+        runtimeType: worker.runtimeType,
+        requestedByUserId: principal.userId,
+        jobType: payload.kind,
+        status: "queued",
+        resourceProfile: "cpu_heavy",
+        capabilityRequirementsJson: { capabilityFamilies: ["speaker-aware-media-v1", "vertical-drama-media"], requiredClaimCapability: "speaker-aware-media-v1", contractVersion: "feature-179-v1" },
+        inputJson: payload as Record<string, unknown>,
+        instructionsJson: { requiredProgressStages: ["validate_contract", "preflight", "stage_inputs", "fuse_speakers", "compose_edit_map", "upload_artifacts", "publish_artifacts"] },
+        timeoutSeconds: payload.kind === "speaker_aware_media_scan" ? 7200 : 1800,
+        retryPolicyJson: { maxAttempts: 1, backoffSeconds: 0 },
+        idempotencyKey: payload.idempotencyKey,
+      }).returning({ id: workerJobs.id });
+      return res.status(202).json({ contractVersion: "feature-179-v1", status: "accepted", replayed: false, jobId: job?.id });
+    } catch (error) {
+      if (error instanceof WorkerAuthError) return fail(res, req, error.statusCode, error.code === "worker_permission_denied" ? "WORKER_PERMISSION_DENIED" : "WORKER_AUTH_REQUIRED");
+      return fail(res, req, 400, "ACTION_NOT_ALLOWED");
+    }
+  });
 
   app.get("/api/workers/:workerId/series", limiter, async (req, res) => {
     try {

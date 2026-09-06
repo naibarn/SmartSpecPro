@@ -14,6 +14,10 @@ use std::time::{Duration, Instant, SystemTime};
 #[cfg(test)]
 use tauri::async_runtime::JoinHandle as AsyncJoinHandle;
 
+use crate::audio_runtime_sidecar::{
+    execute_music_cue_generation, probe_audio_runtime_status, AudioRuntimeStatus,
+    MusicCueGenerateRequest,
+};
 use crate::comfy_execution_ledger::{ExecutionLedger, ExecutionLedgerEntry, ExecutionLedgerState};
 use crate::comfy_executor;
 use crate::comfy_mcp_client::{
@@ -40,9 +44,11 @@ use crate::hermes_executor::{
 use crate::hermes_runtime::{
     hermes_doctor_from_manifest_path, hermes_runtime_pack_paths, read_hermes_runtime_manifest,
 };
+use crate::local_llm_registry::{load_registry, LocalLlmRegistry};
 use crate::media_pipeline::{
-    analyze_media_file, build_media_plan, collect_media_manifest, probe_media_file,
-    qc_derived_output_with_probe, run_allowlisted_ffmpeg, run_allowlisted_ffmpeg_segments,
+    analyze_media_file, audio_has_detectable_activity, build_media_plan, collect_media_manifest,
+    probe_media_file, qc_derived_output_with_probe, run_allowlisted_ffmpeg,
+    run_allowlisted_ffmpeg_segments, run_episode_score_export, run_episode_score_mix,
     write_checkpoint_atomic, LocalMediaAnalysis, LocalMediaProbe, LocalMediaQc, MediaCheckpoint,
     MediaFocusKeyframe, MediaPlanOptions, MediaToolchain,
 };
@@ -51,14 +57,14 @@ use crate::runtime_manifest::{
     runtime_pack_root_for_sidecars, sidecar_path_from_manifest, DoctorSummary,
     RuntimeTranscriptionManifest,
 };
-use crate::series_workspace::{load_root_state, load_root_state_for_series, validate_local_root};
+use crate::series_workspace::{load_root_state, load_root_state_for_series, validate_local_root, STANDALONE_WORKSPACE_ID};
 use crate::settings::WorkerAppSettings;
-use crate::local_llm_registry::{load_registry, LocalLlmRegistry};
+use crate::speaker_aware_adapters::{self, SPEAKER_AWARE_CAPABILITY};
 use crate::worker_control_plane::{
     build_worker_heartbeat_payload, claim_worker_job, download_worker_bytes, download_worker_file,
-    get_worker_json, post_worker_json_with_idempotency, publish_vertical_drama_media, report_worker_job_event, send_worker_heartbeat,
-    upload_worker_artifact_file, WorkerClaimRequest, WorkerClaimResponse, WorkerJobEventPayload,
-    WorkerLoopConnection,
+    get_worker_json, post_worker_json_with_idempotency, publish_vertical_drama_media,
+    report_worker_job_event, send_worker_heartbeat, upload_worker_artifact_file,
+    WorkerClaimRequest, WorkerClaimResponse, WorkerJobEventPayload, WorkerLoopConnection,
 };
 use crate::worker_executor::{
     build_comfy_completed_event, build_comfy_failure_event, build_comfy_progress_event,
@@ -67,20 +73,25 @@ use crate::worker_executor::{
     build_remotion_render_video_output_json, build_remotion_render_video_progress_event,
     build_remotion_render_video_sidecar_command, build_required_artifact_uploads,
     build_sidecar_command, build_sidecar_manifest, build_worker_job_display_metadata,
-    classify_job_type, compact_json_artifact_metadata, execute_local_llm_job, parse_remotion_sidecar_event,
-    prepare_hyperframes_execution_plan, prepare_remotion_render_video_execution_plan,
-    remotion_render_video_content_hash, sanitize_segment, validate_final_video_artifact,
-    validate_workspace_path, ArtifactUploadPlan, ClaimedWorkerJob, RemotionSidecarEvent,
-    SidecarCommandPlan, WorkerEventPlan, WorkerJobKind, COMFY_CAPABILITY_FAMILIES,
-    COMFY_IMAGE_GENERATION_JOB_TYPE, COMFY_VIDEO_GENERATION_JOB_TYPE, COMFY_WORKFLOW_RUN_JOB_TYPE,
-    HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, HYPERFRAMES_JOB_TYPE,
+    classify_job_type, compact_json_artifact_metadata, execute_local_llm_job,
+    parse_remotion_sidecar_event, prepare_hyperframes_execution_plan,
+    prepare_remotion_render_video_execution_plan, remotion_render_video_content_hash,
+    sanitize_segment, validate_final_video_artifact, validate_workspace_path, ArtifactUploadPlan,
+    ClaimedWorkerJob, RemotionSidecarEvent, SidecarCommandPlan, WorkerEventPlan, WorkerJobKind,
+    COMFY_CAPABILITY_FAMILIES, COMFY_IMAGE_GENERATION_JOB_TYPE, COMFY_VIDEO_GENERATION_JOB_TYPE,
+    COMFY_WORKFLOW_RUN_JOB_TYPE, HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, HYPERFRAMES_JOB_TYPE,
     REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES, REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
     REMOTION_RENDER_VIDEO_JOB_TYPE, REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+    VERTICAL_DRAMA_AUDIO_ANALYSIS_CAPABILITY, VERTICAL_DRAMA_AUDIO_ANALYSIS_JOB_TYPE,
     VERTICAL_DRAMA_BROLL_PREPROCESS_JOB_TYPE, VERTICAL_DRAMA_FOOTAGE_ANALYSIS_CAPABILITY,
     VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_CAPABILITY, VERTICAL_DRAMA_FOOTAGE_BROLL_RENDER_JOB_TYPE,
     VERTICAL_DRAMA_FOOTAGE_PREPARE_CAPABILITY, VERTICAL_DRAMA_FOOTAGE_PREPARE_JOB_TYPE,
     VERTICAL_DRAMA_FOOTAGE_PROBE_JOB_TYPE, VERTICAL_DRAMA_MEDIA_CAPABILITY,
-    VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE, VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE,
+    VERTICAL_DRAMA_MEDIA_INGEST_JOB_TYPE, VERTICAL_DRAMA_MUSIC3_GENERATION_CAPABILITY,
+    VERTICAL_DRAMA_MUSIC3_GENERATION_JOB_TYPE, VERTICAL_DRAMA_SCORE_MIX_CAPABILITY,
+    VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE, VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE,
+    VERTICAL_DRAMA_SPEAKER_AWARE_EDIT_PLAN_JOB_TYPE,
+    VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE,
 };
 
 /// Feature 135 §11 — hermes has its own single-job slot, independent of the
@@ -168,6 +179,44 @@ pub fn build_worker_claim_capability_hints_with_media_and_mcp(
     media_ready: bool,
     mcp_ready: bool,
 ) -> Vec<String> {
+    build_worker_claim_capability_hints_with_media_mcp_audio(
+        render_ready,
+        remotion_contract_ready,
+        hermes_media_advertised,
+        media_ready,
+        mcp_ready,
+        false,
+    )
+}
+
+pub fn build_worker_claim_capability_hints_with_media_mcp_audio(
+    render_ready: bool,
+    remotion_contract_ready: bool,
+    hermes_media_advertised: bool,
+    media_ready: bool,
+    mcp_ready: bool,
+    audio_runtime_ready: bool,
+) -> Vec<String> {
+    build_worker_claim_capability_hints_with_media_mcp_audio_and_speaker(
+        render_ready,
+        remotion_contract_ready,
+        hermes_media_advertised,
+        media_ready,
+        mcp_ready,
+        audio_runtime_ready,
+        false,
+    )
+}
+
+pub fn build_worker_claim_capability_hints_with_media_mcp_audio_and_speaker(
+    render_ready: bool,
+    remotion_contract_ready: bool,
+    hermes_media_advertised: bool,
+    media_ready: bool,
+    mcp_ready: bool,
+    audio_runtime_ready: bool,
+    speaker_aware_runtime_ready: bool,
+) -> Vec<String> {
     let mut hints = Vec::new();
     if render_ready {
         hints.push("hyperframes-final-composite".to_string());
@@ -218,6 +267,23 @@ pub fn build_worker_claim_capability_hints_with_media_and_mcp(
     }
     if hermes_media_advertised {
         hints.push(HERMES_MEDIA_CLAIM_CAPABILITY.to_string());
+    }
+    if media_ready {
+        hints.push(VERTICAL_DRAMA_AUDIO_ANALYSIS_CAPABILITY.to_string());
+        hints.push(VERTICAL_DRAMA_AUDIO_ANALYSIS_JOB_TYPE.to_string());
+        hints.push(VERTICAL_DRAMA_SCORE_MIX_CAPABILITY.to_string());
+        hints.push(VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE.to_string());
+    }
+    if audio_runtime_ready {
+        hints.push(VERTICAL_DRAMA_MUSIC3_GENERATION_CAPABILITY.to_string());
+        hints.push(VERTICAL_DRAMA_MUSIC3_GENERATION_JOB_TYPE.to_string());
+        hints.push("genuine_minimax_music3".to_string());
+        hints.push("gpu-nvidia".to_string());
+    }
+    if speaker_aware_runtime_ready {
+        hints.push(SPEAKER_AWARE_CAPABILITY.to_string());
+        hints.push(VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE.to_string());
+        hints.push(VERTICAL_DRAMA_SPEAKER_AWARE_EDIT_PLAN_JOB_TYPE.to_string());
     }
     hints
 }
@@ -1250,6 +1316,14 @@ async fn worker_loop_tick(
     } else {
         local_media_runtime_ready(app_data_dir, &settings_snapshot)
     };
+    let audio_status = if render_active_now {
+        None
+    } else {
+        Some(probe_audio_runtime_status().await)
+    };
+    let audio_runtime_ready = audio_status.as_ref().is_some_and(|status| status.ready);
+    let speaker_aware_runtime_ready = !render_active_now
+        && speaker_aware_adapters::probe_configured_runner().is_ok();
     let active_profile_id = active_comfy_profile(app_data_dir, &settings_snapshot, None)
         .ok()
         .map(|profile| profile.profile_id);
@@ -1331,7 +1405,13 @@ async fn worker_loop_tick(
     let mcp_ready = negotiated_mcp_runtime_ready(mcp_manifest.as_ref());
     let heartbeat_comfy_readiness =
         comfy_readiness_for_heartbeat(&legacy_comfy_readiness, mcp_ready, &mcp_probe_reason);
-    let any_runtime_ready = render_ready || hermes_ready || comfy_ready || media_ready || mcp_ready;
+    let any_runtime_ready = render_ready
+        || hermes_ready
+        || comfy_ready
+        || media_ready
+        || mcp_ready
+        || audio_runtime_ready
+        || speaker_aware_runtime_ready;
     let accepts_jobs = settings_snapshot.accept_jobs && any_runtime_ready;
     let connection_snapshot = clone_connection(connection)?;
     let hermes_active_now = hermes_active.load(Ordering::Relaxed);
@@ -1348,6 +1428,7 @@ async fn worker_loop_tick(
         (!render_active_now).then_some(&heartbeat_comfy_readiness),
         (!render_active_now).then_some(media_ready),
         (!render_active_now).then_some(mcp_ready),
+        audio_status.as_ref(),
     )
     .await?;
 
@@ -1381,12 +1462,18 @@ async fn worker_loop_tick(
         media_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
     let can_claim_mcp =
         mcp_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_audio = (media_ready || audio_runtime_ready)
+        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_speaker_aware = speaker_aware_runtime_ready
+        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
 
     if !can_claim_render
         && !can_claim_hermes
         && !can_claim_comfy
         && !can_claim_media
         && !can_claim_mcp
+        && !can_claim_audio
+        && !can_claim_speaker_aware
     {
         set_executor_polling(
             executor,
@@ -1405,12 +1492,14 @@ async fn worker_loop_tick(
         WorkerClaimRequest {
             max_jobs,
             capability_hints: {
-                let mut hints = build_worker_claim_capability_hints_with_media_and_mcp(
+                let mut hints = build_worker_claim_capability_hints_with_media_mcp_audio_and_speaker(
                     can_claim_render,
                     remotion_render_video_contract_ready(&doctor),
                     can_claim_hermes,
                     can_claim_media,
                     can_claim_mcp,
+                    audio_runtime_ready && can_claim_audio,
+                    can_claim_speaker_aware,
                 );
                 if can_claim_comfy {
                     hints.extend(
@@ -1424,11 +1513,17 @@ async fn worker_loop_tick(
                     hints.push("gpu-nvidia".into());
                 }
                 if let Ok(registry) = load_registry(app_data_dir) {
-                    let has_enabled_provider = registry.providers.iter().any(|provider| provider.enabled);
+                    let has_enabled_provider =
+                        registry.providers.iter().any(|provider| provider.enabled);
                     if has_enabled_provider && registry.models.iter().any(|model| model.enabled) {
                         hints.push("llm_gateway".into());
                         hints.push("llm_invoke".into());
-                        hints.extend(registry.models.iter().flat_map(|model| model.capabilities.iter().cloned()));
+                        hints.extend(
+                            registry
+                                .models
+                                .iter()
+                                .flat_map(|model| model.capabilities.iter().cloned()),
+                        );
                     }
                 }
                 hints
@@ -1654,6 +1749,62 @@ async fn worker_loop_tick(
             });
             Ok(())
         }
+        WorkerJobKind::VerticalDramaAudioScoring => {
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let resource_dir_owned = resource_dir.to_path_buf();
+            let settings_owned = settings_snapshot.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_vertical_drama_audio_job(
+                    &executor,
+                    &resource_dir_owned,
+                    &app_data_dir_owned,
+                    &connection,
+                    job.clone(),
+                    &settings_owned,
+                    &cancel,
+                )
+                .await;
+                if let Err(error) = &result {
+                    let failure = build_failure_event(
+                        &job,
+                        FAILURE_EVENT_SEQUENCE_NUMBER,
+                        audio_failure_code(error),
+                        error,
+                    );
+                    let _ =
+                        send_event_with_refresh(&app_data_dir_owned, &connection, &job.id, failure)
+                            .await;
+                }
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::VerticalDramaSpeakerAware => {
+            render_active.store(true, Ordering::Relaxed);
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let job_owned = job.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_speaker_aware_job(&app_data_dir_owned, &connection, job_owned.clone(), &cancel).await;
+                if let Err(error) = &result {
+                    let failure = build_failure_event(&job_owned, FAILURE_EVENT_SEQUENCE_NUMBER, speaker_aware_failure_code(error), error);
+                    let _ = send_event_with_refresh(&app_data_dir_owned, &connection, &job_owned.id, failure).await;
+                }
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
         WorkerJobKind::HermesMediaImage | WorkerJobKind::HermesMediaVideo => {
             hermes_active.store(true, Ordering::Relaxed);
             let executor = executor.clone();
@@ -1874,6 +2025,7 @@ fn build_heartbeat_runtime_metadata(
     comfy_readiness: Option<&comfy_executor::ComfyReadiness>,
     media_ready: Option<bool>,
     mcp_ready: Option<bool>,
+    audio_status: Option<&AudioRuntimeStatus>,
 ) -> Value {
     let runtime_version = doctor
         .checks
@@ -1965,9 +2117,29 @@ fn build_heartbeat_runtime_metadata(
             "workflowIds": mcp_manifest.as_ref().map(|manifest| manifest.workflow_ids.clone()).unwrap_or_default(),
             "mcpTools": mcp_manifest.as_ref().map(|manifest| manifest.tool_names.clone()).unwrap_or_default(),
             "models": [],
+            "audioRuntime": audio_status.map(|status| json!({
+                "ready": status.ready,
+                "service": status.service,
+                "version": status.version,
+                "device": status.device,
+                "vramTotalGb": status.vram_total_gb,
+                "vramFreeGb": status.vram_free_gb,
+                "activeJobs": status.active_jobs,
+                "modelName": status.model_name,
+                "modelRevision": status.model_revision,
+                "capability": status.capability,
+                "message": status.message,
+            })).unwrap_or_else(|| json!({ "ready": false, "reason": "not_probed" })),
             "reason": if media_ready || mcp_ready { "media_adapter_ready" } else { "local_root_ffmpeg_or_mcp_not_ready" },
         });
     }
+    let speaker_ready = speaker_aware_adapters::probe_configured_runner().is_ok();
+    runtime_metadata["speakerAware"] = json!({
+        "capability": SPEAKER_AWARE_CAPABILITY,
+        "ready": speaker_ready,
+        "runnerConfigured": speaker_aware_adapters::configured_runner().is_some(),
+        "reason": if speaker_ready { "runner_probe_passed" } else { "runner_not_ready" },
+    });
     runtime_metadata
 }
 
@@ -1984,6 +2156,7 @@ async fn heartbeat(
     comfy_readiness: Option<&comfy_executor::ComfyReadiness>,
     media_ready: Option<bool>,
     mcp_ready: Option<bool>,
+    audio_status: Option<&AudioRuntimeStatus>,
 ) -> Result<(), String> {
     let current_job_count =
         active_worker_job_count(has_active_job(executor)?, render_active, hermes_active);
@@ -2014,14 +2187,21 @@ async fn heartbeat(
             comfy_readiness,
             media_ready,
             mcp_ready,
+            audio_status,
         ),
     );
     let response = send_worker_heartbeat(connection, &payload).await?;
     apply_hermes_heartbeat_warning(executor, &response.warning_flags_json);
-    if let Err(error) = sync_local_llm_inventory(connection, &load_registry(app_data_dir).unwrap_or_default()).await {
+    if let Err(error) =
+        sync_local_llm_inventory(connection, &load_registry(app_data_dir).unwrap_or_default()).await
+    {
         // Inventory is an auxiliary projection. A temporary sync failure must
         // not take the control-plane heartbeat or legacy job lanes offline.
-        crate::diagnostics::log_error(app_data_dir, "local_llm.inventory_sync_failed", json!({ "error": error }));
+        crate::diagnostics::log_error(
+            app_data_dir,
+            "local_llm.inventory_sync_failed",
+            json!({ "error": error }),
+        );
     }
     Ok(())
 }
@@ -2067,7 +2247,8 @@ async fn sync_local_llm_inventory(
         &inventory,
         &connection.device_proof,
         &idempotency_key,
-    ).await?;
+    )
+    .await?;
     Ok(())
 }
 
@@ -2604,10 +2785,19 @@ fn transcript_text_and_tokens(value: &Value) -> (String, Vec<Value>) {
             }
         }
     }
+    if let Some(items) = value.get("transcription").and_then(Value::as_array) {
+        for item in items {
+            collect(&json!({
+                "text": item.get("text").cloned().unwrap_or(Value::Null),
+                "startMs": item.get("offsets").and_then(|offsets| offsets.get("from")).cloned().unwrap_or(Value::Null),
+                "endMs": item.get("offsets").and_then(|offsets| offsets.get("to")).cloned().unwrap_or(Value::Null),
+            }));
+        }
+    }
     (text, tokens)
 }
 
-fn runtime_relative_path(runtime_root: &Path, relative: &str) -> Option<PathBuf> {
+pub(crate) fn runtime_relative_path(runtime_root: &Path, relative: &str) -> Option<PathBuf> {
     let relative_path = Path::new(relative);
     if relative_path.is_absolute()
         || relative_path
@@ -2668,17 +2858,65 @@ fn managed_wsl_root_expr(value: &str) -> String {
     shell_single_quote(trimmed)
 }
 
-fn normalize_hyperframes_transcript_output(
+pub(crate) fn normalize_hyperframes_transcript_output(
     output: &Value,
     output_dir: &Path,
+    max_duration_ms: Option<u64>,
 ) -> Result<Value, String> {
     let transcript_path = output_dir.join("transcript.json");
-    let bytes = fs::read(&transcript_path).map_err(|_| "transcription_failed".to_string())?;
-    let words: Value =
-        serde_json::from_slice(&bytes).map_err(|_| "transcription_failed".to_string())?;
-    let words_array = words
+    let words: Value = if transcript_path.is_file() {
+        let bytes = fs::read(&transcript_path).map_err(|_| "transcription_failed".to_string())?;
+        serde_json::from_slice(&bytes).map_err(|_| "transcription_failed".to_string())?
+    } else {
+        output.clone()
+    };
+    let raw_items = words
         .as_array()
+        .cloned()
+        .or_else(|| {
+            words
+                .get("transcription")
+                .and_then(Value::as_array)
+                .cloned()
+        })
         .ok_or_else(|| "transcription_failed".to_string())?;
+    let words_array = raw_items
+        .iter()
+        .filter_map(|word| {
+            let text = word
+                .get("text")
+                .or_else(|| word.get("word"))
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())?;
+            let start_ms = word
+                .get("startMs")
+                .and_then(Value::as_u64)
+                .or_else(|| word.get("offsets").and_then(|v| v.get("from")).and_then(Value::as_u64))
+                .or_else(|| word.get("start").and_then(Value::as_f64).map(|v| (v * 1000.0) as u64))?;
+            let mut end_ms = word
+                .get("endMs")
+                .and_then(Value::as_u64)
+                .or_else(|| word.get("offsets").and_then(|v| v.get("to")).and_then(Value::as_u64))
+                .or_else(|| word.get("end").and_then(Value::as_f64).map(|v| (v * 1000.0) as u64))?;
+            if let Some(duration_ms) = max_duration_ms {
+                if start_ms >= duration_ms {
+                    return None;
+                }
+                end_ms = end_ms.min(duration_ms);
+            }
+            if end_ms <= start_ms {
+                return None;
+            }
+            Some(json!({
+                "text": text.chars().take(500).collect::<String>(),
+                "startMs": start_ms,
+                "endMs": end_ms,
+                "confidence": word.get("confidence").or_else(|| word.get("probability")).cloned().unwrap_or(Value::Null),
+            }))
+        })
+        .take(12_000)
+        .collect::<Vec<_>>();
     let text = words_array
         .iter()
         .filter_map(|word| {
@@ -2893,6 +3131,30 @@ async fn run_hyperframes_transcription(
             Ok(None)
         };
     };
+    let tools = MediaToolchain::from_settings(settings, app_data_dir);
+    let duration_ms = probe_media_file(source_path, &tools)
+        .ok()
+        .and_then(|probe| probe.duration_ms);
+    match audio_has_detectable_activity(source_path, &tools) {
+        Ok(true) => {}
+        Ok(false) => {
+            return Ok(Some(json!({
+                "text": "",
+                "words": [],
+                "provider": "hyperframes-whisper.cpp",
+                "status": "empty",
+                "reason": "no_detectable_audio_activity",
+                "metadata": { "engine": transcription.engine, "model": transcription.model }
+            })))
+        }
+        Err(error) => {
+            return if policy == "required" {
+                Err(error)
+            } else {
+                Ok(None)
+            }
+        }
+    }
     let Some(whisper_path) = runtime_relative_path(&runtime_root, &transcription.binary_path)
     else {
         return if policy == "required" {
@@ -2960,7 +3222,7 @@ async fn run_hyperframes_transcription(
     }
     let raw: Value =
         serde_json::from_slice(&output.stdout).map_err(|_| "transcription_failed".to_string())?;
-    match normalize_hyperframes_transcript_output(&raw, &output_dir) {
+    match normalize_hyperframes_transcript_output(&raw, &output_dir, duration_ms) {
         Ok(value) => Ok(Some(value)),
         Err(error) => {
             if policy == "required" {
@@ -2970,6 +3232,551 @@ async fn run_hyperframes_transcription(
             }
         }
     }
+}
+
+fn audio_failure_code(error: &str) -> &'static str {
+    let normalized = error.to_ascii_lowercase();
+    if normalized.contains("transcription_unavailable") {
+        "transcription_unavailable"
+    } else if normalized.contains("transcription") {
+        "transcription_failed"
+    } else if normalized.contains("model_not_installed") {
+        "model_not_installed"
+    } else if normalized.contains("model_identity") {
+        "model_identity_mismatch"
+    } else if normalized.contains("runtime") {
+        "runtime_incompatible"
+    } else if normalized.contains("fingerprint") || normalized.contains("checksum") {
+        "source_fingerprint_mismatch"
+    } else if normalized.contains("qc") {
+        "qc_failed"
+    } else if normalized.contains("canceled") {
+        "canceled"
+    } else if normalized.contains("upload") {
+        "artifact_upload_failed"
+    } else if normalized.contains("source") || normalized.contains("media") {
+        "source_reference_expired"
+    } else if normalized.contains("rights") {
+        "rights_review_required"
+    } else if normalized.contains("generation") {
+        "generation_failed"
+    } else {
+        "invalid_contract"
+    }
+}
+
+fn audio_source_refs(input: &Value) -> Vec<Value> {
+    input
+        .get("sourceRefs")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default()
+}
+
+async fn download_audio_source(
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: &ClaimedWorkerJob,
+    source: &Value,
+    destination: &Path,
+) -> Result<(), String> {
+    let artifact_id = source
+        .get("artifactId")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "invalid_contract: audio artifact id missing".to_string())?;
+    let checksum = source
+        .get("checksum")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "invalid_contract: audio artifact checksum missing".to_string())?;
+    let path = format!("/api/worker-jobs/{}/audio-inputs/{}", job.id, artifact_id);
+    let control_plane =
+        refresh_connection_for_control_plane(app_data_dir, connection, "audio input download")
+            .await?;
+    let (size, digest) = download_worker_file(
+        &control_plane.server_url,
+        &path,
+        &control_plane.tokens.execution_token,
+        &control_plane.device_proof,
+        destination,
+        2_000 * 1024 * 1024,
+    )
+    .await?;
+    if size == 0 || digest != checksum {
+        return Err("source_fingerprint_mismatch".into());
+    }
+    Ok(())
+}
+
+async fn download_speaker_aware_artifact(
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: &ClaimedWorkerJob,
+    source: &Value,
+    destination: &Path,
+) -> Result<(), String> {
+    let artifact_id = source.get("artifactId").and_then(Value::as_str)
+        .ok_or_else(|| "invalid_contract: speaker-aware artifact id missing".to_string())?;
+    let expected_checksum = source.get("checksum").and_then(Value::as_str)
+        .ok_or_else(|| "invalid_contract: speaker-aware artifact checksum missing".to_string())?;
+    let path = format!("/api/worker-jobs/{}/media-inputs/{}", job.id, artifact_id);
+    let control_plane = refresh_connection_for_control_plane(app_data_dir, connection, "speaker-aware input download").await?;
+    let (size, digest) = download_worker_file(
+        &control_plane.server_url,
+        &path,
+        &control_plane.tokens.execution_token,
+        &control_plane.device_proof,
+        destination,
+        4_000 * 1024 * 1024,
+    ).await?;
+    if size == 0 || digest != expected_checksum {
+        return Err("source_fingerprint_mismatch".into());
+    }
+    Ok(())
+}
+
+fn speaker_aware_file_checksum(path: &Path) -> Result<String, String> {
+    let mut file = fs::File::open(path).map_err(|error| format!("artifact_checksum_failed: {error}"))?;
+    let mut digest = Sha256::new();
+    let mut buffer = [0u8; 1024 * 1024];
+    loop {
+        let read = file.read(&mut buffer).map_err(|error| format!("artifact_checksum_failed: {error}"))?;
+        if read == 0 { break; }
+        digest.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", digest.finalize()))
+}
+
+fn speaker_aware_failure_code(error: &str) -> &'static str {
+    if error.contains("invalid_contract") { "invalid_contract" }
+    else if error.contains("stale") { "plan_stale" }
+    else if error.contains("canceled") { "canceled" }
+    else { "workflow_capability_blocked" }
+}
+
+async fn execute_speaker_aware_job(
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    let expected = [VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE, VERTICAL_DRAMA_SPEAKER_AWARE_EDIT_PLAN_JOB_TYPE];
+    if !expected.contains(&job.job_type.as_str()) {
+        return Err(format!("invalid_contract: unsupported speaker-aware job {}", job.job_type));
+    }
+    let policy: crate::speaker_aware_adapters::AdapterPolicy = serde_json::from_value(
+        job.input_json.get("adapterPolicy").cloned().ok_or_else(|| "invalid_contract: adapterPolicy missing".to_string())?
+    ).map_err(|error| format!("invalid_contract: adapterPolicy invalid: {error}"))?;
+    crate::speaker_aware_adapters::validate_policy(&policy)?;
+    let input_artifact = job.input_json.get("inputArtifact")
+        .cloned().ok_or_else(|| "invalid_contract: inputArtifact missing".to_string())?;
+    if !input_artifact.is_object() {
+        return Err("invalid_contract: inputArtifact missing".into());
+    }
+    if cancel.load(Ordering::Relaxed) { return Err("canceled".into()); }
+    let progress = WorkerEventPlan {
+        event_type: "job.progress".into(),
+        sequence_number: 1,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": "preflight", "percent": 5, "message": "Speaker-aware adapter preflight" }),
+    };
+    send_event_with_refresh(app_data_dir, connection, &job.id, progress).await?;
+    let work_dir = app_data_dir.join("vertical-drama-speaker-aware").join(sanitize_segment(&job.id));
+    fs::create_dir_all(&work_dir).map_err(|error| format!("speaker_aware_workspace_failed: {error}"))?;
+    let source_path = if input_artifact.get("kind").and_then(Value::as_str) == Some("local_media") {
+        let relative = job.input_json.get("localSourceRelativeName").and_then(Value::as_str)
+            .ok_or_else(|| "invalid_contract: localSourceRelativeName missing".to_string())?;
+        let root = load_root_state(app_data_dir)?.ok_or_else(|| "source_reference_expired: local Worker root is not configured".to_string())?;
+        match job.input_json.get("seriesId").and_then(Value::as_str) {
+            Some(series_id) if root.series_id != series_id => return Err("source_reference_expired: Worker root does not match Series".into()),
+            None if root.series_id != STANDALONE_WORKSPACE_ID => return Err("source_reference_expired: standalone Worker root is required".into()),
+            _ => {}
+        }
+        let candidate = root.root_path.join(relative);
+        let canonical = candidate.canonicalize().map_err(|_| "source_reference_expired: local media source missing".to_string())?;
+        if !canonical.starts_with(&root.root_path) { return Err("invalid_contract: local source escapes Worker root".into()); }
+        canonical
+    } else {
+        let destination = work_dir.join("source.bin");
+        download_speaker_aware_artifact(app_data_dir, connection, &job, &input_artifact, &destination).await?;
+        destination
+    };
+    send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+        event_type: "job.progress".into(), sequence_number: 2,
+        lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": "stage_inputs", "percent": 15 }),
+    }).await?;
+    let mut analysis_paths = Vec::new();
+    if let Some(analysis) = job.input_json.get("analysisArtifacts").and_then(Value::as_array) {
+        for (index, artifact) in analysis.iter().enumerate() {
+            if cancel.load(Ordering::Relaxed) { return Err("canceled".into()); }
+            let path = work_dir.join(format!("analysis-{index}.json"));
+            download_speaker_aware_artifact(app_data_dir, connection, &job, artifact, &path).await?;
+            analysis_paths.push(path);
+        }
+    }
+    let source_checksum = input_artifact.get("checksum").and_then(Value::as_str).unwrap_or_default();
+    let output_path = work_dir.join(if job.job_type == VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE { "speaker-aware-scan.json" } else { "speaker-aware-edit-plan.json" });
+    let request_path = work_dir.join("runner-request.json");
+    let request = json!({
+        "contractVersion": crate::speaker_aware_adapters::SPEAKER_AWARE_CONTRACT_VERSION,
+        "jobId": job.id,
+        "kind": job.job_type,
+        "seriesId": job.input_json.get("seriesId"),
+        "sourceChecksum": source_checksum,
+        "workflowMode": job.input_json.get("workflowMode"),
+        "requestedStages": job.input_json.get("requestedStages"),
+        "adapterPolicy": policy,
+        "analysisPaths": analysis_paths.iter().map(|path| path.to_string_lossy()).collect::<Vec<_>>(),
+    });
+    fs::write(&request_path, serde_json::to_vec_pretty(&request).map_err(|error| format!("speaker_aware_request_failed: {error}"))?)
+        .map_err(|error| format!("speaker_aware_request_failed: {error}"))?;
+    send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+        event_type: "job.progress".into(), sequence_number: 3,
+        lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": "preflight", "percent": 25, "runner": crate::speaker_aware_adapters::SPEAKER_AWARE_RUNNER_ENV }),
+    }).await?;
+    let timeout = job.input_json.get("adapterPolicy").and_then(|value| value.get("maxScanWindowMs")).and_then(Value::as_u64).unwrap_or(60_000).saturating_mul(120).max(120_000);
+    speaker_aware_adapters::run_configured_runner(&request_path, &source_path, &output_path, Duration::from_millis(timeout)).map_err(|error| {
+        if error.contains("workflow_capability_blocked") { error } else { format!("speaker_aware_runner_failed: {error}") }
+    })?;
+    let output_bytes = fs::read(&output_path).map_err(|error| format!("speaker_aware_output_failed: {error}"))?;
+    let output: Value = serde_json::from_slice(&output_bytes).map_err(|error| format!("invalid_contract: speaker-aware output JSON invalid: {error}"))?;
+    if output.get("contractVersion").and_then(Value::as_str) != Some(crate::speaker_aware_adapters::SPEAKER_AWARE_CONTRACT_VERSION)
+        || output.get("sourceChecksum").and_then(Value::as_str) != Some(source_checksum) {
+        return Err("invalid_contract: speaker-aware output source or contract mismatch".into());
+    }
+    let checksum = speaker_aware_file_checksum(&output_path)?;
+    send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+        event_type: "job.progress".into(), sequence_number: 4,
+        lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": if job.job_type == VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE { "fuse_speakers" } else { "compose_edit_map" }, "percent": 75 }),
+    }).await?;
+    let (artifact_type, file_name) = if job.job_type == VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE {
+        ("speaker_aware_scan", "speaker-aware-scan.json")
+    } else {
+        ("speaker_aware_edit_plan", "speaker-aware-edit-plan.json")
+    };
+    let artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, artifact_type, &output_path, file_name, "application/json", &job.lease_owner_token, &job.assignment_attempt, json!({
+        "kind": artifact_type,
+        "contractVersion": crate::speaker_aware_adapters::SPEAKER_AWARE_CONTRACT_VERSION,
+        "checksumSha256": checksum,
+        "sourceChecksum": source_checksum,
+        "adapterPolicyHash": job.input_json.get("adapterPolicyHash"),
+        "workflowMode": job.input_json.get("workflowMode"),
+        "approvalRequired": job.input_json.get("approvalRequired"),
+    })).await?;
+    send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+        event_type: "job.completed".into(), sequence_number: 5,
+        lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": "publish_artifacts", "status": "published", "artifacts": [artifact.artifact], "checksumSha256": checksum }),
+    }).await?;
+    Ok(())
+}
+
+async fn execute_vertical_drama_audio_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    resource_dir: &Path,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    let work_dir = app_data_dir
+        .join("vertical-drama-audio")
+        .join(sanitize_segment(&job.id));
+    fs::create_dir_all(&work_dir)
+        .map_err(|_| "runtime_incompatible: audio workspace unavailable".to_string())?;
+    let kind = job
+        .input_json
+        .get("kind")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "invalid_contract: audio job kind missing".to_string())?;
+    let send = |event: WorkerEventPlan| async {
+        send_event_with_refresh(app_data_dir, connection, &job.id, event).await
+    };
+    send(WorkerEventPlan {
+        event_type: "job.running".into(),
+        sequence_number: 1,
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": "validate_contract", "percent": 5 }),
+    })
+    .await?;
+    if cancel.load(Ordering::Relaxed) {
+        return Err("canceled".into());
+    }
+
+    if kind == VERTICAL_DRAMA_AUDIO_ANALYSIS_JOB_TYPE {
+        let cut_media = job
+            .input_json
+            .get("cutMedia")
+            .ok_or_else(|| "invalid_contract: cutMedia missing".to_string())?;
+        let source_path = work_dir.join("cut.mp4");
+        send(WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: 2,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "stage_inputs", "percent": 20 }),
+        })
+        .await?;
+        download_audio_source(app_data_dir, connection, &job, cut_media, &source_path).await?;
+        let tools = MediaToolchain::from_settings(settings, app_data_dir);
+        let probe = probe_media_file(&source_path, &tools)
+            .map_err(|error| format!("runtime_incompatible: {error}"))?;
+        send(WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: 3,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "run_asr", "percent": 45 }),
+        })
+        .await?;
+        let transcript = run_hyperframes_transcription(
+            resource_dir,
+            app_data_dir,
+            settings,
+            &source_path,
+            job.input_json
+                .get("requestedLanguage")
+                .and_then(Value::as_str)
+                .unwrap_or("th"),
+            "required",
+        )
+        .await?
+        .ok_or_else(|| "transcription_unavailable".to_string())?;
+        let source_hash = cut_media.get("checksum").cloned().unwrap_or(Value::Null);
+        let effective_runtime_dir = if settings.runtime_dir.trim().is_empty() {
+            app_data_dir.to_path_buf()
+        } else {
+            PathBuf::from(settings.runtime_dir.trim())
+        };
+        let (manifest_path, _) = runtime_pack_paths(resource_dir, &effective_runtime_dir);
+        let transcription_runtime = read_runtime_pack_manifest(&manifest_path).ok().and_then(|manifest| manifest.transcription.map(|item| json!({ "engine": item.engine, "version": item.version, "model": item.model, "binarySha256": item.binary_sha256, "modelSha256": item.model_sha256 })));
+        let transcript_path = work_dir.join("episode-asr.json");
+        let transcript_doc = json!({ "schemaVersion": "vd-asr-artifact-v1", "sourceArtifactId": cut_media.get("artifactId"), "sourceChecksum": source_hash.clone(), "timingOrigin": "observed_asr", "probe": probe, "runtime": transcription_runtime.clone(), "transcript": transcript });
+        fs::write(
+            &transcript_path,
+            serde_json::to_vec_pretty(&transcript_doc)
+                .map_err(|_| "transcription_failed".to_string())?,
+        )
+        .map_err(|_| "transcription_failed".to_string())?;
+        let edit_map_path = work_dir.join("edit-map.json");
+        let edit_map = json!({ "schemaVersion": "vd-edit-map-v1", "sourceArtifactId": cut_media.get("artifactId"), "sourceChecksum": source_hash, "coordinateSpace": "cut", "timingOrigin": "aligned_expected", "map": job.input_json.get("editMap").cloned().unwrap_or_else(|| json!({})) });
+        fs::write(
+            &edit_map_path,
+            serde_json::to_vec_pretty(&edit_map).map_err(|_| "transcription_failed".to_string())?,
+        )
+        .map_err(|_| "transcription_failed".to_string())?;
+        let transcript_checksum = crate::runtime_manifest::file_sha256(&transcript_path)
+            .map_err(|_| "transcription_failed".to_string())?;
+        let edit_map_checksum = crate::runtime_manifest::file_sha256(&edit_map_path)
+            .map_err(|_| "transcription_failed".to_string())?;
+        send(WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: 4,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "upload_artifacts", "percent": 75 }),
+        })
+        .await?;
+        let transcript_artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "transcript", &transcript_path, "episode-asr.json", "application/json", &job.lease_owner_token, &job.assignment_attempt, json!({ "kind": "episode_asr_tokens", "sourceChecksum": cut_media.get("checksum"), "checksumSha256": transcript_checksum, "timingOrigin": "observed_asr", "runtime": transcription_runtime })).await?;
+        let edit_artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "edit_map", &edit_map_path, "edit-map.json", "application/json", &job.lease_owner_token, &job.assignment_attempt, json!({ "kind": "episode_edit_map", "sourceChecksum": cut_media.get("checksum"), "checksumSha256": edit_map_checksum, "coordinateSpace": "cut" })).await?;
+        send(WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 5, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "stage": "publish_artifacts", "status": "published", "artifacts": [transcript_artifact.artifact, edit_artifact.artifact] }) }).await?;
+        return Ok(());
+    }
+
+    if kind == VERTICAL_DRAMA_MUSIC3_GENERATION_JOB_TYPE {
+        let runtime = probe_audio_runtime_status().await;
+        if !runtime.ready {
+            return Err(format!("model_not_installed: {}", runtime.message));
+        }
+        let analysis = job
+            .input_json
+            .get("analysisArtifacts")
+            .and_then(Value::as_object)
+            .ok_or_else(|| "transcription_unavailable: analysis artifacts missing".to_string())?;
+        for (name, file_name) in [
+            ("transcript", "episode-asr.json"),
+            ("editMap", "edit-map.json"),
+        ] {
+            let source = analysis.get(name).ok_or_else(|| {
+                format!("transcription_unavailable: analysis artifact {name} missing")
+            })?;
+            let path = work_dir.join(file_name);
+            download_audio_source(app_data_dir, connection, &job, source, &path).await?;
+            let document: Value = serde_json::from_slice(
+                &fs::read(&path).map_err(|_| "transcription_failed".to_string())?,
+            )
+            .map_err(|_| "transcription_failed".to_string())?;
+            let expected_schema = if name == "transcript" {
+                "vd-asr-artifact-v1"
+            } else {
+                "vd-edit-map-v1"
+            };
+            if document.get("schemaVersion").and_then(Value::as_str) != Some(expected_schema) {
+                return Err("transcription_failed".into());
+            }
+        }
+        let cues = job
+            .input_json
+            .get("selectedCues")
+            .and_then(Value::as_array)
+            .ok_or_else(|| "invalid_contract: selectedCues missing".to_string())?;
+        let plan_hash = job
+            .input_json
+            .get("planHash")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "invalid_contract: planHash missing".to_string())?;
+        let rights = job
+            .input_json
+            .get("authorization")
+            .and_then(|v| v.get("rightsPolicyHash"))
+            .and_then(Value::as_str)
+            .ok_or_else(|| "rights_review_required".to_string())?;
+        let skill_id = job
+            .input_json
+            .get("semanticExecutions")
+            .and_then(Value::as_array)
+            .and_then(|items| items.first())
+            .and_then(Value::as_str)
+            .ok_or_else(|| "invalid_contract: semantic execution missing".to_string())?;
+        let mut artifacts = Vec::new();
+        for (index, cue) in cues.iter().enumerate() {
+            if cancel.load(Ordering::Relaxed) {
+                return Err("canceled".into());
+            }
+            let cue_id = cue
+                .get("cueId")
+                .and_then(Value::as_str)
+                .ok_or_else(|| "invalid_contract: cue id missing".to_string())?;
+            let instruction = cue
+                .get("modelInstruction")
+                .and_then(Value::as_str)
+                .ok_or_else(|| "invalid_contract: cue instruction missing".to_string())?;
+            let duration_ms = cue
+                .get("timelineDurationMs")
+                .and_then(Value::as_u64)
+                .unwrap_or(1000);
+            send(WorkerEventPlan { event_type: "job.progress".into(), sequence_number: 2 + index as u32, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "stage": "generate_music", "percent": (20 + ((index + 1) * 50 / cues.len())) as u8, "cueId": cue_id }) }).await?;
+            let generated = execute_music_cue_generation(
+                MusicCueGenerateRequest {
+                    cue_id: cue_id.into(),
+                    model_instruction: instruction.into(),
+                    plan_hash: plan_hash.into(),
+                    skill_execution_id: skill_id.into(),
+                    rights_policy_hash: rights.into(),
+                    rights_status: "approved_for_project".into(),
+                    duration_seconds: duration_ms as f32 / 1000.0,
+                    intensity: 0.6,
+                    fade_in_ms: Some(1000),
+                    fade_out_ms: Some(2000),
+                    target_lufs: Some(-16.0),
+                    workspace_path: None,
+                },
+                work_dir.clone(),
+            )
+            .await?;
+            let artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "music_take", Path::new(&generated.output_wav_path), &format!("music-take-{cue_id}.wav"), "audio/wav", &job.lease_owner_token, &job.assignment_attempt, json!({ "kind": "music_take", "cueId": cue_id, "planId": job.input_json.get("planId"), "planHash": plan_hash, "seriesId": job.input_json.get("seriesId"), "episodeId": job.input_json.get("episodeId"), "modelName": generated.model_name, "modelRevision": generated.model_revision, "outputSha256": generated.output_sha256, "checksumSha256": generated.output_sha256, "sampleRate": generated.sample_rate, "channels": generated.channels, "measuredLufs": generated.measured_lufs, "truePeakDb": generated.true_peak_db, "generationTimeSeconds": generated.generation_time_seconds, "rightsStatus": "approved_for_project" })).await?;
+            artifacts.push(artifact.artifact);
+        }
+        send(WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 100, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "stage": "publish_artifacts", "status": "published", "artifacts": artifacts, "modelName": runtime.model_name, "modelRevision": runtime.model_revision }) }).await?;
+        return Ok(());
+    }
+
+    if kind == VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE {
+        let refs = audio_source_refs(&job.input_json);
+        let dialogue = refs
+            .iter()
+            .find(|source| source.get("kind").and_then(Value::as_str) == Some("media"))
+            .ok_or_else(|| "invalid_contract: dialogue source missing".to_string())?;
+        let dialogue_path = work_dir.join("dialogue.mp4");
+        send(WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: 2,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "stage_inputs", "percent": 20 }),
+        })
+        .await?;
+        download_audio_source(app_data_dir, connection, &job, dialogue, &dialogue_path).await?;
+        let mut takes = Vec::new();
+        for (index, source) in refs
+            .iter()
+            .filter(|source| source.get("kind").and_then(Value::as_str) == Some("music_take"))
+            .enumerate()
+        {
+            let path = work_dir.join(format!("take-{index}.wav"));
+            download_audio_source(app_data_dir, connection, &job, source, &path).await?;
+            takes.push(path);
+        }
+        if takes.is_empty() {
+            return Err("invalid_contract: music take source missing".into());
+        }
+        let tools = MediaToolchain::from_settings(settings, app_data_dir);
+        let duration_ms = probe_media_file(&dialogue_path, &tools)?
+            .duration_ms
+            .ok_or_else(|| "qc_failed".to_string())?;
+        let attenuation_db = job
+            .input_json
+            .get("mixEnvelope")
+            .and_then(|value| value.get("attenuationDb"))
+            .and_then(Value::as_f64)
+            .unwrap_or(-12.0) as f32;
+        let output = work_dir.join("score-mix.wav");
+        send(WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: 3,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "mix_score", "percent": 55 }),
+        })
+        .await?;
+        let qc = run_episode_score_mix(
+            &dialogue_path,
+            &takes,
+            &output,
+            duration_ms,
+            attenuation_db,
+            &tools,
+        )?;
+        let output_hash =
+            crate::runtime_manifest::file_sha256(&output).map_err(|_| "qc_failed".to_string())?;
+        let encoded_output = work_dir.join("score-mix.mp4");
+        send(WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: 4,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "verify_outputs", "percent": 72 }),
+        })
+        .await?;
+        let encoded_probe = run_episode_score_export(
+            &dialogue_path,
+            &output,
+            &encoded_output,
+            duration_ms,
+            &tools,
+        )?;
+        let encoded_hash = crate::runtime_manifest::file_sha256(&encoded_output)
+            .map_err(|_| "qc_failed".to_string())?;
+        let qc_path = work_dir.join("score-mix-qc.json");
+        let qc_doc = json!({ "schemaVersion": "vd-score-mix-qc-v1", "passed": true, "durationMs": qc.duration_ms, "sampleRate": qc.sample_rate, "channels": qc.channels, "masterChecksumSha256": output_hash, "encodedChecksumSha256": encoded_hash, "encodedDurationMs": encoded_probe.duration_ms, "encodedWidth": encoded_probe.width, "encodedHeight": encoded_probe.height, "encodedHasAudio": encoded_probe.has_audio, "attenuationDb": attenuation_db });
+        fs::write(
+            &qc_path,
+            serde_json::to_vec_pretty(&qc_doc).map_err(|_| "qc_failed".to_string())?,
+        )
+        .map_err(|_| "qc_failed".to_string())?;
+        let mix_artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "score_mix", &output, "score-mix.wav", "audio/wav", &job.lease_owner_token, &job.assignment_attempt, json!({ "kind": "score_mix", "planId": job.input_json.get("planId"), "planHash": job.input_json.get("planHash"), "checksumSha256": output_hash, "durationMs": qc.duration_ms, "sampleRate": qc.sample_rate, "channels": qc.channels, "qcPassed": true })).await?;
+        let export_artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "score_mix_export", &encoded_output, "score-mix.mp4", "video/mp4", &job.lease_owner_token, &job.assignment_attempt, json!({ "kind": "score_mix_export", "planId": job.input_json.get("planId"), "planHash": job.input_json.get("planHash"), "checksumSha256": encoded_hash, "durationMs": encoded_probe.duration_ms, "width": encoded_probe.width, "height": encoded_probe.height, "hasAudio": encoded_probe.has_audio, "qcPassed": true })).await?;
+        let qc_artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, "score_mix_qc", &qc_path, "score-mix-qc.json", "application/json", &job.lease_owner_token, &job.assignment_attempt, json!({ "kind": "score_mix_qc", "planId": job.input_json.get("planId"), "planHash": job.input_json.get("planHash"), "passed": true, "masterChecksumSha256": output_hash, "encodedChecksumSha256": encoded_hash })).await?;
+        send(WorkerEventPlan { event_type: "job.completed".into(), sequence_number: 5, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "stage": "publish_artifacts", "status": "published", "artifacts": [mix_artifact.artifact, export_artifact.artifact, qc_artifact.artifact], "qc": qc_doc }) }).await?;
+        return Ok(());
+    }
+    Err("invalid_contract: unsupported audio job".into())
 }
 
 async fn execute_vertical_drama_media_job(
@@ -3053,7 +3860,7 @@ async fn execute_vertical_drama_media_job(
             let output_relative = format!("derived/footage-prepared/{}/prepared.mp4", sanitize_segment(&job.id));
             let fit_policy = job.input_json.get("fitPolicy").and_then(Value::as_str).unwrap_or("9:16_cover");
             let mute_audio = job.input_json.get("baseAudioPolicy").and_then(Value::as_str) == Some("mute");
-            let output = run_allowlisted_ffmpeg_segments(&root_path, &source_relative, &output_relative, &approved_segments, fit_policy == "9:16_cover", mute_audio, &media_tools)?;
+            let output = run_allowlisted_ffmpeg_segments(&root_path, &source_relative, &output_relative, &approved_segments, fit_policy == "9:16_cover", mute_audio, None, None, &[], &media_tools)?;
             let qc = qc_derived_output_with_probe(&root_path, &output, &media_tools)?;
             if fit_policy != "source" { ensure_portrait_9x16_qc(&qc)?; }
             let mut prepared_cursor = 0u64;
@@ -3190,6 +3997,18 @@ async fn execute_vertical_drama_media_job(
         let duration_ms = local_probe.duration_ms.or_else(|| probe.get("durationMs").and_then(Value::as_u64)).unwrap_or(90_000);
         let edit_plan = job.input_json.get("editPlan").cloned().unwrap_or_else(|| json!({}));
         let remove_dead_air_requested = edit_plan.get("deadAir").and_then(|value| value.get("enabled")).and_then(Value::as_bool).unwrap_or(false);
+        let dead_air = edit_plan.get("deadAir").cloned().unwrap_or_else(|| json!({}));
+        let silence_ranges = dead_air.get("silenceRanges").and_then(Value::as_array).map(|ranges| {
+            ranges.iter().filter_map(|range| {
+                let start = range.get("startMs")?.as_u64()?;
+                let end = range.get("endMs").and_then(Value::as_u64).unwrap_or(duration_ms);
+                let is_manual = range.get("isManual").and_then(Value::as_bool).unwrap_or(false);
+                let padding_ms = if is_manual { 0 } else { dead_air.get("padMs").and_then(Value::as_u64).unwrap_or(0).min(2_000) };
+                let padded_start = start.saturating_sub(padding_ms);
+                let padded_end = end.saturating_add(padding_ms).min(duration_ms);
+                (padded_end > padded_start).then_some((padded_start, padded_end))
+            }).collect::<Vec<_>>()
+        }).unwrap_or_default();
         let local_analysis = if kind == "image" {
             None
         } else {
@@ -3204,13 +4023,39 @@ async fn execute_vertical_drama_media_job(
         let still_motion = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("stillMotion")).and_then(|motion| motion.get("motion")).and_then(Value::as_str).map(str::to_string);
         let focus_track = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|value| value.get("focusTrack")).and_then(|value| serde_json::from_value::<Vec<MediaFocusKeyframe>>(value.clone()).ok()).unwrap_or_default();
         let selected_segment = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first());
-        let options = MediaPlanOptions { remove_dead_air: edit_plan.get("deadAir").and_then(|value| value.get("enabled")).and_then(Value::as_bool).unwrap_or(false), reframe_9x16: edit_plan.get("aspectRatio").and_then(Value::as_str) == Some("9:16"), focus_mode: edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|value| value.get("trackingMode")).and_then(Value::as_str).unwrap_or("auto_person").into(), still_motion, max_duration_ms: budget.get("maxDurationMs").and_then(Value::as_u64).unwrap_or(90_000).min(90_000), source_duration_ms: duration_ms, requested_start_ms: selected_segment.and_then(|segment| segment.get("startMs")).and_then(Value::as_u64), requested_end_ms: selected_segment.and_then(|segment| segment.get("endMs")).and_then(Value::as_u64), focus_x: target.and_then(|value| value.get("normalizedX")).and_then(Value::as_f64), focus_y: target.and_then(|value| value.get("normalizedY")).and_then(Value::as_f64), focus_track };
+        let options = MediaPlanOptions { remove_dead_air: edit_plan.get("deadAir").and_then(|value| value.get("enabled")).and_then(Value::as_bool).unwrap_or(false), reframe_9x16: edit_plan.get("aspectRatio").and_then(Value::as_str) == Some("9:16"), focus_mode: edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|value| value.get("trackingMode")).and_then(Value::as_str).unwrap_or("auto_person").into(), still_motion, max_duration_ms: budget.get("maxDurationMs").and_then(Value::as_u64).unwrap_or(90_000).min(90_000), source_duration_ms: duration_ms, requested_start_ms: selected_segment.and_then(|segment| segment.get("startMs")).and_then(Value::as_u64), requested_end_ms: selected_segment.and_then(|segment| segment.get("endMs")).and_then(Value::as_u64), focus_x: target.and_then(|value| value.get("normalizedX")).and_then(Value::as_f64), focus_y: target.and_then(|value| value.get("normalizedY")).and_then(Value::as_f64), focus_track, volume_threshold_pct: dead_air.get("thresholdDb").and_then(Value::as_f64).map(|db| ((db + 50.0) / 35.0 * 100.0).clamp(1.0, 100.0)), min_duration_sec: dead_air.get("minSilenceMs").and_then(Value::as_u64).map(|value| value as f64 / 1000.0), softening_buffer_sec: dead_air.get("padMs").and_then(Value::as_u64).map(|value| value as f64 / 1000.0), custom_silence_segments: None };
         let plan = build_media_plan(source_name, &options)?;
         let binding_revision = expected_binding_revision;
         let checkpoint_path = root_path.join("derived/.checkpoints").join(format!("{}.json", job.id));
         write_checkpoint_atomic(&checkpoint_path, &MediaCheckpoint { checkpoint_version: "media-checkpoint.v1".into(), job_id: job.id.clone(), root_id: root.root_id.clone(), binding_revision, source_fingerprint: source.get("sourceFingerprint").and_then(Value::as_str).unwrap_or_default().into(), stage: "planned".into(), output_relative_name: Some(plan.output_relative_name.clone()), remote_execution_id: None })?;
         send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan { event_type: "job.progress".into(), sequence_number: 2, lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(), payload_json: json!({ "stage": "local_media_render", "percent": 35 }) }).await?;
-        let output = run_allowlisted_ffmpeg(&root_path, &plan, &media_tools)?;
+        let requested_start = plan.trim_start_ms;
+        let requested_end = plan.trim_end_ms;
+        let explicit_segments = if options.remove_dead_air && !silence_ranges.is_empty() {
+            remove_approved_silence(
+                &[(requested_start, requested_end)],
+                &silence_ranges,
+                0,
+            )
+        } else {
+            Vec::new()
+        };
+        let output = if explicit_segments.is_empty() {
+            run_allowlisted_ffmpeg(&root_path, &plan, &media_tools)?
+        } else {
+            run_allowlisted_ffmpeg_segments(
+                &root_path,
+                &plan.source_relative_name,
+                &plan.output_relative_name,
+                &explicit_segments,
+                plan.reframe_9x16,
+                false,
+                plan.focus_x,
+                plan.focus_y,
+                &plan.focus_track,
+                &media_tools,
+            )?
+        };
         let qc = qc_derived_output_with_probe(&root_path, &output, &media_tools)?;
         if options.reframe_9x16 {
             ensure_portrait_9x16_qc(&qc)?;
@@ -4865,6 +5710,7 @@ async fn execute_hyperframes_job_inner(
             None,
             None,
             None,
+            None,
         )
         .await;
         let mut metadata = json!({
@@ -5513,6 +6359,7 @@ async fn run_remotion_sidecar_and_collect(
                 None,
                 None,
                 None,
+                None,
             )
             .await;
             last_heartbeat = Instant::now();
@@ -5721,6 +6568,7 @@ async fn stage_hyperframes_source_videos(
             None,
             true,
             false,
+            None,
             None,
             None,
             None,
@@ -6175,6 +7023,7 @@ async fn run_sidecar_with_active_heartbeat(
                 None,
                 true,
                 false,
+                None,
                 None,
                 None,
                 None,
@@ -6907,6 +7756,7 @@ mod tests {
         let normalized = normalize_hyperframes_transcript_output(
             &json!({ "ok": true, "transcriptPath": "ignored-by-worker" }),
             dir.path(),
+            None,
         )
         .unwrap();
         assert_eq!(normalized["text"], "สวัสดี ครับ");
@@ -6919,11 +7769,37 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("transcript.json"), b"[]").unwrap();
         let normalized =
-            normalize_hyperframes_transcript_output(&json!({ "ok": true }), dir.path()).unwrap();
+            normalize_hyperframes_transcript_output(&json!({ "ok": true }), dir.path(), None)
+                .unwrap();
 
         assert_eq!(normalized["status"], "empty");
         assert_eq!(normalized["text"], "");
         assert!(normalized["words"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn whisper_cpp_transcription_offsets_are_normalized_and_bounded() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(
+            dir.path().join("transcript.json"),
+            r#"{"transcription":[
+                {"offsets":{"from":100,"to":800},"text":"อยู่ในช่วง"},
+                {"offsets":{"from":1100,"to":2500},"text":"หลุดช่วง"}
+            ]}"#
+            .as_bytes(),
+        )
+        .unwrap();
+        let normalized = normalize_hyperframes_transcript_output(
+            &json!({ "ok": true }),
+            dir.path(),
+            Some(1_000),
+        )
+        .unwrap();
+
+        assert_eq!(normalized["text"], "อยู่ในช่วง");
+        assert_eq!(normalized["words"].as_array().unwrap().len(), 1);
+        assert_eq!(normalized["words"][0]["startMs"], 100);
+        assert_eq!(normalized["words"][0]["endMs"], 800);
     }
 
     #[test]
@@ -7319,6 +8195,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         assert_eq!(ready_metadata["hermesMedia"]["advertised"], true);
         assert_eq!(ready_metadata["hermesMedia"]["hermesVersion"], "0.18.2");
@@ -7340,6 +8217,7 @@ mod tests {
             Some(&comfy_ready),
             None,
             None,
+            None,
         );
         assert_eq!(comfy_metadata["comfyUi"]["advertised"], true);
         assert_eq!(
@@ -7356,6 +8234,7 @@ mod tests {
             None,
             Some(true),
             Some(false),
+            None,
         );
         assert_eq!(
             local_media_metadata["verticalDramaMedia"]["mcpReady"],
@@ -7376,6 +8255,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         assert_eq!(blocked_metadata["hermesMedia"]["advertised"], false);
 
@@ -7388,6 +8268,7 @@ mod tests {
             &hermes_ready,
             true,
             "ready",
+            None,
             None,
             None,
             None,

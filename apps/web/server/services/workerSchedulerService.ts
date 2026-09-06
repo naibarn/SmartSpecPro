@@ -16,6 +16,16 @@ import type {
   VideoAssemblyJobContract,
 } from "../../shared/workerRuntime";
 import {
+  verticalDramaAudioJobPayloadSchema,
+  type VerticalDramaAudioJobPayload,
+} from "../../shared/verticalDramaMedia/audioScoringContracts";
+import {
+  hashAdapterPolicy,
+  hashSpeakerAwarePayload,
+  speakerAwareJobPayloadSchema,
+  type SpeakerAwareJobPayload,
+} from "../../shared/verticalDramaMedia/speakerAwareContracts";
+import {
   COMFY_IMAGE_GENERATION_PROGRESS_STAGES,
   COMFY_WORKFLOW_RUN_PROGRESS_STAGES,
   HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES,
@@ -1392,6 +1402,165 @@ export interface QueueVerticalDramaFfmpegAssemblyJobInput extends VerticalDramaF
   requestedByUserId?: number | null;
   priority?: number;
   idempotencyKey?: string | null;
+}
+
+export interface QueueVerticalDramaAudioWorkerJobInput {
+  tenantId: string;
+  requestedByUserId: number;
+  workerSeriesBindingId?: string | null;
+  payload: VerticalDramaAudioJobPayload;
+  priority?: number;
+}
+
+const VERTICAL_DRAMA_AUDIO_JOB_TYPES = new Set([
+  "episode_audio_analyze",
+  "minimax_music3_generate",
+  "episode_score_mix",
+]);
+
+const VERTICAL_DRAMA_AUDIO_CAPABILITIES = {
+  episode_audio_analyze: ["vertical-drama-audio", "episode-audio-analysis-v1"],
+  minimax_music3_generate: ["vertical-drama-audio", "minimax-music3-generation-v1", "genuine_minimax_music3", "gpu-nvidia"],
+  episode_score_mix: ["vertical-drama-audio", "episode-score-mix-v1", "ffmpeg-probe"],
+} as const;
+
+const VERTICAL_DRAMA_AUDIO_TIMEOUT_SECONDS = {
+  episode_audio_analyze: 1800,
+  minimax_music3_generate: 3600,
+  episode_score_mix: 1800,
+} as const;
+
+/**
+ * Durable Web -> Worker queue entry point for Feature 176/177. The payload is
+ * parsed before insertion, the binding is carried on the job row, and the
+ * server-owned idempotency key is the only dedupe key used by the pipeline.
+ */
+export async function queueVerticalDramaAudioWorkerJob(
+  rawInput: QueueVerticalDramaAudioWorkerJobInput,
+  deps: { repo?: WorkerSchedulerRepository } = {},
+): Promise<{ created: boolean; job: WorkerJobRecord }> {
+  if (!isDesktopWorkerDispatchEnabled()) {
+    throw new WorkerSchedulerError(
+      "dispatch_disabled",
+      503,
+      "Smart AI Hub Worker App dispatch is disabled by operator kill switch",
+    );
+  }
+  const payload = verticalDramaAudioJobPayloadSchema.parse(rawInput.payload);
+  if (!VERTICAL_DRAMA_AUDIO_JOB_TYPES.has(payload.kind)) {
+    throw new WorkerSchedulerError("unsupported_job_type", 400, "Unsupported Vertical Drama audio job");
+  }
+  const repo = deps.repo ?? defaultRepo;
+  const existing = await repo.findJobByIdempotencyKey(rawInput.tenantId, payload.idempotencyKey);
+  if (existing) {
+    if (existing.jobType !== payload.kind || hashSpeakerAwarePayload(existing.inputJson) !== hashSpeakerAwarePayload(payload)) {
+      throw new WorkerSchedulerError("idempotency_conflict", 409, "Speaker-aware idempotency key is already bound to a different request");
+    }
+    return { created: false, job: existing };
+  }
+
+  const capabilities = [...VERTICAL_DRAMA_AUDIO_CAPABILITIES[payload.kind]];
+  const job = await repo.insertJob({
+    tenantId: rawInput.tenantId,
+    teamId: null,
+    workerId: null,
+    workerSeriesBindingId: rawInput.workerSeriesBindingId ?? null,
+    workerSeriesBindingRevision: payload.bindingRevision,
+    runtimeType: DESKTOP_RUNTIME_TYPE,
+    workflowRunId: null,
+    requestedByUserId: rawInput.requestedByUserId,
+    requestedBySystemComponent: "vertical_drama_audio_worker_scheduler",
+    jobType: payload.kind,
+    status: "queued",
+    statusReason: `vertical_drama_audio_${payload.kind}`,
+    priority: rawInput.priority ?? (payload.kind === "minimax_music3_generate" ? 30 : 25),
+    resourceProfile: payload.kind === "minimax_music3_generate" ? "gpu_required" : "cpu_heavy",
+    capabilityRequirementsJson: {
+      capabilityFamilies: capabilities,
+      requiredClaimCapability: capabilities[1],
+      preferredWorkerId: null,
+      audioContractVersion: payload.contractVersion,
+    },
+    inputJson: payload,
+    instructionsJson: {
+      intent: payload.kind,
+      requiredProgressStages: ["validate_contract", "stage_inputs", "run_asr", "generate_music", "mix_score", "verify_outputs", "upload_artifacts", "publish_artifacts"],
+      requiredFailureCodes: ["invalid_contract", "root_not_bound", "source_reference_expired", "source_fingerprint_mismatch", "transcription_unavailable", "transcription_failed", "model_not_installed", "model_identity_mismatch", "runtime_incompatible", "gpu_unavailable", "insufficient_resources", "artifact_upload_failed", "artifact_checksum_mismatch", "qc_failed", "plan_stale", "rights_review_required", "generation_failed", "generation_outcome_unknown", "canceled"],
+    },
+    timeoutSeconds: VERTICAL_DRAMA_AUDIO_TIMEOUT_SECONDS[payload.kind],
+    retryPolicyJson: { maxAttempts: 1, backoffSeconds: 0 },
+    idempotencyKey: payload.idempotencyKey,
+  });
+  return { created: true, job };
+}
+
+export interface QueueSpeakerAwareWorkerJobInput {
+  tenantId: string;
+  requestedByUserId: number;
+  workerSeriesBindingId?: string | null;
+  payload: SpeakerAwareJobPayload;
+  priority?: number;
+}
+
+const SPEAKER_AWARE_JOB_TYPES = new Set(["speaker_aware_media_scan", "speaker_aware_edit_plan"]);
+const SPEAKER_AWARE_TIMEOUT_SECONDS = { speaker_aware_media_scan: 7200, speaker_aware_edit_plan: 1800 } as const;
+
+/** Feature 179 durable queue entry. Runtime capability admission remains fail-closed. */
+export async function queueSpeakerAwareWorkerJob(
+  rawInput: QueueSpeakerAwareWorkerJobInput,
+  deps: { repo?: WorkerSchedulerRepository } = {},
+): Promise<{ created: boolean; job: WorkerJobRecord }> {
+  if (!isDesktopWorkerDispatchEnabled()) {
+    throw new WorkerSchedulerError("dispatch_disabled", 503, "Smart AI Hub Worker dispatch is disabled by operator kill switch");
+  }
+  const payload = speakerAwareJobPayloadSchema.parse(rawInput.payload);
+  if (!SPEAKER_AWARE_JOB_TYPES.has(payload.kind)) {
+    throw new WorkerSchedulerError("unsupported_job_type", 400, "Unsupported speaker-aware job");
+  }
+  if (payload.adapterPolicyHash !== hashAdapterPolicy(payload.adapterPolicy)) {
+    throw new WorkerSchedulerError("invalid_contract", 400, "Adapter policy hash mismatch");
+  }
+  const repo = deps.repo ?? defaultRepo;
+  const existing = await repo.findJobByIdempotencyKey(rawInput.tenantId, payload.idempotencyKey);
+  if (existing) {
+    if (existing.jobType !== payload.kind || hashSpeakerAwarePayload(existing.inputJson) !== hashSpeakerAwarePayload(payload)) {
+      throw new WorkerSchedulerError("idempotency_conflict", 409, "Speaker-aware idempotency key is already bound to a different request");
+    }
+    return { created: false, job: existing };
+  }
+  const job = await repo.insertJob({
+    tenantId: rawInput.tenantId,
+    teamId: null,
+    workerId: null,
+    workerSeriesBindingId: rawInput.workerSeriesBindingId ?? null,
+    workerSeriesBindingRevision: null,
+    runtimeType: DESKTOP_RUNTIME_TYPE,
+    workflowRunId: null,
+    requestedByUserId: rawInput.requestedByUserId,
+    requestedBySystemComponent: "speaker_aware_media_worker_scheduler",
+    jobType: payload.kind,
+    status: "queued",
+    statusReason: `speaker_aware_${payload.kind}`,
+    priority: rawInput.priority ?? 20,
+    resourceProfile: "cpu_heavy",
+    capabilityRequirementsJson: {
+      capabilityFamilies: ["speaker-aware-media-v1", "vertical-drama-media"],
+      requiredClaimCapability: "speaker-aware-media-v1",
+      preferredWorkerId: null,
+      speakerAwareContractVersion: "feature-179-v1",
+      adapterPolicyHash: payload.adapterPolicyHash,
+    },
+    inputJson: payload,
+    instructionsJson: {
+      intent: payload.kind,
+      requiredProgressStages: ["validate_contract", "preflight", "scan_audio", "scan_visual", "fuse_speakers", "compose_edit_map", "upload_artifacts", "publish_artifacts"],
+      requiredFailureCodes: ["invalid_contract", "workflow_capability_blocked", "source_reference_expired", "source_fingerprint_mismatch", "artifact_upload_failed", "artifact_checksum_mismatch", "plan_stale", "canceled"],
+    },
+    timeoutSeconds: SPEAKER_AWARE_TIMEOUT_SECONDS[payload.kind],
+    retryPolicyJson: { maxAttempts: 1, backoffSeconds: 0 },
+    idempotencyKey: payload.idempotencyKey,
+  });
+  return { created: true, job };
 }
 
 const VERTICAL_DRAMA_FFMPEG_ASSEMBLY_TIMEOUT_SECONDS = 1800;

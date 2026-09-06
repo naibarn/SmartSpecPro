@@ -1,0 +1,29 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/179-worker-speaker-aware-vad-diarization-reframe/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contracts-and-edit-map",
+    "section-02-adapter-policy-and-preflight",
+    "section-03-subtitle-vad-diarization",
+    "section-04-visual-tracks-and-active-speaker",
+    "section-05-durable-scan-and-edit-plan-jobs",
+    "section-06-render-map-ffmpeg-remotion",
+    "section-07-worker-and-web-ui",
+    "section-08-verification-rollout-and-runbook"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-06T09:59:26.655197+00:00"
+}

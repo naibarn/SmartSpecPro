@@ -5,6 +5,8 @@ import { useWorkerAppContext } from "./app/workerContext";
 import { MediaWorkspaceHost } from "./screens/media-workspace/MediaWorkspaceHost";
 import { SeriesSwitcherModal } from "./screens/media-workspace/SeriesSwitcherModal";
 import type { CanonicalWorkerRouteId } from "./app/workerRoutes";
+import type { DeadAirRenderSelection } from "./screens/media-workspace/mediaWorkspaceTimeline";
+import type { AdapterPolicy } from "./screens/media-workspace/SpeakerAwareWorkflowPanel";
 
 type SeriesProjection = {
   seriesId: string;
@@ -87,6 +89,7 @@ function buildMediaIdempotencyKey(input: {
   focusY: number;
   stillMotion: string | null;
   maxDurationMs: number;
+  deadAir?: DeadAirRenderSelection;
 }): string {
   const safe = (value: string, maxLength: number) =>
     value.replace(/[^A-Za-z0-9._:-]/g, "_").slice(0, maxLength);
@@ -101,6 +104,9 @@ function buildMediaIdempotencyKey(input: {
       input.focusY.toFixed(2),
       input.stillMotion || "none",
       input.maxDurationMs,
+      input.deadAir
+        ? `${input.deadAir.volumeThresholdPct}:${input.deadAir.minDurationSec}:${input.deadAir.softeningBufferSec}:${input.deadAir.silenceSegments.map((segment) => `${segment.startMs}-${segment.endMs ?? "end"}`).join(",")}`
+        : "profile-default",
     ].join("-"),
     32,
   );
@@ -219,8 +225,6 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
     }
   }, [contextSeriesId, selectedSeriesId]);
   useEffect(() => {
-    if (!selectedSeriesId) return;
-
     const currentFolder = rootPath || (() => {
       try {
         return localStorage.getItem("smartspec_last_project_folder") || "";
@@ -228,6 +232,18 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
         return "";
       }
     })();
+
+    if (!selectedSeriesId) {
+      if (!isMedia || !currentFolder) return;
+      void invoke<WorkspaceStatus>("worker_app_pick_standalone_local_root", { path: currentFolder.trim() })
+        .then((value) => {
+          setWorkspace(value);
+          setSelectedRootId(value?.rootId ?? null);
+          setRootPath(value?.localPath || currentFolder);
+        })
+        .catch(() => {});
+      return;
+    }
 
     void invoke<WorkspaceStatus>("worker_app_select_series_workspace", { seriesId: selectedSeriesId })
       .then((value) => {
@@ -271,7 +287,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
           setSelectedRootId(null);
         }
       });
-  }, [selectedSeriesId, setSelectedRootId]);
+  }, [isMedia, selectedSeriesId, setSelectedRootId]);
 
   const selected =
     series.find((item) => item.seriesId === selectedSeriesId) ?? null;
@@ -295,11 +311,9 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
       try {
         localStorage.setItem("smartspec_last_project_folder", clean);
       } catch {}
-      if (selected) {
-        void invoke<WorkspaceStatus>("worker_app_pick_local_root", {
-          seriesId: selected.seriesId,
-          path: clean,
-        })
+      const command = selected ? "worker_app_pick_local_root" : "worker_app_pick_standalone_local_root";
+      const payload = selected ? { seriesId: selected.seriesId, path: clean } : { path: clean };
+      void invoke<WorkspaceStatus>(command, payload)
           .then((projection) => {
             setWorkspace(projection);
             setSelectedRootId(projection?.rootId ?? null);
@@ -307,19 +321,18 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
           .catch((err) => {
             console.warn("Failed to auto-bind picked root to selected series:", err);
           });
-      }
     },
     [selected, setSelectedRootId],
   );
   const selectRoot = async () => {
-    if (!selected || !rootPath.trim()) return;
+    if (!rootPath.trim()) return;
     setBusy(true);
     setError("");
     setMessage("");
     try {
       const projection = await invoke<WorkspaceStatus>(
-        "worker_app_pick_local_root",
-        { seriesId: selected.seriesId, path: rootPath.trim() },
+        selected ? "worker_app_pick_local_root" : "worker_app_pick_standalone_local_root",
+        selected ? { seriesId: selected.seriesId, path: rootPath.trim() } : { path: rootPath.trim() },
       );
       setWorkspace(projection);
       setSelectedRootId(projection?.rootId ?? null);
@@ -341,23 +354,23 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
       try {
         localStorage.setItem("smartspec_last_project_folder", selectedPath);
       } catch {}
-      if (selected) {
-        setBusy(true);
-        setError("");
-        setMessage("");
-        try {
-          const projection = await invoke<WorkspaceStatus>(
-            "worker_app_pick_local_root",
-            { seriesId: selected.seriesId, path: selectedPath.trim() },
-          );
-          setWorkspace(projection);
-          setSelectedRootId(projection?.rootId ?? null);
-          setMessage(locale === "th" ? `ผูกโฟลเดอร์ทำงานสำเร็จ: ${selectedPath}` : `Folder bound successfully: ${selectedPath}`);
-        } catch (caught) {
-          setError(invokeError(caught));
-        } finally {
-          setBusy(false);
-        }
+      setBusy(true);
+      setError("");
+      setMessage("");
+      try {
+        const projection = await invoke<WorkspaceStatus>(
+          selected ? "worker_app_pick_local_root" : "worker_app_pick_standalone_local_root",
+          selected ? { seriesId: selected.seriesId, path: selectedPath.trim() } : { path: selectedPath.trim() },
+        );
+        setWorkspace(projection);
+        setSelectedRootId(projection?.rootId ?? null);
+        setMessage(locale === "th"
+          ? `${selected ? "ผูกโฟลเดอร์กับ Series" : "เลือกโฟลเดอร์วิดีโอ"} สำเร็จ: ${selectedPath}`
+          : `${selected ? "Folder bound to Series" : "Video folder selected"}: ${selectedPath}`);
+      } catch (caught) {
+        setError(invokeError(caught));
+      } finally {
+        setBusy(false);
       }
     }
   };
@@ -486,7 +499,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
       setBusy(false);
     }
   };
-  const buildPlan = async () => {
+  const buildPlan = async (deadAir?: DeadAirRenderSelection) => {
     if (!selected || !sourceRelativeName.trim()) return;
     setBusy(true);
     setError("");
@@ -499,7 +512,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
         seriesId: selected.seriesId,
         sourceRelativeName: sourceRelativeName.trim(),
         options: {
-          removeDeadAir,
+          removeDeadAir: deadAir?.enabled ?? removeDeadAir,
           reframe9x16,
           focusMode,
           stillMotion,
@@ -507,6 +520,10 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
           sourceDurationMs: maxDurationMs,
           focusX,
           focusY,
+          volumeThresholdPct: deadAir?.volumeThresholdPct,
+          minDurationSec: deadAir?.minDurationSec,
+          softeningBufferSec: deadAir?.softeningBufferSec,
+          customSilenceSegments: deadAir?.silenceSegments,
         },
       });
       setPlan(result);
@@ -521,7 +538,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
       setBusy(false);
     }
   };
-  const submitJob = async () => {
+  const submitJob = async (deadAir?: DeadAirRenderSelection) => {
     if (!selected || !sourceRelativeName.trim() || !selected.bindingRevision)
       return;
     setBusy(true);
@@ -533,26 +550,31 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
           seriesId: selected.seriesId,
           bindingRevision: selected.bindingRevision,
           sourceRelativeName: sourceRelativeName.trim(),
-          removeDeadAir,
+          removeDeadAir: deadAir?.enabled ?? removeDeadAir,
           reframe9x16,
           focusMode,
           focusX,
           focusY,
           stillMotion,
           maxDurationMs,
+          volumeThresholdPct: deadAir?.volumeThresholdPct,
+          minDurationSec: deadAir?.minDurationSec,
+          softeningBufferSec: deadAir?.softeningBufferSec,
+          customSilenceSegments: deadAir?.silenceSegments,
           processingMode,
           idempotencyKey: buildMediaIdempotencyKey({
             seriesId: selected.seriesId,
             sourceRelativeName: sourceRelativeName.trim(),
             sourceFingerprint: scan?.entries.find((entry) => entry.relativeName === sourceRelativeName.trim())?.fingerprint,
             processingMode,
-            removeDeadAir,
+            removeDeadAir: deadAir?.enabled ?? removeDeadAir,
             reframe9x16,
             focusMode,
             focusX,
             focusY,
             stillMotion,
             maxDurationMs,
+            deadAir,
           }),
         },
       );
@@ -566,6 +588,24 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
     } finally {
       setBusy(false);
     }
+  };
+  const submitSpeakerAwareScan = async (input: { workflowMode: string; adapters: string[]; adapterPolicy: AdapterPolicy; requestedStages: string[]; outputStage: string; sourceRelativeName: string }) => {
+    if (!workspace || !input.sourceRelativeName.trim()) throw new Error("เลือกโฟลเดอร์และ source video ก่อน");
+    if (selected && !selected.bindingRevision) throw new Error("Series นี้ยังไม่มี binding ที่ใช้งานได้");
+    const result = await invoke<{ jobId?: string; status: string }>("worker_app_submit_speaker_aware_job", {
+      seriesId: selected?.seriesId ?? null,
+      bindingRevision: selected?.bindingRevision ?? null,
+      sourceRelativeName: input.sourceRelativeName,
+      workflowMode: input.workflowMode,
+      requestedStages: input.requestedStages,
+      outputStage: input.outputStage,
+      adapterPolicy: input.adapterPolicy,
+      parentEditMapHash: null,
+      approvalRequired: true,
+      idempotencyKey: `speaker-aware:${selected?.seriesId ?? "standalone"}:${input.sourceRelativeName}:${input.workflowMode}:${Date.now()}`,
+    });
+    setMessage(locale === "th" ? `ส่ง speaker-aware queue แล้ว ${result.jobId ?? result.status}` : `Speaker-aware queue accepted ${result.jobId ?? result.status}`);
+    return result;
   };
   const submitBatch = async () => {
     if (
@@ -1084,7 +1124,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
                 selected?.bindingRevision &&
                 !focusNeedsVisionWorker,
               )}
-              onSubmit={() => void submitJob()}
+              onSubmit={(deadAir) => void submitJob(deadAir)}
               onIngest={() => void submitIngest()}
               sourceRelativeName={sourceRelativeName}
               onSelectSourceFile={(relName) => setSourceRelativeName(relName)}
@@ -1099,8 +1139,9 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
               removeDeadAir={removeDeadAir}
               onRemoveDeadAirChange={setRemoveDeadAir}
               onOpenIntentSettings={() => setIsIntentModalOpen(true)}
-              onBuildPlan={() => void buildPlan()}
+              onBuildPlan={(deadAir) => void buildPlan(deadAir)}
               onWorkspacePathChange={handleWorkspacePathChange}
+              onSpeakerAwareRequestScan={submitSpeakerAwareScan}
             /> : null}
 
             {/* AI-assisted Preprocessing Intent Modal Dialog */}

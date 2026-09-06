@@ -11,6 +11,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 const MAX_SCAN_FILES: usize = 100_000;
 const MAX_SCAN_DEPTH: usize = 12;
 const ROOT_FINGERPRINT_VERSION: &str = "root-fingerprint.v1";
+/// Local-only workspace key for media that is not part of a Series. This is
+/// never sent to the Web control-plane as a real series id.
+pub const STANDALONE_WORKSPACE_ID: &str = "__standalone__";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

@@ -12,7 +12,7 @@ use crate::runtime_manifest::{
     doctor_from_installed_or_default_paths, read_runtime_pack_manifest, runtime_pack_paths,
     DoctorCheck, DoctorSummary, RuntimePackManifest,
 };
-use crate::settings::{save_settings, WorkerAppSettings};
+use crate::settings::{load_settings, save_settings, WorkerAppSettings};
 use crate::WorkerAppState;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -44,15 +44,19 @@ use crate::control_plane::{
     build_registration_payload_with_hermes, HermesRegistrationInfo, WorkerAppRegistrationPayload,
 };
 use crate::executor_state::ExecutorStatus;
+use crate::local_llm_registry::{
+    load_registry, save_registry, LocalLlmModelRecord, LocalLlmProviderProfile, LocalLlmRegistry,
+};
 use crate::media_pipeline::{
     analyze_media_file, build_media_plan, probe_media_file, qc_derived_output_with_probe,
-    run_allowlisted_ffmpeg, run_interactive_media_render, LocalMediaAnalysis, LocalMediaEditPlan, LocalMediaQc, MediaPlanOptions,
-    MediaToolchain,
+    run_allowlisted_ffmpeg, run_interactive_media_render, LocalMediaAnalysis, LocalMediaEditPlan,
+    LocalMediaQc, MediaPlanOptions, MediaToolchain,
 };
 use crate::series_workspace::{
     clear_root_state, create_child_folder, import_files_into_root, load_root_state_for_series,
     persist_root_state, redacted_projection, root_fingerprint, root_id, scan_preview,
     validate_local_root, ImportFilesResult, SeriesWorkspaceProjection, SeriesWorkspaceRoot,
+    STANDALONE_WORKSPACE_ID,
 };
 use crate::worker_control_plane::{
     get_worker_json, post_worker_json, post_worker_json_with_if_match, WorkerApiTokens,
@@ -61,7 +65,6 @@ use crate::worker_control_plane::{
 #[cfg(target_os = "windows")]
 use crate::worker_executor::REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION;
 use crate::worker_loop::{start_worker_loop, WorkerLoopStatus};
-use crate::local_llm_registry::{load_registry, save_registry, LocalLlmModelRecord, LocalLlmProviderProfile, LocalLlmRegistry};
 use base64::Engine;
 
 /// Serialises EVERY refresh-token rotation in this process.
@@ -298,14 +301,21 @@ pub async fn worker_app_get_comfy_profiles(
 
 const LOCAL_LLM_KEYRING_SERVICE: &str = "smartaihub-worker-local-llm";
 
-fn local_llm_registry_for_app(app: &tauri::AppHandle) -> Result<(PathBuf, LocalLlmRegistry), String> {
-    let app_data_dir = app.path().app_data_dir().map_err(|_| "app_data_dir_unavailable".to_string())?;
+fn local_llm_registry_for_app(
+    app: &tauri::AppHandle,
+) -> Result<(PathBuf, LocalLlmRegistry), String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|_| "app_data_dir_unavailable".to_string())?;
     let registry = load_registry(&app_data_dir)?;
     Ok((app_data_dir, registry))
 }
 
 #[tauri::command]
-pub async fn worker_app_get_local_llm_registry(app: tauri::AppHandle) -> Result<LocalLlmRegistry, String> {
+pub async fn worker_app_get_local_llm_registry(
+    app: tauri::AppHandle,
+) -> Result<LocalLlmRegistry, String> {
     Ok(local_llm_registry_for_app(&app)?.1)
 }
 
@@ -314,7 +324,8 @@ pub async fn worker_app_save_local_llm_provider(
     app: tauri::AppHandle,
     provider: LocalLlmProviderProfile,
 ) -> Result<LocalLlmRegistry, String> {
-    crate::local_llm_adapter::validate_provider_url(&provider).map_err(|_| "local_llm_provider_url_invalid".to_string())?;
+    crate::local_llm_adapter::validate_provider_url(&provider)
+        .map_err(|_| "local_llm_provider_url_invalid".to_string())?;
     let (app_data_dir, mut registry) = local_llm_registry_for_app(&app)?;
     registry.upsert_provider(provider)?;
     registry.bump_inventory_revision();
@@ -353,14 +364,18 @@ pub async fn worker_app_delete_local_llm_provider(
     local_provider_id: String,
 ) -> Result<LocalLlmRegistry, String> {
     let (app_data_dir, mut registry) = local_llm_registry_for_app(&app)?;
-    let credential_ref = registry.providers.iter().find(|item| item.local_provider_id == local_provider_id).and_then(|item| item.credential_ref.clone());
+    let credential_ref = registry
+        .providers
+        .iter()
+        .find(|item| item.local_provider_id == local_provider_id)
+        .and_then(|item| item.credential_ref.clone());
     registry.remove_provider(&local_provider_id)?;
     registry.bump_inventory_revision();
     save_registry(&app_data_dir, &registry)?;
     if let Some(reference) = credential_ref.as_deref() {
-      if let Ok(entry) = keyring::Entry::new(LOCAL_LLM_KEYRING_SERVICE, reference) {
-        let _ = entry.delete_credential();
-      }
+        if let Ok(entry) = keyring::Entry::new(LOCAL_LLM_KEYRING_SERVICE, reference) {
+            let _ = entry.delete_credential();
+        }
     }
     Ok(registry)
 }
@@ -375,9 +390,19 @@ pub async fn worker_app_set_local_llm_credential(
         return Err("local_llm_credential_invalid".into());
     }
     let (_app_data_dir, registry) = local_llm_registry_for_app(&app)?;
-    let provider = registry.providers.iter().find(|item| item.local_provider_id == local_provider_id).ok_or_else(|| "local_llm_provider_not_found".to_string())?;
-    let reference = provider.credential_ref.as_deref().ok_or_else(|| "local_llm_credential_ref_missing".to_string())?;
-    keyring::Entry::new(LOCAL_LLM_KEYRING_SERVICE, reference).map_err(|error| error.to_string())?.set_password(&secret).map_err(|error| error.to_string())?;
+    let provider = registry
+        .providers
+        .iter()
+        .find(|item| item.local_provider_id == local_provider_id)
+        .ok_or_else(|| "local_llm_provider_not_found".to_string())?;
+    let reference = provider
+        .credential_ref
+        .as_deref()
+        .ok_or_else(|| "local_llm_credential_ref_missing".to_string())?;
+    keyring::Entry::new(LOCAL_LLM_KEYRING_SERVICE, reference)
+        .map_err(|error| error.to_string())?
+        .set_password(&secret)
+        .map_err(|error| error.to_string())?;
     Ok(registry)
 }
 
@@ -387,7 +412,11 @@ pub async fn worker_app_delete_local_llm_credential(
     local_provider_id: String,
 ) -> Result<LocalLlmRegistry, String> {
     let (_app_data_dir, registry) = local_llm_registry_for_app(&app)?;
-    let provider = registry.providers.iter().find(|item| item.local_provider_id == local_provider_id).ok_or_else(|| "local_llm_provider_not_found".to_string())?;
+    let provider = registry
+        .providers
+        .iter()
+        .find(|item| item.local_provider_id == local_provider_id)
+        .ok_or_else(|| "local_llm_provider_not_found".to_string())?;
     if let Some(reference) = provider.credential_ref.as_deref() {
         if let Ok(entry) = keyring::Entry::new(LOCAL_LLM_KEYRING_SERVICE, reference) {
             let _ = entry.delete_credential();
@@ -1655,6 +1684,43 @@ pub async fn worker_app_pick_local_root(
 }
 
 #[tauri::command]
+pub async fn worker_app_pick_standalone_local_root(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    path: String,
+) -> Result<SeriesWorkspaceProjection, String> {
+    let canonical = validate_local_root(Path::new(path.trim()))?;
+    let device_key = active_connected_device_proof(&state)?
+        .map(|proof| proof.machine_fingerprint)
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| "worker_device_proof_required".to_string())?;
+    let fingerprint = root_fingerprint(&device_key, &canonical, "local_only_standalone");
+    let root = SeriesWorkspaceRoot {
+        series_id: STANDALONE_WORKSPACE_ID.to_string(),
+        root_id: root_id(&fingerprint),
+        root_path: canonical,
+        root_fingerprint: fingerprint,
+        workspace_mode: "local_only_standalone".into(),
+    };
+    let projection = redacted_projection(&root, None, "selected");
+    let mut workspace = state
+        .series_workspace
+        .lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?;
+    workspace.root = Some(root);
+    workspace.projection = Some(projection.clone());
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    persist_root_state(
+        &app_data_dir,
+        workspace.root.as_ref().expect("root set above"),
+    )?;
+    Ok(projection)
+}
+
+#[tauri::command]
 pub async fn worker_app_select_series_workspace(
     app: tauri::AppHandle,
     state: tauri::State<'_, WorkerAppState>,
@@ -1972,7 +2038,6 @@ pub async fn worker_app_list_ai_models(
                 supports_video_input: false,
                 supports_audio_input: false,
             },
-
             // Image to Image Models
             WorkerAiModelItem {
                 model_id: "gpt-image-2-img2img".into(),
@@ -1996,7 +2061,6 @@ pub async fn worker_app_list_ai_models(
                 supports_video_input: false,
                 supports_audio_input: false,
             },
-
             // Video Models
             WorkerAiModelItem {
                 model_id: "minimax-video-01".into(),
@@ -2042,7 +2106,6 @@ pub async fn worker_app_list_ai_models(
                 supports_video_input: false,
                 supports_audio_input: false,
             },
-
             // Audio Models
             WorkerAiModelItem {
                 model_id: "openai-tts-1-hd".into(),
@@ -2080,13 +2143,13 @@ pub async fn worker_app_list_ai_models(
         ]
     });
 
-    let target_cat = category.map(|c| c.trim().to_string()).filter(|c| !c.is_empty());
+    let target_cat = category
+        .map(|c| c.trim().to_string())
+        .filter(|c| !c.is_empty());
 
     let filtered: Vec<WorkerAiModelItem> = all_models
         .into_iter()
-        .filter(|m| {
-            m.is_enabled && target_cat.as_ref().map_or(true, |cat| &m.category == cat)
-        })
+        .filter(|m| m.is_enabled && target_cat.as_ref().map_or(true, |cat| &m.category == cat))
         .collect();
 
     Ok(WorkerAiModelListResponse {
@@ -2454,25 +2517,68 @@ pub async fn worker_app_transcribe_audio(
     }
 
     let lang = language.unwrap_or_else(|| "th".to_string());
-    let mdl = model.unwrap_or_else(|| "small".to_string());
 
     let app_data_dir = app
         .path()
         .app_data_dir()
         .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let settings = load_settings(&app_data_dir);
+    let resource_dir = app
+        .path()
+        .resource_dir()
+        .map_err(|error| format!("resource directory unavailable: {error}"))?;
+    let effective_runtime_dir = get_effective_runtime_dir(&app)?;
+    let (manifest_path, sidecar_root) = runtime_pack_paths(&resource_dir, &effective_runtime_dir);
+    let manifest = read_runtime_pack_manifest(&manifest_path)
+        .map_err(|_| "transcription_unavailable".to_string())?;
+    let transcription = manifest
+        .transcription
+        .ok_or_else(|| "transcription_unavailable".to_string())?;
+    let mdl = model.unwrap_or_else(|| transcription.model.clone());
+    if mdl != transcription.model {
+        return Err(format!("unsupported_transcription_model: {mdl}"));
+    }
     let temp_dir = app_data_dir.join("cache").join("transcriptions");
-    std::fs::create_dir_all(&temp_dir).map_err(|error| format!("failed to create temp dir: {error}"))?;
+    std::fs::create_dir_all(&temp_dir)
+        .map_err(|error| format!("failed to create temp dir: {error}"))?;
 
-    let runtime_root = app_data_dir.join("runtime-pack");
-    let managed_wsl = false;
-    let managed_wsl_root = String::new();
-    let whisper_path = runtime_root.join("whisper").join(if cfg!(target_os = "windows") { "whisper-cli.exe" } else { "whisper-cli" });
-    let node_path = runtime_root.join("node").join(if cfg!(target_os = "windows") { "node.exe" } else { "bin/node" });
-    let cli_path = runtime_root.join("hyperframes").join("node_modules").join("hyperframes").join("dist").join("cli.js");
+    let runtime_root = crate::runtime_manifest::runtime_pack_root_for_sidecars(&sidecar_root);
+    let whisper_path =
+        crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.binary_path)
+            .ok_or_else(|| "transcription_unavailable".to_string())?;
+    let model_path =
+        crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.model_path)
+            .ok_or_else(|| "transcription_unavailable".to_string())?;
+    if !whisper_path.is_file() || !model_path.is_file() {
+        return Err("transcription_unavailable".into());
+    }
+    let node_path = runtime_root.join(if cfg!(target_os = "windows") {
+        "node/node.exe"
+    } else {
+        "node/bin/node"
+    });
+    let cli_path = runtime_root.join("hyperframes/node_modules/hyperframes/dist/cli.js");
+    let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+    let duration_ms = probe_media_file(&source_path, &tools)
+        .ok()
+        .and_then(|probe| probe.duration_ms);
+    match crate::media_pipeline::audio_has_detectable_activity(&source_path, &tools) {
+        Ok(false) => {
+            return Ok(json!({
+                "text": "",
+                "words": [],
+                "status": "empty",
+                "reason": "no_detectable_audio_activity",
+                "model": transcription.model
+            }))
+        }
+        Err(error) => return Err(error),
+        Ok(true) => {}
+    }
 
     let output = crate::worker_loop::execute_hyperframes_transcription_process(
-        managed_wsl,
-        managed_wsl_root,
+        settings.runtime_environment.is_managed_wsl(),
+        settings.managed_wsl_root.clone(),
         source_path.clone(),
         temp_dir.clone(),
         lang,
@@ -2498,12 +2604,20 @@ pub async fn worker_app_transcribe_audio(
             .map_err(|e| format!("Failed to read transcript json: {e}"))?;
         let parsed: Value = serde_json::from_str(&content)
             .map_err(|e| format!("Failed to parse transcript json: {e}"))?;
-        return Ok(parsed);
+        return crate::worker_loop::normalize_hyperframes_transcript_output(
+            &parsed,
+            &temp_dir,
+            duration_ms,
+        );
     }
 
     let stdout_str = String::from_utf8_lossy(&output.stdout);
     if let Ok(parsed) = serde_json::from_str::<Value>(&stdout_str) {
-        return Ok(parsed);
+        return crate::worker_loop::normalize_hyperframes_transcript_output(
+            &parsed,
+            &temp_dir,
+            duration_ms,
+        );
     }
 
     Err("Transcription completed but output transcript file was not found".to_string())
@@ -2747,6 +2861,10 @@ pub async fn worker_app_submit_media_job(
     focus_y: f64,
     still_motion: Option<String>,
     max_duration_ms: u64,
+    volume_threshold_pct: Option<f64>,
+    min_duration_sec: Option<f64>,
+    softening_buffer_sec: Option<f64>,
+    custom_silence_segments: Option<Vec<CustomSilenceSegmentInput>>,
     processing_mode: String,
     idempotency_key: String,
 ) -> Result<Value, String> {
@@ -2841,7 +2959,12 @@ pub async fn worker_app_submit_media_job(
         "manual_region" => "manual_region",
         _ => "auto_person",
     };
-    let payload = json!({ "kind": "broll_preprocess", "seriesId": series_id, "binding": { "seriesId": root.series_id, "rootId": root.root_id, "rootFingerprint": root.root_fingerprint, "bindingRevision": binding_revision, "workspaceMode": root.workspace_mode, "status": "active" }, "source": { "assetId": asset_id, "kind": kind, "sourceRevision": fingerprint, "sourceFingerprint": fingerprint, "fileName": canonical_source.file_name().and_then(|value| value.to_str()).unwrap_or("media"), "relativeName": source_relative_name, "sizeBytes": metadata.len(), "durationMs": duration_ms, "captureAt": Value::Null }, "probe": { "width": source_probe.as_ref().and_then(|probe| probe.width), "height": source_probe.as_ref().and_then(|probe| probe.height), "fps": Value::Null, "durationMs": duration_ms, "hasAudio": source_probe.as_ref().map(|probe| probe.has_audio).unwrap_or(false), "rotationDegrees": 0, "codec": source_probe.as_ref().and_then(|probe| probe.codec.clone()), "container": source_probe.as_ref().and_then(|probe| probe.container.clone()) }, "editPlan": { "planId": format!("plan-{}", &fingerprint[..24]), "planRevision": "worker-local-v1", "mode": processing_mode, "aspectRatio": if reframe_9x16 { "9:16" } else { "source" }, "deadAir": { "enabled": remove_dead_air, "thresholdDb": -42, "minSilenceMs": 650, "padMs": 120 }, "budget": { "maxDurationMs": max_duration_ms.clamp(1000, 90000), "minDurationMs": 1000, "maxBrollMs": max_duration_ms.clamp(1000, 90000), "preserveNarrativeAudio": true }, "segments": [{ "segmentId": "segment-1", "sourceAssetId": asset_id, "sourceRevision": fingerprint, "startMs": 0, "endMs": duration_ms.unwrap_or(max_duration_ms).min(max_duration_ms), "removeDeadAir": remove_dead_air, "reframe": { "enabled": reframe_9x16, "target": target, "trackingMode": tracking_mode, "aspectRatio": "9:16", "maxCropFraction": 0.6, "fallback": "reject", "focusTrack": focus_track }, "stillMotion": still_motion.map(|motion| json!({ "enabled": true, "motion": motion, "startScale": 1.0, "endScale": 1.18, "durationMs": max_duration_ms.clamp(500, 90000) })) }], "rationale": if processing_mode == "automated_ai_editing" { "Worker App automated AI editing intent" } else { "Worker App local preprocessing intent" } }, "idempotencyKey": idempotency_key });
+    let threshold_pct = volume_threshold_pct.unwrap_or(25.0).clamp(1.0, 100.0);
+    let min_silence_ms = (min_duration_sec.unwrap_or(0.5).clamp(0.05, 5.0) * 1000.0).round() as u64;
+    let pad_ms = (softening_buffer_sec.unwrap_or(0.2).clamp(0.0, 2.0) * 1000.0).round() as u64;
+    let threshold_db = -50.0 + (threshold_pct / 100.0) * 35.0;
+    let silence_ranges = custom_silence_segments.unwrap_or_default();
+    let payload = json!({ "kind": "broll_preprocess", "seriesId": series_id, "binding": { "seriesId": root.series_id, "rootId": root.root_id, "rootFingerprint": root.root_fingerprint, "bindingRevision": binding_revision, "workspaceMode": root.workspace_mode, "status": "active" }, "source": { "assetId": asset_id, "kind": kind, "sourceRevision": fingerprint, "sourceFingerprint": fingerprint, "fileName": canonical_source.file_name().and_then(|value| value.to_str()).unwrap_or("media"), "relativeName": source_relative_name, "sizeBytes": metadata.len(), "durationMs": duration_ms, "captureAt": Value::Null }, "probe": { "width": source_probe.as_ref().and_then(|probe| probe.width), "height": source_probe.as_ref().and_then(|probe| probe.height), "fps": Value::Null, "durationMs": duration_ms, "hasAudio": source_probe.as_ref().map(|probe| probe.has_audio).unwrap_or(false), "rotationDegrees": 0, "codec": source_probe.as_ref().and_then(|probe| probe.codec.clone()), "container": source_probe.as_ref().and_then(|probe| probe.container.clone()) }, "editPlan": { "planId": format!("plan-{}", &fingerprint[..24]), "planRevision": "worker-local-v2-dead-air-profile", "mode": processing_mode, "aspectRatio": if reframe_9x16 { "9:16" } else { "source" }, "deadAir": { "enabled": remove_dead_air, "thresholdDb": threshold_db, "minSilenceMs": min_silence_ms, "padMs": pad_ms, "silenceRanges": silence_ranges }, "budget": { "maxDurationMs": max_duration_ms.clamp(1000, 90000), "minDurationMs": 1000, "maxBrollMs": max_duration_ms.clamp(1000, 90000), "preserveNarrativeAudio": true }, "segments": [{ "segmentId": "segment-1", "sourceAssetId": asset_id, "sourceRevision": fingerprint, "startMs": 0, "endMs": duration_ms.unwrap_or(max_duration_ms).min(max_duration_ms), "removeDeadAir": remove_dead_air, "reframe": { "enabled": reframe_9x16, "target": target, "trackingMode": tracking_mode, "aspectRatio": "9:16", "maxCropFraction": 0.6, "fallback": "reject", "focusTrack": focus_track }, "stillMotion": still_motion.map(|motion| json!({ "enabled": true, "motion": motion, "startScale": 1.0, "endScale": 1.18, "durationMs": max_duration_ms.clamp(500, 90000) })) }], "rationale": if processing_mode == "automated_ai_editing" { "Worker App automated AI editing intent" } else { "Worker App local preprocessing intent" } }, "idempotencyKey": idempotency_key });
     post_worker_json(
         &connection.server_url,
         &format!("/api/workers/{}/media-jobs", connection.worker_id),
@@ -2850,6 +2973,71 @@ pub async fn worker_app_submit_media_job(
         &connection.device_proof,
     )
     .await
+}
+
+#[tauri::command]
+pub async fn worker_app_submit_speaker_aware_job(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    series_id: Option<String>,
+    binding_revision: Option<i32>,
+    source_relative_name: String,
+    workflow_mode: String,
+    requested_stages: Vec<String>,
+    output_stage: String,
+    adapter_policy: Value,
+    parent_edit_map_hash: Option<String>,
+    approval_required: bool,
+    idempotency_key: String,
+) -> Result<Value, String> {
+    if source_relative_name.trim().is_empty() {
+        return Err("speaker_aware_source_missing".into());
+    }
+    if let Some(series_id_value) = series_id.as_deref() {
+        if series_id_value.trim().is_empty() || binding_revision.unwrap_or_default() <= 0 {
+            return Err("speaker_aware_source_or_binding_missing".into());
+        }
+    }
+    if !matches!(workflow_mode.as_str(), "subtitle_first" | "speaker_first" | "full_assisted" | "custom") {
+        return Err("speaker_aware_workflow_invalid".into());
+    }
+    let policy: crate::speaker_aware_adapters::AdapterPolicy = serde_json::from_value(adapter_policy.clone())
+        .map_err(|error| format!("invalid_contract: adapterPolicy invalid: {error}"))?;
+    crate::speaker_aware_adapters::validate_policy(&policy)?;
+    crate::speaker_aware_adapters::probe_configured_runner()
+        .map_err(|error| format!("speaker_aware_preflight_blocked: {error}"))?;
+    let app_data_dir = app.path().app_data_dir().map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let root = state.series_workspace.lock().map_err(|_| "workspace lock poisoned".to_string())?.root.clone().ok_or_else(|| "local_root_not_selected".to_string())?;
+    match series_id.as_deref() {
+        Some(series_id_value) if root.series_id != series_id_value => return Err("local_root_series_mismatch".into()),
+        None if root.series_id != STANDALONE_WORKSPACE_ID => return Err("standalone_root_required".into()),
+        _ => {}
+    }
+    let canonical_source = root.root_path.join(source_relative_name.trim()).canonicalize().map_err(|_| "media_source_missing".to_string())?;
+    if !canonical_source.starts_with(&root.root_path) || !canonical_source.is_file() { return Err("relative_path_escape".into()); }
+    let metadata = fs::metadata(&canonical_source).map_err(|_| "media_source_missing".to_string())?;
+    let fingerprint = format!("{:064x}", Sha256::digest(format!("{}:{}:{}", source_relative_name.trim(), metadata.len(), metadata.modified().ok().and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok()).map(|value| value.as_millis()).unwrap_or_default()).as_bytes()));
+    let connection = load_series_control_plane_connection(&app_data_dir)?;
+    let payload = json!({
+        "kind": "speaker_aware_media_scan",
+        "seriesId": series_id,
+        "inputArtifact": { "artifactId": format!("local-{}", &fingerprint[..24]), "revision": fingerprint, "checksum": fingerprint, "kind": "local_media" },
+        "analysisArtifacts": [],
+        "localSourceRelativeName": source_relative_name.trim(),
+        "workflowMode": workflow_mode,
+        "requestedStages": requested_stages,
+        "parentEditMapHash": parent_edit_map_hash,
+        "adapterPolicy": policy,
+        "adapterPolicyHash": crate::speaker_aware_adapters::SPEAKER_AWARE_CONTRACT_VERSION,
+        "outputStage": output_stage,
+        "idempotencyKey": idempotency_key,
+        "approvalRequired": approval_required,
+    });
+    let mut payload = payload;
+    let policy_value = payload.get("adapterPolicy").cloned().ok_or_else(|| "invalid_contract: adapterPolicy missing".to_string())?;
+    let policy_hash = crate::speaker_aware_adapters::hash_policy_value(&policy_value);
+    payload.as_object_mut().ok_or_else(|| "invalid_contract: payload must be an object".to_string())?.insert("adapterPolicyHash".into(), Value::String(policy_hash));
+    post_worker_json(&connection.server_url, &format!("/api/workers/{}/speaker-aware-jobs", connection.worker_id), &connection.tokens.execution_token, &json!({ "payload": payload }), &connection.device_proof).await
 }
 
 #[tauri::command]
@@ -7619,9 +7807,11 @@ pub async fn worker_app_reveal_file(app: tauri::AppHandle, path: String) -> Resu
 }
 
 #[tauri::command]
-pub async fn worker_app_save_copy(source_path: String, destination_path: String) -> Result<(), String> {
-    fs::copy(&source_path, &destination_path)
-        .map_err(|e| format!("save_copy_failed: {e}"))?;
+pub async fn worker_app_save_copy(
+    source_path: String,
+    destination_path: String,
+) -> Result<(), String> {
+    fs::copy(&source_path, &destination_path).map_err(|e| format!("save_copy_failed: {e}"))?;
     Ok(())
 }
 
@@ -8633,8 +8823,7 @@ pub async fn worker_app_browse_directory(
     }
 
     let mut entries = Vec::new();
-    let read_dir = fs::read_dir(&canonical)
-        .map_err(|e| format!("cannot_read_directory: {e}"))?;
+    let read_dir = fs::read_dir(&canonical).map_err(|e| format!("cannot_read_directory: {e}"))?;
 
     for entry_res in read_dir {
         let entry = match entry_res {
@@ -8657,7 +8846,9 @@ pub async fn worker_app_browse_directory(
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_millis())
             .unwrap_or(0);
-        let ext = entry.path().extension()
+        let ext = entry
+            .path()
+            .extension()
             .and_then(|s| s.to_str())
             .map(|s| s.to_ascii_lowercase());
         let is_video = match ext.as_deref() {
@@ -8667,7 +8858,9 @@ pub async fn worker_app_browse_directory(
 
         entries.push(DirectoryBrowseEntry {
             name: file_name,
-            path: crate::media_pipeline::strip_verbatim_prefix(&entry.path()).to_string_lossy().to_string(),
+            path: crate::media_pipeline::strip_verbatim_prefix(&entry.path())
+                .to_string_lossy()
+                .to_string(),
             is_directory: is_dir,
             size_bytes,
             modified_unix_ms,
@@ -8676,12 +8869,10 @@ pub async fn worker_app_browse_directory(
         });
     }
 
-    entries.sort_by(|a, b| {
-        match (a.is_directory, b.is_directory) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-        }
+    entries.sort_by(|a, b| match (a.is_directory, b.is_directory) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
     });
 
     let total_folders = entries.iter().filter(|e| e.is_directory).count();
@@ -8692,7 +8883,9 @@ pub async fn worker_app_browse_directory(
     let mut curr: Option<&Path> = Some(&canonical);
     while let Some(p) = curr {
         let clean_p = crate::media_pipeline::strip_verbatim_prefix(p);
-        let name = p.file_name().map(|n| n.to_string_lossy().to_string())
+        let name = p
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| clean_p.to_string_lossy().to_string());
         if !name.is_empty() {
             segments.push(DirectoryBreadcrumb {
@@ -8704,10 +8897,16 @@ pub async fn worker_app_browse_directory(
     }
     segments.reverse();
 
-    let parent_path = canonical.parent().map(|p| crate::media_pipeline::strip_verbatim_prefix(p).to_string_lossy().to_string());
+    let parent_path = canonical.parent().map(|p| {
+        crate::media_pipeline::strip_verbatim_prefix(p)
+            .to_string_lossy()
+            .to_string()
+    });
 
     Ok(DirectoryBrowseResult {
-        current_path: crate::media_pipeline::strip_verbatim_prefix(&canonical).to_string_lossy().to_string(),
+        current_path: crate::media_pipeline::strip_verbatim_prefix(&canonical)
+            .to_string_lossy()
+            .to_string(),
         parent_path,
         entries,
         breadcrumbs: segments,
@@ -8717,11 +8916,13 @@ pub async fn worker_app_browse_directory(
     })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomSilenceSegmentInput {
     pub start_ms: u64,
     pub end_ms: Option<u64>,
+    #[serde(default)]
+    pub is_manual: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -8787,24 +8988,36 @@ pub async fn worker_app_detect_silence_custom(
         .clone();
     let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
 
-    let raw_source_path = crate::media_pipeline::strip_verbatim_prefix(&PathBuf::from(source_path.trim()));
+    let raw_source_path =
+        crate::media_pipeline::strip_verbatim_prefix(&PathBuf::from(source_path.trim()));
     let source = if raw_source_path.is_absolute() {
         if raw_source_path.exists() {
             raw_source_path
         } else {
-            crate::media_pipeline::strip_verbatim_prefix(&raw_source_path.canonicalize().map_err(|e| format!("source_not_found: {e}"))?)
+            crate::media_pipeline::strip_verbatim_prefix(
+                &raw_source_path
+                    .canonicalize()
+                    .map_err(|e| format!("source_not_found: {e}"))?,
+            )
         }
     } else {
         let workspace = state
             .series_workspace
             .lock()
             .map_err(|_| "workspace lock poisoned".to_string())?;
-        let root = workspace.root.as_ref().ok_or_else(|| "local_root_not_selected".to_string())?;
+        let root = workspace
+            .root
+            .as_ref()
+            .ok_or_else(|| "local_root_not_selected".to_string())?;
         let target = root.root_path.join(raw_source_path);
         if target.exists() {
             crate::media_pipeline::strip_verbatim_prefix(&target)
         } else {
-            crate::media_pipeline::strip_verbatim_prefix(&target.canonicalize().map_err(|e| format!("source_not_found: {e}"))?)
+            crate::media_pipeline::strip_verbatim_prefix(
+                &target
+                    .canonicalize()
+                    .map_err(|e| format!("source_not_found: {e}"))?,
+            )
         }
     };
 
@@ -8834,24 +9047,36 @@ pub async fn worker_app_process_media_interactive(
         .clone();
     let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
 
-    let raw_source_path = crate::media_pipeline::strip_verbatim_prefix(&PathBuf::from(request.source_path.trim()));
+    let raw_source_path =
+        crate::media_pipeline::strip_verbatim_prefix(&PathBuf::from(request.source_path.trim()));
     let source = if raw_source_path.is_absolute() {
         if raw_source_path.exists() {
             raw_source_path
         } else {
-            crate::media_pipeline::strip_verbatim_prefix(&raw_source_path.canonicalize().map_err(|e| format!("source_not_found: {e}"))?)
+            crate::media_pipeline::strip_verbatim_prefix(
+                &raw_source_path
+                    .canonicalize()
+                    .map_err(|e| format!("source_not_found: {e}"))?,
+            )
         }
     } else {
         let workspace = state
             .series_workspace
             .lock()
             .map_err(|_| "workspace lock poisoned".to_string())?;
-        let root = workspace.root.as_ref().ok_or_else(|| "local_root_not_selected".to_string())?;
+        let root = workspace
+            .root
+            .as_ref()
+            .ok_or_else(|| "local_root_not_selected".to_string())?;
         let target = root.root_path.join(raw_source_path);
         if target.exists() {
             crate::media_pipeline::strip_verbatim_prefix(&target)
         } else {
-            crate::media_pipeline::strip_verbatim_prefix(&target.canonicalize().map_err(|e| format!("source_not_found: {e}"))?)
+            crate::media_pipeline::strip_verbatim_prefix(
+                &target
+                    .canonicalize()
+                    .map_err(|e| format!("source_not_found: {e}"))?,
+            )
         }
     };
 
@@ -8875,7 +9100,16 @@ pub async fn worker_app_process_media_interactive(
                 let start = seg.start_ms;
                 let end = seg.end_ms.unwrap_or(source_duration_ms);
                 if end > start {
-                    silence_intervals.push((start, end));
+                    let padding_ms = if seg.is_manual {
+                        0
+                    } else {
+                        (request.softening_buffer_sec.unwrap_or(0.2).clamp(0.0, 2.0) * 1000.0)
+                            as u64
+                    };
+                    silence_intervals.push((
+                        start.saturating_sub(padding_ms),
+                        end.saturating_add(padding_ms).min(source_duration_ms),
+                    ));
                 }
             }
             silence_intervals.sort_by_key(|k| k.0);
@@ -8896,7 +9130,8 @@ pub async fn worker_app_process_media_interactive(
                         silence_intervals.push((start, end));
                     }
                 }
-                let speech_buf_ms = (request.softening_buffer_sec.unwrap_or(0.3).clamp(0.05, 1.0) * 1000.0) as u64;
+                let speech_buf_ms =
+                    (request.softening_buffer_sec.unwrap_or(0.3).clamp(0.05, 1.0) * 1000.0) as u64;
                 if let Some(first_sp) = sil_res.first_speech_ms {
                     if first_sp > speech_buf_ms {
                         speech_start = first_sp.saturating_sub(speech_buf_ms);
@@ -8926,7 +9161,9 @@ pub async fn worker_app_process_media_interactive(
             }
         }
         if let Some(last_silence) = silence_intervals.last() {
-            if last_silence.1 >= source_duration_ms.saturating_sub(1000) && speech_end == source_duration_ms {
+            if last_silence.1 >= source_duration_ms.saturating_sub(1000)
+                && speech_end == source_duration_ms
+            {
                 speech_end = last_silence.0.max(speech_start.saturating_add(250));
             }
         }
@@ -8941,11 +9178,13 @@ pub async fn worker_app_process_media_interactive(
         }
     } else {
         req_trim_start
-    }.min(source_duration_ms);
+    }
+    .min(source_duration_ms);
 
     let req_trim_end = request.trim_end_ms.unwrap_or(source_duration_ms);
     let effective_trim_end = if request.remove_dead_air && !has_custom_silence {
-        if req_trim_end >= source_duration_ms.saturating_sub(600) && speech_end < source_duration_ms {
+        if req_trim_end >= source_duration_ms.saturating_sub(600) && speech_end < source_duration_ms
+        {
             speech_end
         } else {
             req_trim_end.min(speech_end)
@@ -8993,11 +9232,12 @@ pub async fn worker_app_process_media_interactive(
             } else {
                 sil_start.saturating_add(buffer_ms)
             };
-            let buffered_end = if sil_end >= source_duration_ms.saturating_sub(600) || has_custom_silence {
-                sil_end
-            } else {
-                sil_end.saturating_sub(buffer_ms)
-            };
+            let buffered_end =
+                if sil_end >= source_duration_ms.saturating_sub(600) || has_custom_silence {
+                    sil_end
+                } else {
+                    sil_end.saturating_sub(buffer_ms)
+                };
             if buffered_end <= buffered_start {
                 continue;
             }
@@ -9098,17 +9338,22 @@ pub async fn worker_app_upload_to_library(
         .app_data_dir()
         .map_err(|e| format!("app_data_dir_unavailable: {e}"))?;
 
-    let connection = load_connection(&app_data_dir)?
-        .ok_or_else(|| "Worker ยังไม่ได้เชื่อมต่อกับ smartaihub.app กรุณาเชื่อมต่อในหน้า Connection ก่อน".to_string())?;
+    let connection = load_connection(&app_data_dir)?.ok_or_else(|| {
+        "Worker ยังไม่ได้เชื่อมต่อกับ smartaihub.app กรุณาเชื่อมต่อในหน้า Connection ก่อน".to_string()
+    })?;
 
     let path = PathBuf::from(file_path.trim());
-    let canonical = path.canonicalize().map_err(|e| format!("file_not_found: {e}"))?;
+    let canonical = path
+        .canonicalize()
+        .map_err(|e| format!("file_not_found: {e}"))?;
     let meta = fs::metadata(&canonical).map_err(|e| format!("cannot_read_metadata: {e}"))?;
     let file_size = meta.len();
-    let file_name = canonical.file_name()
+    let file_name = canonical
+        .file_name()
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| "video.mp4".to_string());
-    let item_title = title.filter(|t| !t.trim().is_empty())
+    let item_title = title
+        .filter(|t| !t.trim().is_empty())
         .unwrap_or_else(|| file_name.clone());
 
     let client = reqwest::Client::builder()
@@ -9128,7 +9373,10 @@ pub async fn worker_app_upload_to_library(
         Value::Null
     };
 
-    let init_url = format!("{}/api/workers/{}/library/init-upload", base_url, connection.worker.id);
+    let init_url = format!(
+        "{}/api/workers/{}/library/init-upload",
+        base_url, connection.worker.id
+    );
     let init_payload = serde_json::json!({
         "fileName": file_name,
         "contentType": "video/mp4",
@@ -9139,7 +9387,10 @@ pub async fn worker_app_upload_to_library(
 
     let init_resp = client
         .post(&init_url)
-        .header("Authorization", format!("Bearer {}", connection.tokens.upload_token))
+        .header(
+            "Authorization",
+            format!("Bearer {}", connection.tokens.upload_token),
+        )
         .json(&init_payload)
         .send()
         .await
@@ -9150,9 +9401,18 @@ pub async fn worker_app_upload_to_library(
         return Err(format!("init_upload_failed: {err_text}"));
     }
 
-    let init_data: Value = init_resp.json().await.map_err(|e| format!("init_json_failed: {e}"))?;
-    let storage_key = init_data.get("storageKey").and_then(Value::as_str).ok_or("missing_storage_key")?;
-    let upload_url_raw = init_data.get("uploadUrl").and_then(Value::as_str).ok_or("missing_upload_url")?;
+    let init_data: Value = init_resp
+        .json()
+        .await
+        .map_err(|e| format!("init_json_failed: {e}"))?;
+    let storage_key = init_data
+        .get("storageKey")
+        .and_then(Value::as_str)
+        .ok_or("missing_storage_key")?;
+    let upload_url_raw = init_data
+        .get("uploadUrl")
+        .and_then(Value::as_str)
+        .ok_or("missing_upload_url")?;
 
     let full_upload_url = if upload_url_raw.starts_with('/') {
         format!("{}{}", base_url, upload_url_raw)
@@ -9161,7 +9421,10 @@ pub async fn worker_app_upload_to_library(
     };
 
     let file_bytes = fs::read(&canonical).map_err(|e| format!("cannot_read_file: {e}"))?;
-    let method = init_data.get("method").and_then(Value::as_str).unwrap_or("server");
+    let method = init_data
+        .get("method")
+        .and_then(Value::as_str)
+        .unwrap_or("server");
 
     let upload_resp = if method == "presigned" {
         client
@@ -9174,7 +9437,10 @@ pub async fn worker_app_upload_to_library(
     } else {
         client
             .post(&full_upload_url)
-            .header("Authorization", format!("Bearer {}", connection.tokens.upload_token))
+            .header(
+                "Authorization",
+                format!("Bearer {}", connection.tokens.upload_token),
+            )
             .header("Content-Type", "video/mp4")
             .body(file_bytes)
             .send()
@@ -9187,7 +9453,10 @@ pub async fn worker_app_upload_to_library(
         return Err(format!("upload_failed: {err_text}"));
     }
 
-    let complete_url = format!("{}/api/workers/{}/library/complete-upload", base_url, connection.worker.id);
+    let complete_url = format!(
+        "{}/api/workers/{}/library/complete-upload",
+        base_url, connection.worker.id
+    );
     let complete_payload = serde_json::json!({
         "storageKey": storage_key,
         "title": item_title,
@@ -9199,7 +9468,10 @@ pub async fn worker_app_upload_to_library(
 
     let complete_resp = client
         .post(&complete_url)
-        .header("Authorization", format!("Bearer {}", connection.tokens.upload_token))
+        .header(
+            "Authorization",
+            format!("Bearer {}", connection.tokens.upload_token),
+        )
         .json(&complete_payload)
         .send()
         .await
@@ -9210,7 +9482,10 @@ pub async fn worker_app_upload_to_library(
         return Err(format!("complete_upload_failed: {err_text}"));
     }
 
-    let complete_data: Value = complete_resp.json().await.map_err(|e| format!("complete_json_failed: {e}"))?;
+    let complete_data: Value = complete_resp
+        .json()
+        .await
+        .map_err(|e| format!("complete_json_failed: {e}"))?;
     let library_item_id = complete_data
         .get("libraryItem")
         .and_then(|item| item.get("id"))
@@ -9234,24 +9509,25 @@ pub async fn worker_app_save_nle_project(
     project_path: String,
     project_json: String,
 ) -> Result<String, String> {
-    let clean_buf = crate::media_pipeline::strip_verbatim_prefix(&std::path::PathBuf::from(project_path.trim()));
+    let clean_buf = crate::media_pipeline::strip_verbatim_prefix(&std::path::PathBuf::from(
+        project_path.trim(),
+    ));
     if let Some(parent) = clean_buf.parent() {
         if !parent.exists() {
             let _ = std::fs::create_dir_all(parent);
         }
     }
-    std::fs::write(&clean_buf, &project_json)
-        .map_err(|e| format!("save_project_failed: {e}"))?;
+    std::fs::write(&clean_buf, &project_json).map_err(|e| format!("save_project_failed: {e}"))?;
     Ok(clean_buf.to_string_lossy().to_string())
 }
 
 #[tauri::command]
-pub async fn worker_app_load_nle_project(
-    project_path: String,
-) -> Result<String, String> {
-    let clean_buf = crate::media_pipeline::strip_verbatim_prefix(&std::path::PathBuf::from(project_path.trim()));
-    let content = std::fs::read_to_string(&clean_buf)
-        .map_err(|e| format!("load_project_failed: {e}"))?;
+pub async fn worker_app_load_nle_project(project_path: String) -> Result<String, String> {
+    let clean_buf = crate::media_pipeline::strip_verbatim_prefix(&std::path::PathBuf::from(
+        project_path.trim(),
+    ));
+    let content =
+        std::fs::read_to_string(&clean_buf).map_err(|e| format!("load_project_failed: {e}"))?;
     Ok(content)
 }
 
@@ -9260,10 +9536,10 @@ pub async fn worker_app_export_capcut_draft(
     draft_dir: String,
     draft_json: String,
 ) -> Result<String, String> {
-    let clean_buf = crate::media_pipeline::strip_verbatim_prefix(&std::path::PathBuf::from(draft_dir.trim()));
+    let clean_buf =
+        crate::media_pipeline::strip_verbatim_prefix(&std::path::PathBuf::from(draft_dir.trim()));
     if !clean_buf.exists() {
-        std::fs::create_dir_all(&clean_buf)
-            .map_err(|e| format!("create_draft_dir_failed: {e}"))?;
+        std::fs::create_dir_all(&clean_buf).map_err(|e| format!("create_draft_dir_failed: {e}"))?;
     }
     let draft_file = clean_buf.join("draft_content.json");
     std::fs::write(&draft_file, &draft_json)
@@ -9272,7 +9548,8 @@ pub async fn worker_app_export_capcut_draft(
 }
 
 #[tauri::command]
-pub async fn worker_app_get_audio_runtime_status() -> Result<crate::audio_runtime_sidecar::AudioRuntimeStatus, String> {
+pub async fn worker_app_get_audio_runtime_status(
+) -> Result<crate::audio_runtime_sidecar::AudioRuntimeStatus, String> {
     Ok(crate::audio_runtime_sidecar::probe_audio_runtime_status().await)
 }
 
@@ -9282,8 +9559,16 @@ pub async fn worker_app_generate_music_cue(
     req: crate::audio_runtime_sidecar::MusicCueGenerateRequest,
 ) -> Result<crate::audio_runtime_sidecar::MusicCueGenerateResult, String> {
     use tauri::Manager;
-    let app_dir = app_handle.path().app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    let app_dir = app_handle
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| std::path::PathBuf::from("."));
     crate::audio_runtime_sidecar::execute_music_cue_generation(req, app_dir).await
+}
+
+#[tauri::command]
+pub async fn worker_app_cancel_music_cue(job_id: String) -> Result<(), String> {
+    crate::audio_runtime_sidecar::cancel_music_cue_generation(&job_id).await
 }
 
 #[tauri::command]
@@ -9292,7 +9577,8 @@ pub async fn worker_app_save_binary_file(
     base64_data: String,
 ) -> Result<String, String> {
     use base64::Engine as _;
-    let clean_buf = crate::media_pipeline::strip_verbatim_prefix(&std::path::PathBuf::from(file_path.trim()));
+    let clean_buf =
+        crate::media_pipeline::strip_verbatim_prefix(&std::path::PathBuf::from(file_path.trim()));
     if let Some(parent) = clean_buf.parent() {
         if !parent.exists() {
             let _ = std::fs::create_dir_all(parent);
@@ -9306,9 +9592,6 @@ pub async fn worker_app_save_binary_file(
     let decoded = base64::engine::general_purpose::STANDARD
         .decode(raw_b64.trim())
         .map_err(|e| format!("decode_base64_failed: {e}"))?;
-    std::fs::write(&clean_buf, &decoded)
-        .map_err(|e| format!("write_binary_file_failed: {e}"))?;
+    std::fs::write(&clean_buf, &decoded).map_err(|e| format!("write_binary_file_failed: {e}"))?;
     Ok(clean_buf.to_string_lossy().to_string())
 }
-
-

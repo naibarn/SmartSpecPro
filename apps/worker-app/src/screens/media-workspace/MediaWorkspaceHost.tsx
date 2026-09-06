@@ -5,7 +5,10 @@ import { useWorkerAppContext } from "../../app/workerContext";
 import { MediaExplorerView, isAudioFile, isImageFile, isProjectFile, type DirectoryEntry } from "./MediaExplorerView";
 import { parseProjectDraft, saveNleProject, isProjectFilePath } from "./projectPersistence";
 import { MediaVideoEditorPlayer } from "./MediaVideoEditorPlayer";
+import { SpeakerAwareWorkflowPanel } from "./SpeakerAwareWorkflowPanel";
+import type { DeadAirRenderSelection } from "./mediaWorkspaceTimeline";
 import type { SmartSpecProjectDraft, ProjectAsset } from "../../types/nleProject";
+import type { AdapterPolicy } from "./SpeakerAwareWorkflowPanel";
 
 type WorkspaceStage =
   | "intake"
@@ -42,7 +45,7 @@ export interface MediaWorkspaceHostProps {
   busy: boolean;
   seriesId?: string | null;
   canSubmit?: boolean;
-  onSubmit?: () => void;
+  onSubmit?: (deadAir?: DeadAirRenderSelection) => void;
   onIngest?: () => void;
   sourceRelativeName?: string;
   onSelectSourceFile?: (relativeName: string, fullPath: string) => void;
@@ -57,8 +60,9 @@ export interface MediaWorkspaceHostProps {
   removeDeadAir?: boolean;
   onRemoveDeadAirChange?: (enabled: boolean) => void;
   onOpenIntentSettings?: () => void;
-  onBuildPlan?: () => void;
+  onBuildPlan?: (deadAir?: DeadAirRenderSelection) => void;
   onWorkspacePathChange?: (path: string) => void;
+  onSpeakerAwareRequestScan?: (input: { workflowMode: string; adapters: string[]; adapterPolicy: AdapterPolicy; requestedStages: string[]; outputStage: string; sourceRelativeName: string }) => void | Promise<{ jobId?: string; status?: string } | void>;
 }
 
 export function MediaWorkspaceHost({
@@ -70,7 +74,7 @@ export function MediaWorkspaceHost({
   canSubmit,
   onSubmit,
   onIngest,
-  sourceRelativeName: _sourceRelativeName,
+  sourceRelativeName,
   onSelectSourceFile,
   reframe9x16,
   onReframe9x16Change,
@@ -85,6 +89,7 @@ export function MediaWorkspaceHost({
   onOpenIntentSettings,
   onBuildPlan,
   onWorkspacePathChange,
+  onSpeakerAwareRequestScan,
 }: MediaWorkspaceHostProps) {
   const { locale } = useWorkerAppContext();
   const [activeTab, setActiveTab] = useState<"explorer" | "stages">("explorer");
@@ -94,6 +99,8 @@ export function MediaWorkspaceHost({
   const [importedAsset, setImportedAsset] = useState<ProjectAsset | null>(null);
   const [isExplorerCollapsed, setIsExplorerCollapsed] = useState<boolean>(false);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const [isSpeakerAwareOpen, setIsSpeakerAwareOpen] = useState(false);
+  const speakerAwarePanelRef = useRef<HTMLElement | null>(null);
   const [explorerWidth, setExplorerWidth] = useState<number>(() => {
     try {
       const saved = localStorage.getItem("smartspec_explorer_width");
@@ -153,6 +160,14 @@ export function MediaWorkspaceHost({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isMenuOpen]);
+
+  useEffect(() => {
+    if (!isSpeakerAwareOpen) return;
+    const frame = window.requestAnimationFrame(() => {
+      speakerAwarePanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isSpeakerAwareOpen]);
 
   useEffect(() => {
     if (workspacePath.current !== workspace?.localPath) {
@@ -637,6 +652,20 @@ export function MediaWorkspaceHost({
           )}
 
           <div className="studio-player-pane">
+            <div className="media-studio-feature-toolbar">
+              <div className="media-studio-feature-status" role="status" aria-live="polite">
+                {isSpeakerAwareOpen ? "แผงวิเคราะห์ผู้พูดเปิดอยู่" : "พร้อมวิเคราะห์ทั้งคลิป"}
+              </div>
+              <button
+                type="button"
+                className={`secondary-button${isSpeakerAwareOpen ? " active" : ""}`}
+                onClick={() => setIsSpeakerAwareOpen((current) => !current)}
+                aria-expanded={isSpeakerAwareOpen}
+                aria-controls="speaker-aware-workflow-panel"
+              >
+                {isSpeakerAwareOpen ? "✕ ปิดแผงวิเคราะห์" : "🎙️ วิเคราะห์ผู้พูดและวางแผนตัดต่อ"}
+              </button>
+            </div>
             <MediaVideoEditorPlayer
               key={`${selectedVideo?.path ?? "empty"}:${loadedProjectDraft?.projectId ?? "source"}`}
               videoFile={selectedVideo}
@@ -665,6 +694,15 @@ export function MediaWorkspaceHost({
               importedAsset={importedAsset}
               onProjectDraftChange={setLoadedProjectDraft}
             />
+            {isSpeakerAwareOpen ? (
+              <SpeakerAwareWorkflowPanel
+                ref={speakerAwarePanelRef}
+                seriesId={seriesId || loadedProjectDraft?.metadata?.seriesId}
+                sourceLabel={selectedVideo?.name}
+                busy={busy}
+                onRequestScan={onSpeakerAwareRequestScan ? (input) => onSpeakerAwareRequestScan({ ...input, sourceRelativeName: sourceRelativeName ?? "" }) : undefined}
+              />
+            ) : null}
           </div>
         </div>
       )}
@@ -713,7 +751,7 @@ export function MediaWorkspaceHost({
               <button
                 type="button"
                 className="secondary-button"
-                onClick={onSubmit}
+                onClick={() => onSubmit()}
                 disabled={!canSubmit || busy}
               >
                 {copy.submit}
