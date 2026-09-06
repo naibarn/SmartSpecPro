@@ -260,6 +260,7 @@ describe("vertical drama Enhanced prompt boundary", () => {
         characters: ["character-4-look-casual_home"],
         location: "บ้านของภาคิน",
         continuity_notes: ["Keep the box unchanged"],
+        source_beat_indexes: [0, 2],
         duration_seconds: 8,
       })
     ).toEqual({
@@ -269,8 +270,19 @@ describe("vertical drama Enhanced prompt boundary", () => {
       characterIds: ["character-4-look-casual_home"],
       locationId: "บ้านของภาคิน",
       continuityNotes: ["Keep the box unchanged"],
+      sourceBeatIndexes: [0, 2],
       durationSeconds: 8,
     });
+  });
+
+  it("normalizes camelCase source beat indexes and drops invalid entries", () => {
+    expect(
+      normalizeEnhancedStoryboardShot({
+        shotNumber: 2,
+        description: "A mother answers her son",
+        sourceBeatIndexes: [1, "2", -1, 1.5],
+      })
+    ).toMatchObject({ sourceBeatIndexes: [1] });
   });
 
   it("is ready only when all runtime, flag, model, and media gates pass", () => {

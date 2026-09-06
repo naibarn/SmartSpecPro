@@ -889,12 +889,12 @@ type EnhancedShotContext = {
 };
 
 function enhancedFlagsFromTenant(
-  flags: Awaited<ReturnType<typeof getTenantFeatureFlags>>
+  flags: Awaited<ReturnType<typeof getTenantFeatureFlags>> | null | undefined
 ) {
   return {
-    ui: Boolean(flags.verticalDramaEnhancedVideoPromptUi),
-    jobs: Boolean(flags.verticalDramaEnhancedVideoPromptJobs),
-    apply: Boolean(flags.verticalDramaEnhancedVideoPromptApply),
+    ui: Boolean(flags?.verticalDramaEnhancedVideoPromptUi),
+    jobs: Boolean(flags?.verticalDramaEnhancedVideoPromptJobs),
+    apply: Boolean(flags?.verticalDramaEnhancedVideoPromptApply),
   };
 }
 
@@ -954,6 +954,7 @@ async function loadEnhancedShotContext(input: {
     input.userId,
     input.seriesId
   );
+  const tenantFlags = await getTenantFeatureFlags(input.tenantId);
   const pack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
   if (!pack)
     throw new TRPCError({
@@ -1193,6 +1194,22 @@ async function loadEnhancedShotContext(input: {
         dialogue: existingClip.dialogue as ShotDialogueLine[] | undefined,
       }
     : undefined;
+  const isSpecialTieInEpisode = row.episodeKind === "special_tie_in";
+  const { getActiveBreakdown, readItemShotDrafts } =
+    await import("../services/verticalDramaStoryBible");
+  const shotEpisodePlanItem = isSpecialTieInEpisode
+    ? undefined
+    : getActiveBreakdown(
+        (series.bible as Record<string, unknown> | null) ?? null
+      ).find(item => item.episodeNumber === Number(row.episodeNumber));
+  const deepDraftShotForEnhanced: VdDeepDraftShotDraft | null =
+    !isSpecialTieInEpisode &&
+    tenantFlags?.verticalDramaSeriesDeepStoryDrafts === true &&
+    shotEpisodePlanItem
+      ? ((readItemShotDrafts(shotEpisodePlanItem) ?? []).find(
+          shot => shot.shot_number === input.shotNumber
+        ) ?? null)
+      : null;
   const knownSpeakerKeysForShot = await loadSeriesKnownSpeakerKeys(
     input.tenantId,
     input.seriesId
@@ -1206,6 +1223,11 @@ async function loadEnhancedShotContext(input: {
     script: row.script as Record<string, unknown> | null,
     storyboardShotCount: storyboard?.shots?.length,
     knownSpeakerKeys: knownSpeakerKeysForShot,
+    sourceBeatIndexes:
+      tenantFlags?.verticalDramaSeriesSpeechBudget === true
+        ? storyboardShot?.sourceBeatIndexes
+        : undefined,
+    deepDraftShot: deepDraftShotForEnhanced,
   });
   const rawDialogueList =
     resolvedDialogueLines.length > 0
@@ -1295,33 +1317,80 @@ async function loadEnhancedShotContext(input: {
     }
   }
 
+  const shotCharacterKeys = new Set(
+    [
+      ...(storyboardShot?.characterIds ?? []),
+      ...verifiedCastPositions.map(position => position.characterKey),
+    ].map(characterKey => characterKey.toLowerCase())
+  );
+  const speakerIdentityCandidates: VerticalDramaSpeakerIdentityCandidate[] =
+    rosterRows
+      .filter(
+        candidate =>
+          shotCharacterKeys.size === 0 ||
+          shotCharacterKeys.has(candidate.characterKey.toLowerCase())
+      )
+      .map(candidate => ({
+        characterKey: candidate.characterKey,
+        name: candidate.name,
+      }));
+
   const enhancedDialogue = rawDialogueList
+    .filter((line: any) =>
+      Boolean(
+        String(
+          line.lineTh ??
+            line.text ??
+            line.dialogue_line ??
+            line.line ??
+            ""
+        ).trim()
+      )
+    )
     .map((line: any, idx: number) => {
-      const rawKey = String(
-        line.characterKey ?? line.speaker_character_id ?? line.speakerId ?? ""
+      const authoredSpeaker = String(
+        line.characterKey ??
+          line.speaker_character_id ??
+          line.speakerId ??
+          line.speaker ??
+          line.speakerHint ??
+          ""
+      ).trim();
+      const resolution = resolveVerticalDramaSpeakerIdentity(
+        authoredSpeaker,
+        speakerIdentityCandidates
       );
+      if (resolution.status !== "resolved") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            resolution.status === "ambiguous"
+              ? `ผู้พูด “${authoredSpeaker}” ตรงกับตัวละครมากกว่าหนึ่งคนในช็อต ${input.shotNumber}`
+              : `ไม่พบตัวละครผู้พูด “${authoredSpeaker || `บรรทัด ${idx + 1}`}” ในช็อต ${input.shotNumber}`,
+        });
+      }
+      const stableCharacterKey = resolution.characterKey;
       const matchedPosition = verifiedCastPositions.find(
         p =>
-          p.characterKey.toLowerCase() === rawKey.toLowerCase() ||
-          p.name.toLowerCase() === rawKey.toLowerCase()
+          p.characterKey.toLowerCase() === stableCharacterKey.toLowerCase()
       );
       const speaker =
-        speakerNameMap.get(rawKey) ??
-        speakerNameMap.get(rawKey.toLowerCase()) ??
+        speakerNameMap.get(stableCharacterKey) ??
+        speakerNameMap.get(stableCharacterKey.toLowerCase()) ??
         matchedPosition?.name ??
         line.speaker ??
         line.speakerHint ??
-        rawKey;
+        stableCharacterKey;
       const position = matchedPosition?.position ?? line.position ?? undefined;
       const text = String(
         line.lineTh ?? line.text ?? line.dialogue_line ?? line.line ?? ""
       ).trim();
       return {
         lineId: `line-${idx + 1}`,
-        speakerId: rawKey || undefined,
+        speakerId: stableCharacterKey,
         speakerHint: speaker || undefined,
         speaker: speaker || undefined,
-        characterKey: rawKey || undefined,
+        characterKey: stableCharacterKey,
         position,
         text,
         lineTh: text,
@@ -1331,8 +1400,7 @@ async function loadEnhancedShotContext(input: {
             ? line.durationSeconds
             : undefined,
       };
-    })
-    .filter((line: any) => Boolean(line.text));
+    });
   const validVisionReferences = visionReferences.filter(reference =>
     isUsableEnhancedVisionUrl(reference.url)
   );
@@ -1344,10 +1412,6 @@ async function loadEnhancedShotContext(input: {
   });
   const characterIds = storyboardShot?.characterIds ?? [];
   const locationId = storyboardShot?.locationId;
-  const { getActiveBreakdown } = await import("../services/verticalDramaStoryBible");
-  const shotEpisodePlanItem = getActiveBreakdown(
-    (series.bible as Record<string, unknown> | null) ?? null
-  ).find(item => item.episodeNumber === Number(row.episodeNumber));
 
   const canonicalContext = {
     series: {
@@ -1429,9 +1493,7 @@ async function loadEnhancedShotContext(input: {
     authoringModel,
     nativeAudioEnabled: pack.nativeAudioEnabled === true,
   });
-  const flags = enhancedFlagsFromTenant(
-    await getTenantFeatureFlags(input.tenantId)
-  );
+  const flags = enhancedFlagsFromTenant(tenantFlags);
   const readiness = evaluateEnhancedVideoPromptReadiness({
     flags,
     runtime: await getEnhancedRuntimeFacts(runtimeSettings),

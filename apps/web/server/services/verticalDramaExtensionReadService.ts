@@ -627,6 +627,7 @@ function resolveDramaSpeakerNameForExtension(input: {
 export function projectDramaShotDialogueLinesForExtension(input: {
   dialogueAudioPlan: unknown;
   clipDialogue: unknown;
+  canonicalShot?: unknown;
   shotNumber: number;
   characterNameByKey?: ReadonlyMap<string, string>;
 }): DramaShotDialogueLine[] {
@@ -638,17 +639,58 @@ export function projectDramaShotDialogueLinesForExtension(input: {
   const clipLineForText = (text: string) => clipLines.find((line) => line.lineTh === text);
   const plan = asRecord(input.dialogueAudioPlan);
   const planLines = Array.isArray(plan?.dialogueLines) ? plan.dialogueLines : [];
-  const timedLines = planLines.flatMap((value): DramaShotDialogueLine[] => {
+  const shotPlanLines = planLines.flatMap((value): Record<string, unknown>[] => {
     const line = asRecord(value);
-    if (!line || Number(line.shotNumber) !== input.shotNumber) return [];
-    const text = typeof line.text === "string" ? line.text.trim() : "";
-    if (!text) return [];
-    const clipLine = clipLineForText(text);
-    const duration = typeof line.targetDurationSeconds === "number" && line.targetDurationSeconds >= 0
+    return line && Number(line.shotNumber) === input.shotNumber ? [line] : [];
+  });
+  const durationForPlanLine = (line: Record<string, unknown> | undefined) => {
+    if (!line) return null;
+    return typeof line.targetDurationSeconds === "number" && line.targetDurationSeconds >= 0
       ? line.targetDurationSeconds
       : typeof line.start === "number" && typeof line.end === "number" && line.end >= line.start
         ? line.end - line.start
         : null;
+  };
+
+  const canonicalShot = asRecord(input.canonicalShot);
+  const canonicalLines = Array.isArray(canonicalShot?.dialogue_lines)
+    ? canonicalShot.dialogue_lines
+    : [];
+  if (canonicalLines.length === 0 && canonicalShot?.silence_intent) return [];
+  const canonicalDialogue = canonicalLines.flatMap((value): DramaShotDialogueLine[] => {
+    const line = asRecord(value);
+    if (!line) return [];
+    const text = typeof line.line === "string" ? line.line.trim() : "";
+    if (!text) return [];
+    const planLine = shotPlanLines.find((candidate) => candidate.text === text);
+    const clipLine = clipLineForText(text);
+    const speakerName = asTrimmedString(line.speaker);
+    const speakerLine = {
+      ...line,
+      ...(speakerName ? { speakerName } : {}),
+    };
+    return [{
+      speaker: resolveDramaSpeakerNameForExtension({
+        line: speakerLine,
+        clipLine,
+        characterNameByKey: input.characterNameByKey,
+      }),
+      emotion: typeof line.emotion === "string" && line.emotion.trim()
+        ? line.emotion.trim()
+        : typeof clipLine?.emotion === "string" && clipLine.emotion.trim()
+          ? clipLine.emotion.trim()
+          : null,
+      text,
+      durationSeconds:
+        durationForPlanLine(planLine) ?? estimateVerticalDramaSpeechSeconds(text),
+    }];
+  });
+  if (canonicalDialogue.length > 0) return canonicalDialogue;
+
+  const timedLines = shotPlanLines.flatMap((line): DramaShotDialogueLine[] => {
+    const text = typeof line.text === "string" ? line.text.trim() : "";
+    if (!text) return [];
+    const clipLine = clipLineForText(text);
     return [{
       speaker: resolveDramaSpeakerNameForExtension({
         line,
@@ -661,7 +703,7 @@ export function projectDramaShotDialogueLinesForExtension(input: {
           ? clipLine.emotion.trim()
           : null,
       text,
-      durationSeconds: duration,
+      durationSeconds: durationForPlanLine(line),
     }];
   });
   if (timedLines.length > 0) return timedLines;
@@ -690,7 +732,11 @@ export async function getDramaSeriesEpisodeDetailForExtension(
   const tenantId = requireTenantId(auth);
 
   const [seriesRow] = await db
-    .select({ id: verticalDramaSeries.id, title: verticalDramaSeries.title })
+    .select({
+      id: verticalDramaSeries.id,
+      title: verticalDramaSeries.title,
+      bible: verticalDramaSeries.bible,
+    })
     .from(verticalDramaSeries)
     .where(and(
       eq(verticalDramaSeries.id, seriesId),
@@ -709,6 +755,7 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       episodeNumber: verticalDramaEpisodes.episodeNumber,
       title: verticalDramaEpisodes.title,
       status: verticalDramaEpisodes.status,
+      episodeKind: verticalDramaEpisodes.episodeKind,
       storyboard: verticalDramaEpisodes.storyboard,
       dialogueAudioPlan: verticalDramaEpisodes.dialogueAudioPlan,
       startFramePlan: verticalDramaEpisodes.startFramePlan,
@@ -734,6 +781,20 @@ export async function getDramaSeriesEpisodeDetailForExtension(
   const storyboardShots = Array.isArray(storyboard?.shots) ? storyboard!.shots : [];
   const frames = Array.isArray(startFramePlan?.frames) ? startFramePlan!.frames : [];
   const clips = Array.isArray(motionPromptPack?.clips) ? motionPromptPack!.clips : [];
+
+  const canonicalShotByNumber = new Map<number, unknown>();
+  if (episodeRow.episodeKind !== "special_tie_in") {
+    const { getActiveBreakdown, readItemShotDrafts } =
+      await import("./verticalDramaStoryBible");
+    const episodePlanItem = getActiveBreakdown(
+      asRecord(seriesRow.bible) ?? null,
+    ).find((item) => item.episodeNumber === Number(episodeRow.episodeNumber));
+    for (const shot of episodePlanItem
+      ? (readItemShotDrafts(episodePlanItem) ?? [])
+      : []) {
+      canonicalShotByNumber.set(shot.shot_number, shot);
+    }
+  }
 
   const shotNumbers = new Set<number>();
   for (const shot of storyboardShots) shotNumbers.add(shot.shotNumber);
@@ -920,6 +981,7 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       const dialogueLines = projectDramaShotDialogueLinesForExtension({
         dialogueAudioPlan: episodeRow.dialogueAudioPlan,
         clipDialogue: clip?.dialogue,
+        canonicalShot: canonicalShotByNumber.get(shotNumber),
         shotNumber,
         characterNameByKey,
       });

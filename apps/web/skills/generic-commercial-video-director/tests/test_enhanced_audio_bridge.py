@@ -249,9 +249,99 @@ class TestEnhancedAudioBridge(unittest.TestCase):
         self.assertIn('says with a สุภาพและเหนื่อยล้า voice, precise realistic lip sync: "ผมแค่ขอหลบฝนแป๊บเดียว"', prompt)
 
         # 4. Spoken dialogue section includes position anchors
-        self.assertIn("- Line 1 [แม่ค้า on viewer-left]: \"เฮ้ย ตรงนี้ขายของนะ อย่าเข้ามาใกล้ปลา\"", prompt)
-        self.assertIn("- Line 2 [Thanwa on viewer-right]: \"ผมแค่ขอหลบฝนแป๊บเดียว\"", prompt)
+        self.assertIn("- Line 1 [แม่ค้า (character-2) on viewer-left]: \"เฮ้ย ตรงนี้ขายของนะ อย่าเข้ามาใกล้ปลา\"", prompt)
+        self.assertIn("- Line 2 [Thanwa (thanwa) on viewer-right]: \"ผมแค่ขอหลบฝนแป๊บเดียว\"", prompt)
         self.assertIn("Silent Listener Constraint", prompt)
+
+        # 5. The binding block is adjacent to the observed character state,
+        # before motion/camera prose, so providers do not have to reconnect a
+        # detached dialogue section to the visible left/right cast.
+        observed_index = prompt.index("OBSERVED STATE AT T=0")
+        binding_index = prompt.index("CHARACTER, POSITION, AND DIALOGUE LOCK")
+        motion_index = prompt.index("MOTION AND PERFORMANCE")
+        self.assertLess(observed_index, binding_index)
+        self.assertLess(binding_index, motion_index)
+
+    def test_terminal_prompt_fails_closed_when_dialogue_speaker_has_no_observed_position(self):
+        payload = {
+            "targetVideoModel": {"id": "grok-imagine-video-1-5-preview"},
+            "shot": {
+                "shotNumber": 1,
+                "description": "A mother and son walk through a playground",
+                "durationSeconds": 8,
+            },
+            "dialogue": [
+                {
+                    "characterKey": "character-3-look-casual_home",
+                    "speaker": "ภูมิ",
+                    "lineTh": "แม่ วันนี้ผมจะวาดบ้านของเรา",
+                }
+            ],
+        }
+        observed = {
+            "characters": [
+                {
+                    "characterId": "character-variant-2",
+                    "screenPosition": "left foreground",
+                    "pose": "walking upright",
+                }
+            ]
+        }
+
+        with self.assertRaisesRegex(RuntimeError, "SPEAKER_POSITION_BINDING_FAILED"):
+            _terminal_prompt(payload, {"actions": ["They continue walking"]}, observed)
+
+    def test_episode_20_shot_1_keeps_each_thai_line_with_its_observed_speaker_position(self):
+        payload = {
+            "targetVideoModel": {"id": "grok-imagine-video-1-5-preview"},
+            "shot": {
+                "shotNumber": 1,
+                "description": "A mother and son walk through a playground",
+                "durationSeconds": 8,
+            },
+            "dialogue": [
+                {
+                    "characterKey": "character-3-look-casual_home",
+                    "speaker": "ภูมิ",
+                    "lineTh": "แม่ วันนี้ผมจะวาดบ้านของเรา",
+                },
+                {
+                    "characterKey": "character-variant-2",
+                    "speaker": "พิมพ์ชนก",
+                    "lineTh": "ได้เลยลูก แต่อยู่ในสายตาแม่นะ",
+                },
+            ],
+        }
+        observed = {
+            "characters": [
+                {
+                    "characterId": "character-variant-2",
+                    "screenPosition": "left foreground",
+                    "pose": "walking upright",
+                },
+                {
+                    "characterId": "character-3-look-casual_home",
+                    "screenPosition": "right foreground",
+                    "pose": "walking upright",
+                },
+            ]
+        }
+
+        prompt = _terminal_prompt(
+            payload,
+            {"actions": ["They continue walking together"]},
+            observed,
+        )
+
+        self.assertIn(
+            '- Line 1 [ภูมิ (character-3-look-casual_home) on viewer-right]: "แม่ วันนี้ผมจะวาดบ้านของเรา"',
+            prompt,
+        )
+        self.assertIn(
+            '- Line 2 [พิมพ์ชนก (character-variant-2) on viewer-left]: "ได้เลยลูก แต่อยู่ในสายตาแม่นะ"',
+            prompt,
+        )
+        self.assertNotIn("DIALOGUE POLICY: No spoken dialogue", prompt)
 
     def test_package_input_schema_validation_with_thai_dialogue(self):
         root = Path(__file__).resolve().parents[1]

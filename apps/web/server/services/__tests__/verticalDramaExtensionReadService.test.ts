@@ -167,6 +167,89 @@ describe("projectDramaShotVideoPromptsForExtension", () => {
 });
 
 describe("projectDramaShotDialogueLinesForExtension", () => {
+  it("uses canonical deep-draft dialogue when Enhanced clips do not carry dialogue", () => {
+    const firstLine = "แม่ วันนี้ผมจะวาดบ้านของเรา";
+    const secondLine = "ได้เลยลูก แต่อยู่ในสายตาแม่นะ";
+    const lines = projectDramaShotDialogueLinesForExtension({
+      shotNumber: 1,
+      dialogueAudioPlan: null,
+      clipDialogue: [],
+      canonicalShot: {
+        shot_number: 1,
+        dialogue_lines: [
+          { speaker: "ภูมิ", line: firstLine },
+          { speaker: "พิมพ์ชนก", line: secondLine },
+        ],
+      },
+      characterNameByKey: new Map(),
+    });
+
+    expect(lines).toEqual([
+      {
+        speaker: "ภูมิ",
+        emotion: null,
+        text: firstLine,
+        durationSeconds: estimateVerticalDramaSpeechSeconds(firstLine),
+      },
+      {
+        speaker: "พิมพ์ชนก",
+        emotion: null,
+        text: secondLine,
+        durationSeconds: estimateVerticalDramaSpeechSeconds(secondLine),
+      },
+    ]);
+  });
+
+  it("keeps canonical dialogue text but reuses matching audio-plan durations", () => {
+    const text = "บทพูดที่ยืนยันแล้ว";
+    const lines = projectDramaShotDialogueLinesForExtension({
+      shotNumber: 2,
+      dialogueAudioPlan: {
+        dialogueLines: [
+          {
+            shotNumber: 2,
+            speakerName: "ตัวละครเก่า",
+            text,
+            targetDurationSeconds: 2.4,
+          },
+          {
+            shotNumber: 2,
+            speakerName: "ข้อมูลเก่า",
+            text: "ข้อความที่ไม่ควรแสดง",
+            targetDurationSeconds: 9,
+          },
+        ],
+      },
+      clipDialogue: [],
+      canonicalShot: {
+        shot_number: 2,
+        dialogue_lines: [{ speaker: "ตัวละครหลัก", line: text }],
+      },
+    });
+
+    expect(lines).toEqual([
+      {
+        speaker: "ตัวละครหลัก",
+        emotion: null,
+        text,
+        durationSeconds: 2.4,
+      },
+    ]);
+  });
+
+  it("honors canonical silence instead of falling back to stale clip dialogue", () => {
+    expect(projectDramaShotDialogueLinesForExtension({
+      shotNumber: 3,
+      dialogueAudioPlan: null,
+      clipDialogue: [{ characterKey: "ตัวละคร", lineTh: "ข้อความเก่า" }],
+      canonicalShot: {
+        shot_number: 3,
+        dialogue_lines: [],
+        silence_intent: "silent reaction",
+      },
+    })).toEqual([]);
+  });
+
   it("returns only the requested shot's safe dialogue fields with planned durations", () => {
     const lines = projectDramaShotDialogueLinesForExtension({
       shotNumber: 2,

@@ -542,6 +542,11 @@ The sequence may use 3, 4, 5+ logical shots depending total duration and complex
 
 Dialogue remains structured by speaker ID and line ID.
 
+For Start Frame video authoring, every spoken line must stay in the same
+instruction block as its stable speaker ID and observed viewer-relative
+position. Fail closed before prompt authoring when any speaker or position
+cannot be resolved; never guess or transfer dialogue between visible cast.
+
 Planner must check:
 - speaking time fits segment duration;
 - speaker is on-screen when required;

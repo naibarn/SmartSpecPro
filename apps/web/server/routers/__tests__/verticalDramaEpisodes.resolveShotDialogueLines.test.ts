@@ -22,6 +22,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -58,6 +59,13 @@ vi.mock("../../_core/tokens", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
+  createRateLimiter: vi.fn(() => ({
+    isAllowed: vi.fn(() => true),
+    getRemaining: vi.fn(() => 100),
+    getResetTime: vi.fn(() => 0),
+    reset: vi.fn(),
+    clear: vi.fn(),
+  })),
   mediaGenerationLimiter: { isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) },
 }));
 

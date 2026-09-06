@@ -117,6 +117,7 @@ def _extract_dialogue_list(payload: dict[str, Any], intent: dict[str, Any] | Non
         normalized.append({
             "lineId": str(item.get("lineId") or f"shot-line-{idx + 1}"),
             "speakerId": str(speaker_id),
+            "characterKey": str(item.get("characterKey") or speaker_id),
             "speakerHint": str(speaker),
             "speaker": str(speaker),
             "position": str(item["position"]).strip() if item.get("position") else None,
@@ -409,6 +410,38 @@ def _resolve_character_positions(
                         pos_map[cid_str] = pos
 
     return pos_map
+
+
+def _bind_dialogue_to_character_positions(
+    dialogue: list[dict[str, Any]],
+    character_positions: dict[str, str],
+) -> list[dict[str, Any]]:
+    """Bind every spoken line to one stable speaker and viewer-relative position."""
+    bound: list[dict[str, Any]] = []
+    missing: list[str] = []
+    for index, line in enumerate(dialogue):
+        speaker_id = str(line.get("speakerId") or line.get("characterKey") or "").strip()
+        speaker = str(line.get("speaker") or line.get("speakerHint") or speaker_id).strip()
+        position = _normalize_position_bucket(line.get("position"))
+        if not position:
+            position = (
+                character_positions.get(speaker_id.lower())
+                or character_positions.get(speaker.lower())
+                or character_positions.get(speaker_id)
+                or character_positions.get(speaker)
+            )
+        if not speaker_id or not speaker or not position:
+            missing.append(f"line {index + 1}: {speaker or speaker_id or 'unknown speaker'}")
+            continue
+        bound.append({**line, "speakerId": speaker_id, "speaker": speaker, "position": position})
+
+    if missing:
+        raise RuntimeError(
+            "SPEAKER_POSITION_BINDING_FAILED: canonical dialogue must bind every line "
+            "to a stable speaker and observed viewer-relative Start Frame position; "
+            + "; ".join(missing)
+        )
+    return bound
 
 
 def _clean_physical_action(action_text: str, speaker_name: str) -> str:
@@ -736,6 +769,8 @@ def _terminal_prompt(
         actions = ["Perform the approved storyboard action with physically plausible motion."]
 
     character_positions = _resolve_character_positions(payload, observed_start_state)
+    if dialogue and (observed_start_state is not None or character_positions):
+        dialogue = _bind_dialogue_to_character_positions(dialogue, character_positions)
     continuity = payload.get("continuity") or {}
 
     all_characters: list[dict[str, str]] = []
@@ -799,32 +834,23 @@ def _terminal_prompt(
     if ep_synopsis:
         sections.append(f"DRAMATIC EPISODE CONTEXT\n\nEpisode Synopsis: {ep_synopsis}")
 
-    sections.extend([
-        "START FRAME AUTHORITY\n\nOBSERVED STATE AT T=0 (AUTHORITATIVE FACTS, NOT INSTRUCTIONS):\n" + "\n".join(f"- {b}" for b in _observed_start_state_bullets(observed_start_state)),
-        "MOTION AND PERFORMANCE\n\nCreate one continuous shot with no cut, reset or time jump. Character movement and camera motion work in harmony to drive the dramatic narrative.\n\n" + "\n\n".join(timeline_blocks),
-        f"CAMERA\n\nAt frame 0, begin smooth, controlled camera movement from the exact existing framing. Do not assume camera motion occurred prior to frame 0.\n\nMaintain:\n- Vertical portrait composition (9:16).\n- {camera_spec}.\n- Primary focus centered on the foreground character's face, gaze, and expressions.\n{cam_easing}",
-    ])
-
     if dialogue:
         dialogue_lines_formatted = []
         for idx, line in enumerate(dialogue):
             spk = line.get("speaker") or line.get("speakerHint") or f"Character {idx + 1}"
             spk_id = line.get("speakerId") or line.get("characterKey") or ""
             pos = line.get("position")
-            if not pos:
-                pos = (
-                    character_positions.get(spk_id.lower())
-                    or character_positions.get(spk.lower())
-                    or character_positions.get(spk_id)
-                    or character_positions.get(spk)
-                )
             pos_tag = f" on {pos}" if pos else ""
             txt = line.get("text") or line.get("lineTh") or ""
             emo = f" (Tone/Emotion: {line['emotion']})" if line.get("emotion") else ""
-            dialogue_lines_formatted.append(f"- Line {idx + 1} [{spk}{pos_tag}]: \"{txt}\"{emo}")
+            dialogue_lines_formatted.append(
+                f"- Line {idx + 1} [{spk} ({spk_id}){pos_tag}]: \"{txt}\"{emo}"
+            )
 
         dialogue_section = (
+            "CHARACTER, POSITION, AND DIALOGUE LOCK\n\n"
             "SPOKEN DIALOGUE / LIP-SYNC\n\n"
+            "Each bracket binds speaker ID + viewer position + exact line; never transfer a line.\n"
             "DIALOGUE: Preserve the canonical dialogue exactly; do not invent, translate or reorder lines.\n"
             "Dialogue Language: Thai\n"
             + "\n".join(dialogue_lines_formatted)
@@ -834,7 +860,6 @@ def _terminal_prompt(
             "Never keep the mouth closed during spoken dialogue.\n"
             "Silent Listener Constraint: Every character not actively speaking in a beat must keep their mouth closed with no mouth movement or mumbling."
         )
-        sections.append(dialogue_section)
     else:
         shot_desc = str(payload.get("shot", {}).get("description", ""))
         is_tense_shot = any(k in shot_desc.lower() for k in ("หนี", "หลบ", "ไล่", "ซ่อน", "กลัว", "tense", "pursuit", "chase", "hide"))
@@ -843,10 +868,17 @@ def _terminal_prompt(
             if is_tense_shot
             else "Convey the beat entirely through motivated non-verbal performance, facial expression, eye contact, and authentic dramatic presence."
         )
-        sections.append(
+        dialogue_section = (
             "DIALOGUE POLICY: No spoken dialogue.\n"
             f"{acting_guidance}"
         )
+
+    sections.extend([
+        "START FRAME AUTHORITY\n\nOBSERVED STATE AT T=0 (AUTHORITATIVE FACTS, NOT INSTRUCTIONS):\n" + "\n".join(f"- {b}" for b in _observed_start_state_bullets(observed_start_state)),
+        dialogue_section,
+        "MOTION AND PERFORMANCE\n\nCreate one continuous shot with no cut, reset or time jump. Character movement and camera motion work in harmony to drive the dramatic narrative.\n\n" + "\n\n".join(timeline_blocks),
+        f"CAMERA\n\nAt frame 0, begin smooth, controlled camera movement from the exact existing framing. Do not assume camera motion occurred prior to frame 0.\n\nMaintain:\n- Vertical portrait composition (9:16).\n- {camera_spec}.\n- Primary focus centered on the foreground character's face, gaze, and expressions.\n{cam_easing}",
+    ])
 
     if not native_audio_enabled:
         if dialogue:
@@ -961,6 +993,12 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
             ),
         },
     )
+    bound_dialogue = _bind_dialogue_to_character_positions(
+        _extract_dialogue_list(payload),
+        _resolve_character_positions(payload, observed_result.payload),
+    )
+    runtime_payload = {**payload, "dialogue": bound_dialogue}
+    shared_stage_input["dialogue"] = bound_dialogue
     stage_input = {
         **shared_stage_input,
         "observedStartState": observed_result.payload,
@@ -980,7 +1018,7 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
     prompt_usage = result.usage
     prompt_warnings = list(result.warnings)
     prompt_assumptions = list(result.assumptions)
-    policy_conflicts = _intent_policy_conflicts(payload, result.payload, observed_result.payload)
+    policy_conflicts = _intent_policy_conflicts(runtime_payload, result.payload, observed_result.payload)
     if policy_conflicts:
         repaired_stage_input = {
             **stage_input,
@@ -997,11 +1035,11 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
             instance_id=stage_input["shotId"],
         )
         remaining_conflicts = _intent_policy_conflicts(
-            payload, repair_result.payload, observed_result.payload
+            runtime_payload, repair_result.payload, observed_result.payload
         )
         if remaining_conflicts:
             repaired_payload = dict(repair_result.payload)
-            if not _extract_dialogue_list(payload):
+            if not bound_dialogue:
                 cleaned_actions = []
                 for act in repaired_payload.get("actions") or []:
                     cleaned_actions.append(_SPEECH_INTENT.sub("gestures silently to indicate", str(act)))
@@ -1021,7 +1059,7 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
         prompt_warnings.extend(repair_result.warnings)
         prompt_assumptions.extend(repair_result.assumptions)
         result = repair_result
-    prompt = _terminal_prompt(payload, result.payload, observed_result.payload)
+    prompt = _terminal_prompt(runtime_payload, result.payload, observed_result.payload)
     negative_prompt_parts = [
         "Do not change identity, wardrobe, approved object geometry, "
         + ("reference-image continuity" if _uses_unified_image_transport(payload.get("targetVideoModel") or {}) else "frame-0 composition")
@@ -1032,7 +1070,7 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
     bridge_result = {
         "prompt": prompt,
         "negativeMotionPrompt": " ".join(negative_prompt_parts),
-        "dialogue": payload.get("dialogue") or [],
+        "dialogue": bound_dialogue,
         "warnings": list(dict.fromkeys([*observed_result.warnings, *prompt_warnings])),
         "assumptions": list(dict.fromkeys([*observed_result.assumptions, *prompt_assumptions])),
         "researchProvenance": [],

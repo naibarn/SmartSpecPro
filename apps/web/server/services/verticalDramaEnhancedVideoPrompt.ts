@@ -226,6 +226,7 @@ export type EnhancedStoryboardShot = {
   description: string;
   cameraSetup: string;
   characterIds: string[];
+  sourceBeatIndexes?: number[];
   locationId?: string;
   continuityNotes: string[];
   durationSeconds: number;
@@ -293,6 +294,14 @@ export function normalizeEnhancedStoryboardShot(
     raw.location,
   );
   const durationValue = Number(raw.durationSeconds ?? raw.duration_seconds);
+  const rawSourceBeatIndexes =
+    raw.sourceBeatIndexes ?? raw.source_beat_indexes;
+  const sourceBeatIndexes = Array.isArray(rawSourceBeatIndexes)
+    ? rawSourceBeatIndexes.filter(
+        (entry): entry is number =>
+          typeof entry === "number" && Number.isInteger(entry) && entry >= 0,
+      )
+    : [];
   return {
     shotNumber,
     description: firstNonBlankString(
@@ -309,6 +318,7 @@ export function normalizeEnhancedStoryboardShot(
       raw.required_character_refs,
       raw.characters,
     ),
+    ...(sourceBeatIndexes.length > 0 ? { sourceBeatIndexes } : {}),
     ...(locationId ? { locationId } : {}),
     continuityNotes: stringArray(raw.continuityNotes, raw.continuity_notes),
     durationSeconds:
