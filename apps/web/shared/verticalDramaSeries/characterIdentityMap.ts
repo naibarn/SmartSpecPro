@@ -39,6 +39,8 @@ export interface VerticalDramaCharacterDescriptorSource {
   name?: string | null;
   role?: string | null;
   description?: string | null;
+  /** Provider-bound, deterministic identity lock for linked twins. */
+  twinIdentityLock?: string | null;
 }
 
 /** Compact "key = descriptor" line for one character — e.g.
@@ -53,9 +55,14 @@ export function buildCharacterDescriptorLine(
   const name = character.name?.trim();
   const role = character.role?.trim();
   const description = character.description?.trim();
+  const twinIdentityLock = character.twinIdentityLock?.trim();
 
   const label = [name, role ? `(${role})` : null].filter(Boolean).join(" ");
-  const parts = [label || character.characterKey, description ? `: ${description}` : null]
+  const parts = [
+    label || character.characterKey,
+    description ? `: ${description}` : null,
+    twinIdentityLock ? ` [${twinIdentityLock}]` : null,
+  ]
     .filter(Boolean)
     .join("");
 

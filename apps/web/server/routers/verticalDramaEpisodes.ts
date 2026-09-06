@@ -370,6 +370,11 @@ import {
   stripExistingIdentityLockSuffix,
   type VerticalDramaCharacterDescriptorSource,
 } from "@shared/verticalDramaSeries/characterIdentityMap";
+import {
+  resolveTwinPair,
+  TWIN_SHARED_FACE_FIELDS,
+} from "@shared/verticalDramaSeries/twinIdentity";
+import { readCharacterIdentityDna } from "@shared/verticalDramaSeries/characterDnaEditor";
 import { classifyDeviceMediatedCharacterRefs } from "@shared/verticalDramaSeries/characterPresence";
 import {
   normalizeVerticalDramaSupportingPresence,
@@ -4832,13 +4837,17 @@ async function resolveRequiredShotCharacterAttachmentManifest(
 
   type RequiredShotCharacterRow = Pick<
     typeof verticalDramaCharacters.$inferSelect,
-    "id" | "name" | "characterKey"
+    "id" | "name" | "characterKey" | "parentCharacterId" | "variantType" | "sharesFaceWithCharacterId" | "data"
   >;
   let rows = (await db
     .select({
       id: verticalDramaCharacters.id,
       name: verticalDramaCharacters.name,
       characterKey: verticalDramaCharacters.characterKey,
+      parentCharacterId: verticalDramaCharacters.parentCharacterId,
+      variantType: verticalDramaCharacters.variantType,
+      sharesFaceWithCharacterId: verticalDramaCharacters.sharesFaceWithCharacterId,
+      data: verticalDramaCharacters.data,
     })
     .from(verticalDramaCharacters)
     .where(
@@ -4863,6 +4872,10 @@ async function resolveRequiredShotCharacterAttachmentManifest(
         id: verticalDramaCharacters.id,
         name: verticalDramaCharacters.name,
         characterKey: verticalDramaCharacters.characterKey,
+        parentCharacterId: verticalDramaCharacters.parentCharacterId,
+        variantType: verticalDramaCharacters.variantType,
+        sharesFaceWithCharacterId: verticalDramaCharacters.sharesFaceWithCharacterId,
+        data: verticalDramaCharacters.data,
       })
       .from(verticalDramaCharacters)
       .where(
@@ -4931,6 +4944,69 @@ async function resolveRequiredShotCharacterAttachmentManifest(
       code: "PRECONDITION_FAILED",
       message: `ยังสร้างภาพช็อต ${shotNumber} ไม่ได้: ไม่พบตัวละครในรายการสำหรับ ${unknownKeys.join(", ")}`,
     });
+  }
+
+  // Looks belonging to a linked twin must not silently turn one sibling into
+  // an infant/teen while the other remains the canonical age (even if a legacy
+  // row was mislabeled as an outfit variant).
+  // Reject this before credit reservation/provider submission; the user can
+  // select the base twin or a same-age outfit look instead.
+  if (rows.some(row => row.parentCharacterId != null)) {
+    const allRows = (await db
+      .select({
+        id: verticalDramaCharacters.id,
+        data: verticalDramaCharacters.data,
+        parentCharacterId: verticalDramaCharacters.parentCharacterId,
+        sharesFaceWithCharacterId: verticalDramaCharacters.sharesFaceWithCharacterId,
+      })
+      .from(verticalDramaCharacters)
+      .where(
+        and(
+          eq(verticalDramaCharacters.tenantId, tenantId),
+          eq(verticalDramaCharacters.userId, userId),
+          eq(verticalDramaCharacters.seriesId, seriesId)
+        )
+      )) as Array<{
+        id: number;
+        data: unknown;
+        parentCharacterId: number | null;
+        sharesFaceWithCharacterId: number | null;
+      }>;
+    const byId = new Map(allRows.map(row => [row.id, row]));
+    const ageOf = (data: unknown): string | undefined => {
+      const visualBible = (data as Record<string, unknown> | null)?.visualBible as Record<string, unknown> | undefined;
+      return typeof visualBible?.ageRange === "string" && visualBible.ageRange.trim()
+        ? visualBible.ageRange.trim().toLowerCase()
+        : undefined;
+    };
+    const clearlyIncompatibleAge = (left: string, right: string): boolean => {
+      const infant = (value: string) =>
+        /infant|newborn|baby|ทารก|เด็กอ่อน|เดือน\s*old|\bเดือน\b/i.test(value);
+      if (infant(left) !== infant(right)) return true;
+      const years = (value: string) => {
+        const match = value.match(/(\d{1,2})\s*(?:years?|ปี)/i);
+        return match ? Number(match[1]) : undefined;
+      };
+      const leftYears = years(left);
+      const rightYears = years(right);
+      return leftYears != null && rightYears != null && Math.abs(leftYears - rightYears) > 1;
+    };
+    for (const row of rows) {
+      if (row.parentCharacterId == null) continue;
+      const parent = byId.get(row.parentCharacterId);
+      if (!parent) continue;
+      const twinId = parent.sharesFaceWithCharacterId ??
+        allRows.find(candidate => candidate.sharesFaceWithCharacterId === parent.id)?.id;
+      const twin = twinId != null ? byId.get(twinId) : undefined;
+      const variantAge = ageOf(row.data);
+      const twinAge = ageOf(twin?.data);
+      if (twin && variantAge && twinAge && clearlyIncompatibleAge(variantAge, twinAge)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `ยังสร้างภาพช็อต ${shotNumber} ไม่ได้: ลุคช่วงอายุของ ${row.name ?? row.characterKey} ไม่ตรงกับอายุแฝด (${twinAge}) — เลือกตัวละครฐานหรือลุคชุดที่อายุเดียวกัน`,
+        });
+      }
+    }
   }
   const screenCallerNames = presence.screenCallerCharacterRefs
     .map(key => rowByKey.get(key)?.name || key)
@@ -5776,36 +5852,61 @@ async function resolveShotCharacterIdentitySources(
   characterKeys: string[] | undefined
 ): Promise<VerticalDramaCharacterDescriptorSource[]> {
   if (!characterKeys?.length) return [];
+  const requestedKeys = new Set(characterKeys);
   const rows = (await db
     .select({
+      id: verticalDramaCharacters.id,
       characterKey: verticalDramaCharacters.characterKey,
       name: verticalDramaCharacters.name,
       role: verticalDramaCharacters.role,
       data: verticalDramaCharacters.data,
+      sharesFaceWithCharacterId: verticalDramaCharacters.sharesFaceWithCharacterId,
+      parentCharacterId: verticalDramaCharacters.parentCharacterId,
     })
     .from(verticalDramaCharacters)
     .where(
       and(
         eq(verticalDramaCharacters.tenantId, tenantId),
-        eq(verticalDramaCharacters.seriesId, seriesId),
-        inArray(verticalDramaCharacters.characterKey, characterKeys)
+        eq(verticalDramaCharacters.seriesId, seriesId)
       )
     )) as Array<{
+    id: number;
     characterKey: string;
     name: string;
     role: string | null;
     data: unknown;
+    sharesFaceWithCharacterId: number | null;
+    parentCharacterId: number | null;
   }>;
-  return rows.map((row: (typeof rows)[number]) => ({
-    characterKey: row.characterKey,
-    name: row.name,
-    role: row.role,
-    description:
-      typeof (row.data as Record<string, unknown> | null)?.description ===
-      "string"
-        ? ((row.data as Record<string, unknown>).description as string)
-        : undefined,
-  }));
+  const byId = new Map(rows.map(row => [row.id, row]));
+  return rows
+    .filter(row => requestedKeys.has(row.characterKey))
+    .map((row: (typeof rows)[number]) => ({
+      characterKey: row.characterKey,
+      name: row.name,
+      role: row.role,
+      description:
+        typeof (row.data as Record<string, unknown> | null)?.description ===
+        "string"
+          ? ((row.data as Record<string, unknown>).description as string)
+          : undefined,
+      twinIdentityLock: (() => {
+        const pair = resolveTwinPair(
+          row.parentCharacterId != null ? byId.get(row.parentCharacterId) ?? row : row,
+          rows
+        );
+        if (!pair) return undefined;
+        const baseId = row.parentCharacterId ?? row.id;
+        const twin = byId.get(pair.sourceId === baseId ? pair.targetId : pair.sourceId);
+        const source = byId.get(pair.sourceId) ?? row;
+        const sourceDna = readCharacterIdentityDna(source.data);
+        const ageRange = sourceDna?.ageRange ?? "same apparent age range";
+        const sharedFace = sourceDna
+          ? TWIN_SHARED_FACE_FIELDS.map(field => sourceDna.faceIdentity[field]).join("; ")
+          : "the canonical face geometry from the linked source";
+        return `TWIN IDENTITY LOCK: same face and facial structure as ${twin?.name ?? "the linked twin"}; canonical age ${ageRange}; face facts ${sharedFace}; clothing, hair, and personality may differ`;
+      })(),
+    }));
 }
 
 /** Resolve selected identity rows and unselected display names with one
@@ -5832,10 +5933,13 @@ async function resolveShotCharacterPromptRoster(
   );
   const rows = (await db
     .select({
+      id: verticalDramaCharacters.id,
       characterKey: verticalDramaCharacters.characterKey,
       name: verticalDramaCharacters.name,
       role: verticalDramaCharacters.role,
       data: verticalDramaCharacters.data,
+      sharesFaceWithCharacterId: verticalDramaCharacters.sharesFaceWithCharacterId,
+      parentCharacterId: verticalDramaCharacters.parentCharacterId,
     })
     .from(verticalDramaCharacters)
     .where(
@@ -5844,11 +5948,15 @@ async function resolveShotCharacterPromptRoster(
         eq(verticalDramaCharacters.seriesId, seriesId)
       )
     )) as Array<{
+    id: number;
     characterKey: string;
     name: string;
     role: string | null;
     data: unknown;
+    sharesFaceWithCharacterId: number | null;
+    parentCharacterId: number | null;
   }>;
+  const byId = new Map(rows.map(row => [row.id, row]));
   const selectedRows = rows.filter(row =>
     normalizedAllowedKeys.has(row.characterKey?.trim().toLocaleLowerCase())
   );
@@ -5866,7 +5974,23 @@ async function resolveShotCharacterPromptRoster(
         typeof (row.data as Record<string, unknown> | null)?.description ===
         "string"
           ? ((row.data as Record<string, unknown>).description as string)
-          : undefined,
+        : undefined,
+      twinIdentityLock: (() => {
+        const pair = resolveTwinPair(
+          row.parentCharacterId != null ? byId.get(row.parentCharacterId) ?? row : row,
+          rows
+        );
+        if (!pair) return undefined;
+        const baseId = row.parentCharacterId ?? row.id;
+        const twin = byId.get(pair.sourceId === baseId ? pair.targetId : pair.sourceId);
+        const source = byId.get(pair.sourceId) ?? row;
+        const sourceDna = readCharacterIdentityDna(source.data);
+        const ageRange = sourceDna?.ageRange ?? "same apparent age range";
+        const sharedFace = sourceDna
+          ? TWIN_SHARED_FACE_FIELDS.map(field => sourceDna.faceIdentity[field]).join("; ")
+          : "the canonical face geometry from the linked source";
+        return `TWIN IDENTITY LOCK: same face and facial structure as ${twin?.name ?? "the linked twin"}; canonical age ${ageRange}; face facts ${sharedFace}; clothing, hair, and personality may differ`;
+      })(),
     })),
     excludedVisualCharacterNames: Array.from(
       new Set(
@@ -19855,6 +19979,36 @@ export const verticalDramaEpisodesRouter = router({
       const characterRefUrls = renderPrimaryCharacterEntries.map(e => e.url);
       const characterSupplementaryRefUrls =
         characterAttachmentManifest.supplementaryEntries.map(e => e.url);
+
+      // Reload the current roster immediately before paid admission. The
+      // stored episode prompt is a snapshot, but twin links/DNA can be edited
+      // later from the Characters tab; this deterministic block makes the
+      // provider-bound prompt honor the latest shared face/age facts without
+      // changing the episode authoring flow or mutating its snapshot.
+      const latestCharacterIdentitySources =
+        await resolveShotCharacterIdentitySources(
+          tenantId,
+          seriesId,
+          Array.from(
+            new Set([
+              ...shotReferenceRoles.sceneCharacterRefs,
+              ...shotReferenceRoles.screenCallerCharacterRefs,
+            ])
+          )
+        );
+      const latestCharacterIdentityMapBlock = buildCharacterIdentityMapBlock(
+        [
+          ...shotReferenceRoles.sceneCharacterRefs,
+          ...shotReferenceRoles.screenCallerCharacterRefs,
+        ],
+        latestCharacterIdentitySources
+      );
+      if (
+        latestCharacterIdentityMapBlock &&
+        !softenedImagePrompt.includes("CHARACTER IDENTITY MAP")
+      ) {
+        softenedImagePrompt = `${softenedImagePrompt}\n\n${latestCharacterIdentityMapBlock}`;
+      }
 
       // Resolve the location before validating/repairing a legacy mapping so
       // its index remains truthful after the remote portrait is inserted.

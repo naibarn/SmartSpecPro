@@ -749,6 +749,15 @@ export interface VdRosterCharacterFields {
   parentCharacterId?: string;
   variantLabel?: string;
   sharesFaceWithCharacterId?: string;
+  twinCharacterId?: string;
+  twinCharacterName?: string;
+  twinRelationshipStatus?: "linked" | "candidate" | "unlinked";
+  twinIdentity?: {
+    sourceCharacterId: string;
+    sourceDnaRevision: number;
+    syncedAt: string;
+    sharedFields: readonly string[];
+  };
   /** Set B (`vd-stuck-generation-and-lost-characters` plan) — DTO
    *  completeness signal (`characterRowToDto`'s `needsSetup`/
    *  `needsSetupReasons`); optional here so plain fixtures without it keep
@@ -989,11 +998,17 @@ export function buildCharacterRosterEntries<T extends VdRosterCharacterFields>(
     .map(c => ({
       character: c,
       variants: variantsByParentId.get(c.characterId) ?? [],
-      shareFaceSourceName: c.sharesFaceWithCharacterId
-        ? characters.find(
-            other => other.characterId === c.sharesFaceWithCharacterId
-          )?.name
-        : undefined,
+      shareFaceSourceName:
+        c.twinCharacterName ??
+        (c.sharesFaceWithCharacterId
+          ? characters.find(
+              other => other.characterId === c.sharesFaceWithCharacterId
+            )?.name
+          : characters.find(
+              other =>
+                other.twinCharacterId === c.characterId ||
+                other.sharesFaceWithCharacterId === c.characterId
+            )?.name),
     }));
 }
 
@@ -2516,6 +2531,7 @@ export function VerticalDramaCharacterStockPanel({
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(
     () => readStoredCharacterPromptJob(seriesId)?.characterId ?? null
   );
+  const [twinLinkTargetId, setTwinLinkTargetId] = useState("");
   const [newName, setNewName] = useState("");
   const [newKey, setNewKey] = useState("");
   const [newRole, setNewRole] = useState("");
@@ -3043,6 +3059,18 @@ export function VerticalDramaCharacterStockPanel({
             "บันทึก Character DNA แล้ว — Prompt/ภาพเดิมอาจยังไม่ตรง",
             "Character DNA saved — the existing prompt/portrait may be stale"
           )
+        );
+      },
+      onError,
+    });
+
+  const linkCharacterTwinsMutation =
+    trpc.verticalDramaCharacters.linkCharacterTwins.useMutation({
+      onSuccess: () => {
+        setTwinLinkTargetId("");
+        invalidate();
+        toast.success(
+          t(lang, "เชื่อมตัวละครเป็นแฝดและซิงก์ DNA แล้ว", "Characters linked as twins and shared DNA synchronized")
         );
       },
       onError,
@@ -6374,8 +6402,8 @@ export function VerticalDramaCharacterStockPanel({
                                     <span className="min-w-0 truncate">
                                       {t(
                                         lang,
-                                        `ใช้ใบหน้าเดียวกับ ${shareFaceSourceName}`,
-                                        `Shares face with ${shareFaceSourceName}`
+                                        `ฝาแฝดกับ ${shareFaceSourceName}`,
+                                        `Twin of ${shareFaceSourceName}`
                                       )}
                                     </span>
                                   </Badge>
@@ -7723,13 +7751,18 @@ export function VerticalDramaCharacterStockPanel({
                           selectedCharacter.variantLabel ??
                           t(lang, "ตัวแปร", "Variant");
                         const twinSourceName =
-                          selectedCharacter.sharesFaceWithCharacterId
+                          selectedCharacter.twinCharacterName ??
+                          (selectedCharacter.sharesFaceWithCharacterId
                             ? characters.find(
                                 (other: VdCharacterListItem) =>
                                   other.characterId ===
                                   selectedCharacter.sharesFaceWithCharacterId
                               )?.name
-                            : undefined;
+                            : characters.find(
+                                (other: VdCharacterListItem) =>
+                                  other.twinCharacterId === selectedCharacter.characterId ||
+                                  other.sharesFaceWithCharacterId === selectedCharacter.characterId
+                              )?.name);
                         return (
                           <>
                             <User aria-hidden="true" className="h-4 w-4" />
@@ -7809,8 +7842,8 @@ export function VerticalDramaCharacterStockPanel({
                                 />
                                 {t(
                                   lang,
-                                  `ใช้ใบหน้าร่วมกับ ${twinSourceName}`,
-                                  `Shares face with ${twinSourceName}`
+                                  `ฝาแฝดกับ ${twinSourceName}`,
+                                  `Twin of ${twinSourceName}`
                                 )}
                               </Badge>
                             )}
@@ -7870,6 +7903,74 @@ export function VerticalDramaCharacterStockPanel({
                         </p>
                       ) : null;
                     })()}
+
+                    <section
+                      className="rounded-md border border-violet-200 bg-violet-50/40 p-3 dark:border-violet-900 dark:bg-violet-950/20"
+                      data-testid="vd-character-twin-relationship"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-medium text-foreground">
+                            {t(lang, "ความสัมพันธ์แฝด", "Twin relationship")}
+                          </p>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            {selectedCharacter.twinRelationshipStatus === "linked"
+                              ? t(
+                                  lang,
+                                  `เชื่อมกับ ${selectedCharacter.twinCharacterName ?? "ตัวละครแฝด"} แล้ว`,
+                                  `Linked with ${selectedCharacter.twinCharacterName ?? "twin character"}`
+                                )
+                              : t(
+                                  lang,
+                                  "ใช้ใบหน้า อายุ และโครงหน้าเดียวกัน แต่ยังปรับเสื้อผ้า ทรงผม และนิสัยแยกกันได้",
+                                  "Shares face, age, and facial structure while clothing, hair, and personality stay independent."
+                                )}
+                          </p>
+                        </div>
+                        {selectedCharacter.twinRelationshipStatus === "linked" && (
+                          <Badge variant="outline" className="border-violet-300 bg-violet-100 text-[10px] text-violet-700 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300">
+                            {t(lang, "DNA ส่วนร่วมทำงาน", "Shared DNA active")}
+                          </Badge>
+                        )}
+                      </div>
+                      {selectedCharacter.twinRelationshipStatus !== "linked" && !selectedCharacter.parentCharacterId && (
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <Select value={twinLinkTargetId || undefined} onValueChange={setTwinLinkTargetId}>
+                            <SelectTrigger className="h-8 min-w-[220px] flex-1 text-xs">
+                              <SelectValue placeholder={t(lang, "เลือกตัวละครแฝดที่มีอยู่", "Select existing twin character")} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {characters
+                                .filter((candidate: VdCharacterListItem) => candidate.characterId !== selectedCharacter.characterId && !candidate.parentCharacterId)
+                                .map((candidate: VdCharacterListItem) => (
+                                  <SelectItem key={candidate.characterId} value={candidate.characterId}>
+                                    {candidate.name}{candidate.role ? ` — ${candidate.role}` : ""}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={!twinLinkTargetId || linkCharacterTwinsMutation.isPending}
+                            onClick={() =>
+                              linkCharacterTwinsMutation.mutate({
+                                seriesId,
+                                sourceCharacterId: selectedCharacter.characterId,
+                                twinCharacterId: twinLinkTargetId,
+                              })
+                            }
+                          >
+                            {linkCharacterTwinsMutation.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Users className="mr-1 h-3 w-3" />}
+                            {t(lang, "เชื่อมเป็นแฝด", "Link as twins")}
+                          </Button>
+                        </div>
+                      )}
+                      <p className="mt-2 text-[10px] text-muted-foreground">
+                        {t(lang, "การเชื่อมนี้ไม่สร้างภาพและไม่ใช้เครดิต ระบบจะอ่าน DNA ล่าสุดอีกครั้งเมื่อสร้าง Prompt/ภาพ", "Linking is credit-free; prompt/image generation reloads the latest DNA before starting.")}
+                      </p>
+                    </section>
 
                     {(() => {
                       const characterId = selectedCharacter.characterId;

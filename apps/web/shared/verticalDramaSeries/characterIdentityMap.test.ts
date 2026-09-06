@@ -46,6 +46,18 @@ describe("buildCharacterDescriptorLine", () => {
       "character-2 = ชายนต์",
     );
   });
+
+  it("includes the deterministic twin identity lock alongside local descriptors", () => {
+    expect(
+      buildCharacterDescriptorLine({
+        characterKey: "character-3",
+        name: "ภูมิ",
+        description: "navy shirt",
+        twinIdentityLock:
+          "TWIN IDENTITY LOCK: same face and facial structure as ภาคิน; same apparent age range (around 9 years old); clothing, hair, and personality may differ",
+      })
+    ).toContain("TWIN IDENTITY LOCK: same face and facial structure as ภาคิน");
+  });
 });
 
 describe("buildCharacterIdentityMapBlock", () => {

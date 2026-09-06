@@ -85,6 +85,20 @@ describe("buildCharacterRosterEntries", () => {
     expect(twinEntry?.variants).toEqual([]);
   });
 
+  it("resolves the badge symmetrically when only the other twin carries the compatibility pointer", () => {
+    const source = character({ characterId: "1", name: "ภูมิ" });
+    const twin = character({
+      characterId: "2",
+      name: "ภาคิน",
+      sharesFaceWithCharacterId: "1",
+    });
+
+    const entries = buildCharacterRosterEntries([source, twin]);
+
+    expect(entries.find(e => e.character.characterId === "1")?.shareFaceSourceName).toBe("ภาคิน");
+    expect(entries.find(e => e.character.characterId === "2")?.shareFaceSourceName).toBe("ภูมิ");
+  });
+
   it("omits the shares-face badge (rather than throwing or showing broken text) when the source character isn't in the list", () => {
     const twin = character({
       characterId: "2",
