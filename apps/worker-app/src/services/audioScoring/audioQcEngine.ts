@@ -1,106 +1,98 @@
 import type { AudioQCReport } from "../../types/audioScoring";
 import type { SmartSpecProjectDraft } from "../../types/nleProject";
 
-/**
- * Audio QC Engine (EBU R128 & OTT Vertical Drama Standard)
- * Verifies that the complete episode mix complies with:
- * 1. Target Loudness: -16.0 LUFS (+/- 1.5 LU)
- * 2. True Peak: <= -1.0 dBTP (Clipping Prevention)
- * 3. Dialogue Intelligibility: Dialogue is never overpowered by BGM
- * 4. Vocal Bleed: No unwanted vocal lyrics bleeding into instrumental BGM
- */
-export function runAudioQualityControl(project: SmartSpecProjectDraft): AudioQCReport {
-  const issues: string[] = [];
-  const recommendations: string[] = [];
+export interface FullMixMeasurement {
+  sourceDurationMs: number;
+  integratedLufs: number;
+  loudnessRangeLu: number;
+  maxTruePeakDb: number;
+  dialogueIntelligibilityScore: number;
+  clippingDetected: boolean;
+  analyzerVersion: string;
+  measuredAt: string;
+}
 
-  const a1Track = project.tracks.find((t) => t.id === "track_a1");
-  const a2Track = project.tracks.find((t) => t.id === "track_a2");
-  const a3Track = project.tracks.find((t) => t.id === "track_a3");
-
-  // 1. Loudness Check (Simulation based on Track Gains)
-  const masterVolume = a1Track?.volume || 1.0;
-  const bgmVolume = a2Track?.volume || 0.35;
-  const sfxVolume = a3Track?.volume || 0.8;
-
-  // Approximate Integrated LUFS calculation
-  const integratedLufs = -16.2 + (masterVolume - 1.0) * 3.0 + (bgmVolume - 0.35) * 4.0;
-  const targetLufs = -16.0;
-
-  // 2. True Peak Check
-  const maxTruePeakDb = -1.1 + Math.max(0, (masterVolume + bgmVolume - 1.35) * 2.0);
-  const clippingDetected = maxTruePeakDb > -0.5;
-
-  if (clippingDetected) {
-    issues.push(`True Peak เกินเกณฑ์ (${maxTruePeakDb.toFixed(1)} dBTP) อาจเกิดเสียงแตก (Audio Clipping) เมื่อบีบอัดบน TikTok/Reels`);
-    recommendations.push("ปรับลดระดับเสียงรวมลง 1.5 dB หรือเปิดใช้ Limiter Ceiling ที่ -1.0 dBTP");
-  }
-
-  // 3. Dialogue Intelligibility Check
-  let dialogueScore = 0.95;
-  if (bgmVolume > 0.45 && (!a2Track?.ducking || !a2Track.ducking.enabled)) {
-    dialogueScore = 0.65;
-    issues.push("ระดับเสียงเพลง BGM สูงเกินไป และไม่ได้เปิดใช้ Auto-Ducking ทำให้กลบเสียงพูด");
-    recommendations.push("เปิดใช้ Auto-Ducking บน Track A2 โดยลดเสียงลงอย่างน้อย -12 dB ขณะมีเสียงพูด");
-  }
-
-  // 4. Vocal Bleed Check (MiniMax Music prompt verification)
-  const vocalBleedDetected = a2Track?.clips.some(
-    (c) => c.name.toLowerCase().includes("vocal") || c.name.toLowerCase().includes("lyric")
-  ) ?? false;
-
-  if (vocalBleedDetected) {
-    issues.push("ตรวจพบเสียงร้องเพลงในแทร็กดนตรีบรรเลง อาจขัดแย้งกับบทสนทนาภาษาไทย");
-    recommendations.push("ระบุพรอมต์ 'no vocals, instrumental only' ใน MiniMax Music 3");
-  }
-
-  const passed = issues.length === 0;
-
+function insufficientMeasurementReport(reason: string): AudioQCReport {
   return {
-    passed,
-    integratedLufs: Math.round(integratedLufs * 10) / 10,
-    targetLufs,
-    loudnessRangeLu: 6.8,
-    maxTruePeakDb: Math.round(maxTruePeakDb * 10) / 10,
-    dialogueIntelligibilityScore: dialogueScore,
-    clippingDetected,
-    issues,
-    recommendations,
+    passed: false,
+    integratedLufs: null,
+    targetLufs: -16.0,
+    loudnessRangeLu: null,
+    maxTruePeakDb: null,
+    dialogueIntelligibilityScore: 0,
+    clippingDetected: false,
+    issues: [reason],
+    recommendations: ["Render and measure the complete mix with the approved FFmpeg/analyzer path before applying."],
+    measurementStatus: "insufficient_data",
   };
 }
 
 /**
- * Auto-Remix Helper
- * Automatically applies master limiter and ducking fixes to achieve 100% QC compliance.
+ * Validates measurements produced by the real full-mix analyzer. This module
+ * deliberately never estimates LUFS, peak, intelligibility or LRA from track
+ * volume values; unknown measurements cannot pass QC.
  */
-export function autoRemixForQcCompliance(project: SmartSpecProjectDraft): SmartSpecProjectDraft {
-  const updatedTracks = project.tracks.map((track) => {
-    if (track.id === "track_a2") {
-      return {
-        ...track,
-        volume: Math.min(track.volume, 0.35),
-        ducking: {
-          enabled: true,
-          sidechainSourceTrackId: "track_a1",
-          attenuationDb: -12.0,
-          thresholdDb: -28.0,
-          attackMs: 50,
-          releaseMs: 300,
-          holdMs: 100,
-        },
-      };
-    }
-    if (track.id === "track_a1") {
-      return {
-        ...track,
-        volume: 1.0,
-      };
-    }
-    return track;
-  });
+export function runAudioQualityControl(
+  _project: SmartSpecProjectDraft,
+  _generatedCues: unknown[] = [],
+  measurement?: FullMixMeasurement,
+): AudioQCReport {
+  if (!measurement) {
+    return insufficientMeasurementReport("Full-program audio measurement is unavailable; track-volume formulas are not QC evidence.");
+  }
+
+  const issues: string[] = [];
+  const recommendations: string[] = [];
+  if (!Number.isFinite(measurement.integratedLufs) || Math.abs(measurement.integratedLufs + 16) > 1) {
+    issues.push("Integrated loudness is outside the web_drama_v1 target tolerance.");
+    recommendations.push("Apply bounded DSP-only loudness remediation and remeasure the emitted file.");
+  }
+  if (!Number.isFinite(measurement.maxTruePeakDb) || measurement.maxTruePeakDb > -1) {
+    issues.push("True peak measurement is above the -1 dBTP ceiling or unknown.");
+  }
+  if (measurement.clippingDetected || measurement.dialogueIntelligibilityScore < 0.8) {
+    issues.push("Clipping or dialogue intelligibility gate failed.");
+  }
 
   return {
+    passed: issues.length === 0,
+    integratedLufs: measurement.integratedLufs,
+    targetLufs: -16.0,
+    loudnessRangeLu: measurement.loudnessRangeLu,
+    maxTruePeakDb: measurement.maxTruePeakDb,
+    dialogueIntelligibilityScore: measurement.dialogueIntelligibilityScore,
+    clippingDetected: measurement.clippingDetected,
+    issues,
+    recommendations,
+    measurementStatus: "measured",
+    sourceDurationMs: measurement.sourceDurationMs,
+    measuredAt: measurement.measuredAt,
+    analyzerVersion: measurement.analyzerVersion,
+  };
+}
+
+/**
+ * Kept as a bounded DSP helper for callers that explicitly request a remix.
+ * It does not claim QC success; callers must run the real analyzer again.
+ */
+export function autoRemixForQcCompliance(project: SmartSpecProjectDraft): SmartSpecProjectDraft {
+  return {
     ...project,
-    tracks: updatedTracks,
+    tracks: project.tracks.map((track) => track.id === "track_a2"
+      ? {
+          ...track,
+          volume: Math.min(track.volume, 0.35),
+          ducking: {
+            enabled: true,
+            sidechainSourceTrackId: "track_a1",
+            attenuationDb: -12.0,
+            thresholdDb: -28.0,
+            attackMs: 50,
+            releaseMs: 300,
+            holdMs: 100,
+          },
+        }
+      : track),
     updatedAt: new Date().toISOString(),
   };
 }

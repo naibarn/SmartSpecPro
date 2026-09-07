@@ -1025,6 +1025,8 @@ export interface VerticalDramaEpisodeWorkspaceProps {
   stageRunDetail?: VerticalDramaStageRunDetailData;
   /** Dedicated review panel data for the `dialogue_audio_plan` stage. */
   dialogueAudioPanel?: VerticalDramaDialogueAudioPanelData;
+  /** Durable Feature 176/177 emotion-score review surface for the same stage. */
+  emotionScorePanel?: ReactNode;
   /** Dedicated review panel data for the `storyboard_shotgrid` stage. */
   storyboardPanel?: VerticalDramaStoryboardPanelData;
   /** Slot-based teaser builder shown inside the whole-episode assembly card. */
@@ -1241,6 +1243,7 @@ export function VerticalDramaEpisodeWorkspace({
   onFocusStage,
   stageRunDetail,
   dialogueAudioPanel,
+  emotionScorePanel,
   storyboardPanel,
   scriptSummary,
   storyboardReviewId,
@@ -2496,14 +2499,17 @@ export function VerticalDramaEpisodeWorkspace({
                       ) : null}
                     </div>
                     {focusedStage === "dialogue_audio_plan" ? (
-                      <VerticalDramaDialogueAudioPanel
-                        locale={locale}
-                        plan={dialogueAudioPanel?.plan}
-                        loading={dialogueAudioPanel?.loading}
-                        error={dialogueAudioPanel?.error}
-                        onGenerate={dialogueAudioPanel?.onGenerate}
-                        batch={dialogueAudioPanel?.batch}
-                      />
+                      <>
+                        <VerticalDramaDialogueAudioPanel
+                          locale={locale}
+                          plan={dialogueAudioPanel?.plan}
+                          loading={dialogueAudioPanel?.loading}
+                          error={dialogueAudioPanel?.error}
+                          onGenerate={dialogueAudioPanel?.onGenerate}
+                          batch={dialogueAudioPanel?.batch}
+                        />
+                        {emotionScorePanel}
+                      </>
                     ) : focusedStage === "storyboard_shotgrid" &&
                       !hasStoryboardShots ? (
                       // Fallback has no storyboard shots or seriesId; scene affordances

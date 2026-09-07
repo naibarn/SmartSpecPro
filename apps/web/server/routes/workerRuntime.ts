@@ -462,7 +462,10 @@ function getRuntimePackReleaseDirs(): string[] {
     .map(value => value.trim())
     .filter(Boolean)
     .map(value =>
-      path.resolve(value, value.endsWith("/runtime") ? "" : "runtime")
+      path.resolve(
+        value,
+        path.basename(path.normalize(value)) === "runtime" ? "" : "runtime"
+      )
     );
   const candidates = [
     ...configuredDirs,

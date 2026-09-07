@@ -44,6 +44,14 @@ pub struct MediaPlanOptions {
     pub focus_y: Option<f64>,
     #[serde(default)]
     pub focus_track: Vec<MediaFocusKeyframe>,
+    #[serde(default)]
+    pub volume_threshold_pct: Option<f64>,
+    #[serde(default)]
+    pub min_duration_sec: Option<f64>,
+    #[serde(default)]
+    pub softening_buffer_sec: Option<f64>,
+    #[serde(default)]
+    pub custom_silence_segments: Option<Vec<crate::commands::CustomSilenceSegmentInput>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -72,6 +80,12 @@ pub struct LocalMediaEditPlan {
     pub focus_y: Option<f64>,
     #[serde(default)]
     pub focus_track: Vec<MediaFocusKeyframe>,
+    #[serde(default)]
+    pub dead_air_threshold_db: Option<f64>,
+    #[serde(default)]
+    pub dead_air_min_silence_ms: Option<u64>,
+    #[serde(default)]
+    pub dead_air_padding_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -241,14 +255,26 @@ impl MediaToolchain {
             default_ffmpeg
         } else if let Some(p) = find_binary_in_path(&format!("ffmpeg{suffix}")) {
             p
-        } else if runtime_root.join("bin").join(format!("ffmpeg{suffix}")).exists() {
+        } else if runtime_root
+            .join("bin")
+            .join(format!("ffmpeg{suffix}"))
+            .exists()
+        {
             runtime_root.join("bin").join(format!("ffmpeg{suffix}"))
         } else if let Ok(exe) = std::env::current_exe() {
             if let Some(parent) = exe.parent() {
                 if parent.join(format!("ffmpeg{suffix}")).exists() {
                     parent.join(format!("ffmpeg{suffix}"))
-                } else if parent.join("runtime-pack").join("bin").join(format!("ffmpeg{suffix}")).exists() {
-                    parent.join("runtime-pack").join("bin").join(format!("ffmpeg{suffix}"))
+                } else if parent
+                    .join("runtime-pack")
+                    .join("bin")
+                    .join(format!("ffmpeg{suffix}"))
+                    .exists()
+                {
+                    parent
+                        .join("runtime-pack")
+                        .join("bin")
+                        .join(format!("ffmpeg{suffix}"))
                 } else {
                     default_ffmpeg
                 }
@@ -263,14 +289,26 @@ impl MediaToolchain {
             default_ffprobe
         } else if let Some(p) = find_binary_in_path(&format!("ffprobe{suffix}")) {
             p
-        } else if runtime_root.join("bin").join(format!("ffprobe{suffix}")).exists() {
+        } else if runtime_root
+            .join("bin")
+            .join(format!("ffprobe{suffix}"))
+            .exists()
+        {
             runtime_root.join("bin").join(format!("ffprobe{suffix}"))
         } else if let Ok(exe) = std::env::current_exe() {
             if let Some(parent) = exe.parent() {
                 if parent.join(format!("ffprobe{suffix}")).exists() {
                     parent.join(format!("ffprobe{suffix}"))
-                } else if parent.join("runtime-pack").join("bin").join(format!("ffprobe{suffix}")).exists() {
-                    parent.join("runtime-pack").join("bin").join(format!("ffprobe{suffix}"))
+                } else if parent
+                    .join("runtime-pack")
+                    .join("bin")
+                    .join(format!("ffprobe{suffix}"))
+                    .exists()
+                {
+                    parent
+                        .join("runtime-pack")
+                        .join("bin")
+                        .join(format!("ffprobe{suffix}"))
                 } else {
                     default_ffprobe
                 }
@@ -622,7 +660,6 @@ fn push_segment(
     }
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CustomSilenceDetectionResult {
@@ -647,8 +684,18 @@ pub fn estimate_mp4_duration_ms(file: &Path) -> u64 {
                 if &buf[i..i + 4] == b"mvhd" {
                     let version = buf[i + 4];
                     if version == 0 && i + 24 <= read_bytes {
-                        let timescale = u32::from_be_bytes([buf[i + 12], buf[i + 13], buf[i + 14], buf[i + 15]]) as u64;
-                        let duration = u32::from_be_bytes([buf[i + 16], buf[i + 17], buf[i + 18], buf[i + 19]]) as u64;
+                        let timescale = u32::from_be_bytes([
+                            buf[i + 12],
+                            buf[i + 13],
+                            buf[i + 14],
+                            buf[i + 15],
+                        ]) as u64;
+                        let duration = u32::from_be_bytes([
+                            buf[i + 16],
+                            buf[i + 17],
+                            buf[i + 18],
+                            buf[i + 19],
+                        ]) as u64;
                         if timescale > 0 {
                             let ms = (duration * 1000) / timescale;
                             if ms > 0 {
@@ -656,10 +703,21 @@ pub fn estimate_mp4_duration_ms(file: &Path) -> u64 {
                             }
                         }
                     } else if version == 1 && i + 32 <= read_bytes {
-                        let timescale = u32::from_be_bytes([buf[i + 20], buf[i + 21], buf[i + 22], buf[i + 23]]) as u64;
+                        let timescale = u32::from_be_bytes([
+                            buf[i + 20],
+                            buf[i + 21],
+                            buf[i + 22],
+                            buf[i + 23],
+                        ]) as u64;
                         let duration = u64::from_be_bytes([
-                            buf[i + 24], buf[i + 25], buf[i + 26], buf[i + 27],
-                            buf[i + 28], buf[i + 29], buf[i + 30], buf[i + 31],
+                            buf[i + 24],
+                            buf[i + 25],
+                            buf[i + 26],
+                            buf[i + 27],
+                            buf[i + 28],
+                            buf[i + 29],
+                            buf[i + 30],
+                            buf[i + 31],
                         ]);
                         if timescale > 0 {
                             let ms = (duration * 1000) / timescale;
@@ -719,23 +777,27 @@ pub fn detect_audio_silence_custom(
         }
     }
 
-    let (silence_segments, waveform_peaks, first_speech_ms, last_speech_ms) = if let Ok(output) = tools.output(
-        MediaBinary::Ffmpeg,
-        vec![
-            literal("-hide_banner"),
-            literal("-nostats"),
-            literal("-loglevel"),
-            literal("info"),
-            literal("-i"),
-            media_path(&canonical),
-            literal("-vn"),
-            literal("-af"),
-            literal(format!("silencedetect=noise={:.1}dB:d={:.2}", noise_threshold_db, min_dur)),
-            literal("-f"),
-            literal("null"),
-            literal("-"),
-        ],
-    ) {
+    let (silence_segments, waveform_peaks, first_speech_ms, last_speech_ms) = if let Ok(output) =
+        tools.output(
+            MediaBinary::Ffmpeg,
+            vec![
+                literal("-hide_banner"),
+                literal("-nostats"),
+                literal("-loglevel"),
+                literal("info"),
+                literal("-i"),
+                media_path(&canonical),
+                literal("-vn"),
+                literal("-af"),
+                literal(format!(
+                    "silencedetect=noise={:.1}dB:d={:.2}",
+                    noise_threshold_db, min_dur
+                )),
+                literal("-f"),
+                literal("null"),
+                literal("-"),
+            ],
+        ) {
         let diagnostics = String::from_utf8_lossy(&output.stderr);
         let mut segments = Vec::new();
         let mut silence_start = None;
@@ -806,7 +868,10 @@ pub fn detect_audio_silence_custom(
                     let window = 15usize;
                     let mut max_val = 0.0f32;
                     let mut envelope = Vec::with_capacity(sample_count);
-                    let amps: Vec<f32> = raw_samples.iter().map(|&s| (s as i8).abs() as f32 / 128.0).collect();
+                    let amps: Vec<f32> = raw_samples
+                        .iter()
+                        .map(|&s| (s as i8).abs() as f32 / 128.0)
+                        .collect();
 
                     for i in 0..sample_count {
                         let start = i.saturating_sub(window / 2);
@@ -859,14 +924,21 @@ pub fn detect_audio_silence_custom(
                     if let Some(first_sp) = detected_first_speech {
                         if first_sp > speech_buffer_ms {
                             let lead_cut_end = first_sp.saturating_sub(speech_buffer_ms);
-                            let has_lead_silence = segments.iter().any(|s| s.start_ms <= 800 && s.end_ms.map_or(false, |e| e >= lead_cut_end.saturating_sub(300)));
+                            let has_lead_silence = segments.iter().any(|s| {
+                                s.start_ms <= 800
+                                    && s.end_ms
+                                        .map_or(false, |e| e >= lead_cut_end.saturating_sub(300))
+                            });
                             if !has_lead_silence {
-                                segments.insert(0, MediaAnalysisSegment {
-                                    start_ms: 0,
-                                    end_ms: Some(lead_cut_end),
-                                    kind: "silence".to_string(),
-                                    confidence: 1.0,
-                                });
+                                segments.insert(
+                                    0,
+                                    MediaAnalysisSegment {
+                                        start_ms: 0,
+                                        end_ms: Some(lead_cut_end),
+                                        kind: "silence".to_string(),
+                                        confidence: 1.0,
+                                    },
+                                );
                             }
                         }
                     }
@@ -874,9 +946,17 @@ pub fn detect_audio_silence_custom(
                     if let Some(last_sp) = detected_last_speech {
                         let trail_cut_start = (last_sp + speech_buffer_ms).min(duration_ms);
                         if duration_ms.saturating_sub(trail_cut_start) >= 300 {
-                            let has_trail_silence = segments.iter().any(|s| s.end_ms.map_or(false, |e| e >= duration_ms.saturating_sub(300)));
+                            let has_trail_silence = segments.iter().any(|s| {
+                                s.end_ms
+                                    .map_or(false, |e| e >= duration_ms.saturating_sub(300))
+                            });
                             if !has_trail_silence {
-                                push_segment(&mut segments, trail_cut_start, Some(duration_ms), "silence");
+                                push_segment(
+                                    &mut segments,
+                                    trail_cut_start,
+                                    Some(duration_ms),
+                                    "silence",
+                                );
                             }
                         }
                     }
@@ -912,11 +992,21 @@ pub fn detect_audio_silence_custom(
         let mut cur = 4500u64;
         while cur + 2000 < duration_ms {
             let pause_len = (min_dur * 1000.0).clamp(500.0, 1800.0) as u64;
-            push_segment(&mut segments, cur, Some((cur + pause_len).min(duration_ms)), "silence");
+            push_segment(
+                &mut segments,
+                cur,
+                Some((cur + pause_len).min(duration_ms)),
+                "silence",
+            );
             cur += 7000 + ((cur % 5) * 600);
         }
         if duration_ms > 3000 {
-            push_segment(&mut segments, duration_ms.saturating_sub(650), Some(duration_ms), "silence");
+            push_segment(
+                &mut segments,
+                duration_ms.saturating_sub(650),
+                Some(duration_ms),
+                "silence",
+            );
         }
 
         let total_bars = 200usize;
@@ -974,6 +1064,47 @@ pub fn detect_audio_silence_custom(
     })
 }
 
+/// Returns whether the source contains a measurable audio activity window.
+///
+/// This is intentionally a hard gate for ASR admission. The older silence
+/// analysis API has a deterministic visualization fallback when FFmpeg is
+/// unavailable; that fallback must never be used as evidence that speech
+/// exists, otherwise whisper.cpp can turn silence into a fabricated sentence.
+pub fn audio_has_detectable_activity(file: &Path, tools: &MediaToolchain) -> Result<bool, String> {
+    if !tools.is_ready() {
+        return Err("audio_runtime_unavailable".into());
+    }
+    let canonical = strip_verbatim_prefix(file);
+    let output = tools
+        .output(
+            MediaBinary::Ffmpeg,
+            vec![
+                literal("-hide_banner"),
+                literal("-loglevel"),
+                literal("error"),
+                literal("-i"),
+                media_path(&canonical),
+                literal("-vn"),
+                literal("-ac"),
+                literal("1"),
+                literal("-ar"),
+                literal("100"),
+                literal("-f"),
+                literal("s16le"),
+                literal("-"),
+            ],
+        )
+        .map_err(|_| "audio_analysis_unavailable".to_string())?;
+    if !output.status.success() {
+        return Err("audio_analysis_failed".into());
+    }
+    Ok(output
+        .stdout
+        .chunks_exact(2)
+        .map(|chunk| i16::from_le_bytes([chunk[0], chunk[1]]).unsigned_abs())
+        .any(|sample| sample > 256))
+}
+
 pub fn build_media_plan(
     source_relative_name: &str,
     options: &MediaPlanOptions,
@@ -1021,6 +1152,15 @@ pub fn build_media_plan(
         focus_x: options.focus_x,
         focus_y: options.focus_y,
         focus_track: options.focus_track.iter().take(256).cloned().collect(),
+        dead_air_threshold_db: options
+            .volume_threshold_pct
+            .map(|pct| -50.0 + (pct.clamp(1.0, 100.0) / 100.0) * 35.0),
+        dead_air_min_silence_ms: options
+            .min_duration_sec
+            .map(|seconds| (seconds.clamp(0.05, 5.0) * 1000.0).round() as u64),
+        dead_air_padding_ms: options
+            .softening_buffer_sec
+            .map(|seconds| (seconds.clamp(0.0, 2.0) * 1000.0).round() as u64),
     })
 }
 
@@ -1103,7 +1243,15 @@ pub fn run_allowlisted_ffmpeg(
         args.extend([literal("-loop"), literal("1")]);
     }
     let (trim_start_ms, trim_end_ms) = if plan.remove_dead_air && !source_is_still {
-        detect_leading_trailing_silence_bounds(&source, tools, plan.trim_start_ms, plan.trim_end_ms)
+        detect_leading_trailing_silence_bounds(
+            &source,
+            tools,
+            plan.trim_start_ms,
+            plan.trim_end_ms,
+            plan.dead_air_threshold_db.unwrap_or(-42.0),
+            plan.dead_air_min_silence_ms.unwrap_or(650),
+            plan.dead_air_padding_ms.unwrap_or(120),
+        )
     } else {
         (plan.trim_start_ms, plan.trim_end_ms)
     };
@@ -1189,6 +1337,9 @@ pub fn run_allowlisted_ffmpeg_segments(
     segments: &[(u64, u64)],
     fit_9x16: bool,
     mute_audio: bool,
+    focus_x: Option<f64>,
+    focus_y: Option<f64>,
+    focus_track: &[MediaFocusKeyframe],
     tools: &MediaToolchain,
 ) -> Result<PathBuf, String> {
     validate_relative_name(source_relative_name)?;
@@ -1251,10 +1402,12 @@ pub fn run_allowlisted_ffmpeg_segments(
                 literal("0:a?"),
             ];
             if fit_9x16 {
-                args.extend([
-                    literal("-vf"),
-                    literal("crop=if(gt(iw/ih\\,0.5625)\\,ih*9/16\\,iw):if(gt(iw/ih\\,0.5625)\\,ih\\,iw*16/9):if(gt(iw/ih\\,0.5625)\\,(iw-ih*9/16)/2\\,0):if(gt(iw/ih\\,0.5625)\\,0\\,(ih-iw*16/9)/2),scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2"),
-                ]);
+                let focus_x_expr =
+                    focus_expression(focus_track, 'x', focus_x.unwrap_or(0.5).clamp(0.0, 1.0));
+                let focus_y_expr =
+                    focus_expression(focus_track, 'y', focus_y.unwrap_or(0.5).clamp(0.0, 1.0));
+                let filter = format!("crop=if(gt(iw/ih\\,0.5625)\\,ih*9/16\\,iw):if(gt(iw/ih\\,0.5625)\\,ih\\,iw*16/9):if(gt(iw/ih\\,0.5625)\\,max(0\\,min(iw-ih*9/16\\,(iw-ih*9/16)*({focus_x_expr})))\\,0):if(gt(iw/ih\\,0.5625)\\,0\\,max(0\\,min(ih-iw*16/9\\,(ih-iw*16/9)*({focus_y_expr})))),scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2");
+                args.extend([literal("-vf"), literal(filter)]);
             }
             args.extend([
                 literal("-c:v"),
@@ -1454,7 +1607,11 @@ pub fn run_interactive_media_render(
             .chars()
             .take(8)
             .collect::<String>();
-        let scratch = output.parent().unwrap_or(Path::new(".")).join(format!(".tmp_{}_{}", std::process::id(), suffix));
+        let scratch = output.parent().unwrap_or(Path::new(".")).join(format!(
+            ".tmp_{}_{}",
+            std::process::id(),
+            suffix
+        ));
         fs::create_dir_all(&scratch).map_err(|e| format!("cannot_create_tmp_dir: {e}"))?;
 
         let render_res: Result<(), String> = (|| {
@@ -1494,7 +1651,8 @@ pub fn run_interactive_media_render(
                     literal(&audio_filter),
                     media_path(&part),
                 ]);
-                let s = tools.status(MediaBinary::Ffmpeg, part_args)
+                let s = tools
+                    .status(MediaBinary::Ffmpeg, part_args)
                     .map_err(|_| "ffmpeg_unavailable".to_string())?;
                 if !s.success() {
                     return Err(format!("ffmpeg_part_{idx}_failed"));
@@ -1532,7 +1690,8 @@ pub fn run_interactive_media_render(
                 literal("+genpts"),
                 media_path(output),
             ];
-            let status = tools.status(MediaBinary::Ffmpeg, concat_args)
+            let status = tools
+                .status(MediaBinary::Ffmpeg, concat_args)
                 .map_err(|_| "ffmpeg_unavailable".to_string())?;
 
             if !status.success() {
@@ -1555,7 +1714,8 @@ pub fn run_interactive_media_render(
                     literal("aac"),
                     media_path(output),
                 ];
-                let fb_status = tools.status(MediaBinary::Ffmpeg, fallback_args)
+                let fb_status = tools
+                    .status(MediaBinary::Ffmpeg, fallback_args)
                     .map_err(|_| "ffmpeg_unavailable".to_string())?;
                 if !fb_status.success() {
                     return Err("ffmpeg_concat_failed".into());
@@ -1579,6 +1739,9 @@ fn detect_leading_trailing_silence_bounds(
     tools: &MediaToolchain,
     requested_start_ms: u64,
     requested_end_ms: u64,
+    threshold_db: f64,
+    min_silence_ms: u64,
+    padding_ms: u64,
 ) -> (u64, u64) {
     if requested_end_ms <= requested_start_ms {
         return (requested_start_ms, requested_end_ms);
@@ -1598,7 +1761,11 @@ fn detect_leading_trailing_silence_bounds(
             literal("-i"),
             media_path(source),
             literal("-af"),
-            literal("silencedetect=noise=-42dB:d=0.65"),
+            literal(format!(
+                "silencedetect=noise={:.1}dB:d={:.3}",
+                threshold_db.clamp(-80.0, 0.0),
+                (min_silence_ms as f64 / 1000.0).clamp(0.1, 30.0)
+            )),
             literal("-f"),
             literal("null"),
             literal("-"),
@@ -1611,10 +1778,10 @@ fn detect_leading_trailing_silence_bounds(
     let (leading_end_ms, trailing_start_ms) =
         select_trim_bounds_from_silence_diagnostics(&diagnostics);
     let start = requested_start_ms
-        .saturating_add(leading_end_ms.unwrap_or(0))
+        .saturating_add(leading_end_ms.unwrap_or(0).saturating_sub(padding_ms))
         .min(requested_end_ms);
     let end = trailing_start_ms
-        .map(|value| requested_start_ms.saturating_add(value))
+        .map(|value| requested_start_ms.saturating_add(value.saturating_add(padding_ms)))
         .unwrap_or(requested_end_ms)
         .max(start.saturating_add(250))
         .min(requested_end_ms);
@@ -1735,6 +1902,192 @@ pub fn probe_media_file(file: &Path, tools: &MediaToolchain) -> Result<LocalMedi
             .and_then(serde_json::Value::as_str)
             .map(str::to_string),
     })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioMixQc {
+    pub duration_ms: u64,
+    pub sample_rate: u32,
+    pub channels: u32,
+}
+
+/// Dedicated, bounded score-mix graph for Feature 177. It accepts only paths
+/// already staged by the Worker input authorization route and always emits a
+/// project-standard 48 kHz stereo WAV before the server publication gate.
+pub fn run_episode_score_mix(
+    dialogue_video: &Path,
+    music_takes: &[PathBuf],
+    output: &Path,
+    duration_ms: u64,
+    attenuation_db: f32,
+    tools: &MediaToolchain,
+) -> Result<AudioMixQc, String> {
+    if music_takes.is_empty() || duration_ms == 0 {
+        return Err("qc_failed".into());
+    }
+    if !probe_media_file(dialogue_video, tools)?.has_audio {
+        return Err("qc_failed".into());
+    }
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent).map_err(|_| "derived_workspace_create_failed".to_string())?;
+    }
+    let mut args = vec![
+        literal("-hide_banner"),
+        literal("-loglevel"),
+        literal("error"),
+        literal("-y"),
+        literal("-i"),
+        media_path(dialogue_video),
+    ];
+    for take in music_takes {
+        args.extend([literal("-i"), media_path(take)]);
+    }
+    let music_gain = 10.0_f32.powf((attenuation_db.clamp(-60.0, 0.0)) / 20.0);
+    let mut filters = vec![
+        "[0:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[dialogue]"
+            .to_string(),
+    ];
+    let mut labels = vec!["[dialogue]".to_string()];
+    for index in 0..music_takes.len() {
+        let input_index = index + 1;
+        let label = format!("[music{index}]");
+        filters.push(format!("[{input_index}:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,volume={music_gain:.6}{label}"));
+        labels.push(label);
+    }
+    filters.push(format!("{}amix=inputs={}:duration=first:dropout_transition=0,aresample=48000,aformat=sample_fmts=s16:channel_layouts=stereo[mix]", labels.join(""), labels.len()));
+    args.extend([
+        literal("-filter_complex"),
+        literal(filters.join(";")),
+        literal("-map"),
+        literal("[mix]"),
+        literal("-ar"),
+        literal("48000"),
+        literal("-ac"),
+        literal("2"),
+        literal("-t"),
+        literal(format!("{:.3}", duration_ms as f64 / 1000.0)),
+        literal("-c:a"),
+        literal("pcm_s16le"),
+        literal("-f"),
+        literal("wav"),
+        media_path(output),
+    ]);
+    let result = tools
+        .output(MediaBinary::Ffmpeg, args)
+        .map_err(|_| "ffmpeg_unavailable".to_string())?;
+    if !result.status.success() || !output.is_file() {
+        return Err("generation_failed".into());
+    }
+    let probe = tools
+        .output(
+            MediaBinary::Ffprobe,
+            vec![
+                literal("-v"),
+                literal("error"),
+                literal("-select_streams"),
+                literal("a:0"),
+                literal("-show_entries"),
+                literal("stream=sample_rate,channels:format=duration"),
+                literal("-of"),
+                literal("json"),
+                media_path(output),
+            ],
+        )
+        .map_err(|_| "ffprobe_unavailable".to_string())?;
+    if !probe.status.success() {
+        return Err("qc_failed".into());
+    }
+    let json: Value = serde_json::from_slice(&probe.stdout).map_err(|_| "qc_failed".to_string())?;
+    let stream = json
+        .get("streams")
+        .and_then(Value::as_array)
+        .and_then(|items| items.first())
+        .ok_or_else(|| "qc_failed".to_string())?;
+    let sample_rate = stream
+        .get("sample_rate")
+        .and_then(Value::as_str)
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(0);
+    let channels = stream.get("channels").and_then(Value::as_u64).unwrap_or(0) as u32;
+    let duration = json
+        .get("format")
+        .and_then(|value| value.get("duration"))
+        .and_then(Value::as_str)
+        .and_then(|value| value.parse::<f64>().ok())
+        .unwrap_or(0.0);
+    if sample_rate != 48000 || channels != 2 || duration <= 0.0 {
+        return Err("qc_failed".into());
+    }
+    Ok(AudioMixQc {
+        duration_ms: (duration * 1000.0).round() as u64,
+        sample_rate,
+        channels,
+    })
+}
+
+/// Encodes the measured score master back onto the immutable dialogue cut.
+/// This is deliberately separate from the WAV master so post-encode QC can
+/// reject a container/codec failure without losing the auditable mix master.
+pub fn run_episode_score_export(
+    dialogue_video: &Path,
+    mix_audio: &Path,
+    output: &Path,
+    duration_ms: u64,
+    tools: &MediaToolchain,
+) -> Result<LocalMediaProbe, String> {
+    if duration_ms == 0 || !mix_audio.is_file() {
+        return Err("qc_failed".into());
+    }
+    if let Some(parent) = output.parent() {
+        fs::create_dir_all(parent).map_err(|_| "derived_workspace_create_failed".to_string())?;
+    }
+    let args = vec![
+        literal("-hide_banner"),
+        literal("-loglevel"),
+        literal("error"),
+        literal("-y"),
+        literal("-i"),
+        media_path(dialogue_video),
+        literal("-i"),
+        media_path(mix_audio),
+        literal("-map"),
+        literal("0:v:0"),
+        literal("-map"),
+        literal("1:a:0"),
+        literal("-t"),
+        literal(format!("{:.3}", duration_ms as f64 / 1000.0)),
+        literal("-c:v"),
+        literal("libx264"),
+        literal("-preset"),
+        literal("medium"),
+        literal("-crf"),
+        literal("18"),
+        literal("-pix_fmt"),
+        literal("yuv420p"),
+        literal("-c:a"),
+        literal("aac"),
+        literal("-b:a"),
+        literal("192k"),
+        literal("-movflags"),
+        literal("+faststart"),
+        media_path(output),
+    ];
+    let result = tools
+        .output(MediaBinary::Ffmpeg, args)
+        .map_err(|_| "ffmpeg_unavailable".to_string())?;
+    if !result.status.success() || !output.is_file() {
+        return Err("ffmpeg_render_failed".into());
+    }
+    let probe = probe_media_file(output, tools)?;
+    if !probe.has_audio
+        || probe.width.is_none()
+        || probe.height.is_none()
+        || probe.duration_ms.unwrap_or(0) == 0
+    {
+        return Err("qc_failed".into());
+    }
+    Ok(probe)
 }
 
 /// Builds bounded metadata for every supported local source. It intentionally
@@ -1917,6 +2270,10 @@ mod tests {
             focus_x: Some(0.5),
             focus_y: Some(0.5),
             focus_track: Vec::new(),
+            volume_threshold_pct: None,
+            min_duration_sec: None,
+            softening_buffer_sec: None,
+            custom_silence_segments: None,
         };
         let a = build_media_plan("incoming/shot.mp4", &options).unwrap();
         let b = build_media_plan("incoming/shot.mp4", &options).unwrap();
@@ -2035,14 +2392,12 @@ mod tests {
     fn custom_silence_detection_result_serializes_and_computes_cuts() {
         let result = CustomSilenceDetectionResult {
             duration_ms: 10_000,
-            silence_segments: vec![
-                MediaAnalysisSegment {
-                    start_ms: 2000,
-                    end_ms: Some(4000),
-                    kind: "silence".into(),
-                    confidence: 1.0,
-                },
-            ],
+            silence_segments: vec![MediaAnalysisSegment {
+                start_ms: 2000,
+                end_ms: Some(4000),
+                kind: "silence".into(),
+                confidence: 1.0,
+            }],
             waveform_peaks: vec![0.1, 0.8, 0.05, 0.05, 0.9],
             cut_count: 1,
             time_saved_ms: 1600,
@@ -2060,4 +2415,3 @@ mod tests {
         assert!(json.contains("\"cutCount\":1"));
     }
 }
-

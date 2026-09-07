@@ -34,6 +34,8 @@ import {
   COMFY_VIDEO_GENERATION_PROGRESS_STAGES,
   COMFY_WORKFLOW_RUN_FAILURE_CODES,
   COMFY_WORKFLOW_RUN_PROGRESS_STAGES,
+  VERTICAL_DRAMA_AUDIO_FAILURE_CODES,
+  VERTICAL_DRAMA_AUDIO_PROGRESS_STAGES,
   HERMES_CONNECTION_AUTH_JOB_TYPE,
   HERMES_CONNECTION_DISCONNECT_JOB_TYPE,
   HERMES_CONNECTION_PROBE_JOB_TYPE,
@@ -84,6 +86,7 @@ import {
   workerJobEvents,
   workerJobs,
   workerPolicies,
+  workerSeriesBindings,
   workers,
 } from "../../drizzle/schema";
 import { storagePresignPut } from "../storage";
@@ -452,6 +455,13 @@ export interface WorkerRuntimeRepository {
     tenantId: string;
     connectionId: string;
   }) => Promise<string | null>;
+  /** A series-bound job may only be claimed by the worker that owns the active binding revision. */
+  isWorkerSeriesBindingEligible?: (params: {
+    tenantId: string;
+    workerId: string;
+    bindingId: string;
+    bindingRevision: number | null;
+  }) => Promise<boolean>;
   renewActiveJobLeasesForWorker?: (input: { tenantId: string; workerId: string; jobIds: string[]; leaseExpiresAt: Date; heartbeatAt: Date }) => Promise<number>;
   tryClaimJob: (jobId: string, workerId: string, leaseOwnerToken: string, leaseExpiresAt: Date) => Promise<WorkerJobRecord | null>;
   updateJob: (jobId: string, values: Record<string, any>) => Promise<WorkerJobRecord>;
@@ -975,9 +985,11 @@ function assertRuntimeSpecificJobEventContract(
         ? COMFY_WORKFLOW_RUN_PROGRESS_STAGES
         : job.jobType === "hyperframes_final_composite"
           ? HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES
-          : job.jobType === "remotion_render_video"
-            ? REMOTION_RENDER_VIDEO_PROGRESS_STAGES
-            : null;
+            : job.jobType === "remotion_render_video"
+              ? REMOTION_RENDER_VIDEO_PROGRESS_STAGES
+              : ["episode_audio_analyze", "minimax_music3_generate", "episode_score_mix"].includes(job.jobType)
+                ? VERTICAL_DRAMA_AUDIO_PROGRESS_STAGES
+              : null;
   const failureCodes = job.jobType === "video_assembly"
     ? VIDEO_ASSEMBLY_FAILURE_CODES
     : job.jobType === "local_folder_ingest"
@@ -992,6 +1004,8 @@ function assertRuntimeSpecificJobEventContract(
           ? HYPERFRAMES_FINAL_COMPOSITE_FAILURE_CODES
           : job.jobType === "remotion_render_video"
             ? REMOTION_RENDER_VIDEO_FAILURE_CODES
+            : ["episode_audio_analyze", "minimax_music3_generate", "episode_score_mix"].includes(job.jobType)
+              ? VERTICAL_DRAMA_AUDIO_FAILURE_CODES
             : null;
 
   if (!progressStages || !failureCodes) {
@@ -1207,6 +1221,23 @@ const defaultRepo: WorkerRuntimeRepository = {
       .where(and(...conditions))
       .orderBy(desc(workerJobs.priority), asc(workerJobs.createdAt))
       .limit(10);
+  },
+  async isWorkerSeriesBindingEligible({ tenantId, workerId, bindingId, bindingRevision }) {
+    if (!Number.isInteger(bindingRevision)) return false;
+    const db = await getDb();
+    const [binding] = await db
+      .select({ id: workerSeriesBindings.id })
+      .from(workerSeriesBindings)
+      .where(and(
+        eq(workerSeriesBindings.id, bindingId),
+        eq(workerSeriesBindings.tenantId, tenantId),
+        eq(workerSeriesBindings.workerId, workerId),
+        eq(workerSeriesBindings.bindingRevision, bindingRevision as number),
+        eq(workerSeriesBindings.status, "active"),
+        isNull(workerSeriesBindings.revokedAt),
+      ))
+      .limit(1);
+    return Boolean(binding);
   },
   async listJobEvents(workerJobId) {
     const db = await getDb();
@@ -1599,6 +1630,12 @@ export async function recordWorkerHeartbeat(
   if (freshVerticalDramaMedia) {
     mergedHeartbeatCapabilitiesJson.verticalDramaMedia = freshVerticalDramaMedia;
   }
+  const freshSpeakerAware = isPlainObject(incomingHeartbeatRuntimeMetadata.speakerAware)
+    ? (incomingHeartbeatRuntimeMetadata.speakerAware as Record<string, unknown>)
+    : null;
+  if (freshSpeakerAware) {
+    mergedHeartbeatCapabilitiesJson.speakerAware = freshSpeakerAware;
+  }
   // Feature 135 §11 — same rule as registration: a worker registered before
   // an admin raised `hermes_worker_min_version` gets demoted on its next
   // heartbeat (never exempted by runtimeType). The warning is surfaced on
@@ -1709,6 +1746,17 @@ export async function claimWorkerJob(
   const hermesConnectionAssignedWorkerIdCache = new Map<string, string | null>();
 
   for (const candidate of selectableCandidates) {
+    if (candidate.workerSeriesBindingId) {
+      const bindingEligible = repo.isWorkerSeriesBindingEligible
+        ? await repo.isWorkerSeriesBindingEligible({
+            tenantId: worker.tenantId,
+            workerId: worker.id,
+            bindingId: candidate.workerSeriesBindingId,
+            bindingRevision: candidate.workerSeriesBindingRevision ?? null,
+          })
+        : false;
+      if (!bindingEligible) continue;
+    }
     // Defense-in-depth claim-time assertion (implementation-progress.md
     // gap #2, spec §6.3 step 7) — see the constant's doc comment above.
     //
@@ -2028,6 +2076,48 @@ export async function recordWorkerJobEvent(
         ? String(sanitizedPayloadJson?.error ?? sanitizedPayloadJson?.message ?? job.failureReason ?? "")
         : null,
     });
+  }
+
+  // Feature 176/177 pipeline handoff: artifact publication and the terminal
+  // event are committed before reconciliation. The coordinator is imported
+  // lazily to keep the registry service independent from the audio scheduler
+  // module and to make this hook harmless for non-audio jobs.
+  if (
+    repo === defaultRepo
+    && nextStatus === "completed"
+    && ["episode_audio_analyze", "minimax_music3_generate"].includes(job.jobType)
+  ) {
+    try {
+      const { verticalDramaEmotionPlans } = await import("../../drizzle/schema");
+      const { reconcileApprovedVerticalDramaAudioPipeline } = await import("./verticalDramaAudioPipelineCoordinator");
+      if (!job.requestedByUserId) throw new Error("audio_job_requester_missing");
+      const seriesId = Number(job.inputJson?.seriesId);
+      const episodeId = Number(job.inputJson?.episodeId);
+      const database = getDb();
+      const [plan] = Number.isSafeInteger(seriesId) && Number.isSafeInteger(episodeId)
+        ? await database.select({ id: verticalDramaEmotionPlans.id }).from(verticalDramaEmotionPlans).where(and(
+            eq(verticalDramaEmotionPlans.tenantId, job.tenantId),
+            eq(verticalDramaEmotionPlans.userId, job.requestedByUserId),
+            eq(verticalDramaEmotionPlans.seriesId, seriesId),
+            eq(verticalDramaEmotionPlans.episodeId, episodeId),
+            eq(verticalDramaEmotionPlans.status, "approved"),
+          )).orderBy(desc(verticalDramaEmotionPlans.updatedAt)).limit(1)
+        : [];
+      if (plan) {
+        await reconcileApprovedVerticalDramaAudioPipeline({
+          tenantId: job.tenantId,
+          userId: job.requestedByUserId,
+          planId: plan.id,
+          requestedStage: job.jobType === "episode_audio_analyze" ? "generation" : undefined,
+        });
+      }
+    } catch (error) {
+      auditLogger.log({
+        eventType: "worker_job_failed",
+        userId: job.requestedByUserId ?? null,
+        metadata: { tenantId: job.tenantId, jobId: job.id, jobType: job.jobType, error: error instanceof Error ? error.message : String(error) },
+      });
+    }
   }
 
   if (nextStatus && TERMINAL_JOB_STATUSES.includes(nextStatus)) {

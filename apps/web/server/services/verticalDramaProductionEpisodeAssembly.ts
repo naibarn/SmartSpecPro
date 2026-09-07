@@ -103,7 +103,10 @@ import os from "os";
 import path from "path";
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "../db";
-import { verticalDramaEpisodes, verticalDramaSeries } from "../../drizzle/schema";
+import {
+  verticalDramaEpisodes,
+  verticalDramaSeries,
+} from "../../drizzle/schema";
 import { assertR2StorageActive, storagePutFromPath } from "../storage";
 import { debugError } from "../_core/logger";
 import {
@@ -195,12 +198,16 @@ export function validateProductionEpisodeGroupingInput(input: {
   if (!Number.isInteger(input.startSubEpisode) || input.startSubEpisode < 1) {
     throw new Error("vertical_drama_production_invalid_start_subepisode");
   }
-  if (!Number.isInteger(input.endSubEpisode) || input.endSubEpisode < input.startSubEpisode) {
+  if (
+    !Number.isInteger(input.endSubEpisode) ||
+    input.endSubEpisode < input.startSubEpisode
+  ) {
     throw new Error("vertical_drama_production_invalid_subepisode_range");
   }
   if (
     !Number.isInteger(input.subEpisodesPerProductionEpisode) ||
-    input.subEpisodesPerProductionEpisode < VD_PRODUCTION_EPISODE_MIN_GROUP_SIZE ||
+    input.subEpisodesPerProductionEpisode <
+      VD_PRODUCTION_EPISODE_MIN_GROUP_SIZE ||
     input.subEpisodesPerProductionEpisode > VD_PRODUCTION_EPISODE_MAX_GROUP_SIZE
   ) {
     throw new Error(
@@ -217,12 +224,22 @@ export function partitionProductionEpisodeRange(input: {
   validateProductionEpisodeGroupingInput(input);
   const groups: ProductionEpisodeRangeGroup[] = [];
   const total = input.endSubEpisode - input.startSubEpisode + 1;
-  for (let offset = 0, index = 0; offset < total; offset += input.subEpisodesPerProductionEpisode, index += 1) {
-    const count = Math.min(input.subEpisodesPerProductionEpisode, total - offset);
+  for (
+    let offset = 0, index = 0;
+    offset < total;
+    offset += input.subEpisodesPerProductionEpisode, index += 1
+  ) {
+    const count = Math.min(
+      input.subEpisodesPerProductionEpisode,
+      total - offset
+    );
     groups.push({
       index,
       productionEpisodeNumber: index + 1,
-      subEpisodeNumbers: Array.from({ length: count }, (_, i) => input.startSubEpisode + offset + i),
+      subEpisodeNumbers: Array.from(
+        { length: count },
+        (_, i) => input.startSubEpisode + offset + i
+      ),
       isRemainder: count < input.subEpisodesPerProductionEpisode,
     });
   }
@@ -333,8 +350,10 @@ export interface ProductionEpisodeCreditsOptions {
  * follow-up is to fold `bgm`/`credits`/`overlays` into the shared type
  * directly, alongside `renderOptions`.
  */
-export interface VerticalDramaProductionEpisodeGroupStateWithBgm
-  extends Omit<VerticalDramaProductionEpisodeGroupState, "bgm"> {
+export interface VerticalDramaProductionEpisodeGroupStateWithBgm extends Omit<
+  VerticalDramaProductionEpisodeGroupState,
+  "bgm"
+> {
   bgm?: ProductionEpisodeBgmOptions;
   credits?: ProductionEpisodeCreditsOptions;
   /** Phase C-2 — see this file's own header doc comment. */
@@ -418,7 +437,10 @@ export function findSubEpisodesMissingCompiledVideo<
  */
 export function resolveSubEpisodesForProductionAssembly<
   T extends ProductionEpisodeSourceSubEpisode,
->(subEpisodes: T[], opts: { allowPartial?: boolean } = {}): { usable: T[]; missing: number[] } {
+>(
+  subEpisodes: T[],
+  opts: { allowPartial?: boolean } = {}
+): { usable: T[]; missing: number[] } {
   const ordered = subEpisodes
     .slice()
     .sort((a, b) => a.episodeNumber - b.episodeNumber);
@@ -456,9 +478,12 @@ function subEpisodeNumbersEqual(a: number[], b: number[]): boolean {
 
 /** Read a Sub-Episode's `assemblyManifest.compiledVideo.videoUrl`, defensively —
  *  returns `null` unless status is `"completed"` AND a non-empty `videoUrl` exists. */
-export function extractSubEpisodeCompiledVideoUrl(assemblyManifest: unknown): string | null {
+export function extractSubEpisodeCompiledVideoUrl(
+  assemblyManifest: unknown
+): string | null {
   if (!assemblyManifest || typeof assemblyManifest !== "object") return null;
-  const compiledVideo = (assemblyManifest as Record<string, unknown>).compiledVideo;
+  const compiledVideo = (assemblyManifest as Record<string, unknown>)
+    .compiledVideo;
   if (!compiledVideo || typeof compiledVideo !== "object") return null;
   const status = (compiledVideo as Record<string, unknown>).status;
   if (status !== "completed") return null;
@@ -492,7 +517,9 @@ export function productionEpisodeFilename(args: {
   groupIndex: number;
   seriesTitle?: string;
 }): string {
-  const seriesPart = slugForFilename(args.seriesTitle || `series-${args.seriesId}`);
+  const seriesPart = slugForFilename(
+    args.seriesTitle || `series-${args.seriesId}`
+  );
   return `series-${seriesPart}-production-ep-${args.groupIndex + 1}.mp4`;
 }
 
@@ -505,7 +532,8 @@ async function loadProductionEpisodesManifest(
 ): Promise<ProductionEpisodesManifestWithBgm | null> {
   const [row] = await db
     .select({
-      productionEpisodesManifest: verticalDramaSeries.productionEpisodesManifest,
+      productionEpisodesManifest:
+        verticalDramaSeries.productionEpisodesManifest,
     })
     .from(verticalDramaSeries)
     .where(
@@ -518,7 +546,8 @@ async function loadProductionEpisodesManifest(
     .limit(1);
   if (!row) throw new Error("vertical_drama_series_not_found");
   return (
-    (row.productionEpisodesManifest as ProductionEpisodesManifestWithBgm | null) ?? null
+    (row.productionEpisodesManifest as ProductionEpisodesManifestWithBgm | null) ??
+    null
   );
 }
 
@@ -560,7 +589,8 @@ async function patchProductionEpisodeGroupState(
 ): Promise<void> {
   const [row] = await db
     .select({
-      productionEpisodesManifest: verticalDramaSeries.productionEpisodesManifest,
+      productionEpisodesManifest:
+        verticalDramaSeries.productionEpisodesManifest,
     })
     .from(verticalDramaSeries)
     .where(
@@ -587,7 +617,10 @@ async function patchProductionEpisodeGroupState(
 
   await db
     .update(verticalDramaSeries)
-    .set({ productionEpisodesManifest: next as unknown as object, updatedAt: new Date() })
+    .set({
+      productionEpisodesManifest: next as unknown as object,
+      updatedAt: new Date(),
+    })
     .where(
       and(
         eq(verticalDramaSeries.id, owner.seriesId),
@@ -617,7 +650,9 @@ async function patchProductionEpisodeGroupState(
  * "small duplication, not a shared import" call `verticalDramaSeries.ts`'s
  * `assembleSeasonVideos` already makes for this exact flag.
  */
-async function resolveProductionVoiceChainFlag(tenantId: string): Promise<boolean> {
+async function resolveProductionVoiceChainFlag(
+  tenantId: string
+): Promise<boolean> {
   const flags = await getTenantFeatureFlags(tenantId);
   return flags?.verticalDramaSeriesVoiceChain === true;
 }
@@ -724,15 +759,21 @@ export type RenderSubEpisodeWithOptionsFn = (
 export async function renderSubEpisodeWithOptions(
   args: RenderSubEpisodeWithOptionsArgs
 ): Promise<RenderSubEpisodeWithOptionsResult> {
-  const clipSources = extractClipSourcesFromMotionPromptPack(args.motionPromptPack);
+  const clipSources = extractClipSourcesFromMotionPromptPack(
+    args.motionPromptPack
+  );
   if (clipSources.length === 0) {
     throw new Error(
       `vertical_drama_production_subepisode_no_clips: sub-episode ${args.owner.episodeId} has no video clips to render.`
     );
   }
-  const resolved = resolveClipsForAssembly(clipSources, { allowPartial: args.allowPartial });
+  const resolved = resolveClipsForAssembly(clipSources, {
+    allowPartial: args.allowPartial,
+  });
 
-  const motionClips: VdDialogueTimelineClip[] = (args.motionPromptPack?.clips ?? []).map(c => ({
+  const motionClips: VdDialogueTimelineClip[] = (
+    args.motionPromptPack?.clips ?? []
+  ).map(c => ({
     clipNumber: c.clipNumber,
     sourceShotNumbers: c.sourceShotNumbers,
     durationSeconds: c.durationSeconds,
@@ -743,7 +784,8 @@ export async function renderSubEpisodeWithOptions(
     motionClips,
     includedClipNumbers: resolved.ordered.map(c => c.clipNumber),
     includeDialogueAudio:
-      args.voiceChainEnabled && args.renderOptions.includeDialogueAudio === true,
+      args.voiceChainEnabled &&
+      args.renderOptions.includeDialogueAudio === true,
     loudnessNormalize: args.renderOptions.loudnessNormalize === true,
     subtitlePreset: args.renderOptions.subtitlePreset,
     subtitleFontSize: args.renderOptions.subtitleFontSize,
@@ -760,8 +802,12 @@ export async function renderSubEpisodeWithOptions(
     filename: args.filename,
     ffmpegRunner: args.ffmpegRunner,
     probeDurationSecondsFn: args.probeDurationSecondsFn,
-    ...(dialogueRunInputs.dialogueAudio ? { dialogueAudio: dialogueRunInputs.dialogueAudio } : {}),
-    ...(dialogueRunInputs.subtitles ? { subtitles: dialogueRunInputs.subtitles } : {}),
+    ...(dialogueRunInputs.dialogueAudio
+      ? { dialogueAudio: dialogueRunInputs.dialogueAudio }
+      : {}),
+    ...(dialogueRunInputs.subtitles
+      ? { subtitles: dialogueRunInputs.subtitles }
+      : {}),
   });
 
   const [freshRow] = await db
@@ -777,7 +823,9 @@ export async function renderSubEpisodeWithOptions(
     )
     .limit(1);
 
-  const videoUrl = extractSubEpisodeCompiledVideoUrl(freshRow?.assemblyManifest);
+  const videoUrl = extractSubEpisodeCompiledVideoUrl(
+    freshRow?.assemblyManifest
+  );
   if (!videoUrl) {
     throw new Error(
       `vertical_drama_production_subepisode_render_failed: sub-episode ${args.owner.episodeId} render did not produce a compiled video.`
@@ -795,7 +843,8 @@ export async function renderSubEpisodeWithOptions(
 
   return {
     videoUrl,
-    durationSeconds: typeof durationSeconds === "number" ? durationSeconds : undefined,
+    durationSeconds:
+      typeof durationSeconds === "number" ? durationSeconds : undefined,
   };
 }
 
@@ -869,7 +918,9 @@ export async function runProductionEpisodeGroupJob(args: {
     overlays,
   } = args;
 
-  const workDir = await fsp.mkdtemp(path.join(os.tmpdir(), "vd-production-ep-"));
+  const workDir = await fsp.mkdtemp(
+    path.join(os.tmpdir(), "vd-production-ep-")
+  );
   try {
     // Render-options LEVEL — every member is freshly re-rendered WITH the
     // SAME unified styling before this group's own concat step runs, so
@@ -909,16 +960,27 @@ export async function runProductionEpisodeGroupJob(args: {
 
     const inputPaths: string[] = [];
     for (let i = 0; i < videoUrls.length; i += 1) {
-      const dest = path.join(workDir, `sub-ep-${String(i).padStart(3, "0")}.mp4`);
+      const dest = path.join(
+        workDir,
+        `sub-ep-${String(i).padStart(3, "0")}.mp4`
+      );
       await downloadClipToFile(videoUrls[i], dest, internalBaseUrl);
       inputPaths.push(dest);
     }
 
     const concatListPath = path.join(workDir, "concat.txt");
-    await fsp.writeFile(concatListPath, buildConcatListFileContent(inputPaths), "utf8");
+    await fsp.writeFile(
+      concatListPath,
+      buildConcatListFileContent(inputPaths),
+      "utf8"
+    );
 
     const outputPath = path.join(workDir, "output.mp4");
-    const ffArgs = buildConcatFfmpegArgs({ inputPaths, concatListPath, outputPath });
+    const ffArgs = buildConcatFfmpegArgs({
+      inputPaths,
+      concatListPath,
+      outputPath,
+    });
     const result = await ffmpegRunner(ffArgs);
     if (result.code !== 0) {
       throw new Error(
@@ -1020,15 +1082,22 @@ export async function runProductionEpisodeGroupJob(args: {
       const overlaysAssPath = path.join(workDir, "overlays.ass");
       await fsp.writeFile(overlaysAssPath, overlaysAssContent, "utf8");
 
-      const creditsAssContent = buildCreditsAssFile(credits.text, durationSeconds, {
+      const creditsAssContent = buildCreditsAssFile(
+        credits.text,
+        durationSeconds,
+        {
         fontsDir,
         playResX: 1080,
         playResY: 1920,
-      });
+        }
+      );
       const creditsAssPath = path.join(workDir, "credits.ass");
       await fsp.writeFile(creditsAssPath, creditsAssContent, "utf8");
 
-      const combinedOutputPath = path.join(workDir, "output-overlays-credits.mp4");
+      const combinedOutputPath = path.join(
+        workDir,
+        "output-overlays-credits.mp4"
+      );
       const combinedArgs = buildAssBurnFfmpegArgs({
         videoPath: finalOutputPath,
         // Overlays first, credits last — the tail-anchored credits roll
@@ -1060,11 +1129,15 @@ export async function runProductionEpisodeGroupJob(args: {
         );
       }
       const fontsDir = resolveVdSubtitleFontsDir();
-      const creditsAssContent = buildCreditsAssFile(credits.text, durationSeconds, {
+      const creditsAssContent = buildCreditsAssFile(
+        credits.text,
+        durationSeconds,
+        {
         fontsDir,
         playResX: 1080,
         playResY: 1920,
-      });
+        }
+      );
       const creditsAssPath = path.join(workDir, "credits.ass");
       await fsp.writeFile(creditsAssPath, creditsAssContent, "utf8");
 
@@ -1114,7 +1187,11 @@ export async function runProductionEpisodeGroupJob(args: {
 
     const storageKey = `vertical-drama/production-episodes/${owner.seriesId}/${randomUUID()}-${filename}`;
     await assertR2StorageActive();
-    const { url } = await storagePutFromPath(storageKey, finalOutputPath, "video/mp4");
+    const { url } = await storagePutFromPath(
+      storageKey,
+      finalOutputPath,
+      "video/mp4"
+    );
 
     await patchProductionEpisodeGroupState(owner, groupIndex, {
       status: "completed",
@@ -1233,6 +1310,7 @@ export interface AssembleProductionEpisodesForSeriesResult {
 interface PlannedProductionEpisodeGroup {
   index: number;
   subEpisodeNumbers: number[];
+  subEpisodeIds: number[];
   members: ProductionEpisodeSourceSubEpisodeRow[];
   /** Non-null when an existing COMPLETED group can be reused verbatim. */
   reuse: VerticalDramaProductionEpisodeGroupStateWithBgm | null;
@@ -1302,15 +1380,21 @@ export async function assembleProductionEpisodesForSeries(
     );
   }
 
-  const subEpisodes: ProductionEpisodeSourceSubEpisodeRow[] = episodeRows.map((row: (typeof episodeRows)[number]) => ({
-    episodeNumber: row.episodeNumber,
-    videoUrl: extractSubEpisodeCompiledVideoUrl(row.assemblyManifest),
-    episodeId: row.id,
-    motionPromptPack: row.motionPromptPack as VerticalDramaMotionPromptPack | null,
-    dialogueAudioPlan: row.dialogueAudioPlan as VerticalDramaDialogueAudioPlan | null,
-  }));
+  const subEpisodes: ProductionEpisodeSourceSubEpisodeRow[] = episodeRows.map(
+    (row: (typeof episodeRows)[number]) => ({
+      episodeNumber: row.episodeNumber,
+      videoUrl: extractSubEpisodeCompiledVideoUrl(row.assemblyManifest),
+      episodeId: row.id,
+      motionPromptPack:
+        row.motionPromptPack as VerticalDramaMotionPromptPack | null,
+      dialogueAudioPlan:
+        row.dialogueAudioPlan as VerticalDramaDialogueAudioPlan | null,
+    })
+  );
 
-  const { usable } = resolveSubEpisodesForProductionAssembly(subEpisodes, { allowPartial });
+  const { usable } = resolveSubEpisodesForProductionAssembly(subEpisodes, {
+    allowPartial,
+  });
   const groups = chunkSubEpisodesIntoGroups(usable, groupSize);
 
   const existingManifest = await loadProductionEpisodesManifest(owner);
@@ -1318,52 +1402,60 @@ export async function assembleProductionEpisodesForSeries(
     (existingManifest?.episodes ?? []).map(e => [e.index, e] as const)
   );
 
-  const planned: PlannedProductionEpisodeGroup[] = groups.map((group, index) => {
-    const subEpisodeNumbers = group.map(e => e.episodeNumber);
-    const existing = existingByIndex.get(index) ?? null;
-    const reuse =
-      existing &&
-      existing.status === "completed" &&
-      existing.groupSize === groupSize &&
-      subEpisodeNumbersEqual(existing.subEpisodeNumbers, subEpisodeNumbers)
-        ? existing
-        : null;
-    return {
-      index,
-      subEpisodeNumbers,
-      members: group,
-      reuse,
-    };
-  });
+  const planned: PlannedProductionEpisodeGroup[] = groups.map(
+    (group, index) => {
+      const subEpisodeNumbers = group.map(e => e.episodeNumber);
+      const subEpisodeIds = group.map(e => e.episodeId);
+      const existing = existingByIndex.get(index) ?? null;
+      const reuse =
+        existing &&
+        existing.status === "completed" &&
+        existing.groupSize === groupSize &&
+        subEpisodeNumbersEqual(existing.subEpisodeNumbers, subEpisodeNumbers)
+          ? existing
+          : null;
+      return {
+        index,
+        subEpisodeNumbers,
+        subEpisodeIds,
+        members: group,
+        reuse,
+      };
+    }
+  );
 
-  const groupStates: VerticalDramaProductionEpisodeGroupStateWithBgm[] = planned.map(
-    (p): VerticalDramaProductionEpisodeGroupStateWithBgm =>
-      p.reuse ?? {
-        index: p.index,
-        groupSize,
-        subEpisodeNumbers: p.subEpisodeNumbers,
-        status: "pending",
-        // Recorded onto the group state (pending AND, since the per-group
-        // patch below never touches this field, still present once
-        // completed/failed) purely for UI display of "what styling was this
-        // Production Episode rendered with" — see
-        // `VerticalDramaProductionEpisodeGroupState.renderOptions`'s own doc
-        // comment. Absent entirely when this call had no `renderOptions`.
-        ...(renderOptions ? { renderOptions } : {}),
-        // Phase B-1 — same "set once at pending time, carried through
-        // unchanged" convention as `renderOptions` immediately above; see
-        // `VerticalDramaProductionEpisodeGroupStateWithBgm`'s own doc
-        // comment. Absent entirely when this call had no `bgm`.
-        ...(bgm ? { bgm } : {}),
-        // Phase C-1 — same convention as `bgm` immediately above. Absent
-        // entirely when this call had no `credits`.
-        ...(credits ? { credits } : {}),
-        // Phase C-2 — same convention as `bgm`/`credits` immediately above,
-        // EXCEPT an overlays array must ALSO check `.length > 0` (unlike a
-        // singular options object, an EMPTY array is still truthy in JS) —
-        // absent entirely when this call had no `overlays`, OR an empty one.
-        ...(overlays && overlays.length > 0 ? { overlays } : {}),
-      }
+  const groupStates: VerticalDramaProductionEpisodeGroupStateWithBgm[] =
+    planned.map(
+      (p): VerticalDramaProductionEpisodeGroupStateWithBgm =>
+        p.reuse
+          ? { ...p.reuse, subEpisodeIds: p.subEpisodeIds }
+          : {
+              index: p.index,
+              groupSize,
+              subEpisodeNumbers: p.subEpisodeNumbers,
+              subEpisodeIds: p.subEpisodeIds,
+              status: "pending",
+              // Recorded onto the group state (pending AND, since the per-group
+              // patch below never touches this field, still present once
+              // completed/failed) purely for UI display of "what styling was this
+              // Production Episode rendered with" — see
+              // `VerticalDramaProductionEpisodeGroupState.renderOptions`'s own doc
+              // comment. Absent entirely when this call had no `renderOptions`.
+              ...(renderOptions ? { renderOptions } : {}),
+              // Phase B-1 — same "set once at pending time, carried through
+              // unchanged" convention as `renderOptions` immediately above; see
+              // `VerticalDramaProductionEpisodeGroupStateWithBgm`'s own doc
+              // comment. Absent entirely when this call had no `bgm`.
+              ...(bgm ? { bgm } : {}),
+              // Phase C-1 — same convention as `bgm` immediately above. Absent
+              // entirely when this call had no `credits`.
+              ...(credits ? { credits } : {}),
+              // Phase C-2 — same convention as `bgm`/`credits` immediately above,
+              // EXCEPT an overlays array must ALSO check `.length > 0` (unlike a
+              // singular options object, an EMPTY array is still truthy in JS) —
+              // absent entirely when this call had no `overlays`, OR an empty one.
+              ...(overlays && overlays.length > 0 ? { overlays } : {}),
+            }
   );
 
   const manifest: ProductionEpisodesManifestWithBgm = {

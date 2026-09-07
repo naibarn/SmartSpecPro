@@ -883,8 +883,17 @@ mod tests {
 
     #[test]
     fn compare_version_strings_handles_semver_numerically() {
-        assert_eq!(compare_version_strings("0.1.10", "0.1.9"), std::cmp::Ordering::Greater);
-        assert_eq!(compare_version_strings("0.1.9", "0.1.10"), std::cmp::Ordering::Less);
-        assert_eq!(compare_version_strings("0.1.9", "0.1.9"), std::cmp::Ordering::Equal);
+        assert_eq!(
+            compare_version_strings("0.1.10", "0.1.9"),
+            std::cmp::Ordering::Greater
+        );
+        assert_eq!(
+            compare_version_strings("0.1.9", "0.1.10"),
+            std::cmp::Ordering::Less
+        );
+        assert_eq!(
+            compare_version_strings("0.1.9", "0.1.9"),
+            std::cmp::Ordering::Equal
+        );
     }
 }

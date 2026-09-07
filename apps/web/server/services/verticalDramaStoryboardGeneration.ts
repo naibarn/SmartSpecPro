@@ -70,6 +70,7 @@ import { resolveStoryboardModel } from "./verticalDramaImproveScript";
 import {
   analyzeVerticalDramaStorySafety,
   isBlockingVerticalDramaStorySafety,
+  type VerticalDramaStorySafetyResult,
 } from "./verticalDramaStorySafety";
 import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
 import { resolveVerticalDramaSupportingPresenceForShot } from "@shared/verticalDramaSeries/supportingPresence";
@@ -102,6 +103,23 @@ export class RateLimitExceededError extends Error {
       `Rate limit exceeded for storyboard generation. Try again in ${Math.ceil(retryAfterMs / 1000)} seconds.`
     );
     this.name = "RateLimitExceededError";
+  }
+}
+
+export const VERTICAL_DRAMA_STORYBOARD_POLICY_REPAIR_MAX_ATTEMPTS = 3;
+
+export class VerticalDramaStoryboardPolicyRecoveryError extends Error {
+  readonly code = "VD_STORY_POLICY_RISK" as const;
+
+  constructor(
+    readonly safety: VerticalDramaStorySafetyResult,
+    readonly candidate: StoryboardShotgridOutput,
+    readonly repairAttempts: number
+  ) {
+    super(
+      "Storyboard contains a high-risk policy context after automatic repair; review the preserved candidate before media generation."
+    );
+    this.name = "VerticalDramaStoryboardPolicyRecoveryError";
   }
 }
 
@@ -407,6 +425,103 @@ export type StoryboardShotgridOutput = z.infer<
   typeof storyboardShotgridOutputSchema
 >;
 
+const STORYBOARD_SAFETY_SHOT_KEYS = [
+  "narrative_purpose",
+  "visual_description",
+  "image_prompt",
+  "description",
+  "action",
+  "dialogue",
+  "dialogue_lines",
+  "supporting_presence",
+  "facial_expression",
+  "body_language",
+  "gaze_direction",
+  "contract",
+] as const;
+
+/**
+ * Project only fields that can become visible story/media content. Transport
+ * metadata and `storyboard_handoff_json` duplicate the same nine shots and
+ * can exceed the bounded safety scanner even when the actual story is safe.
+ */
+function analyzeStoryboardSafety(
+  storyboard: StoryboardShotgridOutput
+): VerticalDramaStorySafetyResult {
+  const results = storyboard.shots.map(shot => {
+    const source = shot as unknown as Record<string, unknown>;
+    const safetyInput = Object.fromEntries(
+      [
+        ["shot_number", shot.shot_number],
+        ...STORYBOARD_SAFETY_SHOT_KEYS.map(
+          key => [key, source[key]] as const
+        ),
+      ].filter(([, value]) => value !== undefined && value !== null)
+    );
+    return analyzeVerticalDramaStorySafety(safetyInput);
+  });
+  const findings = Array.from(
+    new Map(
+      results
+        .flatMap((result, index) =>
+          result.findings.map(finding => ({
+            ...finding,
+            message: `Shot ${storyboard.shots[index]!.shot_number}: ${finding.message}`,
+          }))
+        )
+        .map(finding => [`${finding.code}:${finding.message}`, finding])
+    ).values()
+  );
+  const level = findings.some(finding => finding.level === "high")
+    ? "high"
+    : findings.length > 0
+      ? "medium"
+      : "low";
+  const instruction =
+    results.find(result => result.level === "high")?.instruction ??
+    results.find(result => result.level === "medium")?.instruction ??
+    analyzeVerticalDramaStorySafety(null).instruction;
+  return { level, findings, instruction };
+}
+
+function applyAuthoritativeStoryboardDurations(
+  storyboard: StoryboardShotgridOutput,
+  durationPlan?: VerticalDramaDurationPlan
+): void {
+  const durations = durationPlan
+    ? getActiveVerticalDramaShotDurations(durationPlan)
+    : null;
+  if (!durations) return;
+  storyboard.shots.forEach((shot, index) => {
+    shot.duration_seconds = durations[index]!;
+  });
+}
+
+function buildStoryboardPolicyRepairInstruction(
+  safety: VerticalDramaStorySafetyResult,
+  attempt: number
+): string {
+  const findings = safety.findings
+    .map(finding => `${finding.code}: ${finding.message}`)
+    .join("; ");
+  return [
+    `SAFE REWRITE REQUIRED: policy repair attempt ${attempt} of ${VERTICAL_DRAMA_STORYBOARD_POLICY_REPAIR_MAX_ATTEMPTS}.`,
+    `Repair the current storyboard candidate, targeting only these findings: ${findings}.`,
+    "Preserve all established episode facts, plot purpose, shot numbering, timing, character identity, and every unrelated safe shot.",
+    "Use neutral, non-graphic actions. Do not include sexual content, nudity, abuse, coercion, graphic injury, surveillance, or a child in danger.",
+  ].join(" ");
+}
+
+function buildStoryboardPolicyRepairBase(
+  storyboard: StoryboardShotgridOutput
+): Record<string, unknown> {
+  const {
+    storyboard_handoff_json: _derivedHandoff,
+    ...repairBase
+  } = storyboard;
+  return repairBase;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Prompt building                                                            */
 /* -------------------------------------------------------------------------- */
@@ -528,6 +643,7 @@ export interface GenerateStoryboardShotgridParams {
       variantType: "outfit" | "age_stage";
       description: string;
       referenceImageUrl: string;
+      ageRange?: { min: number; max: number };
     }>;
     /**
      * `vertical_drama_character_aliases` rows for this BASE character
@@ -584,6 +700,7 @@ export interface GenerateStoryboardShotgridParams {
   twinPairs?: Array<{
     characterKeyA: string;
     characterKeyB: string;
+    ageRange?: { min: number; max: number };
   }>;
   /**
    * Deep story drafts hydration (W10-B, spec/section-16 refine-mode, added
@@ -722,7 +839,10 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
             .map(v => {
               const typeLabel =
                 v.variantType === "age_stage" ? "age-stage" : "outfit";
-              return `  - ${v.characterKey} (${v.variantLabel}, ${typeLabel} variant of ${c.characterId}): ${v.description} [has an approved reference image]`;
+              const ageNote = v.ageRange
+                ? ` [apparent age ${v.ageRange.min}–${v.ageRange.max}]`
+                : "";
+              return `  - ${v.characterKey} (${v.variantLabel}, ${typeLabel} variant of ${c.characterId}): ${v.description}${ageNote} [has an approved reference image]`;
             })
             .join("\n");
           return `${baseLine}\n  Variants available for ${c.characterId} — see "Character variant selection" below:\n${variantLines}`;
@@ -758,7 +878,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     ? params.twinPairs
         .map(
           p =>
-            `- ${p.characterKeyA} and ${p.characterKeyB} are twins — they share an identical face but are different people.`
+            `- ${p.characterKeyA} and ${p.characterKeyB} are twins — they share an identical face but are different people. Keep them in the same apparent age/maturity range${p.ageRange ? ` (${p.ageRange.min}–${p.ageRange.max})` : ""} with visibly distinct styling.`
         )
         .join("\n")
     : null;
@@ -1011,30 +1131,30 @@ export async function generateStoryboardShotgrid(
   // decide story meaning and shot content, but do not let a harmless numeric
   // drift in one LLM field change the render contract. Legacy callers omit
   // durationPlan and retain the historical sum-only behavior.
-  const authoritativeShotDurations = params.durationPlan
-    ? getActiveVerticalDramaShotDurations(params.durationPlan)
-    : null;
-  if (authoritativeShotDurations) {
-    storyboardData.shots.forEach((shot, index) => {
-      shot.duration_seconds = authoritativeShotDurations[index]!;
-    });
-  }
-
-  const storyboardSafety = analyzeVerticalDramaStorySafety(storyboardData);
-  if (isBlockingVerticalDramaStorySafety(storyboardSafety)) {
-    // A model can introduce a risky phrase that is absent from the authored
-    // episode plan (for example, an unsafe interpretation of an otherwise
-    // ordinary child-and-parent scene). Give the planner one bounded,
-    // zero-credit-deduction rewrite chance before surfacing a real safety
-    // block. The second pass keeps the original story facts and explicitly
-    // requires neutral, non-graphic framing; it does not weaken the final
-    // safety gate below.
+  let storyboardSafety = analyzeStoryboardSafety(storyboardData);
+  let policyRepairAttempts = 0;
+  while (
+    isBlockingVerticalDramaStorySafety(storyboardSafety) &&
+    policyRepairAttempts < VERTICAL_DRAMA_STORYBOARD_POLICY_REPAIR_MAX_ATTEMPTS
+  ) {
+    policyRepairAttempts += 1;
+    // Keep the valid candidate as the repair base. Re-generating all nine
+    // shots from the original episode makes already-safe shots drift and
+    // loses the only resumable state when another policy phrase appears.
+    const repairInstruction = buildStoryboardPolicyRepairInstruction(
+      storyboardSafety,
+      policyRepairAttempts
+    );
     const safetyRepairParams: GenerateStoryboardShotgridParams = {
       ...params,
+      repairContext: {
+        currentStoryboard: buildStoryboardPolicyRepairBase(storyboardData),
+        instruction: repairInstruction,
+      },
       policySafetyContext: [
         params.policySafetyContext,
-        ...storyboardSafety.findings.map(finding => finding.message),
-        "SAFE REWRITE REQUIRED: the previous storyboard draft introduced a high-risk interpretation. Rewrite the complete 9-shot storyboard using neutral, non-graphic actions that preserve the authored episode facts and plot purpose. Do not include sexual content, nudity, abuse, coercion, graphic injury, surveillance, or a child in danger. Keep ordinary care, play, conversation, and adult boundaries safe and non-threatening.",
+        storyboardSafety.instruction,
+        repairInstruction,
       ]
         .filter(Boolean)
         .join("\n"),
@@ -1047,26 +1167,25 @@ export async function generateStoryboardShotgrid(
       userId: params.userId,
       maxTokens: 16000,
       schema: storyboardShotgridOutputSchema,
-      label: "Storyboard shotgrid safe rewrite",
+      label: `Storyboard shotgrid safe repair ${policyRepairAttempts}`,
       planningAttemptObserver: params.planningAttemptObserver,
     });
     storyboardData = repaired.data;
     response = repaired.response;
-    const repairedSafety = analyzeVerticalDramaStorySafety(storyboardData);
-    if (!isBlockingVerticalDramaStorySafety(repairedSafety)) {
-      // Continue through the normal deterministic normalization and credit
-      // accounting below using the safe replacement.
-    } else {
-      const error = new Error(
-        "Storyboard contains a high-risk policy context; rewrite before media generation."
-      ) as Error & { code?: string; safety?: unknown };
-      error.code = "VD_STORY_POLICY_RISK";
-      error.safety = repairedSafety;
-      (error as Error & { candidate?: StoryboardShotgridOutput }).candidate =
-        storyboardData;
-      throw error;
-    }
+    storyboardSafety = analyzeStoryboardSafety(storyboardData);
   }
+
+  if (isBlockingVerticalDramaStorySafety(storyboardSafety)) {
+    throw new VerticalDramaStoryboardPolicyRecoveryError(
+      storyboardSafety,
+      storyboardData,
+      policyRepairAttempts
+    );
+  }
+
+  // Apply the production duration profile after the final repair candidate
+  // wins so a model cannot drift timing during a targeted safety edit.
+  applyAuthoritativeStoryboardDurations(storyboardData, params.durationPlan);
 
   // Normalize `characters` / `required_character_refs` / `screen_caller_refs` per shot — the LLM is
   // told to reference the exact `characterId`s listed in the prompt (see

@@ -25,6 +25,7 @@ import {
   type WorkerRuntimePlatform,
   type WorkerRuntimeReleaseAsset,
   type WorkerRuntimeReleaseCatalog,
+  type WorkerRuntimeReleaseLocalImport,
   type WorkerRuntimeReleaseUpload,
 } from "../../shared/workerRuntimeReleases";
 import { validateRuntimePackArchive } from "./workerRuntimePackValidation";
@@ -127,6 +128,54 @@ export function createWorkerRuntimeReleaseStorageKey(input: {
   fileName: string;
 }): string {
   return `${WORKER_RUNTIME_RELEASE_STORAGE_PREFIX}${sanitizePathSegment(input.runtimeId)}/${sanitizePathSegment(input.version)}/${sanitizePathSegment(input.channel)}/${path.basename(input.fileName)}`;
+}
+
+function localRuntimeReleaseDirs(): string[] {
+  const configuredDirs = (
+    process.env.SMARTAIHUB_RUNTIME_RELEASES_DIR ||
+    process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR ||
+    ""
+  )
+    .split(path.delimiter)
+    .map(value => value.trim())
+    .filter(Boolean)
+    .map(value =>
+      path.resolve(
+        value,
+        path.basename(path.normalize(value)) === "runtime" ? "" : "runtime"
+      )
+    );
+  const candidates = [
+    ...configuredDirs,
+    path.resolve(process.cwd(), "client/public/releases/runtime"),
+    path.resolve(process.cwd(), "dist/public/releases/runtime"),
+    path.resolve(process.cwd(), "public/releases/runtime"),
+    path.resolve(import.meta.dirname, "../../client/public/releases/runtime"),
+    path.resolve(import.meta.dirname, "../../dist/public/releases/runtime"),
+    path.resolve(import.meta.dirname, "../../public/releases/runtime"),
+  ];
+  return Array.from(new Set(candidates));
+}
+
+function findLocalRuntimeReleasePath(input: {
+  runtimeId: WorkerRuntimeId;
+  version: string;
+}): string | null {
+  const fileName = `smart-ai-hub-worker-runtime-${input.runtimeId}-${input.version}.zip`;
+  for (const releaseDir of localRuntimeReleaseDirs()) {
+    const candidate = path.join(releaseDir, fileName);
+    const candidateRoot = path.resolve(releaseDir) + path.sep;
+    if (!path.resolve(candidate).startsWith(candidateRoot)) continue;
+    let stat: fs.Stats;
+    try {
+      stat = fs.statSync(candidate);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw error;
+    }
+    if (stat?.isFile() && stat.size > 0) return candidate;
+  }
+  return null;
 }
 
 function toIso(value: Date | string | null | undefined): string | null {
@@ -529,6 +578,34 @@ export async function persistWorkerRuntimeReleaseUploadFromPath(input: {
     await storageDelete(stored.key).catch(() => false);
     throw error;
   }
+}
+
+export async function importLocalWorkerRuntimeRelease(input: {
+  release: WorkerRuntimeReleaseLocalImport;
+  uploadedByUserId: number;
+}): Promise<WorkerRuntimeReleaseAsset> {
+  const filePath = findLocalRuntimeReleasePath(input.release);
+  if (!filePath) {
+    throw new WorkerRuntimeReleaseError(
+      "worker_runtime_local_archive_not_found",
+      404,
+      `Server runtime archive was not found for ${input.release.runtimeId} ${input.release.version}. Expected the standard release ZIP in the configured runtime release directory.`
+    );
+  }
+  const stat = await fs.promises.stat(filePath);
+  return persistWorkerRuntimeReleaseUploadFromPath({
+    upload: {
+      version: input.release.version,
+      runtimeId: input.release.runtimeId,
+      platform: expectedPlatform(input.release.runtimeId),
+      channel: input.release.channel,
+      fileName: path.basename(filePath),
+      contentType: "application/zip",
+      fileSizeBytes: stat.size,
+    },
+    filePath,
+    uploadedByUserId: input.uploadedByUserId,
+  });
 }
 
 export async function publishWorkerRuntimeRelease(

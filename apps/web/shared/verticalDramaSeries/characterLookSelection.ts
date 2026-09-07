@@ -12,6 +12,10 @@ export interface VerticalDramaCharacterLookCatalogEntry {
   lookDesignStatus?: "waiting_for_look_design" | "ready" | "review";
   /** Authoritative age band of the parent character, when known. */
   authoritativeAgeBand?: "minor" | "adult" | "unknown";
+  /** Numeric age range resolved from the character/variant's own metadata. */
+  authoritativeAgeRange?: { min: number; max: number };
+  /** Explicit age range carried by this look/variant's visual metadata. */
+  ageRange?: { min: number; max: number };
 }
 
 /** Additional persisted facts used only while reusing an existing roster row. */
@@ -504,15 +508,22 @@ function isSafeAutomaticLook(
   entry: VerticalDramaCharacterLookCatalogEntry,
   baseEntry: VerticalDramaCharacterLookCatalogEntry
 ): boolean {
-  if (!entry.variantType || entry.variantType !== "age_stage") return true;
-  if (
+  if (entry.variantType === "age_stage" &&
     !isAgeStageCompatibleWithAuthoritativeBand(
       entry.ageStage,
       baseEntry.authoritativeAgeBand
-    )
+    )) return false;
+  const expectedRange = baseEntry.authoritativeAgeRange;
+  const actualRange = entry.ageRange;
+  if (
+    entry.variantType === "outfit" &&
+    expectedRange &&
+    actualRange &&
+    (actualRange.max < expectedRange.min || actualRange.min > expectedRange.max)
   ) {
     return false;
   }
+  if (!entry.variantType || entry.variantType !== "age_stage") return true;
   // An adult base character does not need a duplicate "adult" age-stage row.
   return !(
     entry.ageStage === "adult" &&
@@ -536,8 +547,10 @@ function selectSafeCarriedLook(params: {
       ? params.catalogByKey.get(params.preferredLookKey)
       : undefined,
     params.currentEntry,
+    ...params.family.filter(
+      entry => entry.characterKey !== params.baseEntry.characterKey
+    ),
     params.baseEntry,
-    ...params.family,
   ];
   return (
     candidates.find(
@@ -878,6 +891,14 @@ export function selectVerticalDramaCharacterLooks(params: {
             baseEntry.authoritativeAgeBand
           )
       );
+      const incompatibleAgeRange = Boolean(
+        currentEntry.parentCharacterKey &&
+          currentEntry.variantType === "outfit" &&
+          currentEntry.ageRange &&
+          baseEntry.authoritativeAgeRange &&
+          (currentEntry.ageRange.max < baseEntry.authoritativeAgeRange.min ||
+            currentEntry.ageRange.min > baseEntry.authoritativeAgeRange.max)
+      );
       const redundantAdultStage = Boolean(
         detectedIntent?.ageStage === "adult" &&
           baseEntry.authoritativeAgeBand === "adult"
@@ -922,7 +943,7 @@ export function selectVerticalDramaCharacterLooks(params: {
         continue;
       }
 
-      if (incompatibleAgeStage) {
+      if (incompatibleAgeStage || incompatibleAgeRange) {
         const selected = carriedLookEntry;
         nextKeys.push(selected.characterKey);
         assignments.push({
@@ -931,7 +952,9 @@ export function selectVerticalDramaCharacterLooks(params: {
           mode: selected.parentCharacterKey ? "matched_existing" : "base",
           status: "review",
           reason:
-            `ละเว้นลุค${detectedIntent!.label} เนื่องจากไม่สอดคล้องกับช่วงวัยหลักของตัวละคร จึงใช้ลุคที่ปลอดภัยและทำงานต่อได้`,
+            incompatibleAgeStage
+              ? `ละเว้นลุค${detectedIntent!.label} เนื่องจากไม่สอดคล้องกับช่วงวัยหลักของตัวละคร จึงใช้ลุคที่ปลอดภัยและทำงานต่อได้`
+              : "ละเว้นลุคที่มี metadata ช่วงวัยขัดกับช่วงวัยหลักของตัวละคร จึงใช้ลุคที่ปลอดภัยและทำงานต่อได้",
           confidence: 0.96,
         });
         recentByFamily.set(

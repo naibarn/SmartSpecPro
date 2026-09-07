@@ -1397,91 +1397,62 @@ app.get("/api/internal/models/resolve", async (req, res) => {
   }
 });
 
-app.post("/api/v1/skills/subtitle-mood-scoring", async (req, res) => {
-  try {
-    const { genre = "romance_ceo", subtitles = [], projectId = "default_proj" } = req.body || {};
-
-    // Standard copyright-free MiniMax-Music3 prompt mappings per drama genre
-    const CUE_STYLES: Record<string, { prompt: string; bpm: number }> = {
-      romance_ceo: {
-        prompt: "cinematic romantic orchestral piano solo, emotional dramatic background music, non-vocal, copyright-free instrumental",
-        bpm: 85,
-      },
-      revenge_thriller: {
-        prompt: "dark synth bass pulse, suspenseful heartbeat rhythm, dramatic violins, non-vocal, copyright-free background music",
-        bpm: 115,
-      },
-      urban_suspense: {
-        prompt: "urban synthwave detective theme, muted piano, mysterious ambient tension, non-vocal, copyright-free instrumental",
-        bpm: 95,
-      },
-      historical_palace: {
-        prompt: "traditional Chinese guzheng and bamboo flute with grand orchestral pads, non-vocal, copyright-free score",
-        bpm: 78,
-      },
-      fantasy_wuxia: {
-        prompt: "epic martial arts taiko drums and soaring string ensemble, non-vocal, copyright-free instrumental",
-        bpm: 120,
-      },
-      comedy_slice_of_life: {
-        prompt: "cheerful ukulele strumming with light acoustic percussion, non-vocal, copyright-free background music",
-        bpm: 105,
-      },
-    };
-
-    const selectedStyle = CUE_STYLES[genre] || CUE_STYLES.romance_ceo;
-    const totalDurationMs = Array.isArray(subtitles) && subtitles.length > 0
-      ? subtitles[subtitles.length - 1].endMs || 60000
-      : 60000;
-
-    // Segment subtitle timecodes into mood beats
-    const cues: Array<{
-      cueId: string;
-      startTimeMs: number;
-      endTimeMs: number;
-      mood: string;
-      stylePrompt: string;
-      targetTrack: string;
-      duckingLevelDb: number;
-    }> = [];
-
-    const cueSegmentDuration = Math.max(10000, Math.floor(totalDurationMs / Math.max(1, Math.ceil(subtitles.length / 4))));
-    let currentStart = 0;
-    let idx = 1;
-
-    while (currentStart < totalDurationMs) {
-      const endMs = Math.min(totalDurationMs, currentStart + cueSegmentDuration);
-      cues.push({
-        cueId: `skill_cue_${idx}`,
-        startTimeMs: currentStart,
-        endTimeMs: endMs,
-        mood: idx % 2 === 1 ? "dramatic_buildup" : "emotional_climax",
-        stylePrompt: selectedStyle.prompt,
-        targetTrack: "A2",
-        duckingLevelDb: -16.0,
-      });
-      currentStart = endMs;
-      idx++;
-    }
-
-    const creditsDeducted = Math.max(5, cues.length * 5);
-
-    return res.json({
-      success: true,
-      credits_deducted: creditsDeducted,
-      remaining_credits: 495,
-      sound_plan: {
-        genre,
-        total_duration_ms: totalDurationMs,
-        cues,
-      },
-    });
-  } catch (err: any) {
-    return res.status(500).json({
-      success: false,
-      error: err.message || "Failed to execute subtitle mood scoring skill",
-    });
+/**
+ * Worker bridge for the canonical Feature 176/177 plan. This endpoint is
+ * intentionally read-only: it never analyzes subtitles, invents cues, spends
+ * credits, or accepts a caller-supplied plan as authoritative.
+ */
+app.post("/api/v1/vertical-drama/audio-score/approved-plan", async (req, res) => {
+  const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
+  if (!auth.ok) return res.status(401).json({ error: "Unauthorized" });
+  const tenantId = resolveTenantIdVarchar(
+    (req as any).tenantId || (req as any).tenant?.id,
+    auth.tenantId || (auth as any).user?.currentTenantId,
+  );
+  const userId = Number(auth.userId ?? auth.sub);
+  if (!tenantId || !Number.isInteger(userId) || userId <= 0) {
+    return res.status(403).json({ error: "Tenant and user context are required" });
   }
+
+  const { z } = await import("zod");
+  const body = z.object({
+    plan: z.unknown(),
+    expectedSkillId: z.literal("vertical-drama-emotion-score-director"),
+    expectedSkillVersion: z.string().trim().min(1).max(64),
+  }).safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: "Invalid approved-plan request" });
+
+  const candidate = body.data.plan && typeof body.data.plan === "object"
+    ? body.data.plan as Record<string, unknown>
+    : {};
+  const authority = candidate.authority && typeof candidate.authority === "object"
+    ? candidate.authority as Record<string, unknown>
+    : null;
+  const planId = typeof candidate.planId === "string"
+    ? candidate.planId
+    : typeof authority?.planId === "string" ? authority.planId : "";
+  if (!z.string().uuid().safeParse(planId).success) {
+    return res.status(400).json({ error: "Approved plan id is required" });
+  }
+
+  const drizzleDb = await getDb();
+  if (!drizzleDb) return res.status(503).json({ error: "Database unavailable" });
+  const { verticalDramaEmotionPlans } = await import("../../drizzle/schema");
+  const [row] = await drizzleDb.select().from(verticalDramaEmotionPlans).where(and(
+    eq(verticalDramaEmotionPlans.id, planId),
+    eq(verticalDramaEmotionPlans.tenantId, tenantId),
+    eq(verticalDramaEmotionPlans.userId, userId),
+  )).limit(1);
+  if (!row) return res.status(404).json({ error: "Approved plan not found" });
+  if (row.status !== "approved" || row.rightsStatus !== "approved_for_project") {
+    return res.status(409).json({ error: "Plan approval and project rights are required" });
+  }
+  const { validateApprovedMusicScorePlan } = await import("../../shared/verticalDramaSeries/musicScoringContracts");
+  const parsed = validateApprovedMusicScorePlan(row.planJson);
+  if (!parsed.success || parsed.data.status !== "approved" || parsed.data.skill.skillId !== body.data.expectedSkillId || parsed.data.skill.skillVersion !== body.data.expectedSkillVersion) {
+    return res.status(409).json({ error: "Approved plan provenance does not match the requested skill" });
+  }
+  return res.json(parsed.data);
 });
 
 app.post("/api/internal/agency/create", async (req, res) => {

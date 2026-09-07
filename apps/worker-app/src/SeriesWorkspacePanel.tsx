@@ -6,7 +6,7 @@ import { MediaWorkspaceHost } from "./screens/media-workspace/MediaWorkspaceHost
 import { SeriesSwitcherModal } from "./screens/media-workspace/SeriesSwitcherModal";
 import type { CanonicalWorkerRouteId } from "./app/workerRoutes";
 import type { DeadAirRenderSelection } from "./screens/media-workspace/mediaWorkspaceTimeline";
-import type { AdapterPolicy } from "./screens/media-workspace/SpeakerAwareWorkflowPanel";
+import type { WireAdapterPolicy, WireAdapterId } from "./screens/media-workspace/SpeakerAwareWorkflowPanel";
 
 type SeriesProjection = {
   seriesId: string;
@@ -589,8 +589,9 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
       setBusy(false);
     }
   };
-  const submitSpeakerAwareScan = async (input: { workflowMode: string; adapters: string[]; adapterPolicy: AdapterPolicy; requestedStages: string[]; outputStage: string; sourceRelativeName: string }) => {
-    if (!workspace || !input.sourceRelativeName.trim()) throw new Error("เลือกโฟลเดอร์และ source video ก่อน");
+  const submitSpeakerAwareScan = async (input: { workflowMode: string; adapters: WireAdapterId[]; adapterPolicy: WireAdapterPolicy; requestedStages: string[]; outputStage: string; sourceRelativeName: string }) => {
+    if (!workspace) throw new Error("ยังไม่ได้เปิดโฟลเดอร์ workspace สำหรับ project นี้");
+    if (!input.sourceRelativeName.trim()) throw new Error("ไม่พบ source video ใน project ภายใต้โฟลเดอร์ workspace ที่เปิดอยู่");
     if (selected && !selected.bindingRevision) throw new Error("Series นี้ยังไม่มี binding ที่ใช้งานได้");
     const result = await invoke<{ jobId?: string; status: string }>("worker_app_submit_speaker_aware_job", {
       seriesId: selected?.seriesId ?? null,

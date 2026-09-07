@@ -37,6 +37,27 @@ describe("vertical drama media services", () => {
   it("rejects idempotency reuse when the payload hash changes", () => {
     expect(() => admitVerticalDramaMediaJob({ payload: { kind: "media_ingest", seriesId: "s1", binding, source, idempotencyKey: "job-1" }, binding, capabilityProbe: probe, idempotencyKey: "job-1", requestHash: "new-request-hash", existingRequestHash: "old-request-hash", actor: { tenantId: "t1", userId: 7, workerId: "w1" } })).toThrow("idempotency_conflict");
   });
+  it("rejects audio jobs bound to an older media-root revision", () => {
+    const audioProbe = { ...probe, capabilities: ["episode-audio-analysis-v1"] };
+    const payload = {
+      contractVersion: "vd-music-scoring-v1",
+      featureContractVersion: "176.177.v1",
+      kind: "episode_audio_analyze",
+      seriesId: "s1",
+      episodeId: "episode-1",
+      tenantScope: "t1",
+      bindingRevision: 1,
+      idempotencyKey: "audio-job-1",
+      draftOnly: false,
+      sourceSnapshotHash: hash,
+      timelineHash: hash,
+      cutMedia: { artifactId: "media-1", checksum: hash, kind: "media" },
+      editMap: { revision: "edit-1", hash, coordinateSpace: "cut", occurrenceCount: 1 },
+      requestedLanguage: "th",
+      analysisPolicy: "audio_only",
+    };
+    expect(() => admitVerticalDramaMediaJob({ payload, binding, capabilityProbe: audioProbe, idempotencyKey: "audio-job-1", requestHash: hash, actor: { tenantId: "t1", userId: 7, workerId: "w1" } })).toThrow("root_revision_stale");
+  });
   it("rejects non-QC or mismatched worker publication", () => {
     const artifact = { artifactId: "art-1", artifactRevision: "r1", kind: "normalized_video" as const, storageKey: "derived-art-1", checksum: hash, sizeBytes: 100, contentType: "video/mp4", durationMs: 1000, qc: { qcVersion: "qc-1", passed: true, durationMs: 1000, width: 1080, height: 1920, hasAudio: true, checksum: hash, checks: [], failureCode: null }, sourceAssetId: "asset-1", sourceRevision: "r1" };
     expect(validateVerticalDramaMediaPublication({ context: { tenantId: "t1", seriesId: "s1", bindingRevision: 2, currentBindingRevision: 2, uploadTokenWorkerId: "w1", expectedWorkerId: "w1", expectedChecksum: hash, verifiedArtifact: true }, artifact, qc: artifact.qc }).published).toBe(true);

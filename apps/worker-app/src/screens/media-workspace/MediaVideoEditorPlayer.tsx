@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useMemo, useCallback, type SetStateAction } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
+import type { Detection, FaceDetector as MediaPipeFaceDetector } from "@mediapipe/tasks-vision";
 import type { DirectoryEntry } from "./MediaExplorerView";
-import type { SmartSpecProjectDraft, NleClip, ProjectAsset, NleCanvas, NleTrack } from "../../types/nleProject";
-import { createDefaultProjectDraft } from "../../types/nleProject";
+import type { SmartSpecProjectDraft, NleClip, ProjectAsset, NleCanvas, NleTrack, PreviewAspectRatio } from "../../types/nleProject";
+import { createDefaultProjectDraft, getPreviewCanvasProfile, normalizePreviewAspectRatio } from "../../types/nleProject";
 import { preserveLockedClips } from "./timelineEdits";
 import { useProjectAutosave } from "./useProjectAutosave";
 import { parseProjectDraft, saveNleProject, saveCapCutDraft, isProjectFilePath, safeConvertFileSrc } from "./projectPersistence";
@@ -19,6 +20,12 @@ import { StockSvgModal } from "./StockSvgModal";
 import { BlurOverlayModal } from "./BlurOverlayModal";
 import { VoiceoverRecordModal } from "./VoiceoverRecordModal";
 import { AiMediaStudioModal } from "./AiMediaStudioModal";
+import {
+  advancePlayableTimeMs,
+  getPlayableTimeMs,
+  getWaveformThresholdTopPercent,
+  type DeadAirRenderSelection,
+} from "./mediaWorkspaceTimeline";
 
 export interface MediaVideoEditorPlayerProps {
   videoFile: DirectoryEntry | null;
@@ -39,13 +46,14 @@ export interface MediaVideoEditorPlayerProps {
   removeDeadAir?: boolean;
   onRemoveDeadAirChange?: (enabled: boolean) => void;
   onOpenIntentSettings?: () => void;
+  openAutoSubtitleRequest?: number;
   plan?: {
     planId: string;
     trimEndMs: number;
     outputRelativeName: string;
   } | null;
-  onBuildPlan?: () => void;
-  onSubmitJob?: () => void;
+  onBuildPlan?: (deadAir?: DeadAirRenderSelection) => void;
+  onSubmitJob?: (deadAir?: DeadAirRenderSelection) => void;
   canSubmitJob?: boolean;
   isBusy?: boolean;
   loadedProjectDraft?: SmartSpecProjectDraft | null;
@@ -73,6 +81,8 @@ interface CustomSilenceDetectionResult {
   firstSpeechMs?: number;
   lastSpeechMs?: number;
 }
+
+type FaceDetectorStatus = "idle" | "loading" | "ready" | "tracking" | "not_found" | "error";
 
 interface InteractiveProcessResult {
   outputPath: string;
@@ -232,6 +242,7 @@ export function MediaVideoEditorPlayer({
   onOpenProjectFile,
   seriesId,
   onClose,
+  workspacePath,
   onUploadSuccess,
   reframe9x16: propsReframe9x16,
   onReframe9x16Change,
@@ -244,6 +255,7 @@ export function MediaVideoEditorPlayer({
   removeDeadAir: _propsRemoveDeadAir,
   onRemoveDeadAirChange: _onRemoveDeadAirChange,
   onOpenIntentSettings,
+  openAutoSubtitleRequest,
   plan,
   onBuildPlan,
   onSubmitJob,
@@ -255,6 +267,7 @@ export function MediaVideoEditorPlayer({
 }: MediaVideoEditorPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoViewportRef = useRef<HTMLDivElement>(null);
+  const skipSeekTargetRef = useRef<number | null>(null);
 
   // Playback states
   const [isPlaying, setIsPlaying] = useState(false);
@@ -283,9 +296,17 @@ export function MediaVideoEditorPlayer({
   // Timeline view controls
   const [timelineZoom, setTimelineZoom] = useState<number>(1); // 1x to 3x
   const [showSilenceOverlay, setShowSilenceOverlay] = useState<boolean>(true);
+  const [manualCutDraft, setManualCutDraft] = useState<{ startMs: number; endMs: number } | null>(null);
+  const waveformTrackRef = useRef<HTMLDivElement>(null);
+  const manualCutDragRef = useRef<{
+    pointerId: number;
+    startMs: number;
+    currentMs: number;
+    startClientX: number;
+  } | null>(null);
 
   // Aspect Ratio & Person Focus
-  const [aspectRatio, setAspectRatio] = useState<"9:16" | "16:9" | "1:1" | "source">(
+  const [aspectRatio, setAspectRatio] = useState<PreviewAspectRatio>(
     propsReframe9x16 === false ? "source" : "9:16"
   );
   const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
@@ -328,6 +349,156 @@ export function MediaVideoEditorPlayer({
   const isDraggingCropRef = useRef(false);
   const cropDragStartRef = useRef<{ clientX: number; clientY: number; startX: number; startY: number } | null>(null);
   const personAnchorRef = useRef<{ x: number; y: number } | null>(null);
+  const focusXRef = useRef(focusX);
+  const focusYRef = useRef(focusY);
+  const videoFileNameRef = useRef(videoFile?.name);
+  const mediaPipeFaceDetectorRef = useRef<MediaPipeFaceDetector | null>(null);
+  const mediaPipeFaceDetectorInitRef = useRef<Promise<MediaPipeFaceDetector | null> | null>(null);
+  const mediaPipeLastTimestampRef = useRef(-1);
+  const faceTrackingConfigRef = useRef<{ aspectRatio: PreviewAspectRatio; scale: number }>({
+    aspectRatio: propsReframe9x16 === false ? "source" : "9:16",
+    scale: 1,
+  });
+  const mountedRef = useRef(true);
+  const [faceDetectorStatus, setFaceDetectorStatus] = useState<FaceDetectorStatus>("idle");
+  const faceDetectorStatusIcon = faceDetectorStatus === "tracking"
+    ? "🟢"
+    : faceDetectorStatus === "loading"
+      ? "⏳"
+      : faceDetectorStatus === "not_found"
+        ? "🟡"
+        : faceDetectorStatus === "error"
+          ? "🔴"
+          : "⚪";
+  const faceDetectorStatusLabel = faceDetectorStatus === "tracking"
+    ? "กำลังติดตามใบหน้า"
+    : faceDetectorStatus === "loading"
+      ? "กำลังโหลดตัวตรวจจับ"
+      : faceDetectorStatus === "not_found"
+        ? "ยังไม่พบใบหน้า"
+        : faceDetectorStatus === "error"
+          ? "ตัวตรวจจับขัดข้อง"
+          : "พร้อมตรวจจับ";
+
+  useEffect(() => {
+    focusXRef.current = focusX;
+  }, [focusX]);
+
+  useEffect(() => {
+    focusYRef.current = focusY;
+  }, [focusY]);
+
+  useEffect(() => {
+    videoFileNameRef.current = videoFile?.name;
+    personAnchorRef.current = null;
+    mediaPipeLastTimestampRef.current = -1;
+    if (mediaPipeFaceDetectorRef.current) setFaceDetectorStatus("ready");
+  }, [videoFile?.name]);
+
+  // Apply the detected anchor atomically. Detection resolves asynchronously,
+  // so refs keep the tracking source current between React renders.
+  const applyPersonAnchor = useCallback((targetX: number, targetY: number, immediate: boolean) => {
+    const safeX = Math.max(0.05, Math.min(0.95, targetX));
+    const safeY = Math.max(0.05, Math.min(0.95, targetY));
+    const current = personAnchorRef.current ?? {
+      x: focusXRef.current ?? 0.5,
+      y: focusYRef.current ?? 0.5,
+    };
+
+    // Keep the face still inside the camera's safe zone. When it really
+    // reaches an edge, move only a small amount per sample so the camera
+    // glides toward the face instead of oscillating around it.
+    const maxStep = immediate && personAnchorRef.current === null ? 0.045 : 0.035;
+    const deadband = 0.018;
+    const nextX = Math.abs(safeX - current.x) <= deadband
+      ? current.x
+      : current.x + Math.max(-maxStep, Math.min(maxStep, safeX - current.x));
+    const nextY = Math.abs(safeY - current.y) <= deadband
+      ? current.y
+      : current.y + Math.max(-maxStep, Math.min(maxStep, safeY - current.y));
+
+    const next = { x: nextX, y: nextY };
+    personAnchorRef.current = next;
+    focusXRef.current = nextX;
+    focusYRef.current = nextY;
+    setFocusX(nextX);
+    setFocusY(nextY);
+    onFocusXChange?.(nextX);
+    onFocusYChange?.(nextY);
+
+    try {
+      if (videoFileNameRef.current) {
+        localStorage.setItem(
+          `smartspec_person_focus_${videoFileNameRef.current}`,
+          JSON.stringify(next)
+        );
+      }
+    } catch {}
+  }, [onFocusXChange, onFocusYChange]);
+
+  // MediaPipe is bundled locally so the Worker can detect faces without a
+  // network request. GPU is preferred, but CPU remains a reliable fallback
+  // for WebViews whose WebGL delegate is unavailable.
+  const initializeMediaPipeFaceDetector = useCallback(async (): Promise<MediaPipeFaceDetector | null> => {
+    if (mediaPipeFaceDetectorRef.current) return mediaPipeFaceDetectorRef.current;
+    if (mediaPipeFaceDetectorInitRef.current) return mediaPipeFaceDetectorInitRef.current;
+
+    setFaceDetectorStatus("loading");
+    const initPromise = (async () => {
+      const { FaceDetector, FilesetResolver } = await import("@mediapipe/tasks-vision");
+      const wasmRoot = "/mediapipe/wasm/";
+      const modelPath = "/models/blaze_face_full_range.tflite";
+      const wasmFileset = await FilesetResolver.forVisionTasks(wasmRoot);
+      const options = {
+        baseOptions: { modelAssetPath: modelPath, delegate: "GPU" as const },
+        runningMode: "VIDEO" as const,
+        minDetectionConfidence: 0.45,
+        minSuppressionThreshold: 0.3,
+      };
+
+      let detector: MediaPipeFaceDetector;
+      try {
+        detector = await FaceDetector.createFromOptions(wasmFileset, options);
+      } catch (gpuError) {
+        console.warn("MediaPipe GPU delegate unavailable; retrying with CPU:", gpuError);
+        detector = await FaceDetector.createFromOptions(wasmFileset, {
+          ...options,
+          baseOptions: { modelAssetPath: modelPath, delegate: "CPU" },
+        });
+      }
+
+      if (!mountedRef.current) {
+        detector.close();
+        return null;
+      }
+      mediaPipeFaceDetectorRef.current = detector;
+      setFaceDetectorStatus("ready");
+      return detector;
+    })()
+      .catch((error) => {
+        console.error("MediaPipe Face Detector initialization failed:", error);
+        setFaceDetectorStatus("error");
+        return null;
+      });
+
+    mediaPipeFaceDetectorInitRef.current = initPromise;
+    void initPromise.then((detector) => {
+      if (!detector && mediaPipeFaceDetectorInitRef.current === initPromise) {
+        mediaPipeFaceDetectorInitRef.current = null;
+      }
+    });
+    return initPromise;
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      mediaPipeFaceDetectorRef.current?.close();
+      mediaPipeFaceDetectorRef.current = null;
+      mediaPipeFaceDetectorInitRef.current = null;
+    };
+  }, []);
 
   // Restore cached person coordinates immediately when switching video files
   useEffect(() => {
@@ -337,10 +508,12 @@ export function MediaVideoEditorPlayer({
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed?.x === "number") {
+          focusXRef.current = parsed.x;
           setFocusX(parsed.x);
           onFocusXChange?.(parsed.x);
         }
         if (typeof parsed?.y === "number") {
+          focusYRef.current = parsed.y;
           setFocusY(parsed.y);
           onFocusYChange?.(parsed.y);
         }
@@ -403,6 +576,42 @@ export function MediaVideoEditorPlayer({
     setProjectState((previous) => preserveLockedClips(previous, typeof update === "function" ? update(previous) : update));
   }, []);
 
+  // A loaded draft is authoritative for the preview canvas. Sync each persisted profile
+  // once so external draft updates are reflected without fighting live toolbar changes.
+  const syncedProjectAspectRef = useRef<string | null>(null);
+  useEffect(() => {
+    const project = nleProject || loadedProjectDraft;
+    if (!project) {
+      syncedProjectAspectRef.current = null;
+      return;
+    }
+    const projectAspectKey = `${project.projectId}:${project.canvas?.aspectRatio ?? ""}`;
+    if (syncedProjectAspectRef.current === projectAspectKey) return;
+    syncedProjectAspectRef.current = projectAspectKey;
+    const persistedRatio = normalizePreviewAspectRatio(project.canvas?.aspectRatio, "source");
+    setAspectRatio(persistedRatio);
+    onReframe9x16Change?.(persistedRatio === "9:16");
+  }, [loadedProjectDraft, nleProject?.projectId, nleProject?.canvas?.aspectRatio, onReframe9x16Change]);
+
+  const handleAspectRatioChange = useCallback((next: PreviewAspectRatio) => {
+    setAspectRatio(next);
+    onReframe9x16Change?.(next === "9:16");
+    setNleProject((previous) => {
+      if (!previous || next === "source") return previous;
+      const profile = getPreviewCanvasProfile(next);
+      return {
+        ...previous,
+        updatedAt: new Date().toISOString(),
+        canvas: {
+          ...previous.canvas,
+          aspectRatio: profile.aspectRatio,
+          width: profile.width,
+          height: profile.height,
+        },
+      };
+    });
+  }, [onReframe9x16Change, setNleProject]);
+
   // Derive maximum timeline span from all tracks & clips
   const timelineMaxDurationSec = useMemo(() => {
     if (!nleProject) return 0;
@@ -420,8 +629,10 @@ export function MediaVideoEditorPlayer({
     return Math.max(duration, timelineMaxDurationSec);
   }, [duration, timelineMaxDurationSec]);
   const [isAutoSubModalOpen, setIsAutoSubModalOpen] = useState(false);
+  const lastAutoSubtitleRequestRef = useRef(openAutoSubtitleRequest ?? 0);
   const [isCodeOverlayModalOpen, setIsCodeOverlayModalOpen] = useState(false);
   const [isAssetDrawerOpen, setIsAssetDrawerOpen] = useState(false);
+  const [isMediaBinOpen, setIsMediaBinOpen] = useState(true);
   const [isAudioScoringModalOpen, setIsAudioScoringModalOpen] = useState(false);
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
   const [isSvgModalOpen, setIsSvgModalOpen] = useState(false);
@@ -431,13 +642,27 @@ export function MediaVideoEditorPlayer({
   const [projectStatusMsg, setProjectStatusMsg] = useState<string | null>(null);
   const [isDuckingActive, setIsDuckingActive] = useState(false);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
-  const [isRenderPanelCollapsed, setIsRenderPanelCollapsed] = useState(false);
+  const [isRenderPanelCollapsed, setIsRenderPanelCollapsed] = useState(true);
   const [activeProjectFilePath, setActiveProjectFilePath] = useState<string | null>(() => {
     if (videoFile && isProjectFilePath(videoFile.path)) {
       return videoFile.path;
     }
     return null;
   });
+
+  useEffect(() => {
+    if (!openAutoSubtitleRequest || openAutoSubtitleRequest <= lastAutoSubtitleRequestRef.current) return;
+    lastAutoSubtitleRequestRef.current = openAutoSubtitleRequest;
+    if (videoFile && !isProjectFilePath(videoFile.path)) {
+      setIsAutoSubModalOpen(true);
+    } else {
+      setProjectStatusMsg("กรุณาเปิด source video ก่อนสร้าง Subtitle");
+    }
+  }, [openAutoSubtitleRequest, videoFile]);
+
+  useEffect(() => {
+    setIsRenderPanelCollapsed(true);
+  }, [loadedProjectDraft?.projectId, videoFile?.path]);
 
   useEffect(() => {
     if (videoFile && isProjectFilePath(videoFile.path)) {
@@ -507,6 +732,10 @@ export function MediaVideoEditorPlayer({
   const [manualScale, setManualScale] = useState<number>(1.0);
 
   useEffect(() => {
+    faceTrackingConfigRef.current = { aspectRatio, scale: manualScale };
+  }, [aspectRatio, manualScale]);
+
+  useEffect(() => {
     if (!videoFile) return;
     try {
       const key = `smartspec_pins_v2_${videoFile.name}`;
@@ -534,6 +763,14 @@ export function MediaVideoEditorPlayer({
   const [isFullscreenPreview, setIsFullscreenPreview] = useState(false);
   const [overrideVideoSrc, setOverrideVideoSrc] = useState<string | null>(null);
 
+  const previewFrameLabel = useMemo(() => {
+    if (aspectRatio === "source") return "ต้นฉบับ";
+    const profile = getPreviewCanvasProfile(aspectRatio);
+    const width = nleProject?.canvas?.width || profile.width;
+    const height = nleProject?.canvas?.height || profile.height;
+    return `${aspectRatio} · ${width}×${height}`;
+  }, [aspectRatio, nleProject?.canvas?.height, nleProject?.canvas?.width]);
+
   // Render duration & cut calculation helpers
   const cutCount = silenceSegments.length;
   const totalCutTimeSavedSec = silenceSegments.reduce((acc, seg) => {
@@ -545,6 +782,19 @@ export function MediaVideoEditorPlayer({
   const speedRatio = playbackRate && playbackRate > 0 ? playbackRate : 1.0;
   const finalNormalRenderDurationSec = rawDuration / speedRatio;
   const finalCutRenderDurationSec = Math.max(0, rawDuration - totalCutTimeSavedSec) / speedRatio;
+  const deadAirRenderSelection = useMemo<DeadAirRenderSelection>(() => ({
+    enabled: _propsRemoveDeadAir !== false,
+    volumeThresholdPct: volumeThreshold,
+    minDurationSec: minDuration,
+    softeningBufferSec: softeningBuffer,
+    silenceSegments: silenceSegments
+      .map((segment) => ({
+        startMs: segment.startMs,
+        endMs: segment.endMs ?? null,
+        isManual: segment.classification === "manual",
+      }))
+      .filter((segment) => Number.isFinite(segment.startMs)),
+  }), [minDuration, silenceSegments, softeningBuffer, volumeThreshold]);
 
   // Workspace Splitter State: Height percentage for video stage (Default 62%)
   const [stageHeightPercent, setStageHeightPercent] = useState<number>(() => {
@@ -1057,6 +1307,11 @@ export function MediaVideoEditorPlayer({
     setTimeout(() => setProjectStatusMsg(null), 4000);
   };
 
+  const handleOpenAssetDrawer = () => {
+    setIsMediaBinOpen(false);
+    setIsAssetDrawerOpen(true);
+  };
+
   const videoSrc = useMemo(() => {
     if (videoFile && !isProjectFilePath(videoFile.path)) {
       return safeConvertFileSrc(videoFile.path);
@@ -1253,7 +1508,9 @@ export function MediaVideoEditorPlayer({
       const sliceSamples = Math.floor(sampleRate * sliceDuration);
       const totalSlices = Math.floor(totalSamples / sliceSamples);
 
-      const db = -50.0 + (vThresh / 100.0) * 26.0;
+      // Keep the browser fallback exactly aligned with the Rust analyzer and
+      // the waveform guide: 0% = -50 dB, 100% = -15 dB.
+      const db = -50.0 + (vThresh / 100.0) * 35.0;
       const ampThreshold = Math.pow(10, db / 20);
 
       const isSilenceSlice: boolean[] = [];
@@ -1339,284 +1596,128 @@ export function MediaVideoEditorPlayer({
     }
   }, [duration, synthesizeWaveformAndSilence]);
 
-  // Auto Person & Face Centering using Canvas + Gaussian Peak Centroid Skin Tone Clustering
+  // Auto Person & Face Centering with the bundled MediaPipe Face Detector.
+  // The detector returns a face bounding box plus six facial keypoints. We do
+  // not fall back to colour/skin heuristics: if no face is detected, the last
+  // valid anchor is held instead of allowing the crop to wander to background.
   const detectPersonCenter = useCallback((immediate: boolean = false) => {
-    if (!videoRef.current) return;
     const video = videoRef.current;
-    if (video.videoWidth <= 0 || video.videoHeight <= 0) return;
+    if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) return;
 
     if (video.readyState < 2) {
-      const onReady = () => {
-        detectPersonCenter(immediate);
-      };
+      const onReady = () => detectPersonCenter(immediate);
       video.addEventListener("loadeddata", onReady, { once: true });
       return;
     }
 
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.width = 320;
-      canvas.height = 180;
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx) return;
+    void (async () => {
+      const detector = await initializeMediaPipeFaceDetector();
+      if (!detector || videoRef.current !== video) return;
 
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      try {
+        const timestamp = Math.max(
+          Math.round(video.currentTime * 1000),
+          mediaPipeLastTimestampRef.current + 1,
+        );
+        mediaPipeLastTimestampRef.current = timestamp;
+        const result = detector.detectForVideo(video, timestamp);
+        const current = personAnchorRef.current ?? {
+          x: focusXRef.current ?? 0.5,
+          y: focusYRef.current ?? 0.5,
+        };
 
-      // 1. Browser Native FaceDetector if supported
-      if ("FaceDetector" in window) {
-        try {
-          const detector = new (window as unknown as {
-            FaceDetector: new (opts: { fastMode: boolean; maxDetectedFaces: number }) => {
-              detect: (c: HTMLCanvasElement) => Promise<Array<{ boundingBox: { x: number; y: number; width: number; height: number } }>>;
+        const candidates = result.detections
+          .map((detection: Detection) => {
+            const box = detection.boundingBox;
+            if (!box || box.width <= 0 || box.height <= 0) return null;
+
+            const keypoints = detection.keypoints.filter(
+              (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
+            );
+            const keypointCenter = keypoints.length > 0
+              ? keypoints.reduce(
+                (sum, point) => ({ x: sum.x + point.x, y: sum.y + point.y }),
+                { x: 0, y: 0 },
+              )
+              : null;
+            const x = keypointCenter
+              ? keypointCenter.x / keypoints.length
+              : (box.originX + box.width / 2) / video.videoWidth;
+            const y = keypointCenter
+              ? keypointCenter.y / keypoints.length
+              : (box.originY + box.height / 2) / video.videoHeight;
+            const confidence = detection.categories[0]?.score ?? 0;
+            const area = (box.width * box.height) / (video.videoWidth * video.videoHeight);
+            const continuity = Math.exp(-Math.pow(Math.hypot(x - current.x, y - current.y) / 0.35, 2));
+            const sizeScore = Math.min(1, area * 35);
+            const rank = confidence * 0.6 + continuity * 0.25 + sizeScore * 0.15;
+            return {
+              x,
+              y,
+              rank,
+              halfWidth: (box.width / video.videoWidth) / 2,
+              halfHeight: (box.height / video.videoHeight) / 2,
             };
-          }).FaceDetector({ fastMode: true, maxDetectedFaces: 3 });
+          })
+          .filter((candidate): candidate is { x: number; y: number; rank: number; halfWidth: number; halfHeight: number } => Boolean(candidate))
+          .sort((left, right) => right.rank - left.rank);
 
-          detector
-            .detect(canvas)
-            .then((faces) => {
-              if (faces && faces.length > 0) {
-                const primary = faces.reduce(
-                  (max, f) =>
-                    f.boundingBox.width * f.boundingBox.height > max.boundingBox.width * max.boundingBox.height
-                      ? f
-                      : max,
-                  faces[0]
-                );
-                const faceX = (primary.boundingBox.x + primary.boundingBox.width / 2) / canvas.width;
-                const faceY = (primary.boundingBox.y + primary.boundingBox.height / 2) / canvas.height;
-                // Clamp detected face within safe presentation bounds
-                const fx = Math.max(0.30, Math.min(0.70, faceX));
-                const fy = Math.max(0.20, Math.min(0.75, faceY));
-                setFocusX((prev) => {
-                  const cur = prev ?? 0.52;
-                  if (immediate) {
-                    personAnchorRef.current = { x: fx, y: fy };
-                    onFocusXChange?.(fx);
-                    return fx;
-                  }
-                  const diff = Math.abs(fx - cur);
-                  if (diff < 0.05) {
-                    return cur;
-                  }
-                  const maxStep = 0.03;
-                  const nextX = cur + Math.max(-maxStep, Math.min(maxStep, fx - cur));
-                  personAnchorRef.current = { x: nextX, y: fy };
-                  onFocusXChange?.(nextX);
-                  return nextX;
-                });
-                setFocusY((prev) => {
-                  const cur = prev ?? 0.35;
-                  if (immediate) {
-                    onFocusYChange?.(fy);
-                    return fy;
-                  }
-                  const diff = Math.abs(fy - cur);
-                  if (diff < 0.05) {
-                    return cur;
-                  }
-                  const maxStep = 0.03;
-                  const nextY = cur + Math.max(-maxStep, Math.min(maxStep, fy - cur));
-                  onFocusYChange?.(nextY);
-                  return nextY;
-                });
-                try {
-                  if (videoFile?.name) {
-                    localStorage.setItem(`smartspec_person_focus_${videoFile.name}`, JSON.stringify({ x: fx, y: fy }));
-                  }
-                } catch {}
-              } else {
-                detectPersonCluster(ctx, canvas.width, canvas.height, immediate);
-              }
-            })
-            .catch(() => {
-              detectPersonCluster(ctx, canvas.width, canvas.height, immediate);
-            });
+        const primary = candidates[0];
+        if (!primary || primary.rank < 0.3) {
+          setFaceDetectorStatus("not_found");
           return;
-        } catch {
-          // fallback to cluster
         }
-      }
 
-      detectPersonCluster(ctx, canvas.width, canvas.height, immediate);
-    } catch (err) {
-      console.warn("Auto person detection fallback:", err);
-    }
-  }, [onFocusXChange, onFocusYChange]);
-
-  const detectPersonCluster = (
-    ctx: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-    immediate: boolean = false
-  ) => {
-    try {
-      const imgData = ctx.getImageData(0, 0, width, height).data;
-      const colSkin = new Float32Array(width);
-      const colY = new Float32Array(width);
-
-      // Focus exclusively on head and upper chest (y: 14% to 46%)
-      // Completely excludes moving hands, table objects, or gesturing from pulling the camera centroid
-      const yStart = Math.floor(height * 0.14);
-      const yEnd = Math.floor(height * 0.46);
-
-      // In vertical 9:16 framing, restrict candidate search to central region (22% to 78%)
-      // Outermost background walls, fences, and curtains (>80% or <20%) are completely excluded!
-      const xMin = Math.floor(width * 0.22);
-      const xMax = Math.floor(width * 0.78);
-
-      let totalSkinMass = 0;
-
-      for (let y = yStart; y < yEnd; y += 2) {
-        for (let x = xMin; x < xMax; x += 2) {
-          const idx = (y * width + x) * 4;
-          const r = imgData[idx];
-          const g = imgData[idx + 1];
-          const b = imgData[idx + 2];
-
-          // 1. Calibrated YCbCr skin tone detection (chrominance space)
-          const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
-          const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
-
-          // Real human skin chrominance cluster:
-          // CRUCIAL: (cr - cb) >= 12 ensures red chroma dominance over blue chroma,
-          // completely rejecting gray, beige, concrete, and stone walls (which have low chroma and cr - cb < 8)!
-          const isYcbcr = cb >= 77 && cb <= 128 && cr >= 134 && cr <= 175 && (cr - cb) >= 12;
-
-          // 2. Calibrated RGB skin tone detection
-          // Real skin has clear separation: R > G > B with minimum saturation
-          const isRgbSkin =
-            r > 70 && g > 40 && b > 25 &&
-            r > g && (r - g) >= 12 &&
-            g > b && (g - b) >= 4 &&
-            (r - b) >= 20 &&
-            (r - g) < 85 &&
-            r / (g + 0.001) >= 1.10 &&
-            r / (b + 0.001) >= 1.25 &&
-            r < 245;
-
-          // STRICT REQUIREMENT: Both color spaces must confirm it is true human skin!
-          if (isYcbcr && isRgbSkin) {
-            let weight = 3.5;
-            if (y > height * 0.18 && y < height * 0.38) {
-              weight *= 2.5; // Focus strictly on face/head
-            }
-            colSkin[x] += weight;
-            colY[x] += y * weight;
-            totalSkinMass += weight;
+        const trackingConfig = faceTrackingConfigRef.current;
+        let cropWidth = 1;
+        let cropHeight = 1;
+        if (trackingConfig.aspectRatio !== "source") {
+          const sourceRatio = video.videoWidth / video.videoHeight;
+          const targetRatio = trackingConfig.aspectRatio === "9:16"
+            ? 9 / 16
+            : trackingConfig.aspectRatio === "16:9"
+              ? 16 / 9
+              : 1;
+          if (targetRatio < sourceRatio) {
+            cropWidth = targetRatio / sourceRatio;
+          } else if (targetRatio > sourceRatio) {
+            cropHeight = sourceRatio / targetRatio;
           }
-        }
-      }
-
-      // If overall skin mass is too low (e.g. presenter covered face with camera/hands or turned away)
-      // DO NOT jump to background objects! Maintain locked position rock solid!
-      if (totalSkinMass < 35) {
-        return;
-      }
-
-      // Smooth column weights with Gaussian-like kernel (radius 6) to locate human head peak
-      const smoothed = new Float32Array(width);
-      for (let x = xMin; x <= xMax; x++) {
-        let s = 0;
-        for (let d = -6; d <= 6; d++) {
-          const colIdx = Math.max(0, Math.min(width - 1, x + d));
-          s += colSkin[colIdx] * (7 - Math.abs(d));
-        }
-        smoothed[x] = s;
-      }
-
-      // Anchor-guided peak search:
-      // If we have an existing anchor, apply proximity weighting to prevent jumping across the screen
-      const currentAnchorX = personAnchorRef.current?.x ?? focusX ?? 0.52;
-
-      let bestCol = -1;
-      let maxScore = -1;
-
-      for (let x = xMin; x <= xMax; x++) {
-        const val = smoothed[x];
-        if (val <= 0) continue;
-
-        const normX = x / width;
-        const distFromAnchor = Math.abs(normX - currentAnchorX);
-        // Exponential proximity bias: strongly prefers candidates near previous speaker anchor
-        const proximityBias = Math.exp(-Math.pow(distFromAnchor / 0.16, 2));
-        const score = val * (0.3 + 0.7 * proximityBias);
-
-        if (score > maxScore) {
-          maxScore = score;
-          bestCol = x;
-        }
-      }
-
-      // Calculate centroid around best candidate peak
-      if (bestCol > 0 && maxScore > 30) {
-        let sumX = 0;
-        let sumY = 0;
-        let totalW = 0;
-        const radius = Math.min(24, Math.floor(width * 0.08));
-        const startX = Math.max(xMin, bestCol - radius);
-        const endX = Math.min(xMax, bestCol + radius);
-
-        for (let x = startX; x <= endX; x++) {
-          sumX += x * colSkin[x];
-          sumY += colY[x];
-          totalW += colSkin[x];
+          const scale = Math.max(1, trackingConfig.scale);
+          cropWidth = Math.min(1, cropWidth / scale);
+          cropHeight = Math.min(1, cropHeight / scale);
         }
 
-        if (totalW > 0) {
-          const centroidX = sumX / totalW;
-          const centroidY = sumY / totalW;
+        // Hold the current composition while the face remains inside the
+        // inner safe zone. Only request enough pan to bring the face back from
+        // the edge; never jump the camera to the face centre on every sample.
+        const normalizedFaceHalfWidth = primary.halfWidth;
+        const normalizedFaceHalfHeight = primary.halfHeight;
+        const safeMarginX = Math.max(0.018, Math.min(0.06, cropWidth * 0.12));
+        const safeMarginY = Math.max(0.018, Math.min(0.06, cropHeight * 0.12));
+        const availableHalfX = Math.max(0.01, cropWidth / 2 - normalizedFaceHalfWidth - safeMarginX);
+        const availableHalfY = Math.max(0.01, cropHeight / 2 - normalizedFaceHalfHeight - safeMarginY);
+        const targetX = cropWidth >= 0.98
+          ? current.x
+          : Math.max(primary.x - availableHalfX, Math.min(primary.x + availableHalfX, current.x));
+        const targetY = cropHeight >= 0.98
+          ? current.y
+          : Math.max(primary.y - availableHalfY, Math.min(primary.y + availableHalfY, current.y));
 
-          // Clamp to safe vertical crop framing bounds (0.32 to 0.68)
-          const targetX = Math.max(0.32, Math.min(0.68, centroidX / width));
-          const targetY = Math.max(0.22, Math.min(0.68, centroidY / height));
-
-          setFocusX((prev) => {
-            const cur = prev ?? 0.52;
-            if (immediate) {
-              personAnchorRef.current = { x: targetX, y: targetY };
-              onFocusXChange?.(targetX);
-              return targetX;
-            }
-            const diff = Math.abs(targetX - cur);
-            // Deadband: If micro-sway (< 5%), keep camera rock steady
-            if (diff < 0.05) {
-              return cur;
-            }
-            // Slew-rate limiter: smooth transition at most 3% per update, preventing teleportation
-            const maxStep = 0.03;
-            const nextX = cur + Math.max(-maxStep, Math.min(maxStep, targetX - cur));
-            personAnchorRef.current = { x: nextX, y: targetY };
-            onFocusXChange?.(nextX);
-            return nextX;
-          });
-
-          setFocusY((prev) => {
-            const cur = prev ?? 0.35;
-            if (immediate) {
-              onFocusYChange?.(targetY);
-              return targetY;
-            }
-            const diff = Math.abs(targetY - cur);
-            if (diff < 0.05) {
-              return cur;
-            }
-            const maxStep = 0.03;
-            const nextY = cur + Math.max(-maxStep, Math.min(maxStep, targetY - cur));
-            onFocusYChange?.(nextY);
-            return nextY;
-          });
-
-          try {
-            if (videoFile?.name) {
-              localStorage.setItem(`smartspec_person_focus_${videoFile.name}`, JSON.stringify({ x: targetX, y: targetY }));
-            }
-          } catch {}
+        setFaceDetectorStatus("tracking");
+        if (videoRef.current === video) {
+          applyPersonAnchor(
+            Math.max(0.05, Math.min(0.95, targetX)),
+            Math.max(0.05, Math.min(0.95, targetY)),
+            immediate,
+          );
         }
+      } catch (error) {
+        console.warn("MediaPipe Face Detector frame failed:", error);
+        setFaceDetectorStatus("error");
       }
-    } catch {
-      // ignore
-    }
-  };
+    })();
+  }, [applyPersonAnchor, initializeMediaPipeFaceDetector]);
 
   // Run Custom Silence Detection
   const runCustomSilenceDetection = async (
@@ -1640,14 +1741,18 @@ export function MediaVideoEditorPlayer({
         softeningBufferSec: sBuf,
       });
 
+      const usableWaveformPeaks = Array.isArray(res?.waveformPeaks)
+        ? res.waveformPeaks
+          .filter((peak) => Number.isFinite(peak) && peak >= 0)
+          .map((peak) => Math.max(0, Math.min(1, peak)))
+        : [];
       if (
         res &&
-        res.waveformPeaks &&
-        res.waveformPeaks.length > 0 &&
-        Math.max(...res.waveformPeaks) > 0.05
+        usableWaveformPeaks.length > 0 &&
+        usableWaveformPeaks.some((peak) => peak > 0)
       ) {
         setSilenceSegments(res.silenceSegments);
-        setWaveformPeaks(res.waveformPeaks);
+        setWaveformPeaks(usableWaveformPeaks);
         setCutCount(res.cutCount);
         setTimeSavedMs(res.timeSavedMs);
 
@@ -1771,6 +1876,21 @@ export function MediaVideoEditorPlayer({
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       const cur = videoRef.current.currentTime;
+      const durationMs = Math.max(0, (videoRef.current.duration || duration || 0) * 1000);
+      const playableMs = getPlayableTimeMs(cur * 1000, silenceSegments, durationMs);
+      if (playableMs > cur * 1000 + 20) {
+        skipSeekTargetRef.current = playableMs / 1000;
+        videoRef.current.currentTime = playableMs / 1000;
+        setCurrentTime(playableMs / 1000);
+        if (playableMs >= durationMs - 20) {
+          videoRef.current.pause();
+          setIsPlaying(false);
+        }
+        return;
+      }
+      if (skipSeekTargetRef.current !== null && cur >= skipSeekTargetRef.current - 0.04) {
+        skipSeekTargetRef.current = null;
+      }
       setCurrentTime(cur);
       if (focusMode === "auto_person") {
         const shouldTrackPerson = smartDirectorMode !== "product_focus" || productPins.length === 0;
@@ -1796,7 +1916,7 @@ export function MediaVideoEditorPlayer({
       lastTime = now;
       setCurrentTime((prev) => {
         const maxDur = effectiveDuration > 0 ? effectiveDuration : (nleProject?.canvas?.durationMs ? nleProject.canvas.durationMs / 1000 : 30);
-        const next = prev + deltaSec;
+        const next = advancePlayableTimeMs(prev * 1000, deltaSec * 1000, silenceSegments, maxDur * 1000) / 1000;
         if (next >= maxDur) {
           setIsPlaying(false);
           return maxDur;
@@ -1808,7 +1928,7 @@ export function MediaVideoEditorPlayer({
 
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [isPlaying, videoSrc, playbackRate, effectiveDuration, nleProject]);
+  }, [isPlaying, videoSrc, playbackRate, effectiveDuration, nleProject, silenceSegments]);
 
   // Sync Master Video Volume & Mute States
   useEffect(() => {
@@ -1835,6 +1955,15 @@ export function MediaVideoEditorPlayer({
 
       if (videoRef.current && videoSrc) {
         const video = videoRef.current;
+        const playable = getPlayableTimeMs(
+          video.currentTime * 1000,
+          silenceSegments,
+          Math.max(duration, video.duration || 0) * 1000,
+        ) / 1000;
+        if (playable > video.currentTime + 0.02) {
+          video.currentTime = playable;
+          setCurrentTime(playable);
+        }
         const v1Track = nleProject?.tracks?.find((t) => t.id === "track_v1");
         video.muted = isMuted || Boolean(v1Track?.muted);
         video.volume = Math.min(1, Math.max(0, volume * (v1Track?.volume ?? 1.0)));
@@ -1863,8 +1992,7 @@ export function MediaVideoEditorPlayer({
     if (!videoRef.current) return;
     const step = 1 / 30; // 30 fps
     const newTime = Math.max(0, Math.min(duration, currentTime + (forward ? step : -step)));
-    videoRef.current.currentTime = newTime;
-    setCurrentTime(newTime);
+    handleSeek(newTime);
   };
 
   const handleCaptureCurrentFrame = () => {
@@ -1983,12 +2111,13 @@ export function MediaVideoEditorPlayer({
   const handleSeek = (timeSec: number) => {
     const maxDur = effectiveDuration > 0 ? effectiveDuration : (duration > 0 ? duration : 3600);
     const clamped = Math.max(0, Math.min(maxDur, timeSec));
+    const playable = getPlayableTimeMs(clamped * 1000, silenceSegments, maxDur * 1000) / 1000;
     if (videoRef.current && videoSrc) {
       try {
-        videoRef.current.currentTime = clamped;
+        videoRef.current.currentTime = playable;
       } catch {}
     }
-    setCurrentTime(clamped);
+    setCurrentTime(playable);
   };
 
   const handleSpeedChange = (speed: number) => {
@@ -2207,6 +2336,13 @@ export function MediaVideoEditorPlayer({
           volumeThresholdPct: volumeThreshold,
           minDurationSec: minDuration,
           softeningBufferSec: softeningBuffer,
+          customSilenceSegments: removeDeadAir
+            ? silenceSegments.map((segment) => ({
+              startMs: segment.startMs,
+              endMs: segment.endMs ?? null,
+              isManual: segment.classification === "manual",
+            }))
+            : [],
           targetWidth: nleProject?.canvas?.width || 1080,
           targetHeight: nleProject?.canvas?.height || 1920,
         },
@@ -2352,22 +2488,100 @@ export function MediaVideoEditorPlayer({
     void runCustomSilenceDetection(v, d, b);
   };
 
+  const appendManualCutRange = (startMs: number, endMs: number) => {
+    if (duration <= 0) return;
+    const durationMs = Math.round(duration * 1000);
+    const normalizedStartMs = Math.max(0, Math.min(durationMs, Math.round(Math.min(startMs, endMs))));
+    const normalizedEndMs = Math.max(0, Math.min(durationMs, Math.round(Math.max(startMs, endMs))));
+    if (normalizedEndMs - normalizedStartMs < 120) return;
+
+    setSilenceSegments((prev) => {
+      const sorted = [...prev, {
+        startMs: normalizedStartMs,
+        endMs: normalizedEndMs,
+        classification: "manual",
+      }].sort((a, b) => a.startMs - b.startMs);
+      const next: LocalMediaAnalysisSegment[] = [];
+      for (const segment of sorted) {
+        const last = next[next.length - 1];
+        if (last && segment.startMs <= (last.endMs ?? durationMs) + 80) {
+          last.endMs = Math.max(last.endMs ?? 0, segment.endMs ?? 0);
+        } else {
+          next.push({ ...segment });
+        }
+      }
+      setCutCount(next.length);
+      const totalSaved = next.reduce((acc, s) => acc + ((s.endMs ?? durationMs) - s.startMs), 0);
+      setTimeSavedMs(totalSaved);
+      return next;
+    });
+    setProjectStatusMsg(`✂️ เพิ่มจุดตัดที่ ${formatSeconds(normalizedStartMs / 1000)} - ${formatSeconds(normalizedEndMs / 1000)} เรียบร้อย`);
+    setTimeout(() => setProjectStatusMsg(null), 3000);
+  };
+
   // Add manual cut interval (to cut out speech mistakes, bloopers, or extra silence)
   const handleAddManualCut = (centerSec?: number, cutDurationSec: number = 1.0) => {
     if (duration <= 0) return;
     const center = centerSec !== undefined ? centerSec : currentTime;
     const half = cutDurationSec / 2;
-    const startMs = Math.max(0, Math.round((center - half) * 1000));
-    const endMs = Math.min(Math.round(duration * 1000), Math.round((center + half) * 1000));
-    setSilenceSegments((prev) => {
-      const next = [...prev, { startMs, endMs }].sort((a, b) => a.startMs - b.startMs);
-      setCutCount(next.length);
-      const totalSaved = next.reduce((acc, s) => acc + ((s.endMs ?? (duration * 1000)) - s.startMs), 0);
-      setTimeSavedMs(totalSaved);
-      return next;
-    });
-    setProjectStatusMsg(`✂️ เพิ่มจุดตัดที่ ${formatSeconds(startMs / 1000)} - ${formatSeconds(endMs / 1000)} เรียบร้อย`);
-    setTimeout(() => setProjectStatusMsg(null), 3000);
+    appendManualCutRange((center - half) * 1000, (center + half) * 1000);
+  };
+
+  const getWaveformTimeMs = (clientX: number, element: HTMLDivElement = waveformTrackRef.current as HTMLDivElement) => {
+    if (!element || duration <= 0) return 0;
+    const rect = element.getBoundingClientRect();
+    if (rect.width <= 0) return 0;
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return ratio * duration * 1000;
+  };
+
+  const handleWaveformPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || duration <= 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest(".timeline-silence-cut-region, button")) return;
+
+    const startMs = getWaveformTimeMs(event.clientX, event.currentTarget);
+    manualCutDragRef.current = {
+      pointerId: event.pointerId,
+      startMs,
+      currentMs: startMs,
+      startClientX: event.clientX,
+    };
+    setManualCutDraft({ startMs, endMs: startMs });
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+  };
+
+  const handleWaveformPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = manualCutDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const currentMs = getWaveformTimeMs(event.clientX, event.currentTarget);
+    drag.currentMs = currentMs;
+    setManualCutDraft({ startMs: drag.startMs, endMs: currentMs });
+  };
+
+  const handleWaveformPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = manualCutDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const endMs = getWaveformTimeMs(event.clientX, event.currentTarget);
+    const startMs = Math.min(drag.startMs, endMs);
+    const finalEndMs = Math.max(drag.startMs, endMs);
+    const didDrag = Math.abs(event.clientX - drag.startClientX) >= 4;
+    manualCutDragRef.current = null;
+    setManualCutDraft(null);
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+
+    if (didDrag && finalEndMs - startMs >= 120) {
+      appendManualCutRange(startMs, finalEndMs);
+    } else {
+      handleSeek(endMs / 1000);
+    }
+  };
+
+  const handleWaveformPointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (manualCutDragRef.current?.pointerId !== event.pointerId) return;
+    manualCutDragRef.current = null;
+    setManualCutDraft(null);
   };
 
   // Remove / Cancel a specific cut interval from silenceSegments
@@ -2772,7 +2986,7 @@ export function MediaVideoEditorPlayer({
       transformOrigin: `${effectivePanX.toFixed(2)}% ${effectivePanY.toFixed(2)}%`,
       transition: isDraggingCrop || smartDirectorMode !== "off"
         ? "none"
-        : "object-position 0.95s cubic-bezier(0.25, 1, 0.5, 1), transform 0.95s cubic-bezier(0.25, 1, 0.5, 1)",
+        : "object-position 1.6s cubic-bezier(0.22, 1, 0.36, 1), transform 1.6s cubic-bezier(0.22, 1, 0.36, 1)",
       display: "block",
     };
   }, [previewMode, aspectRatio, directorState, isDraggingCrop, smartDirectorMode, manualScale, focusX, focusY]);
@@ -2812,7 +3026,7 @@ export function MediaVideoEditorPlayer({
         height: `${boxHeightPercent}%`,
         left: `${leftPercent}%`,
         top: `${topPercent}%`,
-        transition: isDraggingCrop || smartDirectorMode !== "off" ? "none" : "all 0.95s cubic-bezier(0.25, 1, 0.5, 1)",
+        transition: isDraggingCrop || smartDirectorMode !== "off" ? "none" : "all 1.6s cubic-bezier(0.22, 1, 0.36, 1)",
       };
     }
 
@@ -2830,7 +3044,7 @@ export function MediaVideoEditorPlayer({
         height: `${boxHeightPercent}%`,
         left: `${leftPercent}%`,
         top: `${topPercent}%`,
-        transition: isDraggingCrop || smartDirectorMode !== "off" ? "none" : "all 0.95s cubic-bezier(0.25, 1, 0.5, 1)",
+        transition: isDraggingCrop || smartDirectorMode !== "off" ? "none" : "all 1.6s cubic-bezier(0.22, 1, 0.36, 1)",
       };
     }
 
@@ -2844,7 +3058,7 @@ export function MediaVideoEditorPlayer({
       height: `${boxSize}%`,
       left: `${leftPercent}%`,
       top: `${topPercent}%`,
-      transition: isDraggingCrop || smartDirectorMode !== "off" ? "none" : "all 0.95s cubic-bezier(0.25, 1, 0.5, 1)",
+      transition: isDraggingCrop || smartDirectorMode !== "off" ? "none" : "all 1.6s cubic-bezier(0.22, 1, 0.36, 1)",
     };
   }, [aspectRatio, previewMode, directorState, videoDimensions, isDraggingCrop, smartDirectorMode]);
 
@@ -3020,10 +3234,7 @@ export function MediaVideoEditorPlayer({
                 <button
                   type="button"
                   className={`toolbar-pill-btn ${aspectRatio === "9:16" ? "active" : ""}`}
-                  onClick={() => {
-                    setAspectRatio("9:16");
-                    onReframe9x16Change?.(true);
-                  }}
+                  onClick={() => handleAspectRatioChange("9:16")}
                   title="📱 สัดส่วน 9:16 แนวตั้ง (TikTok, Reels, Shorts)"
                 >
                   📱 9:16
@@ -3031,10 +3242,7 @@ export function MediaVideoEditorPlayer({
                 <button
                   type="button"
                   className={`toolbar-pill-btn ${aspectRatio === "16:9" ? "active" : ""}`}
-                  onClick={() => {
-                    setAspectRatio("16:9");
-                    onReframe9x16Change?.(false);
-                  }}
+                  onClick={() => handleAspectRatioChange("16:9")}
                   title="🖥️ สัดส่วน 16:9 แนวนอน (YouTube, Widescreen)"
                 >
                   🖥️ 16:9
@@ -3042,10 +3250,7 @@ export function MediaVideoEditorPlayer({
                 <button
                   type="button"
                   className={`toolbar-pill-btn ${aspectRatio === "1:1" ? "active" : ""}`}
-                  onClick={() => {
-                    setAspectRatio("1:1");
-                    onReframe9x16Change?.(false);
-                  }}
+                  onClick={() => handleAspectRatioChange("1:1")}
                   title="⏹️ สัดส่วน 1:1 จัตุรัส (Instagram Feed)"
                 >
                   ⏹️ 1:1
@@ -3053,10 +3258,7 @@ export function MediaVideoEditorPlayer({
                 <button
                   type="button"
                   className={`toolbar-pill-btn ${aspectRatio === "source" ? "active" : ""}`}
-                  onClick={() => {
-                    setAspectRatio("source");
-                    onReframe9x16Change?.(false);
-                  }}
+                  onClick={() => handleAspectRatioChange("source")}
                   title="⬛ ต้นฉบับ (Original Aspect Ratio)"
                 >
                   ⬛ ต้นฉบับ
@@ -3118,14 +3320,15 @@ export function MediaVideoEditorPlayer({
                       className={`toolbar-pill-btn ${focusMode === "auto_person" ? "active" : ""}`}
                       onClick={() => {
                         setFocusMode("auto_person");
+                        personAnchorRef.current = null;
                         onFocusModeChange?.("auto_person");
                         detectPersonCenter(true);
                         setProjectStatusMsg("👤 โหมดโฟกัสคน: AI ติดตามใบหน้าผู้พูดอัตโนมัติ");
                         setTimeout(() => setProjectStatusMsg(null), 2500);
                       }}
-                      title="👤 Auto Track หน้าคน: ติดตามและล็อกตำแหน่งใบหน้าผู้พูดอัตโนมัติ"
+                      title={`👤 Auto Track หน้าคนด้วย MediaPipe Face Detector: ${faceDetectorStatusLabel}`}
                     >
-                      👤 โฟกัสคน {focusMode === "auto_person" ? "🟢" : ""}
+                      👤 โฟกัสคน {focusMode === "auto_person" ? faceDetectorStatusIcon : ""}
                     </button>
                     <button
                       type="button"
@@ -3688,6 +3891,12 @@ export function MediaVideoEditorPlayer({
               <video
                 ref={videoRef}
                 src={overrideVideoSrc || videoSrc}
+                crossOrigin={
+                  (overrideVideoSrc || videoSrc).startsWith("asset:") ||
+                  (overrideVideoSrc || videoSrc).includes("asset.localhost")
+                    ? "anonymous"
+                    : undefined
+                }
                 style={wysiwygVideoStyle}
                 muted={isMuted || Boolean(nleProject?.tracks?.find((t) => t.id === "track_v1")?.muted)}
                 onLoadedMetadata={handleLoadedMetadata}
@@ -3711,6 +3920,15 @@ export function MediaVideoEditorPlayer({
                 }}
                 playsInline
               />
+              {previewMode === "wysiwyg" && aspectRatio !== "source" && (
+                <div
+                  data-testid="media-preview-frame"
+                  className="preview-canvas-frame"
+                  aria-label={`กรอบพรีวิว ${previewFrameLabel}`}
+                >
+                  <span className="preview-canvas-frame-label">{previewFrameLabel}</span>
+                </div>
+              )}
               {playbackError && (
                 <div className="playback-error-overlay">
                   <span>⚠️ {playbackError}</span>
@@ -3746,6 +3964,8 @@ export function MediaVideoEditorPlayer({
               {cropBoxStyle && previewMode === "crop_guide" && (
                 <div className="crop-overlay-mask">
                   <div
+                    data-testid="media-preview-frame"
+                    aria-label={`กรอบพรีวิว ${previewFrameLabel}`}
                     className={`crop-view-box aspect-${aspectRatio.replace(":", "-")} ${
                       focusMode === "auto_person" ? "auto-track" : "manual"
                     } ${isDraggingCrop ? "dragging" : ""}`}
@@ -3759,6 +3979,7 @@ export function MediaVideoEditorPlayer({
                     <div className="crop-box-corner bottom-left" />
                     <div className="crop-box-corner bottom-right" />
                     <div className="crop-box-center-crosshair">✛</div>
+                    <span className="crop-frame-ratio-label">{previewFrameLabel}</span>
                     <div className="crop-box-tag" onWheel={handleStageWheel}>
                       {/* Zoom Cluster on Crop Tag */}
                       <button
@@ -3873,8 +4094,7 @@ export function MediaVideoEditorPlayer({
                         onClick={(e) => {
                           e.stopPropagation();
                           const next = aspectRatio === "9:16" ? "16:9" : "9:16";
-                          setAspectRatio(next);
-                          onReframe9x16Change?.(next === "9:16");
+                          handleAspectRatioChange(next);
                         }}
                         title="คลิกเพื่อสลับระหว่าง 9:16 และ 16:9 ทันที"
                       >
@@ -4377,7 +4597,7 @@ export function MediaVideoEditorPlayer({
               type="button"
               className="inline-add-cut-btn"
               onClick={() => handleAddManualCut()}
-              title="✂️ มาร์กเพิ่มจุดตัดช่วงเสียงที่พูดผิด / Dead Air ตรงตำแหน่ง Playhead ปัจจุบัน"
+              title="✂️ เพิ่มจุดตัด 1 วินาทีที่ตำแหน่ง Playhead หรือใช้การลากบนกราฟเพื่อเลือกช่วงเอง"
             >
               ✂️ + มาร์กจุดตัด
             </button>
@@ -4416,7 +4636,10 @@ export function MediaVideoEditorPlayer({
           onUpdateProject={(updated) => setNleProject(updated)}
           onOpenAutoSubtitles={() => setIsAutoSubModalOpen(true)}
           onOpenCodeOverlayModal={() => setIsCodeOverlayModalOpen(true)}
-          onOpenAssetDrawer={() => setIsAssetDrawerOpen(true)}
+          onOpenAssetDrawer={handleOpenAssetDrawer}
+          isMediaBinOpen={isMediaBinOpen}
+          onOpenMediaBin={() => setIsMediaBinOpen(true)}
+          onCloseMediaBin={() => setIsMediaBinOpen(false)}
           onOpenAudioScoringModal={() => setIsAudioScoringModalOpen(true)}
           onOpenTextOverlayModal={() => setIsTextModalOpen(true)}
           onOpenStockSvgModal={() => setIsSvgModalOpen(true)}
@@ -4576,6 +4799,11 @@ export function MediaVideoEditorPlayer({
             {/* 3. Audio Waveform Track (Emerald Green on Dark Pine Background) */}
             <div
               className="waveform-track"
+              ref={waveformTrackRef}
+              onPointerDown={handleWaveformPointerDown}
+              onPointerMove={handleWaveformPointerMove}
+              onPointerUp={handleWaveformPointerUp}
+              onPointerCancel={handleWaveformPointerCancel}
               onDoubleClick={(e) => {
                 if (duration <= 0) return;
                 const rect = e.currentTarget.getBoundingClientRect();
@@ -4583,14 +4811,14 @@ export function MediaVideoEditorPlayer({
                 const pct = Math.max(0, Math.min(1, clickX / rect.width));
                 handleAddManualCut(pct * duration);
               }}
-              title="ดับเบิ้ลคลิกบนกราฟเสียงเพื่อเพิ่มจุดตัดเสียงที่พูดผิด หรือคลิก ✕ บนแถบสีแดงเพื่อยกเลิกจุดตัด"
+              title="ลากบนกราฟเสียงเพื่อเลือกช่วงตัดเอง • ดับเบิลคลิกเพื่อเพิ่มจุดตัด 1 วินาที • คลิก ✕ เพื่อยกเลิก"
             >
               <div className="waveform-bars">
                 {waveformPeaks.length > 0 ? (
                   waveformPeaks.map((peak, idx) => (
                     <div
                       key={idx}
-                      className="waveform-bar"
+                      className={`waveform-bar ${peak <= 0.08 ? "silence-bar" : "speech-bar"}`}
                       style={{
                         height: `${Math.max(8, peak * 100)}%`,
                       }}
@@ -4602,6 +4830,30 @@ export function MediaVideoEditorPlayer({
                   </div>
                 )}
               </div>
+
+              {duration > 0 && (
+                <div
+                  className="waveform-threshold-line"
+                  style={{ top: `${getWaveformThresholdTopPercent(volumeThreshold)}%` }}
+                  aria-label={`Dead Air threshold ${volumeThreshold}% (${thresholdDb} dB)`}
+                >
+                  <span className="threshold-line-badge">
+                    Dead Air ≤ {volumeThreshold}% · {thresholdDb} dB
+                  </span>
+                </div>
+              )}
+
+              {manualCutDraft && duration > 0 && (
+                <div
+                  className="manual-cut-selection"
+                  style={{
+                    left: `${(Math.min(manualCutDraft.startMs, manualCutDraft.endMs) / 1000 / duration) * 100}%`,
+                    width: `${(Math.abs(manualCutDraft.endMs - manualCutDraft.startMs) / 1000 / duration) * 100}%`,
+                  }}
+                >
+                  ✂️ ลากเลือก {formatSeconds(Math.abs(manualCutDraft.endMs - manualCutDraft.startMs) / 1000)}
+                </div>
+              )}
 
               {/* Overlaid Silence / Dead Air markers (Translucent red cut zones) with Cancel Cut button */}
               {showSilenceOverlay &&
@@ -4839,7 +5091,7 @@ export function MediaVideoEditorPlayer({
                     <button
                       type="button"
                       className="ai-build-pill-btn"
-                      onClick={onBuildPlan}
+                    onClick={() => onBuildPlan(deadAirRenderSelection)}
                       disabled={isBusy}
                       title="สร้างแผนตัดต่อ Preprocessing Plan ด้วยพารามิเตอร์ปัจจุบัน"
                     >
@@ -4850,7 +5102,7 @@ export function MediaVideoEditorPlayer({
                     <button
                       type="button"
                       className="ai-submit-queue-btn"
-                      onClick={onSubmitJob}
+                      onClick={() => onSubmitJob(deadAirRenderSelection)}
                       disabled={!canSubmitJob || isBusy}
                       title="ส่งแผน AI เข้า Worker GPU Queue"
                     >
@@ -4994,6 +5246,7 @@ export function MediaVideoEditorPlayer({
         isOpen={isAutoSubModalOpen}
         onClose={() => setIsAutoSubModalOpen(false)}
         videoDurationMs={Math.round(duration * 1000)}
+        sourceVideoFile={videoFile}
         onApplySubtitles={handleApplySubtitles}
       />
 
@@ -5007,6 +5260,10 @@ export function MediaVideoEditorPlayer({
       <AssetDrawerPanel
         isOpen={isAssetDrawerOpen}
         onClose={() => setIsAssetDrawerOpen(false)}
+        onOpenBin={() => {
+          setIsAssetDrawerOpen(false);
+          setIsMediaBinOpen(true);
+        }}
         currentTimeMs={Math.round(currentTime * 1000)}
         seriesId={seriesId}
         onAddClip={handleAddAssetClip}
@@ -5019,6 +5276,8 @@ export function MediaVideoEditorPlayer({
           isOpen={isAudioScoringModalOpen}
           onClose={() => setIsAudioScoringModalOpen(false)}
           project={nleProject}
+          seriesId={seriesId}
+          workspacePath={workspacePath}
           onApplyScoredProject={(updated) => {
             setNleProject(updated);
             setProjectStatusMsg("🎵 วางเพลงประกอบ MiniMax Music 3 และ SFX ลง Timeline เรียบร้อย");
@@ -5156,9 +5415,9 @@ export function MediaVideoEditorPlayer({
                     onClick={() => {
                       setIsRenderModalOpen(false);
                       if (onSubmitJob) {
-                        onSubmitJob();
+                        onSubmitJob(deadAirRenderSelection);
                       } else if (onBuildPlan) {
-                        onBuildPlan();
+                        onBuildPlan(deadAirRenderSelection);
                       } else {
                         alert("โปรดสร้างแผนตัดต่อหรือเลือกวิดีโอก่อนส่ง Render ด้วย Remotion GPU Worker Queue");
                       }

@@ -34,13 +34,15 @@ export type VerticalDramaInteractiveJobKind =
   | "character_duplicates"
   | "reference_frame_prompt"
   | "special_tie_in_prompt"
-  | "marketplace_review_ideas";
+  | "marketplace_review_ideas"
+  | "emotion_plan";
 
 export type VerticalDramaInteractiveJobStatus =
   | "queued"
   | "running"
   | "succeeded"
-  | "failed";
+  | "failed"
+  | "canceled";
 
 export interface VerticalDramaInteractiveJobOwner {
   tenantId: string;
@@ -178,6 +180,7 @@ function interactiveJobLabel(kind: VerticalDramaInteractiveJobKind): string {
     reference_frame_prompt: "สร้าง Prompt ภาพอ้างอิง",
     special_tie_in_prompt: "สร้าง storyboard ตอนพิเศษ",
     marketplace_review_ideas: "สร้างไอเดีย tie-in สินค้า",
+    emotion_plan: "วิเคราะห์อารมณ์และวางแผนดนตรี",
   };
   return labels[kind];
 }
@@ -440,6 +443,30 @@ export async function getActiveVerticalDramaInteractiveJob(
   return record;
 }
 
+/** Cooperative, owner-scoped cancellation. The executor may still be inside
+ * an upstream request, but its result is prevented from being committed by
+ * the terminal-state check in runVerticalDramaInteractiveJob. */
+export async function cancelVerticalDramaInteractiveJob(
+  jobId: string,
+  owner: VerticalDramaInteractiveJobOwner,
+  dependencies?: Partial<VerticalDramaInteractiveJobStoreDependencies>
+): Promise<VerticalDramaInteractiveJobRecord | null> {
+  const deps = resolveDependencies(dependencies);
+  const record = await readRecord(jobId, dependencies);
+  if (!record || !ownerMatches(record, owner)) return null;
+  if (!isActive(record.status)) return record;
+  const canceled: VerticalDramaInteractiveJobRecord = {
+    ...record,
+    status: "canceled",
+    result: null,
+    error: "Canceled by user",
+    updatedAt: new Date(deps.now()).toISOString(),
+  };
+  await writeRecord(canceled, dependencies);
+  await deps.redis.compareDelete(activePointerKey(record), jobId).catch(() => false);
+  return canceled;
+}
+
 export async function runVerticalDramaInteractiveJob(
   jobId: string,
   executor: VerticalDramaInteractiveJobExecutor,
@@ -470,6 +497,8 @@ export async function runVerticalDramaInteractiveJob(
       jobId,
       traceId: running.traceId,
     });
+    const latest = await readRecord(jobId, dependencies);
+    if (latest?.status === "canceled") return;
     const terminalRecord = {
       ...running,
       status: "succeeded",
@@ -484,6 +513,8 @@ export async function runVerticalDramaInteractiveJob(
       dependencies
     );
   } catch (error) {
+    const latest = await readRecord(jobId, dependencies);
+    if (latest?.status === "canceled") return;
     const terminalRecord = {
       ...running,
       status: "failed",

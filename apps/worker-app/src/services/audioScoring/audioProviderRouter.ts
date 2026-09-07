@@ -1,129 +1,107 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { MusicCue, AudioAsset } from "../../types/audioScoring";
-import type { ProjectAsset } from "../../types/nleProject";
-
-export interface CandidateScoreBreakdown {
-  candidateId: string;
-  totalScore: number; // 0.0 - 100.0
-  semanticFit: number;   // 25%
-  emotionFit: number;    // 20%
-  temporalFit: number;   // 15%
-  continuity: number;    // 15%
-  mixability: number;    // 10%
-  licenseStatus: number; // 10%
-  costEfficiency: number;// 5%
-  recommended: boolean;
-}
+import type { ApprovedPlanAuthority, MusicCue } from "../../types/audioScoring";
+import { AudioScoringError } from "./smartAiHubSkillClient";
 
 export interface RustMusicCueResult {
-  job_id: string;
-  cue_id: string;
-  status: string;
-  output_wav_path: string;
-  output_duration_seconds: number;
-  sample_rate: number;
+  jobId: string;
+  cueId: string;
+  status: "completed";
+  outputWavPath: string;
+  outputDurationSeconds: number;
+  sampleRate: number;
   channels: number;
-  measured_lufs: number;
-  true_peak_db: number;
-  generation_time_seconds: number;
+  measuredLufs: number;
+  truePeakDb: number;
+  generationTimeSeconds: number;
+  modelName: "MiniMaxAI/MiniMax-Music3";
+  modelRevision: string;
+  outputSha256: string;
 }
 
 /**
- * Evaluates candidate audio assets against scoring weights.
- */
-export function scoreAudioCandidate(
-  cue: MusicCue,
-  candidateName: string,
-  candidateDurationSeconds: number,
-  isSeriesTheme: boolean = false
-): CandidateScoreBreakdown {
-  const targetDur = cue.timelineDurationMs / 1000;
-  const durDiff = Math.abs(candidateDurationSeconds - targetDur);
-  const temporalFit = Math.max(0, 100 - (durDiff / targetDur) * 100);
-
-  const semanticFit = isSeriesTheme ? 95 : 85;
-  const emotionFit = 90;
-  const continuity = isSeriesTheme ? 95 : 80;
-  const mixability = 92;
-  const licenseStatus = 100; // Local proprietary generated
-  const costEfficiency = 95;
-
-  const totalScore =
-    semanticFit * 0.25 +
-    emotionFit * 0.20 +
-    temporalFit * 0.15 +
-    continuity * 0.15 +
-    mixability * 0.10 +
-    licenseStatus * 0.10 +
-    costEfficiency * 0.05;
-
-  return {
-    candidateId: candidateName,
-    totalScore: Math.round(totalScore * 10) / 10,
-    semanticFit,
-    emotionFit,
-    temporalFit: Math.round(temporalFit),
-    continuity,
-    mixability,
-    licenseStatus,
-    costEfficiency,
-    recommended: totalScore >= 75,
-  };
-}
-
-/**
- * Route and resolve audio cues:
- * 1. Check Project Media Bin for matching BGM
- * 2. Invoke MiniMax Music 3 Local Engine Sidecar via Tauri IPC
+ * Resolve a cue through the genuine local Music 3 runtime only.
+ * Existing project-bin, stock, synth and library audio are not valid outputs
+ * for a newly generated score and therefore never enter this function's
+ * success path.
  */
 export async function resolveMusicCueAudio(
   cue: MusicCue,
-  mediaPool: ProjectAsset[] = [],
-  workspacePath?: string | null
+  authority: ApprovedPlanAuthority,
+  _mediaPool: unknown[] = [],
+  workspacePath?: string | null,
 ): Promise<{
   audioPath: string;
   durationSeconds: number;
-  provider: "minimax_direct" | "project_bin";
-  score: CandidateScoreBreakdown;
+  provider: "minimax_direct";
+  modelName: "MiniMaxAI/MiniMax-Music3";
+  modelRevision: string;
+  outputSha256: string;
+  measuredLufs: number;
+  truePeakDb: number;
 }> {
-  // 1. Check if user already imported a matching audio asset in Project Media Bin
-  const poolAudio = mediaPool.find(
-    (a) => a.mediaType === "audio" && a.name.toLowerCase().includes("bgm")
-  );
-  if (poolAudio) {
-    const score = scoreAudioCandidate(cue, poolAudio.name, (poolAudio.durationMs || 30000) / 1000, true);
-    return {
-      audioPath: poolAudio.filePath,
-      durationSeconds: (poolAudio.durationMs || 30000) / 1000,
-      provider: "project_bin",
-      score,
-    };
+  if (!cue.modelInstruction.trim() || cue.lyricsPrompt?.trim()) {
+    throw new AudioScoringError(
+      "SKILL_UNAVAILABLE",
+      `Cue ${cue.cueId} is missing an approved instrumental model instruction.`,
+    );
+  }
+  if (
+    authority.skill.skillId !== "vertical-drama-emotion-score-director" ||
+    authority.rightsPolicyHash !== cue.rightsPolicyHash
+  ) {
+    throw new AudioScoringError("RIGHTS_REVIEW_REQUIRED", `Cue ${cue.cueId} is not bound to the approved plan rights snapshot.`);
   }
 
-  // 2. Invoke MiniMax Music 3 Local Engine Sidecar via Tauri IPC
-  const durationSeconds = Math.max(5, cue.timelineDurationMs / 1000);
-  const musicDir = workspacePath ? `${workspacePath.replace(/[\/\\]$/, "")}/music` : "music";
   const res = await invoke<RustMusicCueResult>("worker_app_generate_music_cue", {
     req: {
       cue_id: cue.cueId,
-      style_prompt: cue.stylePrompt,
-      lyrics_prompt: cue.lyricsPrompt || null,
-      tempo_bpm: cue.tempoBpm || 100,
-      duration_seconds: durationSeconds,
+      model_instruction: cue.modelInstruction,
+      plan_hash: authority.planHash,
+      skill_execution_id: authority.skill.executionId,
+      rights_policy_hash: authority.rightsPolicyHash,
+      rights_status: "approved_for_project",
+      duration_seconds: cue.timelineDurationMs / 1000,
       intensity: cue.intensity,
       fade_in_ms: cue.fadeInMs,
       fade_out_ms: cue.fadeOutMs,
-      target_lufs: cue.duckingLevelDb || -16.0,
-      output_dir: musicDir,
+      target_lufs: -16.0,
+      workspace_path: workspacePath ?? null,
     },
   });
 
-  const score = scoreAudioCandidate(cue, `MiniMax3_${cue.cueId}`, res.output_duration_seconds);
+  if (
+    res.status !== "completed" ||
+    res.modelName !== "MiniMaxAI/MiniMax-Music3" ||
+    !res.outputWavPath ||
+    !res.outputSha256 ||
+    !Number.isFinite(res.measuredLufs) ||
+    !Number.isFinite(res.truePeakDb) ||
+    res.sampleRate <= 0 ||
+    res.channels <= 0
+  ) {
+    throw new AudioScoringError(
+      "GENERATION_OUTCOME_UNKNOWN",
+      `Music 3 cue ${cue.cueId} returned incomplete or unverifiable provenance.`,
+    );
+  }
+
   return {
-    audioPath: res.output_wav_path,
-    durationSeconds: res.output_duration_seconds,
+    audioPath: res.outputWavPath,
+    durationSeconds: res.outputDurationSeconds,
     provider: "minimax_direct",
-    score,
+    modelName: res.modelName,
+    modelRevision: res.modelRevision,
+    outputSha256: res.outputSha256,
+    measuredLufs: res.measuredLufs,
+    truePeakDb: res.truePeakDb,
   };
 }
 
+/** Propagates user cancellation to the managed runtime without treating the
+ * canceled request as a successful generation. */
+export async function cancelMusicCueGeneration(jobId: string): Promise<void> {
+  if (!jobId.trim()) {
+    throw new AudioScoringError("CANCELED", "Music 3 runtime job id is missing.");
+  }
+  await invoke<void>("worker_app_cancel_music_cue", { jobId });
+}

@@ -3,6 +3,26 @@
 Seven review rounds completed. Existing dirty work was preserved. No version changes,
 installer, publish, database writes, or provider generation were performed by this review.
 
+## Follow-up aspect-frame audit — 2026-09-06
+
+Twelve focused review rounds were completed after the preview-frame repair. The only new
+gaps found were repaired in the same change; unrelated dirty work was preserved.
+
+| Round | Surface | Result / repair |
+| --- | --- | --- |
+| 1 | Persisted canvas source of truth | Found draft sync preferred a stale prop over the live project; switched to the current `nleProject` profile first. |
+| 2 | 9:16 profile | Verified `1080×1920`, crop geometry, toolbar selection, and visible ratio label. |
+| 3 | 16:9 profile | Verified `1920×1080`, crop geometry, toolbar selection, and visible ratio label. |
+| 4 | 1:1 profile | Verified `1080×1080` profile and square crop class; no unsupported ratio fallback introduced. |
+| 5 | Crop Guide visibility | Found the existing 9:16 control tag could be clipped outside the stage; added an in-frame ratio label. |
+| 6 | WYSIWYG visibility | Added a non-interactive canvas outline and resolution label for the exact export stage. |
+| 7 | Toolbar write-through | Verified ratio changes update local preview state and the project canvas dimensions used by autosave. |
+| 8 | Drag / zoom / focus | Kept crop drag, wheel zoom, person focus, pinning, and overlay pointer behavior unchanged. |
+| 9 | Fullscreen / accessibility | Verified the frame remains inside the fullscreen stage and has an accessible preview label; pointer events remain non-blocking in WYSIWYG. |
+| 10 | Browser smoke / initial workspace | Found `MediaExplorerView` skipped its first native browse when `initialPath` matched initial state; changed the guard to require loaded browse data before returning. |
+| 11 | Regression gates | Focused Worker tests, typecheck, production build, and diff whitespace checks are rerun after the repair. |
+| 12 | Browser aspect transitions | Verified live `9:16 → 16:9 → 1:1 → ต้นฉบับ → 9:16`; labels, dimensions, and frame visibility all matched the selected canvas. |
+
 ## Review rounds and fixes
 
 | Round | Surface | Evidence and repair |

@@ -23579,6 +23579,7 @@ export const verticalDramaObjectDetectionSuggestions = pgTable(
     userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
     seriesId: bigint("seriesId", { mode: "number" }).notNull().references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
     episodeId: bigint("episodeId", { mode: "number" }).notNull().references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+    planningKey: varchar("planningKey", { length: 160 }),
     shotNumber: integer("shotNumber").notNull(),
     objectReferenceId: bigint("objectReferenceId", { mode: "number" }).notNull().references(() => verticalDramaObjectReferences.id, { onDelete: "cascade" }),
     detectorVersion: varchar("detectorVersion", { length: 64 }).notNull(),
@@ -24612,3 +24613,264 @@ export const verticalDramaAudioManifests = pgTable(
 
 export type VerticalDramaAudioManifestRow = typeof verticalDramaAudioManifests.$inferSelect;
 export type InsertVerticalDramaAudioManifestRow = typeof verticalDramaAudioManifests.$inferInsert;
+
+/** Feature 176/177: durable source analysis and semantic score-plan state. */
+export const verticalDramaAudioAnalyses = pgTable(
+  "vertical_drama_audio_analyses",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" }).notNull().references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    episodeId: bigint("episodeId", { mode: "number" }).notNull().references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+    planningKey: varchar("planningKey", { length: 160 }),
+    status: varchar("status", { length: 24 }).notNull().default("queued"),
+    sourceRevision: varchar("sourceRevision", { length: 128 }).notNull(),
+    sourceHash: varchar("sourceHash", { length: 64 }).notNull(),
+    sourceSnapshot: jsonb("sourceSnapshot").notNull(),
+    resultJson: jsonb("resultJson"),
+    workerJobId: varchar("workerJobId", { length: 36 }),
+    error: text("error"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    index("vd_audio_analysis_owner_idx").on(t.tenantId, t.userId, t.seriesId, t.episodeId, t.createdAt),
+    index("vd_audio_analysis_status_idx").on(t.tenantId, t.status, t.createdAt),
+    index("vd_audio_analysis_scope_status_idx").on(t.tenantId, t.seriesId, t.episodeId, t.status),
+    index("vd_audio_analysis_planning_status_idx").on(t.tenantId, t.seriesId, t.planningKey, t.status),
+  ]
+);
+
+export type VerticalDramaAudioAnalysisRow = typeof verticalDramaAudioAnalyses.$inferSelect;
+export type InsertVerticalDramaAudioAnalysisRow = typeof verticalDramaAudioAnalyses.$inferInsert;
+
+export const verticalDramaEmotionPlans = pgTable(
+  "vertical_drama_emotion_plans",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" }).notNull().references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    episodeId: bigint("episodeId", { mode: "number" }).notNull().references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+    planningKey: varchar("planningKey", { length: 160 }),
+    revision: integer("revision").notNull().default(1),
+    status: varchar("status", { length: 24 }).notNull().default("needs_review"),
+    sourceHash: varchar("sourceHash", { length: 64 }).notNull(),
+    planHash: varchar("planHash", { length: 64 }).notNull(),
+    planJson: jsonb("planJson").notNull(),
+    skillMetadata: jsonb("skillMetadata").notNull(),
+    rightsStatus: varchar("rightsStatus", { length: 32 }).notNull().default("unreviewed"),
+    rightsPolicyHash: varchar("rightsPolicyHash", { length: 64 }).notNull(),
+    rightsReview: jsonb("rightsReview").$type<{
+      status: string;
+      evidenceRef: string | null;
+      scope: string | null;
+      reviewerId: number | null;
+      reviewedAt: string | null;
+    }>().notNull().default({ status: "unreviewed", evidenceRef: null, scope: null, reviewerId: null, reviewedAt: null }),
+    approvedAt: timestamp("approvedAt", { withTimezone: true }),
+    approvedBy: integer("approvedBy").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("vd_emotion_plan_episode_unique").on(t.tenantId, t.userId, t.episodeId),
+    index("vd_emotion_plan_series_idx").on(t.tenantId, t.userId, t.seriesId, t.createdAt),
+    index("vd_emotion_plan_admission_idx").on(t.tenantId, t.episodeId, t.status, t.rightsStatus),
+    index("vd_emotion_plan_scope_revision_idx").on(t.tenantId, t.seriesId, t.episodeId, t.revision),
+    index("vd_emotion_plan_planning_revision_idx").on(t.tenantId, t.seriesId, t.planningKey, t.revision),
+  ]
+);
+
+export type VerticalDramaEmotionPlanRow = typeof verticalDramaEmotionPlans.$inferSelect;
+export type InsertVerticalDramaEmotionPlanRow = typeof verticalDramaEmotionPlans.$inferInsert;
+
+export const verticalDramaEmotionPlanRevisions = pgTable(
+  "vertical_drama_emotion_plan_revisions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    planId: uuid("planId").notNull().references(() => verticalDramaEmotionPlans.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    revision: integer("revision").notNull(),
+    planHash: varchar("planHash", { length: 64 }).notNull(),
+    planJson: jsonb("planJson").notNull(),
+    changeReason: varchar("changeReason", { length: 120 }).notNull(),
+    createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("vd_emotion_plan_revision_unique").on(t.planId, t.revision),
+    index("vd_emotion_plan_revision_owner_idx").on(t.tenantId, t.createdAt),
+  ]
+);
+
+export type VerticalDramaEmotionPlanRevisionRow = typeof verticalDramaEmotionPlanRevisions.$inferSelect;
+export type InsertVerticalDramaEmotionPlanRevisionRow = typeof verticalDramaEmotionPlanRevisions.$inferInsert;
+
+// Feature 180 v2 — provider-neutral voice lifecycle. These tables hold
+// metadata and immutable revisions; binary media remains in the managed
+// worker/artifact ledger and local-only references remain opaque handles.
+export const audioVoiceProfiles = pgTable(
+  "audio_voice_profiles",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    voiceProfileId: varchar("voice_profile_id", { length: 160 }).notNull(),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    ownerScopeType: varchar("owner_scope_type", { length: 16 }).notNull(),
+    ownerScopeId: varchar("owner_scope_id", { length: 160 }).notNull(),
+    currentRevision: integer("current_revision").notNull().default(1),
+    status: varchar("status", { length: 16 }).notNull().default("draft"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("audio_voice_profiles_tenant_profile_unique").on(t.tenantId, t.voiceProfileId),
+    index("audio_voice_profiles_owner_idx").on(t.tenantId, t.ownerScopeType, t.ownerScopeId),
+  ],
+);
+export type AudioVoiceProfile = typeof audioVoiceProfiles.$inferSelect;
+export type InsertAudioVoiceProfile = typeof audioVoiceProfiles.$inferInsert;
+
+export const audioVoiceProfileRevisions = pgTable(
+  "audio_voice_profile_revisions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    profileId: bigint("profile_id", { mode: "number" }).notNull().references(() => audioVoiceProfiles.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull(),
+    revision: integer("revision").notNull(),
+    profileJson: jsonb("profile_json").$type<Record<string, unknown>>().notNull(),
+    contentHash: varchar("content_hash", { length: 64 }).notNull(),
+    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("audio_voice_profile_revisions_unique").on(t.profileId, t.revision),
+    index("audio_voice_profile_revisions_tenant_idx").on(t.tenantId, t.createdAt),
+  ],
+);
+export type AudioVoiceProfileRevision = typeof audioVoiceProfileRevisions.$inferSelect;
+
+export const audioVoiceConsents = pgTable(
+  "audio_voice_consents",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    consentId: varchar("consent_id", { length: 160 }).notNull(),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull().default(1),
+    consentJson: jsonb("consent_json").$type<Record<string, unknown>>().notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("audio_voice_consents_tenant_unique").on(t.tenantId, t.consentId, t.revision),
+    index("audio_voice_consents_status_idx").on(t.tenantId, t.status),
+  ],
+);
+export type AudioVoiceConsent = typeof audioVoiceConsents.$inferSelect;
+
+export const audioVoiceBindings = pgTable(
+  "audio_voice_bindings",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    voiceBindingId: varchar("voice_binding_id", { length: 160 }).notNull(),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    voiceProfileId: varchar("voice_profile_id", { length: 160 }).notNull(),
+    voiceProfileRevision: integer("voice_profile_revision").notNull(),
+    revision: integer("revision").notNull().default(1),
+    bindingJson: jsonb("binding_json").$type<Record<string, unknown>>().notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("audio_voice_bindings_tenant_unique").on(t.tenantId, t.voiceBindingId, t.revision),
+    index("audio_voice_bindings_profile_idx").on(t.tenantId, t.voiceProfileId, t.status),
+  ],
+);
+export type AudioVoiceBinding = typeof audioVoiceBindings.$inferSelect;
+
+export const audioVoiceDatasets = pgTable(
+  "audio_voice_datasets",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    datasetId: varchar("dataset_id", { length: 160 }).notNull(),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    ownerScopeType: varchar("owner_scope_type", { length: 16 }).notNull(),
+    ownerScopeId: varchar("owner_scope_id", { length: 160 }).notNull(),
+    currentRevision: integer("current_revision").notNull().default(1),
+    status: varchar("status", { length: 16 }).notNull().default("draft"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("audio_voice_datasets_tenant_unique").on(t.tenantId, t.datasetId),
+    index("audio_voice_datasets_owner_idx").on(t.tenantId, t.ownerScopeType, t.ownerScopeId),
+  ],
+);
+export type AudioVoiceDataset = typeof audioVoiceDatasets.$inferSelect;
+
+export const audioVoiceDatasetRevisions = pgTable(
+  "audio_voice_dataset_revisions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    datasetId: bigint("dataset_id", { mode: "number" }).notNull().references(() => audioVoiceDatasets.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull(),
+    revision: integer("revision").notNull(),
+    manifestJson: jsonb("manifest_json").$type<Record<string, unknown>>().notNull(),
+    manifestHash: varchar("manifest_hash", { length: 64 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("draft"),
+    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [uniqueIndex("audio_voice_dataset_revisions_unique").on(t.datasetId, t.revision)],
+);
+export type AudioVoiceDatasetRevision = typeof audioVoiceDatasetRevisions.$inferSelect;
+
+export const audioVoiceTrainingRuns = pgTable(
+  "audio_voice_training_runs",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    jobId: varchar("job_id", { length: 160 }).notNull(),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    datasetId: varchar("dataset_id", { length: 160 }).notNull(),
+    datasetRevision: integer("dataset_revision").notNull(),
+    idempotencyKey: varchar("idempotency_key", { length: 128 }).notNull(),
+    recipeJson: jsonb("recipe_json").$type<Record<string, unknown>>().notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("queued"),
+    checkpointJson: jsonb("checkpoint_json").$type<Record<string, unknown> | null>(),
+    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("audio_voice_training_runs_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
+    index("audio_voice_training_runs_status_idx").on(t.tenantId, t.status, t.updatedAt),
+  ],
+);
+export type AudioVoiceTrainingRun = typeof audioVoiceTrainingRuns.$inferSelect;
+
+export const audioTrainedVoiceModels = pgTable(
+  "audio_trained_voice_models",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    modelId: varchar("model_id", { length: 160 }).notNull(),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    trainingRunId: varchar("training_run_id", { length: 160 }).notNull(),
+    modelJson: jsonb("model_json").$type<Record<string, unknown>>().notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("candidate"),
+    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("audio_trained_voice_models_tenant_unique").on(t.tenantId, t.modelId),
+    index("audio_trained_voice_models_status_idx").on(t.tenantId, t.status),
+  ],
+);
+export type AudioTrainedVoiceModel = typeof audioTrainedVoiceModels.$inferSelect;

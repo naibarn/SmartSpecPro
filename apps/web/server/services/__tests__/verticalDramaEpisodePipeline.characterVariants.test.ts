@@ -493,6 +493,53 @@ describe("generateRealStoryboard — twin pairs (planning/vertical-drama-twin-va
     expect(callArgs.twinPairs).toBeUndefined();
   });
 
+  it("infers an explicit twin pair from matching twin-role facts and carries the narrowest authorized age lock", async () => {
+    const characterRows = [
+      {
+        id: 1,
+        characterKey: "character-3",
+        name: "ภูมิ",
+        role: "ลูกชายฝาแฝดคนที่หนึ่ง",
+        narrativeRole: "supporting",
+        roleTier: "lead_child_male",
+        parentCharacterId: null,
+        variantLabel: null,
+        variantType: null,
+        sharesFaceWithCharacterId: null,
+        data: { visualBible: { ageRange: "around 9 years old" } },
+      },
+      {
+        id: 2,
+        characterKey: "character-4",
+        name: "ภาคิน",
+        role: "ลูกชายฝาแฝดคนที่สอง",
+        narrativeRole: "supporting",
+        roleTier: "lead_child_male",
+        parentCharacterId: null,
+        variantLabel: null,
+        variantType: null,
+        sharesFaceWithCharacterId: null,
+        data: { description: "เด็กชายที่เติบโตในอีกครอบครัว" },
+      },
+    ];
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain(characterRows))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([]));
+    mockGetPrimaryPortraitUrl.mockResolvedValue(null);
+
+    await pipeline.generateRealStoryboard(owner, episode, false);
+
+    expect(mockGenerateStoryboardShotgrid.mock.calls[0][0].twinPairs).toEqual([
+      {
+        characterKeyA: "character-3",
+        characterKeyB: "character-4",
+        ageRange: { min: 9, max: 9 },
+      },
+    ]);
+  });
+
   it("also works when character rows omit the sharesFaceWithCharacterId column entirely (older mocks/rows — treated as no twins)", async () => {
     const characterRows = [
       { id: 1, characterKey: "char-1", name: "Alice", role: "lead" },

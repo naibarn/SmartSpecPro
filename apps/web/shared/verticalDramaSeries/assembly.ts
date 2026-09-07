@@ -310,6 +310,10 @@ export type VerticalDramaProductionEpisodeGroupState = {
    *  assembled with `allowPartial: true` and some member had no compiled
    *  video yet. */
   subEpisodeNumbers: number[];
+  /** Stable DB ids for the Sub-Episodes included in this Production Episode.
+   * Added so Production-tab audio controls can address every source member
+   * without guessing from a display number or silently using the first one. */
+  subEpisodeIds?: number[];
   /** Automatic 1-based public EP number. Older manifests omit this and use
    * `index + 1` as their display number. */
   productionEpisodeNumber?: number;

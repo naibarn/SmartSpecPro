@@ -5,6 +5,7 @@ import type { NleClip } from "../../types/nleProject";
 export interface AssetDrawerPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenBin?: () => void;
   currentTimeMs: number;
   seriesId?: string | null;
   workspacePath?: string | null;
@@ -201,6 +202,7 @@ function AssetThumbnailCard({ item }: { item: MediaAssetItem }) {
 export function AssetDrawerPanel({
   isOpen,
   onClose,
+  onOpenBin,
   currentTimeMs,
   seriesId: propsSeriesId,
   workspacePath,
@@ -1130,6 +1132,16 @@ export function AssetDrawerPanel({
           </div>
         </div>
         <div className="drawer-header-actions">
+          {onOpenBin && (
+            <button
+              type="button"
+              className="drawer-switch-bin-btn"
+              onClick={onOpenBin}
+              title="สลับกลับไป Media Bin"
+            >
+              📥 Bin
+            </button>
+          )}
           <button
             type="button"
             className="drawer-import-btn"

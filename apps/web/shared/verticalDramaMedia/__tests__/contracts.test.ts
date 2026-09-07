@@ -15,8 +15,9 @@ describe("vertical drama media contracts", () => {
     expect(() => mediaIngestJobPayloadSchema.parse({ kind: "media_ingest", seriesId: "s1", binding, source, idempotencyKey: "a".repeat(129) })).toThrow();
   });
   it("enforces segment budgets and strict boundaries", () => {
-    const valid = { planId: "plan-1", planRevision: "r1", mode: "manual_intent" as const, aspectRatio: "9:16" as const, deadAir: { enabled: true, thresholdDb: -42, minSilenceMs: 500, padMs: 100 }, budget: { maxDurationMs: 90000, minDurationMs: 1000, maxBrollMs: 60000, preserveNarrativeAudio: true }, segments: [{ segmentId: "seg-1", sourceAssetId: "asset-1", sourceRevision: "r1", startMs: 0, endMs: 5000, removeDeadAir: true, reframe: { enabled: true, target: null, trackingMode: "auto_person" as const, aspectRatio: "9:16" as const, maxCropFraction: 0.4, fallback: "blurred_background" as const }, stillMotion: null }], rationale: "AI selected the cleanest excerpt" };
+    const valid = { planId: "plan-1", planRevision: "r1", mode: "manual_intent" as const, aspectRatio: "9:16" as const, deadAir: { enabled: true, thresholdDb: -42, minSilenceMs: 500, padMs: 100, silenceRanges: [{ startMs: 1200, endMs: 1800, isManual: true }] }, budget: { maxDurationMs: 90000, minDurationMs: 1000, maxBrollMs: 60000, preserveNarrativeAudio: true }, segments: [{ segmentId: "seg-1", sourceAssetId: "asset-1", sourceRevision: "r1", startMs: 0, endMs: 5000, removeDeadAir: true, reframe: { enabled: true, target: null, trackingMode: "auto_person" as const, aspectRatio: "9:16" as const, maxCropFraction: 0.4, fallback: "blurred_background" as const }, stillMotion: null }], rationale: "AI selected the cleanest excerpt" };
     expect(mediaEditPlanSchema.parse(valid).segments).toHaveLength(1);
+    expect(mediaEditPlanSchema.parse(valid).deadAir.silenceRanges).toEqual([{ startMs: 1200, endMs: 1800, isManual: true }]);
     expect(() => mediaEditPlanSchema.parse({ ...valid, segments: [{ ...valid.segments[0], endMs: 0 }] })).toThrow();
   });
   it("requires unique reference frame order", () => {

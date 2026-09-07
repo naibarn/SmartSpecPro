@@ -215,6 +215,9 @@ describe("generateStoryboardShotgrid", () => {
     const unsafe = validOutput();
     unsafe.shots[0]!.visual_description =
       "A child is unaware while someone secretly photographs the room.";
+    unsafe.storyboard_handoff_json = {
+      redundant_transport_note: "DO_NOT_COPY_REDUNDANT_HANDOFF_INTO_REPAIR",
+    };
     mockExecute
       .mockResolvedValueOnce(successResponse(unsafe))
       .mockResolvedValueOnce(successResponse(validOutput()));
@@ -226,7 +229,110 @@ describe("generateStoryboardShotgrid", () => {
     expect(mockExecute.mock.calls[1]![0].messages.at(-1).content).toContain(
       "SAFE REWRITE REQUIRED"
     );
+    expect(mockExecute.mock.calls[1]![0].messages.at(-1).content).toContain(
+      "REPAIR MODE"
+    );
+    expect(mockExecute.mock.calls[1]![0].messages.at(-1).content).toContain(
+      "secretly photographs the room"
+    );
+    expect(mockExecute.mock.calls[1]![0].messages.at(-1).content).toContain(
+      "Shot 1"
+    );
+    expect(mockExecute.mock.calls[1]![0].messages.at(-1).content).not.toContain(
+      "DO_NOT_COPY_REDUNDANT_HANDOFF_INTO_REPAIR"
+    );
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not treat oversized transport metadata as an unsafe story", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(
+      successResponse({
+        ...validOutput(),
+        storyboard_handoff_json: { debug_note: "x".repeat(60_000) },
+      })
+    );
+
+    await generateStoryboardShotgrid(baseParams());
+
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the safety size bound local to each shot instead of blocking a detailed nine-shot episode", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const detailed = validOutput();
+    detailed.shots.forEach((shot, index) => {
+      shot.visual_description = `Safe ordinary conversation in shot ${index + 1}. ${"detail ".repeat(1_500)}`;
+    });
+    mockExecute.mockResolvedValue(successResponse(detailed));
+
+    await generateStoryboardShotgrid(baseParams());
+
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("repairs from the latest candidate until a later policy repair passes", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const unsafeOne = validOutput();
+    unsafeOne.shots[0]!.visual_description =
+      "A child is unaware while someone secretly photographs the room.";
+    const unsafeTwo = validOutput();
+    unsafeTwo.shots[0]!.visual_description =
+      "A child is unaware while someone threatens the room.";
+    mockExecute
+      .mockResolvedValueOnce(successResponse(unsafeOne))
+      .mockResolvedValueOnce(successResponse(unsafeTwo))
+      .mockResolvedValueOnce(successResponse(validOutput()));
+
+    await generateStoryboardShotgrid(baseParams());
+
+    expect(mockExecute).toHaveBeenCalledTimes(3);
+    expect(mockExecute.mock.calls[2]![0].messages.at(-1).content).toContain(
+      "someone threatens the room"
+    );
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("retains the last candidate and structured findings when policy recovery is exhausted", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const unsafeCandidates = Array.from({ length: 4 }, (_, index) => {
+      const candidate = validOutput();
+      candidate.shots[0]!.visual_description = `A child is unaware while someone threatens room ${index + 1}.`;
+      return candidate;
+    });
+    unsafeCandidates.forEach(candidate => {
+      mockExecute.mockResolvedValueOnce(successResponse(candidate));
+    });
+
+    let caught: unknown;
+    try {
+      await generateStoryboardShotgrid(baseParams());
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toMatchObject({
+      code: "VD_STORY_POLICY_RISK",
+      repairAttempts: 3,
+      candidate: expect.objectContaining({
+        shots: expect.arrayContaining([
+          expect.objectContaining({
+            visual_description:
+              "A child is unaware while someone threatens room 4.",
+          }),
+        ]),
+      }),
+      safety: expect.objectContaining({
+        level: "high",
+        findings: expect.arrayContaining([
+          expect.objectContaining({ code: "minor_threat_or_surveillance" }),
+        ]),
+      }),
+    });
+    expect(mockExecute).toHaveBeenCalledTimes(4);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
   it("injects the shared spoken-English profile for dialogue excerpts and subtitles", async () => {
@@ -792,7 +898,11 @@ describe("generateStoryboardShotgrid", () => {
       await generateStoryboardShotgrid(
         baseParams({
           twinPairs: [
-            { characterKeyA: "char-fai", characterKeyB: "char-baitong" },
+            {
+              characterKeyA: "char-fai",
+              characterKeyB: "char-baitong",
+              ageRange: { min: 9, max: 9 },
+            },
           ],
         })
       );
@@ -806,6 +916,7 @@ describe("generateStoryboardShotgrid", () => {
       expect(userMessage).toMatch(
         /char-fai and char-baitong are twins — they share an identical face but are different people\./
       );
+      expect(userMessage).toMatch(/same apparent age\/maturity range \(9–9\)/);
     });
 
     it("renders the inherited cross-episode wardrobe as context-aware opening guidance", async () => {

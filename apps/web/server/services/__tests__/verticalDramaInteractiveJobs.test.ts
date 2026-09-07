@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  cancelVerticalDramaInteractiveJob,
   enqueueVerticalDramaInteractiveJob,
   getActiveVerticalDramaInteractiveJob,
   getVerticalDramaInteractiveJobStatus,
@@ -172,5 +173,34 @@ describe("vertical drama interactive jobs", () => {
         error: "provider unavailable",
       })
     );
+  });
+
+  it("does not commit an executor result after cooperative cancellation", async () => {
+    const redis = createRedis();
+    const dependencies = {
+      redis,
+      now: () => 1_700_000_000_000,
+      enqueueBullmqJob: async () => undefined,
+    };
+    const first = await enqueueVerticalDramaInteractiveJob(payload, dependencies);
+    let release!: () => void;
+    const runPromise = runVerticalDramaInteractiveJob(
+      first.jobId,
+      async () => new Promise(resolve => { release = () => resolve({ shouldNotCommit: true }); }),
+      dependencies,
+    );
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const current = await getVerticalDramaInteractiveJobStatus(first.jobId, payload, dependencies);
+      if (current?.status === "running") break;
+      await Promise.resolve();
+    }
+    const canceled = await cancelVerticalDramaInteractiveJob(first.jobId, payload, dependencies);
+    expect(canceled?.status).toBe("canceled");
+    release();
+    await runPromise;
+    await expect(getVerticalDramaInteractiveJobStatus(first.jobId, payload, dependencies)).resolves.toMatchObject({
+      status: "canceled",
+      result: null,
+    });
   });
 });

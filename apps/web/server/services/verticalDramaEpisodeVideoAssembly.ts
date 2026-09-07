@@ -39,6 +39,7 @@
  */
 
 import { randomUUID } from "crypto";
+import { createHash } from "crypto";
 import { spawn } from "child_process";
 import fs from "fs";
 import fsp from "fs/promises";
@@ -48,7 +49,7 @@ import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db";
-import { verticalDramaEpisodes } from "../../drizzle/schema";
+import { verticalDramaEmotionPlans, verticalDramaEpisodes } from "../../drizzle/schema";
 import { assertR2StorageActive, storagePutFromPath, storageStreamFile } from "../storage";
 import type { VerticalDramaMotionPromptPack } from "@shared/verticalDramaSeries";
 import { resolveCanonicalShotAssembly } from "@shared/verticalDramaSeries/assemblyReadiness";
@@ -179,6 +180,10 @@ export interface CompiledVideoState {
   /** True when the compiled artifact already contains the active B-roll
    * projection. Production assembly must not overlay the same track again. */
   brollApplied?: boolean;
+  /** Durable provenance used by the Web -> Worker audio pipeline. */
+  storageKey?: string;
+  checksumSha256?: string;
+  artifactRevision?: string;
   /**
    * Additive (`planning/vd-remotion-render-option/plan.md`, wave 1) — which
    * render engine produced/owns this `compiledVideo` state. Omitted means
@@ -197,6 +202,13 @@ export interface CompiledVideoState {
    * §P3). Absent for `renderEngine === "ffmpeg"` states.
    */
   renderSubmittedAt?: number;
+}
+
+async function sha256File(filePath: string): Promise<string> {
+  const hash = createHash("sha256");
+  const stream = fs.createReadStream(filePath);
+  for await (const chunk of stream) hash.update(chunk as Buffer);
+  return hash.digest("hex");
 }
 
 export interface MissingClip {
@@ -864,6 +876,35 @@ export async function persistCompiledVideoState(
 }
 
 /**
+ * A plan may be approved before the compiled cut exists.  Reconcile the
+ * approved plan after the cut is durably published so the audio lane does not
+ * depend on a second user action or on the order in which the two approvals
+ * happen.  Queue admission is best-effort here: a worker outage must not turn
+ * an otherwise successful video assembly into a failed video assembly.
+ */
+async function reconcileApprovedAudioPlansAfterCompiledCut(owner: AssembleEpisodeVideoOwner): Promise<void> {
+  const plans = await db.select({ id: verticalDramaEmotionPlans.id })
+    .from(verticalDramaEmotionPlans)
+    .where(and(
+      eq(verticalDramaEmotionPlans.tenantId, owner.tenantId),
+      eq(verticalDramaEmotionPlans.userId, owner.userId),
+      eq(verticalDramaEmotionPlans.seriesId, owner.seriesId),
+      eq(verticalDramaEmotionPlans.episodeId, owner.episodeId),
+      eq(verticalDramaEmotionPlans.status, "approved"),
+    )).limit(1);
+  const planId = plans[0]?.id;
+  if (!planId) return;
+
+  const { reconcileApprovedVerticalDramaAudioPipeline } = await import("./verticalDramaAudioPipelineCoordinator");
+  await reconcileApprovedVerticalDramaAudioPipeline({
+    tenantId: owner.tenantId,
+    userId: owner.userId,
+    planId,
+    requestedStage: "analysis",
+  });
+}
+
+/**
  * Task #21 phase A — additive `assemblyManifest.finalRender` section recording
  * WHAT a render included (counts/presets/flags), not the render inputs
  * themselves (those are transient job-temp-dir staged files, cleaned up after
@@ -1360,6 +1401,12 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
     // completion. Production behavior is unchanged (defaults to the real
     // `probeDurationSeconds`); tests now inject a synchronous fake.
     const durationSeconds = await probeDuration(outputPath);
+    // Unit/injected runners may report a probe without materialising bytes;
+    // retain their existing behavior, while production assembly records the
+    // checksum required for an audio-worker handoff.
+    const checksumSha256 = fs.existsSync(outputPath)
+      ? await sha256File(outputPath)
+      : undefined;
 
     const storageKey = `${args.storageKeyPrefix ?? "vertical-drama/compiled"}/${owner.seriesId}/${owner.episodeId}/${randomUUID()}-${filename}`;
     await assertR2StorageActive();
@@ -1373,12 +1420,26 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
     await persistCompiledVideoState(owner, {
       pendingJobId: undefined,
       videoUrl: url,
+      storageKey,
+      ...(checksumSha256
+        ? {
+            checksumSha256,
+            artifactRevision: `compiled-${checksumSha256.slice(0, 16)}`,
+          }
+        : {}),
       durationSeconds,
       shotCount: clips.length,
       assembledAt: new Date().toISOString(),
       status: "completed",
       error: undefined,
       stale: false,
+    });
+
+    await reconcileApprovedAudioPlansAfterCompiledCut(owner).catch(error => {
+      console.warn("[vertical-drama-audio] compiled cut published but audio reconciliation was deferred", {
+        episodeId: owner.episodeId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     });
 
     if (finalRenderSummary) {

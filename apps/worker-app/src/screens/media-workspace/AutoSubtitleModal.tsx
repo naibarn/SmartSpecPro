@@ -65,25 +65,42 @@ export function AutoSubtitleModal({
           text?: string;
           words?: Array<{ word: string; startMs?: number; endMs?: number; start?: number; end?: number }>;
         }>;
+        words?: Array<{
+          text?: string;
+          word?: string;
+          startMs?: number;
+          endMs?: number;
+          start?: number;
+          end?: number;
+        }>;
       }>("worker_app_transcribe_audio", {
         videoPath: sourceVideoFile.path,
         language,
-        model: "small",
       });
 
       setTranscribeProgress(85);
 
-      const rawSegments = res?.segments || [];
-      if (rawSegments.length === 0 && res?.text) {
-        rawSegments.push({
-          startMs: 0,
-          endMs: 5000,
-          text: res.text,
-        });
+      const rawSegments = [...(res?.segments || [])];
+      if (rawSegments.length === 0 && res?.words?.length) {
+        const timedWords = res.words
+          .map((word) => ({
+            word: word.word || word.text || "",
+            startMs: typeof word.startMs === "number" ? word.startMs : Math.round((word.start || 0) * 1000),
+            endMs: typeof word.endMs === "number" ? word.endMs : Math.round((word.end || 0) * 1000),
+          }))
+          .filter((word) => word.word.trim() && word.endMs > word.startMs);
+        if (timedWords.length > 0) {
+          rawSegments.push({
+            startMs: timedWords[0].startMs,
+            endMs: timedWords[timedWords.length - 1].endMs,
+            text: res.text || timedWords.map((word) => word.word).join(" "),
+            words: timedWords,
+          });
+        }
       }
 
       if (rawSegments.length === 0) {
-        throw new Error("ไม่พบเสียงพูดในวิดีโอ หรือ AI ไม่สามารถถอดประโยคได้");
+        throw new Error("ไม่พบเสียงพูดที่มี timestamp จริงในวิดีโอ");
       }
 
       const parsedSegments: SubtitleSegmentItem[] = rawSegments.map((s, idx) => {

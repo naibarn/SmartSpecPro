@@ -20,6 +20,7 @@ export interface AudioDuckingConfig {
   thresholdDb: number;            // e.g. -28.0 dB
   attackMs: number;               // e.g. 40 ms
   releaseMs: number;              // e.g. 350 ms
+  holdMs?: number;                // minimum hold after a protected speech interval
 }
 
 export interface Transform2D {
@@ -136,6 +137,33 @@ export interface NleCanvas {
   aspectRatio: "9:16" | "16:9" | "1:1" | "4:5" | "21:9" | "custom" | string;
   durationMs: number;
   backgroundColor?: string;
+}
+
+export type PreviewAspectRatio = "9:16" | "16:9" | "1:1" | "source";
+
+export interface PreviewCanvasProfile {
+  aspectRatio: PreviewAspectRatio;
+  width: number;
+  height: number;
+  label: string;
+}
+
+const PREVIEW_CANVAS_PROFILES: Record<Exclude<PreviewAspectRatio, "source">, PreviewCanvasProfile> = {
+  "9:16": { aspectRatio: "9:16", width: 1080, height: 1920, label: "9:16 · 1080×1920" },
+  "16:9": { aspectRatio: "16:9", width: 1920, height: 1080, label: "16:9 · 1920×1080" },
+  "1:1": { aspectRatio: "1:1", width: 1080, height: 1080, label: "1:1 · 1080×1080" },
+};
+
+export function normalizePreviewAspectRatio(value: unknown, fallback: PreviewAspectRatio = "source"): PreviewAspectRatio {
+  return value === "9:16" || value === "16:9" || value === "1:1" || value === "source" ? value : fallback;
+}
+
+export function getPreviewCanvasProfile(value: unknown): PreviewCanvasProfile {
+  const aspectRatio = normalizePreviewAspectRatio(value, "9:16");
+  if (aspectRatio === "source") {
+    return PREVIEW_CANVAS_PROFILES["9:16"];
+  }
+  return PREVIEW_CANVAS_PROFILES[aspectRatio];
 }
 
 export interface ProjectAsset {

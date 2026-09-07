@@ -7,8 +7,9 @@ import { parseProjectDraft, saveNleProject, isProjectFilePath } from "./projectP
 import { MediaVideoEditorPlayer } from "./MediaVideoEditorPlayer";
 import { SpeakerAwareWorkflowPanel } from "./SpeakerAwareWorkflowPanel";
 import type { DeadAirRenderSelection } from "./mediaWorkspaceTimeline";
+import { resolveWorkspaceRelativePath, resolveWorkspaceSourcePath } from "./sourcePath";
 import type { SmartSpecProjectDraft, ProjectAsset } from "../../types/nleProject";
-import type { AdapterPolicy } from "./SpeakerAwareWorkflowPanel";
+import type { WireAdapterPolicy, WireAdapterId } from "./SpeakerAwareWorkflowPanel";
 
 type WorkspaceStage =
   | "intake"
@@ -62,7 +63,7 @@ export interface MediaWorkspaceHostProps {
   onOpenIntentSettings?: () => void;
   onBuildPlan?: (deadAir?: DeadAirRenderSelection) => void;
   onWorkspacePathChange?: (path: string) => void;
-  onSpeakerAwareRequestScan?: (input: { workflowMode: string; adapters: string[]; adapterPolicy: AdapterPolicy; requestedStages: string[]; outputStage: string; sourceRelativeName: string }) => void | Promise<{ jobId?: string; status?: string } | void>;
+  onSpeakerAwareRequestScan?: (input: { workflowMode: string; adapters: WireAdapterId[]; adapterPolicy: WireAdapterPolicy; requestedStages: string[]; outputStage: string; sourceRelativeName: string }) => void | Promise<{ jobId?: string; status?: string } | void>;
 }
 
 export function MediaWorkspaceHost({
@@ -100,6 +101,7 @@ export function MediaWorkspaceHost({
   const [isExplorerCollapsed, setIsExplorerCollapsed] = useState<boolean>(false);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [isSpeakerAwareOpen, setIsSpeakerAwareOpen] = useState(false);
+  const [autoSubtitleRequest, setAutoSubtitleRequest] = useState(0);
   const speakerAwarePanelRef = useRef<HTMLElement | null>(null);
   const [explorerWidth, setExplorerWidth] = useState<number>(() => {
     try {
@@ -174,6 +176,7 @@ export function MediaWorkspaceHost({
       workspacePath.current = workspace?.localPath;
       setSelectedVideo(null);
       setLoadedProjectDraft(null);
+      onSelectSourceFile?.("", workspace?.localPath || "");
     }
     return () => { projectRequest.current += 1; };
   }, [workspace?.localPath]);
@@ -188,17 +191,7 @@ export function MediaWorkspaceHost({
     setLoadedProjectDraft(null);
     setImportedAsset(null);
     if (onSelectSourceFile) {
-      let relativeName = entry.name;
-      const root = workspace?.localPath?.replace(/[\/\\]+$/, "");
-      if (root) {
-        const prefixSlash = `${root}/`;
-        const prefixBackslash = `${root}\\`;
-        if (entry.path.startsWith(prefixSlash)) {
-          relativeName = entry.path.slice(prefixSlash.length);
-        } else if (entry.path.startsWith(prefixBackslash)) {
-          relativeName = entry.path.slice(prefixBackslash.length);
-        }
-      }
+      const relativeName = resolveWorkspaceRelativePath(workspace?.localPath, entry.path) || entry.name;
       onSelectSourceFile(relativeName, entry.path);
     }
   };
@@ -220,16 +213,30 @@ export function MediaWorkspaceHost({
       setLoadedProjectDraft(draft);
       setImportedAsset(null);
       if (sourcePath) {
+        const projectWorkspacePath = draft.metadata?.workspacePath?.trim() || null;
+        const resolvedSourcePath = resolveWorkspaceSourcePath(workspace?.localPath, projectWorkspacePath, sourcePath) || sourcePath;
         setSelectedVideo({
           name: draft.title || entry.name.replace(/\.[^/.]+$/, ""),
-          path: sourcePath,
+          path: resolvedSourcePath,
           isDirectory: false,
           sizeBytes: 0,
           modifiedUnixMs: Date.now(),
-          extension: sourcePath.split(".").pop() || "mp4",
+          extension: resolvedSourcePath.split(".").pop() || "mp4",
           isVideo: true,
         });
+        const relativeSourcePath = resolveWorkspaceRelativePath(workspace?.localPath, resolvedSourcePath)
+          || resolveWorkspaceRelativePath(projectWorkspacePath, resolvedSourcePath);
+        if (relativeSourcePath) {
+          if (!resolveWorkspaceRelativePath(workspace?.localPath, resolvedSourcePath) && projectWorkspacePath) {
+            onWorkspacePathChange?.(projectWorkspacePath);
+          }
+          onSelectSourceFile?.(relativeSourcePath, resolvedSourcePath);
+        } else {
+          onSelectSourceFile?.("", entry.path);
+          setProjectError("ไม่พบ source video ภายในโฟลเดอร์ workspace ที่เปิดอยู่");
+        }
       } else {
+        onSelectSourceFile?.("", entry.path);
         setSelectedVideo({
           name: draft.title || entry.name.replace(/\.[^/.]+$/, ""),
           path: entry.path,
@@ -352,6 +359,7 @@ export function MediaWorkspaceHost({
     setLoadedProjectDraft(emptyDraft);
     setImportedAsset(null);
     setSelectedVideo(null);
+    onSelectSourceFile?.("", targetDir);
   };
 
   const stages: Array<{ id: WorkspaceStage; label: string }> =
@@ -685,6 +693,7 @@ export function MediaWorkspaceHost({
               removeDeadAir={removeDeadAir}
               onRemoveDeadAirChange={onRemoveDeadAirChange}
               onOpenIntentSettings={onOpenIntentSettings}
+              openAutoSubtitleRequest={autoSubtitleRequest}
               plan={plan}
               onBuildPlan={onBuildPlan}
               onSubmitJob={onSubmit}
@@ -698,9 +707,15 @@ export function MediaWorkspaceHost({
               <SpeakerAwareWorkflowPanel
                 ref={speakerAwarePanelRef}
                 seriesId={seriesId || loadedProjectDraft?.metadata?.seriesId}
-                sourceLabel={selectedVideo?.name}
+                sourceLabel={selectedVideo?.isVideo ? selectedVideo.name : sourceRelativeName || null}
                 busy={busy}
-                onRequestScan={onSpeakerAwareRequestScan ? (input) => onSpeakerAwareRequestScan({ ...input, sourceRelativeName: sourceRelativeName ?? "" }) : undefined}
+                onOpenSubtitleEditor={() => setAutoSubtitleRequest((current) => current + 1)}
+                onRequestScan={onSpeakerAwareRequestScan ? (input) => onSpeakerAwareRequestScan({
+                  ...input,
+                  sourceRelativeName: resolveWorkspaceRelativePath(workspace?.localPath, selectedVideo?.path)
+                    || sourceRelativeName?.trim()
+                    || "",
+                }) : undefined}
               />
             ) : null}
           </div>

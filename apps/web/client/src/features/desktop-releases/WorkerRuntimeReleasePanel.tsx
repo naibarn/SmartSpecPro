@@ -4,6 +4,7 @@ import {
   CloudUpload,
   KeyRound,
   RefreshCw,
+  Server,
   ShieldAlert,
   Upload,
   XCircle,
@@ -103,6 +104,9 @@ export function WorkerRuntimeReleasePanel() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState<"upload" | "import" | null>(
+    null
+  );
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState<{
     kind: "success" | "error";
@@ -197,6 +201,7 @@ export function WorkerRuntimeReleasePanel() {
         fileSizeBytes: file.size,
       });
       setBusy(true);
+      setBusyAction("upload");
       setProgress(0);
       setMessage(null);
       const presignResponse = await fetch(
@@ -255,6 +260,53 @@ export function WorkerRuntimeReleasePanel() {
       });
     } finally {
       setBusy(false);
+      setBusyAction(null);
+    }
+  };
+
+  const importFromServer = async () => {
+    if (!version.trim()) {
+      setMessage({
+        kind: "error",
+        text: "กรุณาระบุ version ให้ตรงกับชื่อไฟล์บน server",
+      });
+      return;
+    }
+    try {
+      setBusy(true);
+      setBusyAction("import");
+      setProgress(0);
+      setMessage(null);
+      const response = await fetch(
+        "/api/admin/worker-runtime/releases/import-local",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            version: version.trim(),
+            runtimeId,
+            channel,
+          }),
+        }
+      );
+      await readJson(response);
+      setMessage({
+        kind: "success",
+        text: "นำเข้าและตรวจสอบ runtime จาก server สำเร็จแล้ว — กด Publish ในประวัติ release เพื่อเปิดใช้งาน",
+      });
+      await refresh();
+    } catch (error) {
+      setMessage({
+        kind: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Server runtime import failed.",
+      });
+    } finally {
+      setBusy(false);
+      setBusyAction(null);
     }
   };
 
@@ -645,17 +697,37 @@ export function WorkerRuntimeReleasePanel() {
                 ชื่อไฟล์ไม่ตรงกับ runtime/version ที่เลือก
               </span>
             ) : null}
-            <Button
-              type="button"
-              className="w-fit"
-              onClick={() => void upload()}
-              disabled={
-                busy || selectedFileNameMismatch || !file || !version.trim()
-              }
-            >
-              <CloudUpload className="mr-2 h-4 w-4" />
-              {busy ? `Uploading ${progress}%` : "Upload & validate"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                className="w-fit"
+                onClick={() => void upload()}
+                disabled={
+                  busy || selectedFileNameMismatch || !file || !version.trim()
+                }
+              >
+                <CloudUpload className="mr-2 h-4 w-4" />
+                {busyAction === "upload"
+                  ? `Uploading ${progress}%`
+                  : "Upload & validate"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-fit"
+                onClick={() => void importFromServer()}
+                disabled={busy || !version.trim()}
+              >
+                <Server className="mr-2 h-4 w-4" />
+                {busyAction === "import"
+                  ? "กำลังนำเข้าจาก server…"
+                  : "Import server artifact"}
+              </Button>
+            </div>
+            <span>
+              Import server artifact จะใช้ ZIP ชื่อมาตรฐานจาก release directory
+              ของ server โดยไม่ต้องเลือกไฟล์ผ่าน Browser
+            </span>
           </div>
         </div>
 

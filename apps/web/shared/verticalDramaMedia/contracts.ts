@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { remotionRenderVideoWorkerInputSchema } from "../workerRuntime";
+import {
+  episodeAudioAnalyzeJobPayloadSchema,
+  episodeScoreMixJobPayloadSchema,
+  minimaxMusic3GenerateJobPayloadSchema,
+  verticalDramaAudioJobPayloadSchema,
+} from "./audioScoringContracts";
 
 export const VERTICAL_DRAMA_MEDIA_CONTRACT_VERSION = "2026-08-25.1";
 const id = z.string().trim().min(1).max(160).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/);
@@ -33,13 +39,16 @@ export const mediaJobKindValues = [
   "footage_probe_analyze",
   "footage_prepare",
   "footage_broll_render",
+  "episode_audio_analyze",
+  "minimax_music3_generate",
+  "episode_score_mix",
 ] as const;
 // Keep the media contract aligned with the Worker job ledger. `completed` is
 // emitted before/alongside publication by some control-plane versions, while
 // `expired` is a terminal reconciliation state; both must be representable so
 // clients do not poll forever or mistake an expired job for an active one.
 export const mediaJobStatusValues = ["queued", "claimed", "running", "uploading", "verifying", "completed", "published", "failed", "canceled", "expired", "quarantined"] as const;
-export const mediaErrorCodeValues = ["invalid_contract", "root_not_bound", "root_revision_stale", "source_not_stable", "unsupported_media", "dead_air_detection_failed", "focus_track_failed", "duration_budget_exceeded", "qc_failed", "workflow_capability_blocked", "artifact_checksum_mismatch", "artifact_ownership_failed", "publication_rejected", "index_enqueue_failed", "source_reference_expired", "source_fingerprint_mismatch", "transcription_unavailable", "transcription_failed", "unsupported_composition_executor", "placement_out_of_bounds", "placement_source_not_ready", "approval_required", "render_contract_mismatch"] as const;
+export const mediaErrorCodeValues = ["invalid_contract", "root_not_bound", "root_revision_stale", "source_not_stable", "unsupported_media", "dead_air_detection_failed", "focus_track_failed", "duration_budget_exceeded", "qc_failed", "workflow_capability_blocked", "artifact_checksum_mismatch", "artifact_ownership_failed", "publication_rejected", "index_enqueue_failed", "source_reference_expired", "source_fingerprint_mismatch", "transcription_unavailable", "transcription_failed", "unsupported_composition_executor", "placement_out_of_bounds", "placement_source_not_ready", "approval_required", "render_contract_mismatch", "model_not_installed", "model_identity_mismatch", "runtime_incompatible", "gpu_unavailable", "insufficient_resources", "license_review_required", "plan_stale", "timeline_mapping_partial", "native_music_conflict", "generation_failed", "generation_outcome_unknown", "vocals_detected", "take_too_short", "rights_review_required", "canceled"] as const;
 
 export const mediaAspectRatioSchema = z.enum(mediaAspectRatioValues);
 export const mediaProcessingModeSchema = z.enum(mediaProcessingModeValues);
@@ -88,6 +97,11 @@ export const deadAirPolicySchema = z.object({
   thresholdDb: z.number().min(-80).max(0),
   minSilenceMs: z.number().int().min(100).max(30_000),
   padMs: z.number().int().min(0).max(2000),
+  silenceRanges: z.array(z.object({
+    startMs: z.number().int().nonnegative().max(86_400_000),
+    endMs: z.number().int().positive().max(86_400_000).nullable(),
+    isManual: z.boolean().default(false),
+  }).strict()).max(256).default([]),
 }).strict();
 export const focusTargetSchema = z.object({
   targetId: id,
@@ -509,12 +523,18 @@ export const footageBrollRenderJobPayloadSchema = z.object({
   idempotencyKey: id.max(128),
 }).strict();
 
-export const verticalDramaMediaJobPayloadSchema = z.discriminatedUnion("kind", [mediaIngestJobPayloadSchema, brollPreprocessJobPayloadSchema, shotVideoGenerationJobPayloadSchema, footageProbeAnalyzeJobPayloadSchema, footagePrepareJobPayloadSchema, footageBrollRenderJobPayloadSchema]);
+export const verticalDramaMediaJobPayloadSchema = z.union([mediaIngestJobPayloadSchema, brollPreprocessJobPayloadSchema, shotVideoGenerationJobPayloadSchema, footageProbeAnalyzeJobPayloadSchema, footagePrepareJobPayloadSchema, footageBrollRenderJobPayloadSchema, episodeAudioAnalyzeJobPayloadSchema, minimaxMusic3GenerateJobPayloadSchema, episodeScoreMixJobPayloadSchema]);
+export {
+  episodeAudioAnalyzeJobPayloadSchema,
+  minimaxMusic3GenerateJobPayloadSchema,
+  episodeScoreMixJobPayloadSchema,
+  verticalDramaAudioJobPayloadSchema,
+};
 
 export const mediaArtifactManifestSchema = z.object({
   artifactId: id,
   artifactRevision: revision,
-  kind: z.enum(["normalized_video", "thumbnail", "waveform", "transcript", "analysis", "shot_video"]),
+  kind: z.enum(["normalized_video", "thumbnail", "waveform", "transcript", "edit_map", "analysis", "typed_audio_qc", "music_take", "score_mix", "score_mix_export", "score_mix_qc", "shot_video"]),
   storageKey,
   checksum,
   sizeBytes: z.number().int().positive().max(50_000_000_000),

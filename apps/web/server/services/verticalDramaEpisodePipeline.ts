@@ -462,6 +462,38 @@ function mapStoryboardGenerationError(
   };
 }
 
+export function buildStoryboardGenerationFailurePayload(
+  payload: Record<string, unknown>,
+  error: unknown
+): Record<string, unknown> {
+  if (!error || typeof error !== "object") return payload;
+  const recoveryError = error as Record<string, unknown>;
+  if (
+    recoveryError.code !== "VD_STORY_POLICY_RISK" ||
+    !recoveryError.candidate ||
+    typeof recoveryError.candidate !== "object" ||
+    Array.isArray(recoveryError.candidate) ||
+    typeof recoveryError.repairAttempts !== "number" ||
+    !Number.isInteger(recoveryError.repairAttempts) ||
+    !recoveryError.safety ||
+    typeof recoveryError.safety !== "object" ||
+    Array.isArray(recoveryError.safety)
+  ) {
+    return payload;
+  }
+  const safety = recoveryError.safety as Record<string, unknown>;
+  if (!Array.isArray(safety.findings)) return payload;
+  return {
+    ...payload,
+    safety_recovery: {
+      status: "exhausted",
+      repair_attempts: recoveryError.repairAttempts,
+      findings: safety.findings,
+      candidate: recoveryError.candidate,
+    },
+  };
+}
+
 /**
  * Map a `generateEpisodeDialogueAudioPlan` failure to a `RunResult` error —
  * mirrors `mapStoryboardGenerationError` exactly. Never throws. Only ever
@@ -1167,11 +1199,89 @@ type PipelineCharacterLookRow = {
   roleProvenance: string | null;
   roleReviewStatus: string | null;
   parentCharacterId: number | null;
+  sharesFaceWithCharacterId?: number | null;
   variantLabel: string | null;
   variantType: string | null;
   data: unknown;
   hasPortrait?: boolean;
 };
+
+type VerticalDramaTwinAgeLock = {
+  characterIds: number[];
+  ageRange?: { min: number; max: number };
+};
+
+function explicitTwinFamilyKey(row: PipelineCharacterLookRow): string | null {
+  const data =
+    row.data && typeof row.data === "object" && !Array.isArray(row.data)
+      ? (row.data as Record<string, unknown>)
+      : {};
+  const description = typeof data.description === "string" ? data.description : "";
+  const roleText = [row.role, row.narrativeRole, row.roleTier]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ")
+    .trim();
+  const source = /(?:ฝาแฝด|แฝด|\btwins?\b)/i.test(roleText)
+    ? roleText
+    : `${roleText} ${description}`;
+  if (!/(?:ฝาแฝด|แฝด|\btwins?\b)/i.test(source)) return null;
+  return source
+    .toLocaleLowerCase()
+    .replace(/(?:คนที่|ลำดับที่)\s*(?:หนึ่ง|สอง|สาม|สี่|ห้า|\d+)/gi, "")
+    .replace(/\b(?:first|second|third|one|two|three|\d+(?:st|nd|rd|th))\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildTwinAgeLocks(
+  rows: readonly PipelineCharacterLookRow[],
+  ageProfilesById: ReadonlyMap<
+    number,
+    { min: number; max: number; source?: string } | null | undefined
+  >,
+): VerticalDramaTwinAgeLock[] {
+  const baseRows = rows.filter(row => row.parentCharacterId == null);
+  const baseById = new Map(baseRows.map(row => [row.id, row]));
+  const groups = new Map<string, Set<number>>();
+  const addPair = (left: number, right: number) => {
+    if (left === right || !baseById.has(left) || !baseById.has(right)) return;
+    const key = [left, right].sort((a, b) => a - b).join("::");
+    if (!groups.has(key)) groups.set(key, new Set([left, right]));
+  };
+  for (const row of baseRows) {
+    if (row.sharesFaceWithCharacterId != null) {
+      addPair(row.id, row.sharesFaceWithCharacterId);
+    }
+  }
+  const explicitGroups = new Map<string, number[]>();
+  for (const row of baseRows) {
+    const key = explicitTwinFamilyKey(row);
+    if (!key) continue;
+    const list = explicitGroups.get(key) ?? [];
+    list.push(row.id);
+    explicitGroups.set(key, list);
+  }
+  for (const ids of explicitGroups.values()) {
+    if (ids.length === 2) addPair(ids[0], ids[1]);
+  }
+  return [...groups.values()].flatMap(characterIdSet => {
+    const characterIds = [...characterIdSet];
+    const profiles = characterIds
+      .map(id => ageProfilesById.get(id))
+      .filter(
+        (profile): profile is { min: number; max: number; source?: string } =>
+          Boolean(profile) && profile.source !== "role_context",
+      );
+    const selectedProfile = profiles.length > 0 ? [...profiles].sort(
+      (left, right) =>
+        left.max - left.min - (right.max - right.min) || left.min - right.min,
+    )[0] : undefined;
+    const ageRange = selectedProfile
+      ? { min: selectedProfile.min, max: selectedProfile.max }
+      : undefined;
+    return [{ characterIds, ageRange }];
+  });
+}
 
 function buildCrossEpisodeWardrobeCatalog(
   rows: readonly PipelineCharacterLookRow[]
@@ -1419,18 +1529,10 @@ async function resolvePipelineCharacterLooks(params: {
     })
   );
   const rowById = new Map(params.rows.map(row => [row.id, row]));
-  const resolveAuthoritativeAgeBand = (
-    row: PipelineCharacterLookRow
-  ): VerticalDramaCharacterLookCatalogEntry["authoritativeAgeBand"] => {
-    const sourceRow =
-      row.parentCharacterId != null
-        ? rowById.get(row.parentCharacterId) ?? row
-        : row;
+  const resolveAgeProfile = (row: PipelineCharacterLookRow) => {
     const sourceData =
-      sourceRow.data &&
-      typeof sourceRow.data === "object" &&
-      !Array.isArray(sourceRow.data)
-        ? (sourceRow.data as Record<string, unknown>)
+      row.data && typeof row.data === "object" && !Array.isArray(row.data)
+        ? (row.data as Record<string, unknown>)
         : {};
     const visualBible =
       sourceData.visualBible &&
@@ -1457,14 +1559,27 @@ async function resolvePipelineCharacterLooks(params: {
       ageRange: visualBible?.ageRange ?? sourceData.ageRange,
       ageStage: sourceData.ageStage ?? lookDesign?.age_stage,
       approvedDnaAgeRange: designDna?.ageRange,
-      role: sourceRow.role,
-      narrativeRole: sourceRow.narrativeRole,
-      roleTier: sourceRow.roleTier,
-      occupation: sourceRow.occupation,
+      role: row.role,
+      narrativeRole: row.narrativeRole,
+      roleTier: row.roleTier,
+      occupation: row.occupation,
       description: sourceData.description,
     });
-    return profile ? (profile.isMinor ? "minor" : "adult") : "unknown";
+    return profile;
   };
+  const baseAgeProfilesById = new Map(
+    params.rows
+      .filter(row => row.parentCharacterId == null)
+      .map(row => [row.id, resolveAgeProfile(row)]),
+  );
+  const twinAgeLocks = buildTwinAgeLocks(params.rows, baseAgeProfilesById);
+  const twinAgeRangeByCharacterId = new Map<number, { min: number; max: number }>();
+  for (const lock of twinAgeLocks) {
+    if (!lock.ageRange) continue;
+    for (const characterId of lock.characterIds) {
+      twinAgeRangeByCharacterId.set(characterId, lock.ageRange);
+    }
+  }
   const catalog: VerticalDramaCharacterLookCatalogEntry[] = params.rows.map(
     (row, index) => {
       row.hasPortrait = portraitResults[index];
@@ -1481,6 +1596,30 @@ async function resolvePipelineCharacterLooks(params: {
       const candidateAgeStage = lookDesign?.age_stage;
       const storedAgeStage = isVerticalDramaCharacterAgeStage(candidateAgeStage)
         ? candidateAgeStage
+        : undefined;
+      const parentAgeProfile =
+        row.parentCharacterId != null
+          ? baseAgeProfilesById.get(row.parentCharacterId)
+          : undefined;
+      const parentAgeRange =
+        row.parentCharacterId != null
+          ? twinAgeRangeByCharacterId.get(row.parentCharacterId) ??
+            (parentAgeProfile
+              ? { min: parentAgeProfile.min, max: parentAgeProfile.max }
+              : undefined)
+          : undefined;
+      const baseAgeRange =
+        row.parentCharacterId != null
+          ? parentAgeRange
+          : twinAgeRangeByCharacterId.get(row.id) ??
+            (() => {
+              const profile = resolveAgeProfile(row);
+              return profile
+                ? { min: profile.min, max: profile.max }
+                : undefined;
+            })();
+      const ownAgeProfile = row.parentCharacterId != null
+        ? resolveAgeProfile(row)
         : undefined;
       return {
         characterKey: row.characterKey,
@@ -1508,7 +1647,15 @@ async function resolvePipelineCharacterLooks(params: {
         data.lookDesignStatus === "review"
           ? { lookDesignStatus: data.lookDesignStatus }
           : {}),
-        authoritativeAgeBand: resolveAuthoritativeAgeBand(row),
+        authoritativeAgeBand: baseAgeRange
+          ? baseAgeRange.min < 18
+            ? "minor"
+            : "adult"
+          : "unknown",
+        ...(baseAgeRange ? { authoritativeAgeRange: baseAgeRange } : {}),
+        ...(ownAgeProfile
+          ? { ageRange: { min: ownAgeProfile.min, max: ownAgeProfile.max } }
+          : {}),
         hasPortrait: portraitResults[index],
       };
     }
@@ -4579,6 +4726,31 @@ export class VerticalDramaEpisodePipeline {
         variantData.description.trim().length > 0
           ? variantData.description
           : v.variantLabel;
+      const variantVisualBible =
+        variantData?.visualBible &&
+        typeof variantData.visualBible === "object" &&
+        !Array.isArray(variantData.visualBible)
+          ? (variantData.visualBible as Record<string, unknown>)
+          : undefined;
+      const variantDesignDna =
+        variantVisualBible?.designDna &&
+        typeof variantVisualBible.designDna === "object" &&
+        !Array.isArray(variantVisualBible.designDna)
+          ? (variantVisualBible.designDna as Record<string, unknown>)
+          : undefined;
+      const variantAgeProfile = resolveCharacterCastingAgeProfile({
+        age: variantData?.age,
+        ageMin: variantData?.ageMin,
+        ageMax: variantData?.ageMax,
+        ageRange: variantVisualBible?.ageRange ?? variantData?.ageRange,
+        ageStage: variantData?.ageStage,
+        approvedDnaAgeRange: variantDesignDna?.ageRange,
+        role: v.role,
+        narrativeRole: v.narrativeRole,
+        roleTier: v.roleTier,
+        occupation: v.occupation,
+        description: variantData?.description,
+      });
       const list = variantsByParentId.get(v.parentCharacterId as number) ?? [];
       list.push({
         characterKey: v.characterKey,
@@ -4586,6 +4758,14 @@ export class VerticalDramaEpisodePipeline {
         variantType: v.variantType,
         description,
         referenceImageUrl,
+        ...(variantAgeProfile && variantAgeProfile.source !== "role_context"
+          ? {
+              ageRange: {
+                min: variantAgeProfile.min,
+                max: variantAgeProfile.max,
+              },
+            }
+          : {}),
       });
       variantsByParentId.set(v.parentCharacterId as number, list);
     });
@@ -4594,34 +4774,65 @@ export class VerticalDramaEpisodePipeline {
     // plan.md W5) — twins are independent base characters (parentCharacterId
     // == null, already partitioned into `characterRows` above), never
     // variant rows, that happen to share an identical face with another
-    // base character (`sharesFaceWithCharacterId`). Build a flat,
-    // order-independent list of `{characterKeyA, characterKeyB}` pairs from
-    // the same base-character roster already in scope — dedupe so a pair
-    // that could be discovered from either character's own
-    // `sharesFaceWithCharacterId` pointer (or, defensively, both sides
-    // pointing at each other) is only listed once. `characters[]` sent to
-    // `generateStoryboardShotgrid` is unaffected — this is purely additive,
-    // sibling to `variants` above, so a series with no twins produces an
-    // empty list and a byte-identical prompt to before this field existed.
+    // base character (`sharesFaceWithCharacterId`). Legacy rows can also be
+    // recovered when exactly two base rows share an explicit twin-role fact;
+    // this repairs the prompt/selection boundary without mutating the rows.
+    // The pair carries the narrowest authorized age profile when one exists.
     const characterKeyById = new Map<number, string>(
       characterRows.map((c: VdCharacterRosterRow) => [c.id, c.characterKey])
     );
+    const baseAgeProfilesById = new Map(
+      characterRows
+        .filter((c: VdCharacterRosterRow) => c.parentCharacterId == null)
+        .map((c: VdCharacterRosterRow) => [c.id, (() => {
+          const data =
+            c.data && typeof c.data === "object" && !Array.isArray(c.data)
+              ? (c.data as Record<string, unknown>)
+              : {};
+          const visualBible =
+            data.visualBible &&
+            typeof data.visualBible === "object" &&
+            !Array.isArray(data.visualBible)
+              ? (data.visualBible as Record<string, unknown>)
+              : undefined;
+          const designDna =
+            visualBible?.designDna &&
+            typeof visualBible.designDna === "object" &&
+            !Array.isArray(visualBible.designDna)
+              ? (visualBible.designDna as Record<string, unknown>)
+              : undefined;
+          return resolveCharacterCastingAgeProfile({
+            age: data.age,
+            ageMin: data.ageMin,
+            ageMax: data.ageMax,
+            ageRange: visualBible?.ageRange ?? data.ageRange,
+            approvedDnaAgeRange: designDna?.ageRange,
+            role: c.role,
+            narrativeRole: c.narrativeRole,
+            roleTier: c.roleTier,
+            occupation: c.occupation,
+            description: data.description,
+          });
+        })()]),
+    );
+    const twinAgeLocks = buildTwinAgeLocks(
+      characterRows as PipelineCharacterLookRow[],
+      baseAgeProfilesById,
+    );
     const twinPairs: NonNullable<
       GenerateStoryboardShotgridParams["twinPairs"]
-    > = [];
-    const seenTwinPairKeys = new Set<string>();
-    for (const c of characterRows) {
-      if (c.sharesFaceWithCharacterId == null) continue;
-      const otherKey = characterKeyById.get(c.sharesFaceWithCharacterId);
-      if (!otherKey || otherKey === c.characterKey) continue;
-      const pairKey = [c.characterKey, otherKey].sort().join("::");
-      if (seenTwinPairKeys.has(pairKey)) continue;
-      seenTwinPairKeys.add(pairKey);
-      twinPairs.push({
-        characterKeyA: c.characterKey,
-        characterKeyB: otherKey,
-      });
-    }
+    > = twinAgeLocks.flatMap(lock => {
+      if (lock.characterIds.length !== 2) return [];
+      const [leftId, rightId] = lock.characterIds;
+      const leftKey = characterKeyById.get(leftId);
+      const rightKey = characterKeyById.get(rightId);
+      if (!leftKey || !rightKey) return [];
+      return [{
+        characterKeyA: leftKey,
+        characterKeyB: rightKey,
+        ...(lock.ageRange ? { ageRange: lock.ageRange } : {}),
+      }];
+    });
 
     const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? null;
     // Part B1 (planning/`polished-toasting-gadget.md`) — resolve from the
@@ -5266,6 +5477,8 @@ export class VerticalDramaEpisodePipeline {
         roleProvenance: verticalDramaCharacters.roleProvenance,
         roleReviewStatus: verticalDramaCharacters.roleReviewStatus,
         parentCharacterId: verticalDramaCharacters.parentCharacterId,
+        sharesFaceWithCharacterId:
+          verticalDramaCharacters.sharesFaceWithCharacterId,
         variantLabel: verticalDramaCharacters.variantLabel,
         variantType: verticalDramaCharacters.variantType,
         data: verticalDramaCharacters.data,
@@ -8250,6 +8463,7 @@ export class VerticalDramaEpisodePipeline {
         }
       } catch (error) {
         const genError = mapStoryboardGenerationError(error);
+        payload = buildStoryboardGenerationFailurePayload(payload, error);
         await this.finalizeAsyncStoryboardShotgridRun(
           owner,
           runId,

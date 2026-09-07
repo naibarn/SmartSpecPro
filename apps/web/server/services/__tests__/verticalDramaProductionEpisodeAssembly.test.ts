@@ -85,6 +85,7 @@ vi.mock("../../db", () => {
 });
 
 vi.mock("../../storage", () => ({
+  assertR2StorageActive: vi.fn(async () => undefined),
   storagePutFromPath: vi.fn(async (key: string) => ({
     key,
     url: `/api/storage/files/${key}`,
@@ -97,7 +98,9 @@ vi.mock("../../storage", () => ({
 // `chatMemoryFlagIntegration.test.ts` already establishes for this exact
 // function.
 vi.mock("../tenantFeatureFlagService", () => ({
-  getTenantFeatureFlags: vi.fn(async () => ({ verticalDramaSeriesVoiceChain: false })),
+  getTenantFeatureFlags: vi.fn(async () => ({
+    verticalDramaSeriesVoiceChain: false,
+  })),
 }));
 
 // Avoid a real network fetch in `downloadClipToFile` during the orchestrator tests.
@@ -147,7 +150,9 @@ beforeEach(() => {
   dbState.productionEpisodesManifest = null;
   dbState.bible = null;
   vi.clearAllMocks();
-  vi.mocked(getTenantFeatureFlags).mockResolvedValue({ ...FEATURE_FLAG_DEFAULTS });
+  vi.mocked(getTenantFeatureFlags).mockResolvedValue({
+    ...FEATURE_FLAG_DEFAULTS,
+  });
   // Default enqueue stub — a fresh fake job id per call, so callers that
   // assert on `job.id` (e.g. `pendingJobId`) never collide across groups.
   let queueCallCount = 0;
@@ -179,7 +184,9 @@ function seedGroupManifest(
 ): void {
   dbState.productionEpisodesManifest = {
     groupSize,
-    episodes: [{ index: groupIndex, groupSize, subEpisodeNumbers, status: "pending" }],
+    episodes: [
+      { index: groupIndex, groupSize, subEpisodeNumbers, status: "pending" },
+    ],
   };
 }
 
@@ -201,11 +208,16 @@ function membersFrom(episodeNumbers: number[]) {
 /* -------------------------------------------------------------------------- */
 
 describe("chunkSubEpisodesIntoGroups", () => {
-  const bySubEp = (episodeNumbers: number[]): Array<{ episodeNumber: number }> =>
+  const bySubEp = (
+    episodeNumbers: number[]
+  ): Array<{ episodeNumber: number }> =>
     episodeNumbers.map(episodeNumber => ({ episodeNumber }));
 
   it("splits an exact multiple of 5 into equal groups", () => {
-    const groups = chunkSubEpisodesIntoGroups(bySubEp([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), 5);
+    const groups = chunkSubEpisodesIntoGroups(
+      bySubEp([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+      5
+    );
     expect(groups.map(g => g.map(e => e.episodeNumber))).toEqual([
       [1, 2, 3, 4, 5],
       [6, 7, 8, 9, 10],
@@ -216,8 +228,12 @@ describe("chunkSubEpisodesIntoGroups", () => {
     const episodeNumbers = Array.from({ length: 20 }, (_, i) => i + 1);
     const groups = chunkSubEpisodesIntoGroups(bySubEp(episodeNumbers), 10);
     expect(groups).toHaveLength(2);
-    expect(groups[0].map(e => e.episodeNumber)).toEqual(episodeNumbers.slice(0, 10));
-    expect(groups[1].map(e => e.episodeNumber)).toEqual(episodeNumbers.slice(10, 20));
+    expect(groups[0].map(e => e.episodeNumber)).toEqual(
+      episodeNumbers.slice(0, 10)
+    );
+    expect(groups[1].map(e => e.episodeNumber)).toEqual(
+      episodeNumbers.slice(10, 20)
+    );
   });
 
   it("keeps a short last group when the count doesn't divide evenly (groupSize 5)", () => {
@@ -251,7 +267,9 @@ describe("chunkSubEpisodesIntoGroups", () => {
 
   it("orders sub-episodes by episodeNumber before chunking, regardless of input order", () => {
     const groups = chunkSubEpisodesIntoGroups(bySubEp([3, 1, 5, 2, 4]), 5);
-    expect(groups).toEqual([[1, 2, 3, 4, 5].map(episodeNumber => ({ episodeNumber }))]);
+    expect(groups).toEqual([
+      [1, 2, 3, 4, 5].map(episodeNumber => ({ episodeNumber })),
+    ]);
   });
 });
 
@@ -274,10 +292,30 @@ describe("Production Episode range grouping", () => {
         subEpisodesPerProductionEpisode: 3,
       })
     ).toEqual([
-      { index: 0, productionEpisodeNumber: 1, subEpisodeNumbers: [1, 2, 3], isRemainder: false },
-      { index: 1, productionEpisodeNumber: 2, subEpisodeNumbers: [4, 5, 6], isRemainder: false },
-      { index: 2, productionEpisodeNumber: 3, subEpisodeNumbers: [7, 8, 9], isRemainder: false },
-      { index: 3, productionEpisodeNumber: 4, subEpisodeNumbers: [10], isRemainder: true },
+      {
+        index: 0,
+        productionEpisodeNumber: 1,
+        subEpisodeNumbers: [1, 2, 3],
+        isRemainder: false,
+      },
+      {
+        index: 1,
+        productionEpisodeNumber: 2,
+        subEpisodeNumbers: [4, 5, 6],
+        isRemainder: false,
+      },
+      {
+        index: 2,
+        productionEpisodeNumber: 3,
+        subEpisodeNumbers: [7, 8, 9],
+        isRemainder: false,
+      },
+      {
+        index: 3,
+        productionEpisodeNumber: 4,
+        subEpisodeNumbers: [10],
+        isRemainder: true,
+      },
     ]);
   });
 });
@@ -316,7 +354,8 @@ describe("resolveSubEpisodesForProductionAssembly", () => {
       { episodeNumber: 2, videoUrl: "/api/storage/files/b.mp4" },
       { episodeNumber: 1, videoUrl: "/api/storage/files/a.mp4" },
     ];
-    const { usable, missing } = resolveSubEpisodesForProductionAssembly(subEpisodes);
+    const { usable, missing } =
+      resolveSubEpisodesForProductionAssembly(subEpisodes);
     expect(usable.map(e => e.episodeNumber)).toEqual([1, 2]);
     expect(missing).toEqual([]);
   });
@@ -327,9 +366,9 @@ describe("resolveSubEpisodesForProductionAssembly", () => {
       { episodeNumber: 2, videoUrl: undefined },
       { episodeNumber: 3, videoUrl: undefined },
     ];
-    expect(() => resolveSubEpisodesForProductionAssembly(subEpisodes)).toThrowError(
-      /vertical_drama_production_missing_subepisodes.*2, 3/
-    );
+    expect(() =>
+      resolveSubEpisodesForProductionAssembly(subEpisodes)
+    ).toThrowError(/vertical_drama_production_missing_subepisodes.*2, 3/);
   });
 
   it("returns only the usable sub-episodes when allowPartial is true, reporting missing separately", () => {
@@ -338,9 +377,12 @@ describe("resolveSubEpisodesForProductionAssembly", () => {
       { episodeNumber: 2, videoUrl: undefined },
       { episodeNumber: 3, videoUrl: "/api/storage/files/c.mp4" },
     ];
-    const { usable, missing } = resolveSubEpisodesForProductionAssembly(subEpisodes, {
+    const { usable, missing } = resolveSubEpisodesForProductionAssembly(
+      subEpisodes,
+      {
       allowPartial: true,
-    });
+      }
+    );
     expect(usable.map(e => e.episodeNumber)).toEqual([1, 3]);
     expect(missing).toEqual([2]);
   });
@@ -351,7 +393,9 @@ describe("resolveSubEpisodesForProductionAssembly", () => {
       { episodeNumber: 2, videoUrl: undefined },
     ];
     expect(() =>
-      resolveSubEpisodesForProductionAssembly(subEpisodes, { allowPartial: true })
+      resolveSubEpisodesForProductionAssembly(subEpisodes, {
+        allowPartial: true,
+      })
     ).toThrowError(/vertical_drama_production_no_compiled_subepisodes/);
   });
 });
@@ -367,26 +411,37 @@ describe("extractSubEpisodeCompiledVideoUrl", () => {
     expect(extractSubEpisodeCompiledVideoUrl({})).toBeNull();
     expect(
       extractSubEpisodeCompiledVideoUrl({
-        compiledVideo: { status: "pending", videoUrl: "/api/storage/files/a.mp4" },
+        compiledVideo: {
+          status: "pending",
+          videoUrl: "/api/storage/files/a.mp4",
+        },
       })
     ).toBeNull();
     expect(
       extractSubEpisodeCompiledVideoUrl({
-        compiledVideo: { status: "failed", videoUrl: "/api/storage/files/a.mp4" },
+        compiledVideo: {
+          status: "failed",
+          videoUrl: "/api/storage/files/a.mp4",
+        },
       })
     ).toBeNull();
   });
 
   it("returns null when completed but videoUrl is empty", () => {
     expect(
-      extractSubEpisodeCompiledVideoUrl({ compiledVideo: { status: "completed", videoUrl: "" } })
+      extractSubEpisodeCompiledVideoUrl({
+        compiledVideo: { status: "completed", videoUrl: "" },
+      })
     ).toBeNull();
   });
 
   it("returns the videoUrl when status is completed and videoUrl is non-empty", () => {
     expect(
       extractSubEpisodeCompiledVideoUrl({
-        compiledVideo: { status: "completed", videoUrl: "/api/storage/files/a.mp4" },
+        compiledVideo: {
+          status: "completed",
+          videoUrl: "/api/storage/files/a.mp4",
+        },
       })
     ).toBe("/api/storage/files/a.mp4");
   });
@@ -395,7 +450,11 @@ describe("extractSubEpisodeCompiledVideoUrl", () => {
 describe("productionEpisodeFilename", () => {
   it("produces a slugged, 1-based filename", () => {
     expect(
-      productionEpisodeFilename({ seriesId: 42, groupIndex: 0, seriesTitle: "My Drama!" })
+      productionEpisodeFilename({
+        seriesId: 42,
+        groupIndex: 0,
+        seriesTitle: "My Drama!",
+      })
     ).toBe("series-My-Drama-production-ep-1.mp4");
     expect(productionEpisodeFilename({ seriesId: 42, groupIndex: 2 })).toBe(
       "series-series-42-production-ep-3.mp4"
@@ -410,7 +469,10 @@ describe("assembleProductionEpisodesForSeries — enqueue (mocked db + workerSch
     dbState.episodes = episodeNumbers.map(n => ({
       episodeNumber: n,
       assemblyManifest: {
-        compiledVideo: { status: "completed", videoUrl: `/api/storage/files/sub-ep-${n}.mp4` },
+        compiledVideo: {
+          status: "completed",
+          videoUrl: `/api/storage/files/sub-ep-${n}.mp4`,
+        },
       },
     }));
   }
@@ -437,7 +499,9 @@ describe("assembleProductionEpisodesForSeries — enqueue (mocked db + workerSch
         groupSize: 5,
         internalBaseUrl: "http://localhost:3000",
       })
-    ).rejects.toThrowError(/vertical_drama_production_missing_subepisodes.*\b3\b/);
+    ).rejects.toThrowError(
+      /vertical_drama_production_missing_subepisodes.*\b3\b/
+    );
 
     // No enqueue and no manifest persisted — the precondition check runs
     // before any group is planned or written.
@@ -466,13 +530,14 @@ describe("assembleProductionEpisodesForSeries — enqueue (mocked db + workerSch
     // and STAYS "pending" here: the executor (a separate process, exercised
     // by `verticalDramaFfmpegAssemblyRunner.test.ts`/`inlineRenderWorker.test.ts`)
     // is what later flips a group to completed/failed, not this function.
-    expect(result.manifest.episodes.every(e => e.status === "pending")).toBe(true);
+    expect(result.manifest.episodes.every(e => e.status === "pending")).toBe(
+      true
+    );
     expect(dbState.productionEpisodesManifest).toEqual(result.manifest);
 
     expect(mockQueueVerticalDramaFfmpegAssemblyJob).toHaveBeenCalledTimes(2);
-    const [firstCall, secondCall] = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls.map(
-      c => c[0] as any
-    );
+    const [firstCall, secondCall] =
+      mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls.map(c => c[0] as any);
     expect(firstCall).toMatchObject({
       tenantId: owner.tenantId,
       requestedByUserId: owner.userId,
@@ -484,17 +549,23 @@ describe("assembleProductionEpisodesForSeries — enqueue (mocked db + workerSch
       },
     });
     expect(firstCall.renderFeed).toMatchObject({
-      owner: { tenantId: owner.tenantId, userId: owner.userId, seriesId: owner.seriesId },
+      owner: {
+        tenantId: owner.tenantId,
+        userId: owner.userId,
+        seriesId: owner.seriesId,
+      },
       groupIndex: 0,
       internalBaseUrl: "http://localhost:3000",
       seriesTitle: "Test Series",
       voiceChainEnabled: false,
     });
-    expect(firstCall.renderFeed.members.map((m: any) => m.episodeNumber)).toEqual([
-      1, 2, 3, 4, 5,
-    ]);
+    expect(
+      firstCall.renderFeed.members.map((m: any) => m.episodeNumber)
+    ).toEqual([1, 2, 3, 4, 5]);
     expect(secondCall.renderFeed.groupIndex).toBe(1);
-    expect(secondCall.renderFeed.members.map((m: any) => m.episodeNumber)).toEqual([6, 7]);
+    expect(
+      secondCall.renderFeed.members.map((m: any) => m.episodeNumber)
+    ).toEqual([6, 7]);
     // Enqueue-only — no direct ffmpeg spawn from this function anymore.
   });
 
@@ -514,7 +585,9 @@ describe("assembleProductionEpisodesForSeries — enqueue (mocked db + workerSch
     });
 
     expect(mockQueueVerticalDramaFfmpegAssemblyJob).toHaveBeenCalledTimes(1);
-    const [call] = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls.map(c => c[0] as any);
+    const [call] = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls.map(
+      c => c[0] as any
+    );
     expect(call.renderFeed.voiceChainEnabled).toBe(true);
     expect(call.renderFeed.audienceAgeRating).toBe("13plus");
   });
@@ -533,12 +606,17 @@ describe("assembleProductionEpisodesForSeries — enqueue (mocked db + workerSch
     // Simulate the executor completing group 0 in the background before the
     // second call (the real timeline: the executor patches the manifest
     // independently of this function, via `patchProductionEpisodeGroupState`).
-    const manifestAfterFirst = dbState.productionEpisodesManifest as ProductionEpisodesManifestWithBgm;
+    const manifestAfterFirst =
+      dbState.productionEpisodesManifest as ProductionEpisodesManifestWithBgm;
     dbState.productionEpisodesManifest = {
       ...manifestAfterFirst,
       episodes: manifestAfterFirst.episodes.map(e =>
         e.index === 0
-          ? { ...e, status: "completed" as const, videoUrl: "/api/storage/files/group-0.mp4" }
+          ? {
+              ...e,
+              status: "completed" as const,
+              videoUrl: "/api/storage/files/group-0.mp4",
+            }
           : e
       ),
     };
@@ -559,7 +637,9 @@ describe("assembleProductionEpisodesForSeries — enqueue (mocked db + workerSch
     expect(second.manifest.episodes[1].status).toBe("pending"); // freshly (re)computed
 
     expect(mockQueueVerticalDramaFfmpegAssemblyJob).toHaveBeenCalledTimes(1);
-    const [onlyCall] = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls.map(c => c[0] as any);
+    const [onlyCall] = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls.map(
+      c => c[0] as any
+    );
     expect(onlyCall.renderFeed.groupIndex).toBe(1);
   });
 });
@@ -665,7 +745,9 @@ describe("runProductionEpisodeGroupJob — Render-options LEVEL (renderOptions)"
         args: RenderSubEpisodeWithOptionsArgs
       ): Promise<RenderSubEpisodeWithOptionsResult> => {
         calls.push(args);
-        return { videoUrl: `/api/storage/files/rendered-${args.owner.episodeId}.mp4` };
+        return {
+          videoUrl: `/api/storage/files/rendered-${args.owner.episodeId}.mp4`,
+        };
       }
     );
 
@@ -695,7 +777,9 @@ describe("runProductionEpisodeGroupJob — Render-options LEVEL (renderOptions)"
         args: RenderSubEpisodeWithOptionsArgs
       ): Promise<RenderSubEpisodeWithOptionsResult> => {
         if (args.owner.episodeId === 2) throw new Error("boom: render failed");
-        return { videoUrl: `/api/storage/files/rendered-${args.owner.episodeId}.mp4` };
+        return {
+          videoUrl: `/api/storage/files/rendered-${args.owner.episodeId}.mp4`,
+        };
       }
     );
 
@@ -740,7 +824,9 @@ describe("runProductionEpisodeGroupJob — Phase B-1 (bgm)", () => {
   const fakeFfmpegRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
   const fakeProbeDurationSeconds = vi.fn(async () => 42);
   const neverCalledRenderFn = vi.fn(
-    async (_args: RenderSubEpisodeWithOptionsArgs): Promise<RenderSubEpisodeWithOptionsResult> => {
+    async (
+      _args: RenderSubEpisodeWithOptionsArgs
+    ): Promise<RenderSubEpisodeWithOptionsResult> => {
       throw new Error("renderSubEpisodeWithOptionsFn should not be called");
     }
   );
@@ -775,7 +861,9 @@ describe("runProductionEpisodeGroupJob — Phase B-1 (bgm)", () => {
   it("does not run a second ffmpeg pass when bgm is omitted (default, unchanged)", async () => {
     seedGroupManifest(0, [1, 2, 3]);
 
-    await runProductionEpisodeGroupJob(baseArgs() as Parameters<typeof runProductionEpisodeGroupJob>[0]);
+    await runProductionEpisodeGroupJob(
+      baseArgs() as Parameters<typeof runProductionEpisodeGroupJob>[0]
+    );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only, no bgm pass
     expect(groupState(0)?.status).toBe("completed");
@@ -814,16 +902,22 @@ describe("runProductionEpisodeGroupJob — Phase B-1 (bgm)", () => {
     let call = 0;
     const runner = vi.fn(async () => {
       call += 1;
-      return call === 1 ? { code: 0, stderr: "" } : { code: 1, stderr: "bgm boom" };
+      return call === 1
+        ? { code: 0, stderr: "" }
+        : { code: 1, stderr: "bgm boom" };
     });
 
     await runProductionEpisodeGroupJob(
-      baseArgs({ bgm, ffmpegRunner: runner }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+      baseArgs({ bgm, ffmpegRunner: runner }) as Parameters<
+        typeof runProductionEpisodeGroupJob
+      >[0]
     );
 
     expect(storagePutFromPath).not.toHaveBeenCalled();
     expect(groupState(0)?.status).toBe("failed");
-    expect(groupState(0)?.error).toMatch(/ffmpeg production-episode bgm mix failed/);
+    expect(groupState(0)?.error).toMatch(
+      /ffmpeg production-episode bgm mix failed/
+    );
   });
 
   it("marks the group failed (without attempting the bgm pass) when the concat's own duration probe fails", async () => {
@@ -868,7 +962,9 @@ describe("runProductionEpisodeGroupJob — Phase C-1 (credits)", () => {
   const fakeFfmpegRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
   const fakeProbeDurationSeconds = vi.fn(async () => 42);
   const neverCalledRenderFn = vi.fn(
-    async (_args: RenderSubEpisodeWithOptionsArgs): Promise<RenderSubEpisodeWithOptionsResult> => {
+    async (
+      _args: RenderSubEpisodeWithOptionsArgs
+    ): Promise<RenderSubEpisodeWithOptionsResult> => {
       throw new Error("renderSubEpisodeWithOptionsFn should not be called");
     }
   );
@@ -907,7 +1003,9 @@ describe("runProductionEpisodeGroupJob — Phase C-1 (credits)", () => {
   it("does not run an extra ffmpeg pass when credits is omitted (default, unchanged)", async () => {
     seedGroupManifest(0, [1, 2, 3]);
 
-    await runProductionEpisodeGroupJob(baseArgs() as Parameters<typeof runProductionEpisodeGroupJob>[0]);
+    await runProductionEpisodeGroupJob(
+      baseArgs() as Parameters<typeof runProductionEpisodeGroupJob>[0]
+    );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only, no credits pass
     expect(groupState(0)?.status).toBe("completed");
@@ -917,7 +1015,9 @@ describe("runProductionEpisodeGroupJob — Phase C-1 (credits)", () => {
     seedGroupManifest(0, [1, 2, 3]);
 
     await runProductionEpisodeGroupJob(
-      baseArgs({ credits }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+      baseArgs({ credits }) as Parameters<
+        typeof runProductionEpisodeGroupJob
+      >[0]
     );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(2); // concat, then credits burn
@@ -944,7 +1044,9 @@ describe("runProductionEpisodeGroupJob — Phase C-1 (credits)", () => {
     seedGroupManifest(0, [1, 2, 3]);
 
     await runProductionEpisodeGroupJob(
-      baseArgs({ bgm, credits }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+      baseArgs({ bgm, credits }) as Parameters<
+        typeof runProductionEpisodeGroupJob
+      >[0]
     );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(3); // concat, bgm mix, credits burn
@@ -969,7 +1071,9 @@ describe("runProductionEpisodeGroupJob — Phase C-1 (credits)", () => {
     let call = 0;
     const runner = vi.fn(async () => {
       call += 1;
-      return call === 1 ? { code: 0, stderr: "" } : { code: 1, stderr: "credits boom" };
+      return call === 1
+        ? { code: 0, stderr: "" }
+        : { code: 1, stderr: "credits boom" };
     });
 
     await runProductionEpisodeGroupJob(
@@ -1030,7 +1134,9 @@ describe("runProductionEpisodeGroupJob — Phase C-2 (overlays)", () => {
   const fakeFfmpegRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
   const fakeProbeDurationSeconds = vi.fn(async () => 42);
   const neverCalledRenderFn = vi.fn(
-    async (_args: RenderSubEpisodeWithOptionsArgs): Promise<RenderSubEpisodeWithOptionsResult> => {
+    async (
+      _args: RenderSubEpisodeWithOptionsArgs
+    ): Promise<RenderSubEpisodeWithOptionsResult> => {
       throw new Error("renderSubEpisodeWithOptionsFn should not be called");
     }
   );
@@ -1042,8 +1148,18 @@ describe("runProductionEpisodeGroupJob — Phase C-2 (overlays)", () => {
   });
 
   const overlays: ProductionEpisodeOverlayItem[] = [
-    { atSeconds: 5, durationSeconds: 3, text: "Follow for more", style: "lower_third" },
-    { atSeconds: 20, durationSeconds: 2, text: "Plot twist!", style: "centered" },
+    {
+      atSeconds: 5,
+      durationSeconds: 3,
+      text: "Follow for more",
+      style: "lower_third",
+    },
+    {
+      atSeconds: 20,
+      durationSeconds: 2,
+      text: "Plot twist!",
+      style: "centered",
+    },
   ];
 
   const credits: ProductionEpisodeCreditsOptions = {
@@ -1074,7 +1190,9 @@ describe("runProductionEpisodeGroupJob — Phase C-2 (overlays)", () => {
   it("does not run an extra ffmpeg pass when overlays is omitted (default, unchanged)", async () => {
     seedGroupManifest(0, [1, 2, 3]);
 
-    await runProductionEpisodeGroupJob(baseArgs() as Parameters<typeof runProductionEpisodeGroupJob>[0]);
+    await runProductionEpisodeGroupJob(
+      baseArgs() as Parameters<typeof runProductionEpisodeGroupJob>[0]
+    );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only, no overlays pass
     expect(groupState(0)?.status).toBe("completed");
@@ -1084,7 +1202,9 @@ describe("runProductionEpisodeGroupJob — Phase C-2 (overlays)", () => {
     seedGroupManifest(0, [1, 2, 3]);
 
     await runProductionEpisodeGroupJob(
-      baseArgs({ overlays: [] }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+      baseArgs({ overlays: [] }) as Parameters<
+        typeof runProductionEpisodeGroupJob
+      >[0]
     );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only, no overlays pass
@@ -1095,7 +1215,9 @@ describe("runProductionEpisodeGroupJob — Phase C-2 (overlays)", () => {
     seedGroupManifest(0, [1, 2, 3]);
 
     await runProductionEpisodeGroupJob(
-      baseArgs({ overlays }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+      baseArgs({ overlays }) as Parameters<
+        typeof runProductionEpisodeGroupJob
+      >[0]
     );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(2); // concat, then overlays burn
@@ -1124,7 +1246,9 @@ describe("runProductionEpisodeGroupJob — Phase C-2 (overlays)", () => {
     seedGroupManifest(0, [1, 2, 3]);
 
     await runProductionEpisodeGroupJob(
-      baseArgs({ overlays, credits }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+      baseArgs({ overlays, credits }) as Parameters<
+        typeof runProductionEpisodeGroupJob
+      >[0]
     );
 
     // Concat, then ONE combined overlays+credits burn — NOT concat + overlays
@@ -1150,7 +1274,9 @@ describe("runProductionEpisodeGroupJob — Phase C-2 (overlays)", () => {
     seedGroupManifest(0, [1, 2, 3]);
 
     await runProductionEpisodeGroupJob(
-      baseArgs({ credits }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+      baseArgs({ credits }) as Parameters<
+        typeof runProductionEpisodeGroupJob
+      >[0]
     );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(2); // concat, then credits burn only
@@ -1167,7 +1293,9 @@ describe("runProductionEpisodeGroupJob — Phase C-2 (overlays)", () => {
     seedGroupManifest(0, [1, 2, 3]);
 
     await runProductionEpisodeGroupJob(
-      baseArgs({ bgm, overlays, credits }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+      baseArgs({ bgm, overlays, credits }) as Parameters<
+        typeof runProductionEpisodeGroupJob
+      >[0]
     );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(3); // concat, bgm mix, combined overlays+credits burn
@@ -1191,7 +1319,9 @@ describe("runProductionEpisodeGroupJob — Phase C-2 (overlays)", () => {
     let call = 0;
     const runner = vi.fn(async () => {
       call += 1;
-      return call === 1 ? { code: 0, stderr: "" } : { code: 1, stderr: "overlays boom" };
+      return call === 1
+        ? { code: 0, stderr: "" }
+        : { code: 1, stderr: "overlays boom" };
     });
 
     await runProductionEpisodeGroupJob(
@@ -1212,7 +1342,9 @@ describe("runProductionEpisodeGroupJob — Phase C-2 (overlays)", () => {
     let call = 0;
     const runner = vi.fn(async () => {
       call += 1;
-      return call === 1 ? { code: 0, stderr: "" } : { code: 1, stderr: "combined boom" };
+      return call === 1
+        ? { code: 0, stderr: "" }
+        : { code: 1, stderr: "combined boom" };
     });
 
     await runProductionEpisodeGroupJob(

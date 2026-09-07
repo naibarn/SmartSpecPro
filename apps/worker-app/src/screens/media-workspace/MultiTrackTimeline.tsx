@@ -24,6 +24,9 @@ export interface MultiTrackTimelineProps {
   onSaveProjectFile: () => void;
   onExportCapCutDraft: () => void;
   onOpenProjectSettings?: () => void;
+  isMediaBinOpen?: boolean;
+  onOpenMediaBin?: () => void;
+  onCloseMediaBin?: () => void;
   isDuckingActive?: boolean;
   onDropAsset?: (trackId: string, asset: any, dropTimeMs?: number) => void;
 }
@@ -59,12 +62,14 @@ export function MultiTrackTimeline({
   onSaveProjectFile,
   onExportCapCutDraft,
   onOpenProjectSettings,
+  isMediaBinOpen = true,
+  onOpenMediaBin,
+  onCloseMediaBin,
   isDuckingActive = false,
   onDropAsset,
 }: MultiTrackTimelineProps) {
   const timelineTracksRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = React.useState<number>(1.0); // 1.0 = fit, up to 4.0
-  const [isMediaBinOpen, setIsMediaBinOpen] = useState(false);
   const [soloTrackId, setSoloTrackId] = useState<string | null>(null);
 
   const [trimmingClip, setTrimmingClip] = useState<{
@@ -252,7 +257,6 @@ export function MultiTrackTimeline({
     });
 
     onUpdateProject({ ...project, tracks: nextTracks });
-    setIsMediaBinOpen(false);
   };
 
   const handleRemoveAssetFromBin = (assetId: string) => {
@@ -498,12 +502,12 @@ export function MultiTrackTimeline({
         </div>
 
         <div className="toolbar-center-actions">
-          {/* Project Media Bin Button with Count Badge */}
+          {/* Persistent Project Media Bin status; the full panel is docked on the right. */}
           <button
             type="button"
-            className={`nle-tool-btn highlight-btn ${isMediaBinOpen ? "active" : ""}`}
-            onClick={() => setIsMediaBinOpen(!isMediaBinOpen)}
-            title="เปิด Media Bin เพื่อดูและจัดการไฟล์ที่นำเข้าสู่โปรเจกต์"
+            className="nle-tool-btn highlight-btn active nle-bin-status"
+            onClick={() => onOpenMediaBin?.()}
+            title={isMediaBinOpen ? "Media Bin เปิดอยู่ทางขวาของ Workspace" : "เปิด Media Bin แบบเต็มความสูงทางขวา"}
           >
             📥 Bin ({mediaPool.length})
           </button>
@@ -694,11 +698,11 @@ export function MultiTrackTimeline({
         </div>
       </div>
 
-      {/* Main Multi-Track Stage: Body Split with Fixed Height & Scroll */}
+      {/* Main Multi-Track Stage: flexible height; the Bin list scrolls independently */}
       <div className="nle-timeline-body">
-        {/* Leftmost: Media Bin Side Panel (Collapsible) */}
+        {/* Full-height Media Bin docked to the application right edge, like Library. */}
         {isMediaBinOpen && (
-          <div className="nle-media-bin-sidebar">
+          <aside className="nle-media-bin-sidebar" aria-label="Media Bin">
             <div className="media-bin-sidebar-header">
               <span className="bin-title">
                 📥 Media Bin ({mediaPool.length})
@@ -722,11 +726,11 @@ export function MultiTrackTimeline({
                 </button>
                 <button
                   type="button"
-                  className="bin-close-btn"
-                  onClick={() => setIsMediaBinOpen(false)}
-                  title="ปิดแถบ Media Bin"
+                  className="drawer-collapse-btn"
+                  onClick={() => onCloseMediaBin?.()}
+                  title="ยุบปิด Media Bin ไปทางขวา"
                 >
-                  ✕
+                  ▶ ยุบแผง
                 </button>
               </div>
             </div>
@@ -806,7 +810,7 @@ export function MultiTrackTimeline({
                 </div>
               )}
             </div>
-          </div>
+          </aside>
         )}
 
         {/* Left Track Headers (Controls: Mute, Solo, Volume, Ducking) */}
@@ -887,7 +891,7 @@ export function MultiTrackTimeline({
           ))}
         </div>
 
-        {/* Right Scrollable Timeline Canvas */}
+        {/* Scrollable Timeline Canvas */}
         <div
           className="nle-tracks-content-column"
           onClick={handleTimelineClick}
@@ -1046,6 +1050,8 @@ export function MultiTrackTimeline({
             ))}
           </div>
         </div>
+
+        {/* Flex order keeps the persistent Media Bin docked on the right of the canvas. */}
       </div>
     </div>
   );

@@ -53,6 +53,7 @@ import { verticalDramaHandoffRouter } from "./routers/verticalDramaHandoff";
 import { verticalDramaAssemblyRouter } from "./routers/verticalDramaAssembly";
 import { verticalDramaAudioScoringRouter } from "./routers/verticalDramaAudioScoring";
 import { verticalDramaSpeakerAwareRouter } from "./routers/verticalDramaSpeakerAware";
+import { unifiedAudioRouter } from "./routers/unifiedAudio";
 import { verticalDramaShareRouter } from "./routers/verticalDramaShare";
 import { financeRouter } from "./routers/finance";
 import { memoryRouter } from "./routers/memory";
@@ -2268,6 +2269,7 @@ type AppRouterShape = {
   verticalDramaAssembly: typeof verticalDramaAssemblyRouter;
   verticalDramaAudioScoring: typeof verticalDramaAudioScoringRouter;
   verticalDramaSpeakerAware: typeof verticalDramaSpeakerAwareRouter;
+  unifiedAudio: typeof unifiedAudioRouter;
   verticalDramaShare: typeof verticalDramaShareRouter;
   system: typeof systemRouter;
   billing: typeof billingRouter;
@@ -2580,6 +2582,7 @@ const appRouterInternal = router<AppRouterShape>({
   verticalDramaAssembly: verticalDramaAssemblyRouter,
   verticalDramaAudioScoring: verticalDramaAudioScoringRouter,
   verticalDramaSpeakerAware: verticalDramaSpeakerAwareRouter,
+  unifiedAudio: unifiedAudioRouter,
   // Task #32 (Collab-lite L1, F131AA) — the ONLY public/unauthenticated
   // procedure in the whole Vertical Drama Series surface; kept as its own
   // router (not merged into `verticalDramaSeries`) so that stays 100%

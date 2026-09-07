@@ -62,6 +62,11 @@ export async function runVerticalDramaInteractiveJobExecutor(
         await import("./verticalDramaMarketplaceReviewSkillAdapter");
       return runMarketplaceReviewIdeasJob(payload, execution);
     }
+    case "emotion_plan": {
+      const { runVerticalDramaEmotionPlanJob } =
+        await import("./verticalDramaAudioScoring");
+      return runVerticalDramaEmotionPlanJob(payload, execution);
+    }
     default: {
       const exhaustive: never = payload.kind;
       throw new Error(

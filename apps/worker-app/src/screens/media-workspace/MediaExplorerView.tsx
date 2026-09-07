@@ -169,7 +169,9 @@ export function MediaExplorerView({
 
   useEffect(() => {
     const cleanInitial = initialPath ? stripVerbatimPrefix(initialPath) : null;
-    if (cleanInitial && cleanInitial === currentPath) {
+    // The initial state mirrors initialPath, but browseData is still empty on
+    // first mount. Do not skip the first native directory read in that case.
+    if (cleanInitial && cleanInitial === currentPath && browseData) {
       return;
     }
     void loadDirectory(initialPath ?? null);
@@ -246,7 +248,7 @@ export function MediaExplorerView({
 
       return sortAsc ? compareVal : -compareVal;
     });
-  }, [browseData?.entries, searchQuery, sortField, sortAsc]);
+  }, [browseData?.entries, fileCategoryFilter, searchQuery, sortField, sortAsc]);
 
   const handleCreateNewProject = async () => {
     try {

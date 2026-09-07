@@ -86,6 +86,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
+import { VerticalDramaEmotionScorePanel } from "@/components/verticalDramaSeries/VerticalDramaEmotionScorePanel";
 import { trpc } from "@/lib/trpc";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import {
@@ -314,6 +315,37 @@ export interface VerticalDramaProductionEpisodesPanelProps {
   readOnly?: boolean;
 }
 
+type ProductionEpisodeMember = {
+  id: string;
+  episodeNumber: number;
+  title?: string | null;
+};
+
+/** Resolve every source row for a Production Episode without falling back to
+ * the first member. Older manifests do not have `subEpisodeIds`, so the
+ * display-number fallback is deliberately one-to-one and still returns all
+ * matching members. */
+export function resolveProductionEpisodeMembers(
+  group: Pick<
+    VerticalDramaProductionEpisodeGroupState,
+    "subEpisodeIds" | "subEpisodeNumbers"
+  >,
+  episodeMembers: ProductionEpisodeMember[]
+): ProductionEpisodeMember[] {
+  const resolved = group.subEpisodeIds?.length
+    ? group.subEpisodeIds
+        .map(id =>
+          episodeMembers.find(member => String(member.id) === String(id))
+        )
+        .filter((member): member is ProductionEpisodeMember => Boolean(member))
+    : group.subEpisodeNumbers
+        .map(number =>
+          episodeMembers.find(member => member.episodeNumber === number)
+        )
+        .filter((member): member is ProductionEpisodeMember => Boolean(member));
+  return resolved.sort((a, b) => a.episodeNumber - b.episodeNumber);
+}
+
 export function VerticalDramaProductionEpisodesPanel({
   seriesId,
   readOnly = false,
@@ -371,7 +403,7 @@ export function VerticalDramaProductionEpisodesPanel({
                 productionEpisodesManifest?: VerticalDramaProductionEpisodesManifest | null;
                 title?: string | null;
               };
-              episodes?: Array<{ episodeNumber: number }>;
+              episodes?: ProductionEpisodeMember[];
             }
           | undefined;
         const hasPending =
@@ -383,6 +415,18 @@ export function VerticalDramaProductionEpisodesPanel({
     }
   );
 
+  const speakerAwareStatusQuery = trpc.verticalDramaSpeakerAware.status.useQuery(
+    { seriesId },
+    {
+      enabled: Boolean(seriesId),
+      staleTime: 5_000,
+      refetchInterval: query => {
+        const items = query.state.data?.items ?? [];
+        return items.some(item => ["queued", "claimed", "preparing", "running", "uploading", "publishing", "indexing"].includes(item.status)) ? 5_000 : false;
+      },
+    },
+  );
+
   const series = detailQuery.data?.series as
     | {
         productionEpisodesManifest?: VerticalDramaProductionEpisodesManifest | null;
@@ -391,6 +435,8 @@ export function VerticalDramaProductionEpisodesPanel({
     | undefined;
   const manifest = series?.productionEpisodesManifest ?? null;
   const groups = manifest?.episodes ?? [];
+  const episodeMembers = (detailQuery.data?.episodes ??
+    []) as ProductionEpisodeMember[];
   const hasInFlightGroups = groups.some(group => group.status === "pending");
 
   const assembleMutation =
@@ -642,6 +688,34 @@ export function VerticalDramaProductionEpisodesPanel({
             : "A Production Episode is rendered by Remotion from the selected Sub-Episode range. Use at least 3 Sub-Episodes per EP and choose compiled-video or shot-assembly sources."}
         </p>
       </div>
+
+      <Card data-testid="vd-speaker-aware-status">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center justify-between gap-2 text-sm">
+            <span>{lang === "th" ? "วิเคราะห์ผู้พูดและแผนตัดต่อ" : "Speaker-aware analysis and edit plan"}</span>
+            {speakerAwareStatusQuery.isFetching ? <Loader2 className="h-4 w-4 animate-spin" aria-label={lang === "th" ? "กำลังอัปเดตสถานะ" : "Refreshing status"} /> : null}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-xs">
+          {speakerAwareStatusQuery.isLoading ? <p className="text-muted-foreground" role="status">{lang === "th" ? "กำลังโหลดสถานะงาน…" : "Loading worker status…"}</p> : null}
+          {!speakerAwareStatusQuery.isLoading && (speakerAwareStatusQuery.data?.items.length ?? 0) === 0 ? (
+            <p className="text-muted-foreground">{lang === "th" ? "ยังไม่มีงานวิเคราะห์ของ Series นี้ — เริ่มจาก Worker Media Studio" : "No speaker-aware jobs for this Series yet — start from Worker Media Studio."}</p>
+          ) : null}
+          {(speakerAwareStatusQuery.data?.items ?? []).map(item => (
+            <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2">
+              <div className="min-w-0">
+                <p className="font-medium">{item.jobType === "speaker_aware_media_scan" ? (lang === "th" ? "สแกนหลักฐานผู้พูด" : "Speaker evidence scan") : (lang === "th" ? "สร้างแผนตัดต่อ" : "Edit plan")}</p>
+                <p className="text-muted-foreground">Job {item.id.slice(0, 12)} · {item.statusReason || (lang === "th" ? "รอ Worker ประมวลผล" : "Waiting for Worker")}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={item.status === "completed" ? "secondary" : item.status === "failed" ? "destructive" : "outline"}>{item.status}</Badge>
+                {item.artifacts.length > 0 ? <Badge variant="outline">{item.artifacts.length} {lang === "th" ? "artifact" : "artifacts"}</Badge> : null}
+              </div>
+            </div>
+          ))}
+          {speakerAwareStatusQuery.isError ? <p className="text-destructive" role="alert">{lang === "th" ? "โหลดสถานะ Worker ไม่สำเร็จ ตรวจสอบสิทธิ์หรือการเชื่อมต่อ" : "Worker status is unavailable. Check access or connection."}</p> : null}
+        </CardContent>
+      </Card>
 
       {!readOnly ? (
         <Card>
@@ -929,7 +1003,13 @@ export function VerticalDramaProductionEpisodesPanel({
         <ul className="space-y-3">
           {groups.map(group => (
             <li key={group.index}>
-              <ProductionEpisodeCard lang={lang} group={group} />
+              <ProductionEpisodeCard
+                lang={lang}
+                seriesId={seriesId}
+                readOnly={readOnly}
+                group={group}
+                episodeMembers={episodeMembers}
+              />
             </li>
           ))}
         </ul>
@@ -1741,16 +1821,27 @@ function ProductionEpisodeStatusPill({
 
 function ProductionEpisodeCard({
   lang,
+  seriesId,
+  readOnly,
   group,
+  episodeMembers,
 }: {
   lang: VerticalDramaLang;
+  seriesId: string;
+  readOnly: boolean;
   group: VerticalDramaProductionEpisodeGroupState;
+  episodeMembers: ProductionEpisodeMember[];
 }) {
   const title = productionEpisodeTitle(
     lang,
     group.index,
     group.subEpisodeNumbers,
     group.productionEpisodeNumber
+  );
+  const members = resolveProductionEpisodeMembers(group, episodeMembers);
+  const missingMembers = group.subEpisodeNumbers.filter(
+    episodeNumber =>
+      !members.some(member => member.episodeNumber === episodeNumber)
   );
 
   return (
@@ -1792,6 +1883,75 @@ function ProductionEpisodeCard({
             videoUrl={group.videoUrl}
           />
         ) : null}
+
+        <section
+          className="space-y-3 rounded-lg border bg-muted/20 p-3"
+          data-testid={`vd-production-audio-lane-${group.index}`}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-semibold">
+                {lang === "th" ? "Sound & Music Score" : "Sound & Music Score"}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {lang === "th"
+                  ? "วิเคราะห์และวางแผนเพลงแยกตามตอนย่อยทุกตอนใน Production EP นี้"
+                  : "Analyze and plan music for every Sub-Episode in this Production Episode."}
+              </p>
+            </div>
+            <Badge variant="outline">
+              {members.length}/{group.subEpisodeNumbers.length}{" "}
+              {lang === "th" ? "แหล่งเสียง" : "sources"}
+            </Badge>
+          </div>
+
+          {missingMembers.length > 0 ? (
+            <p
+              className="text-xs text-amber-700 dark:text-amber-300"
+              role="status"
+            >
+              {lang === "th"
+                ? `ยังไม่พบข้อมูลตอนย่อย ${missingMembers.join(", ")} ในข้อมูลชุดนี้ จึงยังไม่เปิดคิวเสียงแทนโดยอัตโนมัติ`
+                : `Sub-Episode ${missingMembers.join(", ")} is not available in the current response; no audio job is guessed or substituted.`}
+            </p>
+          ) : null}
+
+          {members.length > 0 ? (
+            <div className="space-y-2">
+              {members.map(member => (
+                <details
+                  key={member.id}
+                  className="rounded-md border bg-background p-2"
+                  open={members.length === 1}
+                >
+                  <summary className="cursor-pointer list-none text-sm font-medium">
+                    {lang === "th" ? "ตอนย่อย" : "Sub-Episode"}{" "}
+                    {member.episodeNumber}
+                    {member.title ? (
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        {member.title}
+                      </span>
+                    ) : null}
+                  </summary>
+                  <div className="mt-3">
+                    <VerticalDramaEmotionScorePanel
+                      seriesId={seriesId}
+                      episodeId={String(member.id)}
+                      locale={lang}
+                      readOnly={readOnly}
+                    />
+                  </div>
+                </details>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {lang === "th"
+                ? "สร้าง Production Episode สำเร็จแล้วจึงจะแสดง source audio สำหรับวิเคราะห์"
+                : "Source audio controls will appear after the Production Episode membership is available."}
+            </p>
+          )}
+        </section>
       </CardContent>
     </Card>
   );
@@ -1846,7 +2006,9 @@ function VerticalDramaProductionEpisodeVideoPlayer({
           {lang === "th" ? "ไฟล์หมดอายุ" : "File expired"}
         </span>
         <span className="text-[10px]">
-          {lang === "th" ? "สร้างตอนนี้ใหม่อีกครั้ง" : "Assemble this episode again"}
+          {lang === "th"
+            ? "สร้างตอนนี้ใหม่อีกครั้ง"
+            : "Assemble this episode again"}
         </span>
       </div>
     );

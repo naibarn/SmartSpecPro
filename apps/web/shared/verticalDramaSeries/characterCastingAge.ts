@@ -76,7 +76,17 @@ export function parseCharacterCastingAgeRange(value: unknown): { min: number; ma
 
   const exact = text.match(AGE_PATTERN);
   const age = finiteAge(exact?.[1] ?? exact?.[2]);
-  return age === undefined ? undefined : { min: age, max: age };
+  if (age !== undefined) return { min: age, max: age };
+
+  // Infant metadata is commonly expressed in months or with a life-stage
+  // label instead of years. Treat it as a sub-two-year range so downstream
+  // continuity checks cannot mistake an infant portrait for a school-age look.
+  if (/(?:\b(?:newborn|infant|baby)\b|ทารก|แรกเกิด)/i.test(text)) {
+    const monthMatch = text.match(/(\d{1,2})\s*(?:month|months|เดือน)/i);
+    const months = monthMatch ? Number(monthMatch[1]) : 0;
+    return { min: 0, max: months > 12 ? 2 : 1 };
+  }
+  return undefined;
 }
 
 function rangeFromNumbers(ageMin: unknown, ageMax: unknown, age: unknown): { min: number; max: number } | undefined {

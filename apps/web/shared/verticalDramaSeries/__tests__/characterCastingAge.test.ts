@@ -49,4 +49,11 @@ describe("character casting age profile", () => {
     expect(isCharacterCastingAgeRangeCompatible("22-25", { min: 22, max: 25 })).toBe(true);
     expect(isCharacterCastingAgeRangeCompatible("30-35", { min: 22, max: 25 })).toBe(false);
   });
+
+  it("recognizes infant metadata even when it is expressed without years", () => {
+    expect(parseCharacterCastingAgeRange("1 month old infant")).toEqual({
+      min: 0,
+      max: 1,
+    });
+  });
 });

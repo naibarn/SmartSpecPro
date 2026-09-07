@@ -163,7 +163,8 @@ import {
 } from "@shared/verticalDramaSeries/characterDnaEditor";
 import {
   materializeTwinDnaData,
-  resolveTwinPair,
+  resolveTwinGroup,
+  resolveTwinGroupRoot,
   readTwinIdentityMetadata,
 } from "@shared/verticalDramaSeries/twinIdentity";
 import { loadCharacterDesignContext } from "../services/verticalDramaCharacterDesignContext";
@@ -1753,22 +1754,25 @@ function characterTwinUiProjection(
   row: VerticalDramaCharacterRow,
   rows: readonly VerticalDramaCharacterRow[]
 ) {
-  const pair = resolveTwinPair(row, rows);
-  const twin = pair
-    ? rows.find(candidate => candidate.id === (pair.sourceId === row.id ? pair.targetId : pair.sourceId))
-    : undefined;
+  const group = resolveTwinGroup(row, rows);
+  const root = resolveTwinGroupRoot(group);
+  const twins = group.filter(candidate => candidate.id !== row.id);
   const twinIdentity =
     readTwinIdentityMetadata(
       (row.data as Record<string, unknown> | null) ?? undefined
     ) ??
     readTwinIdentityMetadata(
-      (twin?.data as Record<string, unknown> | null) ?? undefined
+      (root?.data as Record<string, unknown> | null) ?? undefined
     );
   return {
-    ...(twin
+    ...(twins.length > 0
       ? {
-          twinCharacterId: String(twin.id),
-          twinCharacterName: twin.name,
+          twinCharacterId: String(twins[0].id),
+          twinCharacterName: twins[0].name,
+          twinCharacterIds: twins.map(twin => String(twin.id)),
+          twinCharacterNames: twins.map(twin => twin.name),
+          twinGroupSize: group.length,
+          twinGroupRootCharacterId: root ? String(root.id) : undefined,
           twinRelationshipStatus: "linked" as const,
           twinIdentity,
         }
@@ -3282,53 +3286,62 @@ export const verticalDramaCharactersRouter = router({
         });
       }
 
-      // Keep a linked pair coherent after either sibling edits shared DNA.
-      // Only canonical age/face fields are copied; target-local hair,
-      // wardrobe, silhouette, body language, and personality remain intact.
-      const [reverseTwin] = await db
-        .select({ id: verticalDramaCharacters.id })
-        .from(verticalDramaCharacters)
-        .where(
-          and(
-            eq(verticalDramaCharacters.tenantId, tenantId),
-            eq(verticalDramaCharacters.userId, userId),
-            eq(verticalDramaCharacters.seriesId, seriesId),
-            eq(verticalDramaCharacters.sharesFaceWithCharacterId, characterId)
-          )
-        )
-        .limit(1);
-      const linkedTwinId =
-        existingCharacter.sharesFaceWithCharacterId ?? reverseTwin?.id;
-      if (linkedTwinId != null) {
-        const linkedTwin = await loadOwnedCharacter(
-          tenantId,
-          userId,
-          seriesId,
-          linkedTwinId
-        );
+      // Keep the entire linked twin group coherent after any sibling edits
+      // shared DNA. Only canonical age/face fields are copied; each member's
+      // hair, wardrobe, silhouette, body language, and personality remain
+      // local. Reload the group so this also handles A-B-C-D links created by
+      // the Characters tab after the original edit session was opened.
+      let latestRows: VerticalDramaCharacterRow[] = [];
+      try {
+        const rosterQuery = db.select().from(verticalDramaCharacters);
+        if (rosterQuery) {
+          const result = await rosterQuery.where(
+            and(
+              eq(verticalDramaCharacters.tenantId, tenantId),
+              eq(verticalDramaCharacters.userId, userId),
+              eq(verticalDramaCharacters.seriesId, seriesId)
+            )
+          );
+          latestRows = Array.isArray(result)
+            ? (result as VerticalDramaCharacterRow[])
+            : [];
+        }
+      } catch {
+        // Minimal router tests and legacy adapters may not expose a roster
+        // query here; the edited row remains durable and the next save/generation
+        // boundary can repair the group once the full DB adapter is available.
+      }
+      const editedRow = latestRows.find(candidate => candidate.id === row.id);
+      const twinGroup = editedRow ? resolveTwinGroup(editedRow, latestRows) : [];
+      if (twinGroup.length > 1) {
         try {
-          const synchronized = materializeTwinDnaData({
-            data: (linkedTwin.data as Record<string, unknown> | null) ?? {},
-            sourceData: merged.data,
-            sourceCharacterId: row.id,
-            now: new Date().toISOString(),
+          await db.transaction(async tx => {
+            for (const member of twinGroup) {
+              if (member.id === row.id) continue;
+              const synchronized = materializeTwinDnaData({
+                data: (member.data as Record<string, unknown> | null) ?? {},
+                sourceData: merged.data,
+                sourceCharacterId: resolveTwinGroupRoot(twinGroup)?.id ?? row.id,
+                now: new Date().toISOString(),
+              });
+              await tx
+                .update(verticalDramaCharacters)
+                .set({
+                  data: stampCharacterManualEdit(synchronized.data, userId),
+                  updatedAt: new Date(),
+                })
+                .where(
+                  and(
+                    eq(verticalDramaCharacters.id, member.id),
+                    eq(verticalDramaCharacters.tenantId, tenantId),
+                    eq(verticalDramaCharacters.userId, userId),
+                    eq(verticalDramaCharacters.seriesId, seriesId)
+                  )
+                );
+            }
           });
-          await db
-            .update(verticalDramaCharacters)
-            .set({
-              data: stampCharacterManualEdit(synchronized.data, userId),
-              updatedAt: new Date(),
-            })
-            .where(
-              and(
-                eq(verticalDramaCharacters.id, linkedTwin.id),
-                eq(verticalDramaCharacters.tenantId, tenantId),
-                eq(verticalDramaCharacters.userId, userId),
-                eq(verticalDramaCharacters.seriesId, seriesId)
-              )
-            );
         } catch {
-          // The edited row is already valid; leave the pair visibly linked and
+          // The edited row is already valid; leave the group visibly linked and
           // let the next explicit repair/generation boundary retry sync.
         }
       }
@@ -3489,61 +3502,104 @@ export const verticalDramaCharactersRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "A character cannot be linked as its own twin." });
       }
       await loadOwnedSeries(tenantId, userId, seriesId);
-      const [source, twin] = await Promise.all([
-        loadOwnedCharacter(tenantId, userId, seriesId, sourceCharacterId),
-        loadOwnedCharacter(tenantId, userId, seriesId, twinCharacterId),
-      ]);
+      const rosterRows = (await db
+        .select()
+        .from(verticalDramaCharacters)
+        .where(
+          and(
+            eq(verticalDramaCharacters.tenantId, tenantId),
+            eq(verticalDramaCharacters.userId, userId),
+            eq(verticalDramaCharacters.seriesId, seriesId)
+          )
+        )) as VerticalDramaCharacterRow[];
+      const source = rosterRows.find(row => row.id === sourceCharacterId);
+      const twin = rosterRows.find(row => row.id === twinCharacterId);
+      if (!source || !twin) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+      }
       if (source.parentCharacterId != null || twin.parentCharacterId != null) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Only independent base characters can be linked as twins." });
       }
-      if (
-        (source.sharesFaceWithCharacterId != null && source.sharesFaceWithCharacterId !== twin.id) ||
-        (twin.sharesFaceWithCharacterId != null && twin.sharesFaceWithCharacterId !== source.id)
-      ) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "One of these characters is already linked to another face source. Unlink that relationship first." });
-      }
 
-      const now = new Date().toISOString();
-      let synchronizedTwinData: Record<string, unknown>;
-      try {
-        synchronizedTwinData = materializeTwinDnaData({
-          data: (twin.data as Record<string, unknown> | null) ?? {},
-          sourceData: (source.data as Record<string, unknown> | null) ?? {},
-          sourceCharacterId: source.id,
-          now,
-        }).data;
-      } catch (error) {
+      // Linking is group-aware: an already-linked member can be selected again
+      // to add the next sibling (A-B, then A-C, then B-D). Existing pairwise
+      // chains are folded into the same stable root while preserving each
+      // member's local look/personality fields.
+      const sourceGroup = resolveTwinGroup(source, rosterRows);
+      const twinGroup = resolveTwinGroup(twin, rosterRows);
+      const groupById = new Map<number, VerticalDramaCharacterRow>();
+      for (const member of [...sourceGroup, ...twinGroup]) groupById.set(member.id, member);
+      const combinedGroup = [...groupById.values()].sort((left, right) => left.id - right.id);
+      const root =
+        resolveTwinGroupRoot(combinedGroup) ?? source;
+      const sourceWithDna =
+        (readCharacterIdentityDna((root.data as Record<string, unknown> | null) ?? {})
+          ? root
+          : combinedGroup.find(member =>
+              Boolean(readCharacterIdentityDna((member.data as Record<string, unknown> | null) ?? {}))
+            ));
+      if (!sourceWithDna) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: error instanceof Error ? error.message : "Twin source Character DNA is required before linking.",
+          message: "Twin source Character DNA is required before linking.",
         });
       }
 
-      const updatedTwin = await db.transaction(async tx => {
-        const [row] = await tx
-          .update(verticalDramaCharacters)
-          .set({
-            sharesFaceWithCharacterId: source.id,
-            data: stampCharacterManualEdit(synchronizedTwinData, userId),
-            updatedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(verticalDramaCharacters.id, twin.id),
-              eq(verticalDramaCharacters.tenantId, tenantId),
-              eq(verticalDramaCharacters.userId, userId),
-              eq(verticalDramaCharacters.seriesId, seriesId),
-              or(
-                sql`${verticalDramaCharacters.sharesFaceWithCharacterId} IS NULL`,
-                eq(verticalDramaCharacters.sharesFaceWithCharacterId, source.id)
+      const now = new Date().toISOString();
+      const sourceData = (sourceWithDna.data as Record<string, unknown> | null) ?? {};
+      let synchronizedRows: VerticalDramaCharacterRow[] = [];
+      await db.transaction(async tx => {
+        for (const member of combinedGroup) {
+          let nextData = (member.data as Record<string, unknown> | null) ?? {};
+          if (member.id !== root.id || !readCharacterIdentityDna(nextData)) {
+            try {
+              nextData = materializeTwinDnaData({
+                data: nextData,
+                sourceData,
+                sourceCharacterId: root.id,
+                now,
+              }).data;
+            } catch (error) {
+              throw new TRPCError({
+                code: "PRECONDITION_FAILED",
+                message: error instanceof Error ? error.message : "Twin source Character DNA is required before linking.",
+              });
+            }
+          }
+          const [updated] = await tx
+            .update(verticalDramaCharacters)
+            .set({
+              sharesFaceWithCharacterId: member.id === root.id ? null : root.id,
+              data: stampCharacterManualEdit(nextData, userId),
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(verticalDramaCharacters.id, member.id),
+                eq(verticalDramaCharacters.tenantId, tenantId),
+                eq(verticalDramaCharacters.userId, userId),
+                eq(verticalDramaCharacters.seriesId, seriesId)
               )
             )
-          )
-          .returning();
-        if (!row) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Character changed while linking twins. Refresh and retry." });
-        return row as VerticalDramaCharacterRow;
+            .returning();
+          if (!updated) {
+            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Character changed while linking twins. Refresh and retry." });
+          }
+        }
+        synchronizedRows = (await tx
+          .select()
+          .from(verticalDramaCharacters)
+          .where(
+            and(
+              eq(verticalDramaCharacters.tenantId, tenantId),
+              eq(verticalDramaCharacters.userId, userId),
+              eq(verticalDramaCharacters.seriesId, seriesId)
+            )
+          )) as VerticalDramaCharacterRow[];
       });
-      return { source: characterRowToDto(source), twin: characterRowToDto(updatedTwin) };
+      const updatedSource = synchronizedRows.find(row => row.id === source.id) ?? source;
+      const updatedTwin = synchronizedRows.find(row => row.id === twin.id) ?? twin;
+      return { source: characterRowToDto(updatedSource), twin: characterRowToDto(updatedTwin) };
     }),
 
   /**
@@ -3593,6 +3649,18 @@ export const verticalDramaCharactersRouter = router({
         seriesId,
         sourceCharacterId
       );
+      // A new twin created from an existing group must point at the group's
+      // canonical root so its first render automatically borrows the main
+      // character's approved portrait/reference.
+      const faceSource =
+        source.sharesFaceWithCharacterId != null
+          ? await loadOwnedCharacter(
+              tenantId,
+              userId,
+              seriesId,
+              source.sharesFaceWithCharacterId
+            )
+          : source;
 
       const usedKeys = await loadSeriesCharacterKeys(
         tenantId,
@@ -3612,12 +3680,12 @@ export const verticalDramaCharactersRouter = router({
       // exists. The optional fallback preserves the historical create flow
       // for legacy sources that have not been cast/DNA-approved yet; the
       // Characters tab can then run the explicit link repair once DNA exists.
-      if (readCharacterIdentityDna(source.data)) {
+      if (readCharacterIdentityDna(faceSource.data)) {
         try {
           twinData = materializeTwinDnaData({
             data: twinData ?? {},
-            sourceData: (source.data as Record<string, unknown> | null) ?? {},
-            sourceCharacterId: source.id,
+            sourceData: (faceSource.data as Record<string, unknown> | null) ?? {},
+            sourceCharacterId: faceSource.id,
             now: new Date().toISOString(),
           }).data;
         } catch {
@@ -3643,7 +3711,7 @@ export const verticalDramaCharactersRouter = router({
               ? "user_confirmed"
               : source.roleProvenance,
           roleReviewStatus: input.roleTier ? "ready" : source.roleReviewStatus,
-          sharesFaceWithCharacterId: source.id,
+          sharesFaceWithCharacterId: faceSource.id,
           data: twinData,
         } as typeof verticalDramaCharacters.$inferInsert)
         .returning();

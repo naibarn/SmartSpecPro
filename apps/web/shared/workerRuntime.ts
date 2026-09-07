@@ -252,6 +252,41 @@ export const VIDEO_ASSEMBLY_PROGRESS_STAGES = [
 ];
 export const VIDEO_ASSEMBLY_FAILURE_CODES = [...videoAssemblyFailureCodeValues];
 
+// Feature 176/177 — the audio lane is versioned separately from generic
+// media jobs so an older Worker cannot claim an approved plan and silently
+// execute a substitute runtime.
+export const VERTICAL_DRAMA_AUDIO_PROGRESS_STAGES = [
+  "validate_contract",
+  "stage_inputs",
+  "run_asr",
+  "generate_music",
+  "mix_score",
+  "verify_outputs",
+  "upload_artifacts",
+  "publish_artifacts",
+] as const;
+export const VERTICAL_DRAMA_AUDIO_FAILURE_CODES = [
+  "invalid_contract",
+  "root_not_bound",
+  "source_reference_expired",
+  "source_fingerprint_mismatch",
+  "transcription_unavailable",
+  "transcription_failed",
+  "model_not_installed",
+  "model_identity_mismatch",
+  "runtime_incompatible",
+  "gpu_unavailable",
+  "insufficient_resources",
+  "artifact_upload_failed",
+  "artifact_checksum_mismatch",
+  "qc_failed",
+  "plan_stale",
+  "rights_review_required",
+  "generation_failed",
+  "generation_outcome_unknown",
+  "canceled",
+] as const;
+
 export const localFolderIngestProgressStageValues = [
   "resolve_roots",
   "index_files",

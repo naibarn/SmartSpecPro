@@ -1,10 +1,14 @@
 import type { SmartSpecProjectDraft, NleClip } from "../../types/nleProject";
 import type { EpisodeSoundPlan, SFXEvent } from "../../types/audioScoring";
+import { AudioScoringError } from "./smartAiHubSkillClient";
+
+const SCORE_CLIP_PREFIX = "smartspec-score:";
+const SCORE_SFX_PREFIX = "smartspec-score-sfx:";
 
 /**
- * Audio Placement Engine
- * Maps EpisodeSoundPlan cues and SFX events into NLE timeline tracks (A2 and A3)
- * with precise timecode offsets and ducking envelope sidechains.
+ * Applies only the current plan's owned score clips. Manual A2/A3 clips are
+ * retained, and every selected generated artifact is validated before tracks
+ * are changed. Reapplying the same plan replaces its own clips idempotently.
  */
 export function applySoundPlanToProjectTimeline(options: {
   project: SmartSpecProjectDraft;
@@ -13,41 +17,56 @@ export function applySoundPlanToProjectTimeline(options: {
     cueId: string;
     audioPath: string;
     durationSeconds: number;
+    outputSha256: string;
+    measuredLufs: number;
+    truePeakDb: number;
   }>;
   sfxEvents?: SFXEvent[];
 }): SmartSpecProjectDraft {
   const { project, soundPlan, generatedCues, sfxEvents = [] } = options;
+  const generatedByCue = new Map(generatedCues.map((cue) => [cue.cueId, cue]));
 
-  // 1. Map Music Cues to Track A2
-  const bgmClips: NleClip[] = soundPlan.cues.map((cue, idx) => {
-    const gen = generatedCues.find((g) => g.cueId === cue.cueId);
+  const bgmClips: NleClip[] = soundPlan.cues.map((cue) => {
+    const generated = generatedByCue.get(cue.cueId);
+    if (!generated?.audioPath || !generated.outputSha256 || !Number.isFinite(generated.durationSeconds)) {
+      throw new AudioScoringError("GENERATION_OUTCOME_UNKNOWN", `Cue ${cue.cueId} has no verifiable audio artifact.`);
+    }
     return {
-      id: `bgm_clip_${idx + 1}`,
-      name: `BGM: ${cue.placement.replace("_", " ").toUpperCase()}`,
+      id: `${SCORE_CLIP_PREFIX}${soundPlan.planId}:${cue.cueId}`,
+      name: `Score: ${cue.displayCaption}`,
       timelineStartMs: cue.timelineStartMs,
-      durationMs: cue.timelineDurationMs,
+      durationMs: Math.round(generated.durationSeconds * 1000),
       sourceType: "local_file",
-      sourcePath: gen?.audioPath || cue.audioFilePath || "",
+      sourcePath: generated.audioPath,
       volume: 0.35,
       fadeInMs: cue.fadeInMs,
       fadeOutMs: cue.fadeOutMs,
     };
   });
 
-  // 2. Map SFX Events to Track A3
-  const sfxClips: NleClip[] = sfxEvents.map((sfx, idx) => ({
-    id: `sfx_clip_${idx + 1}`,
-    name: `SFX: ${sfx.description.slice(0, 24)}`,
-    timelineStartMs: sfx.timelineMs,
-    durationMs: sfx.durationMs,
-    sourceType: "local_file",
-    sourcePath: sfx.audioFilePath || "",
-    volume: sfx.volume,
-    fadeInMs: 50,
-    fadeOutMs: 150,
-  }));
+  const validSfxClips: NleClip[] = sfxEvents
+    .filter((event) => Boolean(event.audioFilePath))
+    .map((event) => ({
+      id: `${SCORE_SFX_PREFIX}${soundPlan.planId}:${event.sfxId}`,
+      name: `SFX: ${event.description.slice(0, 24)}`,
+      timelineStartMs: event.timelineMs,
+      durationMs: event.durationMs,
+      sourceType: "local_file",
+      sourcePath: event.audioFilePath,
+      volume: event.volume,
+      fadeInMs: 50,
+      fadeOutMs: 150,
+    }));
 
-  // 3. Insert or update tracks in Project Draft (Non-destructive)
+  const ducking = {
+    enabled: true,
+    sidechainSourceTrackId: "track_a1",
+    attenuationDb: -12.0,
+    thresholdDb: -28.0,
+    attackMs: 50,
+    releaseMs: 300,
+    holdMs: 100,
+  };
   let hasA2 = false;
   let hasA3 = false;
 
@@ -56,23 +75,15 @@ export function applySoundPlanToProjectTimeline(options: {
       hasA2 = true;
       return {
         ...track,
-        ducking: {
-          enabled: true,
-          sidechainSourceTrackId: "track_a1",
-          attenuationDb: -12.0,
-          thresholdDb: -28.0,
-          attackMs: 50,
-          releaseMs: 300,
-          holdMs: 100,
-        },
-        clips: bgmClips,
+        ducking,
+        clips: [...track.clips.filter((clip) => !clip.id.startsWith(SCORE_CLIP_PREFIX)), ...bgmClips],
       };
     }
     if (track.id === "track_a3") {
       hasA3 = true;
       return {
         ...track,
-        clips: sfxClips,
+        clips: [...track.clips.filter((clip) => !clip.id.startsWith(SCORE_SFX_PREFIX)), ...validSfxClips],
       };
     }
     return track;
@@ -86,20 +97,11 @@ export function applySoundPlanToProjectTimeline(options: {
       volume: 0.35,
       muted: false,
       locked: false,
-      ducking: {
-        enabled: true,
-        sidechainSourceTrackId: "track_a1",
-        attenuationDb: -12.0,
-        thresholdDb: -28.0,
-        attackMs: 50,
-        releaseMs: 300,
-        holdMs: 100,
-      },
+      ducking,
       clips: bgmClips,
     });
   }
-
-  if (!hasA3) {
+  if (!hasA3 && validSfxClips.length > 0) {
     updatedTracks.push({
       id: "track_a3",
       name: "SFX (Audio Track 3)",
@@ -107,13 +109,9 @@ export function applySoundPlanToProjectTimeline(options: {
       volume: 0.8,
       muted: false,
       locked: false,
-      clips: sfxClips,
+      clips: validSfxClips,
     });
   }
 
-  return {
-    ...project,
-    updatedAt: new Date().toISOString(),
-    tracks: updatedTracks,
-  };
+  return { ...project, updatedAt: new Date().toISOString(), tracks: updatedTracks };
 }

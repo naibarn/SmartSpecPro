@@ -104,6 +104,21 @@ export type WorkerRuntimeReleaseUpload = {
   fileSizeBytes: number;
 };
 
+export const workerRuntimeReleaseLocalImportSchema = z.object({
+  version: z
+    .string()
+    .trim()
+    .min(1)
+    .max(64)
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/, "Invalid runtime version."),
+  runtimeId: workerRuntimeIdSchema,
+  channel: workerRuntimeChannelSchema.default("stable"),
+});
+
+export type WorkerRuntimeReleaseLocalImport = z.output<
+  typeof workerRuntimeReleaseLocalImportSchema
+>;
+
 export const workerRuntimeReleaseFinalizeSchema =
   workerRuntimeReleaseUploadSchema.extend({
     storageKey: z.string().min(1),

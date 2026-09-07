@@ -229,42 +229,9 @@ def execute_audio_separation_and_qc_task(
     job_id = f"audio_qc_{episode_id}_s{shot_number}_{int(time.time())}"
     logger.info("audio_worker_qc_started", job_id=job_id, tenant_id=tenant_id, shot=shot_number)
 
-    device, vram_info = evaluate_worker_device(min_free_vram_gb=MIN_FREE_VRAM_GB)
-
-    with IsolatedAudioWorkspace(tenant_id=tenant_id, job_id=job_id) as workspace:
-        # Mocking containerized execution pipeline with deterministic contract validation
-        transcribed_text = expected_script_text or "ตัวอย่างเสียงพูด"
-        cer = calculate_cer(expected_script_text, transcribed_text) if expected_script_text else 0.0
-        f0_result = evaluate_speech_f0(210.0 if target_gender == "female" else 120.0, target_gender=target_gender)
-        peaks = compute_normalized_peaks([0.1, 0.4, 0.8, 0.5, 0.2, 0.9, 0.3], num_points=100)
-
-        qc_report = {
-            "job_id": job_id,
-            "tenant_id": tenant_id,
-            "series_id": series_id,
-            "episode_id": episode_id,
-            "shot_number": shot_number,
-            "device_used": device,
-            "vram_status": vram_info,
-            "stems": {
-                "vocals_url": f"https://cdn.smartspec.pro/audio/{tenant_id}/{series_id}/ep_{episode_id}_s{shot_number}_vocals.flac",
-                "no_vocals_url": f"https://cdn.smartspec.pro/audio/{tenant_id}/{series_id}/ep_{episode_id}_s{shot_number}_no_vocals.flac",
-            },
-            "qc_metrics": {
-                "overall_score": 9.4,
-                "character_error_rate": cer,
-                "passes_cer": cer <= MAX_CER_THRESHOLD,
-                "av_sync_offset_ms": 12.0,
-                "passes_av_sync": LIP_SYNC_WINDOW_MS[0] <= 12.0 <= LIP_SYNC_WINDOW_MS[1],
-                "f0_evaluation": f0_result,
-                "bgm_bleed_detected": False,
-                "peaks": peaks,
-            },
-            "suggested_action": "NONE" if cer <= MAX_CER_THRESHOLD and not f0_result["identity_drift"] else "SURGICAL_REPAIR",
-        }
-
-        logger.info("audio_worker_qc_completed", job_id=job_id, score=qc_report["qc_metrics"]["overall_score"])
-        return qc_report
+    raise RuntimeError(
+        "RUNTIME_INCOMPATIBLE: real Demucs/ASR/QC executor is not installed; refusing fabricated stems or metrics"
+    )
 
 
 @celery_app.task(
@@ -289,23 +256,6 @@ def execute_surgical_audio_repair_task(
     job_id = f"surg_repair_{episode_id}_s{shot_number}_{int(time.time())}"
     logger.info("audio_worker_repair_started", job_id=job_id, tenant_id=tenant_id, shot=shot_number)
 
-    device, vram_info = evaluate_worker_device(min_free_vram_gb=MIN_FREE_VRAM_GB)
-
-    with IsolatedAudioWorkspace(tenant_id=tenant_id, job_id=job_id) as workspace:
-        ssml_payload = format_ssml_thai_particle_preserved(dialogue_script)
-
-        result = {
-            "job_id": job_id,
-            "tenant_id": tenant_id,
-            "shot_number": shot_number,
-            "credits_charged": 5,
-            "repaired_manifest_take": 2,
-            "device_used": device,
-            "ir_profile_applied": ir_profile,
-            "ssml_payload": ssml_payload,
-            "status": "COMPLETED",
-            "output_video_url": f"https://cdn.smartspec.pro/videos/{tenant_id}/{series_id}/ep_{episode_id}_s{shot_number}_take2_repaired.mp4",
-        }
-
-        logger.info("audio_worker_repair_completed", job_id=job_id, credits_charged=5)
-        return result
+    raise RuntimeError(
+        "RUNTIME_INCOMPATIBLE: real surgical repair runtime is not installed; refusing fabricated output or credit charge"
+    )

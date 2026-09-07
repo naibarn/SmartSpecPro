@@ -59,7 +59,12 @@ pub struct LocalLlmRegistry {
 
 fn validate_id(value: &str, label: &str) -> Result<(), String> {
     let trimmed = value.trim();
-    if trimmed.is_empty() || trimmed.len() > 160 || !trimmed.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.') {
+    if trimmed.is_empty()
+        || trimmed.len() > 160
+        || !trimmed
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.')
+    {
         return Err(format!("{label} is invalid"));
     }
     Ok(())
@@ -72,26 +77,59 @@ impl LocalLlmRegistry {
             if provider.display_name.trim().is_empty() || provider.display_name.len() > 160 {
                 return Err("provider displayName is invalid".into());
             }
-            if provider.credential_ref.as_deref().is_some_and(|value| value.contains('/') || value.contains('\\') || value.len() > 255) {
+            if provider.credential_ref.as_deref().is_some_and(|value| {
+                value.contains('/') || value.contains('\\') || value.len() > 255
+            }) {
                 return Err("credentialRef must be a keyring reference".into());
             }
-            if self.providers.iter().filter(|item| item.local_provider_id == provider.local_provider_id).count() > 1 {
+            if self
+                .providers
+                .iter()
+                .filter(|item| item.local_provider_id == provider.local_provider_id)
+                .count()
+                > 1
+            {
                 return Err("duplicate localProviderId".into());
             }
         }
         for model in &self.models {
             validate_id(&model.local_provider_id, "localProviderId")?;
-            if !self.providers.iter().any(|provider| provider.local_provider_id == model.local_provider_id) {
+            if !self
+                .providers
+                .iter()
+                .any(|provider| provider.local_provider_id == model.local_provider_id)
+            {
                 return Err("model provider binding is missing".into());
             }
             validate_id(&model.local_model_id, "localModelId")?;
             if model.provider_model_id.trim().is_empty() || model.provider_model_id.len() > 240 {
                 return Err("providerModelId is invalid".into());
             }
-            if model.capabilities.is_empty() || model.capabilities.iter().any(|cap| !matches!(cap.as_str(), "llm.chat" | "llm.completion" | "llm.vision" | "llm.embedding" | "llm.tools" | "llm.json")) {
+            if model.capabilities.is_empty()
+                || model.capabilities.iter().any(|cap| {
+                    !matches!(
+                        cap.as_str(),
+                        "llm.chat"
+                            | "llm.completion"
+                            | "llm.vision"
+                            | "llm.embedding"
+                            | "llm.tools"
+                            | "llm.json"
+                    )
+                })
+            {
                 return Err("model capabilities are unsupported".into());
             }
-            if self.models.iter().filter(|item| item.local_provider_id == model.local_provider_id && item.local_model_id == model.local_model_id).count() > 1 {
+            if self
+                .models
+                .iter()
+                .filter(|item| {
+                    item.local_provider_id == model.local_provider_id
+                        && item.local_model_id == model.local_model_id
+                })
+                .count()
+                > 1
+            {
                 return Err("duplicate provider/model binding".into());
             }
         }
@@ -100,7 +138,11 @@ impl LocalLlmRegistry {
 
     pub fn upsert_provider(&mut self, provider: LocalLlmProviderProfile) -> Result<(), String> {
         let mut candidate = self.clone();
-        if let Some(existing) = candidate.providers.iter_mut().find(|item| item.local_provider_id == provider.local_provider_id) {
+        if let Some(existing) = candidate
+            .providers
+            .iter_mut()
+            .find(|item| item.local_provider_id == provider.local_provider_id)
+        {
             *existing = provider;
         } else {
             candidate.providers.push(provider);
@@ -112,7 +154,10 @@ impl LocalLlmRegistry {
 
     pub fn upsert_model(&mut self, model: LocalLlmModelRecord) -> Result<(), String> {
         let mut candidate = self.clone();
-        if let Some(existing) = candidate.models.iter_mut().find(|item| item.local_provider_id == model.local_provider_id && item.local_model_id == model.local_model_id) {
+        if let Some(existing) = candidate.models.iter_mut().find(|item| {
+            item.local_provider_id == model.local_provider_id
+                && item.local_model_id == model.local_model_id
+        }) {
             *existing = model;
         } else {
             candidate.models.push(model);
@@ -124,7 +169,9 @@ impl LocalLlmRegistry {
 
     pub fn remove_model(&mut self, provider_id: &str, model_id: &str) -> Result<(), String> {
         let before = self.models.len();
-        self.models.retain(|item| !(item.local_provider_id == provider_id && item.local_model_id == model_id));
+        self.models.retain(|item| {
+            !(item.local_provider_id == provider_id && item.local_model_id == model_id)
+        });
         if self.models.len() == before {
             return Err("local model not found".into());
         }
@@ -133,11 +180,13 @@ impl LocalLlmRegistry {
 
     pub fn remove_provider(&mut self, provider_id: &str) -> Result<(), String> {
         let before = self.providers.len();
-        self.providers.retain(|item| item.local_provider_id != provider_id);
+        self.providers
+            .retain(|item| item.local_provider_id != provider_id);
         if self.providers.len() == before {
             return Err("local provider not found".into());
         }
-        self.models.retain(|item| item.local_provider_id != provider_id);
+        self.models
+            .retain(|item| item.local_provider_id != provider_id);
         Ok(())
     }
 
@@ -166,7 +215,8 @@ pub fn load_registry(app_data_dir: &Path) -> Result<LocalLlmRegistry, String> {
         return Ok(LocalLlmRegistry::default());
     }
     let bytes = fs::read(path).map_err(|error| error.to_string())?;
-    let registry: LocalLlmRegistry = serde_json::from_slice(&bytes).map_err(|error| error.to_string())?;
+    let registry: LocalLlmRegistry =
+        serde_json::from_slice(&bytes).map_err(|error| error.to_string())?;
     registry.validate()?;
     Ok(registry)
 }
@@ -192,11 +242,17 @@ mod tests {
         let mut registry = LocalLlmRegistry::default();
         registry.upsert_provider(provider("ollama-a")).unwrap();
         registry.upsert_provider(provider("ollama-b")).unwrap();
-        registry.upsert_model(LocalLlmModelRecord {
-            local_provider_id: "ollama-a".into(), local_model_id: "model-a".into(), provider_model_id: "llama3:8b".into(),
-            display_name: "Llama 3".into(), capabilities: vec!["llm.chat".into()],
-            context_window: Some(8192), enabled: true,
-        }).unwrap();
+        registry
+            .upsert_model(LocalLlmModelRecord {
+                local_provider_id: "ollama-a".into(),
+                local_model_id: "model-a".into(),
+                provider_model_id: "llama3:8b".into(),
+                display_name: "Llama 3".into(),
+                capabilities: vec!["llm.chat".into()],
+                context_window: Some(8192),
+                enabled: true,
+            })
+            .unwrap();
         let serialized = serde_json::to_string(&registry).unwrap();
         assert!(!serialized.contains("apiKey"));
         assert!(serialized.contains("worker-ollama-a"));
@@ -211,8 +267,13 @@ mod tests {
         assert_eq!(load_registry(directory.path()).unwrap(), registry);
         let mut invalid = registry;
         invalid.models.push(LocalLlmModelRecord {
-            local_provider_id: "ollama-a".into(), local_model_id: "bad".into(), provider_model_id: "x".into(), display_name: "Bad".into(),
-            capabilities: vec!["llm.audio".into()], context_window: None, enabled: true,
+            local_provider_id: "ollama-a".into(),
+            local_model_id: "bad".into(),
+            provider_model_id: "x".into(),
+            display_name: "Bad".into(),
+            capabilities: vec!["llm.audio".into()],
+            context_window: None,
+            enabled: true,
         });
         assert!(save_registry(directory.path(), &invalid).is_err());
     }

@@ -141,7 +141,10 @@ vi.mock("../verticalDramaProductTieIn", () => ({
   resolveFrameProductReferenceAssetIds: vi.fn(),
 }));
 
-import { VerticalDramaEpisodePipeline } from "../verticalDramaEpisodePipeline";
+import {
+  buildStoryboardGenerationFailurePayload,
+  VerticalDramaEpisodePipeline,
+} from "../verticalDramaEpisodePipeline";
 import { evaluateVerticalDramaStoryLockScriptGuard } from "../verticalDramaQualityReviewApply";
 
 const pipeline = new VerticalDramaEpisodePipeline() as any;
@@ -303,6 +306,48 @@ describe("repairStage — plan_episode_script (real repair)", () => {
 });
 
 describe("repairStage — storyboard_shotgrid (real repair)", () => {
+  it("preserves an exhausted policy-repair candidate in the failed run artifact payload", () => {
+    const candidate = {
+      ...CURRENT_STORYBOARD,
+      marker: "last-safe-repair-base",
+    };
+    const payload = buildStoryboardGenerationFailurePayload(
+      { stage: "storyboard_shotgrid" },
+      {
+        code: "VD_STORY_POLICY_RISK",
+        candidate,
+        repairAttempts: 3,
+        safety: {
+          level: "high",
+          findings: [
+            {
+              code: "minor_threat_or_surveillance",
+              level: "high",
+              message: "finding",
+            },
+          ],
+          instruction: "repair safely",
+        },
+      }
+    );
+
+    expect(payload).toEqual({
+      stage: "storyboard_shotgrid",
+      safety_recovery: {
+        status: "exhausted",
+        repair_attempts: 3,
+        findings: [
+          {
+            code: "minor_threat_or_surveillance",
+            level: "high",
+            message: "finding",
+          },
+        ],
+        candidate,
+      },
+    });
+  });
+
   it("calls generateStoryboardShotgrid with repairContext (current storyboard + instruction) and persists the live storyboard column", async () => {
     const episode = baseEpisode();
     queueSuccessSelects(episode, { bible: null, locale: "th", tone: null });

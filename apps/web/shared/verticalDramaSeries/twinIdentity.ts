@@ -34,6 +34,51 @@ export type TwinIdentityResolution = {
   targetRevision: number;
 };
 
+/**
+ * Resolve the full undirected twin group represented by the legacy
+ * `sharesFaceWithCharacterId` pointer.  The column stores one canonical
+ * source per member, so a group of four is represented as A <- B/C/D.  The
+ * traversal also understands older pairwise/chain data and therefore lets a
+ * new link repair the shape without requiring a schema migration.
+ */
+export function resolveTwinGroup<T extends TwinIdentityRow>(
+  row: T,
+  rows: readonly T[]
+): T[] {
+  const byId = new Map(rows.map(candidate => [candidate.id, candidate]));
+  const groupIds = new Set<number>([row.id]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const candidate of rows) {
+      const direct = directTwinId(candidate);
+      if (groupIds.has(candidate.id)) {
+        if (direct != null && byId.has(direct) && !groupIds.has(direct)) {
+          groupIds.add(direct);
+          changed = true;
+        }
+      } else if (direct != null && groupIds.has(direct)) {
+        groupIds.add(candidate.id);
+        changed = true;
+      }
+    }
+  }
+  return rows
+    .filter(candidate => groupIds.has(candidate.id))
+    .sort((left, right) => left.id - right.id);
+}
+
+/** Pick the stable root used as the face/reference source for a group. */
+export function resolveTwinGroupRoot<T extends TwinIdentityRow>(
+  group: readonly T[]
+): T | undefined {
+  return [...group].sort(
+    (left, right) =>
+      Number(directTwinId(left) != null) - Number(directTwinId(right) != null) ||
+      left.id - right.id
+  )[0];
+}
+
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)

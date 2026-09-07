@@ -12,6 +12,9 @@ import {
   footageProbeAnalyzeJobPayloadSchema,
   footagePrepareJobPayloadSchema,
   footageBrollRenderJobPayloadSchema,
+  episodeAudioAnalyzeJobPayloadSchema,
+  minimaxMusic3GenerateJobPayloadSchema,
+  episodeScoreMixJobPayloadSchema,
 } from "../../shared/verticalDramaMedia/contracts";
 
 export type MediaJobAdmissionInput = {
@@ -34,7 +37,7 @@ export type MediaJobAdmission = {
 };
 
 export function parseVerticalDramaMediaJobPayload(payload: unknown): VerticalDramaMediaJobPayload {
-  return z.union([mediaIngestJobPayloadSchema, brollPreprocessJobPayloadSchema, shotVideoGenerationJobPayloadSchema, footageProbeAnalyzeJobPayloadSchema, footagePrepareJobPayloadSchema, footageBrollRenderJobPayloadSchema]).parse(payload);
+  return z.union([mediaIngestJobPayloadSchema, brollPreprocessJobPayloadSchema, shotVideoGenerationJobPayloadSchema, footageProbeAnalyzeJobPayloadSchema, footagePrepareJobPayloadSchema, footageBrollRenderJobPayloadSchema, episodeAudioAnalyzeJobPayloadSchema, minimaxMusic3GenerateJobPayloadSchema, episodeScoreMixJobPayloadSchema]).parse(payload);
 }
 
 /**
@@ -78,11 +81,18 @@ export function admitVerticalDramaMediaJob(input: MediaJobAdmissionInput): Media
   const probe = mediaCapabilityProbeSchema.parse(input.capabilityProbe);
   if (binding.status !== "active") throw new Error("root_not_bound");
   if ("binding" in payload && (payload.binding.bindingRevision !== binding.bindingRevision || payload.seriesId !== binding.seriesId)) throw new Error("root_revision_stale");
+  if ("bindingRevision" in payload && payload.bindingRevision !== binding.bindingRevision) throw new Error("root_revision_stale");
   const localJob = payload.kind !== "shot_video_generation";
   if (!probe.reachable || (localJob && probe.adapter !== "worker_local") || (!localJob && probe.adapter !== "comfy_mcp")) {
     throw new Error("workflow_capability_blocked");
   }
-  const requiredCapability = payload.kind === "media_ingest"
+  const requiredCapability = payload.kind === "episode_audio_analyze"
+    ? "episode-audio-analysis-v1"
+    : payload.kind === "minimax_music3_generate"
+      ? "minimax-music3-generation-v1"
+      : payload.kind === "episode_score_mix"
+        ? "episode-score-mix-v1"
+        : payload.kind === "media_ingest"
     ? "media-ingest"
     : payload.kind === "broll_preprocess"
       ? "broll-preprocess"

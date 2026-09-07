@@ -366,6 +366,53 @@ describe("vertical drama automatic character look selection", () => {
     });
   });
 
+  it("rejects an outfit variant whose own visual metadata is infant when the character is school-age", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "phakin",
+          name: "ภาคิน",
+          authoritativeAgeBand: "minor",
+          authoritativeAgeRange: { min: 8, max: 14 },
+          hasPortrait: true,
+        },
+        {
+          characterKey: "phakin-infant",
+          name: "ภาคิน",
+          parentCharacterKey: "phakin",
+          variantLabel: "ภาคินทารก",
+          variantType: "outfit",
+          description: "เด็กทารก",
+          ageRange: { min: 0, max: 1 },
+          hasPortrait: true,
+        },
+        {
+          characterKey: "phakin-casual",
+          name: "ภาคิน",
+          parentCharacterKey: "phakin",
+          variantLabel: "ชุดลำลองอยู่บ้าน",
+          variantType: "outfit",
+          description: "เสื้อยืดสีขาวสำหรับเด็กวัยเรียน",
+          ageRange: { min: 8, max: 14 },
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["phakin-infant"],
+          text: "ภาคินพบภูมิในสนามเด็กเล่น",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual(["phakin-casual"]);
+    expect(result.assignmentsByShotNumber.get(1)?.[0]).toMatchObject({
+      selectedLookKey: "phakin-casual",
+      status: "review",
+    });
+  });
+
   it("reuses an adult base look instead of creating a redundant adult age-stage look", () => {
     const result = selectVerticalDramaCharacterLooks({
       catalog: [

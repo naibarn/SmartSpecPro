@@ -3,6 +3,8 @@ import {
   TWIN_SHARED_FACE_FIELDS,
   buildEffectiveTwinDna,
   materializeTwinDnaData,
+  resolveTwinGroup,
+  resolveTwinGroupRoot,
   mergeTwinDna,
   resolveTwinPair,
 } from "../twinIdentity";
@@ -45,6 +47,17 @@ describe("twinIdentity", () => {
     const rows = [{ id: 1, sharesFaceWithCharacterId: null }, { id: 2, sharesFaceWithCharacterId: 1 }];
     expect(resolveTwinPair(rows[0], rows)).toEqual({ sourceId: 1, targetId: 2 });
     expect(resolveTwinPair(rows[1], rows)).toEqual({ sourceId: 1, targetId: 2 });
+  });
+
+  it("resolves and roots a multi-member twin group", () => {
+    const rows = [
+      { id: 1, sharesFaceWithCharacterId: null },
+      { id: 2, sharesFaceWithCharacterId: 1 },
+      { id: 3, sharesFaceWithCharacterId: 1 },
+      { id: 4, sharesFaceWithCharacterId: 2 },
+    ];
+    expect(resolveTwinGroup(rows[3], rows).map(row => row.id)).toEqual([1, 2, 3, 4]);
+    expect(resolveTwinGroupRoot(resolveTwinGroup(rows[3], rows))?.id).toBe(1);
   });
 
   it("shares face and age but preserves target hair and local style", () => {

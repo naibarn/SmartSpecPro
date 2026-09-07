@@ -1898,6 +1898,20 @@
       "when": 1788414000000,
       "tag": "0284_vertical_drama_native_audio_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 271,
+      "version": "7",
+      "when": 1788415000000,
+      "tag": "0285_vertical_drama_emotion_scoring",
+      "breakpoints": true
+    },
+    {
+      "idx": 272,
+      "version": "7",
+      "when": 1788416000000,
+      "tag": "0286_feature_180_unified_voice_lifecycle",
+      "breakpoints": true
     }
   ]
 }

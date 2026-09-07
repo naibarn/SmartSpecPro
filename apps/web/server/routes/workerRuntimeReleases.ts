@@ -9,6 +9,7 @@ import { sdk } from "../_core/sdk";
 import { enforceJsonBodyMaxBytes, rateLimit } from "../_core/limits";
 import {
   finalizeWorkerRuntimeReleaseUpload,
+  importLocalWorkerRuntimeRelease,
   listWorkerRuntimeReleaseCatalog,
   persistWorkerRuntimeReleaseUploadFromPath,
   presignWorkerRuntimeReleaseUpload,
@@ -27,6 +28,7 @@ import {
   workerRuntimeReleaseAssetSchema,
   workerRuntimeReleaseCatalogSchema,
   workerRuntimeReleaseFinalizeSchema,
+  workerRuntimeReleaseLocalImportSchema,
   workerRuntimeReleaseUploadSchema,
   workerRuntimeSigningKeyCatalogSchema,
   workerRuntimeSigningKeyUpdateSchema,
@@ -322,6 +324,26 @@ export function createWorkerRuntimeReleaseRouter(): Router {
         sendError(res, error);
       } finally {
         cleanupFile(req);
+      }
+    }
+  );
+
+  router.post(
+    "/releases/import-local",
+    enforceJsonBodyMaxBytes(16 * 1024),
+    async (req, res) => {
+      const userId = await requireSystemAdmin(req, res);
+      if (userId === null) return;
+      try {
+        const release = await importLocalWorkerRuntimeRelease({
+          release: workerRuntimeReleaseLocalImportSchema.parse(req.body ?? {}),
+          uploadedByUserId: userId,
+        });
+        res.status(201).json({
+          release: workerRuntimeReleaseAssetSchema.parse(release),
+        });
+      } catch (error) {
+        sendError(res, error);
       }
     }
   );
