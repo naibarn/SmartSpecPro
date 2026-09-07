@@ -2580,6 +2580,8 @@ export function VerticalDramaStoryboardPanel({
     }
   );
   const selectedVideoPromptMaxChars = resolveVdVideoPromptBudgetForCatalogModel({
+    modelId: selectedVideoModel?.modelId ?? selectedVideoModelId,
+    name: selectedVideoModel?.name,
     provider: selectedVideoModel?.provider,
     configJson:
       selectedVideoModel?.configJson &&

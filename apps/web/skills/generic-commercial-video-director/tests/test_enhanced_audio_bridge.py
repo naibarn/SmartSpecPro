@@ -178,8 +178,8 @@ class TestEnhancedAudioBridge(unittest.TestCase):
         # 6. Negative constraints
         self.assertIn("CONTINUITY AND NEGATIVE CONSTRAINTS", prompt)
 
-        # 7. Fits safely under 4,096 char limit
-        self.assertLess(len(prompt), 4096)
+        # 7. Fits safely under the Omni 1.1 Flash 20,000-character limit
+        self.assertLessEqual(len(prompt), 20_000)
         self.assertGreater(len(prompt), 1000)
 
     def test_terminal_prompt_anchors_speaker_name_and_viewer_position_with_listener_closed_mouth(self):
@@ -342,6 +342,100 @@ class TestEnhancedAudioBridge(unittest.TestCase):
             prompt,
         )
         self.assertNotIn("DIALOGUE POLICY: No spoken dialogue", prompt)
+
+    def test_episode_258_style_actions_never_reassign_mouth_motion_to_the_wrong_speaker(self):
+        payload = {
+            "videoPromptMaxChars": 4096,
+            "targetVideoModel": {"id": "grok-imagine-video-1-5-preview"},
+            "shot": {
+                "shotNumber": 1,
+                "description": "A mother and son walk through a playground",
+                "durationSeconds": 8,
+                "verifiedCastPositions": [
+                    {"characterKey": "son", "name": "ภูมิ", "position": "viewer-left"},
+                    {"characterKey": "mother", "name": "พิมพ์ชนก", "position": "viewer-right"},
+                ],
+            },
+            "dialogue": [
+                {"characterKey": "son", "speaker": "ภูมิ", "lineTh": "แม่ วันนี้ผมจะวาดบ้านของเรา"},
+                {"characterKey": "mother", "speaker": "พิมพ์ชนก", "lineTh": "ได้เลยลูก แต่อยู่ในสายตาแม่นะ"},
+            ],
+        }
+        observed = {
+            "characters": [
+                {"characterId": "son", "screenPosition": "viewer-left", "pose": "walking"},
+                {"characterId": "mother", "screenPosition": "viewer-right", "pose": "walking"},
+            ]
+        }
+        intent = {
+            "actions": [
+                "พิมพ์ชนก on viewer-right watches ภูมิ แล้วขยับปากพูดว่า แม่ วันนี้ผมจะวาดบ้านของเรา",
+                "ภูมิ on viewer-left turns to his mother and speaks with precise lip-sync: ได้เลยลูก แต่อยู่ในสายตาแม่นะ",
+            ]
+        }
+
+        prompt = _terminal_prompt(payload, intent, observed)
+
+        self.assertLessEqual(len(prompt), 4096)
+        self.assertIn('ภูมิ on viewer-left; ภูมิ says with', prompt)
+        self.assertIn('พิมพ์ชนก on viewer-right; พิมพ์ชนก says with', prompt)
+        self.assertNotIn("พิมพ์ชนก on viewer-right as they", prompt)
+        self.assertNotIn("ภูมิ on viewer-left as they", prompt)
+        self.assertNotRegex(prompt, r"MOTION AND PERFORMANCE[\s\S]*(?:ขยับปาก|speaks with precise lip-sync)")
+
+    def test_thai_and_english_speech_clauses_are_removed_from_physical_action_events(self):
+        payload = {
+            "videoPromptMaxChars": 20_000,
+            "targetVideoModel": {"id": "gemini-omni-flash-1-1"},
+            "shot": {
+                "durationSeconds": 8,
+                "verifiedCastPositions": [
+                    {"characterKey": "a", "name": "เอ", "position": "viewer-left"},
+                    {"characterKey": "b", "name": "บี", "position": "viewer-right"},
+                ],
+            },
+            "dialogue": [
+                {"characterKey": "a", "speaker": "เอ", "lineTh": "ไปกันเถอะ"},
+            ],
+        }
+        observed = {
+            "characters": [
+                {"characterId": "a", "screenPosition": "viewer-left"},
+                {"characterId": "b", "screenPosition": "viewer-right"},
+            ]
+        }
+        prompt = _terminal_prompt(
+            payload,
+            {
+                "actions": [
+                    "บี turns toward เอ แล้วขยับปากพูดว่า ไปกันเถอะ",
+                    "เอ raises one hand and speaks with precise lip-sync: ไปกันเถอะ",
+                ]
+            },
+            observed,
+        )
+        motion = prompt.split("MOTION AND PERFORMANCE", 1)[1].split("CAMERA", 1)[0]
+        self.assertIn("บี turns toward เอ", motion)
+        self.assertIn("เอ raises one hand", motion)
+        self.assertNotRegex(motion, r"ขยับปาก|พูดว่า|speaks with precise lip-sync")
+
+    def test_protected_dialogue_core_fails_when_budget_cannot_hold_it(self):
+        payload = {
+            "videoPromptMaxChars": 200,
+            "targetVideoModel": {"id": "grok-imagine-video-1-5-preview"},
+            "shot": {
+                "durationSeconds": 8,
+                "verifiedCastPositions": [
+                    {"characterKey": "a", "name": "เอ", "position": "viewer-left"},
+                ],
+            },
+            "dialogue": [
+                {"characterKey": "a", "speaker": "เอ", "lineTh": "ข้อความสำคัญที่ห้ามตัดทิ้ง" * 8},
+            ],
+        }
+        observed = {"characters": [{"characterId": "a", "screenPosition": "viewer-left"}]}
+        with self.assertRaisesRegex(RuntimeError, "VIDEO_PROMPT_BUDGET_EXCEEDED"):
+            _terminal_prompt(payload, {"actions": ["เอ raises one hand"]}, observed)
 
     def test_package_input_schema_validation_with_thai_dialogue(self):
         root = Path(__file__).resolve().parents[1]

@@ -254,7 +254,11 @@ def _observed_start_state_text(observed: dict[str, Any] | None) -> str:
 
 
 _SPEECH_INTENT = re.compile(
-    r"\b(?:asks?|says?|tells?|speaks?|whispers?|replies?|converses?)\b|(?:ถาม|พูด|บอก|กล่าว|เอ่ย|กระซิบ|สนทนา)",
+    r"\b(?:asks?|says?|tells?|speaks?|whispers?|replies?|answers?|shouts?|converses?)\b|(?:ถาม|ตอบ|พูด|บอก|กล่าว|เอ่ย|กระซิบ|ตะโกน|สนทนา)",
+    re.IGNORECASE,
+)
+_MOUTH_MOTION_INTENT = re.compile(
+    r"\b(?:lip[ -]?sync|mouth\s+(?:moves?|movement|opens?|articulates?))\b|(?:ขยับปาก|ริมฝีปาก|ลิปซิงก์|ลิปซิงค์)",
     re.IGNORECASE,
 )
 
@@ -449,17 +453,30 @@ def _clean_physical_action(action_text: str, speaker_name: str) -> str:
     if not action_text:
         return ""
     cleaned = re.sub(r'["“][^"”]*["”]', '', action_text)
-    cleaned = re.sub(
-        r'\s*(?:and\s+)?(?:speaks|says|delivers|answers|shouts|whispers)\s+(?:with|in)\s+[^:;,.!?]*[:;,.]?',
-        '',
+    # Agent-authored actions are untrusted performance prose. Once a speech or
+    # mouth-animation clause begins, discard that suffix; canonical dialogue
+    # below is the only authority allowed to create speaking motion.
+    speech_or_mouth = re.search(
+        r"(?:\s*(?:,|;)?\s*(?:and|then|while|as|และ|แล้ว)?\s*)"
+        r"(?:delivers?\s+(?:the\s+)?line|asks?|answers?|replies?|says?|tells?|speaks?|whispers?|shouts?|converses?|"
+        r"mouth\s+(?:moves?|movement|opens?|articulates?)|lip[ -]?syncs?|"
+        r"ขยับปาก|ริมฝีปาก|ลิปซิงก์|ลิปซิงค์|พูดว่า|พูด|กล่าว|เอ่ย|ถาม|ตอบ|กระซิบ|ตะโกน|สนทนา)",
         cleaned,
         flags=re.IGNORECASE,
     )
-    cleaned = re.sub(r'\s*delivers line:?.*', '', cleaned, flags=re.IGNORECASE)
+    if speech_or_mouth:
+        cleaned = cleaned[:speech_or_mouth.start()]
     if speaker_name:
         cleaned = re.sub(rf'^{re.escape(speaker_name)}\s+', '', cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r'\s{2,}', ' ', cleaned).strip(" ,.;:")
     return cleaned
+
+
+def _validate_physical_action(action_text: str) -> None:
+    if _has_positive_speech_intent(action_text) or _MOUTH_MOTION_INTENT.search(action_text):
+        raise RuntimeError(
+            "PHYSICAL_ACTION_SPEECH_CONFLICT: physical action retained speech or mouth-motion intent"
+        )
 
 
 def _build_motion_timeline(
@@ -497,7 +514,15 @@ def _build_motion_timeline(
     chars_list = all_characters or []
 
     if dialogue:
-        for idx, line in enumerate(dialogue):
+        for idx in range(max(len(actions), len(dialogue))):
+            if idx < len(actions):
+                clean_act = _clean_physical_action(actions[idx], "")
+                if clean_act:
+                    _validate_physical_action(clean_act)
+                    events.append((clean_act, "action"))
+            if idx >= len(dialogue):
+                continue
+            line = dialogue[idx]
             speaker = line.get("speaker") or line.get("speakerHint") or f"Character {idx + 1}"
             speaker_id = line.get("speakerId") or line.get("characterKey") or ""
             pos = line.get("position")
@@ -511,19 +536,8 @@ def _build_motion_timeline(
 
             speaker_anchor = f"{speaker} on {pos}" if pos else speaker
             txt = line.get("text") or line.get("lineTh") or ""
-
             emotion = line.get("emotion")
-            if emotion:
-                voice_cue = f"a {emotion} voice"
-            else:
-                voice_cue = "a clear, natural voice"
-
-            raw_act = actions[idx] if idx < len(actions) else ""
-            clean_act = _clean_physical_action(raw_act, speaker)
-            if clean_act:
-                acting_clause = f" as they {clean_act};" if not clean_act.startswith("as ") else f" {clean_act};"
-            else:
-                acting_clause = ";"
+            voice_cue = f"a {emotion} voice" if emotion else "a clear, natural voice"
 
             listeners: list[str] = []
             for other in chars_list:
@@ -539,20 +553,17 @@ def _build_motion_timeline(
                     listeners.append(f"{l_anchor} listens, mouth closed with no mouth movement.")
 
             listeners_str = (" " + " ".join(listeners)) if listeners else ""
-
-            event_desc = (
-                f"{speaker_anchor}{acting_clause} {speaker} says with {voice_cue}, "
-                f"precise realistic lip sync: \"{txt}\".{listeners_str}"
-            )
-            events.append((event_desc, "speech"))
-
-        for act in actions[len(dialogue):]:
-            clean_remaining = _clean_physical_action(act, "")
-            if clean_remaining:
-                events.append((clean_remaining, "action"))
+            events.append((
+                f"{speaker_anchor}; {speaker} says with {voice_cue}, "
+                f"precise realistic lip sync: \"{txt}\".{listeners_str}",
+                "speech",
+            ))
     else:
         for act in actions:
-            events.append((act, "action"))
+            clean_act = _clean_physical_action(act, "")
+            if clean_act:
+                _validate_physical_action(clean_act)
+                events.append((clean_act, "action"))
 
     if not events:
         events = [("Perform the approved storyboard action with physically plausible motion.", "action")]
@@ -575,6 +586,61 @@ def _build_motion_timeline(
             "Hold the resolved pose. The character's expression settles as camera movement gently eases to a stop."
         )
     return blocks
+
+
+def _validate_dialogue_timeline(
+    timeline_blocks: list[str], dialogue: list[dict[str, Any]]
+) -> None:
+    timeline = "\n".join(timeline_blocks)
+    for index, line in enumerate(dialogue):
+        speaker = str(line.get("speaker") or line.get("speakerHint") or "").strip()
+        position = str(line.get("position") or "").strip()
+        text = str(line.get("text") or line.get("lineTh") or "").strip()
+        expected = f'{speaker} on {position}; {speaker} says with'
+        if not speaker or not position or not text or expected not in timeline:
+            raise RuntimeError(
+                f"DIALOGUE_TIMELINE_BINDING_FAILED: line {index + 1} is not bound to its canonical speaker and position"
+            )
+        if timeline.count(f'precise realistic lip sync: "{text}"') != 1:
+            raise RuntimeError(
+                f"DIALOGUE_TIMELINE_BINDING_FAILED: line {index + 1} must appear in exactly one canonical speech event"
+            )
+
+
+def _compact_observed_start_state_bullets(observed: dict[str, Any] | None) -> list[str]:
+    if not isinstance(observed, dict):
+        return ["Approved START_FRAME_IMAGE is authoritative State #0."]
+    bullets: list[str] = []
+    for character in (observed.get("characters") or [])[:6]:
+        if not isinstance(character, dict):
+            continue
+        bullets.append(
+            f"Character {character.get('characterId', 'unknown')}: "
+            f"{character.get('screenPosition', 'position as shown')}; preserve identity, pose and wardrobe."
+        )
+    for item in (observed.get("objects") or [])[:4]:
+        if isinstance(item, dict):
+            bullets.append(
+                f"Object {item.get('entityId', 'prop')}: {item.get('state', 'unchanged')} at "
+                f"{item.get('position', 'the shown position')}."
+            )
+    return bullets or ["Preserve all visible State #0 facts exactly."]
+
+
+def _resolved_prompt_budget(payload: dict[str, Any]) -> int:
+    raw = payload.get("videoPromptMaxChars", 30_000)
+    try:
+        parsed = int(raw)
+    except (TypeError, ValueError):
+        raise RuntimeError("VIDEO_PROMPT_BUDGET_INVALID: videoPromptMaxChars must be an integer")
+    if parsed <= 0 or parsed > 30_000:
+        raise RuntimeError("VIDEO_PROMPT_BUDGET_INVALID: videoPromptMaxChars must be between 1 and 30000")
+    return parsed
+
+
+def _prompt_char_length(text: str) -> int:
+    """Match JavaScript String.length used by the server persistence boundary."""
+    return len(text.encode("utf-16-le")) // 2
 
 
 def _clean_acoustic_descriptor(text: str) -> str:
@@ -751,6 +817,7 @@ def _terminal_prompt(
         duration_sec = 10.0
     if duration_sec < 3.0:
         duration_sec = 8.0
+    prompt_budget = _resolved_prompt_budget(payload)
 
     unified_image_transport = _uses_unified_image_transport(target)
     start_frame_instruction = (
@@ -785,6 +852,7 @@ def _terminal_prompt(
             c_pos = _normalize_position_bucket(entry.get("position"))
             if c_name and str(c_name).lower() not in seen_char_keys:
                 seen_char_keys.add(str(c_name).lower())
+                seen_char_keys.add(str(c_id).lower())
                 all_characters.append({"id": str(c_id), "name": str(c_name), "position": c_pos or ""})
 
     for ch in (observed_start_state.get("characters") if observed_start_state else []) or []:
@@ -808,6 +876,8 @@ def _terminal_prompt(
     timeline_blocks = _build_motion_timeline(
         duration_sec, actions, dialogue, character_positions, all_characters
     )
+    if dialogue and all(line.get("position") for line in dialogue):
+        _validate_dialogue_timeline(timeline_blocks, dialogue)
     camera_spec = str(intent.get("camera") or shot.get("cameraSetup") or "Natural 35mm-lens eye-level perspective with smooth cinematic motion").strip()
 
     native_audio_enabled = (
@@ -912,7 +982,7 @@ def _terminal_prompt(
     )
 
     terminal_text = "\n\n".join(sections)
-    if len(terminal_text) >= 4096:
+    if _prompt_char_length(terminal_text) > prompt_budget:
         terminal_text = terminal_text.replace(
             "At frame 0, begin smooth, controlled camera movement from the exact existing framing. Do not assume camera motion occurred prior to frame 0.",
             "At frame 0, begin smooth camera movement from the existing framing."
@@ -921,7 +991,74 @@ def _terminal_prompt(
             "Create one continuous shot with no cut, reset or time jump. Character movement and camera motion work in harmony to drive the dramatic narrative.",
             "Create one continuous shot with no cut or reset. Movement and camera work in harmony to drive the dramatic beat."
         )
-    return terminal_text
+    if _prompt_char_length(terminal_text) <= prompt_budget:
+        return terminal_text
+
+    compact_observed = (
+        "START FRAME AUTHORITY\n" +
+        "\n".join(f"- {item}" for item in _compact_observed_start_state_bullets(observed_start_state))
+    )
+    if dialogue:
+        compact_dialogue_lines = []
+        for idx, line in enumerate(dialogue):
+            speaker = line.get("speaker") or line.get("speakerHint") or f"Character {idx + 1}"
+            speaker_id = line.get("speakerId") or line.get("characterKey") or ""
+            position = line.get("position") or ""
+            text = line.get("text") or line.get("lineTh") or ""
+            compact_dialogue_lines.append(
+                f'- Line {idx + 1} [{speaker} ({speaker_id}) on {position}]: "{text}"'
+            )
+        compact_dialogue = (
+            "CHARACTER, POSITION, AND DIALOGUE LOCK\n"
+            "Exact Thai lines; never transfer, translate or reorder:\n"
+            + "\n".join(compact_dialogue_lines)
+            + "\nOnly the bound speaker moves their mouth; all listeners keep mouths closed."
+        )
+        speech_timeline = _build_motion_timeline(
+            duration_sec, [], dialogue, character_positions, all_characters
+        )
+        _validate_dialogue_timeline(speech_timeline, dialogue)
+    else:
+        compact_dialogue = "DIALOGUE POLICY: No spoken dialogue; every mouth remains closed."
+        speech_timeline = _build_motion_timeline(
+            duration_sec, actions, dialogue, character_positions, all_characters
+        )
+
+    compact_motion = "MOTION AND PERFORMANCE\n" + "\n\n".join(speech_timeline)
+    protected_core = "\n\n".join([compact_dialogue, compact_motion])
+    protected_core_length = _prompt_char_length(protected_core)
+    if protected_core_length > prompt_budget:
+        raise RuntimeError(
+            f"VIDEO_PROMPT_BUDGET_EXCEEDED: protected dialogue core requires {protected_core_length} characters but target allows {prompt_budget}"
+        )
+
+    compact_sections = [
+        "START FRAME LOCK: Continue from the approved START_FRAME_IMAGE; preserve identity, wardrobe, geometry, lighting, layout and object state.",
+        f"TARGET MODEL: {target_id}. One continuous 9:16 shot, about {int(duration_sec)} seconds.",
+        compact_observed,
+        compact_dialogue,
+        compact_motion,
+        f"CAMERA: Start from frame-0 composition; {camera_spec}; smooth motion, no cut or reset.",
+        "AUDIO: Exact synchronous dialogue when present; no off-screen voices or background music.",
+        "CONSTRAINTS: Preserve cast, props and environment; no duplicates, morphing, teleporting, cuts, resets or time jumps.",
+    ]
+    compact_text = "\n\n".join(compact_sections)
+    if _prompt_char_length(compact_text) <= prompt_budget:
+        return compact_text
+
+    minimal_text = "\n\n".join([
+        "START FRAME LOCK: Preserve approved frame-0 identity, positions, wardrobe and objects.",
+        compact_observed,
+        protected_core,
+        "CAMERA: 9:16 continuous shot from frame 0; no cut or reset.",
+        "CONSTRAINTS: no reassigned dialogue, duplicate people, morphing or time jumps.",
+    ])
+    minimal_length = _prompt_char_length(minimal_text)
+    if minimal_length <= prompt_budget:
+        return minimal_text
+    raise RuntimeError(
+        f"VIDEO_PROMPT_BUDGET_EXCEEDED: protected prompt requires {minimal_length} characters but target allows {prompt_budget}"
+    )
 
 
 async def run(payload: dict[str, Any]) -> dict[str, Any]:

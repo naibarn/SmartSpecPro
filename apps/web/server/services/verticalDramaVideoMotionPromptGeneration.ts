@@ -5462,6 +5462,8 @@ export async function generateJudgedVerticalDramaShotVideoPrompt(
   });
   const family = resolveShotVideoPromptModelFamily(params.selectedVideoModelId, params.selectedVideoModel);
   const videoPromptMaxChars = resolveVdVideoPromptBudgetForCatalogModel({
+    modelId: params.selectedVideoModelId,
+    name: params.selectedVideoModel.name,
     provider: params.selectedVideoModel.provider,
     configJson: params.selectedVideoModel.configJson,
   });
@@ -5729,6 +5731,8 @@ export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
   });
   const family = resolveShotVideoPromptModelFamily(params.selectedVideoModelId, params.selectedVideoModel);
   const videoPromptMaxChars = resolveVdVideoPromptBudgetForCatalogModel({
+    modelId: params.selectedVideoModelId,
+    name: params.selectedVideoModel.name,
     provider: params.selectedVideoModel.provider,
     configJson: params.selectedVideoModel.configJson,
   });

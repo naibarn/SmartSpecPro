@@ -970,6 +970,9 @@ async function loadEnhancedShotContext(input: {
   const targetModel = await resolveEpisodeVideoModel(pack);
   const targetVideoModel: EnhancedModelFacts = {
     id: targetModel.id,
+    name: targetModel.name,
+    provider: targetModel.provider,
+    configJson: targetModel.configJson,
     enabled: targetModel.isEnabled !== false,
     capabilityFingerprint: buildEnhancedModelCapabilityFingerprint(targetModel),
     providerProfileId: enhancedProviderProfileId(targetModel),
@@ -11091,6 +11094,8 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     kind: "video",
     prompt,
     maxChars: resolveVdVideoPromptBudgetForCatalogModel({
+      modelId: selectedVideoModel.id,
+      name: selectedVideoModel.name,
       provider: selectedVideoModel.provider,
       configJson: selectedVideoModel.configJson,
     }),
@@ -11156,6 +11161,8 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     kind: "video",
     prompt,
     maxChars: resolveVdVideoPromptBudgetForCatalogModel({
+      modelId: selectedVideoModel.id,
+      name: selectedVideoModel.name,
       provider: selectedVideoModel.provider,
       configJson: selectedVideoModel.configJson,
     }),
@@ -22834,6 +22841,8 @@ export const verticalDramaEpisodesRouter = router({
         kind: "video",
         prompt: formatted.prompt,
         maxChars: resolveVdVideoPromptBudgetForCatalogModel({
+          modelId: model.id,
+          name: model.name,
           provider: model.provider,
           configJson: model.configJson,
         }),
@@ -22880,6 +22889,8 @@ export const verticalDramaEpisodesRouter = router({
         kind: "video",
         prompt: formatted.prompt,
         maxChars: resolveVdVideoPromptBudgetForCatalogModel({
+          modelId: model.id,
+          name: model.name,
           provider: model.provider,
           configJson: model.configJson,
         }),
@@ -22962,6 +22973,8 @@ export const verticalDramaEpisodesRouter = router({
         kind: "video",
         prompt: formatted.prompt,
         maxChars: resolveVdVideoPromptBudgetForCatalogModel({
+          modelId: model.id,
+          name: model.name,
           provider: model.provider,
           configJson: model.configJson,
         }),
@@ -28044,6 +28057,8 @@ export const verticalDramaEpisodesRouter = router({
         kind: "video",
         prompt: result.prompt,
         maxChars: resolveVdVideoPromptBudgetForCatalogModel({
+          modelId: selectedVideoModel.id,
+          name: selectedVideoModel.name,
           provider: selectedVideoModel.provider,
           configJson: selectedVideoModel.configJson,
         }),
@@ -28112,6 +28127,8 @@ export const verticalDramaEpisodesRouter = router({
         kind: "video",
         prompt: result.prompt,
         maxChars: resolveVdVideoPromptBudgetForCatalogModel({
+          modelId: selectedVideoModel.id,
+          name: selectedVideoModel.name,
           provider: selectedVideoModel.provider,
           configJson: selectedVideoModel.configJson,
         }),

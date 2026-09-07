@@ -6371,6 +6371,8 @@ export class VerticalDramaEpisodePipeline {
     return {
       ...generatedPack,
       videoPromptMaxChars: resolveVdVideoPromptBudgetForCatalogModel({
+        modelId: selectedVideoModel?.id,
+        name: selectedVideoModel?.name,
         provider: selectedVideoModel?.provider,
         configJson: selectedVideoModel?.configJson,
       }),

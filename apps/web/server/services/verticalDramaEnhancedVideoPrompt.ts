@@ -4,6 +4,7 @@ import {
   computeVideoPromptVariantFingerprint,
 } from "@shared/verticalDramaSeries/videoPromptVariants";
 import { resolveVideoPromptTargetFamily } from "@shared/verticalDramaSeries/videoPromptModelFamily";
+import { resolveVdVideoPromptBudgetForCatalogModel } from "@shared/verticalDramaSeries/videoPromptBudget";
 import type { VideoShotMediaBundle } from "@shared/verticalDramaShotMedia";
 import {
   parseVideoCapabilityProfile,
@@ -213,6 +214,9 @@ export function buildEnhancedModelCapabilityFingerprint(input: {
 
 export type EnhancedModelFacts = {
   id: string;
+  name?: string;
+  provider?: string;
+  configJson?: Record<string, unknown> | null;
   enabled: boolean;
   visionCapable?: boolean;
   structuredOutputsCapable?: boolean;
@@ -469,6 +473,7 @@ export type EnhancedSkillInput = {
   generationMode: "plan_only";
   researchMode: "off" | "bounded";
   nativeAudioEnabled?: boolean;
+  videoPromptMaxChars: number;
 };
 
 export type EnhancedBridgeResult = {
@@ -487,6 +492,23 @@ export type EnhancedBridgeResult = {
   sdkVersion: string;
 };
 
+function resolveEnhancedPromptBudget(
+  targetVideoModel: EnhancedModelFacts,
+  requested?: number,
+): number {
+  const resolved = requested ?? resolveVdVideoPromptBudgetForCatalogModel({
+    modelId: targetVideoModel.id,
+    name: targetVideoModel.name,
+    provider: targetVideoModel.provider,
+    providerProfileId: targetVideoModel.providerProfileId,
+    configJson: targetVideoModel.configJson,
+  });
+  if (!Number.isInteger(resolved) || resolved <= 0 || resolved > 30_000) {
+    throw new Error("videoPromptMaxChars must be an integer between 1 and 30000");
+  }
+  return resolved;
+}
+
 export class EnhancedVideoDirectorBridgeError extends Error {
   readonly code: "BRIDGE_UNAVAILABLE" | "BRIDGE_FAILED" | "BRIDGE_INVALID_OUTPUT";
 
@@ -500,10 +522,14 @@ export class EnhancedVideoDirectorBridgeError extends Error {
   }
 }
 
-export function getEnhancedBridgeResultValidationError(value: unknown): string | null {
+export function getEnhancedBridgeResultValidationError(
+  value: unknown,
+  videoPromptMaxChars = 30_000,
+): string | null {
   if (!value || typeof value !== "object") return "result must be an object";
   const result = value as Partial<EnhancedBridgeResult>;
-  if (typeof result.prompt !== "string" || result.prompt.trim().length === 0 || result.prompt.length > 40_000) return "prompt must contain 1-40000 characters";
+  if (typeof result.prompt !== "string" || result.prompt.trim().length === 0) return "prompt must contain at least 1 character";
+  if (result.prompt.length > videoPromptMaxChars) return `prompt exceeds resolved ${videoPromptMaxChars}-character target-model budget`;
   if (typeof result.terminalPromptHash !== "string" || !/^[a-f0-9]{64}$/i.test(result.terminalPromptHash)) return "terminalPromptHash must be sha256 hex";
   const promptHash = createHash("sha256").update(result.prompt).digest("hex");
   if (promptHash !== result.terminalPromptHash.toLowerCase()) return "terminalPromptHash does not match prompt";
@@ -523,6 +549,52 @@ export function getEnhancedBridgeResultValidationError(value: unknown): string |
 
 export function validateEnhancedBridgeResult(value: unknown): value is EnhancedBridgeResult {
   return getEnhancedBridgeResultValidationError(value) === null;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function getEnhancedPromptSemanticValidationError(
+  result: EnhancedBridgeResult,
+  input: EnhancedSkillInput,
+): string | null {
+  const prompt = result.prompt;
+  const motionStart = prompt.indexOf("MOTION AND PERFORMANCE");
+  const cameraStart = motionStart >= 0 ? prompt.indexOf("\n\nCAMERA", motionStart) : -1;
+  const motionSection = motionStart >= 0
+    ? prompt.slice(motionStart, cameraStart > motionStart ? cameraStart : undefined)
+    : prompt;
+  if (/\bon\s+viewer-(?:left|right|center(?:-left|-right)?)\s+as\s+they\b/i.test(motionSection)) {
+    return "motion timeline couples a canonical speaker anchor to an untrusted action";
+  }
+  for (const [index, rawLine] of input.dialogue.entries()) {
+    if (!rawLine || typeof rawLine !== "object" || Array.isArray(rawLine)) {
+      return `canonical dialogue line ${index + 1} must be an object`;
+    }
+    const line = rawLine as Record<string, unknown>;
+    const text = firstNonBlankString(line.text, line.lineTh);
+    const speaker = firstNonBlankString(
+      line.speakerHint,
+      line.speaker,
+      line.speakerId,
+      line.characterKey,
+    );
+    if (!text || !speaker) {
+      return `canonical dialogue line ${index + 1} requires text and speaker`;
+    }
+    if (!prompt.includes(text)) {
+      return `canonical dialogue line ${index + 1} is missing from the terminal prompt`;
+    }
+    const canonicalSpeech = new RegExp(
+      `${escapeRegExp(speaker)}(?:\\s+on\\s+viewer-[a-z-]+)?;\\s*${escapeRegExp(speaker)}\\s+says\\s+with[^\\n]{0,4096}${escapeRegExp(text)}`,
+      "i",
+    );
+    if (!canonicalSpeech.test(prompt)) {
+      return `canonical dialogue line ${index + 1} is not bound to speaker ${speaker}`;
+    }
+  }
+  return null;
 }
 
 function bridgeCommand(): [string, string[]] {
@@ -545,6 +617,15 @@ export async function invokeEnhancedVideoDirectorBridge(
   input: EnhancedSkillInput,
   options: { cwd: string; env?: NodeJS.ProcessEnv; timeoutMs?: number },
 ): Promise<EnhancedBridgeResult> {
+  // Older queued jobs may predate videoPromptMaxChars. Resolve from their
+  // immutable target-model snapshot instead of silently giving them 30k.
+  const normalizedInput: EnhancedSkillInput = {
+    ...input,
+    videoPromptMaxChars: resolveEnhancedPromptBudget(
+      input.targetVideoModel,
+      input.videoPromptMaxChars,
+    ),
+  };
   const env = options.env ?? {
     PATH: process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
     HOME: process.env.HOME ?? "/tmp",
@@ -560,7 +641,7 @@ export async function invokeEnhancedVideoDirectorBridge(
   const errors: Buffer[] = [];
   child.stdout.on("data", chunk => chunks.push(Buffer.from(chunk)));
   child.stderr.on("data", chunk => errors.push(Buffer.from(chunk)));
-  child.stdin.end(JSON.stringify(input));
+  child.stdin.end(JSON.stringify(normalizedInput));
   const timeout = setTimeout(() => child.kill("SIGTERM"), options.timeoutMs ?? 10 * 60_000);
   try {
     const [result] = (await once(child, "close")) as [number | null];
@@ -580,11 +661,24 @@ export async function invokeEnhancedVideoDirectorBridge(
         "Enhanced Agent bridge returned invalid JSON",
       );
     }
-    const validationError = getEnhancedBridgeResultValidationError(parsed);
+    const validationError = getEnhancedBridgeResultValidationError(
+      parsed,
+      normalizedInput.videoPromptMaxChars,
+    );
     if (validationError) {
       throw new EnhancedVideoDirectorBridgeError(
         "BRIDGE_INVALID_OUTPUT",
         `Enhanced Agent bridge returned an invalid prompt bundle: ${validationError}`,
+      );
+    }
+    const semanticError = getEnhancedPromptSemanticValidationError(
+      parsed as EnhancedBridgeResult,
+      normalizedInput,
+    );
+    if (semanticError) {
+      throw new EnhancedVideoDirectorBridgeError(
+        "BRIDGE_INVALID_OUTPUT",
+        `Enhanced Agent bridge returned a semantically invalid prompt: ${semanticError}`,
       );
     }
     return parsed as EnhancedBridgeResult;
@@ -602,8 +696,13 @@ export function buildEnhancedSkillInput(input: {
   authoringModel: EnhancedModelFacts;
   researchMode?: "off" | "bounded";
   nativeAudioEnabled?: boolean;
+  videoPromptMaxChars?: number;
 }): EnhancedSkillInput {
   const dialogue = Array.isArray(input.shot.dialogue) ? input.shot.dialogue : [];
+  const resolvedVideoPromptMaxChars = resolveEnhancedPromptBudget(
+    input.targetVideoModel,
+    input.videoPromptMaxChars,
+  );
   return {
     shot: { ...input.shot },
     continuity: { ...input.continuity },
@@ -621,6 +720,7 @@ export function buildEnhancedSkillInput(input: {
     generationMode: "plan_only",
     researchMode: input.researchMode ?? "off",
     nativeAudioEnabled: input.nativeAudioEnabled ?? false,
+    videoPromptMaxChars: resolvedVideoPromptMaxChars,
   };
 }
 
@@ -732,6 +832,7 @@ export function buildEnhancedInputFingerprint(input: EnhancedSkillInput): string
     generationMode: input.generationMode,
     researchMode: input.researchMode,
     nativeAudioEnabled: input.nativeAudioEnabled ?? false,
+    videoPromptMaxChars: input.videoPromptMaxChars,
   });
 }
 

@@ -7,6 +7,7 @@ import {
   buildEnhancedInputFingerprint,
   evaluateEnhancedVideoPromptReadiness,
   getEnhancedBridgeResultValidationError,
+  getEnhancedPromptSemanticValidationError,
   isEnhancedCapabilityCompatible,
   isEnhancedJobResultApplicable,
   normalizeEnhancedStoryboardShot,
@@ -413,6 +414,7 @@ describe("vertical drama Enhanced prompt boundary", () => {
     expect(input.mediaBundle.bundleFingerprint).toBe(
       baseInput.mediaBundle.bundleFingerprint
     );
+    expect(input.videoPromptMaxChars).toBe(2000);
   });
 
   it("uses an operation-scoped, tenant/shot/idempotency job key", () => {
@@ -459,6 +461,94 @@ describe("vertical drama Enhanced prompt boundary", () => {
       getEnhancedBridgeResultValidationError({ ...valid, audioDirection: null })
     ).toBe("audioDirection must be a string when present");
     expect(getEnhancedBridgeResultValidationError(valid)).toBeNull();
+    expect(getEnhancedBridgeResultValidationError(valid, 10)).toBe(
+      "prompt exceeds resolved 10-character target-model budget"
+    );
+  });
+
+  it("includes the resolved model budget in the Enhanced input fingerprint", () => {
+    const grok = buildEnhancedSkillInput({
+      shot: { shot_number: 1, dialogue: [] },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: {
+        ...baseInput.targetVideoModel,
+        id: "grok-imagine-video-1-5-preview",
+      },
+      authoringModel: baseInput.authoringModel,
+    });
+    const omni = buildEnhancedSkillInput({
+      shot: { shot_number: 1, dialogue: [] },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: {
+        ...baseInput.targetVideoModel,
+        id: "gemini-omni-flash-1-1",
+      },
+      authoringModel: baseInput.authoringModel,
+    });
+
+    expect(grok.videoPromptMaxChars).toBe(4096);
+    expect(omni.videoPromptMaxChars).toBe(20_000);
+    expect(buildEnhancedInputFingerprint(grok)).not.toBe(
+      buildEnhancedInputFingerprint(omni)
+    );
+  });
+
+  it("rejects legacy-style action coupling at the bridge boundary", () => {
+    const input = buildEnhancedSkillInput({
+      shot: {
+        dialogue: [{ speaker: "ภูมิ", text: "แม่ วันนี้ผมจะวาดบ้านของเรา" }],
+      },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: {
+        ...baseInput.targetVideoModel,
+        id: "grok-imagine-video-1-5-preview",
+      },
+      authoringModel: baseInput.authoringModel,
+    });
+    const invalid = {
+      prompt: 'ภูมิ on viewer-left as they พิมพ์ชนกขยับปาก; ภูมิ says with a clear voice: "แม่ วันนี้ผมจะวาดบ้านของเรา"',
+      terminalPromptHash: "a".repeat(64),
+      skillVersion: "11.0.0",
+      adapterVersion: "1.0.0",
+      sdkVersion: "0.22.3",
+    };
+    expect(getEnhancedPromptSemanticValidationError(invalid, input)).toContain(
+      "untrusted action"
+    );
+  });
+
+  it("rejects canonical lines that are attached to the wrong speaker", () => {
+    const input = buildEnhancedSkillInput({
+      shot: {
+        dialogue: [
+          { speaker: "ภูมิ", text: "แม่ วันนี้ผมจะวาดบ้านของเรา" },
+          { speaker: "พิมพ์ชนก", text: "ได้เลยลูก แต่อยู่ในสายตาแม่นะ" },
+        ],
+      },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: {
+        ...baseInput.targetVideoModel,
+        id: "grok-imagine-video-1-5-preview",
+      },
+      authoringModel: baseInput.authoringModel,
+    });
+    const swapped = {
+      prompt: [
+        'ภูมิ on viewer-left; ภูมิ says with a clear voice: "ได้เลยลูก แต่อยู่ในสายตาแม่นะ"',
+        'พิมพ์ชนก on viewer-right; พิมพ์ชนก says with a clear voice: "แม่ วันนี้ผมจะวาดบ้านของเรา"',
+      ].join("\n"),
+      terminalPromptHash: "a".repeat(64),
+      skillVersion: "11.0.0",
+      adapterVersion: "1.0.0",
+      sdkVersion: "0.22.3",
+    };
+    expect(getEnhancedPromptSemanticValidationError(swapped, input)).toContain(
+      "not bound to speaker ภูมิ"
+    );
   });
 
   it("rejects late results when revision or input fingerprint changed", () => {
