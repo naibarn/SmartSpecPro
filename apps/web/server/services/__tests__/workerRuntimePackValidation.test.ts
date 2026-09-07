@@ -45,7 +45,8 @@ function createManifest() {
 function makeArchive(
   manifest: Record<string, unknown>,
   signature?: string,
-  checksumTextOverride?: string
+  checksumTextOverride?: string,
+  speakerAwareRunnerBytes?: Buffer
 ) {
   const keyPair = crypto.generateKeyPairSync("ed25519");
   const zip = new AdmZip();
@@ -74,6 +75,10 @@ function makeArchive(
     if (!zip.getEntry(file.replace(/\*$/, "fixture"))) {
       zip.addFile(file.replace(/\*$/, "fixture"), Buffer.from("fixture"));
     }
+  }
+  const runner = manifest.speakerAwareRunner as Record<string, string> | undefined;
+  if (runner && speakerAwareRunnerBytes) {
+    zip.addFile(`runtime-pack/${runner.path}`, speakerAwareRunnerBytes);
   }
   const directory = fs.mkdtempSync(
     path.join(os.tmpdir(), "worker-runtime-validation-test-")
@@ -170,5 +175,45 @@ describe("worker runtime pack validation", () => {
     expect(
       result.checks.find(check => check.id === "signature_verification")?.status
     ).toBe("error");
+  });
+
+  it("requires a declared Feature 179 runner to be present and checksum-bound", async () => {
+    const runnerBytes = Buffer.from("MZ-smartaihub-feature-179-runner");
+    const runnerSha256 = crypto.createHash("sha256").update(runnerBytes).digest("hex");
+    const manifest = createManifest();
+    manifest.speakerAwareRunner = {
+      path: "speaker-aware/speaker-aware-runner.exe",
+      version: "0.1.0",
+      contractVersion: "feature-179-v1",
+      sha256: runnerSha256,
+    };
+    const transcription = manifest.transcription as Record<string, string>;
+    const checksumText = [
+      `${transcription.binarySha256}  runtime-pack/${transcription.binaryPath}`,
+      `${transcription.modelSha256}  runtime-pack/${transcription.modelPath}`,
+      `${manifest.sidecarSha256}  sidecars/hyperframes-render.exe`,
+      `${runnerSha256}  runtime-pack/speaker-aware/speaker-aware-runner.exe`,
+      "",
+    ].join("\n");
+    const archive = makeArchive(manifest, undefined, checksumText, runnerBytes);
+    const valid = await validateRuntimePackArchive({
+      filePath: archive.archivePath,
+      fileName: path.basename(archive.archivePath),
+      version: "2026.08.31.1",
+      runtimeId: "hyperframes-wsl2",
+      publicKey: archive.publicKey,
+    });
+    expect(valid.checks.find(check => check.id === "speaker_aware_runner")?.status).toBe("ok");
+
+    const missingRunner = makeArchive(manifest, undefined, checksumText);
+    const invalid = await validateRuntimePackArchive({
+      filePath: missingRunner.archivePath,
+      fileName: path.basename(missingRunner.archivePath),
+      version: "2026.08.31.1",
+      runtimeId: "hyperframes-wsl2",
+      publicKey: missingRunner.publicKey,
+    });
+    expect(invalid.valid).toBe(false);
+    expect(invalid.checks.find(check => check.id === "speaker_aware_runner")?.status).toBe("error");
   });
 });

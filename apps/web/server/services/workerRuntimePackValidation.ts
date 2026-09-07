@@ -97,6 +97,36 @@ function checksumContains(
   });
 }
 
+function validateSpeakerAwareRunnerMetadata(
+  manifest: Record<string, unknown> | null,
+  entries: Set<string>,
+  checksumText: string
+): boolean {
+  const raw = manifest?.speakerAwareRunner;
+  // Existing runtime packs remain valid when they predate Feature 179. New
+  // packs that advertise the runner must prove the exact file and checksum.
+  if (raw === undefined || raw === null) return true;
+  if (typeof raw !== "object" || Array.isArray(raw)) return false;
+  const runner = raw as Record<string, unknown>;
+  const relativePath = stringField(runner.path);
+  const version = stringField(runner.version);
+  const contractVersion = stringField(runner.contractVersion);
+  const sha256 = stringField(runner.sha256).toLowerCase();
+  if (
+    relativePath !== "speaker-aware/speaker-aware-runner.exe" ||
+    !version ||
+    contractVersion !== "feature-179-v1" ||
+    !/^[a-f0-9]{64}$/.test(sha256)
+  ) {
+    return false;
+  }
+  const archivePath = `runtime-pack/${relativePath}`;
+  return (
+    entries.has(archivePath) &&
+    checksumContains(checksumText, archivePath, sha256)
+  );
+}
+
 function verifyChecksumSignature(
   checksumText: string,
   signatureText: string,
@@ -414,6 +444,11 @@ export async function validateRuntimePackArchive(input: {
     "checksum_bindings",
     checksumPathsValid,
     "SHA256SUMS binds the transcription binaries, large-v3 model, and runtime sidecar to the manifest."
+  );
+  check(
+    "speaker_aware_runner",
+    validateSpeakerAwareRunnerMetadata(manifest, entries, checksumText),
+    "A declared Feature 179 runner exists in the archive and is bound by SHA256SUMS."
   );
   let archiveStat: fs.Stats | null = null;
   try {
