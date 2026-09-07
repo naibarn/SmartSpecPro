@@ -3423,6 +3423,7 @@ async fn execute_speaker_aware_job(
         "jobId": job.id,
         "kind": job.job_type,
         "seriesId": job.input_json.get("seriesId"),
+        "sourceArtifact": input_artifact,
         "sourceChecksum": source_checksum,
         "workflowMode": job.input_json.get("workflowMode"),
         "requestedStages": job.input_json.get("requestedStages"),

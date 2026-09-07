@@ -5,7 +5,7 @@
 //! vocabulary; this Rust copy is the Worker admission boundary.
 
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::fs;
 use std::time::{Duration, Instant};
@@ -14,6 +14,7 @@ use sha2::{Digest, Sha256};
 pub const SPEAKER_AWARE_CONTRACT_VERSION: &str = "feature-179-v1";
 pub const SPEAKER_AWARE_RUNNER_ENV: &str = "SMARTAIHUB_SPEAKER_AWARE_RUNNER";
 pub const SPEAKER_AWARE_CAPABILITY: &str = "speaker-aware-media-v1";
+pub const BUNDLED_SPEAKER_AWARE_RUNNER_RELATIVE_PATH: &str = "speaker-aware/speaker-aware-runner.exe";
 
 fn canonical_json(value: &serde_json::Value) -> String {
     match value {
@@ -35,7 +36,6 @@ pub fn hash_policy_value(value: &serde_json::Value) -> String {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
 pub enum AdapterId { SileroOnnx, FireRedOnnx, TenVad, WebRtcVad, PyannoteDiarization, MediaPipeFace, PersonBody, ActiveSpeakerFusion }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -135,6 +135,39 @@ pub fn configured_runner() -> Option<String> {
         .filter(|value| !value.is_empty())
 }
 
+/// Resolve the signed runtime-pack runner once during app startup. An explicit
+/// environment override always wins; this keeps development/custom runners
+/// possible while making the official Worker release zero-configuration.
+pub fn configure_bundled_runner(resource_dir: &Path, app_data_dir: Option<&Path>) -> Option<PathBuf> {
+    if configured_runner().is_some() {
+        return None;
+    }
+
+    let mut roots = Vec::new();
+    if let Some(app_data_dir) = app_data_dir {
+        let (manifest_path, _) = crate::runtime_manifest::runtime_pack_paths(resource_dir, app_data_dir);
+        if let Some(root) = manifest_path.parent() {
+            roots.push(root.to_path_buf());
+        }
+    }
+    roots.push(resource_dir.join("runtime-pack"));
+
+    let mut candidate_names = vec![BUNDLED_SPEAKER_AWARE_RUNNER_RELATIVE_PATH.to_string()];
+    candidate_names.push("speaker-aware/speaker-aware-runner".into());
+    candidate_names.push("speaker-aware/speaker-aware-runner.cmd".into());
+
+    for root in roots {
+        for relative in &candidate_names {
+            let candidate = root.join(relative);
+            if candidate.is_file() {
+                std::env::set_var(SPEAKER_AWARE_RUNNER_ENV, &candidate);
+                return Some(candidate);
+            }
+        }
+    }
+    None
+}
+
 pub fn probe_configured_runner() -> Result<String, String> {
     let command = configured_runner().ok_or_else(|| "workflow_capability_blocked: speaker-aware runner is not configured".to_string())?;
     let output = Command::new(&command).arg("--version").output()
@@ -192,4 +225,24 @@ mod tests {
     #[test] fn deny_does_not_fallback() { let resolution = resolve_adapter(&stage(AdapterId::SileroOnnx, FallbackPolicy::Deny, vec![]), &[]); assert_eq!(resolution.status, "blocked"); assert_eq!(resolution.adapter_id, None); }
     #[test] fn only_allow_listed_ready_adapter_can_fallback() { let policy = stage(AdapterId::SileroOnnx, FallbackPolicy::AllowListed, vec![AdapterId::WebRtcVad]); let caps = vec![AdapterCapability { adapter_id: AdapterId::WebRtcVad, version: "1".into(), status: AdapterStatus::Ready, runtime: Some("webrtc-vad".into()), device: "cpu".into(), model_checksum: None, remediation_key: None }]; let resolution = resolve_adapter(&policy, &caps); assert_eq!(resolution.status, "fallback"); assert_eq!(resolution.adapter_id, Some(AdapterId::WebRtcVad)); }
     #[test] fn invalid_policy_is_rejected() { let invalid = AdapterPolicy { contract_version: "old".into(), vad: stage(AdapterId::SileroOnnx, FallbackPolicy::Deny, vec![]), diarization: stage(AdapterId::PyannoteDiarization, FallbackPolicy::Deny, vec![]), face: stage(AdapterId::MediaPipeFace, FallbackPolicy::Deny, vec![]), person: stage(AdapterId::PersonBody, FallbackPolicy::Deny, vec![]), active_speaker: stage(AdapterId::ActiveSpeakerFusion, FallbackPolicy::Deny, vec![]), max_scan_window_ms: 1000, max_concurrent_processes: 1 }; assert!(validate_policy(&invalid).is_err()); }
+
+    #[test]
+    fn adapter_ids_match_web_contract_casing() {
+        assert_eq!(serde_json::to_string(&AdapterId::ActiveSpeakerFusion).unwrap(), "\"ActiveSpeakerFusion\"");
+        assert_eq!(serde_json::to_string(&AdapterId::MediaPipeFace).unwrap(), "\"MediaPipeFace\"");
+    }
+
+    #[test]
+    fn bundled_runner_is_discovered_when_no_override_is_set() {
+        let root = tempfile::tempdir().unwrap();
+        let runtime_root = root.path().join("runtime-pack").join("speaker-aware");
+        std::fs::create_dir_all(&runtime_root).unwrap();
+        std::fs::write(root.path().join("runtime-pack/manifest.json"), "{}").unwrap();
+        let runner = runtime_root.join("speaker-aware-runner");
+        std::fs::write(&runner, b"runner").unwrap();
+        std::env::remove_var(SPEAKER_AWARE_RUNNER_ENV);
+        let discovered = configure_bundled_runner(root.path(), None);
+        assert_eq!(discovered.as_deref(), Some(runner.as_path()));
+        std::env::remove_var(SPEAKER_AWARE_RUNNER_ENV);
+    }
 }

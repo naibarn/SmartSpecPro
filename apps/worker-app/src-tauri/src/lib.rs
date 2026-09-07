@@ -143,6 +143,9 @@ pub fn run() {
         .setup(|app| {
             let data_dir = app.path().app_data_dir().ok();
             let settings = data_dir.as_deref().map(load_settings).unwrap_or_default();
+            if let Ok(resource_dir) = app.path().resource_dir() {
+                speaker_aware_adapters::configure_bundled_runner(&resource_dir, data_dir.as_deref());
+            }
             let mut had_unclean_previous_session = false;
             if let Some(dir) = data_dir.as_deref() {
                 diagnostics::set_diagnostics_level(settings.diagnostics_level.clone());

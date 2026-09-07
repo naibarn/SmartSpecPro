@@ -527,6 +527,15 @@ const whisperCli = requiredPath("--whisper-cli");
 assertBundledWhisperExecutable(whisperCli, "Bundled whisper.cpp executable", isWsl2Runtime, isMacRuntime);
 const whisperModel = requiredPath("--whisper-model");
 assertWhisperModel(whisperModel);
+const speakerAwareRunner = argValue("--speaker-aware-runner")
+  ? requiredPath("--speaker-aware-runner")
+  : "";
+if (speakerAwareRunner) {
+  // The Tauri Worker process runs on the host OS even when its render runtime
+  // is WSL2. Therefore the bundled speaker-aware runner is always a native
+  // Windows executable for the Windows Worker release.
+  assertWindowsExecutable(speakerAwareRunner, "Speaker-aware runner");
+}
 const thaiFontsDir = requiredPath("--thai-fonts-dir");
 const notices = requiredPath("--notices");
 const signatureFileArg = argValue("--signature-file");
@@ -564,6 +573,7 @@ mkdirSync(join(stagingRoot, "runtime-pack/hyperframes"), { recursive: true });
 mkdirSync(join(stagingRoot, "runtime-pack/hyperframes-sidecar"), { recursive: true });
 mkdirSync(join(stagingRoot, "runtime-pack/comfy-mcp"), { recursive: true });
 mkdirSync(join(stagingRoot, "runtime-pack/whisper/.cache/hyperframes/whisper/models"), { recursive: true });
+if (speakerAwareRunner) mkdirSync(join(stagingRoot, "runtime-pack/speaker-aware"), { recursive: true });
 
 copyFileInto(hyperframesSidecar, join(stagingRoot, "sidecars"), isMacRuntime ? "hyperframes-render" : "hyperframes-render.exe");
 // The Worker App invokes the bundled Node executable directly. Shipping the
@@ -646,6 +656,9 @@ copyFileInto(
   join(stagingRoot, "runtime-pack/whisper/.cache/hyperframes/whisper/models"),
   "ggml-large-v3.bin",
 );
+if (speakerAwareRunner) {
+  copyFileInto(speakerAwareRunner, join(stagingRoot, "runtime-pack/speaker-aware"), "speaker-aware-runner.exe");
+}
 cpSync(thaiFontsDir, join(stagingRoot, "runtime-pack/fonts"), { recursive: true });
 copyFileInto(notices, join(stagingRoot, "runtime-pack"), "THIRD_PARTY_NOTICES.txt");
 copyFileInto(comfyMcpManifest, join(stagingRoot, "runtime-pack/comfy-mcp"), "manifest.json");
@@ -730,6 +743,16 @@ const manifest = {
     ? {
         remotionRenderPackageVersion: remotionSidecarContract.packageVersion,
         remotionPlatformContractVersion: remotionSidecarContract.platformContractVersion,
+      }
+    : {}),
+  ...(speakerAwareRunner
+    ? {
+        speakerAwareRunner: {
+          path: "speaker-aware/speaker-aware-runner.exe",
+          version: "0.1.0",
+          contractVersion: "feature-179-v1",
+          sha256: await sha256File(join(stagingRoot, "runtime-pack/speaker-aware/speaker-aware-runner.exe")),
+        },
       }
     : {}),
   supportedContractVersions: ["2026-06-22"],

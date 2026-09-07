@@ -4762,6 +4762,13 @@ fn windows_path_to_wsl(path: &Path) -> String {
 pub async fn worker_app_clear_runtime_pack(app: tauri::AppHandle) -> Result<(), String> {
     let effective_runtime_dir = get_effective_runtime_dir(&app)?;
 
+    let auto_runner = crate::speaker_aware_adapters::configured_runner()
+        .map(|value| value.contains("runtime-pack"))
+        .unwrap_or(false);
+    if auto_runner {
+        std::env::remove_var(crate::speaker_aware_adapters::SPEAKER_AWARE_RUNNER_ENV);
+    }
+
     let runtime_pack = effective_runtime_dir.join("runtime-pack");
     let sidecars = effective_runtime_dir.join("sidecars");
 
@@ -4877,6 +4884,18 @@ pub async fn worker_app_install_runtime_pack(
     if installed_manifest.runtime_profile_hash != manifest.runtime_profile_hash {
         return Err("Installed runtime profile hash does not match server manifest.".into());
     }
+    // Refresh the auto-discovered Feature 179 runner after a runtime-pack
+    // update. An explicit operator override remains untouched.
+    let auto_runner = crate::speaker_aware_adapters::configured_runner()
+        .map(|value| value.contains("runtime-pack"))
+        .unwrap_or(false);
+    if auto_runner {
+        std::env::remove_var(crate::speaker_aware_adapters::SPEAKER_AWARE_RUNNER_ENV);
+    }
+    crate::speaker_aware_adapters::configure_bundled_runner(
+        &resource_dir,
+        Some(&effective_runtime_dir),
+    );
     let doctor = doctor_from_installed_or_default_paths(&resource_dir, &effective_runtime_dir);
     if doctor.status != "ready" {
         return Ok(RuntimeInstallResult {

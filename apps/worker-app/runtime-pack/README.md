@@ -20,3 +20,13 @@ placeholder pack.
 
 `npm run release:windows` now accepts the official runtime pack and publishes
 the worker installer once the runtime bundle checks pass.
+
+## Speaker-aware runner
+
+Feature 179 is backed by an operator-controlled native runner. A signed runtime
+pack may include `speaker-aware/speaker-aware-runner.exe` and the manifest's
+`speakerAwareRunner` entry. The Worker discovers that file automatically after
+installing the runtime pack; `SMARTAIHUB_SPEAKER_AWARE_RUNNER` remains an
+explicit development override. The runner is built from
+`../speaker-aware-runner/build-windows.ps1` on a Windows build host and is
+passed to `npm run runtime:release` with `--speaker-aware-runner PATH`.

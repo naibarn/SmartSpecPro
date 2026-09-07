@@ -122,6 +122,20 @@ function assertReleaseRuntimePack() {
   if (manifest.remotionSidecarScriptPath !== "remotion-sidecar/render.mjs") {
     blockedReasons.push("Remotion sidecar render script path is missing from the runtime manifest");
   }
+  if (manifest.speakerAwareRunner) {
+    const runnerPath = join(appDir, "runtime-pack", manifest.speakerAwareRunner.path || "");
+    if (!existsSync(runnerPath)) {
+      blockedReasons.push(`speaker-aware runner is missing: ${manifest.speakerAwareRunner.path || "(missing)"}`);
+    } else {
+      const runnerBytes = readFileSync(runnerPath);
+      if (runnerBytes.length < 2 || runnerBytes[0] !== 0x4d || runnerBytes[1] !== 0x5a) {
+        blockedReasons.push("speaker-aware runner must be a Windows executable (MZ/PE)");
+      }
+    }
+    if (manifest.speakerAwareRunner.contractVersion !== "feature-179-v1") {
+      blockedReasons.push("speaker-aware runner contract version is unsupported");
+    }
+  }
   if (!existsSync(join(appDir, "runtime-pack/remotion-sidecar/render.mjs"))) {
     blockedReasons.push("Remotion sidecar render script is missing");
   }
