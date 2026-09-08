@@ -14,10 +14,10 @@ import { parseSkillFile } from "@smartspec/skills";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
 import {
   InsufficientCreditsError,
-  executeJsonPlanningCallWithRetry,
   type GenerateCharacterVisualPromptsParams,
 } from "./verticalDramaCharacterImageGeneration";
 import { resolveCharacterVisualBibleModel } from "./verticalDramaCharacterImageGeneration";
+import { executeJsonPlanningCallWithRetry } from "./verticalDramaStoryBible";
 import {
   VERTICAL_DRAMA_CHARACTER_PROMPT_CONTRACT_VERSION,
   assertVerticalDramaCharacterPromptLength,

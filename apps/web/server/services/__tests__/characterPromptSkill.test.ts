@@ -9,10 +9,12 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../verticalDramaCharacterImageGeneration", () => ({
-  executeJsonPlanningCallWithRetry: mocks.executeJsonPlanningCallWithRetry,
   resolveCharacterVisualBibleModel: mocks.resolveCharacterVisualBibleModel,
   resolveCharacterRoleTier: vi.fn(() => "support"),
   InsufficientCreditsError: class InsufficientCreditsError extends Error {},
+}));
+vi.mock("../verticalDramaStoryBible", () => ({
+  executeJsonPlanningCallWithRetry: mocks.executeJsonPlanningCallWithRetry,
 }));
 vi.mock("../creditService", () => mocks);
 
