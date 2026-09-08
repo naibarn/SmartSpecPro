@@ -975,6 +975,146 @@ export class VerticalDramaCharacterStockService {
     return expectedCount;
   }
 
+  /** Read one immutable portrait-candidate draft without requiring the rest of
+   * the batch to remain in `previewed` state. This is used by the per-card
+   * submit action after another candidate in the same preview batch may have
+   * already been rendered. */
+  async getPortraitCandidateForPreflight(
+    owner: VerticalDramaCharacterStockOwner,
+    characterId: number,
+    batchId: string,
+    candidateId: string,
+  ): Promise<ClaimedPortraitCandidate> {
+    const rows: Array<{ id: number; metadata: unknown }> = await db
+      .select({
+        id: verticalDramaCharacterAssets.id,
+        metadata: verticalDramaCharacterAssets.metadata,
+      })
+      .from(verticalDramaCharacterAssets)
+      .where(
+        and(
+          eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
+          eq(verticalDramaCharacterAssets.userId, owner.userId),
+          eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
+          eq(verticalDramaCharacterAssets.characterId, characterId),
+          eq(verticalDramaCharacterAssets.role, "portrait_candidate"),
+          sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'batchId' = ${batchId}`,
+          sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'candidateId' = ${candidateId}`,
+        ),
+      )
+      .limit(1);
+    const candidate = rows[0] ? readPortraitCandidatePrivateMetadata(rows[0].metadata) : null;
+    if (!candidate || candidate.batchId !== batchId || candidate.status !== "previewed") {
+      throw new VerticalDramaCharacterStockError(
+        "candidate_not_ready",
+        "Portrait candidate is unavailable for submission.",
+      );
+    }
+    if (new Date(candidate.expiresAt).getTime() <= Date.now()) {
+      throw new VerticalDramaCharacterStockError(
+        "candidate_batch_expired",
+        "Portrait candidate preview expired; generate a fresh batch.",
+      );
+    }
+    return {
+      assetLinkId: rows[0]!.id,
+      batchId: candidate.batchId,
+      candidateId: candidate.candidateId,
+      index: candidate.index,
+      count: candidate.count,
+      portraitPrompt: candidate.portraitPrompt,
+      negativePrompt: candidate.negativePrompt,
+      promptContractVersion: candidate.visualBibleSnapshot?.promptContractVersion,
+      promptProfile: candidate.visualBibleSnapshot?.promptProfile,
+      castingPreferencesFingerprint: candidate.visualBibleSnapshot?.castingPreferencesFingerprint,
+      semanticRetryCount: candidate.visualBibleSnapshot?.semanticRetryCount,
+      ...(candidate.referenceGuided ? { referenceGuided: true } : {}),
+      ...(candidate.referenceAssetLinkIds
+        ? { referenceAssetLinkIds: candidate.referenceAssetLinkIds }
+        : {}),
+      ...(candidate.castingAgeProfile
+        ? { castingAgeProfile: candidate.castingAgeProfile }
+        : {}),
+    };
+  }
+
+  /** Atomically claims one server-issued draft candidate exactly once. */
+  async claimPortraitCandidate(
+    owner: VerticalDramaCharacterStockOwner,
+    characterId: number,
+    batchId: string,
+    candidateId: string,
+  ): Promise<ClaimedPortraitCandidate> {
+    return db.transaction(async tx => {
+      const rows = await tx
+        .select()
+        .from(verticalDramaCharacterAssets)
+        .where(
+          and(
+            eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
+            eq(verticalDramaCharacterAssets.userId, owner.userId),
+            eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
+            eq(verticalDramaCharacterAssets.characterId, characterId),
+            eq(verticalDramaCharacterAssets.role, "portrait_candidate"),
+            sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'batchId' = ${batchId}`,
+            sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'candidateId' = ${candidateId}`,
+          ),
+        )
+        .for("update");
+      const row = rows[0];
+      const candidate = row ? readPortraitCandidatePrivateMetadata(row.metadata) : null;
+      if (!row || !candidate) {
+        throw new VerticalDramaCharacterStockError(
+          "candidate_not_ready",
+          "Portrait candidate is unavailable for submission.",
+        );
+      }
+      if (candidate.status !== "previewed") {
+        throw new VerticalDramaCharacterStockError(
+          "candidate_batch_claimed",
+          "Portrait candidate has already been submitted or superseded.",
+        );
+      }
+      if (new Date(candidate.expiresAt).getTime() <= Date.now()) {
+        throw new VerticalDramaCharacterStockError(
+          "candidate_batch_expired",
+          "Portrait candidate preview expired; generate a fresh batch.",
+        );
+      }
+      const claimedAt = new Date().toISOString();
+      await tx
+        .update(verticalDramaCharacterAssets)
+        .set({
+          metadata: mergePortraitCandidateMetadata(row.metadata, {
+            status: "submitting" satisfies VerticalDramaPortraitCandidateStatus,
+            claimedAt,
+          }),
+          updatedAt: new Date(claimedAt),
+        })
+        .where(eq(verticalDramaCharacterAssets.id, row.id));
+      return {
+        assetLinkId: row.id,
+        batchId: candidate.batchId,
+        candidateId: candidate.candidateId,
+        index: candidate.index,
+        count: candidate.count,
+        portraitPrompt: candidate.portraitPrompt,
+        negativePrompt: candidate.negativePrompt,
+        promptContractVersion: candidate.visualBibleSnapshot?.promptContractVersion,
+        promptProfile: candidate.visualBibleSnapshot?.promptProfile,
+        castingPreferencesFingerprint: candidate.visualBibleSnapshot?.castingPreferencesFingerprint,
+        semanticRetryCount: candidate.visualBibleSnapshot?.semanticRetryCount,
+        ...(candidate.referenceGuided ? { referenceGuided: true } : {}),
+        ...(candidate.referenceAssetLinkIds
+          ? { referenceAssetLinkIds: candidate.referenceAssetLinkIds }
+          : {}),
+        ...(candidate.castingAgeProfile
+          ? { castingAgeProfile: candidate.castingAgeProfile }
+          : {}),
+      };
+    });
+  }
+
   /** Read the immutable prompt fields for server-side preflight without claiming the batch. */
   async getPortraitCandidateBatchForPreflight(
     owner: VerticalDramaCharacterStockOwner,

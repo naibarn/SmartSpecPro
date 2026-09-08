@@ -2078,12 +2078,17 @@ export const verticalDramaCharactersRouter = router({
       };
     }),
 
-  /** Submit every server-authored first-portrait candidate as an independent image task. */
+  /** Submit server-authored first-portrait candidates as independent image
+   * tasks. Omitting `candidateId` submits the complete preview batch; passing
+   * it submits only that candidate. */
   generatePortraitCandidateBatch: verticalDramaProcedure
     .input(
       seriesScope.extend({
         characterId: z.string().min(1),
         batchId: z.string().uuid(),
+        /** When present, submit only this previewed candidate; omitted keeps
+         * the original all-candidates submit behavior. */
+        candidateId: z.string().trim().min(1).max(128).optional(),
         // Required — no server-side fallback; caller must explicitly select
         // an image model (fail-closed, see `resolveCharacterImageModelId`).
         selectedImageModelId: z.string().trim().min(1).max(128),
@@ -2138,12 +2143,13 @@ export const verticalDramaCharactersRouter = router({
 
       let candidateCount: number;
       try {
-        candidateCount =
-          await verticalDramaCharacterStockService.getPortraitCandidateBatchCount(
-            owner,
-            characterId,
-            input.batchId
-          );
+        candidateCount = input.candidateId
+          ? 1
+          : await verticalDramaCharacterStockService.getPortraitCandidateBatchCount(
+              owner,
+              characterId,
+              input.batchId
+            );
       } catch (err) {
         mapStockError(err);
       }
@@ -2173,12 +2179,20 @@ export const verticalDramaCharactersRouter = router({
       } catch (error) {
         return mapCharacterPromptContractError(error);
       }
-      const previewCandidates =
-        await verticalDramaCharacterStockService.getPortraitCandidateBatchForPreflight(
-          owner,
-          characterId,
-          input.batchId
-        );
+      const previewCandidates = input.candidateId
+        ? [
+            await verticalDramaCharacterStockService.getPortraitCandidateForPreflight(
+              owner,
+              characterId,
+              input.batchId,
+              input.candidateId,
+            ),
+          ]
+        : await verticalDramaCharacterStockService.getPortraitCandidateBatchForPreflight(
+            owner,
+            characterId,
+            input.batchId
+          );
       const referenceGuidedCandidateCount = previewCandidates.filter(
         candidate => candidate.referenceGuided
       ).length;
@@ -2302,12 +2316,20 @@ export const verticalDramaCharactersRouter = router({
 
       let candidates;
       try {
-        candidates =
-          await verticalDramaCharacterStockService.claimPortraitCandidateBatch(
-            owner,
-            characterId,
-            input.batchId
-          );
+        candidates = input.candidateId
+          ? [
+              await verticalDramaCharacterStockService.claimPortraitCandidate(
+                owner,
+                characterId,
+                input.batchId,
+                input.candidateId,
+              ),
+            ]
+          : await verticalDramaCharacterStockService.claimPortraitCandidateBatch(
+              owner,
+              characterId,
+              input.batchId
+            );
       } catch (err) {
         mapStockError(err);
       }
@@ -2318,7 +2340,7 @@ export const verticalDramaCharactersRouter = router({
           tenantId,
           amount: totalReservedCredits,
           description:
-            `Vertical Drama — reserve ${candidateCount} character portrait candidates ` +
+            `Vertical Drama — reserve ${candidateCount} character portrait candidate${candidateCount === 1 ? "" : "s"} ` +
             `(character #${characterId})`,
           sourceType: "media_image",
           metadata: {
@@ -2328,6 +2350,7 @@ export const verticalDramaCharactersRouter = router({
             batchId: input.batchId,
             candidateCount,
             creditCostPerImage,
+            submitMode: input.candidateId ? "single" : "batch",
             type: "reservation",
             modelId: resolvedImageModelId,
           },

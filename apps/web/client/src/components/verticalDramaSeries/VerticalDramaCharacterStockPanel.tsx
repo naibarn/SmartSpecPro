@@ -4871,6 +4871,72 @@ export function VerticalDramaCharacterStockPanel({
     );
   };
 
+  /** Submit exactly one previewed candidate. The prompt was already generated
+   * by the preview batch, so this action only spends the selected image-render
+   * credits and leaves the other previewed candidates untouched. */
+  const handlePortraitCandidateConfirm = (
+    characterId: string,
+    assetLinkId: string,
+  ) => {
+    const batch = portraitCandidateBatches[characterId];
+    const candidate = batch?.candidates.find(
+      item => item.assetLinkId === assetLinkId,
+    );
+    if (
+      !batch ||
+      !candidate ||
+      candidate.status !== "previewed" ||
+      !requireModelSelected() ||
+      !requireMcpConnectionOrToast() ||
+      !requireHermesConnectionOrToast()
+    ) {
+      return;
+    }
+    confirmCharacterCreditAction(
+      characterId,
+      t(lang, "ยืนยันสร้างภาพตัวเลือกนี้", "Confirm this candidate"),
+      t(
+        lang,
+        "ระบบจะสร้างเฉพาะภาพตัวเลือกนี้และคิดเครดิตค่าเรนเดอร์ภาพเดียว",
+        "Only this candidate will be rendered and charged for one image.",
+      ),
+      t(lang, "สร้างภาพนี้", "Generate this image"),
+      () => {
+        updatePortraitCandidateUi(characterId, assetLinkId, {
+          status: "submitting",
+          errorMessage: undefined,
+        });
+        generatePortraitCandidateBatchMutation.mutate(
+          {
+            seriesId,
+            characterId,
+            batchId: batch.batchId,
+            candidateId: candidate.candidateId,
+            selectedImageModelId,
+            ...(imageModelUsesMcp && mcpConnectionId
+              ? { mcpConnectionId }
+              : {}),
+            ...(imageModelUsesMcp &&
+            mcpConnectionId &&
+            mcpSharedGroupId != null
+              ? { sharedGroupId: mcpSharedGroupId }
+              : {}),
+            ...(imageModelUsesHermes && hermesConnectionId
+              ? { hermesConnectionId }
+              : {}),
+          },
+          {
+            onError: () => {
+              updatePortraitCandidateUi(characterId, assetLinkId, {
+                status: "previewed",
+              });
+            },
+          },
+        );
+      },
+    );
+  };
+
   const handlePortraitCandidateBatchCancel = (characterId: string) =>
     setPortraitCandidateBatches(prev => {
       const next = { ...prev };
@@ -9429,6 +9495,12 @@ export function VerticalDramaCharacterStockPanel({
                                       activeBatch?.batchId === batch.batchId;
                                     const isPreviewOnly =
                                       isActive &&
+                                      batch.candidates.some(
+                                        candidate =>
+                                          candidate.status === "previewed"
+                                      );
+                                    const areAllCandidatesPreviewed =
+                                      isActive &&
                                       batch.candidates.every(
                                         candidate =>
                                           candidate.status === "previewed"
@@ -9686,7 +9758,9 @@ export function VerticalDramaCharacterStockPanel({
                                               string, and stays available even after
                                               generation so the prompt can be reused
                                               in another tool. */}
-                                                        {isPreviewOnly && (
+                                                        {isPreviewOnly &&
+                                                          candidate.status ===
+                                                            "previewed" && (
                                                           <p className="line-clamp-4 text-[11px] text-muted-foreground">
                                                             {
                                                               candidate.portraitPrompt
@@ -9734,6 +9808,42 @@ export function VerticalDramaCharacterStockPanel({
                                                         </Button>
                                                       </div>
                                                     )}
+                                                    {isActive &&
+                                                      candidate.status ===
+                                                        "previewed" && (
+                                                        <Button
+                                                          type="button"
+                                                          size="sm"
+                                                          variant="outline"
+                                                          className="w-full"
+                                                          data-testid={`generate-portrait-candidate-${candidate.assetLinkId}`}
+                                                          disabled={
+                                                            generatePortraitCandidateBatchMutation.isPending ||
+                                                            !selectedImageModelId
+                                                          }
+                                                          title={
+                                                            selectedImageModelId
+                                                              ? undefined
+                                                              : t(
+                                                                  lang,
+                                                                  "เลือกโมเดลภาพก่อนสร้าง",
+                                                                  "Select an image model first",
+                                                                )
+                                                          }
+                                                          onClick={() =>
+                                                            handlePortraitCandidateConfirm(
+                                                              selectedCharacter.characterId,
+                                                              candidate.assetLinkId,
+                                                            )
+                                                          }
+                                                        >
+                                                          {t(
+                                                            lang,
+                                                            "สร้างภาพนี้",
+                                                            "Generate this image",
+                                                          )}
+                                                        </Button>
+                                                      )}
                                                     <Button
                                                       type="button"
                                                       size="sm"
@@ -9910,7 +10020,8 @@ export function VerticalDramaCharacterStockPanel({
                                             </button>
                                           )}
 
-                                        {isPreviewOnly && (
+                                        {isPreviewOnly &&
+                                          areAllCandidatesPreviewed && (
                                           <footer className="mt-3 flex flex-wrap items-center gap-2">
                                             <Button
                                               type="button"
