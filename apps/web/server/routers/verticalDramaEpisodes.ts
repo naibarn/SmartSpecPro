@@ -432,7 +432,10 @@ import {
 } from "@shared/verticalDramaSeries/dialogueQuality";
 import { resolveEffectiveImagePromptLanguage } from "@shared/verticalDramaSeries/imagePromptLanguage";
 import { normalizeVerticalDramaCharacterLookImageBrief } from "@shared/verticalDramaSeries/characterLookSelection";
-import { analyzeVerticalDramaStorySafety } from "../services/verticalDramaStorySafety";
+import {
+  analyzeVerticalDramaStorySafety,
+  buildVerticalDramaImagePromptSafetyInput,
+} from "../services/verticalDramaStorySafety";
 // Wave-4A/W4-B integration (spec §8.8, section-12) — the guided Production
 // Wizard state resolver. TYPE-ONLY here (pure/shared, no runtime import) —
 // the resolver FUNCTION itself is loaded via a runtime `import()` inside
@@ -17096,10 +17099,6 @@ export const verticalDramaEpisodesRouter = router({
         const clearStalePrompt =
           refsChanged &&
           (updatedFrames[frameIndex].imagePrompt ?? "").trim().length > 0;
-        const hasExistingImage = Boolean(
-          updatedFrames[frameIndex].approvedMediaAssetId ||
-            updatedFrames[frameIndex].videoStartMediaAssetId
-        );
         const staleImagePatch = refsChanged
           ? {
               // The old prompt/mapping no longer describes the selected cast,
@@ -17113,12 +17112,8 @@ export const verticalDramaEpisodesRouter = router({
               sceneContinuity: undefined,
               deviceOrientationQc: undefined,
               videoSafety: undefined,
-              ...(hasExistingImage
-                ? {
-                    imageStaleReason: "character_references_changed" as const,
-                    imageStaleAt: new Date().toISOString(),
-                  }
-                : {}),
+              imageStaleReason: "character_references_changed" as const,
+              imageStaleAt: new Date().toISOString(),
             }
           : {};
         const currentDualView = normalizeVerticalDramaBarrierMultiView(
@@ -20301,37 +20296,6 @@ export const verticalDramaEpisodesRouter = router({
           ? transportDecision.transportMetadata
           : undefined;
 
-      if (transportDecision.kind !== "hermes" && shouldChargeImageCredits) {
-        const hasCredits = await hasEnoughCredits(userId, imageCreditCost);
-        if (!hasCredits) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: `Insufficient credits for start-frame image render. Required: ${imageCreditCost}`,
-          });
-        }
-
-        // Reserve credits BEFORE starting the task — same convention as
-        // `media.ts`'s `generateImageAsync` (`media.getTask` reconciles the
-        // reservation against actual usage once the task completes/fails).
-        await deductCredits({
-          userId,
-          tenantId,
-          amount: imageCreditCost,
-          description: `Vertical Drama — start frame render (episode #${episodeId}, shot ${input.shotNumber}, reserved)`,
-          sourceType: "media_image",
-          idempotencyKey: input.idempotencyKey,
-          metadata: {
-            feature: "vertical_drama_series",
-            seriesId,
-            episodeId,
-            shotNumber: input.shotNumber,
-            type: "reservation",
-            creditCost: imageCreditCost,
-            modelId: resolvedImageModelId,
-          },
-        });
-      }
-
       // Identity-lock references — which character entries actually have a
       // reference image attached, after `mergeAndTrimReferenceImageUrls`'s
       // `maxReferenceImages` trimming. Still needed below (the soften>0
@@ -20458,12 +20422,35 @@ export const verticalDramaEpisodesRouter = router({
           softenActionResult.negativePrompt || softenedNegativePrompt;
       }
 
-      // Check the positive scene instructions before folding the negative
-      // exclusions into the provider prompt. Negative text legitimately
-      // contains policy terms (for example "no gore"), so analyzing the
-      // merged string would reject every otherwise-safe prompt.
+      // Check only the current shot's story-bearing facts before folding the
+      // negative exclusions into the provider prompt. The provider prompt also
+      // contains identity/age/reference/camera contracts; those are visual
+      // metadata and must never be combined with a story marker to create a
+      // false policy block (for example a character descriptor saying "เด็ก"
+      // plus a gaze instruction saying "บังคับให้ตอบ").
       const renderSafety = analyzeVerticalDramaStorySafety(
-        renderStartFramePrompt
+        buildVerticalDramaImagePromptSafetyInput({
+          imagePrompt: renderStartFramePrompt,
+          shotContext: {
+            // The storyboard is the current source of truth. The persisted
+            // frame summary is only a legacy fallback for shots whose
+            // storyboard predates canonical shot tracking.
+            canonicalShotSummary:
+              storyboardForComposition?.visual_description ??
+              storyboardForComposition?.action ??
+              frame.canonicalShotSummary,
+            description: storyboardForComposition?.visual_description,
+            action: storyboardForComposition?.action,
+            emotion: storyboardForComposition?.emotion,
+            dialogueExcerpt: storyboardForComposition?.dialogue_excerpt,
+            subtitleText: storyboardForComposition?.subtitle_text,
+            narrativePurpose: storyboardForComposition?.narrative_purpose,
+            dialogueLines: renderDialogueLines.map(line => ({
+              characterKey: line.characterKey,
+              text: line.lineTh,
+            })),
+          },
+        })
       );
       if (renderSafety.level === "high") {
         throw new TRPCError({
@@ -20666,6 +20653,38 @@ export const verticalDramaEpisodesRouter = router({
       }
 
       const userToken = getStartFrameMediaUserToken(ctx);
+      // Reserve only after every deterministic admission, safety, and prompt
+      // QC step has passed. A failed precondition must never strand credits
+      // because no provider task exists to reconcile the reservation.
+      let imageReservationTransactionId: number | undefined;
+      if (shouldChargeImageCredits) {
+        const hasCredits = await hasEnoughCredits(userId, imageCreditCost);
+        if (!hasCredits) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Insufficient credits for start-frame image render. Required: ${imageCreditCost}`,
+          });
+        }
+
+        const reservation = await deductCredits({
+          userId,
+          tenantId,
+          amount: imageCreditCost,
+          description: `Vertical Drama — start frame render (episode #${episodeId}, shot ${input.shotNumber}, reserved)`,
+          sourceType: "media_image",
+          idempotencyKey: input.idempotencyKey,
+          metadata: {
+            feature: "vertical_drama_series",
+            seriesId,
+            episodeId,
+            shotNumber: input.shotNumber,
+            type: "reservation",
+            creditCost: imageCreditCost,
+            modelId: resolvedImageModelId,
+          },
+        });
+        imageReservationTransactionId = reservation.transactionId;
+      }
       try {
         const task = await mediaGenerationService.generateImageAsync(
           {
@@ -20726,6 +20745,11 @@ export const verticalDramaEpisodesRouter = router({
             userId,
             amount: imageCreditCost,
             description: `Refund: start-frame render failed to submit (episode #${episodeId}, shot ${input.shotNumber})`,
+            originalTransactionId: imageReservationTransactionId,
+            idempotencyKey: input.idempotencyKey
+              ? `${input.idempotencyKey}:refund`
+              : undefined,
+            tenantId,
             sourceType: "media_image",
             metadata: {
               feature: "vertical_drama_series",

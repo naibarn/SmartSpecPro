@@ -97,6 +97,10 @@ export function repairStartFramePlanAfterLookDeletion(params: {
     const changed = required.changed || callers.changed || assignmentsChanged;
     if (!changed) return frame;
 
+    const hasExistingImage = Boolean(
+      frame.approvedMediaAssetId || frame.videoStartMediaAssetId
+    );
+
     changedShots.push(frame.shotNumber);
     return {
       ...frame,
@@ -105,6 +109,9 @@ export function repairStartFramePlanAfterLookDeletion(params: {
       ...(assignmentsChanged ? { characterLookAssignments: assignments } : {}),
       imagePrompt: "",
       negativePrompt: "",
+      ...(hasExistingImage
+        ? { imageStaleReason: "character_references_changed" as const }
+        : {}),
     };
   });
 

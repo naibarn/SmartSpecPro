@@ -6056,9 +6056,10 @@ function EpisodeWorkspaceShell({
     // (`canonicalShotSummary`) before rendering, so a stale/wrong stored
     // prompt is refreshed. When false (the "สร้างภาพ (AI)" render-only
     // button), reuse the shot's EXISTING `frame.imagePrompt` as-is and skip
-    // re-authoring — this is the escape hatch for rendering a prompt the user
-    // has manually edited/approved without it being overwritten. If the shot
-    // has no stored prompt at all, the render-only path stops with an
+    // re-authoring — unless the current synopsis/character/location state
+    // explicitly marked that snapshot stale. A plain manual prompt edit keeps
+    // render-only semantics; a known source conflict is repaired first. If
+    // the shot has no stored prompt at all, the render-only path stops with an
     // actionable message instead of silently changing into prompt authoring.
     reauthor = true,
     awaitCompletion = false,
@@ -6094,6 +6095,11 @@ function EpisodeWorkspaceShell({
               shotNumber: number;
               imagePrompt?: string;
               canonicalShotSummary?: string;
+              imageStaleReason?:
+                | "prompt_changed"
+                | "character_references_changed"
+                | "supporting_presence_changed"
+                | "location_variant_changed";
               characterLookAssignments?: Array<{
                 selectedLookKey: string;
                 requestedLabel?: string;
@@ -6108,6 +6114,21 @@ function EpisodeWorkspaceShell({
 
       const canonicalShotSummary =
         canonicalShotSummaryByShot.get(shotNumber) || undefined;
+      const currentSummaryChanged = Boolean(
+        canonicalShotSummary &&
+          canonicalShotSummary.trim() !==
+            (frame?.canonicalShotSummary?.trim() ?? "")
+      );
+      const requiresCurrentStateRefresh =
+        currentSummaryChanged ||
+        frame?.imageStaleReason === "character_references_changed" ||
+        frame?.imageStaleReason === "supporting_presence_changed" ||
+        frame?.imageStaleReason === "location_variant_changed";
+      // A render-only click must still repair a prompt invalidated by a
+      // current synopsis/reference/location change. Preserve render-only
+      // semantics for a plain manual prompt edit (`prompt_changed`) when no
+      // authoritative source changed underneath it.
+      const shouldReauthor = reauthor || requiresCurrentStateRefresh;
 
       // The start-frame plan is a materialized snapshot. This button is
       // "สร้าง prompt + ภาพ" — it ALWAYS re-authors the shot's prompt through
@@ -6120,8 +6141,9 @@ function EpisodeWorkspaceShell({
       // The per-shot skill reads the frame's CURRENT requiredCharacterRefs,
       // so a manually-added character now deterministically widens framing.
       // Render-only reuse stays available via the "สร้างภาพ (AI)" button,
-      // which calls this function with `reauthor = false` to skip exactly this
-      // re-authoring step and render the existing prompt as-is.
+      // which calls this function with `reauthor = false`; only a known current
+      // source conflict upgrades that click into one automatic re-authoring
+      // pass before rendering.
       // This dedicated per-shot mutation can now materialize its own minimal
       // frame when the episode/shot has no start-frame plan entry yet. Do not
       // call the whole-episode `runStage(start_frame_render_plan)` here: rapid
@@ -6129,7 +6151,7 @@ function EpisodeWorkspaceShell({
       // which exceeded the proxy timeout even though those duplicate runs
       // later completed. Render-only still reuses an existing prompt, but a
       // missing prompt must be authored once before the image can be queued.
-      if (reauthor) {
+      if (shouldReauthor) {
         try {
           const promptResult = await submitAndWaitForShotStartFramePrompt({
             seriesId,
@@ -6159,13 +6181,13 @@ function EpisodeWorkspaceShell({
       if (!preparedImagePrompt) {
         toast.error(
           lang === "th"
-            ? reauthor
+            ? shouldReauthor
               ? "เตรียมพรอมต์ภาพไม่สำเร็จ ลองใหม่อีกครั้ง"
               : "ยังไม่มี prompt ภาพ กรุณากด ‘สร้าง prompt + ภาพ’ ก่อน"
-            : reauthor
+            : shouldReauthor
               ? "Failed to prepare the image prompt — try again."
               : "No stored image prompt. Use ‘Generate prompt + image’ first.",
-          reauthor
+          shouldReauthor
             ? {
                 action: {
                   label: lang === "th" ? "ลองอีกครั้ง" : "Retry",
@@ -6287,7 +6309,7 @@ function EpisodeWorkspaceShell({
           action: {
             label: lang === "th" ? "ลองอีกครั้ง" : "Retry",
             onClick: () =>
-              void handleGeneratePromptAndImage(shotNumber, mode, reauthor),
+              void handleGeneratePromptAndImage(shotNumber, mode, shouldReauthor),
           },
         }
       );

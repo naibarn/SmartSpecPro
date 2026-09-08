@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   analyzeVerticalDramaStorySafety,
+  buildVerticalDramaImagePromptSafetyInput,
   buildVerticalDramaVideoPromptSafetyInput,
   formatVerticalDramaStorySafetyWarnings,
   isBlockingVerticalDramaStorySafety,
@@ -136,6 +137,57 @@ describe("vertical drama story safety", () => {
 
     expect(result.level).toBe("low");
     expect(result.findings).toEqual([]);
+  });
+
+  it("does not combine identity metadata with a safe current image story", () => {
+    const result = analyzeVerticalDramaStorySafety(
+      buildVerticalDramaImagePromptSafetyInput({
+        imagePrompt:
+          "REFERENCE MAPPING: Image 1 = รินลดา\n" +
+          "CHARACTER IDENTITY MAP: ทรงเด็กวัยเรียน อายุปรากฏประมาณ 12 ปี\n" +
+          "CURRENT SHOT COMPOSITION LOCK: มองตรงไปที่รินลดาเพื่อบังคับให้ตอบ",
+        shotContext: {
+          canonicalShotSummary:
+            "ผู้ใหญ่สามคนตรวจเอกสารในสำนักงานและค้นข้อมูลในระบบต่อหน้ากัน",
+          action: "ตัวละครทั้งสามยืนตรวจหลักฐานร่วมกันอย่างสงบ",
+          emotion: "จริงจัง",
+          dialogueExcerpt: "ระบบมีบันทึก เดี๋ยวผมเปิดให้ดู",
+        },
+      })
+    );
+
+    expect(result.level).toBe("low");
+    expect(result.findings).toEqual([]);
+  });
+
+  it("still blocks a real minor coercion in the current shot story", () => {
+    const result = analyzeVerticalDramaStorySafety(
+      buildVerticalDramaImagePromptSafetyInput({
+        imagePrompt: "A cinematic office confrontation.",
+        shotContext: {
+          canonicalShotSummary:
+            "ผู้ใหญ่บังคับเด็กให้เซ็นเอกสารและเด็กพยายามถอยหนี",
+        },
+      })
+    );
+
+    expect(result.level).toBe("high");
+    expect(result.findings.map(finding => finding.code)).toContain(
+      "abuse_or_coercion"
+    );
+  });
+
+  it("keeps a manually authored prompt without generated markers in the scan", () => {
+    const result = analyzeVerticalDramaStorySafety(
+      buildVerticalDramaImagePromptSafetyInput({
+        imagePrompt: "An adult forced the child to move before the child was ready.",
+      })
+    );
+
+    expect(result.level).toBe("high");
+    expect(result.findings.map(finding => finding.code)).toContain(
+      "abuse_or_coercion"
+    );
   });
 
   it("does not treat negated motion constraints as coercion", () => {

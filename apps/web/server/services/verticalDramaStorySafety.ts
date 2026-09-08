@@ -151,6 +151,86 @@ const SAFETY_METADATA_KEYS = new Set([
   "policySafetyContract",
 ]);
 
+/**
+ * Provider prompts contain deterministic grounding contracts alongside the
+ * authored scene. Those contracts may legitimately mention age, children, or
+ * forceful camera/action wording as visual constraints. They are not story
+ * events and must not be combined with the current shot narrative during
+ * policy admission.
+ */
+const IMAGE_PROMPT_METADATA_MARKERS = [
+  "REFERENCE MAPPING:",
+  "BEGIN CHARACTER IDENTITY LOCKS",
+  "PHYSICAL CAST LOCK",
+  "CHARACTER APPARENT-AGE LOCK",
+  "CURRENT SHOT COMPOSITION LOCK",
+  "SCENE CONTINUITY LOCK",
+  "VIDEO-FACE VISIBILITY LOCK",
+  "SPOKEN CALLER VIRTUAL SCREENS",
+  "CALLER FACE IDENTITY LOCK",
+  "CHARACTER IDENTITY MAP",
+  "IMAGE NEGATIVE CONSTRAINTS",
+  "POLICY-SAFE STORY CONSTRAINTS:",
+];
+
+/**
+ * Return only the free-form/scene portion of an image prompt. Older prompts
+ * often begin with generated reference and identity blocks, while manually
+ * authored prompts may contain no marker at all. In the former case the
+ * canonical shot context supplied by the caller remains the authoritative
+ * story source; in the latter case the full prompt is safe to inspect.
+ */
+export function extractVerticalDramaImagePromptStoryText(
+  prompt: unknown
+): string {
+  if (typeof prompt !== "string") return "";
+  const value = prompt.trim();
+  if (!value) return "";
+  const markerIndex = IMAGE_PROMPT_METADATA_MARKERS.reduce(
+    (earliest, marker) => {
+      const index = value.indexOf(marker);
+      return index >= 0 && index < earliest ? index : earliest;
+    },
+    value.length
+  );
+  return value.slice(0, markerIndex).trim();
+}
+
+/**
+ * Build the bounded safety input for a Start Frame image. The current shot
+ * summary/action/dialogue is the story authority; prompt metadata and
+ * negative constraints stay out of the combination checks.
+ */
+export function buildVerticalDramaImagePromptSafetyInput(params: {
+  imagePrompt?: unknown;
+  shotContext?: unknown;
+}): Record<string, unknown> {
+  const context =
+    params.shotContext && typeof params.shotContext === "object"
+      ? (params.shotContext as Record<string, unknown>)
+      : {};
+  const storyContext: Record<string, unknown> = {};
+  for (const key of [
+    "canonicalShotSummary",
+    "description",
+    "action",
+    "emotion",
+    "dialogueLines",
+    "dialogueExcerpt",
+    "subtitleText",
+    "narrativePurpose",
+    "productContext",
+  ]) {
+    if (context[key] !== undefined && context[key] !== null) {
+      storyContext[key] = context[key];
+    }
+  }
+  return {
+    imagePrompt: extractVerticalDramaImagePromptStoryText(params.imagePrompt),
+    shotContext: storyContext,
+  };
+}
+
 function flattenStoryText(
   input: unknown,
   depth = 0,

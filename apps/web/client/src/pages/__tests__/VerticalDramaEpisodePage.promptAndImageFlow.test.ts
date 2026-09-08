@@ -97,7 +97,8 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
         pageSource.indexOf("async function handleGeneratePromptAndImage(")
       )
     );
-    expect(handler).toContain("if (reauthor) {");
+    expect(handler).toContain("if (shouldReauthor) {");
+    expect(handler).toContain("frame?.imageStaleReason === \"character_references_changed\"");
     expect(handler).toContain("ยังไม่มี prompt ภาพ กรุณากด ‘สร้าง prompt + ภาพ’ ก่อน");
   });
 

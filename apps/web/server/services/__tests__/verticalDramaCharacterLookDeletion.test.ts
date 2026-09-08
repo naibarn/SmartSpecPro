@@ -85,4 +85,26 @@ describe("repairStartFramePlanAfterLookDeletion", () => {
     expect(result.changedShots).toEqual([]);
     expect(result.plan).toBe(plan);
   });
+
+  it("marks an already-rendered shot stale so the UI reauthors before reuse", () => {
+    const result = repairStartFramePlanAfterLookDeletion({
+      plan: planWithFrames([
+        {
+          shotNumber: 3,
+          imagePrompt: "old look prompt",
+          negativePrompt: "",
+          requiredCharacterRefs: ["character-7-look-casual"],
+          productReferenceAssetIds: [],
+          approvedMediaAssetId: "asset-3",
+        },
+      ]),
+      deletedLookKey: "character-7-look-casual",
+      parentCharacterKey: "character-7",
+    });
+
+    expect(result.plan.frames[0]).toMatchObject({
+      imagePrompt: "",
+      imageStaleReason: "character_references_changed",
+    });
+  });
 });
