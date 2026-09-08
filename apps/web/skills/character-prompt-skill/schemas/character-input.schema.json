@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/character-input.schema.json",
+  "title": "Character Input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "narrative_role", "role_tier", "description", "region_ethnicity"],
+  "properties": {
+    "character_id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "role": { "type": "string", "minLength": 1 },
+    "age": { "type": "integer", "minimum": 6, "maximum": 90 },
+    "age_band": { "type": "string", "enum": ["child_6_12", "teen_13_17", "adult_18_24", "adult_25_34", "adult_35_plus"] },
+    "gender_presentation": { "type": "string", "enum": ["female", "male", "androgynous"] },
+    "narrative_role": { "type": "string", "enum": ["protagonist", "co_protagonist", "supporting", "antagonist", "love_interest", "child_flashback"] },
+    "role_tier": { "type": "string", "enum": ["lead_male", "lead_female", "protagonist", "child_hero", "child_heroine", "supporting_male", "supporting_female", "antagonist_male", "antagonist_female", "elder_patriarch", "elder_matriarch", "support_memorable", "support_general"] },
+    "description": { "type": "string", "minLength": 1 },
+    "occupation": { "type": "string" },
+    "personality_traits": { "type": "array", "items": { "type": "string" } },
+    "relationship_to_lead": { "type": "string", "enum": ["younger_brother_of_heroine", "younger_sister_of_heroine", "heroine_best_friend", "hero_best_friend", "hero_sibling", "family_member", "rival", "mentor", "colleague", "custom"] },
+    "timeline_stage": { "type": "string", "enum": ["present_day", "flashback_child", "flashback_teen"] },
+    "adult_character_id": { "type": "string" },
+    "continuity_anchors": { "type": "array", "items": { "type": "string" } },
+    "region_ethnicity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["descriptor", "explicit"],
+      "properties": {
+        "descriptor": { "type": "string", "minLength": 1 },
+        "explicit": { "type": "boolean" }
+      }
+    },
+    "visual_overrides": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "face_archetype": { "type": "string" },
+        "hair_direction": { "type": "string" },
+        "wardrobe_direction": { "type": "string" },
+        "makeup_direction": { "type": "string" },
+        "expression_direction": { "type": "string" }
+      }
+    }
+  }
+}

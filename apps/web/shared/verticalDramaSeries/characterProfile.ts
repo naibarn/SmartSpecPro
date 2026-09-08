@@ -8,6 +8,10 @@ import {
   roleTierSchema,
   roleVisualIntentSchema,
 } from "./narrativeRole";
+import {
+  verticalDramaCharacterPromptProfileSchema,
+  type VerticalDramaCharacterPromptProfile,
+} from "./characterPromptProfile";
 
 const boundedDnaText = z.string().trim().min(1).max(1_000);
 const boundedDnaList = z.array(boundedDnaText).max(12);
@@ -238,9 +242,19 @@ export const verticalDramaApprovedCharacterVisualBibleSchema = z
     // Bounded planning retry count carried with the approved snapshot so
     // later paid renders can report the same prompt-generation diagnostics.
     semanticRetryCount: z.number().int().min(0).max(8).optional(),
-    designDna: verticalDramaCharacterDesignDnaSchema,
+    designDna: verticalDramaCharacterDesignDnaSchema.optional(),
+    characterPromptProfile: verticalDramaCharacterPromptProfileSchema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    if (!value.designDna && !value.characterPromptProfile) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["designDna"],
+        message: "Approved visual bible requires legacy designDna or characterPromptProfile.",
+      });
+    }
+  });
 
 /**
  * Browser round-trip contract for an unedited prompt preview. This is
@@ -292,6 +306,7 @@ export const verticalDramaCharacterVisualBibleSchema = z
     promptDnaRevision: z.number().int().positive().optional(),
     eraStyling: z.string().min(1).optional(),
     audienceAppealNotes: z.string().min(1).optional(),
+    characterPromptProfile: verticalDramaCharacterPromptProfileSchema.optional(),
     designDna: verticalDramaCharacterDesignDnaSchema.optional(),
   })
   .passthrough();
@@ -320,6 +335,8 @@ export type VerticalDramaApprovedCharacterDesignSnapshot = z.infer<
 export type VerticalDramaApprovedCharacterVisualBible = z.infer<
   typeof verticalDramaApprovedCharacterVisualBibleSchema
 >;
+export { verticalDramaCharacterPromptProfileSchema };
+export type { VerticalDramaCharacterPromptProfile };
 export type VerticalDramaCharacterVisualBible = z.infer<
   typeof verticalDramaCharacterVisualBibleSchema
 >;
