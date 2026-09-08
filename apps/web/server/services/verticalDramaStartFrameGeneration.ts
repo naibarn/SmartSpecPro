@@ -113,6 +113,7 @@ import {
 import type { VerticalDramaCharacterLookAssignment } from "@shared/verticalDramaSeries/characterLookSelection";
 import {
   analyzeVerticalDramaStorySafety,
+  buildVerticalDramaImagePromptSafetyInput,
   VerticalDramaStorySafetyError,
 } from "./verticalDramaStorySafety";
 // Two-mode start-frame image prompt switch
@@ -3422,10 +3423,19 @@ export async function generateStartFrameShotPrompt(
         ),
       0
     );
-    const policySafety = analyzeVerticalDramaStorySafety({
-      prompt: policySafePrompt,
-      negativePrompt: "",
-    });
+    // The deterministic provider prompt contains reference, apparent-age,
+    // continuity, and composition metadata. Those blocks are not story events
+    // and can form a false high-risk combination when scanned together (for
+    // example, a youthful appearance lock plus a gaze note saying
+    // "บังคับให้ตอบ"). The rewritten current synopsis is the authoritative
+    // story payload for this mode; keep the full prompt only as a fallback for
+    // legacy/manual shapes without a canonical synopsis.
+    const policySafety = analyzeVerticalDramaStorySafety(
+      buildVerticalDramaImagePromptSafetyInput({
+        imagePrompt: policySafePrompt,
+        shotContext: { canonicalShotSummary: rewrittenSynopsis },
+      })
+    );
     if (policySafety.level === "high") {
       throw new VerticalDramaStorySafetyError(
         "Policy-safe synopsis rewrite still contains a high-risk image prompt.",

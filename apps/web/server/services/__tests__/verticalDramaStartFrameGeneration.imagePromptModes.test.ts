@@ -525,6 +525,60 @@ describe("policy-safe synopsis deterministic contract", () => {
       )
     ).rejects.toThrow("adjustment target must occur exactly once");
   });
+
+  it("does not combine current-shot composition metadata with youthful continuity metadata", async () => {
+    const canonicalSynopsis =
+      "พิมพ์ชนกเลื่อนแฟ้มไปตรงหน้ารินลดา ธีร์เปิดระบบเก็บเอกสารต่อหน้าทุกคน ขณะที่รินลดานิ่งไป";
+    mockExecute.mockResolvedValue(
+      successResponse({
+        rewritten_synopsis: canonicalSynopsis,
+        safety_adjustments: [],
+      })
+    );
+
+    const result = await generateStartFrameShotPrompt(
+      baseShotParams({
+        shotNumber: 6,
+        imagePromptMode: "policy_safe_rewrite",
+        canonicalShotSummary: canonicalSynopsis,
+        characterReferenceManifest: [
+          { index: 1, characterId: "rinlada", name: "รินลดา" },
+        ],
+        sceneContinuityLockBlock:
+          "SCENE CONTINUITY LOCK\n- Visual identity: ทรงเด็กวัยเรียน อายุปรากฏประมาณ 17 ปี",
+        shotComposition: {
+          gazeDirection: "พิมพ์ชนกมองตรงไปที่รินลดาเพื่อบังคับให้ตอบ",
+        },
+      })
+    );
+
+    expect(result.prompt).toContain("อายุปรากฏประมาณ 17 ปี");
+    expect(result.prompt).toContain("บังคับให้ตอบ");
+    expect(result.prompt).toContain(canonicalSynopsis);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("still blocks a truly high-risk rewritten synopsis", async () => {
+    const unsafeSynopsis = "ผู้ใหญ่บังคับเด็กให้เซ็นเอกสารและเด็กพยายามถอยหนี";
+    mockExecute.mockResolvedValue(
+      successResponse({
+        rewritten_synopsis: unsafeSynopsis,
+        safety_adjustments: [],
+      })
+    );
+
+    await expect(
+      generateStartFrameShotPrompt(
+        baseShotParams({
+          imagePromptMode: "policy_safe_rewrite",
+          canonicalShotSummary: unsafeSynopsis,
+        })
+      )
+    ).rejects.toThrow(
+      "Policy-safe synopsis rewrite still contains a high-risk image prompt"
+    );
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
 });
 
 describe("generateStartFrameShotPrompt — lenient extras parsed and normalized (d)", () => {
