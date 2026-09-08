@@ -436,6 +436,54 @@ function normalizePersistedOutput(value: unknown): MarketplaceReviewIdeaOutput {
   });
 }
 
+export type MarketplaceReviewIdeaResumeSnapshot = {
+  productSource: "marketplace_capture" | "upload";
+  productBrief?: string;
+  direction?: string;
+  referenceImages: Array<{
+    mediaAssetId: string;
+    imageId?: string;
+    url: string;
+    label?: string;
+  }>;
+  selectedCharacterIds: string[];
+  dialogueMode: "none" | "character_dialogue";
+};
+
+/**
+ * Expose only the editor state needed to resume a persisted run. The full
+ * generated input can contain product metadata and character DNA, so it must
+ * stay server-side and owner-scoped.
+ */
+export function buildMarketplaceReviewIdeaResumeSnapshot(
+  value: unknown,
+): MarketplaceReviewIdeaResumeSnapshot | null {
+  const parsed = marketplaceReviewIdeaInputSchema.safeParse(value);
+  if (!parsed.success) return null;
+  const input = parsed.data;
+  const referenceImages = input.productImages
+    .filter(image => Boolean(image.mediaAssetId))
+    .map(image => ({
+      mediaAssetId: image.mediaAssetId!,
+      ...(image.imageId ? { imageId: image.imageId } : {}),
+      url: image.url,
+      ...(image.label ? { label: image.label } : {}),
+    }));
+  if (referenceImages.length === 0 || input.selectedCharacterIds.length === 0) {
+    return null;
+  }
+  return {
+    productSource: input.productSource,
+    ...(input.productSource === "upload" && input.product.description
+      ? { productBrief: input.product.description }
+      : {}),
+    ...(input.direction ? { direction: input.direction } : {}),
+    referenceImages,
+    selectedCharacterIds: input.selectedCharacterIds,
+    dialogueMode: input.dialogueMode,
+  };
+}
+
 function fingerprint(value: unknown): string {
   return crypto
     .createHash("sha256")
@@ -1310,6 +1358,7 @@ export async function listMarketplaceReviewIdeaRuns(input: {
       variationSeed: row.variationSeed,
       selectedIdeaId: row.selectedIdeaId,
       createdAt: row.createdAt.toISOString(),
+      resume: buildMarketplaceReviewIdeaResumeSnapshot(row.input),
       ...normalizePersistedOutput(row.output),
     }));
 }

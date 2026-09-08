@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   ChevronsUpDown,
@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
+import { useVerticalDramaCreditConfirmation } from "@/components/verticalDramaSeries/VerticalDramaCreditConfirmDialog";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { trpc } from "@/lib/trpc";
 import {
@@ -89,6 +90,37 @@ function hasCompleteShotDialogueDrafts(drafts: ShotDialogueDraft): boolean {
   );
 }
 
+export function areSpecialTieInDialogueSpeakersSelected(input: {
+  characters: Array<{
+    characterId?: string | number;
+    id?: string | number;
+    name?: string;
+    characterName?: string;
+  }>;
+  speakerCharacterIds: string[];
+  shotDialogueDrafts: ShotDialogueDraft;
+}): boolean {
+  const selectedSpeakerIds = new Set(input.speakerCharacterIds);
+  return input.shotDialogueDrafts.every(shot =>
+    shot.dialogueLines.every(line =>
+      input.characters.some(character => {
+        const characterId = resolveSpecialTieInCharacterId(character);
+        const characterName = character.name ?? character.characterName ?? "";
+        return (
+          selectedSpeakerIds.has(characterId) &&
+          (characterId === line.speakerCharacterId ||
+            characterName === line.speakerCharacterId)
+        );
+      })
+    )
+  );
+}
+
+/** The legacy dialogue summary is capped at 12 lines; shotDialogues carries the full 9-shot script. */
+export function limitSpecialTieInDialogueLines<T>(lines: readonly T[]): T[] {
+  return lines.slice(0, 12);
+}
+
 type Reference = {
   mediaAssetId: string;
   source: "upload" | "marketplace_capture" | "series_asset";
@@ -107,6 +139,28 @@ type SceneSuggestion = {
     name: string;
     score: number;
   }>;
+};
+
+type IdeaHistoryResumeSnapshot = {
+  productSource: "marketplace_capture" | "upload";
+  productBrief?: string;
+  direction?: string;
+  referenceImages: Array<{
+    mediaAssetId: string;
+    imageId?: string;
+    url: string;
+    label?: string;
+  }>;
+  selectedCharacterIds: string[];
+  dialogueMode: "none" | "character_dialogue";
+};
+
+type IdeaHistoryRun = {
+  runId: string;
+  productId?: string;
+  selectedIdeaId?: string | null;
+  resume?: IdeaHistoryResumeSnapshot | null;
+  ideas: MarketplaceReviewIdea[];
 };
 
 export const DEFAULT_SPECIAL_TIE_IN_DIALOGUE_MODE =
@@ -133,6 +187,19 @@ export function resolveSpecialTieInActionState(input: {
     finalSubmitPending: input.createMutationPending || input.finalSubmitPending,
     materializeReferencesPending: input.materializeMutationPending,
   };
+}
+
+/**
+ * Keep a model selection usable when reference or dialogue settings cause the
+ * server-side catalog to return a different compatible model set.
+ */
+export function resolveSpecialTieInModelSelection<T extends { modelId: string }>(
+  selectedModelId: string,
+  models: readonly T[],
+): string {
+  return models.some(model => model.modelId === selectedModelId)
+    ? selectedModelId
+    : (models[0]?.modelId ?? "");
 }
 
 function parseEditableDialogueScript(
@@ -485,9 +552,8 @@ export function SpecialTieInEpisodeDialog({
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(
     null
   );
-  const [ideaHistory, setIdeaHistory] = useState<
-    Array<{ runId: string; ideas: MarketplaceReviewIdea[] }>
-  >([]);
+  const [ideaHistory, setIdeaHistory] = useState<IdeaHistoryRun[]>([]);
+  const historyHydratedRef = useRef(false);
   const [ideaGenerationJobId, setIdeaGenerationJobId] = useState<string | null>(
     null
   );
@@ -522,6 +588,12 @@ export function SpecialTieInEpisodeDialog({
   const [brollRenderJobId, setBrollRenderJobId] = useState<string | null>(null);
   const [brollFullscreen, setBrollFullscreen] = useState(false);
   const debouncedProductQuery = useDebouncedValue(productQuery, 300);
+  const { requestConfirmation, cancelConfirmation, creditConfirmDialog } =
+    useVerticalDramaCreditConfirmation();
+
+  useEffect(() => {
+    if (!open) cancelConfirmation();
+  }, [cancelConfirmation, open]);
 
   const charactersQuery = trpc.verticalDramaCharacters.listCharacters.useQuery(
     { seriesId },
@@ -708,7 +780,7 @@ export function SpecialTieInEpisodeDialog({
   const ideaHistoryQuery =
     trpc.verticalDramaEpisodes.listMarketplaceReviewIdeas.useQuery(
       { seriesId, productId: selectedProductId ?? undefined },
-      { enabled: open && Boolean(selectedProductId), staleTime: 10_000 }
+      { enabled: open, staleTime: 10_000, refetchOnWindowFocus: false }
     );
   const currentIdeaGenerationScopeKey = selectedProductId
     ? `marketplace-review-ideas:${seriesId}:${selectedProductId}`
@@ -979,22 +1051,12 @@ export function SpecialTieInEpisodeDialog({
   const selectedVideoModelIsValid = videoModels.some(
     model => model.modelId === videoModelId
   );
-  const speakerNamesById = new Map(
-    characters.map(character => [
-      resolveSpecialTieInCharacterId(character),
-      character.name ?? character.characterName ?? "",
-    ])
-  );
-  const shotDialogueSpeakersAreSelected = shotDialogueDrafts.every(shot =>
-    shot.dialogueLines.every(line => {
-      const directId = speakerNamesById.has(line.speakerCharacterId)
-        ? line.speakerCharacterId
-        : [...speakerNamesById.entries()].find(
-            ([, name]) => name === line.speakerCharacterId
-          )?.[0];
-      return Boolean(directId && speakerCharacterIds.includes(directId));
-    })
-  );
+  const shotDialogueSpeakersAreSelected =
+    areSpecialTieInDialogueSpeakersSelected({
+      characters,
+      speakerCharacterIds,
+      shotDialogueDrafts,
+    });
   const canSubmit =
     idea.trim().length > 0 &&
     idea.trim().length <= 12000 &&
@@ -1020,11 +1082,13 @@ export function SpecialTieInEpisodeDialog({
   });
 
   useEffect(() => {
-    if (!imageModelId && imageModels.length > 0)
-      setImageModelId(imageModels[0]?.modelId ?? "");
-    if (!videoModelId && videoModels.length > 0)
-      setVideoModelId(videoModels[0]?.modelId ?? "");
-  }, [imageModelId, videoModelId, imageModels, videoModels]);
+    setImageModelId(current =>
+      resolveSpecialTieInModelSelection(current, imageModels),
+    );
+    setVideoModelId(current =>
+      resolveSpecialTieInModelSelection(current, videoModels),
+    );
+  }, [imageModels, videoModels]);
 
   useEffect(() => {
     const fallbackDuration = modelsQuery.data?.fallbackVideoDurationSeconds;
@@ -1046,16 +1110,128 @@ export function SpecialTieInEpisodeDialog({
   useEffect(() => {
     if (!ideaHistoryQuery.data) return;
     const nextHistory = ideaHistoryQuery.data.map(
-      (run: { id: string; ideas: MarketplaceReviewIdea[] }) => ({
+      (run: {
+        id: string;
+        productId?: string;
+        selectedIdeaId?: string | null;
+        resume?: IdeaHistoryResumeSnapshot | null;
+        ideas: MarketplaceReviewIdea[];
+      }) => ({
         runId: run.id,
+        productId: run.productId,
+        selectedIdeaId: run.selectedIdeaId,
+        resume: run.resume,
         ideas: run.ideas,
       })
     );
     setIdeaHistory(nextHistory);
     setFreshIdeaRunId(current =>
-      current && nextHistory.some(run => run.runId === current) ? current : null
+      current && nextHistory.some(run => run.runId === current)
+        ? current
+        : nextHistory[0]?.runId ?? null
     );
   }, [ideaHistoryQuery.data]);
+
+  useEffect(() => {
+    if (!open) {
+      historyHydratedRef.current = false;
+      return;
+    }
+    if (
+      historyHydratedRef.current ||
+      initialInput ||
+      !ideaHistoryQuery.data?.length
+    ) {
+      return;
+    }
+    const latest = ideaHistoryQuery.data[0] as {
+      id: string;
+      productId?: string;
+      selectedIdeaId?: string | null;
+      resume?: IdeaHistoryResumeSnapshot | null;
+      ideas: MarketplaceReviewIdea[];
+    };
+    const selectedIdea = latest.selectedIdeaId
+      ? latest.ideas.find(ideaItem => ideaItem.ideaId === latest.selectedIdeaId)
+      : undefined;
+    if (selectedIdea && charactersQuery.isLoading) return;
+    historyHydratedRef.current = true;
+    const resume = latest.resume;
+    if (resume) {
+      const restoredCharacterIds = resume.selectedCharacterIds.slice(0, 4);
+      setCharacterIds(restoredCharacterIds);
+      setSpeakerCharacterIds([]);
+      setDialogueMode(resume.dialogueMode);
+      setReferences(
+        resume.referenceImages.slice(0, 3).map(reference => ({
+          mediaAssetId: reference.mediaAssetId,
+          source: resume.productSource,
+          role: "product",
+          label: reference.label,
+          previewUrl: reference.url,
+          provenance: {
+            marketplaceProductId:
+              resume.productSource === "marketplace_capture"
+                ? latest.productId
+                : undefined,
+            marketplaceImageId: reference.imageId,
+          },
+        }))
+      );
+      if (resume.productSource === "marketplace_capture" && latest.productId) {
+        setSelectedProductId(latest.productId);
+      } else if (resume.productBrief) {
+        setIdea(resume.productBrief);
+      }
+    }
+    setSelectedIdeaId(latest.selectedIdeaId ?? null);
+    if (selectedIdea) {
+      setSelectedMarketplaceIdea(selectedIdea);
+      setIdea(selectedIdea.episodeStory);
+      const restoredCharacterIds =
+        latest.resume?.selectedCharacterIds.slice(0, 4) ?? [];
+      const selectedCharacterIdSet = new Set(restoredCharacterIds);
+      const candidateShotLines = selectedIdea.shotDialogues.flatMap(
+        shot => shot.lines
+      );
+      const matchedSpeakerIds = characters
+        .filter(
+          character =>
+            selectedCharacterIdSet.has(
+              resolveSpecialTieInCharacterId(character)
+            ) &&
+            candidateShotLines.some(line => line.speaker === character.name)
+        )
+        .slice(0, 3)
+        .map(resolveSpecialTieInCharacterId)
+        .filter(Boolean);
+      setCharacterIds(current =>
+        Array.from(new Set([...current, ...matchedSpeakerIds])).slice(0, 4)
+      );
+      setSpeakerCharacterIds(matchedSpeakerIds);
+      const shotDrafts = selectedIdea.shotDialogues.map(shot => ({
+        shotNumber: shot.shotNumber,
+        dialogueLines: shot.lines.map(line => ({
+          speakerCharacterId: line.speaker,
+          line: line.line,
+          ...(line.delivery ? { delivery: line.delivery } : {}),
+        })),
+      }));
+      setShotDialogueDrafts(shotDrafts);
+      setDialogueBrief(
+        shotDrafts.some(shot => shot.dialogueLines.length > 0)
+          ? formatShotDialogueDrafts(shotDrafts)
+          : selectedIdea.dialogueScript
+      );
+    }
+  }, [
+    historyHydratedRef,
+    ideaHistoryQuery.data,
+    initialInput,
+    open,
+    characters,
+    charactersQuery.isLoading,
+  ]);
 
   useEffect(() => {
     const job = ideaGenerationJobQuery.data;
@@ -1076,7 +1252,12 @@ export function SpecialTieInEpisodeDialog({
         return;
       }
       setIdeaHistory(current => [
-        { runId: result.runId!, ideas: result.ideas! },
+        {
+          runId: result.runId!,
+          productId: selectedProductId ?? undefined,
+          selectedIdeaId: null,
+          ideas: result.ideas!,
+        },
         ...current.filter(run => run.runId !== result.runId),
       ]);
       setFreshIdeaRunId(result.runId);
@@ -1581,7 +1762,9 @@ export function SpecialTieInEpisodeDialog({
         seriesId,
         runId,
         ideaId: candidate.ideaId,
-        selectedCharacterIds: characterIds.slice(0, 4),
+        ...(characterIds.length > 0
+          ? { selectedCharacterIds: characterIds.slice(0, 4) }
+          : {}),
       });
       const suggestions = (result.slotRequests.sceneSuggestions ??
         []) as SceneSuggestion[];
@@ -1756,19 +1939,31 @@ export function SpecialTieInEpisodeDialog({
       );
       return;
     }
-    const characterByIdOrName = new Map(
-      characters.flatMap(character => {
+    const resolveSelectedSpeaker = (speakerValue: string) => {
+      const selectedMatch = characters.find(character => {
         const id = resolveSpecialTieInCharacterId(character);
         const name = character.name ?? character.characterName ?? id;
-        return id && name ? [[id, { id, name }], [name, { id, name }]] : [];
-      })
-    );
+        return (
+          speakerCharacterIds.includes(id) &&
+          (id === speakerValue || name === speakerValue)
+        );
+      });
+      const fallbackMatch = characters.find(character => {
+        const id = resolveSpecialTieInCharacterId(character);
+        const name = character.name ?? character.characterName ?? id;
+        return id === speakerValue || name === speakerValue;
+      });
+      const character = selectedMatch ?? fallbackMatch;
+      if (!character) return null;
+      const id = resolveSpecialTieInCharacterId(character);
+      return { id, name: character.name ?? character.characterName ?? id };
+    };
     const submittedShotDialogues =
       dialogueMode === "character_dialogue"
         ? shotDialogueDrafts.map(shot => ({
             shotNumber: shot.shotNumber,
             dialogueLines: shot.dialogueLines.map(line => {
-              const character = characterByIdOrName.get(line.speakerCharacterId);
+              const character = resolveSelectedSpeaker(line.speakerCharacterId);
               if (!character) throw new Error(`ไม่พบตัวละครผู้พูด: ${line.speakerCharacterId}`);
               return {
                 speakerCharacterId: character.id,
@@ -1799,12 +1994,16 @@ export function SpecialTieInEpisodeDialog({
               : "",
           dialogue:
             dialogueMode === "character_dialogue"
-              ? shotDialogueDrafts.flatMap(shot =>
-                  shot.dialogueLines.map(line => ({
-                    speaker: characterByIdOrName.get(line.speakerCharacterId)?.name ?? line.speakerCharacterId,
+              ? limitSpecialTieInDialogueLines(
+                  shotDialogueDrafts.flatMap(shot =>
+                    shot.dialogueLines.map(line => ({
+                    speaker:
+                      resolveSelectedSpeaker(line.speakerCharacterId)?.name ??
+                      line.speakerCharacterId,
                     line: line.line.trim(),
                     ...(line.delivery ? { delivery: line.delivery } : {}),
-                  }))
+                    }))
+                  )
                 )
               : [],
           shotDialogues:
@@ -1812,7 +2011,9 @@ export function SpecialTieInEpisodeDialog({
               ? shotDialogueDrafts.map(shot => ({
                   shotNumber: shot.shotNumber,
                   lines: shot.dialogueLines.map(line => ({
-                    speaker: characterByIdOrName.get(line.speakerCharacterId)?.name ?? line.speakerCharacterId,
+                    speaker:
+                      resolveSelectedSpeaker(line.speakerCharacterId)?.name ??
+                      line.speakerCharacterId,
                     line: line.line.trim(),
                     ...(line.delivery ? { delivery: line.delivery } : {}),
                   })),
@@ -1968,6 +2169,36 @@ export function SpecialTieInEpisodeDialog({
     }
   };
 
+  const requestSubmitConfirmation = () => {
+    if (sceneSuggestions.length > 0) {
+      toast.error(
+        lang === "th"
+          ? "กรุณาตรวจสอบฉากที่อาจซ้ำให้ครบก่อนสร้างตอน"
+          : "Review all possible duplicate scenes before creating the episode"
+      );
+      return;
+    }
+    const isEdit = Boolean(onSubmitInput);
+    requestConfirmation({
+      title:
+        lang === "th"
+          ? isEdit
+            ? "ยืนยันบันทึกและสร้าง Prompt ใหม่"
+            : "ยืนยันสร้างตอนพิเศษและ Prompt"
+          : isEdit
+            ? "Confirm save and regenerate prompts"
+            : "Confirm special episode and prompt creation",
+      description:
+        lang === "th"
+          ? `ระบบจะ${isEdit ? "บันทึกข้อมูลและสร้าง Prompt ใหม่" : "สร้างตอนพิเศษและสร้าง Prompt"} โดยใช้ตัวละคร ${characterIds.length} คน ภาพอ้างอิง ${references.length} ภาพ ความยาวช็อตละ ${durationSeconds} วินาที${selectedMarketplaceIdea?.title ? ` จากไอเดีย “${selectedMarketplaceIdea.title}”` : ""} ต้องการดำเนินการต่อหรือไม่?`
+          : `${isEdit ? "The brief will be saved and prompts regenerated" : "A special episode and prompts will be created"} with ${characterIds.length} character(s), ${references.length} reference image(s), and ${durationSeconds}-second shots${selectedMarketplaceIdea?.title ? ` from “${selectedMarketplaceIdea.title}”` : ""}. Continue?`,
+      confirmLabel: lang === "th" ? "ยืนยันและดำเนินการ" : "Confirm and continue",
+      cancelLabel: lang === "th" ? "ยกเลิก" : "Cancel",
+      testId: "special-tie-in-submit-confirmation",
+      onConfirm: () => void submit(),
+    });
+  };
+
   const reset = () => {
     setIdea("");
     setReferences([]);
@@ -2049,7 +2280,8 @@ export function SpecialTieInEpisodeDialog({
         onOpenChange(value);
       }}
     >
-      <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100%-2rem)] max-w-none overflow-y-auto p-4 sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100%-2rem)] sm:p-6 lg:w-[96vw] lg:max-w-[96vw] xl:w-[94vw] xl:max-w-[94vw]">
+      <>
+        <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100%-2rem)] max-w-none overflow-y-auto p-4 sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100%-2rem)] sm:p-6 lg:w-[96vw] lg:max-w-[96vw] xl:w-[94vw] xl:max-w-[94vw]">
         <DialogHeader>
           <DialogTitle>
             {lang === "th"
@@ -3576,7 +3808,7 @@ export function SpecialTieInEpisodeDialog({
           <Button
             type="button"
             disabled={!canSubmit || actionState.finalSubmitPending}
-            onClick={() => void submit()}
+            onClick={requestSubmitConfirmation}
           >
             {actionState.finalSubmitPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -3934,7 +4166,9 @@ export function SpecialTieInEpisodeDialog({
             ) : null}
           </DialogContent>
         </Dialog>
-      </DialogContent>
+        </DialogContent>
+        {creditConfirmDialog}
+      </>
     </Dialog>
   );
 }

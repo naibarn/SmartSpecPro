@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { validateMarketplaceReviewIdeaOutput } from "../verticalDramaMarketplaceReviewSkillAdapter";
+import {
+  buildMarketplaceReviewIdeaResumeSnapshot,
+  validateMarketplaceReviewIdeaOutput,
+} from "../verticalDramaMarketplaceReviewSkillAdapter";
 
 function idea(ideaId: string, episodeStory: string, dialogueScript: string) {
   return {
@@ -187,5 +190,48 @@ describe("Marketplace review idea output gate", () => {
     expect(() => validateMarketplaceReviewIdeaOutput(output)).toThrow(
       "advertising dialogue compliance failed"
     );
+  });
+});
+
+describe("Marketplace review idea resume snapshot", () => {
+  it("keeps only the editor fields needed to resume after a refresh", () => {
+    const snapshot = buildMarketplaceReviewIdeaResumeSnapshot({
+      schemaVersion: 1,
+      productSource: "marketplace_capture",
+      product: {
+        productId: "product-17",
+        name: "ของเล่น",
+        description: "รายละเอียดสินค้า",
+        sourceClaims: ["claim that should stay server-side"],
+      },
+      productImages: [
+        {
+          mediaAssetId: "501",
+          imageId: "image-1",
+          url: "https://example.test/product.jpg",
+          label: "ภาพหลัก",
+        },
+      ],
+      series: { seriesId: "53" },
+      dialogueMode: "character_dialogue",
+      selectedCharacterIds: ["1", "2"],
+      characters: [],
+      variationSeed: "resume-test",
+    });
+
+    expect(snapshot).toEqual({
+      productSource: "marketplace_capture",
+      referenceImages: [
+        {
+          mediaAssetId: "501",
+          imageId: "image-1",
+          url: "https://example.test/product.jpg",
+          label: "ภาพหลัก",
+        },
+      ],
+      selectedCharacterIds: ["1", "2"],
+      dialogueMode: "character_dialogue",
+    });
+    expect(snapshot).not.toHaveProperty("product");
   });
 });
