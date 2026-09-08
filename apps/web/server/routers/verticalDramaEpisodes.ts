@@ -20428,28 +20428,33 @@ export const verticalDramaEpisodesRouter = router({
       // metadata and must never be combined with a story marker to create a
       // false policy block (for example a character descriptor saying "เด็ก"
       // plus a gaze instruction saying "บังคับให้ตอบ").
+      // Carry the same current story facts into the shared media safety
+      // boundary. Without this, `mediaGenerationService` only sees the
+      // provider prompt and can recombine child/age identity metadata with a
+      // benign action such as "บังคับให้ตอบ" and reject the render again.
+      const renderStoryContext = {
+        // The storyboard is the current source of truth. The persisted frame
+        // summary is only a legacy fallback for shots whose storyboard
+        // predates canonical shot tracking.
+        canonicalShotSummary:
+          storyboardForComposition?.visual_description ??
+          storyboardForComposition?.action ??
+          frame.canonicalShotSummary,
+        description: storyboardForComposition?.visual_description,
+        action: storyboardForComposition?.action,
+        emotion: storyboardForComposition?.emotion,
+        dialogueExcerpt: storyboardForComposition?.dialogue_excerpt,
+        subtitleText: storyboardForComposition?.subtitle_text,
+        narrativePurpose: storyboardForComposition?.narrative_purpose,
+        dialogueLines: renderDialogueLines.map(line => ({
+          characterKey: line.characterKey,
+          text: line.lineTh,
+        })),
+      };
       const renderSafety = analyzeVerticalDramaStorySafety(
         buildVerticalDramaImagePromptSafetyInput({
           imagePrompt: renderStartFramePrompt,
-          shotContext: {
-            // The storyboard is the current source of truth. The persisted
-            // frame summary is only a legacy fallback for shots whose
-            // storyboard predates canonical shot tracking.
-            canonicalShotSummary:
-              storyboardForComposition?.visual_description ??
-              storyboardForComposition?.action ??
-              frame.canonicalShotSummary,
-            description: storyboardForComposition?.visual_description,
-            action: storyboardForComposition?.action,
-            emotion: storyboardForComposition?.emotion,
-            dialogueExcerpt: storyboardForComposition?.dialogue_excerpt,
-            subtitleText: storyboardForComposition?.subtitle_text,
-            narrativePurpose: storyboardForComposition?.narrative_purpose,
-            dialogueLines: renderDialogueLines.map(line => ({
-              characterKey: line.characterKey,
-              text: line.lineTh,
-            })),
-          },
+          shotContext: renderStoryContext,
         })
       );
       if (renderSafety.level === "high") {
@@ -20698,6 +20703,7 @@ export const verticalDramaEpisodesRouter = router({
             aspectRatio: "9:16",
             ...(input.resolution ? { resolution: input.resolution } : {}),
             ...(referenceImageUrls.length ? { referenceImageUrls } : {}),
+            storyContext: renderStoryContext,
             // Series provenance tag (project-scoped media panel filter) —
             // persisted verbatim into the media task's `parameters.extra_params`
             // (see PERSISTED_INTERNAL_EXTRA_PARAM_KEYS); read back by

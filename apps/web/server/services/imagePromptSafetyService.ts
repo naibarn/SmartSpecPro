@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { executeSkillLlmWithFallback } from "./skillModelFallback";
 import {
   analyzeVerticalDramaStorySafety,
+  buildVerticalDramaImagePromptSafetyInput,
   isBlockingVerticalDramaStorySafety,
 } from "./verticalDramaStorySafety";
 
@@ -49,6 +50,8 @@ export interface ImagePromptSafetyInput {
   referenceImageCount?: number;
   userId?: number;
   mode?: ImagePromptSafetyMode;
+  /** Current storyboard facts kept separate from generated prompt metadata. */
+  storyContext?: unknown;
 }
 
 export interface ImagePromptSafetyResult {
@@ -278,7 +281,15 @@ function waitForSafetyReviewRetry(): Promise<void> {
 
 function managedResult(input: ImagePromptSafetyInput): ImagePromptSafetyResult {
   const safePrompt = input.prompt.trim();
-  const storySafety = analyzeVerticalDramaStorySafety(safePrompt);
+  const storySafety =
+    input.storyContext === undefined
+      ? analyzeVerticalDramaStorySafety(safePrompt)
+      : analyzeVerticalDramaStorySafety(
+          buildVerticalDramaImagePromptSafetyInput({
+            imagePrompt: safePrompt,
+            shotContext: input.storyContext,
+          })
+        );
   if (isBlockingVerticalDramaStorySafety(storySafety)) {
     throw new ImagePromptSafetyError(
       "blocked",

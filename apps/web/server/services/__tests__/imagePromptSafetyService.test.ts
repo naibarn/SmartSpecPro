@@ -157,6 +157,36 @@ describe("imagePromptSafetyService", () => {
     expect(result.metadata.riskLevel).toBe("managed");
   });
 
+  it("keeps generated identity metadata out of the current story safety decision", async () => {
+    const result = await prepareImagePromptSafety({
+      prompt:
+        "REFERENCE MAPPING: Image 1 = รินลดา\n" +
+        "CHARACTER IDENTITY MAP: ทรงเด็กวัยเรียน อายุปรากฏประมาณ 17 ปี\n" +
+        "CURRENT SHOT COMPOSITION LOCK: มองตรงไปที่รินลดาเพื่อบังคับให้ตอบ",
+      mode: "vertical_drama_managed",
+      storyContext: {
+        canonicalShotSummary:
+          "ผู้ใหญ่สามคนตรวจเอกสารในสำนักงานและค้นข้อมูลร่วมกันอย่างสงบ",
+        action: "พิมพ์ชนกชี้เอกสาร ธีร์เปิดระบบ และรินลดายืนนิ่ง",
+      },
+    });
+
+    expect(result.prompt).toContain("REFERENCE MAPPING");
+    expect(result.metadata.blocked).toBe(false);
+  });
+
+  it("still blocks a real high-risk current story context at the media boundary", async () => {
+    await expect(
+      prepareImagePromptSafety({
+        prompt: "REFERENCE MAPPING: Image 1 = รินลดา",
+        mode: "vertical_drama_managed",
+        storyContext: {
+          canonicalShotSummary: "ผู้ใหญ่บังคับเด็กให้เซ็นเอกสารและถอยหนี",
+        },
+      })
+    ).rejects.toMatchObject({ code: "blocked" });
+  });
+
   it("uses the dedicated safety skill for an episode cover", async () => {
     executeSkillLlmWithFallback.mockResolvedValueOnce(
       safeResponse({

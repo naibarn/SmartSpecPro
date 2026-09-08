@@ -1387,6 +1387,8 @@ export interface ImageGenerationRequest {
     promptProfile?: string;
     semanticRetryCount?: number;
   };
+  /** Current Vertical Drama story facts for safety admission. */
+  storyContext?: unknown;
 }
 
 export interface VideoGenerationRequest {
@@ -2690,6 +2692,7 @@ async function prepareImageRequestForSafety(
         ? request.auditContext.userId
         : undefined,
     mode,
+    storyContext: request.storyContext,
   });
 
   return {
