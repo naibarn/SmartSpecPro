@@ -768,6 +768,7 @@ import {
   buildEnhancedModelCapabilityFingerprint,
   buildEnhancedSkillInput,
   buildEnhancedVariantStore,
+  buildUnavailableEnhancedVideoPromptReadiness,
   classifyEnhancedJobError,
   evaluateEnhancedVideoPromptReadiness,
   isEnhancedCapabilityCompatible,
@@ -26477,16 +26478,26 @@ export const verticalDramaEpisodesRouter = router({
       })
     )
     .query(async ({ ctx, input }) => {
-      const context = await loadEnhancedShotContext({
-        tenantId: requireTenantId(ctx.tenantId),
-        userId: ctx.user.id,
-        seriesId: parseId(input.seriesId, "series id"),
-        episodeId: parseId(input.episodeId, "episode id"),
-        shotNumber: input.shotNumber,
-        publicUrl: ctx.publicUrl,
-        operation: "generate",
-      });
-      return context.readiness;
+      try {
+        const context = await loadEnhancedShotContext({
+          tenantId: requireTenantId(ctx.tenantId),
+          userId: ctx.user.id,
+          seriesId: parseId(input.seriesId, "series id"),
+          episodeId: parseId(input.episodeId, "episode id"),
+          shotNumber: input.shotNumber,
+          publicUrl: ctx.publicUrl,
+          operation: "generate",
+        });
+        return context.readiness;
+      } catch (error) {
+        // This endpoint is a display-only gate. A storyboard can exist before
+        // its approved Start frame or motion pack, so report unavailable
+        // readiness as data instead of surfacing a noisy 412 to the browser.
+        if (error instanceof TRPCError && error.code === "PRECONDITION_FAILED") {
+          return buildUnavailableEnhancedVideoPromptReadiness();
+        }
+        throw error;
+      }
     }),
 
   /** Feature 173 — separate Enhanced admission partitioned from Legacy. */

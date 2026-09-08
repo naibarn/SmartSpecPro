@@ -8342,10 +8342,9 @@ function EpisodeWorkspaceShell({
       .filter((shotNumber): shotNumber is number => typeof shotNumber === "number" && Number.isInteger(shotNumber) && shotNumber > 0)))
       .sort((a, b) => a - b);
   }, [episodeDetailQuery.data?.storyboard]);
-  // Enhanced readiness can be fetched while the storyboard is already
-  // present but the approved start-frame plan is still being synchronized.
-  // Include the persisted frame anchors in the dependency key so a later
-  // approval/refetch clears the stale "no start frame" readiness result.
+  // Enhanced readiness is only meaningful after this shot has an approved
+  // Start frame. Avoid probing the display-only gate while the image prompt +
+  // image flow is still creating that frame.
   const enhancedReadinessFrameKey = useMemo(
     () =>
       (episodeDetailQuery.data?.startFramePlan?.frames ?? [])
@@ -8356,13 +8355,21 @@ function EpisodeWorkspaceShell({
         .join("|"),
     [episodeDetailQuery.data?.startFramePlan?.frames]
   );
+  const enhancedReadinessShotNumbers = useMemo(() => {
+    const approvedShots = new Set(
+      (episodeDetailQuery.data?.startFramePlan?.frames ?? [])
+        .filter(frame => Number(frame.approvedMediaAssetId) > 0)
+        .map(frame => frame.shotNumber)
+    );
+    return enhancedShotNumbers.filter(shotNumber => approvedShots.has(shotNumber));
+  }, [enhancedShotNumbers, enhancedReadinessFrameKey]);
   useEffect(() => {
-    if (!enhancedVideoPromptUiEnabled || !enabled || enhancedShotNumbers.length === 0) {
+    if (!enhancedVideoPromptUiEnabled || !enabled || enhancedReadinessShotNumbers.length === 0) {
       setEnhancedReadinessByShot({});
       return;
     }
     let cancelled = false;
-    void Promise.all(enhancedShotNumbers.map(async shotNumber => {
+    void Promise.all(enhancedReadinessShotNumbers.map(async shotNumber => {
       try {
         const readiness = await utils.verticalDramaEpisodes.getEnhancedVideoPromptReadiness.fetch({
           seriesId,
@@ -8383,7 +8390,7 @@ function EpisodeWorkspaceShell({
   }, [
     enabled,
     enhancedReadinessFrameKey,
-    enhancedShotNumbers,
+    enhancedReadinessShotNumbers,
     enhancedVideoPromptUiEnabled,
     episodeId,
     seriesId,

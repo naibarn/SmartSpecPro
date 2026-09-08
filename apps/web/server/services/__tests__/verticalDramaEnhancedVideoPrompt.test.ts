@@ -5,6 +5,7 @@ import {
   buildEnhancedSkillInput,
   buildEnhancedJobKey,
   buildEnhancedInputFingerprint,
+  buildUnavailableEnhancedVideoPromptReadiness,
   evaluateEnhancedVideoPromptReadiness,
   getEnhancedBridgeResultValidationError,
   getEnhancedPromptSemanticValidationError,
@@ -181,6 +182,16 @@ const baseInput: EnhancedVideoPromptReadinessInput = {
 };
 
 describe("vertical drama Enhanced prompt boundary", () => {
+  it("returns a non-throwing unavailable result for display-only preflight", () => {
+    expect(buildUnavailableEnhancedVideoPromptReadiness()).toMatchObject({
+      ready: false,
+      reasons: ["SHOT_PRECONDITION_FAILED"],
+      fallback: "none",
+      targetVideoModelId: null,
+      authoringModelId: null,
+      estimatedCredits: null,
+    });
+  });
   it("does not require Legacy prompt content for Enhanced authoring", () => {
     const input = buildEnhancedSkillInput({
       shot: { shotNumber: 2, description: "A woman reads a document" },

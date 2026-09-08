@@ -351,6 +351,31 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     expect(source).toContain("enhancedReadinessFrameKey,");
   });
 
+  it("does not probe Enhanced readiness before a shot has an approved Start frame", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+    expect(source).toContain("const enhancedReadinessShotNumbers = useMemo(");
+    expect(source).toContain("filter(frame => Number(frame.approvedMediaAssetId) > 0)");
+    expect(source).toContain("enhancedReadinessShotNumbers.length === 0");
+    expect(source).toContain("Promise.all(enhancedReadinessShotNumbers.map");
+  });
+
+  it("keeps the display-only Enhanced readiness read non-throwing", () => {
+    const routerSource = fs.readFileSync(
+      path.resolve(__dirname, "../../../../server/routers/verticalDramaEpisodes.ts"),
+      "utf8"
+    );
+    const readiness = routerSource.slice(
+      routerSource.indexOf("getEnhancedVideoPromptReadiness:"),
+      routerSource.indexOf("generateEnhancedShotVideoPrompt:")
+    );
+    expect(readiness).toContain("buildUnavailableEnhancedVideoPromptReadiness");
+    expect(readiness).toContain('error.code === "PRECONDITION_FAILED"');
+    expect(readiness).toContain("throw error;");
+  });
+
   it("shows the actual video-prompt precondition instead of always claiming the main image is missing", () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),

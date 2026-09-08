@@ -405,6 +405,28 @@ export type EnhancedVideoPromptReadiness = {
   estimatedCredits: number | null;
 };
 
+/**
+ * Display-only readiness checks must remain a successful request while a shot
+ * is still being prepared. The generation/apply mutations keep their strict
+ * precondition errors; this fallback is only for the non-mutating status read.
+ */
+export function buildUnavailableEnhancedVideoPromptReadiness(): EnhancedVideoPromptReadiness {
+  return {
+    ready: false,
+    reasons: ["SHOT_PRECONDITION_FAILED"],
+    fallback: "none",
+    runtime: {
+      packageVersion: "unknown",
+      manifestHash: "unknown",
+      sdkVersion: "unknown",
+      adapterVersion: "unknown",
+    },
+    targetVideoModelId: null,
+    authoringModelId: null,
+    estimatedCredits: null,
+  };
+}
+
 function isSupportedSdkVersion(version: string): boolean {
   return /^0\.22\.(?:\d+)$/.test(version.trim());
 }
