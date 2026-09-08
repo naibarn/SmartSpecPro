@@ -110,14 +110,6 @@ function genderPresentation(params: GenerateCharacterVisualPromptsParams): "fema
   return "androgynous";
 }
 
-function regionDirection(params: GenerateCharacterVisualPromptsParams): "thai_contemporary" | "east_asian_contemporary" | "southeast_asian_contemporary" | "custom" {
-  const descriptor = (params.resolvedCharacterRegion?.descriptor ?? "").toLowerCase();
-  if (descriptor.includes("east asian") || descriptor.includes("จีน") || descriptor.includes("เกาหลี") || descriptor.includes("ญี่ปุ่น")) return "east_asian_contemporary";
-  if (descriptor.includes("thai") || descriptor.includes("ไทย")) return "thai_contemporary";
-  if (descriptor.includes("southeast asian") || descriptor.includes("เอเชียตะวันออกเฉียงใต้")) return "southeast_asian_contemporary";
-  return descriptor ? "custom" : "thai_contemporary";
-}
-
 function buildRequest(params: GenerateCharacterVisualPromptsParams, renderContext: string) {
   const dna = params.characterDesignContext?.seriesDna;
   const region = params.resolvedCharacterRegion?.descriptor ?? "Thai contemporary features and styling";
@@ -153,7 +145,10 @@ function buildRequest(params: GenerateCharacterVisualPromptsParams, renderContex
     description,
     ...(params.occupation ? { occupation: params.occupation } : {}),
     personality_traits: [
-      ...(params.roleVisualIntent ? [params.roleVisualIntent] : []),
+      ...(params.roleVisualIntent?.firstImpression
+        ? [params.roleVisualIntent.firstImpression]
+        : []),
+      ...(params.roleVisualIntent?.audienceShouldFeel ?? []),
       ...(params.characterDesignContext?.approvedDesignDna?.recallStack.behavior
         ? [params.characterDesignContext.approvedDesignDna.recallStack.behavior]
         : []),
