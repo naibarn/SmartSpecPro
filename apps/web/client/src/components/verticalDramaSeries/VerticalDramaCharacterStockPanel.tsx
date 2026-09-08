@@ -4504,7 +4504,7 @@ export function VerticalDramaCharacterStockPanel({
     useState<{
       characterId: string;
       portraitPrompt: string;
-      turnaroundPrompt: string;
+      turnaroundPrompt?: string;
       negativePrompt?: string;
       model?: string;
       approvedDesignSnapshot: VerticalDramaApprovedCharacterDesignSnapshot;
@@ -4537,7 +4537,7 @@ export function VerticalDramaCharacterStockPanel({
     | {
         mode: "single";
         portraitPrompt: string;
-        turnaroundPrompt: string;
+        turnaroundPrompt?: string;
         negativePrompt?: string;
         model?: string;
         warnings?: string[];

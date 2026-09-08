@@ -115,6 +115,9 @@ function extractVisualSummary(data: unknown): string | undefined {
   const record = asRecord(data);
   return firstText(record, [
     "visualBible.visualIdentitySummary",
+    "visualBible.characterPromptProfile.positive_prompt",
+    "visualBible.characterPromptProfile.face_blueprint.distinctive_detail",
+    "visualBible.characterPromptProfile.presentation_profile.wardrobe",
     "identityLock",
     "description",
     "appearance",

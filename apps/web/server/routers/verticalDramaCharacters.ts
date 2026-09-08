@@ -78,7 +78,6 @@ import {
 } from "../services/creditService";
 import { signBearerToken } from "../_core/tokens";
 import {
-  generateCharacterVisualPrompts,
   generateCharacterPortraitCandidates,
   decideCharacterPromptSnapshotReuse,
   InsufficientCreditsError,
@@ -87,6 +86,7 @@ import {
   shouldRequireAgeStageVariantForRequest,
   resolveFaceSourceReferenceForCharacter,
 } from "../services/verticalDramaCharacterImageGeneration";
+import { generateCharacterPromptWithSkill } from "../services/verticalDramaCharacterPromptSkill";
 import {
   buildCharacterCandidateSingleImageRenderPrompt,
   generateCharacterReferenceCastingPrompt,
@@ -4717,20 +4717,19 @@ export const verticalDramaCharactersRouter = router({
     }),
 
   /**
-   * Preview-only leg of the character portrait/sheet flow: runs ONLY the
-   * `generateCharacterVisualPrompts` LLM call (the same step-1 credit-gated
+   * Preview-only leg of the character portrait flow: runs ONLY the
+   * deliverable-aware `character-prompt-skill` LLM call (the same step-1 credit-gated
    * call `generateCharacterImage`/`generateCharacterSheet` perform
    * internally) and returns the resulting prompt text WITHOUT rendering an
    * image. This lets the frontend show the actual prompt for user approval
    * before any image-render credit is spent. Charges exactly the one
-   * prompt-generation credit (via `generateCharacterVisualPrompts` itself) —
+   * prompt-generation credit (via the skill adapter itself) —
    * the caller then passes the approved text back as `approvedPrompt` /
    * `approvedNegativePrompt` on `generateCharacterImage` or
    * `generateCharacterSheet` so that LLM leg is never re-run (and never
-   * double-charged) for the same spend. This preview only ever runs the
-   * plain-turnaround leg (no `requestedSheetType`) — it does not (and, per
-   * the plan, need not) preview any of the 14 Character Design Bible sheet
-   * formats.
+   * double-charged) for the same spend. This preview requests only the
+   * portrait deliverable; sheet actions use their own single deliverable-aware
+   * call.
    */
   previewCharacterPrompt: verticalDramaProcedure
     .input(
@@ -5285,7 +5284,7 @@ export const verticalDramaCharactersRouter = router({
 
       let promptResult;
       try {
-        promptResult = await generateCharacterVisualPrompts({
+        promptResult = await generateCharacterPromptWithSkill({
           userId,
           tenantId,
           seriesId,
@@ -5356,12 +5355,14 @@ export const verticalDramaCharactersRouter = router({
         });
       }
 
-      const renderPrompt = promptResult.portraitPrompt;
+      const renderPrompt = promptResult.prompt;
 
       return {
         mode: "single" as const,
         portraitPrompt: renderPrompt,
-        turnaroundPrompt: promptResult.turnaroundPrompt,
+        ...(promptResult.deliverable === "turnaround"
+          ? { turnaroundPrompt: promptResult.prompt }
+          : {}),
         negativePrompt: promptResult.negativePrompt,
         model: promptResult.model,
         // Non-fatal lead-beauty warnings (FIX A) — see the candidate_batch
@@ -5774,7 +5775,7 @@ export const verticalDramaCharactersRouter = router({
         const description = effectiveCharacterFacts.description;
         let promptResult;
         try {
-          promptResult = await generateCharacterVisualPrompts({
+          promptResult = await generateCharacterPromptWithSkill({
             userId,
             tenantId,
             seriesId,
@@ -5840,10 +5841,10 @@ export const verticalDramaCharactersRouter = router({
                 : "Character visual prompt generation failed",
           });
         }
-        portraitPrompt = promptResult.portraitPrompt;
+        portraitPrompt = promptResult.prompt;
         negativePrompt = promptResult.negativePrompt;
         promptModel = promptResult.model;
-        visualBibleSummary = promptResult.raw.visual_bible_summary;
+        visualBibleSummary = promptResult.visualBibleSummary;
         promptCreditsUsed = promptResult.creditsUsed;
         semanticRetryCount = promptResult.semanticRetryCount ?? 0;
         visualBibleToPersist = promptResult.visualBibleSnapshot;
@@ -6269,21 +6270,11 @@ export const verticalDramaCharactersRouter = router({
    * separate mutations (`generateCharacterTurnaround` + the original
    * `generateCharacterSheet`) into one, resolving the format via
    * `resolveCharacterSheetType`:
-   *  - `"auto"` (the default) resolves to `"turnaround"` — a 360/multi-angle
-   *    composition read straight off `promptResult.turnaroundPrompt` (the
-   *    always-required `turnaround_prompt` skill field), preserving today's
-   *    cheaper/older default behavior.
-   *  - `"full_combined"` and the 11 new Character Design Bible formats
-   *    (`cover`, `character_profile`, `face_detail`, `expression_12`,
-   *    `hair_reference`, `costume_breakdown`, `material_fabric`,
-   *    `color_palette`, `pose_library`, `body_proportion`, `ai_prompt_lock`)
-   *    all render `promptResult.sheetPrompt` — a genuinely skill-authored
-   *    prompt for the requested format (see `skills/vertical-drama-character-
-   *    visual-bible/skill.md`'s "Character Design Bible sheet types"
-   *    section). This is the exact fix for the pre-existing skill-first
-   *    architecture violation this endpoint used to contain: no prompt text
-   *    is authored/concatenated in this file anymore — every character-
-   *    facing string comes from the skill's own response.
+   *  - `"auto"` (the default) resolves to `"turnaround"` and requests one
+   *    multi-angle prompt from `character-prompt-skill`.
+   *  - `"full_combined"` and the named Character Design Bible formats request
+   *    one `sheet:<type>` prompt from the same skill. No unused sibling prompt
+   *    fields are generated or charged.
    *
    * `approvedPrompt` / `approvedNegativePrompt` (optional): same skip-
    * regeneration contract as `generateCharacterImage` — when present, the
@@ -6603,7 +6594,7 @@ export const verticalDramaCharactersRouter = router({
         const description = effectiveCharacterFacts.description;
         let promptResult;
         try {
-          promptResult = await generateCharacterVisualPrompts({
+          promptResult = await generateCharacterPromptWithSkill({
             userId,
             tenantId,
             seriesId,
@@ -6651,14 +6642,10 @@ export const verticalDramaCharactersRouter = router({
             // the sheet button (`planning/vd-character-full-body-framing/
             // plan.md` RC5).
             customInstruction: input.customInstruction,
-            // Only sent for a NON-turnaround format — plain "turnaround" is
-            // already fully covered by the always-required
-            // `turnaround_prompt` field, so no extra skill work is requested
-            // for it (see skill.md's "Character Design Bible sheet types").
-            requestedSheetType:
-              resolvedSheetType === "turnaround"
-                ? undefined
-                : resolvedSheetType,
+            // The deliverable-aware skill receives the exact sheet context,
+            // including the default turnaround sheet, so it authors only the
+            // prompt that this render will consume.
+            requestedSheetType: resolvedSheetType,
             characterDesignContext,
             imagePromptCapability: characterPromptCapability,
             imagePromptContractMode: targetCharacterPrompt
@@ -6685,7 +6672,7 @@ export const verticalDramaCharactersRouter = router({
         }
 
         if (resolvedSheetType === "turnaround") {
-          sheetPromptText = promptResult.turnaroundPrompt;
+          sheetPromptText = promptResult.prompt;
         } else {
           // `sheet_prompt` is schema-optional (legitimately absent when no
           // sheet type was requested) but MUST be present here since a
@@ -6693,17 +6680,11 @@ export const verticalDramaCharactersRouter = router({
           // value as an error (matching this file's existing
           // `VdSchemaValidationError` handling for other required-field
           // violations), never a code-authored fallback string.
-          if (!promptResult.sheetPrompt) {
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: `Character visual bible skill did not return a sheet_prompt for requested sheet type "${resolvedSheetType}".`,
-            });
-          }
-          sheetPromptText = promptResult.sheetPrompt;
+          sheetPromptText = promptResult.prompt;
         }
         negativePrompt = promptResult.negativePrompt;
         promptModel = promptResult.model;
-        visualBibleSummary = promptResult.raw.visual_bible_summary;
+        visualBibleSummary = promptResult.visualBibleSummary;
         promptCreditsUsed = promptResult.creditsUsed;
         semanticRetryCount = promptResult.semanticRetryCount ?? 0;
         visualBibleToPersist = promptResult.visualBibleSnapshot;
