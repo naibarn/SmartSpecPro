@@ -8,6 +8,10 @@ import pytest
 from app.llm_proxy.providers.wavespeed_media_provider import (
     WAVESPEED_DEFAULT_RESULT_ENDPOINT_TEMPLATE,
     WAVESPEED_DEFAULT_SUBMIT_ENDPOINT,
+    WAVESPEED_GPT_IMAGE_25_FLARE_EDIT_MODEL_ID,
+    WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID,
+    WAVESPEED_GPT_IMAGE_25_MAX_REFERENCE_IMAGES,
+    WAVESPEED_MINIMAX_H3_MODEL_IDS,
     WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID,
     WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID,
     WaveSpeedError,
@@ -106,6 +110,127 @@ def test_build_submit_payload_supports_extended_aspect_ratios_for_seedance_2_mod
         "duration": 15,
         "resolution": "1080p",
     }
+
+
+def test_minimax_h3_reference_to_video_uses_multimodal_reference_keys_and_limits():
+    payload = WaveSpeedMediaProvider.build_submit_payload(
+        prompt="Use <Picture 1> and <Video 1> with <Audio 1>",
+        reference_image_urls=["https://cdn.example.com/character.png"],
+        reference_video_urls=["https://cdn.example.com/motion.mp4"],
+        reference_audio_urls=["https://cdn.example.com/voice.mp3"],
+        aspect_ratio="9:16",
+        duration=5,
+        resolution="768p",
+        provider_model_id=WAVESPEED_MINIMAX_H3_MODEL_IDS["reference_to_video"],
+    )
+
+    assert payload == {
+        "prompt": "Use <Picture 1> and <Video 1> with <Audio 1>",
+        "reference_images": ["https://cdn.example.com/character.png"],
+        "reference_videos": ["https://cdn.example.com/motion.mp4"],
+        "reference_audios": ["https://cdn.example.com/voice.mp3"],
+        "aspect_ratio": "9:16",
+        "resolution": "768p",
+        "duration": 5,
+    }
+
+
+def test_minimax_h3_image_and_lora_payloads_are_route_specific():
+    image_payload = WaveSpeedMediaProvider.build_submit_payload(
+        prompt="Animate the first frame",
+        reference_image_urls=["https://cdn.example.com/start.png"],
+        aspect_ratio="16:9",
+        duration=5,
+        resolution="480p",
+        provider_model_id=WAVESPEED_MINIMAX_H3_MODEL_IDS["image_to_video_lora"],
+        extra_params={
+            "last_image": "https://cdn.example.com/end.png",
+            "loras": [{"path": "https://cdn.example.com/style.safetensors", "scale": 0.8}],
+        },
+    )
+
+    assert image_payload == {
+        "prompt": "Animate the first frame",
+        "image": "https://cdn.example.com/start.png",
+        "last_image": "https://cdn.example.com/end.png",
+        "resolution": "480p",
+        "duration": 5,
+        "loras": [{"path": "https://cdn.example.com/style.safetensors", "scale": 0.8}],
+    }
+
+    with pytest.raises(WaveSpeedError, match="at most 3 LoRA"):
+        WaveSpeedMediaProvider.build_submit_payload(
+            prompt="Generate a still",
+            reference_image_urls=None,
+            aspect_ratio="1:1",
+            duration=5,
+            resolution="1k",
+            provider_model_id=WAVESPEED_MINIMAX_H3_MODEL_IDS["text_to_image_lora"],
+            extra_params={"loras": [{"path": str(index)} for index in range(4)]},
+        )
+
+
+def test_build_image_submit_payload_includes_required_wavespeed_parameters_without_images():
+    payload = WaveSpeedMediaProvider.build_image_submit_payload(
+        prompt="A product photo on a white background",
+        reference_image_urls=None,
+        aspect_ratio="1:1",
+        resolution="2k",
+        quality="high",
+        output_format="webp",
+        submit_endpoint="/openai/gpt-image-2.5-flare/text-to-image",
+    )
+
+    assert payload == {
+        "prompt": "A product photo on a white background",
+        "aspect_ratio": "1:1",
+        "resolution": "2k",
+        "quality": "high",
+        "output_format": "webp",
+    }
+
+
+def test_build_image_submit_payload_switches_to_edit_shape_and_caps_at_16_images():
+    references = [f"https://cdn.example.com/{index}.png" for index in range(20)]
+    payload = WaveSpeedMediaProvider.build_image_submit_payload(
+        prompt="Replace the background",
+        reference_image_urls=references[:WAVESPEED_GPT_IMAGE_25_MAX_REFERENCE_IMAGES],
+        aspect_ratio="16:9",
+        submit_endpoint="/openai/gpt-image-2.5-flare/edit",
+    )
+
+    assert payload["images"] == references[:WAVESPEED_GPT_IMAGE_25_MAX_REFERENCE_IMAGES]
+    assert payload["resolution"] == "1k"
+    assert payload["quality"] == "medium"
+    assert payload["output_format"] == "png"
+
+    with pytest.raises(WaveSpeedError, match="at most 16"):
+        WaveSpeedMediaProvider.build_image_submit_payload(
+            prompt="Replace the background",
+            reference_image_urls=references,
+            aspect_ratio="16:9",
+            submit_endpoint=WAVESPEED_GPT_IMAGE_25_FLARE_EDIT_MODEL_ID,
+        )
+
+
+def test_build_image_submit_payload_requires_reference_for_edit_endpoint():
+    with pytest.raises(WaveSpeedError, match="requires at least one reference image"):
+        WaveSpeedMediaProvider.build_image_submit_payload(
+            prompt="Edit this image",
+            reference_image_urls=None,
+            aspect_ratio="1:1",
+            submit_endpoint=WAVESPEED_GPT_IMAGE_25_FLARE_EDIT_MODEL_ID,
+        )
+
+
+def test_gpt_image_model_specs_resolve_text_and_edit_ids_to_one_model():
+    text_spec = WaveSpeedMediaProvider.get_model_spec(provider_model_id=WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID)
+    edit_spec = WaveSpeedMediaProvider.get_model_spec(provider_model_id=WAVESPEED_GPT_IMAGE_25_FLARE_EDIT_MODEL_ID)
+
+    assert text_spec.model_id == WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID
+    assert edit_spec.model_id == WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID
+    assert text_spec.generate_type == "text-to-image"
+    assert text_spec.max_reference_images == 16
 
 
 def test_build_submission_record_stores_sanitized_request_summary_only():

@@ -38,7 +38,19 @@ import {
   verticalDramaSeriesSoundBibles,
   verticalDramaAudioQcReports,
   verticalDramaAudioManifests,
+  mediaModels,
 } from './schema';
+
+describe("media_models thinking mode schema", () => {
+  test("exposes a default mode and supported modes collection", () => {
+    const columns = getTableColumns(mediaModels);
+
+    expect(columns.thinkingModeDefault).toBeDefined();
+    expect(columns.thinkingModeDefault.notNull).toBe(true);
+    expect(columns.thinkingModes).toBeDefined();
+    expect(columns.thinkingModes.notNull).toBe(true);
+  });
+});
 
 describe('vertical_drama_draft_ledgers Series ownership schema', () => {
   test('exposes the Series fields used by Draft recovery queries', () => {

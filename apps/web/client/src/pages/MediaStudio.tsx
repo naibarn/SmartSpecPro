@@ -16183,7 +16183,9 @@ export default function MediaStudio() {
     visionModels?.models,
   ]);
 
-  // Reference image attach capacity; provider send limits are applied later when building payloads.
+  // A selected model's declared limit is authoritative; otherwise use the tab default.
+  // This prevents H3 image-to-video/image-edit routes from allowing more assets than
+  // WaveSpeed accepts before the request reaches the backend validator.
   const maxReferenceImages = useMemo(() => {
     const tabLimit =
       activeTab === "video"
@@ -16191,7 +16193,7 @@ export default function MediaStudio() {
         : DEFAULT_REFERENCE_IMAGE_LIMIT;
     return selectedMediaModelReferenceImageLimit === null
       ? tabLimit
-      : Math.max(tabLimit, selectedMediaModelReferenceImageLimit);
+      : selectedMediaModelReferenceImageLimit;
   }, [activeTab, selectedMediaModelReferenceImageLimit]);
   const maxReferenceVideos = useMemo(() => {
     if (activeTab !== "video") return 0;
@@ -24620,6 +24622,22 @@ export default function MediaStudio() {
     const tierKey = buildPricingTierKey(config, modelInputValues);
 
     const tierCost = config.pricingTiers[tierKey] ?? baseCost;
+    const additionalReferenceCost = Number(config.pricingAdditionalReferenceCost);
+    const referenceField = String(
+      config.pricingAdditionalReferenceField || "reference_image_urls",
+    );
+    const referenceValue = getTemplatePathValue(modelInputValues, referenceField)
+      ?? (referenceField === "images"
+        ? getTemplatePathValue(modelInputValues, "reference_image_urls")
+        : undefined);
+    const referenceCount = Array.isArray(referenceValue)
+      ? referenceValue.length
+      : typeof referenceValue === "string" && referenceValue.trim()
+        ? 1
+        : 0;
+    const referenceSurcharge = Number.isFinite(additionalReferenceCost) && additionalReferenceCost > 0
+      ? Math.max(0, referenceCount - 1) * additionalReferenceCost
+      : 0;
 
     if (config.pricingFormula === "per_unit") {
       const metric = String(config.pricingUnitMetric || "characters");
@@ -24664,11 +24682,11 @@ export default function MediaStudio() {
               : Math.ceil(rawUnits)
           : 0;
       const chargeUnits = Math.max(minUnits, roundedUnits);
-      return tierCost * chargeUnits;
+      return tierCost * chargeUnits + referenceSurcharge;
     }
 
     const multiplier = activeTab === "image" ? numImages : 1;
-    return tierCost * multiplier;
+    return (tierCost + referenceSurcharge) * multiplier;
   };
 
   const floatingPreviewType = previewContextTab ?? activeTab;

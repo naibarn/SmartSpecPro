@@ -8,6 +8,7 @@ import {
   buildMagnificModelConfigJson,
   buildMagnificModelSeeds,
   buildWaveSpeedModelConfigJson,
+  buildWaveSpeedModelSeed,
   buildWaveSpeedModelSeeds,
   assertRelativeUploadMediaReferencePath,
   getMagnificProviderAvailableModels,
@@ -36,6 +37,9 @@ import {
   WAVESPEED_LYRIA_3_PRO_MUSIC_MODEL_ID,
   WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID,
   WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID,
+  WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID,
+  WAVESPEED_GPT_IMAGE_25_SUNBURST_MODEL_ID,
+  WAVESPEED_MINIMAX_H3_MODEL_IDS,
 } from "./mediaProviderUtils";
 
 describe("mediaProviderUtils", () => {
@@ -198,8 +202,8 @@ describe("mediaProviderUtils", () => {
     const seeds = buildWaveSpeedModelSeeds();
     const providerModels = getWaveSpeedProviderAvailableModels();
 
-    expect(seeds).toHaveLength(12);
-    expect(providerModels).toHaveLength(12);
+    expect(seeds).toHaveLength(27);
+    expect(providerModels).toHaveLength(27);
     expect(seeds.map((seed) => seed.modelId)).toEqual(expect.arrayContaining([
       WAVESPEED_LAUNCH_MODEL_ID,
       WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID,
@@ -208,9 +212,99 @@ describe("mediaProviderUtils", () => {
       WAVESPEED_LYRIA_3_PRO_MUSIC_MODEL_ID,
       WAVESPEED_ELEVENLABS_ELEVEN_V3_MODEL_ID,
       WAVESPEED_ELEVENLABS_VOICE_CHANGER_MODEL_ID,
+      WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID,
+      WAVESPEED_GPT_IMAGE_25_SUNBURST_MODEL_ID,
+      ...[
+        "image-to-video-spicy", "image-to-video", "reference-to-video", "text-to-video",
+        "image-to-video-lora", "reference-to-video-lora", "text-to-video-lora", "video-edit",
+        "video-extend", "image-edit-lora", "text-to-image-lora", "image-edit", "text-to-image",
+      ].map((suffix) => `wavespeed-ai/minimax-h3/${suffix}`),
     ]));
     expect(providerModels.find((model) => model.id === WAVESPEED_ELEVENLABS_ELEVEN_V3_MODEL_ID)?.type).toBe("audio");
     expect(providerModels.find((model) => model.id === WAVESPEED_GEMINI_25_FLASH_TTS_MODEL_ID)?.type).toBe("audio");
+  });
+
+  it("builds unified WaveSpeed GPT Image 2.5 models with endpoint switching, caps, defaults, and credits", () => {
+    const flare = buildWaveSpeedModelSeed(WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID);
+    const config = buildWaveSpeedModelConfigJson(WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID);
+
+    expect(flare).toMatchObject({
+      modelId: WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID,
+      modelType: "image",
+      provider: "wavespeed_ai",
+      creditCost: 24,
+      thinkingModeDefault: "medium",
+      thinkingModes: ["low", "medium", "high", "xhigh", "max"],
+    });
+    expect(config).toMatchObject({
+      generateType: "text-to-image",
+      providerModelId: WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID,
+      apiEndpoint: "/openai/gpt-image-2.5-flare/text-to-image",
+      maxReferenceImages: 16,
+      pricingFormula: "matrix",
+      pricingAdditionalReferenceCost: 12,
+      pricingAdditionalReferenceField: "images",
+      pricingTiers: {
+        "1k-medium-text-to-image": 24,
+        "1k-medium-edit": 34,
+      },
+      apiConfig: expect.objectContaining({
+        provider_model_id_with_references: "openai/gpt-image-2.5-flare/edit",
+        endpoint_with_references: "/openai/gpt-image-2.5-flare/edit",
+        defaultInputParams: { resolution: "1k", quality: "medium", output_format: "png" },
+      }),
+    });
+    expect(config.inputFields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: "images", maxItems: 16, providerPayloadKey: "images" }),
+      expect.objectContaining({ key: "resolution", default: "1k", affectsPricing: true }),
+      expect.objectContaining({ key: "quality", default: "medium", affectsPricing: true }),
+      expect.objectContaining({ key: "output_format", default: "png" }),
+    ]));
+    expect(buildWaveSpeedModelSeed(WAVESPEED_GPT_IMAGE_25_SUNBURST_MODEL_ID).modelType).toBe("image");
+    expect(calculateCreditCost(flare, { resolution: "1k", quality: "medium", images: [] })).toBe(24);
+    expect(calculateCreditCost(flare, { resolution: "1k", quality: "medium", images: ["a"] })).toBe(34);
+    expect(calculateCreditCost(flare, { resolution: "1k", quality: "medium", images: ["a", "b", "c"] })).toBe(58);
+  });
+
+  it("builds all MiniMax H3 WaveSpeed routes with none thinking mode and route-specific inputs", () => {
+    const seeds = buildWaveSpeedModelSeeds().filter((seed) => seed.modelId.startsWith("wavespeed-ai/minimax-h3/"));
+    expect(seeds).toHaveLength(13);
+    expect(seeds.every((seed) => seed.thinkingModeDefault === "none" && Boolean(seed.thinkingModes))).toBe(true);
+    expect(seeds.map((seed) => seed.modelId)).toEqual(expect.arrayContaining(Object.values(WAVESPEED_MINIMAX_H3_MODEL_IDS)));
+
+    const referenceConfig = buildWaveSpeedModelConfigJson(WAVESPEED_MINIMAX_H3_MODEL_IDS.referenceToVideo);
+    expect(referenceConfig).toMatchObject({
+      generateType: "reference-to-video",
+      maxReferenceImages: 9,
+      maxReferenceVideos: 3,
+      maxReferenceAudios: 3,
+      pricingFormula: "per_second",
+    });
+    expect((referenceConfig.inputFields as Array<{ key: string }>).map((field) => field.key)).toEqual(expect.arrayContaining([
+      "reference_image_urls", "reference_video_urls", "reference_audio_urls", "resolution", "duration",
+    ]));
+
+    const imageConfig = buildWaveSpeedModelConfigJson(WAVESPEED_MINIMAX_H3_MODEL_IDS.imageEditLora);
+    expect(imageConfig).toMatchObject({
+      generateType: "image-edit",
+      maxReferenceImages: 9,
+      maxLoras: 3,
+      pricingFormula: "matrix",
+    });
+  });
+
+  it("calculates MiniMax H3 video credits by resolution, duration, and edit references", () => {
+    const textToVideo = buildWaveSpeedModelSeed(WAVESPEED_MINIMAX_H3_MODEL_IDS.textToVideo);
+    const videoEdit = buildWaveSpeedModelSeed(WAVESPEED_MINIMAX_H3_MODEL_IDS.videoEdit);
+
+    expect(calculateCreditCost(textToVideo, { resolution: "480p", duration: 5 })).toBe(100);
+    expect(calculateCreditCost(textToVideo, { resolution: "1080p", duration: 5 })).toBe(400);
+    expect(calculateCreditCost(videoEdit, {
+      resolution: "480p",
+      duration: 5,
+      reference_images: ["image-1"],
+      reference_audios: ["audio-1"],
+    })).toBe(165);
   });
 
   it("exposes Magnific provider models for admin templates and provider seeds", () => {

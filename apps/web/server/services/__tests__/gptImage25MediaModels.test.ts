@@ -43,6 +43,8 @@ describe("GPT Image 2.5 unified Kie model catalog", () => {
         type: "image",
         provider: "kie.ai",
         creditCost: 30,
+        thinkingModeDefault: "medium",
+        thinkingModes: ["low", "medium", "high", "xhigh", "max"],
         aspectRatios: [
           "auto",
           "1:1",
@@ -73,11 +75,23 @@ describe("GPT Image 2.5 unified Kie model catalog", () => {
               key: "resolution",
               affectsPricing: true,
             }),
+            expect.objectContaining({
+              key: "quality",
+              default: "medium",
+              options: [
+                { value: "low", label: "Low" },
+                { value: "medium", label: "Medium" },
+                { value: "high", label: "High" },
+                { value: "xhigh", label: "XHigh" },
+                { value: "max", label: "Max" },
+              ],
+            }),
           ]),
           apiConfig: expect.objectContaining({
             kie_model_id_with_references: variant.imageToImageId,
             reference_image_input_key: "input_urls",
             reference_image_input_type: "array",
+            defaultInputParams: { quality: "medium" },
           }),
           pricingTiers: { default: 30, "1K": 30, "2K": 50, "4K": 80 },
           pricingFormula: "flat",
@@ -110,10 +124,21 @@ describe("GPT Image 2.5 unified Kie model catalog", () => {
     }
   });
 
+  it("normalizes models without thinking support to the none sentinel", () => {
+    expect(getStaticModelById("google-nano-banana-pro")).toMatchObject({
+      thinkingModeDefault: "none",
+      thinkingModes: ["none"],
+    });
+  });
+
   it("keeps the seed and migration aligned with the two unified rows", () => {
     const seed = fs.readFileSync(seedPath, "utf8");
     const migration = fs.readFileSync(migrationPath, "utf8");
     const pricingMigration = fs.readFileSync(pricingMigrationPath, "utf8");
+    const thinkingMigration = fs.readFileSync(
+      path.join(drizzleDir, "0292_media_model_thinking_modes.sql"),
+      "utf8"
+    );
     const journal = JSON.parse(fs.readFileSync(journalPath, "utf8")) as {
       entries: Array<{ tag: string }>;
     };
@@ -135,10 +160,25 @@ describe("GPT Image 2.5 unified Kie model catalog", () => {
     }
 
     expect(migration).not.toMatch(/\bDELETE\s+FROM\s+"media_models"/i);
+    expect(seed).toContain('thinkingModeDefault: "medium"');
+    expect(seed).toContain(
+      'thinkingModes: ["low", "medium", "high", "xhigh", "max"]'
+    );
     expect(pricingMigration).toContain('"creditCost" = 30');
     expect(pricingMigration).toContain(
       '{"default":30,"1K":30,"2K":50,"4K":80}'
     );
     expect(pricingMigration).not.toMatch(/\bDELETE\s+FROM\s+"media_models"/i);
+    expect(thinkingMigration).toContain('"thinkingModeDefault"');
+    expect(thinkingMigration).toContain('"thinkingModes"');
+    expect(thinkingMigration).toContain(
+      '\'["low","medium","high","xhigh","max"]\'::json'
+    );
+    expect(
+      journal.entries.some(
+        entry => entry.tag === "0292_media_model_thinking_modes"
+      )
+    ).toBe(true);
+    expect(thinkingMigration).not.toMatch(/\bDELETE\s+FROM\s+"media_models"/i);
   });
 });

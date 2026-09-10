@@ -55,6 +55,12 @@ export interface ModelDefinition {
   /** Supported voices for audio */
   voices?: string[];
 
+  /** Default thinking/reasoning mode; `none` means the model has no such mode. */
+  thinkingModeDefault?: string;
+
+  /** Thinking/reasoning modes supported by the model. */
+  thinkingModes?: string[];
+
   /** Whether this model is enabled */
   isEnabled?: boolean;
 
@@ -720,6 +726,8 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       "gpt image 2.5 flare image to image",
     ],
     creditCost: 30,
+    thinkingModeDefault: "medium",
+    thinkingModes: ["low", "medium", "high", "xhigh", "max"],
     aspectRatios: [
       "auto", "1:1", "3:2", "2:3", "16:9", "9:16", "4:3", "3:4",
       "21:9", "27:16", "16:27", "9:8", "8:9",
@@ -736,6 +744,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
         kie_model_id_with_references: "gpt-image-2-5-flare-image-to-image",
         reference_image_input_key: "input_urls",
         reference_image_input_type: "array",
+        defaultInputParams: { quality: "medium" },
       },
       inputFields: [
         { key: "input_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", maxItems: 16 },
@@ -746,6 +755,10 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
           { value: "27:16", label: "27:16" }, { value: "16:27", label: "16:27" }, { value: "9:8", label: "9:8" },
           { value: "8:9", label: "8:9" },
         ], default: "auto", syncWith: "aspect_ratio" },
+        { key: "quality", label: "Thinking Mode", type: "select", options: [
+          { value: "low", label: "Low" }, { value: "medium", label: "Medium" }, { value: "high", label: "High" },
+          { value: "xhigh", label: "XHigh" }, { value: "max", label: "Max" },
+        ], default: "medium" },
         { key: "resolution", label: "Resolution", type: "select", affectsPricing: true, options: [
           { value: "1K", label: "1K" }, { value: "2K", label: "2K" }, { value: "4K", label: "4K" },
         ], default: "1K", syncWith: "resolution" },
@@ -770,6 +783,8 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       "gpt image 2.5 sunburst image to image",
     ],
     creditCost: 30,
+    thinkingModeDefault: "medium",
+    thinkingModes: ["low", "medium", "high", "xhigh", "max"],
     aspectRatios: [
       "auto", "1:1", "3:2", "2:3", "16:9", "9:16", "4:3", "3:4",
       "21:9", "27:16", "16:27", "9:8", "8:9",
@@ -786,6 +801,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
         kie_model_id_with_references: "gpt-image-2-5-sunburst-image-to-image",
         reference_image_input_key: "input_urls",
         reference_image_input_type: "array",
+        defaultInputParams: { quality: "medium" },
       },
       inputFields: [
         { key: "input_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", maxItems: 16 },
@@ -796,6 +812,10 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
           { value: "27:16", label: "27:16" }, { value: "16:27", label: "16:27" }, { value: "9:8", label: "9:8" },
           { value: "8:9", label: "8:9" },
         ], default: "auto", syncWith: "aspect_ratio" },
+        { key: "quality", label: "Thinking Mode", type: "select", options: [
+          { value: "low", label: "Low" }, { value: "medium", label: "Medium" }, { value: "high", label: "High" },
+          { value: "xhigh", label: "XHigh" }, { value: "max", label: "Max" },
+        ], default: "medium" },
         { key: "resolution", label: "Resolution", type: "select", affectsPricing: true, options: [
           { value: "1K", label: "1K" }, { value: "2K", label: "2K" }, { value: "4K", label: "4K" },
         ], default: "1K", syncWith: "resolution" },
@@ -1672,6 +1692,8 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     description: seed.description,
     aliases: seed.aliases,
     creditCost: seed.creditCost,
+    thinkingModeDefault: seed.thinkingModeDefault,
+    thinkingModes: seed.thinkingModes ? [...seed.thinkingModes] : undefined,
     durations: seed.durations,
     aspectRatios: seed.aspectRatios,
     configJson: seed.configJson,
@@ -1982,13 +2004,41 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
 // Keep static fallback entries compatible with the DB-backed shape. A few
 // legacy catalog definitions store this contract inside configJson; Enhanced
 // readiness consumes the typed top-level field.
+function normalizeThinkingModeMetadata(
+  model: Pick<ModelDefinition, "thinkingModeDefault" | "thinkingModes">,
+): Pick<ModelDefinition, "thinkingModeDefault" | "thinkingModes"> {
+  const requestedDefault = typeof model.thinkingModeDefault === "string"
+    ? model.thinkingModeDefault.trim()
+    : "";
+  const defaultMode = requestedDefault || "none";
+  const modes = Array.isArray(model.thinkingModes)
+    ? model.thinkingModes
+        .filter((mode): mode is string => typeof mode === "string" && mode.trim().length > 0)
+        .map(mode => mode.trim())
+    : [];
+  const uniqueModes = Array.from(new Set(modes));
+  if (!uniqueModes.includes(defaultMode)) {
+    uniqueModes.unshift(defaultMode);
+  }
+  return {
+    thinkingModeDefault: defaultMode,
+    thinkingModes: uniqueModes.length > 0 ? uniqueModes : ["none"],
+  };
+}
+
 const STATIC_MODEL_REGISTRY_WITH_PARSED_CAPABILITIES = STATIC_MODEL_REGISTRY.map(
   model => {
-    if (model.videoCapabilityProfile) return model;
+    const withThinkingModes = {
+      ...model,
+      ...normalizeThinkingModeMetadata(model),
+    };
+    if (withThinkingModes.videoCapabilityProfile) return withThinkingModes;
     const profile = parseVideoCapabilityProfile(
-      model.configJson?.videoCapabilityProfile,
+      withThinkingModes.configJson?.videoCapabilityProfile,
     );
-    return profile ? { ...model, videoCapabilityProfile: profile } : model;
+    return profile
+      ? { ...withThinkingModes, videoCapabilityProfile: profile }
+      : withThinkingModes;
   },
 );
 
@@ -2312,6 +2362,7 @@ function dbModelToDefinition(dbModel: any): ModelDefinition {
     sizes: dbModel.sizes || undefined,
     durations: resolveDbModelDurations(dbModel),
     voices: dbModel.voices || undefined,
+    ...normalizeThinkingModeMetadata(dbModel),
     isEnabled: dbModel.isEnabled,
     priority: dbModel.priority,
     configJson,
@@ -2472,7 +2523,7 @@ export function getModelById(id: string): ModelDefinition | undefined {
  * when older records are missing new config keys.
  */
 export function getStaticModelById(id: string): ModelDefinition | undefined {
-  return STATIC_MODEL_REGISTRY.find((m) => matchesStaticModelLookupKey(m, id));
+  return STATIC_MODEL_REGISTRY_WITH_PARSED_CAPABILITIES.find((m) => matchesStaticModelLookupKey(m, id));
 }
 
 /**
@@ -2487,6 +2538,8 @@ export function getStaticFallbackModels(): ModelDefinition[] {
     sizes: model.sizes ? [...model.sizes] : undefined,
     durations: model.durations ? [...model.durations] : undefined,
     voices: model.voices ? [...model.voices] : undefined,
+    thinkingModeDefault: model.thinkingModeDefault ?? "none",
+    thinkingModes: model.thinkingModes ? [...model.thinkingModes] : ["none"],
     configJson: model.configJson ? { ...model.configJson } : undefined,
   }));
 }
@@ -2688,6 +2741,8 @@ export function getModelMetadata(modelId: string):
       supportsSizes?: string[];
       supportsDurations?: number[];
       supportsVoices?: string[];
+      thinkingModeDefault?: string;
+      thinkingModes?: string[];
     }
   | undefined {
   const model = getModelById(modelId) || getModelById(mapToApiModelId(modelId));
@@ -2705,6 +2760,8 @@ export function getModelMetadata(modelId: string):
     supportsSizes: model.sizes,
     supportsDurations: model.durations,
     supportsVoices: model.voices,
+    thinkingModeDefault: model.thinkingModeDefault ?? "none",
+    thinkingModes: model.thinkingModes ?? ["none"],
   };
 }
 

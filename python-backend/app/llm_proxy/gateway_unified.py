@@ -951,13 +951,14 @@ class LLMGateway:
             resolved_provider == "byteplus_modelark"
             or normalized_model in byteplus_image_models
         )
+        route_to_wavespeed_image = resolved_provider == "wavespeed_ai"
 
         logger.info(
             "image_provider_routing",
             model=request.model,
             normalized_model=normalized_model,
             resolved_provider=resolved_provider,
-            route="byteplus_modelark" if route_to_byteplus else "magnific" if resolved_provider == "magnific" or self._is_magnific_model_id(request.model) else "kie_ai",
+            route="wavespeed_ai" if route_to_wavespeed_image else "byteplus_modelark" if route_to_byteplus else "magnific" if resolved_provider == "magnific" or self._is_magnific_model_id(request.model) else "kie_ai",
         )
         write_media_debug_event("image.generate.routing", {
             "trace_id": trace_id,
@@ -967,8 +968,140 @@ class LLMGateway:
             "normalized_model": normalized_model,
             "resolved_provider": resolved_provider,
             "provider_hint": api_config.get("provider"),
-            "route": "byteplus_modelark" if route_to_byteplus else "magnific" if resolved_provider == "magnific" or self._is_magnific_model_id(request.model) else "kie_ai",
+            "route": "wavespeed_ai" if route_to_wavespeed_image else "byteplus_modelark" if route_to_byteplus else "magnific" if resolved_provider == "magnific" or self._is_magnific_model_id(request.model) else "kie_ai",
         })
+
+        if route_to_wavespeed_image:
+            from app.llm_proxy.providers.wavespeed_media_provider import (
+                WaveSpeedError,
+                WaveSpeedMediaProvider,
+                WaveSpeedPollingTimeoutError,
+                WaveSpeedTerminalError,
+            )
+            from app.services.media_provider_service import get_media_provider_key
+
+            provider_config = await get_media_provider_key("wavespeed_ai")
+            if not provider_config or not provider_config.get("apiKey"):
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="WaveSpeedAI not configured. Please add API key in Admin > Media Providers.",
+                )
+
+            api_config = request.api_config if isinstance(request.api_config, dict) else {}
+            extra_params = request.extra_params if isinstance(request.extra_params, dict) else {}
+            is_minimax_h3_image = str(request.model or "").strip().lower().startswith("wavespeed-ai/minimax-h3/")
+            reference_image_urls = (
+                request.reference_image_urls
+                or extra_params.get("images")
+                or extra_params.get("reference_images")
+                or extra_params.get("reference_image_urls")
+            )
+            if not isinstance(reference_image_urls, list):
+                reference_image_urls = None
+            has_references = bool(reference_image_urls)
+            endpoint_key = "endpoint_with_references" if has_references else "endpoint"
+            model_key = "provider_model_id_with_references" if has_references else "provider_model_id"
+            submit_endpoint = self._get_api_config_string(api_config, endpoint_key)
+            provider_model_id = self._get_api_config_string(api_config, model_key)
+            if is_minimax_h3_image:
+                submit_endpoint = submit_endpoint or f"/{request.model.strip()}"
+                provider_model_id = provider_model_id or request.model.strip()
+            elif not submit_endpoint:
+                model_stem = request.model.split("/text-to-image", 1)[0]
+                submit_endpoint = f"/{model_stem}/edit" if has_references else f"/{model_stem}/text-to-image"
+            if not provider_model_id:
+                model_stem = request.model.split("/text-to-image", 1)[0]
+                provider_model_id = f"{model_stem}/edit" if has_references else request.model
+            aspect_ratio = (
+                request.aspect_ratio
+                or self._get_api_config_string(extra_params, "aspect_ratio", "aspectRatio")
+                or "1:1"
+            )
+            resolution = (
+                request.resolution
+                or self._get_api_config_string(extra_params, "resolution")
+                or "1k"
+            ).lower()
+            quality = self._get_api_config_string(extra_params, "quality") or "medium"
+            output_format = (
+                request.output_format
+                or self._get_api_config_string(extra_params, "output_format", "outputFormat")
+                or "png"
+            ).lower()
+
+            client = None
+            try:
+                client = WaveSpeedMediaProvider(
+                    api_key=provider_config["apiKey"],
+                    base_url=provider_config.get("baseUrl"),
+                    submit_endpoint=submit_endpoint,
+                    result_endpoint_template=WaveSpeedMediaProvider.resolve_result_endpoint_template(api_config),
+                    provider_model_id=provider_model_id,
+                )
+                if is_minimax_h3_image:
+                    h3_extra_params = dict(extra_params)
+                    if output_format:
+                        h3_extra_params.setdefault("output_format", output_format)
+                    if request.seed is not None:
+                        h3_extra_params.setdefault("seed", request.seed)
+                    submit_result = await client.create_prediction(
+                        prompt=request.prompt,
+                        reference_image_urls=reference_image_urls,
+                        aspect_ratio=aspect_ratio,
+                        duration=5,
+                        resolution=resolution,
+                        extra_params=h3_extra_params,
+                    )
+                else:
+                    submit_result = await client.create_image_prediction(
+                        prompt=request.prompt,
+                        reference_image_urls=reference_image_urls,
+                        aspect_ratio=aspect_ratio,
+                        resolution=resolution,
+                        quality=quality,
+                        output_format=output_format,
+                    )
+                response = ImageGenerationResponse(
+                    id=submit_result["provider_task_id"],
+                    model=request.model,
+                    provider="wavespeed_ai",
+                    created=0,
+                    data=[],
+                )
+                if wait_for_completion:
+                    completion = await client.wait_for_completion(request_id=submit_result["provider_task_id"])
+                    if not completion.result_url:
+                        raise WaveSpeedTerminalError("WaveSpeed completed without a final image URL")
+                    response.data = [{"url": completion.result_url}]
+                if reserved_credit_amount is not None:
+                    response.credits_used = reserved_credit_amount
+                    return response
+                transaction = await self._deduct_credits(user, estimated_cost, request, response, estimated_cost, False)
+                response.credits_used = abs(transaction.amount)
+                response.credits_balance = transaction.balance_after
+                return response
+            except HTTPException:
+                raise
+            except WaveSpeedError as exc:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+            except WaveSpeedTerminalError as exc:
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+            except WaveSpeedPollingTimeoutError as exc:
+                raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail=str(exc)) from exc
+            except httpx.HTTPStatusError as exc:
+                raise HTTPException(
+                    status_code=exc.response.status_code,
+                    detail=self._format_provider_http_error("WaveSpeed API error", exc),
+                ) from exc
+            except Exception as exc:
+                logger.error("wavespeed_image_generation_failed", user_id=user.id, model=request.model, error=str(exc))
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="WaveSpeed image generation failed",
+                ) from exc
+            finally:
+                if client is not None:
+                    await client.aclose()
 
         if route_to_byteplus:
             from app.services.media_provider_service import get_media_provider_key
@@ -1644,6 +1777,9 @@ class LLMGateway:
                     aspect_ratio=aspect_ratio,
                     duration=duration,
                     resolution=resolution,
+                    extra_params=extra,
+                    reference_video_urls=request.reference_video_urls,
+                    reference_audio_urls=request.reference_audio_urls,
                 )
                 response = VideoGenerationResponse(
                     id=submit_result["provider_task_id"],
@@ -2853,6 +2989,79 @@ class LLMGateway:
                                         units=final_units,
                                         credit_cost=credit_cost,
                                     )
+
+                                if formula == "per_second":
+                                    resolution = str(
+                                        self._get_pricing_value_by_path(request_payload, "resolution")
+                                        or "480p"
+                                    ).strip().lower()
+                                    duration_raw = self._get_pricing_value_by_path(request_payload, "duration")
+                                    try:
+                                        duration_value = float(duration_raw or 5)
+                                    except (TypeError, ValueError):
+                                        duration_value = 5.0
+                                    rates = config.get("pricingPerSecondByResolution")
+                                    rate = rates.get(resolution) if isinstance(rates, dict) else None
+                                    try:
+                                        rate_value = float(rate if rate is not None else float(credit_cost) / 5)
+                                    except (TypeError, ValueError):
+                                        rate_value = float(credit_cost) / 5
+                                    credit_cost = math.ceil(max(0.01, rate_value * max(0.01, duration_value)) * 100) / 100
+                                    logger.info(
+                                        "estimate_cost_from_per_second",
+                                        model=request.model,
+                                        resolution=resolution,
+                                        duration=duration_value,
+                                        credit_cost=credit_cost,
+                                    )
+
+                                additional_reference_cost = config.get("pricingAdditionalReferenceCost")
+                                reference_field = str(
+                                    config.get("pricingAdditionalReferenceField") or "reference_image_urls"
+                                )
+                                reference_value = self._get_pricing_value_by_path(request_payload, reference_field)
+                                if reference_value is None and reference_field == "images":
+                                    reference_value = request_payload.get("reference_image_urls")
+                                reference_count = _count_items(reference_value)
+                                try:
+                                    surcharge = float(additional_reference_cost or 0) * max(0, reference_count - 1)
+                                except (TypeError, ValueError):
+                                    surcharge = 0
+                                if surcharge > 0:
+                                    credit_cost = float(credit_cost) + surcharge
+                                    logger.info(
+                                        "estimate_cost_from_additional_reference_images",
+                                        model=request.model,
+                                        reference_count=reference_count,
+                                        surcharge_credits=surcharge,
+                                        credit_cost=credit_cost,
+                                    )
+                                additional_reference_costs = config.get("pricingAdditionalReferenceCosts")
+                                if isinstance(additional_reference_costs, dict):
+                                    multi_surcharge = 0.0
+                                    for field_name, field_cost in additional_reference_costs.items():
+                                        value = self._get_pricing_value_by_path(request_payload, str(field_name))
+                                        if value is None and field_name == "reference_images":
+                                            value = request_payload.get("reference_image_urls")
+                                        if value is None and field_name == "reference_videos":
+                                            value = request_payload.get("reference_video_urls")
+                                        if value is None and field_name == "reference_audios":
+                                            value = request_payload.get("reference_audio_urls")
+                                        count = _count_items(value)
+                                        try:
+                                            numeric_cost = float(field_cost)
+                                        except (TypeError, ValueError):
+                                            numeric_cost = 0.0
+                                        if numeric_cost > 0:
+                                            multi_surcharge += count * numeric_cost
+                                    if multi_surcharge > 0:
+                                        credit_cost = float(credit_cost) + multi_surcharge
+                                        logger.info(
+                                            "estimate_cost_from_reference_surcharges",
+                                            model=request.model,
+                                            surcharge_credits=multi_surcharge,
+                                            credit_cost=credit_cost,
+                                        )
                         except Exception as e:
                             logger.debug(f"Could not parse pricingTiers: {e}")
 

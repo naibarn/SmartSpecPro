@@ -11,6 +11,8 @@ export interface MediaModelOption {
   provider?: string;
   supportsAspectRatios?: unknown;
   supportsSizes?: unknown;
+  thinkingModeDefault?: string;
+  thinkingModes?: unknown;
   configJson?: unknown;
 }
 

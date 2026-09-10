@@ -1,4 +1,4 @@
-export type PricingFormula = "flat" | "per_duration" | "matrix" | "per_unit";
+export type PricingFormula = "flat" | "per_duration" | "matrix" | "per_unit" | "per_second";
 
 export interface MediaModelPricingInputField {
   key: string;
@@ -23,6 +23,11 @@ export interface MediaModelPricingConfig {
   pricingTiers?: Record<string, number>;
   pricingFormula?: PricingFormula;
   inputFields?: MediaModelPricingInputField[];
+  /** Flat credit surcharge for each reference after the first. */
+  pricingAdditionalReferenceCost?: number;
+  pricingAdditionalReferenceField?: string;
+  pricingAdditionalReferenceCosts?: Record<string, number>;
+  pricingPerSecondByResolution?: Record<string, number>;
   maxPromptLength?: number;
 }
 

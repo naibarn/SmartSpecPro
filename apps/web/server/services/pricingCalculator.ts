@@ -26,6 +26,8 @@ interface PricingConfig extends MediaModelPricingConfig {
   pricingUnitRounding?: "ceil" | "floor" | "round";
   pricingMinUnits?: number;
   pricingIgnoreWhitespace?: boolean;
+  pricingPerSecondByResolution?: Record<string, number>;
+  pricingAdditionalReferenceCosts?: Record<string, number>;
 }
 
 function countCharacters(value: unknown, ignoreWhitespace = false): number {
@@ -82,6 +84,28 @@ export function calculateCreditCost(
 
   const tierKey = buildPricingTierKey(config, selections);
   const baseCost = config.pricingTiers[tierKey] ?? model.creditCost;
+  const additionalReferenceCost = Number(config.pricingAdditionalReferenceCost);
+  const referenceField = config.pricingAdditionalReferenceField || "reference_image_urls";
+  const referenceValue = getSelectionValueByPath(selections, referenceField)
+    ?? (referenceField === "images" ? getSelectionValueByPath(selections, "reference_image_urls") : undefined);
+  const referenceCount = countItems(referenceValue);
+  const referenceSurcharge = Number.isFinite(additionalReferenceCost) && additionalReferenceCost > 0
+    ? Math.max(0, referenceCount - 1) * additionalReferenceCost
+    : 0;
+  const multiReferenceSurcharge = Object.entries(config.pricingAdditionalReferenceCosts ?? {}).reduce((sum, [field, cost]) => {
+    const count = countItems(getSelectionValueByPath(selections, field));
+    const numericCost = Number(cost);
+    return sum + (Number.isFinite(numericCost) && numericCost > 0 ? count * numericCost : 0);
+  }, 0);
+
+  if (config.pricingFormula === "per_second") {
+    const resolution = String(selections.resolution ?? "").trim().toLowerCase();
+    const duration = Number(selections.duration ?? 5);
+    const rate = Number(config.pricingPerSecondByResolution?.[resolution] ?? model.creditCost / 5);
+    const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 5;
+    const safeRate = Number.isFinite(rate) && rate > 0 ? rate : model.creditCost / 5;
+    return (Math.ceil(safeRate * safeDuration * 100) / 100 + referenceSurcharge + multiReferenceSurcharge) * multiplier;
+  }
 
   if (config.pricingFormula === "per_unit") {
     const metric = config.pricingUnitMetric || "characters";
@@ -106,10 +130,10 @@ export function calculateCreditCost(
     const roundedUnits = measured > 0 ? applyRounding(rawUnits, rounding) : 0;
     const finalUnits = Math.max(minUnits, roundedUnits);
 
-    return baseCost * finalUnits * multiplier;
+    return (baseCost * finalUnits + referenceSurcharge) * multiplier;
   }
 
-  return baseCost * multiplier;
+  return (baseCost + referenceSurcharge + multiReferenceSurcharge) * multiplier;
 }
 
 /**

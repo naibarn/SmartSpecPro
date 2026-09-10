@@ -36,6 +36,71 @@ export const WAVESPEED_LYRIA_3_CLIP_MUSIC_MODEL_ID = "google/lyria-3-clip/music"
 export const WAVESPEED_LYRIA_3_PRO_MUSIC_MODEL_ID = "google/lyria-3-pro/music";
 export const WAVESPEED_ELEVENLABS_ELEVEN_V3_MODEL_ID = "elevenlabs/eleven-v3";
 export const WAVESPEED_ELEVENLABS_VOICE_CHANGER_MODEL_ID = "wavespeed-ai/elevenlabs/voice-changer";
+export const WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID = "openai/gpt-image-2.5-flare/text-to-image";
+export const WAVESPEED_GPT_IMAGE_25_SUNBURST_MODEL_ID = "openai/gpt-image-2.5-sunburst/text-to-image";
+export const WAVESPEED_GPT_IMAGE_25_FLARE_EDIT_MODEL_ID = "openai/gpt-image-2.5-flare/edit";
+export const WAVESPEED_GPT_IMAGE_25_SUNBURST_EDIT_MODEL_ID = "openai/gpt-image-2.5-sunburst/edit";
+export const WAVESPEED_GPT_IMAGE_25_ALLOWED_ASPECT_RATIOS = [
+  "1:1", "1:2", "2:1", "1:3", "3:1", "2:3", "3:2", "3:4",
+  "4:3", "4:5", "5:4", "9:16", "16:9", "9:21", "21:9",
+] as const;
+export const WAVESPEED_GPT_IMAGE_25_RESOLUTIONS = ["1k", "2k", "4k"] as const;
+export const WAVESPEED_GPT_IMAGE_25_QUALITIES = ["low", "medium", "high", "xhigh", "max"] as const;
+export const WAVESPEED_GPT_IMAGE_25_OUTPUT_FORMATS = ["png", "jpeg", "webp"] as const;
+export const WAVESPEED_GPT_IMAGE_25_MAX_REFERENCE_IMAGES = 16;
+export const WAVESPEED_GPT_IMAGE_25_ADDITIONAL_REFERENCE_CREDIT_COST = 12;
+export const WAVESPEED_MINIMAX_H3_MODEL_PREFIX = "wavespeed-ai/minimax-h3/";
+export const WAVESPEED_MINIMAX_H3_ASPECT_RATIOS = [
+  "16:9", "9:16", "1:1", "4:3", "3:4", "21:9", "9:21",
+] as const;
+export const WAVESPEED_MINIMAX_H3_IMAGE_ASPECT_RATIOS = [
+  "1:1", "1:2", "2:1", "1:3", "3:1", "2:3", "3:2", "3:4",
+  "4:3", "4:5", "5:4", "9:16", "16:9", "9:21", "21:9",
+] as const;
+export const WAVESPEED_MINIMAX_H3_VIDEO_RESOLUTIONS = ["480p", "540p", "768p", "1080p"] as const;
+export const WAVESPEED_MINIMAX_H3_IMAGE_RESOLUTIONS = ["1k", "2k"] as const;
+export const WAVESPEED_MINIMAX_H3_DURATIONS = Array.from({ length: 13 }, (_, index) => index + 3) as number[];
+export const WAVESPEED_MINIMAX_H3_MAX_REFERENCE_IMAGES = 9;
+export const WAVESPEED_MINIMAX_H3_MAX_REFERENCE_VIDEOS = 3;
+export const WAVESPEED_MINIMAX_H3_MAX_REFERENCE_AUDIOS = 3;
+export const WAVESPEED_MINIMAX_H3_MAX_LORAS = 3;
+export const WAVESPEED_MINIMAX_H3_VIDEO_PRICING_TIERS = {
+  "480p-3s": 60, "480p-5s": 100, "480p-10s": 200, "480p-15s": 300,
+  "540p-3s": 90, "540p-5s": 150, "540p-10s": 300, "540p-15s": 450,
+  "768p-3s": 120, "768p-5s": 200, "768p-10s": 400, "768p-15s": 600,
+  "1080p-3s": 240, "1080p-5s": 400, "1080p-10s": 800, "1080p-15s": 1200,
+} as const;
+export const WAVESPEED_MINIMAX_H3_IMAGE_PRICING_TIERS = {
+  "1k": 20,
+  "2k": 60,
+} as const;
+export const WAVESPEED_MINIMAX_H3_MODEL_IDS = {
+  imageToVideoSpicy: `${WAVESPEED_MINIMAX_H3_MODEL_PREFIX}image-to-video-spicy`,
+  imageToVideo: `${WAVESPEED_MINIMAX_H3_MODEL_PREFIX}image-to-video`,
+  referenceToVideo: `${WAVESPEED_MINIMAX_H3_MODEL_PREFIX}reference-to-video`,
+  textToVideo: `${WAVESPEED_MINIMAX_H3_MODEL_PREFIX}text-to-video`,
+  imageToVideoLora: `${WAVESPEED_MINIMAX_H3_MODEL_PREFIX}image-to-video-lora`,
+  referenceToVideoLora: `${WAVESPEED_MINIMAX_H3_MODEL_PREFIX}reference-to-video-lora`,
+  textToVideoLora: `${WAVESPEED_MINIMAX_H3_MODEL_PREFIX}text-to-video-lora`,
+  videoEdit: `${WAVESPEED_MINIMAX_H3_MODEL_PREFIX}video-edit`,
+  videoExtend: `${WAVESPEED_MINIMAX_H3_MODEL_PREFIX}video-extend`,
+  imageEditLora: `${WAVESPEED_MINIMAX_H3_MODEL_PREFIX}image-edit-lora`,
+  textToImageLora: `${WAVESPEED_MINIMAX_H3_MODEL_PREFIX}text-to-image-lora`,
+  imageEdit: `${WAVESPEED_MINIMAX_H3_MODEL_PREFIX}image-edit`,
+  textToImage: `${WAVESPEED_MINIMAX_H3_MODEL_PREFIX}text-to-image`,
+} as const;
+export const WAVESPEED_GPT_IMAGE_25_PRICING_TIERS = {
+  "1k-low-text-to-image": 10, "2k-low-text-to-image": 20, "4k-low-text-to-image": 30,
+  "1k-medium-text-to-image": 24, "2k-medium-text-to-image": 40, "4k-medium-text-to-image": 70,
+  "1k-high-text-to-image": 90, "2k-high-text-to-image": 150, "4k-high-text-to-image": 270,
+  "1k-xhigh-text-to-image": 160, "2k-xhigh-text-to-image": 270, "4k-xhigh-text-to-image": 480,
+  "1k-max-text-to-image": 360, "2k-max-text-to-image": 600, "4k-max-text-to-image": 1000,
+  "1k-low-edit": 20, "2k-low-edit": 30, "4k-low-edit": 40,
+  "1k-medium-edit": 34, "2k-medium-edit": 50, "4k-medium-edit": 80,
+  "1k-high-edit": 100, "2k-high-edit": 160, "4k-high-edit": 280,
+  "1k-xhigh-edit": 170, "2k-xhigh-edit": 280, "4k-xhigh-edit": 490,
+  "1k-max-edit": 370, "2k-max-edit": 610, "4k-max-edit": 1010,
+} as const;
 export const ELEVENLABS_PROVIDER = "elevenlabs";
 export const ELEVENLABS_BASE_URL = "https://api.elevenlabs.io";
 export const ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID = "elevenlabs/text-to-speech";
@@ -54,7 +119,7 @@ export type WaveSpeedLaunchModelSeed = {
   modelId: string;
   name: string;
   description: string;
-  modelType: "video" | "audio";
+  modelType: "image" | "video" | "audio";
   provider: string;
   aliases: string[];
   creditCost: number;
@@ -64,6 +129,8 @@ export type WaveSpeedLaunchModelSeed = {
   sortOrder: number;
   isEnabled: boolean;
   configJson: Record<string, unknown>;
+  thinkingModeDefault?: string;
+  thinkingModes?: string[];
 };
 
 export type WaveSpeedModelSeed = WaveSpeedLaunchModelSeed;
@@ -87,6 +154,34 @@ export type MagnificModelSeed = {
 };
 
 type WaveSpeedGenerateType = "text-to-video" | "image-to-video";
+type WaveSpeedH3Route =
+  | "text-to-video"
+  | "image-to-video"
+  | "reference-to-video"
+  | "video-edit"
+  | "video-extend"
+  | "text-to-image"
+  | "image-edit";
+type WaveSpeedH3ModelDefinition = {
+  modelId: string;
+  name: string;
+  description: string;
+  aliases: string[];
+  route: WaveSpeedH3Route;
+  modelType: "image" | "video";
+  pricingTiers: Record<string, number>;
+  creditCost: number;
+  pricingPerSecondByResolution?: Record<string, number>;
+  priority: number;
+  sortOrder: number;
+  maxReferenceImages?: number;
+  maxReferenceVideos?: number;
+  maxReferenceAudios?: number;
+  maxLoras?: number;
+  supportsLastImage?: boolean;
+  supportsAspectRatio?: boolean;
+  inputFields: ModelInputFieldRecord[];
+};
 type WaveSpeedModelDefinition = {
   modelId: string;
   name: string;
@@ -100,6 +195,24 @@ type WaveSpeedModelDefinition = {
   maxReferenceImages: number;
   referenceImagesRequired: boolean;
   nativeAudio: boolean;
+  priority: number;
+  sortOrder: number;
+};
+
+type WaveSpeedImageModelDefinition = {
+  modelId: string;
+  name: string;
+  description: string;
+  aliases: string[];
+  submitEndpoint: string;
+  editModelId: string;
+  editEndpoint: string;
+  generateType: "text-to-image";
+  pricingTiers: Record<string, number>;
+  aspectRatios: readonly string[];
+  maxReferenceImages: number;
+  thinkingModeDefault: string;
+  thinkingModes: readonly string[];
   priority: number;
   sortOrder: number;
 };
@@ -124,6 +237,260 @@ type WaveSpeedAudioModelDefinition = {
   priority: number;
   sortOrder: number;
 };
+
+const H3_PROMPT_FIELD = {
+  key: "prompt",
+  label: "Prompt",
+  type: "text",
+  required: true,
+  syncWith: "prompt",
+};
+const H3_ASPECT_RATIO_FIELD = {
+  key: "aspect_ratio",
+  label: "Aspect Ratio",
+  type: "select",
+  required: false,
+  syncWith: "aspect_ratio",
+  default: "16:9",
+  options: WAVESPEED_MINIMAX_H3_ASPECT_RATIOS.map((value) => ({ value, label: value })),
+};
+const H3_IMAGE_ASPECT_RATIO_FIELD = {
+  ...H3_ASPECT_RATIO_FIELD,
+  default: "1:1",
+  options: WAVESPEED_MINIMAX_H3_IMAGE_ASPECT_RATIOS.map((value) => ({ value, label: value })),
+};
+const H3_RESOLUTION_FIELD = (options: readonly string[], defaultValue: string) => ({
+  key: "resolution",
+  label: "Resolution",
+  type: "select",
+  required: false,
+  syncWith: "resolution",
+  default: defaultValue,
+  affectsPricing: true,
+  options: options.map((value) => ({ value, label: value.toUpperCase() })),
+});
+const H3_DURATION_FIELD = {
+  key: "duration",
+  label: "Duration",
+  type: "select",
+  required: false,
+  default: "5",
+  affectsPricing: true,
+  options: WAVESPEED_MINIMAX_H3_DURATIONS.map((value) => ({ value: String(value), label: `${value}s` })),
+};
+const H3_SEED_FIELD = { key: "seed", label: "Seed", type: "number", required: false, advancedOnly: true };
+const H3_LORAS_FIELD = {
+  key: "loras",
+  label: "LoRA Weights",
+  type: "array",
+  required: false,
+  maxItems: WAVESPEED_MINIMAX_H3_MAX_LORAS,
+  providerPayloadKey: "loras",
+  itemFields: [
+    { key: "path", label: "LoRA URL", type: "text", required: true },
+    { key: "scale", label: "Scale", type: "number", required: true, default: 1 },
+  ],
+};
+const H3_IMAGE_REFERENCES_FIELD = {
+  key: "reference_image_urls",
+  label: "Reference Images",
+  type: "image_urls",
+  required: false,
+  syncWith: "reference_images",
+  providerPayloadKey: "reference_image_urls",
+  maxItems: WAVESPEED_MINIMAX_H3_MAX_REFERENCE_IMAGES,
+};
+const H3_VIDEO_REFERENCES_FIELD = {
+  key: "reference_video_urls",
+  label: "Reference Videos",
+  type: "video_urls",
+  required: false,
+  syncWith: "reference_videos",
+  providerPayloadKey: "reference_video_urls",
+  maxItems: WAVESPEED_MINIMAX_H3_MAX_REFERENCE_VIDEOS,
+};
+const H3_AUDIO_REFERENCES_FIELD = {
+  key: "reference_audio_urls",
+  label: "Reference Audio",
+  type: "audio_urls",
+  required: false,
+  syncWith: "reference_audios",
+  providerPayloadKey: "reference_audio_urls",
+  maxItems: WAVESPEED_MINIMAX_H3_MAX_REFERENCE_AUDIOS,
+};
+const H3_SOURCE_VIDEO_FIELD = {
+  key: "video",
+  label: "Source Video",
+  type: "video_urls",
+  required: true,
+  syncWith: "reference_videos",
+  providerPayloadKey: "video",
+  maxItems: 1,
+};
+const H3_LAST_IMAGE_FIELD = {
+  key: "last_image",
+  label: "Last Frame Image",
+  type: "image_urls",
+  required: false,
+  providerPayloadKey: "last_image",
+  maxItems: 1,
+};
+const H3_OUTPUT_FORMAT_FIELD = {
+  key: "output_format",
+  label: "Output Format",
+  type: "select",
+  required: false,
+  default: "png",
+  options: ["png", "jpeg", "webp"].map((value) => ({ value, label: value.toUpperCase() })),
+};
+const buildH3VideoRates = (fiveSecondCredits: number, resolutions: readonly string[] = WAVESPEED_MINIMAX_H3_VIDEO_RESOLUTIONS) => {
+  const base = fiveSecondCredits / 5;
+  return Object.fromEntries(resolutions.map((resolution) => [
+    resolution,
+    base * (resolution === "540p" ? 1.5 : resolution === "768p" ? 2 : resolution === "1080p" ? 4 : 1),
+  ]));
+};
+
+const WAVESPEED_MINIMAX_H3_DEFINITIONS: readonly WaveSpeedH3ModelDefinition[] = [
+  {
+    modelId: WAVESPEED_MINIMAX_H3_MODEL_IDS.imageToVideoSpicy,
+    name: "MiniMax H3 Spicy Image-to-Video (WaveSpeed)",
+    description: "MiniMax H3 Open Weights spicy image-to-video with native stereo audio.",
+    aliases: ["minimax h3 spicy image to video", "wavespeed minimax h3 spicy"],
+    route: "image-to-video", modelType: "video", creditCost: 100,
+    pricingTiers: { ...WAVESPEED_MINIMAX_H3_VIDEO_PRICING_TIERS }, priority: 20, sortOrder: 200,
+    pricingPerSecondByResolution: buildH3VideoRates(100),
+    maxReferenceImages: 1, supportsLastImage: true, supportsAspectRatio: false,
+    inputFields: [H3_PROMPT_FIELD, { key: "image", label: "Start Image", type: "image_urls", required: true, providerPayloadKey: "image", maxItems: 1 }, H3_LAST_IMAGE_FIELD, H3_RESOLUTION_FIELD(WAVESPEED_MINIMAX_H3_VIDEO_RESOLUTIONS, "480p"), H3_DURATION_FIELD, H3_SEED_FIELD],
+  },
+  {
+    modelId: WAVESPEED_MINIMAX_H3_MODEL_IDS.imageToVideo,
+    name: "MiniMax H3 Image-to-Video (WaveSpeed)",
+    description: "MiniMax H3 Open Weights image-to-video with native stereo audio.",
+    aliases: ["minimax h3 image to video", "wavespeed minimax h3 i2v"],
+    route: "image-to-video", modelType: "video", creditCost: 100,
+    pricingTiers: { ...WAVESPEED_MINIMAX_H3_VIDEO_PRICING_TIERS }, priority: 21, sortOrder: 201,
+    pricingPerSecondByResolution: buildH3VideoRates(100),
+    maxReferenceImages: 1, supportsLastImage: true, supportsAspectRatio: false,
+    inputFields: [H3_PROMPT_FIELD, { key: "image", label: "Start Image", type: "image_urls", required: true, providerPayloadKey: "image", maxItems: 1 }, H3_LAST_IMAGE_FIELD, H3_RESOLUTION_FIELD(WAVESPEED_MINIMAX_H3_VIDEO_RESOLUTIONS, "480p"), H3_DURATION_FIELD, H3_SEED_FIELD],
+  },
+  {
+    modelId: WAVESPEED_MINIMAX_H3_MODEL_IDS.referenceToVideo,
+    name: "MiniMax H3 Reference-to-Video (WaveSpeed)",
+    description: "MiniMax H3 Open Weights video generation from image, video, and audio references.",
+    aliases: ["minimax h3 reference to video", "wavespeed minimax h3 reference video"],
+    route: "reference-to-video", modelType: "video", creditCost: 125,
+    pricingTiers: { ...WAVESPEED_MINIMAX_H3_VIDEO_PRICING_TIERS }, priority: 22, sortOrder: 202,
+    pricingPerSecondByResolution: buildH3VideoRates(125),
+    maxReferenceImages: 9, maxReferenceVideos: 3, maxReferenceAudios: 3, supportsAspectRatio: true,
+    inputFields: [H3_PROMPT_FIELD, H3_IMAGE_REFERENCES_FIELD, H3_VIDEO_REFERENCES_FIELD, H3_AUDIO_REFERENCES_FIELD, H3_ASPECT_RATIO_FIELD, H3_RESOLUTION_FIELD(WAVESPEED_MINIMAX_H3_VIDEO_RESOLUTIONS, "480p"), H3_DURATION_FIELD, H3_SEED_FIELD],
+  },
+  {
+    modelId: WAVESPEED_MINIMAX_H3_MODEL_IDS.textToVideo,
+    name: "MiniMax H3 Text-to-Video (WaveSpeed)",
+    description: "MiniMax H3 Open Weights text-to-video with native stereo audio.",
+    aliases: ["minimax h3 text to video", "wavespeed minimax h3 t2v"],
+    route: "text-to-video", modelType: "video", creditCost: 100,
+    pricingTiers: { ...WAVESPEED_MINIMAX_H3_VIDEO_PRICING_TIERS }, priority: 23, sortOrder: 203,
+    pricingPerSecondByResolution: buildH3VideoRates(100),
+    supportsAspectRatio: true,
+    inputFields: [H3_PROMPT_FIELD, H3_ASPECT_RATIO_FIELD, H3_RESOLUTION_FIELD(WAVESPEED_MINIMAX_H3_VIDEO_RESOLUTIONS, "480p"), H3_DURATION_FIELD, H3_SEED_FIELD],
+  },
+  {
+    modelId: WAVESPEED_MINIMAX_H3_MODEL_IDS.imageToVideoLora,
+    name: "MiniMax H3 Image-to-Video LoRA (WaveSpeed)",
+    description: "MiniMax H3 Open Weights image-to-video with custom LoRA support.",
+    aliases: ["minimax h3 image to video lora", "wavespeed minimax h3 i2v lora"],
+    route: "image-to-video", modelType: "video", creditCost: 125,
+    pricingTiers: { ...WAVESPEED_MINIMAX_H3_VIDEO_PRICING_TIERS }, priority: 24, sortOrder: 204,
+    pricingPerSecondByResolution: buildH3VideoRates(125),
+    maxReferenceImages: 1, maxLoras: 3, supportsLastImage: true, supportsAspectRatio: false,
+    inputFields: [H3_PROMPT_FIELD, { key: "image", label: "Start Image", type: "image_urls", required: true, providerPayloadKey: "image", maxItems: 1 }, H3_LAST_IMAGE_FIELD, H3_RESOLUTION_FIELD(WAVESPEED_MINIMAX_H3_VIDEO_RESOLUTIONS, "480p"), H3_DURATION_FIELD, H3_SEED_FIELD, H3_LORAS_FIELD],
+  },
+  {
+    modelId: WAVESPEED_MINIMAX_H3_MODEL_IDS.referenceToVideoLora,
+    name: "MiniMax H3 Reference-to-Video LoRA (WaveSpeed)",
+    description: "MiniMax H3 Open Weights multimodal reference-to-video with custom LoRA support.",
+    aliases: ["minimax h3 reference to video lora", "wavespeed minimax h3 reference lora"],
+    route: "reference-to-video", modelType: "video", creditCost: 150,
+    pricingTiers: { ...WAVESPEED_MINIMAX_H3_VIDEO_PRICING_TIERS }, priority: 25, sortOrder: 205,
+    pricingPerSecondByResolution: buildH3VideoRates(150),
+    maxReferenceImages: 9, maxReferenceVideos: 3, maxReferenceAudios: 3, maxLoras: 3, supportsAspectRatio: true,
+    inputFields: [H3_PROMPT_FIELD, H3_IMAGE_REFERENCES_FIELD, H3_VIDEO_REFERENCES_FIELD, H3_AUDIO_REFERENCES_FIELD, H3_ASPECT_RATIO_FIELD, H3_RESOLUTION_FIELD(WAVESPEED_MINIMAX_H3_VIDEO_RESOLUTIONS, "480p"), H3_DURATION_FIELD, H3_SEED_FIELD, H3_LORAS_FIELD],
+  },
+  {
+    modelId: WAVESPEED_MINIMAX_H3_MODEL_IDS.textToVideoLora,
+    name: "MiniMax H3 Text-to-Video LoRA (WaveSpeed)",
+    description: "MiniMax H3 Open Weights text-to-video with custom LoRA support.",
+    aliases: ["minimax h3 text to video lora", "wavespeed minimax h3 t2v lora"],
+    route: "text-to-video", modelType: "video", creditCost: 125,
+    pricingTiers: { ...WAVESPEED_MINIMAX_H3_VIDEO_PRICING_TIERS }, priority: 26, sortOrder: 206,
+    pricingPerSecondByResolution: buildH3VideoRates(125),
+    maxLoras: 3, supportsAspectRatio: true,
+    inputFields: [H3_PROMPT_FIELD, H3_ASPECT_RATIO_FIELD, H3_RESOLUTION_FIELD(WAVESPEED_MINIMAX_H3_VIDEO_RESOLUTIONS, "480p"), H3_DURATION_FIELD, H3_SEED_FIELD, H3_LORAS_FIELD],
+  },
+  {
+    modelId: WAVESPEED_MINIMAX_H3_MODEL_IDS.videoEdit,
+    name: "MiniMax H3 Video Edit (WaveSpeed)",
+    description: "MiniMax H3 Open Weights video-to-video editing with native stereo audio.",
+    aliases: ["minimax h3 video edit", "wavespeed minimax h3 video-to-video"],
+    route: "video-edit", modelType: "video", creditCost: 125,
+    pricingTiers: { ...WAVESPEED_MINIMAX_H3_VIDEO_PRICING_TIERS }, priority: 27, sortOrder: 207,
+    pricingPerSecondByResolution: buildH3VideoRates(125),
+    maxReferenceImages: 9, maxReferenceVideos: 1, maxReferenceAudios: 3, supportsAspectRatio: true,
+    inputFields: [H3_SOURCE_VIDEO_FIELD, H3_PROMPT_FIELD, H3_IMAGE_REFERENCES_FIELD, H3_AUDIO_REFERENCES_FIELD, H3_ASPECT_RATIO_FIELD, H3_RESOLUTION_FIELD(WAVESPEED_MINIMAX_H3_VIDEO_RESOLUTIONS, "480p"), H3_DURATION_FIELD, H3_SEED_FIELD],
+  },
+  {
+    modelId: WAVESPEED_MINIMAX_H3_MODEL_IDS.videoExtend,
+    name: "MiniMax H3 Video Extend (WaveSpeed)",
+    description: "MiniMax H3 Open Weights continuation of an existing video.",
+    aliases: ["minimax h3 video extend", "wavespeed minimax h3 extend"],
+    route: "video-extend", modelType: "video", creditCost: 100,
+    pricingTiers: { ...WAVESPEED_MINIMAX_H3_VIDEO_PRICING_TIERS }, priority: 28, sortOrder: 208,
+    pricingPerSecondByResolution: buildH3VideoRates(100, ["480p", "768p"]),
+    maxReferenceVideos: 1, supportsLastImage: true, supportsAspectRatio: false,
+    inputFields: [H3_SOURCE_VIDEO_FIELD, H3_PROMPT_FIELD, H3_LAST_IMAGE_FIELD, H3_RESOLUTION_FIELD(["480p", "768p"], "480p"), H3_DURATION_FIELD, H3_SEED_FIELD],
+  },
+  {
+    modelId: WAVESPEED_MINIMAX_H3_MODEL_IDS.imageEditLora,
+    name: "MiniMax H3 Image Edit LoRA (WaveSpeed)",
+    description: "MiniMax H3 Open Weights image editing with up to 9 references and custom LoRA.",
+    aliases: ["minimax h3 image edit lora", "wavespeed minimax h3 image edit lora"],
+    route: "image-edit", modelType: "image", creditCost: 30,
+    pricingTiers: { ...WAVESPEED_MINIMAX_H3_IMAGE_PRICING_TIERS }, priority: 29, sortOrder: 209,
+    maxReferenceImages: 9, maxLoras: 3,
+    inputFields: [H3_PROMPT_FIELD, { ...H3_IMAGE_REFERENCES_FIELD, required: true }, H3_IMAGE_ASPECT_RATIO_FIELD, H3_RESOLUTION_FIELD(WAVESPEED_MINIMAX_H3_IMAGE_RESOLUTIONS, "1k"), H3_OUTPUT_FORMAT_FIELD, H3_SEED_FIELD, H3_LORAS_FIELD],
+  },
+  {
+    modelId: WAVESPEED_MINIMAX_H3_MODEL_IDS.textToImageLora,
+    name: "MiniMax H3 Text-to-Image LoRA (WaveSpeed)",
+    description: "MiniMax H3 Open Weights text-to-image with custom LoRA.",
+    aliases: ["minimax h3 text to image lora", "wavespeed minimax h3 t2i lora"],
+    route: "text-to-image", modelType: "image", creditCost: 20,
+    pricingTiers: { ...WAVESPEED_MINIMAX_H3_IMAGE_PRICING_TIERS }, priority: 30, sortOrder: 210,
+    maxLoras: 3,
+    inputFields: [H3_PROMPT_FIELD, H3_IMAGE_ASPECT_RATIO_FIELD, H3_RESOLUTION_FIELD(WAVESPEED_MINIMAX_H3_IMAGE_RESOLUTIONS, "1k"), H3_OUTPUT_FORMAT_FIELD, H3_SEED_FIELD, H3_LORAS_FIELD],
+  },
+  {
+    modelId: WAVESPEED_MINIMAX_H3_MODEL_IDS.imageEdit,
+    name: "MiniMax H3 Image Edit (WaveSpeed)",
+    description: "MiniMax H3 Open Weights image editing with up to 9 reference images.",
+    aliases: ["minimax h3 image edit", "wavespeed minimax h3 image edit"],
+    route: "image-edit", modelType: "image", creditCost: 30,
+    pricingTiers: { ...WAVESPEED_MINIMAX_H3_IMAGE_PRICING_TIERS }, priority: 31, sortOrder: 211,
+    maxReferenceImages: 9,
+    inputFields: [H3_PROMPT_FIELD, { ...H3_IMAGE_REFERENCES_FIELD, required: true }, H3_IMAGE_ASPECT_RATIO_FIELD, H3_RESOLUTION_FIELD(WAVESPEED_MINIMAX_H3_IMAGE_RESOLUTIONS, "1k"), H3_OUTPUT_FORMAT_FIELD, H3_SEED_FIELD],
+  },
+  {
+    modelId: WAVESPEED_MINIMAX_H3_MODEL_IDS.textToImage,
+    name: "MiniMax H3 Text-to-Image (WaveSpeed)",
+    description: "MiniMax H3 Open Weights text-to-image generation.",
+    aliases: ["minimax h3 text to image", "wavespeed minimax h3 t2i"],
+    route: "text-to-image", modelType: "image", creditCost: 20,
+    pricingTiers: { ...WAVESPEED_MINIMAX_H3_IMAGE_PRICING_TIERS }, priority: 32, sortOrder: 212,
+    inputFields: [H3_PROMPT_FIELD, H3_IMAGE_ASPECT_RATIO_FIELD, H3_RESOLUTION_FIELD(WAVESPEED_MINIMAX_H3_IMAGE_RESOLUTIONS, "1k"), H3_OUTPUT_FORMAT_FIELD, H3_SEED_FIELD],
+  },
+];
 
 type ModelInputFieldRecord = Record<string, unknown>;
 type PublicUrlValidationOptions = {
@@ -380,6 +747,53 @@ const WAVESPEED_MODEL_DEFINITIONS: readonly WaveSpeedModelDefinition[] = [
     nativeAudio: true,
     priority: 10,
     sortOrder: 64,
+  },
+] as const;
+
+const WAVESPEED_IMAGE_MODEL_DEFINITIONS: readonly WaveSpeedImageModelDefinition[] = [
+  {
+    modelId: WAVESPEED_GPT_IMAGE_25_FLARE_MODEL_ID,
+    name: "GPT Image 2.5 Flare (WaveSpeed)",
+    description: "OpenAI GPT Image 2.5 Flare text-to-image and reference-image editing via WaveSpeedAI.",
+    aliases: [
+      "wavespeed gpt image 2.5 flare",
+      "wavespeed gpt-image-2.5-flare",
+      WAVESPEED_GPT_IMAGE_25_FLARE_EDIT_MODEL_ID,
+      "wavespeed gpt image 2.5 flare edit",
+    ],
+    submitEndpoint: "/openai/gpt-image-2.5-flare/text-to-image",
+    editModelId: WAVESPEED_GPT_IMAGE_25_FLARE_EDIT_MODEL_ID,
+    editEndpoint: "/openai/gpt-image-2.5-flare/edit",
+    generateType: "text-to-image",
+    pricingTiers: { ...WAVESPEED_GPT_IMAGE_25_PRICING_TIERS },
+    aspectRatios: WAVESPEED_GPT_IMAGE_25_ALLOWED_ASPECT_RATIOS,
+    maxReferenceImages: WAVESPEED_GPT_IMAGE_25_MAX_REFERENCE_IMAGES,
+    thinkingModeDefault: "medium",
+    thinkingModes: WAVESPEED_GPT_IMAGE_25_QUALITIES,
+    priority: 11,
+    sortOrder: 110,
+  },
+  {
+    modelId: WAVESPEED_GPT_IMAGE_25_SUNBURST_MODEL_ID,
+    name: "GPT Image 2.5 Sunburst (WaveSpeed)",
+    description: "OpenAI GPT Image 2.5 Sunburst text-to-image and reference-image editing via WaveSpeedAI.",
+    aliases: [
+      "wavespeed gpt image 2.5 sunburst",
+      "wavespeed gpt-image-2.5-sunburst",
+      WAVESPEED_GPT_IMAGE_25_SUNBURST_EDIT_MODEL_ID,
+      "wavespeed gpt image 2.5 sunburst edit",
+    ],
+    submitEndpoint: "/openai/gpt-image-2.5-sunburst/text-to-image",
+    editModelId: WAVESPEED_GPT_IMAGE_25_SUNBURST_EDIT_MODEL_ID,
+    editEndpoint: "/openai/gpt-image-2.5-sunburst/edit",
+    generateType: "text-to-image",
+    pricingTiers: { ...WAVESPEED_GPT_IMAGE_25_PRICING_TIERS },
+    aspectRatios: WAVESPEED_GPT_IMAGE_25_ALLOWED_ASPECT_RATIOS,
+    maxReferenceImages: WAVESPEED_GPT_IMAGE_25_MAX_REFERENCE_IMAGES,
+    thinkingModeDefault: "medium",
+    thinkingModes: WAVESPEED_GPT_IMAGE_25_QUALITIES,
+    priority: 12,
+    sortOrder: 111,
   },
 ] as const;
 
@@ -1165,8 +1579,16 @@ function getWaveSpeedModelDefinition(modelId: string): WaveSpeedModelDefinition 
   return WAVESPEED_MODEL_DEFINITIONS.find((definition) => definition.modelId === modelId);
 }
 
+function getWaveSpeedImageModelDefinition(modelId: string): WaveSpeedImageModelDefinition | undefined {
+  return WAVESPEED_IMAGE_MODEL_DEFINITIONS.find((definition) => definition.modelId === modelId);
+}
+
 function getWaveSpeedAudioModelDefinition(modelId: string): WaveSpeedAudioModelDefinition | undefined {
   return WAVESPEED_AUDIO_MODEL_DEFINITIONS.find((definition) => definition.modelId === modelId);
+}
+
+function getWaveSpeedH3ModelDefinition(modelId: string): WaveSpeedH3ModelDefinition | undefined {
+  return WAVESPEED_MINIMAX_H3_DEFINITIONS.find((definition) => definition.modelId === modelId);
 }
 
 function requireWaveSpeedModelDefinition(modelId: string): WaveSpeedModelDefinition {
@@ -1175,8 +1597,10 @@ function requireWaveSpeedModelDefinition(modelId: string): WaveSpeedModelDefinit
     ?? WAVESPEED_MODEL_DEFINITIONS[0]!;
 }
 
-function requireWaveSpeedAnyModelDefinition(modelId: string): WaveSpeedModelDefinition | WaveSpeedAudioModelDefinition {
-  return getWaveSpeedModelDefinition(modelId)
+function requireWaveSpeedAnyModelDefinition(modelId: string): WaveSpeedModelDefinition | WaveSpeedImageModelDefinition | WaveSpeedAudioModelDefinition | WaveSpeedH3ModelDefinition {
+  return getWaveSpeedH3ModelDefinition(modelId)
+    ?? getWaveSpeedModelDefinition(modelId)
+    ?? getWaveSpeedImageModelDefinition(modelId)
     ?? getWaveSpeedAudioModelDefinition(modelId)
     ?? requireWaveSpeedModelDefinition(modelId);
 }
@@ -1225,6 +1649,59 @@ function buildWaveSpeedInputFields(definition: WaveSpeedModelDefinition): ModelI
       default: String(definition.durations[0]),
       affectsPricing: true,
       options: definition.durations.map((value) => ({ value: String(value), label: `${value}s` })),
+    },
+  ];
+}
+
+function buildWaveSpeedImageInputFields(definition: WaveSpeedImageModelDefinition): ModelInputFieldRecord[] {
+  return [
+    {
+      key: "images",
+      label: "Reference Images",
+      type: "image_urls",
+      required: false,
+      syncWith: "reference_images",
+      providerPayloadKey: "images",
+      pricingAliases: ["reference_image_urls", "referenceImageUrls"],
+      pricingPresenceLabels: { present: "edit", absent: "text-to-image" },
+      affectsPricing: true,
+      maxItems: definition.maxReferenceImages,
+    },
+    {
+      key: "aspect_ratio",
+      label: "Aspect Ratio",
+      type: "select",
+      required: false,
+      syncWith: "aspect_ratio",
+      default: definition.aspectRatios[0],
+      options: definition.aspectRatios.map((value) => ({ value, label: value })),
+    },
+    {
+      key: "resolution",
+      label: "Resolution",
+      type: "select",
+      required: false,
+      syncWith: "resolution",
+      default: "1k",
+      affectsPricing: true,
+      options: ["1k", "2k", "4k"].map((value) => ({ value, label: value.toUpperCase() })),
+    },
+    {
+      key: "quality",
+      label: "Thinking Mode",
+      type: "select",
+      required: false,
+      default: definition.thinkingModeDefault,
+      affectsPricing: true,
+      options: definition.thinkingModes.map((value) => ({ value, label: value === "xhigh" ? "XHigh" : value[0]!.toUpperCase() + value.slice(1) })),
+    },
+    {
+      key: "output_format",
+      label: "Output Format",
+      type: "select",
+      required: false,
+      default: "png",
+      options: ["png", "jpeg", "webp"].map((value) => ({ value, label: value.toUpperCase() })),
     },
   ];
 }
@@ -1539,6 +2016,41 @@ export function getAllowedDurationsFromConfig(
 
 export function buildWaveSpeedModelConfigJson(modelId: string): Record<string, unknown> {
   const definition = requireWaveSpeedAnyModelDefinition(modelId);
+  if ("route" in definition) {
+    const isImage = definition.modelType === "image";
+    return sanitizeMediaModelConfigJson({
+      apiPayloadFormat: "wavespeed",
+      generateType: definition.route,
+      providerModelId: definition.modelId,
+      apiEndpoint: `/${definition.modelId}`,
+      apiQueryEndpoint: "/predictions/{requestId}/result",
+      pricingFormula: isImage ? "matrix" : "per_second",
+      pricingPerSecondByResolution: definition.pricingPerSecondByResolution,
+      pricingAdditionalReferenceCosts: definition.route === "video-edit"
+        ? { reference_images: 20, reference_audios: 20 }
+        : undefined,
+      pricingTiers: { ...definition.pricingTiers },
+      pricingUnit: isImage ? "image" : "second",
+      nativeAudio: !isImage,
+      useSyncMode: false,
+      supportsReferenceImages: Boolean(definition.maxReferenceImages),
+      requiresReferenceImages: Boolean(definition.maxReferenceImages && ["image-to-video", "image-edit"].includes(definition.route)),
+      maxReferenceImages: definition.maxReferenceImages ?? 0,
+      maxReferenceVideos: definition.maxReferenceVideos ?? 0,
+      maxReferenceAudios: definition.maxReferenceAudios ?? 0,
+      maxLoras: definition.maxLoras ?? 0,
+      supportsLastImage: Boolean(definition.supportsLastImage),
+      inputFields: definition.inputFields,
+      apiConfig: {
+        provider: WAVESPEED_PROVIDER,
+        provider_model_id: definition.modelId,
+        endpoint: `/${definition.modelId}`,
+        generate_type: definition.route,
+        route_family: definition.route,
+        use_sync_mode: false,
+      },
+    }) as Record<string, unknown>;
+  }
   if ("textInputKey" in definition) {
     return sanitizeMediaModelConfigJson({
       apiPayloadFormat: "wavespeed",
@@ -1567,6 +2079,35 @@ export function buildWaveSpeedModelConfigJson(modelId: string): Record<string, u
         text_input_key: definition.textInputKey,
         omit_text_input: definition.generateType === "audio-to-audio",
         use_sync_mode: false,
+      },
+    }) as Record<string, unknown>;
+  }
+
+  if ("editModelId" in definition) {
+    return sanitizeMediaModelConfigJson({
+      apiPayloadFormat: "wavespeed",
+      generateType: definition.generateType,
+      providerModelId: definition.modelId,
+      apiEndpoint: definition.submitEndpoint,
+      apiQueryEndpoint: "/predictions/{requestId}/result",
+      pricingFormula: "matrix",
+      pricingTiers: { ...definition.pricingTiers },
+      pricingAdditionalReferenceCost: WAVESPEED_GPT_IMAGE_25_ADDITIONAL_REFERENCE_CREDIT_COST,
+      pricingAdditionalReferenceField: "images",
+      supportsReferenceImages: true,
+      maxReferenceImages: definition.maxReferenceImages,
+      inputFields: buildWaveSpeedImageInputFields(definition),
+      apiConfig: {
+        provider: WAVESPEED_PROVIDER,
+        provider_model_id: definition.modelId,
+        provider_model_id_with_references: definition.editModelId,
+        endpoint_with_references: definition.editEndpoint,
+        generate_type: definition.generateType,
+        defaultInputParams: {
+          resolution: "1k",
+          quality: definition.thinkingModeDefault,
+          output_format: "png",
+        },
       },
     }) as Record<string, unknown>;
   }
@@ -1600,6 +2141,29 @@ export function buildWaveSpeedLaunchModelConfigJson(): Record<string, unknown> {
 
 export function buildWaveSpeedModelSeed(modelId: string): WaveSpeedModelSeed {
   const definition = requireWaveSpeedAnyModelDefinition(modelId);
+  if ("route" in definition) {
+    return {
+      modelId: definition.modelId,
+      name: definition.name,
+      description: definition.description,
+      modelType: definition.modelType,
+      provider: WAVESPEED_PROVIDER,
+      aliases: [...definition.aliases],
+      creditCost: definition.creditCost,
+      aspectRatios: definition.inputFields.some((field) => field.key === "aspect_ratio")
+        ? [...(definition.modelType === "image" ? WAVESPEED_MINIMAX_H3_IMAGE_ASPECT_RATIOS : WAVESPEED_MINIMAX_H3_ASPECT_RATIOS)]
+        : [],
+      durations: definition.inputFields.some((field) => field.key === "duration")
+        ? [...WAVESPEED_MINIMAX_H3_DURATIONS]
+        : [],
+      priority: definition.priority,
+      sortOrder: definition.sortOrder,
+      isEnabled: true,
+      thinkingModeDefault: "none",
+      thinkingModes: ["none"],
+      configJson: buildWaveSpeedModelConfigJson(definition.modelId),
+    };
+  }
   if ("textInputKey" in definition) {
     return {
       modelId: definition.modelId,
@@ -1614,6 +2178,26 @@ export function buildWaveSpeedModelSeed(modelId: string): WaveSpeedModelSeed {
       priority: definition.priority,
       sortOrder: definition.sortOrder,
       isEnabled: true,
+      configJson: buildWaveSpeedModelConfigJson(definition.modelId),
+    };
+  }
+
+  if ("editModelId" in definition) {
+    return {
+      modelId: definition.modelId,
+      name: definition.name,
+      description: definition.description,
+      modelType: "image",
+      provider: WAVESPEED_PROVIDER,
+      aliases: [...definition.aliases],
+      creditCost: definition.pricingTiers["1k-medium-text-to-image"] ?? 24,
+      aspectRatios: [...definition.aspectRatios],
+      durations: [],
+      priority: definition.priority,
+      sortOrder: definition.sortOrder,
+      isEnabled: true,
+      thinkingModeDefault: definition.thinkingModeDefault,
+      thinkingModes: [...definition.thinkingModes],
       configJson: buildWaveSpeedModelConfigJson(definition.modelId),
     };
   }
@@ -1641,7 +2225,9 @@ export function buildWaveSpeedLaunchModelSeed(): WaveSpeedLaunchModelSeed {
 
 export function buildWaveSpeedModelSeeds(): WaveSpeedModelSeed[] {
   return [
+    ...WAVESPEED_MINIMAX_H3_DEFINITIONS.map((definition) => buildWaveSpeedModelSeed(definition.modelId)),
     ...WAVESPEED_MODEL_DEFINITIONS.map((definition) => buildWaveSpeedModelSeed(definition.modelId)),
+    ...WAVESPEED_IMAGE_MODEL_DEFINITIONS.map((definition) => buildWaveSpeedModelSeed(definition.modelId)),
     ...WAVESPEED_AUDIO_MODEL_DEFINITIONS.map((definition) => buildWaveSpeedModelSeed(definition.modelId)),
   ];
 }
@@ -1649,13 +2235,13 @@ export function buildWaveSpeedModelSeeds(): WaveSpeedModelSeed[] {
 export function getWaveSpeedProviderAvailableModels(): Array<{
   id: string;
   name: string;
-  type: "video" | "audio";
+  type: "image" | "video" | "audio";
   description: string;
 }> {
-  return [...WAVESPEED_MODEL_DEFINITIONS, ...WAVESPEED_AUDIO_MODEL_DEFINITIONS].map((definition) => ({
+  return [...WAVESPEED_MINIMAX_H3_DEFINITIONS, ...WAVESPEED_MODEL_DEFINITIONS, ...WAVESPEED_IMAGE_MODEL_DEFINITIONS, ...WAVESPEED_AUDIO_MODEL_DEFINITIONS].map((definition) => ({
     id: definition.modelId,
     name: definition.name,
-    type: "textInputKey" in definition ? "audio" : "video",
+    type: "route" in definition ? definition.modelType : "textInputKey" in definition ? "audio" : "editModelId" in definition ? "image" : "video",
     description: definition.description,
   }));
 }

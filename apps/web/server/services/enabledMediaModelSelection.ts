@@ -16,6 +16,8 @@ type MediaModelRow = {
   sizes: unknown;
   durations: unknown;
   voices: unknown;
+  thinkingModeDefault: string;
+  thinkingModes: unknown;
   configJson: Record<string, unknown> | null;
   isEnabled: boolean;
   priority: number;
@@ -248,6 +250,8 @@ export async function resolveEnabledMediaModelSelection(
         sizes: mediaModels.sizes,
         durations: mediaModels.durations,
         voices: mediaModels.voices,
+        thinkingModeDefault: mediaModels.thinkingModeDefault,
+        thinkingModes: mediaModels.thinkingModes,
         configJson: mediaModels.configJson,
         isEnabled: mediaModels.isEnabled,
         priority: mediaModels.priority,
