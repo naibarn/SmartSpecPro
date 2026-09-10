@@ -40,6 +40,7 @@ echo -e "${NC}"
 # Step 1: Copy updated service files
 log_step "Copying updated service files..."
 cp "$SCRIPT_DIR/smartspec-infra.service" "$SYSTEMD_DIR/"
+cp "$SCRIPT_DIR/smartspec-celery-doctor.service" "$SYSTEMD_DIR/"
 cp "$SCRIPT_DIR/smartspec-backend.service" "$SYSTEMD_DIR/"
 cp "$SCRIPT_DIR/smartspec-web.service" "$SYSTEMD_DIR/"
 cp "$SCRIPT_DIR/smartspec-docker-status.service" "$SYSTEMD_DIR/"
@@ -49,6 +50,7 @@ log_info "✓ Service files copied"
 # Step 2: Set correct permissions
 log_step "Setting permissions..."
 chmod 644 "$SYSTEMD_DIR/smartspec-infra.service"
+chmod 644 "$SYSTEMD_DIR/smartspec-celery-doctor.service"
 chmod 644 "$SYSTEMD_DIR/smartspec-backend.service"
 chmod 644 "$SYSTEMD_DIR/smartspec-web.service"
 chmod 644 "$SYSTEMD_DIR/smartspec-docker-status.service"
@@ -109,6 +111,11 @@ log_step "Verifying services are enabled..."
 if ! systemctl is-enabled --quiet smartspec-infra.service; then
     log_warn "Enabling smartspec-infra.service..."
     systemctl enable smartspec-infra.service
+fi
+
+if ! systemctl is-enabled --quiet smartspec-celery-doctor.service; then
+    log_warn "Enabling smartspec-celery-doctor.service..."
+    systemctl enable smartspec-celery-doctor.service
 fi
 
 if ! systemctl is-enabled --quiet smartspec-backend.service; then

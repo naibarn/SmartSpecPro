@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, List, Optional
 from urllib.parse import urlsplit, urlunsplit
 
@@ -211,7 +211,11 @@ def _redact_kie_webhook_payload(value: Any) -> Any:
 
 
 def _has_responsive_celery_worker() -> bool:
-    """Best-effort check that at least one Celery worker can consume media tasks."""
+    """Return true only when a worker is subscribed to the media queue.
+
+    A generic Celery ping is not sufficient here: presentation/import workers
+    share the broker but cannot consume image-generation messages.
+    """
     if not CELERY_ENABLED:
         return False
 
@@ -227,8 +231,12 @@ def _has_responsive_celery_worker() -> bool:
         for queues in active_queues.values():
             if any((queue.get("name") if isinstance(queue, dict) else None) == "media" for queue in queues or []):
                 return True
-        replies = generate_image_task.app.control.ping(timeout=timeout_seconds)
-        return bool(replies)
+        logger.warning(
+            "celery_media_worker_unavailable",
+            worker_count=len(active_queues),
+            reason="no_worker_subscribed_to_media_queue",
+        )
+        return False
     except Exception as exc:
         logger.warning("celery_worker_ping_failed", error=str(exc))
         return False
@@ -1911,6 +1919,15 @@ async def generate_image_async(
             detail="Async processing not available. Use /image endpoint instead."
         )
 
+    # Check before creating the durable task row. The Node caller may have a
+    # short-lived credit reservation at this point, but its existing exception
+    # path refunds that reservation when this 503 is returned.
+    if CELERY_ENABLED and not _has_responsive_celery_worker():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Async media worker unavailable. Start a Celery worker for the media queue.",
+        )
+
     effective_model = _resolve_async_image_model(request)
     request_payload = request.dict()
     request_payload["model"] = effective_model
@@ -1941,15 +1958,31 @@ async def generate_image_async(
     should_use_celery = CELERY_ENABLED
 
     if should_use_celery:
-        dispatch_result = await _dispatch_pending_image_tasks_async(current_user.id)
-        await db.refresh(task)
-        logger.info(
-            "async_image_task_admitted",
-            task_id=task.id,
-            celery_task_id=task.celery_task_id,
-            user_id=current_user.id,
-            dispatched=task.id in dispatch_result["dispatched_task_ids"],
-        )
+        try:
+            dispatch_result = await _dispatch_pending_image_tasks_async(current_user.id)
+            await db.refresh(task)
+            logger.info(
+                "async_image_task_admitted",
+                task_id=task.id,
+                celery_task_id=task.celery_task_id,
+                user_id=current_user.id,
+                dispatched=task.id in dispatch_result["dispatched_task_ids"],
+            )
+        except Exception as exc:
+            task.status = TaskStatus.FAILED.value
+            task.error_message = f"Failed to dispatch task to media queue: {str(exc)[:240]}"
+            task.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+            logger.error(
+                "async_image_task_dispatch_failed",
+                task_id=task.id,
+                user_id=current_user.id,
+                error_type=type(exc).__name__,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Async media worker unavailable. The task was not submitted to the provider.",
+            ) from exc
     elif _is_inline_media_fallback_enabled() and _generate_image_async is not None:
         await db.commit()
         background_tasks.add_task(_generate_image_async, task.id, current_user.id, request_payload)

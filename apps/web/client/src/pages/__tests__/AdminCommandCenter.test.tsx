@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 const setLocationMock = vi.fn();
+const doctorMutationMock = vi.fn();
 
 function queryResult<T>(data: T) {
   return { data, isLoading: false, refetch: vi.fn() };
@@ -89,6 +90,19 @@ vi.mock("@/lib/trpc", () => ({
     queues: {
       getSystemStatus: { useQuery: () => queryResult({ limiters: { totalQueued: 0 }, cloudTasks: { totalTasks: 0 } }) },
     },
+    infrastructure: {
+      getCeleryMediaDoctorStatus: { useQuery: () => queryResult({
+        checkedAt: new Date().toISOString(),
+        overallStatus: "healthy",
+        workers: {
+          media: { service: "celery-media", containerName: "smartspec-celery-media", status: "running", project: "smartspecpro", health: "healthy", restartCount: 0, startedAt: null, duplicate: false, candidates: [] },
+          beat: { service: "celery-beat", containerName: "smartspec-celery-beat", status: "running", project: "smartspecpro", health: "healthy", restartCount: 0, startedAt: null, duplicate: false, candidates: [] },
+        },
+        queue: { redisMediaDepth: 0, pendingCount: 0, processingCount: 0, stalePendingCount: 0 },
+        users: [], selectedUser: null, repair: { available: false, reason: null },
+      }) },
+      runCeleryMediaDoctor: { useMutation: () => ({ mutate: doctorMutationMock, isPending: false }) },
+    },
   },
 }));
 
@@ -97,6 +111,16 @@ import AdminCommandCenter from "../Admin/AdminCommandCenter";
 describe("AdminCommandCenter", () => {
   beforeEach(() => {
     setLocationMock.mockClear();
+    doctorMutationMock.mockClear();
+  });
+
+  it("shows the exact-admin Celery doctor and can run a safe repair", () => {
+    render(<AdminCommandCenter />);
+
+    expect(screen.getByText("Celery Media Doctor")).toBeInTheDocument();
+    expect(screen.getByText("celery-media")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /run doctor/i }));
+    expect(doctorMutationMock).toHaveBeenCalledTimes(1);
   });
 
   it("exposes workpack routes from the command center", () => {

@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+STATE_FILE="${FAKE_CELERY_DOCTOR_STATE_FILE:?FAKE_CELERY_DOCTOR_STATE_FILE is required}"
+CALL_LOG="${FAKE_CELERY_DOCTOR_CALL_LOG:?FAKE_CELERY_DOCTOR_CALL_LOG is required}"
+
+read_field() {
+    local container="$1"
+    local field="$2"
+    awk -F'|' -v c="${container}" -v f="${field}" '$1 == c {print $f}' "${STATE_FILE}"
+}
+
+write_state() {
+    local container="$1"
+    local state="$2"
+    local tmp="${STATE_FILE}.tmp"
+    awk -F'|' -v OFS='|' -v c="${container}" -v s="${state}" '$1 == c {$2 = s} {print}' "${STATE_FILE}" > "${tmp}"
+    mv "${tmp}" "${STATE_FILE}"
+}
+
+case "${1:-}" in
+    info)
+        exit 0
+        ;;
+    ps)
+        service=""
+        if [[ "$*" == *"celery-media"* ]]; then service="celery-media"; fi
+        if [[ "$*" == *"celery-beat"* ]]; then service="celery-beat"; fi
+        awk -F'|' -v s="${service}" '$5 == s {print NR}' "${STATE_FILE}"
+        ;;
+    inspect)
+        format="${3:-}"
+        container="${4:-}"
+        state="$(read_field "${container}" 2 || true)"
+        if [[ -z "${state}" ]]; then
+            exit 1
+        fi
+        if [[ "${format}" == *"State.Status"* ]]; then
+            printf '%s\n' "${state}"
+        elif [[ "${format}" == *"Config.Labels"* ]]; then
+            read_field "${container}" 3
+        elif [[ "${format}" == *"State.Health"* ]]; then
+            read_field "${container}" 4
+        fi
+        ;;
+    compose)
+        printf '%s\n' "$*" >> "${CALL_LOG}"
+        args="$*"
+        service="${args##* }"
+        if [[ "${args}" != *"--force-recreate"* && "${FAKE_CELERY_DOCTOR_FAIL_NORMAL:-0}" == "1" ]]; then
+            exit 1
+        fi
+        case "${service}" in
+            celery-media) write_state smartspec-celery-media running ;;
+            celery-beat) write_state smartspec-celery-beat running ;;
+        esac
+        ;;
+    *)
+        exit 0
+        ;;
+esac

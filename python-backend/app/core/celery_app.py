@@ -161,7 +161,7 @@ beat_schedule = {
     },
     "recover-stuck-tasks": {
         "task": "app.tasks.media_tasks.recover_stuck_tasks",
-        "schedule": crontab(minute="*/2"),  # Every 2 minutes - refresh provider status for processing tasks
+        "schedule": crontab(minute="*/1"),  # Every minute - recover stale media tasks within the 3-minute SLO
     },
     "backfill-missing-media-thumbnails": {
         "task": "app.tasks.media_tasks.backfill_missing_media_thumbnails",

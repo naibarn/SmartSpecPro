@@ -63,7 +63,9 @@ services:
           cpus: '0.5'
           memory: 512M
     healthcheck:
-      test: ["CMD-SHELL", "celery -A app.core.celery_app inspect ping -d media@$$HOSTNAME || exit 1"]
+      # A generic ping can be answered by presentation/import workers. Verify
+      # that this process is actually subscribed to the media queue.
+      test: ["CMD-SHELL", "celery -A app.core.celery_app inspect active_queues -d media@$$HOSTNAME --timeout=5 | grep -Eq 'name.*media' || exit 1"]
       interval: 30s
       timeout: 10s
       start_period: 60s

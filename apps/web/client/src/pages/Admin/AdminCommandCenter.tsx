@@ -14,6 +14,7 @@ import {
   type OpsOverview,
 } from "@/components/admin/OpsEarlyWarningPanel";
 import { cn } from "@/lib/utils";
+import { CeleryMediaDoctorCard } from "@/components/admin/CeleryMediaDoctorCard";
 import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 import {
   Activity,
@@ -649,6 +650,7 @@ export default function AdminCommandCenter() {
       </header>
 
       <main className="space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+        {user?.role === "admin" && user.id != null ? <CeleryMediaDoctorCard currentUserId={user.id} /> : null}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
           <DashboardKpiCard
             icon={Activity}

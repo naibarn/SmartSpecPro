@@ -57,6 +57,8 @@ export interface ReportSystemFailureParams {
   traceId?: string;
   /** Structured credit/provider context from an authoritative billing boundary. */
   creditContext?: CreditFailureContext;
+  /** Explicit escalation level for operational incidents. */
+  priority?: "high" | "critical";
   /** Extra diagnostic fields — whitelisted/sanitized before storage, see `sanitizeExtra`. */
   extra?: Record<string, unknown>;
 }
@@ -316,6 +318,8 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
         : effectiveCreditRoute === "admin_suspicious"
           ? "high"
           : null;
+    const escalationPriority: "high" | "critical" | undefined =
+      params.priority ?? creditPriority ?? undefined;
     const storedCreditContext = creditClassification.isCreditFailure
       ? { ...creditContextForStorage(creditClassification), route: effectiveCreditRoute }
       : null;
@@ -359,7 +363,9 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
       await db
         .update(feedbackTickets)
         .set({
-          ...(creditPriority ? { priority: creditPriority, severity: creditPriority } : {}),
+          ...(escalationPriority
+            ? { priority: escalationPriority, severity: escalationPriority }
+            : {}),
           contextJson: {
             ...existingContext,
             kind: "system_auto_report",
@@ -441,8 +447,8 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
         submittedBy: numericUserId,
         submittedByType: "system",
         ticketType: "bug",
-        priority: creditPriority ?? "high",
-        severity: creditPriority ?? "high",
+        priority: escalationPriority ?? "high",
+        severity: escalationPriority ?? "high",
         category: params.source.slice(0, 64),
         title,
         description,

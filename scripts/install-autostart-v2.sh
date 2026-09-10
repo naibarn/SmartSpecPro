@@ -18,6 +18,7 @@ SYSTEMD_DIR="/etc/systemd/system"
 SERVICES=(
     "smartspec.target"
     "smartspec-infra.service"
+    "smartspec-celery-doctor.service"
     "smartspec-backend.service"
     "smartspec-web.service"
     "smartspec-docker-status.service"
@@ -98,6 +99,8 @@ cmd_install() {
     echo ""
     echo -e "${CYAN}Service Status:${NC}"
     systemctl status smartspec-infra.service --no-pager | head -10 || true
+    echo ""
+    systemctl status smartspec-celery-doctor.service --no-pager | head -10 || true
     echo ""
     systemctl status smartspec-backend.service --no-pager | head -10 || true
     echo ""

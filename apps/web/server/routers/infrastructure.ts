@@ -7,6 +7,7 @@
  */
 
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, rateLimitedAdminProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { systemSettings } from "../../drizzle/schema";
@@ -37,6 +38,14 @@ import {
   setDeployMode,
 } from "../services/scaleTier";
 import type { ScaleTierId, DeployMode, ApplyStepResult } from "../services/scaleTier";
+import { getCeleryMediaDoctorStatus, runCeleryMediaDoctor } from "../services/celeryMediaDoctorService";
+
+const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
+  if (ctx.user?.role !== "admin") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+  }
+  return next({ ctx });
+});
 
 // ============================================================
 // Constants
@@ -899,6 +908,12 @@ export const infrastructureRouter = router({
       };
     }
   }),
+
+  getCeleryMediaDoctorStatus: exactAdminProcedure
+    .input(z.object({ userId: z.number().int().positive().optional() }).optional())
+    .query(({ input }) => getCeleryMediaDoctorStatus(input?.userId)),
+
+  runCeleryMediaDoctor: exactAdminProcedure.mutation(() => runCeleryMediaDoctor()),
 
   // ----------------------------------------------------------
   // Scale Tier Management

@@ -100,6 +100,15 @@ def test_provider_reference_image_fetch_errors_are_retryable():
     assert _is_non_retryable_media_error(error) is False
 
 
+def test_permanent_reference_image_access_errors_are_non_retryable():
+    error = RuntimeError(
+        "KIE_REFERENCE_IMAGE_ACCESS_FAILED: Kie reference image download failed "
+        "for item 5 (reason=http_access status=403, host=smartaihub.app)"
+    )
+
+    assert _is_non_retryable_media_error(error) is True
+
+
 def test_openai_policy_errors_are_separated_from_other_permanent_failures():
     policy_error = RuntimeError(
         "500: Image generation failed: Task failed: Sorry, but the image we created "

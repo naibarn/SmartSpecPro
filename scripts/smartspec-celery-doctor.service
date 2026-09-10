@@ -1,0 +1,22 @@
+[Unit]
+Description=SmartSpecPro Celery Media/Beat Self-Healing Doctor
+Documentation=https://github.com/smartspecpro/smartspec
+Requires=docker.service
+After=docker.service smartspec-infra.service
+PartOf=smartspec.target
+
+[Service]
+Type=simple
+User=dev
+Group=dev
+WorkingDirectory=/home/dev/projects/SmartSpecPro
+ExecStart=/home/dev/projects/SmartSpecPro/scripts/celery-doctor.sh --watch --interval 30
+Restart=always
+RestartSec=15
+TimeoutStopSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smartspec-celery-doctor
+
+[Install]
+WantedBy=smartspec.target

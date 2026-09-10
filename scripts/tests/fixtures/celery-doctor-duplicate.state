@@ -1,0 +1,3 @@
+smartspec-celery-media|running|smartspecpro|healthy|celery-media
+smartspec-celery-media-old|exited|smartspecpro|none|celery-media
+smartspec-celery-beat|running|smartspecpro|healthy|celery-beat

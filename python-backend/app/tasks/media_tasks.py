@@ -402,7 +402,8 @@ async def _mark_task_retrying_async(task_id: str, error: Exception, retry_after_
             return
 
         task.status = TaskStatus.PENDING
-        task.error_message = f"Retry scheduled in {retry_after_seconds}s: {str(error)}"
+        prefix = "Queue check" if isinstance(error, KieSubmissionDeferred) else "Retry"
+        task.error_message = f"{prefix} scheduled in {retry_after_seconds}s: {str(error)}"
         task.completed_at = None
         task.result_data = _merge_task_result_data(
             task.result_data,
@@ -413,7 +414,9 @@ async def _mark_task_retrying_async(task_id: str, error: Exception, retry_after_
                     "next_retry_at": (datetime.now(timezone.utc) + timedelta(seconds=retry_after_seconds)).isoformat(),
                     "last_error": str(error),
                     "error_type": type(error).__name__,
+                    "code": getattr(error, "code", None),
                 },
+                **({"last_generation_error": str(error)} if not isinstance(error, KieSubmissionDeferred) else {}),
             },
             remove_keys=("failure",),
         )
@@ -468,6 +471,8 @@ def _is_non_retryable_media_error(error: Exception) -> bool:
         "image prompt safety review mode is invalid",
         "image prompt safety review skill and mode do not match",
         "image prompt was blocked by the image safety skill",
+        "kie_reference_image_access_failed",
+        "kie_image_admission_timeout",
         "content policy",
         "safety policy",
         "safety filter",
@@ -2528,6 +2533,9 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
                 "result_url": None,
             }
 
+        except KieSubmissionDeferred:
+            # Admission is a queue state, not a generation failure.
+            raise
         except Exception as e:
             logger.error("generate_image_task_failed", task_id=task_id, error=str(e))
             debug_log_file = write_media_debug_event("image.task.failed", {
@@ -2564,12 +2572,18 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
             raise
 
 
+KIE_IMAGE_ADMISSION_MAX_WAIT_SECONDS = 600
+
+
 @celery_app.task(bind=True, max_retries=3)
 def generate_image_task(self, task_id: str, user_id: str, request_data: dict):
     """
     Celery task for async image generation
     """
     logger.info("generate_image_task_started", task_id=task_id, user_id=user_id)
+    headers = dict(self.request.headers or {})
+    deferred_count = int(headers.get("kie_admission_deferrals", 0))
+    generation_retries = max(0, self.request.retries - deferred_count)
 
     try:
         result = _run_async(_generate_image_async(task_id, user_id, request_data))
@@ -2583,20 +2597,34 @@ def generate_image_task(self, task_id: str, user_id: str, request_data: dict):
             retry_after_seconds=e.retry_after_seconds,
             redis_available=e.redis_available,
         )
-        if self.request.retries < self.max_retries:
+        now = datetime.now(timezone.utc).timestamp()
+        deadline = float(headers.setdefault(
+            "kie_admission_deadline", now + KIE_IMAGE_ADMISSION_MAX_WAIT_SECONDS
+        ))
+        if now < deadline:
+            delay = min(e.retry_after_seconds, max(1, int(deadline - now)))
+            headers["kie_admission_deferrals"] = deferred_count + 1
             _run_async(
                 _mark_task_retrying_async(
                     task_id,
                     e,
-                    retry_after_seconds=e.retry_after_seconds,
+                    retry_after_seconds=delay,
                 )
             )
-            raise self.retry(exc=e, countdown=e.retry_after_seconds)
+            raise self.retry(
+                exc=e, countdown=delay, headers=headers,
+                max_retries=self.request.retries + 1,
+            )
 
-        _run_async(_mark_task_failed_async(task_id, e))
-        _run_async(_send_failure_notifications(task_id, user_id, "image", str(e)))
+        error = RuntimeError(
+            f"KIE_IMAGE_ADMISSION_TIMEOUT: Image submission could not proceed within "
+            f"{KIE_IMAGE_ADMISSION_MAX_WAIT_SECONDS}s. Last queue check: {e} "
+            "Please try again after the queue service is available."
+        )
+        _run_async(_mark_task_failed_async(task_id, error))
+        _run_async(_send_failure_notifications(task_id, user_id, "image", str(error)))
         _run_async(_dispatch_pending_image_tasks_async(user_id))
-        return {"status": "failed", "task_id": task_id, "error": str(e)}
+        return {"status": "failed", "task_id": task_id, "error": str(error)}
 
     except Exception as e:
         logger.error("generate_image_task_exception", task_id=task_id, error=str(e))
@@ -2611,12 +2639,15 @@ def generate_image_task(self, task_id: str, user_id: str, request_data: dict):
             return {"status": "failed", "task_id": task_id, "error": str(e), "retryable": False}
 
         # Retry if max_retries not reached
-        if self.request.retries < self.max_retries:
+        if generation_retries < self.max_retries:
             try:
                 _run_async(_mark_task_retrying_async(task_id, e, retry_after_seconds=60))
             except Exception as retry_state_error:
                 logger.warning("generate_image_task_retry_state_update_failed", task_id=task_id, error=str(retry_state_error))
-            raise self.retry(exc=e, countdown=60)  # Retry after 1 minute
+            raise self.retry(
+                exc=e, countdown=60, headers=headers,
+                max_retries=self.request.retries + 1,
+            )
 
         # Max retries exhausted — notify user + admins
         try:
@@ -4046,15 +4077,16 @@ async def _recover_stuck_pending_tasks_async():
     - If Celery says the task completed (SUCCESS/FAILURE/REVOKED) but DB is still
       pending, mark the DB task as failed. Do NOT re-submit: the original Celery
       task already ran and either silently failed or returned a failure dict.
-    - If Celery state is still PENDING/STARTED/RETRY, the task might still be
-      queued or retrying — leave it alone unless it's been > 30 minutes.
+    - If Celery state is PENDING for an image beyond 3 minutes, re-publish the
+      same id only when the owner has no other processing image task. Unknown
+      inspection states are never mutated.
     """
     from celery.result import AsyncResult
     from datetime import timezone
 
     async with AsyncSessionLocal() as db:
         try:
-            cutoff = datetime.now(timezone.utc) - timedelta(minutes=2)
+            cutoff = datetime.now(timezone.utc) - timedelta(minutes=3)
 
             result = await db.execute(
                 select(MediaTask).filter(
@@ -4070,6 +4102,14 @@ async def _recover_stuck_pending_tasks_async():
 
             recovered = 0
             now = datetime.now(timezone.utc)
+
+            processing_users_result = await db.execute(
+                select(MediaTask.user_id).filter(
+                    MediaTask.media_type == MediaType.IMAGE.value,
+                    MediaTask.status == TaskStatus.PROCESSING,
+                ).distinct()
+            )
+            processing_user_ids = set(processing_users_result.scalars().all())
 
             for task in stuck_pending:
                 if _is_kie_image_retry_claim(task):
@@ -4184,7 +4224,8 @@ async def _recover_stuck_pending_tasks_async():
                 elif (
                     celery_state == "PENDING"
                     and task.media_type == MediaType.IMAGE.value
-                    and age_minutes >= 5
+                    and age_minutes >= 3
+                    and task.user_id not in processing_user_ids
                 ):
                     # Redis cannot distinguish a queued task from a publish that
                     # was lost after the DB claim. Re-publish the same Celery ID;
@@ -4202,7 +4243,19 @@ async def _recover_stuck_pending_tasks_async():
                         age_minutes=age_minutes,
                     )
 
-                elif age_minutes >= 10:
+                    from app.services.system_auto_report import report_system_failure
+                    await report_system_failure(
+                        source="celery_media_pending_recovery",
+                        title="Urgent: stale Celery media task recovered",
+                        error_message="An image media task remained pending for more than 3 minutes without a provider task id; the same Celery task id was safely re-published.",
+                        user_id=task.user_id,
+                        tenant_id=task.tenant_id,
+                        job_id=task.id,
+                        priority="critical",
+                        extra={"age_minutes": age_minutes, "celery_state": celery_state, "media_type": task.media_type},
+                    )
+
+                elif age_minutes >= 10 and celery_state != "UNKNOWN":
                     # Very old pending task with non-terminal Celery state — give up
                     task.status = TaskStatus.FAILED
                     task.error_message = (
@@ -4271,7 +4324,7 @@ def recover_stuck_tasks():
     Periodic task to recover tasks stuck in 'processing' or 'pending' status.
     Handles cases where worker restarts, asyncpg errors, or other failures
     left tasks in a non-terminal state.
-    Runs every 2 minutes (see celery beat schedule)
+    Runs every minute (see celery beat schedule)
     """
     logger.info("recover_stuck_tasks_started")
     result: dict[str, Any] = {"status": "success"}
