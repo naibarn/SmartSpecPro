@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { JobCard } from "@/components/chat/JobCard";
+import { CeleryMediaDoctorCard } from "@/components/admin/CeleryMediaDoctorCard";
 import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
 import {
   DashboardSectionHeader,
@@ -2045,6 +2046,12 @@ export default function Dashboard() {
               </div>
             </div>
           </motion.div>
+
+          {/* Critical Celery health belongs at the top of the real user dashboard,
+              not only inside the separate admin command-center route. */}
+          {user.role === "admin" && user.id != null ? (
+            <CeleryMediaDoctorCard currentUserId={user.id} />
+          ) : null}
 
           {renderQuickActionsSection(0.08)}
 
