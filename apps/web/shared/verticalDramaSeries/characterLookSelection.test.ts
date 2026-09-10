@@ -413,6 +413,108 @@ describe("vertical drama automatic character look selection", () => {
     });
   });
 
+  it("rejects a baby age-stage look for a known older child unless the shot is an explicit flashback", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "phakin",
+          name: "ภาคิน",
+          authoritativeAgeBand: "minor",
+          authoritativeAgeRange: { min: 8, max: 14 },
+          hasPortrait: true,
+        },
+        {
+          characterKey: "phakin-infant-stage",
+          name: "ภาคิน",
+          parentCharacterKey: "phakin",
+          variantLabel: "วัยทารก",
+          variantType: "age_stage",
+          ageStage: "infant",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["phakin-infant-stage"],
+          text: "ภาคินเดินเล่นที่สวนสาธารณะ",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual(["phakin"]);
+    expect(result.assignmentsByShotNumber.get(1)?.[0]).toMatchObject({
+      selectedLookKey: "phakin",
+      status: "review",
+    });
+  });
+
+  it("allows a younger age-stage look only when the character is explicitly in the past", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "phakin",
+          name: "ภาคิน",
+          authoritativeAgeBand: "minor",
+          authoritativeAgeRange: { min: 8, max: 14 },
+          hasPortrait: true,
+        },
+        {
+          characterKey: "phakin-infant-stage",
+          name: "ภาคิน",
+          parentCharacterKey: "phakin",
+          variantLabel: "วัยทารก",
+          variantType: "age_stage",
+          ageStage: "infant",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["phakin"],
+          text: "ภาพย้อนอดีต ภาคินเป็นทารกในอ้อมแขนของแม่",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual([
+      "phakin-infant-stage",
+    ]);
+  });
+
+  it("does not apply a baby reference mentioned as another person to the current character", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "phakin",
+          name: "ภาคิน",
+          authoritativeAgeBand: "minor",
+          authoritativeAgeRange: { min: 8, max: 14 },
+          hasPortrait: true,
+        },
+        {
+          characterKey: "phakin-infant-stage",
+          name: "ภาคิน",
+          parentCharacterKey: "phakin",
+          variantLabel: "วัยทารก",
+          variantType: "age_stage",
+          ageStage: "infant",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["phakin"],
+          text: "ภาคินมองเด็กทารกในรถเข็น",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual(["phakin"]);
+  });
+
   it("reuses an adult base look instead of creating a redundant adult age-stage look", () => {
     const result = selectVerticalDramaCharacterLooks({
       catalog: [
@@ -499,7 +601,7 @@ describe("vertical drama automatic character look selection", () => {
         {
           shotNumber: 2,
           characterKeys: ["mali"],
-          text: "เดินเข้าสถานที่ใหม่",
+          text: "เดินเข้าสถานที่ใหม่เพื่อร่วมงานกาลา",
           sceneKey: "gala",
         },
         {
@@ -513,6 +615,46 @@ describe("vertical drama automatic character look selection", () => {
 
     expect(result.characterKeysByShotNumber.get(2)).toEqual(["mali-evening"]);
     expect(result.characterKeysByShotNumber.get(3)).toEqual(["mali-evening"]);
+  });
+
+  it("keeps one look across a same-event location change and generic continuation wording", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        base,
+        {
+          characterKey: "mali-evening",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "ชุดราตรี",
+          variantType: "outfit",
+          description: "เดรสผ้าไหมสีแดงสำหรับงานกาลา",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "มะลิประชุมงานที่ออฟฟิศ",
+          sceneKey: "office",
+          locationKey: "office",
+          timeKey: "day",
+        },
+        {
+          shotNumber: 2,
+          characterKeys: ["mali"],
+          text: "ต่อมา มะลิแวะสวนสาธารณะระหว่างทาง",
+          sceneKey: "park",
+          locationKey: "park",
+          timeKey: "day",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(2)).toEqual(["mali"]);
+    expect(result.assignmentsByShotNumber.get(2)?.[0]?.reason).toContain(
+      "รักษาความต่อเนื่อง"
+    );
   });
 
   it("proposes one reusable new outfit when time/location changes but no alternate exists", () => {

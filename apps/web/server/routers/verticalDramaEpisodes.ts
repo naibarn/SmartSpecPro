@@ -2192,6 +2192,7 @@ export async function runReferenceFramePromptInteractiveJob(
     currentNegativePrompt: frame.negativePrompt ?? "",
     canonicalShotSummary: frame.canonicalShotSummary,
     requiredCharacterRefs: characterKeys,
+    characterLookAssignments: frame.characterLookAssignments,
     characterReferenceManifest: characterKeys.map((name, index) => ({
       index: index + 1,
       characterId: null,
@@ -24510,6 +24511,7 @@ export const verticalDramaEpisodesRouter = router({
               : (frame.negativePrompt ?? ""),
           canonicalShotSummary: shotStartFramePromptCanonicalSynopsis,
           requiredCharacterRefs: shotStartFramePromptPhysicalCharacterRefs,
+          characterLookAssignments: frame.characterLookAssignments,
           screenCallerCharacterRefs: shotStartFramePromptScreenCallerRefs,
           supportingPresence: shotStartFramePromptSupportingPresence,
           barrierDialogue: frame.barrierDialogue,

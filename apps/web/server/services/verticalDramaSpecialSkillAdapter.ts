@@ -33,6 +33,7 @@ import {
   specialTieInInputSchema,
   type SpecialEpisodeData,
 } from "../../shared/verticalDramaSeries/specialTieInContracts";
+import type { VerticalDramaCharacterLookAssignment } from "../../shared/verticalDramaSeries/characterLookSelection";
 import { screenSpecialDialogueCompliance } from "../../shared/verticalDramaSeries/advertisingDialoguePolicy";
 import type { VerticalDramaInteractiveJobPayload } from "./verticalDramaInteractiveJobs";
 
@@ -169,6 +170,38 @@ export function resolveSpecialProductReferenceUrls(
   return bindings
     .filter(binding => binding.role === "product")
     .map(binding => binding.authorizedUrl);
+}
+
+/**
+ * A special tie-in is planned as one continuous nine-shot event. It does not
+ * have the normal episode's semantic look catalog, so establish a durable
+ * same-look assignment from the selected character reference itself. A later
+ * explicit user/story look override can replace this assignment, but an image
+ * prompt must never be allowed to invent a new wardrobe between shots.
+ */
+export function buildSpecialTieInCharacterLookAssignments(
+  bindings: readonly SpecialEpisodeData["referenceBindings"][number][]
+): VerticalDramaCharacterLookAssignment[] {
+  const seen = new Set<string>();
+  return bindings.flatMap(binding => {
+    if (binding.role !== "person") return [];
+    const characterKey = String(
+      binding.provenance?.characterKey ?? binding.skillReferenceId
+    ).trim();
+    if (!characterKey || seen.has(characterKey)) return [];
+    seen.add(characterKey);
+    return [
+      {
+        baseCharacterKey: characterKey,
+        selectedLookKey: characterKey,
+        mode: "base" as const,
+        status: "ready" as const,
+        reason:
+          "ตอนพิเศษเป็นเหตุการณ์ต่อเนื่อง จึงล็อกลุคเดิมของตัวละครทุกช็อตจนกว่าจะมีคำสั่งเปลี่ยนชุดอย่างชัดเจน",
+        confidence: 1,
+      },
+    ];
+  });
 }
 
 /**
@@ -311,6 +344,8 @@ export function buildSpecialTieInPromptArtifacts(input: {
   const sceneDescription = buildSpecialTieInSceneDescription(
     input.specialData.input
   );
+  const characterLookAssignments =
+    buildSpecialTieInCharacterLookAssignments(personBindings);
   const speakerKeyByReferenceId = new Map(
     personBindings.map(binding => [
       binding.skillReferenceId,
@@ -334,8 +369,13 @@ export function buildSpecialTieInPromptArtifacts(input: {
             imagePrompt: "",
             negativePrompt: "",
             requiredCharacterRefs: personBindings.map(binding =>
-              String(binding.provenance.characterKey ?? binding.skillReferenceId)
+              String(
+                binding.provenance.characterKey ?? binding.skillReferenceId
+              )
             ),
+            ...(characterLookAssignments.length
+              ? { characterLookAssignments }
+              : {}),
             productReferenceAssetIds,
             sceneDescription,
             // This is the only story source sent to the existing per-shot

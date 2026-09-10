@@ -1270,7 +1270,7 @@ function buildTwinAgeLocks(
       .map(id => ageProfilesById.get(id))
       .filter(
         (profile): profile is { min: number; max: number; source?: string } =>
-          Boolean(profile) && profile.source !== "role_context",
+          profile != null && profile.source !== "role_context",
       );
     const selectedProfile = profiles.length > 0 ? [...profiles].sort(
       (left, right) =>
@@ -1694,11 +1694,7 @@ async function resolvePipelineCharacterLooks(params: {
             ? shot.scene_id
             : undefined;
       const timeKey =
-        typeof shot.time_of_day === "string"
-          ? shot.time_of_day
-          : typeof shot.lighting === "string"
-            ? shot.lighting
-            : undefined;
+        typeof shot.time_of_day === "string" ? shot.time_of_day : undefined;
       return {
         shotNumber,
         characterKeys,

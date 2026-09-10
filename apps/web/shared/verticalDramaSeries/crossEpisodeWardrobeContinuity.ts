@@ -202,26 +202,36 @@ function hasTimeBoundaryCue(text: unknown): boolean {
   ].some(pattern => pattern.test(value));
 }
 
-function hasTravelContinuationCue(text: unknown): boolean {
-  const value = clean(text).toLocaleLowerCase();
-  return [
-    /เดินทางต่อ/u,
-    /ต่อเนื่อง/u,
-    /ขึ้นรถ/u,
-    /นั่งรถ/u,
-    /ลงจาก(?:เครื่องบิน|รถ)/u,
-    /ออกจากสนามบิน/u,
-    /กำลังไป/u,
-    /ระหว่างทาง/u,
-    /ต่อรถ/u,
-    /มาถึง/u,
-    /continues? (?:the )?journey/u,
-    /gets? into the car/u,
-    /travels? on/u,
-    /arrives? at/u,
-    /on the way/u,
-    /after leaving the airport/u,
-  ].some(pattern => pattern.test(value));
+function timeBucket(value: unknown): string | undefined {
+  const text = clean(value).toLocaleLowerCase();
+  if (!text) return undefined;
+  if (/(?:กลางคืน|ยามค่ำ|ค่ำคืน|night|nighttime)/u.test(text)) {
+    return "night";
+  }
+  if (/(?:ตอนเย็น|ยามเย็น|ช่วงเย็น|evening)/u.test(text)) {
+    return "evening";
+  }
+  if (/(?:ตอนเช้า|ยามเช้า|รุ่งเช้า|morning)/u.test(text)) {
+    return "morning";
+  }
+  if (/(?:กลางวัน|ตอนกลางวัน|ช่วงกลางวัน|daytime|day)/u.test(text)) {
+    return "day";
+  }
+  return undefined;
+}
+
+function isMajorTimeOfDayBoundary(
+  previous: unknown,
+  current: unknown
+): boolean {
+  const previousBucket = timeBucket(previous);
+  const currentBucket = timeBucket(current);
+  if (!previousBucket || !currentBucket || previousBucket === currentBucket) {
+    return false;
+  }
+  return [previousBucket, currentBucket].some(bucket =>
+    ["evening", "night"].includes(bucket)
+  );
 }
 
 function shouldContinueAcrossEpisodeBoundary(
@@ -232,21 +242,14 @@ function shouldContinueAcrossEpisodeBoundary(
   const current = shot.context;
   const combinedText = `${source?.text ?? ""} ${shot.text ?? ""} ${current?.text ?? ""}`;
   if (hasTimeBoundaryCue(combinedText)) return false;
-
-  const sourceLocation = source?.locationKey ?? source?.locationLabel;
-  const currentLocation = current?.locationKey ?? current?.locationLabel;
-  const locationChanged = Boolean(
-    sourceLocation && currentLocation && sourceLocation !== currentLocation
-  );
-  if (locationChanged && !hasTravelContinuationCue(combinedText)) return false;
-
-  const timeChanged = Boolean(
-    source?.timeMarker &&
-    current?.timeMarker &&
-    source.timeMarker.toLocaleLowerCase() !==
-      current.timeMarker.toLocaleLowerCase()
-  );
-  if (timeChanged && !hasTravelContinuationCue(combinedText)) return false;
+  if (
+    isMajorTimeOfDayBoundary(
+      source?.timeMarker ?? source?.text,
+      current?.timeMarker ?? current?.text ?? shot.text
+    )
+  ) {
+    return false;
+  }
 
   return true;
 }
@@ -398,7 +401,7 @@ export function findCrossEpisodeWardrobeMismatches(params: {
       .map(key => catalogByKey.get(key))
       .filter(
         (entry): entry is CrossEpisodeWardrobeCatalogEntry =>
-          Boolean(entry) && isWardrobeEntry(entry)
+          entry != null && isWardrobeEntry(entry)
       )
       .sort(
         (a, b) =>

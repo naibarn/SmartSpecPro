@@ -2475,6 +2475,8 @@ export interface GenerateStartFrameShotPromptParams {
   characters?: VerticalDramaCharacterDescriptorSource[];
   /** This shot's required character keys, in order — the ORDER argument `buildCharacterIdentityMapBlock` iterates (independent of `characters`' own array order). */
   requiredCharacterRefs?: string[];
+  /** Durable per-shot wardrobe selection; this is authoritative over model inference. */
+  characterLookAssignments?: VerticalDramaCharacterLookAssignment[];
   /** Explicit screen-caller keys; caller portraits are not attached to the flat physical-scene reference payload. */
   screenCallerCharacterRefs?: string[];
   /** Explicit spoken caller keys, when already resolved by the caller. */
@@ -2812,6 +2814,16 @@ export function buildStartFrameShotPromptUserPrompt(
       ? `character_reference_manifest:\n${manifestLines}`
       : `character_reference_manifest: (none)`,
     characterIdentityMapBlock ?? null,
+    params.characterLookAssignments?.length
+      ? `character_look_selection (AUTHORITATIVE): ${params.characterLookAssignments
+          .map(
+            assignment =>
+              `${assignment.baseCharacterKey} -> ${assignment.requestedLabel ?? assignment.selectedLookKey} (${assignment.status}; ${assignment.reason})${assignment.imageBrief ? `; image_brief: ${assignment.imageBrief}` : ""}`
+          )
+          .join(
+            " || "
+          )} — preserve this wardrobe/look exactly unless the canonical shot summary explicitly describes a deliberate clothing change.`
+      : null,
     buildTargetAudienceRegionInstruction(params.targetAudienceRegion),
     // Two-mode start-frame image prompt switch — a purely FACTUAL model
     // announcement (skill-first architecture: neither skill's contract

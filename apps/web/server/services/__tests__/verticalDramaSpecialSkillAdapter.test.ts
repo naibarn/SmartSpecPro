@@ -4,6 +4,7 @@ import {
   buildSpecialTieInSceneSlot,
   buildDeterministicSpecialTieInFallback,
   buildSpecialTieInPromptArtifacts,
+  buildSpecialTieInCharacterLookAssignments,
   buildSpecialPrompt,
   clearSpecialPromptDrafts,
   extractSpecialExactDialogueLines,
@@ -472,13 +473,17 @@ describe("special skill output contract", () => {
       })),
     };
     const specialData = {
-      input: { imageModelId: "image-model", videoModelId: "video-model" },
+      input: {
+        imageModelId: "image-model",
+        videoModelId: "video-model",
+        characterIds: ["main"],
+      },
       referenceBindings: [
         {
           role: "person" as const,
           mediaAssetId: "4676",
           skillReferenceId: "character_main",
-          provenance: { characterKey: "main" },
+          provenance: { characterId: "main", characterKey: "main" },
         },
         {
           role: "product" as const,
@@ -494,6 +499,18 @@ describe("special skill output contract", () => {
         },
       ],
     } as unknown as SpecialEpisodeData;
+
+    expect(
+      buildSpecialTieInCharacterLookAssignments(
+        specialData.referenceBindings as never
+      )
+    ).toMatchObject([
+      {
+        baseCharacterKey: "main",
+        selectedLookKey: "main",
+        mode: "base",
+      },
+    ]);
 
     const artifacts = buildSpecialTieInPromptArtifacts({
       specialData,
@@ -520,6 +537,11 @@ describe("special skill output contract", () => {
       "character_main",
     ]);
     expect(artifacts.startFramePlan?.frames[0]?.imagePrompt).toBe("");
+    expect(artifacts.startFramePlan?.frames.every(frame =>
+      frame.characterLookAssignments?.every(assignment =>
+        assignment.selectedLookKey === assignment.baseCharacterKey
+      )
+    )).toBe(true);
     expect(artifacts.motionPromptPack?.clips[0]?.extraReferenceAssetIds).toEqual([
       "4974",
       "4975",

@@ -456,22 +456,81 @@ function explicitlyBindsAgeCueToCharacter(
   const normalizedText = normalizeLookText(text);
   const normalizedName = normalizeLookText(characterName);
   if (!normalizedName || !intent.ageStage) return false;
-  const ageTerms =
-    intent.ageStage === "adult"
-      ? ["วัยผู้ใหญ่", "ผู้ใหญ่", "adult"]
-      : [intent.label, intent.key];
+  const ageTerms = Array.from(
+    new Set([intent.label, intent.key, ...intent.phrases])
+  );
   return ageTerms.some(term => {
     const normalizedTerm = normalizeLookText(term);
     const nameBeforeCue = new RegExp(
-      `${escapeRegularExpression(normalizedName)}(?:เป็น|อยู่ในวัย|เข้าสู่วัย|กลายเป็น|โตเป็น|ตอนโต|อายุ){0,12}${escapeRegularExpression(normalizedTerm)}`,
+      `${escapeRegularExpression(normalizedName)}(?:เป็น|อยู่ในวัย|อยู่ในช่วงวัย|ช่วงวัย|เข้าสู่วัย|กลายเป็น|โตเป็น|ตอนโต|อายุ){0,12}${escapeRegularExpression(normalizedTerm)}`,
       "i"
     );
     const cueBeforeName = new RegExp(
       `${escapeRegularExpression(normalizedTerm)}(?:ของ|คือ|เป็น|ที่รับบทเป็น){0,12}${escapeRegularExpression(normalizedName)}`,
       "i"
     );
-    return nameBeforeCue.test(normalizedText) || cueBeforeName.test(normalizedText);
+    return (
+      nameBeforeCue.test(normalizedText) || cueBeforeName.test(normalizedText)
+    );
   });
+}
+
+const HISTORICAL_AGE_STAGE_CUES = [
+  "ย้อนอดีต",
+  "ฉากย้อนเวลา",
+  "ภาพในอดีต",
+  "ในอดีต",
+  "เมื่อครั้งยัง",
+  "ตอนที่ยังเป็น",
+  "สมัยยังเป็น",
+  "เมื่อยังเป็น",
+  "flashback",
+  "in the past",
+  "years earlier",
+  "when she was",
+  "when he was",
+  "as a baby",
+] as const;
+
+function hasExplicitHistoricalAgeStageCue(text: string): boolean {
+  const normalized = normalizeLookText(text);
+  return HISTORICAL_AGE_STAGE_CUES.some(cue =>
+    normalized.includes(normalizeLookText(cue))
+  );
+}
+
+function ageStageRank(stage: VerticalDramaCharacterAgeStage): number {
+  return {
+    infant: 0,
+    early_childhood: 1,
+    school_age: 2,
+    university_student: 3,
+    adult: 4,
+    older_adult: 5,
+  }[stage];
+}
+
+function inferAgeStageFromRange(range?: {
+  min: number;
+  max: number;
+}): VerticalDramaCharacterAgeStage | undefined {
+  if (!range) return undefined;
+  if (range.max <= 1) return "infant";
+  if (range.max <= 5) return "early_childhood";
+  if (range.max <= 17) return "school_age";
+  if (range.max <= 25) return "university_student";
+  if (range.min >= 60) return "older_adult";
+  return "adult";
+}
+
+function ageStageForEntry(
+  entry: VerticalDramaCharacterLookCatalogEntry
+): VerticalDramaCharacterAgeStage | undefined {
+  return (
+    entry.ageStage ??
+    inferAgeStageFromRange(entry.ageRange ?? entry.authoritativeAgeRange) ??
+    intentForEntry(entry)?.ageStage
+  );
 }
 
 function findCharacterScopedIntentMatches(
@@ -480,19 +539,38 @@ function findCharacterScopedIntentMatches(
   familyCount: number
 ): LookIntent[] {
   const matches = findIntentMatches(text);
-  if (familyCount <= 1 || !isRelationalAdultReference(text)) return matches;
-  return matches.filter(intent =>
-    intent.ageStage !== "adult"
-      ? true
-      : explicitlyBindsAgeCueToCharacter(text, character.name, intent)
+  const normalizedText = normalizeLookText(text);
+  const normalizedName = normalizeLookText(character.name);
+  const characterIsNamed = Boolean(
+    normalizedName && normalizedText.includes(normalizedName)
   );
+  const relationalAdultReference =
+    familyCount > 1 && isRelationalAdultReference(text);
+  return matches.filter(intent => {
+    if (!intent.ageStage) return true;
+    const explicitlyBound = explicitlyBindsAgeCueToCharacter(
+      text,
+      character.name,
+      intent
+    );
+    if (relationalAdultReference && intent.ageStage === "adult") {
+      return explicitlyBound;
+    }
+    if (characterIsNamed) return explicitlyBound;
+    // Preserve unnamed single-character age cues for legacy/base-only shots.
+    return true;
+  });
 }
 
 function isAgeStageCompatibleWithAuthoritativeBand(
   ageStage: VerticalDramaCharacterAgeStage | undefined,
   authoritativeAgeBand: VerticalDramaCharacterLookCatalogEntry["authoritativeAgeBand"]
 ): boolean {
-  if (!ageStage || !authoritativeAgeBand || authoritativeAgeBand === "unknown") {
+  if (
+    !ageStage ||
+    !authoritativeAgeBand ||
+    authoritativeAgeBand === "unknown"
+  ) {
     return true;
   }
   const minorStages: VerticalDramaCharacterAgeStage[] = [
@@ -504,15 +582,52 @@ function isAgeStageCompatibleWithAuthoritativeBand(
   return !minorStages.includes(ageStage);
 }
 
+function isAgeStageRequestAllowed(
+  ageStage: VerticalDramaCharacterAgeStage | undefined,
+  baseEntry: VerticalDramaCharacterLookCatalogEntry,
+  historicalOverride: boolean
+): boolean {
+  if (!ageStage) return true;
+  if (
+    !isAgeStageCompatibleWithAuthoritativeBand(
+      ageStage,
+      baseEntry.authoritativeAgeBand
+    )
+  ) {
+    return false;
+  }
+  const currentStage =
+    baseEntry.ageStage ??
+    inferAgeStageFromRange(baseEntry.authoritativeAgeRange);
+  if (!currentStage) return true;
+  return (
+    ageStageRank(ageStage) >= ageStageRank(currentStage) || historicalOverride
+  );
+}
+
 function isSafeAutomaticLook(
   entry: VerticalDramaCharacterLookCatalogEntry,
-  baseEntry: VerticalDramaCharacterLookCatalogEntry
+  baseEntry: VerticalDramaCharacterLookCatalogEntry,
+  historicalOverride = false
 ): boolean {
-  if (entry.variantType === "age_stage" &&
+  if (
+    entry.variantType === "age_stage" &&
     !isAgeStageCompatibleWithAuthoritativeBand(
       entry.ageStage,
       baseEntry.authoritativeAgeBand
-    )) return false;
+    )
+  ) {
+    return false;
+  }
+  if (
+    !isAgeStageRequestAllowed(
+      ageStageForEntry(entry),
+      baseEntry,
+      historicalOverride
+    )
+  ) {
+    return false;
+  }
   const expectedRange = baseEntry.authoritativeAgeRange;
   const actualRange = entry.ageRange;
   if (
@@ -526,8 +641,7 @@ function isSafeAutomaticLook(
   if (!entry.variantType || entry.variantType !== "age_stage") return true;
   // An adult base character does not need a duplicate "adult" age-stage row.
   return !(
-    entry.ageStage === "adult" &&
-    baseEntry.authoritativeAgeBand === "adult"
+    entry.ageStage === "adult" && baseEntry.authoritativeAgeBand === "adult"
   );
 }
 
@@ -538,11 +652,12 @@ function selectSafeCarriedLook(params: {
   catalogByKey: ReadonlyMap<string, VerticalDramaCharacterLookCatalogEntry>;
   currentEntry: VerticalDramaCharacterLookCatalogEntry;
   baseEntry: VerticalDramaCharacterLookCatalogEntry;
+  historicalAgeStageOverride?: boolean;
 }): VerticalDramaCharacterLookCatalogEntry {
   const candidates = [
-    ...[...params.recentKeys].reverse().map(key =>
-      params.catalogByKey.get(key)
-    ),
+    ...[...params.recentKeys]
+      .reverse()
+      .map(key => params.catalogByKey.get(key)),
     params.preferredLookKey
       ? params.catalogByKey.get(params.preferredLookKey)
       : undefined,
@@ -556,7 +671,11 @@ function selectSafeCarriedLook(params: {
     candidates.find(
       (entry): entry is VerticalDramaCharacterLookCatalogEntry => {
         if (!entry) return false;
-        return isSafeAutomaticLook(entry, params.baseEntry);
+        return isSafeAutomaticLook(
+          entry,
+          params.baseEntry,
+          params.historicalAgeStageOverride
+        );
       }
     ) ?? params.baseEntry
   );
@@ -566,19 +685,14 @@ const CONTEXT_TRANSITION_PHRASES = [
   "วันถัดมา",
   "วันรุ่งขึ้น",
   "เช้าวันต่อมา",
-  "หลายชั่วโมงต่อมา",
-  "เวลาต่อมา",
-  "ต่อมา",
-  "สถานที่ใหม่",
-  "อีกสถานที่หนึ่ง",
-  "ย้ายสถานที่",
-  "เดินทางไป",
+  "หลายวันต่อมา",
+  "หลายสัปดาห์ต่อมา",
+  "เวลาผ่านไป",
   "the next day",
   "the following day",
-  "later that day",
-  "hours later",
-  "new location",
-  "elsewhere",
+  "days later",
+  "weeks later",
+  "time passes",
 ] as const;
 
 const TEXT_TIME_BUCKETS = [
@@ -607,6 +721,31 @@ function findTextTimeBucket(text: string): string | undefined {
   )?.key;
 }
 
+function findTimeBucket(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const normalized = normalizeLookText(value);
+  return (
+    findTextTimeBucket(value) ??
+    (["morning", "day", "evening", "night"].find(bucket =>
+      normalized.includes(bucket)
+    ) as string | undefined)
+  );
+}
+
+function isMajorTimeOfDayBoundary(
+  previousValue: string | undefined,
+  currentValue: string | undefined
+): boolean {
+  const previousTime = findTimeBucket(previousValue);
+  const currentTime = findTimeBucket(currentValue);
+  if (!previousTime || !currentTime || previousTime === currentTime) {
+    return false;
+  }
+  return [previousTime, currentTime].some(time =>
+    ["evening", "night"].includes(time)
+  );
+}
+
 function hasMeaningfulTextContextTransition(
   previousText: string,
   currentText: string
@@ -619,9 +758,10 @@ function hasMeaningfulTextContextTransition(
   ) {
     return true;
   }
-  const previousTime = findTextTimeBucket(previousText);
-  const currentTime = findTextTimeBucket(currentText);
-  return Boolean(previousTime && currentTime && previousTime !== currentTime);
+  return isMajorTimeOfDayBoundary(
+    findTextTimeBucket(previousText),
+    findTextTimeBucket(currentText)
+  );
 }
 
 function resolveShotIntent(
@@ -632,7 +772,11 @@ function resolveShotIntent(
   intent?: LookIntent;
   conflicts: LookIntent[];
 } {
-  const matches = findCharacterScopedIntentMatches(text, character, familyCount);
+  const matches = findCharacterScopedIntentMatches(
+    text,
+    character,
+    familyCount
+  );
   const conflicts = findConflictingIntentMatches(matches);
   if (conflicts.length > 0) return { conflicts };
   // Age-stage correctness outranks an outfit cue when both are compatible,
@@ -884,35 +1028,47 @@ export function selectVerticalDramaCharacterLooks(params: {
         currentEntry,
         uniqueStrings(shot.characterKeys).length
       );
-      const incompatibleAgeStage = Boolean(
-        detectedIntent?.ageStage &&
-          !isAgeStageCompatibleWithAuthoritativeBand(
-            detectedIntent.ageStage,
-            baseEntry.authoritativeAgeBand
-          )
+      const historicalAgeStageOverride = hasExplicitHistoricalAgeStageCue(
+        shot.text
       );
+      const currentLookHasUnsafeAgeStage = Boolean(
+        currentEntry.parentCharacterKey &&
+        !isAgeStageRequestAllowed(
+          ageStageForEntry(currentEntry),
+          baseEntry,
+          historicalAgeStageOverride
+        )
+      );
+      const incompatibleAgeStage =
+        Boolean(
+          detectedIntent?.ageStage &&
+          !isAgeStageRequestAllowed(
+            detectedIntent.ageStage,
+            baseEntry,
+            historicalAgeStageOverride
+          )
+        ) || currentLookHasUnsafeAgeStage;
       const incompatibleAgeRange = Boolean(
         currentEntry.parentCharacterKey &&
-          currentEntry.variantType === "outfit" &&
-          currentEntry.ageRange &&
-          baseEntry.authoritativeAgeRange &&
-          (currentEntry.ageRange.max < baseEntry.authoritativeAgeRange.min ||
-            currentEntry.ageRange.min > baseEntry.authoritativeAgeRange.max)
+        currentEntry.variantType === "outfit" &&
+        currentEntry.ageRange &&
+        baseEntry.authoritativeAgeRange &&
+        (currentEntry.ageRange.max < baseEntry.authoritativeAgeRange.min ||
+          currentEntry.ageRange.min > baseEntry.authoritativeAgeRange.max)
       );
       const redundantAdultStage = Boolean(
         detectedIntent?.ageStage === "adult" &&
-          baseEntry.authoritativeAgeBand === "adult"
+        baseEntry.authoritativeAgeBand === "adult"
       );
-      const intent = incompatibleAgeStage || redundantAdultStage
-        ? undefined
-        : detectedIntent;
+      const intent =
+        incompatibleAgeStage || redundantAdultStage
+          ? undefined
+          : detectedIntent;
       const prior = priorShot.get(familyKey);
       const transition = Boolean(
         prior &&
-        (prior.sceneKey !== shot.sceneKey ||
-          prior.locationKey !== shot.locationKey ||
-          prior.timeKey !== shot.timeKey ||
-          hasMeaningfulTextContextTransition(prior.text, shot.text))
+        (hasMeaningfulTextContextTransition(prior.text, shot.text) ||
+          isMajorTimeOfDayBoundary(prior.timeKey, shot.timeKey))
       );
       const recentKeys = recentByFamily.get(familyKey) ?? [];
       const carriedLookEntry = selectSafeCarriedLook({
@@ -925,6 +1081,7 @@ export function selectVerticalDramaCharacterLooks(params: {
         catalogByKey,
         currentEntry,
         baseEntry,
+        historicalAgeStageOverride,
       });
       const carriedLookKey = carriedLookEntry.characterKey;
 
@@ -952,7 +1109,7 @@ export function selectVerticalDramaCharacterLooks(params: {
           mode: selected.parentCharacterKey ? "matched_existing" : "base",
           status: "review",
           reason:
-            incompatibleAgeStage
+            incompatibleAgeStage && detectedIntent
               ? `ละเว้นลุค${detectedIntent!.label} เนื่องจากไม่สอดคล้องกับช่วงวัยหลักของตัวละคร จึงใช้ลุคที่ปลอดภัยและทำงานต่อได้`
               : "ละเว้นลุคที่มี metadata ช่วงวัยขัดกับช่วงวัยหลักของตัวละคร จึงใช้ลุคที่ปลอดภัยและทำงานต่อได้",
           confidence: 0.96,
@@ -1002,8 +1159,11 @@ export function selectVerticalDramaCharacterLooks(params: {
             transition,
           }),
         }))
+        .filter(({ entry }) =>
+          isSafeAutomaticLook(entry, baseEntry, historicalAgeStageOverride)
+        )
         .sort((a, b) => b.score - a.score);
-      const best = ranked[0]?.entry ?? currentEntry;
+      const best = ranked[0]?.entry ?? carriedLookEntry;
       const bestIntent = intentForEntry(best);
       const explicitMatch = Boolean(intent && bestIntent?.key === intent.key);
       const currentIntent = intentForEntry(carriedLookEntry);

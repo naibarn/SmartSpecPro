@@ -726,6 +726,29 @@ describe("generateStartFrameShotPrompt — mode 2 vision resolution (D3: image-g
 });
 
 describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", () => {
+  it("passes the durable wardrobe assignment as an authoritative prompt fact", () => {
+    const prompt = buildStartFrameShotPromptUserPrompt(
+      baseShotParams({
+        canonicalShotSummary:
+          "ภาคินเดินจากที่ทำงานไปสวนสาธารณะในเหตุการณ์เดียวกัน",
+        characterLookAssignments: [
+          {
+            baseCharacterKey: "char-main",
+            selectedLookKey: "look-office",
+            mode: "matched_existing",
+            status: "ready",
+            reason: "เหตุการณ์ต่อเนื่อง จึงรักษาลุคเดิม",
+            confidence: 1,
+          },
+        ],
+      })
+    );
+
+    expect(prompt).toContain("character_look_selection (AUTHORITATIVE)");
+    expect(prompt).toContain("char-main -> look-office");
+    expect(prompt).toContain("preserve this wardrobe/look exactly");
+  });
+
   it("injects a non-blank scene lock after location facts and treats blank as absent", () => {
     const block = "SCENE CONTINUITY LOCK\nLIGHTING STATE: late afternoon";
     const without = buildStartFrameShotPromptUserPrompt(

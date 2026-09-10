@@ -168,7 +168,7 @@ describe("cross-episode wardrobe continuity", () => {
     ).toBe(true);
   });
 
-  it("uses scene context to stop carrying wardrobe across a new event, while preserving travel continuity", () => {
+  it("keeps wardrobe across a location change but stops at a new event", () => {
     const handoff = buildCrossEpisodeWardrobeHandoff({
       previousEpisode: {
         id: 249,
@@ -220,11 +220,11 @@ describe("cross-episode wardrobe continuity", () => {
         shots: [
           {
             shotNumber: 1,
-            text: "เธอออกจากสนามบินและขึ้นรถเพื่อเดินทางต่อ",
+            text: "เธอแวะสวนสาธารณะระหว่างทางในเหตุการณ์เดียวกัน",
             characterKeys: ["pim-casual"],
             context: {
-              locationKey: "car",
-              locationLabel: "รถยนต์",
+              locationKey: "park",
+              locationLabel: "สวนสาธารณะ",
               timeMarker: "morning",
             },
           },
@@ -237,5 +237,24 @@ describe("cross-episode wardrobe continuity", () => {
         actualLookKey: "pim-casual",
       },
     ]);
+
+    expect(
+      findCrossEpisodeWardrobeMismatches({
+        handoff,
+        catalog,
+        shots: [
+          {
+            shotNumber: 1,
+            text: "เธอเปลี่ยนเป็นชุดลำลองก่อนเริ่มเหตุการณ์ใหม่",
+            characterKeys: ["pim-casual"],
+            context: {
+              locationKey: "park",
+              locationLabel: "สวนสาธารณะ",
+              timeMarker: "morning",
+            },
+          },
+        ],
+      })
+    ).toEqual([]);
   });
 });
