@@ -1912,6 +1912,20 @@
       "when": 1788416000000,
       "tag": "0286_feature_180_unified_voice_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 273,
+      "version": "7",
+      "when": 1788971777000,
+      "tag": "0289_gpt_image_2_5_media_models",
+      "breakpoints": true
+    },
+    {
+      "idx": 274,
+      "version": "7",
+      "when": 1789065600000,
+      "tag": "0291_gpt_image_2_5_smartaihub_pricing",
+      "breakpoints": true
     }
   ]
 }

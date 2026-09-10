@@ -61,6 +61,15 @@ describe("enabledMediaModelSelection", () => {
     mockGetDb.mockReset();
   });
 
+  it.each([
+    ["GPT Image 2.5 Flare", "gpt-image-2-5-flare-text-to-image"],
+    ["gpt-image-2-5-sunburst-image-to-image", "gpt-image-2-5-sunburst-text-to-image"],
+  ])("keeps GPT Image 2.5 %s natural-language hints on the unified row", async (hint, expectedModel) => {
+    const { inferMediaModelHintFromText } = await import("../enabledMediaModelSelection");
+
+    expect(inferMediaModelHintFromText("image", hint)).toBe(expectedModel);
+  });
+
   it("routes a legacy Veo 3.1 hint to an enabled provider/model instead of disabled KNPLabs", async () => {
     mockGetDb.mockResolvedValue(makeDb({
       providers: [

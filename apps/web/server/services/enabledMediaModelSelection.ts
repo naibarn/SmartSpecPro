@@ -93,6 +93,12 @@ export function inferMediaModelHintFromText(mediaType: MediaType, text?: string 
     if (/\bomni\b/i.test(normalized)) return "gemini-omni-flash-1-1";
   }
   if (mediaType === "image") {
+    if (/gpt\s*image\s*2\.5.*flare|gpt-image-2-5.*flare/i.test(normalized)) {
+      return "gpt-image-2-5-flare-text-to-image";
+    }
+    if (/gpt\s*image\s*2\.5.*sunburst|gpt-image-2-5.*sunburst/i.test(normalized)) {
+      return "gpt-image-2-5-sunburst-text-to-image";
+    }
     if (/gpt\s*image\s*2|gpt-image-2/i.test(normalized)) return "gpt-image-2-text-to-image";
     if (/gpt\s*image/i.test(normalized)) return "gpt-image-2-text-to-image";
     if (/nano\s*banana\s*2\s*lite|banana\s*2\s*lite|banana\s*lite/i.test(normalized)) return "google-banana-2-lite";
