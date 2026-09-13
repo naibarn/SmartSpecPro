@@ -15,7 +15,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const appRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -68,7 +68,7 @@ function assertNotMockSidecar(path) {
   const matchedMarker = blockedMarkers.find((marker) => bufferIncludes(sidecarBytes, marker));
   if (matchedMarker) {
     throw new Error(
-      `Cannot package a mock, placeholder, or diagnostic smoke sidecar (${matchedMarker}). Provide the actual hyperframes-render.exe binary for --hyperframes-sidecar. (Got: ${path})`,
+      `Cannot package a mock, placeholder, or diagnostic smoke sidecar (${matchedMarker}). Provide the approved native/portable Mac or Windows launcher for --hyperframes-sidecar. (Got: ${path})`,
     );
   }
 }
@@ -92,6 +92,31 @@ function assertMacArm64Executable(path, label) {
   }
   if (!description.includes("arm64") && !description.includes("aarch64")) {
     throw new Error(`${label} must contain an arm64 slice for Apple Silicon: ${description.trim()}`);
+  }
+}
+
+function assertMacRuntimeSidecar(path, label) {
+  let description;
+  try {
+    description = execFileSync("file", [path], { encoding: "utf8" }).toLowerCase();
+  } catch (error) {
+    throw new Error(`${label} could not be inspected with file(1): ${path} (${error})`);
+  }
+  if (description.includes("mach-o")) {
+    assertMacArm64Executable(path, label);
+    return;
+  }
+
+  const source = readFileSync(path, "utf8");
+  const isPortableLauncher =
+    /^#!\/bin\/sh\s/m.test(source) &&
+    source.includes("runtime-pack/node/bin/node") &&
+    source.includes("runtime-pack/hyperframes-sidecar/render.mjs") &&
+    !/wsl\.exe|hyperframes-wsl2|\.exe\b/i.test(source);
+  if (!isPortableLauncher) {
+    throw new Error(
+      `${label} must be a native Mach-O arm64 executable or the approved POSIX macOS launcher: ${path}`,
+    );
   }
 }
 
@@ -223,6 +248,21 @@ function copyFileInto(path, targetDir, targetName = basename(path)) {
   cpSync(path, join(targetDir, targetName));
 }
 
+function copyMacRuntimeLibraries(binaryPath, targetDir, label) {
+  const sourceDir = dirname(binaryPath);
+  const libraries = readdirSync(sourceDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".dylib"))
+    .map((entry) => join(sourceDir, entry.name));
+  if (libraries.length === 0) {
+    throw new Error(`${label} is missing its adjacent macOS dylib bundle: ${sourceDir}`);
+  }
+  for (const library of libraries) {
+    assertMacArm64Executable(library, `${label} dylib`);
+    copyFileInto(library, targetDir);
+  }
+  console.log(`[worker-app] Bundled ${libraries.length} ${label} macOS dylibs.`);
+}
+
 function readJsonFile(path) {
   return JSON.parse(readFileSync(path, "utf8"));
 }
@@ -306,6 +346,62 @@ function assertMacSharpRuntime(root) {
       ].join("\n"),
     );
   }
+}
+
+function assertMacRemotionRuntime(root) {
+  const requiredExecutables = [
+    [
+      join(root, "node_modules/@remotion/compositor-darwin-arm64/remotion"),
+      "Remotion Darwin arm64 compositor",
+    ],
+    [
+      join(root, "node_modules/@remotion/compositor-darwin-arm64/ffmpeg"),
+      "Remotion Darwin arm64 FFmpeg",
+    ],
+    [
+      join(root, "node_modules/@remotion/compositor-darwin-arm64/ffprobe"),
+      "Remotion Darwin arm64 ffprobe",
+    ],
+    [
+      join(root, "node_modules/@esbuild/darwin-arm64/bin/esbuild"),
+      "Remotion Darwin arm64 esbuild",
+    ],
+    [
+      join(root, "node_modules/@rspack/binding-darwin-arm64/rspack.darwin-arm64.node"),
+      "Remotion Darwin arm64 rspack binding",
+    ],
+  ];
+  for (const [path, label] of requiredExecutables) {
+    if (!existsSync(path)) {
+      throw new Error(`macOS arm64 Remotion runtime is missing ${label}: ${path}`);
+    }
+    assertMacArm64Executable(path, label);
+  }
+}
+
+function assertMacWhisperRuntime(whisperCli) {
+  const libDir = join(dirname(whisperCli), "lib");
+  const requiredLibraries = [
+    ["libwhisper.1.dylib", "whisper.cpp"],
+    ["libggml.0.dylib", "ggml"],
+    ["libggml-base.0.dylib", "ggml-base"],
+    ["libomp.dylib", "OpenMP"],
+  ];
+  for (const [name, label] of requiredLibraries) {
+    const path = join(libDir, name);
+    if (!existsSync(path)) {
+      throw new Error(`macOS arm64 Whisper runtime is missing ${label} library: ${path}`);
+    }
+    assertMacArm64Executable(path, `macOS arm64 ${label} library`);
+  }
+}
+
+function pruneMacForeignNativeArtifacts(root) {
+  const napiRoot = join(root, "node_modules/onnxruntime-node/bin/napi-v6");
+  for (const platform of ["linux", "win32"]) {
+    rmSync(join(napiRoot, platform), { recursive: true, force: true });
+  }
+  console.log("[worker-app] Pruned non-macOS ONNX Runtime native variants from Mac pack.");
 }
 
 const BROWSER_SHARED_LIBRARY_EXCLUDE = new Set([
@@ -423,9 +519,12 @@ Required arguments:
   --whisper-model PATH
   --thai-fonts-dir PATH
   --notices PATH
+  --speaker-aware-runner PATH (optional native Feature 179 runner; target platform)
+  --speaker-aware-runner-version VERSION (defaults to 0.1.1)
   --signature-file PATH (precomputed Ed25519 signature; optional)
   --signing-private-key-file PATH (build-only; optional)
   --comfy-mcp-manifest PATH
+  --staging-dir PATH (optional isolated staging directory)
 
 Mac full-render arguments:
   --remotion-sidecar-script PATH
@@ -441,9 +540,6 @@ if (!["hyperframes-wsl2", "hyperframes-windows-x64", "hyperframes-macos-arm64"].
 }
 const isWsl2Runtime = targetRuntime === "hyperframes-wsl2";
 const isMacRuntime = targetRuntime === "hyperframes-macos-arm64";
-if (isMacRuntime && (process.platform !== "darwin" || process.arch !== "arm64")) {
-  throw new Error("hyperframes-macos-arm64 runtime packaging must run on an Apple Silicon macOS host");
-}
 if (isMacRuntime && (!argValue("--remotion-sidecar-script") || !argValue("--remotion-sidecar-dir"))) {
   throw new Error(
     "hyperframes-macos-arm64 runtime packaging requires the native Remotion sidecar script and installed dependency tree",
@@ -453,7 +549,7 @@ if (isMacRuntime && (!argValue("--remotion-sidecar-script") || !argValue("--remo
 const hyperframesSidecar = requiredPath("--hyperframes-sidecar");
 assertNotMockSidecar(hyperframesSidecar);
 if (isMacRuntime) {
-  assertMacArm64Executable(hyperframesSidecar, "HyperFrames launcher sidecar");
+  assertMacRuntimeSidecar(hyperframesSidecar, "HyperFrames launcher sidecar");
 } else if (!isWsl2Runtime) {
   assertWindowsExecutable(hyperframesSidecar, "HyperFrames launcher sidecar");
 }
@@ -474,10 +570,11 @@ const producerPackagePath = join(hyperframesDir, "node_modules/@hyperframes/prod
 const bundledProducerVersion = requirePackageVersion(producerPackagePath, "@hyperframes/producer");
 const hyperframesSidecarScript = requiredPath("--hyperframes-sidecar-script");
 // Remotion sidecar (planning/worker-app-remotion-render-video/plan.md P1).
-// Optional so existing release invocations that predate the Remotion lane
-// keep working unchanged — when omitted the pack simply ships without
-// `runtime-pack/remotion-sidecar/`, and the Rust executor's own
-// missing-sidecar guard reports a clean failure instead of a crash.
+// The Worker App advertises the Remotion lane for every supported Windows/WSL2
+// runtime.  Omitting the sidecar would therefore create a signed release that
+// can never claim the queued `remotion_render_video` jobs (they remain waiting
+// forever).  Keep the argument optional only for the historical macOS/source
+// packaging paths that do not publish a Windows queue runtime.
 // Tracked source of truth: apps/worker-app/runtime-sidecar-remotion/render.mjs
 // (runtime-pack/ itself is gitignored — .gitignore:273).
 const remotionSidecarScript = argValue("--remotion-sidecar-script")
@@ -492,6 +589,11 @@ const remotionSidecarScript = argValue("--remotion-sidecar-script")
 const remotionSidecarDir = argValue("--remotion-sidecar-dir")
   ? requiredPath("--remotion-sidecar-dir")
   : "";
+if (isWsl2Runtime && (!remotionSidecarScript || !remotionSidecarDir)) {
+  throw new Error(
+    "hyperframes-wsl2 runtime packaging requires --remotion-sidecar-script and --remotion-sidecar-dir so Remotion jobs cannot be stranded in the queue",
+  );
+}
 if (remotionSidecarScript && !remotionSidecarDir) {
   throw new Error(
     "--remotion-sidecar-script requires --remotion-sidecar-dir (the installed node_modules tree); shipping the script alone yields a pack that cannot run Remotion jobs",
@@ -525,16 +627,26 @@ if (isMacRuntime) {
 }
 const whisperCli = requiredPath("--whisper-cli");
 assertBundledWhisperExecutable(whisperCli, "Bundled whisper.cpp executable", isWsl2Runtime, isMacRuntime);
+if (isMacRuntime) assertMacWhisperRuntime(whisperCli);
 const whisperModel = requiredPath("--whisper-model");
 assertWhisperModel(whisperModel);
 const speakerAwareRunner = argValue("--speaker-aware-runner")
   ? requiredPath("--speaker-aware-runner")
   : "";
+const speakerAwareRunnerVersion = argValue("--speaker-aware-runner-version") || "0.1.1";
+const speakerAwareRunnerName = isMacRuntime ? "speaker-aware-runner" : "speaker-aware-runner.exe";
+if (speakerAwareRunner && !/^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/.test(speakerAwareRunnerVersion)) {
+  throw new Error(`Invalid --speaker-aware-runner-version: ${speakerAwareRunnerVersion}`);
+}
 if (speakerAwareRunner) {
-  // The Tauri Worker process runs on the host OS even when its render runtime
-  // is WSL2. Therefore the bundled speaker-aware runner is always a native
-  // Windows executable for the Windows Worker release.
-  assertWindowsExecutable(speakerAwareRunner, "Speaker-aware runner");
+  // The speaker-aware runner is launched by the Tauri Worker process, so it
+  // must match the Worker App host. WSL2 is only the render runtime on
+  // Windows; the Mac pack must never carry a Windows .exe module.
+  if (isMacRuntime) {
+    assertMacArm64Executable(speakerAwareRunner, "Speaker-aware runner");
+  } else {
+    assertWindowsExecutable(speakerAwareRunner, "Speaker-aware runner");
+  }
 }
 const thaiFontsDir = requiredPath("--thai-fonts-dir");
 const notices = requiredPath("--notices");
@@ -551,6 +663,10 @@ const comfyMcpManifest = requiredPath(
   "--comfy-mcp-manifest",
   resolve(appRoot, "src-tauri/resources/comfy-mcp/manifest.json"),
 );
+const ttsProviderRegistry = requiredPath(
+  "--tts-provider-registry",
+  resolve(appRoot, "tts-runtime/provider_registry.py"),
+);
 const outputDir = resolve(argValue("--output-dir") || defaultOutputDir);
 const hyperframesVersion = argValue("--hyperframes-version") || "official";
 const browserVersion = argValue("--browser-version") || "managed";
@@ -561,7 +677,9 @@ const usedDefaultOutputDir = !argValue("--output-dir");
 
 mkdirSync(outputDir, { recursive: true });
 
-const stagingRoot = resolve(appRoot, ".runtime-release-staging");
+const stagingRoot = resolve(
+  argValue("--staging-dir") || resolve(appRoot, ".runtime-release-staging"),
+);
 rmSync(stagingRoot, { recursive: true, force: true });
 mkdirSync(join(stagingRoot, "sidecars"), { recursive: true });
 mkdirSync(join(stagingRoot, "runtime-pack/bin"), { recursive: true });
@@ -572,6 +690,7 @@ mkdirSync(join(stagingRoot, "runtime-pack/node"), { recursive: true });
 mkdirSync(join(stagingRoot, "runtime-pack/hyperframes"), { recursive: true });
 mkdirSync(join(stagingRoot, "runtime-pack/hyperframes-sidecar"), { recursive: true });
 mkdirSync(join(stagingRoot, "runtime-pack/comfy-mcp"), { recursive: true });
+mkdirSync(join(stagingRoot, "runtime-pack/tts-runtime"), { recursive: true });
 mkdirSync(join(stagingRoot, "runtime-pack/whisper/.cache/hyperframes/whisper/models"), { recursive: true });
 if (speakerAwareRunner) mkdirSync(join(stagingRoot, "runtime-pack/speaker-aware"), { recursive: true });
 
@@ -616,6 +735,7 @@ if (isWsl2Runtime) {
   });
   assertWsl2SharpRuntime(join(stagingRoot, "runtime-pack/hyperframes"));
 } else if (isMacRuntime) {
+  pruneMacForeignNativeArtifacts(join(stagingRoot, "runtime-pack/hyperframes"));
   assertMacSharpRuntime(join(stagingRoot, "runtime-pack/hyperframes"));
 }
 copyFileInto(hyperframesSidecarScript, join(stagingRoot, "runtime-pack/hyperframes-sidecar"), "render.mjs");
@@ -639,6 +759,7 @@ if (remotionSidecarScript) {
       `Remotion sidecar dependency tree is incomplete — missing ${remotionEntry}. Run \`npm install\` in ${remotionSidecarDir} before packaging.`,
     );
   }
+  if (isMacRuntime) assertMacRemotionRuntime(remotionStaging);
 }
 cpSync(browserDir, join(stagingRoot, "runtime-pack/browser"), { recursive: true });
 if (isWsl2Runtime) {
@@ -646,22 +767,33 @@ if (isWsl2Runtime) {
 }
 copyFileInto(ffmpeg, join(stagingRoot, "runtime-pack/bin"), isWsl2Runtime || isMacRuntime ? "ffmpeg" : "ffmpeg.exe");
 copyFileInto(ffprobe, join(stagingRoot, "runtime-pack/bin"), isWsl2Runtime || isMacRuntime ? "ffprobe" : "ffprobe.exe");
+if (isMacRuntime) {
+  copyMacRuntimeLibraries(ffmpeg, join(stagingRoot, "runtime-pack/bin"), "FFmpeg");
+}
 copyFileInto(
   whisperCli,
   join(stagingRoot, "runtime-pack/whisper"),
   isWsl2Runtime || isMacRuntime ? "whisper-cli" : "whisper-cli.exe",
 );
+if (isMacRuntime) {
+  cpSync(
+    join(dirname(whisperCli), "lib"),
+    join(stagingRoot, "runtime-pack/whisper/lib"),
+    { recursive: true },
+  );
+}
 copyFileInto(
   whisperModel,
   join(stagingRoot, "runtime-pack/whisper/.cache/hyperframes/whisper/models"),
   "ggml-large-v3.bin",
 );
 if (speakerAwareRunner) {
-  copyFileInto(speakerAwareRunner, join(stagingRoot, "runtime-pack/speaker-aware"), "speaker-aware-runner.exe");
+  copyFileInto(speakerAwareRunner, join(stagingRoot, "runtime-pack/speaker-aware"), speakerAwareRunnerName);
 }
 cpSync(thaiFontsDir, join(stagingRoot, "runtime-pack/fonts"), { recursive: true });
 copyFileInto(notices, join(stagingRoot, "runtime-pack"), "THIRD_PARTY_NOTICES.txt");
 copyFileInto(comfyMcpManifest, join(stagingRoot, "runtime-pack/comfy-mcp"), "manifest.json");
+copyFileInto(ttsProviderRegistry, join(stagingRoot, "runtime-pack/tts-runtime"), "provider_registry.py");
 
 const sidecarSha256 = await sha256File(
   join(stagingRoot, "sidecars", isMacRuntime ? "hyperframes-render" : "hyperframes-render.exe"),
@@ -748,10 +880,10 @@ const manifest = {
   ...(speakerAwareRunner
     ? {
         speakerAwareRunner: {
-          path: "speaker-aware/speaker-aware-runner.exe",
-          version: "0.1.0",
+          path: `speaker-aware/${speakerAwareRunnerName}`,
+          version: speakerAwareRunnerVersion,
           contractVersion: "feature-179-v1",
-          sha256: await sha256File(join(stagingRoot, "runtime-pack/speaker-aware/speaker-aware-runner.exe")),
+          sha256: await sha256File(join(stagingRoot, "runtime-pack/speaker-aware", speakerAwareRunnerName)),
         },
       }
     : {}),
@@ -767,6 +899,21 @@ const manifest = {
     comfyCliRequirement: ">=1.14.0",
     pythonRequirement: ">=3.10",
     installMode: "worker-managed-venv",
+  },
+  ttsRuntime: {
+    providerRegistryPath: "tts-runtime/provider_registry.py",
+    providerRegistrySha256: await sha256File(join(stagingRoot, "runtime-pack/tts-runtime/provider_registry.py")),
+    providers: ["voxcpm2", "confucius4-tts", "moss-tts"],
+    trainingProviders: ["voxcpm2"],
+    operatorCommandEnvironment: [
+      "SMARTSPEC_TTS_VOXCPM2_COMMAND",
+      "SMARTSPEC_TTS_VOXCPM2_TRAIN_COMMAND",
+      "SMARTSPEC_TTS_CONFUCIUS4_COMMAND",
+      "SMARTSPEC_TTS_CONFUCIUS4_TRAIN_COMMAND",
+      "SMARTSPEC_TTS_MOSS_COMMAND",
+      "SMARTSPEC_TTS_MOSS_TRAIN_COMMAND",
+    ],
+    executionMode: "operator-command-allowlist",
   },
 };
 writeFileSync(join(stagingRoot, "runtime-pack/manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);

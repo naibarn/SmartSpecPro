@@ -4,6 +4,7 @@ import { feedbackTickets, users } from "../../../drizzle/schema";
 import { createNotification } from "../notificationService";
 import {
   extractAffectedUserIds,
+  extractAffectedTaskIds,
   formatAffectedUsersForText,
   resolveAffectedUsers,
   type AffectedUser,
@@ -138,6 +139,7 @@ export function buildAdminNotificationContent(params: {
   ticketId: number;
   reporter?: AffectedUser | null;
   affectedUsers?: AffectedUser[];
+  affectedTaskIds?: string[];
 }): string {
   const lines = [
     `[${params.ticketType}] ${params.autoSummary ?? params.title}`,
@@ -150,6 +152,9 @@ export function buildAdminNotificationContent(params: {
     lines.push(
       `Affected user(s): ${formatAffectedUsersForText(params.affectedUsers)}`
     );
+  }
+  if (params.affectedTaskIds && params.affectedTaskIds.length > 0) {
+    lines.push(`Affected task ID(s): ${params.affectedTaskIds.join(", ")}`);
   }
   return lines.join("\n");
 }
@@ -248,6 +253,7 @@ export async function processTicket(
   // Notify all admins about the new feedback ticket
   try {
     const affectedUserIds = extractAffectedUserIds(ticket.contextJson);
+    const affectedTaskIds = extractAffectedTaskIds(ticket.contextJson);
     const reporterId =
       typeof ticket.submittedBy === "number" ? ticket.submittedBy : null;
     let affectedUsers: AffectedUser[] = affectedUserIds.map(id => ({
@@ -332,6 +338,7 @@ export async function processTicket(
           ticketId,
           reporter,
           affectedUsers,
+          affectedTaskIds,
         }),
         priority: notificationPriority,
         relatedResourceType: "feedback",

@@ -29,6 +29,9 @@ import {
   mediaModels,
   mediaAssets,
   verticalDramaShotReferences,
+  verticalDramaShotBrollBindings,
+  verticalDramaShotObjectReferences,
+  verticalDramaObjectDetectionSuggestions,
   type VerticalDramaEpisodeRow,
   type VerticalDramaRunArtifactRow,
   type VerticalDramaEpisodeRunRow,
@@ -131,6 +134,7 @@ import {
   VdSchemaValidationError as StoryboardVdSchemaValidationError,
   type StoryboardShotgridOutput,
   type GenerateStoryboardShotgridParams,
+  VerticalDramaStoryboardPolicyRecoveryError,
 } from "./verticalDramaStoryboardGeneration";
 import {
   applyVerticalDramaShotSceneIntent,
@@ -161,6 +165,7 @@ import {
   // (`generateRealStartFramePlan`) and threaded through to
   // `projectStartFramePlan`'s carry-over param.
   type VerticalDramaStartFramePlanFrame,
+  type StartFrameDialogueLine,
 } from "./verticalDramaStartFrameGeneration";
 import {
   generateVideoMotionPromptPack,
@@ -245,6 +250,7 @@ import {
 import { reconcileEpisodeLocations } from "./verticalDramaLocationReconciliation";
 import { verticalDramaLocationStockService } from "./verticalDramaLocationStock";
 import type { VerticalDramaStoryboardLocationGroup } from "@shared/verticalDramaSeries/storyboardLocations";
+import { canonicalizeStoryboardLocationGroups } from "@shared/verticalDramaSeries/locationGrouping";
 import { buildSceneShotGroups } from "@shared/verticalDramaSeries/sceneContinuity";
 import { debugError } from "../_core/logger";
 import { resolveSceneContinuityLocks } from "./verticalDramaSceneContinuityLock";
@@ -458,6 +464,32 @@ function mapStoryboardGenerationError(
       code: VD_SCHEMA_VALIDATION_FAILED,
       message: error.message,
       repairable: true,
+    };
+  }
+  if (error instanceof VerticalDramaStoryboardPolicyRecoveryError) {
+    return {
+      code: error.code,
+      message: error.message,
+      repairable: true,
+      details: {
+        repairAttempts: error.repairAttempts,
+        candidateAvailable: true,
+        findings: error.safety.findings.map(finding => ({
+          code: finding.code,
+          level: finding.level,
+          message: finding.message,
+          detectorVersion: finding.detectorVersion,
+          evidence: finding.evidence,
+        })),
+      },
+    };
+  }
+  if (error instanceof VerticalDramaShotSceneIntentReviewRequiredError) {
+    return {
+      code: error.code,
+      message: error.message,
+      repairable: true,
+      details: { issues: error.issues },
     };
   }
   return {
@@ -1221,7 +1253,8 @@ function explicitTwinFamilyKey(row: PipelineCharacterLookRow): string | null {
     row.data && typeof row.data === "object" && !Array.isArray(row.data)
       ? (row.data as Record<string, unknown>)
       : {};
-  const description = typeof data.description === "string" ? data.description : "";
+  const description =
+    typeof data.description === "string" ? data.description : "";
   const roleText = [row.role, row.narrativeRole, row.roleTier]
     .filter((value): value is string => typeof value === "string")
     .join(" ")
@@ -1233,7 +1266,10 @@ function explicitTwinFamilyKey(row: PipelineCharacterLookRow): string | null {
   return source
     .toLocaleLowerCase()
     .replace(/(?:คนที่|ลำดับที่)\s*(?:หนึ่ง|สอง|สาม|สี่|ห้า|\d+)/gi, "")
-    .replace(/\b(?:first|second|third|one|two|three|\d+(?:st|nd|rd|th))\b/gi, "")
+    .replace(
+      /\b(?:first|second|third|one|two|three|\d+(?:st|nd|rd|th))\b/gi,
+      ""
+    )
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -1243,7 +1279,7 @@ function buildTwinAgeLocks(
   ageProfilesById: ReadonlyMap<
     number,
     { min: number; max: number; source?: string } | null | undefined
-  >,
+  >
 ): VerticalDramaTwinAgeLock[] {
   const baseRows = rows.filter(row => row.parentCharacterId == null);
   const baseById = new Map(baseRows.map(row => [row.id, row]));
@@ -1275,12 +1311,16 @@ function buildTwinAgeLocks(
       .map(id => ageProfilesById.get(id))
       .filter(
         (profile): profile is { min: number; max: number; source?: string } =>
-          profile != null && profile.source !== "role_context",
+          profile != null && profile.source !== "role_context"
       );
-    const selectedProfile = profiles.length > 0 ? [...profiles].sort(
-      (left, right) =>
-        left.max - left.min - (right.max - right.min) || left.min - right.min,
-    )[0] : undefined;
+    const selectedProfile =
+      profiles.length > 0
+        ? [...profiles].sort(
+            (left, right) =>
+              left.max - left.min - (right.max - right.min) ||
+              left.min - right.min
+          )[0]
+        : undefined;
     const ageRange = selectedProfile
       ? { min: selectedProfile.min, max: selectedProfile.max }
       : undefined;
@@ -1336,11 +1376,7 @@ function buildCrossEpisodeWardrobeShots(storyboard: unknown): Array<{
   for (const rawGroup of Array.isArray(root.distinct_locations)
     ? root.distinct_locations
     : []) {
-    if (
-      !rawGroup ||
-      typeof rawGroup !== "object" ||
-      Array.isArray(rawGroup)
-    ) {
+    if (!rawGroup || typeof rawGroup !== "object" || Array.isArray(rawGroup)) {
       continue;
     }
     const group = rawGroup as Record<string, unknown>;
@@ -1575,10 +1611,13 @@ async function resolvePipelineCharacterLooks(params: {
   const baseAgeProfilesById = new Map(
     params.rows
       .filter(row => row.parentCharacterId == null)
-      .map(row => [row.id, resolveAgeProfile(row)]),
+      .map(row => [row.id, resolveAgeProfile(row)])
   );
   const twinAgeLocks = buildTwinAgeLocks(params.rows, baseAgeProfilesById);
-  const twinAgeRangeByCharacterId = new Map<number, { min: number; max: number }>();
+  const twinAgeRangeByCharacterId = new Map<
+    number,
+    { min: number; max: number }
+  >();
   for (const lock of twinAgeLocks) {
     if (!lock.ageRange) continue;
     for (const characterId of lock.characterIds) {
@@ -1608,24 +1647,23 @@ async function resolvePipelineCharacterLooks(params: {
           : undefined;
       const parentAgeRange =
         row.parentCharacterId != null
-          ? twinAgeRangeByCharacterId.get(row.parentCharacterId) ??
+          ? (twinAgeRangeByCharacterId.get(row.parentCharacterId) ??
             (parentAgeProfile
               ? { min: parentAgeProfile.min, max: parentAgeProfile.max }
-              : undefined)
+              : undefined))
           : undefined;
       const baseAgeRange =
         row.parentCharacterId != null
           ? parentAgeRange
-          : twinAgeRangeByCharacterId.get(row.id) ??
+          : (twinAgeRangeByCharacterId.get(row.id) ??
             (() => {
               const profile = resolveAgeProfile(row);
               return profile
                 ? { min: profile.min, max: profile.max }
                 : undefined;
-            })();
-      const ownAgeProfile = row.parentCharacterId != null
-        ? resolveAgeProfile(row)
-        : undefined;
+            })());
+      const ownAgeProfile =
+        row.parentCharacterId != null ? resolveAgeProfile(row) : undefined;
       return {
         characterKey: row.characterKey,
         name: row.name,
@@ -3584,26 +3622,120 @@ function resolveStoryScriptLangFromLocale(
 }
 
 /**
+ * Reset the episode-owned storyboard generation state before a full
+ * storyboard rebuild. Media assets are intentionally retained in history;
+ * only episode/shot bindings and generated episode outputs are removed.
+ * Keeping this boundary in one transaction prevents a new worker from
+ * starting against a partially-reset episode.
+ */
+export async function resetEpisodeStoryboardGenerationState(
+  owner: EpisodeRunOwner
+): Promise<{ reset: boolean; activeRunId?: number }> {
+  const stage: VerticalDramaPipelineStage = "storyboard_shotgrid";
+  const downstreamStages = VerticalDramaEpisodePipeline.downstreamStages(stage);
+  const stagesToClear = [stage, ...downstreamStages];
+
+  return db.transaction(async tx => {
+    const [activeRun] = await tx
+      .select({ id: verticalDramaEpisodeRuns.id })
+      .from(verticalDramaEpisodeRuns)
+      .where(
+        and(
+          eq(verticalDramaEpisodeRuns.tenantId, owner.tenantId),
+          eq(verticalDramaEpisodeRuns.userId, owner.userId),
+          eq(verticalDramaEpisodeRuns.seriesId, owner.seriesId),
+          eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId),
+          eq(verticalDramaEpisodeRuns.stage, stage),
+          inArray(verticalDramaEpisodeRuns.status, ["queued", "running"])
+        )
+      )
+      .orderBy(desc(verticalDramaEpisodeRuns.id))
+      .limit(1);
+
+    // Idempotent retries must reuse the already queued/running rebuild; they
+    // must never erase the state belonging to that newer run.
+    if (activeRun) return { reset: false, activeRunId: activeRun.id };
+
+    type EpisodeShotOwnedTable =
+      | typeof verticalDramaShotReferences
+      | typeof verticalDramaShotBrollBindings
+      | typeof verticalDramaShotObjectReferences
+      | typeof verticalDramaObjectDetectionSuggestions;
+    const ownerWhere = (table: EpisodeShotOwnedTable) =>
+      and(
+        eq(table.tenantId, owner.tenantId),
+        eq(table.userId, owner.userId),
+        eq(table.seriesId, owner.seriesId),
+        eq(table.episodeId, owner.episodeId)
+      );
+
+    // These are episode/shot-level bindings, not reusable master assets.
+    // Delete child projections first; shot references cascade their own
+    // projections, while the explicit deletes make the reset contract clear
+    // for the other shot-level tables too.
+    await tx
+      .delete(verticalDramaObjectDetectionSuggestions)
+      .where(ownerWhere(verticalDramaObjectDetectionSuggestions));
+    await tx
+      .delete(verticalDramaShotObjectReferences)
+      .where(ownerWhere(verticalDramaShotObjectReferences));
+    await tx
+      .delete(verticalDramaShotBrollBindings)
+      .where(ownerWhere(verticalDramaShotBrollBindings));
+    await tx
+      .delete(verticalDramaShotReferences)
+      .where(ownerWhere(verticalDramaShotReferences));
+
+    // Run artifacts/checkpoints cascade from these run rows by schema
+    // contract. The current storyboard run is intentionally removed here,
+    // before the replacement queued run is inserted.
+    await tx
+      .delete(verticalDramaEpisodeRuns)
+      .where(
+        and(
+          eq(verticalDramaEpisodeRuns.tenantId, owner.tenantId),
+          eq(verticalDramaEpisodeRuns.userId, owner.userId),
+          eq(verticalDramaEpisodeRuns.seriesId, owner.seriesId),
+          eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId),
+          inArray(verticalDramaEpisodeRuns.stage, stagesToClear)
+        )
+      );
+
+    await tx
+      .update(verticalDramaEpisodes)
+      .set({
+        storyboard: null,
+        startFramePlan: null,
+        dialogueAudioPlan: null,
+        motionPromptPack: null,
+        assemblyManifest: null,
+        storyboardReviewId: null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(verticalDramaEpisodes.id, owner.episodeId),
+          eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+          eq(verticalDramaEpisodes.userId, owner.userId),
+          eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+        )
+      );
+
+    return { reset: true };
+  });
+}
+
+/**
  * `regenerateStage`'s post-success downstream reset for `storyboard_shotgrid`
- * ONLY — replicated here (rather than imported from
- * `routers/verticalDramaEpisodes.ts`, which imports FROM this file) to avoid
- * a service -> router circular import. Mirrors that mutation's inline
- * post-success block EXACTLY (same `stagesToClear`/`downstreamColumnByStage`
- * shape, including deleting the run row matching `stage` itself — an
- * existing quirk of that block predating this change, carried forward
- * unmodified since fixing it is out of this task's scope), just deferred to
- * run from `runStoryboardShotgridStageJob`'s background success path instead
- * of synchronously right after `runStage` returns. The router's own
- * synchronous `regenerateStage` path for every OTHER stage is untouched.
+ * ONLY — replicated here rather than imported from the router to avoid a
+ * service -> router circular import. The current storyboard run is kept as
+ * the durable successful run; only downstream runs and columns are cleared.
  */
 async function clearStoryboardShotgridDownstreamAfterRegenerate(
   owner: EpisodeRunOwner
 ): Promise<void> {
   const stage: VerticalDramaPipelineStage = "storyboard_shotgrid";
-  const stagesToClear = [
-    stage,
-    ...VerticalDramaEpisodePipeline.downstreamStages(stage),
-  ];
+  const stagesToClear = VerticalDramaEpisodePipeline.downstreamStages(stage);
   await db
     .delete(verticalDramaEpisodeRuns)
     .where(
@@ -3649,6 +3781,28 @@ async function clearStoryboardShotgridDownstreamAfterRegenerate(
         )
       );
   }
+}
+
+async function isStoryboardShotgridRunStillActive(
+  owner: EpisodeRunOwner,
+  runId: number
+): Promise<boolean> {
+  const [run] = await db
+    .select({ id: verticalDramaEpisodeRuns.id })
+    .from(verticalDramaEpisodeRuns)
+    .where(
+      and(
+        eq(verticalDramaEpisodeRuns.id, runId),
+        eq(verticalDramaEpisodeRuns.tenantId, owner.tenantId),
+        eq(verticalDramaEpisodeRuns.userId, owner.userId),
+        eq(verticalDramaEpisodeRuns.seriesId, owner.seriesId),
+        eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId),
+        eq(verticalDramaEpisodeRuns.stage, "storyboard_shotgrid"),
+        inArray(verticalDramaEpisodeRuns.status, ["queued", "running"])
+      )
+    )
+    .limit(1);
+  return Boolean(run);
 }
 
 export class VerticalDramaEpisodePipeline {
@@ -4362,6 +4516,7 @@ export class VerticalDramaEpisodePipeline {
       tenantId: owner.tenantId,
       seriesId: owner.seriesId,
       episodeId: owner.episodeId,
+      episodeGenerationSettings: episode.generationSettings,
       episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
       episodeNumber: episode.episodeNumber,
       locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
@@ -4867,40 +5022,43 @@ export class VerticalDramaEpisodePipeline {
     const baseAgeProfilesById = new Map(
       characterRows
         .filter((c: VdCharacterRosterRow) => c.parentCharacterId == null)
-        .map((c: VdCharacterRosterRow) => [c.id, (() => {
-          const data =
-            c.data && typeof c.data === "object" && !Array.isArray(c.data)
-              ? (c.data as Record<string, unknown>)
-              : {};
-          const visualBible =
-            data.visualBible &&
-            typeof data.visualBible === "object" &&
-            !Array.isArray(data.visualBible)
-              ? (data.visualBible as Record<string, unknown>)
-              : undefined;
-          const designDna =
-            visualBible?.designDna &&
-            typeof visualBible.designDna === "object" &&
-            !Array.isArray(visualBible.designDna)
-              ? (visualBible.designDna as Record<string, unknown>)
-              : undefined;
-          return resolveCharacterCastingAgeProfile({
-            age: data.age,
-            ageMin: data.ageMin,
-            ageMax: data.ageMax,
-            ageRange: visualBible?.ageRange ?? data.ageRange,
-            approvedDnaAgeRange: designDna?.ageRange,
-            role: c.role,
-            narrativeRole: c.narrativeRole,
-            roleTier: c.roleTier,
-            occupation: c.occupation,
-            description: data.description,
-          });
-        })()]),
+        .map((c: VdCharacterRosterRow) => [
+          c.id,
+          (() => {
+            const data =
+              c.data && typeof c.data === "object" && !Array.isArray(c.data)
+                ? (c.data as Record<string, unknown>)
+                : {};
+            const visualBible =
+              data.visualBible &&
+              typeof data.visualBible === "object" &&
+              !Array.isArray(data.visualBible)
+                ? (data.visualBible as Record<string, unknown>)
+                : undefined;
+            const designDna =
+              visualBible?.designDna &&
+              typeof visualBible.designDna === "object" &&
+              !Array.isArray(visualBible.designDna)
+                ? (visualBible.designDna as Record<string, unknown>)
+                : undefined;
+            return resolveCharacterCastingAgeProfile({
+              age: data.age,
+              ageMin: data.ageMin,
+              ageMax: data.ageMax,
+              ageRange: visualBible?.ageRange ?? data.ageRange,
+              approvedDnaAgeRange: designDna?.ageRange,
+              role: c.role,
+              narrativeRole: c.narrativeRole,
+              roleTier: c.roleTier,
+              occupation: c.occupation,
+              description: data.description,
+            });
+          })(),
+        ])
     );
     const twinAgeLocks = buildTwinAgeLocks(
       characterRows as PipelineCharacterLookRow[],
-      baseAgeProfilesById,
+      baseAgeProfilesById
     );
     const twinPairs: NonNullable<
       GenerateStoryboardShotgridParams["twinPairs"]
@@ -4910,11 +5068,13 @@ export class VerticalDramaEpisodePipeline {
       const leftKey = characterKeyById.get(leftId);
       const rightKey = characterKeyById.get(rightId);
       if (!leftKey || !rightKey) return [];
-      return [{
-        characterKeyA: leftKey,
-        characterKeyB: rightKey,
-        ...(lock.ageRange ? { ageRange: lock.ageRange } : {}),
-      }];
+      return [
+        {
+          characterKeyA: leftKey,
+          characterKeyB: rightKey,
+          ...(lock.ageRange ? { ageRange: lock.ageRange } : {}),
+        },
+      ];
     });
 
     const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? null;
@@ -4992,36 +5152,44 @@ export class VerticalDramaEpisodePipeline {
     // shot belongs to). Phase 1 added the `existingLocations` param + its
     // prompt rendering but left every call site omitting it entirely (the
     // roster table did not exist yet) — this is the real query that makes it
-    // non-empty. A direct, minimal `db.select()` against
-    // `vertical_drama_locations` (not `verticalDramaLocationStockService.listRows`,
-    // which additionally joins for a `primaryReferenceUrl` this prompt fact
-    // has no use for) — tenant/user/series scoped, mapped to the exact
-    // `{locationKey, name, description}` shape the param expects.
-    const existingLocationRows = await db
-      .select({
-        locationKey: verticalDramaLocations.locationKey,
-        name: verticalDramaLocations.name,
-        data: verticalDramaLocations.data,
-      })
-      .from(verticalDramaLocations)
-      .where(
-        and(
-          eq(verticalDramaLocations.tenantId, owner.tenantId),
-          eq(verticalDramaLocations.userId, owner.userId),
-          eq(verticalDramaLocations.seriesId, owner.seriesId)
+    // non-empty. Use the stock listing here so the canonical representative can preserve
+    // an already-approved environment image. Legacy rosters can contain
+    // view-only aliases such as "หน้าคลินิก" and "ลานจอดรถหน้าคลินิก";
+    // sending both keys as authoritative facts would prevent the later
+    // safety canonicalizer from merging them. The pure grouping helper keeps
+    // genuinely different places separate and only folds the explicit
+    // front/parking view aliases.
+    const existingLocationRows =
+      await verticalDramaLocationStockService.listRows({
+        tenantId: owner.tenantId,
+        userId: owner.userId,
+        seriesId: owner.seriesId,
+      });
+    const existingLocationGroups = canonicalizeStoryboardLocationGroups(
+      [...existingLocationRows]
+        .sort(
+          (left, right) =>
+            Number(Boolean(right.primaryReferenceUrl)) -
+              Number(Boolean(left.primaryReferenceUrl)) ||
+            new Date(left.createdAt).getTime() -
+              new Date(right.createdAt).getTime()
         )
-      );
-    const existingLocations = existingLocationRows.map(
-      (row: (typeof existingLocationRows)[number]) => ({
-        locationKey: row.locationKey,
-        name: row.name,
-        description:
-          typeof (row.data as Record<string, unknown> | null)?.description ===
-          "string"
-            ? ((row.data as Record<string, unknown>).description as string)
-            : row.name,
-      })
+        .map(row => ({
+          locationKey: row.locationKey,
+          locationName: row.name,
+          description:
+            typeof (row.data as Record<string, unknown> | null)?.description ===
+            "string"
+              ? ((row.data as Record<string, unknown>).description as string)
+              : row.name,
+          shotNumbers: [],
+        }))
     );
+    const existingLocations = existingLocationGroups.map(group => ({
+      locationKey: group.locationKey,
+      name: group.locationName,
+      description: group.description,
+    }));
 
     const previousEpisodeIntentContext =
       await this.resolvePreviousEpisodeShotSceneIntentContext(owner, episode);
@@ -5031,6 +5199,7 @@ export class VerticalDramaEpisodePipeline {
       tenantId: owner.tenantId,
       seriesId: owner.seriesId,
       episodeId: owner.episodeId,
+      episodeGenerationSettings: episode.generationSettings,
       episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
       episodeNumber: episode.episodeNumber,
       locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
@@ -5323,6 +5492,7 @@ export class VerticalDramaEpisodePipeline {
       tenantId: owner.tenantId,
       seriesId: owner.seriesId,
       episodeId: owner.episodeId,
+      episodeGenerationSettings: episode.generationSettings,
       locale,
       dialogueLanguageProfile:
         buildVerticalDramaDialogueLanguageProfileFromBible(
@@ -5617,6 +5787,25 @@ export class VerticalDramaEpisodePipeline {
         })
         .filter(([, order]) => order.length > 0)
     );
+    const dialogueLinesByShotNumber = new Map<number, StartFrameDialogueLine[]>(
+      episodePlanShotDrafts
+        .map(
+          shot =>
+            [
+              shot.shot_number,
+              shot.dialogue_lines
+                .map(line => ({
+                  speaker: line.speaker,
+                  line: line.line,
+                  ...(line.addressed_to
+                    ? { addressedTo: line.addressed_to }
+                    : {}),
+                }))
+                .filter(line => line.speaker.trim() && line.line.trim()),
+            ] as const
+        )
+        .filter(([, lines]) => lines.length > 0)
+    );
 
     // Character identity descriptors (2026-07-07 non-human-character-
     // vanishing fix) — `name`/`role` + the stored `data.description` (e.g.
@@ -5878,6 +6067,7 @@ export class VerticalDramaEpisodePipeline {
       tenantId: owner.tenantId,
       seriesId: owner.seriesId,
       episodeId: owner.episodeId,
+      episodeGenerationSettings: episode.generationSettings,
       episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
       durationSeconds: episode.targetDurationSeconds ?? 60,
       selectedImageModelId: existingSelectedImageModelId,
@@ -5954,7 +6144,9 @@ export class VerticalDramaEpisodePipeline {
         const characterLookAssignments =
           lookResolution.assignmentsByShotNumber.get(shotNumber);
         const screenCallerCharacterIds = characterRefsCustomized
-          ? [...(previousFrame?.screenCallerCharacterRefs ?? [])]
+          ? previousFrame?.screenCallerCharacterRefs !== undefined
+            ? [...previousFrame.screenCallerCharacterRefs]
+            : storyboardScreenCallerCharacterIds
           : storyboardScreenCallerCharacterIds;
         const supportingPresenceCustomized =
           previousFrame?.supportingPresenceCustomized === true;
@@ -6102,6 +6294,7 @@ export class VerticalDramaEpisodePipeline {
         // spread) when this shot has no resolved speaking order, same
         // "omit the key" convention as `location` immediately above.
         const speakingOrder = speakingOrderByShotNumber.get(shotNumber);
+        const dialogueLines = dialogueLinesByShotNumber.get(shotNumber);
         const characterAliases = Object.fromEntries(
           characterIdentitySources.map(source => [
             source.characterKey,
@@ -6157,6 +6350,7 @@ export class VerticalDramaEpisodePipeline {
               }
             : {}),
           ...(speakingOrder ? { speakingOrder } : {}),
+          ...(dialogueLines ? { dialogueLines } : {}),
           ...((effectiveCharacterIds.length >= 2 ||
             (speakingOrder?.length ?? 0) >= 2) &&
           !barrierDialogue &&
@@ -6697,6 +6891,7 @@ export class VerticalDramaEpisodePipeline {
       tenantId: owner.tenantId,
       seriesId: owner.seriesId,
       episodeId: owner.episodeId,
+      episodeGenerationSettings: episode.generationSettings,
       episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
       durationSeconds: episode.targetDurationSeconds ?? 60,
       genre: motionSeriesRow?.genre ?? undefined,
@@ -7309,6 +7504,7 @@ export class VerticalDramaEpisodePipeline {
         }
       } catch (error) {
         const genError = mapStoryboardGenerationError(error);
+        payload = buildStoryboardGenerationFailurePayload(payload, error);
         const runId = await this.writeRunForStage(owner, stage, mode, opts, {
           status: "failed",
           next_action: "repair",
@@ -8542,6 +8738,16 @@ export class VerticalDramaEpisodePipeline {
           opts.retentionHooksEnabled ?? false,
           opts.motionContractsEnabled ?? false
         );
+        // Reset is also a cancellation fence: a worker that was already in
+        // the provider call must not resurrect its stale storyboard after a
+        // newer rebuild has cleared its run row.
+        if (!(await isStoryboardShotgridRunStillActive(owner, runId))) {
+          debugError(
+            "vd_storyboard_async_job",
+            `Skipping persistence for stale storyboard_shotgrid run #${runId} (episode #${owner.episodeId}) — reset or replacement run won the generation fence`
+          );
+          return;
+        }
         payload = { stage, ...generated.storyboard };
         continuityWarnings.push(...generated.warnings);
         // Persist to the episode's own `storyboard` jsonb column — same
@@ -9257,11 +9463,3 @@ export async function sweepStaleStoryboardShotgridRuns(
 
 /** Shared singleton wired with the dry-run-safe stub port. */
 export const verticalDramaEpisodePipeline = new VerticalDramaEpisodePipeline();
-  if (error instanceof VerticalDramaShotSceneIntentReviewRequiredError) {
-    return {
-      code: error.code,
-      message: error.message,
-      repairable: true,
-      details: { issues: error.issues },
-    };
-  }

@@ -69,6 +69,8 @@ export function mapCategoryToEnum(category?: string): string {
     "image-generation": "image_generation",
     "image_prompt_generation": "image_prompt_generation",
     "image-prompt-generation": "image_prompt_generation",
+    "character_prompt_generation": "character_prompt_generation",
+    "character-prompt-generation": "character_prompt_generation",
     "video_generation": "video_generation",
     "video-generation": "video_generation",
     "video_prompt_generation": "video_prompt_generation",
@@ -120,6 +122,7 @@ export function categoryToSkillType(category: string): string {
   const categoryMap: Record<string, string> = {
     "image_generation": "image-generation",
     "image_prompt_generation": "prompt-enhancement",
+    "character_prompt_generation": "prompt-enhancement",
     "video_generation": "video-generation",
     "video_prompt_generation": "prompt-enhancement",
     "audio_prompt_generation": "prompt-enhancement",

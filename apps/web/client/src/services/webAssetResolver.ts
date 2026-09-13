@@ -20,6 +20,8 @@ const ALLOWED_EXTENSIONS = new Set([
 
 type RemoteAssetMediaType = "audio" | "video" | "image";
 type ResolvedAsset = { assetId: string; uri: string; mediaAssetId?: string };
+type UploadContext = { projectId?: number | string; idempotencyKey?: string };
+type RemoteImportOptions = { mediaType: RemoteAssetMediaType; projectId?: number | string; idempotencyKey?: string };
 
 export class WebAssetResolver {
   private cache = new Map<string, string>();
@@ -33,7 +35,8 @@ export class WebAssetResolver {
    */
   uploadAsset(
     file: File,
-    onProgress?: (percent: number) => void
+    onProgress?: (percent: number) => void,
+    context?: UploadContext,
   ): { promise: Promise<ResolvedAsset>; abort: () => void } {
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
@@ -62,6 +65,8 @@ export class WebAssetResolver {
           filename: file.name,
           contentType: file.type || "application/octet-stream",
           fileSize: file.size,
+          ...(context?.projectId !== undefined ? { projectId: context.projectId } : {}),
+          ...(context?.idempotencyKey ? { idempotencyKey: context.idempotencyKey } : {}),
         }),
       });
 
@@ -76,9 +81,9 @@ export class WebAssetResolver {
 
       if (initData.method === "multipart") {
         // Fallback: use multipart upload through server (for local storage)
-        return this._uploadMultipart(file, onProgress, (abort) => {
+          return this._uploadMultipart(file, onProgress, (abort) => {
           abortFn = abort;
-        });
+          }, context);
       }
 
       // Phase 2: Direct upload to presigned URL (bypasses Cloudflare)
@@ -102,6 +107,8 @@ export class WebAssetResolver {
           key,
           contentType: file.type || "application/octet-stream",
           fileSize: file.size,
+          ...(context?.projectId !== undefined ? { projectId: context.projectId } : {}),
+          ...(context?.idempotencyKey ? { idempotencyKey: context.idempotencyKey } : {}),
         }),
       });
 
@@ -131,13 +138,13 @@ export class WebAssetResolver {
 
   importRemoteAsset(
     url: string,
-    options: { mediaType: RemoteAssetMediaType },
+    options: RemoteImportOptions,
   ): Promise<ResolvedAsset> {
     const normalizedUrl = url.trim();
     if (!normalizedUrl) {
       return Promise.reject(new Error("Missing remote asset URL"));
     }
-    const cacheKey = `${options.mediaType}:${normalizedUrl}`;
+    const cacheKey = `${options.mediaType}:${String(options.projectId ?? '')}:${normalizedUrl}`;
     const cached = this.remoteImportCache.get(cacheKey);
     if (cached) return cached;
 
@@ -149,6 +156,8 @@ export class WebAssetResolver {
         body: JSON.stringify({
           url: normalizedUrl,
           mediaType: options.mediaType,
+          ...(options.projectId !== undefined ? { projectId: options.projectId } : {}),
+          ...(options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : {}),
         }),
       });
 
@@ -180,10 +189,13 @@ export class WebAssetResolver {
     file: File,
     onProgress?: (percent: number) => void,
     onAbortReady?: (abort: () => void) => void,
+    context?: UploadContext,
   ): Promise<ResolvedAsset> {
     return new Promise((resolve, reject) => {
       const formData = new FormData();
       formData.append("file", file);
+      if (context?.projectId !== undefined) formData.append("projectId", String(context.projectId));
+      if (context?.idempotencyKey) formData.append("idempotencyKey", context.idempotencyKey);
 
       const xhr = new XMLHttpRequest();
       if (onAbortReady) onAbortReady(() => xhr.abort());

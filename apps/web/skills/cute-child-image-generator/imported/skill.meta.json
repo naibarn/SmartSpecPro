@@ -1,0 +1,28 @@
+{
+  "skill_id": "cute_child_image_generator",
+  "name": "Cute Child Image Generator",
+  "version": "3.0.0",
+  "category": "image_generation",
+  "subcategory": "character_storyboard_source",
+  "description": "Generate cute child character images with optional identity-reference images, single prompt-ready output, and extensive scene modes.",
+  "supports": {
+    "prompt_only": true,
+    "generate_image": true,
+    "multi_child": true,
+    "random_age": true,
+    "random_scene_by_category": true,
+    "reference_images_optional": true,
+    "reference_images_max": 5,
+    "single_prompt_output": true,
+    "storyboard_source_image_generation": true
+  },
+  "ui_capabilities": {
+    "schema_driven_ui": true,
+    "file_upload_fields": true,
+    "searchable_scene_mode_selector": true
+  },
+  "output_contract": {
+    "canonical_prompt_field": "generation_prompt",
+    "direct_model_payload_field": "generation_request"
+  }
+}

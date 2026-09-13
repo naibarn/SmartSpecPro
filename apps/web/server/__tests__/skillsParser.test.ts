@@ -19,6 +19,12 @@ describe("skills parser", () => {
     expect(categoryToSkillType("audio_prompt_generation")).toBe("prompt-enhancement");
   });
 
+  it("recognizes character prompt generation as a prompt-enhancement category", () => {
+    expect(mapCategoryToEnum("character_prompt_generation")).toBe("character_prompt_generation");
+    expect(mapCategoryToEnum("character-prompt-generation")).toBe("character_prompt_generation");
+    expect(categoryToSkillType("character_prompt_generation")).toBe("prompt-enhancement");
+  });
+
   it("normalizes the built-in quality, planning, and prompt QA categories", () => {
     expect(mapCategoryToEnum("quality_control")).toBe("product_review");
     expect(mapCategoryToEnum("video_prompting")).toBe("video_prompt_generation");

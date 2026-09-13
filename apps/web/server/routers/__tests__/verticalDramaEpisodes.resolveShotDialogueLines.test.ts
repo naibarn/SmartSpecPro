@@ -163,7 +163,10 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
   })),
 }));
 
-import { resolveShotDialogueLines } from "../verticalDramaEpisodes";
+import {
+  resolvePersistedShotSourceBeatIndexes,
+  resolveShotDialogueLines,
+} from "../verticalDramaEpisodes";
 import type { VdDeepDraftShotDraft } from "../../services/verticalDramaStoryBible";
 
 describe("resolveShotDialogueLines", () => {
@@ -514,6 +517,42 @@ describe("resolveShotDialogueLines — source 3a beat-index mapping", () => {
     });
 
     expect(result).toEqual([{ lineTh: "จากคลิปที่ซิงค์แล้ว", characterKey: "หนูนา" }]);
+  });
+});
+
+describe("resolvePersistedShotSourceBeatIndexes", () => {
+  it("maps legacy 1-based snake_case indexes by matching the persisted dialogue excerpt", () => {
+    const script = {
+      structure: {
+        beats: [
+          { beat: 1, dialogue_lines: [{ line: "บรรทัดแรก", speaker: "คนแรก" }] },
+          {
+            beat: 2,
+            dialogue_lines: [{ line: "บทพูดของ caller", speaker: "รินลดา" }],
+          },
+        ],
+      },
+    };
+
+    expect(
+      resolvePersistedShotSourceBeatIndexes(
+        {
+          shot_number: 2,
+          source_beat_indexes: [2],
+          dialogue_excerpt: "บทพูดของ caller",
+        },
+        script,
+      ),
+    ).toEqual([1]);
+  });
+
+  it("keeps canonical camelCase indexes unchanged", () => {
+    expect(
+      resolvePersistedShotSourceBeatIndexes({
+        sourceBeatIndexes: [0, 2],
+        source_beat_indexes: [3, 4],
+      }),
+    ).toEqual([0, 2]);
   });
 });
 

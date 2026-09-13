@@ -1,0 +1,10 @@
+{
+  "projectId": "project-fixture-1",
+  "schemaVersion": "nle.web.1",
+  "timebase": { "numerator": 1, "denominator": 1000 },
+  "canvas": { "width": 1080, "height": 1920, "pixelAspectRatio": { "numerator": 1, "denominator": 1 } },
+  "tracks": [],
+  "markers": [],
+  "render": { "profileId": "web-default", "fps": { "numerator": 30, "denominator": 1 }, "outputRoles": ["final_video"] },
+  "migration": { "sourceFormat": "fixture", "sourceVersion": "1.0", "mappingVersion": "feature-184.2", "unresolved": [], "unsupported": [], "preservedUnknown": {} }
+}

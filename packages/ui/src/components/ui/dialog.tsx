@@ -95,10 +95,13 @@ function DialogContent({
   showCloseButton = true,
   fullscreen = false,
   inline = false,
+  layerIndex,
   onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
+  /** Optional portal layer for surfaces above global floating controls. */
+  layerIndex?: number;
   /** Render the content as a route-like surface without a blocking overlay. */
   fullscreen?: boolean;
   /** Render in the caller's tab/layout instead of Radix's document portal. */
@@ -151,9 +154,13 @@ function DialogContent({
   return (
     <DialogPortal data-slot="dialog-portal">
       {!fullscreen && (
-        <DialogOverlay className="flex items-center justify-center" />
+        <DialogOverlay
+          className="flex items-center justify-center"
+          style={layerIndex === undefined ? undefined : { zIndex: layerIndex }}
+        />
       )}
       <div
+        style={layerIndex === undefined ? undefined : { zIndex: layerIndex }}
         className={cn(
           "fixed inset-0 z-50 flex pointer-events-none",
           fullscreen

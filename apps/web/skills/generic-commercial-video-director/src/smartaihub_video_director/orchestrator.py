@@ -266,6 +266,7 @@ class DirectorOrchestrator:
             allow_asset_evidence_tool=context.config.allow_asset_evidence_tool,
             allow_provider_profile_tool=context.config.allow_provider_profile_tool,
             allow_cost_estimate_tool=context.config.allow_cost_estimate_tool,
+            max_output_tokens=context.config.max_output_tokens_per_stage,
         )
         aggregate=StageUsage();last_error=None;max_attempts=1+context.config.max_contract_repair_attempts
         for attempt in range(1,max_attempts+1):

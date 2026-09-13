@@ -11,6 +11,7 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { parseSkillFile } from "@smartspec/skills";
+import { resolveSkillDirCandidates } from "./skillFiles";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
 import {
   InsufficientCreditsError,
@@ -38,6 +39,38 @@ const MIN_SKILL_CREDITS = 2;
 const MAX_SUMMARY_CHARS = 1_900;
 
 let cachedSystemPrompt: string | null = null;
+let cachedOutputSchema: Record<string, unknown> | null = null;
+
+const SKILL_FOLDER_PATH = `skills/${SKILL_SLUG}`;
+
+function loadOutputSchema(): Record<string, unknown> {
+  if (cachedOutputSchema) return cachedOutputSchema;
+  for (const dir of resolveSkillDirCandidates(SKILL_FOLDER_PATH)) {
+    const schemaPath = path.join(dir, "schemas", "character-prompt-profile.schema.json");
+    if (!fs.existsSync(schemaPath)) continue;
+    const parsed = JSON.parse(fs.readFileSync(schemaPath, "utf8")) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error(`Skill '${SKILL_SLUG}' output schema must be a JSON object`);
+    }
+    cachedOutputSchema = parsed as Record<string, unknown>;
+    return cachedOutputSchema;
+  }
+  throw new Error(`Skill '${SKILL_SLUG}' output schema not found`);
+}
+
+function characterProfileOutputContract(): string {
+  return [
+    "Return exactly one JSON object matching the character-prompt-profile schema; never return the legacy character_design_dna shape, a prompt-only object, a patch, markdown, or commentary.",
+    "Required top-level keys: prompt_id, role, age_band, series_context, character_identity, visual_translation, face_blueprint, presentation_profile, positive_prompt, negative_prompt, hard_gate_checks, diversity_signature, safety_mode, review_status.",
+    "Required series_context keys: title, genre, tone, story_world, visual_culture, realism_level, beauty_direction, dominant_colors, signature_motifs, prohibited_repetition.",
+    "Required character_identity keys: name, narrative_role, role_tier, description, region_ethnicity; region_ethnicity must contain descriptor and explicit.",
+    "Required visual_translation keys: tone_to_lighting, world_to_environment, emotional_engine_to_expression, character_to_wardrobe, prohibited_patterns.",
+    "Required face_blueprint keys: face_family, jaw_profile, chin_profile, face_length_width, eye_geometry, nose_geometry, mouth_geometry, distinctive_detail.",
+    "Required presentation_profile keys: makeup_level, wardrobe, lighting, pose_expression, environment.",
+    "Required hard_gate_checks keys: jaw_ok, chin_ok, proportion_ok, age_ok, realism_required. Required diversity_signature keys: face_family, eye_geometry, nose_geometry, mouth_geometry, lower_face.",
+    "Use snake_case exactly, preserve the supplied series and character facts, use [] for empty arrays, and set review_status to generated. Return the complete object again on every repair.",
+  ].join(" ");
+}
 
 function loadSystemPrompt(): string {
   if (cachedSystemPrompt) return cachedSystemPrompt;
@@ -158,7 +191,6 @@ function buildRequest(params: GenerateCharacterVisualPromptsParams, renderContex
           visual_overrides: {
             face_archetype: params.characterDesignContext.approvedDesignDna.faceIdentity.facialGeometry,
             hair_direction: params.characterDesignContext.approvedDesignDna.faceIdentity.hair,
-            expression_direction: params.characterDesignContext.approvedDesignDna.bodyLanguage.gesturePattern,
             wardrobe_direction: params.characterDesignContext.approvedDesignDna.costumeGrammar,
           },
         }
@@ -184,6 +216,7 @@ function buildRequest(params: GenerateCharacterVisualPromptsParams, renderContex
       images_per_character: 1,
       face_diversity: "high",
       render_context: renderContext,
+      ...(params.cameraFraming ? { camera_framing: params.cameraFraming } : {}),
     },
   };
 }
@@ -305,9 +338,28 @@ export async function generateCharacterPromptWithSkill(
     retryMaxTokens: 5_000,
     timeoutMs: 150_000,
     maxTransientRetries: 1,
-    maxSchemaRetries: 1,
+    // The provider receives the real JSON schema below, so one additional
+    // bounded corrective generation is enough to recover models that still
+    // emit the legacy prompt-only shape. Keep the transient budget unchanged
+    // because this is an interactive route with a finite gateway timeout.
+    maxSchemaRetries: 2,
+    extraBodyParams: {
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "vertical_drama_character_prompt_profile_v1",
+          strict: false,
+          schema: loadOutputSchema(),
+        },
+      },
+    },
+    schemaRetryContract: characterProfileOutputContract(),
     schema: verticalDramaCharacterPromptProfileSchema,
     label: `Character prompt skill (${context.value})`,
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "character_design",
+    },
   });
   const profile = planning.data;
   if (capability) assertVerticalDramaCharacterPromptLength(profile.positive_prompt, capability);

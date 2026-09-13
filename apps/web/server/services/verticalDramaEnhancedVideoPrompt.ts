@@ -1,3 +1,4 @@
+import { resolveVerticalDramaSpeakerIdentity, type VerticalDramaSpeakerIdentityCandidate } from "@shared/verticalDramaSeries/castPositionLock";
 import {
   buildEnhancedOnlyVideoPromptVariantStore,
   buildVideoPromptVariantStore,
@@ -16,6 +17,75 @@ import { once } from "node:events";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { VerticalDramaEnhancedRuntimeSettings } from "./verticalDramaEnhancedRuntimeSettings";
+
+/** Frame selections replace storyboard identities that can still point at a base look. */
+export function selectEnhancedSpeakerIdentityCandidates(input: {
+  roster: readonly VerticalDramaSpeakerIdentityCandidate[];
+  storyboardCharacterKeys: readonly string[];
+  frameCharacterKeys?: readonly string[];
+  screenCallerCharacterKeys?: readonly string[];
+}): VerticalDramaSpeakerIdentityCandidate[] {
+  const keys = new Set([
+    ...(input.frameCharacterKeys ?? input.storyboardCharacterKeys),
+    ...(input.screenCallerCharacterKeys ?? []),
+  ].map(key => key.trim().toLowerCase()));
+  return input.roster.filter(candidate => keys.has(candidate.characterKey.trim().toLowerCase()));
+}
+
+/** Remap canonical script keys only through explicit persisted look assignments. */
+export function resolveEnhancedSpeakerIdentity(
+  speaker: string,
+  candidates: readonly VerticalDramaSpeakerIdentityCandidate[],
+  assignments: readonly { baseCharacterKey: string; selectedLookKey: string }[] = [],
+) {
+  const selectedKeys = new Set(assignments
+    .filter(assignment => assignment.baseCharacterKey.toLowerCase() === speaker.trim().toLowerCase()
+      && candidates.some(candidate => candidate.characterKey === assignment.selectedLookKey))
+    .map(assignment => assignment.selectedLookKey));
+  // An exact selected identity is already authoritative. Conflicting assignments
+  // must not pick an arbitrary look.
+  if (candidates.some(candidate => candidate.characterKey.toLowerCase() === speaker.trim().toLowerCase())) {
+    return resolveVerticalDramaSpeakerIdentity(speaker, candidates);
+  }
+  if (selectedKeys.size > 1) return { status: "ambiguous" as const };
+  return resolveVerticalDramaSpeakerIdentity(
+    selectedKeys.size === 1 ? [...selectedKeys][0] : speaker, candidates,
+  );
+}
+
+/**
+ * Resolve dialogue for Enhanced without treating narrative mentions as visual
+ * cast requirements. A missing-but-unambiguous speaker is retained as an
+ * off-screen line so the user can review the authored story before generation.
+ * Ambiguous identities still fail closed because picking one visible face
+ * would silently corrupt lip-sync ownership.
+ */
+export function resolveEnhancedSpeakerForPrompt(input: {
+  authoredSpeaker: string;
+  candidates: readonly VerticalDramaSpeakerIdentityCandidate[];
+  assignments?: readonly { baseCharacterKey: string; selectedLookKey: string }[];
+  fallbackKey?: string;
+}):
+  | { status: "resolved"; characterKey: string; offscreen: false }
+  | { status: "offscreen"; characterKey: string; offscreen: true }
+  | { status: "ambiguous" }
+  | { status: "missing" } {
+  const authoredSpeaker = input.authoredSpeaker.trim();
+  const resolution = resolveEnhancedSpeakerIdentity(
+    authoredSpeaker,
+    input.candidates,
+    input.assignments,
+  );
+  if (resolution.status === "resolved") {
+    return { ...resolution, offscreen: false };
+  }
+  if (resolution.status === "ambiguous") return resolution;
+
+  const fallbackKey = authoredSpeaker || input.fallbackKey?.trim() || "";
+  return fallbackKey
+    ? { status: "offscreen", characterKey: fallbackKey, offscreen: true }
+    : { status: "missing" };
+}
 
 export const GENERIC_COMMERCIAL_VIDEO_DIRECTOR_VERSION = "11.0.0";
 export const GENERIC_COMMERCIAL_VIDEO_DIRECTOR_SDK_RANGE = "openai-agents>=0.22.0,<0.23";
@@ -214,6 +284,9 @@ export function buildEnhancedModelCapabilityFingerprint(input: {
 
 export type EnhancedModelFacts = {
   id: string;
+  providerModelId?: string;
+  apiStyle?: "chat-completions" | "responses" | "messages" | "gemini";
+  supportsFunctionTools?: boolean;
   name?: string;
   provider?: string;
   configJson?: Record<string, unknown> | null;
@@ -230,6 +303,7 @@ export type EnhancedStoryboardShot = {
   description: string;
   cameraSetup: string;
   characterIds: string[];
+  screenCallerCharacterRefs?: string[];
   sourceBeatIndexes?: number[];
   locationId?: string;
   continuityNotes: string[];
@@ -300,6 +374,10 @@ export function normalizeEnhancedStoryboardShot(
   const durationValue = Number(raw.durationSeconds ?? raw.duration_seconds);
   const rawSourceBeatIndexes =
     raw.sourceBeatIndexes ?? raw.source_beat_indexes;
+  const screenCallerCharacterRefs = stringArray(
+    raw.screenCallerCharacterRefs,
+    raw.screen_caller_refs,
+  );
   const sourceBeatIndexes = Array.isArray(rawSourceBeatIndexes)
     ? rawSourceBeatIndexes.filter(
         (entry): entry is number =>
@@ -322,6 +400,9 @@ export function normalizeEnhancedStoryboardShot(
       raw.required_character_refs,
       raw.characters,
     ),
+    ...(screenCallerCharacterRefs.length > 0
+      ? { screenCallerCharacterRefs }
+      : {}),
     ...(sourceBeatIndexes.length > 0 ? { sourceBeatIndexes } : {}),
     ...(locationId ? { locationId } : {}),
     continuityNotes: stringArray(raw.continuityNotes, raw.continuity_notes),
@@ -391,6 +472,7 @@ export type EnhancedReadinessReason =
   | "AGENT_MODEL_NOT_CONFIGURED"
   | "AGENT_VISION_REQUIRED"
   | "AGENT_STRUCTURED_OUTPUT_REQUIRED"
+  | "AGENT_PROVIDER_TRANSPORT_UNSUPPORTED"
   | "PROVIDER_CAPABILITY_MISMATCH"
   | "TENANT_SCOPE_FAILURE"
   | "SHOT_PRECONDITION_FAILED";
@@ -453,6 +535,9 @@ export function evaluateEnhancedVideoPromptReadiness(
     if (!input.authoringModel.id) reasons.push("AGENT_MODEL_NOT_CONFIGURED");
     else if (!input.authoringModel.enabled || input.authoringModel.visionCapable !== true) reasons.push("AGENT_VISION_REQUIRED");
     else if (input.authoringModel.structuredOutputsCapable !== true) reasons.push("AGENT_STRUCTURED_OUTPUT_REQUIRED");
+    else if (input.authoringModel.apiStyle && !["responses", "chat-completions"].includes(input.authoringModel.apiStyle)) {
+      reasons.push("AGENT_PROVIDER_TRANSPORT_UNSUPPORTED");
+    }
   }
   if (!input.targetVideoModel.id || !input.targetVideoModel.enabled || !input.targetVideoModel.capabilityFingerprint || !input.targetVideoModel.providerProfileId) {
     reasons.push("PROVIDER_CAPABILITY_MISMATCH");
@@ -532,7 +617,14 @@ function resolveEnhancedPromptBudget(
 }
 
 export class EnhancedVideoDirectorBridgeError extends Error {
-  readonly code: "BRIDGE_UNAVAILABLE" | "BRIDGE_FAILED" | "BRIDGE_INVALID_OUTPUT";
+  readonly code:
+    | "BRIDGE_UNAVAILABLE"
+    | "BRIDGE_FAILED"
+    | "BRIDGE_INVALID_OUTPUT"
+    | "BRIDGE_PROVIDER_CREDIT_LIMIT"
+    | "BRIDGE_PROVIDER_RATE_LIMIT"
+    | "BRIDGE_PROVIDER_AUTH"
+    | "BRIDGE_UNSUPPORTED_TRANSPORT";
 
   constructor(
     code: EnhancedVideoDirectorBridgeError["code"],
@@ -542,6 +634,73 @@ export class EnhancedVideoDirectorBridgeError extends Error {
     this.name = "EnhancedVideoDirectorBridgeError";
     this.code = code;
   }
+}
+
+export function classifyEnhancedBridgeDiagnostic(diagnostic: string): {
+  code: EnhancedVideoDirectorBridgeError["code"];
+  message: string;
+} {
+  // uv/SDK warnings may precede the bridge's fixed diagnostic on stderr.
+  // Accept only complete diagnostic lines, never marker text in a traceback.
+  diagnostic = diagnostic.split(/\r?\n/).reverse().find(
+    line => /^ENHANCED_[A-Z_]+:/.test(line),
+  ) ?? diagnostic;
+  const localFailures: Record<string, string> = {
+    ENHANCED_SPEAKER_POSITION_BINDING_FAILED: "Enhanced ระบุผู้พูดกับตำแหน่งในภาพไม่ครบ กรุณาตรวจตัวละครและ Caller ที่เลือกไว้",
+    ENHANCED_DIALOGUE_TIMELINE_BINDING_FAILED: "Enhanced จัดบทพูดลงช่วงเวลาไม่สำเร็จ: ผู้พูดหรือข้อความใน timeline ไม่ตรงกับบทต้นฉบับ",
+    ENHANCED_PHYSICAL_ACTION_SPEECH_CONFLICT: "Enhanced ตรวจพบท่าทางที่สั่งให้ตัวละครผิดคนขยับปากในบทวิดีโอ",
+    ENHANCED_VIDEO_PROMPT_BUDGET_EXCEEDED: "Enhanced ไม่สามารถใส่บทพูดและข้อกำหนดทั้งหมดภายในความยาว prompt ของโมเดลวิดีโอที่เลือก",
+    ENHANCED_VIDEO_PROMPT_BUDGET_INVALID: "Enhanced ได้รับค่าความยาว prompt ของโมเดลวิดีโอไม่ถูกต้อง",
+    ENHANCED_AGENT_MODEL_NOT_CONFIGURED: "Enhanced ยังไม่ได้กำหนดโมเดลสำหรับสร้างพรอมต์",
+    ENHANCED_CONTRACT_FAILED: "Enhanced ได้รับข้อมูลที่ไม่ตรงกับ schema ของขั้นตอนสร้างพรอมต์",
+    ENHANCED_STAGE_FAILED: "Enhanced สร้างผลลัพธ์ของขั้นตอนไม่สำเร็จหลังตรวจและแก้รูปแบบข้อมูลแล้ว",
+    ENHANCED_PROVIDER_TIMEOUT: "Enhanced หมดเวลารอผลจากผู้ให้บริการ AI",
+    ENHANCED_PROVIDER_REQUEST_FAILED: "Enhanced provider ปฏิเสธคำขอสร้างพรอมต์ กรุณาตรวจสอบรุ่นโมเดลหรือรูปแบบข้อมูลที่ส่ง",
+    ENHANCED_AGENT_MAX_TURNS: "Enhanced Agent ใช้จำนวนรอบประมวลผลเกินกำหนด",
+    ENHANCED_AGENT_REFUSED: "Enhanced authoring model ปฏิเสธคำขอสร้างพรอมต์",
+    ENHANCED_AGENT_OUTPUT_INVALID: "Enhanced authoring model ส่งผลลัพธ์โครงสร้างไม่ถูกต้อง",
+  };
+  const diagnosticCode = diagnostic.match(/^(ENHANCED_[A-Z_]+):/)?.[1];
+  if (diagnosticCode && localFailures[diagnosticCode]) {
+    return {
+      code: "BRIDGE_FAILED",
+      message: `${localFailures[diagnosticCode]} (${diagnosticCode})`,
+    };
+  }
+  if (/^ENHANCED_PROVIDER_CREDIT_LIMIT\b/i.test(diagnostic)) {
+    return {
+      code: "BRIDGE_PROVIDER_CREDIT_LIMIT",
+      message: "The AI provider credit limit is too low for this request. Lower the output limit or update the provider billing limit.",
+    };
+  }
+  if (/^ENHANCED_PROVIDER_RATE_LIMIT\b/i.test(diagnostic)) {
+    return {
+      code: "BRIDGE_PROVIDER_RATE_LIMIT",
+      message: "The AI provider rate limit was reached. Please try again later.",
+    };
+  }
+  if (/^ENHANCED_PROVIDER_AUTH_FAILED\b/i.test(diagnostic)) {
+    return {
+      code: "BRIDGE_PROVIDER_AUTH",
+      message: "The AI provider authentication is not valid. Check the provider configuration.",
+    };
+  }
+  if (/^ENHANCED_PROVIDER_REQUEST_FAILED\b/i.test(diagnostic)) {
+    return {
+      code: "BRIDGE_FAILED",
+      message: "The authoring provider rejected the Enhanced request. Check the selected authoring model and request schema.",
+    };
+  }
+  if (/^ENHANCED_UNSUPPORTED_PROVIDER_TRANSPORT\b/i.test(diagnostic)) {
+    return {
+      code: "BRIDGE_UNSUPPORTED_TRANSPORT",
+      message: "The selected AI provider transport is not supported for Enhanced authoring.",
+    };
+  }
+  return {
+    code: "BRIDGE_FAILED",
+    message: "Enhanced execution failed without a specific diagnostic (ENHANCED_AGENT_FAILED). ตรวจสอบการเชื่อมต่อ AI และ runtime ของ Enhanced",
+  };
 }
 
 export function getEnhancedBridgeResultValidationError(
@@ -669,9 +828,13 @@ export async function invokeEnhancedVideoDirectorBridge(
     const [result] = (await once(child, "close")) as [number | null];
     const stdout = Buffer.concat(chunks).toString("utf8").trim();
     if (result !== 0) {
+      const diagnostic = errors.length
+        ? Buffer.concat(errors).toString("utf8").trim()
+        : "";
+      const classified = classifyEnhancedBridgeDiagnostic(diagnostic);
       throw new EnhancedVideoDirectorBridgeError(
-        "BRIDGE_FAILED",
-        errors.length ? Buffer.concat(errors).toString("utf8").slice(-2_000) : `bridge exited with ${result}`,
+        classified.code,
+        classified.message,
       );
     }
     let parsed: unknown;
@@ -875,6 +1038,16 @@ export function classifyEnhancedJobError(error: unknown): {
   message: string;
 } {
   const message = error instanceof Error ? error.message : String(error);
+  if (error instanceof EnhancedVideoDirectorBridgeError) {
+    if (error.code === "BRIDGE_PROVIDER_RATE_LIMIT") return { code: "retryable", message };
+    if (
+      error.code === "BRIDGE_PROVIDER_CREDIT_LIMIT" ||
+      error.code === "BRIDGE_PROVIDER_AUTH" ||
+      error.code === "BRIDGE_UNSUPPORTED_TRANSPORT"
+    ) {
+      return { code: "blocked", message };
+    }
+  }
   if (/timeout|temporar|rate limit|429/i.test(message)) return { code: "retryable", message };
   if (/stale|revision|fingerprint|model changed|media changed/i.test(message)) return { code: "stale", message };
   if (/credit|scope|unauthor|capability|disabled|sdk/i.test(message)) return { code: "blocked", message };

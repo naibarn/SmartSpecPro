@@ -17,7 +17,7 @@ import {
 const hash = "a".repeat(64);
 const managed = { location: "managed" as const, artifactId: "ref-a", revision: 1, checksum: hash, kind: "voice_reference" };
 const scope = { scopeType: "standalone" as const, workspaceId: "w1", projectId: "p1", projectRevision: 1 };
-const consent = { consentId: "consent-1", revision: 1, scope: { ownerScopeType: "project" as const, workspaceId: "w1", projectId: "p1" }, subjectType: "licensed_actor" as const, status: "granted" as const, evidenceArtifactId: "evidence-1", allowedOperations: ["inference" as const], allowedProviders: ["voxcpm2"], allowedLocales: ["th-TH"], grantedByUserId: "user-1", expiresAt: null, revokedAt: null };
+const consent = { consentId: "consent-1", revision: 1, scope: { ownerScopeType: "project" as const, workspaceId: "w1", projectId: "p1" }, subjectType: "licensed_actor" as const, status: "granted" as const, evidenceArtifactId: "evidence-1", allowedOperations: ["inference" as const, "provider_clone" as const], allowedProviders: ["voxcpm2"], allowedLocales: ["th-TH"], grantedByUserId: "user-1", expiresAt: null, revokedAt: null };
 
 describe("Feature 180 unified audio contracts", () => {
   it("discriminates standalone, episode and production scopes", () => {

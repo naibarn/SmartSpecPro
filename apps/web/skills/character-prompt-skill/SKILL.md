@@ -114,6 +114,11 @@ structured profile remains the source of truth for the selected deliverable;
 - mood, scene, wardrobe, makeup, lighting และ camera
 - ระดับความเป็นธรรมชาติและข้อจำกัดพิเศษ
 
+ถ้า `generation.camera_framing` ถูกส่งมา ให้ถือเป็นกรอบภาพที่ผู้ใช้เลือกและใส่
+ไว้ใน prompt ของ deliverable ที่กำลังสร้างทุกครั้ง (`full_body`, `three_quarter`,
+`half_body`, `medium_close_up`, `close_up`, `extreme_close_up` หรือ
+`wide_environmental`) ห้ามเปลี่ยนกรอบภาพเพื่อสร้างความหลากหลายของใบหน้า
+
 ถ้ามี `series_dna` ให้เก็บค่าเรื่องไว้ครบก่อนย่อความหมาย ห้ามทิ้ง `emotionalEngine`, `signatureMotifs` หรือ `prohibitedRepetition` เพราะเป็นข้อมูลที่ทำให้ตัวละครไม่กลายเป็น stock image ทั่วไป
 
 ถ้ามี `character` ให้แยก:
@@ -255,6 +260,23 @@ subject/age -> role -> region direction -> face blueprint -> hair/makeup
 - ข้อห้ามใดถูกใส่ใน negative prompt
 
 เมื่อสร้างหลายแบบ ให้สรุปจำนวน face family และแกนที่แตกต่างกันด้วย ถ้าเป็นชุด 50–100 แบบ ให้แบ่ง batch และบอกว่าแต่ละ batch ต้องผ่าน manual visual review ก่อนรวมเข้า stock
+
+### Machine-enforced output contract
+
+ต้องส่งกลับเป็น JSON object เดียวตาม `schemas/character-prompt-profile.schema.json` เท่านั้น ห้ามส่ง `character_design_dna`, object ที่มีเฉพาะ prompt, patch, markdown หรือคำอธิบายประกอบ
+
+ฟิลด์ระดับบนสุดที่ต้องมีทุกครั้งคือ `prompt_id`, `role`, `age_band`, `series_context`, `character_identity`, `visual_translation`, `face_blueprint`, `presentation_profile`, `positive_prompt`, `negative_prompt`, `hard_gate_checks`, `diversity_signature`, `safety_mode` และ `review_status` โดยใช้ชื่อแบบ snake_case ตรงตาม schema
+
+ภายในต้องมีอย่างน้อย:
+
+- `series_context`: `title`, `genre`, `tone`, `story_world`, `visual_culture`, `realism_level`, `beauty_direction`, `dominant_colors`, `signature_motifs`, `prohibited_repetition`
+- `character_identity`: `name`, `narrative_role`, `role_tier`, `description`, `region_ethnicity` และ `region_ethnicity` ต้องมี `descriptor`, `explicit`
+- `visual_translation`: `tone_to_lighting`, `world_to_environment`, `emotional_engine_to_expression`, `character_to_wardrobe`, `prohibited_patterns`
+- `face_blueprint`: `face_family`, `jaw_profile`, `chin_profile`, `face_length_width`, `eye_geometry`, `nose_geometry`, `mouth_geometry`, `distinctive_detail`
+- `presentation_profile`: `makeup_level`, `wardrobe`, `lighting`, `pose_expression`, `environment`
+- `hard_gate_checks`: `jaw_ok`, `chin_ok`, `proportion_ok`, `age_ok`, `realism_required`; `diversity_signature`: `face_family`, `eye_geometry`, `nose_geometry`, `mouth_geometry`, `lower_face`
+
+ถ้าไม่มีค่าของ array ให้ใช้ `[]` และต้องส่ง object ที่สมบูรณ์ทุกครั้ง แม้เป็นการแก้จาก retry; ตั้ง `review_status` เป็น `generated` จนกว่าจะตรวจภาพจริง
 
 ## Hard quality policy
 

@@ -21,6 +21,7 @@
 import {
   Fragment,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -75,6 +76,7 @@ import {
   type VerticalDramaCharacterDescriptionOverrides,
 } from "@shared/verticalDramaSeries/castPositionLock";
 import type { VerticalDramaCharacterLookAssignment } from "@shared/verticalDramaSeries/characterLookSelection";
+import { classifyDeviceMediatedCharacterRefs } from "@shared/verticalDramaSeries/characterPresence";
 import {
   readVideoPromptVariantStore,
   type VideoPromptVariantId,
@@ -230,28 +232,66 @@ type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
 
 const ENHANCED_READINESS_REASON_LABELS: Record<string, [string, string]> = {
-  ENHANCED_UI_DISABLED: ["ยังไม่ได้เปิด Enhanced Prompt UI", "Enhanced Prompt UI is disabled"],
-  ENHANCED_JOBS_DISABLED: ["ยังไม่ได้เปิด Enhanced Prompt Jobs", "Enhanced Prompt Jobs is disabled"],
-  ENHANCED_APPLY_DISABLED: ["ยังไม่ได้เปิด Enhanced Prompt Apply", "Enhanced Prompt Apply is disabled"],
-  AGENT_SDK_UNAVAILABLE: ["ไม่พบ OpenAI Agents SDK bridge", "OpenAI Agents SDK bridge is unavailable"],
-  AGENT_SDK_VERSION_UNSUPPORTED: ["เวอร์ชัน Agents SDK ไม่รองรับ", "Agents SDK version is unsupported"],
-  AGENT_RUNTIME_NOT_READY: ["Enhanced runtime ยังไม่ผ่าน readiness", "Enhanced runtime is not ready"],
-  AGENT_MODEL_NOT_CONFIGURED: ["ยังไม่ได้ตั้งค่า authoring model", "Authoring model is not configured"],
-  AGENT_VISION_REQUIRED: ["authoring model ต้องรองรับ Vision และเชื่อมต่อได้", "Authoring model must be Vision-capable and connected"],
-  AGENT_STRUCTURED_OUTPUT_REQUIRED: ["authoring model ต้องรองรับ Structured Output", "Authoring model must support Structured Output"],
-  PROVIDER_CAPABILITY_MISMATCH: ["video model ไม่รองรับชุด frame/reference นี้", "Video model does not support this frame/reference set"],
-  TENANT_SCOPE_FAILURE: ["ไม่ผ่านสิทธิ์ของ tenant", "Tenant authorization failed"],
-  SHOT_PRECONDITION_FAILED: ["ยังไม่มีภาพหรือข้อมูลช็อตที่จำเป็น", "Required shot media or data is missing"],
+  ENHANCED_UI_DISABLED: [
+    "ยังไม่ได้เปิด Enhanced Prompt UI",
+    "Enhanced Prompt UI is disabled",
+  ],
+  ENHANCED_JOBS_DISABLED: [
+    "ยังไม่ได้เปิด Enhanced Prompt Jobs",
+    "Enhanced Prompt Jobs is disabled",
+  ],
+  ENHANCED_APPLY_DISABLED: [
+    "ยังไม่ได้เปิด Enhanced Prompt Apply",
+    "Enhanced Prompt Apply is disabled",
+  ],
+  AGENT_SDK_UNAVAILABLE: [
+    "ไม่พบ OpenAI Agents SDK bridge",
+    "OpenAI Agents SDK bridge is unavailable",
+  ],
+  AGENT_SDK_VERSION_UNSUPPORTED: [
+    "เวอร์ชัน Agents SDK ไม่รองรับ",
+    "Agents SDK version is unsupported",
+  ],
+  AGENT_RUNTIME_NOT_READY: [
+    "Enhanced runtime ยังไม่ผ่าน readiness",
+    "Enhanced runtime is not ready",
+  ],
+  AGENT_MODEL_NOT_CONFIGURED: [
+    "ยังไม่ได้ตั้งค่า authoring model",
+    "Authoring model is not configured",
+  ],
+  AGENT_VISION_REQUIRED: [
+    "authoring model ต้องรองรับ Vision และเชื่อมต่อได้",
+    "Authoring model must be Vision-capable and connected",
+  ],
+  AGENT_STRUCTURED_OUTPUT_REQUIRED: [
+    "authoring model ต้องรองรับ Structured Output",
+    "Authoring model must support Structured Output",
+  ],
+  PROVIDER_CAPABILITY_MISMATCH: [
+    "video model ไม่รองรับชุด frame/reference นี้",
+    "Video model does not support this frame/reference set",
+  ],
+  TENANT_SCOPE_FAILURE: [
+    "ไม่ผ่านสิทธิ์ของ tenant",
+    "Tenant authorization failed",
+  ],
+  SHOT_PRECONDITION_FAILED: [
+    "ยังไม่มีภาพหรือข้อมูลช็อตที่จำเป็น",
+    "Required shot media or data is missing",
+  ],
 };
 
 export function formatEnhancedReadinessReasons(
   reasons: string[],
-  locale: Lang,
+  locale: Lang
 ): string {
   return reasons
     .map(reason => {
       const label = ENHANCED_READINESS_REASON_LABELS[reason];
-      return label ? t(locale, label[0], label[1]) : reason.replaceAll("_", " ");
+      return label
+        ? t(locale, label[0], label[1])
+        : reason.replaceAll("_", " ");
     })
     .join(locale === "th" ? " • " : "; ");
 }
@@ -381,13 +421,15 @@ function resolveStampedVideoPromptModelFamily(target: {
 
 function videoPromptModelFamilyLabel(
   family: string,
-  source?: { modelId?: string; modelName?: string },
+  source?: { modelId?: string; modelName?: string }
 ): string {
   const resolvedFamily = source
     ? resolveStampedVideoPromptModelFamily({ family, ...source })
     : family;
   if (resolvedFamily in VIDEO_PROMPT_MODEL_FAMILY_LABELS) {
-    return VIDEO_PROMPT_MODEL_FAMILY_LABELS[resolvedFamily as VideoPromptModelFamily];
+    return VIDEO_PROMPT_MODEL_FAMILY_LABELS[
+      resolvedFamily as VideoPromptModelFamily
+    ];
   }
   return resolvedFamily
     ? resolvedFamily.charAt(0).toUpperCase() + resolvedFamily.slice(1)
@@ -500,12 +542,27 @@ export interface VerticalDramaVideoReferenceLimits {
  * provider/version conditionals in the UI. The first declared mode is the
  * model's default display contract; the server remains authoritative. */
 export function resolveVerticalDramaVideoReferenceLimits(
-  model?: VerticalDramaCapableModel,
+  model?: VerticalDramaCapableModel
 ): VerticalDramaVideoReferenceLimits | undefined {
   const config = model?.configJson;
-  const profile = model && typeof config === "object" && config !== null && !Array.isArray(config)
-    ? (config as { videoCapabilityProfile?: { modes?: Array<{ maxImages?: number | null; maxVideos?: number | null; maxAudio?: number | null; maxTotalReferences?: number | null }> } }).videoCapabilityProfile
-    : undefined;
+  const profile =
+    model &&
+    typeof config === "object" &&
+    config !== null &&
+    !Array.isArray(config)
+      ? (
+          config as {
+            videoCapabilityProfile?: {
+              modes?: Array<{
+                maxImages?: number | null;
+                maxVideos?: number | null;
+                maxAudio?: number | null;
+                maxTotalReferences?: number | null;
+              }>;
+            };
+          }
+        ).videoCapabilityProfile
+      : undefined;
   const mode = profile?.modes?.[0];
   if (mode) {
     return {
@@ -516,7 +573,12 @@ export function resolveVerticalDramaVideoReferenceLimits(
     };
   }
   if (model?.maxReferenceImages != null) {
-    return { images: model.maxReferenceImages, videos: null, audio: null, total: model.maxReferenceImages };
+    return {
+      images: model.maxReferenceImages,
+      videos: null,
+      audio: null,
+      total: model.maxReferenceImages,
+    };
   }
   return undefined;
 }
@@ -1056,6 +1118,28 @@ export type VerticalDramaCharacterPortraitMap = Record<
   }
 >;
 
+function resolveDisplayedShotCharacterRoles(
+  characterPortraits: VerticalDramaCharacterPortraitMap,
+  physicalCharacterRefs: readonly string[],
+  screenCallerCharacterRefs: readonly string[]
+) {
+  const entries = Object.entries(characterPortraits);
+  const keyByCharacterId = new Map(
+    entries.map(([key, portrait]) => [portrait.characterId, key])
+  );
+  return classifyDeviceMediatedCharacterRefs({
+    characterRefs: physicalCharacterRefs,
+    characters: entries.map(([characterKey, portrait]) => ({
+      characterKey,
+      name: portrait.name,
+      parentCharacterKey: portrait.parentCharacterId
+        ? keyByCharacterId.get(portrait.parentCharacterId)
+        : undefined,
+    })),
+    screenCallerCharacterRefs,
+  });
+}
+
 /**
  * One row of the series' full location roster (Phase D, `planning/polished-
  * toasting-gadget.md` — location visual bible), returned by
@@ -1317,7 +1401,7 @@ interface VerticalDramaStoryboardPanelProps {
       shotNumber: number,
       source: VerticalDramaShotBrollSource,
       segment?: VerticalDramaShotBrollSegment,
-      existing?: VerticalDramaShotBrollBinding,
+      existing?: VerticalDramaShotBrollBinding
     ) => void;
     onRemove?: (binding: VerticalDramaShotBrollBinding) => void;
     onUpdateBinding?: (
@@ -1329,7 +1413,7 @@ interface VerticalDramaStoryboardPanelProps {
         outSeconds?: number | null;
         displayDurationSeconds?: number | null;
         transform?: import("@shared/verticalDramaSeries/visualSource").ShotBrollTransform;
-      },
+      }
     ) => void;
     saving?: boolean;
   };
@@ -1474,6 +1558,12 @@ interface VerticalDramaStoryboardPanelProps {
   /** Select an approved camera view within the shot's effective location. */
   onSetShotLocationVariant?: (
     shotNumber: number,
+    locationVariantId: string | null
+  ) => void;
+  onSetLocationVariantForShots?: (
+    locationKey: string,
+    shotNumbers: number[],
+    fromLocationVariantId: string | null,
     locationVariantId: string | null
   ) => void;
   onSetShotBarrierReferenceLocation?: (
@@ -1636,6 +1726,10 @@ interface VerticalDramaStoryboardPanelProps {
   selectedVideoResolution?: string;
   onSelectImageResolution?: (resolution: string) => void;
   onSelectVideoResolution?: (resolution: string) => void;
+  /** Independent image-generation quality control (provider `quality`). */
+  selectedImageQuality?: string;
+  imageQualityOptions?: string[];
+  onSelectImageQuality?: (quality: string) => void;
 
   /* ---- Independent image/video prompt language settings ---- */
   selectedImagePromptLanguage?: string;
@@ -1685,7 +1779,10 @@ interface VerticalDramaStoryboardPanelProps {
   /** Feature 175: Rollback audio take version (0 credits) */
   onRollbackAudioTake?: (shotNumber: number, takeNumber: number) => void;
   /** Feature 175: Update 3-stem mix deltas (Dialogue, Foley, Ambience) */
-  onUpdateShotAudioMixDeltas?: (shotNumber: number, deltas: { dialogueDb: number; foleyDb: number; ambienceDb: number }) => void;
+  onUpdateShotAudioMixDeltas?: (
+    shotNumber: number,
+    deltas: { dialogueDb: number; foleyDb: number; ambienceDb: number }
+  ) => void;
 
   /* ---- Phase 2.5 — per-shot reference strip ---- */
   /** `listShotReferences` result, keyed by shot number (Phase 2/D contract). */
@@ -1708,7 +1805,10 @@ interface VerticalDramaStoryboardPanelProps {
       decision: string | null;
     }>
   >;
-  onLinkObjectReference?: (shotNumber: number, objectReferenceId: string) => void;
+  onLinkObjectReference?: (
+    shotNumber: number,
+    objectReferenceId: string
+  ) => void;
   onUnlinkObjectReference?: (shotNumber: number, linkId: string) => void;
   onReviewObjectReferenceSuggestion?: (
     suggestionId: string,
@@ -1842,7 +1942,10 @@ interface VerticalDramaStoryboardPanelProps {
   ) => void;
   onCancelWorkerShotVideo?: (shotNumber: number, jobId: string) => void;
   dispatchingWorkerShotForShot?: number | null;
-  workerShotDispatchStateByShot?: Record<number, VerticalDramaWorkerShotDispatchState>;
+  workerShotDispatchStateByShot?: Record<
+    number,
+    VerticalDramaWorkerShotDispatchState
+  >;
 
   /* ---- Phase 4.1/4.2 — one-click generate + inline prompt editing ---- */
   /** Saves an edited image prompt for free (no LLM call) — distinct from
@@ -2013,30 +2116,36 @@ interface VerticalDramaStoryboardPanelProps {
   enhancedGeneratingForShot?: ReadonlySet<number>;
   enhancedJobStatusByShot?: Record<number, "queued" | "running">;
   enhancedJobErrorByShot?: Record<number, string>;
-  enhancedReadinessByShot?: Record<number, { ready: boolean; reasons: string[] }>;
+  enhancedReadinessByShot?: Record<
+    number,
+    { ready: boolean; reasons: string[] }
+  >;
   onSaveEnhancedVideoPrompt?: (
     shotNumber: number,
     clipNumber: number,
     prompt: string,
-    expectedRevision: number,
+    expectedRevision: number
   ) => void;
   onApplyVideoPromptVariant?: (
     shotNumber: number,
     clipNumber: number,
     variantId: VideoPromptVariantId,
-    expectedRevision: number,
+    expectedRevision: number
   ) => void;
   onApplyVideoPromptVariantGroup?: (
     shotNumber: number,
     variantId: VideoPromptVariantId,
-    expectedRevisions: Record<number, number>,
+    expectedRevisions: Record<number, number>
   ) => void;
   onFinalizeVideoPromptVariant?: (
     shotNumber: number,
     clipNumber: number,
-    expectedRevision: number,
+    expectedRevision: number
   ) => void;
-  onRestoreLegacyVideoPromptVariant?: (shotNumber: number, clipNumber: number) => void;
+  onRestoreLegacyVideoPromptVariant?: (
+    shotNumber: number,
+    clipNumber: number
+  ) => void;
 
   /* ---- Whole-episode compiled video (2026-07-06 download + assembly
      upgrade) — `verticalDramaEpisodes.assembleEpisodeVideo` concatenates
@@ -2250,6 +2359,7 @@ export function VerticalDramaStoryboardPanel({
   savingShotSupportingPresenceForShot = null,
   onSetShotLocation,
   onSetShotLocationVariant,
+  onSetLocationVariantForShots,
   onSetShotBarrierReferenceLocation,
   sceneContinuityEnabled = false,
   sceneContinuityQcEnabled = false,
@@ -2310,6 +2420,9 @@ export function VerticalDramaStoryboardPanel({
   selectedVideoResolution = "",
   onSelectImageResolution,
   onSelectVideoResolution,
+  selectedImageQuality = "auto",
+  imageQualityOptions = [],
+  onSelectImageQuality,
   selectedImagePromptLanguage = "",
   selectedVideoPromptLanguage = "",
   selectedDialogueLanguage = "",
@@ -2579,17 +2692,19 @@ export function VerticalDramaStoryboardPanel({
           : undefined,
     }
   );
-  const selectedVideoPromptMaxChars = resolveVdVideoPromptBudgetForCatalogModel({
-    modelId: selectedVideoModel?.modelId ?? selectedVideoModelId,
-    name: selectedVideoModel?.name,
-    provider: selectedVideoModel?.provider,
-    configJson:
-      selectedVideoModel?.configJson &&
-      typeof selectedVideoModel.configJson === "object" &&
-      !Array.isArray(selectedVideoModel.configJson)
-        ? (selectedVideoModel.configJson as Record<string, unknown>)
-        : undefined,
-  });
+  const selectedVideoPromptMaxChars = resolveVdVideoPromptBudgetForCatalogModel(
+    {
+      modelId: selectedVideoModel?.modelId ?? selectedVideoModelId,
+      name: selectedVideoModel?.name,
+      provider: selectedVideoModel?.provider,
+      configJson:
+        selectedVideoModel?.configJson &&
+        typeof selectedVideoModel.configJson === "object" &&
+        !Array.isArray(selectedVideoModel.configJson)
+          ? (selectedVideoModel.configJson as Record<string, unknown>)
+          : undefined,
+    }
+  );
   const selectedImageModelTransport = resolveMediaModelTransportConfig({
     provider: selectedImageModel?.provider,
     modelId: selectedImageModel?.modelId ?? selectedImageModelId,
@@ -2897,8 +3012,9 @@ export function VerticalDramaStoryboardPanel({
    *  previous shot's typed text. */
   const [repairImageInstructionByShot, setRepairImageInstructionByShot] =
     useState<Record<number, string>>({});
-  const [activeAudioInspectorShot, setActiveAudioInspectorShot] =
-    useState<number | null>(null);
+  const [activeAudioInspectorShot, setActiveAudioInspectorShot] = useState<
+    number | null
+  >(null);
   const [
     userToggledStopFrameExpandedByShot,
     setUserToggledStopFrameExpandedByShot,
@@ -3209,10 +3325,10 @@ export function VerticalDramaStoryboardPanel({
     .filter(shotNumber => {
       const frame = frameByShot.get(shotNumber);
       const assetId = frame?.approvedMediaAssetId;
-      return Boolean(
-        frame?.imagePrompt ||
-          frame?.canonicalShotSummary
-      ) && !(assetId && assetUrls[assetId]);
+      return (
+        Boolean(frame?.imagePrompt || frame?.canonicalShotSummary) &&
+        !(assetId && assetUrls[assetId])
+      );
     });
 
   const storyboardHeaderTitle = (
@@ -3290,6 +3406,8 @@ export function VerticalDramaStoryboardPanel({
             locale={locale}
             distinctLocations={storyboard.distinct_locations}
             episodeLocations={episodeLocations}
+            startFramePlan={startFramePlan}
+            onSetLocationVariantForShots={onSetLocationVariantForShots}
             sceneContinuityEnabled={sceneContinuityEnabled}
             sceneContinuityQcEnabled={sceneContinuityQcEnabled}
             sceneVisualStates={startFramePlan?.sceneVisualStates}
@@ -3364,7 +3482,24 @@ export function VerticalDramaStoryboardPanel({
                   testId="vd-storyboard-select-video-resolution"
                 />
               ) : null}
-
+              {onSelectImageQuality && imageQualityOptions.length > 0 ? (
+                <LanguageSelect
+                  label={t(locale, "คุณภาพภาพ", "Image quality")}
+                  value={selectedImageQuality || "auto"}
+                  onChange={onSelectImageQuality}
+                  options={[
+                    {
+                      value: "auto",
+                      label: t(locale, "อัตโนมัติ", "Auto"),
+                    },
+                    ...imageQualityOptions.map(value => ({
+                      value,
+                      label: value.toUpperCase(),
+                    })),
+                  ]}
+                  testId="vd-storyboard-select-image-quality"
+                />
+              ) : null}
               {/* In policy-safe mode the image prompt follows the synopsis
                 source language by contract, so its selector is intentionally
                 read-only. Cinematic mode can choose an independent language. */}
@@ -4082,7 +4217,8 @@ export function VerticalDramaStoryboardPanel({
             const keys = new Set<string>();
             for (const clip of clipsForShot) {
               for (const line of clip.dialogue ?? []) {
-                if (line.characterKey?.trim()) keys.add(line.characterKey.trim());
+                if (line.characterKey?.trim())
+                  keys.add(line.characterKey.trim());
               }
             }
             if (keys.size === 0) {
@@ -4114,9 +4250,9 @@ export function VerticalDramaStoryboardPanel({
           const hasStopFrameImage = Boolean(stopFrameImageSrc);
           const isGeneratingStopFrame = Boolean(
             frame?.stopFrameTask?.status === "processing" ||
-              frame?.stopFrameTask?.status === "queued" ||
-              frame?.stopFrameTask?.status === "submitted" ||
-              generatingStopFrameImageForShot.has(shotNumber)
+            frame?.stopFrameTask?.status === "queued" ||
+            frame?.stopFrameTask?.status === "submitted" ||
+            generatingStopFrameImageForShot.has(shotNumber)
           );
           const isStopFrameExpanded =
             userToggledStopFrameExpandedByShot[shotNumber] ??
@@ -4174,8 +4310,8 @@ export function VerticalDramaStoryboardPanel({
               : t(locale, "ยังไม่ได้เลือกสถานที่", "Location not selected");
           const barrierCharacterNames = (keys: string[]) =>
             keys
-              .map(
-                key => formatShotCharacterLabel(characterPortraits[key], key)
+              .map(key =>
+                formatShotCharacterLabel(characterPortraits[key], key)
               )
               .join(", ");
           const dualScenario = barrierMultiView?.scenario ?? "physical_barrier";
@@ -4277,9 +4413,7 @@ export function VerticalDramaStoryboardPanel({
                 portrait?.isSystemSuggestedLook === true &&
                 !portrait.portraitUrl
             )
-            .map(
-              portrait => formatShotCharacterLabel(portrait, portrait.name)
-            );
+            .map(portrait => formatShotCharacterLabel(portrait, portrait.name));
           const reviewLookAssignments = (
             frame?.characterLookAssignments ?? []
           ).filter(assignment => assignment.status === "review");
@@ -4331,6 +4465,24 @@ export function VerticalDramaStoryboardPanel({
             !barrierMultiView &&
             (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
             !castPositionLockIsCurrent;
+          const enhancedReadiness = enhancedReadinessByShot[shotNumber];
+          const enhancedButtonTitle = !asset?.url
+            ? t2.generateShotVideoPromptNeedsImage
+            : castPositionLockNeedsReview
+              ? t(
+                  locale,
+                  "ต้องยืนยันลำดับตัวละครซ้าย→ขวาจากภาพปัจจุบันก่อน",
+                  "Confirm the left-to-right cast order for the current image first"
+                )
+              : enhancedReadiness?.ready === false
+                ? enhancedReadiness.reasons.join("; ")
+                : enhancedReadiness
+                  ? undefined
+                  : t(
+                      locale,
+                      "กำลังตรวจสอบความพร้อมของ Enhanced…",
+                      "Checking Enhanced readiness…"
+                    );
 
           return (
             <div
@@ -4345,13 +4497,27 @@ export function VerticalDramaStoryboardPanel({
                   loading={workerShotTargetsLoading}
                   dispatching={dispatchingWorkerShotForShot === shotNumber}
                   state={workerShotDispatchStateByShot[shotNumber]}
-                  onDispatch={input => onDispatchWorkerShotVideo(shotNumber, input)}
-                  onRetry={onRetryWorkerShotVideo ? input => onRetryWorkerShotVideo(shotNumber, input) : undefined}
-                  onCancel={onCancelWorkerShotVideo ? jobId => onCancelWorkerShotVideo(shotNumber, jobId) : undefined}
+                  onDispatch={input =>
+                    onDispatchWorkerShotVideo(shotNumber, input)
+                  }
+                  onRetry={
+                    onRetryWorkerShotVideo
+                      ? input => onRetryWorkerShotVideo(shotNumber, input)
+                      : undefined
+                  }
+                  onCancel={
+                    onCancelWorkerShotVideo
+                      ? jobId => onCancelWorkerShotVideo(shotNumber, jobId)
+                      : undefined
+                  }
                   details={((): VerticalDramaWorkerShotInspectorDetails => ({
-                    startFrameLabel: frame?.approvedMediaAssetId ?? "ยังไม่ได้เลือก start frame",
+                    startFrameLabel:
+                      frame?.approvedMediaAssetId ??
+                      "ยังไม่ได้เลือก start frame",
                     referenceRoles: frame?.requiredCharacterRefs ?? [],
-                    previewUrl: frame?.videoStartMediaAssetId ? videoStartAsset?.url ?? null : null,
+                    previewUrl: frame?.videoStartMediaAssetId
+                      ? (videoStartAsset?.url ?? null)
+                      : null,
                     qcMessage: continuityHasWarning
                       ? continuityIssues.join(" · ")
                       : videoSafetyVerdict
@@ -4580,16 +4746,16 @@ export function VerticalDramaStoryboardPanel({
                                     "Submission stopped after a safety-policy rejection. Revise the prompt or reference image before retrying"
                                   )
                                 : imageDisplayState.failureStage === "sync"
-                                ? t(
-                                    locale,
-                                    "สร้างภาพแล้ว แต่เชื่อมเข้าช็อตไม่สำเร็จ",
-                                    "Image finished, but could not be linked to this shot"
-                                  )
-                                : t(
-                                    locale,
-                                    "สร้าง prompt แล้ว แต่สร้างภาพไม่สำเร็จ",
-                                    "Prompt ready, but image generation failed"
-                                  )}
+                                  ? t(
+                                      locale,
+                                      "สร้างภาพแล้ว แต่เชื่อมเข้าช็อตไม่สำเร็จ",
+                                      "Image finished, but could not be linked to this shot"
+                                    )
+                                  : t(
+                                      locale,
+                                      "สร้าง prompt แล้ว แต่สร้างภาพไม่สำเร็จ",
+                                      "Prompt ready, but image generation failed"
+                                    )}
                             </span>
                             {imageDisplayState.error ? (
                               <span className="max-w-full break-words text-[10px] text-white/80">
@@ -4718,13 +4884,25 @@ export function VerticalDramaStoryboardPanel({
                         data-testid={`vd-storyboard-toggle-stop-frame-${shotNumber}`}
                         title={
                           isStopFrameExpanded
-                            ? t(locale, "คลิกเพื่อยุบ Stop Frame", "Click to collapse stop frame")
-                            : t(locale, "คลิกเพื่อขยาย Stop Frame", "Click to expand stop frame")
+                            ? t(
+                                locale,
+                                "คลิกเพื่อยุบ Stop Frame",
+                                "Click to collapse stop frame"
+                              )
+                            : t(
+                                locale,
+                                "คลิกเพื่อขยาย Stop Frame",
+                                "Click to expand stop frame"
+                              )
                         }
                       >
                         <div className="flex items-center gap-1.5">
                           <span className="text-[10px] font-semibold text-violet-800 dark:text-violet-200">
-                            {t(locale, "Stop Frame (ตัวเลือก)", "Stop frame (optional)")}
+                            {t(
+                              locale,
+                              "Stop Frame (ตัวเลือก)",
+                              "Stop frame (optional)"
+                            )}
                           </span>
                           {hasStopFrameImage ? (
                             <span className="rounded bg-emerald-100 px-1 py-0.5 text-[8.5px] font-medium text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
@@ -4736,7 +4914,11 @@ export function VerticalDramaStoryboardPanel({
                             </span>
                           ) : (
                             <span className="rounded bg-violet-100/70 px-1 py-0.5 text-[8.5px] text-muted-foreground dark:bg-violet-900/40">
-                              {t(locale, "ไม่มีภาพ (ยุบอยู่)", "No image (collapsed)")}
+                              {t(
+                                locale,
+                                "ไม่มีภาพ (ยุบอยู่)",
+                                "No image (collapsed)"
+                              )}
                             </span>
                           )}
                         </div>
@@ -4749,7 +4931,10 @@ export function VerticalDramaStoryboardPanel({
                           {isStopFrameExpanded ? (
                             <ChevronUp aria-hidden="true" className="h-3 w-3" />
                           ) : (
-                            <ChevronDown aria-hidden="true" className="h-3 w-3" />
+                            <ChevronDown
+                              aria-hidden="true"
+                              className="h-3 w-3"
+                            />
                           )}
                         </div>
                       </button>
@@ -4762,8 +4947,16 @@ export function VerticalDramaStoryboardPanel({
                               type="button"
                               onClick={() => onClearStopFrame(shotNumber)}
                               className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-background/85 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-destructive hover:text-destructive-foreground"
-                              title={t(locale, "เอาภาพ Stop frame ออกจาก slot", "Remove stop frame from slot")}
-                              aria-label={t(locale, "เอาภาพ Stop frame ออกจาก slot", "Remove stop frame from slot")}
+                              title={t(
+                                locale,
+                                "เอาภาพ Stop frame ออกจาก slot",
+                                "Remove stop frame from slot"
+                              )}
+                              aria-label={t(
+                                locale,
+                                "เอาภาพ Stop frame ออกจาก slot",
+                                "Remove stop frame from slot"
+                              )}
                               data-testid={`vd-storyboard-clear-stop-frame-${shotNumber}`}
                             >
                               <X aria-hidden="true" className="h-3 w-3" />
@@ -4781,7 +4974,10 @@ export function VerticalDramaStoryboardPanel({
                             />
                           ) : (
                             <div className="flex h-full flex-col items-center justify-center gap-1 px-1 text-center text-[10px] text-muted-foreground">
-                              <ImageOff aria-hidden="true" className="h-4 w-4" />
+                              <ImageOff
+                                aria-hidden="true"
+                                className="h-4 w-4"
+                              />
                               <span>
                                 {frame?.stopFrameStaleReason
                                   ? t(
@@ -4797,18 +4993,33 @@ export function VerticalDramaStoryboardPanel({
                           frame?.stopFrameTask?.status === "queued" ||
                           frame?.stopFrameTask?.status === "submitted" ? (
                             <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/55 text-white">
-                              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-                              <span className="text-[9px]">{t(locale, "กำลังสร้าง…", "Generating…")}</span>
+                              <Loader2
+                                aria-hidden="true"
+                                className="h-4 w-4 animate-spin"
+                              />
+                              <span className="text-[9px]">
+                                {t(locale, "กำลังสร้าง…", "Generating…")}
+                              </span>
                             </div>
                           ) : null}
                         </div>
                         {frame?.stopFrameStaleReason ? (
-                          <p className="text-[9px] text-amber-700 dark:text-amber-300" role="status">
-                            {t(locale, "Stop frame ต้องสร้างใหม่ให้ตรงกับข้อมูลล่าสุด", "Stop frame needs regeneration")}
+                          <p
+                            className="text-[9px] text-amber-700 dark:text-amber-300"
+                            role="status"
+                          >
+                            {t(
+                              locale,
+                              "Stop frame ต้องสร้างใหม่ให้ตรงกับข้อมูลล่าสุด",
+                              "Stop frame needs regeneration"
+                            )}
                           </p>
                         ) : null}
                         {stopFrameGenerationErrorByShot[shotNumber] ? (
-                          <p className="text-[9px] text-destructive" role="alert">
+                          <p
+                            className="text-[9px] text-destructive"
+                            role="alert"
+                          >
                             {stopFrameGenerationErrorByShot[shotNumber]}
                           </p>
                         ) : null}
@@ -4825,7 +5036,8 @@ export function VerticalDramaStoryboardPanel({
                               {t(locale, "เลือกภาพ", "Choose image")}
                             </Button>
                           ) : null}
-                          {onGenerateStopFrameImage && frame?.stopFramePrompt ? (
+                          {onGenerateStopFrameImage &&
+                          frame?.stopFramePrompt ? (
                             <Button
                               type="button"
                               size="sm"
@@ -4843,19 +5055,34 @@ export function VerticalDramaStoryboardPanel({
                                     "การสร้างภาพนี้ใช้ AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
                                     "This uses AI and may spend credits. Continue?"
                                   ),
-                                  confirmLabel: t(locale, "สร้างภาพ", "Generate image"),
+                                  confirmLabel: t(
+                                    locale,
+                                    "สร้างภาพ",
+                                    "Generate image"
+                                  ),
                                   cancelLabel: t(locale, "ยกเลิก", "Cancel"),
                                   testId: `vd-credit-confirm-stop-frame-${shotNumber}`,
-                                  onConfirm: () => onGenerateStopFrameImage(shotNumber),
+                                  onConfirm: () =>
+                                    onGenerateStopFrameImage(shotNumber),
                                 })
                               }
-                              disabled={generatingStopFrameImageForShot.has(shotNumber)}
+                              disabled={generatingStopFrameImageForShot.has(
+                                shotNumber
+                              )}
                               data-testid={`vd-storyboard-generate-stop-frame-${shotNumber}`}
                             >
-                              {generatingStopFrameImageForShot.has(shotNumber) ? (
-                                <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                              {generatingStopFrameImageForShot.has(
+                                shotNumber
+                              ) ? (
+                                <Loader2
+                                  aria-hidden="true"
+                                  className="h-3 w-3 animate-spin"
+                                />
                               ) : (
-                                <Sparkles aria-hidden="true" className="h-3 w-3" />
+                                <Sparkles
+                                  aria-hidden="true"
+                                  className="h-3 w-3"
+                                />
                               )}
                               {t(locale, "สร้างภาพ", "Generate")}
                             </Button>
@@ -4871,14 +5098,14 @@ export function VerticalDramaStoryboardPanel({
                       title={t(
                         locale,
                         "Scene Visual State เปลี่ยนแล้ว ภาพนี้ยังเก็บไว้ แต่ควรสร้างใหม่เพื่อให้ตรงกับข้อมูลฉากล่าสุด",
-                        "Scene Visual State changed. This image is kept, but regenerate it to match the latest scene facts.",
+                        "Scene Visual State changed. This image is kept, but regenerate it to match the latest scene facts."
                       )}
                       data-testid={`vd-storyboard-image-stale-${shotNumber}`}
                     >
                       {t(
                         locale,
                         "ข้อมูลฉากเปลี่ยน — ควรสร้างภาพใหม่",
-                        "Scene facts changed — regenerate",
+                        "Scene facts changed — regenerate"
                       )}
                     </Badge>
                   ) : null}
@@ -5344,8 +5571,7 @@ export function VerticalDramaStoryboardPanel({
                       </Button>
                     )
                   ) : null}
-                  {onGenerateStartFrameImage &&
-                  frame?.imagePrompt ? (
+                  {onGenerateStartFrameImage && frame?.imagePrompt ? (
                     confirmingImageForShot === shotNumber ? (
                       <div className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-[11px] dark:bg-amber-950/30">
                         <p className="font-medium">
@@ -5362,9 +5588,9 @@ export function VerticalDramaStoryboardPanel({
                             variant="outline"
                             className="h-6 px-2 text-[11px]"
                             onClick={() => setConfirmingImageForShot(null)}
-                            disabled={
-                              generatingStartFrameImageForShot.has(shotNumber)
-                            }
+                            disabled={generatingStartFrameImageForShot.has(
+                              shotNumber
+                            )}
                           >
                             {t(locale, "ยกเลิก", "Cancel")}
                           </Button>
@@ -5699,16 +5925,18 @@ export function VerticalDramaStoryboardPanel({
                       locale={locale}
                       t={t2}
                       shotNumber={shotNumber}
-                      references={(shotReferencesByShot[shotNumber] ?? []).filter(
-                        reference => reference.source !== "prop_object"
-                      )}
+                      references={(
+                        shotReferencesByShot[shotNumber] ?? []
+                      ).filter(reference => reference.source !== "prop_object")}
                       maxReferenceImages={
                         videoModels.find(
                           m => m.modelId === selectedVideoModelId
                         )?.maxReferenceImages
                       }
                       referenceLimits={resolveVerticalDramaVideoReferenceLimits(
-                        videoModels.find(m => m.modelId === selectedVideoModelId),
+                        videoModels.find(
+                          m => m.modelId === selectedVideoModelId
+                        )
                       )}
                       adding={addingShotReferenceForShot.has(shotNumber)}
                       dragOver={referenceDragOverShot === shotNumber}
@@ -6343,26 +6571,51 @@ export function VerticalDramaStoryboardPanel({
                           }}
                           data-testid={`vd-storyboard-look-review-use-other-${shotNumber}`}
                         >
-                          {t(locale, "ตรวจสอบ/เปลี่ยนลุค", "Review / change look")}
+                          {t(
+                            locale,
+                            "ตรวจสอบ/เปลี่ยนลุค",
+                            "Review / change look"
+                          )}
                         </Button>
                       ) : null}
                     </section>
                   ) : null}
-                  {broll ? (() => {
-                    const shotBindings = broll.bindings.filter(binding => binding.shotNumber === shotNumber && binding.active);
-                    return (
-                      <VerticalDramaShotBrollPanel
-                        shotNumber={shotNumber}
-                        bindings={shotBindings}
-                        sources={broll.sources}
-                        saving={broll.saving}
-                        locale={locale === "en" ? "en" : "th"}
-                        onSelectSource={(source, segment, existing) => broll.onSelectSource(shotNumber, source, segment, existing)}
-                        onRemove={broll.onRemove}
-                        onUpdateBinding={broll.onUpdateBinding ? (binding, patch) => broll.onUpdateBinding!(shotNumber, binding, patch) : undefined}
-                      />
-                    );
-                  })() : null}
+                  {broll
+                    ? (() => {
+                        const shotBindings = broll.bindings.filter(
+                          binding =>
+                            binding.shotNumber === shotNumber && binding.active
+                        );
+                        return (
+                          <VerticalDramaShotBrollPanel
+                            shotNumber={shotNumber}
+                            bindings={shotBindings}
+                            sources={broll.sources}
+                            saving={broll.saving}
+                            locale={locale === "en" ? "en" : "th"}
+                            onSelectSource={(source, segment, existing) =>
+                              broll.onSelectSource(
+                                shotNumber,
+                                source,
+                                segment,
+                                existing
+                              )
+                            }
+                            onRemove={broll.onRemove}
+                            onUpdateBinding={
+                              broll.onUpdateBinding
+                                ? (binding, patch) =>
+                                    broll.onUpdateBinding!(
+                                      shotNumber,
+                                      binding,
+                                      patch
+                                    )
+                                : undefined
+                            }
+                          />
+                        );
+                      })()
+                    : null}
                   {(() => {
                     // `frame.requiredCharacterRefs` (startFramePlan) is the
                     // identity-lock key list generation ACTUALLY uses once a
@@ -6376,12 +6629,21 @@ export function VerticalDramaStoryboardPanel({
                     // do we fall back to the storyboard's own
                     // `required_character_refs`/`characters` (the pre-plan
                     // authored intent).
-                    const keys =
+                    const rawKeys =
                       frame?.requiredCharacterRefs !== undefined
                         ? frame.requiredCharacterRefs
                         : shot.required_character_refs?.length
                           ? shot.required_character_refs
                           : (shot.characters ?? []);
+                    const rawCallerKeys =
+                      frame?.screenCallerCharacterRefs !== undefined
+                        ? frame.screenCallerCharacterRefs
+                        : (shot.screen_caller_refs ?? []);
+                    const keys = resolveDisplayedShotCharacterRoles(
+                      characterPortraits,
+                      rawKeys,
+                      rawCallerKeys
+                    ).sceneCharacterRefs;
                     if (barrierMultiView) return null;
                     if (keys.length === 0 && !onSetShotCharacterReferences)
                       return null;
@@ -6493,9 +6755,9 @@ export function VerticalDramaStoryboardPanel({
                                     ?
                                   </span>
                                 )}
-                              <span className="w-full truncate leading-tight">
+                                <span className="w-full truncate leading-tight">
                                   {formatShotCharacterLabel(portrait, key)}
-                              </span>
+                                </span>
                               </button>
                               {lookOptions.length > 0 &&
                               onSetShotCharacterReferences ? (
@@ -6653,16 +6915,23 @@ export function VerticalDramaStoryboardPanel({
                     : null}
 
                   {(() => {
-                    const physicalKeys =
+                    const rawPhysicalKeys =
                       frame?.requiredCharacterRefs !== undefined
                         ? frame.requiredCharacterRefs
                         : shot.required_character_refs?.length
                           ? shot.required_character_refs
                           : (shot.characters ?? []);
-                    const callerKeys =
+                    const rawCallerKeys =
                       frame?.screenCallerCharacterRefs !== undefined
                         ? frame.screenCallerCharacterRefs
                         : (shot.screen_caller_refs ?? []);
+                    const displayedRoles = resolveDisplayedShotCharacterRoles(
+                      characterPortraits,
+                      rawPhysicalKeys,
+                      rawCallerKeys
+                    );
+                    const physicalKeys = displayedRoles.sceneCharacterRefs;
+                    const callerKeys = displayedRoles.screenCallerCharacterRefs;
                     const visibleBarrierKeys = physicalKeys.filter(
                       key => !callerKeys.includes(key)
                     );
@@ -6891,6 +7160,8 @@ export function VerticalDramaStoryboardPanel({
                             ? "border-emerald-300/70 bg-emerald-50/40 dark:bg-emerald-950/10"
                             : "border-amber-300/70 bg-amber-50/40 dark:bg-amber-950/10"
                         )}
+                        id={`vd-storyboard-cast-position-lock-${shotNumber}`}
+                        tabIndex={-1}
                         data-testid={`vd-storyboard-cast-position-lock-${shotNumber}`}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -6970,10 +7241,7 @@ export function VerticalDramaStoryboardPanel({
                                   )}
                                 </option>
                                 {physicalKeys.map(optionKey => (
-                                  <option
-                                    key={optionKey}
-                                    value={optionKey}
-                                  >
+                                  <option key={optionKey} value={optionKey}>
                                     {characterPortraits[optionKey]?.name ??
                                       optionKey}
                                   </option>
@@ -7102,12 +7370,18 @@ export function VerticalDramaStoryboardPanel({
                         matchingLocation?.location_name);
                     if (barrierMultiView) return null;
                     if (!displayName) return null;
-                    const selectedLocationVariant = frame?.locationVariantId
+                    const selectedLocationVariantId =
+                      frame?.locationVariantId != null
+                        ? String(frame.locationVariantId)
+                        : undefined;
+                    const selectedLocationVariant = selectedLocationVariantId
                       ? rosterLocation?.cameraVariants?.find(
                           variant =>
-                            variant.variantId === frame.locationVariantId
+                            variant.variantId === selectedLocationVariantId
                         )
                       : undefined;
+                    const locationVariantCount =
+                      rosterLocation?.cameraVariants?.length ?? 0;
                     const thumbnailUrl =
                       selectedLocationVariant?.url ??
                       rosterLocation?.primaryReferenceUrl;
@@ -7179,22 +7453,110 @@ export function VerticalDramaStoryboardPanel({
                         {onSetShotLocation ? (
                           <button
                             type="button"
-                            className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                            className="flex min-h-7 items-center gap-1 rounded-md border border-dashed border-border px-2 text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground"
                             onClick={() => setLocationPickerForShot(shotNumber)}
                             title={t(
                               locale,
-                              "แก้ไขสถานที่ของช็อตนี้",
-                              "Edit this shot's location"
+                              "เลือกสถานที่และภาพมุมกล้องของช็อตนี้",
+                              "Choose this shot's location and camera view"
                             )}
                             aria-label={t(
                               locale,
-                              "แก้ไขสถานที่ของช็อตนี้",
-                              "Edit this shot's location"
+                              "เลือกสถานที่และภาพมุมกล้องของช็อตนี้",
+                              "Choose this shot's location and camera view"
                             )}
                             data-testid={`vd-storyboard-location-edit-${shotNumber}`}
                           >
                             <Pencil aria-hidden="true" className="h-3 w-3" />
+                            {t(
+                              locale,
+                              locationVariantCount > 0
+                                ? "เลือกภาพมุมกล้อง"
+                                : "เลือกสถานที่",
+                              locationVariantCount > 0
+                                ? "Choose camera view"
+                                : "Choose location"
+                            )}
                           </button>
+                        ) : null}
+                        {onSetShotLocationVariant &&
+                        locationVariantCount > 0 ? (
+                          <div
+                            className="flex w-full flex-wrap items-center gap-1.5 rounded-md border border-sky-300/60 bg-sky-50/50 p-1.5 dark:border-sky-800 dark:bg-sky-950/20"
+                            data-testid={`vd-storyboard-location-variant-strip-${shotNumber}`}
+                          >
+                            <span className="mr-0.5 text-[10px] font-medium text-sky-800 dark:text-sky-200">
+                              {t(
+                                locale,
+                                "มุมที่สร้างไว้ — กดภาพเพื่อเลือกใช้กับช็อตนี้",
+                                "Existing views — click an image to use it for this shot"
+                              )}
+                            </span>
+                            <button
+                              type="button"
+                              className={cn(
+                                "flex items-center gap-1 rounded border px-1.5 py-1 text-[10px] hover:bg-background",
+                                !selectedLocationVariantId &&
+                                  "border-primary bg-primary/10"
+                              )}
+                              aria-pressed={!selectedLocationVariantId}
+                              onClick={() =>
+                                onSetShotLocationVariant(shotNumber, null)
+                              }
+                              data-testid={`vd-storyboard-location-variant-inline-primary-${shotNumber}`}
+                            >
+                              {rosterLocation?.primaryReferenceUrl ? (
+                                <AuthenticatedMediaImage
+                                  src={rosterLocation.primaryReferenceUrl}
+                                  alt=""
+                                  className="h-7 w-10 rounded object-cover"
+                                />
+                              ) : null}
+                              {t(locale, "ภาพหลัก", "Primary")}
+                            </button>
+                            {rosterLocation?.cameraVariants?.map(variant => (
+                              <button
+                                key={variant.variantId}
+                                type="button"
+                                className={cn(
+                                  "flex items-center gap-1 rounded border px-1.5 py-1 text-[10px] hover:bg-background",
+                                  selectedLocationVariantId ===
+                                    variant.variantId &&
+                                    "border-primary bg-primary/10"
+                                )}
+                                aria-pressed={
+                                  selectedLocationVariantId ===
+                                  variant.variantId
+                                }
+                                onClick={() =>
+                                  onSetShotLocationVariant(
+                                    shotNumber,
+                                    variant.variantId
+                                  )
+                                }
+                                data-testid={`vd-storyboard-location-variant-inline-${shotNumber}-${variant.variantId}`}
+                              >
+                                <AuthenticatedMediaImage
+                                  src={variant.url}
+                                  alt=""
+                                  className="h-7 w-10 rounded object-cover"
+                                />
+                                {variant.label}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                        {locationVariantCount > 0 ? (
+                          <span
+                            className="text-[10px] text-sky-700 dark:text-sky-300"
+                            data-testid={`vd-storyboard-location-variant-available-${shotNumber}`}
+                          >
+                            {t(
+                              locale,
+                              `${locationVariantCount} มุมพร้อมใช้ — เลือกได้โดยไม่เปลี่ยนภาพหลัก`,
+                              `${locationVariantCount} reusable view${locationVariantCount === 1 ? "" : "s"} available — primary stays unchanged`
+                            )}
+                          </span>
                         ) : null}
                         {sceneContinuityEnabled &&
                         effectiveLocationKey &&
@@ -7252,22 +7614,19 @@ export function VerticalDramaStoryboardPanel({
                     t={t2}
                     shotNumber={shotNumber}
                     productTieIn={productTieInByShot[shotNumber]}
-                    productReferenceUrls={
-                      resolveShotProductReferenceDisplayUrls(
-                        frame?.productReferenceAssetIds,
-                        assetUrls
-                      )
-                    }
+                    productReferenceUrls={resolveShotProductReferenceDisplayUrls(
+                      frame?.productReferenceAssetIds,
+                      assetUrls
+                    )}
                     productImages={productImages}
                     onOpenProductImage={setLightboxProductImageUrl}
                     onChangeProductImages={
                       onSaveShotProductReferences
                         ? () => {
-                            const urls =
-                              resolveShotProductReferenceDisplayUrls(
-                                frame?.productReferenceAssetIds,
-                                assetUrls
-                              );
+                            const urls = resolveShotProductReferenceDisplayUrls(
+                              frame?.productReferenceAssetIds,
+                              assetUrls
+                            );
                             setProductImagePickerDraft(urls);
                             setProductImagePickerForShot(shotNumber);
                           }
@@ -7430,11 +7789,16 @@ export function VerticalDramaStoryboardPanel({
                           ),
                           cancelLabel: t(locale, "ยกเลิก", "Cancel"),
                           testId: `vd-credit-confirm-stop-frame-prompt-${shotNumber}`,
-                          onConfirm: () => onGenerateStopFramePrompt(shotNumber),
+                          onConfirm: () =>
+                            onGenerateStopFramePrompt(shotNumber),
                         })
                       }
-                      disabled={generatingStopFramePromptForShot.has(shotNumber)}
-                      aria-busy={generatingStopFramePromptForShot.has(shotNumber)}
+                      disabled={generatingStopFramePromptForShot.has(
+                        shotNumber
+                      )}
+                      aria-busy={generatingStopFramePromptForShot.has(
+                        shotNumber
+                      )}
                       data-testid={`vd-storyboard-generate-stop-frame-prompt-${shotNumber}`}
                     >
                       {generatingStopFramePromptForShot.has(shotNumber) ? (
@@ -7464,27 +7828,43 @@ export function VerticalDramaStoryboardPanel({
                     <InlineEditablePromptBox
                       locale={locale}
                       t={t2}
-                      title={t(locale, "พรอมต์ภาพสุดท้าย", "Stop-frame image prompt")}
+                      title={t(
+                        locale,
+                        "พรอมต์ภาพสุดท้าย",
+                        "Stop-frame image prompt"
+                      )}
                       prompt={frame?.stopFramePrompt ?? ""}
-                      emptyLabel={t(locale, "ยังไม่มี Stop Frame prompt", "No stop-frame prompt yet.")}
+                      emptyLabel={t(
+                        locale,
+                        "ยังไม่มี Stop Frame prompt",
+                        "No stop-frame prompt yet."
+                      )}
                       isEditing={editingStopFramePromptForShot === shotNumber}
                       draft={editingStopFramePromptDraft}
                       onStartEdit={() => {
                         setEditingStopFramePromptForShot(shotNumber);
-                        setEditingStopFramePromptDraft(frame?.stopFramePrompt ?? "");
+                        setEditingStopFramePromptDraft(
+                          frame?.stopFramePrompt ?? ""
+                        );
                       }}
                       onDraftChange={setEditingStopFramePromptDraft}
                       onSave={() => {
-                        onSaveStopFramePrompt?.(shotNumber, editingStopFramePromptDraft);
+                        onSaveStopFramePrompt?.(
+                          shotNumber,
+                          editingStopFramePromptDraft
+                        );
                         setEditingStopFramePromptForShot(null);
                       }}
-                      onCancelEdit={() => setEditingStopFramePromptForShot(null)}
+                      onCancelEdit={() =>
+                        setEditingStopFramePromptForShot(null)
+                      }
                       canSaveFree={Boolean(onSaveStopFramePrompt)}
                       testIdPrefix={`vd-storyboard-stop-frame-prompt-${shotNumber}`}
                       maxChars={selectedImagePromptMaxChars}
                     />
                   ) : null}
-                  {onGenerateStopFrameImage && frame?.stopFramePrompt?.trim() ? (
+                  {onGenerateStopFrameImage &&
+                  frame?.stopFramePrompt?.trim() ? (
                     <Button
                       type="button"
                       size="sm"
@@ -7512,7 +7892,9 @@ export function VerticalDramaStoryboardPanel({
                         generatingStopFramePromptForShot.has(shotNumber) ||
                         generatingStopFrameImageForShot.has(shotNumber)
                       }
-                      aria-busy={generatingStopFrameImageForShot.has(shotNumber)}
+                      aria-busy={generatingStopFrameImageForShot.has(
+                        shotNumber
+                      )}
                       data-testid={`vd-storyboard-generate-stop-frame-image-${shotNumber}`}
                     >
                       {generatingStopFrameImageForShot.has(shotNumber) ? (
@@ -7525,7 +7907,11 @@ export function VerticalDramaStoryboardPanel({
                       )}
                       {generatingStopFrameImageForShot.has(shotNumber)
                         ? t(locale, "กำลังสร้างภาพ…", "Generating image…")
-                        : t(locale, "สร้างภาพ Stop Frame", "Generate stop-frame image")}
+                        : t(
+                            locale,
+                            "สร้างภาพ Stop Frame",
+                            "Generate stop-frame image"
+                          )}
                     </Button>
                   ) : null}
 
@@ -7727,31 +8113,44 @@ export function VerticalDramaStoryboardPanel({
                     const clipKey = clip?.clipNumber ?? shotNumber;
                     const variantRead = readVideoPromptVariantStore(
                       clip?.videoPromptVariants,
-                      (clip ?? { prompt: "" }) as Record<string, unknown>,
+                      (clip ?? { prompt: "" }) as Record<string, unknown>
                     );
                     const activeVariant = variantRead.activeVariant;
                     const viewedVariant = enhancedVideoPromptUiEnabled
-                      ? viewedPromptVariantByClip[clipKey] ?? activeVariant
+                      ? (viewedPromptVariantByClip[clipKey] ?? activeVariant)
                       : activeVariant;
                     const viewedVariantData =
                       variantRead.store?.variants[viewedVariant];
                     const viewedPrompt = enhancedVideoPromptUiEnabled
-                      ? viewedVariantData?.prompt ?? clip?.prompt ?? ""
-                      : clip?.prompt ?? "";
+                      ? (viewedVariantData?.prompt ?? clip?.prompt ?? "")
+                      : (clip?.prompt ?? "");
                     const viewingPreview =
-                      enhancedVideoPromptUiEnabled && viewedVariant !== activeVariant;
+                      enhancedVideoPromptUiEnabled &&
+                      viewedVariant !== activeVariant;
                     const viewedPromptModelTarget = (() => {
                       if (viewedVariant === "enhanced" && viewedVariantData) {
-                        const rawTarget = (viewedVariantData as any).promptModelTarget;
-                        if (rawTarget && typeof rawTarget === "object" && rawTarget.family) {
-                          return rawTarget as { family: string; modelId?: string; modelName?: string };
+                        const rawTarget = (viewedVariantData as any)
+                          .promptModelTarget;
+                        if (
+                          rawTarget &&
+                          typeof rawTarget === "object" &&
+                          rawTarget.family
+                        ) {
+                          return rawTarget as {
+                            family: string;
+                            modelId?: string;
+                            modelName?: string;
+                          };
                         }
                         const enhancedData = viewedVariantData as any;
                         if (enhancedData.targetVideoModelId) {
                           const family = resolveVideoPromptTargetFamily({
                             modelId: enhancedData.targetVideoModelId,
-                            name: enhancedData.targetModelSnapshot?.name ?? enhancedData.targetVideoModelId,
-                            provider: enhancedData.targetModelSnapshot?.provider,
+                            name:
+                              enhancedData.targetModelSnapshot?.name ??
+                              enhancedData.targetVideoModelId,
+                            provider:
+                              enhancedData.targetModelSnapshot?.provider,
                           });
                           return {
                             family,
@@ -7761,9 +8160,19 @@ export function VerticalDramaStoryboardPanel({
                         }
                       }
                       if (viewedVariant === "legacy") {
-                        const legacyTarget = (variantRead.store?.variants?.legacy as any)?.promptModelTarget;
-                        if (legacyTarget && typeof legacyTarget === "object" && legacyTarget.family) {
-                          return legacyTarget as { family: string; modelId?: string; modelName?: string };
+                        const legacyTarget = (
+                          variantRead.store?.variants?.legacy as any
+                        )?.promptModelTarget;
+                        if (
+                          legacyTarget &&
+                          typeof legacyTarget === "object" &&
+                          legacyTarget.family
+                        ) {
+                          return legacyTarget as {
+                            family: string;
+                            modelId?: string;
+                            modelName?: string;
+                          };
                         }
                       }
                       return clip?.promptModelTarget;
@@ -7771,9 +8180,12 @@ export function VerticalDramaStoryboardPanel({
                     const groupCanApply = clipsForCard.every(candidate => {
                       const candidateStore = readVideoPromptVariantStore(
                         candidate?.videoPromptVariants,
-                        (candidate ?? { prompt: "" }) as Record<string, unknown>,
+                        (candidate ?? { prompt: "" }) as Record<string, unknown>
                       ).store;
-                      return candidateStore?.variants[viewedVariant]?.status === "ready";
+                      return (
+                        candidateStore?.variants[viewedVariant]?.status ===
+                        "ready"
+                      );
                     });
                     const videoPromptTitle = isSplitShot
                       ? t(
@@ -7786,78 +8198,171 @@ export function VerticalDramaStoryboardPanel({
                     return (
                       <Fragment key={`video-prompt-${clipKey}`}>
                         {enhancedVideoPromptUiEnabled && variantRead.store ? (
-                          <div className="flex flex-wrap items-center gap-1.5" data-testid={`vd-storyboard-video-prompt-variant-${clipKey}`}>
+                          <div
+                            className="flex flex-wrap items-center gap-1.5"
+                            data-testid={`vd-storyboard-video-prompt-variant-${clipKey}`}
+                          >
                             <span className="text-[10px] font-medium text-muted-foreground">
                               {t(locale, "ชุดพรอมต์", "Prompt variant")}
                             </span>
-                            {(["legacy", "enhanced"] as const).map(variantId => (
-                              <Button
-                                key={variantId}
-                                type="button"
-                                size="sm"
-                                variant={viewedVariant === variantId ? "default" : "outline"}
-                                className="h-7 px-2 text-[10px]"
-                                aria-pressed={viewedVariant === variantId}
-                                onClick={() => setViewedPromptVariantByClip(prev => ({ ...prev, [clipKey]: variantId }))}
-                                disabled={!variantRead.store?.variants[variantId]}
-                              >
-                                {variantId === "legacy" ? "Legacy" : "Enhanced"}
-                              </Button>
-                            ))}
+                            {(["legacy", "enhanced"] as const).map(
+                              variantId => (
+                                <Button
+                                  key={variantId}
+                                  type="button"
+                                  size="sm"
+                                  variant={
+                                    viewedVariant === variantId
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  className="h-7 px-2 text-[10px]"
+                                  aria-pressed={viewedVariant === variantId}
+                                  onClick={() =>
+                                    setViewedPromptVariantByClip(prev => ({
+                                      ...prev,
+                                      [clipKey]: variantId,
+                                    }))
+                                  }
+                                  disabled={
+                                    !variantRead.store?.variants[variantId]
+                                  }
+                                >
+                                  {variantId === "legacy"
+                                    ? "Legacy"
+                                    : "Enhanced"}
+                                </Button>
+                              )
+                            )}
                             <Badge variant="outline" className="text-[9px]">
                               {activeVariant === "enhanced"
-                                ? t(locale, "ใช้ render อยู่: Enhanced", "Rendering: Enhanced")
-                                : t(locale, "ใช้ render อยู่: Legacy", "Rendering: Legacy")}
+                                ? t(
+                                    locale,
+                                    "ใช้ render อยู่: Enhanced",
+                                    "Rendering: Enhanced"
+                                  )
+                                : t(
+                                    locale,
+                                    "ใช้ render อยู่: Legacy",
+                                    "Rendering: Legacy"
+                                  )}
                             </Badge>
                             {viewingPreview ? (
-                              <span className="text-[10px] text-muted-foreground" role="status">
-                                {t(locale, "กำลังดูตัวอย่าง ยังไม่เปลี่ยน prompt ที่ใช้ render", "Preview only; render prompt unchanged")}
+                              <span
+                                className="text-[10px] text-muted-foreground"
+                                role="status"
+                              >
+                                {t(
+                                  locale,
+                                  "กำลังดูตัวอย่าง ยังไม่เปลี่ยน prompt ที่ใช้ render",
+                                  "Preview only; render prompt unchanged"
+                                )}
                               </span>
                             ) : null}
                             {clip?.videoTask?.promptMismatch ? (
-                              <span className="text-[10px] text-amber-600 dark:text-amber-400" role="status" data-testid={`vd-storyboard-video-prompt-${clipKey}-render-mismatch`}>
-                                {t(locale, "วิดีโอเดิมไม่ตรงกับ prompt นี้ — ต้องสร้าง render ใหม่", "Existing video does not match this prompt — render again")}
+                              <span
+                                className="text-[10px] text-amber-600 dark:text-amber-400"
+                                role="status"
+                                data-testid={`vd-storyboard-video-prompt-${clipKey}-render-mismatch`}
+                              >
+                                {t(
+                                  locale,
+                                  "วิดีโอเดิมไม่ตรงกับ prompt นี้ — ต้องสร้าง render ใหม่",
+                                  "Existing video does not match this prompt — render again"
+                                )}
                               </span>
                             ) : clip?.videoTask?.provenanceUnknown ? (
-                              <span className="text-[10px] text-muted-foreground" role="status" data-testid={`vd-storyboard-video-prompt-${clipKey}-provenance-unknown`}>
-                                {t(locale, "วิดีโอเดิมไม่มีข้อมูล provenance — สร้าง render ใหม่เพื่อยืนยัน", "Existing video has unknown provenance — render again to verify")}
+                              <span
+                                className="text-[10px] text-muted-foreground"
+                                role="status"
+                                data-testid={`vd-storyboard-video-prompt-${clipKey}-provenance-unknown`}
+                              >
+                                {t(
+                                  locale,
+                                  "วิดีโอเดิมไม่มีข้อมูล provenance — สร้าง render ใหม่เพื่อยืนยัน",
+                                  "Existing video has unknown provenance — render again to verify"
+                                )}
                               </span>
                             ) : null}
                             {clip?.promptStaleReason ? (
-                              <span className="text-[10px] text-amber-600 dark:text-amber-400" role="status" data-testid={`vd-storyboard-video-prompt-${clipKey}-stale-input`}>
-                                {t(locale, "ข้อมูลภาพ/ตัวละครเปลี่ยนแล้ว — สร้างพรอมต์ใหม่ก่อน render", "Visual or character inputs changed — regenerate the prompt before rendering")}
+                              <span
+                                className="text-[10px] text-amber-600 dark:text-amber-400"
+                                role="status"
+                                data-testid={`vd-storyboard-video-prompt-${clipKey}-stale-input`}
+                              >
+                                {t(
+                                  locale,
+                                  "ข้อมูลภาพ/ตัวละครเปลี่ยนแล้ว — สร้างพรอมต์ใหม่ก่อน render",
+                                  "Visual or character inputs changed — regenerate the prompt before rendering"
+                                )}
                               </span>
                             ) : null}
-                            {viewedVariant === "enhanced" && (onApplyVideoPromptVariant || onApplyVideoPromptVariantGroup) && variantRead.store ? (
+                            {viewedVariant === "enhanced" &&
+                            (onApplyVideoPromptVariant ||
+                              onApplyVideoPromptVariantGroup) &&
+                            variantRead.store ? (
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="outline"
                                 className="h-7 px-2 text-[10px]"
                                 onClick={() => {
-                                  if (isSplitShot && onApplyVideoPromptVariantGroup) {
-                                    const expectedRevisions = Object.fromEntries(
-                                      clipsForCard.flatMap(candidate => {
-                                        const candidateStore = readVideoPromptVariantStore(
-                                          candidate?.videoPromptVariants,
-                                          (candidate ?? { prompt: "" }) as Record<string, unknown>,
-                                        ).store;
-                                        return candidateStore ? [[candidate!.clipNumber, candidateStore.revision]] : [];
-                                      }),
+                                  if (
+                                    isSplitShot &&
+                                    onApplyVideoPromptVariantGroup
+                                  ) {
+                                    const expectedRevisions =
+                                      Object.fromEntries(
+                                        clipsForCard.flatMap(candidate => {
+                                          const candidateStore =
+                                            readVideoPromptVariantStore(
+                                              candidate?.videoPromptVariants,
+                                              (candidate ?? {
+                                                prompt: "",
+                                              }) as Record<string, unknown>
+                                            ).store;
+                                          return candidateStore
+                                            ? [
+                                                [
+                                                  candidate!.clipNumber,
+                                                  candidateStore.revision,
+                                                ],
+                                              ]
+                                            : [];
+                                        })
+                                      );
+                                    onApplyVideoPromptVariantGroup(
+                                      shotNumber,
+                                      "enhanced",
+                                      expectedRevisions
                                     );
-                                    onApplyVideoPromptVariantGroup(shotNumber, "enhanced", expectedRevisions);
                                   } else {
-                                    onApplyVideoPromptVariant?.(shotNumber, clipKey, "enhanced", variantRead.store!.revision);
+                                    onApplyVideoPromptVariant?.(
+                                      shotNumber,
+                                      clipKey,
+                                      "enhanced",
+                                      variantRead.store!.revision
+                                    );
                                   }
                                 }}
-                                disabled={isSplitShot ? !groupCanApply : variantRead.store.variants.enhanced?.status !== "ready"}
+                                disabled={
+                                  isSplitShot
+                                    ? !groupCanApply
+                                    : variantRead.store.variants.enhanced
+                                        ?.status !== "ready"
+                                }
                               >
-                                {t(locale, "ใช้ prompt นี้", "Apply this prompt")}
+                                {t(
+                                  locale,
+                                  "ใช้ prompt นี้",
+                                  "Apply this prompt"
+                                )}
                               </Button>
                             ) : null}
                             {viewedVariant === "enhanced" &&
                             onFinalizeVideoPromptVariant &&
-                            variantRead.store?.variants.enhanced?.status === "user_edited" &&
+                            variantRead.store?.variants.enhanced?.status ===
+                              "user_edited" &&
                             variantRead.store ? (
                               <Button
                                 type="button"
@@ -7868,35 +8373,61 @@ export function VerticalDramaStoryboardPanel({
                                   onFinalizeVideoPromptVariant(
                                     shotNumber,
                                     clipKey,
-                                    variantRead.store!.revision,
+                                    variantRead.store!.revision
                                   )
                                 }
                               >
-                                {t(locale, "ยืนยันพรอมต์ Enhanced", "Finalize Enhanced prompt")}
+                                {t(
+                                  locale,
+                                  "ยืนยันพรอมต์ Enhanced",
+                                  "Finalize Enhanced prompt"
+                                )}
                               </Button>
                             ) : null}
                             {activeVariant === "enhanced" &&
                             variantRead.store?.variants.legacy &&
-                            (onRestoreLegacyVideoPromptVariant || onApplyVideoPromptVariantGroup) ? (
+                            (onRestoreLegacyVideoPromptVariant ||
+                              onApplyVideoPromptVariantGroup) ? (
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="ghost"
                                 className="h-7 px-2 text-[10px]"
                                 onClick={() => {
-                                  if (isSplitShot && onApplyVideoPromptVariantGroup) {
-                                    const expectedRevisions = Object.fromEntries(
-                                      clipsForCard.flatMap(candidate => {
-                                        const candidateStore = readVideoPromptVariantStore(
-                                          candidate?.videoPromptVariants,
-                                          (candidate ?? { prompt: "" }) as Record<string, unknown>,
-                                        ).store;
-                                        return candidateStore ? [[candidate!.clipNumber, candidateStore.revision]] : [];
-                                      }),
+                                  if (
+                                    isSplitShot &&
+                                    onApplyVideoPromptVariantGroup
+                                  ) {
+                                    const expectedRevisions =
+                                      Object.fromEntries(
+                                        clipsForCard.flatMap(candidate => {
+                                          const candidateStore =
+                                            readVideoPromptVariantStore(
+                                              candidate?.videoPromptVariants,
+                                              (candidate ?? {
+                                                prompt: "",
+                                              }) as Record<string, unknown>
+                                            ).store;
+                                          return candidateStore
+                                            ? [
+                                                [
+                                                  candidate!.clipNumber,
+                                                  candidateStore.revision,
+                                                ],
+                                              ]
+                                            : [];
+                                        })
+                                      );
+                                    onApplyVideoPromptVariantGroup(
+                                      shotNumber,
+                                      "legacy",
+                                      expectedRevisions
                                     );
-                                    onApplyVideoPromptVariantGroup(shotNumber, "legacy", expectedRevisions);
                                   } else {
-                                    onRestoreLegacyVideoPromptVariant?.(shotNumber, clipKey);
+                                    onRestoreLegacyVideoPromptVariant?.(
+                                      shotNumber,
+                                      clipKey
+                                    );
                                   }
                                 }}
                               >
@@ -7905,7 +8436,8 @@ export function VerticalDramaStoryboardPanel({
                             ) : null}
                           </div>
                         ) : null}
-                        {!enhancedVideoPromptUiEnabled && activeVariant === "enhanced" ? (
+                        {!enhancedVideoPromptUiEnabled &&
+                        activeVariant === "enhanced" ? (
                           <span
                             className="text-[10px] text-muted-foreground"
                             role="status"
@@ -7914,7 +8446,7 @@ export function VerticalDramaStoryboardPanel({
                             {t(
                               locale,
                               "กำลังใช้ Enhanced ที่บันทึกไว้ (ปิดการควบคุม Enhanced ชั่วคราว)",
-                              "Saved Enhanced projection is active (Enhanced controls are temporarily disabled)",
+                              "Saved Enhanced projection is active (Enhanced controls are temporarily disabled)"
                             )}
                           </span>
                         ) : null}
@@ -7940,7 +8472,7 @@ export function VerticalDramaStoryboardPanel({
                               >
                                 {videoPromptModelFamilyLabel(
                                   viewedPromptModelTarget.family,
-                                  viewedPromptModelTarget,
+                                  viewedPromptModelTarget
                                 )}
                               </Badge>
                             ) : undefined
@@ -7953,7 +8485,8 @@ export function VerticalDramaStoryboardPanel({
                           )}
                           isEditing={
                             editingVideoPromptForShot === clipKey &&
-                            (enhancedVideoPromptUiEnabled || viewedVariant !== "enhanced")
+                            (enhancedVideoPromptUiEnabled ||
+                              viewedVariant !== "enhanced")
                           }
                           draft={editingVideoPromptDraft}
                           onStartEdit={() => {
@@ -7967,13 +8500,13 @@ export function VerticalDramaStoryboardPanel({
                                 shotNumber,
                                 clipKey,
                                 editingVideoPromptDraft,
-                                variantRead.store?.revision ?? 0,
+                                variantRead.store?.revision ?? 0
                               );
                             } else if (viewedVariant === "legacy") {
                               onSaveVideoPrompt?.(
                                 shotNumber,
                                 clipKey,
-                                editingVideoPromptDraft,
+                                editingVideoPromptDraft
                               );
                             }
                             setEditingVideoPromptForShot(null);
@@ -7983,8 +8516,9 @@ export function VerticalDramaStoryboardPanel({
                           }
                           canSaveFree={Boolean(
                             viewedVariant === "enhanced"
-                              ? enhancedVideoPromptUiEnabled && onSaveEnhancedVideoPrompt
-                              : onSaveVideoPrompt,
+                              ? enhancedVideoPromptUiEnabled &&
+                                  onSaveEnhancedVideoPrompt
+                              : onSaveVideoPrompt
                           )}
                           onAiAdjust={
                             onEditVideoPrompt
@@ -8016,7 +8550,7 @@ export function VerticalDramaStoryboardPanel({
                         currentVideoPromptModelFamily &&
                         currentVideoPromptModelFamily !==
                           resolveStampedVideoPromptModelFamily(
-                            viewedPromptModelTarget,
+                            viewedPromptModelTarget
                           ) ? (
                           <p
                             className="text-[11px] text-amber-600 dark:text-amber-400"
@@ -8027,7 +8561,7 @@ export function VerticalDramaStoryboardPanel({
                               {
                                 generated: videoPromptModelFamilyLabel(
                                   viewedPromptModelTarget.family,
-                                  viewedPromptModelTarget,
+                                  viewedPromptModelTarget
                                 ),
                                 current: videoPromptModelFamilyLabel(
                                   currentVideoPromptModelFamily
@@ -8064,11 +8598,17 @@ export function VerticalDramaStoryboardPanel({
                               <Button
                                 type="button"
                                 size="sm"
-                                variant={activeAudioInspectorShot === shotNumber ? "secondary" : "outline"}
+                                variant={
+                                  activeAudioInspectorShot === shotNumber
+                                    ? "secondary"
+                                    : "outline"
+                                }
                                 className="h-6 text-[10px] px-2 py-0.5 font-medium cursor-pointer"
                                 onClick={() =>
                                   setActiveAudioInspectorShot(
-                                    activeAudioInspectorShot === shotNumber ? null : shotNumber
+                                    activeAudioInspectorShot === shotNumber
+                                      ? null
+                                      : shotNumber
                                   )
                                 }
                                 data-testid={`vd-storyboard-open-audio-inspector-${clipKey}`}
@@ -8087,29 +8627,40 @@ export function VerticalDramaStoryboardPanel({
                                   seriesId={String(seriesId ?? "")}
                                   episodeId={String(episodeNumber ?? "0")}
                                   shotNumber={shotNumber}
-                                  nativeAudioEnabled={nativeAudioEnabled ?? true}
+                                  nativeAudioEnabled={
+                                    nativeAudioEnabled ?? true
+                                  }
                                   videoUrl={clip?.videoTask?.videoUrl}
                                   audioUrl={clip?.videoTask?.audioUrl}
                                   onTriggerRepair={() => {
                                     if (onTriggerSurgicalAudioRepair) {
                                       onTriggerSurgicalAudioRepair(shotNumber);
                                     } else {
-                                      toast.info("เริ่มดำเนินการซ่อมเฉพาะเสียงพูด (5 เครดิต)...");
+                                      toast.info(
+                                        "เริ่มดำเนินการซ่อมเฉพาะเสียงพูด (5 เครดิต)..."
+                                      );
                                     }
                                   }}
-                                  onRollbackTake={(takeNum) => {
+                                  onRollbackTake={takeNum => {
                                     if (onRollbackAudioTake) {
                                       onRollbackAudioTake(shotNumber, takeNum);
                                     } else {
-                                      toast.success(`ย้อนกลับไปยัง Take #${takeNum} เรียบร้อย (0 เครดิต)`);
+                                      toast.success(
+                                        `ย้อนกลับไปยัง Take #${takeNum} เรียบร้อย (0 เครดิต)`
+                                      );
                                     }
                                   }}
-                                  onUpdateMixDeltas={(deltas) => {
+                                  onUpdateMixDeltas={deltas => {
                                     if (onUpdateShotAudioMixDeltas) {
-                                      onUpdateShotAudioMixDeltas(shotNumber, deltas);
+                                      onUpdateShotAudioMixDeltas(
+                                        shotNumber,
+                                        deltas
+                                      );
                                     }
                                   }}
-                                  onClose={() => setActiveAudioInspectorShot(null)}
+                                  onClose={() =>
+                                    setActiveAudioInspectorShot(null)
+                                  }
                                 />
                               </div>
                             ) : null}
@@ -8220,33 +8771,59 @@ export function VerticalDramaStoryboardPanel({
                                 size="sm"
                                 variant="secondary"
                                 className="w-fit gap-1.5 text-xs"
-                                onClick={() =>
-                                  onGenerateEnhancedShotVideoPrompt(shotNumber)
-                                }
+                                onClick={() => {
+                                  if (!selectedVideoModelId) {
+                                    toast.error(t2.selectVideoModelFirst);
+                                    setIsVideoModelDialogOpen(true);
+                                    return;
+                                  }
+                                  // The page owns the single credit confirmation
+                                  // dialog for Enhanced. Calling the page handler
+                                  // directly avoids opening this panel's generic
+                                  // confirmation first and then the page dialog.
+                                  onGenerateEnhancedShotVideoPrompt(shotNumber);
+                                }}
                                 disabled={
+                                  !asset?.url ||
+                                  castPositionLockNeedsReview ||
                                   enhancedGeneratingForShot.has(shotNumber) ||
-                                  enhancedReadinessByShot[shotNumber]?.ready !== true
+                                  enhancedReadinessByShot[shotNumber]?.ready !==
+                                    true
                                 }
-                                title={
-                                  enhancedReadinessByShot[shotNumber]?.ready === false
-                                    ? enhancedReadinessByShot[shotNumber]?.reasons.join("; ")
-                                    : enhancedReadinessByShot[shotNumber]
-                                      ? undefined
-                                      : t(locale, "กำลังตรวจสอบความพร้อมของ Enhanced…", "Checking Enhanced readiness…")
-                                }
+                                title={enhancedButtonTitle}
                                 aria-describedby={`vd-storyboard-enhanced-status-${shotNumber}`}
                                 data-testid={`vd-storyboard-generate-enhanced-video-prompt-${shotNumber}`}
                               >
                                 {enhancedGeneratingForShot.has(shotNumber) ? (
-                                  <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                                  <Loader2
+                                    aria-hidden="true"
+                                    className="h-3 w-3 animate-spin"
+                                  />
                                 ) : (
-                                  <Sparkles aria-hidden="true" className="h-3 w-3" />
+                                  <Sparkles
+                                    aria-hidden="true"
+                                    className="h-3 w-3"
+                                  />
                                 )}
-                                {enhancedJobStatusByShot[shotNumber] === "queued"
-                                  ? t(locale, "Enhanced อยู่ในคิว…", "Enhanced queued…")
-                                  : enhancedJobStatusByShot[shotNumber] === "running"
-                                    ? t(locale, "กำลังสร้าง Enhanced…", "Generating Enhanced…")
-                                    : t(locale, "สร้างพรอมต์วิดีโอ (Enhanced)", "Generate video prompt (Enhanced)")}
+                                {enhancedJobStatusByShot[shotNumber] ===
+                                "queued"
+                                  ? t(
+                                      locale,
+                                      "Enhanced อยู่ในคิว…",
+                                      "Enhanced queued…"
+                                    )
+                                  : enhancedJobStatusByShot[shotNumber] ===
+                                      "running"
+                                    ? t(
+                                        locale,
+                                        "กำลังสร้าง Enhanced…",
+                                        "Generating Enhanced…"
+                                      )
+                                    : t(
+                                        locale,
+                                        "สร้างพรอมต์วิดีโอ (Enhanced)",
+                                        "Generate video prompt (Enhanced)"
+                                      )}
                               </Button>
                             ) : null}
                             <span
@@ -8254,17 +8831,61 @@ export function VerticalDramaStoryboardPanel({
                               className="text-[10px] text-muted-foreground"
                               role="status"
                             >
-                              {enhancedJobErrorByShot[shotNumber] ?? (() => {
-                                const readiness = enhancedReadinessByShot[shotNumber];
-                                if (readiness?.ready !== false) {
-                                  return readiness ? "" : t(locale, "กำลังตรวจสอบ Enhanced…", "Checking Enhanced…");
-                                }
-                                const reasonText = formatEnhancedReadinessReasons(readiness.reasons, locale);
-                                return reasonText
-                                  ? `${t(locale, "Enhanced ยังไม่พร้อม", "Enhanced unavailable")}: ${reasonText}`
-                                  : t(locale, "Enhanced ยังไม่พร้อม", "Enhanced unavailable");
-                              })()}
+                              {enhancedJobErrorByShot[shotNumber] ??
+                                (() => {
+                                  if (
+                                    !asset?.url ||
+                                    castPositionLockNeedsReview
+                                  ) {
+                                    return enhancedButtonTitle;
+                                  }
+                                  const readiness =
+                                    enhancedReadinessByShot[shotNumber];
+                                  if (readiness?.ready !== false) {
+                                    return readiness
+                                      ? ""
+                                      : t(
+                                          locale,
+                                          "กำลังตรวจสอบ Enhanced…",
+                                          "Checking Enhanced…"
+                                        );
+                                  }
+                                  const reasonText =
+                                    formatEnhancedReadinessReasons(
+                                      readiness.reasons,
+                                      locale
+                                    );
+                                  return reasonText
+                                    ? `${t(locale, "Enhanced ยังไม่พร้อม", "Enhanced unavailable")}: ${reasonText}`
+                                    : t(
+                                        locale,
+                                        "Enhanced ยังไม่พร้อม",
+                                        "Enhanced unavailable"
+                                      );
+                                })()}
                             </span>
+                            {asset?.url &&
+                            castPositionLockNeedsReview &&
+                            onSetShotCastPositionLock ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const review = document.getElementById(
+                                    `vd-storyboard-cast-position-lock-${shotNumber}`
+                                  );
+                                  review?.scrollIntoView({ block: "center" });
+                                  review?.focus({ preventScroll: true });
+                                }}
+                              >
+                                {t(
+                                  locale,
+                                  "ไปยืนยันลำดับตัวละคร",
+                                  "Review cast order"
+                                )}
+                              </Button>
+                            ) : null}
                             {videoPromptJobErrorByShot[shotNumber] ? (
                               <span
                                 role="alert"
@@ -10100,7 +10721,7 @@ export function VerticalDramaStoryboardPanel({
                   {(() => {
                     const storageMessage = formatStorageCapacityErrorForUser(
                       compiledVideo.error,
-                      locale === "th" ? "th" : "en",
+                      locale === "th" ? "th" : "en"
                     );
                     return storageMessage
                       ? storageMessage
@@ -10111,8 +10732,8 @@ export function VerticalDramaStoryboardPanel({
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {locale === "th"
-                    ? "กดปุ่มด้านล่างเพื่อสั่งประกอบใหม่ — ระบบจะใช้ Remotion ผ่านคิว render-jobs หากยังล้มเหลวซ้ำ ให้ตรวจว่าเครื่อง Worker ออนไลน์และติดตั้ง Remotion runtime แล้วที่หน้า Render Jobs"
-                    : "Press the button below to run the assembly again — it uses Remotion through the render-jobs queue. If it keeps failing, check on the Render Jobs page that a worker is online with the Remotion runtime installed."}
+                    ? "กดปุ่มด้านล่างเพื่อสั่งประกอบใหม่ — ระบบจะใช้ Remotion ผ่านคิว Worker Jobs หากยังล้มเหลวซ้ำ ให้ตรวจว่าเครื่อง Worker ออนไลน์และติดตั้ง Remotion runtime แล้วที่หน้าคิวงาน Worker"
+                    : "Press the button below to run the assembly again — it uses Remotion through the Worker Jobs queue. If it keeps failing, check on the Worker Jobs page that a worker is online with the Remotion runtime installed."}
                 </p>
                 <Button
                   type="button"
@@ -10145,7 +10766,7 @@ export function VerticalDramaStoryboardPanel({
                 <div className="flex items-center gap-1 pl-6 text-xs text-muted-foreground">
                   <span>{t2.compiledVideoQueuedHint}</span>
                   <Link
-                    href="/render-jobs"
+                    href="/worker-jobs"
                     className="font-medium text-primary underline-offset-2 hover:underline"
                     data-testid="vd-compiled-video-render-jobs-link"
                   >
@@ -10507,7 +11128,11 @@ export function VerticalDramaStoryboardPanel({
             frameByShot.get(locationPickerForShot)?.locationKey
           )}
           currentLocationVariantId={
-            frameByShot.get(locationPickerForShot)?.locationVariantId
+            frameByShot.get(locationPickerForShot)?.locationVariantId != null
+              ? String(
+                  frameByShot.get(locationPickerForShot)?.locationVariantId
+                )
+              : undefined
           }
           onSelect={locationKey => {
             onSetShotLocation?.(locationPickerForShot, locationKey);
@@ -10728,25 +11353,17 @@ function formatShotNumberRanges(shotNumbers: number[]): string {
  *   1. No roster row -> explanatory note, no actions (nothing to call
  *      `previewLocationPrompt`/`generateLocationImage` with).
  *   2. Roster row has an approved `primaryReferenceUrl` -> thumbnail only.
- *   3. A just-rendered candidate is awaiting review -> "Approve this
- *      image" button.
+ *   3. A just-rendered candidate is being auto-committed; the "Retry save"
+ *      button remains only when that commit fails.
  *   4. A prompt was already previewed -> prompt text + "Generate image".
  *   5. Nothing yet -> "Generate prompt" button.
  *
- * The candidate render (step 3) is deliberately NOT auto-linked into the
- * durable roster the instant the render task completes (unlike the
- * character-portrait flow in `VerticalDramaCharacterStockPanel.tsx`) —
- * `verticalDramaLocationStockService.linkAsset` unconditionally marks the
- * asset `approved: true` on insert (verified by reading that service), so
- * auto-linking first would make a follow-up `approveAsset` call an inert
- * no-op. Gating the `resolveMediaAssetForImport` -> `linkAsset` commit
- * behind this explicit Approve click gives the button real meaning: it is
- * the moment the user decides THIS render becomes the location's
- * canonical establishing plate. `approveAsset` is still called immediately
- * after (self-transition, always legal per
- * `canTransitionLocationAssetState`'s `from === to` short-circuit), purely
- * to close the review loop explicitly rather than relying on `linkAsset`'s
- * side-effect alone.
+ * A completed render is immediately committed through the same
+ * `resolveMediaAssetForImport` -> `linkAsset` -> `approveAsset` chain used by
+ * the Location tab. `linkAsset` auto-approves the new link, while the explicit
+ * approve call keeps both surfaces on the same lifecycle contract. If any
+ * persistence step fails, the candidate remains in local state and the
+ * button gives the user a safe retry without generating another image.
  */
 
 /** Intentionally the SAME localStorage key as
@@ -10777,6 +11394,8 @@ function VerticalDramaLocationsBibleCard({
   locale,
   distinctLocations,
   episodeLocations = [],
+  startFramePlan,
+  onSetLocationVariantForShots,
   sceneContinuityEnabled = false,
   sceneContinuityQcEnabled = false,
   sceneVisualStates,
@@ -10789,6 +11408,13 @@ function VerticalDramaLocationsBibleCard({
   locale: Lang;
   distinctLocations: VerticalDramaStoryboardDistinctLocationView[];
   episodeLocations?: VerticalDramaEpisodeLocationView[];
+  startFramePlan?: VerticalDramaStartFramePlanView | null;
+  onSetLocationVariantForShots?: (
+    locationKey: string,
+    shotNumbers: number[],
+    fromLocationVariantId: string | null,
+    locationVariantId: string | null
+  ) => void;
   sceneContinuityEnabled?: boolean;
   sceneContinuityQcEnabled?: boolean;
   sceneVisualStates?: Record<string, VerticalDramaSceneVisualStateView>;
@@ -10902,10 +11528,9 @@ function VerticalDramaLocationsBibleCard({
   /** Which location is between "generate submitted" and "poll completed" —
    *  covers both the mutation's own in-flight window and the poll loop. */
   const [renderingKey, setRenderingKey] = useState<string | null>(null);
-  /** A just-rendered candidate image awaiting the user's explicit Approve
-   *  click, keyed by `locationKey` (see this component's own doc comment
-   *  for why this is deliberately NOT auto-committed on render
-   *  completion). */
+  /** A just-rendered candidate image being persisted or available for retry,
+   *  keyed by `locationKey`. Successful renders are committed automatically;
+   *  this state remains visible only when the durable commit fails. */
   const [candidateByKey, setCandidateByKey] = useState<
     Record<string, { imageUrl: string; approving?: boolean }>
   >({});
@@ -10931,6 +11556,69 @@ function VerticalDramaLocationsBibleCard({
     });
   };
 
+  /** Persist a completed render into the durable location stock. This is the
+   *  same resolve -> link -> approve chain used by the Location tab, shared
+   *  by automatic completion and the manual retry button. */
+  const persistGeneratedLocationImage = async (
+    locationId: string,
+    locationKey: string,
+    imageUrl: string
+  ) => {
+    const candidate = { imageUrl, approving: true };
+    setCandidateByKey(prev => ({ ...prev, [locationKey]: candidate }));
+    try {
+      const resolved = await resolveMutation.mutateAsync({
+        seriesId,
+        source: "url",
+        url: imageUrl,
+        mimeType: guessLocationImageMimeTypeFromUrl(imageUrl),
+      });
+      const linked = await linkMutation.mutateAsync({
+        seriesId,
+        locationId,
+        mediaAssetId: resolved.mediaAssetId,
+        assetType: "location_reference",
+        role:
+          previewByKey[locationKey]?.coverageRole ??
+          coverageRoleByKey[locationKey] ??
+          "establishing_plate",
+        source: "generated",
+      });
+      await approveMutation.mutateAsync({
+        seriesId,
+        assetLinkId: linked.asset.assetLinkId,
+      });
+      setCandidateByKey(prev => {
+        const next = { ...prev };
+        delete next[locationKey];
+        return next;
+      });
+      setPreviewByKey(prev => {
+        const next = { ...prev };
+        delete next[locationKey];
+        return next;
+      });
+      invalidate();
+      toast.success(
+        t(locale, "บันทึกภาพเข้าคลังฉากแล้ว", "Location reference saved")
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : t(
+              locale,
+              "บันทึกภาพฉากไม่สำเร็จ",
+              "Saving location reference failed"
+            )
+      );
+      setCandidateByKey(prev => ({
+        ...prev,
+        [locationKey]: { ...candidate, approving: false },
+      }));
+    }
+  };
+
   /** Poll a submitted location-image render task to completion — same
    *  `utils.media.getTask.fetch` loop shape (120 attempts, 2.5s interval)
    *  as `VerticalDramaCharacterStockPanel.tsx`'s `pollCharacterImageTask`.
@@ -10939,7 +11627,11 @@ function VerticalDramaLocationsBibleCard({
    *  async-task pattern — every existing caller (character portraits,
    *  character sheets, voice previews) already inlines the identical loop
    *  locally; this follows that same established convention. */
-  async function pollLocationImageTask(taskId: string, locationKey: string) {
+  async function pollLocationImageTask(
+    taskId: string,
+    locationId: string,
+    locationKey: string
+  ) {
     try {
       for (let attempt = 0; attempt < 120; attempt++) {
         const task = await utils.media.getTask.fetch({ taskId });
@@ -10956,10 +11648,11 @@ function VerticalDramaLocationsBibleCard({
             );
             return;
           }
-          setCandidateByKey(prev => ({
-            ...prev,
-            [locationKey]: { imageUrl: resultUrl },
-          }));
+          await persistGeneratedLocationImage(
+            locationId,
+            locationKey,
+            resultUrl
+          );
           return;
         }
         if (status === "failed") {
@@ -11052,7 +11745,10 @@ function VerticalDramaLocationsBibleCard({
     });
   };
 
-  const handleGenerate = (locationId: string | undefined, locationKey: string) => {
+  const handleGenerate = (
+    locationId: string | undefined,
+    locationKey: string
+  ) => {
     if (!locationId) return;
     const preview = previewByKey[locationKey];
     if (!preview) return;
@@ -11085,7 +11781,7 @@ function VerticalDramaLocationsBibleCard({
       undefined;
     const onSuccess = (res: unknown) => {
       const taskId = (res as { taskId?: string } | null)?.taskId;
-      if (taskId) void pollLocationImageTask(taskId, locationKey);
+      if (taskId) void pollLocationImageTask(taskId, locationId, locationKey);
       else
         setRenderingKey(current => (current === locationKey ? null : current));
     };
@@ -11122,61 +11818,18 @@ function VerticalDramaLocationsBibleCard({
     });
   };
 
-  const handleApprove = async (locationId: string | undefined, locationKey: string) => {
+  const handleApprove = async (
+    locationId: string | undefined,
+    locationKey: string
+  ) => {
     if (!locationId) return;
     const candidate = candidateByKey[locationKey];
     if (!candidate) return;
-    setCandidateByKey(prev => ({
-      ...prev,
-      [locationKey]: { ...candidate, approving: true },
-    }));
-    try {
-      const resolved = await resolveMutation.mutateAsync({
-        seriesId,
-        source: "url",
-        url: candidate.imageUrl,
-        mimeType: guessLocationImageMimeTypeFromUrl(candidate.imageUrl),
-      });
-      const linked = await linkMutation.mutateAsync({
-        seriesId,
-        locationId,
-        mediaAssetId: resolved.mediaAssetId,
-        assetType: "location_reference",
-        role:
-          previewByKey[locationKey]?.coverageRole ??
-          coverageRoleByKey[locationKey] ??
-          "establishing_plate",
-        source: "generated",
-      });
-      await approveMutation.mutateAsync({
-        seriesId,
-        assetLinkId: linked.asset.assetLinkId,
-      });
-      setCandidateByKey(prev => {
-        const next = { ...prev };
-        delete next[locationKey];
-        return next;
-      });
-      setPreviewByKey(prev => {
-        const next = { ...prev };
-        delete next[locationKey];
-        return next;
-      });
-      invalidate();
-      toast.success(
-        t(locale, "อนุมัติภาพสถานที่แล้ว", "Location reference approved")
-      );
-    } catch (err) {
-      toast.error(
-        err instanceof Error
-          ? err.message
-          : t(locale, "อนุมัติไม่สำเร็จ", "Approve failed")
-      );
-      setCandidateByKey(prev => ({
-        ...prev,
-        [locationKey]: { ...candidate, approving: false },
-      }));
-    }
+    await persistGeneratedLocationImage(
+      locationId,
+      locationKey,
+      candidate.imageUrl
+    );
   };
 
   if (distinctLocations.length === 0) return null;
@@ -11204,7 +11857,16 @@ function VerticalDramaLocationsBibleCard({
               locationKey,
               locationName
             );
-          const thumbnailUrl = roster?.primaryReferenceUrl;
+          const episodeRoster = resolveStoryboardLocationRoster(
+            episodeLocations,
+            locationKey,
+            locationName
+          );
+          const thumbnailUrl =
+            roster?.primaryReferenceUrl ?? episodeRoster?.primaryReferenceUrl;
+          const existingCameraVariants = roster?.cameraVariants?.length
+            ? roster.cameraVariants
+            : (episodeRoster?.cameraVariants ?? []);
           const candidate = candidateByKey[locationKey];
           const preview = previewByKey[locationKey];
           const shotRangeLabel = formatShotNumberRanges(
@@ -11212,6 +11874,60 @@ function VerticalDramaLocationsBibleCard({
           );
           const isPreviewLoading = pendingPreviewKey === locationKey;
           const isRendering = renderingKey === locationKey;
+          const groupShotNumbers = (group.shot_numbers ?? []).map(Number);
+          const framesByShotNumber = new Map(
+            (startFramePlan?.frames ?? []).map(frame => [
+              frame.shotNumber,
+              frame,
+            ])
+          );
+          const viewCountById = new Map<string, number>();
+          const eligibleShotNumbers = groupShotNumbers.filter(shotNumber => {
+            const frame = framesByShotNumber.get(shotNumber);
+            if (frame?.locationKey && frame.locationKey !== locationKey) {
+              return false;
+            }
+            const viewId = frame?.locationVariantId ?? "__primary__";
+            viewCountById.set(viewId, (viewCountById.get(viewId) ?? 0) + 1);
+            return true;
+          });
+          const sharedViewId =
+            viewCountById.size === 1
+              ? Array.from(viewCountById.keys())[0]
+              : viewCountById.get("__primary__")
+                ? "__primary__"
+                : Array.from(viewCountById.entries()).sort(
+                    (a, b) => b[1] - a[1]
+                  )[0]?.[0];
+          const sharedViewVariantId =
+            sharedViewId && sharedViewId !== "__primary__"
+              ? sharedViewId
+              : null;
+          const sharedViewCount = sharedViewId
+            ? (viewCountById.get(sharedViewId) ?? 0)
+            : 0;
+          const sharedViewLabel =
+            sharedViewVariantId === null
+              ? t(locale, "ภาพหลัก", "Primary")
+              : (existingCameraVariants.find(
+                  variant => variant.variantId === sharedViewVariantId
+                )?.label ?? sharedViewVariantId);
+          const applyGroupView = (locationVariantId: string | null) => {
+            if (
+              !onSetLocationVariantForShots ||
+              eligibleShotNumbers.length === 0 ||
+              sharedViewId === undefined ||
+              locationVariantId === sharedViewVariantId
+            ) {
+              return;
+            }
+            onSetLocationVariantForShots(
+              locationKey,
+              eligibleShotNumbers,
+              sharedViewVariantId,
+              locationVariantId
+            );
+          };
 
           return (
             <div
@@ -11281,6 +11997,91 @@ function VerticalDramaLocationsBibleCard({
                   </p>
                 ) : null}
 
+                {existingCameraVariants.length > 0 ? (
+                  <div
+                    className="flex flex-col gap-1 rounded border border-emerald-300/60 bg-emerald-50/50 p-1.5 dark:border-emerald-800 dark:bg-emerald-950/20"
+                    data-testid={`vd-location-existing-views-${locationKey}`}
+                  >
+                    <p className="text-[10px] font-medium text-emerald-800 dark:text-emerald-200">
+                      {t(
+                        locale,
+                        `ภาพมุมย่อยที่สร้างไว้แล้ว (${existingCameraVariants.length} มุม)`,
+                        `Existing camera views (${existingCameraVariants.length})`
+                      )}
+                    </p>
+                    {onSetLocationVariantForShots &&
+                    eligibleShotNumbers.length > 0 ? (
+                      <p
+                        className="text-[10px] text-emerald-800/80 dark:text-emerald-200/80"
+                        data-testid={`vd-location-bulk-view-source-${locationKey}`}
+                      >
+                        {t(
+                          locale,
+                          `กดภาพเพื่อเปลี่ยน ${sharedViewCount} ช็อตที่ใช้ “${sharedViewLabel}” ช็อตที่เลือกมุมอื่นจะไม่เปลี่ยนตาม`,
+                          `Click an image to change ${sharedViewCount} shot${sharedViewCount === 1 ? "" : "s"} using “${sharedViewLabel}”. Shots using another view stay unchanged.`
+                        )}
+                      </p>
+                    ) : null}
+                    <div className="flex flex-wrap gap-1.5">
+                      {thumbnailUrl ? (
+                        <button
+                          type="button"
+                          className={cn(
+                            "flex items-center gap-1 rounded border border-emerald-300/50 bg-background/70 p-1 text-left text-[10px] hover:bg-background",
+                            sharedViewVariantId === null &&
+                              "border-primary bg-primary/10"
+                          )}
+                          disabled={
+                            !onSetLocationVariantForShots ||
+                            sharedViewVariantId === null
+                          }
+                          onClick={() => applyGroupView(null)}
+                          data-testid={`vd-location-existing-view-primary-${locationKey}`}
+                        >
+                          <AuthenticatedMediaImage
+                            src={thumbnailUrl}
+                            alt={t(locale, "ภาพหลัก", "Primary")}
+                            className="h-8 w-12 rounded object-cover"
+                          />
+                          <span>{t(locale, "ภาพหลัก", "Primary")}</span>
+                        </button>
+                      ) : null}
+                      {existingCameraVariants.map(variant => (
+                        <button
+                          key={variant.variantId}
+                          type="button"
+                          className={cn(
+                            "flex items-center gap-1 rounded border border-emerald-300/50 bg-background/70 p-1 text-[10px]",
+                            sharedViewVariantId === variant.variantId &&
+                              "border-primary bg-primary/10"
+                          )}
+                          title={variant.label}
+                          disabled={
+                            !onSetLocationVariantForShots ||
+                            sharedViewVariantId === variant.variantId
+                          }
+                          onClick={() => applyGroupView(variant.variantId)}
+                          data-testid={`vd-location-existing-view-${locationKey}-${variant.variantId}`}
+                        >
+                          <AuthenticatedMediaImage
+                            src={variant.url}
+                            alt={variant.label}
+                            className="h-8 w-12 rounded object-cover"
+                          />
+                          <span>{variant.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-emerald-800/80 dark:text-emerald-200/80">
+                      {t(
+                        locale,
+                        "เลือกจากชุดนี้เพื่อเปลี่ยนช็อตที่ใช้มุมเดียวกันทั้งหมด ส่วนช็อตที่เลือกมุมอื่นไว้จะไม่ถูกเปลี่ยน หรือเลือกแก้รายช็อตจากแถบ “มุมที่สร้างไว้” ได้",
+                        "Use this group control to change all shots sharing the same view. Shots with another selected view are preserved; individual shots can still be changed from their Existing views strip."
+                      )}
+                    </p>
+                  </div>
+                ) : null}
+
                 {sceneContinuityQcEnabled ? (
                   <div
                     className="flex flex-col gap-1.5 rounded border border-sky-400/40 bg-sky-50/40 p-1.5 dark:bg-sky-950/20"
@@ -11320,6 +12121,13 @@ function VerticalDramaLocationsBibleCard({
                         </select>
                       </label>
                     </div>
+                    <p className="text-[10px] text-sky-800/80 dark:text-sky-200/80">
+                      {t(
+                        locale,
+                        "เมนูนี้ใช้กำหนดประเภทของมุมใหม่ที่จะสร้างด้วย AI เท่านั้น หากต้องการใช้ภาพที่สร้างไว้แล้ว ให้กดเลือกจากภาพมุมย่อยในแถบของช็อต",
+                        "This menu only defines the type of a new AI-generated view. To reuse an existing image, click it in the Existing views strip on the shot card."
+                      )}
+                    </p>
                     {(sceneVisualStates?.[locationKey]?.coverageGaps ?? [])
                       .length > 0 ? (
                       <div className="flex flex-col gap-1">
@@ -11420,8 +12228,8 @@ function VerticalDramaLocationsBibleCard({
                       <p className="text-[11px] text-muted-foreground">
                         {t(
                           locale,
-                          "ตรวจสอบภาพมุมย่อย แล้วกด “ใช้มุมนี้” เพื่อเก็บไว้เลือกใช้ในช็อต (ภาพหลักเดิมยังคงอยู่)",
-                          "Review this sub-view, then approve it for shot selection. The original primary image remains unchanged."
+                          "ระบบบันทึกภาพมุมย่อยเข้าคลังฉากให้อัตโนมัติแล้ว ปุ่มด้านล่างใช้บันทึกซ้ำเมื่อการผูกภาพไม่สำเร็จ (ภาพหลักเดิมยังคงอยู่)",
+                          "This sub-view is saved to the scene library automatically. Use the button below only to retry if saving failed. The original primary image remains unchanged."
                         )}
                       </p>
                     </div>
@@ -11466,7 +12274,7 @@ function VerticalDramaLocationsBibleCard({
                         ) : (
                           <Check aria-hidden="true" className="h-3.5 w-3.5" />
                         )}
-                        {t(locale, "ใช้มุมนี้", "Use this sub-view")}
+                        {t(locale, "บันทึกซ้ำ", "Retry save")}
                       </Button>
                     </div>
                   </div>
@@ -12733,7 +13541,7 @@ function SummarizeMemoryCard({
  *  for free (routed through `updateEpisodeDraft`); a separate, clearly-labeled
  *  "AI adjust (paid)" button opens the existing repair dialog for an LLM-driven
  *  regenerate. Phase 4.1/4.2. */
-function InlineEditablePromptBox({
+export function InlineEditablePromptBox({
   locale,
   t: t2,
   title,
@@ -12790,22 +13598,114 @@ function InlineEditablePromptBox({
   const liveLength = isEditing ? draft.length : prompt.length;
   const isOverLimit = liveLength > maxChars;
   const [copied, setCopied] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [hasOverflow, setHasOverflow] = useState(false);
+  const previewRef = useRef<HTMLParagraphElement>(null);
+  const contentId = `${testIdPrefix}-content`;
+
+  useLayoutEffect(() => {
+    setIsExpanded(false);
+  }, [prompt]);
+
+  useEffect(() => {
+    if (isEditing || !prompt) {
+      setHasOverflow(false);
+      return;
+    }
+
+    if (isExpanded) {
+      setHasOverflow(true);
+      return;
+    }
+
+    const measureOverflow = () => {
+      const element = previewRef.current;
+      if (!element) return;
+
+      // The DOM measurement catches wrapped lines at the current viewport
+      // width. The fallback keeps the affordance available in environments
+      // without layout metrics (SSR/tests) and for obviously long prompts.
+      const fallbackOverflow =
+        prompt.split(/\r?\n/).length > 10 || prompt.length > 1200;
+      setHasOverflow(
+        element.scrollHeight > element.clientHeight + 1 || fallbackOverflow
+      );
+    };
+
+    measureOverflow();
+    window.addEventListener("resize", measureOverflow);
+    const observer =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(measureOverflow)
+        : null;
+    if (previewRef.current && observer) observer.observe(previewRef.current);
+
+    return () => {
+      window.removeEventListener("resize", measureOverflow);
+      observer?.disconnect();
+    };
+  }, [isEditing, isExpanded, prompt]);
+
+  const showDisclosureToggle =
+    !isEditing && (!prompt || hasOverflow || isExpanded);
+  const showContent = Boolean(prompt) || isExpanded || isEditing;
+
   return (
     <div className="mt-1 flex flex-col gap-1 rounded-md bg-muted/50 p-2">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium text-foreground">{title}</span>
-          {titleBadge ? (
-            <Badge
-              variant="outline"
-              className="px-1.5 py-0 text-[9px]"
-              data-testid={`${testIdPrefix}-duration-badge`}
-            >
-              {titleBadge}
-            </Badge>
-          ) : null}
-          {familyBadge}
-        </div>
+        {showDisclosureToggle ? (
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-center gap-1.5 rounded-sm text-left outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            onClick={() => setIsExpanded(current => !current)}
+            aria-expanded={isExpanded}
+            aria-controls={contentId}
+            aria-label={t(
+              locale,
+              isExpanded ? "ย่อพรอมต์" : "ขยายพรอมต์",
+              isExpanded ? "Collapse prompt" : "Expand prompt"
+            )}
+            data-testid={`${testIdPrefix}-toggle`}
+          >
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="text-xs font-medium text-foreground">
+                {title}
+              </span>
+              {titleBadge ? (
+                <Badge
+                  variant="outline"
+                  className="px-1.5 py-0 text-[9px]"
+                  data-testid={`${testIdPrefix}-duration-badge`}
+                >
+                  {titleBadge}
+                </Badge>
+              ) : null}
+              {familyBadge}
+            </span>
+            {isExpanded ? (
+              <ChevronUp aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <ChevronDown
+                aria-hidden="true"
+                className="h-3.5 w-3.5 shrink-0"
+              />
+            )}
+          </button>
+        ) : (
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <span className="text-xs font-medium text-foreground">{title}</span>
+            {titleBadge ? (
+              <Badge
+                variant="outline"
+                className="px-1.5 py-0 text-[9px]"
+                data-testid={`${testIdPrefix}-duration-badge`}
+              >
+                {titleBadge}
+              </Badge>
+            ) : null}
+            {familyBadge}
+          </div>
+        )}
         <div className="flex items-center gap-1">
           {!isEditing && prompt ? (
             <Button
@@ -12859,76 +13759,86 @@ function InlineEditablePromptBox({
           ) : null}
         </div>
       </div>
-      {isEditing ? (
-        <div className="flex flex-col gap-1.5">
-          <Textarea
-            value={draft}
-            onChange={e => onDraftChange(e.target.value)}
-            rows={4}
-            maxLength={maxChars}
-            className="text-xs"
-            autoFocus
-            data-testid={`${testIdPrefix}-textarea`}
-          />
-          <div className="flex items-center justify-between gap-1.5">
-            <span
-              className={cn(
-                "text-[11px] tabular-nums",
-                isOverLimit
-                  ? "font-medium text-destructive"
-                  : "text-muted-foreground"
-              )}
-              data-testid={`${testIdPrefix}-char-counter`}
-            >
-              {liveLength.toLocaleString()} / {maxChars.toLocaleString()}
-            </span>
-            <div className="flex justify-end gap-1.5">
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={onCancelEdit}
+      <div id={contentId} hidden={!showContent}>
+        {isEditing ? (
+          <div className="flex flex-col gap-1.5">
+            <Textarea
+              value={draft}
+              onChange={e => onDraftChange(e.target.value)}
+              rows={4}
+              maxLength={maxChars}
+              className="text-xs"
+              autoFocus
+              data-testid={`${testIdPrefix}-textarea`}
+            />
+            <div className="flex items-center justify-between gap-1.5">
+              <span
+                className={cn(
+                  "text-[11px] tabular-nums",
+                  isOverLimit
+                    ? "font-medium text-destructive"
+                    : "text-muted-foreground"
+                )}
+                data-testid={`${testIdPrefix}-char-counter`}
               >
-                {t(locale, "ยกเลิก", "Cancel")}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="gap-1"
-                onClick={onSave}
-                data-testid={`${testIdPrefix}-save`}
-              >
-                <Check aria-hidden="true" className="h-3 w-3" />
-                {t2.savePromptFree}
-              </Button>
+                {liveLength.toLocaleString()} / {maxChars.toLocaleString()}
+              </span>
+              <div className="flex justify-end gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={onCancelEdit}
+                >
+                  {t(locale, "ยกเลิก", "Cancel")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="gap-1"
+                  onClick={onSave}
+                  data-testid={`${testIdPrefix}-save`}
+                >
+                  <Check aria-hidden="true" className="h-3 w-3" />
+                  {t2.savePromptFree}
+                </Button>
+              </div>
             </div>
+            {isOverLimit ? (
+              <p className="text-[11px] text-destructive">
+                {t2.promptOverLimitHint}
+              </p>
+            ) : null}
           </div>
-          {isOverLimit ? (
-            <p className="text-[11px] text-destructive">
-              {t2.promptOverLimitHint}
-            </p>
-          ) : null}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-0.5">
-          <p className="text-xs text-muted-foreground">
-            {prompt || emptyLabel}
-          </p>
-          {prompt ? (
-            <span
+        ) : (
+          <div className="flex flex-col gap-0.5">
+            <p
+              ref={previewRef}
               className={cn(
-                "text-[11px] tabular-nums",
-                isOverLimit
-                  ? "font-medium text-destructive"
-                  : "text-muted-foreground"
+                "whitespace-pre-wrap break-words text-xs leading-5 text-muted-foreground",
+                !isExpanded && "overflow-hidden"
               )}
-              data-testid={`${testIdPrefix}-char-counter`}
+              style={!isExpanded ? { maxHeight: "12.5rem" } : undefined}
+              data-testid={`${testIdPrefix}-preview`}
             >
-              {liveLength.toLocaleString()} / {maxChars.toLocaleString()}
-            </span>
-          ) : null}
-        </div>
-      )}
+              {prompt || emptyLabel}
+            </p>
+            {prompt ? (
+              <span
+                className={cn(
+                  "text-[11px] tabular-nums",
+                  isOverLimit
+                    ? "font-medium text-destructive"
+                    : "text-muted-foreground"
+                )}
+                data-testid={`${testIdPrefix}-char-counter`}
+              >
+                {liveLength.toLocaleString()} / {maxChars.toLocaleString()}
+              </span>
+            ) : null}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -12991,23 +13901,34 @@ function ShotReferenceStrip({
       counts[type] += 1;
       return counts;
     },
-    { image: 0, video: 0, audio: 0 } as Record<"image" | "video" | "audio", number>,
+    { image: 0, video: 0, audio: 0 } as Record<
+      "image" | "video" | "audio",
+      number
+    >
   );
   const atLimit = referenceLimits
-    ? (referenceLimits.total != null && references.length >= referenceLimits.total) ||
-      (referenceLimits.images != null && modalityCounts.image >= referenceLimits.images) ||
-      (referenceLimits.videos != null && modalityCounts.video >= referenceLimits.videos) ||
-      (referenceLimits.audio != null && modalityCounts.audio >= referenceLimits.audio)
+    ? (referenceLimits.total != null &&
+        references.length >= referenceLimits.total) ||
+      (referenceLimits.images != null &&
+        modalityCounts.image >= referenceLimits.images) ||
+      (referenceLimits.videos != null &&
+        modalityCounts.video >= referenceLimits.videos) ||
+      (referenceLimits.audio != null &&
+        modalityCounts.audio >= referenceLimits.audio)
     : maxReferenceImages != null && references.length >= maxReferenceImages;
   const displayReferenceLimit = referenceLimits?.total ?? maxReferenceImages;
-  const formatLimit = (value: number | null | undefined) => value == null ? "∞" : String(value);
+  const formatLimit = (value: number | null | undefined) =>
+    value == null ? "∞" : String(value);
 
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[11px] font-medium text-muted-foreground">
         {title ?? t2.references}
       </span>
-      <span className="text-[10px] text-muted-foreground" data-testid={`vd-storyboard-${testIdPrefix}-reference-counts-${shotNumber}`}>
+      <span
+        className="text-[10px] text-muted-foreground"
+        data-testid={`vd-storyboard-${testIdPrefix}-reference-counts-${shotNumber}`}
+      >
         {`ภาพ ${modalityCounts.image} · วิดีโอ ${modalityCounts.video} · audio ${modalityCounts.audio}`}
         {referenceLimits
           ? ` · limit ภาพ ${formatLimit(referenceLimits.images)} / วิดีโอ ${formatLimit(referenceLimits.videos)} / audio ${formatLimit(referenceLimits.audio)} / รวม ${formatLimit(referenceLimits.total)}`
@@ -13037,7 +13958,11 @@ function ShotReferenceStrip({
               return;
             }
             if (input.kind === "url" && input.url) {
-              onAdd({ url: input.url, source: "library", mediaType: input.mediaType });
+              onAdd({
+                url: input.url,
+                source: "library",
+                mediaType: input.mediaType,
+              });
             } else if (input.kind === "file" && input.file) {
               void readFileAsDataUrl(input.file).then(url =>
                 onAdd({ url, source: "upload", mediaType: input.mediaType })
@@ -13045,7 +13970,9 @@ function ShotReferenceStrip({
             }
           };
           if (e.dataTransfer.files?.length) {
-            const { inputs, error } = readDroppedMediaFiles(e.dataTransfer.files);
+            const { inputs, error } = readDroppedMediaFiles(
+              e.dataTransfer.files
+            );
             inputs.forEach(addInput);
             if (error) {
               toast.error(
@@ -13111,7 +14038,10 @@ function ShotReferenceStrip({
               }
               data-testid={`vd-storyboard-reference-${shotNumber}-${ref.referenceId}`}
             >
-              {ref.thumbnailUrl && !failedReferenceIds.has(ref.referenceId) && ref.mediaType !== "video" && ref.mediaType !== "audio" ? (
+              {ref.thumbnailUrl &&
+              !failedReferenceIds.has(ref.referenceId) &&
+              ref.mediaType !== "video" &&
+              ref.mediaType !== "audio" ? (
                 <AuthenticatedMediaImage
                   src={ref.thumbnailUrl}
                   alt=""
@@ -13127,7 +14057,11 @@ function ShotReferenceStrip({
               ) : ref.mediaType === "video" ? (
                 <div className="relative flex h-full w-full items-center justify-center bg-slate-900 text-white">
                   {ref.thumbnailUrl ? (
-                    <AuthenticatedMediaImage src={ref.thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-70" />
+                    <AuthenticatedMediaImage
+                      src={ref.thumbnailUrl}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover opacity-70"
+                    />
                   ) : null}
                   <Film aria-hidden="true" className="relative h-4 w-4" />
                 </div>
@@ -13195,8 +14129,14 @@ function ShotReferenceStrip({
         ) : (
           <label
             className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary"
-            title={locale === "th" ? "เพิ่มภาพ วิดีโอ หรือเสียงอ้างอิง" : "Add image, video, or audio reference"}
-            aria-label={locale === "th" ? "เพิ่มสื่ออ้างอิง" : "Add media reference"}
+            title={
+              locale === "th"
+                ? "เพิ่มภาพ วิดีโอ หรือเสียงอ้างอิง"
+                : "Add image, video, or audio reference"
+            }
+            aria-label={
+              locale === "th" ? "เพิ่มสื่ออ้างอิง" : "Add media reference"
+            }
             data-testid={`vd-storyboard-upload-${testIdPrefix}-reference-${shotNumber}`}
           >
             <Upload aria-hidden="true" className="h-3.5 w-3.5" />
@@ -13244,7 +14184,10 @@ function ShotReferenceStrip({
       {atLimit ? (
         <p className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400">
           <AlertTriangle aria-hidden="true" className="h-3 w-3 shrink-0" />
-          {vdCopyWithCount(t2.referenceLimitWarning, displayReferenceLimit ?? 0)}
+          {vdCopyWithCount(
+            t2.referenceLimitWarning,
+            displayReferenceLimit ?? 0
+          )}
         </p>
       ) : null}
       {lightboxIndex != null ? (
@@ -13305,7 +14248,11 @@ function ShotObjectReferenceCard({
   onChangeProductImages?: () => void;
   objectReferenceEnabled: boolean;
   objectReferenceCatalog: Array<{ id: string; name: string }>;
-  objectReferences: Array<{ id: string; objectReferenceId: string; name: string }>;
+  objectReferences: Array<{
+    id: string;
+    objectReferenceId: string;
+    name: string;
+  }>;
   objectSuggestions: Array<{
     id: string;
     objectReferenceId: string;
@@ -13354,6 +14301,26 @@ function ShotObjectReferenceCard({
   const hasAnyReference =
     Boolean(productTieIn) || visibleProductUrls.length > 0 || hasObjectSurface;
 
+  const hasAttachedReference =
+    visibleProductUrls.length > 0 ||
+    objectReferences.length > 0 ||
+    shotReferences.some(
+      reference =>
+        reference.source === "prop_object" &&
+        (reference.mediaType === undefined || reference.mediaType === "image")
+    );
+  const [isExpanded, setIsExpanded] = useState(hasAttachedReference);
+  const previousHasAttachedReference = useRef(hasAttachedReference);
+
+  useEffect(() => {
+    if (!previousHasAttachedReference.current && hasAttachedReference) {
+      setIsExpanded(true);
+    } else if (!hasAttachedReference) {
+      setIsExpanded(false);
+    }
+    previousHasAttachedReference.current = hasAttachedReference;
+  }, [hasAttachedReference]);
+
   if (!hasAnyReference) return null;
 
   const productReferenceViews: VerticalDramaShotReferenceView[] =
@@ -13378,79 +14345,85 @@ function ShotObjectReferenceCard({
 
   return (
     <section
-      className="mt-3 flex w-full flex-col gap-3 rounded-lg border border-amber-300/70 bg-amber-50/35 p-3 dark:border-amber-900 dark:bg-amber-950/15"
+      className={cn(
+        "mt-3 flex w-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-colors",
+        isExpanded
+          ? "border-border/70"
+          : "border-border/60 bg-muted/20 dark:bg-muted/10"
+      )}
       data-testid={`vd-storyboard-object-reference-card-${shotNumber}`}
       aria-label={t2.references}
     >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="flex items-start gap-2">
-          <Package
-            aria-hidden="true"
-            className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400"
-          />
-          <div className="flex flex-col gap-0.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                {t(locale, "วัตถุอ้างอิงของช็อตนี้", "Object references for this shot")}
-              </h4>
+      <div className="flex flex-wrap items-center justify-between gap-2 p-3">
+        <button
+          type="button"
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg text-left outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          onClick={() => setIsExpanded(current => !current)}
+          aria-expanded={isExpanded}
+          aria-controls={`vd-storyboard-object-reference-content-${shotNumber}`}
+          data-testid={`vd-storyboard-object-reference-toggle-${shotNumber}`}
+        >
+          <span
+            className={cn(
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+              hasAttachedReference
+                ? "bg-primary/10 text-primary"
+                : "bg-muted text-muted-foreground"
+            )}
+          >
+            <Package aria-hidden="true" className="h-4 w-4" />
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="truncate text-sm font-semibold text-foreground">
+                {t(
+                  locale,
+                  "ภาพอ้างอิงสินค้า / วัตถุ",
+                  "Product / object references"
+                )}
+              </span>
               {productTieIn ? (
-                <Badge
-                  variant="outline"
-                  className="border-amber-500/60 px-1.5 py-0 text-[10px] text-amber-800 dark:text-amber-300"
-                >
-                  {t(locale, "มี Product tie-in", "Product tie-in")}
+                <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                  {t(locale, "Product tie-in", "Product tie-in")}
                 </Badge>
               ) : null}
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              {t(
-                locale,
-                "เพิ่มสินค้า tie-in หรือวัตถุสำคัญในรายการเดียวกันได้ทุกช็อต",
-                "Add a Product tie-in or an important story object to the same list in any shot"
-              )}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-          <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
-            {t(locale, `ภาพอ้างอิง ${unifiedReferences.length}`, `${unifiedReferences.length} reference images`)}
-          </Badge>
-          <span>
-            {t(locale, "ไม่บังคับ · ไม่ขัดจังหวะการสร้าง storyboard", "Optional · never blocks storyboard creation")}
-          </span>
-        </div>
-      </div>
-
-      <div className="grid gap-2 rounded-md border border-amber-200/80 bg-background/75 p-2 dark:border-amber-900/70">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs font-medium">
-              {t(locale, "รายการอ้างอิงของช็อต", "Shot reference list")}
             </span>
-            {visibleProductUrls.length > 0 ? (
-              <Badge
-                variant="outline"
-                className="px-1.5 py-0 text-[10px]"
-                data-testid={`vd-storyboard-product-tie-in-chip-${shotNumber}`}
-              >
-                {productTieIn?.productName ?? t(locale, "สินค้า", "Product")}
-                {productTieIn?.placementStyle
-                  ? ` · ${productTieIn.placementStyle}`
-                  : ""}
-              </Badge>
-            ) : null}
-            {objectReferenceViews.length > 0 ? (
-              <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
-                {t(locale, `วัตถุ ${objectReferenceViews.length}`, `${objectReferenceViews.length} objects`)}
-              </Badge>
-            ) : null}
-          </div>
+            <span className="text-[11px] text-muted-foreground">
+              {hasAttachedReference
+                ? t(
+                    locale,
+                    `${unifiedReferences.length} ภาพอ้างอิง · กดเพื่อยุบส่วนนี้`,
+                    `${unifiedReferences.length} reference images · click to collapse`
+                  )
+                : t(
+                    locale,
+                    "ยังไม่มีภาพแนบ · กดเพื่อขยายและเพิ่มภาพ",
+                    "No images attached · click to expand and add one"
+                  )}
+            </span>
+          </span>
+          <ChevronDown
+            aria-hidden="true"
+            className={cn(
+              "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+              isExpanded ? "rotate-180" : ""
+            )}
+          />
+        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+            {t(
+              locale,
+              `ภาพ ${unifiedReferences.length}`,
+              `${unifiedReferences.length} images`
+            )}
+          </Badge>
           {onChangeProductImages ? (
             <Button
               type="button"
               size="sm"
               variant="outline"
-              className="h-7 gap-1 px-2 text-[11px]"
+              className="h-8 gap-1 px-2 text-[11px]"
               onClick={onChangeProductImages}
               data-testid={`vd-storyboard-change-product-image-${shotNumber}`}
             >
@@ -13461,167 +14434,228 @@ function ShotObjectReferenceCard({
             </Button>
           ) : null}
         </div>
+      </div>
 
-        {productTieIn?.benefitTalkingPoint || productTieIn?.requiredDisclosure ? (
-          <p className="text-[10px] text-muted-foreground">
-            {productTieIn.benefitTalkingPoint ?? ""}
-            {productTieIn.requiredDisclosure
-              ? ` · ${t(locale, "คำเตือน", "Disclosure")}: ${productTieIn.requiredDisclosure}`
-              : ""}
-          </p>
-        ) : null}
+      {isExpanded ? (
+        <div
+          id={`vd-storyboard-object-reference-content-${shotNumber}`}
+          className="grid gap-3 border-t border-border/60 px-3 pb-3 pt-3"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs font-medium">
+                {t(locale, "รายการอ้างอิงของช็อต", "Shot reference list")}
+              </span>
+              {visibleProductUrls.length > 0 ? (
+                <Badge
+                  variant="outline"
+                  className="px-1.5 py-0 text-[10px]"
+                  data-testid={`vd-storyboard-product-tie-in-chip-${shotNumber}`}
+                >
+                  {productTieIn?.productName ?? t(locale, "สินค้า", "Product")}
+                  {productTieIn?.placementStyle
+                    ? ` · ${productTieIn.placementStyle}`
+                    : ""}
+                </Badge>
+              ) : null}
+              {objectReferenceViews.length > 0 ? (
+                <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                  {t(
+                    locale,
+                    `วัตถุ ${objectReferenceViews.length}`,
+                    `${objectReferenceViews.length} objects`
+                  )}
+                </Badge>
+              ) : null}
+            </div>
+          </div>
 
-        <ShotReferenceStrip
-          locale={locale}
-          t={t2}
-          shotNumber={shotNumber}
-          references={unifiedReferences}
-          maxReferenceImages={maxReferenceImages}
-          referenceLimits={referenceLimits}
-          adding={adding}
-          dragOver={dragOver}
-          onDragOverChange={onDragOverChange}
-          onAdd={payload =>
-            dropKind === "product"
-              ? onAddProductReference?.(payload)
-              : onAddObjectReference(payload)
-          }
-          onRequestRemove={onRequestRemove}
-          title={t(locale, "ภาพอ้างอิงสินค้า / วัตถุ", "Product / object reference images")}
-          dropHint={t(
-            locale,
-            `ลากภาพมาวางเพื่อเพิ่มเป็น${dropKind === "product" ? "สินค้า" : "วัตถุ"}`,
-            `Drop an image to add it as a ${dropKind}`
-          )}
-          imageOnly
-          testIdPrefix="prop-object"
-        />
+          {productTieIn?.benefitTalkingPoint ||
+          productTieIn?.requiredDisclosure ? (
+            <p className="text-[10px] text-muted-foreground">
+              {productTieIn.benefitTalkingPoint ?? ""}
+              {productTieIn.requiredDisclosure
+                ? ` · ${t(locale, "คำเตือน", "Disclosure")}: ${productTieIn.requiredDisclosure}`
+                : ""}
+            </p>
+          ) : null}
 
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-border/70 pt-2">
-          <span className="text-[11px] text-muted-foreground">
-            {t(locale, "ลากภาพเข้ามาเป็น", "Drop image as")}
-          </span>
-          <Button
-            type="button"
-            size="sm"
-            variant={dropKind === "object" ? "default" : "outline"}
-            className="h-7 px-2 text-[11px]"
-            onClick={() => setDropKind("object")}
-            aria-pressed={dropKind === "object"}
-          >
-            {t(locale, "วัตถุ", "Object")}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={dropKind === "product" ? "default" : "outline"}
-            className="h-7 px-2 text-[11px]"
-            disabled={!onAddProductReference}
-            onClick={() => setDropKind("product")}
-            aria-pressed={dropKind === "product"}
-          >
-            {t(locale, "สินค้า", "Product")}
-          </Button>
-          <span className="text-[10px] text-muted-foreground">
-            {t(locale, "ใช้ปุ่มอัปโหลดแทนการลากได้", "The upload button is also available")}
-          </span>
-        </div>
+          <ShotReferenceStrip
+            locale={locale}
+            t={t2}
+            shotNumber={shotNumber}
+            references={unifiedReferences}
+            maxReferenceImages={maxReferenceImages}
+            referenceLimits={referenceLimits}
+            adding={adding}
+            dragOver={dragOver}
+            onDragOverChange={onDragOverChange}
+            onAdd={payload =>
+              dropKind === "product"
+                ? onAddProductReference?.(payload)
+                : onAddObjectReference(payload)
+            }
+            onRequestRemove={onRequestRemove}
+            title={t(
+              locale,
+              "ภาพอ้างอิงสินค้า / วัตถุ",
+              "Product / object reference images"
+            )}
+            dropHint={t(
+              locale,
+              `ลากภาพมาวางเพื่อเพิ่มเป็น${dropKind === "product" ? "สินค้า" : "วัตถุ"}`,
+              `Drop an image to add it as a ${dropKind}`
+            )}
+            imageOnly
+            testIdPrefix="prop-object"
+          />
 
-        {hasObjectSurface && objectReferenceCatalog.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-2 border-t border-border/70 pt-2">
-            <select
-              className="h-8 min-w-48 rounded-md border bg-background px-2 text-xs"
-              value={selectedObjectId}
-              onChange={event => setSelectedObjectId(event.target.value)}
-              aria-label={t(locale, "เลือกวัตถุประกอบฉาก", "Choose a story object")}
-            >
-              <option value="">{t(locale, "เลือกวัตถุจากคลัง…", "Choose a story object…")}</option>
-              {objectReferenceCatalog.map(object => (
-                <option key={object.id} value={object.id}>
-                  {object.name}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-border/70 pt-2">
+            <span className="text-[11px] text-muted-foreground">
+              {t(locale, "ลากภาพเข้ามาเป็น", "Drop image as")}
+            </span>
             <Button
               type="button"
               size="sm"
-              variant="outline"
-              className="h-8 px-2 text-xs"
-              disabled={!selectedObjectId || !onLinkObjectReference}
-              onClick={() => {
-                if (!selectedObjectId) return;
-                onLinkObjectReference?.(selectedObjectId);
-                setSelectedObjectId("");
-              }}
+              variant={dropKind === "object" ? "default" : "outline"}
+              className="h-7 px-2 text-[11px]"
+              onClick={() => setDropKind("object")}
+              aria-pressed={dropKind === "object"}
             >
-              {t(locale, "เพิ่มวัตถุ", "Add object")}
+              {t(locale, "วัตถุ", "Object")}
             </Button>
-          </div>
-        ) : null}
-
-        {pendingSuggestions.map(suggestion => (
-          <div
-            key={suggestion.id}
-            className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-300/80 bg-amber-50/75 px-2 py-1.5 text-xs dark:border-amber-800 dark:bg-amber-950/25"
-            role="status"
-          >
-            <span>
-              {t(locale, "แนะนำจากบริบท: ", "Suggested from story context: ")}
-              <strong>{suggestion.name}</strong>
-              {suggestion.confidence != null
-                ? ` (${Math.round(suggestion.confidence * 100)}%)`
-                : ""}
+            <Button
+              type="button"
+              size="sm"
+              variant={dropKind === "product" ? "default" : "outline"}
+              className="h-7 px-2 text-[11px]"
+              disabled={!onAddProductReference}
+              onClick={() => setDropKind("product")}
+              aria-pressed={dropKind === "product"}
+            >
+              {t(locale, "สินค้า", "Product")}
+            </Button>
+            <span className="text-[10px] text-muted-foreground">
+              {t(
+                locale,
+                "ใช้ปุ่มอัปโหลดแทนการลากได้",
+                "The upload button is also available"
+              )}
             </span>
-            <span className="flex items-center gap-1">
+          </div>
+
+          {hasObjectSurface && objectReferenceCatalog.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 border-t border-border/70 pt-2">
+              <select
+                className="h-8 min-w-48 rounded-md border bg-background px-2 text-xs"
+                value={selectedObjectId}
+                onChange={event => setSelectedObjectId(event.target.value)}
+                aria-label={t(
+                  locale,
+                  "เลือกวัตถุประกอบฉาก",
+                  "Choose a story object"
+                )}
+              >
+                <option value="">
+                  {t(locale, "เลือกวัตถุจากคลัง…", "Choose a story object…")}
+                </option>
+                {objectReferenceCatalog.map(object => (
+                  <option key={object.id} value={object.id}>
+                    {object.name}
+                  </option>
+                ))}
+              </select>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-6 px-2 text-xs"
-                onClick={() =>
-                  onReviewObjectReferenceSuggestion?.(suggestion.id, "accepted")
-                }
+                className="h-8 px-2 text-xs"
+                disabled={!selectedObjectId || !onLinkObjectReference}
+                onClick={() => {
+                  if (!selectedObjectId) return;
+                  onLinkObjectReference?.(selectedObjectId);
+                  setSelectedObjectId("");
+                }}
               >
-                {t(locale, "ใช้", "Use")}
+                {t(locale, "เพิ่มวัตถุ", "Add object")}
               </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-6 px-2 text-xs"
-                onClick={() =>
-                  onReviewObjectReferenceSuggestion?.(suggestion.id, "rejected")
-                }
-              >
-                {t(locale, "ข้าม", "Dismiss")}
-              </Button>
-            </span>
-          </div>
-        ))}
+            </div>
+          ) : null}
 
-        {objectReferences.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5 border-t border-border/70 pt-2">
-            {objectReferences.map(link => (
-              <span
-                key={link.id}
-                className="inline-flex items-center gap-1 rounded-full border border-violet-300/70 bg-violet-50 px-2 py-1 text-[10px] text-violet-800 dark:border-violet-800 dark:bg-violet-950/25 dark:text-violet-200"
-              >
-                {link.name}
-                {onUnlinkObjectReference ? (
-                  <button
-                    type="button"
-                    className="font-medium underline decoration-dotted underline-offset-2"
-                    onClick={() => onUnlinkObjectReference(link.id)}
-                    aria-label={t(locale, `ลบ ${link.name}`, `Remove ${link.name}`)}
-                  >
-                    {t(locale, "ลบ", "Remove")}
-                  </button>
-                ) : null}
+          {pendingSuggestions.map(suggestion => (
+            <div
+              key={suggestion.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-300/80 bg-amber-50/75 px-2 py-1.5 text-xs dark:border-amber-800 dark:bg-amber-950/25"
+              role="status"
+            >
+              <span>
+                {t(locale, "แนะนำจากบริบท: ", "Suggested from story context: ")}
+                <strong>{suggestion.name}</strong>
+                {suggestion.confidence != null
+                  ? ` (${Math.round(suggestion.confidence * 100)}%)`
+                  : ""}
               </span>
-            ))}
-          </div>
-        ) : null}
-      </div>
+              <span className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-xs"
+                  onClick={() =>
+                    onReviewObjectReferenceSuggestion?.(
+                      suggestion.id,
+                      "accepted"
+                    )
+                  }
+                >
+                  {t(locale, "ใช้", "Use")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-xs"
+                  onClick={() =>
+                    onReviewObjectReferenceSuggestion?.(
+                      suggestion.id,
+                      "rejected"
+                    )
+                  }
+                >
+                  {t(locale, "ข้าม", "Dismiss")}
+                </Button>
+              </span>
+            </div>
+          ))}
+
+          {objectReferences.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5 border-t border-border/70 pt-2">
+              {objectReferences.map(link => (
+                <span
+                  key={link.id}
+                  className="inline-flex items-center gap-1 rounded-full border border-violet-300/70 bg-violet-50 px-2 py-1 text-[10px] text-violet-800 dark:border-violet-800 dark:bg-violet-950/25 dark:text-violet-200"
+                >
+                  {link.name}
+                  {onUnlinkObjectReference ? (
+                    <button
+                      type="button"
+                      className="font-medium underline decoration-dotted underline-offset-2"
+                      onClick={() => onUnlinkObjectReference(link.id)}
+                      aria-label={t(
+                        locale,
+                        `ลบ ${link.name}`,
+                        `Remove ${link.name}`
+                      )}
+                    >
+                      {t(locale, "ลบ", "Remove")}
+                    </button>
+                  ) : null}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -14267,7 +15301,10 @@ function ProductImagePickerDialog({
                         : "border-border"
                     )}
                     onClick={() => {
-                      if (!selected && selectedUrls.length >= maxProductImages) {
+                      if (
+                        !selected &&
+                        selectedUrls.length >= maxProductImages
+                      ) {
                         toast.error(
                           locale === "th"
                             ? `เลือกภาพสินค้าได้ไม่เกิน ${maxProductImages} ภาพ`
@@ -14301,13 +15338,16 @@ function ProductImagePickerDialog({
                         ? "ขยายภาพสินค้าเต็มจอ"
                         : "Open product image fullscreen"
                     }
-                    title={locale === "th" ? "ขยายภาพเต็มจอ" : "Open fullscreen"}
+                    title={
+                      locale === "th" ? "ขยายภาพเต็มจอ" : "Open fullscreen"
+                    }
                     onClick={() => setLightboxUrl(img.url)}
                   >
                     <Expand className="h-4 w-4" />
                   </Button>
                   <p className="truncate px-1 pt-1 text-xs text-muted-foreground">
-                    {img.label ?? (locale === "th" ? "ภาพสินค้า" : "Product image")}
+                    {img.label ??
+                      (locale === "th" ? "ภาพสินค้า" : "Product image")}
                   </p>
                 </div>
               );
@@ -14650,8 +15690,8 @@ function ShotLocationPickerDialog({
 }) {
   const title = t(
     locale,
-    "เลือกสถานที่ของช็อตนี้",
-    "Choose this shot's location"
+    "เลือกสถานที่และภาพมุมกล้องของช็อตนี้",
+    "Choose this shot's location and camera view"
   );
   return (
     <div
@@ -14682,6 +15722,14 @@ function ShotLocationPickerDialog({
             <X aria-hidden="true" className="h-3.5 w-3.5" />
           </Button>
         </div>
+
+        <p className="rounded-md border border-sky-200 bg-sky-50/70 px-2.5 py-2 text-[11px] text-sky-800 dark:border-sky-900 dark:bg-sky-950/20 dark:text-sky-200">
+          {t(
+            locale,
+            "เลือกสถานที่ก่อน แล้วเลือกภาพหลักหรือมุมกล้องที่สร้างไว้สำหรับช็อตนี้ ภาพหลักของสถานที่จะไม่ถูกเปลี่ยน",
+            "Choose the location, then select its primary image or an existing camera view for this shot. The location primary will not be replaced."
+          )}
+        </p>
 
         <div className="flex max-h-80 flex-col gap-0.5 overflow-y-auto">
           {allowDefault ? (
@@ -14748,6 +15796,7 @@ function ShotLocationPickerDialog({
                   <div className="ml-6 flex flex-wrap gap-1 pb-1">
                     <button
                       type="button"
+                      aria-pressed={!currentLocationVariantId}
                       className={cn(
                         "rounded border px-2 py-1 text-[11px] hover:bg-muted",
                         !currentLocationVariantId &&
@@ -14762,6 +15811,9 @@ function ShotLocationPickerDialog({
                       <button
                         key={variant.variantId}
                         type="button"
+                        aria-pressed={
+                          currentLocationVariantId === variant.variantId
+                        }
                         className={cn(
                           "flex items-center gap-1 rounded border px-2 py-1 text-[11px] hover:bg-muted",
                           currentLocationVariantId === variant.variantId &&

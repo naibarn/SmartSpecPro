@@ -1390,6 +1390,7 @@ const en: TranslationDictionary = {
   "admin.skillsPage.nativeBundleLabels.missing": "Missing",
   "admin.skillsPage.categoryLabels.imageGeneration": "Image Generation",
   "admin.skillsPage.categoryLabels.imagePromptGeneration": "Create Prompt for Image Generation",
+  "admin.skillsPage.categoryLabels.characterPromptGeneration": "Create Character Prompts",
   "admin.skillsPage.categoryLabels.videoGeneration": "Video Generation",
   "admin.skillsPage.categoryLabels.videoPromptGeneration": "Create Prompt for Video Generation",
   "admin.skillsPage.categoryLabels.imageVideoGeneration": "Image/Video Generation",

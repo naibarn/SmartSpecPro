@@ -1,0 +1,220 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cute Child Image Generator v3 Input",
+  "type": "object",
+  "properties": {
+    "idea": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "age": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "maximum": 12,
+      "default": null
+    },
+    "gender_style": {
+      "type": "string",
+      "enum": [
+        "girl",
+        "boy",
+        "any"
+      ],
+      "default": "any"
+    },
+    "child_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4,
+      "default": 1
+    },
+    "character_reference_images": {
+      "type": "array",
+      "maxItems": 5,
+      "default": [],
+      "description": "Optional identity reference images used to preserve the same child face and age appearance.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          }
+        },
+        "anyOf": [
+          {
+            "required": [
+              "asset_id"
+            ]
+          },
+          {
+            "required": [
+              "url"
+            ]
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    "identity_lock_mode": {
+      "type": "string",
+      "enum": [
+        "off",
+        "balanced",
+        "strong"
+      ],
+      "default": "strong"
+    },
+    "scene_mode": {
+      "type": "string",
+      "enum": [
+        "random_all"
+      ],
+      "default": "random_all"
+    },
+    "scene_detail": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "scene_complexity": {
+      "type": "string",
+      "enum": [
+        "minimal",
+        "balanced",
+        "rich"
+      ],
+      "default": "balanced"
+    },
+    "style_mode": {
+      "type": "string",
+      "enum": [
+        "photorealistic",
+        "soft_lifestyle",
+        "storybook_soft"
+      ],
+      "default": "photorealistic"
+    },
+    "shot_type": {
+      "type": "string",
+      "enum": [
+        "close_up",
+        "medium_close_up",
+        "waist_up",
+        "full_body",
+        "random"
+      ],
+      "default": "medium_close_up"
+    },
+    "expression": {
+      "type": "string",
+      "enum": [
+        "smile",
+        "laughing",
+        "playful",
+        "cute_pout",
+        "curious",
+        "shy",
+        "random"
+      ],
+      "default": "random"
+    },
+    "outfit_mode": {
+      "type": "string",
+      "enum": [
+        "random",
+        "pastel_cute",
+        "casual",
+        "dressy",
+        "seasonal"
+      ],
+      "default": "random"
+    },
+    "hair_mode": {
+      "type": "string",
+      "enum": [
+        "random",
+        "short",
+        "pigtails",
+        "bun",
+        "braids",
+        "natural"
+      ],
+      "default": "random"
+    },
+    "accessory_mode": {
+      "type": "string",
+      "enum": [
+        "random",
+        "none",
+        "bow",
+        "flower_clip",
+        "hat",
+        "headband"
+      ],
+      "default": "random"
+    },
+    "background_mood": {
+      "type": "string",
+      "enum": [
+        "bright",
+        "warm",
+        "airy",
+        "soft",
+        "cinematic_soft",
+        "random"
+      ],
+      "default": "soft"
+    },
+    "custom_activity": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "custom_notes": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "enum": [
+        "1:1",
+        "4:5",
+        "9:16",
+        "16:9"
+      ],
+      "default": "4:5"
+    }
+  },
+  "required": []
+}

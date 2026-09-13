@@ -117,7 +117,8 @@ it("a hyperframes-only worker's hints do NOT match this job")   // workerJobMatc
 it("a remotion-render worker's hints DO match")
 it("reserves credits before insert")
 it("is idempotent on (projectId,revision,profile)")
-it("rejects a second queued preview for the same user")         // preview cap
+it("rejects a second queued preview for the same target")       // exact-target guard
+it("allows a queued preview for a different target")           // distinct targets queue
 it("prioritizes final (40) over preview (20)")
 ```
 

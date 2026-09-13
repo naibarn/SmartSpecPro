@@ -51,6 +51,7 @@ const TEMP_UPLOAD_DIR = path.join(os.tmpdir(), "smartspec-desktop-releases");
 const MAX_RELEASE_FILE_SIZE_BYTES = 600 * 1024 * 1024;
 const COMPANION_EXTENSION_FILE_PATTERN = /^smartaihub-(?:companion|marketplace-capture)-extension-(.+)\.zip$/i;
 const WORKER_APP_FILE_PATTERN = /^smart-ai-hub-worker-app-(.+)-x64-setup\.(exe|msi)$/i;
+const WORKER_APP_MAC_FILE_PATTERN = /^smart-ai-hub-worker-app-(.+)-arm64-setup\.(dmg|pkg)$/i;
 const WORKER_APP_MAC_SOURCE_FILE_PATTERN = /^smart-ai-hub-worker-app-macos-source-(.+)\.zip$/i;
 
 fs.mkdirSync(TEMP_UPLOAD_DIR, { recursive: true });
@@ -187,7 +188,9 @@ type PublicDashboardRelease = {
   fileSizeBytes: number;
   updatedAt: string;
   downloadUrl: string;
-  installerFormat?: "exe" | "msi" | "zip";
+  installerFormat?: "exe" | "msi" | "dmg" | "pkg" | "zip";
+  platform?: "windows" | "macos" | "linux";
+  architecture?: "x64" | "arm64" | null;
   contentType: string;
 };
 
@@ -222,7 +225,9 @@ function listPublicDashboardReleases(options: {
   filePattern: RegExp;
   downloadUrl: string;
   resolveContentType: (fileName: string, extension: string | null) => string;
-  resolveInstallerFormat?: (fileName: string, extension: string | null) => "exe" | "msi" | "zip" | undefined;
+  resolveInstallerFormat?: (fileName: string, extension: string | null) => "exe" | "msi" | "dmg" | "pkg" | "zip" | undefined;
+  platform?: "windows" | "macos" | "linux";
+  architecture?: "x64" | "arm64" | null;
 }): PublicDashboardRelease[] {
   const releases: PublicDashboardRelease[] = [];
 
@@ -251,6 +256,8 @@ function listPublicDashboardReleases(options: {
         updatedAt: stat.mtime.toISOString(),
         downloadUrl: options.downloadUrl,
         installerFormat: options.resolveInstallerFormat?.(fileName, match[2] ?? null),
+        platform: options.platform,
+        architecture: options.architecture,
         contentType: options.resolveContentType(fileName, match[2] ?? null),
       });
     }
@@ -278,6 +285,8 @@ function getLatestWorkerAppFileRelease(): PublicDashboardRelease | null {
   return listPublicDashboardReleases({
     filePattern: WORKER_APP_FILE_PATTERN,
     downloadUrl: "/api/desktop-releases/worker-app/download",
+    platform: "windows",
+    architecture: "x64",
     resolveContentType: (_fileName, extension) => {
       if (extension?.toLowerCase() === "msi") {
         return "application/x-msi";
@@ -291,27 +300,74 @@ function getLatestWorkerAppFileRelease(): PublicDashboardRelease | null {
   })[0] ?? null;
 }
 
+function getLatestWorkerAppMacFileRelease(): PublicDashboardRelease | null {
+  return listPublicDashboardReleases({
+    filePattern: WORKER_APP_MAC_FILE_PATTERN,
+    downloadUrl: "/api/desktop-releases/worker-app/download?platform=macos&architecture=arm64",
+    platform: "macos",
+    architecture: "arm64",
+    resolveContentType: (_fileName, extension) =>
+      extension?.toLowerCase() === "pkg"
+        ? "application/octet-stream"
+        : "application/x-apple-diskimage",
+    resolveInstallerFormat: (_fileName, extension) => {
+      const normalized = extension?.toLowerCase();
+      return normalized === "pkg" ? "pkg" : "dmg";
+    },
+  })[0] ?? null;
+}
+
 type WorkerAppRelease = PublicDashboardRelease | DesktopReleaseAsset;
 
 function isStoredDesktopRelease(release: WorkerAppRelease): release is DesktopReleaseAsset {
   return typeof (release as DesktopReleaseAsset).id === "number";
 }
 
-async function getLatestWorkerAppRelease(): Promise<WorkerAppRelease | null> {
-  const staticRelease = getLatestWorkerAppFileRelease();
+function inferWorkerAppArchitecture(
+  platform: "windows" | "macos",
+  fileName: string,
+): "x64" | "arm64" | null {
+  const normalized = fileName.toLowerCase();
+  if (platform === "macos" && /(?:arm64|aarch64)/i.test(normalized)) return "arm64";
+  if (platform === "windows" && /(?:x64|amd64)/i.test(normalized)) return "x64";
+  return null;
+}
+
+function isWorkerAppInstallerForPlatform(
+  release: DesktopReleaseAsset,
+  platform: "windows" | "macos",
+  architecture: "x64" | "arm64" | null,
+): boolean {
+  const formatAllowed = platform === "windows"
+    ? release.installerFormat === "exe" || release.installerFormat === "msi"
+    : release.installerFormat === "dmg" || release.installerFormat === "pkg";
+  if (!formatAllowed) return false;
+  if (!architecture) return true;
+  const inferred = inferWorkerAppArchitecture(platform, release.fileName);
+  // Existing Windows catalog rows predate the architecture field and may use
+  // an administrator-supplied filename. Keep those rows compatible while
+  // requiring the explicit arm64 marker for the new Mac native lane.
+  return inferred === architecture || (platform === "windows" && inferred == null);
+}
+
+async function getLatestWorkerAppReleaseForTarget(input: {
+  platform: "windows" | "macos";
+  architecture: "x64" | "arm64";
+}): Promise<WorkerAppRelease | null> {
+  const staticRelease = input.platform === "macos"
+    ? getLatestWorkerAppMacFileRelease()
+    : getLatestWorkerAppFileRelease();
   let storedRelease: DesktopReleaseAsset | null = null;
 
   if (process.env.DATABASE_URL?.trim()) {
     try {
-      const catalog = await listDesktopReleaseCatalog({ platform: "windows" });
-      const candidate = catalog.latestByPlatform.windows;
-      if (candidate && (candidate.installerFormat === "exe" || candidate.installerFormat === "msi")) {
+      const catalog = await listDesktopReleaseCatalog({ platform: input.platform });
+      const candidate = catalog.latestByPlatform[input.platform];
+      if (candidate && isWorkerAppInstallerForPlatform(candidate, input.platform, input.architecture)) {
         storedRelease = candidate;
       }
     } catch (error) {
-      // Keep the legacy file-based release path available while the DB/storage
-      // release catalog is unavailable during a deploy or local development.
-      console.warn("[desktop-releases] Falling back to static Worker App release", error);
+      console.warn("[desktop-releases] Falling back to static targeted Worker App release", error);
     }
   }
 
@@ -321,6 +377,50 @@ async function getLatestWorkerAppRelease(): Promise<WorkerAppRelease | null> {
   return compareDesktopReleaseVersions(storedRelease.version, staticRelease.version) >= 0
     ? storedRelease
     : staticRelease;
+}
+
+function workerAppTargetFromRequest(req: any): {
+  platform: "windows" | "macos";
+  architecture: "x64" | "arm64";
+} {
+  const platform = detectPlatformQuery(req.query?.platform);
+  if (platform === "macos") {
+    if (req.query?.architecture && req.query.architecture !== "arm64") {
+      throw new Error("worker_app_macos_arm64_required");
+    }
+    return { platform, architecture: "arm64" };
+  }
+  if (platform === "linux") {
+    throw new Error("worker_app_target_unsupported");
+  }
+  if (platform === "windows" && req.query?.architecture && req.query.architecture !== "x64") {
+    throw new Error("worker_app_windows_x64_required");
+  }
+  return { platform: "windows", architecture: "x64" };
+}
+
+function serializeWorkerAppRelease(release: WorkerAppRelease | null): Record<string, unknown> | null {
+  if (!release) return null;
+  const platform = "platform" in release && (release.platform === "macos" || release.platform === "linux")
+    ? release.platform
+    : "windows";
+  const architecture = "architecture" in release
+    ? release.architecture
+    : inferWorkerAppArchitecture(platform, release.fileName);
+  return {
+    version: release.version,
+    fileName: release.fileName,
+    fileSizeBytes: release.fileSizeBytes,
+    updatedAt: release.updatedAt,
+    // Self-update must pass through the target-aware route so the native
+    // client can validate both the origin and the platform/architecture.
+    downloadUrl: platform === "macos"
+      ? "/api/desktop-releases/worker-app/download?platform=macos&architecture=arm64"
+      : "/api/desktop-releases/worker-app/download",
+    installerFormat: release.installerFormat,
+    platform,
+    architecture,
+  };
 }
 
 function getLatestWorkerAppMacSourceRelease(): PublicDashboardRelease | null {
@@ -335,6 +435,11 @@ function getLatestWorkerAppMacSourceRelease(): PublicDashboardRelease | null {
 function sendPublicDashboardRelease(res: any, release: PublicDashboardRelease): void {
   res.setHeader("Content-Disposition", buildDownloadDisposition(release.fileName));
   res.setHeader("Content-Type", release.contentType);
+  // The Worker App updater uses this value to validate a complete installer
+  // download and to report deterministic progress. Without it, proxies may
+  // switch to chunked transfer and the native updater cannot distinguish a
+  // slow transfer from an incomplete one.
+  res.setHeader("Content-Length", String(release.fileSizeBytes));
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("X-Content-Type-Options", "nosniff");
   fs.createReadStream(release.filePath).pipe(res);
@@ -452,22 +557,14 @@ export function createDesktopReleaseRouter(): Router {
   registerCompanionExtensionRoutes("companion-extension");
   registerCompanionExtensionRoutes("marketplace-extension");
 
-  router.get("/worker-app/latest", async (_req, res) => {
+  router.get("/worker-app/latest", async (req, res) => {
     try {
-      const release = await getLatestWorkerAppRelease();
+      const target = workerAppTargetFromRequest(req);
+      const release = await getLatestWorkerAppReleaseForTarget(target);
       res.setHeader("Cache-Control", "no-store");
       res.json({
         generatedAt: new Date().toISOString(),
-        release: release
-          ? {
-            version: release.version,
-            fileName: release.fileName,
-            fileSizeBytes: release.fileSizeBytes,
-            updatedAt: release.updatedAt,
-            downloadUrl: release.downloadUrl,
-            installerFormat: release.installerFormat,
-          }
-          : null,
+        release: serializeWorkerAppRelease(release),
       });
     } catch (error) {
       res.status(400).json({
@@ -476,9 +573,10 @@ export function createDesktopReleaseRouter(): Router {
     }
   });
 
-  router.get("/worker-app/download", async (_req, res) => {
+  router.get("/worker-app/download", async (req, res) => {
     try {
-      const release = await getLatestWorkerAppRelease();
+      const target = workerAppTargetFromRequest(req);
+      const release = await getLatestWorkerAppReleaseForTarget(target);
       if (!release) {
         res.status(404).json({ error: "worker_app_release_not_found" });
         return;

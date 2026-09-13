@@ -1390,8 +1390,13 @@ def build_ffmpeg_command_for_waveform(spec: dict) -> list[str]:
         raise ValueError("No assets for waveform")
     uri = assets[0]["uri"]
     path = _safe_uri_for_ffmpeg(uri)
+    params = spec.get("params", {})
+    stream_index = params.get("audioStreamIndex")
+    stream_map = []
+    if isinstance(stream_index, int) and stream_index >= 0:
+        stream_map = ["-map", f"0:{stream_index}"]
     return [
-        "ffmpeg", "-i", path,
+        "ffmpeg", "-i", path, *stream_map,
         "-af", "aformat=sample_fmts=s16:channel_layouts=mono",
         "-f", "s16le", "-",
     ]
@@ -1406,6 +1411,7 @@ def build_ffmpeg_command_for_silence(spec: dict) -> list[str]:
     path = _safe_uri_for_ffmpeg(uri)
 
     params = spec.get("params", {})
+    stream_index = params.get("audioStreamIndex")
     # Cast to numeric to prevent FFmpeg filter injection via string values
     try:
         threshold_db = float(params.get("thresholdDb", -30))
@@ -1418,7 +1424,10 @@ def build_ffmpeg_command_for_silence(spec: dict) -> list[str]:
     min_duration = min_silence_ms / 1000.0
 
     af = f"silencedetect=noise={threshold_db}dB:d={min_duration}"
-    return ["ffmpeg", "-i", path, "-af", af, "-f", "null", "-"]
+    stream_map = []
+    if isinstance(stream_index, int) and stream_index >= 0:
+        stream_map = ["-map", f"0:{stream_index}"]
+    return ["ffmpeg", "-i", path, *stream_map, "-af", af, "-f", "null", "-"]
 
 
 def parse_ffmpeg_progress(line: str, total_duration_us: int) -> float | None:

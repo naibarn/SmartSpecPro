@@ -14,7 +14,7 @@ executes **in-process on the server (Lane A)** and surfaces automatically on
 `/render-jobs`. It delivers three things:
 
 1. `queueRemotionRenderVideoJob(...)` — the enqueue function (capability gating,
-   preview-concurrency cap, credit reservation, idempotency) added to the
+   preview duplicate guard, credit reservation, idempotency) added to the
    **existing** `server/services/workerSchedulerService.ts`.
 2. A `remotion_render_video` **dispatch branch** in the **existing**
    `server/workers/hyperframesRenderWorker.ts` that calls `executeRemotionRender`
@@ -98,7 +98,8 @@ it("a hyperframes-only worker's hints do NOT match this job")   // workerJobMatc
 it("a remotion-render worker's hints DO match")                 // workerJobMatchesSelection === true
 it("reserves credits before insert")                            // assert call order: reserveCredits before repo.insertJob
 it("is idempotent on (projectId,revision,profile)")             // findJobByIdempotencyKey hit → {created:false}, no insert
-it("rejects a second queued preview for the same user")         // preview-concurrency cap
+it("rejects a second queued preview for the same target")       // exact-target guard
+it("allows a queued preview for a different target")           // distinct targets queue
 it("prioritizes final (40) over preview (20)")                  // assert priority in insertJob arg
 ```
 
@@ -187,12 +188,14 @@ Behavior (plan §5.1):
 2. **Idempotency** — key = a stable hash of `(videoProjectId, projectRevision,
    renderProfile.profile)`; `repo.findJobByIdempotencyKey(key)` → if found return
    `{ created: false, job }` with **no** insert and **no** credit reservation.
-3. **Preview cap** (spec §18.2) — when `renderProfile.profile === "preview"`,
-   reject with a specific error if the requesting user already has a
-   queued/running preview `remotion_render_video` job (1-concurrent-preview cap).
-   Prefer a repo lookup method for this; if the repo lacks one, add a narrow
-   method to `WorkerSchedulerRepository` (keep it minimal, mirror existing repo
-   shape). `final` jobs are **not** capped.
+3. **Preview duplicate guard** (spec §18.2) — when
+   `renderProfile.profile === "preview"`, reject with a specific error if the
+   requesting user already has a queued/running preview
+   `remotion_render_video` job for the same `videoProjectId` and
+   `projectRevision`. Distinct preview targets may queue concurrently. Prefer a
+   repo lookup method for this; if the repo lacks one, add a narrow method to
+   `WorkerSchedulerRepository` (keep it minimal, mirror existing repo shape).
+   `final` jobs are **not** subject to this preview guard.
 4. **Reserve credits** — `reserveWorkerJobCredits({ userId: requestedByUserId,
    tenantId, requestedCredits })` where credits are proportional to
    `durationMs × resolution-class × cost-class` (spec §18.4). Reservation happens

@@ -1,6 +1,9 @@
 # Feature Specs Map
 
-Last updated: 2026-04-21
+- **183-public-site-webmcp**: [Public Site WebMCP](183-public-site-webmcp/spec.md) — native-first public page reading, discovery/search, Marketplace browsing and human-submitted Contact preparation; TH/EN, tenant boundaries, five implementation sections, planning only.
+- **184-web-video-editor-headless-worker**: [Web Video Editor + headless Worker](184-web-video-editor-headless-worker/spec.md) — browser-first editing with Bin/Library/Media History parity, operation-level Worker capability gates, Redis readiness, resumable media flow and production-grade rollout plan.
+
+Last updated: 2026-09-10
 
 - **001-workflow-scripts**: local workflow engine (`.smartspec/ss_autopilot`) used by Desktop (004) and tests (008)
 - **002-auth-generator**: generator/template (CLI) used optionally by Web server (003) or Python backend (007)

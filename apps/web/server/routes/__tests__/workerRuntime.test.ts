@@ -381,6 +381,11 @@ describe("workerRuntime routes", () => {
             "runtime-pack/hyperframes/node_modules/@img/sharp-libvips-darwin-arm64/lib/libvips-cpp.1.dylib",
             "runtime-pack/remotion-sidecar/render.mjs",
             "runtime-pack/remotion-sidecar/node_modules/@smartspec/remotion-render/dist/index.js",
+            "runtime-pack/remotion-sidecar/node_modules/@remotion/compositor-darwin-arm64/remotion",
+            "runtime-pack/remotion-sidecar/node_modules/@remotion/compositor-darwin-arm64/ffmpeg",
+            "runtime-pack/remotion-sidecar/node_modules/@remotion/compositor-darwin-arm64/ffprobe",
+            "runtime-pack/remotion-sidecar/node_modules/@esbuild/darwin-arm64/bin/esbuild",
+            "runtime-pack/remotion-sidecar/node_modules/@rspack/binding-darwin-arm64/rspack.darwin-arm64.node",
           ]
       : ["runtime-pack/node/node.exe", "runtime-pack/bin/ffmpeg.exe", "runtime-pack/bin/ffprobe.exe"];
     for (const entry of [...common, ...platformFiles]) {

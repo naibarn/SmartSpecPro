@@ -54,6 +54,11 @@ import {
 } from "@shared/verticalDramaSeries/episodeNumbering";
 import { readVerticalDramaStoryControlSeed } from "@shared/verticalDramaSeries/storyControl";
 import {
+  verticalDramaEpisodeGenerationSettingsSchema,
+  normalizeVerticalDramaEpisodeGenerationSettings,
+  type VerticalDramaEpisodeGenerationSettings,
+} from "@shared/verticalDramaSeries/generationSettings";
+import {
   mediaGenerationService,
   DEFAULT_MODELS,
   resolveReferenceUrl,
@@ -123,9 +128,14 @@ import {
 import { loadEnabledLlmModelRows } from "../services/enabledLlmModels";
 import { getVerticalDramaEnhancedRuntimeSettings } from "../services/verticalDramaEnhancedRuntimeSettings";
 import {
+  getVerticalDramaImageQualityOptions,
+  resolveVerticalDramaEpisodeImageQualityExtraParams,
+} from "../services/verticalDramaEpisodeGenerationSettings";
+import {
   assertSpecialTieInEnabled,
   createSpecialTieInEpisode,
   getSpecialTieInEpisode,
+  isSpecialTieInArtifactsStale,
   materializeRecoverableSpecialTieInOutput,
   materializeSpecialTieInStoryboardShots,
   retrySpecialTieInEpisode,
@@ -244,6 +254,9 @@ import {
   deriveVerticalDramaSpokenCallerVirtualScreens,
   renderVerticalDramaSpokenCallerFaceIdentityLockPromptBlock,
   renderVerticalDramaSpokenCallerVirtualScreenPromptBlock,
+  VERTICAL_DRAMA_HARD_SPEAKER_MAP_MARKER,
+  VERTICAL_DRAMA_CALLER_VIRTUAL_SCREEN_FINAL_OVERRIDE_MARKER,
+  VERTICAL_DRAMA_HANDHELD_PHONE_DISPLAY_RULE,
 } from "@shared/verticalDramaSeries/spokenCallerVirtualScreen";
 import {
   runVerticalDramaSeriesMemoryPlanning,
@@ -362,6 +375,7 @@ import {
   buildMediaCapabilityProbe,
 } from "../services/verticalDramaMediaJobService";
 import { resolveVerticalDramaWorkflow } from "../services/verticalDramaWorkflowResolver";
+import { readVerticalDramaWorkflowPolicy } from "@shared/verticalDramaMedia/workflow";
 import { sha256Prompt } from "../services/verticalDramaFrameRoles";
 import {
   buildCharacterIdentityMapBlock,
@@ -375,13 +389,18 @@ import {
   TWIN_SHARED_FACE_FIELDS,
 } from "@shared/verticalDramaSeries/twinIdentity";
 import { readCharacterIdentityDna } from "@shared/verticalDramaSeries/characterDnaEditor";
-import { classifyDeviceMediatedCharacterRefs } from "@shared/verticalDramaSeries/characterPresence";
+import {
+  classifyDeviceMediatedCharacterRefs,
+  resolveVerticalDramaVisualCast,
+} from "@shared/verticalDramaSeries/characterPresence";
 import {
   normalizeVerticalDramaSupportingPresence,
   resolveVerticalDramaSupportingPresenceForShot,
 } from "@shared/verticalDramaSeries/supportingPresence";
 import {
+  deriveVerticalDramaStartFrameShotComposition,
   ensureVerticalDramaShotCompositionLock,
+  ensureVerticalDramaStartFrameShotCompositionLock,
   findVerticalDramaShotGroundingIssues,
   normalizeVerticalDramaShotComposition,
   replaceVerticalDramaShotCompositionCharacterKeys,
@@ -576,6 +595,7 @@ import {
   VERTICAL_DRAMA_PIPELINE_STAGES,
   VERTICAL_DRAMA_RUNNER_MODES,
   VERTICAL_DRAMA_ASYNC_STAGES,
+  resetEpisodeStoryboardGenerationState,
   type EpisodeRunOwner,
   type RunStageOptions,
   type RunStageOutcome,
@@ -778,6 +798,8 @@ import {
   invokeEnhancedVideoDirectorBridge,
   getEnhancedRuntimeFacts,
   normalizeEnhancedStoryboardShot,
+  resolveEnhancedSpeakerForPrompt,
+  selectEnhancedSpeakerIdentityCandidates,
   GENERIC_COMMERCIAL_VIDEO_DIRECTOR_SKILL_SLUG,
   ENHANCED_ESTIMATED_INPUT_TOKENS,
   ENHANCED_ESTIMATED_OUTPUT_TOKENS,
@@ -999,6 +1021,11 @@ async function loadEnhancedShotContext(input: {
     : null;
   const authoringModel: EnhancedModelFacts = {
     id: authoringModelId,
+    providerModelId: authoringProvider?.providerModelId,
+    // Match the general LLM router's legacy default when older provider maps
+    // have no explicit API style. New rows still carry their declared style.
+    apiStyle: authoringProvider?.apiStyle ?? "chat-completions",
+    supportsFunctionTools: authoringProvider?.supportsFunctionTools,
     enabled: Boolean(
       authoringCatalogRow &&
       authoringProvider?.apiKey &&
@@ -1010,6 +1037,29 @@ async function loadEnhancedShotContext(input: {
   };
   const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
   const frame = plan?.frames?.find(f => f.shotNumber === input.shotNumber);
+  const requiresCastPositionLock =
+    input.operation === "generate" &&
+    !frame?.barrierMultiView &&
+    (frame?.requiredCharacterRefs?.length ?? 0) >= 2;
+  if (requiresCastPositionLock) {
+    const activeVideoAnchorAssetId =
+      frame?.videoStartMediaAssetId ?? frame?.approvedMediaAssetId;
+    const lockValidation = validateVerticalDramaCastPositionLock({
+      lock: frame?.castPositionLock,
+      activeAssetId:
+        activeVideoAnchorAssetId != null
+          ? String(activeVideoAnchorAssetId)
+          : undefined,
+      requiredCharacterRefs: frame?.requiredCharacterRefs ?? [],
+    });
+    if (!lockValidation.valid) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "ยังสร้าง Enhanced video prompt ไม่ได้: ต้องยืนยันลำดับตัวละครซ้าย→ขวาจากภาพปัจจุบันก่อน หากภาพไม่ชัดให้เปลี่ยนภาพ/ซ่อมภาพหรือสร้าง Video-Safe frame เพื่อลดการเสียเครดิตโดยเปล่าประโยชน์",
+      });
+    }
+  }
   const startFrameAssetId = Number(frame?.approvedMediaAssetId);
   const stopFrameAssetId = Number(frame?.approvedStopFrameAssetId);
   if (!Number.isInteger(startFrameAssetId) || startFrameAssetId <= 0) {
@@ -1149,7 +1199,7 @@ async function loadEnhancedShotContext(input: {
               label: reference.label,
             },
           ]
-      : [];
+        : [];
     }),
   ];
   // The browser-facing `/api/storage/files/*` URL is tenant-authenticated and
@@ -1162,39 +1212,60 @@ async function loadEnhancedShotContext(input: {
     const providerUrls = await resolveExternalMediaReferenceUrls(
       rawVisionReferences.map(reference => reference.url),
       { userId: input.userId, tenantId: input.tenantId },
-      input.publicUrl ?? undefined,
+      input.publicUrl ?? undefined
     );
     visionReferences = rawVisionReferences.map((reference, index) => ({
       ...reference,
       url: providerUrls?.[index] ?? reference.url,
     }));
   } catch (error) {
-    const reason = error instanceof Error ? error.message : "unknown reference error";
+    const reason =
+      error instanceof Error ? error.message : "unknown reference error";
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: `Enhanced vision reference is unavailable for provider access: ${reason}`,
     });
   }
   const storyboard = row.storyboard as VerticalDramaShotgrid | null;
-  const storyboardShot = normalizeEnhancedStoryboardShot(
-    storyboard?.shots?.find(rawShot => {
+  const rawStoryboardShot = storyboard?.shots?.find(rawShot => {
       const shot = rawShot as unknown as Record<string, unknown>;
       return Number(shot.shotNumber ?? shot.shot_number) === input.shotNumber;
-    }),
-    input.shotNumber,
+    });
+  const storyboardShot = normalizeEnhancedStoryboardShot(
+    rawStoryboardShot,
+    input.shotNumber
   );
+  const shotReferenceRoles = frame
+    ? resolveExplicitShotReferenceRoles(storyboard, input.shotNumber, frame)
+    : {
+        sceneCharacterRefs: storyboardShot?.characterIds ?? [],
+        screenCallerCharacterRefs:
+          storyboardShot?.screenCallerCharacterRefs ?? [],
+        narrativeOnlyCharacterRefs: [],
+      };
+  const characterIds = shotReferenceRoles.sceneCharacterRefs;
+  const screenCallerCharacterRefs =
+    shotReferenceRoles.screenCallerCharacterRefs;
+  const visualCharacterRefs = [
+    ...characterIds,
+    ...screenCallerCharacterRefs.filter(
+      characterKey => !characterIds.includes(characterKey)
+    ),
+  ];
   // Enhanced is authored from the storyboard and approved visual bundle. A
   // Legacy motion clip is optional: special episodes and partially-generated
   // packs can legitimately have storyboard shots with no Legacy projection.
   // Keep a transient slot for context only; it is materialized as an
   // Enhanced-only clip after the paid authoring job succeeds.
-  const clip = existingClip ?? ({
-    clipNumber: input.shotNumber,
-    sourceShotNumbers: [input.shotNumber],
-    prompt: "",
-    durationSeconds: storyboardShot?.durationSeconds ?? 8,
-    dialogue: [],
-  } as unknown as VerticalDramaMotionPromptPack["clips"][number]);
+  const clip =
+    existingClip ??
+    ({
+      clipNumber: input.shotNumber,
+      sourceShotNumbers: [input.shotNumber],
+      prompt: "",
+      durationSeconds: storyboardShot?.durationSeconds ?? 8,
+      dialogue: [],
+    } as unknown as VerticalDramaMotionPromptPack["clips"][number]);
   const matchingClipForEnhanced = existingClip
     ? {
         clipNumber: existingClip.clipNumber,
@@ -1230,10 +1301,10 @@ async function loadEnhancedShotContext(input: {
     script: row.script as Record<string, unknown> | null,
     storyboardShotCount: storyboard?.shots?.length,
     knownSpeakerKeys: knownSpeakerKeysForShot,
-    sourceBeatIndexes:
-      tenantFlags?.verticalDramaSeriesSpeechBudget === true
-        ? storyboardShot?.sourceBeatIndexes
-        : undefined,
+    sourceBeatIndexes: resolvePersistedShotSourceBeatIndexes(
+      rawStoryboardShot,
+      row.script as Record<string, unknown> | null,
+    ),
     deepDraftShot: deepDraftShotForEnhanced,
   });
   const rawDialogueList =
@@ -1324,33 +1395,20 @@ async function loadEnhancedShotContext(input: {
     }
   }
 
-  const shotCharacterKeys = new Set(
-    [
-      ...(storyboardShot?.characterIds ?? []),
-      ...verifiedCastPositions.map(position => position.characterKey),
-    ].map(characterKey => characterKey.toLowerCase())
-  );
-  const speakerIdentityCandidates: VerticalDramaSpeakerIdentityCandidate[] =
-    rosterRows
-      .filter(
-        candidate =>
-          shotCharacterKeys.size === 0 ||
-          shotCharacterKeys.has(candidate.characterKey.toLowerCase())
-      )
-      .map(candidate => ({
-        characterKey: candidate.characterKey,
-        name: candidate.name,
-      }));
+  const speakerIdentityCandidates = selectEnhancedSpeakerIdentityCandidates({
+    roster: rosterRows,
+    storyboardCharacterKeys: characterIds,
+    frameCharacterKeys: characterIds,
+    screenCallerCharacterKeys: screenCallerCharacterRefs,
+  });
+  const offscreenDialogueCharacterRefs: string[] = [];
+  const offscreenDialogueCharacterNames: string[] = [];
 
   const enhancedDialogue = rawDialogueList
     .filter((line: any) =>
       Boolean(
         String(
-          line.lineTh ??
-            line.text ??
-            line.dialogue_line ??
-            line.line ??
-            ""
+          line.lineTh ?? line.text ?? line.dialogue_line ?? line.line ?? ""
         ).trim()
       )
     )
@@ -1363,23 +1421,25 @@ async function loadEnhancedShotContext(input: {
           line.speakerHint ??
           ""
       ).trim();
-      const resolution = resolveVerticalDramaSpeakerIdentity(
+      const resolution = resolveEnhancedSpeakerForPrompt({
         authoredSpeaker,
-        speakerIdentityCandidates
-      );
-      if (resolution.status !== "resolved") {
+        candidates: speakerIdentityCandidates,
+        assignments: frame?.characterLookAssignments,
+        fallbackKey: `speaker-${idx + 1}`,
+      });
+      if (resolution.status === "ambiguous") {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message:
-            resolution.status === "ambiguous"
-              ? `ผู้พูด “${authoredSpeaker}” ตรงกับตัวละครมากกว่าหนึ่งคนในช็อต ${input.shotNumber}`
-              : `ไม่พบตัวละครผู้พูด “${authoredSpeaker || `บรรทัด ${idx + 1}`}” ในช็อต ${input.shotNumber}`,
+          message: `ผู้พูด “${authoredSpeaker}” ตรงกับตัวละครมากกว่าหนึ่งคนในช็อต ${input.shotNumber}`,
         });
       }
-      const stableCharacterKey = resolution.characterKey;
+      const isOffscreenSpeaker = resolution.status !== "resolved";
+      const stableCharacterKey =
+        resolution.status === "resolved" || resolution.status === "offscreen"
+          ? resolution.characterKey
+          : `speaker-${idx + 1}`;
       const matchedPosition = verifiedCastPositions.find(
-        p =>
-          p.characterKey.toLowerCase() === stableCharacterKey.toLowerCase()
+        p => p.characterKey.toLowerCase() === stableCharacterKey.toLowerCase()
       );
       const speaker =
         speakerNameMap.get(stableCharacterKey) ??
@@ -1388,7 +1448,14 @@ async function loadEnhancedShotContext(input: {
         line.speaker ??
         line.speakerHint ??
         stableCharacterKey;
-      const position = matchedPosition?.position ?? line.position ?? undefined;
+      if (isOffscreenSpeaker) {
+        speakerNameMap.set(stableCharacterKey, speaker);
+        offscreenDialogueCharacterRefs.push(stableCharacterKey);
+        offscreenDialogueCharacterNames.push(speaker);
+      }
+      const position = isOffscreenSpeaker
+        ? "viewer-offscreen"
+        : matchedPosition?.position ?? line.position ?? undefined;
       const text = String(
         line.lineTh ?? line.text ?? line.dialogue_line ?? line.line ?? ""
       ).trim();
@@ -1399,6 +1466,8 @@ async function loadEnhancedShotContext(input: {
         speaker: speaker || undefined,
         characterKey: stableCharacterKey,
         position,
+        speakerVisibility: isOffscreenSpeaker ? "offscreen" : "in_frame",
+        mustBeOnScreen: !isOffscreenSpeaker,
         text,
         lineTh: text,
         emotion: line.emotion ? String(line.emotion) : undefined,
@@ -1417,8 +1486,31 @@ async function loadEnhancedShotContext(input: {
     model: targetVideoModel,
     mediaBundle,
   });
-  const characterIds = storyboardShot?.characterIds ?? [];
   const locationId = storyboardShot?.locationId;
+  const visualCastPolicy = {
+    physicalCharacterRefs: characterIds,
+    screenCallerCharacterRefs,
+    narrativeOnlyCharacterRefs: Array.from(
+      new Set([
+        ...shotReferenceRoles.narrativeOnlyCharacterRefs,
+        ...offscreenDialogueCharacterRefs,
+      ])
+    ),
+    physicalCharacterNames: characterIds.map(
+      characterKey => speakerNameMap.get(characterKey) ?? characterKey
+    ),
+    screenCallerCharacterNames: screenCallerCharacterRefs.map(
+      characterKey => speakerNameMap.get(characterKey) ?? characterKey
+    ),
+    narrativeOnlyCharacterNames: Array.from(
+      new Set([
+        ...shotReferenceRoles.narrativeOnlyCharacterRefs.map(
+          characterKey => speakerNameMap.get(characterKey) ?? characterKey
+        ),
+        ...offscreenDialogueCharacterNames,
+      ])
+    ),
+  };
 
   const canonicalContext = {
     series: {
@@ -1429,7 +1521,7 @@ async function loadEnhancedShotContext(input: {
       cameraGrammar: bible?.cameraGrammar ?? null,
       continuityRules: bible?.continuityRules ?? [],
       characters: (bible?.characters ?? []).filter(character =>
-        characterIds.includes(
+        visualCharacterRefs.includes(
           String(character.characterId ?? character.id ?? "")
         )
       ),
@@ -1452,6 +1544,9 @@ async function loadEnhancedShotContext(input: {
     },
     shot: {
       ...storyboardShot,
+      characterIds,
+      screenCallerCharacterRefs,
+      visualCastPolicy,
       clipNumber: (clip as { clipNumber?: number }).clipNumber,
       sourceShotNumbers:
         (clip as { sourceShotNumbers?: number[] }).sourceShotNumbers ?? [],
@@ -1476,23 +1571,31 @@ async function loadEnhancedShotContext(input: {
       frameAnalysis: null,
       durationSeconds: storyboardShot?.durationSeconds ?? clip.durationSeconds,
       characterIds,
+      screenCallerCharacterRefs,
+      visualCastPolicy,
       locationId,
       continuityNotes: storyboardShot?.continuityNotes ?? [],
       canonicalContext,
       verifiedCastPositions,
       episodeSynopsis: shotEpisodePlanItem?.logline ?? undefined,
       episodeKeyBeats: shotEpisodePlanItem?.keyBeats ?? undefined,
-      audioDirection: existingClip?.audioDirection ?? clip?.audioDirection ?? undefined,
+      audioDirection:
+        existingClip?.audioDirection ?? clip?.audioDirection ?? undefined,
       audioNotes: (storyboardShot as any)?.audioNotes ?? undefined,
-      soundEffects: (storyboardShot as any)?.soundEffects ?? (frame as any)?.soundEffects ?? undefined,
+      soundEffects:
+        (storyboardShot as any)?.soundEffects ??
+        (frame as any)?.soundEffects ??
+        undefined,
     },
     continuity: {
       storyboardRevision: row.updatedAt.toISOString(),
       storyboardShot,
       verifiedCastPositions,
+      visualCastPolicy,
       episodeSynopsis: shotEpisodePlanItem?.logline ?? undefined,
       episodeKeyBeats: shotEpisodePlanItem?.keyBeats ?? undefined,
-      audioDirection: existingClip?.audioDirection ?? clip?.audioDirection ?? undefined,
+      audioDirection:
+        existingClip?.audioDirection ?? clip?.audioDirection ?? undefined,
     },
     mediaBundle,
     visionReferences,
@@ -1664,9 +1767,8 @@ async function executeEnhancedShotVideoPromptJob(input: {
         c.clipNumber === input.shotNumber ||
         c.parentShotNumber === input.shotNumber
     );
-    const freshClip = freshClipIndex >= 0
-      ? freshPack.clips[freshClipIndex]
-      : undefined;
+    const freshClip =
+      freshClipIndex >= 0 ? freshPack.clips[freshClipIndex] : undefined;
     // Enhanced may be the first prompt author for this shot. Materialize a
     // structural clip slot only after the paid job succeeds; do not create a
     // fake Legacy prompt or require one for the merge.
@@ -1714,8 +1816,8 @@ async function executeEnhancedShotVideoPromptJob(input: {
           providerProfileId: context.targetVideoModel.providerProfileId!,
           providerPlanHash,
           now: createdAt,
-        jobId: input.jobId,
-      });
+          jobId: input.jobId,
+        });
     const updatedClip = { ...clipForEnhanced, videoPromptVariants: store };
     const updatedPack = {
       ...freshPack,
@@ -2426,9 +2528,9 @@ async function loadOwnedEpisodeBroll(
   };
   const brollSlots =
     snapshot?.slots.filter(
-    slot =>
-      slot.semanticRole === "b_roll_still" ||
-      slot.semanticRole === "b_roll_footage"
+      slot =>
+        slot.semanticRole === "b_roll_still" ||
+        slot.semanticRole === "b_roll_footage"
     ) ?? [];
   const mediaIds = Array.from(
     new Set([
@@ -2564,7 +2666,7 @@ async function loadOwnedEpisodeBroll(
           ? sourceByAssetId.get(row.sourceAssetId)
           : row.mediaAssetId != null
             ? sourceByMediaId.get(row.mediaAssetId)
-          : undefined;
+            : undefined;
     const candidateMediaUrl =
       row.mediaAssetId != null
         ? urlsByAssetId.get(row.mediaAssetId)
@@ -3312,14 +3414,14 @@ async function markCompiledVideoTimelineStale(owner: {
       },
       updatedAt: new Date(),
     })
-      .where(
-        and(
+    .where(
+      and(
         eq(verticalDramaEpisodes.id, owner.episodeId),
         eq(verticalDramaEpisodes.tenantId, owner.tenantId),
         eq(verticalDramaEpisodes.userId, owner.userId),
         eq(verticalDramaEpisodes.seriesId, owner.seriesId)
-        )
-      );
+      )
+    );
 }
 
 type EpisodeCoverNarrative = {
@@ -4807,18 +4909,11 @@ function resolveExplicitShotReferenceRoles(
   storyboard: unknown,
   shotNumber: number,
   frame: VerticalDramaStartFramePlan["frames"][number]
-): { sceneCharacterRefs: string[]; screenCallerCharacterRefs: string[] } {
-  if (frame.characterRefsCustomized === true) {
-    return {
-      sceneCharacterRefs: Array.from(
-        new Set(frame.requiredCharacterRefs ?? [])
-      ),
-      screenCallerCharacterRefs: Array.from(
-        new Set(frame.screenCallerCharacterRefs ?? [])
-      ),
-    };
-  }
-
+): {
+  sceneCharacterRefs: string[];
+  screenCallerCharacterRefs: string[];
+  narrativeOnlyCharacterRefs: string[];
+} {
   const shots = (storyboard as { shots?: unknown[] } | null | undefined)?.shots;
   const shot = Array.isArray(shots)
     ? (shots.find(
@@ -4831,6 +4926,28 @@ function resolveExplicitShotReferenceRoles(
           ) === shotNumber
       ) as Record<string, unknown> | undefined)
     : undefined;
+  const storyboardCharacterValues = Array.isArray(shot?.required_character_refs)
+    ? shot.required_character_refs
+    : Array.isArray(shot?.characters)
+      ? shot.characters
+      : Array.isArray(shot?.characterIds)
+        ? shot.characterIds
+        : [];
+  const storyboardCharacterRefs = Array.from(
+    new Set(
+      storyboardCharacterValues
+        .map(value => String(value).trim())
+        .filter(Boolean)
+    )
+  );
+  const storyboardCallerValues = Array.isArray(shot?.screen_caller_refs)
+    ? shot.screen_caller_refs
+    : [];
+  const storyboardCallerRefs = Array.from(
+    new Set(
+      storyboardCallerValues.map(value => String(value).trim()).filter(Boolean)
+    )
+  );
   const physicalValues = Array.isArray(shot?.required_character_refs)
     ? shot.required_character_refs
     : Array.isArray(shot?.characters)
@@ -4839,30 +4956,34 @@ function resolveExplicitShotReferenceRoles(
   const callerValues = Array.isArray(shot?.screen_caller_refs)
     ? shot.screen_caller_refs
     : undefined;
-  if (physicalValues !== undefined || callerValues !== undefined) {
-    return {
-      sceneCharacterRefs: Array.from(
-        new Set(
-          (physicalValues ?? [])
-            .map(value => String(value).trim())
-            .filter(Boolean)
-        )
-      ),
-      screenCallerCharacterRefs: Array.from(
-        new Set(
-          (callerValues ?? [])
-            .map(value => String(value).trim())
-            .filter(Boolean)
-        )
-      ),
-    };
-  }
-  return {
-    sceneCharacterRefs: Array.from(new Set(frame.requiredCharacterRefs ?? [])),
-    screenCallerCharacterRefs: Array.from(
-      new Set(frame.screenCallerCharacterRefs ?? [])
-    ),
-  };
+  const fallbackCharacterRefs = Array.from(
+    new Set(
+      (physicalValues ?? frame.requiredCharacterRefs ?? [])
+        .map(value => String(value).trim())
+        .filter(Boolean)
+    )
+  );
+  const fallbackCallerRefs = Array.from(
+    new Set(
+      (callerValues ?? frame.screenCallerCharacterRefs ?? storyboardCallerRefs)
+        .map(value => String(value).trim())
+        .filter(Boolean)
+    )
+  );
+  return resolveVerticalDramaVisualCast({
+    selectedCharacterRefs: frame.requiredCharacterRefs ?? [],
+    selectedCallerCharacterRefs:
+      frame.screenCallerCharacterRefs ?? storyboardCallerRefs,
+    storyboardCharacterRefs:
+      storyboardCharacterRefs.length > 0
+        ? storyboardCharacterRefs
+        : fallbackCharacterRefs,
+    storyboardCallerCharacterRefs:
+      storyboardCallerRefs.length > 0
+        ? storyboardCallerRefs
+        : fallbackCallerRefs,
+    characterSelectionIsAuthoritative: frame.characterRefsCustomized === true,
+  });
 }
 
 /**
@@ -4907,7 +5028,13 @@ async function resolveRequiredShotCharacterAttachmentManifest(
 
   type RequiredShotCharacterRow = Pick<
     typeof verticalDramaCharacters.$inferSelect,
-    "id" | "name" | "characterKey" | "parentCharacterId" | "variantType" | "sharesFaceWithCharacterId" | "data"
+    | "id"
+    | "name"
+    | "characterKey"
+    | "parentCharacterId"
+    | "variantType"
+    | "sharesFaceWithCharacterId"
+    | "data"
   >;
   let rows = (await db
     .select({
@@ -4916,7 +5043,8 @@ async function resolveRequiredShotCharacterAttachmentManifest(
       characterKey: verticalDramaCharacters.characterKey,
       parentCharacterId: verticalDramaCharacters.parentCharacterId,
       variantType: verticalDramaCharacters.variantType,
-      sharesFaceWithCharacterId: verticalDramaCharacters.sharesFaceWithCharacterId,
+      sharesFaceWithCharacterId:
+        verticalDramaCharacters.sharesFaceWithCharacterId,
       data: verticalDramaCharacters.data,
     })
     .from(verticalDramaCharacters)
@@ -4944,7 +5072,8 @@ async function resolveRequiredShotCharacterAttachmentManifest(
         characterKey: verticalDramaCharacters.characterKey,
         parentCharacterId: verticalDramaCharacters.parentCharacterId,
         variantType: verticalDramaCharacters.variantType,
-        sharesFaceWithCharacterId: verticalDramaCharacters.sharesFaceWithCharacterId,
+        sharesFaceWithCharacterId:
+          verticalDramaCharacters.sharesFaceWithCharacterId,
         data: verticalDramaCharacters.data,
       })
       .from(verticalDramaCharacters)
@@ -4997,9 +5126,45 @@ async function resolveRequiredShotCharacterAttachmentManifest(
   // `screenCallerCharacterKeys` is already an explicit role decision from
   // the user or storyboard skill. Partition by that field only; never infer
   // or reorder roles from the synopsis.
+  const parentKeyById = new Map<number, string>(
+    rows.map(row => [row.id, row.characterKey])
+  );
+  const variantParentIds = Array.from(
+    new Set(
+      rows
+        .map(row => row.parentCharacterId)
+        .filter((id): id is number => id != null && !parentKeyById.has(id))
+    )
+  );
+  if (variantParentIds.length > 0) {
+    const parentRows = await db
+      .select({
+        id: verticalDramaCharacters.id,
+        characterKey: verticalDramaCharacters.characterKey,
+      })
+      .from(verticalDramaCharacters)
+      .where(
+        and(
+          eq(verticalDramaCharacters.tenantId, tenantId),
+          eq(verticalDramaCharacters.userId, userId),
+          eq(verticalDramaCharacters.seriesId, seriesId),
+          inArray(verticalDramaCharacters.id, variantParentIds)
+        )
+      );
+    for (const parentRow of parentRows) {
+      parentKeyById.set(parentRow.id, parentRow.characterKey);
+    }
+  }
   const presence = classifyDeviceMediatedCharacterRefs({
     characterRefs: orderedKeys,
-    characters: rows,
+    characters: rows.map(row => ({
+      characterKey: row.characterKey,
+      name: row.name,
+      parentCharacterKey:
+        row.parentCharacterId != null
+          ? parentKeyById.get(row.parentCharacterId)
+          : undefined,
+    })),
     screenCallerCharacterRefs: canonicalScreenCallerKeys,
   });
   orderedKeys = [
@@ -5027,7 +5192,8 @@ async function resolveRequiredShotCharacterAttachmentManifest(
         id: verticalDramaCharacters.id,
         data: verticalDramaCharacters.data,
         parentCharacterId: verticalDramaCharacters.parentCharacterId,
-        sharesFaceWithCharacterId: verticalDramaCharacters.sharesFaceWithCharacterId,
+        sharesFaceWithCharacterId:
+          verticalDramaCharacters.sharesFaceWithCharacterId,
       })
       .from(verticalDramaCharacters)
       .where(
@@ -5037,15 +5203,17 @@ async function resolveRequiredShotCharacterAttachmentManifest(
           eq(verticalDramaCharacters.seriesId, seriesId)
         )
       )) as Array<{
-        id: number;
-        data: unknown;
-        parentCharacterId: number | null;
-        sharesFaceWithCharacterId: number | null;
-      }>;
+      id: number;
+      data: unknown;
+      parentCharacterId: number | null;
+      sharesFaceWithCharacterId: number | null;
+    }>;
     const byId = new Map(allRows.map(row => [row.id, row]));
     const ageOf = (data: unknown): string | undefined => {
-      const visualBible = (data as Record<string, unknown> | null)?.visualBible as Record<string, unknown> | undefined;
-      return typeof visualBible?.ageRange === "string" && visualBible.ageRange.trim()
+      const visualBible = (data as Record<string, unknown> | null)
+        ?.visualBible as Record<string, unknown> | undefined;
+      return typeof visualBible?.ageRange === "string" &&
+        visualBible.ageRange.trim()
         ? visualBible.ageRange.trim().toLowerCase()
         : undefined;
     };
@@ -5059,18 +5227,30 @@ async function resolveRequiredShotCharacterAttachmentManifest(
       };
       const leftYears = years(left);
       const rightYears = years(right);
-      return leftYears != null && rightYears != null && Math.abs(leftYears - rightYears) > 1;
+      return (
+        leftYears != null &&
+        rightYears != null &&
+        Math.abs(leftYears - rightYears) > 1
+      );
     };
     for (const row of rows) {
       if (row.parentCharacterId == null) continue;
       const parent = byId.get(row.parentCharacterId);
       if (!parent) continue;
-      const twinId = parent.sharesFaceWithCharacterId ??
-        allRows.find(candidate => candidate.sharesFaceWithCharacterId === parent.id)?.id;
+      const twinId =
+        parent.sharesFaceWithCharacterId ??
+        allRows.find(
+          candidate => candidate.sharesFaceWithCharacterId === parent.id
+        )?.id;
       const twin = twinId != null ? byId.get(twinId) : undefined;
       const variantAge = ageOf(row.data);
       const twinAge = ageOf(twin?.data);
-      if (twin && variantAge && twinAge && clearlyIncompatibleAge(variantAge, twinAge)) {
+      if (
+        twin &&
+        variantAge &&
+        twinAge &&
+        clearlyIncompatibleAge(variantAge, twinAge)
+      ) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message: `ยังสร้างภาพช็อต ${shotNumber} ไม่ได้: ลุคช่วงอายุของ ${row.name ?? row.characterKey} ไม่ตรงกับอายุแฝด (${twinAge}) — เลือกตัวละครฐานหรือลุคชุดที่อายุเดียวกัน`,
@@ -5930,7 +6110,8 @@ async function resolveShotCharacterIdentitySources(
       name: verticalDramaCharacters.name,
       role: verticalDramaCharacters.role,
       data: verticalDramaCharacters.data,
-      sharesFaceWithCharacterId: verticalDramaCharacters.sharesFaceWithCharacterId,
+      sharesFaceWithCharacterId:
+        verticalDramaCharacters.sharesFaceWithCharacterId,
       parentCharacterId: verticalDramaCharacters.parentCharacterId,
     })
     .from(verticalDramaCharacters)
@@ -5962,17 +6143,23 @@ async function resolveShotCharacterIdentitySources(
           : undefined,
       twinIdentityLock: (() => {
         const pair = resolveTwinPair(
-          row.parentCharacterId != null ? byId.get(row.parentCharacterId) ?? row : row,
+          row.parentCharacterId != null
+            ? (byId.get(row.parentCharacterId) ?? row)
+            : row,
           rows
         );
         if (!pair) return undefined;
         const baseId = row.parentCharacterId ?? row.id;
-        const twin = byId.get(pair.sourceId === baseId ? pair.targetId : pair.sourceId);
+        const twin = byId.get(
+          pair.sourceId === baseId ? pair.targetId : pair.sourceId
+        );
         const source = byId.get(pair.sourceId) ?? row;
         const sourceDna = readCharacterIdentityDna(source.data);
         const ageRange = sourceDna?.ageRange ?? "same apparent age range";
         const sharedFace = sourceDna
-          ? TWIN_SHARED_FACE_FIELDS.map(field => sourceDna.faceIdentity[field]).join("; ")
+          ? TWIN_SHARED_FACE_FIELDS.map(
+              field => sourceDna.faceIdentity[field]
+            ).join("; ")
           : "the canonical face geometry from the linked source";
         return `TWIN IDENTITY LOCK: same face and facial structure as ${twin?.name ?? "the linked twin"}; canonical age ${ageRange}; face facts ${sharedFace}; clothing, hair, and personality may differ`;
       })(),
@@ -6008,7 +6195,8 @@ async function resolveShotCharacterPromptRoster(
       name: verticalDramaCharacters.name,
       role: verticalDramaCharacters.role,
       data: verticalDramaCharacters.data,
-      sharesFaceWithCharacterId: verticalDramaCharacters.sharesFaceWithCharacterId,
+      sharesFaceWithCharacterId:
+        verticalDramaCharacters.sharesFaceWithCharacterId,
       parentCharacterId: verticalDramaCharacters.parentCharacterId,
     })
     .from(verticalDramaCharacters)
@@ -6044,20 +6232,26 @@ async function resolveShotCharacterPromptRoster(
         typeof (row.data as Record<string, unknown> | null)?.description ===
         "string"
           ? ((row.data as Record<string, unknown>).description as string)
-        : undefined,
+          : undefined,
       twinIdentityLock: (() => {
         const pair = resolveTwinPair(
-          row.parentCharacterId != null ? byId.get(row.parentCharacterId) ?? row : row,
+          row.parentCharacterId != null
+            ? (byId.get(row.parentCharacterId) ?? row)
+            : row,
           rows
         );
         if (!pair) return undefined;
         const baseId = row.parentCharacterId ?? row.id;
-        const twin = byId.get(pair.sourceId === baseId ? pair.targetId : pair.sourceId);
+        const twin = byId.get(
+          pair.sourceId === baseId ? pair.targetId : pair.sourceId
+        );
         const source = byId.get(pair.sourceId) ?? row;
         const sourceDna = readCharacterIdentityDna(source.data);
         const ageRange = sourceDna?.ageRange ?? "same apparent age range";
         const sharedFace = sourceDna
-          ? TWIN_SHARED_FACE_FIELDS.map(field => sourceDna.faceIdentity[field]).join("; ")
+          ? TWIN_SHARED_FACE_FIELDS.map(
+              field => sourceDna.faceIdentity[field]
+            ).join("; ")
           : "the canonical face geometry from the linked source";
         return `TWIN IDENTITY LOCK: same face and facial structure as ${twin?.name ?? "the linked twin"}; canonical age ${ageRange}; face facts ${sharedFace}; clothing, hair, and personality may differ`;
       })(),
@@ -6157,37 +6351,37 @@ async function resolveShotPropObjectReferenceUrls(
   userId: number,
   seriesId: number,
   episodeId: number,
-  shotNumber: number,
+  shotNumber: number
 ): Promise<string[]> {
   try {
     const references = await verticalDramaShotReferencesService.listForShot(
       { tenantId, userId, seriesId },
       episodeId,
-      shotNumber,
+      shotNumber
     );
     const assetIds = references
       .filter(
         reference =>
           reference.source === "prop_object" &&
-          (reference.mediaType === undefined || reference.mediaType === "image"),
+          (reference.mediaType === undefined || reference.mediaType === "image")
       )
       .map(reference => Number(reference.mediaAssetId));
     const urlsById = await resolveMediaAssetUrlsByIds(
       tenantId,
       userId,
-      assetIds,
+      assetIds
     );
     return Array.from(
       new Set(
         assetIds
           .map(assetId => urlsById.get(assetId))
-          .filter((url): url is string => Boolean(url)),
-      ),
+          .filter((url): url is string => Boolean(url))
+      )
     );
   } catch (error) {
     console.warn(
       "[vd_prop_object_reference] failed to resolve prop/object references — continuing without them",
-      { episodeId, shotNumber, error },
+      { episodeId, shotNumber, error }
     );
     return [];
   }
@@ -6238,6 +6432,7 @@ function assertSpecialProductReferencesAttached(input: {
 type ShotDialogueLine = {
   characterKey?: string;
   lineTh: string;
+  addressedTo?: string;
   emotion?: string;
   delivery?: {
     tone?: string;
@@ -6282,6 +6477,7 @@ function mapDeepDraftDialogueLineToShotDialogueLine(
   return {
     characterKey: line.speaker,
     lineTh: line.line,
+    addressedTo: line.addressed_to,
     delivery: line.delivery ? { tone: line.delivery } : undefined,
   };
 }
@@ -6455,6 +6651,12 @@ export function resolveShotDialogueLines(params: {
           ? line.speaker_character_id
           : undefined,
       lineTh: typeof line.dialogue_line === "string" ? line.dialogue_line : "",
+      addressedTo:
+        typeof line.addressed_to === "string"
+          ? line.addressed_to
+          : typeof line.addressedTo === "string"
+            ? line.addressedTo
+            : undefined,
       emotion: typeof line.emotion === "string" ? line.emotion : undefined,
       delivery: line.delivery as
         | { tone?: string; pace?: string; pauses?: string; texture?: string }
@@ -6495,6 +6697,12 @@ export function resolveShotDialogueLines(params: {
           characterKey:
             typeof line.speaker === "string" ? line.speaker : undefined,
           lineTh,
+          addressedTo:
+            typeof line.addressed_to === "string"
+              ? line.addressed_to
+              : typeof line.addressedTo === "string"
+                ? line.addressedTo
+                : undefined,
           // `scriptDialogueLineSchema.delivery` (verticalDramaScriptGeneration.ts)
           // is a short freeform STRING (e.g. "urgent whisper"), unlike this
           // shape's own structured `{ tone, pace, pauses, texture }` object —
@@ -6556,6 +6764,82 @@ export function resolveShotDialogueLines(params: {
     })
     .filter((l): l is ShotDialogueLine => l !== null && l.lineTh.length > 0)
     .filter(l => !isDroppableScriptDialogueFragment(l, knownSpeakerKeys));
+}
+
+/**
+ * Resolve the persisted shot-to-script beat mapping before dialogue is read.
+ *
+ * The current contract is camelCase/0-based (`sourceBeatIndexes`), but older
+ * storyboard rows used snake_case and persisted the human-facing beat number
+ * (1-based). When the shot carries a dialogue excerpt, use it as a
+ * deterministic compatibility check so an old `[5]` mapping selects script
+ * beat 5 rather than array index 5 (beat 6).
+ */
+export function resolvePersistedShotSourceBeatIndexes(
+  shot: unknown,
+  script?: Record<string, unknown> | null,
+): number[] | undefined {
+  if (!shot || typeof shot !== "object" || Array.isArray(shot)) return undefined;
+  const raw = shot as Record<string, unknown>;
+  const hasCanonical = Array.isArray(raw.sourceBeatIndexes);
+  const hasLegacy = Array.isArray(raw.source_beat_indexes);
+  const rawIndexes = hasCanonical
+    ? raw.sourceBeatIndexes
+    : hasLegacy
+      ? raw.source_beat_indexes
+      : undefined;
+  if (!Array.isArray(rawIndexes)) return undefined;
+
+  const indexes = rawIndexes.filter(
+    (value): value is number =>
+      typeof value === "number" && Number.isInteger(value) && value >= 0,
+  );
+  if (indexes.length === 0 || hasCanonical) return indexes;
+
+  const beats = Array.isArray(
+    (script as { structure?: { beats?: unknown } } | null)?.structure?.beats,
+  )
+    ? ((script as { structure: { beats: Array<Record<string, unknown>> } })
+        .structure.beats)
+    : [];
+  const excerpt =
+    typeof raw.dialogue_excerpt === "string"
+      ? raw.dialogue_excerpt.trim()
+      : typeof raw.dialogueExcerpt === "string"
+        ? raw.dialogueExcerpt.trim()
+        : "";
+  if (excerpt && beats.length > 0) {
+    const zeroBasedMatches = indexes.some(index =>
+      beatContainsDialogueExcerpt(beats[index], excerpt),
+    );
+    const oneBasedIndexes = indexes
+      .filter(index => index > 0)
+      .map(index => index - 1);
+    const oneBasedMatches = oneBasedIndexes.some(index =>
+      beatContainsDialogueExcerpt(beats[index], excerpt),
+    );
+    if (oneBasedMatches && !zeroBasedMatches) return oneBasedIndexes;
+  }
+
+  return indexes;
+}
+
+function beatContainsDialogueExcerpt(
+  beat: Record<string, unknown> | undefined,
+  excerpt: string,
+): boolean {
+  if (!beat || !excerpt) return false;
+  const lines = Array.isArray(beat.dialogue_lines)
+    ? beat.dialogue_lines
+    : [];
+  return lines.some(line => {
+    if (!line || typeof line !== "object" || Array.isArray(line)) return false;
+    const text = (line as Record<string, unknown>).line;
+    return (
+      typeof text === "string" &&
+      (text.includes(excerpt) || excerpt.includes(text.trim()))
+    );
+  });
 }
 
 /**
@@ -7044,6 +7328,7 @@ async function insertEpisodeWithSafeNumber(
     status?: string;
     targetDurationSeconds?: number;
     durationProfileId?: string;
+    generationSettings?: unknown;
   }
 ) {
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -7075,6 +7360,7 @@ async function insertEpisodeWithSafeNumber(
             ? { durationProfileId: input.durationProfileId }
             : {}),
           script: input.script ?? null,
+          generationSettings: input.generationSettings ?? null,
         })
         .returning();
       return row;
@@ -9671,6 +9957,7 @@ function resolveWizardPerShotDialogue(
       } | null,
       script,
       storyboardShotCount: rawShots.length,
+      sourceBeatIndexes: resolvePersistedShotSourceBeatIndexes(shot, script),
     });
     return { shotNumber, durationSeconds, lines };
   });
@@ -10795,6 +11082,15 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
   /** Explicit screen-only callers used to assign spoken callers to separate
    * vertical phone screens in the split-speaker prompt path. */
   screenCallerCharacterRefs: string[];
+  /** Server-resolved visible cast; synopsis-only names are context-only. */
+  visualCastPolicy?: {
+    physicalCharacterRefs: string[];
+    physicalCharacterNames: string[];
+    screenCallerCharacterRefs: string[];
+    screenCallerCharacterNames: string[];
+    narrativeOnlyCharacterRefs: string[];
+    narrativeOnlyCharacterNames: string[];
+  };
   /**
    * Synopsis grounding (`planning/vd-video-prompt-skill-first/plan.md`
    * Phase 1a) — the CALLER's already-resolved
@@ -10917,6 +11213,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     genre,
     supportingPresence,
     screenCallerCharacterRefs,
+    visualCastPolicy,
     characterNameByKey,
     tieInPlacement,
     tieInProductName,
@@ -10986,6 +11283,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
           .map(line => line.characterKey)
           .filter((key): key is string => Boolean(key)),
         characterIdentityMap: shotVideoCharacterIdentityMapBlock,
+        visualCastPolicy,
         barrierMultiView,
         sceneContinuityLockBlock,
         productContext: tieInPlacement
@@ -11406,7 +11704,9 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
         ...(splitShotVideoPromptWarnings.length > 0
           ? {
               warnings: [
-                ...freshPack.warnings,
+                ...(Array.isArray(freshPack.warnings)
+                  ? freshPack.warnings
+                  : []),
                 ...splitShotVideoPromptWarnings,
               ],
             }
@@ -11504,12 +11804,12 @@ export const verticalDramaEpisodesRouter = router({
           z.literal(24),
           z.literal(30),
         ]),
-      aspectRatio: z.literal("9:16").default("9:16"),
-      dialogueMode: z.enum(["none", "character_dialogue"]),
+        aspectRatio: z.literal("9:16").default("9:16"),
+        dialogueMode: z.enum(["none", "character_dialogue"]),
         referenceType: z
           .enum(["product", "location", "store", "mixed"])
           .default("product"),
-      referenceImageCount: z.number().int().min(1).max(3).default(1),
+        referenceImageCount: z.number().int().min(1).max(3).default(1),
         characterReferenceCount: z.number().int().min(0).max(4).default(0),
       })
     )
@@ -11532,11 +11832,11 @@ export const verticalDramaEpisodesRouter = router({
   generateMarketplaceReviewIdeas: verticalDramaSpecialTieInProcedure
     .input(
       z.object({
-      seriesId: z.string().min(1),
-      productId: z.string().min(1).max(128).optional(),
-      productSource: z
-        .enum(["marketplace_capture", "upload"])
-        .default("marketplace_capture"),
+        seriesId: z.string().min(1),
+        productId: z.string().min(1).max(128).optional(),
+        productSource: z
+          .enum(["marketplace_capture", "upload"])
+          .default("marketplace_capture"),
         referenceImages: z
           .array(
             z.object({
@@ -11547,17 +11847,17 @@ export const verticalDramaEpisodesRouter = router({
           )
           .min(1)
           .max(5),
-      dialogueMode: z.enum(["none", "character_dialogue"]),
+        dialogueMode: z.enum(["none", "character_dialogue"]),
         selectedCharacterIds: z
           .array(z.string().trim().min(1).max(128))
           .min(1)
           .max(4),
-      customerJourney: z.unknown().optional(),
-      footageGuide: z.unknown().optional(),
-      direction: z.string().trim().max(2000).optional(),
-      productBrief: z.string().trim().max(8000).optional(),
-      llmModelId: z.string().trim().min(1).max(160).optional(),
-      variationSeed: z.string().trim().min(1).max(128),
+        customerJourney: z.unknown().optional(),
+        footageGuide: z.unknown().optional(),
+        direction: z.string().trim().max(2000).optional(),
+        productBrief: z.string().trim().max(8000).optional(),
+        llmModelId: z.string().trim().min(1).max(160).optional(),
+        variationSeed: z.string().trim().min(1).max(128),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -11643,29 +11943,29 @@ export const verticalDramaEpisodesRouter = router({
   resolveMarketplaceReviewScene: verticalDramaSpecialTieInProcedure
     .input(
       z.object({
-      seriesId: z.string().min(1),
-      decision: z.enum(["reuse", "create"]),
-      locationId: z.number().int().positive().optional(),
-      sceneLabel: z.string().trim().min(1).max(255),
-      description: z.string().trim().min(1).max(4_000),
+        seriesId: z.string().min(1),
+        decision: z.enum(["reuse", "create"]),
+        locationId: z.number().int().positive().optional(),
+        sceneLabel: z.string().trim().min(1).max(255),
+        description: z.string().trim().min(1).max(4_000),
       })
     )
     .mutation(async ({ ctx, input }) =>
       resolveMarketplaceReviewScene({
-      actor: { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
-      seriesId: parseId(input.seriesId, "series id"),
-      decision: input.decision,
-      locationId: input.locationId,
-      sceneLabel: input.sceneLabel,
-      description: input.description,
+        actor: { tenantId: requireTenantId(ctx.tenantId), userId: ctx.user.id },
+        seriesId: parseId(input.seriesId, "series id"),
+        decision: input.decision,
+        locationId: input.locationId,
+        sceneLabel: input.sceneLabel,
+        description: input.description,
       })
     ),
 
   enqueueSpecialTieInFootageAnalysis: verticalDramaSpecialTieInProcedure
     .input(
       z.object({
-      seriesId: z.string().min(1),
-      mediaAssetId: z.number().int().positive(),
+        seriesId: z.string().min(1),
+        mediaAssetId: z.number().int().positive(),
         requestedLanguage: z
           .string()
           .trim()
@@ -11674,7 +11974,7 @@ export const verticalDramaEpisodesRouter = router({
         transcriptionPolicy: z
           .enum(["required", "preferred", "disabled"])
           .optional(),
-      analysisProfile: z.enum(["fast", "standard", "deep"]).optional(),
+        analysisProfile: z.enum(["fast", "standard", "deep"]).optional(),
       })
     )
     .mutation(async ({ ctx, input }) =>
@@ -11688,9 +11988,9 @@ export const verticalDramaEpisodesRouter = router({
   enqueueSpecialTieInFootagePreparation: verticalDramaSpecialTieInProcedure
     .input(
       z.object({
-      seriesId: z.string().min(1),
-      mediaAssetId: z.number().int().positive(),
-      analysisRevision: z.string().trim().min(1).max(160),
+        seriesId: z.string().min(1),
+        mediaAssetId: z.number().int().positive(),
+        analysisRevision: z.string().trim().min(1).max(160),
         segments: z
           .array(
             z.object({
@@ -11711,13 +12011,13 @@ export const verticalDramaEpisodesRouter = router({
           )
           .max(256)
           .optional(),
-      removeDeadAir: z.boolean().optional(),
+        removeDeadAir: z.boolean().optional(),
         baseAudioPolicy: z
           .enum(["preserve", "mute", "selected_ranges"])
           .optional(),
-      fitPolicy: z.enum(["source", "9:16_cover", "9:16_contain"]).optional(),
-      maxDurationMs: z.number().int().positive().max(90_000).optional(),
-      approvalFingerprint: z.string().regex(/^[a-f0-9]{64}$/i),
+        fitPolicy: z.enum(["source", "9:16_cover", "9:16_contain"]).optional(),
+        maxDurationMs: z.number().int().positive().max(90_000).optional(),
+        approvalFingerprint: z.string().regex(/^[a-f0-9]{64}$/i),
       })
     )
     .mutation(async ({ ctx, input }) =>
@@ -11731,14 +12031,14 @@ export const verticalDramaEpisodesRouter = router({
   enqueueSpecialTieInFootageBrollRender: verticalDramaSpecialTieInProcedure
     .input(
       z.object({
-      seriesId: z.string().min(1),
-      preparedSource: z.unknown(),
-      preparedRevision: z.string().trim().min(1).max(160),
-      baseDurationMs: z.number().int().positive().max(90_000),
-      placements: z.array(z.unknown()).max(32),
-      storyRevisionId: z.string().trim().min(1).max(160),
-      shotPlanRevisionId: z.string().trim().min(1).max(160),
-      assetManifest: z.array(z.unknown()).max(64),
+        seriesId: z.string().min(1),
+        preparedSource: z.unknown(),
+        preparedRevision: z.string().trim().min(1).max(160),
+        baseDurationMs: z.number().int().positive().max(90_000),
+        placements: z.array(z.unknown()).max(32),
+        storyRevisionId: z.string().trim().min(1).max(160),
+        shotPlanRevisionId: z.string().trim().min(1).max(160),
+        assetManifest: z.array(z.unknown()).max(64),
       })
     )
     .mutation(async ({ ctx, input }) =>
@@ -11958,6 +12258,7 @@ export const verticalDramaEpisodesRouter = router({
           durationProfileId: hasActiveDurationProfile
             ? durationPlan?.profileId
             : undefined,
+          generationSettings: series.generationSettings,
         }
       );
       return { episode: { ...row, id: String(row.id) } };
@@ -12165,6 +12466,7 @@ export const verticalDramaEpisodesRouter = router({
             },
             status: "draft",
             ...plannedEpisodeTiming,
+            generationSettings: seriesRow.generationSettings,
           }
         );
         const episodeNumber = Number(row.episodeNumber);
@@ -12299,6 +12601,7 @@ export const verticalDramaEpisodesRouter = router({
               },
               status: "draft",
               ...plannedEpisodeTiming,
+              generationSettings: seriesRow.generationSettings,
             }
           );
           const episodeNumber = Number(row.episodeNumber);
@@ -13038,6 +13341,12 @@ export const verticalDramaEpisodesRouter = router({
       // comment in `verticalDramaEpisodePipeline.ts`. Every other stage's
       // `regenerateStage` call is untouched, still fully synchronous.
       if (input.stage === "storyboard_shotgrid") {
+        // A storyboard rebuild is a true replacement: clear the old 9-shot
+        // episode state before enqueueing so the UI cannot keep presenting
+        // stale shots while the new generation is running. The reset is
+        // idempotent and will be skipped when an equivalent run is already in
+        // flight.
+        await resetEpisodeStoryboardGenerationState(owner);
         return submitStoryboardShotgridAsync(owner, stageOpts, true);
       }
 
@@ -15171,11 +15480,43 @@ export const verticalDramaEpisodesRouter = router({
       const owner: EpisodeRunOwner = { tenantId, userId, seriesId, episodeId };
       let row = await loadOwnedEpisode(owner);
       if (row.episodeKind === "special_tie_in") {
-        const materialized = await materializeSpecialTieInStoryboardShots({
+        // A completed special run can have a missing plan after an older
+        // worker cleared downstream artifacts before persisting its result.
+        // Recover from the already-captured forensic output before exposing
+        // the stale storyboard fallback to a freshly loaded browser.
+        const recovered = await materializeRecoverableSpecialTieInOutput({
           actor: { tenantId, userId },
           episodeId,
         });
-        if (materialized) row = await loadOwnedEpisode(owner);
+        if (recovered) row = await loadOwnedEpisode(owner);
+        const specialData = row.specialData as {
+          inputVersion?: unknown;
+          artifactsInputVersion?: unknown;
+        } | null;
+        const specialArtifactsStale = isSpecialTieInArtifactsStale(
+          specialData?.inputVersion,
+          specialData?.artifactsInputVersion
+        );
+        // An edited special input must never render the previous version's
+        // storyboard as if it belonged to the new input. Keep the old DB
+        // artifacts available for a successful same-version retry, but hide
+        // them from this response until the new version commits atomically.
+        if (specialArtifactsStale) {
+          row = {
+            ...row,
+            storyboard: null,
+            startFramePlan: null,
+            motionPromptPack: null,
+            dialogueAudioPlan: null,
+          };
+        }
+        if (!specialArtifactsStale) {
+          const materialized = await materializeSpecialTieInStoryboardShots({
+            actor: { tenantId, userId },
+            episodeId,
+          });
+          if (materialized) row = await loadOwnedEpisode(owner);
+        }
       }
       // Feature 174: object detection is deliberately not part of this read.
       // Suggestions are produced by an explicit advisory operation so opening
@@ -15639,11 +15980,11 @@ export const verticalDramaEpisodesRouter = router({
         row.episodeKind === "special_tie_in"
           ? null
           : await resolveEpisodePlanForEpisode(
-        tenantId,
-        userId,
-        seriesId,
-        row.episodeNumber
-      );
+              tenantId,
+              userId,
+              seriesId,
+              row.episodeNumber
+            );
 
       // Phase D (planning/polished-toasting-gadget.md — location visual
       // bible) — the series' full location roster, resolved as the NEXT
@@ -15661,6 +16002,8 @@ export const verticalDramaEpisodesRouter = router({
       return {
         episodeNumber: row.episodeNumber,
         episodeTitle: row.title,
+        generationSettings:
+          row.generationSettings as VerticalDramaEpisodeGenerationSettings | null,
         script: row.script as Record<string, unknown> | null,
         dialogueAudioPlan: row.dialogueAudioPlan as Record<
           string,
@@ -15941,24 +16284,44 @@ export const verticalDramaEpisodesRouter = router({
       const runtimeConfig = getCachedAppRuntimeConfig();
       const { submitVdEpisodePreview } =
         await import("../services/verticalDramaRemotionRender");
+      const { WorkerSchedulerError } =
+        await import("../services/workerSchedulerService");
       const { persistEpisodePreviewState } =
         await import("../services/verticalDramaEpisodePreview");
-      const submitted = await submitVdEpisodePreview({
-        owner,
-        slotId: input.slotId,
-        clips: clipsWithVideo,
-        coverImageUrl: coverUrl,
-        episodeLabel: `ตัวอย่าง Sub-EP ${row.episodeNumber}${row.title ? ` - ${row.title}` : ""}`,
-        subtitles: previewDialogueRunInputs.subtitles ?? null,
-        internalBaseUrl:
-          runtimeConfig.internalNodeUrl ||
-          ctx.publicUrl ||
-          "http://localhost:3000",
-        publicBaseUrl: runtimeConfig.publicUrl || ctx.publicUrl || null,
-        tenantId,
-        requestedByUserId: userId,
-        idempotencyKey: input.idempotencyKey,
-      });
+      let submitted: Awaited<ReturnType<typeof submitVdEpisodePreview>>;
+      try {
+        submitted = await submitVdEpisodePreview({
+          owner,
+          slotId: input.slotId,
+          clips: clipsWithVideo,
+          coverImageUrl: coverUrl,
+          episodeLabel: `ตัวอย่าง Sub-EP ${row.episodeNumber}${row.title ? ` - ${row.title}` : ""}`,
+          subtitles: previewDialogueRunInputs.subtitles ?? null,
+          internalBaseUrl:
+            runtimeConfig.internalNodeUrl ||
+            ctx.publicUrl ||
+            "http://localhost:3000",
+          publicBaseUrl: runtimeConfig.publicUrl || ctx.publicUrl || null,
+          tenantId,
+          requestedByUserId: userId,
+          idempotencyKey: input.idempotencyKey,
+        });
+      } catch (error) {
+        if (error instanceof WorkerSchedulerError) {
+          const code =
+            error.statusCode === 400
+              ? "BAD_REQUEST"
+              : error.statusCode === 403
+                ? "FORBIDDEN"
+                : error.statusCode === 409
+                  ? "CONFLICT"
+                  : error.statusCode === 429
+                    ? "TOO_MANY_REQUESTS"
+                    : "INTERNAL_SERVER_ERROR";
+          throw new TRPCError({ code, message: error.message });
+        }
+        throw error;
+      }
       const preview = {
         slotId: input.slotId,
         coverSlotId,
@@ -16284,7 +16647,7 @@ export const verticalDramaEpisodesRouter = router({
                 ).clips.flatMap(clip => {
                   const affected =
                     clip.sourceShotNumbers?.includes(input.shotNumber) ||
-                        clip.parentShotNumber === input.shotNumber ||
+                    clip.parentShotNumber === input.shotNumber ||
                     clip.clipNumber === input.shotNumber;
                   if (!affected) return [clip];
                   const invalidated =
@@ -16380,7 +16743,12 @@ export const verticalDramaEpisodesRouter = router({
       const userId = ctx.user.id;
       const seriesId = parseId(input.seriesId, "series id");
       const episodeId = parseId(input.episodeId, "episode id");
-      const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+      const row = await loadOwnedEpisode({
+        tenantId,
+        userId,
+        seriesId,
+        episodeId,
+      });
 
       const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
       if (!plan || !Array.isArray(plan.frames)) {
@@ -16407,7 +16775,10 @@ export const verticalDramaEpisodesRouter = router({
         stopFrameStaleReason: undefined,
         stopFrameStaleAt: undefined,
       };
-      const updatedPlan: VerticalDramaStartFramePlan = { ...plan, frames: updatedFrames };
+      const updatedPlan: VerticalDramaStartFramePlan = {
+        ...plan,
+        frames: updatedFrames,
+      };
 
       await db
         .update(verticalDramaEpisodes)
@@ -17021,7 +17392,6 @@ export const verticalDramaEpisodesRouter = router({
               selectedImageModelId: "",
               frames: [],
             };
-
       // Every requested characterKey must exist in this series' roster —
       // reject unknown keys instead of silently persisting garbage that
       // would later resolve to zero reference images at render time.
@@ -17392,8 +17762,8 @@ export const verticalDramaEpisodesRouter = router({
               ...existingPack,
               clips: existingPack.clips.flatMap(clip => {
                 const affected =
-                    clip.sourceShotNumbers?.includes(input.shotNumber) ||
-                    clip.parentShotNumber === input.shotNumber ||
+                  clip.sourceShotNumbers?.includes(input.shotNumber) ||
+                  clip.parentShotNumber === input.shotNumber ||
                   clip.clipNumber === input.shotNumber;
                 if (!affected) return [clip];
                 const invalidated = invalidateVideoPromptVariantsOnInputChange(
@@ -17513,8 +17883,8 @@ export const verticalDramaEpisodesRouter = router({
               ...existingPack,
               clips: existingPack.clips.flatMap(clip => {
                 const affected =
-                    clip.sourceShotNumbers?.includes(input.shotNumber) ||
-                    clip.parentShotNumber === input.shotNumber ||
+                  clip.sourceShotNumbers?.includes(input.shotNumber) ||
+                  clip.parentShotNumber === input.shotNumber ||
                   clip.clipNumber === input.shotNumber;
                 if (!affected) return [clip];
                 const invalidated = invalidateVideoPromptVariantsOnInputChange(
@@ -18276,33 +18646,43 @@ export const verticalDramaEpisodesRouter = router({
         seriesId,
         episodeId,
       });
-      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
-      if (!plan || !Array.isArray(plan.frames)) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "No start-frame plan exists yet for this episode",
-        });
-      }
+      const existingPlan =
+        row.startFramePlan as VerticalDramaStartFramePlan | null;
+      // Selecting a reusable location view is a free authoring change and
+      // must work before every shot has received a start-frame plan entry.
+      // Keep the same minimal-plan behavior as setShotCharacterReference:
+      // prompt/image generation can fill the empty fields later.
+      const plan: VerticalDramaStartFramePlan =
+        existingPlan && Array.isArray(existingPlan.frames)
+          ? existingPlan
+          : {
+              mode: "single_frame_per_shot",
+              selectedImageModelId: "",
+              frames: [],
+            };
       const frameIndex = plan.frames.findIndex(
         frame => frame.shotNumber === input.shotNumber
       );
-      if (frameIndex < 0) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: `No start-frame plan entry for shot ${input.shotNumber}`,
-        });
-      }
+      const current =
+        frameIndex >= 0
+          ? plan.frames[frameIndex]
+          : {
+              shotNumber: input.shotNumber,
+              imagePrompt: "",
+              negativePrompt: "",
+              requiredCharacterRefs: [],
+              productReferenceAssetIds: [],
+            };
 
       if (input.locationVariantId !== null) {
         const variantId = parseId(
           input.locationVariantId,
           "location variant id"
         );
-        const frame = plan.frames[frameIndex];
         const identity = resolveEffectiveShotLocationIdentity(
           row.storyboard,
           input.shotNumber,
-          frame.locationKey
+          current.locationKey
         );
         if (!identity) {
           throw new TRPCError({
@@ -18341,9 +18721,7 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
-      const updatedFrames = plan.frames.slice();
-      const current = updatedFrames[frameIndex];
-      updatedFrames[frameIndex] = {
+      const updatedFrame = {
         ...current,
         locationVariantId: input.locationVariantId ?? undefined,
         approvedMediaAssetId: undefined,
@@ -18361,6 +18739,10 @@ export const verticalDramaEpisodesRouter = router({
             ? undefined
             : new Date().toISOString(),
       };
+      const updatedFrames = plan.frames.slice();
+      if (frameIndex >= 0) updatedFrames[frameIndex] = updatedFrame;
+      else updatedFrames.push(updatedFrame);
+      updatedFrames.sort((a, b) => a.shotNumber - b.shotNumber);
       const updatedPlan: VerticalDramaStartFramePlan = {
         ...plan,
         frames: updatedFrames,
@@ -18370,6 +18752,157 @@ export const verticalDramaEpisodesRouter = router({
         .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
         .where(eq(verticalDramaEpisodes.id, episodeId));
       return { startFramePlan: updatedPlan };
+    }),
+
+  /**
+   * Change a reusable location camera view for the shared location group in
+   * one episode. `fromLocationVariantId` is an optimistic source guard: only
+   * shots that still use that same view are changed. Shots with another
+   * location view (or a different location override) are intentionally left
+   * untouched, so a group-level change cannot erase shot-specific choices.
+   */
+  setShotLocationVariants: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        locationKey: z.string().min(1),
+        shotNumbers: z.array(z.number().int().positive()).min(1).max(100),
+        fromLocationVariantId: z.string().min(1).nullable(),
+        locationVariantId: z.string().min(1).nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({
+        tenantId,
+        userId,
+        seriesId,
+        episodeId,
+      });
+      const existingPlan =
+        row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const plan: VerticalDramaStartFramePlan =
+        existingPlan && Array.isArray(existingPlan.frames)
+          ? existingPlan
+          : {
+              mode: "single_frame_per_shot",
+              selectedImageModelId: "",
+              frames: [],
+            };
+
+      if (input.locationVariantId !== null) {
+        const locationRow = await resolveLocationRosterRowByIdentity(
+          tenantId,
+          userId,
+          seriesId,
+          { locationKey: input.locationKey }
+        );
+        if (!locationRow) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Unknown location key: ${input.locationKey}`,
+          });
+        }
+        const variantId = parseId(
+          input.locationVariantId,
+          "location variant id"
+        );
+        const variants =
+          await verticalDramaLocationStockService.listLocationAssets(
+            { tenantId, userId, seriesId },
+            locationRow.id
+          );
+        const variant = variants.find(
+          asset =>
+            asset.assetLinkId === variantId &&
+            asset.approved &&
+            asset.role !== "establishing_plate"
+        );
+        if (!variant) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "ไม่พบมุมกล้องของสถานที่นี้ หรือภาพยังไม่ผ่านการอนุมัติ",
+          });
+        }
+      }
+
+      const requestedShotNumbers = Array.from(new Set(input.shotNumbers));
+      const updatedShotNumbers: number[] = [];
+      const skippedShotNumbers: number[] = [];
+      const updatedFrames = plan.frames.slice();
+
+      for (const shotNumber of requestedShotNumbers) {
+        const frameIndex = updatedFrames.findIndex(
+          frame => frame.shotNumber === shotNumber
+        );
+        const current =
+          frameIndex >= 0
+            ? updatedFrames[frameIndex]
+            : {
+                shotNumber,
+                imagePrompt: "",
+                negativePrompt: "",
+                requiredCharacterRefs: [],
+                productReferenceAssetIds: [],
+              };
+        const identity = resolveEffectiveShotLocationIdentity(
+          row.storyboard,
+          shotNumber,
+          current.locationKey
+        );
+        const currentVariantId = current.locationVariantId ?? null;
+        if (
+          !identity ||
+          identity.locationKey !== input.locationKey ||
+          currentVariantId !== input.fromLocationVariantId
+        ) {
+          skippedShotNumbers.push(shotNumber);
+          continue;
+        }
+
+        const updatedFrame = {
+          ...current,
+          locationVariantId: input.locationVariantId ?? undefined,
+          approvedMediaAssetId: undefined,
+          videoStartMediaAssetId: undefined,
+          castPositionLock: undefined,
+          videoSafety: undefined,
+          sceneContinuity: undefined,
+          angleGrid: undefined,
+          imageStaleReason:
+            input.locationVariantId === null
+              ? undefined
+              : "location_variant_changed",
+          imageStaleAt:
+            input.locationVariantId === null
+              ? undefined
+              : new Date().toISOString(),
+        };
+        if (frameIndex >= 0) updatedFrames[frameIndex] = updatedFrame;
+        else updatedFrames.push(updatedFrame);
+        updatedShotNumbers.push(shotNumber);
+      }
+
+      updatedFrames.sort((a, b) => a.shotNumber - b.shotNumber);
+      const updatedPlan: VerticalDramaStartFramePlan = {
+        ...plan,
+        frames: updatedFrames,
+      };
+      if (updatedShotNumbers.length > 0) {
+        await db
+          .update(verticalDramaEpisodes)
+          .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
+          .where(eq(verticalDramaEpisodes.id, episodeId));
+      }
+      return {
+        startFramePlan: updatedPlan,
+        updatedShotNumbers,
+        skippedShotNumbers,
+      };
     }),
 
   /**
@@ -18480,6 +19013,8 @@ export const verticalDramaEpisodesRouter = router({
       let updatedStartFramePlan: VerticalDramaStartFramePlan | null =
         row.startFramePlan as VerticalDramaStartFramePlan | null;
       if (input.selectedImageModelId) {
+        const previousImageModelId =
+          updatedStartFramePlan?.selectedImageModelId;
         updatedStartFramePlan = updatedStartFramePlan
           ? {
               ...updatedStartFramePlan,
@@ -18490,6 +19025,23 @@ export const verticalDramaEpisodesRouter = router({
               selectedImageModelId: input.selectedImageModelId,
               frames: [],
             };
+        if (
+          previousImageModelId !== input.selectedImageModelId &&
+          Array.isArray(updatedStartFramePlan.frames)
+        ) {
+          updatedStartFramePlan = {
+            ...updatedStartFramePlan,
+            // A direct synopsis prompt is bound to the model/quality that
+            // authored it. Re-author after changing the image model so the
+            // legacy AUTO path remains the safe fallback until then.
+            frames: updatedStartFramePlan.frames.map(frame => {
+              if (!frame.promptSource) return frame;
+              const withoutPromptSource = { ...frame };
+              delete withoutPromptSource.promptSource;
+              return withoutPromptSource;
+            }),
+          };
+        }
         updates.startFramePlan = updatedStartFramePlan;
       }
 
@@ -18567,6 +19119,154 @@ export const verticalDramaEpisodesRouter = router({
         motionPromptPack: updatedMotionPromptPack,
         imageCreditCost,
         videoCreditCost,
+      };
+    }),
+
+  /** Save the two independent per-episode generation quality controls. */
+  setEpisodeGenerationSettings: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        settings: verticalDramaEpisodeGenerationSettingsSchema,
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const owner: EpisodeRunOwner = { tenantId, userId, seriesId, episodeId };
+      const row = await loadOwnedEpisode(owner);
+      const settings = input.settings as VerticalDramaEpisodeGenerationSettings;
+      const currentEpisodeSettings =
+        normalizeVerticalDramaEpisodeGenerationSettings(row.generationSettings);
+      const nextEpisodeSettings: VerticalDramaEpisodeGenerationSettings = {
+        ...currentEpisodeSettings,
+        ...settings,
+      };
+
+      let settingsStartFramePlan: VerticalDramaStartFramePlan | null = null;
+      if (settings.image) {
+        const currentPlan =
+          row.startFramePlan as VerticalDramaStartFramePlan | null;
+        if (currentPlan && Array.isArray(currentPlan.frames)) {
+          settingsStartFramePlan = {
+            ...currentPlan,
+            // Changing quality invalidates a prompt authored under the old
+            // quality. The next quality-driven prompt+image action will stamp
+            // it again after using the newly selected quality.
+            frames: currentPlan.frames.map(frame => {
+              if (!frame.promptSource) return frame;
+              const withoutPromptSource = { ...frame };
+              delete withoutPromptSource.promptSource;
+              return withoutPromptSource;
+            }),
+          };
+        }
+      }
+
+      const image = settings.image;
+      if (image?.quality) {
+        const selectedModelId =
+          (row.startFramePlan as { selectedImageModelId?: string } | null)
+            ?.selectedImageModelId ?? null;
+        if (!selectedModelId || image.modelId !== selectedModelId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Image quality must belong to the episode's selected image model",
+          });
+        }
+        const model = (await getModelsByTypeAsync("image")).find(
+          candidate => candidate.id === selectedModelId
+        );
+        if (
+          !model ||
+          !getVerticalDramaImageQualityOptions(model).includes(image.quality)
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Image model does not support quality "${image.quality}"`,
+          });
+        }
+      }
+
+      const reasoning = settings.llm?.reasoning;
+      if (reasoning?.mode === "effort") {
+        const rows = await loadEnabledLlmModelRows();
+        const supported = rows.some(
+          candidate =>
+            candidate.providerName.toLowerCase() === "openrouter" &&
+            candidate.supportsThinking === true &&
+            (!reasoning.modelId || candidate.modelId === reasoning.modelId)
+        );
+        if (!supported) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "The selected LLM/provider does not support reasoning effort",
+          });
+        }
+      }
+
+      const [updatedEpisode] = await db
+        .update(verticalDramaEpisodes)
+        .set({
+          generationSettings: nextEpisodeSettings,
+          ...(settingsStartFramePlan
+            ? { startFramePlan: settingsStartFramePlan }
+            : {}),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(verticalDramaEpisodes.id, episodeId),
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.userId, userId),
+            eq(verticalDramaEpisodes.seriesId, seriesId)
+          )
+        )
+        .returning({
+          id: verticalDramaEpisodes.id,
+          generationSettings: verticalDramaEpisodes.generationSettings,
+        });
+
+      const [seriesRow] = await db
+        .select({ generationSettings: verticalDramaSeries.generationSettings })
+        .from(verticalDramaSeries)
+        .where(
+          and(
+            eq(verticalDramaSeries.id, seriesId),
+            eq(verticalDramaSeries.tenantId, tenantId),
+            eq(verticalDramaSeries.userId, userId)
+          )
+        )
+        .limit(1);
+      const currentSeriesSettings =
+        normalizeVerticalDramaEpisodeGenerationSettings(
+          seriesRow?.generationSettings
+        );
+      // This becomes the snapshot for future episodes only. Merge by category
+      // so changing image quality never resets the LLM default, and vice versa.
+      const nextSeriesSettings: VerticalDramaEpisodeGenerationSettings = {
+        ...currentSeriesSettings,
+        ...settings,
+      };
+      await db
+        .update(verticalDramaSeries)
+        .set({ generationSettings: nextSeriesSettings, updatedAt: new Date() })
+        .where(
+          and(
+            eq(verticalDramaSeries.id, seriesId),
+            eq(verticalDramaSeries.tenantId, tenantId),
+            eq(verticalDramaSeries.userId, userId)
+          )
+        );
+
+      return {
+        generationSettings:
+          updatedEpisode?.generationSettings ?? nextEpisodeSettings,
       };
     }),
 
@@ -19191,6 +19891,10 @@ export const verticalDramaEpisodesRouter = router({
                   }
                 : {}),
               extraParams: {
+                ...(await resolveVerticalDramaEpisodeImageQualityExtraParams({
+                  settings: row.generationSettings,
+                  modelId: input.modelId,
+                })),
                 ...coverBillingExtraParams,
                 __vd_series_id: String(seriesId),
                 __vd_episode_id: String(episodeId),
@@ -19702,6 +20406,14 @@ export const verticalDramaEpisodesRouter = router({
         // if the model has no resolution axis; validated against the
         // model's derived options otherwise.
         resolution: z.string().trim().max(32).optional(),
+        /**
+         * Server-authored prompt handoff for the one-click
+         * "prompt + image" flow. This is only used as a recovery path when
+         * the per-shot prompt job succeeded but a concurrent/stale whole-plan
+         * write removed the target frame before image admission. The prompt
+         * still goes through the normal render safety/QC gates below.
+         */
+        imagePrompt: z.string().trim().max(390000).optional(),
         /** Feature 137 P2 wrapper: append the video-safe contract block. */
         videoSafe: z.boolean().optional(),
         softenLevel,
@@ -19738,15 +20450,87 @@ export const verticalDramaEpisodesRouter = router({
         seriesId
       );
 
-      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      let plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
       const frameRole = input.frameRole ?? "start";
       const framePurpose = frameRole === "stop" ? "stop_frame" : "start_frame";
-      const frameIndex =
+      let frameIndex =
         plan?.frames?.findIndex(f => f.shotNumber === input.shotNumber) ?? -1;
+      let recoveredPromptHandoff = false;
+
+      // The prompt authoring job and the paid image admission are separate
+      // requests. A stale whole-plan update can legally finish between them
+      // and remove a newly materialized per-shot frame. Carry the completed
+      // prompt across that boundary and materialize the missing frame locally
+      // so the same request can run the normal render gates and persist it
+      // before provider admission. Render-only requests do not carry this
+      // handoff and continue to fail closed with an actionable message.
+      const handedOffPrompt = input.imagePrompt?.trim();
+      if (frameRole === "start" && frameIndex === -1 && handedOffPrompt) {
+        const storyboardShots = Array.isArray(
+          (renderStoryboard as Record<string, unknown> | null)?.shots
+        )
+          ? (((renderStoryboard as Record<string, unknown>).shots ??
+              []) as Array<Record<string, unknown>>)
+          : [];
+        const storyboardShot = storyboardShots.find(
+          shot =>
+            Number(shot.shot_number ?? shot.shotNumber) === input.shotNumber
+        );
+        const requiredCharacterRefs = Array.from(
+          new Set(
+            (Array.isArray(storyboardShot?.required_character_refs)
+              ? storyboardShot.required_character_refs
+              : Array.isArray(storyboardShot?.characters)
+                ? storyboardShot.characters
+                : Array.isArray(storyboardShot?.characterIds)
+                  ? storyboardShot.characterIds
+                  : []
+            )
+              .map(value => String(value).trim())
+              .filter(Boolean)
+          )
+        );
+        const screenCallerCharacterRefs = Array.from(
+          new Set(
+            (Array.isArray(storyboardShot?.screen_caller_refs)
+              ? storyboardShot.screen_caller_refs
+              : []
+            )
+              .map(value => String(value).trim())
+              .filter(Boolean)
+          )
+        );
+        const recoveredFrame: VerticalDramaStartFramePlan["frames"][number] = {
+          shotNumber: input.shotNumber,
+          imagePrompt: handedOffPrompt,
+          negativePrompt: "",
+          requiredCharacterRefs,
+          ...(screenCallerCharacterRefs.length > 0
+            ? { screenCallerCharacterRefs }
+            : {}),
+          productReferenceAssetIds: [],
+        };
+        plan = {
+          ...(plan ?? {
+            mode: "single_frame_per_shot",
+            selectedImageModelId: "",
+          }),
+          frames: [...(plan?.frames ?? []), recoveredFrame].sort(
+            (a, b) => a.shotNumber - b.shotNumber
+          ),
+        };
+        frameIndex = plan.frames.findIndex(
+          frame => frame.shotNumber === input.shotNumber
+        );
+        recoveredPromptHandoff = true;
+      }
       if (!plan || frameIndex === -1) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: `No start-frame prompt for shot ${input.shotNumber} yet — generate the start-frame plan first`,
+          message:
+            frameRole === "stop"
+              ? `Shot ${input.shotNumber} has no start-frame plan entry yet — generate the start-frame prompt first`
+              : `Shot ${input.shotNumber} has no durable start-frame prompt yet — use “Generate prompt + image” first`,
         });
       }
       const frame = plan.frames[frameIndex];
@@ -19772,7 +20556,7 @@ export const verticalDramaEpisodesRouter = router({
               Number(shot.shot_number ?? shot.shotNumber) === input.shotNumber
           )
         : undefined;
-      const renderShotComposition =
+      const rawRenderShotComposition =
         frame.shotComposition ??
         normalizeVerticalDramaShotComposition({
           ...((storyboardForComposition?.camera as
@@ -19788,6 +20572,12 @@ export const verticalDramaEpisodesRouter = router({
           gaze_direction: storyboardForComposition?.gaze_direction,
           facial_expression: storyboardForComposition?.facial_expression,
         });
+      const renderShotComposition =
+        frameRole === "start"
+          ? deriveVerticalDramaStartFrameShotComposition(
+              rawRenderShotComposition
+            )
+          : rawRenderShotComposition;
 
       // Wave-4A (spec §13.1) tie-in gate — REJECT paid start-frame render for
       // a tie-in-carrying shot when the latest tie-in quality report is
@@ -19842,6 +20632,9 @@ export const verticalDramaEpisodesRouter = router({
         frameRole === "stop"
           ? frame.stopFrameNegativePrompt
           : frame.negativePrompt;
+      const isSynopsisDirectPrompt =
+        frameRole === "start" &&
+        frame.promptSource?.source === "shot_synopsis_direct";
 
       // Render is also allowed to reuse a manually edited/stale prompt. Read
       // the durable scene state again here and replace the prompt's old lock
@@ -19922,6 +20715,24 @@ export const verticalDramaEpisodesRouter = router({
           .filter(Boolean)
           .join(", ");
       }
+      if (frameRole === "start") {
+        const { applyStartFrameTemporalPromptGuard } =
+          await import("../services/verticalDramaStartFrameGeneration");
+        const temporalGuard = applyStartFrameTemporalPromptGuard({
+          prompt: softenedImagePrompt,
+          negativePrompt: softenedNegativePrompt,
+          canonicalShotSummary:
+            frame.canonicalShotSummary ??
+            storyboardForComposition?.visual_description ??
+            storyboardForComposition?.action,
+        });
+        softenedImagePrompt = temporalGuard.prompt;
+        softenedNegativePrompt = temporalGuard.negativePrompt;
+        softenedImagePrompt = ensureVerticalDramaStartFrameShotCompositionLock({
+          prompt: softenedImagePrompt,
+          composition: renderShotComposition,
+        });
+      }
       if (renderShotComposition) {
         softenedNegativePrompt = [
           softenedNegativePrompt,
@@ -19963,6 +20774,10 @@ export const verticalDramaEpisodesRouter = router({
         )
           ? ((renderStoryboard as { shots: unknown[] }).shots.length ?? 0)
           : undefined,
+        sourceBeatIndexes: resolvePersistedShotSourceBeatIndexes(
+          storyboardForComposition,
+          renderScript as Record<string, unknown> | null,
+        ),
       });
       const renderCallerIdentitySources =
         await resolveShotCharacterIdentitySources(
@@ -20022,20 +20837,17 @@ export const verticalDramaEpisodesRouter = router({
         );
       if (
         renderSpokenCallerBlock &&
-        !softenedImagePrompt.includes("SPOKEN CALLER VIRTUAL SCREENS")
+        !softenedImagePrompt.includes(
+          VERTICAL_DRAMA_CALLER_VIRTUAL_SCREEN_FINAL_OVERRIDE_MARKER
+        )
       ) {
         softenedImagePrompt = `${softenedImagePrompt}\n\n${renderSpokenCallerBlock}`;
-      } else if (
+      }
+      if (
         renderSpokenCallerPolicy.virtualScreens.length > 0 &&
-        !softenedImagePrompt.includes("CALLER FACE IDENTITY LOCK")
+        !softenedImagePrompt.includes("HANDHELD PHONE DISPLAY RULE")
       ) {
-        const faceLockBlock =
-          renderVerticalDramaSpokenCallerFaceIdentityLockPromptBlock(
-            renderSpokenCallerPolicy
-          );
-        if (faceLockBlock) {
-          softenedImagePrompt = `${softenedImagePrompt}\n\n${faceLockBlock}`;
-        }
+        softenedImagePrompt = `${softenedImagePrompt}\n\n${VERTICAL_DRAMA_HANDHELD_PHONE_DISPLAY_RULE}`;
       }
       assertNoLegacyScreenCallerImageMappings(
         softenedImagePrompt,
@@ -20137,8 +20949,7 @@ export const verticalDramaEpisodesRouter = router({
             episodeId,
             shotNumber: input.shotNumber,
             groundingIssues,
-            productReferenceCount:
-              frame.productReferenceAssetIds?.length ?? 0,
+            productReferenceCount: frame.productReferenceAssetIds?.length ?? 0,
           }
         );
       }
@@ -20176,7 +20987,7 @@ export const verticalDramaEpisodesRouter = router({
         userId,
         seriesId,
         episodeId,
-        input.shotNumber,
+        input.shotNumber
       );
 
       // Resolution order (spec Phase 1.2): episode-level selection →
@@ -20226,7 +21037,7 @@ export const verticalDramaEpisodesRouter = router({
         sceneAnchorRefUrls,
         productRefUrls,
         imageCapabilities.maxReferenceImages,
-        propObjectRefUrls,
+        propObjectRefUrls
       );
       if (isSpecialTieInEpisode) {
         assertSpecialProductReferencesAttached({
@@ -20478,14 +21289,16 @@ export const verticalDramaEpisodesRouter = router({
       );
       softenedNegativePrompt = undefined;
 
-      const renderIdentityLock = ensureCharacterIdentityLockPrompt(
-        renderStartFramePrompt,
-        renderPrimaryCharacterEntries.map((entry, index) => ({
-          imageIndex: index + 1,
-          characterKey: entry.characterKey,
-          characterName: entry.name,
-        }))
-      );
+      const renderIdentityLock = isSynopsisDirectPrompt
+        ? { prompt: renderStartFramePrompt }
+        : ensureCharacterIdentityLockPrompt(
+            renderStartFramePrompt,
+            renderPrimaryCharacterEntries.map((entry, index) => ({
+              imageIndex: index + 1,
+              characterKey: entry.characterKey,
+              characterName: entry.name,
+            }))
+          );
       renderStartFramePrompt = renderIdentityLock.prompt;
 
       // Final-prompt QC (hard length cap) — enforced right before the
@@ -20505,7 +21318,9 @@ export const verticalDramaEpisodesRouter = router({
         // `policy_safe_rewrite` is already a safety-constrained final skill;
         // sending it through a creative refiner could reintroduce wording
         // that the exact-replacement proof deliberately removed.
-        finalizeWithRefiner: frame.promptMode?.mode !== "policy_safe_rewrite",
+        finalizeWithRefiner:
+          !isSynopsisDirectPrompt &&
+          frame.promptMode?.mode !== "policy_safe_rewrite",
         failClosed: true,
         userId,
         tenantId,
@@ -20523,15 +21338,38 @@ export const verticalDramaEpisodesRouter = router({
       const currentRolePrompt =
         frameRole === "stop" ? frame.stopFramePrompt : frame.imagePrompt;
       if (
-        (imagePromptQc.prompt !== currentRolePrompt ||
+        (recoveredPromptHandoff ||
+          imagePromptQc.prompt !== currentRolePrompt ||
           sceneNeighborAnchorsEnabled) &&
         Array.isArray(plan.frames)
       ) {
-        const updatedFrames = plan.frames.map(f => {
-          if (f.shotNumber !== input.shotNumber) return f;
+        const persistedPlan = await db.transaction(async tx => {
+          const [freshRow] = await tx
+            .select({ startFramePlan: verticalDramaEpisodes.startFramePlan })
+            .from(verticalDramaEpisodes)
+            .where(
+              and(
+                eq(verticalDramaEpisodes.id, episodeId),
+                eq(verticalDramaEpisodes.tenantId, tenantId),
+                eq(verticalDramaEpisodes.userId, userId),
+                eq(verticalDramaEpisodes.seriesId, seriesId)
+              )
+            )
+            .for("update")
+            .limit(1);
+          const freshPlan =
+            freshRow?.startFramePlan as VerticalDramaStartFramePlan | null;
+          const freshFrames = Array.isArray(freshPlan?.frames)
+            ? freshPlan.frames.slice()
+            : plan.frames.slice();
+          const freshIndex = freshFrames.findIndex(
+            candidate => candidate.shotNumber === input.shotNumber
+          );
+          const freshFrame = freshIndex >= 0 ? freshFrames[freshIndex] : frame;
           const updatedFrame = {
-            ...f,
-            ...(imagePromptQc.prompt !== currentRolePrompt
+            ...freshFrame,
+            ...(imagePromptQc.prompt !== currentRolePrompt ||
+            recoveredPromptHandoff
               ? frameRole === "stop"
                 ? {
                     stopFramePrompt: imagePromptQc.prompt,
@@ -20558,23 +21396,35 @@ export const verticalDramaEpisodesRouter = router({
               delete updatedFrame.sceneAnchor;
             }
           }
-          return updatedFrame;
+          if (freshIndex >= 0) freshFrames[freshIndex] = updatedFrame;
+          else {
+            freshFrames.push(updatedFrame);
+            freshFrames.sort((a, b) => a.shotNumber - b.shotNumber);
+          }
+          const updatedPlan = {
+            ...(freshPlan ?? plan),
+            frames: freshFrames,
+          };
+          await tx
+            .update(verticalDramaEpisodes)
+            .set({
+              startFramePlan: updatedPlan,
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(verticalDramaEpisodes.id, episodeId),
+                eq(verticalDramaEpisodes.tenantId, tenantId),
+                eq(verticalDramaEpisodes.userId, userId),
+                eq(verticalDramaEpisodes.seriesId, seriesId)
+              )
+            );
+          return updatedPlan;
         });
-        const updatedPlan = { ...plan, frames: updatedFrames };
-        await db
-          .update(verticalDramaEpisodes)
-          .set({
-            startFramePlan: updatedPlan,
-            updatedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(verticalDramaEpisodes.id, episodeId),
-              eq(verticalDramaEpisodes.tenantId, tenantId),
-              eq(verticalDramaEpisodes.userId, userId),
-              eq(verticalDramaEpisodes.seriesId, seriesId)
-            )
-          );
+        plan = persistedPlan;
+        frameIndex = plan.frames.findIndex(
+          candidate => candidate.shotNumber === input.shotNumber
+        );
       }
 
       // Feature 135 — Hermes Grok media worker (section 09, row 5): a
@@ -20710,6 +21560,10 @@ export const verticalDramaEpisodesRouter = router({
             // (see PERSISTED_INTERNAL_EXTRA_PARAM_KEYS); read back by
             // `media.listTasks`'s optional `seriesId` filter.
             extraParams: {
+              ...(await resolveVerticalDramaEpisodeImageQualityExtraParams({
+                settings: row.generationSettings,
+                modelId: resolvedImageModelId,
+              })),
               // Persist the reservation on the durable task so media.getTask
               // can refund it exactly once when the provider rejects the
               // render (including an OpenAI content-policy failure).
@@ -20806,6 +21660,8 @@ export const verticalDramaEpisodesRouter = router({
         // Optional output resolution/size (storyboard-complete plan Phase
         // 6.2b) — same convention as `generateStartFrameImage`.
         resolution: z.string().trim().max(32).optional(),
+        /** Same prompt handoff recovery as `generateStartFrameImage`. */
+        imagePrompt: z.string().trim().max(390000).optional(),
         softenLevel,
         idempotencyKey,
       })
@@ -20831,13 +21687,109 @@ export const verticalDramaEpisodesRouter = router({
       });
       const isSpecialTieInEpisode = row.episodeKind === "special_tie_in";
 
-      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
-      const frameIndex =
+      let plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      let frameIndex =
         plan?.frames?.findIndex(f => f.shotNumber === input.shotNumber) ?? -1;
+      const handedOffPrompt = input.imagePrompt?.trim();
+      let recoveredPromptHandoffPlan = false;
+      if (frameIndex === -1 && handedOffPrompt) {
+        const storyboardShots = Array.isArray(
+          (row.storyboard as Record<string, unknown> | null)?.shots
+        )
+          ? (((row.storyboard as Record<string, unknown>).shots ?? []) as Array<
+              Record<string, unknown>
+            >)
+          : [];
+        const storyboardShot = storyboardShots.find(
+          shot =>
+            Number(shot.shot_number ?? shot.shotNumber) === input.shotNumber
+        );
+        const requiredCharacterRefs = Array.from(
+          new Set(
+            (Array.isArray(storyboardShot?.required_character_refs)
+              ? storyboardShot.required_character_refs
+              : Array.isArray(storyboardShot?.characters)
+                ? storyboardShot.characters
+                : Array.isArray(storyboardShot?.characterIds)
+                  ? storyboardShot.characterIds
+                  : []
+            )
+              .map(value => String(value).trim())
+              .filter(Boolean)
+          )
+        );
+        const recoveredFrame: VerticalDramaStartFramePlan["frames"][number] = {
+          shotNumber: input.shotNumber,
+          imagePrompt: handedOffPrompt,
+          negativePrompt: "",
+          requiredCharacterRefs,
+          productReferenceAssetIds: [],
+        };
+        plan = {
+          ...(plan ?? {
+            mode: "single_frame_per_shot",
+            selectedImageModelId: "",
+          }),
+          frames: [...(plan?.frames ?? []), recoveredFrame].sort(
+            (a, b) => a.shotNumber - b.shotNumber
+          ),
+        };
+        frameIndex = plan.frames.findIndex(
+          frame => frame.shotNumber === input.shotNumber
+        );
+        recoveredPromptHandoffPlan = true;
+      }
+      if (recoveredPromptHandoffPlan && plan) {
+        // Angle-grid admission also needs the recovered frame to be durable;
+        // its completion callback writes grid metadata back onto that frame.
+        await db.transaction(async tx => {
+          const [freshRow] = await tx
+            .select({ startFramePlan: verticalDramaEpisodes.startFramePlan })
+            .from(verticalDramaEpisodes)
+            .where(
+              and(
+                eq(verticalDramaEpisodes.id, episodeId),
+                eq(verticalDramaEpisodes.tenantId, tenantId),
+                eq(verticalDramaEpisodes.userId, userId),
+                eq(verticalDramaEpisodes.seriesId, seriesId)
+              )
+            )
+            .for("update")
+            .limit(1);
+          const freshPlan =
+            freshRow?.startFramePlan as VerticalDramaStartFramePlan | null;
+          const freshFrames = Array.isArray(freshPlan?.frames)
+            ? freshPlan.frames.slice()
+            : [];
+          const freshIndex = freshFrames.findIndex(
+            candidate => candidate.shotNumber === input.shotNumber
+          );
+          if (freshIndex < 0 || !freshFrames[freshIndex].imagePrompt?.trim()) {
+            const recoveredFrame = plan.frames[frameIndex];
+            if (freshIndex >= 0) freshFrames[freshIndex] = recoveredFrame;
+            else freshFrames.push(recoveredFrame);
+            freshFrames.sort((a, b) => a.shotNumber - b.shotNumber);
+            await tx
+              .update(verticalDramaEpisodes)
+              .set({
+                startFramePlan: { ...(freshPlan ?? plan), frames: freshFrames },
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(verticalDramaEpisodes.id, episodeId),
+                  eq(verticalDramaEpisodes.tenantId, tenantId),
+                  eq(verticalDramaEpisodes.userId, userId),
+                  eq(verticalDramaEpisodes.seriesId, seriesId)
+                )
+              );
+          }
+        });
+      }
       if (!plan || frameIndex === -1) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: `No start-frame prompt for shot ${input.shotNumber} yet — generate the start-frame plan first`,
+          message: `Shot ${input.shotNumber} has no durable start-frame prompt yet — use “Generate prompt + image” first`,
         });
       }
       const frame = plan.frames[frameIndex];
@@ -20957,6 +21909,12 @@ export const verticalDramaEpisodesRouter = router({
           softenedImagePrompt = `${softenedImagePrompt}\n\n${faceLockBlock}`;
         }
       }
+      if (
+        angleSpokenCallerPolicy.virtualScreens.length > 0 &&
+        !softenedImagePrompt.includes("HANDHELD PHONE DISPLAY RULE")
+      ) {
+        softenedImagePrompt = `${softenedImagePrompt}\n\n${VERTICAL_DRAMA_HANDHELD_PHONE_DISPLAY_RULE}`;
+      }
       assertNoLegacyScreenCallerImageMappings(
         softenedImagePrompt,
         characterAttachmentManifest.screenCallerNames,
@@ -21014,7 +21972,7 @@ export const verticalDramaEpisodesRouter = router({
         userId,
         seriesId,
         episodeId,
-        input.shotNumber,
+        input.shotNumber
       );
 
       // Character identity map (2026-07-07 non-human-character-vanishing
@@ -21083,7 +22041,7 @@ export const verticalDramaEpisodesRouter = router({
         [],
         productRefUrls,
         angleImageCapabilities.maxReferenceImages,
-        propObjectRefUrls,
+        propObjectRefUrls
       );
       if (isSpecialTieInEpisode) {
         assertSpecialProductReferencesAttached({
@@ -21310,6 +22268,55 @@ export const verticalDramaEpisodesRouter = router({
         label: `multi-angle grid prompt (episode #${episodeId}, shot ${input.shotNumber})`,
       });
 
+      if (recoveredPromptHandoffPlan && plan) {
+        // Re-assert the handoff immediately before the paid grid submission;
+        // the prompt-authoring/soften work above leaves a window in which a
+        // stale whole-plan writer could otherwise remove this frame again.
+        await db.transaction(async tx => {
+          const [freshRow] = await tx
+            .select({ startFramePlan: verticalDramaEpisodes.startFramePlan })
+            .from(verticalDramaEpisodes)
+            .where(
+              and(
+                eq(verticalDramaEpisodes.id, episodeId),
+                eq(verticalDramaEpisodes.tenantId, tenantId),
+                eq(verticalDramaEpisodes.userId, userId),
+                eq(verticalDramaEpisodes.seriesId, seriesId)
+              )
+            )
+            .for("update")
+            .limit(1);
+          const freshPlan =
+            freshRow?.startFramePlan as VerticalDramaStartFramePlan | null;
+          const freshFrames = Array.isArray(freshPlan?.frames)
+            ? freshPlan.frames.slice()
+            : [];
+          const freshIndex = freshFrames.findIndex(
+            candidate => candidate.shotNumber === input.shotNumber
+          );
+          if (freshIndex < 0 || !freshFrames[freshIndex].imagePrompt?.trim()) {
+            const recoveredFrame = plan.frames[frameIndex];
+            if (freshIndex >= 0) freshFrames[freshIndex] = recoveredFrame;
+            else freshFrames.push(recoveredFrame);
+            freshFrames.sort((a, b) => a.shotNumber - b.shotNumber);
+            await tx
+              .update(verticalDramaEpisodes)
+              .set({
+                startFramePlan: { ...(freshPlan ?? plan), frames: freshFrames },
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(verticalDramaEpisodes.id, episodeId),
+                  eq(verticalDramaEpisodes.tenantId, tenantId),
+                  eq(verticalDramaEpisodes.userId, userId),
+                  eq(verticalDramaEpisodes.seriesId, seriesId)
+                )
+              );
+          }
+        });
+      }
+
       if (transportDecision.kind === "hermes") {
         const { queueHermesMediaJob } =
           await import("../services/hermesMediaScheduler");
@@ -21394,6 +22401,10 @@ export const verticalDramaEpisodesRouter = router({
             ...(referenceImageUrls.length ? { referenceImageUrls } : {}),
             // Series provenance tag — see generateStartFrameImage's comment.
             extraParams: {
+              ...(await resolveVerticalDramaEpisodeImageQualityExtraParams({
+                settings: row.generationSettings,
+                modelId: resolvedImageModelId,
+              })),
               __reserved_credits: shouldChargeGridCredits ? gridCreditCost : 0,
               __credit_source_type: "media_image",
               __credit_reservation_key: input.idempotencyKey,
@@ -21860,7 +22871,13 @@ export const verticalDramaEpisodesRouter = router({
         kind: "image",
         prompt: softenedRepairPrompt,
         maxChars: repairPromptMaxChars,
-        finalizeWithRefiner: true,
+        // The shot-image action skill has already authored the repair prompt.
+        // Do not invoke a second semantic refiner when this prompt is already
+        // within the selected model's budget: if that optional refiner fails
+        // validation, it must not turn a valid prompt (for example 3329/20000)
+        // into a false provider-budget error. Over-cap prompts still enter the
+        // refiner because ensurePromptWithinLimit only bypasses it under cap.
+        finalizeWithRefiner: false,
         failClosed: true,
         userId,
         tenantId,
@@ -21965,6 +22982,10 @@ export const verticalDramaEpisodesRouter = router({
             ...(input.resolution ? { resolution: input.resolution } : {}),
             // Series provenance tag — see generateStartFrameImage's comment.
             extraParams: {
+              ...(await resolveVerticalDramaEpisodeImageQualityExtraParams({
+                settings: row.generationSettings,
+                modelId: resolvedImageModelId,
+              })),
               __reserved_credits: shouldChargeImageCredits
                 ? imageCreditCost
                 : 0,
@@ -22496,9 +23517,9 @@ export const verticalDramaEpisodesRouter = router({
       const trimmedReferenceCount = usesDeclarativeCapabilityProfile
         ? 0
         : Math.max(
-        0,
+            0,
             uniqueOrderedReferenceAssetIds.length - extraReferenceBudget
-      );
+          );
       const keptReferenceAssetIds = usesDeclarativeCapabilityProfile
         ? uniqueOrderedReferenceAssetIds
         : extraReferenceBudget > 0
@@ -22621,11 +23642,11 @@ export const verticalDramaEpisodesRouter = router({
       const optionalPropObjectAssetIds = new Set(
         shotReferences
           .filter(reference => reference.source === "prop_object")
-          .map(reference => Number(reference.mediaAssetId)),
+          .map(reference => Number(reference.mediaAssetId))
       );
       const blockingUnresolvedReferenceAssetIds =
         unresolvedReferenceAssetIds.filter(
-          assetId => !optionalPropObjectAssetIds.has(assetId),
+          assetId => !optionalPropObjectAssetIds.has(assetId)
         );
       if (unresolvedReferenceAssetIds.length > 0) {
         console.warn(
@@ -22634,9 +23655,9 @@ export const verticalDramaEpisodesRouter = router({
             episodeId,
             shotNumber: primaryShotNumber,
             assetIds: unresolvedReferenceAssetIds.filter(assetId =>
-              optionalPropObjectAssetIds.has(assetId),
+              optionalPropObjectAssetIds.has(assetId)
             ),
-          },
+          }
         );
       }
       if (blockingUnresolvedReferenceAssetIds.length > 0) {
@@ -22796,11 +23817,52 @@ export const verticalDramaEpisodesRouter = router({
             .filter((k): k is string => Boolean(k))
         )
       );
+      // Preserve the explicit shot-role decision at the paid provider
+      // boundary. The persisted motion prompt may contain the caller rule,
+      // but legacy prompts and model-side rewrites can still reduce a line to
+      // "character speaks" unless the final formatter receives the physical
+      // cast and screen-caller sets again.
+      const clipShotReferenceRoles =
+        primaryShotNumber && primaryStartFrame
+          ? resolveExplicitShotReferenceRoles(
+              row.storyboard,
+              primaryShotNumber,
+              primaryStartFrame
+            )
+          : undefined;
+      const videoClipScreenCallerCharacterRefs = Array.from(
+        new Set(
+          [
+            ...(clipShotReferenceRoles?.screenCallerCharacterRefs ?? []),
+            ...(primaryStartFrame?.screenCallerCharacterRefs ?? []),
+            ...(clip.promptModelTarget?.screenCallerCharacterRefs ?? []),
+          ]
+            .map(key => String(key).trim())
+            .filter(Boolean)
+        )
+      );
+      const videoClipPhysicalCharacterRefs = Array.from(
+        new Set(
+          [
+            ...(clipShotReferenceRoles?.sceneCharacterRefs ?? []),
+            ...(videoSafetyCharacterRefs ?? []),
+            ...videoClipDialogueCharacterKeys,
+          ]
+            .map(key => String(key).trim())
+            .filter(Boolean)
+        )
+      ).filter(key => !videoClipScreenCallerCharacterRefs.includes(key));
+      const videoClipRoleCharacterKeys = Array.from(
+        new Set([
+          ...videoClipPhysicalCharacterRefs,
+          ...videoClipScreenCallerCharacterRefs,
+        ])
+      );
       const videoClipCharacterIdentitySources =
         await resolveShotCharacterIdentitySources(
           tenantId,
           seriesId,
-          videoClipDialogueCharacterKeys
+          videoClipRoleCharacterKeys
         );
       const videoClipCharacterNameByKey = new Map(
         videoClipCharacterIdentitySources
@@ -22831,6 +23893,14 @@ export const verticalDramaEpisodesRouter = router({
           audioDirection: clip.audioDirection,
         },
         dialogueLines: dialogueLinesWithSpeakerNames,
+        physicalCharacterRefs: videoClipPhysicalCharacterRefs,
+        physicalCharacterNames: videoClipPhysicalCharacterRefs.map(
+          key => videoClipCharacterNameByKey.get(key) ?? key
+        ),
+        screenCallerCharacterRefs: videoClipScreenCallerCharacterRefs,
+        screenCallerCharacterNames: videoClipScreenCallerCharacterRefs.map(
+          key => videoClipCharacterNameByKey.get(key) ?? key
+        ),
         dialogueLanguage: pack.dialogueLanguage,
         thaiAccent: pack.thaiAccent,
         modelId: model.id,
@@ -22859,6 +23929,16 @@ export const verticalDramaEpisodesRouter = router({
       const videoClipProtectedFragments = [
         ...(videoClipDialogueLineFragments ?? []),
         ...videoClipIdentityLockFragments,
+        ...(videoClipRoleCharacterKeys.length > 0
+          ? [
+              VERTICAL_DRAMA_HARD_SPEAKER_MAP_MARKER,
+              ...dialogueLinesWithSpeakerNames.map((line, index) => {
+                const speaker =
+                  line.speakerName ?? line.characterKey ?? "the character";
+                return `Line ${index + 1} ONLY: ${speaker}`;
+              }),
+            ]
+          : []),
         ...mediaBundle.references.map(reference => reference.label),
         ...(mediaBundle.stopFrame ? ["STOP_FRAME_IMAGE"] : []),
       ];
@@ -23728,6 +24808,7 @@ export const verticalDramaEpisodesRouter = router({
         shotNumber: z.number().int().positive(),
         instruction: z.string().trim().max(4000).optional(),
         canonicalShotSummary: z.string().trim().max(2000).optional(),
+        promptSource: z.enum(["shot_synopsis_direct"]).optional(),
         attachShotImage: z.boolean().optional().default(true),
         imageUrl: z.string().optional(),
         additionalImageUrls: z
@@ -23835,6 +24916,7 @@ export const verticalDramaEpisodesRouter = router({
         instruction: z.string().trim().max(4000).optional(),
         /** Latest Overview shot summary; passed raw to the skill as its authoritative source. */
         canonicalShotSummary: z.string().trim().max(2000).optional(),
+        promptSource: z.enum(["shot_synopsis_direct"]).optional(),
         attachShotImage: z.boolean().optional().default(true),
         imageUrl: z.string().optional(),
         additionalImageUrls: z
@@ -23891,6 +24973,17 @@ export const verticalDramaEpisodesRouter = router({
               selectedImageModelId: "",
               frames: [],
             };
+      const shotStartFramePromptQualityParams =
+        input.promptSource === "shot_synopsis_direct" && frameRole === "start"
+          ? await resolveVerticalDramaEpisodeImageQualityExtraParams({
+              settings: row.generationSettings,
+              modelId: basePlan.selectedImageModelId,
+            })
+          : {};
+      const shotStartFramePromptImageQuality =
+        typeof shotStartFramePromptQualityParams.quality === "string"
+          ? shotStartFramePromptQualityParams.quality
+          : undefined;
       const storyboardShots = Array.isArray(
         (storyboard as Record<string, unknown> | null)?.shots
       )
@@ -23931,7 +25024,7 @@ export const verticalDramaEpisodesRouter = router({
           message: `ยังไม่มี Start Frame prompt ของช็อต ${input.shotNumber} — ต้องสร้าง Start Frame prompt ก่อนสร้าง Stop Frame prompt`,
         });
       }
-      const shotComposition =
+      const rawShotComposition =
         normalizeVerticalDramaShotComposition({
           ...((storyboardShot?.camera as Record<string, unknown> | undefined) ??
             {}),
@@ -23942,6 +25035,10 @@ export const verticalDramaEpisodesRouter = router({
           gaze_direction: storyboardShot?.gaze_direction,
           facial_expression: storyboardShot?.facial_expression,
         }) ?? frame.shotComposition;
+      const shotComposition =
+        frameRole === "start"
+          ? deriveVerticalDramaStartFrameShotComposition(rawShotComposition)
+          : rawShotComposition;
 
       // Resolve region/product-lock/character-identity facts — the SAME
       // router-private helpers `repairShotImage`/
@@ -23980,38 +25077,17 @@ export const verticalDramaEpisodesRouter = router({
       const shotStartFramePromptCanonicalSynopsis =
         input.canonicalShotSummary?.trim() ||
         frame.canonicalShotSummary?.trim();
-      const storyboardExplicitPhysicalRefs = Array.from(
-        new Set(
-          storyboardCharacterRefs
-            .map(value => String(value).trim())
-            .filter(Boolean)
-        )
+      // Use the same explicit cast resolver as Enhanced, Legacy render and
+      // angle variations. A user-confirmed frame selection wins over raw
+      // storyboard keys; synopsis-only mentions remain context-only.
+      const shotReferenceRoles = resolveExplicitShotReferenceRoles(
+        storyboard,
+        input.shotNumber,
+        frame
       );
-      const storyboardExplicitCallerRefs = Array.isArray(
-        storyboardShot?.screen_caller_refs
-      )
-        ? Array.from(
-            new Set(
-              (storyboardShot.screen_caller_refs as unknown[])
-                .map(value => String(value).trim())
-                .filter(Boolean)
-            )
-          )
-        : [];
-      // Legacy frames created before the user-role marker may already contain
-      // a code-inferred caller split. Prefer the storyboard skill's explicit
-      // role fields for those frames, without consulting synopsis wording.
-      const useLegacyStoryboardRoleAssignment =
-        frame.characterRefsCustomized !== true &&
-        (Array.isArray(storyboardShot?.required_character_refs) ||
-          Array.isArray(storyboardShot?.characters) ||
-          storyboardExplicitCallerRefs.length > 0);
-      const storedShotCharacterRefs = useLegacyStoryboardRoleAssignment
-        ? storyboardExplicitPhysicalRefs
-        : (frame.requiredCharacterRefs ?? []);
-      const storedShotScreenCallerRefs = useLegacyStoryboardRoleAssignment
-        ? storyboardExplicitCallerRefs
-        : (frame.screenCallerCharacterRefs ?? []);
+      const storedShotCharacterRefs = shotReferenceRoles.sceneCharacterRefs;
+      const storedShotScreenCallerRefs =
+        shotReferenceRoles.screenCallerCharacterRefs;
       const storedShotAllCharacterRefs = [
         ...storedShotCharacterRefs,
         ...storedShotScreenCallerRefs,
@@ -24290,6 +25366,12 @@ export const verticalDramaEpisodesRouter = router({
           ? null
           : (storyboard as { shots?: unknown[] } | null)
         )?.shots?.length,
+        sourceBeatIndexes: resolvePersistedShotSourceBeatIndexes(
+          storyboardShot,
+          isSpecialTieInEpisode
+            ? null
+            : (row.script as Record<string, unknown> | null),
+        ),
         deepDraftShot: shotStartFramePromptDeepDraftShot,
       });
       const shotStartFramePromptSpeakingOrder = Array.from(
@@ -24299,6 +25381,16 @@ export const verticalDramaEpisodesRouter = router({
             .filter((k): k is string => Boolean(k))
         )
       );
+      const shotStartFramePromptDialogueForImage =
+        shotStartFramePromptDialogueLines
+          .map(line => ({
+            speaker: line.characterKey?.trim() ?? "",
+            line: line.lineTh.trim(),
+            ...(line.addressedTo?.trim()
+              ? { addressedTo: line.addressedTo.trim() }
+              : {}),
+          }))
+          .filter(line => line.speaker && line.line);
 
       // Two-mode start-frame image prompt switch
       // (`planning/vd-start-frame-prompt-modes/plan.md`) — resolve the
@@ -24455,7 +25547,7 @@ export const verticalDramaEpisodesRouter = router({
           userId,
           seriesId,
           episodeId,
-          input.shotNumber,
+          input.shotNumber
         );
       const [localeSeriesRow] = await db
         .select({
@@ -24473,22 +25565,24 @@ export const verticalDramaEpisodesRouter = router({
         )
         .limit(1);
 
-      const { getActiveBreakdown: getBreakdownForStartFrame } = await import("../services/verticalDramaStoryBible");
+      const { getActiveBreakdown: getBreakdownForStartFrame } =
+        await import("../services/verticalDramaStoryBible");
       const shotEpisodePlanItemForStartFrame = getBreakdownForStartFrame(
         (localeSeriesRow?.bible as Record<string, unknown> | null) ?? null
       ).find(item => item.episodeNumber === Number(row.episodeNumber));
-      const shotEpisodePlanContextForStartFrame = shotEpisodePlanItemForStartFrame
-        ? formatStoryScriptEpisodePlanContext(
-            resolveStoryScriptLangFromLocale(localeSeriesRow?.locale),
-            {
-              episodeNumber: shotEpisodePlanItemForStartFrame.episodeNumber,
-              workingTitle: shotEpisodePlanItemForStartFrame.workingTitle,
-              logline: shotEpisodePlanItemForStartFrame.logline,
-              keyBeats: shotEpisodePlanItemForStartFrame.keyBeats,
-              cliffhangerLine: undefined,
-            }
-          )
-        : undefined;
+      const shotEpisodePlanContextForStartFrame =
+        shotEpisodePlanItemForStartFrame
+          ? formatStoryScriptEpisodePlanContext(
+              resolveStoryScriptLangFromLocale(localeSeriesRow?.locale),
+              {
+                episodeNumber: shotEpisodePlanItemForStartFrame.episodeNumber,
+                workingTitle: shotEpisodePlanItemForStartFrame.workingTitle,
+                logline: shotEpisodePlanItemForStartFrame.logline,
+                keyBeats: shotEpisodePlanItemForStartFrame.keyBeats,
+                cliffhangerLine: undefined,
+              }
+            )
+          : undefined;
 
       let shotStartFramePromptResult: Awaited<
         ReturnType<typeof generateStartFrameShotPrompt>
@@ -24533,6 +25627,13 @@ export const verticalDramaEpisodesRouter = router({
           imagePromptMode: shotStartFramePromptIsManualAiEdit
             ? undefined
             : shotStartFramePromptResolvedMode,
+          promptSource:
+            shotStartFramePromptImageQuality &&
+            frameRole === "start" &&
+            !shotStartFramePromptIsManualAiEdit
+              ? input.promptSource
+              : undefined,
+          imageQuality: shotStartFramePromptImageQuality,
           imagePromptModeResolvedFrom: shotStartFramePromptIsManualAiEdit
             ? undefined
             : shotStartFramePromptModeResolvedFrom,
@@ -24623,6 +25724,9 @@ export const verticalDramaEpisodesRouter = router({
           // same prompt as before this field existed.
           ...(shotStartFramePromptSpeakingOrder.length
             ? { speakingOrder: shotStartFramePromptSpeakingOrder }
+            : {}),
+          ...(shotStartFramePromptDialogueForImage.length
+            ? { dialogueLines: shotStartFramePromptDialogueForImage }
             : {}),
           videoFaceVisibilityRequired:
             !frame.barrierDialogue && !frame.barrierMultiView,
@@ -24780,20 +25884,20 @@ export const verticalDramaEpisodesRouter = router({
         const updatedFrames = freshPlan.frames.slice();
         const updatedFrame = {
           ...(targetIndex === -1 ? frame : updatedFrames[targetIndex]),
-            ...(frameRole === "stop"
-              ? {
-                  stopFramePrompt: shotStartFramePromptResult.prompt,
-                  stopFrameNegativePrompt: "",
-                  stopFramePromptHash: sha256Prompt(
-                    shotStartFramePromptResult.prompt
-                  ),
+          ...(frameRole === "stop"
+            ? {
+                stopFramePrompt: shotStartFramePromptResult.prompt,
+                stopFrameNegativePrompt: "",
+                stopFramePromptHash: sha256Prompt(
+                  shotStartFramePromptResult.prompt
+                ),
               }
-              : {
-                  imagePrompt: shotStartFramePromptResult.prompt,
-                  negativePrompt: "",
-                  imagePromptHash: sha256Prompt(
-                    shotStartFramePromptResult.prompt
-                  ),
+            : {
+                imagePrompt: shotStartFramePromptResult.prompt,
+                negativePrompt: "",
+                imagePromptHash: sha256Prompt(
+                  shotStartFramePromptResult.prompt
+                ),
               }),
           ...(shotComposition ? { shotComposition } : {}),
           requiredCharacterRefs: shotStartFramePromptPhysicalCharacterRefs,
@@ -24808,6 +25912,9 @@ export const verticalDramaEpisodesRouter = router({
           // and mode-specific extras below.
           ...(shotStartFramePromptResult.frameStamp
             ? { promptMode: shotStartFramePromptResult.frameStamp }
+            : {}),
+          ...(shotStartFramePromptResult.promptSourceStamp
+            ? { promptSource: shotStartFramePromptResult.promptSourceStamp }
             : {}),
           ...(shotStartFramePromptResult.safetyAdjustments
             ? {
@@ -24912,9 +26019,15 @@ export const verticalDramaEpisodesRouter = router({
         }
         if (shotStartFramePromptIsManualAiEdit) {
           delete updatedFrame.promptMode;
+          delete updatedFrame.promptSource;
           delete updatedFrame.promptSafetyAdjustments;
           delete updatedFrame.promptAnalysis;
         } else {
+          if (shotStartFramePromptResult.promptSourceStamp) {
+            delete updatedFrame.promptMode;
+          } else {
+            delete updatedFrame.promptSource;
+          }
           if (!shotStartFramePromptResult.safetyAdjustments) {
             delete updatedFrame.promptSafetyAdjustments;
           }
@@ -24970,6 +26083,7 @@ export const verticalDramaEpisodesRouter = router({
         creditsUsed: shotStartFramePromptResult.creditsUsed,
         usedVision: shotStartFramePromptResult.usedVision ?? false,
         promptMode: shotStartFramePromptResult.frameStamp,
+        promptSource: shotStartFramePromptResult.promptSourceStamp,
       };
     }),
 
@@ -25804,6 +26918,10 @@ export const verticalDramaEpisodesRouter = router({
             ...(input.resolution ? { resolution: input.resolution } : {}),
             ...(referenceImageUrls.length ? { referenceImageUrls } : {}),
             extraParams: {
+              ...(await resolveVerticalDramaEpisodeImageQualityExtraParams({
+                settings: row.generationSettings,
+                modelId: resolvedImageModelId,
+              })),
               __vd_series_id: String(seriesId),
               __vd_episode_id: String(episodeId),
               __vd_shot_number: String(input.shotNumber),
@@ -26018,10 +27136,14 @@ export const verticalDramaEpisodesRouter = router({
         .limit(1);
 
       if (!row) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Episode not found",
+        });
       }
 
-      const pack = (row.motionPromptPack as VerticalDramaMotionPromptPack | null) ?? null;
+      const pack =
+        (row.motionPromptPack as VerticalDramaMotionPromptPack | null) ?? null;
       return {
         nativeAudioEnabled: pack?.nativeAudioEnabled === true,
         seriesSoundBibleVersion: 1,
@@ -26058,10 +27180,14 @@ export const verticalDramaEpisodesRouter = router({
           .limit(1);
 
         if (!row) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Episode not found",
+          });
         }
 
-        const existingPack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+        const existingPack =
+          row.motionPromptPack as VerticalDramaMotionPromptPack | null;
         if (!existingPack) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
@@ -26119,22 +27245,34 @@ export const verticalDramaEpisodesRouter = router({
         .limit(1);
 
       if (!row) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Episode not found",
+        });
       }
 
-      const pack = (row.motionPromptPack as VerticalDramaMotionPromptPack | null) ?? null;
+      const pack =
+        (row.motionPromptPack as VerticalDramaMotionPromptPack | null) ?? null;
       return {
         manifestId: `aman_${episodeId}_s${input.shotNumber}_v1`,
         version: 1,
         seriesId: input.seriesId,
         episodeId: input.episodeId,
         shotNumber: input.shotNumber,
-        nativeAudioMode: pack?.nativeAudioEnabled ? "native_baked" : "silent_visual",
+        nativeAudioMode: pack?.nativeAudioEnabled
+          ? "native_baked"
+          : "silent_visual",
         sampleRateHz: 48000,
         channels: 2,
         stems: {},
         mixDeltas: { dialogueDb: 0, foleyDb: -2, ambienceDb: -6 },
-        takeHistory: [{ version: 1, action: "initial_generation", timestamp: new Date().toISOString() }],
+        takeHistory: [
+          {
+            version: 1,
+            action: "initial_generation",
+            timestamp: new Date().toISOString(),
+          },
+        ],
       };
     }),
 
@@ -26167,7 +27305,10 @@ export const verticalDramaEpisodesRouter = router({
         .limit(1);
 
       if (!row) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Episode not found",
+        });
       }
 
       return {
@@ -26211,7 +27352,10 @@ export const verticalDramaEpisodesRouter = router({
         .limit(1);
 
       if (!row) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Episode not found",
+        });
       }
 
       return {
@@ -26254,10 +27398,15 @@ export const verticalDramaEpisodesRouter = router({
         .limit(1);
 
       if (!row) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Episode not found",
+        });
       }
 
-      const idempotencyKey = input.idempotencyKey ?? `surg_repair_${episodeId}_s${input.shotNumber}_${Date.now()}`;
+      const idempotencyKey =
+        input.idempotencyKey ??
+        `surg_repair_${episodeId}_s${input.shotNumber}_${Date.now()}`;
 
       const [job] = await db
         .insert(workerJobs)
@@ -26330,7 +27479,10 @@ export const verticalDramaEpisodesRouter = router({
           episodeId: input.episodeId,
           shotNumber: input.shotNumber,
           overallScore: dbReport.overallScore / 10,
-          status: (dbReport.overallScore >= 80 ? "PASS" : "WARN") as "PASS" | "WARN" | "FAIL",
+          status: (dbReport.overallScore >= 80 ? "PASS" : "WARN") as
+            | "PASS"
+            | "WARN"
+            | "FAIL",
           speechQc: {
             hasSpeech: parseFloat(dbReport.vadSpeechRatio ?? "0") > 0.05,
             speechDurationSec: 4.2,
@@ -26431,7 +27583,8 @@ export const verticalDramaEpisodesRouter = router({
           },
           characterVoiceProfiles: (dbBible.characterVoiceProfiles as any) ?? {},
           locationSoundProfiles: (dbBible.locationSoundProfiles as any) ?? {},
-          profanityPolicy: ((dbBible.transitionPolicy as any)?.profanityPolicy ?? "platform_safe_bleep") as any,
+          profanityPolicy: ((dbBible.transitionPolicy as any)
+            ?.profanityPolicy ?? "platform_safe_bleep") as any,
         };
       }
 
@@ -26471,7 +27624,14 @@ export const verticalDramaEpisodesRouter = router({
           .optional(),
         characterVoiceProfiles: z.record(z.string(), z.any()).optional(),
         locationSoundProfiles: z.record(z.string(), z.any()).optional(),
-        profanityPolicy: z.enum(["raw_unfiltered", "platform_safe_bleep", "platform_safe_mute", "mild_substitute"]).optional(),
+        profanityPolicy: z
+          .enum([
+            "raw_unfiltered",
+            "platform_safe_bleep",
+            "platform_safe_mute",
+            "mild_substitute",
+          ])
+          .optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -26525,8 +27685,16 @@ export const verticalDramaEpisodesRouter = router({
         // This endpoint is a display-only gate. A storyboard can exist before
         // its approved Start frame or motion pack, so report unavailable
         // readiness as data instead of surfacing a noisy 412 to the browser.
-        if (error instanceof TRPCError && error.code === "PRECONDITION_FAILED") {
-          return buildUnavailableEnhancedVideoPromptReadiness();
+        if (
+          error instanceof TRPCError &&
+          error.code === "PRECONDITION_FAILED"
+        ) {
+          return {
+            ...buildUnavailableEnhancedVideoPromptReadiness(),
+            // Preserve the actionable blocker (for example cast confirmation).
+            // All preconditions used to be mislabeled as missing shot media.
+            reasons: [error.message],
+          };
         }
         throw error;
       }
@@ -27128,6 +28296,22 @@ export const verticalDramaEpisodesRouter = router({
           : [];
       const promptSkillAdditionalImages = input.additionalImageUrls;
 
+      const storyboard = row.storyboard as VerticalDramaShotgrid | null;
+      const storyboardShot = storyboard?.shots?.find(
+        s =>
+          Number(
+            (s as unknown as Record<string, unknown>).shotNumber ??
+              (s as unknown as Record<string, unknown>).shot_number,
+          ) === input.shotNumber,
+      );
+      const shotReferenceRoles = frame
+        ? resolveExplicitShotReferenceRoles(storyboard, input.shotNumber, frame)
+        : {
+            sceneCharacterRefs: [],
+            screenCallerCharacterRefs: [],
+            narrativeOnlyCharacterRefs: [],
+          };
+
       const barrierMultiView = normalizeVerticalDramaBarrierMultiView(
         frame?.barrierMultiView
       );
@@ -27138,12 +28322,13 @@ export const verticalDramaEpisodesRouter = router({
               ...barrierMultiView.referenceView.characterRefs,
             ])
           )
-        : Array.from(
-            new Set([
-              ...(frame?.requiredCharacterRefs ?? []),
-              ...(frame?.screenCallerCharacterRefs ?? []),
-            ])
-          );
+        : [
+            ...shotReferenceRoles.sceneCharacterRefs,
+            ...shotReferenceRoles.screenCallerCharacterRefs.filter(
+              characterKey =>
+                !shotReferenceRoles.sceneCharacterRefs.includes(characterKey)
+            ),
+          ];
       const shotVideoCharacterIdentitySources =
         await resolveShotCharacterIdentitySources(
           tenantId,
@@ -27208,10 +28393,6 @@ export const verticalDramaEpisodesRouter = router({
       // track for both normal and special episodes. The script and episode
       // breakdown remain isolated below so a tie-in cannot inherit parent
       // narrative text.
-      const storyboard = row.storyboard as VerticalDramaShotgrid | null;
-      const storyboardShot = storyboard?.shots?.find(
-        s => s.shotNumber === input.shotNumber
-      );
       const shotSupportingPresence =
         resolveVerticalDramaSupportingPresenceForShot(
           (frame as unknown as { supportingPresence?: unknown } | undefined)
@@ -27265,17 +28446,12 @@ export const verticalDramaEpisodesRouter = router({
       // field yet (W1-B shotgrid schema superset, a different file/wave) —
       // read tolerantly off the raw shot object so this wiring activates
       // automatically once that schema ships, without another edit here.
-      const shotSourceBeatIndexes =
-        speechBudgetEnabled &&
-        Array.isArray(
-          (storyboardShot as unknown as { sourceBeatIndexes?: unknown })
-            ?.sourceBeatIndexes
-        )
-          ? (
-              (storyboardShot as unknown as { sourceBeatIndexes?: unknown[] })
-                .sourceBeatIndexes ?? []
-            ).filter((n): n is number => typeof n === "number")
-          : undefined;
+      const shotSourceBeatIndexes = resolvePersistedShotSourceBeatIndexes(
+        storyboardShot,
+        isSpecialTieInEpisode
+          ? null
+          : (row.script as Record<string, unknown> | null),
+      );
 
       // Product tie-in context (spec §13) — present only when this shot
       // carries a placement per the script stage's normalized
@@ -27392,8 +28568,8 @@ export const verticalDramaEpisodesRouter = router({
       const shotEpisodePlanItem = isSpecialTieInEpisode
         ? undefined
         : getActiveBreakdown(
-        (localeSeriesRow?.bible as Record<string, unknown> | null) ?? null
-      ).find(item => item.episodeNumber === Number(row.episodeNumber));
+            (localeSeriesRow?.bible as Record<string, unknown> | null) ?? null
+          ).find(item => item.episodeNumber === Number(row.episodeNumber));
       const shotEpisodePlanContext = shotEpisodePlanItem
         ? formatStoryScriptEpisodePlanContext(
             resolveStoryScriptLangFromLocale(localeSeriesRow?.locale),
@@ -27460,8 +28636,8 @@ export const verticalDramaEpisodesRouter = router({
         deepDraftShot: deepDraftShotForDialogue,
       });
       const specialDialogueMode = isSpecialTieInEpisode
-        ? (row.specialData as { input?: { dialogueMode?: string } } | null)?.input
-            ?.dialogueMode
+        ? (row.specialData as { input?: { dialogueMode?: string } } | null)
+            ?.input?.dialogueMode
         : undefined;
       if (isSpecialTieInEpisode && specialDialogueMode === "none") {
         dialogueLines = [];
@@ -27473,7 +28649,8 @@ export const verticalDramaEpisodesRouter = router({
       ) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "บทพูดของตอนพิเศษช็อตนี้ยังไม่พร้อม จึงไม่สร้าง Prompt ต่อเพื่อป้องกันงานเงียบ",
+          message:
+            "บทพูดของตอนพิเศษช็อตนี้ยังไม่พร้อม จึงไม่สร้าง Prompt ต่อเพื่อป้องกันงานเงียบ",
         });
       }
       // Speaker-aware sub-shots (speaker-aware sub-shots task, Package 3) —
@@ -27510,7 +28687,7 @@ export const verticalDramaEpisodesRouter = router({
       const requestedNativeAudioEnabled =
         specialDialogueMode === "none"
           ? false
-          : input.nativeAudioEnabled ?? pack?.nativeAudioEnabled ?? false;
+          : (input.nativeAudioEnabled ?? pack?.nativeAudioEnabled ?? false);
       const effectiveNativeAudioEnabled =
         nativeAudioPromptsEnabled && requestedNativeAudioEnabled;
 
@@ -27538,21 +28715,41 @@ export const verticalDramaEpisodesRouter = router({
           .filter((c): c is typeof c & { name: string } => Boolean(c.name))
           .map(c => [c.characterKey, c.name])
       );
-      // A storyboard shot's `characterIds` is also an authoritative cast
-      // declaration. Older episodes may not yet have copied those keys into
-      // `requiredCharacterRefs` on the start-frame plan, so keep dialogue
-      // normalization deterministic for those rows instead of rejecting a
-      // valid speaker merely because the newer frame metadata is absent. The
-      // identity-source rows still win (and provide display-name matching);
-      // storyboard keys are only a safe key-only fallback.
-      const storyboardCharacterKeys = Array.isArray(
-        storyboardShot?.characterIds
-      )
-        ? storyboardShot.characterIds.filter(
-            (value): value is string =>
-              typeof value === "string" && value.trim().length > 0
-          )
-        : [];
+      const visualCastPhysicalRefs = barrierMultiView
+        ? shotVideoCharacterRefs
+        : shotReferenceRoles.sceneCharacterRefs;
+      const visualCastPolicy = {
+        physicalCharacterRefs: visualCastPhysicalRefs,
+        physicalCharacterNames: visualCastPhysicalRefs.map(
+          characterKey =>
+            shotVideoCharacterNameByKey.get(characterKey) ?? characterKey
+        ),
+        screenCallerCharacterRefs: shotReferenceRoles.screenCallerCharacterRefs,
+        screenCallerCharacterNames:
+          shotReferenceRoles.screenCallerCharacterRefs.map(
+            characterKey =>
+              shotVideoCharacterNameByKey.get(characterKey) ?? characterKey
+          ),
+        narrativeOnlyCharacterRefs:
+          shotReferenceRoles.narrativeOnlyCharacterRefs,
+        narrativeOnlyCharacterNames:
+          shotReferenceRoles.narrativeOnlyCharacterRefs.map(
+            characterKey =>
+              shotVideoCharacterNameByKey.get(characterKey) ?? characterKey
+          ),
+      };
+      // A storyboard shot's `characterIds` is only a compatibility fallback
+      // for older frames that have no selected/approved cast manifest. Once a
+      // frame cast exists, the selected frame refs are authoritative; raw
+      // storyboard keys may include people merely mentioned in the synopsis.
+      const storyboardCharacterKeys =
+        shotVideoCharacterRefs.length === 0 &&
+        Array.isArray(storyboardShot?.characterIds)
+          ? storyboardShot.characterIds.filter(
+              (value): value is string =>
+                typeof value === "string" && value.trim().length > 0
+            )
+          : [];
       const shotVideoCharacterCandidates: VerticalDramaSpeakerIdentityCandidate[] =
         [
           ...shotVideoCharacterIdentitySources.map(source => ({
@@ -27808,7 +29005,8 @@ export const verticalDramaEpisodesRouter = router({
             storyboardShot,
             shotVideoCharacterIdentityMapBlock,
             dialogueLines: dialogueLinesForVideoPrompt,
-            screenCallerCharacterRefs: frame?.screenCallerCharacterRefs ?? [],
+            screenCallerCharacterRefs:
+              shotReferenceRoles.screenCallerCharacterRefs,
             // Synopsis grounding + silence signal (`planning/vd-video-prompt-
             // skill-first/plan.md` Phase 1a/2) — same resolved deep-draft
             // entry the non-split path threads into `shotContext` above; see
@@ -27844,6 +29042,7 @@ export const verticalDramaEpisodesRouter = router({
             characterReferenceImages: splitShotVideoCharacterReferenceImages,
             characterDescriptionOverrides,
             verifiedCastPositions,
+            visualCastPolicy,
             barrierMultiView,
             barrierReferenceImage,
             locationReferenceImage:
@@ -27933,11 +29132,13 @@ export const verticalDramaEpisodesRouter = router({
             dialogueLines: dialogueLinesForVideoPrompt.length
               ? withSpeakerNames(dialogueLinesForVideoPrompt)
               : undefined,
-            screenCallerCharacterRefs: frame?.screenCallerCharacterRefs ?? [],
+            screenCallerCharacterRefs:
+              shotReferenceRoles.screenCallerCharacterRefs,
             speakingOrder: dialogueLinesForVideoPrompt
               .map(line => line.characterKey)
               .filter((key): key is string => Boolean(key)),
             characterIdentityMap: shotVideoCharacterIdentityMapBlock,
+            visualCastPolicy,
             barrierMultiView,
             sceneContinuityLockBlock: shotSceneContinuityLockBlock,
             productContext: tieInPlacement
@@ -27953,7 +29154,7 @@ export const verticalDramaEpisodesRouter = router({
                     benefitTalkingPoint:
                       "the selected product reference and its demonstrated use from the reviewed special-episode story",
                   }
-              : undefined,
+                : undefined,
             genre:
               typeof localeSeriesRow?.genre === "string"
                 ? localeSeriesRow.genre
@@ -28141,7 +29342,7 @@ export const verticalDramaEpisodesRouter = router({
           )
           .filter((value): value is string => Boolean(value)),
         screenCallerCharacterNames: resolveScreenCallerCharacterNames(
-          frame?.screenCallerCharacterRefs,
+          shotReferenceRoles.screenCallerCharacterRefs,
           shotVideoCharacterReferenceImages
         ),
         supportingPresence: shotSupportingPresence,
@@ -28253,13 +29454,16 @@ export const verticalDramaEpisodesRouter = router({
         ...(shotSupportingPresence.length
           ? { supportingPresence: shotSupportingPresence }
           : {}),
-        ...(frame?.screenCallerCharacterRefs?.length
-          ? { screenCallerCharacterRefs: frame.screenCallerCharacterRefs }
+        ...(shotReferenceRoles.screenCallerCharacterRefs.length
+          ? {
+              screenCallerCharacterRefs:
+                shotReferenceRoles.screenCallerCharacterRefs,
+            }
           : {}),
-        ...(frame?.screenCallerCharacterRefs?.length
+        ...(shotReferenceRoles.screenCallerCharacterRefs.length
           ? {
               screenCallerCharacterNames: resolveScreenCallerCharacterNames(
-                frame.screenCallerCharacterRefs,
+                shotReferenceRoles.screenCallerCharacterRefs,
                 shotVideoCharacterReferenceImages
               ),
             }
@@ -28376,40 +29580,40 @@ export const verticalDramaEpisodesRouter = router({
               )
           );
           const regeneratedClip = {
-              clipNumber: input.shotNumber,
-              sourceShotNumbers: [input.shotNumber],
-              prompt: result.prompt,
-              negativeMotionPrompt: result.negativeMotionPrompt,
-              durationSeconds: storyboardShot?.durationSeconds ?? 8,
-              startFrameAssetId: String(approvedMediaAssetId),
-              dialogue: persistedDialogue,
-              requiredDisclosure: result.requiredDisclosure,
-              audioDirection: result.audioDirection,
-              promptModelTarget: shotVideoPromptModelTarget,
-              frameAnalysis: result.frameAnalysis,
-              ...(verifiedCastPositions?.length
-                ? {
-                    castPositionLock: {
-                      assetId: String(approvedMediaAssetId),
-                      orderedCharacterRefs: verifiedCastPositions.map(
-                        position => position.characterKey
-                      ),
-                      confirmedAt: new Date().toISOString(),
-                    },
-                  }
-                : {}),
-              ...(result.motionContractStatus
-                ? {
-                    motionContractStatus: result.motionContractStatus,
-                    ...(result.motionProfile
-                      ? {
-                          motionProfile: result.motionProfile,
-                          effectiveRisk: result.effectiveRisk,
-                        }
-                      : {}),
-                  }
-                : {}),
-              promptQuality: result.promptQuality,
+            clipNumber: input.shotNumber,
+            sourceShotNumbers: [input.shotNumber],
+            prompt: result.prompt,
+            negativeMotionPrompt: result.negativeMotionPrompt,
+            durationSeconds: storyboardShot?.durationSeconds ?? 8,
+            startFrameAssetId: String(approvedMediaAssetId),
+            dialogue: persistedDialogue,
+            requiredDisclosure: result.requiredDisclosure,
+            audioDirection: result.audioDirection,
+            promptModelTarget: shotVideoPromptModelTarget,
+            frameAnalysis: result.frameAnalysis,
+            ...(verifiedCastPositions?.length
+              ? {
+                  castPositionLock: {
+                    assetId: String(approvedMediaAssetId),
+                    orderedCharacterRefs: verifiedCastPositions.map(
+                      position => position.characterKey
+                    ),
+                    confirmedAt: new Date().toISOString(),
+                  },
+                }
+              : {}),
+            ...(result.motionContractStatus
+              ? {
+                  motionContractStatus: result.motionContractStatus,
+                  ...(result.motionProfile
+                    ? {
+                        motionProfile: result.motionProfile,
+                        effectiveRisk: result.effectiveRisk,
+                      }
+                    : {}),
+                }
+              : {}),
+            promptQuality: result.promptQuality,
           };
           const replacedClip = freshPack.clips.find(
             c =>
@@ -28443,7 +29647,12 @@ export const verticalDramaEpisodesRouter = router({
             // byte-identical to `freshPack.warnings`.
             ...(shotVideoPromptWarnings.length > 0
               ? {
-                  warnings: [...freshPack.warnings, ...shotVideoPromptWarnings],
+                  warnings: [
+                    ...(Array.isArray(freshPack.warnings)
+                      ? freshPack.warnings
+                      : []),
+                    ...shotVideoPromptWarnings,
+                  ],
                 }
               : {}),
           };
@@ -28657,6 +29866,12 @@ export const verticalDramaEpisodesRouter = router({
             : (row.script as Record<string, unknown> | null),
           storyboardShotCount: storyboard?.shots?.length,
           knownSpeakerKeys: knownSpeakerKeysForDialogueRegen,
+          sourceBeatIndexes: resolvePersistedShotSourceBeatIndexes(
+            storyboardShot,
+            isSpecialTieInEpisode
+              ? null
+              : (row.script as Record<string, unknown> | null),
+          ),
         });
         const sceneDialogueContext = existingDialogueLines
           .map(l =>
@@ -28761,16 +29976,16 @@ export const verticalDramaEpisodesRouter = router({
           ...matchingClipRest
         } = matchingClip ?? {};
         const collapsedClip = {
-            ...matchingClipRest,
-            // Explicit overrides AFTER the spread — must win over whatever
-            // `matchingClip` (the pre-collapse sub-shot) happened to carry,
-            // since the collapsed clip is scoped to the whole shot, not the
-            // sub-shot `matchingClip` came from.
-            clipNumber: input.shotNumber,
-            sourceShotNumbers: [input.shotNumber],
-            prompt: matchingClip?.prompt ?? "",
-            durationSeconds: storyboardShot?.durationSeconds ?? 8,
-            dialogue: result.dialogue,
+          ...matchingClipRest,
+          // Explicit overrides AFTER the spread — must win over whatever
+          // `matchingClip` (the pre-collapse sub-shot) happened to carry,
+          // since the collapsed clip is scoped to the whole shot, not the
+          // sub-shot `matchingClip` came from.
+          clipNumber: input.shotNumber,
+          sourceShotNumbers: [input.shotNumber],
+          prompt: matchingClip?.prompt ?? "",
+          durationSeconds: storyboardShot?.durationSeconds ?? 8,
+          dialogue: result.dialogue,
         };
         const preservedCollapsedClip = matchingClip
           ? preserveVideoPromptVariantsOnLegacyReplacement({
@@ -29138,8 +30353,8 @@ export const verticalDramaEpisodesRouter = router({
             ...manifest,
             footageTimeline: nextTimeline,
           },
-              updatedAt: new Date(),
-            })
+          updatedAt: new Date(),
+        })
         .where(
           and(
             eq(verticalDramaEpisodes.id, episodeId),
@@ -30753,6 +31968,23 @@ export const verticalDramaEpisodesRouter = router({
       const tenantId = requireTenantId(ctx.tenantId);
       const seriesId = parseId(input.seriesId, "series id");
       await assertSeriesOwned(tenantId, ctx.user.id, seriesId);
+      const [series] = await db
+        .select({ policy: verticalDramaSeries.policy })
+        .from(verticalDramaSeries)
+        .where(
+          and(
+            eq(verticalDramaSeries.id, seriesId),
+            eq(verticalDramaSeries.tenantId, tenantId),
+            eq(verticalDramaSeries.userId, ctx.user.id)
+          )
+        )
+        .limit(1);
+      if (
+        !readVerticalDramaWorkflowPolicy(series?.policy)
+          .workerShotGenerationEnabled
+      ) {
+        return [];
+      }
       const rows = (await db
         .select({
           id: workers.id,
@@ -30785,11 +32017,11 @@ export const verticalDramaEpisodesRouter = router({
                   string,
                   unknown
                 >)
-          : {};
-        return {
-          id: row.id,
-          label: row.displayName,
-          status: row.status,
+              : {};
+          return {
+            id: row.id,
+            label: row.displayName,
+            status: row.status,
             mcpReady:
               capability.mcpReady === true ||
               (capability.mcpReady === undefined &&
@@ -30800,8 +32032,8 @@ export const verticalDramaEpisodesRouter = router({
                   .filter((value): value is string => typeof value === "string")
                   .slice(0, 32)
               : [],
-        };
-      });
+          };
+        });
     }),
 
   dispatchWorkerShotVideo: verticalDramaProcedure
@@ -30845,6 +32077,26 @@ export const verticalDramaEpisodesRouter = router({
         seriesId,
         episodeId,
       });
+      const [series] = await db
+        .select({ policy: verticalDramaSeries.policy })
+        .from(verticalDramaSeries)
+        .where(
+          and(
+            eq(verticalDramaSeries.id, seriesId),
+            eq(verticalDramaSeries.tenantId, tenantId),
+            eq(verticalDramaSeries.userId, userId)
+          )
+        )
+        .limit(1);
+      if (
+        !readVerticalDramaWorkflowPolicy(series?.policy)
+          .workerShotGenerationEnabled
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "เปิดใช้การสร้าง Shot ด้วย Worker ใน Series Settings ก่อน",
+        });
+      }
       const storyboard = episode.storyboard as {
         shots?: Array<{ shot_number?: unknown; shotNumber?: unknown }>;
       } | null;
@@ -30934,7 +32186,7 @@ export const verticalDramaEpisodesRouter = router({
                   eq(mediaAssets.status, "ready")
                 )
               )
-        : [];
+          : [];
       const workerAssetById = new Map(
         workerAssetRows.map(row => [row.id, row])
       );
@@ -31143,21 +32395,10 @@ export const verticalDramaEpisodesRouter = router({
                 label: reference.label,
               })),
             }
-        : null;
+          : null;
       const startFrame = workerStartFrame;
       const stopFrame = workerStopFrame;
 
-      const [series] = await db
-        .select({ policy: verticalDramaSeries.policy })
-        .from(verticalDramaSeries)
-        .where(
-          and(
-            eq(verticalDramaSeries.id, seriesId),
-            eq(verticalDramaSeries.tenantId, tenantId),
-            eq(verticalDramaSeries.userId, userId)
-          )
-        )
-        .limit(1);
       const [worker] = await db
         .select({
           id: workers.id,
@@ -31289,23 +32530,23 @@ export const verticalDramaEpisodesRouter = router({
       const [job] = await db
         .insert(workerJobs)
         .values({
-        tenantId,
-        workerId: worker.id,
-        workerSeriesBindingId: binding.id,
-        workerSeriesBindingRevision: binding.bindingRevision,
-        runtimeType: worker.runtimeType,
-        requestedByUserId: userId,
-        jobType: "shot_video_generation",
-        status: "queued",
-        resourceProfile: "gpu_required",
+          tenantId,
+          workerId: worker.id,
+          workerSeriesBindingId: binding.id,
+          workerSeriesBindingRevision: binding.bindingRevision,
+          runtimeType: worker.runtimeType,
+          requestedByUserId: userId,
+          jobType: "shot_video_generation",
+          status: "queued",
+          resourceProfile: "gpu_required",
           capabilityRequirementsJson: {
             capabilityRevision: admission.capabilityRevision,
             requiredClaimCapability: "shot_video_generation",
             workflowId: resolution.selectedWorkflowId,
             seriesMedia: true,
           },
-        inputJson: parsedPayload,
-        idempotencyKey: input.idempotencyKey,
+          inputJson: parsedPayload,
+          idempotencyKey: input.idempotencyKey,
         })
         .onConflictDoNothing()
         .returning({ id: workerJobs.id, status: workerJobs.status });
@@ -31360,12 +32601,12 @@ export const verticalDramaEpisodesRouter = router({
         })
         .where(
           and(
-          eq(workerJobs.id, input.jobId),
-          eq(workerJobs.tenantId, tenantId),
-          eq(workerJobs.requestedByUserId, userId),
-          eq(workerJobs.jobType, "shot_video_generation"),
-          eq(workerJobs.status, "queued"),
-          sql`${workerJobs.inputJson}->>'seriesId' = ${String(seriesId)}`,
+            eq(workerJobs.id, input.jobId),
+            eq(workerJobs.tenantId, tenantId),
+            eq(workerJobs.requestedByUserId, userId),
+            eq(workerJobs.jobType, "shot_video_generation"),
+            eq(workerJobs.status, "queued"),
+            sql`${workerJobs.inputJson}->>'seriesId' = ${String(seriesId)}`,
             sql`${workerJobs.inputJson}->>'episodeId' = ${String(episodeId)}`
           )
         )

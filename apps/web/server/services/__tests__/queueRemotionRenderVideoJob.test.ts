@@ -68,7 +68,7 @@ describe("queueRemotionRenderVideoJob", () => {
     findJobByIdempotencyKey: vi.fn(),
     findWorkerById: vi.fn(),
     insertJob: vi.fn(),
-    findActiveRemotionPreviewJobForUser: vi.fn(),
+    findActiveRemotionPreviewJobForTarget: vi.fn(),
   };
   const reserveCredits = vi.fn();
   const getFeatureFlags = vi.fn();
@@ -77,7 +77,7 @@ describe("queueRemotionRenderVideoJob", () => {
     vi.clearAllMocks();
     delete process.env.DESKTOP_ZEROCLAW_WORKER_DISPATCH_ENABLED;
     repo.findJobByIdempotencyKey.mockResolvedValue(null);
-    repo.findActiveRemotionPreviewJobForUser.mockResolvedValue(null);
+    repo.findActiveRemotionPreviewJobForTarget.mockResolvedValue(null);
     repo.insertJob.mockImplementation(async (values: Record<string, unknown>) => ({
       id: "job-1",
       status: "queued",
@@ -228,8 +228,10 @@ describe("queueRemotionRenderVideoJob", () => {
     expect(reserveCredits).not.toHaveBeenCalled();
   });
 
-  it("rejects a second queued preview for the same user", async () => {
+  it("rejects a second queued preview for the same target", async () => {
     const input = buildInput({
+      videoProjectId: "same-preview-target",
+      projectRevision: 7,
       renderProfile: {
         profile: "preview",
         width: 540,
@@ -240,16 +242,62 @@ describe("queueRemotionRenderVideoJob", () => {
         burnInAssCaptions: false,
       },
     });
-    repo.findActiveRemotionPreviewJobForUser.mockResolvedValueOnce({
+    repo.findActiveRemotionPreviewJobForTarget.mockResolvedValueOnce({
       id: "active-preview",
       status: "running",
       jobType: "remotion_render_video",
+      inputJson: {
+        videoProjectId: "same-preview-target",
+        projectRevision: 7,
+      },
     });
 
     await expect(
       queueRemotionRenderVideoJob(input, { repo: repo as any, reserveCredits, getFeatureFlags }),
     ).rejects.toThrow(/preview/i);
     expect(repo.insertJob).not.toHaveBeenCalled();
+  });
+
+  it("allows a queued preview for a different target owned by the same user", async () => {
+    const input = buildInput({
+      tenantId: "tenant_same_user",
+      requestedByUserId: 42,
+      videoProjectId: "episode-2-preview",
+      projectRevision: 2,
+      renderProfile: {
+        profile: "preview",
+        width: 540,
+        height: 960,
+        fps: 15,
+        codec: "h264",
+        loudnessNormalize: true,
+        burnInAssCaptions: false,
+      },
+    });
+    repo.findActiveRemotionPreviewJobForTarget.mockImplementation(
+      async (
+        _tenantId: string,
+        _userId: number,
+        videoProjectId: string,
+        projectRevision: number,
+      ) =>
+        videoProjectId === "episode-1-preview" && projectRevision === 1
+          ? {
+              id: "active-preview",
+              status: "queued",
+              jobType: "remotion_render_video",
+            }
+          : null,
+    );
+
+    const result = await queueRemotionRenderVideoJob(input, {
+      repo: repo as any,
+      reserveCredits,
+      getFeatureFlags,
+    });
+
+    expect(result.created).toBe(true);
+    expect(repo.insertJob).toHaveBeenCalledTimes(1);
   });
 
   it("prioritizes final (40) over preview (20)", async () => {

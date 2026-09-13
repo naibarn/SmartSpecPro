@@ -221,6 +221,11 @@ import {
   type VdSeriesFormatConfig,
 } from "@shared/verticalDramaSeries/seriesFormat";
 import {
+  normalizeVerticalDramaEpisodeGenerationSettings,
+  verticalDramaEpisodeGenerationSettingsSchema,
+  type VerticalDramaEpisodeGenerationSettings,
+} from "@shared/verticalDramaSeries/generationSettings";
+import {
   resolveVisualGroundingContract,
   verticalDramaVisualGroundingContractSchema,
   type VdVisualGroundingContract,
@@ -431,7 +436,9 @@ import {
   enqueueVerticalDramaStoryJob,
   enqueueVerticalDramaStoryJobHandoff,
   getActiveVerticalDramaStoryJob,
+  getVerticalDramaStoryJobRecovery,
   getVerticalDramaStoryJobStatus,
+  recoverVerticalDramaStoryJob,
   submitVerticalDramaSystemFeedback,
   type VerticalDramaStoryJobPayload,
   type VerticalDramaStoryJobProgress,
@@ -1154,9 +1161,10 @@ const verticalDramaObjectCatalogProcedure = verticalDramaProcedure.use(
   requireFeatureFlag("verticalDramaObjectReferences")
 );
 
-const verticalDramaObjectImageProcedure = verticalDramaObjectCatalogProcedure.use(
-  requireFeatureFlag("verticalDramaObjectImageGeneration")
-);
+const verticalDramaObjectImageProcedure =
+  verticalDramaObjectCatalogProcedure.use(
+    requireFeatureFlag("verticalDramaObjectImageGeneration")
+  );
 
 /**
  * Base procedure for the arc-replan review procedures (spec §7.7.3,
@@ -7103,6 +7111,7 @@ const updateEpisodeDraftDialogueLineInput = z.object({
   speaker: z.string().trim().max(60).optional(),
   line: z.string().trim().min(1).max(300),
   delivery: z.string().trim().max(120).optional(),
+  addressed_to: z.string().trim().max(60).optional(),
 });
 
 /**
@@ -10661,7 +10670,9 @@ export const verticalDramaSeriesRouter = router({
       z.object({
         objectReferenceId: z.string().min(1),
         mediaAssetId: z.string().min(1),
-        role: z.enum(["primary", "canonical", "alternate"]).default("alternate"),
+        role: z
+          .enum(["primary", "canonical", "alternate"])
+          .default("alternate"),
         source: z
           .enum([
             "manual",
@@ -10838,7 +10849,9 @@ export const verticalDramaSeriesRouter = router({
         prompt: context.prompt,
         model: input.selectedImageModelId,
         aspectRatio: "1:1",
-        ...(input.negativePrompt ? { negativePrompt: input.negativePrompt } : {}),
+        ...(input.negativePrompt
+          ? { negativePrompt: input.negativePrompt }
+          : {}),
         ...(context.referenceImageUrls.length > 0
           ? { referenceImageUrls: context.referenceImageUrls }
           : {}),
@@ -10871,29 +10884,42 @@ export const verticalDramaSeriesRouter = router({
         { objectReferenceId: input.objectReferenceId }
       );
       if (context.seriesId !== input.seriesId) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Object reference not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Object reference not found",
+        });
       }
       const { mediaRouter } = await import("./media");
       let task;
       try {
-        task = await mediaRouter.createCaller(ctx).getTask({ taskId: input.taskId });
+        task = await mediaRouter
+          .createCaller(ctx)
+          .getTask({ taskId: input.taskId });
       } catch (error) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: error instanceof Error ? error.message : "Generated object task not found",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Generated object task not found",
         });
       }
       const parameters = (task?.parameters ?? {}) as Record<string, unknown>;
-      const rawExtra = parameters.extra_params ?? parameters.extraParams ?? task?.resultData?.extra_params;
-      const extra = rawExtra && typeof rawExtra === "object" && !Array.isArray(rawExtra)
-        ? (rawExtra as Record<string, unknown>)
-        : {};
+      const rawExtra =
+        parameters.extra_params ??
+        parameters.extraParams ??
+        task?.resultData?.extra_params;
+      const extra =
+        rawExtra && typeof rawExtra === "object" && !Array.isArray(rawExtra)
+          ? (rawExtra as Record<string, unknown>)
+          : {};
       if (
         task?.mediaType !== "image" ||
         task.status !== "completed" ||
         !task.resultUrl?.startsWith("/api/storage/files/") ||
         String(extra.__vd_series_id ?? "") !== input.seriesId ||
-        String(extra.__vd_object_reference_id ?? "") !== input.objectReferenceId ||
+        String(extra.__vd_object_reference_id ?? "") !==
+          input.objectReferenceId ||
         extra.__vd_purpose !== "object_reference"
       ) {
         throw new TRPCError({
@@ -10909,7 +10935,8 @@ export const verticalDramaSeriesRouter = router({
       if (!durable) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "The generated object image is not available in managed storage.",
+          message:
+            "The generated object image is not available in managed storage.",
         });
       }
       const asset = await addVerticalDramaObjectReferenceAsset(
@@ -11697,6 +11724,8 @@ export const verticalDramaSeriesRouter = router({
     .query(async ({ input }) => {
       const { loadEnabledLlmModelRows } =
         await import("../services/enabledLlmModels");
+      const { getVerticalDramaLlmReasoningEfforts } =
+        await import("../services/verticalDramaEpisodeGenerationSettings");
       const {
         selectQualityLargeContextEligibleModels,
         selectRecommendedQualityLargeContextEligibleModels,
@@ -11722,7 +11751,12 @@ export const verticalDramaSeriesRouter = router({
       }
 
       if (eligible.length === 0) {
-        return [] as Array<{ modelId: string; label: string }>;
+        return [] as Array<{
+          modelId: string;
+          label: string;
+          reasoningSupported: boolean;
+          reasoningEfforts: string[];
+        }>;
       }
 
       type QualityPlanningModelLabelRow = {
@@ -11751,6 +11785,12 @@ export const verticalDramaSeriesRouter = router({
 
       return eligible.map(row => {
         const labelRow = labelByModelId.get(row.modelId);
+        const reasoningRow =
+          rows.find(
+            candidate =>
+              candidate.modelId === row.modelId &&
+              candidate.providerName.toLowerCase() === "openrouter"
+          ) ?? row;
         const providerLabel =
           labelRow?.providerDisplayName ||
           labelRow?.providerName ||
@@ -11759,6 +11799,15 @@ export const verticalDramaSeriesRouter = router({
         return {
           modelId: row.modelId,
           label: `${providerLabel} — ${modelLabel}`,
+          reasoningSupported:
+            getVerticalDramaLlmReasoningEfforts({
+              providerName: reasoningRow.providerName,
+              supportsThinking: reasoningRow.supportsThinking,
+            }).length > 0,
+          reasoningEfforts: getVerticalDramaLlmReasoningEfforts({
+            providerName: reasoningRow.providerName,
+            supportsThinking: reasoningRow.supportsThinking,
+          }),
         };
       });
     }),
@@ -11823,6 +11872,125 @@ export const verticalDramaSeriesRouter = router({
         .returning();
 
       return { series: { ...row, id: String(row.id) } };
+    }),
+
+  /**
+   * Save series-level generation controls. LLM reasoning belongs beside the
+   * series LLM model selector, so the series is the source of truth rather
+   * than an individual sub-episode. Existing episodes receive the same LLM
+   * snapshot while preserving their independent image settings.
+   */
+  setSeriesGenerationSettings: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        settings: verticalDramaEpisodeGenerationSettingsSchema,
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isSafeInteger(seriesId) || seriesId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+
+      const currentSeries = await loadOwnedSeries(tenantId, userId, seriesId);
+      const settings = input.settings as VerticalDramaEpisodeGenerationSettings;
+
+      const currentSeriesSettings =
+        normalizeVerticalDramaEpisodeGenerationSettings(
+          currentSeries.generationSettings
+        );
+      const nextLlmSettings = settings.llm
+        ? {
+            ...currentSeriesSettings.llm,
+            ...settings.llm,
+            // The profile is the single user-facing source of truth. Keep the
+            // old field only as a migration-compatible shell so stale legacy
+            // effort values cannot override the selected profile.
+            ...(settings.llm.qualityProfile
+              ? { reasoning: { mode: "auto" as const, modelId: null } }
+              : {}),
+          }
+        : undefined;
+      const nextSeriesSettings: VerticalDramaEpisodeGenerationSettings = {
+        ...currentSeriesSettings,
+        ...(settings.image
+          ? { image: { ...currentSeriesSettings.image, ...settings.image } }
+          : {}),
+        ...(nextLlmSettings ? { llm: nextLlmSettings } : {}),
+      };
+
+      const row = await db.transaction(async tx => {
+        const [updatedSeries] = await tx
+          .update(verticalDramaSeries)
+          .set({
+            generationSettings: nextSeriesSettings,
+            updatedAt: new Date(),
+          })
+          .where(seriesOwnershipWhere(tenantId, userId, seriesId))
+          .returning();
+
+        if (settings.llm) {
+          const episodes = await tx
+            .select({
+              id: verticalDramaEpisodes.id,
+              generationSettings: verticalDramaEpisodes.generationSettings,
+            })
+            .from(verticalDramaEpisodes)
+            .where(
+              and(
+                eq(verticalDramaEpisodes.tenantId, tenantId),
+                eq(verticalDramaEpisodes.userId, userId),
+                eq(verticalDramaEpisodes.seriesId, seriesId)
+              )
+            );
+
+          for (const episode of episodes) {
+            const currentEpisodeSettings =
+              normalizeVerticalDramaEpisodeGenerationSettings(
+                episode.generationSettings
+              );
+            const nextEpisodeLlmSettings = {
+              ...currentEpisodeSettings.llm,
+              ...settings.llm,
+              ...(settings.llm.qualityProfile
+                ? { reasoning: { mode: "auto" as const, modelId: null } }
+                : {}),
+            };
+            const nextEpisodeSettings: VerticalDramaEpisodeGenerationSettings =
+              {
+                ...currentEpisodeSettings,
+                llm: nextEpisodeLlmSettings,
+              };
+            await tx
+              .update(verticalDramaEpisodes)
+              .set({
+                generationSettings: nextEpisodeSettings,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(verticalDramaEpisodes.id, episode.id),
+                  eq(verticalDramaEpisodes.tenantId, tenantId),
+                  eq(verticalDramaEpisodes.userId, userId),
+                  eq(verticalDramaEpisodes.seriesId, seriesId)
+                )
+              );
+          }
+        }
+
+        return updatedSeries;
+      });
+
+      return {
+        series: row ? { ...row, id: String(row.id) } : undefined,
+        generationSettings: nextSeriesSettings,
+      };
     }),
 
   /**
@@ -11943,6 +12111,7 @@ export const verticalDramaSeriesRouter = router({
           allowedWorkflowIds: policy.allowedWorkflowIds,
           workflowDefaults: policy.workflowDefaults,
           allowUserOverride: policy.allowUserOverride,
+          workerShotGenerationEnabled: policy.workerShotGenerationEnabled,
         },
       });
       return { series: { ...row, id: String(row.id) }, policy };
@@ -15812,8 +15981,79 @@ export const verticalDramaSeriesRouter = router({
             }
           : undefined,
         recoveryAttempts: record.recoveryAttempts ?? 0,
+        heartbeatAt: record.heartbeatAt ?? null,
         updatedAt: record.updatedAt,
       };
+    }),
+
+  /** Explicit repair/continue state for terminal Redis/BullMQ story jobs. */
+  getStoryJobRecovery: verticalDramaDeepStoryDraftsProcedure
+    .input(z.object({ seriesId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      return getVerticalDramaStoryJobRecovery(
+        { tenantId, userId, seriesId },
+      );
+    }),
+
+  /**
+   * Explicitly requeue a failed/stalled story job from its persisted
+   * checkpoint. This is deliberately separate from the normal generation
+   * mutation so a repair can never silently become a fresh run.
+   */
+  repairStoryJob: verticalDramaDeepStoryDraftsProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        jobId: z.string().trim().min(1).max(128),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const result = await recoverVerticalDramaStoryJob(
+        { tenantId, userId, seriesId },
+        input.jobId,
+      );
+      if (result.reason === "not_found") {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Recoverable story job not found",
+        });
+      }
+      if (
+        !result.state &&
+        result.reason !== "active"
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Story job cannot be repaired",
+        });
+      }
+      if (result.state && !result.state.canResume && result.reason !== "active") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Story job has no resumable checkpoint",
+        });
+      }
+      return result;
     }),
 
   /**

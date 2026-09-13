@@ -27,6 +27,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -197,7 +198,10 @@ vi.mock("../../services/creditService", () => ({
   calculateCreditsForLLMDynamic: mockCalculateCreditsForLLMDynamic,
 }));
 
-vi.mock("../../storage", () => ({ storagePut: vi.fn() }));
+vi.mock("../../storage", () => ({
+  storagePut: vi.fn(),
+  assertR2StorageActive: vi.fn(() => Promise.resolve()),
+}));
 
 vi.mock("../../services/hyperframesTranscriptionService", () => ({
   renderTranscriptCuesAsSrt: vi.fn(() => "SRT-OUTPUT"),

@@ -8,6 +8,7 @@ import { getDb } from "../db";
 import { getRedisClient } from "./redis";
 
 export const CELERY_MEDIA_STALE_AFTER_SECONDS = 180;
+export const CELERY_MEDIA_MAX_IN_FLIGHT_PER_USER = 3;
 const execFileAsync = promisify(execFile);
 const EXPECTED_PROJECT = process.env.CELERY_DOCTOR_COMPOSE_PROJECT || "smartspecpro";
 const SERVICE_DEFINITIONS = [
@@ -37,8 +38,14 @@ export type CeleryQueueUser = {
   pendingCount: number;
   processingCount: number;
   activeCount: number;
+  inFlightCount: number;
+  claimedPendingCount: number;
+  unclaimedPendingCount: number;
   stalePendingCount: number;
+  dispatchableStaleCount: number;
   oldestPendingAt: string | null;
+  oldestUnclaimedPendingAt: string | null;
+  staleTaskIds: string[];
 };
 
 export type CeleryMediaDoctorStatus = {
@@ -49,6 +56,9 @@ export type CeleryMediaDoctorStatus = {
     redisMediaDepth: number | null;
     pendingCount: number;
     processingCount: number;
+    inFlightCount: number;
+    claimedPendingCount: number;
+    unclaimedPendingCount: number;
     stalePendingCount: number;
   };
   users: CeleryQueueUser[];
@@ -109,17 +119,57 @@ async function readContainers(): Promise<{ media: CeleryContainerStatus; beat: C
   return { media, beat } as { media: CeleryContainerStatus; beat: CeleryContainerStatus };
 }
 
+export type QueueUserStateInput = {
+  pendingCount: number;
+  processingCount: number;
+  claimedPendingCount: number;
+  unclaimedPendingCount: number;
+  oldUnclaimedPendingCount: number;
+};
+
+export function deriveQueueUserState(input: QueueUserStateInput) {
+  const inFlightCount = input.processingCount + input.claimedPendingCount;
+  const dispatchableStaleCount = inFlightCount < CELERY_MEDIA_MAX_IN_FLIGHT_PER_USER
+    ? input.oldUnclaimedPendingCount
+    : 0;
+  return {
+    inFlightCount,
+    stalePendingCount: dispatchableStaleCount,
+    dispatchableStaleCount,
+  };
+}
+
 function normalizeUsers(rows: unknown[], now = Date.now()): CeleryQueueUser[] {
-  return rows.map((row: any) => ({
-    userId: Number(row.user_id),
-    name: row.user_name == null ? null : String(row.user_name),
-    email: row.user_email == null ? null : String(row.user_email),
-    pendingCount: Number(row.pending_count || 0),
-    processingCount: Number(row.processing_count || 0),
-    activeCount: Number(row.active_count || 0),
-    stalePendingCount: Number(row.stale_pending_count || 0),
-    oldestPendingAt: row.oldest_pending_at ? new Date(row.oldest_pending_at).toISOString() : null,
-  })).filter((row) => Number.isFinite(row.userId) && row.userId > 0).map((row) => ({
+  return rows.map((row: any) => {
+    const pendingCount = Number(row.pending_count || 0);
+    const processingCount = Number(row.processing_count || 0);
+    const claimedPendingCount = Number(row.claimed_pending_count || 0);
+    const unclaimedPendingCount = Number(row.unclaimed_pending_count || 0);
+    const state = deriveQueueUserState({
+      pendingCount,
+      processingCount,
+      claimedPendingCount,
+      unclaimedPendingCount,
+      oldUnclaimedPendingCount: Number(row.old_unclaimed_pending_count || 0),
+    });
+    const staleTaskIds = state.stalePendingCount > 0 && Array.isArray(row.stale_task_ids)
+      ? row.stale_task_ids.map(String).slice(0, 10)
+      : [];
+    return {
+      userId: Number(row.user_id),
+      name: row.user_name == null ? null : String(row.user_name),
+      email: row.user_email == null ? null : String(row.user_email),
+      pendingCount,
+      processingCount,
+      activeCount: Number(row.active_count || 0),
+      ...state,
+      claimedPendingCount,
+      unclaimedPendingCount,
+      oldestPendingAt: row.oldest_pending_at ? new Date(row.oldest_pending_at).toISOString() : null,
+      oldestUnclaimedPendingAt: row.oldest_unclaimed_pending_at ? new Date(row.oldest_unclaimed_pending_at).toISOString() : null,
+      staleTaskIds,
+    };
+  }).filter((row) => Number.isFinite(row.userId) && row.userId > 0).map((row) => ({
     ...row,
     oldestPendingAt: row.oldestPendingAt && new Date(row.oldestPendingAt).getTime() <= now ? row.oldestPendingAt : row.oldestPendingAt,
   }));
@@ -135,16 +185,24 @@ async function readQueueUsers(): Promise<CeleryQueueUser[]> {
       COUNT(*) FILTER (WHERE mt.status = 'pending')::int AS pending_count,
       COUNT(*) FILTER (WHERE mt.status = 'processing')::int AS processing_count,
       COUNT(*)::int AS active_count,
+      COUNT(*) FILTER (WHERE mt.status = 'pending' AND mt.celery_task_id IS NOT NULL)::int AS claimed_pending_count,
+      COUNT(*) FILTER (WHERE mt.status = 'pending' AND mt.celery_task_id IS NULL)::int AS unclaimed_pending_count,
       COUNT(*) FILTER (
-        WHERE mt.status = 'pending' AND mt.created_at < now() - interval '3 minutes'
-      )::int AS stale_pending_count,
-      MIN(mt.created_at) FILTER (WHERE mt.status = 'pending') AS oldest_pending_at
+        WHERE mt.status = 'pending' AND mt.celery_task_id IS NULL
+          AND mt.created_at < now() - (${CELERY_MEDIA_STALE_AFTER_SECONDS} * interval '1 second')
+      )::int AS old_unclaimed_pending_count,
+      array_agg(mt.id::text ORDER BY mt.created_at)
+        FILTER (
+          WHERE mt.status = 'pending' AND mt.celery_task_id IS NULL
+            AND mt.created_at < now() - (${CELERY_MEDIA_STALE_AFTER_SECONDS} * interval '1 second')
+        ) AS stale_task_ids,
+      MIN(mt.created_at) FILTER (WHERE mt.status = 'pending') AS oldest_pending_at,
+      MIN(mt.created_at) FILTER (WHERE mt.status = 'pending' AND mt.celery_task_id IS NULL) AS oldest_unclaimed_pending_at
     FROM media_tasks mt
     LEFT JOIN users u ON u.id = mt.user_id
     WHERE mt.status IN ('pending', 'processing') AND mt.media_type = 'image'
     GROUP BY mt.user_id, u.name, u.email
-    ORDER BY stale_pending_count DESC, oldest_pending_at ASC NULLS LAST
-    LIMIT 100
+    ORDER BY old_unclaimed_pending_count DESC, oldest_pending_at ASC NULLS LAST
   `);
   return normalizeUsers(rows as unknown[]);
 }
@@ -153,8 +211,11 @@ function aggregateQueue(users: CeleryQueueUser[]) {
   return users.reduce((result, user) => ({
     pendingCount: result.pendingCount + user.pendingCount,
     processingCount: result.processingCount + user.processingCount,
+    inFlightCount: result.inFlightCount + user.inFlightCount,
+    claimedPendingCount: result.claimedPendingCount + user.claimedPendingCount,
+    unclaimedPendingCount: result.unclaimedPendingCount + user.unclaimedPendingCount,
     stalePendingCount: result.stalePendingCount + user.stalePendingCount,
-  }), { pendingCount: 0, processingCount: 0, stalePendingCount: 0 });
+  }), { pendingCount: 0, processingCount: 0, inFlightCount: 0, claimedPendingCount: 0, unclaimedPendingCount: 0, stalePendingCount: 0 });
 }
 
 export async function getCeleryMediaDoctorStatus(userId?: number): Promise<CeleryMediaDoctorStatus> {

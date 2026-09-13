@@ -11,7 +11,7 @@ from smartaihub_video_director.session import CoreBackedSession
 from smartaihub_video_director.execution import canonical_provider_plan_hash,prepare_paid_generation
 from smartaihub_video_director.orchestrator import DirectorOrchestrator
 from smartaihub_video_director.agent_factory import AgentFactory as SDKAgentFactory
-from smartaihub_video_director.errors import UnauthorizedAssetError
+from smartaihub_video_director.errors import UnauthorizedAssetError, safe_bridge_error_line
 from smartaihub_video_director.sdk_compat import supported_sdk_range
 import smartaihub_video_director.enhanced_bridge as enhanced_bridge
 from smartaihub_video_director.enhanced_bridge import ReadOnlyCore, _intent_policy_conflicts, _package_input, _terminal_prompt
@@ -55,11 +55,19 @@ def test_registry():
     except Exception: failed=True
     assert failed
 def test_config():
-    c=AgentRuntimeConfig.from_skill_input({'agentRuntime':{'model':'gpt-test','maxTurnsPerStage':4}});assert c.model=='gpt-test' and c.max_turns_per_stage==4 and c.expose_generation_submission_as_agent_tool is False
+    c=AgentRuntimeConfig.from_skill_input({'agentRuntime':{'model':'gpt-test','providerModelId':'openai/gpt-test','apiStyle':'chat-completions','maxTurnsPerStage':4}});assert c.model=='gpt-test' and c.provider_model_id=='openai/gpt-test' and c.api_style=='chat-completions' and c.max_output_tokens_per_stage==8192 and c.max_turns_per_stage==4 and c.expose_generation_submission_as_agent_tool is False
 def test_tool_allow_list():
     tools=build_read_only_tools(allow_research_tool=False,allow_cost_estimate_tool=False)
     assert [tool.name for tool in tools]==['get_asset_evidence','get_provider_capability_profile']
     assert _package_input({'researchMode':'bounded','targetVideoModel':{'id':'veo-3'}})['researchMode']=='on'
+
+def test_agent_factory_can_disable_function_tools_for_provider_capability():
+    factory=SDKAgentFactory(StageContractRegistry(ROOT))
+    agent=factory.build('prompt_intent',model='gpt-test',allow_research_tool=False,
+                        allow_asset_evidence_tool=False,allow_provider_profile_tool=False,
+                        allow_cost_estimate_tool=False)
+    assert agent.tools == []
+
 def test_agent_tool_context_is_not_exposed_in_function_schema():
     tool=build_read_only_tools(allow_research_tool=False,allow_cost_estimate_tool=False)[0]
     assert tool.params_json_schema['required']==['asset_id']
@@ -67,6 +75,7 @@ def test_agent_tool_context_is_not_exposed_in_function_schema():
 def test_agent_factory_uses_sdk_compatible_envelope_schema():
     agent=SDKAgentFactory(StageContractRegistry(ROOT)).build('prompt_intent',model='openai/gpt-5.6-luna')
     assert agent.output_type.is_strict_json_schema() is False
+    assert agent.model_settings.max_tokens == 8192
     assert agent.output_type.json_schema()['properties']['payload']['additionalProperties'] is True
     for field in StageContractRegistry(ROOT).required_fields('prompt_intent'):
         assert f'"{field}"' in agent.instructions
@@ -75,6 +84,15 @@ def test_agent_factory_uses_sdk_compatible_envelope_schema():
     observer=SDKAgentFactory(StageContractRegistry(ROOT)).build('observed_start_state',model='openai/gpt-5.6-luna')
     assert 'START_FRAME_IMAGE' in observer.instructions
     assert 'Do not infer storyboard actions' in observer.instructions
+def test_provider_failure_is_sanitized_without_response_details():
+    class ProviderError(Exception):
+        status_code=402
+    line=safe_bridge_error_line(ProviderError('Error code: 402 - secret provider response'))
+    assert line.startswith('ENHANCED_PROVIDER_CREDIT_LIMIT:')
+    assert 'secret provider response' not in line
+    assert safe_bridge_error_line(RuntimeError('ENHANCED_UNSUPPORTED_PROVIDER_TRANSPORT')).startswith('ENHANCED_UNSUPPORTED_PROVIDER_TRANSPORT:')
+    assert safe_bridge_error_line(type('BadRequestError', (Exception,), {'status_code': 400})('secret')) .startswith('ENHANCED_PROVIDER_REQUEST_FAILED:')
+    assert safe_bridge_error_line(type('ModelBehaviorError', (Exception,), {})('secret')).startswith('ENHANCED_AGENT_OUTPUT_INVALID:')
 def test_bridge_preserves_canonical_dialogue_and_terminal_audio():
     payload={'dialogue':[],'shot':{'description':'A door opens'},'targetVideoModel':{'id':'veo-3'}}
     prompt=_terminal_prompt(payload,{'scene':'A door opens','actions':['Open it'],'camera':'wide','dialogue':[{'text':'invented'}],'audioIntent':'quiet room tone','endBridge':'hold on the open doorway'})
@@ -107,6 +125,11 @@ def test_bridge_builds_stage_input_before_reading_agent_result():
         def __init__(self, **kwargs): pass
         async def run_stage(self, stage, *args, **kwargs):
             captured['tracing_enabled']=kwargs['context'].config.tracing_enabled
+            captured['model']=kwargs['context'].config.model
+            captured['api_style']=kwargs['context'].config.api_style
+            captured['allow_research_tool']=kwargs['context'].config.allow_research_tool
+            captured['allow_asset_evidence_tool']=kwargs['context'].config.allow_asset_evidence_tool
+            captured['allow_provider_profile_tool']=kwargs['context'].config.allow_provider_profile_tool
             captured['calls'].append((stage,kwargs['input_payload']))
             if stage=='observed_start_state':
                 return Outcome({'source':'start_frame','characters':[{'characterId':'boy','screenPosition':'center','pose':'standing','gaze':'door','handOccupancy':{'left':None,'right':'door handle'}}],'objects':[],'camera':{'framing':'wide','angle':'eye level','movementAtT0':'static'},'environment':'hall','lighting':'daylight','uncertainties':[]})
@@ -114,7 +137,7 @@ def test_bridge_builds_stage_input_before_reading_agent_result():
     original = enhanced_bridge.DirectorOrchestrator
     enhanced_bridge.DirectorOrchestrator = FakeOrchestrator
     try:
-        result = asyncio.run(enhanced_bridge.run({'shot': {'shotNumber': 1, 'description': 'A door opens', 'cameraSetup': 'wide', 'frameAnalysis': {'people': [{'name': 'boy', 'position': 'center'}]}}, 'dialogue': [], 'visionReferences': [{'assetId': 7, 'url': 'https://example.test/start.jpg', 'label': 'START_FRAME_IMAGE'}, {'assetId': 8, 'url': 'https://example.test/portrait.jpg', 'label': 'CHARACTER_REFERENCE_1'}], 'targetVideoModel': {'id': 'veo-3'}, 'authoringModel': {'id': 'gpt-test'}}))
+        result = asyncio.run(enhanced_bridge.run({'shot': {'shotNumber': 1, 'description': 'A door opens', 'cameraSetup': 'wide', 'frameAnalysis': {'people': [{'name': 'boy', 'position': 'center'}]}}, 'dialogue': [], 'researchMode': 'bounded', 'visionReferences': [{'assetId': 7, 'url': 'https://example.test/start.jpg', 'label': 'START_FRAME_IMAGE'}, {'assetId': 8, 'url': 'https://example.test/portrait.jpg', 'label': 'CHARACTER_REFERENCE_1'}], 'targetVideoModel': {'id': 'veo-3'}, 'authoringModel': {'id': 'gpt-test', 'providerModelId': 'openai/gpt-test', 'apiStyle': 'chat-completions', 'supportsFunctionTools': False}}))
     finally:
         enhanced_bridge.DirectorOrchestrator = original
     assert result['audioDirection']=='quiet room tone'
@@ -123,6 +146,10 @@ def test_bridge_builds_stage_input_before_reading_agent_result():
     assert 'right hand: door handle' in result['prompt']
     assert result['inputTokens']==14 and result['outputTokens']==6
     assert [call[0] for call in captured['calls']]==['observed_start_state','prompt_intent']
+    assert captured['model']=='openai/gpt-test' and captured['api_style']=='chat-completions'
+    assert captured['allow_research_tool'] is False
+    assert captured['allow_asset_evidence_tool'] is False
+    assert captured['allow_provider_profile_tool'] is False
     assert captured['calls'][0][1]['_visionReferences']==[{'assetId': 7, 'url': 'https://example.test/start.jpg', 'label': 'START_FRAME_IMAGE'}]
     assert captured['calls'][0][1]['legacyFrameAnalysis']['people'][0]['position']=='center'
     assert captured['calls'][1][1]['observedStartState']['source']=='start_frame'
@@ -299,5 +326,5 @@ def test_bridge_handles_string_hand_occupancy():
     assert 'hands appear empty' in result['prompt']
 
 def main():
-    test_registry();test_config();test_tool_allow_list();test_agent_tool_context_is_not_exposed_in_function_schema();test_agent_factory_uses_sdk_compatible_envelope_schema();test_bridge_preserves_canonical_dialogue_and_terminal_audio();test_bridge_uses_reference_semantics_for_unified_image_transport();test_bridge_builds_stage_input_before_reading_agent_result();test_bridge_omits_empty_optional_audio_direction();test_bridge_repairs_silent_dialogue_and_held_object_reset_once();test_bridge_handles_string_hand_occupancy();test_session_key();test_hash();asyncio.run(async_tests());assert supported_sdk_range()=='>=0.22.0,<0.23';print('PASS: 21 v11 Agent runtime regression checks')
+    test_registry();test_config();test_tool_allow_list();test_agent_tool_context_is_not_exposed_in_function_schema();test_agent_factory_uses_sdk_compatible_envelope_schema();test_provider_failure_is_sanitized_without_response_details();test_bridge_preserves_canonical_dialogue_and_terminal_audio();test_bridge_uses_reference_semantics_for_unified_image_transport();test_bridge_builds_stage_input_before_reading_agent_result();test_bridge_omits_empty_optional_audio_direction();test_bridge_repairs_silent_dialogue_and_held_object_reset_once();test_bridge_handles_string_hand_occupancy();test_session_key();test_hash();asyncio.run(async_tests());assert supported_sdk_range()=='>=0.22.0,<0.23';print('PASS: 24 v11 Agent runtime regression checks')
 if __name__=='__main__':main()

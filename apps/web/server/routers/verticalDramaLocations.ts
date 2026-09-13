@@ -79,6 +79,7 @@ import {
 import { signBearerToken } from "../_core/tokens";
 import {
   generateLocationVisualPrompts,
+  buildLocationCameraVariantPrompt,
   buildLocationImageEditPrompt,
   InsufficientCreditsError,
   VdSchemaValidationError,
@@ -424,7 +425,8 @@ function locationRowToDto(
         ? "pending"
         : undefined,
     slotReason:
-      typeof (row.data as Record<string, unknown> | null)?.slotReason === "string"
+      typeof (row.data as Record<string, unknown> | null)?.slotReason ===
+      "string"
         ? (row.data as Record<string, unknown>).slotReason
         : undefined,
     primaryReferenceUrl: row.primaryReferenceUrl,
@@ -821,6 +823,9 @@ export const verticalDramaLocationsRouter = router({
         /** Explicit image-to-image edit request. Requires the location's
          * current primary reference and a model with reference-image support. */
         editInstruction: z.string().trim().min(1).max(1200).optional(),
+        /** Explicit operation for reference-based location generation. Older
+         * callers may omit this and keep the legacy editInstruction behavior. */
+        operation: z.enum(["primary_edit", "camera_variant"]).optional(),
         // Feature 135 — Hermes Grok media worker (section 09, row 4).
         // Required only when the resolved model is Hermes-transport and the
         // caller has no default Hermes connection for images.
@@ -856,6 +861,17 @@ export const verticalDramaLocationsRouter = router({
         });
       }
 
+      const operation =
+        input.operation ??
+        (input.editInstruction ? "primary_edit" : "text_to_image");
+      if (operation !== "text_to_image" && !input.editInstruction) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "A reference-based location operation requires an edit instruction.",
+        });
+      }
+
       // Resolve the source before prompt construction so an edit can never
       // silently degrade into text-to-image when the old image disappeared.
       const referenceUrl =
@@ -868,7 +884,7 @@ export const verticalDramaLocationsRouter = router({
           { tenantId, userId, seriesId },
           locationId
         );
-      if (input.editInstruction && !referenceUrl) {
+      if (operation !== "text_to_image" && !referenceUrl) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message:
@@ -900,7 +916,18 @@ export const verticalDramaLocationsRouter = router({
           (ownedSeriesRow?.bible as Record<string, unknown> | null) ?? null
         );
 
-      if (input.editInstruction) {
+      if (operation === "camera_variant") {
+        establishingPlatePrompt = buildLocationCameraVariantPrompt({
+          locationName: location.name,
+          description:
+            extractLocationDescription(
+              (location.data as Record<string, unknown> | null) ?? null
+            ) || location.name,
+          editInstruction: input.editInstruction as string,
+          ...(input.cameraView ? { cameraView: input.cameraView } : {}),
+        });
+        promptModel = "deterministic-location-camera-variant";
+      } else if (input.editInstruction) {
         establishingPlatePrompt = buildLocationImageEditPrompt({
           locationName: location.name,
           description:
@@ -1030,7 +1057,7 @@ export const verticalDramaLocationsRouter = router({
         negativePrompt
       );
 
-      if (input.editInstruction) {
+      if (operation !== "text_to_image") {
         const capabilities = resolveVerticalDramaCapabilities(
           resolvedImageModelId,
           {
@@ -1159,7 +1186,10 @@ export const verticalDramaLocationsRouter = router({
             __vd_location_id: String(locationId),
             ...(input.editInstruction
               ? {
-                  __vd_location_generation_mode: "image_to_image",
+                  __vd_location_generation_mode:
+                    operation === "camera_variant"
+                      ? "camera_variant"
+                      : "image_to_image",
                   __vd_location_edit_instruction: input.editInstruction,
                   ...(referenceMediaAssetId != null
                     ? {
@@ -1240,7 +1270,10 @@ export const verticalDramaLocationsRouter = router({
               __vd_location_id: String(locationId),
               ...(input.editInstruction
                 ? {
-                    __vd_location_generation_mode: "image_to_image",
+                    __vd_location_generation_mode:
+                      operation === "camera_variant"
+                        ? "camera_variant"
+                        : "image_to_image",
                     __vd_location_edit_instruction: input.editInstruction,
                     ...(referenceMediaAssetId != null
                       ? {
@@ -1304,9 +1337,11 @@ export const verticalDramaLocationsRouter = router({
           promptGeneration: promptCreditsUsed,
           imageRender: imageCreditCost,
         },
-        ...(input.editInstruction
-          ? { generationMode: "image_to_image" as const }
-          : { generationMode: "text_to_image" as const }),
+        ...(operation === "camera_variant"
+          ? { generationMode: "camera_variant" as const }
+          : input.editInstruction
+            ? { generationMode: "image_to_image" as const }
+            : { generationMode: "text_to_image" as const }),
         ...(referenceMediaAssetId != null
           ? { sourceMediaAssetId: String(referenceMediaAssetId) }
           : {}),

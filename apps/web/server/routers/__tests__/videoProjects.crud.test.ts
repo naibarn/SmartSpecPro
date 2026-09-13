@@ -272,7 +272,11 @@ const { mockStoragePut, mockStorageResolveUrl } = vi.hoisted(() => ({
   // Feature 143 §4.7 item 2 — `listPickerAssets` imports this too.
   mockStorageResolveUrl: vi.fn((key: string) => Promise.resolve(`/api/storage/files/${key}`)),
 }));
-vi.mock("../../storage", () => ({ storagePut: mockStoragePut, storageResolveUrl: mockStorageResolveUrl }));
+vi.mock("../../storage", () => ({
+  storagePut: mockStoragePut,
+  storageResolveUrl: mockStorageResolveUrl,
+  assertR2StorageActive: vi.fn(() => Promise.resolve()),
+}));
 
 vi.mock("../../services/hyperframesTranscriptionService", () => ({
   renderTranscriptCuesAsSrt: vi.fn(() => "SRT"),
@@ -948,6 +952,7 @@ describe("runNarrationStage — TTS", () => {
       audioBuffer: Buffer.from("audio-bytes"),
       contentType: "audio/mpeg",
       duration: 1.2,
+      durationMs: 1200,
     });
     mockStoragePut.mockResolvedValueOnce({ key: "video-intelligence/x.mp3", url: "/uploads/x.mp3" });
     const returning = vi.fn(() => Promise.resolve([{ id: 777 }]));
@@ -975,6 +980,7 @@ describe("runNarrationStage — TTS", () => {
       audioBuffer: Buffer.from("audio-bytes"),
       contentType: "audio/mpeg",
       duration: 1.2,
+      durationMs: 1200,
     });
     mockStoragePut.mockResolvedValueOnce({ key: "k", url: "/uploads/k.mp3" });
     const returning = vi.fn(() => Promise.resolve([{ id: 888 }]));
@@ -997,6 +1003,7 @@ describe("runNarrationStage — TTS", () => {
       audioBuffer: Buffer.from("audio-bytes"),
       contentType: "audio/mpeg",
       duration: 1.2,
+      durationMs: 1200,
     });
     mockStoragePut.mockResolvedValueOnce({ key: "k", url: "/uploads/k.mp3" });
     mockDb.insert.mockReturnValueOnce({
@@ -1021,6 +1028,7 @@ describe("runNarrationStage — TTS", () => {
       audioBuffer: Buffer.from("audio-bytes"),
       contentType: "audio/mpeg",
       duration: 1.2,
+      durationMs: 1200,
     });
     mockStoragePut.mockResolvedValueOnce({ key: "k", url: "/uploads/k.mp3" });
     mockDb.insert.mockReturnValueOnce({
@@ -1047,6 +1055,7 @@ describe("runNarrationStage — TTS", () => {
       audioBuffer: Buffer.from("audio-bytes"),
       contentType: "audio/mpeg",
       duration: 1.2,
+      durationMs: 1200,
     });
     mockStoragePut.mockResolvedValue({ key: "k", url: "/uploads/k.mp3" });
     mockDb.insert.mockReturnValue({

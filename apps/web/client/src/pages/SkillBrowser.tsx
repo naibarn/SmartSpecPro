@@ -89,6 +89,7 @@ const categoryLabels: Record<string, string> = {
   all: "All Categories",
   image_generation: "Image Generation",
   image_prompt_generation: "Create Prompt for Image Generation",
+  character_prompt_generation: "Create Character Prompts",
   video_generation: "Video Generation",
   video_prompt_generation: "Create Prompt for Video Generation",
   audio_generation: "Audio Generation",

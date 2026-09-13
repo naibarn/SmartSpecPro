@@ -20,11 +20,13 @@ import {
   workerRuntimeIdValues,
   workerRuntimeReleaseCatalogSchema,
   workerRuntimeReleaseUploadSchema,
+  workerRuntimeRunnerArtifactCatalogSchema,
   workerRuntimeSigningKeyCatalogSchema,
   type WorkerRuntimeChannel,
   type WorkerRuntimeId,
   type WorkerRuntimeReleaseCatalog,
   type WorkerRuntimeReleaseAsset,
+  type WorkerRuntimeRunnerArtifactCatalog,
   type WorkerRuntimeSigningKeyCatalog,
 } from "@shared/workerRuntimeReleases";
 
@@ -45,7 +47,13 @@ function formatBytes(value: number): string {
 }
 
 async function readJson(response: Response): Promise<any> {
-  const payload = await response.json().catch(() => ({}));
+  const body = await response.text().catch(() => "");
+  let payload: any = {};
+  try {
+    payload = body ? JSON.parse(body) : {};
+  } catch {
+    payload = {};
+  }
   if (!response.ok) {
     const details = payload?.error?.details?.checks as
       | Array<{ status: string; message: string }>
@@ -54,14 +62,50 @@ async function readJson(response: Response): Promise<any> {
       ?.filter(check => check.status === "error")
       .map(check => check.message)
       .join(" ");
+    const message =
+      detailText || payload?.error?.message || payload?.error || null;
+    if (response.status === 413 && !message) {
+      throw new Error(
+        "ไฟล์ถูก reverse proxy ปฏิเสธ (HTTP 413) — ต้องเปิด client_max_body_size สำหรับ runner upload อย่างน้อย 1G แล้ว reload Nginx"
+      );
+    }
     throw new Error(
-      detailText ||
-        payload?.error?.message ||
-        payload?.error ||
-        "Worker runtime operation failed"
+      message || `Worker runtime operation failed (HTTP ${response.status}).`
     );
   }
   return payload;
+}
+
+type LocalImportOperation = {
+  id: string;
+  status: "running" | "succeeded" | "failed";
+  release?: WorkerRuntimeReleaseAsset | null;
+  error?: { message?: string } | null;
+};
+
+const delay = (milliseconds: number) =>
+  new Promise(resolve => window.setTimeout(resolve, milliseconds));
+
+async function waitForLocalImport(operationId: string): Promise<void> {
+  const deadline = Date.now() + 30 * 60 * 1000;
+  while (Date.now() < deadline) {
+    await delay(2_000);
+    const response = await fetch(
+      `/api/admin/worker-runtime/releases/import-local/${encodeURIComponent(operationId)}`,
+      { credentials: "include" }
+    );
+    const payload = await readJson(response);
+    const operation = payload?.operation as LocalImportOperation | undefined;
+    if (operation?.status === "succeeded") return;
+    if (operation?.status === "failed") {
+      throw new Error(
+        operation.error?.message || "Server runtime import failed."
+      );
+    }
+  }
+  throw new Error(
+    "Runtime import is still running after 30 minutes. Refresh release history before retrying."
+  );
 }
 
 function uploadWithProgress(
@@ -77,10 +121,19 @@ function uploadWithProgress(
       if (event.lengthComputable)
         onProgress(Math.round((event.loaded / event.total) * 100));
     };
-    request.onload = () =>
-      request.status >= 200 && request.status < 300
-        ? resolve()
-        : reject(new Error(`Storage upload failed (${request.status}).`));
+    request.onload = () => {
+      if (request.status >= 200 && request.status < 300) {
+        resolve();
+        return;
+      }
+      reject(
+        new Error(
+          request.status === 413
+            ? "Object storage ปฏิเสธไฟล์ (HTTP 413) — ตรวจสอบขนาดไฟล์และ bucket upload policy"
+            : `Storage upload failed (${request.status}).`
+        )
+      );
+    };
     request.onerror = () => reject(new Error("Storage upload failed."));
     request.onabort = () => reject(new Error("Storage upload was cancelled."));
     request.send(file);
@@ -102,6 +155,15 @@ export function WorkerRuntimeReleasePanel() {
   const [channel, setChannel] = useState<WorkerRuntimeChannel>("stable");
   const [version, setVersion] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [runnerFile, setRunnerFile] = useState<File | null>(null);
+  const [runnerFileError, setRunnerFileError] = useState<string | null>(null);
+  const [runnerArtifacts, setRunnerArtifacts] =
+    useState<WorkerRuntimeRunnerArtifactCatalog | null>(null);
+  const [runnerUploadBusy, setRunnerUploadBusy] = useState(false);
+  const [runnerUploadStatus, setRunnerUploadStatus] = useState<{
+    kind: "running" | "success" | "error";
+    text: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [busyAction, setBusyAction] = useState<"upload" | "import" | null>(
@@ -138,6 +200,26 @@ export function WorkerRuntimeReleasePanel() {
     }
   };
 
+  const refreshRunnerArtifacts = async () => {
+    try {
+      const response = await fetch(
+        "/api/admin/worker-runtime/runner-artifacts",
+        { credentials: "include" }
+      );
+      setRunnerArtifacts(
+        workerRuntimeRunnerArtifactCatalogSchema.parse(await readJson(response))
+      );
+    } catch (error) {
+      setMessage({
+        kind: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Could not load uploaded speaker-aware runners.",
+      });
+    }
+  };
+
   const refreshSigningKey = async () => {
     setSigningKeyLoading(true);
     try {
@@ -164,6 +246,7 @@ export function WorkerRuntimeReleasePanel() {
 
   useEffect(() => {
     void refresh();
+    void refreshRunnerArtifacts();
     void refreshSigningKey();
   }, []);
 
@@ -174,6 +257,116 @@ export function WorkerRuntimeReleasePanel() {
   const selectedFileNameMismatch = Boolean(
     file && version.trim() && file.name !== expectedName
   );
+
+  const selectRunnerFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const selected = event.target.files?.[0] ?? null;
+    setRunnerFile(selected);
+    setRunnerFileError(null);
+    if (!selected) return;
+    if (!selected.name.toLowerCase().endsWith(".exe")) {
+      setRunnerFileError("Runner ต้องเป็นไฟล์ .exe");
+      return;
+    }
+    try {
+      const header = new Uint8Array(
+        await selected.slice(0, 2).arrayBuffer()
+      );
+      if (header.length < 2 || header[0] !== 0x4d || header[1] !== 0x5a) {
+        setRunnerFileError("ไฟล์ runner ไม่ใช่ Windows executable (MZ/PE)");
+      }
+    } catch {
+      setRunnerFileError("อ่านไฟล์ runner ไม่สำเร็จ");
+    }
+  };
+
+  const uploadRunnerArtifact = async () => {
+    if (!runnerFile || runnerFileError) {
+      setMessage({
+        kind: "error",
+        text: runnerFileError || "เลือกไฟล์ speaker-aware-runner.exe ก่อน upload",
+      });
+      return;
+    }
+    try {
+      setRunnerUploadBusy(true);
+      setRunnerUploadStatus({
+        kind: "running",
+        text: `กำลังเตรียมอัปโหลด ${runnerFile.name} (${formatBytes(runnerFile.size)})…`,
+      });
+      setMessage(null);
+      const contentType = runnerFile.type || "application/octet-stream";
+      const presignResponse = await fetch(
+        "/api/admin/worker-runtime/runner-artifacts/upload-url",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: runnerFile.name,
+            contentType,
+            fileSizeBytes: runnerFile.size,
+          }),
+        }
+      );
+      const presign = await readJson(presignResponse);
+      let payload: any;
+      if (typeof presign?.uploadUrl === "string" && typeof presign?.storageKey === "string") {
+        await uploadWithProgress(presign.uploadUrl, runnerFile, value => {
+          setRunnerUploadStatus({
+            kind: "running",
+            text: `กำลังอัปโหลด ${runnerFile.name} · ${value}% (${formatBytes(runnerFile.size)})…`,
+          });
+        });
+        payload = await readJson(
+          await fetch("/api/admin/worker-runtime/runner-artifacts/upload/complete", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fileName: runnerFile.name,
+              contentType,
+              fileSizeBytes: runnerFile.size,
+              storageKey: presign.storageKey,
+            }),
+          })
+        );
+      } else {
+        const body = new FormData();
+        body.append("file", runnerFile, runnerFile.name);
+        payload = await readJson(
+          await fetch("/api/admin/worker-runtime/runner-artifacts/upload", {
+            method: "POST",
+            credentials: "include",
+            body,
+          })
+        );
+      }
+      const artifact = payload?.artifact as
+        | { fileSha256?: string; uploadedAt?: string }
+        | undefined;
+      setRunnerUploadStatus({
+        kind: "success",
+        text: `Upload สำเร็จ · SHA-256 ${artifact?.fileSha256?.slice(0, 16) ?? "ตรวจสอบแล้ว"}… · บันทึกบน server แล้ว`,
+      });
+      setMessage({
+        kind: "success",
+        text: "อัปโหลด runner ไปยัง server สำเร็จแล้ว และจะคงอยู่หลัง refresh",
+      });
+      await refreshRunnerArtifacts();
+    } catch (error) {
+      setRunnerUploadStatus({
+        kind: "error",
+        text: error instanceof Error ? error.message : "Runner upload failed.",
+      });
+      setMessage({
+        kind: "error",
+        text:
+          error instanceof Error ? error.message : "Runner upload failed.",
+      });
+    } finally {
+      setRunnerUploadBusy(false);
+    }
+  };
 
   const upload = async () => {
     if (!file) {
@@ -188,6 +381,10 @@ export function WorkerRuntimeReleasePanel() {
         kind: "error",
         text: "กรุณาระบุ version ให้ตรงกับชื่อไฟล์",
       });
+      return;
+    }
+    if (runnerFileError) {
+      setMessage({ kind: "error", text: runnerFileError });
       return;
     }
     try {
@@ -290,7 +487,17 @@ export function WorkerRuntimeReleasePanel() {
           }),
         }
       );
-      await readJson(response);
+      const payload = await readJson(response);
+      const operation = payload?.operation as LocalImportOperation | undefined;
+      if (operation?.status === "running") {
+        setMessage({
+          kind: "success",
+          text: "Server รับงานนำเข้าแล้ว กำลังส่งไฟล์ไปยัง storage และตรวจสอบลายเซ็น…",
+        });
+        await waitForLocalImport(operation.id);
+      } else if (!payload?.release && operation?.status !== "succeeded") {
+        throw new Error("Server did not return a runtime import operation.");
+      }
       setMessage({
         kind: "success",
         text: "นำเข้าและตรวจสอบ runtime จาก server สำเร็จแล้ว — กด Publish ในประวัติ release เพื่อเปิดใช้งาน",
@@ -492,6 +699,118 @@ export function WorkerRuntimeReleasePanel() {
             </div>
           </div>
         </div>
+
+        <section
+          aria-labelledby="runtime-speaker-runner-upload-heading"
+          className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4 sm:p-5"
+        >
+          <div className="flex items-start gap-3">
+            <Upload className="mt-0.5 h-5 w-5 shrink-0 text-violet-700" />
+            <div className="min-w-0 text-sm leading-6 text-slate-700">
+              <h3
+                id="runtime-speaker-runner-upload-heading"
+                className="font-semibold text-slate-900"
+              >
+                Speaker-aware runner ต้องอยู่ใน signed runtime ZIP
+              </h3>
+              <p className="mt-1">
+                อัปโหลดไฟล์ <code>.zip</code> ของ runtime ทั้งชุดผ่านฟอร์มด้านล่าง
+                ระบบจะตรวจ manifest, SHA256SUMS, signature และ runner ก่อนบันทึก
+                ไว้เป็น unpublished release ให้กด Publish แยกภายหลัง
+              </p>
+              <div className="mt-3 max-w-xl rounded-xl border border-violet-200 bg-white/80 p-3">
+                <Label htmlFor="runtime-speaker-runner-file">
+                  เลือกไฟล์ speaker-aware-runner.exe
+                </Label>
+                <Input
+                  id="runtime-speaker-runner-file"
+                  className="mt-2"
+                  type="file"
+                  accept=".exe,application/vnd.microsoft.portable-executable,application/octet-stream"
+                  onChange={event => void selectRunnerFile(event)}
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  {runnerFile
+                    ? `${runnerFile.name} · ${formatBytes(runnerFile.size)}`
+                    : "ตรวจ MZ/PE บน Browser เท่านั้น; ต้องฝังไฟล์นี้ใน ZIP ก่อนกด Upload & validate"}
+                </p>
+                {runnerFileError ? (
+                  <p className="mt-1 text-xs text-rose-600" role="alert">
+                    {runnerFileError}
+                  </p>
+                ) : null}
+                <Button
+                  type="button"
+                  className="mt-3"
+                  onClick={() => void uploadRunnerArtifact()}
+                  disabled={runnerUploadBusy || !runnerFile || Boolean(runnerFileError)}
+                >
+                  <CloudUpload className="mr-2 h-4 w-4" />
+                  {runnerUploadBusy ? "กำลัง upload runner…" : "Upload runner ขึ้น server"}
+                </Button>
+                {runnerUploadStatus ? (
+                  <p
+                    className={`mt-2 text-xs ${runnerUploadStatus.kind === "error" ? "text-rose-600" : runnerUploadStatus.kind === "success" ? "text-emerald-700" : "text-violet-700"}`}
+                    role="status"
+                    aria-live="polite"
+                  >
+                    {runnerUploadStatus.text}
+                  </p>
+                ) : null}
+                {!runnerUploadStatus && runnerArtifacts?.artifacts[0] ? (
+                  <p className="mt-2 text-xs text-emerald-700" role="status">
+                    Server มี runner ล่าสุดแล้ว: {runnerArtifacts.artifacts[0].fileName} · {formatBytes(runnerArtifacts.artifacts[0].fileSizeBytes)} · SHA-256 {runnerArtifacts.artifacts[0].fileSha256.slice(0, 16)}…
+                  </p>
+                ) : null}
+              </div>
+              <details className="mt-3 rounded-xl border border-violet-200 bg-white/70 p-3">
+                <summary className="cursor-pointer font-semibold text-slate-900">
+                  สิ่งที่ต้องมีใน ZIP และขั้นตอน build
+                </summary>
+                <div className="mt-3 space-y-3 text-xs leading-5 text-slate-700">
+                  <ul className="list-disc space-y-1 pl-5">
+                    <li><code>runtime-pack/speaker-aware/speaker-aware-runner.exe</code> รุ่นอย่างน้อย <code>0.1.1</code></li>
+                    <li><code>runtime-pack/manifest.json</code> ต้องประกาศ <code>speakerAwareRunner</code> และ <code>contractVersion: feature-179-v1</code></li>
+                    <li><code>runtime-pack/SHA256SUMS</code> ต้อง bind hash ของ runner และ <code>SHA256SUMS.sig</code> ต้องเป็น Ed25519 signature จริง</li>
+                    <li>Model weights ของ Silero, MediaPipe และ pyannote ไม่รวมใน ZIP นี้ ให้ติดตั้งบนเครื่อง Worker ผ่าน Runtime → Speaker-aware models</li>
+                  </ul>
+                  <pre className="overflow-x-auto rounded-lg bg-slate-950 p-3 text-[11px] leading-5 text-slate-100"><code>{`# Windows build host
+npm --workspace apps/worker-app run speaker-aware:build:windows
+# package the signed runtime and include the generated EXE
+npm --workspace apps/worker-app run runtime:release -- --speaker-aware-runner PATH\\speaker-aware-runner.exe`}</code></pre>
+                  <p>
+                    เปลี่ยน <code>PATH</code> เป็น path จริง และส่ง argument อื่นของ
+                    runtime packager ตามคู่มือ release; ห้าม upload EXE เดี่ยว เพราะจะไม่มี
+                    manifest/checksum/signature ให้ Worker ตรวจความถูกต้อง
+                  </p>
+                </div>
+              </details>
+              {runnerArtifacts?.artifacts.length ? (
+                <div className="mt-3 rounded-xl border border-violet-200 bg-white/70 p-3 text-xs">
+                  <p className="font-semibold text-slate-900">
+                    Runner ที่ upload แล้ว ({runnerArtifacts.artifacts.length})
+                  </p>
+                  <ul className="mt-2 space-y-2">
+                    {runnerArtifacts.artifacts.slice(0, 5).map(artifact => (
+                      <li key={artifact.id} className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="min-w-0 truncate">
+                          {artifact.fileName} · {formatBytes(artifact.fileSizeBytes)} · {artifact.fileSha256.slice(0, 12)}…
+                        </span>
+                        <a
+                          className="font-medium text-violet-700 underline"
+                          href={artifact.downloadUrl}
+                          download={artifact.fileName}
+                        >
+                          ดาวน์โหลด
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </section>
 
         <section
           aria-labelledby="runtime-signing-key-heading"
@@ -727,6 +1046,10 @@ export function WorkerRuntimeReleasePanel() {
             <span>
               Import server artifact จะใช้ ZIP ชื่อมาตรฐานจาก release directory
               ของ server โดยไม่ต้องเลือกไฟล์ผ่าน Browser
+            </span>
+            <span className="text-amber-700">
+              ปุ่มนี้ไม่อ่านไฟล์จากเครื่องที่เปิด Browser — ถ้า ZIP อยู่ในเครื่องของคุณ
+              ให้เลือกไฟล์ในช่อง Signed ZIP แล้วกด Upload &amp; validate
             </span>
           </div>
         </div>

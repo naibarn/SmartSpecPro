@@ -126,6 +126,10 @@ import {
   type MediaAspectRatio,
 } from "@/lib/mediaAspectRatio";
 import { resolveMediaDisplayName } from "@shared/mediaDisplayName";
+import {
+  formatMediaProviderDisplayName,
+  normalizeMediaProviderKey,
+} from "@/lib/mediaProviderDisplayName";
 
 type MediaType = "image" | "video" | "audio";
 type TaskStatus =
@@ -148,6 +152,25 @@ export const MEDIA_HISTORY_TASK_REFETCH_INTERVAL_MS =
   MEDIA_HISTORY_POLL_INTERVAL_MS;
 export const MEDIA_HISTORY_TASK_REVALIDATE_ON_MOUNT = "always" as const;
 export const MEDIA_HISTORY_TASK_REFETCH_ON_WINDOW_FOCUS = false;
+
+const MEDIA_PROVIDER_ERROR_PATTERNS: ReadonlyArray<readonly [string, RegExp]> = [
+  ["kie_ai", /\bkie(?:\.ai|_ai)?\b/i],
+  ["wavespeed_ai", /\bwave[\s_-]*speed(?:_ai)?\b/i],
+  ["fal_ai", /\bfal(?:\.ai|_ai)?\b/i],
+  ["magnific", /\bmagnific\b/i],
+  ["byteplus_modelark", /\bbyteplus(?:\s+modelark)?\b/i],
+];
+
+export function hasMediaTaskErrorProviderMismatch(
+  providerName: unknown,
+  errorMessage: unknown,
+): boolean {
+  const providerKey = normalizeMediaProviderKey(providerName);
+  if (!providerKey || typeof errorMessage !== "string") return false;
+  return MEDIA_PROVIDER_ERROR_PATTERNS.some(
+    ([key, pattern]) => key !== providerKey && pattern.test(errorMessage),
+  );
+}
 
 interface MediaHistoryQueryState {
   mediaType: MediaType | "all";
@@ -517,6 +540,28 @@ function extractTaskErrorInfo(
   push(task.errorMessage);
   if (resultData) walk(resultData);
 
+  const apiDebugInfo = extractTaskApiDebugInfo(task);
+  const providerLabel = apiDebugInfo?.providerHint
+    ? formatMediaProviderDisplayName(apiDebugInfo.providerHint)
+    : "";
+  const rawSummary = details[0] ?? "";
+  const mentionsDifferentProvider = hasMediaTaskErrorProviderMismatch(
+    apiDebugInfo?.providerHint,
+    rawSummary,
+  );
+  const providerAwareSummary =
+    providerLabel && mentionsDifferentProvider
+      ? t?.("historyPage.details.providerGenerationFailed", {
+          provider: providerLabel,
+          mediaType:
+            task.mediaType === "image"
+              ? t?.("image") || "image"
+              : task.mediaType === "video"
+                ? t?.("video") || "video"
+                : t?.("audio") || "audio",
+        }) || `${providerLabel} generation failed.`
+      : rawSummary;
+
   const stateHint = findScalar(resultData, [
     "state",
     "status",
@@ -532,7 +577,7 @@ function extractTaskErrorInfo(
   ]);
 
   const summary =
-    details[0] ||
+    providerAwareSummary ||
     (task.status === "failed"
       ? t?.("historyPage.details.errorSummaryFallback") ||
         "Generation failed, but provider did not return a clear error message."
@@ -1036,6 +1081,7 @@ function extractTaskApiDebugInfo(
     providerApi?.provider,
     debugObj.provider_hint,
     providerDebug?.provider_hint,
+    failureObj.provider,
     submission.provider,
     apiConfig.provider
   );

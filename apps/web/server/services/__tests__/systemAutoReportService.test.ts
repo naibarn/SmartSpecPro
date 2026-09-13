@@ -115,6 +115,28 @@ describe("systemAutoReportService credit routing", () => {
     }));
   });
 
+  it("stores bounded affected users and tasks for automated incident triage", async () => {
+    mockDb.limit.mockResolvedValueOnce([]);
+
+    await reportSystemFailure({
+      source: "celery_media_doctor",
+      title: "Urgent: stale Celery media queue detected",
+      errorMessage: "An image task remained unclaimed while capacity was available.",
+      priority: "critical",
+      affectedUserIds: [24, "25", 24, "not-a-user"],
+      affectedTaskIds: ["task-a", "task-a", "task-b"],
+    });
+
+    expect(mockDb.values).toHaveBeenCalledWith(expect.objectContaining({
+      priority: "critical",
+      description: expect.stringContaining("Affected user IDs: 24, 25"),
+      contextJson: expect.objectContaining({
+        affectedUserIds: [24, 25],
+        affectedTaskIds: ["task-a", "task-b"],
+      }),
+    }));
+  });
+
   it("does not create a bug ticket for a transient safety-review outage", async () => {
     await reportSystemFailure({
       source: "trpc",

@@ -1,0 +1,31 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/184-web-video-editor-headless-worker/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/184-web-video-editor-headless-worker/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm --workspace apps/web test",
+  "sections": [
+    "section-01-shared-contracts",
+    "section-02-project-persistence",
+    "section-03-asset-ingest",
+    "section-04-worker-job-lifecycle",
+    "section-05-headless-worker-executor",
+    "section-06-browser-editor",
+    "section-07-worker-jobs-ux",
+    "section-08-render-results",
+    "section-09-rollout-operations",
+    "section-10-integration-proof"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-09T04:05:21.935777+00:00"
+}

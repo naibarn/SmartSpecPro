@@ -26,7 +26,11 @@ function mapCategoryToGroup(category: string): string {
   if (category === "article_generation" || category === "blog_writing") return "article_writing";
   if (category === "slide_generation") return "content_tools";
   if (category === "product_review" || category.endsWith("_review")) return "product_review";
-  if (category === "prompt_enhancement" || category === "image_prompt_generation") return "media_prompts";
+  if (
+    category === "prompt_enhancement"
+    || category === "image_prompt_generation"
+    || category === "character_prompt_generation"
+  ) return "media_prompts";
   if (
     category === "chat_assistant" ||
     category === "translation" ||
@@ -40,7 +44,7 @@ function mapCategoryToGroup(category: string): string {
  * Infer output types from a skill's category.
  */
 function inferOutputTypes(category: string): string[] {
-  if (category.startsWith("image_")) return ["image_url"];
+  if (category.startsWith("image_") || category === "character_prompt_generation") return ["image_url"];
   if (category.startsWith("video_")) return ["video_url"];
   if (category.startsWith("audio_")) return ["audio_url"];
   return ["text"];

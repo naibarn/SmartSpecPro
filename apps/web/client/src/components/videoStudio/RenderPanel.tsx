@@ -205,7 +205,7 @@ export function RenderPanel({
           icon={<PlayCircle className="h-4 w-4" />}
           title={pickCopy(lang, { th: "ส่งงานเรนเดอร์แล้ว", en: "Render submitted" })}
           description={
-            <Link href="/render-jobs" className="underline">
+            <Link href="/worker-jobs" className="underline">
               {pickCopy(lang, videoStudioCopy.viewRenderJob)}
             </Link>
           }

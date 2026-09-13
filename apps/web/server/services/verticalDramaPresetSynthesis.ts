@@ -1376,6 +1376,10 @@ export async function synthesizeVerticalDramaPreset(
     disableProviderFallbacks: true,
     maxTransientRetries: 0,
     label: "Preset synthesis",
+    verticalDramaContext: {
+      taskClass: "story_architecture",
+      settings: { llm: { qualityProfile: "high" } },
+    },
   });
   const usedModel = effectiveModel ?? model;
 
@@ -2261,6 +2265,10 @@ export async function synthesizeVerticalDramaPresetV2(
     disableProviderFallbacks: true,
     maxTransientRetries: 0,
     label: "Preset synthesis v2",
+    verticalDramaContext: {
+      taskClass: "story_architecture",
+      settings: { llm: { qualityProfile: "high" } },
+    },
   });
 
   const chargeSynthesisCall = async (
@@ -2338,6 +2346,10 @@ export async function synthesizeVerticalDramaPresetV2(
         disableProviderFallbacks: true,
         maxTransientRetries: 0,
         label: "Preset synthesis v2 (blend corrective retry)",
+        verticalDramaContext: {
+          taskClass: "story_architecture",
+          settings: { llm: { qualityProfile: "high" } },
+        },
       });
       activeModel = retryAttempt.model ?? activeModel;
       finalRawDraft = retryAttempt.data;

@@ -315,6 +315,38 @@ describe("generateStoryboardShotgrid — distinct_locations pass-through", () =>
     );
   });
 
+  it("folds camera-distance labels into one physical location before persistence", async () => {
+    mockExecute.mockResolvedValue(
+      successResponse({
+        ...validOutput(),
+        distinct_locations: [
+          {
+            location_key: "clinic-front",
+            location_name: "หน้าคลินิก",
+            description: "ทางเข้าคลินิกพร้อมป้ายชื่อ",
+            shot_numbers: [8],
+          },
+          {
+            location_key: "clinic-parking",
+            location_name: "ลานจอดรถหน้าคลินิก",
+            description: "ลานจอดรถมองเห็นอาคารคลินิก",
+            shot_numbers: [9],
+          },
+        ],
+      }),
+    );
+
+    const result = await generateStoryboardShotgrid(baseParams());
+    expect(result.storyboard.distinct_locations).toEqual([
+      {
+        location_key: "clinic-front",
+        location_name: "หน้าคลินิก",
+        description: "ทางเข้าคลินิกพร้อมป้ายชื่อ ลานจอดรถมองเห็นอาคารคลินิก",
+        shot_numbers: [8, 9],
+      },
+    ]);
+  });
+
   it("falls back to a mechanically-derived single group when the LLM omits distinct_locations entirely (2026-07-12 reliability fix — same failure class as plain_text_storyboard)", async () => {
     mockExecute.mockResolvedValue(successResponse(validOutput()));
 

@@ -14,7 +14,7 @@ import multer from "multer";
 import { assertR2StorageActive, storagePut, storagePutFromPath } from "../storage";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "../db";
-import { mediaAssets } from "../../drizzle/schema";
+import { mediaAssets, videoEditorProjectAssets, videoEditorProjects } from "../../drizzle/schema";
 import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
@@ -1476,6 +1476,9 @@ export function registerMediaJobRoutes(app: Express) {
           mimetype: string;
           size: number;
         } | undefined;
+        const projectId = typeof req.body?.projectId === "string" || typeof req.body?.projectId === "number"
+          ? req.body.projectId
+          : undefined;
 
         if (!file) {
           res.status(400).json({ error: "No file provided" });
@@ -1497,8 +1500,9 @@ export function registerMediaJobRoutes(app: Express) {
 
           // Validate MIME type
           const ALLOWED_MIMES = new Set([
-            "video/mp4", "video/webm", "video/quicktime", "audio/mpeg", "audio/wav",
-            "image/jpeg", "image/png", "image/webp", "application/octet-stream",
+            "video/mp4", "video/webm", "video/quicktime", "video/x-msvideo", "video/x-matroska",
+            "audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg", "audio/flac", "audio/aac", "audio/mp4", "audio/webm",
+            "image/jpeg", "image/png", "image/webp", "image/gif", "application/octet-stream",
           ]);
           if (file.mimetype && !ALLOWED_MIMES.has(file.mimetype)) {
             await fs.unlink(file.path).catch(() => {}); // Clean up temp file
@@ -1507,7 +1511,8 @@ export function registerMediaJobRoutes(app: Express) {
           }
 
           const assetId = nanoid(21);
-          const storageKey = `media-jobs/assets/${assetId}/${file.originalname}`;
+          const safeFilename = path.basename(file.originalname).replace(/[\u0000-\u001f\\/]+/g, "_").slice(0, 220) || "upload";
+          const storageKey = `media-jobs/assets/${assetId}/${safeFilename}`;
 
           console.log("[MediaJobs Upload] File received:", file.originalname, file.size, "bytes");
 
@@ -1536,6 +1541,24 @@ export function registerMediaJobRoutes(app: Express) {
             fileSize: file.size,
             status: "ready",
           });
+
+          const numericProjectId = typeof projectId === "number" ? projectId : Number(projectId);
+          const userId = Number(authResult.userId);
+          if (mediaAssetId && Number.isInteger(numericProjectId) && numericProjectId > 0 && Number.isInteger(userId) && userId > 0 && authResult.tenantId) {
+            const database = getDb();
+            const [ownedProject] = await database.select({ id: videoEditorProjects.id })
+              .from(videoEditorProjects)
+              .where(and(eq(videoEditorProjects.id, numericProjectId), eq(videoEditorProjects.userId, userId)))
+              .limit(1);
+            if (ownedProject) {
+              await database.insert(videoEditorProjectAssets).values({
+                projectId: numericProjectId,
+                tenantId: authResult.tenantId,
+                namespace: "media_asset",
+                assetRef: { namespace: "media_asset", id: mediaAssetId },
+              }).onConflictDoNothing();
+            }
+          }
 
           const uploadDuration = Date.now() - startTime;
           console.log("[MediaJobs Upload] Success:", url, `(${uploadDuration}ms)`);
@@ -1596,10 +1619,12 @@ export function registerMediaJobRoutes(app: Express) {
         const authResult = await authenticateMediaJobRequest(req, res);
         if (!authResult) return;
 
-        const { filename, contentType, fileSize } = req.body as {
+        const { filename, contentType, fileSize, projectId, idempotencyKey } = req.body as {
           filename?: string;
           contentType?: string;
           fileSize?: number;
+          projectId?: number | string;
+          idempotencyKey?: string;
         };
 
         if (!filename || typeof filename !== "string") {
@@ -1626,7 +1651,8 @@ export function registerMediaJobRoutes(app: Express) {
         }
 
         const assetId = nanoid(21);
-        const storageKey = `media-jobs/assets/${assetId}/${filename}`;
+        const safeFilename = path.basename(filename).replace(/[\u0000-\u001f\\/]+/g, "_").slice(0, 220) || "upload";
+        const storageKey = `media-jobs/assets/${assetId}/${safeFilename}`;
 
         const { storagePresignPut } = await import("../storage");
         const ct = contentType || "application/octet-stream";
@@ -1653,6 +1679,8 @@ export function registerMediaJobRoutes(app: Express) {
           key: presigned.key,
           uploadUrl: presigned.url,
           ...(mediaAssetId ? { mediaAssetId: String(mediaAssetId) } : {}),
+          ...(projectId !== undefined ? { projectId } : {}),
+          ...(idempotencyKey ? { idempotencyKey } : {}),
         });
       } catch (e: any) {
         console.error("[MediaJobs Upload/Init] Error:", e);
@@ -1668,11 +1696,12 @@ export function registerMediaJobRoutes(app: Express) {
         const authResult = await authenticateMediaJobRequest(req, res);
         if (!authResult) return;
 
-        const { assetId, key } = req.body as {
+        const { assetId, key, projectId } = req.body as {
           assetId?: string;
           key?: string;
           contentType?: string;
           fileSize?: number;
+          projectId?: number | string;
         };
 
         if (!assetId || !key) {
@@ -1702,6 +1731,27 @@ export function registerMediaJobRoutes(app: Express) {
           fileSize: req.body?.fileSize,
         });
 
+        const numericProjectId = typeof projectId === "number" ? projectId : Number(projectId);
+        const userId = Number(authResult.userId);
+        let ownsProject = false;
+        if (Number.isInteger(numericProjectId) && numericProjectId > 0 && Number.isInteger(userId) && userId > 0) {
+          const database = getDb();
+          const [project] = await database.select({ id: videoEditorProjects.id })
+            .from(videoEditorProjects)
+            .where(and(eq(videoEditorProjects.id, numericProjectId), eq(videoEditorProjects.userId, userId)))
+            .limit(1);
+          ownsProject = !!project;
+        }
+        if (mediaAssetId && ownsProject && Number.isInteger(numericProjectId) && numericProjectId > 0 && authResult.tenantId) {
+          const database = getDb();
+          await database.insert(videoEditorProjectAssets).values({
+            projectId: numericProjectId,
+            tenantId: authResult.tenantId,
+            namespace: "media_asset",
+            assetRef: { namespace: "media_asset", id: mediaAssetId },
+          }).onConflictDoNothing();
+        }
+
         console.log("[MediaJobs Upload/Complete]", authResult.userId, assetId, url);
         res.json({
           assetId,
@@ -1724,9 +1774,10 @@ export function registerMediaJobRoutes(app: Express) {
         const authResult = await authenticateMediaJobRequest(req, res);
         if (!authResult) return;
 
-        const { url, mediaType } = req.body as {
+        const { url, mediaType, projectId } = req.body as {
           url?: string;
           mediaType?: string;
+          projectId?: number | string;
         };
         const sourceUrlInput = typeof url === "string" ? url.trim() : "";
         const normalizedMediaType = normalizeRemoteImportMediaType(mediaType);
@@ -1801,6 +1852,24 @@ export function registerMediaJobRoutes(app: Express) {
           status: "ready",
           sourceType: "media_job_import",
         });
+
+        const numericProjectId = typeof projectId === "number" ? projectId : Number(projectId);
+        const userId = Number(authResult.userId);
+        if (mediaAssetId && Number.isInteger(numericProjectId) && numericProjectId > 0 && Number.isInteger(userId) && userId > 0 && authResult.tenantId) {
+          const database = getDb();
+          const [ownedProject] = await database.select({ id: videoEditorProjects.id })
+            .from(videoEditorProjects)
+            .where(and(eq(videoEditorProjects.id, numericProjectId), eq(videoEditorProjects.userId, userId)))
+            .limit(1);
+          if (ownedProject) {
+            await database.insert(videoEditorProjectAssets).values({
+              projectId: numericProjectId,
+              tenantId: authResult.tenantId,
+              namespace: "media_asset",
+              assetRef: { namespace: "media_asset", id: mediaAssetId },
+            }).onConflictDoNothing();
+          }
+        }
 
         const duration = Date.now() - startTime;
         console.log("[MediaJobs ImportUrl] Success:", authResult.userId, assetId, normalizedMediaType, bytes, `(${duration}ms)`);

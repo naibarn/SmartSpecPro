@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Readable } from "node:stream";
+import sharp from "sharp";
 
 const mocks = vi.hoisted(() => ({
   getLibraryItemById: vi.fn(),
@@ -36,14 +38,17 @@ vi.mock("../../_core/tokens", async () => {
       (mocks as any).tokens.set(token, claims);
       return token;
     }),
-    verifyBearerToken: vi.fn(async (token: string) => ({
+    verifyBearerToken: vi.fn(async (token: string) => {
+      if (token.startsWith("mcp_provider_")) throw new Error("not a JWT");
+      return {
       ...(mocks as any).tokens?.get(token),
       sub: "24",
       tenantId: "tenant-1",
       aud: "smartspec-mcp-download",
       tokenUse: "mcp_download",
       type: "access",
-    })),
+      };
+    }),
     createInternalTokenFromAuth: vi.fn(() => "internal-media-token"),
   };
 });
@@ -83,6 +88,45 @@ beforeEach(() => {
 });
 
 describe("MCP download broker ACL and transfer contract", () => {
+  it.each(["node", "web"])("converts authorized WebP JPEG aliases with a %s stream", async (kind) => {
+    mocks.canReadManagedStorageKey.mockResolvedValue(true);
+    const key = "chat/uploads/tenant-1/24/reference.jpg";
+    const bytes = await sharp({ create: { width: 2, height: 2, channels: 3, background: "red" } }).webp().toBuffer();
+    const stream = kind === "node" ? Readable.from([bytes]) : new ReadableStream({
+      start(controller) { controller.enqueue(bytes); controller.close(); },
+    });
+    mocks.storageStreamFile.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      stream, contentType: "image/webp", contentLength: bytes.length,
+      totalLength: bytes.length, etag: "webp-etag", isPartial: false,
+    });
+    const ref = await createProviderManagedStorageDownloadRef(key, owner);
+    const result = await resolveMcpDownloadRef(ref.downloadRef, "bytes=0-2");
+    const chunks = [];
+    for await (const chunk of result.stream as Readable) chunks.push(Buffer.from(chunk));
+    expect((await sharp(Buffer.concat(chunks)).metadata()).format).toBe("jpeg");
+    expect(result.contentType).toBe("image/jpeg");
+    expect(result.isPartial).toBe(false);
+    expect(result.contentLength).toBeUndefined();
+    expect(result).not.toHaveProperty("etag");
+    expect(mocks.canReadManagedStorageKey).toHaveBeenCalledWith(key.replace(".jpg", ".webp"), expect.objectContaining({ userId: 24, tenantId: "tenant-1" }));
+    expect(mocks.storageStreamFile).toHaveBeenLastCalledWith(key.replace(".jpg", ".webp"));
+  });
+
+  it("does not read the WebP fallback when its ACL fails", async () => {
+    mocks.canReadManagedStorageKey.mockResolvedValueOnce(true).mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    mocks.storageStreamFile.mockResolvedValue(null);
+    const ref = await createProviderManagedStorageDownloadRef("chat/uploads/tenant-1/24/reference.jpg", owner);
+    await expect(resolveMcpDownloadRef(ref.downloadRef)).rejects.toThrow("download_file_unavailable");
+    expect(mocks.storageStreamFile).toHaveBeenCalledTimes(1);
+  });
+
+  it("still rejects a JPEG alias when the original WebP is missing", async () => {
+    mocks.canReadManagedStorageKey.mockResolvedValue(true);
+    mocks.storageStreamFile.mockResolvedValue(null);
+    const ref = await createProviderManagedStorageDownloadRef("chat/uploads/tenant-1/24/missing.jpg", owner);
+    await expect(resolveMcpDownloadRef(ref.downloadRef)).rejects.toThrow("download_file_unavailable");
+  });
+
   it("issues and resolves a library file only through the owner-scoped reference", async () => {
     mocks.getLibraryItemById.mockResolvedValue({
       id: 42,
@@ -138,7 +182,27 @@ describe("MCP download broker ACL and transfer contract", () => {
     const ref = await createProviderManagedStorageDownloadRef("media/tenant-1/24/reference.png", owner);
 
     expect(ref.expiresInSeconds).toBe(24 * 60 * 60);
-    expect((mocks as any).lastTtl).toBe("24h");
+    expect((mocks as any).lastTtl).toBeUndefined();
+    expect(mocks.canReadManagedStorageKey).toHaveBeenCalledWith(
+      "media/tenant-1/24/reference.png",
+      owner,
+    );
+  });
+
+  it("uses a compact opaque provider reference while preserving ACL resolution", async () => {
+    mocks.canReadManagedStorageKey.mockResolvedValue(true);
+
+    const ref = await createProviderManagedStorageDownloadRef(
+      "media/tenant-1/24/reference.png",
+      owner,
+    );
+
+    expect(ref.downloadRef).toMatch(/^mcp_provider_/);
+    expect(ref.downloadRef.length).toBeLessThan(100);
+    await expect(resolveMcpDownloadRef(ref.downloadRef, undefined)).resolves.toMatchObject({
+      fileName: "reference.png",
+      contentType: "image/png",
+    });
     expect(mocks.canReadManagedStorageKey).toHaveBeenCalledWith(
       "media/tenant-1/24/reference.png",
       owner,

@@ -107,6 +107,8 @@ import {
 } from "../services/workerRuntimeReleaseService";
 import {
   isOfficialRuntimePackManifest,
+  isRemotionRuntimeReadyManifest,
+  releaseRequiresRemotion,
   requiredRuntimeArchiveFiles,
 } from "../services/workerRuntimePackValidation";
 import {
@@ -1080,8 +1082,8 @@ export async function verifyWorkerRouteAccessToken(
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// Feature 135 — Hermes Grok media worker (section 06): claim-time reference
-// URL enrichment + the `/references/urls` re-mint route. `workerRegistryService.ts`
+// Managed-media workers (including the Web editor): claim-time reference URL
+// enrichment + the `/references/urls` re-mint route. `workerRegistryService.ts`
 // is off-limits to this section (concurrent-edit guard), so the lease /
 // job-scope checks below are deliberately duplicated (not imported) from
 // `ensureLease` / `ensureJobScopedAccess` in that file — same semantics,
@@ -1091,6 +1093,30 @@ export async function verifyWorkerRouteAccessToken(
 const HERMES_MEDIA_JOB_TYPES: ReadonlySet<string> = new Set([
   HERMES_MEDIA_IMAGE_JOB_TYPE,
   HERMES_MEDIA_VIDEO_JOB_TYPE,
+]);
+
+// Web Video Editor jobs use the same claim-time signed URL boundary as
+// Hermes media jobs, but keep their own job namespace so the Worker can route
+// them to the NLE executor without overloading the Hermes contract.
+const EDITOR_MEDIA_JOB_TYPES: ReadonlySet<string> = new Set([
+  "editor_video_render",
+  "editor_video_render_still",
+  "editor_media_probe",
+  "editor_media_proxy",
+  "editor_media_waveform",
+  "editor_media_thumbnail",
+  "editor_media_analysis",
+  "editor_media_audio_extract",
+  "editor_media_audio_export",
+  "editor_media_ai_music",
+  "editor_media_ai_media_studio",
+  "editor_media_privacy_track",
+  "editor_media_recording_normalize",
+]);
+
+const REFERENCE_URL_JOB_TYPES = new Set([
+  ...HERMES_MEDIA_JOB_TYPES,
+  ...EDITOR_MEDIA_JOB_TYPES,
 ]);
 
 const HERMES_MEDIA_REFERENCE_URL_ACTIVE_STATUSES: ReadonlySet<string> = new Set(
@@ -1127,6 +1153,36 @@ function ensureHermesJobScopedAccess(
       "auth_error"
     );
   }
+}
+
+function extractEditorJobReferenceAssetIds(job: Pick<WorkerJob, "inputJson">): Array<{ assetId: string }> {
+  const input = job.inputJson as Record<string, unknown> | null | undefined;
+  const refs: Array<{ assetId: string }> = [];
+  const add = (value: unknown) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return;
+    const ref = value as Record<string, unknown>;
+    if (ref.namespace !== "media_asset") return;
+    const id = typeof ref.id === "string" || typeof ref.id === "number" ? String(ref.id) : "";
+    if (/^[1-9]\d*$/.test(id)) refs.push({ assetId: id });
+  };
+  const inputs = input?.inputs;
+  if (!inputs || typeof inputs !== "object" || Array.isArray(inputs)) return refs;
+  const inputRecord = inputs as Record<string, unknown>;
+  if (Array.isArray(inputRecord.assets)) inputRecord.assets.forEach(add);
+  const project = inputRecord.project;
+  if (project && typeof project === "object" && !Array.isArray(project)) {
+    const tracks = (project as Record<string, unknown>).tracks;
+    if (Array.isArray(tracks)) {
+      tracks.forEach(track => {
+        if (!track || typeof track !== "object" || Array.isArray(track)) return;
+        const clips = (track as Record<string, unknown>).clips;
+        if (Array.isArray(clips)) clips.forEach(clip => {
+          if (clip && typeof clip === "object" && !Array.isArray(clip)) add((clip as Record<string, unknown>).asset);
+        });
+      });
+    }
+  }
+  return [...new Map(refs.map(ref => [ref.assetId, ref])).values()];
 }
 
 function ensureHermesJobLease(
@@ -1335,20 +1391,33 @@ export function registerWorkerRuntimeRoutes(
           requestedRuntimeChannel(req.query.channel)
         ).catch(() => null);
         if (durableRelease) {
-          res.json({
-            ...(durableRelease.manifestJson ?? {}),
-            runtimeId: durableRelease.runtimeId,
-            version: durableRelease.version,
-            archiveFileName: durableRelease.fileName,
-            archiveSha256: durableRelease.fileSha256,
-            archiveSizeBytes: Number(durableRelease.fileSizeBytes),
-            archiveUrl: `/api/workers/runtime-pack/download/${encodeURIComponent(durableRelease.fileName)}`,
-            updatedAt: (durableRelease.updatedAt instanceof Date
-              ? durableRelease.updatedAt
-              : new Date(durableRelease.updatedAt)
-            ).toISOString(),
-          });
-          return;
+          // A release imported before the Remotion lane may still be marked
+          // published in the catalog while lacking the sidecar that the
+          // Worker App needs to claim `remotion_render_video`. Do not keep
+          // advertising that artifact as latest; fall through so a valid
+          // sidecar-complete local release can be selected after import.
+          const durableManifest =
+            durableRelease.manifestJson as Record<string, unknown> | null;
+          const durableRemotionReady =
+            runtimeId !== "hyperframes-wsl2" ||
+            !releaseRequiresRemotion(durableRelease.version) ||
+            isRemotionRuntimeReadyManifest(durableManifest);
+          if (durableRemotionReady) {
+            res.json({
+              ...(durableRelease.manifestJson ?? {}),
+              runtimeId: durableRelease.runtimeId,
+              version: durableRelease.version,
+              archiveFileName: durableRelease.fileName,
+              archiveSha256: durableRelease.fileSha256,
+              archiveSizeBytes: Number(durableRelease.fileSizeBytes),
+              archiveUrl: `/api/workers/runtime-pack/download/${encodeURIComponent(durableRelease.fileName)}`,
+              updatedAt: (durableRelease.updatedAt instanceof Date
+                ? durableRelease.updatedAt
+                : new Date(durableRelease.updatedAt)
+              ).toISOString(),
+            });
+            return;
+          }
         }
         const pack = findLatestAllowedRuntimePack(
           runtimePackReleaseDirs,
@@ -1365,12 +1434,17 @@ export function registerWorkerRuntimeRoutes(
           return;
         }
         const manifest = readRuntimePackManifest(pack.filePath);
-        if (!isOfficialRuntimePackManifest(manifest, runtimeId)) {
+        if (
+          !isOfficialRuntimePackManifest(manifest, runtimeId) ||
+          (runtimeId === "hyperframes-wsl2" &&
+            releaseRequiresRemotion(String(manifest?.version ?? pack.version)) &&
+            !isRemotionRuntimeReadyManifest(manifest))
+        ) {
           sendApiError(
             res,
             409,
             "runtime_pack_not_allowed",
-            "The latest HyperFrames runtime pack is present but incomplete or not allowed for render jobs. Transcription assets, signature files, mock, fallback, diagnostic smoke, and FFmpeg test-source packs are blocked.",
+            "The latest HyperFrames runtime pack is present but incomplete or not allowed for render jobs. Remotion sidecar/dependencies, transcription assets, signature files, mock, fallback, diagnostic smoke, and FFmpeg test-source packs are blocked.",
             "invalid_request_error"
           );
           return;
@@ -2599,18 +2673,16 @@ export function registerWorkerRuntimeRoutes(
           workerId: req.params.workerId,
         });
 
-        // Feature 135 section 06 — claim-time reference URL enrichment for
-        // hermes_media_* jobs ONLY. Response-only: the `worker_jobs` row
-        // itself is never mutated to contain a URL (contract stays
-        // `assetId + sha256` at rest — spec §13.1).
-        if (result.job && HERMES_MEDIA_JOB_TYPES.has(result.job.jobType)) {
+        // Claim-time reference URL enrichment for media jobs. Response-only:
+        // the `worker_jobs` row itself is never mutated to contain a URL.
+        if (result.job && REFERENCE_URL_JOB_TYPES.has(result.job.jobType)) {
           // `result.job` is `claimWorkerJob`'s intentionally loose
           // `Record<string, any>` row shape — cast to the strict Drizzle
           // row type at this one crossing point (see the doc comment on
           // `extractHermesJobReferenceAssetIds`).
-          const references = extractHermesJobReferenceAssetIds(
-            result.job as unknown as WorkerJob
-          );
+          const references = HERMES_MEDIA_JOB_TYPES.has(result.job.jobType)
+            ? extractHermesJobReferenceAssetIds(result.job as unknown as WorkerJob)
+            : extractEditorJobReferenceAssetIds(result.job as unknown as WorkerJob);
           const referenceUrls = await mintHermesReferenceUrlsOrThrow({
             tenantId: auth.tenantId,
             requestedByUserId: result.job.requestedByUserId ?? null,
@@ -2811,11 +2883,11 @@ export function registerWorkerRuntimeRoutes(
             "not_found_error"
           );
         }
-        // Code review fix — this route is hermes_media_* only (matches the
-        // claim-enrichment and finalize-dispatch gates); a non-hermes job id
-        // must be rejected the same way a nonexistent job would be, never
-        // leaking that it exists as some other job type.
-        if (!HERMES_MEDIA_JOB_TYPES.has(job.jobType)) {
+        // Keep this endpoint scoped to jobs that use claim-time managed-media
+        // references; a different job id must be rejected the same way a
+        // nonexistent job would be, never leaking that it exists as another
+        // job type.
+        if (!REFERENCE_URL_JOB_TYPES.has(job.jobType)) {
           throw new WorkerRuntimeServiceError(
             "not_found",
             404,
@@ -2832,7 +2904,9 @@ export function registerWorkerRuntimeRoutes(
             "Worker job is not in an active state for reference URL minting"
           );
         }
-        const references = extractHermesJobReferenceAssetIds(job);
+        const references = HERMES_MEDIA_JOB_TYPES.has(job.jobType)
+          ? extractHermesJobReferenceAssetIds(job)
+          : extractEditorJobReferenceAssetIds(job);
         const referenceUrls = await mintHermesReferenceUrlsOrThrow({
           tenantId: job.tenantId,
           requestedByUserId: job.requestedByUserId,
@@ -2845,7 +2919,7 @@ export function registerWorkerRuntimeRoutes(
     }
   );
 
-  /** Feature 176/177 — stream only a claimed job's server-bound audio input. */
+  /** Feature 176/177/180 — stream only a claimed job's server-bound audio input. */
   app.get("/api/worker-jobs/:jobId/audio-inputs/:artifactId", audioInputLimiter, async (req, res) => {
     try {
       const token = requireBearerToken(req);
@@ -2859,6 +2933,61 @@ export function registerWorkerRuntimeRoutes(
         .where(and(eq(workerJobs.id, req.params.jobId), eq(workerJobs.tenantId, auth.tenantId), eq(workerJobs.workerId, auth.workerId)))
         .limit(1);
       if (!job || !["claimed", "preparing", "running", "uploading", "publishing"].includes(job.status)) throw new WorkerRuntimeServiceError("worker_state_invalid", 409, "Worker job is not active");
+
+      // Unified audio jobs carry an immutable profile/dataset snapshot rather
+      // than a series-root binding. Resolve only the referenced managed
+      // artifact and verify its producing job is tenant-owned and completed;
+      // worker-local opaque handles remain fail-closed until an explicit
+      // owner-worker transfer contract exists.
+      if (["tts_utterance_generate", "voice_training_run"].includes(job.jobType)) {
+        const input = job.inputJson && typeof job.inputJson === "object" && !Array.isArray(job.inputJson) ? job.inputJson as Record<string, any> : {};
+        const profileReferences = input.voiceProfile && typeof input.voiceProfile === "object" && !Array.isArray(input.voiceProfile) && Array.isArray(input.voiceProfile.references)
+          ? input.voiceProfile.references
+          : [];
+        const trainingManifest = input.dataset && typeof input.dataset === "object" && !Array.isArray(input.dataset)
+          ? input.dataset.manifestArtifact
+          : null;
+        const trainedModel = input.trainedVoiceModel && typeof input.trainedVoiceModel === "object" && !Array.isArray(input.trainedVoiceModel)
+          ? { artifactId: input.trainedVoiceModel.artifactId, checksum: input.trainedVoiceModel.checksum, location: "managed" }
+          : null;
+        const candidates = [
+          ...(profileReferences as any[]).map(reference => reference && typeof reference === "object" ? reference.artifactRef : null),
+          trainingManifest,
+          trainedModel,
+        ].filter(value => value && typeof value === "object");
+        const source = candidates.find(value => value.artifactId === req.params.artifactId);
+        if (!source || source.location === "worker_local" || typeof source.checksum !== "string") {
+          throw new WorkerRuntimeServiceError("worker_permission_denied", 403, "Unified audio reference is not a transferable managed artifact");
+        }
+        const [artifact] = await database.select({ storageRef: workerArtifacts.storageRef, metadataJson: workerArtifacts.metadataJson })
+          .from(workerArtifacts).innerJoin(workerJobs, eq(workerJobs.id, workerArtifacts.workerJobId))
+          .where(and(
+            eq(workerArtifacts.id, req.params.artifactId),
+            eq(workerJobs.tenantId, auth.tenantId),
+            eq(workerJobs.status, "completed"),
+          ))
+          .limit(1);
+        const metadata = artifact?.metadataJson ?? {};
+        const storedChecksum = String(metadata.checksumSha256 ?? metadata.outputSha256 ?? "");
+        if (!artifact || storedChecksum !== source.checksum) {
+          throw new WorkerRuntimeServiceError("worker_permission_denied", 403, "Unified audio reference checksum is not published or does not match");
+        }
+        const stored = await storageStreamFile(artifact.storageRef);
+        if (!stored) throw new WorkerRuntimeServiceError("not_found", 404, "Unified audio reference artifact not found");
+        const contentType = String(metadata.contentType ?? "audio/wav");
+        res.status(200).setHeader("Content-Type", contentType).setHeader("Cache-Control", "private, no-store").setHeader("X-Asset-Sha256", source.checksum);
+        if (stored.contentLength) res.setHeader("Content-Length", String(stored.contentLength));
+        const nodeStream = stored.stream as NodeJS.ReadableStream;
+        if (typeof (nodeStream as any).pipe === "function") return (nodeStream as any).pipe(res);
+        const reader = (stored.stream as ReadableStream).getReader();
+        while (true) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          res.write(Buffer.from(chunk.value));
+        }
+        return res.end();
+      }
+
       if (!job.workerSeriesBindingId) throw new WorkerRuntimeServiceError("worker_permission_denied", 403, "Audio job is not bound to a worker series root");
       const [binding] = await database.select({ seriesId: workerSeriesBindings.seriesId, status: workerSeriesBindings.status, bindingRevision: workerSeriesBindings.bindingRevision, revokedAt: workerSeriesBindings.revokedAt })
         .from(workerSeriesBindings)

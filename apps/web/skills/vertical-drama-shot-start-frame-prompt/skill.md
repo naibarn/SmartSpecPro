@@ -105,6 +105,11 @@ shuts off his phone, hides it in an empty ice crate, and abandons his CEO
 identity, START freezes the market escape before phone disposal. STOP freezes
 the phone being hidden and the decision to disappear.
 
+For `FRAME ROLE: START`, the positive `prompt` must contain only the opening
+state. Do not restate a later phone/message reveal, insert, or terminal action
+as a simultaneous action in that positive prompt. Put any needed exclusion in
+`negative_prompt`; the downstream video prompt owns the transition.
+
 Return ONLY valid JSON (no markdown, no commentary) matching:
 
 ```json

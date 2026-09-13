@@ -221,6 +221,49 @@ describe("formatVideoClipRequest — Grok Imagine 1.5 (native audio — xAI sync
     });
     expect(result.prompt).toContain("in natural spoken English, exactly:");
   });
+
+  it("keeps the physical speaker and existing caller inset mapped to their own lines", () => {
+    const result = formatVideoClipRequest({
+      clip: clip({ prompt: "Continue from the approved start frame exactly as shown." }),
+      dialogueLines: [
+        dialogueLine({
+          characterKey: "character-look-casual_home",
+          speakerName: "พิมพ์ชนก",
+          lineTh: "ฉันไม่อยากเชื่อใครง่าย ๆ แต่ครั้งนี้ฉันต้องการความช่วยเหลือ",
+        }),
+        dialogueLine({
+          characterKey: "character-2-look-casual_home",
+          speakerName: "ธีร์",
+          lineTh: "ผมจะไปกับคุณ เราจะตรวจทุกอย่างตามขั้นตอน",
+        }),
+      ],
+      physicalCharacterRefs: ["character-look-casual_home"],
+      physicalCharacterNames: ["พิมพ์ชนก"],
+      screenCallerCharacterRefs: ["character-2-look-casual_home"],
+      screenCallerCharacterNames: ["ธีร์"],
+      modelId: grokModel.id,
+      model: grokModel,
+    });
+
+    expect(result.prompt).toContain("HARD SPEAKER MAP (MANDATORY)");
+    expect(result.prompt).toContain(
+      "Physical scene speakers ONLY: พิมพ์ชนก [characterKey=character-look-casual_home]"
+    );
+    expect(result.prompt).toContain(
+      "Existing virtual-screen speakers ONLY: ธีร์ [characterKey=character-2-look-casual_home]"
+    );
+    expect(result.prompt).toContain(
+      "Line 1 ONLY: พิมพ์ชนก [characterKey=character-look-casual_home]"
+    );
+    expect(result.prompt).toContain(
+      "Line 2 ONLY: ธีร์ [characterKey=character-2-look-casual_home]"
+    );
+    expect(result.prompt).toContain("do not create a new inset");
+    expect(result.prompt).toContain(
+      "ฉันไม่อยากเชื่อใครง่าย ๆ แต่ครั้งนี้ฉันต้องการความช่วยเหลือ"
+    );
+    expect(result.prompt).toContain("ผมจะไปกับคุณ เราจะตรวจทุกอย่างตามขั้นตอน");
+  });
 });
 
 describe("formatVideoClipRequest — Seedance (ByteDance/BytePlus ModelArk family, DB-only model, no native audio)", () => {

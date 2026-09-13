@@ -128,6 +128,18 @@ export interface CreatePortraitCandidateDraftBatchParams extends VerticalDramaCh
   candidates: PortraitCandidateDraftInput[];
 }
 
+export interface ReplacePortraitCandidateDraftParams extends VerticalDramaCharacterStockOwner {
+  characterId: number;
+  assetLinkId: number;
+  characterKey: string;
+  sharedVisualLanguage: string;
+  promptModel: string;
+  referenceGuided?: boolean;
+  referenceAssetLinkIds?: number[];
+  castingAgeProfile?: CharacterCastingAgeProfile;
+  candidate: PortraitCandidateDraftInput;
+}
+
 export interface ClaimedPortraitCandidate {
   assetLinkId: number;
   batchId: string;
@@ -161,6 +173,32 @@ type PortraitCandidatePrivateMetadata =
     imageModel?: string;
     submissionError?: string;
   };
+
+/**
+ * Owner-scoped browser projection for an unsubmitted portrait prompt batch.
+ * This intentionally lives outside the general asset manifest: the manifest
+ * keeps prompts and DNA private, while the character editor can recover the
+ * exact expiring prompt after a refresh and still require an explicit render
+ * click.
+ */
+export interface PortraitCandidateDraftBatchProjection {
+  batchId: string;
+  characterId: string;
+  sharedVisualLanguage: string;
+  model: string;
+  referenceGuided?: boolean;
+  castingAgeProfile?: CharacterCastingAgeProfile;
+  createdAt: string;
+  candidates: Array<{
+    assetLinkId: string;
+    candidateId: string;
+    index: number;
+    portraitPrompt: string;
+    negativePrompt?: string;
+    visualIdentitySummary: string;
+    status: "previewed";
+  }>;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Pure row <-> contract mapping                                              */
@@ -276,6 +314,10 @@ export function projectPortraitCandidateMetadata(
     ...(typeof candidate.policyRejected === "boolean"
       ? { policyRejected: candidate.policyRejected }
       : {}),
+    ...(typeof candidate.policyReason === "string" &&
+    candidate.policyReason.trim().length > 0
+      ? { policyReason: candidate.policyReason.slice(0, 240) }
+      : {}),
     ...(candidate.referenceGuided === true ? { referenceGuided: true } : {}),
     ...(ageProfile &&
     Number.isInteger(ageProfile.min) &&
@@ -367,6 +409,24 @@ export const VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE =
   "ภาพถูกปฏิเสธเนื่องจากติดนโยบายเนื้อหาของผู้ให้บริการ กรุณาลองสร้างใหม่อีกครั้ง " +
   "หรือปรับลักษณะตัวละครก่อนสร้างซ้ำ";
 
+/**
+ * Keep the provider's useful policy category visible without exposing URLs,
+ * markup, control characters, or an unbounded provider payload to the client.
+ * The original message remains in `submissionError` for the audit trail.
+ */
+export function summarizePortraitCandidatePolicyReason(
+  message: string | undefined | null
+): string | undefined {
+  if (!message) return undefined;
+  const cleaned = message
+    .replace(/https?:\/\/\S+/gi, "[redacted link]")
+    .replace(/<[^>]*>/g, "")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned ? cleaned.slice(0, 240) : undefined;
+}
+
 function mergePortraitCandidateMetadata(
   metadata: unknown,
   patch: Record<string, unknown>
@@ -453,6 +513,128 @@ export function characterAssetRowToContract(
 
 function toIso(v: Date | string): string {
   return (v instanceof Date ? v : new Date(v)).toISOString();
+}
+
+/** Build one latest, complete, unexpired prompt-preview batch per character. */
+export function buildPortraitCandidateDraftBatchProjections(
+  rows: Array<
+    Pick<
+      VerticalDramaCharacterAssetRow,
+      | "id"
+      | "characterId"
+      | "mediaAssetId"
+      | "role"
+      | "metadata"
+      | "createdAt"
+      | "updatedAt"
+    >
+  >,
+  nowMs = Date.now()
+): PortraitCandidateDraftBatchProjection[] {
+  const grouped = new Map<
+    string,
+    {
+      characterId: number;
+      createdAt: string;
+      updatedAtMs: number;
+      candidates: Array<{
+        assetLinkId: string;
+        candidate: PortraitCandidatePrivateMetadata;
+      }>;
+    }
+  >();
+
+  for (const row of rows) {
+    if (
+      row.role !== "portrait_candidate" ||
+      row.mediaAssetId != null ||
+      row.characterId == null
+    ) {
+      continue;
+    }
+    const candidate = readPortraitCandidatePrivateMetadata(row.metadata);
+    if (
+      !candidate ||
+      candidate.status !== "previewed" ||
+      new Date(candidate.expiresAt).getTime() <= nowMs
+    ) {
+      continue;
+    }
+    const key = `${row.characterId}:${candidate.batchId}`;
+    const updatedAtMs = new Date(row.updatedAt).getTime();
+    const existing = grouped.get(key) ?? {
+      characterId: row.characterId,
+      createdAt: toIso(row.createdAt),
+      updatedAtMs,
+      candidates: [],
+    };
+    existing.updatedAtMs = Math.max(existing.updatedAtMs, updatedAtMs);
+    existing.candidates.push({ assetLinkId: String(row.id), candidate });
+    grouped.set(key, existing);
+  }
+
+  const latestByCharacter = new Map<
+    number,
+    PortraitCandidateDraftBatchProjection & { updatedAtMs: number }
+  >();
+  for (const group of grouped.values()) {
+    const first = group.candidates[0]?.candidate;
+    if (!first) continue;
+    const expectedCount = first.count;
+    const uniqueIndexCount = new Set(
+      group.candidates.map(item => item.candidate.index)
+    ).size;
+    const uniqueCandidateIdCount = new Set(
+      group.candidates.map(item => item.candidate.candidateId)
+    ).size;
+    if (
+      group.candidates.some(
+        item =>
+          item.candidate.count !== expectedCount ||
+          item.candidate.index < 0 ||
+          item.candidate.index >= expectedCount
+      ) ||
+      uniqueIndexCount !== group.candidates.length ||
+      uniqueCandidateIdCount !== group.candidates.length
+    ) {
+      continue;
+    }
+    const projection: PortraitCandidateDraftBatchProjection & {
+      updatedAtMs: number;
+    } = {
+      batchId: first.batchId,
+      characterId: String(group.characterId),
+      sharedVisualLanguage: first.sharedVisualLanguage,
+      model: first.promptModel,
+      ...(first.referenceGuided ? { referenceGuided: true } : {}),
+      ...(first.castingAgeProfile
+        ? { castingAgeProfile: first.castingAgeProfile }
+        : {}),
+      createdAt: group.createdAt,
+      updatedAtMs: group.updatedAtMs,
+      candidates: group.candidates
+        .map(({ assetLinkId, candidate }) => ({
+          assetLinkId,
+          candidateId: candidate.candidateId,
+          index: candidate.index,
+          portraitPrompt: candidate.portraitPrompt,
+          ...(candidate.negativePrompt
+            ? { negativePrompt: candidate.negativePrompt }
+            : {}),
+          visualIdentitySummary: candidate.visualIdentitySummary,
+          status: "previewed" as const,
+        }))
+        .sort((left, right) => left.index - right.index),
+    };
+    const current = latestByCharacter.get(group.characterId);
+    if (!current || projection.updatedAtMs > current.updatedAtMs) {
+      latestByCharacter.set(group.characterId, projection);
+    }
+  }
+
+  return [...latestByCharacter.values()]
+    .sort((left, right) => right.updatedAtMs - left.updatedAtMs)
+    .map(({ updatedAtMs: _updatedAtMs, ...batch }) => batch);
 }
 
 /** Pure manifest projection — testable without a database (section-05 test). */
@@ -689,6 +871,19 @@ export class VerticalDramaCharacterStockService {
     );
   }
 
+  /**
+   * Recover current prompt-only candidate drafts for the authenticated owner.
+   * These rows stay out of the general manifest and are returned only through
+   * the owner-scoped character editor response.
+   */
+  async getPortraitCandidateDraftBatches(
+    owner: VerticalDramaCharacterStockOwner
+  ): Promise<PortraitCandidateDraftBatchProjection[]> {
+    return buildPortraitCandidateDraftBatchProjections(
+      await this.listRows(owner)
+    );
+  }
+
   /** Persist private, expiring prompt/DNA drafts before any image task is submitted. */
   async createPortraitCandidateDraftBatch(
     params: CreatePortraitCandidateDraftBatchParams
@@ -817,6 +1012,106 @@ export class VerticalDramaCharacterStockService {
             index: candidate.index,
           };
         }),
+      };
+    });
+  }
+
+  /**
+   * Replace the prompt in one failed candidate row while preserving its
+   * original batch and slot index. A retry is a repair of that slot, not a new
+   * casting batch, so refreshes and polling keep the same three/five-card grid.
+   */
+  async replacePortraitCandidateDraft(
+    params: ReplacePortraitCandidateDraftParams
+  ): Promise<{
+    batchId: string;
+    candidates: Array<{
+      assetLinkId: number;
+      candidateId: string;
+      index: number;
+    }>;
+  }> {
+    const now = new Date();
+    const expiresAt = new Date(
+      now.getTime() + 24 * 60 * 60 * 1000
+    ).toISOString();
+    return db.transaction(async tx => {
+      const rows = await tx
+        .select()
+        .from(verticalDramaCharacterAssets)
+        .where(
+          and(
+            eq(verticalDramaCharacterAssets.id, params.assetLinkId),
+            eq(verticalDramaCharacterAssets.tenantId, params.tenantId),
+            eq(verticalDramaCharacterAssets.userId, params.userId),
+            eq(verticalDramaCharacterAssets.seriesId, params.seriesId),
+            eq(verticalDramaCharacterAssets.characterId, params.characterId),
+            eq(verticalDramaCharacterAssets.role, "portrait_candidate")
+          )
+        )
+        .for("update");
+      const row = rows[0];
+      const previous = row
+        ? readPortraitCandidatePrivateMetadata(row.metadata)
+        : null;
+      if (!row || !previous || previous.status !== "failed") {
+        throw new VerticalDramaCharacterStockError(
+          "candidate_not_ready",
+          "Only a failed portrait candidate can receive a replacement prompt."
+        );
+      }
+
+      const metadata = mergePortraitCandidateMetadata(row.metadata, {
+        // A prompt retry repairs the existing slot. Keep its stable identity;
+        // count=1 prompt generators commonly emit `candidate_1`, which can
+        // collide with a completed sibling in the original batch.
+        candidateId: previous.candidateId,
+        status: "previewed" satisfies VerticalDramaPortraitCandidateStatus,
+        characterKey: params.characterKey,
+        portraitPrompt: params.candidate.portraitPrompt,
+        negativePrompt: params.candidate.negativePrompt,
+        visualIdentitySummary: params.candidate.visualIdentitySummary,
+        visualBibleSnapshot: params.candidate.visualBibleSnapshot,
+        sharedVisualLanguage: params.sharedVisualLanguage,
+        promptModel: params.promptModel,
+        referenceGuided: params.referenceGuided ? true : undefined,
+        referenceAssetLinkIds: params.referenceAssetLinkIds?.length
+          ? params.referenceAssetLinkIds
+          : undefined,
+        castingAgeProfile: params.castingAgeProfile,
+        expiresAt,
+        taskId: undefined,
+        claimedAt: undefined,
+        imageModel: undefined,
+        submissionError: undefined,
+        errorMessage: undefined,
+        policyRejected: undefined,
+        policyReason: undefined,
+        supersededAt: undefined,
+      });
+      delete metadata.rejectionReason;
+      await tx
+        .update(verticalDramaCharacterAssets)
+        .set({
+          approved: false,
+          qcStatus: "pending",
+          metadata: {
+            ...metadata,
+            state: "draft" satisfies VerticalDramaCharacterAssetState,
+          },
+          updatedAt: now,
+        })
+        .where(eq(verticalDramaCharacterAssets.id, row.id));
+
+      return {
+        batchId: previous.batchId,
+        candidates: [
+          {
+            assetLinkId: row.id,
+            candidateId: previous.candidateId,
+            index: previous.index,
+          },
+        ],
       };
     });
   }
@@ -1000,6 +1295,7 @@ export class VerticalDramaCharacterStockService {
           eq(verticalDramaCharacterAssets.role, "portrait_candidate"),
           sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'batchId' = ${batchId}`,
           sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'candidateId' = ${candidateId}`,
+          sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'status' = 'previewed'`,
         ),
       )
       .limit(1);
@@ -1058,6 +1354,7 @@ export class VerticalDramaCharacterStockService {
             eq(verticalDramaCharacterAssets.role, "portrait_candidate"),
             sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'batchId' = ${batchId}`,
             sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'candidateId' = ${candidateId}`,
+            sql`${verticalDramaCharacterAssets.metadata}->'portraitCandidate'->>'status' = 'previewed'`,
           ),
         )
         .for("update");
@@ -1296,6 +1593,9 @@ export class VerticalDramaCharacterStockService {
     const displayErrorMessage = policyRejected
       ? VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE
       : rawErrorMessage;
+    const policyReason = policyRejected
+      ? summarizePortraitCandidatePolicyReason(params.errorMessage)
+      : undefined;
     await db
       .update(verticalDramaCharacterAssets)
       .set({
@@ -1307,6 +1607,7 @@ export class VerticalDramaCharacterStockService {
             submissionError: rawErrorMessage,
             policyRejected,
             errorMessage: displayErrorMessage,
+            ...(policyReason ? { policyReason } : {}),
           }),
           state: "rejected" satisfies VerticalDramaCharacterAssetState,
           // WHY: the A-client fix already shipped in parallel

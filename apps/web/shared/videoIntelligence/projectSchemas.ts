@@ -207,7 +207,7 @@ export const SceneSchema = z
     /** Actual generated audio duration, when narration synthesis has run. */
     narrationAudioDurationMs: z.number().int().min(1).optional(),
     /** Whether caption timing came from audio alignment or the deterministic fallback. */
-    captionTimingSource: z.enum(["manual", "aligned", "estimated"]).optional(),
+    captionTimingSource: z.enum(["manual", "aligned", "estimated", "script_timed"]).optional(),
     visual: SceneVisualSchema,
     // Reused verbatim from the frozen layer schema — scene-relative
     // `startFrame`; the compiler offsets this to absolute frames.

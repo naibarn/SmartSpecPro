@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { formatMediaProviderDisplayName } from "@/lib/mediaProviderDisplayName";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { getModelGenerationModeLabel } from "@/lib/mediaModelInputs";
 import {
@@ -66,30 +67,7 @@ interface ModelSelectorDialogProps {
 
 const getProviderId = (model: MediaModel) => model.providerId ?? model.provider;
 
-export function formatMediaProviderDisplayName(providerName: unknown): string {
-  const raw = String(providerName ?? "").trim();
-  if (!raw) return "Other";
-  const normalized = raw.toLowerCase().replace(/[\s.-]+/g, "_");
-  const knownNames: Record<string, string> = {
-    kie_ai: "Kie.ai",
-    kie: "Kie.ai",
-    fal_ai: "Fal.ai",
-    fal: "Fal.ai",
-    magnific: "Magnific",
-    higgsfield: "Higgsfield",
-    wavespeed_ai: "WaveSpeed",
-    wavespeed: "WaveSpeed",
-    byteplus_modelark: "BytePlus ModelArk",
-    byteplus: "BytePlus ModelArk",
-    knplabs: "KNPLabs",
-    knplabai: "KNPLabs",
-    elevenlabs: "ElevenLabs",
-    eleven_labs: "ElevenLabs",
-    omnivoice: "OmniVoice",
-    hermes_grok: "Grok via Hermes",
-  };
-  return knownNames[normalized] ?? raw;
-}
+export { formatMediaProviderDisplayName } from "@/lib/mediaProviderDisplayName";
 
 const getProviderName = (model: MediaModel) =>
   formatMediaProviderDisplayName(model.providerName ?? model.provider);

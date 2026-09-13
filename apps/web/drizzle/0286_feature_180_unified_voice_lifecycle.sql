@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS audio_voice_profiles (
   created_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   owner_scope_type VARCHAR(16) NOT NULL CHECK (owner_scope_type IN ('project','series')),
   owner_scope_id VARCHAR(160) NOT NULL,
+  workspace_id VARCHAR(160) NOT NULL,
   current_revision INTEGER NOT NULL DEFAULT 1 CHECK (current_revision > 0),
   status VARCHAR(16) NOT NULL DEFAULT 'draft',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -23,7 +24,7 @@ CREATE TABLE IF NOT EXISTS audio_voice_profile_revisions (
   revision INTEGER NOT NULL CHECK (revision > 0),
   profile_json JSONB NOT NULL,
   content_hash VARCHAR(64) NOT NULL CHECK (content_hash ~ '^[a-f0-9]{64}$'),
-  created_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+  created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (profile_id, revision)
 );
@@ -66,6 +67,7 @@ CREATE TABLE IF NOT EXISTS audio_voice_datasets (
   created_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   owner_scope_type VARCHAR(16) NOT NULL CHECK (owner_scope_type IN ('project','series')),
   owner_scope_id VARCHAR(160) NOT NULL,
+  workspace_id VARCHAR(160) NOT NULL,
   current_revision INTEGER NOT NULL DEFAULT 1 CHECK (current_revision > 0),
   status VARCHAR(16) NOT NULL DEFAULT 'draft',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -82,7 +84,7 @@ CREATE TABLE IF NOT EXISTS audio_voice_dataset_revisions (
   manifest_json JSONB NOT NULL,
   manifest_hash VARCHAR(64) NOT NULL CHECK (manifest_hash ~ '^[a-f0-9]{64}$'),
   status VARCHAR(16) NOT NULL DEFAULT 'draft',
-  created_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+  created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (dataset_id, revision)
 );

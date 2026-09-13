@@ -1109,8 +1109,10 @@ No secrets/API keys ever enter skill prompts (existing platform rule).
 
 ### 18.2 Preview profile
 
-`preview` renders at ≤ 540×960, fps ≤ 15, CRF-relaxed; capped at 1
-concurrent preview job per user. Client-side `@remotion/player` preview is
+`preview` renders at ≤ 540×960, fps ≤ 15, CRF-relaxed. Distinct preview
+targets may queue concurrently; duplicate queued/running work for the same
+`videoProjectId` + `projectRevision` + preview profile is rejected. Client-side
+`@remotion/player` preview is
 free (no job) for non-scene3d compositions.
 
 ### 18.3 Render-cost model

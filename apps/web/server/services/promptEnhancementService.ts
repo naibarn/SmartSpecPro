@@ -200,7 +200,10 @@ export function resolvePromptEnhancementSkill(skillId?: string): {
     : undefined;
 
   const fallbackSkill = getAvailableSkills()
-    .filter((skill) => normalizeSkillValue(skill.category) === "image_prompt_generation")
+    .filter((skill) => {
+      const category = normalizeSkillValue(skill.category);
+      return category === "image_prompt_generation" || category === "character_prompt_generation";
+    })
     .sort((a, b) => b.priority - a.priority)[0];
   const resolvedSkill = requestedSkill || fallbackSkill;
 

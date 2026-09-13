@@ -26,6 +26,7 @@ const { mockDb } = vi.hoisted(() => ({
     update: vi.fn(),
     insert: vi.fn(),
     delete: vi.fn(),
+    transaction: vi.fn(),
     instance: {},
   },
 }));
@@ -94,6 +95,12 @@ const { mockGetPrimaryPortraitUrl } = vi.hoisted(() => ({
 vi.mock("../verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: { getPrimaryPortraitUrl: mockGetPrimaryPortraitUrl },
 }));
+const { mockListLocationRows } = vi.hoisted(() => ({
+  mockListLocationRows: vi.fn(),
+}));
+vi.mock("../verticalDramaLocationStock", () => ({
+  verticalDramaLocationStockService: { listRows: mockListLocationRows },
+}));
 vi.mock("../verticalDramaStoryboardHandoff", () => ({
   createVerticalDramaStoryboardHandoff: vi.fn(),
 }));
@@ -147,7 +154,11 @@ vi.mock("../../_core/logger", () => ({
   debugLog: vi.fn(),
 }));
 
-import { VerticalDramaEpisodePipeline, validateStagePayload } from "../verticalDramaEpisodePipeline";
+import {
+  VerticalDramaEpisodePipeline,
+  resetEpisodeStoryboardGenerationState,
+  validateStagePayload,
+} from "../verticalDramaEpisodePipeline";
 
 const pipeline = new VerticalDramaEpisodePipeline() as any;
 
@@ -173,6 +184,9 @@ function selectChain(rows: unknown[]) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockDb.transaction.mockImplementation(async (callback: (tx: unknown) => unknown) =>
+    callback(mockDb)
+  );
   mockMemoryService.buildEpisodeMemoryBundle.mockResolvedValue(null);
   mockGenerateStoryboardShotgrid.mockResolvedValue({
     storyboard: { shots: [] },
@@ -180,6 +194,7 @@ beforeEach(() => {
     model: "gpt-x",
   });
   mockGetPrimaryPortraitUrl.mockResolvedValue(null);
+  mockListLocationRows.mockResolvedValue([]);
   mockGetActiveBreakdown.mockReturnValue([]);
   mockReconcileEpisodeLocations.mockResolvedValue({ createdLocations: [], reusedLocations: [] });
 });
@@ -191,14 +206,14 @@ beforeEach(() => {
 describe("generateRealStoryboard — existingLocations real query (Phase 2 location visual bible)", () => {
   it("passes the series' location roster, mapped to {locationKey, name, description}, to generateStoryboardShotgrid", async () => {
     const rosterRows = [
-      { locationKey: "loc_store", name: "ร้านสะดวกซื้อ", data: { description: "a store description" } },
-      { locationKey: "loc_kitchen", name: "ครัวที่บ้าน", data: { description: "a kitchen description" } },
+      { locationKey: "loc_store", name: "ร้านสะดวกซื้อ", data: { description: "a store description" }, createdAt: new Date("2026-01-01"), primaryReferenceUrl: null },
+      { locationKey: "loc_kitchen", name: "ครัวที่บ้าน", data: { description: "a kitchen description" }, createdAt: new Date("2026-01-02"), primaryReferenceUrl: null },
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }])) // seriesRow
       .mockReturnValueOnce(selectChain([])) // characterRows
-      .mockReturnValueOnce(selectChain([])) // alias rows (planning/vd-character-identity-repair/plan.md)
-      .mockReturnValueOnce(selectChain(rosterRows)); // NEW: location roster
+      .mockReturnValueOnce(selectChain([])); // alias rows (planning/vd-character-identity-repair/plan.md)
+    mockListLocationRows.mockResolvedValueOnce(rosterRows);
 
     await pipeline.generateRealStoryboard(owner, episode, false);
 
@@ -210,12 +225,12 @@ describe("generateRealStoryboard — existingLocations real query (Phase 2 locat
   });
 
   it("falls back to the location's own name as description when data.description is missing", async () => {
-    const rosterRows = [{ locationKey: "loc_store", name: "ร้านสะดวกซื้อ", data: null }];
+    const rosterRows = [{ locationKey: "loc_store", name: "ร้านสะดวกซื้อ", data: null, createdAt: new Date("2026-01-01"), primaryReferenceUrl: null }];
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
       .mockReturnValueOnce(selectChain([]))
-      .mockReturnValueOnce(selectChain([])) // alias rows (planning/vd-character-identity-repair/plan.md)
-      .mockReturnValueOnce(selectChain(rosterRows));
+      .mockReturnValueOnce(selectChain([])); // alias rows (planning/vd-character-identity-repair/plan.md)
+    mockListLocationRows.mockResolvedValueOnce(rosterRows);
 
     await pipeline.generateRealStoryboard(owner, episode, false);
 
@@ -229,8 +244,8 @@ describe("generateRealStoryboard — existingLocations real query (Phase 2 locat
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
       .mockReturnValueOnce(selectChain([]))
-      .mockReturnValueOnce(selectChain([])) // alias rows (planning/vd-character-identity-repair/plan.md)
-      .mockReturnValueOnce(selectChain([])); // empty roster
+      .mockReturnValueOnce(selectChain([])); // alias rows (planning/vd-character-identity-repair/plan.md)
+    mockListLocationRows.mockResolvedValueOnce([]); // empty roster
 
     await pipeline.generateRealStoryboard(owner, episode, false);
 
@@ -242,16 +257,50 @@ describe("generateRealStoryboard — existingLocations real query (Phase 2 locat
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
       .mockReturnValueOnce(selectChain([]))
-      .mockReturnValueOnce(selectChain([])) // alias rows (planning/vd-character-identity-repair/plan.md)
-      .mockReturnValueOnce(selectChain([]));
+      .mockReturnValueOnce(selectChain([])); // alias rows (planning/vd-character-identity-repair/plan.md)
+    mockListLocationRows.mockResolvedValueOnce([]);
 
     await pipeline.generateRealStoryboard(owner, episode, false);
 
-    // The 4th select call is the location-roster query (3rd is now the
-    // alias-rows query, planning/vd-character-identity-repair/plan.md) —
-    // assert it ran (via .from()/.where() being invoked on the 4th chain
-    // instance).
-    expect(mockDb.select).toHaveBeenCalledTimes(4);
+    expect(mockListLocationRows).toHaveBeenCalledWith({
+      tenantId: owner.tenantId,
+      userId: owner.userId,
+      seriesId: owner.seriesId,
+    });
+  });
+
+  it("uses the approved-image roster row as the canonical representative for front/parking aliases", async () => {
+    const rosterRows = [
+      {
+        locationKey: "clinic-front",
+        name: "หน้าคลินิก",
+        data: { description: "clinic front" },
+        createdAt: new Date("2026-01-01"),
+        primaryReferenceUrl: null,
+      },
+      {
+        locationKey: "clinic-front-parking",
+        name: "ลานจอดรถหน้าคลินิก",
+        data: { description: "clinic front parking" },
+        createdAt: new Date("2026-01-02"),
+        primaryReferenceUrl: "https://cdn.example/clinic.webp",
+      },
+    ];
+    mockDb.select
+      .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([]));
+    mockListLocationRows.mockResolvedValueOnce(rosterRows);
+
+    await pipeline.generateRealStoryboard(owner, episode, false);
+
+    expect(mockGenerateStoryboardShotgrid.mock.calls[0][0].existingLocations).toEqual([
+      {
+        locationKey: "clinic-front-parking",
+        name: "ลานจอดรถหน้าคลินิก",
+        description: "clinic front parking clinic front",
+      },
+    ]);
   });
 });
 
@@ -275,6 +324,51 @@ function updateChain(rows: unknown[] = []) {
   return chain;
 }
 
+function deleteChain() {
+  const chain: any = {
+    where: vi.fn(() => Promise.resolve()),
+  };
+  return chain;
+}
+
+describe("resetEpisodeStoryboardGenerationState", () => {
+  it("clears the episode storyboard and shot-level bindings while preserving master rows", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([]));
+    mockDb.delete.mockImplementation(() => deleteChain());
+    mockDb.update.mockReturnValue(updateChain());
+
+    await expect(resetEpisodeStoryboardGenerationState(owner)).resolves.toEqual({
+      reset: true,
+    });
+
+    expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+    expect(mockDb.delete).toHaveBeenCalledTimes(5);
+    expect(mockDb.update).toHaveBeenCalledTimes(1);
+    expect(mockDb.update.mock.results[0].value.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        storyboard: null,
+        startFramePlan: null,
+        dialogueAudioPlan: null,
+        motionPromptPack: null,
+        assemblyManifest: null,
+        storyboardReviewId: null,
+      })
+    );
+  });
+
+  it("does not clear a newer storyboard rebuild that is already queued or running", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([{ id: 77 }]));
+
+    await expect(resetEpisodeStoryboardGenerationState(owner)).resolves.toEqual({
+      reset: false,
+      activeRunId: 77,
+    });
+
+    expect(mockDb.delete).not.toHaveBeenCalled();
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+});
+
 const NINE_SHOTS = Array.from({ length: 9 }, (_, i) => ({ shot_number: i + 1, duration_seconds: 6 }));
 const STORE_GROUP = {
   location_key: "loc_store",
@@ -292,19 +386,20 @@ const KITCHEN_GROUP = {
 /**
  * Queue the exact `mockDb.select` sequence a successful
  * `runStage(owner, "storyboard_shotgrid", {mode: "full"})` consumes:
- * loadEpisode -> generateRealStoryboard's seriesRow -> characterRows ->
- * (planning/vd-character-identity-repair/plan.md) alias rows -> (Phase 2)
- * location roster. No further selects happen on the success path (`runQc`
- * is a no-op via the default stub provider port; the checkpoint
- * bookkeeping below uses `insert`, not `select`).
+ * loadEpisode -> continuity-gate series row -> generateRealStoryboard's
+ * seriesRow -> characterRows -> (planning/vd-character-identity-repair/plan.md)
+ * alias rows. The location roster is supplied by the mocked stock service, so
+ * no further selects happen on the
+ * success path (`runQc` is a no-op via the default stub provider port; the
+ * checkpoint bookkeeping below uses `insert`, not `select`).
  */
 function queueRunStageSelects() {
   mockDb.select
     .mockReturnValueOnce(selectChain([episode])) // loadEpisode
+    .mockReturnValueOnce(selectChain([])) // continuity-gate series row
     .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }])) // seriesRow
     .mockReturnValueOnce(selectChain([])) // characterRows
-    .mockReturnValueOnce(selectChain([])) // alias rows (planning/vd-character-identity-repair/plan.md)
-    .mockReturnValueOnce(selectChain([])); // location roster (existingLocations)
+    .mockReturnValueOnce(selectChain([])); // alias rows (planning/vd-character-identity-repair/plan.md)
 }
 
 function setupWritePath() {

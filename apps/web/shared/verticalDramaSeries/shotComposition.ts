@@ -94,6 +94,64 @@ export function renderVerticalDramaShotCompositionLock(
   return lines.join("\n");
 }
 
+/**
+ * Derive the non-terminal camera facts that are safe to use for a Start Frame.
+ *
+ * Storyboard composition is also used by the motion-prompt path, so it may
+ * intentionally describe a later insert/reveal (for example, a phone insert
+ * at the end of a walking beat). Reusing that full lock for the opening still
+ * makes the image provider render the stop-like moment even when the prompt
+ * authoring skill correctly chose the opening beat. Keep only stable framing
+ * facts here; the shot synopsis owns the opening action and expression.
+ */
+export function deriveVerticalDramaStartFrameShotComposition(
+  composition: VerticalDramaShotComposition | undefined
+): VerticalDramaShotComposition | undefined {
+  if (!composition) return undefined;
+
+  const cleanedShotType = (composition.shotType ?? "")
+    .replace(
+      /(?:[_\s-]+with[_\s-]+)?(?:phone|mobile|smartphone|screen|message|detail)[_\s-]*insert(?:[_\s-]*(?:shot|view))?/giu,
+      ""
+    )
+    .replace(/[_\s-]{2,}/gu, "_")
+    .replace(/^[_\s-]+|[_\s-]+$/gu, "")
+    .trim();
+
+  const result: VerticalDramaShotComposition = {
+    ...(cleanedShotType ? { shotType: cleanedShotType } : {}),
+    ...(composition.angle ? { angle: composition.angle } : {}),
+    ...(composition.lens ? { lens: composition.lens } : {}),
+    composition:
+      "Opening frame: freeze the initial blocking with every required character visible; do not depict a later insert, reveal, screen action, or terminal beat.",
+  };
+  return Object.values(result).some(Boolean) ? result : undefined;
+}
+
+/**
+ * Remove motion/terminal-insert tokens from the compact camera fact sent to
+ * the batch Start Frame author. The original camera setup remains untouched
+ * for video prompting.
+ */
+export function sanitizeVerticalDramaStartFrameCameraSetup(
+  cameraSetup: string
+): string {
+  const sanitized = cameraSetup
+    .replace(
+      /(?:[_\s-]+with[_\s-]+)?(?:phone|mobile|smartphone|screen|message|detail)[_\s-]*insert(?:[_\s-]*(?:shot|view))?/giu,
+      ""
+    )
+    .replace(
+      /(?:^|[\s·|,;_-])(?:fast[_\s-]*)?push[_\s-]*in(?=$|[\s·|,;_-])/giu,
+      ""
+    )
+    .replace(/[_\s-]{2,}/gu, "_")
+    .replace(/\s*[·|,;]+\s*/gu, " · ")
+    .replace(/^\s*[·|,;_-]+|[·|,;_-]+\s*$/gu, "")
+    .trim();
+  return sanitized || "opening frame, stable initial composition";
+}
+
 /** Replace legacy internal character-key labels in an already-persisted lock. */
 export function replaceVerticalDramaShotCompositionCharacterKeys(
   prompt: string,
@@ -142,6 +200,46 @@ export function ensureVerticalDramaShotCompositionLock(input: {
     return input.prompt;
   }
   return `${input.prompt.trimEnd()}\n\n${lock}`;
+}
+
+/**
+ * Replace a legacy/current-shot lock with the Start Frame-safe projection.
+ * Existing prompts can already contain a lock that describes a later prop
+ * insert, so the normal "append only when missing" helper is insufficient for
+ * this role-specific boundary.
+ */
+export function ensureVerticalDramaStartFrameShotCompositionLock(input: {
+  prompt: string;
+  composition?: VerticalDramaShotComposition;
+  characterNameByKey?: ReadonlyMap<string, string>;
+}): string {
+  const startFrameComposition = deriveVerticalDramaStartFrameShotComposition(
+    input.composition
+  );
+  const lock = renderVerticalDramaShotCompositionLock(
+    startFrameComposition,
+    input.characterNameByKey
+  );
+  if (!lock) return input.prompt;
+
+  const marker = "CURRENT SHOT COMPOSITION LOCK";
+  const start = input.prompt.indexOf(marker);
+  if (start < 0) return `${input.prompt.trimEnd()}\n\n${lock}`;
+
+  const nextMarkers = [
+    "\nSCENE CONTINUITY LOCK",
+    "\nVIDEO-FACE VISIBILITY LOCK",
+    "\nCHARACTER IDENTITY MAP",
+    "\nIMAGE NEGATIVE CONSTRAINTS",
+    "\nBEGIN CHARACTER IDENTITY LOCKS",
+    "\nSTART FRAME OPENING STATE LOCK",
+  ];
+  const endCandidates = nextMarkers
+    .map(nextMarker => input.prompt.indexOf(nextMarker, start + marker.length))
+    .filter(index => index >= 0);
+  const end =
+    endCandidates.length > 0 ? Math.min(...endCandidates) : input.prompt.length;
+  return `${input.prompt.slice(0, start)}${lock}${input.prompt.slice(end)}`;
 }
 
 function hasVerticalDramaGroundingMarker(

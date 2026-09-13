@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockInvalidateSeriesGet = vi.fn();
 const mockGenerateMutateAsync = vi.fn();
 const mockExtendMutateAsync = vi.fn();
+const mockRepairStoryJobMutateAsync = vi.fn();
 let generateShouldFail = false;
 let extendShouldFail = false;
 let generateResult: {
@@ -53,6 +54,23 @@ let activeStoryJobData: {
   kind: string;
   status: string;
   progress: unknown;
+} | null = null;
+let recoveryStoryJobData: {
+  jobId: string;
+  kind: string;
+  status: string;
+  canResume: boolean;
+  reason: string;
+  completedEpisodeNumbers: number[];
+  remainingEpisodeNumbers: number[] | null;
+  completedEpisodeCount: number;
+  remainingEpisodeCount: number | null;
+  totalEpisodeCount: number | null;
+  recoveryAttempts: number;
+  maxRecoveryAttempts: number;
+  checkpointUpdatedAt: string | null;
+  error: string | null;
+  updatedAt: string;
 } | null = null;
 
 /**
@@ -97,7 +115,15 @@ const mockGetStoryJobStatusFetch = vi.fn(
             status: "succeeded",
             progress: null,
             result: extendResult,
-          };
+        };
+    }
+    if (jobId === "repaired-job") {
+      return {
+        kind: "deep_generate",
+        status: "succeeded",
+        progress: null,
+        result: generateResult,
+      };
     }
     return null;
   }
@@ -123,6 +149,14 @@ vi.mock("@/lib/trpc", () => ({
         // No active job to resume in this file's tests by default — resume
         // behavior has its own dedicated coverage below.
         useQuery: () => ({ data: activeStoryJobData }),
+      },
+      getStoryJobRecovery: {
+        useQuery: () => ({
+          data: recoveryStoryJobData,
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }),
       },
       getStoryGenerationRun: {
         useQuery: () => ({
@@ -162,6 +196,28 @@ vi.mock("@/lib/trpc", () => ({
           mutateAsync: async (input: unknown) => {
             mockExtendMutateAsync(input);
             return { jobId: "extend-job", deduped: false };
+          },
+          isPending: false,
+        }),
+      },
+      repairStoryJob: {
+        useMutation: (_opts: unknown) => ({
+          mutateAsync: async (input: unknown) => {
+            mockRepairStoryJobMutateAsync(input);
+            return {
+              started: true,
+              jobId: "repaired-job",
+              status: "queued",
+              reason: "active",
+              state: {
+                ...(recoveryStoryJobData ?? {}),
+                jobId: "repaired-job",
+                kind: "deep_generate",
+                status: "queued",
+                canResume: false,
+                reason: "active",
+              },
+            };
           },
           isPending: false,
         }),
@@ -230,6 +286,7 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
     extendResult = { partial: false, horizonEndEpisode: 10, chunkSizes: [5] };
     seasonCritiqueSeriesGetData = undefined;
     activeStoryJobData = null;
+    recoveryStoryJobData = null;
   });
 
   describe("no plan yet (hasPlan=false) — always chains both calls", () => {
@@ -1930,6 +1987,97 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
       expect(
         screen.queryByRole("button", { name: /แก้ไขที่การตั้งค่าซีรีย์/ })
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("checkpoint recovery", () => {
+    it("shows the repair action and preserves the normal generation guard", async () => {
+      recoveryStoryJobData = {
+        jobId: "stalled-job",
+        kind: "deep_generate",
+        status: "failed",
+        canResume: true,
+        reason: "checkpoint_available",
+        completedEpisodeNumbers: [1, 2],
+        remainingEpisodeNumbers: [3, 4],
+        completedEpisodeCount: 2,
+        remainingEpisodeCount: 2,
+        totalEpisodeCount: 4,
+        recoveryAttempts: 0,
+        maxRecoveryAttempts: 8,
+        checkpointUpdatedAt: "2026-09-12T00:00:00.000Z",
+        error: "job stalled more than allowable limit",
+        updatedAt: "2026-09-12T00:00:00.000Z",
+      };
+      render(
+        <VerticalDramaDeepStoryDraftsActions
+          lang="th"
+          seriesId="10"
+          readOnly={false}
+          targetEpisodeCount={4}
+          hasPlan={true}
+          deepDraftSummary={undefined}
+          onGenerateStoryBible={resolvedOnGenerateStoryBible()}
+        />,
+      );
+
+      expect(
+        screen.getByRole("button", { name: /ซ่อมและทำต่อจาก checkpoint/ }),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("vd-deep-story-drafts-recovery-summary")).toHaveTextContent(
+        "บันทึกแล้ว 2 ตอน · จะทำต่อ 3, 4",
+      );
+      expect(screen.getByTestId("vd-deep-story-drafts-primary-cta")).toBeDisabled();
+    });
+
+    it("confirms recovery and polls the same repaired job", async () => {
+      recoveryStoryJobData = {
+        jobId: "stalled-job",
+        kind: "deep_generate",
+        status: "failed",
+        canResume: true,
+        reason: "checkpoint_available",
+        completedEpisodeNumbers: [1, 2],
+        remainingEpisodeNumbers: [3, 4],
+        completedEpisodeCount: 2,
+        remainingEpisodeCount: 2,
+        totalEpisodeCount: 4,
+        recoveryAttempts: 0,
+        maxRecoveryAttempts: 8,
+        checkpointUpdatedAt: "2026-09-12T00:00:00.000Z",
+        error: "job stalled more than allowable limit",
+        updatedAt: "2026-09-12T00:00:00.000Z",
+      };
+      render(
+        <VerticalDramaDeepStoryDraftsActions
+          lang="th"
+          seriesId="10"
+          readOnly={false}
+          targetEpisodeCount={4}
+          hasPlan={true}
+          onGenerateStoryBible={resolvedOnGenerateStoryBible()}
+        />,
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: /ซ่อมและทำต่อจาก checkpoint/ }),
+      );
+      await userEvent.click(
+        screen.getByTestId("vd-deep-story-drafts-recovery-confirm-submit"),
+      );
+
+      await waitFor(() =>
+        expect(mockRepairStoryJobMutateAsync).toHaveBeenCalledWith({
+          seriesId: "10",
+          jobId: "stalled-job",
+        }),
+      );
+      await waitFor(() =>
+        expect(mockGetStoryJobStatusFetch).toHaveBeenCalledWith({
+          seriesId: "10",
+          jobId: "repaired-job",
+        }),
+      );
+      expect(mockInvalidateSeriesGet).toHaveBeenCalled();
     });
   });
 });

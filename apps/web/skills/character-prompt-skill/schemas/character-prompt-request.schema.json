@@ -19,7 +19,19 @@
         "images_per_character": { "type": "integer", "minimum": 1, "maximum": 100 },
         "face_diversity": { "type": "string", "enum": ["low", "medium", "high", "maximum"] },
         "presentation_variants": { "type": "integer", "minimum": 1, "maximum": 20 },
-        "render_context": { "type": "string" }
+        "render_context": { "type": "string" },
+        "camera_framing": {
+          "type": "string",
+          "enum": [
+            "full_body",
+            "three_quarter",
+            "half_body",
+            "medium_close_up",
+            "close_up",
+            "extreme_close_up",
+            "wide_environmental"
+          ]
+        }
       }
     }
   }

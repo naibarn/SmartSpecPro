@@ -962,6 +962,10 @@ async function runImproveScriptWholeBlockPass(params: {
       executionPolicy,
       maxTokens: VD_IMPROVE_SCRIPT_PER_ROUND_MAX_TOKENS,
       temperature: 0.4,
+      verticalDramaContext: {
+        seriesId,
+        taskClass: "script_generation",
+      },
     });
     callsMade += 1;
 
@@ -1163,6 +1167,10 @@ async function runImproveScriptEpisodePass(params: {
       executionPolicy,
       maxTokens: VD_IMPROVE_SCRIPT_PER_ROUND_MAX_TOKENS,
       temperature: 0.4,
+      verticalDramaContext: {
+        seriesId,
+        taskClass: "script_generation",
+      },
     });
     callsMade += 1;
 

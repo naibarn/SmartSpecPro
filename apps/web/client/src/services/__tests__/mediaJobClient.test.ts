@@ -197,6 +197,18 @@ describe("MediaJobClient", () => {
     expect(spec.inputs.assets?.[0].uri).toBe("file:///test.wav");
   });
 
+  it("passes the selected embedded audio stream to waveform extraction", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const promise = client.getWaveformPeaks("file:///test.mp4", 100, 2);
+    await vi.advanceTimersByTimeAsync(3100);
+    await promise;
+
+    expect(mockAdapter.submitJobCalls[0].params?.audioStreamIndex).toBe(2);
+  });
+
   it("detectDeadAir convenience method builds correct job spec", async () => {
     mockAdapter.setStatusSequence([
       { jobId: "any", status: "done", progress: 1.0 },
@@ -213,6 +225,20 @@ describe("MediaJobClient", () => {
     expect(spec.jobType).toBe("dead_air_detect");
     expect(spec.params?.thresholdDb).toBe(-35);
     expect(spec.params?.minSilenceMs).toBe(800);
+  });
+
+  it("passes the selected embedded audio stream to dead-air detection", async () => {
+    mockAdapter.setStatusSequence([
+      { jobId: "any", status: "done", progress: 1.0 },
+    ]);
+
+    const promise = client.detectDeadAir("file:///test.mp4", {
+      audioStreamIndex: 3,
+    });
+    await vi.advanceTimersByTimeAsync(3100);
+    await promise;
+
+    expect(mockAdapter.submitJobCalls[0].params?.audioStreamIndex).toBe(3);
   });
 
   it("detectDeadAir uses default params when none provided", async () => {

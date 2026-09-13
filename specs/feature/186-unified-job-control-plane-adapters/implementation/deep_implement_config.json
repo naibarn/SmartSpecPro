@@ -1,0 +1,38 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/186-unified-job-control-plane-adapters/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/186-unified-job-control-plane-adapters/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm --workspace @smartspec/web run test",
+  "sections": [
+    "section-01-contracts",
+    "section-02-persistence-migration",
+    "section-03-lifecycle-service",
+    "section-04-outbox-adapters",
+    "section-05-runtime-reconciler",
+    "section-06-monitor-security",
+    "section-07-python-celery-compatibility",
+    "section-08-verification-operations"
+  ],
+  "sections_state": {
+    "section-01-contracts": { "status": "complete", "commit_hash": "working-tree" },
+    "section-02-persistence-migration": { "status": "complete", "commit_hash": "working-tree" },
+    "section-03-lifecycle-service": { "status": "complete", "commit_hash": "working-tree" },
+    "section-04-outbox-adapters": { "status": "complete", "commit_hash": "working-tree" },
+    "section-05-runtime-reconciler": { "status": "complete", "commit_hash": "working-tree" },
+    "section-06-monitor-security": { "status": "complete", "commit_hash": "working-tree" },
+    "section-07-python-celery-compatibility": { "status": "complete", "commit_hash": "working-tree" },
+    "section-08-verification-operations": { "status": "complete", "commit_hash": "working-tree" }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-12T15:00:42.527235+00:00"
+}

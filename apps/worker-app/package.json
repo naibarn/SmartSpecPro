@@ -1,6 +1,6 @@
 {
   "name": "@smartspec/worker-app",
-  "version": "0.1.320",
+  "version": "0.1.336",
   "private": true,
   "type": "module",
   "scripts": {
@@ -18,10 +18,12 @@
     "speaker-aware:test": "python3 -m unittest discover -s speaker-aware-runner -p test_runner.py",
     "speaker-aware:build:windows": "powershell -ExecutionPolicy Bypass -File speaker-aware-runner/build-windows.ps1",
     "source:mac": "python3 scripts/package-macos-source.py",
-    "release:windows": "node scripts/package-windows-release.mjs"
+    "release:windows": "node scripts/package-windows-release.mjs",
+    "release:mac": "node scripts/package-macos-release.mjs"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",
+    "@smartspec/shared": "*",
     "@smartspec/remotion-render": "*",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.7.2",

@@ -3,6 +3,7 @@ import MediaHistory, {
   buildFallbackApiUrl,
   canAddTaskToGallery,
   getVideoEditorLibraryItemIdForTask,
+  hasMediaTaskErrorProviderMismatch,
   MEDIA_HISTORY_TASK_GC_TIME_MS,
   MEDIA_HISTORY_TASK_REFETCH_INTERVAL_MS,
   MEDIA_HISTORY_TASK_REVALIDATE_ON_MOUNT,
@@ -43,7 +44,30 @@ describe("MediaHistory module", () => {
   });
 
   it("does not fall back to Kie.ai for unknown explicit providers", () => {
-    expect(buildFallbackApiUrl("unknown-provider", "/v1/jobs/status")).toBeUndefined();
+    expect(
+      buildFallbackApiUrl("unknown-provider", "/v1/jobs/status")
+    ).toBeUndefined();
+  });
+
+  it("detects a legacy error whose adapter name does not match the selected provider", () => {
+    expect(
+      hasMediaTaskErrorProviderMismatch(
+        "wavespeed_ai",
+        "Image generation failed: Kie.ai task submission failed"
+      )
+    ).toBe(true);
+    expect(
+      hasMediaTaskErrorProviderMismatch(
+        "wavespeed_ai",
+        "WaveSpeed API error: HTTP 404"
+      )
+    ).toBe(false);
+    expect(
+      hasMediaTaskErrorProviderMismatch(
+        "unknown-provider",
+        "Kie.ai task submission failed"
+      )
+    ).toBe(true);
   });
 
   it("parses source and media type filters from route queries", () => {
@@ -95,8 +119,8 @@ describe("MediaHistory module", () => {
           status: "completed",
           resultUrl: "/api/storage/files/gallery/1",
         },
-        true,
-      ),
+        true
+      )
     ).toBe(true);
     expect(
       canAddTaskToGallery(
@@ -105,8 +129,8 @@ describe("MediaHistory module", () => {
           status: "completed",
           resultUrl: "/api/storage/files/gallery/1",
         },
-        false,
-      ),
+        false
+      )
     ).toBe(false);
     expect(
       canAddTaskToGallery(
@@ -115,14 +139,11 @@ describe("MediaHistory module", () => {
           status: "processing",
           resultUrl: "/api/storage/files/gallery/1",
         },
-        true,
-      ),
+        true
+      )
     ).toBe(false);
     expect(
-      canAddTaskToGallery(
-        { mediaType: "image", status: "completed" },
-        true,
-      ),
+      canAddTaskToGallery({ mediaType: "image", status: "completed" }, true)
     ).toBe(false);
     expect(
       canAddTaskToGallery(
@@ -131,8 +152,8 @@ describe("MediaHistory module", () => {
           status: "completed",
           resultUrl: "/api/storage/files/gallery/1",
         },
-        true,
-      ),
+        true
+      )
     ).toBe(false);
   });
 
@@ -149,7 +170,7 @@ describe("MediaHistory module", () => {
           },
         },
         resultData: undefined,
-      }),
+      })
     ).toBe("คาเฟ่รักในเวทีพิเศษ ตอนที่ 29-1");
   });
 
@@ -159,21 +180,21 @@ describe("MediaHistory module", () => {
         mediaType: "image",
         parameters: { aspectRatio: "1:1" },
         resultData: { width: 1080, height: 1920 },
-      }),
+      })
     ).toBe("9:16");
     expect(
       resolveMediaHistoryGalleryAspectRatio({
         mediaType: "image",
         parameters: { aspectRatio: "9:16" },
         resultData: undefined,
-      }),
+      })
     ).toBe("9:16");
     expect(
       resolveMediaHistoryGalleryAspectRatio({
         mediaType: "video",
         parameters: undefined,
         resultData: undefined,
-      }),
+      })
     ).toBe("16:9");
   });
 });

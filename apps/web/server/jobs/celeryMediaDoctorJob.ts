@@ -18,14 +18,24 @@ export async function runCeleryMediaDoctorMonitorOnce() {
   }
 
   if (status.queue.stalePendingCount > 0) {
+    const affectedUsers = status.users.filter((user) => user.stalePendingCount > 0);
+    const affectedUserIds = affectedUsers.map((user) => user.userId).slice(0, 5);
+    const affectedTaskIds = affectedUsers.flatMap((user) => user.staleTaskIds).slice(0, 10);
     await reportSystemFailure({
       source: "celery_media_doctor",
       title: "Urgent: stale Celery media queue detected",
-      errorMessage: "One or more image media tasks have remained pending for more than 3 minutes without completing.",
+      errorMessage: "One or more image media tasks remained unclaimed for more than 3 minutes while the owner had available processing capacity.",
       priority: "critical",
+      affectedUserIds,
+      affectedTaskIds,
       extra: {
         stalePendingCount: status.queue.stalePendingCount,
         processingCount: status.queue.processingCount,
+        inFlightCount: status.queue.inFlightCount,
+        claimedPendingCount: status.queue.claimedPendingCount,
+        unclaimedPendingCount: status.queue.unclaimedPendingCount,
+        affectedUserCount: affectedUserIds.length,
+        affectedTaskCount: affectedTaskIds.length,
         redisMediaDepth: status.queue.redisMediaDepth,
         workerStatus: status.workers.media.status,
         beatStatus: status.workers.beat.status,

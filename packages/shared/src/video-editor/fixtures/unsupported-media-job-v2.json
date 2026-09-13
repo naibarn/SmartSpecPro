@@ -1,0 +1,12 @@
+{
+  "protocol": "smartaihub.media.job",
+  "version": "2.0",
+  "jobId": "job-fixture-v2",
+  "tenantId": "tenant-fixture-1",
+  "operation": "video.render",
+  "inputs": { "assets": [] },
+  "plan": { "planHash": "sha256:plan-fixture-v2", "profileVersion": "v2", "stages": [], "outputRoles": ["final_video"] },
+  "requirements": { "capabilities": [], "resourceProfile": "cpu_heavy" },
+  "retry": { "maxAttempts": 1, "backoffSeconds": 1 },
+  "billing": { "required": false, "estimateCredits": 0 }
+}

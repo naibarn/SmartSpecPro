@@ -51,6 +51,10 @@ vi.mock("./crypto", () => ({
 
 import { resolveProviders, executeWithFallback, makeWorkerLlmIdempotencyKey } from "./llmRouter";
 import { auditLogger } from "./auditLogger";
+import {
+  resolveVerticalDramaLlmExtraBodyParams,
+  VERTICAL_DRAMA_REASONING_POLICY_KEY,
+} from "./verticalDramaLlmPolicy";
 
 const mockAuditLog = vi.mocked(auditLogger.log);
 
@@ -169,6 +173,28 @@ describe("resolveProviders", () => {
     expect(result[0].isFree).toBe(true);
     expect(result[1].providerId).toBe(2);
     expect(result[2].providerId).toBe(3);
+  });
+
+  it("preserves the provider function-tool capability from the model mapping", async () => {
+    const provider = makeCandidate({ supportsFunctionTools: false });
+    let callCount = 0;
+    mockDbSelect.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return {
+          from: vi.fn().mockReturnValue({
+            innerJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockResolvedValue([provider]),
+            }),
+          }),
+        };
+      }
+      return { from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }) };
+    });
+
+    const result = await resolveProviders("gpt-4o");
+
+    expect(result[0]?.supportsFunctionTools).toBe(false);
   });
 
   it("excludes 'down' providers with active cooldown", async () => {
@@ -388,6 +414,111 @@ describe("executeWithFallback", () => {
     const body = JSON.parse(String((fetchInit as any)?.body ?? "{}"));
     expect(body.response_format).toEqual({ type: "json_object" });
     expect(body.response_format.json_schema).toBeUndefined();
+  });
+
+  it("sends the resolved Vertical Drama thinking policy to a capable OpenRouter route", async () => {
+    const provider = makeCandidate({
+      providerName: "openrouter",
+      baseUrl: "https://openrouter.ai/api/v1",
+      providerModelId: "openai/gpt-5.4-mini",
+      supportsThinking: true,
+    });
+    setupProviderResolution([provider]);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: "{\"ok\":true}" } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      }),
+    });
+
+    const extraBodyParams = resolveVerticalDramaLlmExtraBodyParams({
+      settings: { llm: { qualityProfile: "high" } },
+      taskClass: "story_architecture",
+    });
+    const result = await executeWithFallback({
+      model: "openai/gpt-5.4-mini",
+      messages: [{ role: "user", content: "Return JSON" }],
+      stream: false,
+      userId: 1,
+      maxTokens: 3_200,
+      extraBodyParams,
+    });
+
+    expect(result.type).toBe("success");
+    const [, fetchInit] = mockFetch.mock.calls[0] ?? [];
+    const body = JSON.parse(String((fetchInit as any)?.body ?? "{}"));
+    expect(body.reasoning).toEqual({ max_tokens: 3_040, exclude: true });
+    expect(body.max_tokens).toBe(6_240);
+    expect(body).not.toHaveProperty(VERTICAL_DRAMA_REASONING_POLICY_KEY);
+  });
+
+  it("reports an OpenRouter reasoning-only response with an actionable diagnostic", async () => {
+    const provider = makeCandidate({
+      providerName: "openrouter",
+      baseUrl: "https://openrouter.ai/api/v1",
+      providerModelId: "openai/gpt-5.6-luna",
+      supportsThinking: true,
+    });
+    setupProviderResolution([provider]);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: null, reasoning: "internal reasoning only" } }],
+        usage: { prompt_tokens: 10, completion_tokens: 3_000 },
+      }),
+    });
+
+    const result = await executeWithFallback({
+      model: "openai/gpt-5.6-luna",
+      messages: [{ role: "user", content: "Return JSON" }],
+      stream: false,
+      userId: 1,
+      maxTokens: 3_200,
+      enableThinking: true,
+    });
+
+    expect(result.type).toBe("error");
+    if (result.type === "error") {
+      expect(result.error).toContain("reasoning but no final assistant text");
+    }
+  });
+
+  it("strips the Vertical Drama thinking policy on an unsupported provider route", async () => {
+    const provider = makeCandidate({
+      providerName: "wavespeed_ai",
+      baseUrl: "https://api.wavespeed.ai/api/v3",
+      providerModelId: "some-model",
+      supportsThinking: false,
+    });
+    setupProviderResolution([provider]);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: "{\"ok\":true}" } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      }),
+    });
+
+    const result = await executeWithFallback({
+      model: "some-model",
+      messages: [{ role: "user", content: "Return JSON" }],
+      stream: false,
+      userId: 1,
+      extraBodyParams: resolveVerticalDramaLlmExtraBodyParams({
+        settings: { llm: { qualityProfile: "maximum" } },
+        taskClass: "story_architecture",
+      }),
+    });
+
+    expect(result.type).toBe("success");
+    const [, fetchInit] = mockFetch.mock.calls[0] ?? [];
+    const body = JSON.parse(String((fetchInit as any)?.body ?? "{}"));
+    expect(body).not.toHaveProperty("reasoning");
+    expect(body).not.toHaveProperty(VERTICAL_DRAMA_REASONING_POLICY_KEY);
   });
 
   it("treats Google INVALID_ARGUMENT as provider-fallback eligible", async () => {

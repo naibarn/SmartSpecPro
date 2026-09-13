@@ -12,6 +12,9 @@ class OpenAIAgentsRunner:
     async def run(self, *, agent:Any,input_text:Any,context:DirectorRunContext,session:Any|None=None,max_turns:int=6)->AgentRunOutcome:
         sdk=require_openai_agents_sdk(); Runner=sdk.Runner; RunConfig=sdk.RunConfig
         if context.config.require_explicit_model and not context.config.model: raise RuntimeError("AGENT_MODEL_NOT_CONFIGURED")
+        if context.config.api_style == "chat-completions": sdk.set_default_openai_api("chat_completions")
+        elif context.config.api_style == "responses": sdk.set_default_openai_api("responses")
+        else: raise RuntimeError("ENHANCED_UNSUPPORTED_PROVIDER_TRANSPORT")
         opaque=lambda v,n=20:hashlib.sha256(v.encode()).hexdigest()[:n]
         trace_id=context.trace_id if context.trace_id and re.fullmatch(r"trace_[A-Za-z0-9]{32}",context.trace_id) else None
         kwargs={"model":context.config.model,"workflow_name":context.config.workflow_name,"trace_id":trace_id,

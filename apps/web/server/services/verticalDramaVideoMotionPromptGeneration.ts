@@ -92,6 +92,7 @@ import { renderVerticalDramaBarrierMultiViewFactBlock } from "@shared/verticalDr
 import { filterSceneContinuityLockBlockForShot } from "@shared/verticalDramaSeries/sceneContinuity";
 import {
   deriveVerticalDramaSpokenCallerVirtualScreens,
+  renderVerticalDramaHardSpeakerMapPromptBlock,
   renderVerticalDramaSpokenCallerVirtualScreenPromptBlock,
 } from "@shared/verticalDramaSeries/spokenCallerVirtualScreen";
 
@@ -803,6 +804,7 @@ export interface GenerateVideoMotionPromptPackParams {
   publicUrl?: string | null;
   seriesId: number;
   episodeId: number;
+  episodeGenerationSettings?: unknown;
   episodeTitle: string;
   /** Series genre used to select the motion/physics policy. */
   genre?: string;
@@ -1289,6 +1291,12 @@ export async function generateVideoMotionPromptPack(
         firstAttemptMaxTokens: 16000,
         retryMaxTokens: 32000,
         modelFallbackPolicy: "recommended",
+        verticalDramaContext: {
+          seriesId: params.seriesId,
+          episodeId: params.episodeId,
+          taskClass: "video_motion",
+          settings: params.episodeGenerationSettings,
+        },
       })
     : await executeJsonPlanningCallWithRetry<VideoMotionPromptPackOutput>({
         model,
@@ -1300,6 +1308,12 @@ export async function generateVideoMotionPromptPack(
         schema: videoMotionPromptPackOutputSchema,
         label: "Video motion prompt pack",
         modelFallbackPolicy: "recommended",
+        verticalDramaContext: {
+          seriesId: params.seriesId,
+          episodeId: params.episodeId,
+          taskClass: "video_motion",
+          settings: params.episodeGenerationSettings,
+        },
       });
   const { data: validatedData, response } = generationResult;
   const usedVision = hasVision && "usedVision" in generationResult
@@ -2554,6 +2568,54 @@ export function resolveShotVideoPromptMotionProfile(
   };
 }
 
+export interface VerticalDramaVisualCastPolicy {
+  physicalCharacterRefs: string[];
+  physicalCharacterNames: string[];
+  screenCallerCharacterRefs: string[];
+  screenCallerCharacterNames: string[];
+  narrativeOnlyCharacterRefs: string[];
+  narrativeOnlyCharacterNames: string[];
+}
+
+function renderVerticalDramaVisualCastPolicyBlock(
+  policy: VerticalDramaVisualCastPolicy | undefined,
+): string | null {
+  if (!policy) return null;
+  const entries = (refs: string[], names: string[]) =>
+    refs
+      .map(
+        (characterKey, index) =>
+          `${names[index] ?? characterKey} [characterKey=${characterKey}]`,
+      )
+      .join(", ");
+  const physical = entries(
+    policy.physicalCharacterRefs,
+    policy.physicalCharacterNames,
+  );
+  const callers = entries(
+    policy.screenCallerCharacterRefs,
+    policy.screenCallerCharacterNames,
+  );
+  const narrativeOnly = entries(
+    policy.narrativeOnlyCharacterRefs,
+    policy.narrativeOnlyCharacterNames,
+  );
+
+  return [
+    "VISUAL CAST LOCK (SERVER-AUTHORITATIVE):",
+    `Physical scene cast ONLY: ${physical || "none"}. Do not add any other named person to the physical scene.`,
+    callers
+      ? `Explicit screen caller(s) ONLY (not physically present): ${callers}. They may appear only inside the explicitly assigned floating virtual screen/overlay, never on a real phone, tablet, monitor, or other physical display, and never as an additional body in the physical scene.`
+      : null,
+    narrativeOnly
+      ? `Narrative-only mentions (context only; NEVER visible, cast, or placed on screen): ${narrativeOnly}.`
+      : null,
+    "Do not infer additional visible characters from the synopsis, episode context, storyboard prose, or dialogue references.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 export interface GenerateVerticalDramaShotVideoPromptParams {
   userId: number;
   tenantId?: string;
@@ -2738,6 +2800,8 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
     characterIdentityMap?: string;
     /** Two-view physical barrier contract; never a phone/video-call role. */
     barrierMultiView?: VerticalDramaBarrierMultiView;
+    /** Server-resolved visible cast; synopsis-only names are context-only. */
+    visualCastPolicy?: VerticalDramaVisualCastPolicy;
     /** Explicit caller refs; caller status is never inferred from synopsis. */
     screenCallerCharacterRefs?: string[];
     /** Optional canonical speaker order for caller-screen derivation. */
@@ -3083,6 +3147,21 @@ export function buildShotVideoPromptUserPrompt(
         )
         .join(", ")}. Use these viewer/camera-relative positions exactly in both frame_analysis and prompt for characters without a custom identity description. Do not reassign identities or positions from an AI guess.`
     : null;
+  const visualCastPolicyBlock = renderVerticalDramaVisualCastPolicyBlock(
+    shotContext.visualCastPolicy,
+  );
+  const hardSpeakerMapBlock = renderVerticalDramaHardSpeakerMapPromptBlock({
+    physicalCharacterRefs:
+      shotContext.visualCastPolicy?.physicalCharacterRefs ?? [],
+    physicalCharacterNames:
+      shotContext.visualCastPolicy?.physicalCharacterNames,
+    screenCallerCharacterRefs:
+      shotContext.visualCastPolicy?.screenCallerCharacterRefs ??
+      shotContext.screenCallerCharacterRefs ?? [],
+    screenCallerCharacterNames:
+      shotContext.visualCastPolicy?.screenCallerCharacterNames,
+    dialogueLines,
+  });
   const speakerFaceBindingInstruction = dialogueLines.length
     ? "SPEAKER-TO-FACE BINDING (MANDATORY): first inspect the attached start frame, then match each visible face to the labeled portrait manifest by facial identity. For every dialogue line, animate only the exact named characterKey. For a character with a CUSTOM CHARACTER IDENTIFICATION OVERRIDE, use that exact description as the identity anchor and do not add a viewer-left/right position cue. For every other character, state the observed screen position from frame_analysis using ONLY viewer-left, viewer-center-left, viewer-center, viewer-center-right, or viewer-right next to the line. These coordinates are always from the viewer/camera side, never the character's anatomical left/right or left/right hand. Never use 'left hand', 'right hand', 'left-hand side', or 'right-hand side' as a screen-position label. Never infer identity from gender, clothing, or the requested prompt layout, and keep every non-speaker's mouth closed. If a face cannot be matched confidently, flag it instead of guessing."
     : null;
@@ -3096,6 +3175,8 @@ export function buildShotVideoPromptUserPrompt(
 
   return [
     `Shot number: ${params.shotNumber}`,
+    visualCastPolicyBlock,
+    hardSpeakerMapBlock,
     typeof params.shotDurationSeconds === "number"
       ? `Clip duration: ${params.shotDurationSeconds}s`
       : null,
@@ -4176,6 +4257,21 @@ function buildSpeakerSwitchUserPrompt(
         )
         .join(", ")}. Use these viewer/camera-relative positions exactly in both frame_analysis and every timed prompt segment for characters without a custom identity description. Do not reassign identities or positions from an AI guess.`
     : null;
+  const visualCastPolicyBlock = renderVerticalDramaVisualCastPolicyBlock(
+    shotContext.visualCastPolicy,
+  );
+  const hardSpeakerMapBlock = renderVerticalDramaHardSpeakerMapPromptBlock({
+    physicalCharacterRefs:
+      shotContext.visualCastPolicy?.physicalCharacterRefs ?? [],
+    physicalCharacterNames:
+      shotContext.visualCastPolicy?.physicalCharacterNames,
+    screenCallerCharacterRefs:
+      shotContext.visualCastPolicy?.screenCallerCharacterRefs ??
+      shotContext.screenCallerCharacterRefs ?? [],
+    screenCallerCharacterNames:
+      shotContext.visualCastPolicy?.screenCallerCharacterNames,
+    dialogueLines: allDialogueLines,
+  });
   // Location reference image (Phase E of `planning/polished-toasting-
   // gadget.md` — location visual bible) — see
   // `buildShotVideoPromptUserPrompt`'s identical `locationReferenceImageName`
@@ -4236,6 +4332,8 @@ function buildSpeakerSwitchUserPrompt(
 
   return [
     `Shot number: ${params.shotNumber}`,
+    visualCastPolicyBlock,
+    hardSpeakerMapBlock,
     storySafety.level === "medium"
       ? `POLICY-SAFE STORY DIRECTIVE (MANDATORY): ${storySafety.instruction}`
       : null,
@@ -6097,6 +6195,11 @@ export async function generateVerticalDramaClipDialogue(
     maxTokens: 1200,
     schema: clipDialogueOutputSchema,
     label: "Clip dialogue regeneration",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      episodeId: params.episodeId,
+      taskClass: "clip_dialogue",
+    },
   });
 
   const usage = response.usage;

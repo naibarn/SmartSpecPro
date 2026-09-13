@@ -4,6 +4,7 @@ import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
 import { useWorkerAppContext } from "./app/workerContext";
 import { MediaWorkspaceHost } from "./screens/media-workspace/MediaWorkspaceHost";
 import { SeriesSwitcherModal } from "./screens/media-workspace/SeriesSwitcherModal";
+import { cameraMotionPlanFingerprint } from "@smartspec/shared";
 import type { CanonicalWorkerRouteId } from "./app/workerRoutes";
 import type { DeadAirRenderSelection } from "./screens/media-workspace/mediaWorkspaceTimeline";
 import type { WireAdapterPolicy, WireAdapterId } from "./screens/media-workspace/SpeakerAwareWorkflowPanel";
@@ -107,6 +108,9 @@ function buildMediaIdempotencyKey(input: {
       input.deadAir
         ? `${input.deadAir.volumeThresholdPct}:${input.deadAir.minDurationSec}:${input.deadAir.softeningBufferSec}:${input.deadAir.silenceSegments.map((segment) => `${segment.startMs}-${segment.endMs ?? "end"}`).join(",")}`
         : "profile-default",
+      input.deadAir?.cameraMotionPlan
+        ? cameraMotionPlanFingerprint(input.deadAir.cameraMotionPlan).slice(0, 48)
+        : "static-camera",
     ].join("-"),
     32,
   );
@@ -524,6 +528,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
           minDurationSec: deadAir?.minDurationSec,
           softeningBufferSec: deadAir?.softeningBufferSec,
           customSilenceSegments: deadAir?.silenceSegments,
+          cameraMotionPlan: deadAir?.cameraMotionPlan ?? null,
         },
       });
       setPlan(result);
@@ -561,6 +566,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
           minDurationSec: deadAir?.minDurationSec,
           softeningBufferSec: deadAir?.softeningBufferSec,
           customSilenceSegments: deadAir?.silenceSegments,
+          cameraMotionPlan: deadAir?.cameraMotionPlan ?? null,
           processingMode,
           idempotencyKey: buildMediaIdempotencyKey({
             seriesId: selected.seriesId,

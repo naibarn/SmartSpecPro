@@ -259,6 +259,94 @@ describe("vertical drama automatic character look selection", () => {
     expect(result.suggestions).toHaveLength(0);
   });
 
+  it("does not apply one character's outfit cue to the other characters in the same shot", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        { characterKey: "pim", name: "พิมพ์ชนก", hasPortrait: true },
+        {
+          characterKey: "pim-casual",
+          name: "พิมพ์ชนก",
+          parentCharacterKey: "pim",
+          variantLabel: "ชุดลำลองอยู่บ้าน",
+          variantType: "outfit",
+          description: "เสื้อครีมกับกางเกงกรมท่า",
+          hasPortrait: true,
+        },
+        { characterKey: "thee", name: "ธีร์", hasPortrait: true },
+        {
+          characterKey: "thee-work",
+          name: "ธีร์",
+          parentCharacterKey: "thee",
+          variantLabel: "ชุดทำงาน",
+          variantType: "outfit",
+          description: "เสื้อเชิ้ตครีมกับกางเกงกรมท่า",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["pim-casual", "thee"],
+          text: "พิมพ์ชนกในชุดลำลองนั่งรอ ธีร์ยืนอยู่หน้าห้อง",
+        },
+        {
+          shotNumber: 2,
+          characterKeys: ["pim", "thee-work"],
+          text: "ธีร์ในชุดทำงานวางแฟ้มให้พิมพ์ชนก แล้วถอยไปนั่งห่าง",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(2)).toEqual([
+      "pim-casual",
+      "thee",
+    ]);
+  });
+
+  it("locks an established outfit across adjacent shots in the same physical location", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        { characterKey: "pim", name: "พิมพ์ชนก", hasPortrait: true },
+        {
+          characterKey: "pim-casual",
+          name: "พิมพ์ชนก",
+          parentCharacterKey: "pim",
+          variantLabel: "ชุดลำลองอยู่บ้าน",
+          variantType: "outfit",
+          description: "เสื้อครีมกับกางเกงกรมท่า",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "pim-formal",
+          name: "พิมพ์ชนก",
+          parentCharacterKey: "pim",
+          variantLabel: "ชุดราตรี",
+          variantType: "outfit",
+          description: "เดรสสีเข้ม",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["pim-casual"],
+          locationKey: "clinic-front",
+          sceneKey: "clinic-arrival",
+          text: "พิมพ์ชนกในชุดลำลองยืนหน้าคลินิก",
+        },
+        {
+          shotNumber: 2,
+          characterKeys: ["pim-formal"],
+          locationKey: "clinic-front",
+          sceneKey: "clinic-arrival",
+          text: "พิมพ์ชนกในชุดราตรีเดินไปที่ประตูกระจก",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(2)).toEqual(["pim-casual"]);
+  });
+
   it("keeps the context-aware inherited look when the model returns age-stage refs", () => {
     const result = selectVerticalDramaCharacterLooks({
       catalog: [

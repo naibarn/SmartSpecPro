@@ -1,4 +1,4 @@
-import React, { act, useEffect } from "react";
+import React, { act, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
@@ -53,6 +53,21 @@ it("resolves a project-relative source before exposing it to the editor and queu
   await act(async () => state.explorer.onOpenProjectFile(entry('D:/project/relative.videoproject.json')));
   expect(select).toHaveBeenLastCalledWith('clips/C3775.MP4', 'D:/project/clips/C3775.MP4');
   expect(state.player.videoFile.path).toBe('D:/project/clips/C3775.MP4');
+});
+it("preserves a restored project source when the parent switches to its recorded workspace", async () => {
+  const select = vi.fn();
+  function Harness() {
+    const [path, setPath] = useState("/current");
+    return <MediaWorkspaceHost workspace={{localPath: path, status: "ready", fileCount: 0, totalBytes: 0}} scan={null} plan={null} busy={false} onSelectSourceFile={select} onWorkspacePathChange={setPath} />;
+  }
+  act(() => root.render(<Harness />));
+  const draft = createDefaultProjectDraft({projectId: "p-switch", title: "switch", videoPath: "/root/video.mp4", videoDurationMs: 1000});
+  draft.metadata = { ...draft.metadata, workspacePath: "/root" };
+  vi.mocked(invoke).mockResolvedValue(JSON.stringify(draft));
+  await act(async () => state.explorer.onOpenProjectFile(entry("/current/switch.videoproject.json")));
+  expect(state.player.videoFile.path).toBe("/root/video.mp4");
+  expect(state.player.loadedProjectDraft.projectId).toBe("p-switch");
+  expect(select).toHaveBeenLastCalledWith("video.mp4", "/root/video.mp4");
 });
 it("clears a stale queue source when opening a project without a source video", async () => {
   const select = vi.fn();

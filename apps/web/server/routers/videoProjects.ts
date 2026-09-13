@@ -110,7 +110,6 @@ import { calculateCreditCost } from "../services/pricingCalculator";
 import { mediaGenerationService, type AudioModel } from "../services/mediaGenerationService";
 import { signBearerToken } from "../_core/tokens";
 import { getCachedPublicAppUrl } from "../services/appRuntimeConfig";
-import { transcribeAudio } from "../_core/voiceTranscription";
 import { buildVideoIntelligenceCreditContext } from "../services/videoIntelligenceCreditGuards";
 import { assertR2StorageActive, storagePut, storageResolveUrl } from "../storage";
 import {
@@ -1933,27 +1932,16 @@ async function downloadGeneratedNarrationAudio(url: string): Promise<{ audioBuff
 }
 
 async function alignNarrationCaptions(args: {
-  audioUrl: string;
-  language: string;
   narration: string;
   sceneDurationMs: number;
-}): Promise<{ cues: CaptionCue[]; source: "aligned" | "estimated" }> {
-  try {
-    const result = await transcribeAudio({
-      audioUrl: absoluteVideoProjectMediaUrl(args.audioUrl),
-      language: args.language,
-      prompt: args.narration.slice(0, 1000),
-    });
-    if ("segments" in result && Array.isArray(result.segments) && result.segments.length > 0) {
-      const cues = normalizeTimestampedCaptionCues(result.segments, args.sceneDurationMs);
-      if (cues.length > 0) return { cues, source: "aligned" };
-    }
-  } catch (error) {
-    debugError("videoProjects", "Timestamped narration alignment unavailable; using deterministic caption fallback", error);
-  }
+}): Promise<{ cues: CaptionCue[]; source: "script_timed" }> {
+  // TTS already has the approved source text. Re-transcribing generated audio
+  // can silently change words, costs another provider call and loses the
+  // authored-text lineage. Until a verified audio.align worker is available,
+  // keep the display text exact and label the deterministic timing honestly.
   return {
     cues: deriveCaptionCues(args.narration, 0, args.sceneDurationMs),
-    source: "estimated",
+    source: "script_timed",
   };
 }
 
@@ -2046,16 +2034,13 @@ async function synthesizeProjectNarration(args: {
       audioBuffer = downloaded.audioBuffer;
       contentType = downloaded.contentType;
       audioUrl = generated.url;
-      const rawDuration = Number((generated.data as Record<string, unknown> | undefined)?.durationSeconds);
-      const providerDurationMs = Number.isFinite(rawDuration) && rawDuration > 0
-        ? Math.round(rawDuration * 1000)
-        : undefined;
-      generatedDurationMs = await probeAudioDurationMs(audioBuffer, contentType)
-        ?? providerDurationMs
-        // Last-resort fallback for a runtime without ffprobe and a provider
-        // that omitted duration metadata. It is intentionally used only as a
-        // fallback; MP3 byte size is not an authoritative duration.
-        ?? Math.max(1, Math.round(audioBuffer.byteLength / (128 * 1024 / 8) * 1000));
+      // The decoded file is the only authoritative duration for subtitle and
+      // timeline alignment. Provider metadata is useful for diagnostics but
+      // cannot substitute for probing the bytes we actually persist.
+      generatedDurationMs = await probeAudioDurationMs(audioBuffer, contentType);
+      if (generatedDurationMs === undefined) {
+        throw new Error("TTS output duration could not be verified by ffprobe");
+      }
       sceneCredits = result.creditsUsed || calculateCreditCost(catalogModel, { text: narrationText, ...extraParams });
     } else {
       // Backward-compatible fallback for a temporarily unavailable catalog;
@@ -2063,7 +2048,10 @@ async function synthesizeProjectNarration(args: {
       const tts = await synthesize(narrationText, { format: "mp3", provider: "openai" });
       audioBuffer = tts.audioBuffer;
       contentType = tts.contentType;
-      generatedDurationMs = Math.max(1, Math.round(tts.duration * 1000));
+      if (tts.durationMs === null) {
+        throw new Error("TTS output duration could not be verified by ffprobe");
+      }
+      generatedDurationMs = tts.durationMs;
     }
 
     const storageKey = `video-intelligence/${auth.tenantId}/${projectId}/narration/${scene.sceneId}-${Date.now()}.mp3`;
@@ -2095,8 +2083,6 @@ async function synthesizeProjectNarration(args: {
     const captionResult = hasManualCaptionCues
       ? { cues: scene.captionCues, source: "manual" as const }
       : await alignNarrationCaptions({
-          audioUrl: audioUrl ?? stored.url,
-          language: document.content.language,
           narration: narrationText,
           sceneDurationMs: narrationDurationMs,
         });
@@ -4238,11 +4224,11 @@ export const videoProjectsRouter = router({
         requestedByUserId: auth.userId,
         isAdminRequester: ctx.user?.role === "admin",
         executionTarget:
-          (ctx.req as typeof ctx.req & { smartaihubMcpRemotionExecutor?: boolean }).smartaihubMcpRemotionExecutor
+          (ctx.req as (typeof ctx.req & { smartaihubMcpRemotionExecutor?: boolean }) | undefined)?.smartaihubMcpRemotionExecutor
             ? "remotion_executor"
             : "desktop_worker",
         preferredWorkerId:
-          (ctx.req as typeof ctx.req & { smartaihubRemotionWorkerId?: string }).smartaihubRemotionWorkerId ?? null,
+          (ctx.req as (typeof ctx.req & { smartaihubRemotionWorkerId?: string }) | undefined)?.smartaihubRemotionWorkerId ?? null,
       });
 
       // Tracks whether the `renderJobId`/`previewJobId` backlink write below

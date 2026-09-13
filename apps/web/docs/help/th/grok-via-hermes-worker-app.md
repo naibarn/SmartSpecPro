@@ -12,6 +12,7 @@ tags:
   - "browser approval"
   - "private worker"
   - "windows"
+  - "macos"
   - "help"
   - "help/th"
 aliases:
@@ -27,7 +28,9 @@ Worker App ใช้รันงาน Grok media ส่วนตัวบนค
 
 ## ติดตั้งและจับคู่
 
-1. ดาวน์โหลด Windows installer ล่าสุดจากหน้านี้
+1. ในแผง release ของ Dashboard ให้ดาวน์โหลดตัวติดตั้งให้ตรงกับเครื่องที่จะใช้:
+   Windows EXE/MSI หรือ native DMG สำหรับ macOS Apple Silicon โดยแผงนี้ยังคง
+   แสดง release ของทุกระบบปฏิบัติการสำหรับผู้ใช้ที่ดูแลหลายเครื่อง
 2. ติดตั้งและเปิด **Smart AI Hub Worker App**
 3. ในแอปกด **Connect** แอปจะเปิดหน้า browser approval พร้อม user code
    ที่มีอายุสั้น
@@ -48,8 +51,12 @@ registration token, password, cookie หรือ credential ของ Grok
 - ระบบส่งงาน private ใหม่ให้ worker ที่ Online เท่านั้น
 - การปิดแอป sign out หรือให้เครื่อง sleep อาจทำให้งานที่รันอยู่หยุด
 
-Installer ที่ดาวน์โหลดจากหน้านี้เป็นเส้นทาง Windows ที่รองรับในปัจจุบัน
-ถ้ายังไม่มี macOS package ห้ามนำ Windows runtime archive ไปใช้แทน
+Worker App บน macOS ใช้เฉพาะ native render runtime
+`hyperframes-macos-arm64` และไม่ใช้ runtime ของ Windows/WSL2 ส่วน Hermes media
+runtime เป็น capability แยกกัน หากยังไม่มีการเผยแพร่สำหรับ target ของ Mac ให้ใช้
+เฉพาะ capability ที่แอปแสดงว่าพร้อม และห้ามนำ Windows archive ไปใช้แทน โดย in-app
+updater จะตรวจเฉพาะ platform/architecture ของเครื่องปัจจุบัน แต่ Dashboard ยังคง
+ให้ดาวน์โหลด release ของเครื่องอื่นได้
 
 ## ปัญหาที่พบบ่อย
 
@@ -69,4 +76,3 @@ Installer ที่ดาวน์โหลดจากหน้านี้เ�
 - [[grok-via-hermes-connections|การเชื่อมต่อ Grok ผ่าน Hermes]]
 - [[grok-via-hermes-admin|การดูแล Grok ผ่าน Hermes]]
 - [[grok-via-hermes-monitoring|การติดตาม Grok ผ่าน Hermes]]
-

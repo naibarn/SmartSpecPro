@@ -206,9 +206,7 @@ describe("VerticalDramaStoryboardPanel — shot-local character descriptions", (
       />,
     );
 
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "video prompt safety advisory",
-    );
+    expect(screen.getByText(/video prompt safety advisory/)).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

@@ -35,6 +35,8 @@ export interface MediaExplorerViewProps {
   onImportMediaToProject?: (entry: DirectoryEntry) => void;
   onNewProject?: (folderPath?: string) => void;
   selectedFilePath?: string | null;
+  /** Increment to focus the media tab after a workflow asks for a source. */
+  focusMediaRequest?: number;
   onCollapse?: () => void;
   onDirectoryChange?: (path: string) => void;
 }
@@ -95,6 +97,7 @@ export function MediaExplorerView({
   onImportMediaToProject,
   onNewProject,
   selectedFilePath,
+  focusMediaRequest,
   onCollapse,
   onDirectoryChange,
 }: MediaExplorerViewProps) {
@@ -177,6 +180,10 @@ export function MediaExplorerView({
     void loadDirectory(initialPath ?? null);
     return () => { browseRequest.current += 1; };
   }, [initialPath]);
+
+  useEffect(() => {
+    if (focusMediaRequest) setFileCategoryFilter("media");
+  }, [focusMediaRequest]);
 
   const handlePickFolder = async () => {
     try {

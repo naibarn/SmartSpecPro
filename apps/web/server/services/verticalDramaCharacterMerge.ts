@@ -374,6 +374,10 @@ export async function generateCharacterDuplicateAnalysis(
     maxTokens: 6000,
     schema: characterDuplicateAnalysisOutputSchema,
     label: "Character identity reconciler (duplicate analysis)",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "character_design",
+    },
   });
 
   const usage = response.usage;

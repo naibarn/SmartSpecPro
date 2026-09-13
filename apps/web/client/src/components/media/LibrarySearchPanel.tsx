@@ -9,6 +9,7 @@ import { FileImage, FileText, Film, Grid2X2, Loader2, Maximize2, Music, Plus, Se
 import type { LibraryItemTypeFilter, LibrarySearchResultItem } from "@/lib/libraryUi";
 import { getLibraryStatusMeta } from "@/lib/libraryUi";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
+import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
 import type { ProductionReferenceInput } from "@shared/mediaProduction";
 
 type MediaLibraryItemTypeFilter = Exclude<LibraryItemTypeFilter, "all">;
@@ -85,8 +86,11 @@ export default function LibrarySearchPanel({
       metadata && typeof metadata === "object"
         ? [
             variant === "thumbnail" ? metadata.thumbnail_key : undefined,
+            variant === "thumbnail" ? metadata.thumbnailKey : undefined,
             allowSourceKeyFallback ? metadata.source_key : undefined,
+            allowSourceKeyFallback ? metadata.sourceKey : undefined,
             allowSourceKeyFallback ? metadata.storage_key : undefined,
+            allowSourceKeyFallback ? metadata.storageKey : undefined,
           ]
             .find(value => typeof value === "string" && value.trim())
             ?.toString()
@@ -99,8 +103,15 @@ export default function LibrarySearchPanel({
     const value =
       variant === "thumbnail" ? item.thumbnail_url : item.source_url;
     const trimmed = value?.trim() || "";
-    return /^(?:\/api\/storage\/files\/|\/uploads\/)/i.test(trimmed)
-      ? trimmed
+    if (/^(?:\/api\/storage\/files\/|\/uploads\/)/i.test(trimmed)) {
+      return trimmed;
+    }
+
+    // Legacy Library rows may contain a valid HTTPS provider/CDN URL but no
+    // storage-key metadata. Keep those images visible and reusable while
+    // preferring the durable storage proxy whenever a managed key exists.
+    return /^https:\/\//i.test(trimmed)
+      ? normalizeMediaSourceUrl(trimmed)
       : null;
   };
 

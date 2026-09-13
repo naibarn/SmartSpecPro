@@ -24,11 +24,22 @@ import { AIDraftModal } from '../presentation/AIDraftModal';
 import SilenceDetectionPanel from './SilenceDetectionPanel';
 import SilenceDetectionDialog from './SilenceDetectionDialog';
 import TextClipEditor from './TextClipEditor';
+import SmartCameraPanel from './SmartCameraPanel';
+import ProjectBinPanel from './ProjectBinPanel';
+import AiMusicPanel from './AiMusicPanel';
+import AiMediaStudioPanel from './AiMediaStudioPanel';
+import VoiceRecorderPanel from './VoiceRecorderPanel';
+import SpeakerPlanPanel from './SpeakerPlanPanel';
+import SubtitleEditorPanel from './SubtitleEditorPanel';
+import BlurPanel from './BlurPanel';
+import SymbolCatalogPanel, { type SymbolItem } from './SymbolCatalogPanel';
+import CodeOverlayPanel from './CodeOverlayPanel';
+import type { QueueEditorOperation } from './EditorPanelShared';
 import { projectManager } from '../../services/projectManager';
 import { videoEditorRenderService, videoEditorMediaLibrary } from '../../services/videoEditorService';
 import ToastContainer, { showToast } from './Toast';
 import { useLocation } from 'wouter';
-import { sanitizeProjectName } from '@smartspec/shared';
+import { sanitizeProjectName, type ManagedAssetRef, type MediaJobEnvelope, type MediaOperation } from '@smartspec/shared';
 import { trpc } from '../../lib/trpc';
 import {
   buildVideoEditorLibraryAssetFromItem,
@@ -62,6 +73,8 @@ import { buildPresentationDraftImportSegments } from './presentationDraftImport'
 import { clamp01, DEFAULT_CLIP_TRANSFORM, removeTransformKeyframe, resolveTransformAtTime, upsertTransformKeyframe } from './transformKeyframes';
 import { addTextClipToProject, canMoveClipToTrack, shouldAllowOverlap } from './textTimelineUtils';
 import { isTextClipRolloutEnabled } from './textRollout';
+import { WebAssetResolver } from '../../services/webAssetResolver';
+import { buildCanonicalWorkerProject, getAssetSourceUrl, normalizePersistedVideoEditorProject } from './workerEditorProject';
 import {
   presentationSlideContentSchema,
   type PresentationSlideContent,
@@ -94,6 +107,15 @@ function getErrorMessage(error: unknown, fallback = 'Failed to generate media'):
     }
   }
   return fallback;
+}
+
+function parseManagedMediaAssetId(value: unknown): number | null {
+  const id = typeof value === 'number'
+    ? value
+    : typeof value === 'string' && /^[1-9]\d*$/.test(value)
+      ? Number(value)
+      : NaN;
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
 function extractTaskResultUrl(task: unknown): string | null {
@@ -313,7 +335,12 @@ function isImportedDraftAssetModel(model: unknown): boolean {
   return model === 'presentation-ai-draft' || model === 'presentation-ai-draft-audio';
 }
 
-export const VideoEditorPhase3: React.FC = () => {
+export interface VideoEditorPhase3Props {
+  /** Enables the browser-first Worker handoff controls on the primary route. */
+  workerHandoff?: boolean;
+}
+
+export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHandoff = false }) => {
   const { confirm } = useConfirm();
   const [location, setLocation] = useLocation();
 
@@ -352,7 +379,7 @@ export const VideoEditorPhase3: React.FC = () => {
   }>({ itemId: null, state: null });
 
   // Sidebar view
-  const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'draftAi' | 'silence' | 'text'>('library');
+  const [sidebarView, setSidebarView] = useState<'library' | 'bin' | 'mediaHistory' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'camera' | 'worker' | 'draftAi' | 'silence' | 'text' | 'aiMusic' | 'aiMediaStudio' | 'voiceover' | 'speakerPlan' | 'subtitles' | 'blur' | 'symbols' | 'codeOverlay'>('bin');
   const [textClipRolloutEnabled, setTextClipRolloutEnabled] = useState<boolean>(() => isTextClipRolloutEnabled());
   const [sidebarWidth, setSidebarWidth] = useState<number>(SIDEBAR_DEFAULT_WIDTH);
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
@@ -445,6 +472,9 @@ export const VideoEditorPhase3: React.FC = () => {
   const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
   const [showProjectList, setShowProjectList] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSubmittingWorkerJob, setIsSubmittingWorkerJob] = useState(false);
+  const [workerJobId, setWorkerJobId] = useState<number | null>(null);
+  const queueMutationIdsRef = useRef(new Map<string, { revisionId: string; idempotencyKey: string }>());
   const trpcUtils = trpc.useUtils();
   const projectListQuery = trpc.videoEditorProjects.list.useQuery(
     { limit: 50, offset: 0 },
@@ -457,6 +487,8 @@ export const VideoEditorPhase3: React.FC = () => {
     onError: (err: any) => console.warn('[AutoSave] DB auto-save failed:', err.message),
   });
   const deleteMutation = trpc.videoEditorProjects.delete.useMutation();
+  const submitWorkerJobMutation = trpc.editorMediaJobs.submit.useMutation();
+  const workerAssetResolverRef = useRef(new WebAssetResolver());
   const createLibraryItemMutation = trpc.library.createItem.useMutation();
   const deleteLibraryItemMutation = trpc.library.deleteItem.useMutation();
   const createPresentationDeckMutation = trpc.presentation.createDeck.useMutation();
@@ -590,9 +622,14 @@ export const VideoEditorPhase3: React.FC = () => {
         showToast('Project not found', 'error');
         return;
       }
-      setProject(loaded.projectData as VideoEditorProject);
+      const normalized = normalizePersistedVideoEditorProject(loaded.projectData);
+      if (!normalized) {
+        showToast('Project format is not supported by the Web Editor', 'error');
+        return;
+      }
+      setProject(normalized);
       setCurrentProjectId(loaded.id);
-      setHistory([loaded.projectData as VideoEditorProject]);
+      setHistory([normalized]);
       setHistoryIndex(0);
       setIsDirty(false);
       setCurrentTime(0);
@@ -632,9 +669,14 @@ export const VideoEditorPhase3: React.FC = () => {
         if (cancelled || !loaded) {
           return;
         }
-        setProject(loaded.projectData as VideoEditorProject);
+        const normalized = normalizePersistedVideoEditorProject(loaded.projectData);
+        if (!normalized) {
+          showToast('Project format is not supported by the Web Editor', 'error');
+          return;
+        }
+        setProject(normalized);
         setCurrentProjectId(loaded.id);
-        setHistory([loaded.projectData as VideoEditorProject]);
+        setHistory([normalized]);
         setHistoryIndex(0);
         setIsDirty(false);
         setCurrentTime(0);
@@ -771,14 +813,19 @@ export const VideoEditorPhase3: React.FC = () => {
     try {
       setShowExportDialog(false);
 
-      // Create a copy excluding clips from hidden/muted tracks for render
+      // Create a copy excluding clips from hidden/muted/non-solo tracks for render
       const renderProject = JSON.parse(JSON.stringify(project));
       renderProject.export = settings;
+      const hasSoloAudioTrack = renderProject.timeline.tracks.some((track: any) => track.type === 'audio' && track.solo === true);
       renderProject.timeline.tracks = renderProject.timeline.tracks.map((track: any) => ({
         ...track,
-        // Exclude hidden tracks entirely; mute audio on muted tracks
+        // Exclude hidden tracks entirely; apply mute, solo and track gain to audio clips
         clips: track.visible === false ? [] : track.clips.map((c: any) =>
-          track.muted ? { ...c, volume: 0 } : c
+          track.muted || (track.type === 'audio' && hasSoloAudioTrack && !track.solo)
+            ? { ...c, volume: 0 }
+            : track.type === 'audio'
+              ? { ...c, volume: Math.max(0, Math.min(1, (c.volume ?? 1) * (track.volume ?? 1))) }
+              : c
         ),
       }));
 
@@ -842,6 +889,159 @@ export const VideoEditorPhase3: React.FC = () => {
     });
   }, [addToHistory]);
 
+  const handleAssetImportedToBin = useCallback((asset: MediaLibraryAsset, localPath: string) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
+      const newAsset = addAssetToProject(newProject, asset, localPath);
+      newAsset.source = 'imported';
+      newAsset.originalPath = localPath;
+      newAsset.path = localPath;
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [addToHistory]);
+
+  const editorAssetOptions = useMemo(() => Object.values(project.assets).map((asset) => ({
+    id: asset.id,
+    name: asset.name || asset.filename,
+    type: asset.type,
+  })), [project.assets]);
+
+  /** Queue an analysis/media operation while keeping all source references managed. */
+  const handleQueueMediaOperation = useCallback<QueueEditorOperation>(async (operation, options = {}, selectedAssetIds = []) => {
+    if (!workerHandoff) {
+      throw new Error('เปิด Worker handoff ก่อนส่งงานหนัก');
+    }
+    if (isSubmittingWorkerJob) return;
+    setIsSubmittingWorkerJob(true);
+    try {
+      const selected = selectedAssetIds.length > 0
+        ? selectedAssetIds.map((id) => project.assets[id]).filter(Boolean)
+        : [];
+      const refs: Record<string, ManagedAssetRef> = {};
+      const unresolved: string[] = [];
+      await Promise.all(selected.map(async (asset) => {
+        const existingId = parseManagedMediaAssetId(asset.mediaAssetId);
+        if (existingId) {
+          refs[asset.id] = { namespace: 'media_asset', id: existingId };
+          return;
+        }
+        const sourceUrl = getAssetSourceUrl(asset);
+        if (!sourceUrl) {
+          unresolved.push(asset.name || asset.filename || asset.id);
+          return;
+        }
+        try {
+          const imported = await workerAssetResolverRef.current.importRemoteAsset(sourceUrl, {
+            mediaType: asset.type,
+            projectId: currentProjectId ?? undefined,
+            idempotencyKey: `queue-import:${currentProjectId ?? 'unscoped'}:${asset.id}`,
+          });
+          const mediaAssetId = parseManagedMediaAssetId(imported.mediaAssetId);
+          if (!mediaAssetId) {
+            unresolved.push(asset.name || asset.filename || asset.id);
+            return;
+          }
+          refs[asset.id] = { namespace: 'media_asset', id: mediaAssetId };
+        } catch {
+          unresolved.push(asset.name || asset.filename || asset.id);
+        }
+      }));
+      if (unresolved.length > 0) {
+        throw new Error(`สื่อบางรายการยังไม่พร้อมสำหรับ Worker: ${unresolved.slice(0, 3).join(', ')}`);
+      }
+
+      const projectId = currentProjectId ? `video-project-${currentProjectId}` : `web-editor-${generateId('project')}`;
+      const projectSnapshot = JSON.parse(JSON.stringify(project)) as VideoEditorProject;
+      const built = buildCanonicalWorkerProject(projectSnapshot, { refs, unresolved }, projectId);
+      const outputRoles: Record<MediaOperation, string[]> = {
+        'media.probe': ['probe_json'], 'media.proxy': ['proxy_video'], 'media.waveform': ['waveform_json'],
+        'media.thumbnail': ['thumbnail_image'], 'media.analysis': ['analysis_json'], 'media.silence_detect': ['silence_json'],
+        'media.reframe': ['reframe_json'], 'media.speaker_scan': ['speaker_plan_json'], 'media.transcribe': ['transcript_json'],
+        'media.align': ['subtitle_vtt'], 'media.audio_mix': ['mixed_audio'], 'media.audio_extract': ['extracted_audio'],
+        'media.audio_export': ['audio_mp3'], 'media.ai_music': ['ai_music'], 'media.ai_media_studio': ['generated_media'],
+        'media.privacy_track': ['privacy_track_json'], 'media.recording_normalize': ['normalized_audio'],
+        'video.render_still': ['preview_frame'], 'video.render': ['final_video'],
+      };
+      const operationOutputRoles = operation === 'media.ai_media_studio' && options.mode === 'stock_svg'
+        ? ['sanitized_svg']
+        : outputRoles[operation];
+      const isPaid = operation === 'media.ai_music' || operation === 'media.ai_media_studio';
+      const mutationFingerprint = `${projectId}:${operation}:${projectSnapshot.modifiedAt}:${JSON.stringify(options)}`;
+      const previousMutation = queueMutationIdsRef.current.get(mutationFingerprint);
+      const revisionId = previousMutation?.revisionId || generateId('revision');
+      const idempotencyKey = previousMutation?.idempotencyKey || `${projectId}:${revisionId}:${operation}`;
+      queueMutationIdsRef.current.set(mutationFingerprint, { revisionId, idempotencyKey });
+      const envelope: Omit<MediaJobEnvelope, 'tenantId'> = {
+        protocol: 'smartaihub.media.job', version: '1.0', jobId: generateId('editor-job'), projectId,
+        revisionId, timelineVersion: 1, operation, options,
+        inputs: { assets: Object.values(refs), project: built.project },
+        plan: { planHash: generateId('plan'), profileVersion: 'web-editor-1', stages: [{ id: 'operation', operation, dependsOn: [] }], outputRoles: operationOutputRoles },
+        requirements: {
+          capabilities: [`editor-${operation.replaceAll('.', '-')}`],
+          resourceProfile: operation === 'video.render' || operation === 'video.render_still' ? 'gpu_required' : 'cpu_heavy',
+          maxDurationSeconds: 3600,
+        },
+        retry: { maxAttempts: 2, backoffSeconds: 30 },
+        billing: { required: isPaid, estimateCredits: isPaid ? 1 : 0 },
+      };
+      const result = await submitWorkerJobMutation.mutateAsync({
+        envelope: envelope as Record<string, unknown>,
+        idempotencyKey,
+        expectedRevisionId: envelope.revisionId,
+      });
+      setWorkerJobId(result.job.id);
+      setSidebarView('worker');
+      showToast('ส่งงานเข้า Worker queue แล้ว', 'success', 5000);
+      setLocation(`/worker-jobs?jobId=${encodeURIComponent(String(result.job.id))}`);
+    } finally {
+      setIsSubmittingWorkerJob(false);
+    }
+  }, [currentProjectId, getAssetSourceUrl, isSubmittingWorkerJob, project, setLocation, submitWorkerJobMutation, workerHandoff]);
+
+  const handleRecordingReady = useCallback(async (file: File) => {
+    const upload = workerAssetResolverRef.current.uploadAsset(file, undefined, {
+      projectId: currentProjectId ?? undefined,
+      idempotencyKey: `voiceover:${file.name}:${file.size}:${file.lastModified}`,
+    });
+    const result = await upload.promise;
+    const asset: MediaLibraryAsset = {
+      id: result.assetId,
+      type: 'audio',
+      title: file.name,
+      thumbnailUrl: '',
+      duration: 0,
+      url: result.uri,
+      localPath: result.uri,
+      model: 'voice-recorder',
+      createdAt: new Date(),
+      format: 'webm',
+      fileSize: file.size,
+      ...(result.mediaAssetId ? { mediaAssetId: Number(result.mediaAssetId) } : {}),
+    };
+    setProject((prevProject) => {
+      const newProject = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
+      const newAsset = addAssetToProject(newProject, asset, result.uri);
+      newAsset.source = 'imported';
+      const audioTrack = findTrackByType(newProject.timeline, 'audio');
+      if (audioTrack) addClipToTrack(audioTrack, newAsset, currentTime);
+      newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+    showToast('อัดเสียงและเพิ่มลง Bin/A1 แล้ว', 'success', 3500);
+  }, [addToHistory, currentProjectId, currentTime]);
+
+  const handleInsertSymbol = useCallback((symbol: SymbolItem) => {
+    showToast(`เลือก ${symbol.name} แล้ว — ส่งเป็น sanitized SVG overlay เมื่อกดส่งงาน`, 'info', 3500);
+  }, []);
+
+  const handleSaveCurrentFrame = useCallback(() => {
+    void handleQueueMediaOperation('video.render_still', { timeSeconds: currentTime }, Object.keys(project.assets));
+  }, [currentTime, handleQueueMediaOperation, project.assets]);
+
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -883,14 +1083,20 @@ export const VideoEditorPhase3: React.FC = () => {
           return;
         }
 
-        const safeName = sanitizeProjectName(asset.title) || `library-${libraryItemId}`;
-        const localPath = await videoEditorMediaLibrary.downloadUrlToWorkspace(
-          asset.url,
-          `${safeName}.${asset.format || 'mp4'}`
-        );
+        const managed = await workerAssetResolverRef.current.importRemoteAsset(asset.url, {
+          mediaType: asset.type,
+          projectId: currentProjectId ?? undefined,
+          idempotencyKey: `deep-link:${libraryItemId}:${currentProjectId ?? 'unscoped'}`,
+        });
         if (cancelled) return;
 
-        handleAddToTimeline(asset, localPath);
+        handleAddToTimeline({
+          ...asset,
+          id: managed.assetId,
+          url: managed.uri,
+          localPath: managed.uri,
+          ...(managed.mediaAssetId ? { mediaAssetId: Number(managed.mediaAssetId) } : {}),
+        }, managed.uri);
         setSidebarView('library');
         if (initialLibraryItemImportRef.current.itemId === libraryItemId) {
           initialLibraryItemImportRef.current = { itemId: libraryItemId, state: 'completed' };
@@ -1782,7 +1988,24 @@ export const VideoEditorPhase3: React.FC = () => {
       if (asset.type === 'image' && (targetTrack.type === 'audio' || targetTrack.type === 'text')) return;
       if (asset.type === 'audio' && (targetTrack.type === 'video' || targetTrack.type === 'overlay' || targetTrack.type === 'text')) return;
 
-      const localPath = await videoEditorMediaLibrary.downloadToWorkspace(asset);
+      let localPath: string;
+      if (workerHandoff) {
+        const managed = await workerAssetResolverRef.current.importRemoteAsset(asset.url, {
+          mediaType: asset.type,
+          projectId: currentProjectId ?? undefined,
+          idempotencyKey: `drop-import:${currentProjectId ?? 'unscoped'}:${asset.id}`,
+        });
+        asset = {
+          ...asset,
+          id: managed.assetId,
+          url: managed.uri,
+          localPath: managed.uri,
+          ...(managed.mediaAssetId ? { mediaAssetId: Number(managed.mediaAssetId) } : {}),
+        };
+        localPath = managed.uri;
+      } else {
+        localPath = await videoEditorMediaLibrary.downloadToWorkspace(asset);
+      }
       try {
         const fileInfo = await videoEditorMediaLibrary.probeMediaFile(localPath);
         asset.duration = fileInfo.duration;
@@ -1805,7 +2028,250 @@ export const VideoEditorPhase3: React.FC = () => {
     } catch (err) {
       console.error('Drop failed:', err);
     }
-  }, [addToHistory, project.timeline.tracks]);
+  }, [addToHistory, currentProjectId, project.timeline.tracks, workerHandoff]);
+
+  const handleAddTrack = useCallback((type: Track['type']) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
+      const prefix = type === 'audio' ? 'A' : type === 'text' ? 'T' : type === 'overlay' ? 'O' : 'V';
+      const sameType = newProject.timeline.tracks.filter((track) => track.type === type).length;
+      const height = type === 'text' ? 50 : type === 'overlay' || type === 'audio' ? 60 : 80;
+      const track: Track = {
+        id: generateId('track'),
+        type,
+        name: `${prefix}${sameType + 1}`,
+        clips: [],
+        muted: false,
+        solo: false,
+        volume: 1,
+        locked: false,
+        visible: true,
+        height,
+        ...(type === 'overlay' ? { zIndex: sameType + 1 } : {}),
+      };
+      newProject.timeline.tracks.unshift(track);
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [addToHistory]);
+
+  const selectedCameraClip = useMemo(() => {
+    if (!selectedClipId) return null;
+    return project.timeline.tracks.flatMap((track) => track.clips).find((clip) => clip.id === selectedClipId) || null;
+  }, [project.timeline.tracks, selectedClipId]);
+
+  const handleSmartCameraChange = useCallback((clipId: string, settings: import('../../types/videoEditor').SmartCameraSettings) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
+      for (const track of newProject.timeline.tracks) {
+        const clip = track.clips.find((candidate) => candidate.id === clipId);
+        if (!clip) continue;
+        if (track.locked) {
+          showToast('ปลดล็อก track ก่อนแก้ Smart Camera', 'info');
+          return prevProject;
+        }
+        clip.smartCamera = {
+          ...settings,
+          intensity: Math.max(0, Math.min(100, settings.intensity)),
+          safeMargin: Math.max(0, Math.min(30, settings.safeMargin)),
+        };
+        if (settings.autoZoom && !clip.transform) {
+          clip.transform = { ...DEFAULT_CLIP_TRANSFORM, scaleX: 1.08, scaleY: 1.08 };
+        }
+        newProject.modifiedAt = new Date().toISOString();
+        addToHistory(newProject);
+        return newProject;
+      }
+      return prevProject;
+    });
+  }, [addToHistory]);
+
+  const handleRequestSmartCameraAnalysis = useCallback(async (clipId: string) => {
+    const target = project.timeline.tracks
+      .map((track) => ({ track, clip: track.clips.find((candidate) => candidate.id === clipId) }))
+      .find((entry) => entry.clip);
+    if (!target?.clip) {
+      showToast('ไม่พบคลิปสำหรับวิเคราะห์กล้อง', 'error');
+      return;
+    }
+    if (target.track.locked) {
+      showToast('ปลดล็อก track ก่อนวิเคราะห์ Smart Camera', 'info');
+      return;
+    }
+    if (workerHandoff) {
+      try {
+        await handleQueueMediaOperation('media.reframe', {
+          clipId,
+          mode: target.clip.smartCamera?.mode || 'auto_face',
+          autoZoom: target.clip.smartCamera?.autoZoom ?? true,
+          autoPan: target.clip.smartCamera?.autoPan ?? true,
+          intensity: target.clip.smartCamera?.intensity ?? 50,
+          safeMargin: target.clip.smartCamera?.safeMargin ?? 10,
+          reviewRequired: true,
+        }, [target.clip.assetId]);
+      } catch (error) {
+        showToast(getErrorMessage(error, 'ส่งคำขอวิเคราะห์ Smart Camera ไม่สำเร็จ'), 'error', 5000);
+      }
+      return;
+    }
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
+      for (const track of newProject.timeline.tracks) {
+        const clip = track.clips.find((candidate) => candidate.id === clipId);
+        if (!clip) continue;
+        if (track.locked) return prevProject;
+        clip.smartCamera = {
+          mode: clip.smartCamera?.mode || 'auto_face',
+          autoZoom: clip.smartCamera?.autoZoom ?? true,
+          autoPan: clip.smartCamera?.autoPan ?? true,
+          intensity: clip.smartCamera?.intensity ?? 50,
+          safeMargin: clip.smartCamera?.safeMargin ?? 10,
+          analysisRequested: true,
+        };
+        newProject.modifiedAt = new Date().toISOString();
+        addToHistory(newProject);
+        return newProject;
+      }
+      return prevProject;
+    });
+    showToast('บันทึกคำขอวิเคราะห์ใบหน้า/วัตถุแล้ว ระบบจะประมวลผลเมื่อส่งงานเข้า Worker', 'info', 4500);
+  }, [addToHistory, handleQueueMediaOperation, project.timeline.tracks, workerHandoff]);
+
+  const handleSubmitToWorker = useCallback(async () => {
+    if (!workerHandoff || isSubmittingWorkerJob) return;
+    const videoClipCount = project.timeline.tracks
+      .filter((track) => track.type === 'video' && track.visible !== false)
+      .reduce((sum, track) => sum + track.clips.length, 0);
+    if (videoClipCount === 0) {
+      showToast('เพิ่มคลิปวิดีโอลง timeline ก่อนส่ง Worker', 'error', 4500);
+      return;
+    }
+    setIsSubmittingWorkerJob(true);
+    try {
+      const refs: Record<string, ManagedAssetRef> = {};
+      const unresolved: string[] = [];
+      const usedAssetIds = new Set(project.timeline.tracks.flatMap((track) => track.clips.map((clip) => clip.assetId)));
+      for (const assetId of usedAssetIds) {
+        if (!project.assets[assetId]) unresolved.push(`asset:${assetId}`);
+      }
+      await Promise.all(Object.entries(project.assets)
+        .filter(([assetId]) => usedAssetIds.has(assetId))
+        .map(async ([, asset]) => {
+          const existingId = parseManagedMediaAssetId(asset.mediaAssetId);
+          if (existingId) {
+            refs[asset.id] = { namespace: 'media_asset', id: existingId };
+            return;
+          }
+          const sourceUrl = getAssetSourceUrl(asset);
+          if (!sourceUrl) {
+            unresolved.push(asset.name || asset.filename || asset.id);
+            return;
+          }
+          try {
+            const resolved = await workerAssetResolverRef.current.importRemoteAsset(sourceUrl, {
+              mediaType: asset.type,
+              projectId: currentProjectId ?? undefined,
+              idempotencyKey: `submit-import:${currentProjectId ?? 'unscoped'}:${asset.id}`,
+            });
+            const mediaAssetId = parseManagedMediaAssetId(resolved.mediaAssetId);
+            if (!mediaAssetId) {
+              unresolved.push(asset.name || asset.filename || asset.id);
+              return;
+            }
+            refs[asset.id] = { namespace: 'media_asset', id: mediaAssetId };
+            setProject((current) => {
+              const next = JSON.parse(JSON.stringify(current)) as VideoEditorProject;
+              const target = next.assets[asset.id];
+              if (target) target.mediaAssetId = mediaAssetId;
+              return next;
+            });
+          } catch {
+            unresolved.push(asset.name || asset.filename || asset.id);
+          }
+        }));
+
+      const revisionId = generateId('revision');
+      const projectSnapshot = JSON.parse(JSON.stringify(project)) as VideoEditorProject;
+      for (const [assetId, ref] of Object.entries(refs)) {
+        if (ref.namespace === 'media_asset') {
+          projectSnapshot.assets[assetId].mediaAssetId = parseManagedMediaAssetId(ref.id) ?? undefined;
+        }
+      }
+
+      if (unresolved.length > 0) {
+        throw new Error(`สื่อบางรายการยังไม่พร้อมสำหรับ Worker: ${unresolved.slice(0, 3).join(', ')}`);
+      }
+
+      let persistedProjectId = currentProjectId;
+      if (!persistedProjectId || isDirty) {
+        const clipCount = projectSnapshot.timeline.tracks.reduce((sum, track) => sum + track.clips.length, 0);
+        const saved = await saveMutation.mutateAsync({
+          id: persistedProjectId ?? undefined,
+          name: projectSnapshot.name,
+          projectData: projectSnapshot,
+          duration: projectSnapshot.settings.duration,
+          resolution: `${projectSnapshot.settings.width}x${projectSnapshot.settings.height}`,
+          trackCount: projectSnapshot.timeline.tracks.length,
+          clipCount,
+        });
+        persistedProjectId = saved.id;
+        setCurrentProjectId(saved.id);
+        setProject(projectSnapshot);
+        setIsDirty(false);
+      }
+
+      const projectId = persistedProjectId ? `video-project-${persistedProjectId}` : `web-editor-${generateId('project')}`;
+      const built = buildCanonicalWorkerProject(projectSnapshot, { refs, unresolved }, projectId);
+      if (built.project.migration.unresolved.length > 0) {
+        throw new Error(`สื่อบางรายการยังไม่พร้อมสำหรับ Worker: ${built.project.migration.unresolved.slice(0, 3).join(', ')}`);
+      }
+
+      const envelope: Omit<MediaJobEnvelope, 'tenantId'> = {
+        protocol: 'smartaihub.media.job',
+        version: '1.0',
+        jobId: generateId('editor-job'),
+        projectId,
+        revisionId,
+        timelineVersion: 1,
+        operation: 'video.render',
+        inputs: {
+          assets: Object.values(refs),
+          project: built.project,
+          assetKinds: Object.fromEntries(Object.entries(projectSnapshot.assets).flatMap(([id, asset]) => refs[id] && refs[id].namespace === 'media_asset' ? [[String(refs[id].id), asset.type]] : [])),
+        },
+        plan: {
+          planHash: generateId('plan'),
+          profileVersion: 'web-render-1',
+          stages: [{ id: 'render', operation: 'video.render', dependsOn: [] }],
+          outputRoles: ['final_video'],
+        },
+        requirements: {
+          capabilities: ['editor-video-render'],
+          resourceProfile: 'cpu_heavy',
+          maxDurationSeconds: Math.max(600, Math.ceil(Math.max(project.settings.duration, 1) * 4)),
+        },
+        retry: { maxAttempts: 2, backoffSeconds: 30 },
+        billing: { required: true, estimateCredits: Math.max(1, Math.ceil(Math.max(project.settings.duration, 1) / 10)) },
+      };
+
+      const result = await submitWorkerJobMutation.mutateAsync({
+        envelope: envelope as Record<string, unknown>,
+        idempotencyKey: `${projectId}:${revisionId}`,
+        expectedRevisionId: revisionId,
+      });
+      setWorkerJobId(result.job.id);
+      setSidebarView('worker');
+      showToast(built.unsupported.length > 0
+        ? `ส่ง Worker แล้ว แต่มี ${built.unsupported.length} รายการที่ต้องตรวจสอบผลลัพธ์ (overlay/effect จะถูกเก็บไว้ใน revision)`
+        : 'ส่งงานเข้า Worker queue แล้ว', 'success', 5000);
+      setLocation(`/worker-jobs?jobId=${encodeURIComponent(String(result.job.id))}`);
+    } catch (error) {
+      showToast(getErrorMessage(error, 'ส่งงานเข้า Worker queue ไม่สำเร็จ'), 'error', 6000);
+    } finally {
+      setIsSubmittingWorkerJob(false);
+    }
+  }, [currentProjectId, getAssetSourceUrl, isDirty, isSubmittingWorkerJob, project, saveMutation, setLocation, submitWorkerJobMutation, workerHandoff]);
 
   const handleClipMove = useCallback((clipId: string, newStartTime: number, newTrackId: string) => {
     setProject(prevProject => {
@@ -2111,6 +2577,10 @@ export const VideoEditorPhase3: React.FC = () => {
       for (const track of newProject.timeline.tracks) {
         const clip = track.clips.find((c: Clip) => c.id === clipId);
         if (clip) {
+          if (track.locked) {
+            showToast('ปลดล็อก track ก่อนแก้ Transform', 'info');
+            return prevProject;
+          }
           clip.transform = transform;
           break;
         }
@@ -2132,16 +2602,22 @@ export const VideoEditorPhase3: React.FC = () => {
     setProject(prevProject => {
       const newProject = JSON.parse(JSON.stringify(prevProject));
       let targetClip: Clip | null = null;
+      let targetTrack: Track | null = null;
 
       for (const track of newProject.timeline.tracks) {
         const clip = track.clips.find((c: Clip) => c.id === clipId);
         if (clip) {
           targetClip = clip;
+          targetTrack = track;
           break;
         }
       }
 
-      if (!targetClip) return prevProject;
+      if (!targetClip || !targetTrack) return prevProject;
+      if (targetTrack.locked) {
+        showToast('ปลดล็อก track ก่อนแก้ Transform', 'info');
+        return prevProject;
+      }
 
       const normalizedTime = targetClip.duration > 0
         ? clamp01((currentTime - targetClip.startTime) / targetClip.duration)
@@ -2189,16 +2665,22 @@ export const VideoEditorPhase3: React.FC = () => {
     setProject(prevProject => {
       const newProject = JSON.parse(JSON.stringify(prevProject));
       let targetClip: Clip | null = null;
+      let targetTrack: Track | null = null;
 
       for (const track of newProject.timeline.tracks) {
         const clip = track.clips.find((c: Clip) => c.id === clipId);
         if (clip) {
           targetClip = clip;
+          targetTrack = track;
           break;
         }
       }
 
-      if (!targetClip) return prevProject;
+      if (!targetClip || !targetTrack) return prevProject;
+      if (targetTrack.locked) {
+        showToast('ปลดล็อก track ก่อนจัดการ Keyframe', 'info');
+        return prevProject;
+      }
 
       const normalizedTime = targetClip.duration > 0
         ? clamp01((currentTime - targetClip.startTime) / targetClip.duration)
@@ -2234,16 +2716,22 @@ export const VideoEditorPhase3: React.FC = () => {
     setProject(prevProject => {
       const newProject = JSON.parse(JSON.stringify(prevProject));
       let targetClip: Clip | null = null;
+      let targetTrack: Track | null = null;
 
       for (const track of newProject.timeline.tracks) {
         const clip = track.clips.find((c: Clip) => c.id === clipId);
         if (clip) {
           targetClip = clip;
+          targetTrack = track;
           break;
         }
       }
 
-      if (!targetClip) return prevProject;
+      if (!targetClip || !targetTrack) return prevProject;
+      if (targetTrack.locked) {
+        showToast('ปลดล็อก track ก่อนลบ Keyframe', 'info');
+        return prevProject;
+      }
 
       const normalizedTime = targetClip.duration > 0
         ? clamp01((currentTime - targetClip.startTime) / targetClip.duration)
@@ -2826,6 +3314,33 @@ export const VideoEditorPhase3: React.FC = () => {
     });
   }, [addToHistory]);
 
+  const handleTrackToggleSolo = useCallback((trackId: string) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+      const track = newProject.timeline.tracks.find((t: Track) => t.id === trackId && t.type === 'audio');
+      if (!track) return prevProject;
+      track.solo = !track.solo;
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [addToHistory]);
+
+  const handleTrackVolumeChange = useCallback((trackId: string, volume: number) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+      const track = newProject.timeline.tracks.find((t: Track) => t.id === trackId && t.type === 'audio');
+      if (!track || track.locked) {
+        if (track?.locked) showToast('ปลดล็อก track ก่อนปรับความดัง', 'info');
+        return prevProject;
+      }
+      track.volume = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 1));
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [addToHistory]);
+
   const handleTrackToggleVisible = useCallback((trackId: string) => {
     setProject(prevProject => {
       const newProject = JSON.parse(JSON.stringify(prevProject));
@@ -2960,9 +3475,9 @@ export const VideoEditorPhase3: React.FC = () => {
 
   // Active audio clips for preview playback
   const activeAudioClips = useMemo((): ActiveClipInfo[] => {
-    const audioTracks = project.timeline.tracks.filter(
-      t => t.type === 'audio' && t.visible !== false && !t.muted
-    );
+    const allAudioTracks = project.timeline.tracks.filter(t => t.type === 'audio' && t.visible !== false);
+    const hasSoloAudioTrack = allAudioTracks.some((track) => track.solo === true);
+    const audioTracks = allAudioTracks.filter((track) => !track.muted && (!hasSoloAudioTrack || track.solo === true));
     const clips: ActiveClipInfo[] = [];
     for (const track of audioTracks) {
       for (const clip of track.clips) {
@@ -2976,7 +3491,7 @@ export const VideoEditorPhase3: React.FC = () => {
             trimIn: clip.trimIn,
             clipDuration: clip.duration,
             playbackRate: clip.speed || 1,
-            volume: clip.volume,
+            volume: Math.max(0, Math.min(1, (clip.volume ?? 1) * (track.volume ?? 1))),
           });
         }
       }
@@ -3357,6 +3872,20 @@ export const VideoEditorPhase3: React.FC = () => {
       return;
     }
 
+    if (workerHandoff) {
+      try {
+        await handleQueueMediaOperation('media.audio_extract', {
+          sourceClipId: sourceClip.id,
+          sourceRange: { trimIn: sourceClip.trimIn, trimOut: sourceClip.trimOut },
+          placement: { trackType: 'audio', trackName: 'A1' },
+          muteSource: true,
+        }, [sourceClip.assetId]);
+      } catch (error) {
+        showToast(getErrorMessage(error, 'ส่งคำขอแยกเสียงเข้า Worker ไม่สำเร็จ'), 'error', 5000);
+      }
+      return;
+    }
+
     showToast('Extracting audio...', 'info', 10000);
 
     try {
@@ -3431,7 +3960,7 @@ export const VideoEditorPhase3: React.FC = () => {
       console.error('Extract audio failed:', err);
       showToast(`Audio extraction failed: ${err.message || 'Unknown error'}`, 'error');
     }
-  }, [project, selectedClipIds, addToHistory]);
+  }, [project, selectedClipIds, addToHistory, handleQueueMediaOperation, workerHandoff]);
 
   // Handle zoom in/out
   const handleZoomIn = useCallback(() => {
@@ -3614,7 +4143,7 @@ export const VideoEditorPhase3: React.FC = () => {
 
   return (
     <ErrorBoundary onReset={() => window.location.reload()}>
-      <div className="video-editor-phase3">
+      <div className="video-editor-phase3" data-testid="video-editor-phase3" data-worker-handoff={workerHandoff ? 'enabled' : 'disabled'}>
         <style>{`
           .video-editor-phase3 {
             display: flex;
@@ -3727,7 +4256,8 @@ export const VideoEditorPhase3: React.FC = () => {
           }
 
           .timeline-section {
-            height: 300px;
+            height: clamp(320px, 38vh, 520px);
+            min-height: 300px;
             border-top: 1px solid #333;
             overflow: hidden;
           }
@@ -4011,6 +4541,17 @@ export const VideoEditorPhase3: React.FC = () => {
           <button className="header-button" onClick={() => { setShowProjectList(true); projectListQuery.refetch(); }} title="Open saved project" aria-label="Open saved projects">
             &#128194; Projects
           </button>
+          {workerHandoff && (
+            <button
+              className="header-button primary"
+              onClick={() => void handleSubmitToWorker()}
+              disabled={isSubmittingWorkerJob || isSaving}
+              title="ส่งงานหนักเข้า Worker queue"
+              aria-label="ส่งงานเข้า Worker queue"
+            >
+              {isSubmittingWorkerJob ? '... กำลังส่ง' : '⚡ ส่ง Worker'}
+            </button>
+          )}
           <button className="header-button header-hide-mobile" onClick={handleLoad} title="Open from file" aria-label="Open project from file">
             &#128196; File
           </button>
@@ -4096,6 +4637,7 @@ export const VideoEditorPhase3: React.FC = () => {
                 onAddKeyframeAtCurrentTime={handleAddTransformKeyframeAtCurrentTime}
                 onDeleteKeyframeAtCurrentTime={handleDeleteTransformKeyframeAtCurrentTime}
                 onOpenKeyframePanel={() => setSidebarView('overlay')}
+                onSaveCurrentFrame={workerHandoff ? handleSaveCurrentFrame : undefined}
                 outputWidth={project.settings.width}
                 outputHeight={project.settings.height}
               />
@@ -4131,6 +4673,33 @@ export const VideoEditorPhase3: React.FC = () => {
               onOpenSilenceDetection={handleOpenSilenceDetection}
               onExtractAudio={handleExtractAudio}
             />
+
+            <div
+              role="toolbar"
+              aria-label="เครื่องมือ Web Media Workspace"
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '6px 10px', background: '#202020', borderBottom: '1px solid #333' }}
+            >
+              <button className="header-button" type="button" onClick={() => setSidebarView('bin')}>🗃️ Bin</button>
+              <button className="header-button" type="button" onClick={() => setSidebarView('mediaHistory')}>🕘 Media History</button>
+              <button className="header-button" type="button" onClick={() => setSidebarView('camera')}>🎯 Face / Auto Pan-Zoom</button>
+              <button className="header-button" type="button" onClick={() => setSidebarView('blur')}>🪄 FX / Blur</button>
+              <button className="header-button" type="button" onClick={() => setSidebarView('overlay')}>🧊 3D Overlay</button>
+              <button className="header-button" type="button" onClick={() => setSidebarView('text')} disabled={!textClipRolloutEnabled} title={textClipRolloutEnabled ? 'Subtitle and text overlays' : 'Text rollout is disabled'}>📝 Subtitle / Text</button>
+              <button className="header-button" type="button" onClick={() => setSidebarView('aiMediaStudio')}>✨ AI Media Studio</button>
+              <button className="header-button" type="button" onClick={() => setSidebarView('aiMusic')}>🎵 AI Music</button>
+              <button className="header-button" type="button" onClick={() => setSidebarView('ducking')}>🎚️ Ducking / Audio</button>
+              <button className="header-button" type="button" onClick={() => setSidebarView('voiceover')}>🎙️ Voiceover</button>
+              <button className="header-button" type="button" onClick={() => setSidebarView('speakerPlan')}>🗣️ Speaker Plan</button>
+              <button className="header-button" type="button" onClick={() => setSidebarView('subtitles')}>💬 Subtitles</button>
+              <button className="header-button" type="button" onClick={() => setSidebarView('symbols')}>✦ Symbols</button>
+              <button className="header-button" type="button" onClick={() => setSidebarView('codeOverlay')}>⌘ AI Code</button>
+              <button className="header-button" type="button" onClick={() => handleAddTrack('video')}>＋ Video track</button>
+              <button className="header-button" type="button" onClick={() => handleAddTrack('audio')}>＋ Audio track</button>
+              <button className="header-button" type="button" onClick={() => handleAddTrack('overlay')}>＋ Overlay track</button>
+              {textClipRolloutEnabled && <button className="header-button" type="button" onClick={() => handleAddTrack('text')}>＋ Text track</button>}
+              {workerHandoff && <button className="header-button primary" type="button" onClick={() => setSidebarView('worker')}>⚙ Worker handoff</button>}
+              <span style={{ marginLeft: 'auto', alignSelf: 'center', color: '#888', fontSize: 11 }}>{project.timeline.tracks.length} tracks · ลากเพื่อเลื่อนแนวนอน/แนวตั้ง</span>
+            </div>
 
             {/* Active render banner */}
             {currentRenderJob && !showRenderProgress && (
@@ -4182,6 +4751,8 @@ export const VideoEditorPhase3: React.FC = () => {
                 selectedClipIds={selectedClipIds}
                 onTrackToggleLock={handleTrackToggleLock}
                 onTrackToggleMute={handleTrackToggleMute}
+                onTrackToggleSolo={handleTrackToggleSolo}
+                onTrackVolumeChange={handleTrackVolumeChange}
                 onTrackToggleVisible={handleTrackToggleVisible}
                 onDropAsset={handleDropAsset}
               />
@@ -4216,6 +4787,18 @@ export const VideoEditorPhase3: React.FC = () => {
                 📚 Library
               </button>
               <button
+                className={`sidebar-tab ${sidebarView === 'bin' ? 'active' : ''}`}
+                onClick={() => setSidebarView('bin')}
+              >
+                🗃️ Bin
+              </button>
+              <button
+                className={`sidebar-tab ${sidebarView === 'mediaHistory' ? 'active' : ''}`}
+                onClick={() => setSidebarView('mediaHistory')}
+              >
+                🕘 Media History
+              </button>
+              <button
                 className={`sidebar-tab ${sidebarView === 'ducking' ? 'active' : ''}`}
                 onClick={() => setSidebarView('ducking')}
               >
@@ -4246,6 +4829,20 @@ export const VideoEditorPhase3: React.FC = () => {
                 🎨 Overlay
               </button>
               <button
+                className={`sidebar-tab ${sidebarView === 'camera' ? 'active' : ''}`}
+                onClick={() => setSidebarView('camera')}
+              >
+                🎯 Camera
+              </button>
+              {workerHandoff && (
+                <button
+                  className={`sidebar-tab ${sidebarView === 'worker' ? 'active' : ''}`}
+                  onClick={() => setSidebarView('worker')}
+                >
+                  ⚙ Worker
+                </button>
+              )}
+              <button
                 className={`sidebar-tab ${sidebarView === 'draftAi' ? 'active' : ''}`}
                 onClick={() => setSidebarView('draftAi')}
               >
@@ -4265,11 +4862,25 @@ export const VideoEditorPhase3: React.FC = () => {
                   🅃 Text
                 </button>
               )}
+              <button className={`sidebar-tab ${sidebarView === 'aiMusic' ? 'active' : ''}`} onClick={() => setSidebarView('aiMusic')}>🎵 AI Music</button>
+              <button className={`sidebar-tab ${sidebarView === 'aiMediaStudio' ? 'active' : ''}`} onClick={() => setSidebarView('aiMediaStudio')}>✨ AI Media</button>
+              <button className={`sidebar-tab ${sidebarView === 'voiceover' ? 'active' : ''}`} onClick={() => setSidebarView('voiceover')}>🎙️ อัดเสียง</button>
+              <button className={`sidebar-tab ${sidebarView === 'speakerPlan' ? 'active' : ''}`} onClick={() => setSidebarView('speakerPlan')}>🗣️ Speaker</button>
+              <button className={`sidebar-tab ${sidebarView === 'subtitles' ? 'active' : ''}`} onClick={() => setSidebarView('subtitles')}>💬 Subtitle</button>
+              <button className={`sidebar-tab ${sidebarView === 'blur' ? 'active' : ''}`} onClick={() => setSidebarView('blur')}>🕶️ Blur</button>
+              <button className={`sidebar-tab ${sidebarView === 'symbols' ? 'active' : ''}`} onClick={() => setSidebarView('symbols')}>✦ Symbols</button>
+              <button className={`sidebar-tab ${sidebarView === 'codeOverlay' ? 'active' : ''}`} onClick={() => setSidebarView('codeOverlay')}>⌘ AI Code</button>
             </div>
 
             <div className="sidebar-content">
               {sidebarView === 'library' && (
-                <MediaLibraryPanel onAddToTimeline={handleAddToTimeline} projectAssets={project.assets} />
+                <MediaLibraryPanel title="📚 Library" initialSourceMode="library" onAddToTimeline={handleAddToTimeline} projectAssets={project.assets} projectId={currentProjectId} />
+              )}
+              {sidebarView === 'mediaHistory' && (
+                <MediaLibraryPanel title="🕘 Media History" initialSourceMode="generated" onAddToTimeline={handleAddToTimeline} projectAssets={project.assets} projectId={currentProjectId} />
+              )}
+              {sidebarView === 'bin' && (
+                <ProjectBinPanel assets={project.assets} projectId={currentProjectId} onAddToTimeline={handleAddToTimeline} onAssetImported={handleAssetImportedToBin} />
               )}
               {sidebarView === 'ducking' && (
                 <div className="ducking-container">
@@ -4328,6 +4939,32 @@ export const VideoEditorPhase3: React.FC = () => {
                   onSeekToTime={handleTimeChange}
                 />
               )}
+              {sidebarView === 'camera' && (
+                <SmartCameraPanel
+                  selectedClip={selectedCameraClip}
+                  onChange={handleSmartCameraChange}
+                  onAddKeyframe={handleAddTransformKeyframeAtCurrentTime}
+                  onRequestAnalysis={handleRequestSmartCameraAnalysis}
+                />
+              )}
+              {sidebarView === 'worker' && workerHandoff && (
+                <section style={{ padding: 14, color: '#ddd', fontSize: 12 }} aria-label="Worker handoff">
+                  <h3 style={{ margin: '0 0 6px', fontSize: 15, color: '#fff' }}>⚙ Worker handoff</h3>
+                  <p style={{ margin: '0 0 12px', color: '#999', lineHeight: 1.5 }}>
+                    งานตัดต่อเบื้องต้นทำบนเว็บ งาน render, proxy และการวิเคราะห์หนักจะถูกส่งเข้า <strong style={{ color: '#7dd3fc' }}>คิวงาน Worker</strong>
+                  </p>
+                  <div style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: 9, background: '#222', borderRadius: 5 }}><span>สื่อในโปรเจกต์</span><strong>{Object.keys(project.assets).length}</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: 9, background: '#222', borderRadius: 5 }}><span>คลิปใน timeline</span><strong>{project.timeline.tracks.reduce((sum, track) => sum + track.clips.length, 0)}</strong></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: 9, background: '#222', borderRadius: 5 }}><span>จำนวน track</span><strong>{project.timeline.tracks.length}</strong></div>
+                  </div>
+                  {workerJobId && <p style={{ color: '#86efac', marginBottom: 10 }}>ส่งงานแล้ว: #{workerJobId}</p>}
+                  <button type="button" className="header-button primary" style={{ width: '100%' }} onClick={() => void handleSubmitToWorker()} disabled={isSubmittingWorkerJob}>
+                    {isSubmittingWorkerJob ? 'กำลังตรวจสอบและส่ง...' : '🚀 ส่งงานเข้า Worker queue'}
+                  </button>
+                  <a href="/worker-jobs" style={{ display: 'block', marginTop: 12, color: '#7dd3fc', textDecoration: 'underline', textAlign: 'center' }}>เปิดคิวงาน Worker</a>
+                </section>
+              )}
               {sidebarView === 'draftAi' && (
                 <VideoDraftAIPanel
                   projectWidth={project.settings.width}
@@ -4343,6 +4980,8 @@ export const VideoEditorPhase3: React.FC = () => {
               {sidebarView === 'silence' && (
                 <SilenceDetectionPanel
                   onOpenDialog={() => setShowSilenceDialog(true)}
+                  onQueueOperation={workerHandoff ? handleQueueMediaOperation : undefined}
+                  sourceAssetIds={selectedCameraClip ? [selectedCameraClip.assetId] : []}
                 />
               )}
               {sidebarView === 'text' && textClipRolloutEnabled && (
@@ -4355,6 +4994,14 @@ export const VideoEditorPhase3: React.FC = () => {
                   onCancel={() => setSidebarView('library')}
                 />
               )}
+              {sidebarView === 'aiMusic' && <AiMusicPanel onQueueOperation={handleQueueMediaOperation} assetIds={editorAssetOptions} />}
+              {sidebarView === 'aiMediaStudio' && <AiMediaStudioPanel onQueueOperation={handleQueueMediaOperation} assetIds={editorAssetOptions} />}
+              {sidebarView === 'voiceover' && <VoiceRecorderPanel onRecordingReady={handleRecordingReady} />}
+              {sidebarView === 'speakerPlan' && <SpeakerPlanPanel onQueueOperation={handleQueueMediaOperation} assetIds={editorAssetOptions} />}
+              {sidebarView === 'subtitles' && <SubtitleEditorPanel onQueueOperation={handleQueueMediaOperation} assetIds={editorAssetOptions} />}
+              {sidebarView === 'blur' && <BlurPanel onQueueOperation={handleQueueMediaOperation} assetIds={editorAssetOptions} />}
+              {sidebarView === 'symbols' && <SymbolCatalogPanel onInsertSymbol={handleInsertSymbol} onQueueOperation={workerHandoff ? handleQueueMediaOperation : undefined} />}
+              {sidebarView === 'codeOverlay' && <CodeOverlayPanel onQueueOperation={handleQueueMediaOperation} />}
             </div>
           </div>
         </div>
@@ -4365,6 +5012,7 @@ export const VideoEditorPhase3: React.FC = () => {
             project={project}
             onExport={handleExport}
             onCancel={() => setShowExportDialog(false)}
+            onQueueOperation={workerHandoff ? handleQueueMediaOperation : undefined}
           />
         )}
 

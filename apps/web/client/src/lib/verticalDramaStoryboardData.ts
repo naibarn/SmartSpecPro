@@ -40,6 +40,11 @@ interface MotionClipRecord {
   dialogue?: unknown;
 }
 
+interface DialogueAudioPlanRecord {
+  dialogue_lines?: unknown;
+  shotLines?: unknown;
+}
+
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -84,17 +89,53 @@ function normalizeDialogueLines(
     .map(entry => {
       const line = record(entry);
       if (!line) return null;
-      const lineText = text(line.lineTh ?? line.line ?? line.text);
+      const lineText = text(
+        line.lineTh ?? line.line ?? line.text ?? line.dialogue_line
+      );
       if (!lineText) return null;
-      const key = text(line.characterKey ?? line.speaker ?? line.speakerKey);
+      const key = text(
+        line.characterKey ??
+          line.speaker ??
+          line.speakerKey ??
+          line.speaker_character_key ??
+          line.speakerCharacterKey
+      );
+      const speakerName = text(line.speaker_name ?? line.speakerName);
       return {
-        speaker: characterNames[key] || key || "—",
+        speaker: speakerName || characterNames[key] || key || "—",
         line: lineText,
       };
     })
     .filter(
       (value): value is { speaker: string; line: string } => value !== null
     );
+}
+
+function normalizeDialogueAudioPlanLines(
+  value: unknown,
+  characterNames: Record<string, string>
+): Map<number, Array<{ speaker: string; line: string }>> {
+  const plan = record(value) as DialogueAudioPlanRecord | null;
+  const rawLines = Array.isArray(plan?.dialogue_lines)
+    ? plan.dialogue_lines
+    : Array.isArray(plan?.shotLines)
+      ? plan.shotLines
+      : [];
+  const result = new Map<number, Array<{ speaker: string; line: string }>>();
+
+  for (const rawLine of rawLines) {
+    const line = record(rawLine);
+    if (!line) continue;
+    const number = positiveNumber(line.shot_number ?? line.shotNumber);
+    if (number === undefined) continue;
+    const normalized = normalizeDialogueLines([line], characterNames)[0];
+    if (!normalized) continue;
+    const existing = result.get(number);
+    if (existing) existing.push(normalized);
+    else result.set(number, [normalized]);
+  }
+
+  return result;
 }
 
 function normalizeCanonicalDrafts(
@@ -167,6 +208,7 @@ export function buildVerticalDramaUnifiedStoryboardData(input: {
   episodePlanShotDrafts?: unknown;
   startFramePlan?: { frames?: unknown[] } | null;
   motionPromptPack?: { clips?: unknown[] } | null;
+  dialogueAudioPlan?: unknown;
   characterPortraits?: Record<string, { name?: string }> | null;
 }): {
   storyboard: StoryboardRecord | null;
@@ -195,6 +237,40 @@ export function buildVerticalDramaUnifiedStoryboardData(input: {
       .map(([key, portrait]) => [key, text(portrait?.name)] as const)
       .filter((entry): entry is [string, string] => Boolean(entry[1]))
   );
+  const dialogueAudioPlanByShot = normalizeDialogueAudioPlanLines(
+    input.dialogueAudioPlan,
+    characterNames
+  );
+  const legacyClipDialogueByShot = new Map<
+    number,
+    Array<{ speaker: string; line: string }>
+  >();
+  for (const clip of clips) {
+    const dialogueLines = normalizeDialogueLines(clip.dialogue, characterNames);
+    if (dialogueLines.length === 0) continue;
+    const shotNumbers = Array.from(
+      new Set([
+        ...(Array.isArray(clip.sourceShotNumbers)
+          ? clip.sourceShotNumbers
+              .map(positiveNumber)
+              .filter((value): value is number => value !== undefined)
+          : []),
+        ...(positiveNumber(clip.parentShotNumber) !== undefined
+          ? [positiveNumber(clip.parentShotNumber)!]
+          : []),
+      ])
+    );
+    for (const number of shotNumbers) {
+      if (dialogueAudioPlanByShot.has(number)) continue;
+      const existing = legacyClipDialogueByShot.get(number);
+      if (existing) existing.push(...dialogueLines);
+      else legacyClipDialogueByShot.set(number, [...dialogueLines]);
+    }
+  }
+  const dialogueByShot = new Map(dialogueAudioPlanByShot);
+  for (const [number, dialogueLines] of legacyClipDialogueByShot) {
+    if (!dialogueByShot.has(number)) dialogueByShot.set(number, dialogueLines);
+  }
 
   const sourceShots = Array.isArray(sourceStoryboard?.shots)
     ? sourceStoryboard.shots
@@ -236,14 +312,27 @@ export function buildVerticalDramaUnifiedStoryboardData(input: {
     input.episodePlanShotDrafts,
     characterNames
   );
+
+  // `dialogueAudioPlan` is the durable shot-level dialogue source. In
+  // particular, special tie-in image approval can remove a not-yet-authored
+  // motion clip, so the clip's dialogue must never be the only copy used by
+  // the storyboard UI. Keep an existing Overview draft as the highest-
+  // priority authored source, and fill only missing dialogue from the plan.
+  for (const [number, dialogueLines] of dialogueByShot) {
+    const existing = canonicalDrafts.get(number);
+    if (!existing || existing.dialogueLines.length === 0) {
+      if (existing) {
+        canonicalDrafts.set(number, { ...existing, dialogueLines });
+      }
+    }
+  }
+
   for (const frame of frames) {
     const number = frameShotNumber(frame);
     const summary = text(frame.canonicalShotSummary);
     if (number === undefined || canonicalDrafts.has(number) || !summary)
       continue;
-    const dialogueLines = clips
-      .filter(clip => clipMatchesShot(clip, number))
-      .flatMap(clip => normalizeDialogueLines(clip.dialogue, characterNames));
+    const dialogueLines = dialogueByShot.get(number) ?? [];
     canonicalDrafts.set(number, { shotNumber: number, summary, dialogueLines });
   }
   for (const shot of shots) {

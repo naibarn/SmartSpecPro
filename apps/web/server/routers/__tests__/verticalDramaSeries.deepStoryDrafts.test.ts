@@ -160,9 +160,17 @@ vi.mock("../../_core/logger", () => ({
 // exercise ONLY the fail-fast guards + enqueue call, never the real
 // Redis/BullMQ-backed implementation (covered separately by
 // `services/__tests__/verticalDramaStoryJobs.test.ts`).
-const { mockEnqueueVerticalDramaStoryJob, mockEnqueueVerticalDramaStoryJobHandoff, mockSubmitVerticalDramaSystemFeedback } = vi.hoisted(() => ({
+const {
+  mockEnqueueVerticalDramaStoryJob,
+  mockEnqueueVerticalDramaStoryJobHandoff,
+  mockGetVerticalDramaStoryJobRecovery,
+  mockRecoverVerticalDramaStoryJob,
+  mockSubmitVerticalDramaSystemFeedback,
+} = vi.hoisted(() => ({
   mockEnqueueVerticalDramaStoryJob: vi.fn(),
   mockEnqueueVerticalDramaStoryJobHandoff: vi.fn(),
+  mockGetVerticalDramaStoryJobRecovery: vi.fn(),
+  mockRecoverVerticalDramaStoryJob: vi.fn(),
   mockSubmitVerticalDramaSystemFeedback: vi.fn(),
 }));
 vi.mock("../../services/verticalDramaStoryJobs", () => ({
@@ -170,6 +178,8 @@ vi.mock("../../services/verticalDramaStoryJobs", () => ({
   enqueueVerticalDramaStoryJobHandoff: mockEnqueueVerticalDramaStoryJobHandoff,
   getVerticalDramaStoryJobStatus: vi.fn(),
   getActiveVerticalDramaStoryJob: vi.fn(),
+  getVerticalDramaStoryJobRecovery: mockGetVerticalDramaStoryJobRecovery,
+  recoverVerticalDramaStoryJob: mockRecoverVerticalDramaStoryJob,
   // Phase F (added 2026-07-09) — additive partial-system-failure feedback
   // bridge; covered by its own describe block below.
   submitVerticalDramaSystemFeedback: mockSubmitVerticalDramaSystemFeedback,
@@ -2622,5 +2632,101 @@ describe("updateEpisodeDraftDialogue — idempotent replay", () => {
     // A genuinely NEW key is a fresh edit — a SECOND write does happen.
     expect(mockDb.update).toHaveBeenCalledTimes(2);
     expect(mockDb.insert).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("story job checkpoint recovery", () => {
+  const seriesRow = {
+    id: 10,
+    tenantId: "tenant-1",
+    userId: 42,
+    targetEpisodeCount: 4,
+    bible: {},
+  };
+  const recoverableState = {
+    jobId: "job-stalled",
+    kind: "deep_generate",
+    status: "failed",
+    canResume: true,
+    reason: "checkpoint_available",
+    completedEpisodeNumbers: [1, 2],
+    remainingEpisodeNumbers: [3, 4],
+    completedEpisodeCount: 2,
+    remainingEpisodeCount: 2,
+    totalEpisodeCount: 4,
+    recoveryAttempts: 0,
+    maxRecoveryAttempts: 8,
+    checkpointUpdatedAt: "2026-09-12T00:00:00.000Z",
+    error: "job stalled more than allowable limit",
+    updatedAt: "2026-09-12T00:00:00.000Z",
+  };
+
+  it("returns a server-computed checkpoint summary after ownership validation", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockGetVerticalDramaStoryJobRecovery.mockResolvedValueOnce(recoverableState);
+
+    const result = await router.getStoryJobRecovery({
+      ctx: ctx(),
+      input: { seriesId: "10" },
+    });
+
+    expect(result).toEqual(recoverableState);
+    expect(mockGetVerticalDramaStoryJobRecovery).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+    });
+  });
+
+  it("delegates repair only after ownership validation and returns the canonical job", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockRecoverVerticalDramaStoryJob.mockResolvedValueOnce({
+      started: true,
+      jobId: "job-stalled",
+      status: "queued",
+      reason: "active",
+      state: { ...recoverableState, status: "queued", canResume: false, reason: "active" },
+    });
+
+    const result = await router.repairStoryJob({
+      ctx: ctx(),
+      input: { seriesId: "10", jobId: "job-stalled" },
+    });
+
+    expect(result.jobId).toBe("job-stalled");
+    expect(mockRecoverVerticalDramaStoryJob).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      "job-stalled",
+    );
+  });
+
+  it("rejects a foreign series before calling the recovery service", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([]));
+
+    await expect(
+      router.repairStoryJob({
+        ctx: ctx(),
+        input: { seriesId: "999", jobId: "job-stalled" },
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockRecoverVerticalDramaStoryJob).not.toHaveBeenCalled();
+  });
+
+  it("maps a non-recoverable service result to PRECONDITION_FAILED", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockRecoverVerticalDramaStoryJob.mockResolvedValueOnce({
+      started: false,
+      jobId: "job-stalled",
+      status: "failed",
+      reason: "no_checkpoint",
+      state: { ...recoverableState, canResume: false, reason: "no_checkpoint" },
+    });
+
+    await expect(
+      router.repairStoryJob({
+        ctx: ctx(),
+        input: { seriesId: "10", jobId: "job-stalled" },
+      }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
   });
 });

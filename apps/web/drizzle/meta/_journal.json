@@ -1916,50 +1916,134 @@
     {
       "idx": 273,
       "version": "7",
+      "when": 1788853037000,
+      "tag": "0287_worker_runtime_runner_artifacts",
+      "breakpoints": true
+    },
+    {
+      "idx": 274,
+      "version": "7",
       "when": 1788971777000,
       "tag": "0289_gpt_image_2_5_media_models",
       "breakpoints": true
     },
     {
-      "idx": 274,
+      "idx": 275,
+      "version": "7",
+      "when": 1788971777003,
+      "tag": "0288_feature_184_video_editor_revisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 276,
+      "version": "7",
+      "when": 1788971777004,
+      "tag": "0290_feature_184_video_editor_media_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 277,
       "version": "7",
       "when": 1789065600000,
       "tag": "0291_gpt_image_2_5_smartaihub_pricing",
       "breakpoints": true
     },
     {
-      "idx": 275,
+      "idx": 278,
       "version": "7",
       "when": 1789065600001,
       "tag": "0292_media_model_thinking_modes",
       "breakpoints": true
     },
     {
-      "idx": 276,
+      "idx": 279,
       "version": "7",
       "when": 1789065600002,
       "tag": "0293_wavespeed_gpt_image_2_5_media_models",
       "breakpoints": true
     },
     {
-      "idx": 277,
+      "idx": 280,
       "version": "7",
       "when": 1789065600003,
       "tag": "0294_wavespeed_minimax_h3_media_models",
       "breakpoints": true
     },
     {
-      "idx": 278,
+      "idx": 281,
       "version": "7",
       "when": 1789065600004,
       "tag": "0295_repair_wavespeed_minimax_h3_input_options",
       "breakpoints": true
     },
     {
-      "idx": 279,
+      "idx": 282,
       "version": "7",
       "when": 1789065600005,
       "tag": "0296_repair_wavespeed_minimax_h3_pricing_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 283,
+      "version": "7",
+      "when": 1789065600006,
+      "tag": "0297_vertical_drama_generation_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 284,
+      "version": "7",
+      "when": 1789065600007,
+      "tag": "0298_credit_settlement_run_id_text",
+      "breakpoints": true
+    },
+    {
+      "idx": 285,
+      "version": "7",
+      "when": 1789065600008,
+      "tag": "0299_restore_subscription_transaction_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 286,
+      "version": "7",
+      "when": 1789065600009,
+      "tag": "0300_character_prompt_generation_category",
+      "breakpoints": true
+    },
+    {
+      "idx": 287,
+      "version": "7",
+      "when": 1789065600010,
+      "tag": "0301_feature_185_skill_framework_storyboard",
+      "breakpoints": true
+    },
+    {
+      "idx": 288,
+      "version": "7",
+      "when": 1789065600011,
+      "tag": "0302_qwen_image_3_media_models",
+      "breakpoints": true
+    },
+    {
+      "idx": 289,
+      "version": "7",
+      "when": 1789152000000,
+      "tag": "0303_feature_186_unified_job_control_plane",
+      "breakpoints": true
+    },
+    {
+      "idx": 290,
+      "version": "7",
+      "when": 1789152000001,
+      "tag": "0304_feature_186_contract_version",
+      "breakpoints": true
+    },
+    {
+      "idx": 291,
+      "version": "7",
+      "when": 1789152000002,
+      "tag": "0305_feature_186_timeout_policy",
       "breakpoints": true
     }
   ]

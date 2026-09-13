@@ -42,12 +42,20 @@ Published installers appear in the desktop release panel on the dashboard.
 
 What you can do there:
 
-- download the latest published installer for your platform
+- download any latest published installer, including an installer for another machine
 - see available platforms
 - review version, platform, installer format, channel, and file size
 - read release notes when provided
 
-The panel tries to prioritize your current operating system automatically, then falls back to another published platform if needed.
+The panel shows Windows, macOS, and Linux releases together. It highlights the
+native macOS DMG when one is published, while keeping the other platform
+downloads available for users who manage more than one machine. The Worker App
+inside a desktop installation only checks its matching platform/architecture
+for self-update.
+
+For normal macOS Worker App installation, use the native Apple Silicon DMG.
+The macOS source ZIP is a developer fallback for building on a Mac and is not
+the normal end-user installer.
 
 ## Supported platforms and formats
 

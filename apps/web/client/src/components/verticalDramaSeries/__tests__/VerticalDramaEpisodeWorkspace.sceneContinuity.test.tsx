@@ -239,18 +239,102 @@ describe("VerticalDramaEpisodeWorkspace — scene continuity prop threading", ()
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId("vd-location-approve-hall")).toBeInTheDocument()
+      expect(mockResolveMediaAsset).toHaveBeenCalledWith(
+        expect.objectContaining({ url: "/generated-rear-corner.png" })
+      )
     );
     expect(
       screen
         .getByTestId("vd-location-bible-row-hall")
         .querySelector('img[alt="Hall"]')
     ).toHaveAttribute("src", "/primary-hall.png");
-    fireEvent.click(screen.getByTestId("vd-location-approve-hall"));
     await waitFor(() =>
       expect(mockLinkAsset).toHaveBeenCalledWith(
         expect.objectContaining({ role: "detail_corner" })
       )
+    );
+    expect(mockApproveAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ assetLinkId: "asset-77" })
+    );
+    expect(
+      screen.queryByTestId("vd-location-approve-hall")
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows approved scene-tab camera views in the sub-episode location card", async () => {
+    render(
+      <VerticalDramaEpisodeWorkspace
+        episode={episode}
+        storyboardPanel={{
+          ...storyboardPanel,
+          episodeLocations: [
+            {
+              locationKey: "hall",
+              name: "Hall",
+              locationId: "5",
+              primaryReferenceUrl: "/primary-hall.png",
+              cameraVariants: [
+                {
+                  variantId: "77",
+                  label: "มุมเคาน์เตอร์",
+                  role: "detail_corner",
+                  url: "/counter-view.png",
+                  approved: true,
+                },
+              ],
+            },
+          ],
+        }}
+      />
+    );
+
+    expect(
+      await screen.findByTestId("vd-location-existing-views-hall")
+    ).toHaveTextContent("Existing camera views (1)");
+    expect(
+      screen.getByTestId("vd-location-existing-view-hall-77")
+    ).toHaveTextContent("มุมเคาน์เตอร์");
+  });
+
+  it("applies a selected camera view to the shots sharing the current view", async () => {
+    const onSetLocationVariantForShots = vi.fn();
+
+    render(
+      <VerticalDramaEpisodeWorkspace
+        episode={episode}
+        storyboardPanel={{
+          ...storyboardPanel,
+          episodeLocations: [
+            {
+              locationKey: "hall",
+              name: "Hall",
+              locationId: "5",
+              primaryReferenceUrl: "/primary-hall.png",
+              cameraVariants: [
+                {
+                  variantId: "77",
+                  label: "มุมเคาน์เตอร์",
+                  role: "detail_corner",
+                  url: "/counter-view.png",
+                  approved: true,
+                },
+              ],
+            },
+          ],
+          onSetLocationVariantForShots,
+        }}
+      />
+    );
+
+    fireEvent.click(
+      await screen.findByTestId("vd-location-existing-view-hall-77")
+    );
+
+    expect(onSetLocationVariantForShots).toHaveBeenCalledWith(
+      "hall",
+      [1],
+      null,
+      "77"
     );
   });
 });

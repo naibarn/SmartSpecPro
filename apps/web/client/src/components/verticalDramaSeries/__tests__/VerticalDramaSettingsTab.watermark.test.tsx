@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 /**
  * Text Overlay Suite (F131AB, task #34, plan.md v2 "ลายน้ำ") — series
  * watermark settings card coverage for `VerticalDramaSettingsTab.tsx`: flag
@@ -19,8 +21,26 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUpdateSeriesWatermarkMutate = vi.fn();
 const mockUpdateSeriesMutate = vi.fn();
+const mockFetchAuthenticatedMedia = vi.hoisted(() =>
+  vi.fn(async () => new Blob(["logo"], { type: "image/png" }))
+);
 const mockUploadWatermarkImage = vi.fn(async () => ({
   url: "https://cdn.example.com/watermark/logo.png",
+}));
+
+vi.mock("@/components/media/AuthenticatedMediaImage", () => ({
+  AuthenticatedMediaImage: (props: Record<string, unknown>) => (
+    <img {...props} />
+  ),
+  fetchAuthenticatedMedia: mockFetchAuthenticatedMedia,
+}));
+
+vi.mock("@/components/ui/dialog", () => ({
+  Dialog: ({ children, open }: any) => (open ? <div>{children}</div> : null),
+  DialogContent: ({ children, fullscreen: _fullscreen, ...props }: any) => (
+    <div {...props}>{children}</div>
+  ),
+  DialogTitle: ({ children, ...props }: any) => <h2 {...props}>{children}</h2>,
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -53,6 +73,12 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         }),
       },
+      setSeriesGenerationSettings: {
+        useMutation: () => ({
+          mutateAsync: vi.fn(),
+          isPending: false,
+        }),
+      },
       setSeriesDurationProfile: {
         useMutation: () => ({
           mutateAsync: vi.fn(),
@@ -79,7 +105,10 @@ vi.mock("@/lib/trpc", () => ({
         }),
       },
       updateSeriesWatermark: {
-        useMutation: (opts: { onSuccess?: () => void; onError?: (err: { message?: string }) => void }) => ({
+        useMutation: (opts: {
+          onSuccess?: () => void;
+          onError?: (err: { message?: string }) => void;
+        }) => ({
           mutate: (input: unknown) => {
             mockUpdateSeriesWatermarkMutate(input);
             opts?.onSuccess?.();
@@ -126,7 +155,9 @@ vi.mock("@/components/ui/select", () => ({
   SelectContent: ({ children }: any) => <>{children}</>,
   SelectGroup: ({ children }: any) => <>{children}</>,
   SelectLabel: ({ children }: any) => <>{children}</>,
-  SelectItem: ({ value, children }: any) => <option value={value}>{children}</option>,
+  SelectItem: ({ value, children }: any) => (
+    <option value={value}>{children}</option>
+  ),
 }));
 
 vi.mock("@/components/ui/slider", () => ({
@@ -156,25 +187,38 @@ beforeEach(() => {
 
 describe("VerticalDramaSettingsTab — series watermark card (F131AB, task #34)", () => {
   it("renders nothing when textOverlaySuiteEnabled is false", () => {
-    render(<VerticalDramaSettingsTab {...baseProps} textOverlaySuiteEnabled={false} />);
+    render(
+      <VerticalDramaSettingsTab
+        {...baseProps}
+        textOverlaySuiteEnabled={false}
+      />
+    );
     expect(screen.queryByTestId("vd-watermark-card")).not.toBeInTheDocument();
   });
 
   it("renders the card, disabled (toggle off), when the flag is on but no watermark is configured yet", () => {
-    render(<VerticalDramaSettingsTab {...baseProps} textOverlaySuiteEnabled watermark={null} />);
+    render(
+      <VerticalDramaSettingsTab
+        {...baseProps}
+        textOverlaySuiteEnabled
+        watermark={null}
+      />
+    );
     const card = screen.getByTestId("vd-watermark-card");
     expect(card).toBeInTheDocument();
-    expect(screen.getByTestId("vd-watermark-enabled-toggle-primary")).toHaveAttribute(
-      "data-state",
-      "unchecked",
-    );
-    expect(screen.getByTestId("vd-watermark-enabled-toggle-secondary")).toHaveAttribute(
-      "data-state",
-      "unchecked",
-    );
+    expect(
+      screen.getByTestId("vd-watermark-enabled-toggle-primary")
+    ).toHaveAttribute("data-state", "unchecked");
+    expect(
+      screen.getByTestId("vd-watermark-enabled-toggle-secondary")
+    ).toHaveAttribute("data-state", "unchecked");
     // Fields are hidden until enabled.
-    expect(screen.queryByTestId("vd-watermark-type-primary")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("vd-watermark-type-secondary")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-watermark-type-primary")
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-watermark-type-secondary")
+    ).not.toBeInTheDocument();
   });
 
   it("pre-populates from an existing saved watermark config", () => {
@@ -191,27 +235,44 @@ describe("VerticalDramaSettingsTab — series watermark card (F131AB, task #34)"
           scalePct: 12,
           marginPx: 20,
         }}
-      />,
+      />
     );
-    expect(screen.getByTestId("vd-watermark-enabled-toggle-primary")).toHaveAttribute(
-      "data-state",
-      "checked",
-    );
-    expect((screen.getByTestId("vd-watermark-text-primary") as HTMLInputElement).value).toBe(
-      "@mychannel",
-    );
-    expect((screen.getByTestId("vd-watermark-margin-primary") as HTMLInputElement).value).toBe("20");
+    expect(
+      screen.getByTestId("vd-watermark-enabled-toggle-primary")
+    ).toHaveAttribute("data-state", "checked");
+    expect(
+      (screen.getByTestId("vd-watermark-text-primary") as HTMLInputElement)
+        .value
+    ).toBe("@mychannel");
+    expect(
+      (screen.getByTestId("vd-watermark-margin-primary") as HTMLInputElement)
+        .value
+    ).toBe("20");
   });
 
   it("toggling slot 1 enabled on reveals the full editor (type/position/opacity/scale/margin/preview)", () => {
-    render(<VerticalDramaSettingsTab {...baseProps} textOverlaySuiteEnabled watermark={null} />);
+    render(
+      <VerticalDramaSettingsTab
+        {...baseProps}
+        textOverlaySuiteEnabled
+        watermark={null}
+      />
+    );
     fireEvent.click(screen.getByTestId("vd-watermark-enabled-toggle-primary"));
     expect(screen.getByTestId("vd-watermark-type-primary")).toBeInTheDocument();
     expect(screen.getByTestId("vd-watermark-text-primary")).toBeInTheDocument();
-    expect(screen.getByTestId("vd-watermark-position-primary")).toBeInTheDocument();
-    expect(screen.getByTestId("vd-watermark-opacity-primary")).toBeInTheDocument();
-    expect(screen.getByTestId("vd-watermark-scale-primary")).toBeInTheDocument();
-    expect(screen.getByTestId("vd-watermark-margin-primary")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-watermark-position-primary")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-watermark-opacity-primary")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-watermark-scale-primary")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-watermark-margin-primary")
+    ).toBeInTheDocument();
     expect(screen.getByTestId("vd-watermark-preview")).toBeInTheDocument();
   });
 
@@ -221,14 +282,81 @@ describe("VerticalDramaSettingsTab — series watermark card (F131AB, task #34)"
         {...baseProps}
         textOverlaySuiteEnabled
         watermark={{ enabled: true, type: "text" }}
-      />,
+      />
     );
     fireEvent.change(screen.getByTestId("vd-watermark-type-primary"), {
       target: { value: "image" },
     });
-    expect(screen.queryByTestId("vd-watermark-text-primary")).not.toBeInTheDocument();
-    expect(screen.getByTestId("vd-watermark-image-url-primary")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-watermark-text-primary")
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-watermark-image-url-primary")
+    ).toBeInTheDocument();
   });
+
+  it.each([
+    {
+      slotId: "primary" as const,
+      watermark: {
+        enabled: true,
+        type: "image" as const,
+        imageUrl: "https://cdn.example.com/series-logo.png",
+      },
+    },
+    {
+      slotId: "secondary" as const,
+      watermark: {
+        enabled: false,
+        type: "text" as const,
+        secondary: {
+          enabled: true,
+          type: "image" as const,
+          imageUrl: "https://cdn.example.com/channel-logo.png",
+        },
+      },
+    },
+  ])(
+    "opens a fullscreen logo preview and downloads the authenticated image ($slotId)",
+    async ({ slotId, watermark }) => {
+      render(
+        <VerticalDramaSettingsTab
+          {...baseProps}
+          textOverlaySuiteEnabled
+          watermark={watermark}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId(`vd-watermark-view-image-${slotId}`));
+      expect(
+        screen.getByTestId(`vd-watermark-lightbox-${slotId}`)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`vd-watermark-lightbox-image-${slotId}`)
+      ).toBeInTheDocument();
+
+      vi.stubGlobal("URL", {
+        createObjectURL: vi.fn(() => "blob:logo"),
+        revokeObjectURL: vi.fn(),
+      });
+      const anchorClick = vi
+        .spyOn(HTMLAnchorElement.prototype, "click")
+        .mockImplementation(() => undefined);
+      fireEvent.click(
+        screen.getByTestId(`vd-watermark-download-image-${slotId}`)
+      );
+      const imageUrl =
+        slotId === "primary"
+          ? (watermark as any).imageUrl
+          : (watermark as any).secondary?.imageUrl;
+      await vi.waitFor(() =>
+        expect(mockFetchAuthenticatedMedia).toHaveBeenCalledWith(imageUrl)
+      );
+      expect(anchorClick).toHaveBeenCalledOnce();
+      anchorClick.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  );
 
   it("save button submits updateSeriesWatermark with the current draft", () => {
     render(
@@ -244,14 +372,17 @@ describe("VerticalDramaSettingsTab — series watermark card (F131AB, task #34)"
           scalePct: 10,
           marginPx: 32,
         }}
-      />,
+      />
     );
     fireEvent.click(screen.getByTestId("vd-watermark-save"));
     expect(mockUpdateSeriesWatermarkMutate).toHaveBeenCalledWith(
       expect.objectContaining({
         seriesId: "10",
-        watermark: expect.objectContaining({ enabled: true, text: "@mychannel" }),
-      }),
+        watermark: expect.objectContaining({
+          enabled: true,
+          text: "@mychannel",
+        }),
+      })
     );
   });
 
@@ -262,7 +393,7 @@ describe("VerticalDramaSettingsTab — series watermark card (F131AB, task #34)"
         readOnly
         textOverlaySuiteEnabled
         watermark={{ enabled: true, type: "text" }}
-      />,
+      />
     );
     expect(screen.queryByTestId("vd-watermark-save")).not.toBeInTheDocument();
   });
@@ -273,43 +404,87 @@ describe("VerticalDramaSettingsTab — series watermark card (F131AB, task #34)"
         {...baseProps}
         textOverlaySuiteEnabled
         watermark={{ enabled: true, type: "text", marginPx: 32 }}
-      />,
+      />
     );
     fireEvent.change(screen.getByTestId("vd-watermark-margin-primary"), {
       target: { value: "50" },
     });
     fireEvent.click(screen.getByTestId("vd-watermark-save"));
     expect(mockUpdateSeriesWatermarkMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ watermark: expect.objectContaining({ marginPx: 50 }) }),
+      expect.objectContaining({
+        watermark: expect.objectContaining({ marginPx: 50 }),
+      })
     );
   });
 });
 
 describe("VerticalDramaSettingsTab — dual watermark slots (planning/vd-dual-watermark/plan.md)", () => {
   it("renders slot 2 with its own independent controls", () => {
-    render(<VerticalDramaSettingsTab {...baseProps} textOverlaySuiteEnabled watermark={null} />);
-    fireEvent.click(screen.getByTestId("vd-watermark-enabled-toggle-secondary"));
-    expect(screen.getByTestId("vd-watermark-type-secondary")).toBeInTheDocument();
-    expect(screen.getByTestId("vd-watermark-text-secondary")).toBeInTheDocument();
-    expect(screen.getByTestId("vd-watermark-position-secondary")).toBeInTheDocument();
-    expect(screen.getByTestId("vd-watermark-opacity-secondary")).toBeInTheDocument();
-    expect(screen.getByTestId("vd-watermark-scale-secondary")).toBeInTheDocument();
-    expect(screen.getByTestId("vd-watermark-margin-secondary")).toBeInTheDocument();
+    render(
+      <VerticalDramaSettingsTab
+        {...baseProps}
+        textOverlaySuiteEnabled
+        watermark={null}
+      />
+    );
+    fireEvent.click(
+      screen.getByTestId("vd-watermark-enabled-toggle-secondary")
+    );
+    expect(
+      screen.getByTestId("vd-watermark-type-secondary")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-watermark-text-secondary")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-watermark-position-secondary")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-watermark-opacity-secondary")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-watermark-scale-secondary")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-watermark-margin-secondary")
+    ).toBeInTheDocument();
     // Slot 1 stays untouched and still hidden.
-    expect(screen.queryByTestId("vd-watermark-type-primary")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-watermark-type-primary")
+    ).not.toBeInTheDocument();
   });
 
   it("defaults a fresh slot 2 to bottom_right so it doesn't stack with slot 1's default top_right", () => {
-    render(<VerticalDramaSettingsTab {...baseProps} textOverlaySuiteEnabled watermark={null} />);
-    fireEvent.click(screen.getByTestId("vd-watermark-enabled-toggle-secondary"));
+    render(
+      <VerticalDramaSettingsTab
+        {...baseProps}
+        textOverlaySuiteEnabled
+        watermark={null}
+      />
+    );
+    fireEvent.click(
+      screen.getByTestId("vd-watermark-enabled-toggle-secondary")
+    );
     expect(
-      (screen.getByTestId("vd-watermark-position-secondary") as HTMLSelectElement).value,
+      (
+        screen.getByTestId(
+          "vd-watermark-position-secondary"
+        ) as HTMLSelectElement
+      ).value
     ).toBe("bottom_right");
   });
 
   it("editing slot 2 and saving produces a payload with a secondary object carrying those values", () => {
-    render(<VerticalDramaSettingsTab {...baseProps} textOverlaySuiteEnabled watermark={null} />);
-    fireEvent.click(screen.getByTestId("vd-watermark-enabled-toggle-secondary"));
+    render(
+      <VerticalDramaSettingsTab
+        {...baseProps}
+        textOverlaySuiteEnabled
+        watermark={null}
+      />
+    );
+    fireEvent.click(
+      screen.getByTestId("vd-watermark-enabled-toggle-secondary")
+    );
     fireEvent.change(screen.getByTestId("vd-watermark-text-secondary"), {
       target: { value: "@mychannel-logo" },
     });
@@ -326,7 +501,7 @@ describe("VerticalDramaSettingsTab — dual watermark slots (planning/vd-dual-wa
             marginPx: 12,
           }),
         }),
-      }),
+      })
     );
   });
 
@@ -344,20 +519,21 @@ describe("VerticalDramaSettingsTab — dual watermark slots (planning/vd-dual-wa
           scalePct: 8,
           marginPx: 16,
         }}
-      />,
+      />
     );
-    expect(screen.getByTestId("vd-watermark-enabled-toggle-primary")).toHaveAttribute(
-      "data-state",
-      "checked",
-    );
-    expect((screen.getByTestId("vd-watermark-text-primary") as HTMLInputElement).value).toBe(
-      "@legacy",
-    );
-    expect(screen.getByTestId("vd-watermark-enabled-toggle-secondary")).toHaveAttribute(
-      "data-state",
-      "unchecked",
-    );
-    expect(screen.queryByTestId("vd-watermark-type-secondary")).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-watermark-enabled-toggle-primary")
+    ).toHaveAttribute("data-state", "checked");
+    expect(
+      (screen.getByTestId("vd-watermark-text-primary") as HTMLInputElement)
+        .value
+    ).toBe("@legacy");
+    expect(
+      screen.getByTestId("vd-watermark-enabled-toggle-secondary")
+    ).toHaveAttribute("data-state", "unchecked");
+    expect(
+      screen.queryByTestId("vd-watermark-type-secondary")
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("vd-watermark-save"));
     const [payload] = mockUpdateSeriesWatermarkMutate.mock.calls.at(-1)!;
@@ -375,27 +551,38 @@ describe("VerticalDramaSettingsTab — dual watermark slots (planning/vd-dual-wa
           type: "image",
           imageUrl: "https://cdn.example.com/watermark/primary.png",
         }}
-      />,
+      />
     );
-    fireEvent.click(screen.getByTestId("vd-watermark-enabled-toggle-secondary"));
+    fireEvent.click(
+      screen.getByTestId("vd-watermark-enabled-toggle-secondary")
+    );
     fireEvent.change(screen.getByTestId("vd-watermark-type-secondary"), {
       target: { value: "image" },
     });
-    const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "channel-logo.png", {
-      type: "image/png",
-    });
+    const file = new File(
+      [new Uint8Array([0x89, 0x50, 0x4e, 0x47])],
+      "channel-logo.png",
+      {
+        type: "image/png",
+      }
+    );
     fireEvent.change(screen.getByTestId("vd-watermark-file-input-secondary"), {
       target: { files: [file] },
     });
 
     await vi.waitFor(() =>
       expect(
-        (screen.getByTestId("vd-watermark-image-url-secondary") as HTMLInputElement).value,
-      ).toBe("https://cdn.example.com/watermark/logo.png"),
+        (
+          screen.getByTestId(
+            "vd-watermark-image-url-secondary"
+          ) as HTMLInputElement
+        ).value
+      ).toBe("https://cdn.example.com/watermark/logo.png")
     );
-    expect((screen.getByTestId("vd-watermark-image-url-primary") as HTMLInputElement).value).toBe(
-      "https://cdn.example.com/watermark/primary.png",
-    );
+    expect(
+      (screen.getByTestId("vd-watermark-image-url-primary") as HTMLInputElement)
+        .value
+    ).toBe("https://cdn.example.com/watermark/primary.png");
   });
 });
 
@@ -410,128 +597,143 @@ describe("VerticalDramaSettingsTab — dual watermark slots (planning/vd-dual-wa
 describe.each([
   { slotId: "primary" as const },
   { slotId: "secondary" as const },
-])("VerticalDramaSettingsTab — watermark image drag & drop ($slotId)", ({ slotId }) => {
-  // Seed the relevant slot as enabled+image DIRECTLY via the `watermark`
-  // prop (rather than toggling it on via fireEvent) so this also exercises
-  // the `readOnly` case below, where the enable switch is disabled and a
-  // click wouldn't fire `onCheckedChange` at all.
-  const renderImageWatermark = (props?: { readOnly?: boolean }) =>
-    render(
-      <VerticalDramaSettingsTab
-        {...baseProps}
-        {...props}
-        textOverlaySuiteEnabled
-        watermark={
-          slotId === "primary"
-            ? { enabled: true, type: "image" }
-            : {
-                enabled: false,
-                type: "text",
-                secondary: { enabled: true, type: "image" },
-              }
-        }
-      />,
-    );
+])(
+  "VerticalDramaSettingsTab — watermark image drag & drop ($slotId)",
+  ({ slotId }) => {
+    // Seed the relevant slot as enabled+image DIRECTLY via the `watermark`
+    // prop (rather than toggling it on via fireEvent) so this also exercises
+    // the `readOnly` case below, where the enable switch is disabled and a
+    // click wouldn't fire `onCheckedChange` at all.
+    const renderImageWatermark = (props?: { readOnly?: boolean }) =>
+      render(
+        <VerticalDramaSettingsTab
+          {...baseProps}
+          {...props}
+          textOverlaySuiteEnabled
+          watermark={
+            slotId === "primary"
+              ? { enabled: true, type: "image" }
+              : {
+                  enabled: false,
+                  type: "text",
+                  secondary: { enabled: true, type: "image" },
+                }
+          }
+        />
+      );
 
-  const dropzone = () => screen.getByTestId(`vd-watermark-dropzone-${slotId}`);
-  const imageUrlField = () => screen.getByTestId(`vd-watermark-image-url-${slotId}`);
+    const dropzone = () =>
+      screen.getByTestId(`vd-watermark-dropzone-${slotId}`);
+    const imageUrlField = () =>
+      screen.getByTestId(`vd-watermark-image-url-${slotId}`);
 
-  const dropFile = (target: HTMLElement, file: File) => {
-    const dataTransfer = {
-      files: [file],
-      items: [{ kind: "file", type: file.type }],
-      types: ["Files"],
-      dropEffect: "none",
-      getData: () => "",
+    const dropFile = (target: HTMLElement, file: File) => {
+      const dataTransfer = {
+        files: [file],
+        items: [{ kind: "file", type: file.type }],
+        types: ["Files"],
+        dropEffect: "none",
+        getData: () => "",
+      };
+      fireEvent.drop(target, { dataTransfer });
+      return dataTransfer;
     };
-    fireEvent.drop(target, { dataTransfer });
-    return dataTransfer;
-  };
 
-  it("cancels dragover on the whole image field so the browser does not open the file", () => {
-    renderImageWatermark();
-    const zone = dropzone();
-    // The URL input must live INSIDE the drop target — dropping on it was the
-    // reported failure.
-    expect(zone).toContainElement(imageUrlField());
+    it("cancels dragover on the whole image field so the browser does not open the file", () => {
+      renderImageWatermark();
+      const zone = dropzone();
+      // The URL input must live INSIDE the drop target — dropping on it was the
+      // reported failure.
+      expect(zone).toContainElement(imageUrlField());
 
-    for (const eventName of ["dragEnter", "dragOver"] as const) {
-      const dataTransfer = { dropEffect: "none", types: ["Files"] };
-      const cancelled = !fireEvent[eventName](zone, { dataTransfer });
-      expect(cancelled).toBe(true);
-      expect(dataTransfer.dropEffect).toBe("copy");
-    }
-  });
-
-  it("uploads a dropped image file and fills the URL field without auto-saving", async () => {
-    renderImageWatermark();
-    const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "logo.png", {
-      type: "image/png",
+      for (const eventName of ["dragEnter", "dragOver"] as const) {
+        const dataTransfer = { dropEffect: "none", types: ["Files"] };
+        const cancelled = !fireEvent[eventName](zone, { dataTransfer });
+        expect(cancelled).toBe(true);
+        expect(dataTransfer.dropEffect).toBe("copy");
+      }
     });
-    dropFile(dropzone(), file);
 
-    await vi.waitFor(() =>
-      expect(mockUploadWatermarkImage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          seriesId: "10",
-          fileName: "logo.png",
-          fileType: "image/png",
-        }),
-      ),
-    );
-    await vi.waitFor(() =>
-      expect((imageUrlField() as HTMLInputElement).value).toBe(
-        "https://cdn.example.com/watermark/logo.png",
-      ),
-    );
-    expect(mockUpdateSeriesWatermarkMutate).not.toHaveBeenCalled();
-  });
+    it("uploads a dropped image file and fills the URL field without auto-saving", async () => {
+      renderImageWatermark();
+      const file = new File(
+        [new Uint8Array([0x89, 0x50, 0x4e, 0x47])],
+        "logo.png",
+        {
+          type: "image/png",
+        }
+      );
+      dropFile(dropzone(), file);
 
-  it("rejects a non-image drop with an error instead of uploading it", async () => {
-    renderImageWatermark();
-    const file = new File(["nope"], "notes.txt", { type: "text/plain" });
-    dropFile(dropzone(), file);
-
-    await screen.findByRole("alert");
-    expect(mockUploadWatermarkImage).not.toHaveBeenCalled();
-  });
-
-  it("rejects a file over the 10MB cap before spending an upload round-trip", async () => {
-    renderImageWatermark();
-    const file = new File([new Uint8Array(1)], "huge.png", { type: "image/png" });
-    Object.defineProperty(file, "size", { value: 11 * 1024 * 1024 });
-    dropFile(dropzone(), file);
-
-    await screen.findByRole("alert");
-    expect(mockUploadWatermarkImage).not.toHaveBeenCalled();
-  });
-
-  it("accepts an image URL dragged in from another tab", async () => {
-    renderImageWatermark();
-    fireEvent.drop(dropzone(), {
-      dataTransfer: {
-        files: [],
-        types: ["text/uri-list"],
-        getData: (type: string) =>
-          type === "text/uri-list" ? "https://cdn.example.com/from-tab.png" : "",
-      },
+      await vi.waitFor(() =>
+        expect(mockUploadWatermarkImage).toHaveBeenCalledWith(
+          expect.objectContaining({
+            seriesId: "10",
+            fileName: "logo.png",
+            fileType: "image/png",
+          })
+        )
+      );
+      await vi.waitFor(() =>
+        expect((imageUrlField() as HTMLInputElement).value).toBe(
+          "https://cdn.example.com/watermark/logo.png"
+        )
+      );
+      expect(mockUpdateSeriesWatermarkMutate).not.toHaveBeenCalled();
     });
-    await vi.waitFor(() =>
-      expect((imageUrlField() as HTMLInputElement).value).toBe(
-        "https://cdn.example.com/from-tab.png",
-      ),
-    );
-    expect(mockUploadWatermarkImage).not.toHaveBeenCalled();
-  });
 
-  it("ignores drops when the series is archived (readOnly)", () => {
-    renderImageWatermark({ readOnly: true });
-    const file = new File([new Uint8Array([0x89, 0x50])], "logo.png", { type: "image/png" });
-    const dataTransfer = dropFile(dropzone(), file);
-    expect(dataTransfer.dropEffect).toBe("none");
-    expect(mockUploadWatermarkImage).not.toHaveBeenCalled();
-  });
-});
+    it("rejects a non-image drop with an error instead of uploading it", async () => {
+      renderImageWatermark();
+      const file = new File(["nope"], "notes.txt", { type: "text/plain" });
+      dropFile(dropzone(), file);
+
+      await screen.findByRole("alert");
+      expect(mockUploadWatermarkImage).not.toHaveBeenCalled();
+    });
+
+    it("rejects a file over the 10MB cap before spending an upload round-trip", async () => {
+      renderImageWatermark();
+      const file = new File([new Uint8Array(1)], "huge.png", {
+        type: "image/png",
+      });
+      Object.defineProperty(file, "size", { value: 11 * 1024 * 1024 });
+      dropFile(dropzone(), file);
+
+      await screen.findByRole("alert");
+      expect(mockUploadWatermarkImage).not.toHaveBeenCalled();
+    });
+
+    it("accepts an image URL dragged in from another tab", async () => {
+      renderImageWatermark();
+      fireEvent.drop(dropzone(), {
+        dataTransfer: {
+          files: [],
+          types: ["text/uri-list"],
+          getData: (type: string) =>
+            type === "text/uri-list"
+              ? "https://cdn.example.com/from-tab.png"
+              : "",
+        },
+      });
+      await vi.waitFor(() =>
+        expect((imageUrlField() as HTMLInputElement).value).toBe(
+          "https://cdn.example.com/from-tab.png"
+        )
+      );
+      expect(mockUploadWatermarkImage).not.toHaveBeenCalled();
+    });
+
+    it("ignores drops when the series is archived (readOnly)", () => {
+      renderImageWatermark({ readOnly: true });
+      const file = new File([new Uint8Array([0x89, 0x50])], "logo.png", {
+        type: "image/png",
+      });
+      const dataTransfer = dropFile(dropzone(), file);
+      expect(dataTransfer.dropEffect).toBe("none");
+      expect(mockUploadWatermarkImage).not.toHaveBeenCalled();
+    });
+  }
+);
 
 /**
  * Dropping onto a slot that is NOT already in image mode. The image field —
@@ -543,93 +745,119 @@ describe.each([
 describe.each([
   { slotId: "primary" as const },
   { slotId: "secondary" as const },
-])("VerticalDramaSettingsTab — drop onto a TEXT-mode slot ($slotId)", ({ slotId }) => {
-  const renderTextWatermark = () =>
-    render(
-      <VerticalDramaSettingsTab
-        {...baseProps}
-        textOverlaySuiteEnabled
-        watermark={{ enabled: false, type: "text" }}
-      />,
-    );
+])(
+  "VerticalDramaSettingsTab — drop onto a TEXT-mode slot ($slotId)",
+  ({ slotId }) => {
+    const renderTextWatermark = () =>
+      render(
+        <VerticalDramaSettingsTab
+          {...baseProps}
+          textOverlaySuiteEnabled
+          watermark={{ enabled: false, type: "text" }}
+        />
+      );
 
-  const slot = () => screen.getByTestId(`vd-watermark-slot-${slotId}`);
+    const slot = () => screen.getByTestId(`vd-watermark-slot-${slotId}`);
 
-  const dropFile = (target: HTMLElement, file: File) =>
-    fireEvent.drop(target, {
-      dataTransfer: {
-        files: [file],
-        items: [{ kind: "file", type: file.type }],
-        types: ["Files"],
-        dropEffect: "none",
-        getData: () => "",
-      },
+    const dropFile = (target: HTMLElement, file: File) =>
+      fireEvent.drop(target, {
+        dataTransfer: {
+          files: [file],
+          items: [{ kind: "file", type: file.type }],
+          types: ["Files"],
+          dropEffect: "none",
+          getData: () => "",
+        },
+      });
+
+    it("renders the logo drop area (and a mode-switch note) on an ENABLED text-mode slot", () => {
+      // The image drop area used to be hidden outside image mode, which left a
+      // text-mode slot with no visible drop target or upload button at all.
+      render(
+        <VerticalDramaSettingsTab
+          {...baseProps}
+          textOverlaySuiteEnabled
+          watermark={
+            slotId === "primary"
+              ? { enabled: true, type: "text" }
+              : {
+                  enabled: false,
+                  type: "text",
+                  secondary: { enabled: true, type: "text" },
+                }
+          }
+        />
+      );
+      // The text field is still there (it is the active mode)…
+      expect(
+        screen.getByTestId(`vd-watermark-text-${slotId}`)
+      ).toBeInTheDocument();
+      // …AND the logo drop area is rendered alongside it.
+      expect(
+        screen.getByTestId(`vd-watermark-dropzone-${slotId}`)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`vd-watermark-file-picker-${slotId}`)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`vd-watermark-drop-anywhere-hint-${slotId}`)
+      ).toBeInTheDocument();
     });
 
-  it("renders the logo drop area (and a mode-switch note) on an ENABLED text-mode slot", () => {
-    // The image drop area used to be hidden outside image mode, which left a
-    // text-mode slot with no visible drop target or upload button at all.
-    render(
-      <VerticalDramaSettingsTab
-        {...baseProps}
-        textOverlaySuiteEnabled
-        watermark={
-          slotId === "primary"
-            ? { enabled: true, type: "text" }
-            : {
-                enabled: false,
-                type: "text",
-                secondary: { enabled: true, type: "text" },
-              }
+    it("accepts an image dropped anywhere in the slot and switches it to image mode", async () => {
+      renderTextWatermark();
+      const file = new File(
+        [new Uint8Array([0x89, 0x50, 0x4e, 0x47])],
+        "logo.png",
+        {
+          type: "image/png",
         }
-      />,
-    );
-    // The text field is still there (it is the active mode)…
-    expect(screen.getByTestId(`vd-watermark-text-${slotId}`)).toBeInTheDocument();
-    // …AND the logo drop area is rendered alongside it.
-    expect(screen.getByTestId(`vd-watermark-dropzone-${slotId}`)).toBeInTheDocument();
-    expect(screen.getByTestId(`vd-watermark-file-picker-${slotId}`)).toBeInTheDocument();
-    expect(screen.getByTestId(`vd-watermark-drop-anywhere-hint-${slotId}`)).toBeInTheDocument();
-  });
+      );
+      dropFile(slot(), file);
 
-  it("accepts an image dropped anywhere in the slot and switches it to image mode", async () => {
-    renderTextWatermark();
-    const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "logo.png", {
-      type: "image/png",
-    });
-    dropFile(slot(), file);
-
-    await vi.waitFor(() => expect(mockUploadWatermarkImage).toHaveBeenCalledTimes(1));
-    // Switched to image mode: the image URL field now exists and carries the
-    // uploaded URL, and the slot turned itself on.
-    await vi.waitFor(() =>
+      await vi.waitFor(() =>
+        expect(mockUploadWatermarkImage).toHaveBeenCalledTimes(1)
+      );
+      // Switched to image mode: the image URL field now exists and carries the
+      // uploaded URL, and the slot turned itself on.
+      await vi.waitFor(() =>
+        expect(
+          (
+            screen.getByTestId(
+              `vd-watermark-image-url-${slotId}`
+            ) as HTMLInputElement
+          ).value
+        ).toBe("https://cdn.example.com/watermark/logo.png")
+      );
       expect(
-        (screen.getByTestId(`vd-watermark-image-url-${slotId}`) as HTMLInputElement).value,
-      ).toBe("https://cdn.example.com/watermark/logo.png"),
-    );
-    expect(screen.getByTestId(`vd-watermark-enabled-toggle-${slotId}`)).toHaveAttribute(
-      "data-state",
-      "checked",
-    );
-    // Still an explicit save — the drop must not persist anything on its own.
-    expect(mockUpdateSeriesWatermarkMutate).not.toHaveBeenCalled();
-  });
-
-  it("accepts an image URL dragged from another tab onto a text-mode slot", async () => {
-    renderTextWatermark();
-    fireEvent.drop(slot(), {
-      dataTransfer: {
-        files: [],
-        types: ["text/uri-list"],
-        getData: (type: string) =>
-          type === "text/uri-list" ? "https://cdn.example.com/from-tab.png" : "",
-      },
+        screen.getByTestId(`vd-watermark-enabled-toggle-${slotId}`)
+      ).toHaveAttribute("data-state", "checked");
+      // Still an explicit save — the drop must not persist anything on its own.
+      expect(mockUpdateSeriesWatermarkMutate).not.toHaveBeenCalled();
     });
-    await vi.waitFor(() =>
-      expect(
-        (screen.getByTestId(`vd-watermark-image-url-${slotId}`) as HTMLInputElement).value,
-      ).toBe("https://cdn.example.com/from-tab.png"),
-    );
-    expect(mockUploadWatermarkImage).not.toHaveBeenCalled();
-  });
-});
+
+    it("accepts an image URL dragged from another tab onto a text-mode slot", async () => {
+      renderTextWatermark();
+      fireEvent.drop(slot(), {
+        dataTransfer: {
+          files: [],
+          types: ["text/uri-list"],
+          getData: (type: string) =>
+            type === "text/uri-list"
+              ? "https://cdn.example.com/from-tab.png"
+              : "",
+        },
+      });
+      await vi.waitFor(() =>
+        expect(
+          (
+            screen.getByTestId(
+              `vd-watermark-image-url-${slotId}`
+            ) as HTMLInputElement
+          ).value
+        ).toBe("https://cdn.example.com/from-tab.png")
+      );
+      expect(mockUploadWatermarkImage).not.toHaveBeenCalled();
+    });
+  }
+);

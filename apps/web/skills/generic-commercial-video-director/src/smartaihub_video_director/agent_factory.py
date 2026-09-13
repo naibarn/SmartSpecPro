@@ -10,8 +10,8 @@ class AgentFactory:
     def __init__(self, contracts:StageContractRegistry): self.contracts=contracts
     def build(self, stage:str, *, model:str|None=None, allow_research_tool:bool=True,
               allow_asset_evidence_tool:bool=True, allow_provider_profile_tool:bool=True,
-              allow_cost_estimate_tool:bool=True):
-        sdk=require_openai_agents_sdk(); Agent=sdk.Agent
+              allow_cost_estimate_tool:bool=True, max_output_tokens:int=8_192):
+        sdk=require_openai_agents_sdk(); Agent=sdk.Agent; ModelSettings=sdk.ModelSettings
         ins,outs=build_agent_guardrails()
         schema_id=self.contracts.schema_id(stage)
         required_fields=json.dumps(self.contracts.required_fields(stage),ensure_ascii=False,separators=(',',':'))
@@ -40,6 +40,7 @@ class AgentFactory:
         instructions=(f"You are the bounded specialist for stage {stage}. Return StageOutputEnvelope only. "
           f"Set stage exactly to {stage!r}, schemaId exactly to {schema_id!r}, and make payload conform to that canonical schema. "
           f"The canonical payload required keys are {required_fields}; include every required key even when its value is an empty array or empty string allowed by the input. "
+          f"Canonical payload JSON Schema (field types, nested requirements and allowed properties are authoritative): {self.contracts.payload_schema_json(stage)}\n"
           f"{stage_policy}"
           "For prompt_intent, copy canonical dialogue as an array of the input dialogue objects; never flatten dialogue objects into strings or invent dialogue. "
           "Use only authorized/read-only tools. Never request, invent or emit authority to deduct credits, submit paid generation, publish, delete assets, change tenant scope, expose secrets, or bypass approvals. Preserve evidence levels and identify uncertainty.")
@@ -51,6 +52,7 @@ class AgentFactory:
         # additionalProperties requirement for this bounded envelope.
         output_type=sdk.AgentOutputSchema(StageOutputEnvelope, strict_json_schema=False)
         return Agent(name=f"SmartAIHub {stage}",instructions=instructions,model=model,output_type=output_type,
+                     model_settings=ModelSettings(max_tokens=max_output_tokens),
                      tools=build_read_only_tools(allow_research_tool=allow_research_tool,
                          allow_asset_evidence_tool=allow_asset_evidence_tool,
                          allow_provider_profile_tool=allow_provider_profile_tool,

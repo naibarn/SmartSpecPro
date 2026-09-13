@@ -85,6 +85,7 @@ import { VerticalDramaSeriesShareDialog } from "@/components/verticalDramaSeries
 import { VerticalDramaSeriesCreditSummary } from "@/components/verticalDramaSeries/VerticalDramaSeriesCreditSummary";
 import { VerticalDramaEpisodeCoverSurface } from "@/components/verticalDramaSeries/VerticalDramaEpisodeCoverSurface";
 import { SpecialTieInEpisodeDialog } from "@/components/verticalDramaSeries/SpecialTieInEpisodeDialog";
+import { SpecialTieInStartModeDialog } from "@/components/verticalDramaSeries/SpecialTieInStartModeDialog";
 import { useVerticalDramaCreditConfirmation } from "@/components/verticalDramaSeries/VerticalDramaCreditConfirmDialog";
 import { getActiveBreakdownItemsForDisplay } from "@/components/verticalDramaSeries/VerticalDramaArcReplanCard";
 import {
@@ -145,6 +146,7 @@ import {
 import { vdTextOverlayCopy } from "@/components/verticalDramaSeries/verticalDramaTextOverlayCopy";
 import { parseSeriesWatermarkConfig } from "@shared/verticalDramaSeries/textOverlay";
 import { readVerticalDramaPlanningState } from "@shared/verticalDramaSeries/planningState";
+import type { SpecialTieInStartMode } from "@/lib/specialTieInUi";
 
 type TabId =
   | "planning"
@@ -331,6 +333,7 @@ export default function VerticalDramaSeriesDetailPage() {
          *  when unset (fully automatic). Passed through `get`'s full-row
          *  spread, no server-side change needed for this new column. */
         llmModelPolicy?: unknown;
+        generationSettings?: unknown;
         workerMediaWorkflowPolicy?: unknown;
         workerAccessPolicy?: unknown;
         /** Series lineage (Stage 2.6) — raw DB columns, passed through
@@ -798,6 +801,7 @@ export default function VerticalDramaSeriesDetailPage() {
                           : null
                       }
                       llmModelPolicy={series.llmModelPolicy}
+                      generationSettings={series.generationSettings}
                       readOnly={isArchived}
                       onSaved={() => detailQuery.refetch()}
                       textOverlaySuiteEnabled={textOverlaySuiteEnabled}
@@ -1129,6 +1133,10 @@ export function EpisodesTab({
     alt: string;
   } | null>(null);
   const [specialTieInDialogOpen, setSpecialTieInDialogOpen] = useState(false);
+  const [specialTieInStartDialogOpen, setSpecialTieInStartDialogOpen] =
+    useState(false);
+  const [specialTieInStartMode, setSpecialTieInStartMode] =
+    useState<SpecialTieInStartMode>("fresh");
   const specialTieInEnabled = useTenantFeatureFlag(
     "verticalDramaSpecialEpisodes"
   );
@@ -1864,12 +1872,23 @@ export function EpisodesTab({
         seriesId={seriesId}
         open={specialTieInDialogOpen}
         onOpenChange={setSpecialTieInDialogOpen}
+        initialMode={specialTieInStartMode}
         onOpenCharacterSettings={onOpenCharacterSettings}
         onCreated={episodeId => {
           void utils.verticalDramaSeries.get.invalidate({ seriesId });
           window.location.assign(
             `/drama-series/${seriesId}/episodes/${episodeId}`
           );
+        }}
+      />
+      <SpecialTieInStartModeDialog
+        lang={lang}
+        open={specialTieInStartDialogOpen}
+        onOpenChange={setSpecialTieInStartDialogOpen}
+        onSelect={mode => {
+          setSpecialTieInStartMode(mode);
+          setSpecialTieInStartDialogOpen(false);
+          setSpecialTieInDialogOpen(true);
         }}
       />
       <div className="flex flex-wrap items-center gap-2">
@@ -1919,7 +1938,7 @@ export function EpisodesTab({
                 variant="outline"
                 size="sm"
                 className="gap-2"
-                onClick={() => setSpecialTieInDialogOpen(true)}
+                onClick={() => setSpecialTieInStartDialogOpen(true)}
                 data-testid="vd-create-special-tie-in"
               >
                 <ImagePlus className="h-4 w-4" aria-hidden="true" />

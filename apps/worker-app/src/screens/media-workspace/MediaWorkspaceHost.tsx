@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
 import { useWorkerAppContext } from "../../app/workerContext";
@@ -97,10 +97,14 @@ export function MediaWorkspaceHost({
   const [stage, setStage] = useState<WorkspaceStage>("intake");
   const [selectedVideo, setSelectedVideo] = useState<DirectoryEntry | null>(null);
   const [loadedProjectDraft, setLoadedProjectDraft] = useState<SmartSpecProjectDraft | null>(null);
+  const [timelineProject, setTimelineProject] = useState<SmartSpecProjectDraft | null>(null);
+  const [timelineProjectReady, setTimelineProjectReady] = useState(false);
+  const [speakerSourcePath, setSpeakerSourcePath] = useState<string | null>(null);
   const [importedAsset, setImportedAsset] = useState<ProjectAsset | null>(null);
   const [isExplorerCollapsed, setIsExplorerCollapsed] = useState<boolean>(false);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [isSpeakerAwareOpen, setIsSpeakerAwareOpen] = useState(false);
+  const [mediaPickerRequest, setMediaPickerRequest] = useState(0);
   const [autoSubtitleRequest, setAutoSubtitleRequest] = useState(0);
   const speakerAwarePanelRef = useRef<HTMLElement | null>(null);
   const [explorerWidth, setExplorerWidth] = useState<number>(() => {
@@ -121,6 +125,54 @@ export function MediaWorkspaceHost({
   const [projectError, setProjectError] = useState<string | null>(null);
   const projectRequest = useRef(0);
   const workspacePath = useRef(workspace?.localPath);
+  // Opening a project may ask the parent to switch to the project's recorded
+  // workspace. That controlled path change must not clear the source we just
+  // restored from the project; unrelated workspace changes still reset it.
+  const preserveSelectionOnNextWorkspaceChange = useRef(false);
+
+  const handleTimelineProjectChange = useCallback((draft: SmartSpecProjectDraft | null) => {
+    setTimelineProjectReady(true);
+    setTimelineProject(draft);
+  }, []);
+
+  const timelineVideoOptions = useMemo(() => {
+    const options: Array<{ path: string; label: string; relativeName?: string }> = [];
+    const seen = new Set<string>();
+    for (const track of timelineProject?.tracks ?? []) {
+      if (track.type !== "video_main" && track.type !== "video_broll") continue;
+      for (const clip of track.clips) {
+        const path = clip.sourcePath?.trim();
+        if (!path || isProjectFilePath(path) || seen.has(path)) continue;
+        const relativeName = resolveWorkspaceRelativePath(workspace?.localPath, path);
+        if (!relativeName) continue;
+        seen.add(path);
+        options.push({
+          path,
+          label: clip.name?.trim() || path.split(/[\\/]/).pop() || path,
+          relativeName,
+        });
+      }
+    }
+    // A freshly opened source is the first timeline clip while the editor is
+    // still initialising its draft. Keep the tool usable during that brief
+    // window, but never expose files that are only in the Media Explorer.
+    const selectedRelativeName = selectedVideo?.path ? resolveWorkspaceRelativePath(workspace?.localPath, selectedVideo.path) : null;
+    if (!timelineProjectReady && options.length === 0 && selectedVideo?.isVideo && selectedVideo.path && !isProjectFilePath(selectedVideo.path) && selectedRelativeName) {
+      options.push({
+        path: selectedVideo.path,
+        label: selectedVideo.name,
+        relativeName: selectedRelativeName,
+      });
+    }
+    return options;
+  }, [timelineProject, timelineProjectReady, selectedVideo, workspace?.localPath]);
+
+  useEffect(() => {
+    setSpeakerSourcePath((current) => {
+      if (current && timelineVideoOptions.some((option) => option.path === current)) return current;
+      return timelineVideoOptions.length === 1 ? timelineVideoOptions[0].path : null;
+    });
+  }, [timelineVideoOptions]);
 
   const handleResizeMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -173,13 +225,26 @@ export function MediaWorkspaceHost({
 
   useEffect(() => {
     if (workspacePath.current !== workspace?.localPath) {
+      const preserveSelection = preserveSelectionOnNextWorkspaceChange.current;
+      preserveSelectionOnNextWorkspaceChange.current = false;
       workspacePath.current = workspace?.localPath;
+      const videoToPreserve = preserveSelection && selectedVideo?.isVideo ? selectedVideo : null;
+      const relativeSelection = videoToPreserve
+        ? resolveWorkspaceRelativePath(workspace?.localPath, videoToPreserve.path)
+        : null;
+      if (relativeSelection && videoToPreserve) {
+        onSelectSourceFile?.(relativeSelection, videoToPreserve.path);
+        return;
+      }
       setSelectedVideo(null);
       setLoadedProjectDraft(null);
+      setTimelineProject(null);
+      setTimelineProjectReady(false);
+      setSpeakerSourcePath(null);
       onSelectSourceFile?.("", workspace?.localPath || "");
     }
     return () => { projectRequest.current += 1; };
-  }, [workspace?.localPath]);
+  }, [workspace?.localPath, onSelectSourceFile, selectedVideo]);
 
   const handleSelectVideo = (entry: DirectoryEntry) => {
     // If it's a project file or JSON, redirect directly to handleOpenProjectFile
@@ -189,6 +254,9 @@ export function MediaWorkspaceHost({
     }
     setSelectedVideo(entry);
     setLoadedProjectDraft(null);
+    setTimelineProject(null);
+    setTimelineProjectReady(false);
+    setSpeakerSourcePath(null);
     setImportedAsset(null);
     if (onSelectSourceFile) {
       const relativeName = resolveWorkspaceRelativePath(workspace?.localPath, entry.path) || entry.name;
@@ -199,6 +267,9 @@ export function MediaWorkspaceHost({
   const handleOpenProjectFile = async (entry: DirectoryEntry) => {
     const requestId = (projectRequest.current += 1);
     setProjectError(null);
+    setTimelineProject(null);
+    setTimelineProjectReady(false);
+    setSpeakerSourcePath(null);
     try {
       const jsonContent = await invoke<string>("worker_app_load_nle_project", {
         projectPath: entry.path,
@@ -228,6 +299,7 @@ export function MediaWorkspaceHost({
           || resolveWorkspaceRelativePath(projectWorkspacePath, resolvedSourcePath);
         if (relativeSourcePath) {
           if (!resolveWorkspaceRelativePath(workspace?.localPath, resolvedSourcePath) && projectWorkspacePath) {
+            preserveSelectionOnNextWorkspaceChange.current = true;
             onWorkspacePathChange?.(projectWorkspacePath);
           }
           onSelectSourceFile?.(relativeSourcePath, resolvedSourcePath);
@@ -357,6 +429,9 @@ export function MediaWorkspaceHost({
     }
 
     setLoadedProjectDraft(emptyDraft);
+    setTimelineProject(emptyDraft);
+    setTimelineProjectReady(true);
+    setSpeakerSourcePath(null);
     setImportedAsset(null);
     setSelectedVideo(null);
     onSelectSourceFile?.("", targetDir);
@@ -646,6 +721,7 @@ export function MediaWorkspaceHost({
                   }
                 }}
                 selectedFilePath={selectedVideo?.path}
+                focusMediaRequest={mediaPickerRequest}
                 onCollapse={() => setIsExplorerCollapsed(true)}
               />
             )}
@@ -700,6 +776,7 @@ export function MediaWorkspaceHost({
               canSubmitJob={canSubmit}
               isBusy={busy}
               loadedProjectDraft={loadedProjectDraft}
+              onTimelineProjectChange={handleTimelineProjectChange}
               importedAsset={importedAsset}
               onProjectDraftChange={setLoadedProjectDraft}
             />
@@ -707,12 +784,23 @@ export function MediaWorkspaceHost({
               <SpeakerAwareWorkflowPanel
                 ref={speakerAwarePanelRef}
                 seriesId={seriesId || loadedProjectDraft?.metadata?.seriesId}
-                sourceLabel={selectedVideo?.isVideo ? selectedVideo.name : sourceRelativeName || null}
+                onRequestSourceSelection={() => {
+                  setActiveTab("explorer");
+                  setIsExplorerCollapsed(false);
+                  setMediaPickerRequest((current) => current + 1);
+                }}
+                sourceLabel={selectedVideo?.isVideo
+                  ? resolveWorkspaceRelativePath(workspace?.localPath, speakerSourcePath || selectedVideo.path) || sourceRelativeName || selectedVideo.name
+                  : (speakerSourcePath ? resolveWorkspaceRelativePath(workspace?.localPath, speakerSourcePath) : null) || sourceRelativeName || null}
+                sourceOptions={timelineVideoOptions}
+                selectedSourcePath={speakerSourcePath}
+                onSourcePathChange={setSpeakerSourcePath}
                 busy={busy}
                 onOpenSubtitleEditor={() => setAutoSubtitleRequest((current) => current + 1)}
                 onRequestScan={onSpeakerAwareRequestScan ? (input) => onSpeakerAwareRequestScan({
                   ...input,
-                  sourceRelativeName: resolveWorkspaceRelativePath(workspace?.localPath, selectedVideo?.path)
+                  sourceRelativeName: resolveWorkspaceRelativePath(workspace?.localPath, speakerSourcePath || selectedVideo?.path)
+                    || timelineVideoOptions.find((option) => option.path === speakerSourcePath)?.relativeName
                     || sourceRelativeName?.trim()
                     || "",
                 }) : undefined}

@@ -22,8 +22,13 @@ function statusClass(status: string) {
       : "border-amber-200 bg-amber-50 text-amber-700";
 }
 
-export function CeleryMediaDoctorCard({ currentUserId }: { currentUserId: number }) {
-  const [selectedUserId, setSelectedUserId] = useState<number | undefined>(currentUserId);
+function normalizeUserId(value: number | string | null | undefined): number | undefined {
+  const userId = typeof value === "number" ? value : Number(value);
+  return Number.isInteger(userId) && userId > 0 ? userId : undefined;
+}
+
+export function CeleryMediaDoctorCard({ currentUserId }: { currentUserId: number | string }) {
+  const [selectedUserId, setSelectedUserId] = useState<number | undefined>(() => normalizeUserId(currentUserId));
   const statusQuery = trpc.infrastructure.getCeleryMediaDoctorStatus.useQuery(
     selectedUserId == null ? undefined : { userId: selectedUserId },
     { refetchInterval: 30_000 },
@@ -38,6 +43,19 @@ export function CeleryMediaDoctorCard({ currentUserId }: { currentUserId: number
   useEffect(() => {
     if (selectedUserId == null && incidentUsers[0]) setSelectedUserId(incidentUsers[0].userId);
   }, [incidentUsers, selectedUserId]);
+
+  if (statusQuery.error && !data) {
+    return (
+      <DashboardCard title="Celery Media Doctor" description="Live worker, beat, queue, and duplicate-container safety checks.">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-rose-700">
+          <span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Unable to load Celery status.</span>
+          <Button size="sm" variant="outline" onClick={() => void statusQuery.refetch()}>
+            <RefreshCw className="mr-2 h-4 w-4" /> Retry
+          </Button>
+        </div>
+      </DashboardCard>
+    );
+  }
 
   if (!data) {
     return (
@@ -72,12 +90,12 @@ export function CeleryMediaDoctorCard({ currentUserId }: { currentUserId: number
         <div className="rounded-xl border border-slate-200 bg-white/80 p-3">
           <span className="flex items-center gap-2 text-sm font-semibold text-slate-800"><Activity className="h-4 w-4" /> Media queue</span>
           <p className="mt-2 text-2xl font-bold text-slate-900">{data.queue.redisMediaDepth ?? "—"}</p>
-          <p className="text-xs text-slate-500">Redis messages · {data.queue.pendingCount} pending / {data.queue.processingCount} processing</p>
+          <p className="text-xs text-slate-500">Redis messages · {data.queue.inFlightCount}/3 in-flight · {data.queue.pendingCount} pending ({data.queue.unclaimedPendingCount} waiting)</p>
         </div>
         <div className={`rounded-xl border p-3 ${data.queue.stalePendingCount ? "border-rose-200 bg-rose-50" : "border-emerald-200 bg-emerald-50"}`}>
-          <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">{data.queue.stalePendingCount ? <Siren className="h-4 w-4 text-rose-600" /> : <CheckCircle2 className="h-4 w-4 text-emerald-600" />} Stuck &gt; 3 min</span>
+          <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">{data.queue.stalePendingCount ? <Siren className="h-4 w-4 text-rose-600" /> : <CheckCircle2 className="h-4 w-4 text-emerald-600" />} Dispatch stall &gt; 3 min</span>
           <p className="mt-2 text-2xl font-bold text-slate-900">{data.queue.stalePendingCount}</p>
-          <p className="text-xs text-slate-500">Urgent feedback is deduplicated to admins</p>
+          <p className="text-xs text-slate-500">Only old waiting work with an available user slot is urgent</p>
         </div>
       </div>
 
@@ -89,8 +107,9 @@ export function CeleryMediaDoctorCard({ currentUserId }: { currentUserId: number
             {(data.users ?? []).map((user) => <option key={user.userId} value={user.userId}>{user.name || user.email || `User #${user.userId}`}</option>)}
           </select>
         </div>
-        {selectedUser ? <p className="mt-2 text-sm text-slate-600">Selected/current user: <span className="font-semibold">{selectedUser.name || selectedUser.email || `#${selectedUser.userId}`}</span> · {selectedUser.activeCount}/3 active · {selectedUser.pendingCount} pending · {selectedUser.stalePendingCount} stale</p> : <p className="mt-2 text-sm text-slate-500">Current user has no active image work. {data.users.length} other user(s) currently have active image work.</p>}
-        {incidentUsers.length > 0 ? <p className="mt-2 text-xs font-medium text-rose-700">Urgent: {incidentUsers.length} user queue(s) exceeded the 3-minute pending threshold.</p> : null}
+        {selectedUser ? <p className="mt-2 text-sm text-slate-600">Selected/current user: <span className="font-semibold">{selectedUser.name || selectedUser.email || `#${selectedUser.userId}`}</span> · {selectedUser.inFlightCount}/3 in-flight · {selectedUser.pendingCount} pending ({selectedUser.unclaimedPendingCount} waiting) · {selectedUser.stalePendingCount} dispatch stall</p> : <p className="mt-2 text-sm text-slate-500">Current user has no active image work. {data.users.length} other user(s) currently have active image work.</p>}
+        {selectedUser && selectedUser.pendingCount > 0 && selectedUser.stalePendingCount === 0 ? <p className="mt-2 text-xs text-slate-500">Waiting backlog is normal while the user's three in-flight slots are occupied.</p> : null}
+        {incidentUsers.length > 0 ? <p className="mt-2 text-xs font-medium text-rose-700">Urgent: {incidentUsers.length} user queue(s) have a dispatch stall with available capacity.</p> : null}
       </div>
     </DashboardCard>
   );

@@ -8,11 +8,13 @@ import { toast } from 'sonner';
 import { sanitizeRenderOutputFilename } from '@smartspec/shared';
 import { videoEditorMediaLibrary } from '../../services/videoEditorService';
 import type { VideoEditorProject, ExportSettings } from '../../types/videoEditor';
+import type { QueueEditorOperation } from './EditorPanelShared';
 
 interface ExportDialogProps {
   project: VideoEditorProject;
   onExport: (outputPath: string, settings: ExportSettings) => void;
   onCancel: () => void;
+  onQueueOperation?: QueueEditorOperation;
 }
 
 interface ExportPreset {
@@ -83,7 +85,8 @@ const EXPORT_PRESETS: ExportPreset[] = [
 export const ExportDialog: React.FC<ExportDialogProps> = ({
   project,
   onExport,
-  onCancel
+  onCancel,
+  onQueueOperation,
 }) => {
   const [selectedPreset, setSelectedPreset] = useState(0);
   const [customSettings, setCustomSettings] = useState<ExportSettings>(EXPORT_PRESETS[0].settings);
@@ -91,6 +94,8 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
   const [availableEncoders, setAvailableEncoders] = useState<string[]>([]);
   const [isCustom, setIsCustom] = useState(false);
   const [estimatedSize, setEstimatedSize] = useState(0);
+  const [renderMode, setRenderMode] = useState<'auto' | 'remotion' | 'ffmpeg' | 'gpu'>('auto');
+  const [outputKind, setOutputKind] = useState<'video' | 'mp3' | 'frame'>('video');
 
   useEffect(() => {
     loadEncoders();
@@ -149,14 +154,34 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
     setCustomSettings(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!outputPath.trim()) {
       toast.error('Please enter output filename');
       return;
     }
 
-    const safeOutputPath = sanitizeRenderOutputFilename(outputPath);
+    const requestedExtension = outputKind === 'mp3' ? '.mp3' : outputKind === 'frame' ? '.png' : '.mp4';
+    const withoutExtension = outputPath.trim().replace(/\.(mp4|mov|webm|mp3|png)$/i, '');
+    const safeOutputPath = sanitizeRenderOutputFilename(`${withoutExtension}${requestedExtension}`);
     setOutputPath(safeOutputPath);
+    if (!onQueueOperation && outputKind !== 'video') {
+      toast.error('MP3 และ Current frame ต้องส่งผ่าน Worker handoff');
+      return;
+    }
+    if (onQueueOperation) {
+      const operation = outputKind === 'mp3' ? 'media.audio_export' : outputKind === 'frame' ? 'video.render_still' : 'video.render';
+      try {
+        await onQueueOperation(operation, {
+          outputFormat: outputKind,
+          renderer: outputKind === 'video' ? renderMode : 'ffmpeg',
+          filename: safeOutputPath,
+          exportSettings: customSettings,
+        }, Object.keys(project.assets));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'ส่งงานเข้า Worker ไม่สำเร็จ');
+      }
+      return;
+    }
     onExport(safeOutputPath, customSettings);
   };
 
@@ -457,6 +482,25 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
           {/* Output Settings */}
           <div className="section">
             <div className="section-title">Output File</div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Output type</label>
+                <select className="form-select" value={outputKind} onChange={(e) => setOutputKind(e.target.value as typeof outputKind)}>
+                  <option value="video">Video</option>
+                  <option value="mp3">MP3 audio</option>
+                  <option value="frame">Current frame (PNG)</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Render mode</label>
+                <select className="form-select" value={renderMode} onChange={(e) => setRenderMode(e.target.value as typeof renderMode)} disabled={outputKind !== 'video'}>
+                  <option value="auto">Auto</option>
+                  <option value="remotion">Manual · Remotion</option>
+                  <option value="ffmpeg">Manual · FFmpeg</option>
+                  <option value="gpu">GPU accelerated</option>
+                </select>
+              </div>
+            </div>
             <div className="form-group">
               <label className="form-label">Filename</label>
               <input
@@ -584,7 +628,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
             <button className="dialog-button secondary" onClick={onCancel}>
               Cancel
             </button>
-            <button className="dialog-button primary" onClick={handleExport}>
+            <button className="dialog-button primary" onClick={() => void handleExport()}>
               Export
             </button>
           </div>

@@ -355,6 +355,10 @@ export async function runRealPromptExpansion(
           },
         },
       },
+      verticalDramaContext: {
+        seriesId: input.seriesId,
+        taskClass: "visual_bible",
+      },
       disableProviderFallbacks: true,
       physicalAttemptObserver: async event => {
         attempts.push(event);

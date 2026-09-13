@@ -99,6 +99,8 @@ export type VerticalDramaPortraitCandidateProjection = {
   errorMessage?: string;
   /** True when `errorMessage` reflects a provider content-policy rejection (vs. a generic/timeout failure). */
   policyRejected?: boolean;
+  /** A bounded, sanitized provider hint explaining why a policy rejection occurred. */
+  policyReason?: string;
   /** True when this candidate was generated from optional casting references. */
   referenceGuided?: boolean;
   /** Server-derived apparent-age contract shared by every candidate in the batch. */

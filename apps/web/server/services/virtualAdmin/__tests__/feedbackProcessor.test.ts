@@ -120,6 +120,18 @@ describe("FeedbackProcessor", () => {
         }),
       ).toBe("[bug] Auto-classified as bug (high priority)\nTicket #354");
     });
+
+    it("includes affected task IDs for automated queue incidents", () => {
+      expect(
+        buildAdminNotificationContent({
+          ticketType: "bug",
+          autoSummary: "Auto-classified as bug (high priority)",
+          title: "Stale queue",
+          ticketId: 556,
+          affectedTaskIds: ["task-a", "task-b"],
+        }),
+      ).toContain("Affected task ID(s): task-a, task-b");
+    });
   });
 
   describe("resolveAdminNotificationPriority", () => {

@@ -15,8 +15,9 @@ describe("vertical drama media contracts", () => {
     expect(() => mediaIngestJobPayloadSchema.parse({ kind: "media_ingest", seriesId: "s1", binding, source, idempotencyKey: "a".repeat(129) })).toThrow();
   });
   it("enforces segment budgets and strict boundaries", () => {
-    const valid = { planId: "plan-1", planRevision: "r1", mode: "manual_intent" as const, aspectRatio: "9:16" as const, deadAir: { enabled: true, thresholdDb: -42, minSilenceMs: 500, padMs: 100, silenceRanges: [{ startMs: 1200, endMs: 1800, isManual: true }] }, budget: { maxDurationMs: 90000, minDurationMs: 1000, maxBrollMs: 60000, preserveNarrativeAudio: true }, segments: [{ segmentId: "seg-1", sourceAssetId: "asset-1", sourceRevision: "r1", startMs: 0, endMs: 5000, removeDeadAir: true, reframe: { enabled: true, target: null, trackingMode: "auto_person" as const, aspectRatio: "9:16" as const, maxCropFraction: 0.4, fallback: "blurred_background" as const }, stillMotion: null }], rationale: "AI selected the cleanest excerpt" };
+    const valid = { planId: "plan-1", planRevision: "r1", mode: "manual_intent" as const, aspectRatio: "9:16" as const, deadAir: { enabled: true, thresholdDb: -42, minSilenceMs: 500, padMs: 100, silenceRanges: [{ startMs: 1200, endMs: 1800, isManual: true }] }, budget: { maxDurationMs: 90000, minDurationMs: 1000, maxBrollMs: 60000, preserveNarrativeAudio: true }, segments: [{ segmentId: "seg-1", sourceAssetId: "asset-1", sourceRevision: "r1", startMs: 0, endMs: 5000, removeDeadAir: true, reframe: { enabled: true, target: null, trackingMode: "auto_person" as const, aspectRatio: "9:16" as const, maxCropFraction: 0.4, fallback: "blurred_background" as const }, stillMotion: null }], cameraMotionPlan: { version: "camera.motion.v1" as const, mode: "auto" as const, durationMs: 5000, keyframes: [{ timeMs: 0, x: 0.5, y: 0.5, scale: 1, source: "auto" as const }, { timeMs: 5000, x: 0.6, y: 0.45, scale: 1.16, easing: "ease-in-out" as const, source: "auto" as const }] }, rationale: "AI selected the cleanest excerpt" };
     expect(mediaEditPlanSchema.parse(valid).segments).toHaveLength(1);
+    expect(mediaEditPlanSchema.parse(valid).cameraMotionPlan?.version).toBe("camera.motion.v1");
     expect(mediaEditPlanSchema.parse(valid).deadAir.silenceRanges).toEqual([{ startMs: 1200, endMs: 1800, isManual: true }]);
     expect(() => mediaEditPlanSchema.parse({ ...valid, segments: [{ ...valid.segments[0], endMs: 0 }] })).toThrow();
   });
@@ -27,7 +28,12 @@ describe("vertical drama media contracts", () => {
   });
   it("provides a safe default workflow policy when series policy is absent", () => {
     expect(readVerticalDramaWorkflowPolicy(null)).toEqual(DEFAULT_VERTICAL_DRAMA_WORKFLOW_POLICY);
+    expect(readVerticalDramaWorkflowPolicy(null).workerShotGenerationEnabled).toBe(false);
+    const legacyPolicy = { ...DEFAULT_VERTICAL_DRAMA_WORKFLOW_POLICY } as Record<string, unknown>;
+    delete legacyPolicy.workerShotGenerationEnabled;
+    expect(readVerticalDramaWorkflowPolicy({ workerMediaWorkflowPolicy: legacyPolicy }).workerShotGenerationEnabled).toBe(false);
     expect(readVerticalDramaWorkflowPolicy({ workerMediaWorkflowPolicy: { ...DEFAULT_VERTICAL_DRAMA_WORKFLOW_POLICY, policyRevision: "custom-1" } }).policyRevision).toBe("custom-1");
+    expect(readVerticalDramaWorkflowPolicy({ workerMediaWorkflowPolicy: { ...DEFAULT_VERTICAL_DRAMA_WORKFLOW_POLICY, workerShotGenerationEnabled: true } }).workerShotGenerationEnabled).toBe(true);
     expect(readVerticalDramaWorkflowPolicy({ workerMediaWorkflowPolicy: { ...DEFAULT_VERTICAL_DRAMA_WORKFLOW_POLICY, defaultWorkflowId: "not-allowed" } })).toEqual(DEFAULT_VERTICAL_DRAMA_WORKFLOW_POLICY);
   });
   it("resolves admin default, user override, and capability fallback", () => {

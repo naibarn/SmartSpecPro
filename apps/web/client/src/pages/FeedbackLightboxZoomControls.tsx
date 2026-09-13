@@ -2,6 +2,7 @@ import { RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@smartspec/ui/src/components/ui/button";
 import {
   clampFeedbackLightboxZoom,
+  FEEDBACK_LIGHTBOX_ZOOM_DEFAULT,
   FEEDBACK_LIGHTBOX_ZOOM_MAX,
   FEEDBACK_LIGHTBOX_ZOOM_MIN,
   FEEDBACK_LIGHTBOX_ZOOM_STEP,
@@ -62,8 +63,8 @@ export function FeedbackLightboxZoomControls({
           type="button"
           variant="ghost"
           className="h-9 px-2 text-xs text-white hover:bg-white/20 hover:text-white"
-          onClick={() => onScaleChange(FEEDBACK_LIGHTBOX_ZOOM_MIN)}
-          disabled={scale === FEEDBACK_LIGHTBOX_ZOOM_MIN}
+          onClick={() => onScaleChange(FEEDBACK_LIGHTBOX_ZOOM_DEFAULT)}
+          disabled={scale === FEEDBACK_LIGHTBOX_ZOOM_DEFAULT}
           aria-label="รีเซ็ตขนาด"
           title="รีเซ็ตขนาด"
         >

@@ -1,0 +1,17 @@
+{
+  "protocol": "smartaihub.media.job",
+  "version": "1.0",
+  "jobId": "job-duplicate-role",
+  "tenantId": "tenant-fixture-1",
+  "operation": "video.render",
+  "inputs": { "assets": [] },
+  "plan": {
+    "planHash": "sha256:duplicate-role",
+    "profileVersion": "web-default-v1",
+    "stages": [],
+    "outputRoles": ["final_video", "final_video"]
+  },
+  "requirements": { "capabilities": ["ffmpeg"], "resourceProfile": "cpu_heavy" },
+  "retry": { "maxAttempts": 1, "backoffSeconds": 1 },
+  "billing": { "required": false, "estimateCredits": 0 }
+}

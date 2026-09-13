@@ -436,12 +436,19 @@ function resolveRuntimePackPaths() {
     "headless_shell.exe",
     "chrome",
     "headless_shell",
+    "chrome-headless-shell",
   ]);
   const browserLibsPath = join(runtimePack, "browser-libs");
   if (existsSync(browserLibsPath)) {
     process.env.LD_LIBRARY_PATH = process.env.LD_LIBRARY_PATH
       ? `${browserLibsPath}:${process.env.LD_LIBRARY_PATH}`
       : browserLibsPath;
+  }
+  if (process.platform === "darwin") {
+    const ffmpegLibPath = dirname(ffmpegPath);
+    process.env.DYLD_LIBRARY_PATH = process.env.DYLD_LIBRARY_PATH
+      ? `${ffmpegLibPath}:${process.env.DYLD_LIBRARY_PATH}`
+      : ffmpegLibPath;
   }
 
   if (process.platform === "linux") {

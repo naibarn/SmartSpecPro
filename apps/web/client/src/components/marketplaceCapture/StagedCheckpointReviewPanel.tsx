@@ -1712,7 +1712,7 @@ export function StagedCheckpointReviewPanel(props: {
               </p>
               <p className="mt-1 text-xs text-slate-600">
                 ตั้งค่าซับไตเติลและข้อความ/ภาพบนวิดีโอ แล้วกดส่งงานเข้าคิว
-                render-jobs — เครื่อง Worker จะดึงงานไป render ด้วย Remotion
+                Worker Jobs — เครื่อง Worker จะดึงงานไป render ด้วย Remotion
                 (ไม่ render บนเซิร์ฟเวอร์เว็บ)
               </p>
 
@@ -2185,7 +2185,7 @@ export function StagedCheckpointReviewPanel(props: {
                     <code>{renderJobId}</code>
                   </p>
                   <p className="mt-1">
-                    งานรออยู่ในคิว render-jobs ให้เครื่อง Worker ดึงไป render —
+                    งานรออยู่ในคิว Worker Jobs ให้เครื่อง Worker ดึงไป render —
                     สถานะจะอัปเดตอัตโนมัติ
                   </p>
                 </div>

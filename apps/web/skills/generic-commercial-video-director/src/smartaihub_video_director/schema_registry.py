@@ -28,6 +28,9 @@ class StageContractRegistry:
         if stage not in self._schemas: raise StageContractError(f"Unknown stage {stage!r}")
         required=self._schemas[stage].get('required') or []
         return tuple(str(field) for field in required)
+    def payload_schema_json(self, stage:str)->str:
+        if stage not in self._schemas: raise StageContractError(f"Unknown stage {stage!r}")
+        return json.dumps(self._schemas[stage], ensure_ascii=False, separators=(',', ':'))
     def validate(self, stage:str, payload:dict)->None:
         if stage not in self._schemas: raise StageContractError(f"Unknown stage {stage!r}")
         errors=sorted(Draft202012Validator(self._schemas[stage]).iter_errors(payload), key=lambda e:list(e.path))

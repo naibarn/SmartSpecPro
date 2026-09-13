@@ -6,6 +6,7 @@ export const DEFAULT_VERTICAL_DRAMA_WORKFLOW_POLICY = {
   defaultWorkflowId: "minimax-h3-shot-video",
   allowedWorkflowIds: ["minimax-h3-shot-video"],
   allowUserOverride: true,
+  workerShotGenerationEnabled: false,
   requiredCapabilities: ["shot_video_generation", "start_frame", "reference_frames"],
   workflowDefaults: { shot_generation: "minimax-h3-shot-video" },
 } as const;

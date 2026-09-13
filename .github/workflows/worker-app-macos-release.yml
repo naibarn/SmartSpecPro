@@ -1,0 +1,64 @@
+name: Worker App macOS Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Worker App version (leave empty to use the next Mac release version)"
+        required: false
+        type: string
+permissions:
+  contents: read
+
+jobs:
+  build-macos-arm64:
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.3"
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Verify Apple Silicon build host
+        run: |
+          test "$(uname -s)" = "Darwin"
+          test "$(uname -m)" = "arm64"
+          test "$(node -p 'process.platform')" = "darwin"
+          test "$(node -p 'process.arch')" = "arm64"
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build native Worker App DMG
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: |
+          args=()
+          if [ -n "$RELEASE_VERSION" ]; then args+=(--release-version "$RELEASE_VERSION"); fi
+          npm --workspace apps/worker-app run release:mac -- "${args[@]}"
+
+      - name: Verify DMG artifact
+        run: |
+          dmg=$(find apps/web/client/public/releases -maxdepth 1 -type f -name 'smart-ai-hub-worker-app-*-arm64-setup.dmg' | sort | tail -1)
+          test -n "$dmg"
+          test -s "$dmg"
+          hdiutil imageinfo "$dmg" >/dev/null
+          shasum -a 256 "$dmg"
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-ai-hub-worker-app-macos-arm64
+          path: apps/web/client/public/releases/smart-ai-hub-worker-app-*-arm64-setup.dmg
+          if-no-files-found: error
+          retention-days: 14

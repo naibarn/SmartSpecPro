@@ -38,17 +38,30 @@ import {
   verticalDramaSeriesSoundBibles,
   verticalDramaAudioQcReports,
   verticalDramaAudioManifests,
+  videoEditorProjectRevisions,
+  videoEditorProjectAssets,
+  videoEditorProjectJobs,
   mediaModels,
 } from './schema';
 
-describe("media_models thinking mode schema", () => {
-  test("exposes a default mode and supported modes collection", () => {
+describe('media_models thinking mode schema', () => {
+  test('exposes a default mode and supported modes collection', () => {
     const columns = getTableColumns(mediaModels);
 
     expect(columns.thinkingModeDefault).toBeDefined();
     expect(columns.thinkingModeDefault.notNull).toBe(true);
     expect(columns.thinkingModes).toBeDefined();
     expect(columns.thinkingModes.notNull).toBe(true);
+  });
+});
+
+describe('Feature 184 Web Video Editor revision schema', () => {
+  test('exposes immutable revision, managed asset, and worker-job link tables', () => {
+    expect(getTableColumns(videoEditorProjectRevisions).document).toBeDefined();
+    expect(getTableColumns(videoEditorProjectRevisions).documentHash).toBeDefined();
+    expect(getTableColumns(videoEditorProjectAssets).assetRef).toBeDefined();
+    expect(getTableColumns(videoEditorProjectJobs).revisionId).toBeDefined();
+    expect(getTableColumns(videoEditorProjectJobs).workerJobId).toBeDefined();
   });
 });
 

@@ -14,6 +14,8 @@ import {
   specialEpisodeIdempotencyKey,
   specialEpisodeRetryIdempotencyKey,
   SPECIAL_TIE_IN_FEATURE_FLAG,
+  isSpecialTieInArtifactsStale,
+  shouldRecoverSpecialTieInArtifacts,
 } from "../verticalDramaSpecialEpisodes";
 
 describe("special episode job boundary", () => {
@@ -49,6 +51,51 @@ describe("special episode job boundary", () => {
       specialEpisodeRetryIdempotencyKey("intent_1234", 1, 2)
     );
   });
+
+  it("recovers a terminal special run when its durable plan is missing", () => {
+    expect(
+      shouldRecoverSpecialTieInArtifacts({
+        skillRunStatus: "succeeded",
+        hasStartFramePlan: false,
+        shotCount: 9,
+        hasForensicOutput: true,
+      })
+    ).toBe(true);
+    expect(
+      shouldRecoverSpecialTieInArtifacts({
+        skillRunStatus: "needs_clarification",
+        hasStartFramePlan: false,
+        shotCount: 9,
+        hasForensicOutput: true,
+      })
+    ).toBe(true);
+  });
+
+  it("does not recover over a plan while a newer special run is active", () => {
+    expect(
+      shouldRecoverSpecialTieInArtifacts({
+        skillRunStatus: "running",
+        hasStartFramePlan: false,
+        shotCount: 9,
+        hasForensicOutput: true,
+      })
+    ).toBe(false);
+    expect(
+      shouldRecoverSpecialTieInArtifacts({
+        skillRunStatus: "succeeded",
+        hasStartFramePlan: true,
+        shotCount: 9,
+        hasForensicOutput: true,
+      })
+    ).toBe(false);
+  });
+
+  it("hides artifacts stamped for an older edited input version", () => {
+    expect(isSpecialTieInArtifactsStale(3, 2)).toBe(true);
+    expect(isSpecialTieInArtifactsStale(3, 3)).toBe(false);
+    expect(isSpecialTieInArtifactsStale(3, undefined)).toBe(false);
+  });
+
   it("keeps variable special shots separate from normal nine-shot shape", () => {
     expect(resolveVerticalDramaEpisodeShotContract("special_tie_in", 2).fixedNormalShape).toBe(false);
     expect(resolveVerticalDramaEpisodeShotContract("normal").shotCount).toBe(9);

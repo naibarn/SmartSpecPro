@@ -1,7 +1,28 @@
-import { and, count, desc, eq, gte, gt, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
+import { createHash } from "crypto";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gte,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { getDb } from "../db";
 import { resolveSkillSlugAlias } from "./skillRegistry";
 import { SKILL_SLUG_ALIASES } from "../../shared/skillReferenceContracts";
+import {
+  CreditLedgerPersistenceError,
+  isInsufficientCreditError,
+  isCreditDatabaseError,
+  isRetryableCreditDatabaseError,
+  normalizeCreditTransactionDescription,
+} from "./creditBillingErrors";
 import {
   creditTransactions,
   skillRevenueDebts,
@@ -13,6 +34,20 @@ import {
 
 export const DEFAULT_TENANT_SKILL_CREDITS = 2;
 export const DEFAULT_SKILL_OWNER_CREDITS = 0;
+const LEGACY_SETTLEMENT_RUN_ID_MAX_LENGTH = 191;
+
+/**
+ * Keep deterministic run IDs within the legacy idempotency-key/index budget.
+ * Older Vertical Drama callers embed prompt/context data in runId; storing or
+ * indexing that raw value can fail with varchar/BTREE size errors. A digest is
+ * deterministic, collision-resistant for this key space, and the original
+ * value remains available in transaction metadata.
+ */
+export function normalizeSkillSettlementRunId(runId: string): string {
+  const value = runId.trim();
+  if (value.length <= LEGACY_SETTLEMENT_RUN_ID_MAX_LENGTH) return value;
+  return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
 
 export type SkillBillingReconciliation = {
   unmappedUsageCount: number;
@@ -20,7 +55,12 @@ export type SkillBillingReconciliation = {
   incompleteSettlementCount: number;
   openDebtCount: number;
   openDebtCredits: number;
-  unmappedSamples: Array<{ id: number; description: string | null; amount: number; createdAt: Date }>;
+  unmappedSamples: Array<{
+    id: number;
+    description: string | null;
+    amount: number;
+    createdAt: Date;
+  }>;
   unknownSkillSlugSamples: string[];
 };
 
@@ -50,9 +90,13 @@ export type SkillRevenueCharge = SkillRevenuePricing & {
   pricingSource: "skill_config";
 };
 
-function buildCanonicalSkillSlugSql(column: typeof creditTransactions.skillSlug) {
+function buildCanonicalSkillSlugSql(
+  column: typeof creditTransactions.skillSlug
+) {
   let expression = sql`${column}`;
-  for (const [legacySlug, canonicalSlug] of Object.entries(SKILL_SLUG_ALIASES).reverse()) {
+  for (const [legacySlug, canonicalSlug] of Object.entries(
+    SKILL_SLUG_ALIASES
+  ).reverse()) {
     expression = sql`CASE WHEN ${column} = ${legacySlug} THEN ${canonicalSlug} ELSE ${expression} END`;
   }
   return expression;
@@ -80,8 +124,10 @@ export function normalizeSkillRevenuePricing(input: {
   tenantCreditCost?: number | null;
   skillOwnerCreditCost?: number | null;
 }): SkillRevenuePricing {
-  const tenantCreditCost = input.tenantCreditCost ?? DEFAULT_TENANT_SKILL_CREDITS;
-  const skillOwnerCreditCost = input.skillOwnerCreditCost ?? DEFAULT_SKILL_OWNER_CREDITS;
+  const tenantCreditCost =
+    input.tenantCreditCost ?? DEFAULT_TENANT_SKILL_CREDITS;
+  const skillOwnerCreditCost =
+    input.skillOwnerCreditCost ?? DEFAULT_SKILL_OWNER_CREDITS;
   if (
     !Number.isInteger(tenantCreditCost) ||
     !Number.isInteger(skillOwnerCreditCost) ||
@@ -110,7 +156,7 @@ export function buildSkillRevenueAllocations(input: {
   if (input.skillOwnerId && input.skillOwnerCredits > 0) {
     allocations.set(
       input.skillOwnerId,
-      (allocations.get(input.skillOwnerId) ?? 0) + input.skillOwnerCredits,
+      (allocations.get(input.skillOwnerId) ?? 0) + input.skillOwnerCredits
     );
   }
   return allocations;
@@ -119,22 +165,30 @@ export function buildSkillRevenueAllocations(input: {
 /** The configured price is an upper bound, never a charge above measured work. */
 export function calculateSkillRevenueCharge(
   pricing: SkillRevenuePricing,
-  actualWorkCredits?: number | null,
+  actualWorkCredits?: number | null
 ): SkillRevenueCharge {
-  if (actualWorkCredits !== undefined && actualWorkCredits !== null &&
-      (!Number.isInteger(actualWorkCredits) || actualWorkCredits < 0)) {
+  if (
+    actualWorkCredits !== undefined &&
+    actualWorkCredits !== null &&
+    (!Number.isInteger(actualWorkCredits) || actualWorkCredits < 0)
+  ) {
     throw new Error("Actual skill work credits must be a non-negative integer");
   }
   const configuredTotalCredits = pricing.totalCredits;
   const actual = actualWorkCredits ?? null;
-  const chargedTotalCredits = actual === null
-    ? configuredTotalCredits
-    : Math.min(configuredTotalCredits, actual);
+  const chargedTotalCredits =
+    actual === null
+      ? configuredTotalCredits
+      : Math.min(configuredTotalCredits, actual);
   // Preserve the configured split as closely as possible while keeping all
   // ledger values integer. The tenant receives the deterministic remainder.
-  const ownerShare = configuredTotalCredits > 0
-    ? Math.floor(chargedTotalCredits * pricing.skillOwnerCreditCost / configuredTotalCredits)
-    : 0;
+  const ownerShare =
+    configuredTotalCredits > 0
+      ? Math.floor(
+          (chargedTotalCredits * pricing.skillOwnerCreditCost) /
+            configuredTotalCredits
+        )
+      : 0;
   const tenantShare = chargedTotalCredits - ownerShare;
   return {
     tenantCreditCost: tenantShare,
@@ -152,7 +206,10 @@ export function calculateSkillRevenueCharge(
 export async function getSkillBillingReconciliation(): Promise<SkillBillingReconciliation> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const skillUsage = and(eq(creditTransactions.sourceType, "skill"), eq(creditTransactions.type, "usage"));
+  const skillUsage = and(
+    eq(creditTransactions.sourceType, "skill"),
+    eq(creditTransactions.type, "usage")
+  );
   const canonicalSkillJoin = sql`${skills.slug} = ${buildCanonicalSkillSlugSql(creditTransactions.skillSlug)}`;
   const [{ value: unmappedUsageCount }] = await db
     .select({ value: count(creditTransactions.id) })
@@ -162,25 +219,47 @@ export async function getSkillBillingReconciliation(): Promise<SkillBillingRecon
     .select({ value: count(creditTransactions.id) })
     .from(creditTransactions)
     .leftJoin(skills, canonicalSkillJoin)
-    .where(and(skillUsage, isNotNull(creditTransactions.skillSlug), isNull(skills.id)));
+    .where(
+      and(
+        skillUsage,
+        isNotNull(creditTransactions.skillSlug),
+        isNull(skills.id)
+      )
+    );
   const [{ value: incompleteSettlementCount }] = await db
     .select({ value: count(skillRevenueSettlements.id) })
     .from(skillRevenueSettlements)
-    .where(and(
-      eq(skillRevenueSettlements.status, "settled"),
-      or(
-        and(gt(skillRevenueSettlements.totalCredits, 0), isNull(skillRevenueSettlements.userTransactionId)),
-        and(gt(skillRevenueSettlements.tenantCredits, 0), isNull(skillRevenueSettlements.tenantRevenueTransactionId)),
-        and(gt(skillRevenueSettlements.skillOwnerCredits, 0), isNull(skillRevenueSettlements.skillRevenueTransactionId)),
-        ne(skillRevenueSettlements.totalCredits, skillRevenueSettlements.chargedTotalCredits),
-      ),
-    ));
+    .where(
+      and(
+        eq(skillRevenueSettlements.status, "settled"),
+        or(
+          and(
+            gt(skillRevenueSettlements.totalCredits, 0),
+            isNull(skillRevenueSettlements.userTransactionId)
+          ),
+          and(
+            gt(skillRevenueSettlements.tenantCredits, 0),
+            isNull(skillRevenueSettlements.tenantRevenueTransactionId)
+          ),
+          and(
+            gt(skillRevenueSettlements.skillOwnerCredits, 0),
+            isNull(skillRevenueSettlements.skillRevenueTransactionId)
+          ),
+          ne(
+            skillRevenueSettlements.totalCredits,
+            skillRevenueSettlements.chargedTotalCredits
+          )
+        )
+      )
+    );
   const [{ value: openDebtCount }] = await db
     .select({ value: count(skillRevenueDebts.id) })
     .from(skillRevenueDebts)
     .where(eq(skillRevenueDebts.status, "open"));
   const [{ value: openDebtCredits }] = await db
-    .select({ value: sql<number>`coalesce(sum(${skillRevenueDebts.amount} - ${skillRevenueDebts.recoveredCredits}), 0)` })
+    .select({
+      value: sql<number>`coalesce(sum(${skillRevenueDebts.amount} - ${skillRevenueDebts.recoveredCredits}), 0)`,
+    })
     .from(skillRevenueDebts)
     .where(eq(skillRevenueDebts.status, "open"));
   const unmappedSamples = await db
@@ -198,7 +277,13 @@ export async function getSkillBillingReconciliation(): Promise<SkillBillingRecon
     .select({ skillSlug: creditTransactions.skillSlug })
     .from(creditTransactions)
     .leftJoin(skills, canonicalSkillJoin)
-    .where(and(skillUsage, isNotNull(creditTransactions.skillSlug), isNull(skills.id)))
+    .where(
+      and(
+        skillUsage,
+        isNotNull(creditTransactions.skillSlug),
+        isNull(skills.id)
+      )
+    )
     .orderBy(desc(creditTransactions.createdAt))
     .limit(100);
   return {
@@ -208,11 +293,20 @@ export async function getSkillBillingReconciliation(): Promise<SkillBillingRecon
     openDebtCount: Number(openDebtCount),
     openDebtCredits: Number(openDebtCredits ?? 0),
     unmappedSamples,
-    unknownSkillSlugSamples: Array.from(new Set(unknownSlugRows.map(row => row.skillSlug).filter((value): value is string => Boolean(value)))),
+    unknownSkillSlugSamples: Array.from(
+      new Set(
+        unknownSlugRows
+          .map(row => row.skillSlug)
+          .filter((value): value is string => Boolean(value))
+      )
+    ),
   };
 }
 
-function settlementResult(row: typeof skillRevenueSettlements.$inferSelect, duplicate: boolean): SkillRevenueSettlementResult {
+function settlementResult(
+  row: typeof skillRevenueSettlements.$inferSelect,
+  duplicate: boolean
+): SkillRevenueSettlementResult {
   return {
     runId: row.runId,
     skillSlug: row.skillSlug,
@@ -265,13 +359,30 @@ function buildMetadata(input: {
 
 async function lockUsers(tx: any, userIds: number[]) {
   const ids = Array.from(new Set(userIds)).sort((a, b) => a - b);
-  if (ids.length === 0) return new Map<number, { id: number; credits: number; isDisabled: boolean }>();
+  if (ids.length === 0)
+    return new Map<
+      number,
+      { id: number; credits: number; isDisabled: boolean }
+    >();
   const rows = (await tx
-    .select({ id: users.id, credits: users.credits, isDisabled: users.isDisabled })
+    .select({
+      id: users.id,
+      credits: users.credits,
+      isDisabled: users.isDisabled,
+    })
     .from(users)
     .where(inArray(users.id, ids))
-    .for("update")) as Array<{ id: number; credits: number; isDisabled: boolean }>;
-  return new Map(rows.map((row: { id: number; credits: number; isDisabled: boolean }) => [row.id, row]));
+    .for("update")) as Array<{
+    id: number;
+    credits: number;
+    isDisabled: boolean;
+  }>;
+  return new Map(
+    rows.map((row: { id: number; credits: number; isDisabled: boolean }) => [
+      row.id,
+      row,
+    ])
+  );
 }
 
 /**
@@ -289,240 +400,329 @@ export async function settleSkillRun(input: {
   metadata?: Record<string, unknown>;
 }): Promise<SkillRevenueSettlementResult> {
   if (!input.runId.trim()) throw new Error("Skill run id is required");
+  const settlementRunId = normalizeSkillSettlementRunId(input.runId);
   const skillSlug = resolveSkillSlugAlias(input.skillSlug.trim());
   if (!skillSlug) throw new Error("Skill slug is required");
   const effectiveTenantId = input.tenantId?.trim() || null;
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return db.transaction(async (tx: any) => {
-    const [existing] = await tx
-      .select()
-      .from(skillRevenueSettlements)
-      .where(eq(skillRevenueSettlements.runId, input.runId))
-      .for("update")
-      .limit(1);
-    if (existing) {
-      if (
-        existing.userId !== input.userId ||
-        existing.skillSlug !== skillSlug ||
-        existing.tenantId !== effectiveTenantId
-      ) {
-        throw new Error("Skill run id is already bound to a different execution");
-      }
-      if (existing.status === "reversed") {
-        throw new Error("Skill run has already been refunded");
-      }
-      return settlementResult(existing, true);
-    }
+  // A settlement is keyed by runId and all balance/ledger writes are inside
+  // one transaction. A bounded retry is therefore safe for transient
+  // connection, deadlock, and serialization failures, while permanent
+  // schema/constraint failures still fail closed without charging the user.
+  const maxAttempts = 2;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await db.transaction(async (tx: any) => {
+        const [existing] = await tx
+          .select()
+          .from(skillRevenueSettlements)
+          .where(eq(skillRevenueSettlements.runId, settlementRunId))
+          .for("update")
+          .limit(1);
+        if (existing) {
+          if (
+            existing.userId !== input.userId ||
+            existing.skillSlug !== skillSlug ||
+            existing.tenantId !== effectiveTenantId
+          ) {
+            throw new Error(
+              "Skill run id is already bound to a different execution"
+            );
+          }
+          if (existing.status === "reversed") {
+            throw new Error("Skill run has already been refunded");
+          }
+          return settlementResult(existing, true);
+        }
 
-    const [skill] = await tx
-      .select({
-        id: skills.id,
-        slug: skills.slug,
-        name: skills.name,
-        createdBy: skills.createdBy,
-        tenantId: skills.tenantId,
-        tenantCreditCost: skills.tenantCreditCost,
-        skillOwnerCreditCost: skills.skillOwnerCreditCost,
-      })
-      .from(skills)
-      .where(eq(skills.slug, skillSlug))
-      .limit(1);
-    if (!skill) throw new Error(`Skill '${input.skillSlug}' not found`);
+        const [skill] = await tx
+          .select({
+            id: skills.id,
+            slug: skills.slug,
+            name: skills.name,
+            createdBy: skills.createdBy,
+            tenantId: skills.tenantId,
+            tenantCreditCost: skills.tenantCreditCost,
+            skillOwnerCreditCost: skills.skillOwnerCreditCost,
+          })
+          .from(skills)
+          .where(eq(skills.slug, skillSlug))
+          .limit(1);
+        if (!skill) throw new Error(`Skill '${input.skillSlug}' not found`);
 
-    const pricing = normalizeSkillRevenuePricing(skill);
-    const charge = calculateSkillRevenueCharge(pricing, input.actualWorkCredits);
-    if (skill.tenantId && skill.tenantId !== effectiveTenantId) {
-      throw new Error("Skill is not available in the active tenant");
-    }
-    let tenantOwnerId: number | null = null;
-    if (charge.tenantCreditCost > 0) {
-      if (!effectiveTenantId) throw new Error("Tenant context is required for skill revenue settlement");
-      const [tenant] = await tx
-        .select({ ownerId: tenants.ownerId })
-        .from(tenants)
-        .where(eq(tenants.id, effectiveTenantId))
-        .limit(1);
-      tenantOwnerId = tenant?.ownerId ?? null;
-      if (!tenantOwnerId) throw new Error("Tenant owner is required for skill revenue settlement");
-    }
+        const pricing = normalizeSkillRevenuePricing(skill);
+        const charge = calculateSkillRevenueCharge(
+          pricing,
+          input.actualWorkCredits
+        );
+        if (skill.tenantId && skill.tenantId !== effectiveTenantId) {
+          throw new Error("Skill is not available in the active tenant");
+        }
+        let tenantOwnerId: number | null = null;
+        if (charge.tenantCreditCost > 0) {
+          if (!effectiveTenantId)
+            throw new Error(
+              "Tenant context is required for skill revenue settlement"
+            );
+          const [tenant] = await tx
+            .select({ ownerId: tenants.ownerId })
+            .from(tenants)
+            .where(eq(tenants.id, effectiveTenantId))
+            .limit(1);
+          tenantOwnerId = tenant?.ownerId ?? null;
+          if (!tenantOwnerId)
+            throw new Error(
+              "Tenant owner is required for skill revenue settlement"
+            );
+        }
 
-    const skillOwnerId = charge.skillOwnerCreditCost > 0 ? skill.createdBy : null;
-    if (charge.skillOwnerCreditCost > 0 && !skillOwnerId) {
-      throw new Error("Skill owner is required for skill revenue settlement");
-    }
+        const skillOwnerId =
+          charge.skillOwnerCreditCost > 0 ? skill.createdBy : null;
+        if (charge.skillOwnerCreditCost > 0 && !skillOwnerId) {
+          throw new Error(
+            "Skill owner is required for skill revenue settlement"
+          );
+        }
 
-    const [inserted] = await tx
-      .insert(skillRevenueSettlements)
-      .values({
-        runId: input.runId,
-        skillId: skill.id,
-        skillSlug: skill.slug,
-        tenantId: effectiveTenantId,
-        userId: input.userId,
-        tenantOwnerId,
-        skillOwnerId,
-        tenantCredits: charge.tenantCreditCost,
-        skillOwnerCredits: charge.skillOwnerCreditCost,
-        totalCredits: charge.chargedTotalCredits,
-        configuredTotalCredits: charge.configuredTotalCredits,
-        actualWorkCredits: charge.actualWorkCredits,
-        chargedTotalCredits: charge.chargedTotalCredits,
-        pricingSource: charge.pricingSource,
-        capApplied: charge.capApplied,
-      })
-      .onConflictDoNothing({ target: skillRevenueSettlements.runId })
-      .returning();
-
-    // A concurrent retry may have inserted the same run between the initial
-    // lookup and this insert. Treat that conflict as an idempotent duplicate
-    // instead of surfacing a transient unique-constraint error to the caller.
-    if (!inserted) {
-      const [concurrent] = await tx
-        .select()
-        .from(skillRevenueSettlements)
-        .where(eq(skillRevenueSettlements.runId, input.runId))
-        .for("update")
-        .limit(1);
-      if (!concurrent) throw new Error("Skill run settlement could not be located after idempotent insert");
-      if (
-        concurrent.userId !== input.userId ||
-        concurrent.skillSlug !== skillSlug ||
-        concurrent.tenantId !== effectiveTenantId
-      ) {
-        throw new Error("Skill run id is already bound to a different execution");
-      }
-      if (concurrent.status === "reversed") {
-        throw new Error("Skill run has already been refunded");
-      }
-      return settlementResult(concurrent, true);
-    }
-
-    const recipientCredits = buildSkillRevenueAllocations({
-      tenantOwnerId,
-      skillOwnerId,
-      tenantCredits: charge.tenantCreditCost,
-      skillOwnerCredits: charge.skillOwnerCreditCost,
-    });
-
-    const balances = await lockUsers(tx, [input.userId, ...recipientCredits.keys()]);
-    const user = balances.get(input.userId);
-    if (!user || user.isDisabled) throw new Error("User not found or disabled");
-    if (user.credits < charge.chargedTotalCredits) {
-      throw new Error(`Insufficient credits. Required: ${charge.chargedTotalCredits}`);
-    }
-
-    let userTransactionId: number | null = null;
-    if (charge.chargedTotalCredits > 0) {
-      const [userBalance] = await tx
-        .update(users)
-        .set({ credits: sql`${users.credits} - ${charge.chargedTotalCredits}`, lastCreditUsedAt: new Date() })
-        .where(and(eq(users.id, input.userId), gte(users.credits, charge.chargedTotalCredits)))
-        .returning({ balanceAfter: users.credits });
-      if (!userBalance) throw new Error(`Insufficient credits. Required: ${charge.chargedTotalCredits}`);
-      const [userTransaction] = await tx
-        .insert(creditTransactions)
-        .values({
-          userId: input.userId,
-          tenantId: effectiveTenantId,
-          amount: -charge.chargedTotalCredits,
-          type: "usage",
-          description: input.description ?? `Skill run: ${skill.name}`,
-          balanceAfter: userBalance.balanceAfter,
-          idempotencyKey: `skill-run:${input.runId}:user`,
-          skillSlug: skill.slug,
-          sourceType: "skill",
-          metadata: buildMetadata({
-            runId: input.runId,
+        const [inserted] = await tx
+          .insert(skillRevenueSettlements)
+          .values({
+            runId: settlementRunId,
+            skillId: skill.id,
             skillSlug: skill.slug,
-            skillName: skill.name,
+            tenantId: effectiveTenantId,
+            userId: input.userId,
+            tenantOwnerId,
+            skillOwnerId,
             tenantCredits: charge.tenantCreditCost,
             skillOwnerCredits: charge.skillOwnerCreditCost,
             totalCredits: charge.chargedTotalCredits,
             configuredTotalCredits: charge.configuredTotalCredits,
             actualWorkCredits: charge.actualWorkCredits,
             chargedTotalCredits: charge.chargedTotalCredits,
+            pricingSource: charge.pricingSource,
             capApplied: charge.capApplied,
-            role: "user_charge",
-            extra: input.metadata,
-          }),
-        })
-        .returning({ id: creditTransactions.id });
-      userTransactionId = userTransaction?.id ?? null;
-    }
+          })
+          .onConflictDoNothing({ target: skillRevenueSettlements.runId })
+          .returning();
 
-    let tenantRevenueTransactionId: number | null = null;
-    let skillRevenueTransactionId: number | null = null;
-    for (const [recipientId, amount] of recipientCredits) {
-      const [balance] = await tx
-        .update(users)
-        .set({ credits: sql`${users.credits} + ${amount}` })
-        .where(eq(users.id, recipientId))
-        .returning({ balanceAfter: users.credits });
-      if (!balance) throw new Error(`Revenue recipient ${recipientId} not found`);
-      const role = recipientId === tenantOwnerId && recipientId === skillOwnerId
-        ? "tenant_revenue"
-        : recipientId === tenantOwnerId
-          ? "tenant_revenue"
-          : "skill_owner_revenue";
-      const [revenueTransaction] = await tx
-        .insert(creditTransactions)
-        .values({
-          userId: recipientId,
-          tenantId: effectiveTenantId,
-          amount,
-          type: "creator_fee",
-          description: `Skill revenue: ${skill.name}`,
-          balanceAfter: balance.balanceAfter,
-          idempotencyKey: `skill-run:${input.runId}:${role}`,
-          skillSlug: skill.slug,
-          sourceType: "creator_revenue",
-          metadata: buildMetadata({
-            runId: input.runId,
-            skillSlug: skill.slug,
-            skillName: skill.name,
-            tenantCredits: charge.tenantCreditCost,
-            skillOwnerCredits: charge.skillOwnerCreditCost,
-            totalCredits: charge.chargedTotalCredits,
-            configuredTotalCredits: charge.configuredTotalCredits,
-            actualWorkCredits: charge.actualWorkCredits,
-            chargedTotalCredits: charge.chargedTotalCredits,
-            capApplied: charge.capApplied,
-            role,
-          }),
-        })
-        .returning({ id: creditTransactions.id });
-      if (recipientId === tenantOwnerId) tenantRevenueTransactionId = revenueTransaction?.id ?? null;
-      else skillRevenueTransactionId = revenueTransaction?.id ?? null;
-    }
+        // A concurrent retry may have inserted the same run between the initial
+        // lookup and this insert. Treat that conflict as an idempotent duplicate
+        // instead of surfacing a transient unique-constraint error to the caller.
+        if (!inserted) {
+          const [concurrent] = await tx
+            .select()
+            .from(skillRevenueSettlements)
+            .where(eq(skillRevenueSettlements.runId, settlementRunId))
+            .for("update")
+            .limit(1);
+          if (!concurrent)
+            throw new Error(
+              "Skill run settlement could not be located after idempotent insert"
+            );
+          if (
+            concurrent.userId !== input.userId ||
+            concurrent.skillSlug !== skillSlug ||
+            concurrent.tenantId !== effectiveTenantId
+          ) {
+            throw new Error(
+              "Skill run id is already bound to a different execution"
+            );
+          }
+          if (concurrent.status === "reversed") {
+            throw new Error("Skill run has already been refunded");
+          }
+          return settlementResult(concurrent, true);
+        }
 
-    const [settled] = await tx
-      .update(skillRevenueSettlements)
-      .set({ userTransactionId, tenantRevenueTransactionId, skillRevenueTransactionId, updatedAt: new Date() })
-      .where(eq(skillRevenueSettlements.id, inserted.id))
-      .returning();
-    if (!settled) throw new Error("Skill revenue settlement could not be finalized");
-    return settlementResult(settled, false);
-  });
+        const recipientCredits = buildSkillRevenueAllocations({
+          tenantOwnerId,
+          skillOwnerId,
+          tenantCredits: charge.tenantCreditCost,
+          skillOwnerCredits: charge.skillOwnerCreditCost,
+        });
+
+        const balances = await lockUsers(tx, [
+          input.userId,
+          ...recipientCredits.keys(),
+        ]);
+        const user = balances.get(input.userId);
+        if (!user || user.isDisabled)
+          throw new Error("User not found or disabled");
+        if (user.credits < charge.chargedTotalCredits) {
+          throw new Error(
+            `Insufficient credits. Required: ${charge.chargedTotalCredits}`
+          );
+        }
+
+        let userTransactionId: number | null = null;
+        if (charge.chargedTotalCredits > 0) {
+          const [userBalance] = await tx
+            .update(users)
+            .set({
+              credits: sql`${users.credits} - ${charge.chargedTotalCredits}`,
+              lastCreditUsedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(users.id, input.userId),
+                gte(users.credits, charge.chargedTotalCredits)
+              )
+            )
+            .returning({ balanceAfter: users.credits });
+          if (!userBalance)
+            throw new Error(
+              `Insufficient credits. Required: ${charge.chargedTotalCredits}`
+            );
+          const [userTransaction] = await tx
+            .insert(creditTransactions)
+            .values({
+              userId: input.userId,
+              tenantId: effectiveTenantId,
+              amount: -charge.chargedTotalCredits,
+              type: "usage",
+              description: normalizeCreditTransactionDescription(
+                input.description ?? `Skill run: ${skill.name}`
+              ),
+              balanceAfter: userBalance.balanceAfter,
+              idempotencyKey: `skill-run:${settlementRunId}:user`,
+              skillSlug: skill.slug,
+              sourceType: "skill",
+              metadata: buildMetadata({
+                runId: input.runId,
+                skillSlug: skill.slug,
+                skillName: skill.name,
+                tenantCredits: charge.tenantCreditCost,
+                skillOwnerCredits: charge.skillOwnerCreditCost,
+                totalCredits: charge.chargedTotalCredits,
+                configuredTotalCredits: charge.configuredTotalCredits,
+                actualWorkCredits: charge.actualWorkCredits,
+                chargedTotalCredits: charge.chargedTotalCredits,
+                capApplied: charge.capApplied,
+                role: "user_charge",
+                extra: input.metadata,
+              }),
+            })
+            .returning({ id: creditTransactions.id });
+          userTransactionId = userTransaction?.id ?? null;
+        }
+
+        let tenantRevenueTransactionId: number | null = null;
+        let skillRevenueTransactionId: number | null = null;
+        for (const [recipientId, amount] of recipientCredits) {
+          const [balance] = await tx
+            .update(users)
+            .set({ credits: sql`${users.credits} + ${amount}` })
+            .where(eq(users.id, recipientId))
+            .returning({ balanceAfter: users.credits });
+          if (!balance)
+            throw new Error(`Revenue recipient ${recipientId} not found`);
+          const role =
+            recipientId === tenantOwnerId && recipientId === skillOwnerId
+              ? "tenant_revenue"
+              : recipientId === tenantOwnerId
+                ? "tenant_revenue"
+                : "skill_owner_revenue";
+          const [revenueTransaction] = await tx
+            .insert(creditTransactions)
+            .values({
+              userId: recipientId,
+              tenantId: effectiveTenantId,
+              amount,
+              type: "creator_fee",
+              description: normalizeCreditTransactionDescription(
+                `Skill revenue: ${skill.name}`
+              ),
+              balanceAfter: balance.balanceAfter,
+              idempotencyKey: `skill-run:${settlementRunId}:${role}`,
+              skillSlug: skill.slug,
+              sourceType: "creator_revenue",
+              metadata: buildMetadata({
+                runId: input.runId,
+                skillSlug: skill.slug,
+                skillName: skill.name,
+                tenantCredits: charge.tenantCreditCost,
+                skillOwnerCredits: charge.skillOwnerCreditCost,
+                totalCredits: charge.chargedTotalCredits,
+                configuredTotalCredits: charge.configuredTotalCredits,
+                actualWorkCredits: charge.actualWorkCredits,
+                chargedTotalCredits: charge.chargedTotalCredits,
+                capApplied: charge.capApplied,
+                role,
+              }),
+            })
+            .returning({ id: creditTransactions.id });
+          if (recipientId === tenantOwnerId)
+            tenantRevenueTransactionId = revenueTransaction?.id ?? null;
+          else skillRevenueTransactionId = revenueTransaction?.id ?? null;
+        }
+
+        const [settled] = await tx
+          .update(skillRevenueSettlements)
+          .set({
+            userTransactionId,
+            tenantRevenueTransactionId,
+            skillRevenueTransactionId,
+            updatedAt: new Date(),
+          })
+          .where(eq(skillRevenueSettlements.id, inserted.id))
+          .returning();
+        if (!settled)
+          throw new Error("Skill revenue settlement could not be finalized");
+        return settlementResult(settled, false);
+      });
+    } catch (error) {
+      if (isInsufficientCreditError(error)) throw error;
+      if (!isCreditDatabaseError(error)) throw error;
+      if (attempt < maxAttempts && isRetryableCreditDatabaseError(error)) {
+        await new Promise(resolve => setTimeout(resolve, 50 * attempt));
+        continue;
+      }
+      if (error instanceof CreditLedgerPersistenceError) throw error;
+      throw new CreditLedgerPersistenceError(
+        "skill settlement transaction",
+        error
+      );
+    }
+  }
+
+  // The loop either returns or throws. Keep an explicit guard for future
+  // edits so TypeScript and callers never observe an undefined settlement.
+  throw new CreditLedgerPersistenceError(
+    "skill settlement transaction",
+    new Error("Settlement attempts exhausted")
+  );
 }
 
 /** Reverse a settled skill run exactly once, including any already-issued revenue. */
 export async function refundSkillRun(input: {
   runId: string;
   reason?: string;
-}): Promise<{ refunded: boolean; userCredits: number; revenueCredits: number; revenueDebtCredits: number }> {
+}): Promise<{
+  refunded: boolean;
+  userCredits: number;
+  revenueCredits: number;
+  revenueDebtCredits: number;
+}> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  const settlementRunId = normalizeSkillSettlementRunId(input.runId);
   return db.transaction(async (tx: any) => {
     const [settlement] = await tx
       .select()
       .from(skillRevenueSettlements)
-      .where(eq(skillRevenueSettlements.runId, input.runId))
+      .where(eq(skillRevenueSettlements.runId, settlementRunId))
       .for("update")
       .limit(1);
     if (!settlement || settlement.status === "reversed") {
-      return { refunded: false, userCredits: 0, revenueCredits: 0, revenueDebtCredits: 0 };
+      return {
+        refunded: false,
+        userCredits: 0,
+        revenueCredits: 0,
+        revenueDebtCredits: 0,
+      };
     }
 
     const allocations = buildSkillRevenueAllocations({
@@ -531,17 +731,27 @@ export async function refundSkillRun(input: {
       tenantCredits: settlement.tenantCredits,
       skillOwnerCredits: settlement.skillOwnerCredits,
     });
-    const balances = await lockUsers(tx, [settlement.userId, ...allocations.keys()]);
-    if (!balances.get(settlement.userId)) throw new Error("User not found for skill refund");
+    const balances = await lockUsers(tx, [
+      settlement.userId,
+      ...allocations.keys(),
+    ]);
+    if (!balances.get(settlement.userId))
+      throw new Error("User not found for skill refund");
 
     const userRefundReference = settlement.userTransactionId
       ? `refund-${settlement.userTransactionId}`
       : null;
     const [existingUserRefund] = userRefundReference
-      ? await tx.select({ id: creditTransactions.id }).from(creditTransactions).where(and(
-          eq(creditTransactions.type, "refund"),
-          eq(creditTransactions.referenceId, userRefundReference),
-        )).limit(1)
+      ? await tx
+          .select({ id: creditTransactions.id })
+          .from(creditTransactions)
+          .where(
+            and(
+              eq(creditTransactions.type, "refund"),
+              eq(creditTransactions.referenceId, userRefundReference)
+            )
+          )
+          .limit(1)
       : [null];
 
     if (!existingUserRefund && settlement.totalCredits > 0) {
@@ -552,16 +762,22 @@ export async function refundSkillRun(input: {
         .returning({ balanceAfter: users.credits });
       if (!balance) throw new Error("User not found for skill refund");
       const currentUser = balances.get(settlement.userId);
-      if (currentUser) balances.set(settlement.userId, { ...currentUser, credits: balance.balanceAfter });
+      if (currentUser)
+        balances.set(settlement.userId, {
+          ...currentUser,
+          credits: balance.balanceAfter,
+        });
       await tx.insert(creditTransactions).values({
         userId: settlement.userId,
         tenantId: settlement.tenantId,
         amount: settlement.totalCredits,
         type: "refund",
-        description: input.reason ?? `Skill run refund: ${settlement.skillSlug}`,
+        description: normalizeCreditTransactionDescription(
+          input.reason ?? `Skill run refund: ${settlement.skillSlug}`
+        ),
         referenceId: userRefundReference,
         reversalOfTransactionId: settlement.userTransactionId,
-        idempotencyKey: `skill-run:${input.runId}:refund:user`,
+        idempotencyKey: `skill-run:${settlementRunId}:refund:user`,
         balanceAfter: balance.balanceAfter,
         skillSlug: settlement.skillSlug,
         sourceType: "skill",
@@ -580,16 +796,24 @@ export async function refundSkillRun(input: {
     let revenueDebtCredits = 0;
     for (const [recipientId, amount] of allocations) {
       const recipient = balances.get(recipientId);
-      if (!recipient) throw new Error(`Revenue recipient ${recipientId} not found for refund`);
+      if (!recipient)
+        throw new Error(
+          `Revenue recipient ${recipientId} not found for refund`
+        );
       const reversibleAmount = Math.min(amount, Math.max(0, recipient.credits));
       let balanceAfter = recipient.credits;
       if (reversibleAmount > 0) {
         const [balance] = await tx
           .update(users)
           .set({ credits: sql`${users.credits} - ${reversibleAmount}` })
-          .where(and(eq(users.id, recipientId), gte(users.credits, reversibleAmount)))
+          .where(
+            and(eq(users.id, recipientId), gte(users.credits, reversibleAmount))
+          )
           .returning({ balanceAfter: users.credits });
-        if (!balance) throw new Error(`Revenue recipient ${recipientId} not found for refund`);
+        if (!balance)
+          throw new Error(
+            `Revenue recipient ${recipientId} not found for refund`
+          );
         balanceAfter = balance.balanceAfter;
       }
       if (reversibleAmount > 0) {
@@ -598,8 +822,10 @@ export async function refundSkillRun(input: {
           tenantId: settlement.tenantId,
           amount: -reversibleAmount,
           type: "refund",
-          description: `Skill revenue reversal: ${settlement.skillSlug}`,
-          idempotencyKey: `skill-run:${input.runId}:refund:recipient:${recipientId}`,
+          description: normalizeCreditTransactionDescription(
+            `Skill revenue reversal: ${settlement.skillSlug}`
+          ),
+          idempotencyKey: `skill-run:${settlementRunId}:refund:recipient:${recipientId}`,
           balanceAfter,
           skillSlug: settlement.skillSlug,
           sourceType: "creator_revenue",
@@ -610,7 +836,10 @@ export async function refundSkillRun(input: {
             skillOwnerCredits: settlement.skillOwnerCredits,
             totalCredits: settlement.totalCredits,
             role: "reversal",
-            extra: { reversedCredits: reversibleAmount, unrecoveredCredits: amount - reversibleAmount },
+            extra: {
+              reversedCredits: reversibleAmount,
+              unrecoveredCredits: amount - reversibleAmount,
+            },
           }),
         });
         revenueCreditsReversed += reversibleAmount;
@@ -629,8 +858,13 @@ export async function refundSkillRun(input: {
       balances.set(recipientId, { ...recipient, credits: balanceAfter });
     }
 
-    await tx.update(skillRevenueSettlements)
-      .set({ status: "reversed", reversedAt: new Date(), updatedAt: new Date() })
+    await tx
+      .update(skillRevenueSettlements)
+      .set({
+        status: "reversed",
+        reversedAt: new Date(),
+        updatedAt: new Date(),
+      })
       .where(eq(skillRevenueSettlements.id, settlement.id));
     return {
       refunded: true,

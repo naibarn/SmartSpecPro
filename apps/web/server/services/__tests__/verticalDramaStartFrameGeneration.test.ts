@@ -46,6 +46,10 @@ import {
   RateLimitExceededError,
   appendPresetVisualIdentityFragmentsToImagePrompt,
   mergePresetVisualIdentityNegativeFragments,
+  buildShotSynopsisDirectImagePrompt,
+  deriveStartFrameTemporalContext,
+  replaceShotSynopsisCharacterNamesWithImageIndexes,
+  generateStartFrameShotPrompt,
   type VerticalDramaStartFramePlanFrame,
 } from "../verticalDramaStartFrameGeneration";
 import { executeWithFallback } from "../llmRouter";
@@ -399,7 +403,9 @@ describe("generateStartFrameRenderPlan", () => {
     const userMessage = callArgs.messages.find(m => m.role === "user")!.content;
     expect(userMessage).toContain("screen_callers: char-krit");
     expect(userMessage).toContain("attach each approved caller portrait immediately after the physical-scene portraits");
-    expect(userMessage).toContain("show only inside a clearly visible phone/video call screen");
+    expect(userMessage).toContain(
+      "show only inside a clearly visible floating vertical virtual video-call screen/overlay"
+    );
     expect(userMessage).toContain("required_characters: 2");
   });
 });
@@ -811,6 +817,125 @@ describe("projectStartFramePlan", () => {
 
       expect(plan.frames[0]?.canonicalShotSummary).toBe("carried-over summary");
     });
+  });
+});
+
+describe("quality-driven shot synopsis direct prompts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsAllowed.mockReturnValue(true);
+  });
+
+  it("returns the direct synopsis prompt without invoking the prompt skill or prompt credits", async () => {
+    const result = await generateStartFrameShotPrompt({
+      userId: 1,
+      tenantId: "tenant-1",
+      seriesId: 42,
+      episodeId: 7,
+      shotNumber: 1,
+      currentPrompt: "old generated prompt",
+      currentNegativePrompt: "",
+      canonicalShotSummary: "ธีร์เดินเข้าห้องแล้วมองหน้าต่าง",
+      promptSource: "shot_synopsis_direct",
+      imageQuality: "high",
+      imageModelId: "gpt-image-2.5",
+      characterReferenceManifest: [{
+        index: 1,
+        characterId: "thir",
+        name: "ธีร์",
+      }],
+    });
+
+    expect(result.prompt).toBe("Image 1เดินเข้าห้องแล้วมองหน้าต่าง");
+    expect(result.creditsUsed).toBe(0);
+    expect(result.promptSourceStamp).toMatchObject({
+      source: "shot_synopsis_direct",
+      quality: "high",
+      imageModelId: "gpt-image-2.5",
+    });
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it("keeps a later phone/message reveal out of the direct Start Frame prompt", async () => {
+    const result = await generateStartFrameShotPrompt({
+      userId: 1,
+      tenantId: "tenant-1",
+      seriesId: 42,
+      episodeId: 7,
+      shotNumber: 8,
+      currentPrompt: "old phone insert prompt",
+      currentNegativePrompt: "",
+      canonicalShotSummary:
+        "หน้าคลินิก ธีร์เดินถือกระเป๋ายาอยู่ข้างภูมิแต่ไม่แตะตัวเด็ก พิมพ์ชนกหยิบโทรศัพท์ขึ้นมาเห็นข้อความภายหลัง",
+      promptSource: "shot_synopsis_direct",
+      imageQuality: "high",
+      imageModelId: "gpt-image-2.5",
+      characterReferenceManifest: [
+        { index: 1, characterId: "phimchanok", name: "พิมพ์ชนก" },
+      ],
+    });
+
+    expect(result.prompt).toContain(
+      "หน้าคลินิก ธีร์เดินถือกระเป๋ายาอยู่ข้างภูมิแต่ไม่แตะตัวเด็ก"
+    );
+    expect(result.prompt).not.toContain("โทรศัพท์");
+    expect(result.negativePrompt).toContain("raised phone");
+  });
+
+  it("derives an opening beat and terminal exclusion from the ordered synopsis", () => {
+    expect(
+      deriveStartFrameTemporalContext(
+        "หน้าคลินิก ธีร์เดินถือกระเป๋ายาอยู่ข้างภูมิแต่ไม่แตะตัวเด็ก พิมพ์ชนกหยิบโทรศัพท์ขึ้นมาเห็นข้อความภายหลัง"
+      )
+    ).toMatchObject({
+      openingBeat:
+        "หน้าคลินิก ธีร์เดินถือกระเป๋ายาอยู่ข้างภูมิแต่ไม่แตะตัวเด็ก",
+      laterBeat: "พิมพ์ชนกหยิบโทรศัพท์ขึ้นมาเห็นข้อความภายหลัง",
+    });
+  });
+
+  it("maps attached character names to their exact Image N positions", () => {
+    expect(
+      replaceShotSynopsisCharacterNamesWithImageIndexes({
+        synopsis: "ธีร์มองธาริน ก่อนที่ ธีร์ จะเดินออกไป",
+        references: [
+          { index: 1, name: "ธีร์" },
+          { index: 2, name: "ธาริน" },
+        ],
+      })
+    ).toBe("Image 1มองImage 2 ก่อนที่ Image 1 จะเดินออกไป");
+  });
+
+  it("uses longest-match-first replacement for overlapping names", () => {
+    expect(
+      replaceShotSynopsisCharacterNamesWithImageIndexes({
+        synopsis: "กานต์คุยกับกานต์น้อย",
+        references: [
+          { index: 1, name: "กานต์" },
+          { index: 2, name: "กานต์น้อย" },
+        ],
+      })
+    ).toBe("Image 1คุยกับImage 2");
+  });
+
+  it("removes unselected roster names while preserving selected reference names", () => {
+    expect(
+      buildShotSynopsisDirectImagePrompt({
+        synopsis: "ธีร์จับมือเมย์ในห้องนั่งเล่น",
+        characterReferenceManifest: [{ index: 1, name: "ธีร์" }],
+        excludedVisualCharacterNames: ["เมย์"],
+      })
+    ).toBe("Image 1จับมือในห้องนั่งเล่น");
+  });
+
+  it("keeps a synopsis unchanged when no references are attached", () => {
+    expect(
+      buildShotSynopsisDirectImagePrompt({
+        synopsis: "กล้องแพนผ่านห้องนั่งเล่น",
+        characterReferenceManifest: [],
+      })
+    ).toBe("กล้องแพนผ่านห้องนั่งเล่น");
   });
 });
 

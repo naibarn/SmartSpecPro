@@ -38,6 +38,8 @@ PSI_STREAK_FILE="${LOG_DIR}/psi-streak.state"
 AUTOKILL_STATE_FILE="${LOG_DIR}/autokill.state"
 USER_SLICE_CGROUP="/sys/fs/cgroup/user.slice/user-1000.slice"
 WEBHOOK_URL="${ALERT_WEBHOOK_URL:-${SLACK_WEBHOOK_URL:-${DISCORD_WEBHOOK_URL:-}}}"
+DOCKER_REDIS_CONTAINER="${CRASH_MONITOR_REDIS_CONTAINER:-smartspec-redis}"
+DOCKER_BIN="${CRASH_MONITOR_DOCKER_BIN:-docker}"
 
 mkdir -p "${LOG_DIR}"
 
@@ -133,6 +135,23 @@ system-smartspec-agent.slice|/sys/fs/cgroup/system.slice/system-smartspec.slice/
 user-1000.slice|/sys/fs/cgroup/user.slice/user-1000.slice/memory.events
 system.slice|/sys/fs/cgroup/system.slice/memory.events
 CGROUPS
+}
+
+# Docker keeps container-local OOM state separate from the host's aggregate
+# cgroup event counter. Attribute the managed Redis restart loop directly so an
+# operator can act on the service that failed instead of guessing from
+# system.slice. This check is read-only and intentionally does not restart or
+# mutate the container.
+record_docker_redis_memory_events() {
+    command -v "${DOCKER_BIN}" >/dev/null 2>&1 || return 0
+
+    local state status oom_killed exit_code restart_count
+    state="$(timeout 5s "${DOCKER_BIN}" inspect --format '{{.State.Status}}|{{.State.OOMKilled}}|{{.State.ExitCode}}|{{.RestartCount}}' "${DOCKER_REDIS_CONTAINER}" 2>/dev/null)" || return 0
+    IFS='|' read -r status oom_killed exit_code restart_count <<<"${state}"
+
+    if [ "${oom_killed:-false}" = "true" ] || { [ "${status:-}" = "restarting" ] && [ "${exit_code:-}" = "137" ]; }; then
+        alerts+=("CRITICAL redis_container_oom container=${DOCKER_REDIS_CONTAINER} status=${status:-unknown} exit=${exit_code:-?} restarts=${restart_count:-?}")
+    fi
 }
 
 # All PIDs currently inside the user-1000.slice cgroup tree (dev sessions,
@@ -281,6 +300,7 @@ main() {
     fi
 
     record_cgroup_memory_events
+    record_docker_redis_memory_events
     maybe_autokill_slice_hog
 
     # Slice-local pressure (throttle events) can build while host RAM looks
@@ -371,7 +391,9 @@ main() {
     echo "${timestamp} alerts=${#alerts[@]}"
 }
 
-# Run main, capturing any unexpected errors so the script never exits dirty
-if ! main 2>>"${ALERT_LOG}"; then
-    echo "${timestamp} crash-monitor-error: main() failed, see ${ALERT_LOG}" >> "${DAILY_LOG}"
+if [ "${SMARTSPEC_CRASH_MONITOR_NO_RUN:-0}" != "1" ]; then
+    # Run main, capturing any unexpected errors so the script never exits dirty
+    if ! main 2>>"${ALERT_LOG}"; then
+        echo "${timestamp} crash-monitor-error: main() failed, see ${ALERT_LOG}" >> "${DAILY_LOG}"
+    fi
 fi

@@ -315,6 +315,10 @@ export async function generateCharacterVariantPlan(
     maxTokens: 6000,
     schema: characterVariantPlanOutputSchema,
     label: "Character variant planner (whole-season)",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "character_design",
+    },
   });
 
   const usage = response.usage;

@@ -239,6 +239,10 @@ export async function generateLocationDetectionPlan(
     maxTokens: 6000,
     schema: locationDetectionPlanOutputSchema,
     label: "Location detector (whole-season)",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "location_design",
+    },
   });
 
   const usage = response.usage;

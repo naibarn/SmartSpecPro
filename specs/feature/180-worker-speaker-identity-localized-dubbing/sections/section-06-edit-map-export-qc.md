@@ -66,3 +66,7 @@ Capture both render choices, progress, QC failure with range, successful artifac
 ## v2 required integration
 
 Use shared MixManifest buses and 178 delivery thresholds. Preserve local-only output as scoped local artifact when cloud publication is forbidden. Export approval is distinct from technical artifact finalization. Stale rights/cancel fencing blocks playable publication.
+
+## Implementation record (2026-09-07)
+
+Existing edit-map/export/QC authority remains unchanged. Unified TTS publishes worker artifacts with checksum, duration, model and voice provenance so FFmpeg/Remotion and QC consumers can reject stale or unmeasured output.

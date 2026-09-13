@@ -250,6 +250,10 @@ export async function synthesizeSeasonCarryOver(
     maxTokens: 3500,
     schema: seasonCarryOverLlmDraftSchema,
     label: "Season carry-over planning",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "story_architecture",
+    },
   });
 
   const draft: VerticalDramaSeasonCarryOverDraft = {

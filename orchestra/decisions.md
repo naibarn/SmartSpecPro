@@ -1,9 +1,11 @@
-# Decisions
+# Orchestra Decisions
 
-[2026-09-02T08:26:10Z] DECISION: Treat the current target as local Debian Beta and keep Cloud packaging out of the completion gate.
-  Context: The user clarified that the product is still run locally on Debian and is not deployed to Cloud.
-  Alternatives considered: Requiring Cloud Run/image validation would be incorrect for the current operating mode; retain Docker checks only as future packaging evidence.
+[2026-09-12T00:00:00+07:00] AUTO-APPROVED: Inline sequential review/repair of Feature 186 because no sub-agent tool or SocratiCode MCP is exposed.
+Reason: auto_by_default mode active; scoped work remains conductor-owned and recoverable.
+Risk: HIGH
+Files affected: Feature 186 control-plane, adapter, schema, route, Python, and test paths.
 
-[2026-09-02T08:26:10Z] DECISION: Run the audit inline in standard light mode with no sub-agents.
-  Context: No Task/sub-agent tool is exposed, and the worktree contains overlapping unrelated dirty changes; the conductor can safely perform bounded sequential reviews.
-  Alternatives considered: Parallel agents would increase collision risk without adding available execution capability.
+[2026-09-12T00:00:00+07:00] AUTO-APPROVED: Preserve all existing unrelated dirty worktree files and do not reset/clean them.
+Reason: repository instructions and user-owned changes require dirty-worktree safety.
+Risk: MEDIUM
+Files affected: unrelated existing worktree paths.

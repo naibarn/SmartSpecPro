@@ -30,6 +30,8 @@ import pypdf
 import structlog
 from celery.exceptions import SoftTimeLimitExceeded
 from PIL import Image as PillowImage
+from playwright.sync_api import Error as PlaywrightError
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
 from app.core.celery_app import celery_app
@@ -56,6 +58,41 @@ _SLIDE_READY_SOFT_WAIT_MS = 5000
 _SLIDE_READY_RETRY_DELAYS_MS = (750, 750)
 _SLIDE_READY_HARD_TIMEOUT_MS = 8000
 _SLIDE_READY_FAIL_CODE = "E_SLIDE_READY_TIMEOUT"
+_SLIDE_RENDER_RETRY_ATTEMPTS = 2
+
+
+class _SlideRenderHttpError(RuntimeError):
+    def __init__(self, status: int, message: str):
+        super().__init__(message)
+        self.status = status
+
+
+class _SlideRenderMediaDegradedError(RuntimeError):
+    pass
+
+
+def _is_retryable_slide_render_error(error: BaseException) -> bool:
+    """Return whether a failed slide attempt may recover with fresh media URLs."""
+    if isinstance(error, _SlideRenderMediaDegradedError):
+        return True
+    if isinstance(error, _SlideRenderHttpError):
+        return error.status in {408, 425, 429, 500, 502, 503, 504}
+    if isinstance(error, (OSError, TimeoutError, PlaywrightTimeoutError)):
+        return True
+    if isinstance(error, PlaywrightError):
+        message = str(error).lower()
+        return any(
+            marker in message
+            for marker in (
+                "net::",
+                "connection",
+                "timed out",
+                "timeout",
+                "dns",
+                "reset",
+            )
+        )
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -352,6 +389,79 @@ def _validate_png_file(path: str, slide_index: int) -> None:
         ) from exc
 
 
+def _open_slide_page_with_retry(
+    context,
+    base_url: str,
+    deck_id: int,
+    slide_index: int,
+    mode: str,
+    render_auth: dict[str, Any] | None = None,
+):
+    """Open one slide with fresh token/media URLs for each bounded attempt."""
+    render_path = f"/internal/slide-render/{deck_id}/{slide_index}"
+    if mode == "record":
+        render_path += "?mode=record"
+
+    for attempt in range(_SLIDE_RENDER_RETRY_ATTEMPTS + 1):
+        page = None
+        try:
+            token = _make_slide_token(deck_id, slide_index, render_auth)
+            page = context.new_page()
+            headers = {"X-Internal-Token": token}
+            if render_auth:
+                headers["Authorization"] = f"Bearer {token}"
+            page.set_extra_http_headers(headers)
+            response = page.goto(
+                f"{base_url}{render_path}",
+                wait_until="domcontentloaded",
+            )
+            response_status = getattr(response, "status", None)
+            if isinstance(response_status, int) and not 200 <= response_status < 300:
+                raise _SlideRenderHttpError(
+                    response_status,
+                    f"E_SLIDE_RENDER_HTTP_{response_status}: slide-render route rejected "
+                    f"deck {deck_id} slide {slide_index}",
+                )
+
+            ready_result = _poll_slide_ready(page, deck_id, slide_index, mode=mode)
+            state = ready_result.get("state") if isinstance(ready_result, dict) else None
+            if bool((state or {}).get("mediaDegraded")):
+                raise _SlideRenderMediaDegradedError(
+                    "E_SLIDE_MEDIA_DEGRADED: "
+                    f"deck {deck_id} slide {slide_index} has media that failed to load"
+                )
+
+            return page, ready_result
+        except Exception as exc:
+            if page is not None:
+                try:
+                    page.close()
+                except Exception:
+                    logger.warning(
+                        "slide_render_retry_page_close_failed",
+                        deck_id=deck_id,
+                        slide_index=slide_index,
+                        mode=mode,
+                    )
+
+            if (
+                attempt >= _SLIDE_RENDER_RETRY_ATTEMPTS
+                or not _is_retryable_slide_render_error(exc)
+            ):
+                raise
+
+            logger.warning(
+                "slide_render_retry",
+                deck_id=deck_id,
+                slide_index=slide_index,
+                mode=mode,
+                retry_attempt=attempt + 1,
+                error=str(exc),
+            )
+
+    raise AssertionError("slide render retry loop exited without a result")
+
+
 def _render_slides_to_screenshots(
     task_self,
     render_spec: dict,
@@ -387,33 +497,18 @@ def _render_slides_to_screenshots(
             context = browser.new_context(viewport={"width": width, "height": height})
             try:
                 for idx, _slide in enumerate(slides):
-                    token = _make_slide_token(deck_id, idx, render_auth)
-                    url = f"{base_url}/internal/slide-render/{deck_id}/{idx}"
-
-                    page = context.new_page()
-                    headers = {"X-Internal-Token": token}
-                    if render_auth:
-                        headers["Authorization"] = f"Bearer {token}"
-                    page.set_extra_http_headers(headers)
-                    response = page.goto(url, wait_until="domcontentloaded")
-                    if response is not None:
-                        response_status = response.status()
-                        if isinstance(response_status, int) and not 200 <= response_status < 300:
-                            raise RuntimeError(
-                                f"E_SLIDE_RENDER_HTTP_{response_status}: "
-                                f"slide-render route rejected deck {deck_id} slide {idx}"
-                            )
-
-                    ready_result = _poll_slide_ready(page, deck_id, idx, mode="screenshot")
+                    page, ready_result = _open_slide_page_with_retry(
+                        context,
+                        base_url,
+                        deck_id,
+                        idx,
+                        mode="screenshot",
+                        render_auth=render_auth,
+                    )
                     ready = bool(ready_result["ready"])
                     state = ready_result.get("state") if isinstance(ready_result, dict) else None
                     state_status = str((state or {}).get("status", "")).strip().lower()
                     state_code = str((state or {}).get("code", "")).strip()
-                    if bool((state or {}).get("mediaDegraded")):
-                        raise RuntimeError(
-                            "E_SLIDE_MEDIA_DEGRADED: "
-                            f"deck {deck_id} slide {idx} has media that failed to load"
-                        )
                     if not ready:
                         logger.warning("slide_ready_timeout", deck_id=deck_id, slide_index=idx)
                     elif state_status == "degraded":
@@ -424,15 +519,17 @@ def _render_slides_to_screenshots(
                             code=state_code or "W_SLIDE_READY_TIMEOUT",
                         )
 
-                    out_path = os.path.join(tmp_dir, f"slide_{idx:04d}.png")
-                    _wait_for_slide_paint(page)
-                    page.screenshot(
-                        path=out_path,
-                        clip={"x": 0, "y": 0, "width": width, "height": height},
-                        animations="disabled",
-                    )
-                    _validate_png_file(out_path, idx)
-                    page.close()
+                    try:
+                        out_path = os.path.join(tmp_dir, f"slide_{idx:04d}.png")
+                        _wait_for_slide_paint(page)
+                        page.screenshot(
+                            path=out_path,
+                            clip={"x": 0, "y": 0, "width": width, "height": height},
+                            animations="disabled",
+                        )
+                        _validate_png_file(out_path, idx)
+                    finally:
+                        page.close()
                     screenshot_paths.append(out_path)
 
                     percent = int((idx + 1) / total * 75)
@@ -482,34 +579,19 @@ def _render_slides_to_video_clips(
             )
             try:
                 for idx, slide in enumerate(slides):
-                    token = _make_slide_token(deck_id, idx, render_auth)
-                    url = f"{base_url}/internal/slide-render/{deck_id}/{idx}?mode=record"
-
-                    page = context.new_page()
-                    headers = {"X-Internal-Token": token}
-                    if render_auth:
-                        headers["Authorization"] = f"Bearer {token}"
-                    page.set_extra_http_headers(headers)
                     navigation_started_at = time.monotonic()
-                    response = page.goto(url, wait_until="domcontentloaded")
-                    if response is not None:
-                        response_status = response.status()
-                        if isinstance(response_status, int) and not 200 <= response_status < 300:
-                            raise RuntimeError(
-                                f"E_SLIDE_RENDER_HTTP_{response_status}: "
-                                f"slide-render route rejected deck {deck_id} slide {idx}"
-                            )
-
-                    ready_result = _poll_slide_ready(page, deck_id, idx, mode="record")
+                    page, ready_result = _open_slide_page_with_retry(
+                        context,
+                        base_url,
+                        deck_id,
+                        idx,
+                        mode="record",
+                        render_auth=render_auth,
+                    )
                     ready = bool(ready_result["ready"])
                     state = ready_result.get("state") if isinstance(ready_result, dict) else None
                     state_status = str((state or {}).get("status", "")).strip().lower()
                     state_code = str((state or {}).get("code", "")).strip()
-                    if bool((state or {}).get("mediaDegraded")):
-                        raise RuntimeError(
-                            "E_SLIDE_MEDIA_DEGRADED: "
-                            f"deck {deck_id} slide {idx} has media that failed to load"
-                        )
                     if not ready:
                         logger.warning("slide_ready_timeout_record_mode", deck_id=deck_id, slide_index=idx)
                     elif state_status == "degraded":
@@ -520,14 +602,15 @@ def _render_slides_to_video_clips(
                             code=state_code or "W_SLIDE_READY_TIMEOUT",
                         )
 
-                    duration_ms = max(250, int(slide.get("durationMs", 3000)))
-                    ready_elapsed_ms = int(ready_result.get("elapsed_ms", 0))
-                    if ready_elapsed_ms <= 0:
-                        ready_elapsed_ms = max(0, int((time.monotonic() - navigation_started_at) * 1000))
-                    page.wait_for_timeout(duration_ms)
-
-                    recorded_video = page.video
-                    page.close()
+                    try:
+                        duration_ms = max(250, int(slide.get("durationMs", 3000)))
+                        ready_elapsed_ms = int(ready_result.get("elapsed_ms", 0))
+                        if ready_elapsed_ms <= 0:
+                            ready_elapsed_ms = max(0, int((time.monotonic() - navigation_started_at) * 1000))
+                        page.wait_for_timeout(duration_ms)
+                        recorded_video = page.video
+                    finally:
+                        page.close()
 
                     if not recorded_video:
                         raise RuntimeError(

@@ -125,6 +125,8 @@ import {
   type ImagePromptModelFamily,
   type VdImagePromptMode,
   type VdImagePromptModeStamp,
+  type VdImagePromptSource,
+  type VdImagePromptSourceStamp,
   VD_IMAGE_PROMPT_MODE_SKILL_FOLDERS,
 } from "@shared/verticalDramaSeries/imagePromptModelFamily";
 import {
@@ -132,13 +134,17 @@ import {
   type VerticalDramaSupportingPresence,
 } from "@shared/verticalDramaSeries/supportingPresence";
 import {
+  deriveVerticalDramaStartFrameShotComposition,
+  ensureVerticalDramaStartFrameShotCompositionLock,
   renderVerticalDramaShotCompositionLock,
+  sanitizeVerticalDramaStartFrameCameraSetup,
   type VerticalDramaShotComposition,
 } from "@shared/verticalDramaSeries/shotComposition";
 import {
   deriveVerticalDramaSpokenCallerVirtualScreens,
   renderVerticalDramaSpokenCallerFaceIdentityLockPromptBlock,
   renderVerticalDramaSpokenCallerVirtualScreenPromptBlock,
+  VERTICAL_DRAMA_CALLER_VIRTUAL_SCREEN_FINAL_OVERRIDE_MARKER,
 } from "@shared/verticalDramaSeries/spokenCallerVirtualScreen";
 import {
   buildFrameRoleContext,
@@ -516,6 +522,175 @@ export function upsertSceneVisualState(input: {
   };
 }
 
+/** Canonical dialogue facts needed to stage the opening frame's eye-line. */
+export type StartFrameDialogueLine = {
+  speaker: string;
+  line: string;
+  addressedTo?: string;
+};
+
+function normalizeStartFrameDialogueName(value: string): string {
+  return value.trim().toLocaleLowerCase();
+}
+
+/**
+ * Build a compact, deterministic eye-line lock for the still image. Dialogue
+ * is visual staging context only: the image must never render subtitles or
+ * written dialogue. Explicit `addressedTo` wins; with exactly two speakers
+ * the other speaker is inferred; with a larger/ambiguous group we face the
+ * visible conversation group without guessing a person or the camera.
+ */
+export function buildStartFrameDialogueEyeLineLock(params: {
+  dialogueLines: readonly StartFrameDialogueLine[];
+  visibleCharacterRefs?: readonly string[];
+  visibleCharacterNames?: readonly string[];
+  screenCallerCharacterRefs?: readonly string[];
+  characterNameByKey?: ReadonlyMap<string, string>;
+}): string | null {
+  const lines = params.dialogueLines
+    .map(line => ({
+      speaker: line.speaker.trim(),
+      line: line.line.trim(),
+      addressedTo: line.addressedTo?.trim() || undefined,
+    }))
+    .filter(line => line.speaker && line.line);
+  if (lines.length === 0) return null;
+
+  const nameByNormalizedKey = new Map<string, string>();
+  for (const [key, name] of params.characterNameByKey ?? []) {
+    const trimmedKey = key.trim();
+    const trimmedName = name.trim();
+    if (trimmedKey && trimmedName) {
+      nameByNormalizedKey.set(
+        normalizeStartFrameDialogueName(trimmedKey),
+        trimmedName
+      );
+      nameByNormalizedKey.set(
+        normalizeStartFrameDialogueName(trimmedName),
+        trimmedName
+      );
+    }
+  }
+  const visibleNames = new Set(
+    [
+      ...(params.visibleCharacterRefs ?? []),
+      ...(params.visibleCharacterNames ?? []),
+    ]
+      .map(value => value.trim())
+      .filter(Boolean)
+      .map(value => normalizeStartFrameDialogueName(value))
+  );
+  const screenCallerNames = new Set(
+    (params.screenCallerCharacterRefs ?? [])
+      .map(value => value.trim())
+      .filter(Boolean)
+      .flatMap(value => [
+        normalizeStartFrameDialogueName(value),
+        normalizeStartFrameDialogueName(
+          nameByNormalizedKey.get(normalizeStartFrameDialogueName(value)) ??
+            value
+        ),
+      ])
+  );
+  const isScreenCaller = (value: string): boolean => {
+    const normalized = normalizeStartFrameDialogueName(value);
+    const resolved = nameByNormalizedKey.get(normalized);
+    return (
+      screenCallerNames.has(normalized) ||
+      (resolved ? screenCallerNames.has(normalizeStartFrameDialogueName(resolved)) : false)
+    );
+  };
+  const resolveVisibleName = (value: string): string | undefined => {
+    const normalized = normalizeStartFrameDialogueName(value);
+    const resolved = nameByNormalizedKey.get(normalized);
+    if (resolved && visibleNames.size > 0) {
+      const resolvedKey = normalizeStartFrameDialogueName(resolved);
+      if (!visibleNames.has(normalized) && !visibleNames.has(resolvedKey)) {
+        return undefined;
+      }
+    }
+    if (resolved) return resolved;
+    if (visibleNames.has(normalized) || visibleNames.size === 0)
+      return value.trim();
+    return undefined;
+  };
+
+  const speakerNames = Array.from(
+    new Set(
+      lines
+        .map(line => resolveVisibleName(line.speaker) ?? line.speaker)
+        .filter(name => !isScreenCaller(name))
+        .filter(Boolean)
+        .map(normalizeStartFrameDialogueName)
+    )
+  );
+  const displayName = (value: string) =>
+    nameByNormalizedKey.get(normalizeStartFrameDialogueName(value)) ??
+    value.trim();
+  const physicalTargetName = (value: string): string =>
+    isScreenCaller(value)
+      ? `${displayName(value)} inside the assigned floating virtual screen`
+      : displayName(value);
+  const groupTarget =
+    "the visible conversation partner/group, never the camera lens";
+  const targetForLine = (line: (typeof lines)[number]): string => {
+    const explicitTarget = line.addressedTo
+      ? physicalTargetName(line.addressedTo)
+      : undefined;
+    if (explicitTarget) return explicitTarget;
+    if (isScreenCaller(line.speaker)) {
+      return groupTarget;
+    }
+    if (speakerNames.length === 2) {
+      const speaker = normalizeStartFrameDialogueName(
+        displayName(line.speaker)
+      );
+      const other = speakerNames.find(name => name !== speaker);
+      if (other) {
+        return (
+          Array.from(
+            new Set(
+              lines
+                .map(candidate => displayName(candidate.speaker))
+                .filter(
+                  candidate =>
+                    normalizeStartFrameDialogueName(candidate) === other
+                )
+            )
+          )[0] ?? groupTarget
+        );
+      }
+    }
+    return groupTarget;
+  };
+
+  const first = lines[0];
+  const firstSpeaker = displayName(first.speaker);
+  const firstTarget = targetForLine(first);
+  const dialogueContext = lines
+    .map(line => {
+      const target = targetForLine(line);
+      return `- ${displayName(line.speaker)} -> ${target}: "${line.line}"`;
+    })
+    .join("\n");
+
+  const firstSpeakerIsScreenCaller = isScreenCaller(first.speaker);
+  return [
+    "START-FRAME DIALOGUE / EYE-LINE LOCK (MANDATORY)",
+    "Dialogue is visual staging context only. Do not render subtitles, captions, speech bubbles, written dialogue, or readable text from these lines.",
+    firstSpeakerIsScreenCaller
+      ? `PRIMARY OPENING SPEECH BEAT AT FRAME 0: ${firstSpeaker} is a remote caller and may appear only inside the assigned floating virtual screen. Do not render this caller as a physical person, body, reflection, photograph, or real-device display. Keep the physical in-room cast separate; the caller face remains readable inside the virtual screen for downstream lip-sync.`
+      : `PRIMARY OPENING SPEECH BEAT AT FRAME 0: ${firstSpeaker} is the first visible speaker and must face and look toward ${firstTarget}, away from the camera lens. Use a natural three-quarter conversational angle while keeping the speaker's face, eyes, and mouth readable for downstream lip-sync.`,
+    "DIALOGUE CONTEXT (exact text; use only to identify the visible speaker and listener):",
+    dialogueContext.replace(
+      /- ([^\n]+?) -> /g,
+      (_, speaker: string) =>
+        `- ${isScreenCaller(speaker) ? `${displayName(speaker)} (virtual screen only)` : displayName(speaker)} -> `
+    ),
+    "All other visible characters are listeners: keep their mouths closed and have them look naturally toward the active speaker or the motivated scene action. Never stage spoken delivery directly to camera and never make the camera lens the addressee.",
+  ].join("\n");
+}
+
 /** Project the raw skill output onto the pipeline's typed stage-payload shape. */
 export function projectStartFramePlan(
   raw: StartFrameRenderPlanOutput,
@@ -618,7 +793,9 @@ export function projectStartFramePlan(
     number,
     VerticalDramaCharacterLookAssignment[]
   >,
-  crossEpisodeWardrobeHandoff?: CrossEpisodeWardrobeHandoff
+  crossEpisodeWardrobeHandoff?: CrossEpisodeWardrobeHandoff,
+  /** Canonical dialogue per shot, used to stage the approved opening eye-line. */
+  shotDialogueLinesByShotNumber?: Map<number, StartFrameDialogueLine[]>
 ): StartFrameRenderPlanProjection {
   const summary = raw.render_plan_summary as Record<string, unknown>;
   const selectedImageModelId =
@@ -682,19 +859,21 @@ export function projectStartFramePlan(
             character.name?.trim() || character.characterKey,
           ])
         );
+        const temporalGuard = applyStartFrameTemporalPromptGuard({
+          prompt: r.prompt,
+          negativePrompt: r.negative_prompt ?? "",
+          canonicalShotSummary,
+        });
         const baseImagePrompt = mergeImageNegativePromptIntoPrompt(
-          r.prompt,
-          r.negative_prompt ?? ""
-        );
-        const compositionLock = renderVerticalDramaShotCompositionLock(
-          shotComposition,
-          characterNameByKey
+          temporalGuard.prompt,
+          temporalGuard.negativePrompt
         );
         const composedImagePrompt =
-          compositionLock &&
-          !baseImagePrompt.includes("CURRENT SHOT COMPOSITION LOCK")
-            ? `${baseImagePrompt}\n${compositionLock}`
-            : baseImagePrompt;
+          ensureVerticalDramaStartFrameShotCompositionLock({
+            prompt: baseImagePrompt,
+            composition: shotComposition,
+            characterNameByKey,
+          });
         const imagePrompt = ensureSpokenCallerVirtualScreenPrompt({
           prompt: composedImagePrompt,
           screenCallerCharacterRefs,
@@ -716,16 +895,29 @@ export function projectStartFramePlan(
             })
           )
         ).prompt;
+        const dialogueEyeLineLock = buildStartFrameDialogueEyeLineLock({
+          dialogueLines:
+            shotDialogueLinesByShotNumber?.get(r.shot_number) ?? [],
+          // A caller speaks inside the virtual screen; it is not a physical
+          // face in the camera's eye-line map. Only in-room characters may be
+          // assigned a physical gaze target here.
+          visibleCharacterRefs: requiredCharacterRefs,
+          screenCallerCharacterRefs,
+          characterNameByKey,
+        });
+        const finalImagePrompt = dialogueEyeLineLock
+          ? `${identityLockedImagePrompt}\n${dialogueEyeLineLock}`
+          : identityLockedImagePrompt;
         const promptChanged =
           previous?.imagePrompt !== undefined &&
-          previous.imagePrompt !== identityLockedImagePrompt;
+          previous.imagePrompt !== finalImagePrompt;
         // The skill authors the scene prompt; this projection then adds the
         // canonical combined identity-lock block once for all attached
         // characters. This is deterministic, idempotent, and adds no LLM
         // call.
         return {
           shotNumber: r.shot_number,
-          imagePrompt: identityLockedImagePrompt,
+          imagePrompt: finalImagePrompt,
           negativePrompt: "",
           ...(screenCallerCharacterRefs.length > 0
             ? { screenCallerCharacterRefs }
@@ -862,15 +1054,13 @@ export function ensureSpokenCallerVirtualScreenPrompt(params: {
       params.callerFaceReferenceImageIndexes,
   });
   if (policy.virtualScreens.length === 0) return prompt;
-  if (
-    prompt.includes(SPOKEN_CALLER_VIRTUAL_SCREEN_MARKER) &&
-    prompt.includes("CALLER FACE IDENTITY LOCK")
-  ) {
+  if (prompt.includes(VERTICAL_DRAMA_CALLER_VIRTUAL_SCREEN_FINAL_OVERRIDE_MARKER)) {
     return prompt;
   }
-  const block = prompt.includes(SPOKEN_CALLER_VIRTUAL_SCREEN_MARKER)
-    ? renderVerticalDramaSpokenCallerFaceIdentityLockPromptBlock(policy)
-    : renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(policy);
+  // Existing prompts may already contain the old tablet/physical-display
+  // wording. Append the current deterministic block so render-time repair
+  // upgrades those prompts without silently mutating persisted creative text.
+  const block = renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(policy);
   return block ? `${prompt}\n${block}` : prompt;
 }
 
@@ -879,6 +1069,7 @@ export interface GenerateStartFrameRenderPlanParams {
   tenantId?: string;
   seriesId: number;
   episodeId: number;
+  episodeGenerationSettings?: unknown;
   episodeTitle: string;
   durationSeconds: number;
   selectedImageModelId?: string;
@@ -947,6 +1138,8 @@ export interface GenerateStartFrameRenderPlanParams {
      * immediately above).
      */
     speakingOrder?: string[];
+    /** Canonical dialogue text plus optional addressee for opening eye-line staging. */
+    dialogueLines?: StartFrameDialogueLine[];
     /** Require video-safe face readability for multi-character/dialogue shots. */
     videoFaceVisibilityRequired?: boolean;
     characterLookAssignments?: VerticalDramaCharacterLookAssignment[];
@@ -1153,20 +1346,9 @@ export function buildStartFrameRenderPlanUserPrompt(
         ),
       });
       const spokenCallerVirtualScreenBlock =
-        renderVerticalDramaSpokenCallerVirtualScreenPromptBlock({
-          ...spokenCallerPolicy,
-          spokenScreenCallerCharacterRefs:
-            s.spokenCallerCharacterRefs ??
-            spokenCallerPolicy.spokenScreenCallerCharacterRefs,
-          virtualScreens: s.spokenCallerCharacterRefs?.length
-            ? s.spokenCallerCharacterRefs.map((callerCharacterRef, index) => ({
-                callerCharacterRef,
-                screenIndex: index + 1,
-                orientation: "vertical" as const,
-                visibleFaceRequired: true as const,
-              }))
-            : spokenCallerPolicy.virtualScreens,
-        });
+        renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(
+          spokenCallerPolicy
+        );
       // Phase 1 of `planning/polished-toasting-gadget.md` (location visual
       // bible) — additive; only appended when this shot carries a
       // `location` fact, so a shot with none produces the exact same line
@@ -1184,6 +1366,10 @@ export function buildStartFrameRenderPlanUserPrompt(
       const canonicalSource = s.canonicalShotSummary
         ? ` | CANONICAL SHOT SOURCE (must follow): ${s.canonicalShotSummary}`
         : "";
+      const temporalContext = deriveStartFrameTemporalContext(
+        s.canonicalShotSummary ?? s.description
+      );
+      const temporalFrameRoleSuffix = ` | frame_role: START (freeze the earliest useful opening beat; opening beat: ${temporalContext.openingBeat}; later actions, reveals, and prop interactions belong to the downstream video prompt)`;
       // Speaker-order composition fix — additive; only appended when this
       // shot carries a resolved `speakingOrder`, so a shot with none
       // produces the exact same line as before this field existed
@@ -1192,11 +1378,19 @@ export function buildStartFrameRenderPlanUserPrompt(
       const speakingOrderSuffix = s.speakingOrder?.length
         ? ` | speaking_order: ${s.speakingOrder.join(" > ")} (first speaker leftmost)`
         : "";
+      const dialogueEyeLineLock = buildStartFrameDialogueEyeLineLock({
+        dialogueLines: s.dialogueLines ?? [],
+        visibleCharacterRefs: [
+          ...s.characterIds,
+        ],
+        screenCallerCharacterRefs: s.screenCallerCharacterIds,
+        characterNameByKey,
+      });
       const videoFaceVisibilitySuffix = s.videoFaceVisibilityRequired
         ? " | video_face_visibility_required: true"
         : "";
       const screenCallerSuffix = s.screenCallerCharacterIds?.length
-        ? ` | screen_callers: ${s.screenCallerCharacterIds.join(", ")} (screen-only role; attach each approved caller portrait immediately after the physical-scene portraits as a screen-only face identity reference; never use it as a physical-scene character; if depicted, show only inside a clearly visible phone/video call screen, never physically in the room)`
+        ? ` | screen_callers: ${s.screenCallerCharacterIds.join(", ")} (screen-only role; attach each approved caller portrait immediately after the physical-scene portraits as a screen-only face identity reference; never use it as a physical-scene character; show only inside a clearly visible floating vertical virtual video-call screen/overlay, never on a real device display and never physically in the room)`
         : "";
       const barrierDialogue = normalizeVerticalDramaBarrierDialogue(
         s.barrierDialogue
@@ -1245,12 +1439,12 @@ export function buildStartFrameRenderPlanUserPrompt(
         barrierDialogue || barrierMultiView ? 1 : s.characterIds.length
       );
       const compositionLock = renderVerticalDramaShotCompositionLock(
-        s.shotComposition,
+        deriveVerticalDramaStartFrameShotComposition(s.shotComposition),
         characterNameByKey
       );
-      return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description} | camera: ${remappedCameraSetup} | characters: ${
+      return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description} | camera: ${sanitizeVerticalDramaStartFrameCameraSetup(remappedCameraSetup)} | characters: ${
         s.characterIds.length ? s.characterIds.join(", ") : "(none)"
-      }${screenCallerSuffix}${characterSelectionSuffix}${lookSelectionSuffix}${supportingPresenceBlock ? `\n${supportingPresenceBlock}` : ""}${locationSuffix}${canonicalSource}${speakingOrderSuffix}${videoFaceVisibilitySuffix}${requiredCharactersSuffix}${spokenCallerVirtualScreenBlock ? `\n${spokenCallerVirtualScreenBlock}` : ""}${compositionLock ? `\n${compositionLock}` : ""}${barrierDialogue ? `\n${renderVerticalDramaBarrierDialogueBlock(barrierDialogue)}` : ""}${barrierMultiView ? `\n${renderVerticalDramaBarrierMultiViewFactBlock(barrierMultiView)}` : ""}`;
+      }${temporalFrameRoleSuffix}${screenCallerSuffix}${characterSelectionSuffix}${lookSelectionSuffix}${supportingPresenceBlock ? `\n${supportingPresenceBlock}` : ""}${locationSuffix}${canonicalSource}${speakingOrderSuffix}${videoFaceVisibilitySuffix}${requiredCharactersSuffix}${spokenCallerVirtualScreenBlock ? `\n${spokenCallerVirtualScreenBlock}` : ""}${dialogueEyeLineLock ? `\n${dialogueEyeLineLock}` : ""}${compositionLock ? `\n${compositionLock}` : ""}${barrierDialogue ? `\n${renderVerticalDramaBarrierDialogueBlock(barrierDialogue)}` : ""}${barrierMultiView ? `\n${renderVerticalDramaBarrierMultiViewFactBlock(barrierMultiView)}` : ""}`;
     })
     .join("\n");
 
@@ -1287,6 +1481,7 @@ export function buildStartFrameRenderPlanUserPrompt(
     policySafetyContext
       ? `POLICY-SAFE STORY DIRECTIVE (MANDATORY): ${policySafetyContext}`
       : null,
+    "START FRAME TEMPORAL ROLE (MANDATORY): Every request is FRAME ROLE: START. Read each canonical shot source as an ordered beat. Freeze the earliest useful visual state before any later action, reveal, prop interaction, phone raise/check, message reveal, or aftermath. Later clauses and consequences belong to the downstream video prompt, not the still image. If a later dialogue line introduces a prop or reveal, keep that prop in its pre-action state or out of view at frame 0. Do not choose a later visually salient moment merely because it is more concrete.",
     params.selectedImageModelId
       ? `Preferred image model: ${params.selectedImageModelId}`
       : null,
@@ -1578,6 +1773,12 @@ export async function generateStartFrameRenderPlan(
       maxTokens: 16000,
       schema: startFrameRenderPlanOutputSchema,
       label: "Start-frame render plan",
+      verticalDramaContext: {
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        taskClass: "start_frame_prompt",
+        settings: params.episodeGenerationSettings,
+      },
     });
 
   const usage = response.usage;
@@ -1626,6 +1827,12 @@ export async function generateStartFrameRenderPlan(
       maxTokens: 16000,
       schema: startFrameRenderPlanOutputSchema,
       label: "Start-frame render plan (reference-mapping retry)",
+      verticalDramaContext: {
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        taskClass: "start_frame_prompt",
+        settings: params.episodeGenerationSettings,
+      },
     });
     const retryUsage = retry.response.usage;
     const retryCreditsUsed = calculateCreditsForLLM(
@@ -1757,7 +1964,19 @@ export async function generateStartFrameRenderPlan(
     shotCompositionByShotNumber,
     params.characters,
     shotCharacterLookAssignmentsByShotNumber,
-    params.crossEpisodeWardrobeHandoff
+    params.crossEpisodeWardrobeHandoff,
+    new Map(
+      params.storyboardShots
+        .map(s =>
+          s.dialogueLines?.length
+            ? ([s.shotNumber, s.dialogueLines] as const)
+            : null
+        )
+        .filter(
+          (entry): entry is readonly [number, StartFrameDialogueLine[]] =>
+            entry !== null
+        )
+    )
   );
 
   return {
@@ -2096,6 +2315,194 @@ export function buildPolicySafeSynopsisUserPrompt(
   ].join("\n");
 }
 
+/**
+ * Replace only the selected character names in a shot synopsis with the
+ * 1-based reference-image index used by the image provider. Thai text has no
+ * reliable word boundary, so this deliberately uses a longest-match-first,
+ * non-overlapping scan. The original synopsis remains the sole creative
+ * source; the replacement is only an attachment-binding operation.
+ */
+export function replaceShotSynopsisCharacterNamesWithImageIndexes(params: {
+  synopsis: string;
+  references: readonly { index: number; name: string }[];
+}): string {
+  const synopsis = params.synopsis.trim();
+  const references = params.references
+    .filter(reference => reference.name.trim() && reference.index > 0)
+    .slice()
+    .sort((a, b) => b.name.trim().length - a.name.trim().length);
+  if (!synopsis || references.length === 0) return synopsis;
+
+  const lowerSynopsis = synopsis.toLocaleLowerCase();
+  const occupied: Array<[number, number]> = [];
+  const replacements: Array<{
+    start: number;
+    end: number;
+    value: string;
+  }> = [];
+  for (const reference of references) {
+    const name = reference.name.trim();
+    const lowerName = name.toLocaleLowerCase();
+    let searchFrom = 0;
+    while (searchFrom < lowerSynopsis.length) {
+      const start = lowerSynopsis.indexOf(lowerName, searchFrom);
+      if (start === -1) break;
+      const end = start + name.length;
+      const overlaps = occupied.some(
+        ([occupiedStart, occupiedEnd]) =>
+          start < occupiedEnd && end > occupiedStart
+      );
+      if (!overlaps) {
+        occupied.push([start, end]);
+        replacements.push({
+          start,
+          end,
+          value: `Image ${reference.index}`,
+        });
+      }
+      searchFrom = start + Math.max(1, name.length);
+    }
+  }
+
+  return replacements
+    .sort((a, b) => b.start - a.start)
+    .reduce(
+      (result, replacement) =>
+        `${result.slice(0, replacement.start)}${replacement.value}${result.slice(replacement.end)}`,
+      synopsis
+    );
+}
+
+export type StartFrameTemporalContext = {
+  openingBeat: string;
+  laterBeat?: string;
+  laterActionExclusion?: string;
+};
+
+const START_FRAME_TEMPORAL_BOUNDARY_PATTERNS = [
+  /(?:^|[\s,;])(?:จากนั้น|ต่อมา|ภายหลัง|หลังจากนั้น|ภายหลังจากนั้น|แล้วจึง|then|after|later|subsequently|eventually|only later)\b/iu,
+  /(?:หยิบ|ยก|เปิด|ดู|อ่าน|เช็ก|ตรวจ|เลื่อน).{0,80}(?:โทรศัพท์|มือถือ|ข้อความ|หน้าจอ|ภาพ|รูป)/iu,
+  /(?:raises?|lifts?|opens?|checks?|reads?|views?|looks?\s+at|reveals?).{0,80}\b(?:phone|mobile|smartphone|screen|message|text|photo)\b/iu,
+];
+
+function findStartFrameTemporalBoundary(synopsis: string): number {
+  const candidates = START_FRAME_TEMPORAL_BOUNDARY_PATTERNS.map(pattern => {
+    const match = pattern.exec(synopsis);
+    if (!match || match.index === undefined) return -1;
+    const matchedText = match[0];
+    const relativeActionOffset = matchedText.search(
+      /(?:จากนั้น|ต่อมา|ภายหลัง|หลังจากนั้น|แล้วจึง|then|after|later|subsequently|eventually|only later|หยิบ|ยก|เปิด|ดู|อ่าน|เช็ก|ตรวจ|เลื่อน|raises?|lifts?|opens?|checks?|reads?|views?|looks?\s+at|reveals?)/iu
+    );
+    return match.index + Math.max(0, relativeActionOffset);
+  }).filter(index => index > 0);
+
+  if (candidates.length === 0) return -1;
+  const boundary = Math.min(...candidates);
+  // Keep the opening state clean when a later action starts immediately after
+  // the character name (e.g. "พิมพ์ชนกหยิบโทรศัพท์").
+  const precedingWhitespace = synopsis.lastIndexOf(" ", boundary);
+  return precedingWhitespace > 0 ? precedingWhitespace : boundary;
+}
+
+export function deriveStartFrameTemporalContext(
+  synopsis: string
+): StartFrameTemporalContext {
+  const normalized = synopsis.trim();
+  if (!normalized) return { openingBeat: "the initial shot state" };
+
+  const boundary = findStartFrameTemporalBoundary(normalized);
+  if (boundary < 0 || boundary < 12) return { openingBeat: normalized };
+
+  const openingBeat = normalized.slice(0, boundary).trim();
+  const laterBeat = normalized.slice(boundary).trim();
+  if (!openingBeat || !laterBeat) return { openingBeat: normalized };
+
+  const lowerLaterBeat = laterBeat.toLocaleLowerCase();
+  const exclusionParts: string[] = [];
+  if (/(โทรศัพท์|มือถือ|phone|mobile|smartphone)/iu.test(lowerLaterBeat)) {
+    exclusionParts.push(
+      "raised phone, visible phone screen, reading or viewing a phone message"
+    );
+  }
+  if (/(ข้อความ|หน้าจอ|message|text|screen)/iu.test(lowerLaterBeat)) {
+    exclusionParts.push("message reveal or readable later screen content");
+  }
+  if (exclusionParts.length === 0) {
+    exclusionParts.push("the later action or terminal reveal");
+  }
+
+  return {
+    openingBeat,
+    laterBeat,
+    laterActionExclusion: exclusionParts.join(", "),
+  };
+}
+
+export function buildStartFrameTemporalLock(
+  synopsis: string | undefined
+): string | undefined {
+  const context = deriveStartFrameTemporalContext(synopsis ?? "");
+  if (!context.laterBeat) return undefined;
+  return [
+    "START FRAME OPENING STATE LOCK (MANDATORY):",
+    `Frame 0 positive action: ${context.openingBeat}`,
+    "All attached physical characters remain in their initial pre-action positions. Any prop introduced by a later beat is at rest or out of view at frame 0.",
+    `Do not depict the later beat in this still: ${context.laterBeat}`,
+    `Reserve this for the downstream video prompt only: ${context.laterActionExclusion}.`,
+  ].join("\n");
+}
+
+export function buildStartFrameTemporalNegativePrompt(
+  synopsis: string | undefined
+): string {
+  return (
+    deriveStartFrameTemporalContext(synopsis ?? "").laterActionExclusion ?? ""
+  );
+}
+
+export function applyStartFrameTemporalPromptGuard(input: {
+  prompt: string;
+  negativePrompt?: string;
+  canonicalShotSummary?: string;
+}): { prompt: string; negativePrompt: string } {
+  const temporalLock = buildStartFrameTemporalLock(input.canonicalShotSummary);
+  const temporalNegative = buildStartFrameTemporalNegativePrompt(
+    input.canonicalShotSummary
+  );
+  return {
+    prompt:
+      temporalLock && !input.prompt.includes("START FRAME OPENING STATE LOCK")
+        ? `${input.prompt.trimEnd()}\n\n${temporalLock}`
+        : input.prompt,
+    negativePrompt: [input.negativePrompt?.trim(), temporalNegative]
+      .filter(Boolean)
+      .join(", "),
+  };
+}
+
+/** Build the non-creative prompt used by the quality-driven direct path. */
+export function buildShotSynopsisDirectImagePrompt(params: {
+  synopsis: string;
+  characterReferenceManifest: readonly {
+    index: number;
+    name: string;
+  }[];
+  excludedVisualCharacterNames?: readonly string[];
+}): string {
+  const temporalContext = deriveStartFrameTemporalContext(params.synopsis);
+  const guardedSynopsis = guardStartFramePromptVisibleCast({
+    prompt: temporalContext.openingBeat,
+    excludedCharacterNames: params.excludedVisualCharacterNames,
+    allowedCharacterNames: params.characterReferenceManifest.map(
+      reference => reference.name
+    ),
+  });
+  return replaceShotSynopsisCharacterNamesWithImageIndexes({
+    synopsis: guardedSynopsis,
+    references: params.characterReferenceManifest,
+  });
+}
+
 function uniqueCharacterNames(names: readonly string[] | undefined): string[] {
   return Array.from(
     new Set(
@@ -2189,9 +2596,11 @@ export function buildDeterministicPolicySafeImagePrompt(params: {
   rewrittenSynopsis: string;
   shotNumber?: number;
   characterReferenceManifest: GenerateStartFrameShotPromptCharacterManifestEntry[];
+  dialogueLines?: StartFrameDialogueLine[];
   screenCallerCharacterRefs?: string[];
   /** Explicit spoken callers already resolved by the caller. When absent,
-   * explicit screen callers are still rendered as separate phone screens so
+   * explicit screen callers are still rendered as separate floating virtual
+   * screens so
    * a policy-safe rewrite can never erase the visual caller contract. */
   spokenCallerCharacterRefs?: string[];
   locationReferenceImage?: { url: string; label: string };
@@ -2206,7 +2615,7 @@ export function buildDeterministicPolicySafeImagePrompt(params: {
       entry =>
         `Image ${entry.index} = ${entry.name}${
           entry.presence === "screen_caller"
-            ? " (screen caller only; show inside a visible phone/video-call screen)"
+            ? " (screen caller only; show inside a floating vertical virtual video-call screen/overlay, never on a real device display)"
             : entry.presence === "scene"
               ? " (physical scene character)"
               : ""
@@ -2248,6 +2657,18 @@ export function buildDeterministicPolicySafeImagePrompt(params: {
         : []
     )
   );
+  const dialogueEyeLineLock = buildStartFrameDialogueEyeLineLock({
+    dialogueLines: params.dialogueLines ?? [],
+    visibleCharacterRefs: params.characterReferenceManifest
+      .filter(entry => entry.presence !== "screen_caller")
+      .map(entry => entry.characterId)
+      .filter((value): value is string => Boolean(value)),
+    visibleCharacterNames: params.characterReferenceManifest
+      .filter(entry => entry.presence !== "screen_caller")
+      .map(entry => entry.name),
+    screenCallerCharacterRefs: params.screenCallerCharacterRefs,
+    characterNameByKey,
+  });
   const spokenCallerVirtualScreenBlock =
     renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(
       deriveVerticalDramaSpokenCallerVirtualScreens({
@@ -2274,6 +2695,7 @@ export function buildDeterministicPolicySafeImagePrompt(params: {
       physicalCastLock,
       apparentAgeLock,
       spokenCallerVirtualScreenBlock,
+      dialogueEyeLineLock,
       renderVerticalDramaShotCompositionLock(
         params.shotComposition,
         characterNameByKey
@@ -2538,6 +2960,8 @@ export interface GenerateStartFrameShotPromptParams {
    * producing a byte-identical prompt.
    */
   speakingOrder?: string[];
+  /** Canonical dialogue text plus optional addressee for opening eye-line staging. */
+  dialogueLines?: StartFrameDialogueLine[];
   /** Require video-safe face readability for multi-character/dialogue shots. */
   videoFaceVisibilityRequired?: boolean;
   /**
@@ -2586,6 +3010,10 @@ export interface GenerateStartFrameShotPromptParams {
    * regardless of this field — see `selectShotStartFramePromptSystemPrompt`.
    */
   imagePromptMode?: VdImagePromptMode;
+  /** Quality-driven Start Frame shortcut; never set by Stop/Reference/manual callers. */
+  promptSource?: VdImagePromptSource;
+  /** Validated episode image quality used to prove the direct source is model-bound. */
+  imageQuality?: string;
   /**
    * Only meaningful alongside `imagePromptMode` — whether the caller's mode
    * came from an explicit per-sub-episode user choice or the auto-resolved
@@ -2682,23 +3110,19 @@ export function buildStartFrameShotPromptUserPrompt(
     ),
   });
   const spokenCallerVirtualScreenBlock =
-    renderVerticalDramaSpokenCallerVirtualScreenPromptBlock({
-      ...spokenCallerPolicy,
-      spokenScreenCallerCharacterRefs:
-        params.spokenCallerCharacterRefs ??
-        spokenCallerPolicy.spokenScreenCallerCharacterRefs,
-      virtualScreens: params.spokenCallerCharacterRefs?.length
-        ? params.spokenCallerCharacterRefs.map((callerCharacterRef, index) => ({
-            callerCharacterRef,
-            screenIndex: index + 1,
-            orientation: "vertical" as const,
-            visibleFaceRequired: true as const,
-            faceReferenceImageIndex: params.characterReferenceManifest.find(
-              entry => entry.characterId === callerCharacterRef
-            )?.index,
-          }))
-        : spokenCallerPolicy.virtualScreens,
-    });
+    renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(spokenCallerPolicy);
+  const dialogueEyeLineLock = buildStartFrameDialogueEyeLineLock({
+    dialogueLines: params.dialogueLines ?? [],
+    visibleCharacterRefs: params.characterReferenceManifest
+      .filter(entry => entry.presence !== "screen_caller")
+      .map(entry => entry.characterId)
+      .filter((value): value is string => Boolean(value)),
+    visibleCharacterNames: params.characterReferenceManifest
+      .filter(entry => entry.presence !== "screen_caller")
+      .map(entry => entry.name),
+    screenCallerCharacterRefs: params.screenCallerCharacterRefs,
+    characterNameByKey,
+  });
 
   const manifestLines = params.characterReferenceManifest
     .map(entry => {
@@ -2791,6 +3215,9 @@ export function buildStartFrameShotPromptUserPrompt(
     params.canonicalShotSummary?.trim()
       ? `canonical_shot_summary (authoritative Overview source): ${params.canonicalShotSummary.trim()}`
       : null,
+    params.frameRole === "stop"
+      ? null
+      : buildStartFrameTemporalLock(params.canonicalShotSummary),
     params.episodePlanContext?.trim()
       ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${params.episodePlanContext.trim()}`
       : null,
@@ -2798,7 +3225,7 @@ export function buildStartFrameShotPromptUserPrompt(
       ? `physical_scene_character_refs: ${params.requiredCharacterRefs?.length ? params.requiredCharacterRefs.join(", ") : "(none)"} — these are the only characters physically present in the location.`
       : null,
     params.screenCallerCharacterRefs?.length
-      ? `screen_caller_character_refs: ${params.screenCallerCharacterRefs.join(", ")} — screen-only role; do not attach caller portraits as physical-scene references. If depicted, show the caller only inside a clearly visible phone/video-call screen; never place the caller physically in the room or scene.`
+      ? `screen_caller_character_refs: ${params.screenCallerCharacterRefs.join(", ")} — screen-only role; do not attach caller portraits as physical-scene references. If depicted, show the caller only inside a clearly visible floating vertical virtual video-call screen/overlay, never on a real phone, tablet, monitor, or other physical display, and never as a person in the room or scene.`
       : null,
     barrierDialogue
       ? renderVerticalDramaBarrierDialogueBlock(barrierDialogue)
@@ -2876,7 +3303,9 @@ export function buildStartFrameShotPromptUserPrompt(
         }`
       : null,
     renderVerticalDramaShotCompositionLock(
-      params.shotComposition,
+      params.frameRole === "stop"
+        ? params.shotComposition
+        : deriveVerticalDramaStartFrameShotComposition(params.shotComposition),
       characterNameByKey
     ) ?? null,
     sanitizeSceneContinuityLockForShot(
@@ -2890,6 +3319,7 @@ export function buildStartFrameShotPromptUserPrompt(
     params.speakingOrder?.length
       ? `speaking_order: ${params.speakingOrder.join(" > ")} (first speaker leftmost)`
       : null,
+    dialogueEyeLineLock,
     spokenCallerVirtualScreenBlock,
     params.videoFaceVisibilityRequired
       ? "video_face_visibility_required: true (every required face must remain clearly readable for downstream video face matching and lip-sync)"
@@ -3195,6 +3625,8 @@ export async function generateStartFrameShotPrompt(
   sceneAnchorAttached?: boolean;
   /** Ready to persist verbatim onto `startFramePlan.frames[].promptMode` — see that field's doc comment. Present iff `usedMode` is present. */
   frameStamp?: VdImagePromptModeStamp;
+  /** Present only when the quality-driven synopsis-direct source was used. */
+  promptSourceStamp?: VdImagePromptSourceStamp;
   /** Normalized `"original → rewritten"` pairs from whichever mode returned them. */
   safetyAdjustments?: string[];
   /** `cinematic_narrative`-only normalized director's-notes subset — see `VerticalDramaStartFramePlan.frames[].promptAnalysis`. */
@@ -3215,15 +3647,67 @@ export async function generateStartFrameShotPrompt(
     );
   }
 
-  const hasCredits = await hasEnoughCredits(params.userId, 1);
-  if (!hasCredits) {
-    throw new InsufficientCreditsError();
-  }
-
   const isPolicySafeSynopsisMode =
     params.imagePromptMode === "policy_safe_rewrite" &&
     !params.referenceFrameMode;
   const canonicalSynopsis = params.canonicalShotSummary?.trim();
+  const isShotSynopsisDirect = Boolean(
+    params.promptSource === "shot_synopsis_direct" &&
+    params.frameRole !== "stop" &&
+    params.imageQuality?.trim() &&
+    params.imageModelId?.trim()
+  );
+
+  if (!isShotSynopsisDirect) {
+    const hasCredits = await hasEnoughCredits(params.userId, 1);
+    if (!hasCredits) {
+      throw new InsufficientCreditsError();
+    }
+  }
+
+  if (isShotSynopsisDirect) {
+    if (!canonicalSynopsis) {
+      throw new VdSchemaValidationError(
+        "Direct synopsis image prompts require an authoritative canonical shot synopsis",
+        { shotNumber: params.shotNumber }
+      );
+    }
+    const directPrompt = buildShotSynopsisDirectImagePrompt({
+      synopsis: canonicalSynopsis,
+      characterReferenceManifest: params.characterReferenceManifest,
+      excludedVisualCharacterNames: params.excludedVisualCharacterNames,
+    });
+    const directNegativePrompt =
+      buildStartFrameTemporalNegativePrompt(canonicalSynopsis);
+    const directSafety = analyzeVerticalDramaStorySafety(
+      buildVerticalDramaImagePromptSafetyInput({
+        imagePrompt: canonicalSynopsis,
+        shotContext: { canonicalShotSummary: canonicalSynopsis },
+      })
+    );
+    if (directSafety.level === "high") {
+      throw new VdSchemaValidationError(
+        "Direct synopsis image prompt contains high-risk story content; revise the shot synopsis before rendering",
+        { shotNumber: params.shotNumber, safety: directSafety }
+      );
+    }
+    const promptSourceStamp: VdImagePromptSourceStamp = {
+      source: "shot_synopsis_direct",
+      quality: params.imageQuality!.trim(),
+      imageModelId: params.imageModelId!.trim(),
+      generatedAt: new Date().toISOString(),
+    };
+    return {
+      prompt: directPrompt,
+      negativePrompt: directNegativePrompt,
+      creditsUsed: 0,
+      model: "shot-synopsis-direct",
+      usedVision: false,
+      frameRole: "start",
+      promptSourceStamp,
+    };
+  }
+
   if (isPolicySafeSynopsisMode && !canonicalSynopsis) {
     throw new VdSchemaValidationError(
       "Policy-safe synopsis mode requires an authoritative canonical shot synopsis",
@@ -3375,6 +3859,7 @@ export async function generateStartFrameShotPrompt(
       rewrittenSynopsis,
       shotNumber: params.shotNumber,
       characterReferenceManifest: params.characterReferenceManifest,
+      dialogueLines: params.dialogueLines,
       screenCallerCharacterRefs: params.screenCallerCharacterRefs,
       spokenCallerCharacterRefs: params.spokenCallerCharacterRefs,
       locationReferenceImage: params.locationReferenceImage,
@@ -3665,15 +4150,16 @@ export async function generateStartFrameShotPrompt(
       entry => entry.name
     ),
   });
+  const shotCharacterNameByKey = new Map(
+    params.characterReferenceManifest.flatMap(entry =>
+      entry.characterId && entry.name.trim()
+        ? [[entry.characterId, entry.name.trim()] as const]
+        : []
+    )
+  );
   const shotCompositionLock = renderVerticalDramaShotCompositionLock(
     params.shotComposition,
-    new Map(
-      params.characterReferenceManifest.flatMap(entry =>
-        entry.characterId && entry.name.trim()
-          ? [[entry.characterId, entry.name.trim()] as const]
-          : []
-      )
-    )
+    shotCharacterNameByKey
   );
   if (
     shotCompositionLock &&
@@ -3713,6 +4199,45 @@ export async function generateStartFrameShotPrompt(
     productReferenceImages: params.productReferenceImages,
     propObjectReferenceImages: params.propObjectReferenceImages,
   });
+
+  if (params.frameRole !== "stop") {
+    outputPrompt = ensureVerticalDramaStartFrameShotCompositionLock({
+      prompt: outputPrompt,
+      composition: params.shotComposition,
+      characterNameByKey: shotCharacterNameByKey,
+    });
+    const temporalGuard = applyStartFrameTemporalPromptGuard({
+      prompt: outputPrompt,
+      negativePrompt: outputNegativePrompt,
+      canonicalShotSummary: params.canonicalShotSummary,
+    });
+    outputPrompt = temporalGuard.prompt;
+    outputNegativePrompt = temporalGuard.negativePrompt;
+    const dialogueEyeLineLock = buildStartFrameDialogueEyeLineLock({
+      dialogueLines: params.dialogueLines ?? [],
+      visibleCharacterRefs: params.characterReferenceManifest
+        .filter(entry => entry.presence !== "screen_caller")
+        .map(entry => entry.characterId)
+        .filter((value): value is string => Boolean(value)),
+      visibleCharacterNames: params.characterReferenceManifest
+        .filter(entry => entry.presence !== "screen_caller")
+        .map(entry => entry.name),
+      screenCallerCharacterRefs: params.screenCallerCharacterRefs,
+      characterNameByKey: new Map(
+        params.characterReferenceManifest.flatMap(entry =>
+          entry.characterId && entry.name.trim()
+            ? [[entry.characterId, entry.name.trim()] as const]
+            : []
+        )
+      ),
+    });
+    if (
+      dialogueEyeLineLock &&
+      !outputPrompt.includes("START-FRAME DIALOGUE / EYE-LINE LOCK")
+    ) {
+      outputPrompt = `${outputPrompt}\n${dialogueEyeLineLock}`;
+    }
+  }
 
   const finalSafety = analyzeVerticalDramaStorySafety({
     prompt: outputPrompt,

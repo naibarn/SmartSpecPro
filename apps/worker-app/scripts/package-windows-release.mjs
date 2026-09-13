@@ -17,7 +17,13 @@ const args = new Set(process.argv.slice(2));
 const dryRun = args.has("--dry-run");
 const checkRuntime = args.has("--check-runtime");
 const skipBuild = args.has("--skip-build");
+const skipFrontendTypecheck = args.has("--skip-frontend-typecheck");
 const allowPlaceholderRuntime = args.has("--allow-placeholder-runtime");
+
+function argValue(flag) {
+  const index = process.argv.indexOf(flag);
+  return index >= 0 ? process.argv[index + 1] || null : null;
+}
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -75,7 +81,7 @@ function updateCargoVersion(version) {
   const current = readFileSync(cargoTomlPath, "utf8");
   const next = current.replace(/^version = ".+"$/m, `version = "${version}"`);
   if (current === next) {
-    throw new Error("Could not update Cargo.toml version");
+    return;
   }
   writeFileSync(cargoTomlPath, next);
 }
@@ -134,6 +140,10 @@ function assertReleaseRuntimePack() {
     }
     if (manifest.speakerAwareRunner.contractVersion !== "feature-179-v1") {
       blockedReasons.push("speaker-aware runner contract version is unsupported");
+    }
+    const runnerVersion = String(manifest.speakerAwareRunner.version || "");
+    if (!/^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/.test(runnerVersion) || compareVersions(runnerVersion, "0.1.1") < 0) {
+      blockedReasons.push("speaker-aware runner version must be >= 0.1.1 (required for --capabilities)");
     }
   }
   if (!existsSync(join(appDir, "runtime-pack/remotion-sidecar/render.mjs"))) {
@@ -273,7 +283,14 @@ const highestPublishedVersion = publishedVersions.sort(compareVersions).at(-1) ?
 const baseVersion = highestPublishedVersion && compareVersions(highestPublishedVersion, packageJson.version) >= 0
   ? highestPublishedVersion
   : packageJson.version;
-const nextVersion = bumpPatch(baseVersion);
+const requestedVersion = argValue("--release-version");
+if (requestedVersion && !/^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/.test(requestedVersion)) {
+  throw new Error(`Invalid --release-version: ${requestedVersion}`);
+}
+const nextVersion = requestedVersion || bumpPatch(baseVersion);
+if (highestPublishedVersion && compareVersions(nextVersion, highestPublishedVersion) <= 0) {
+  throw new Error(`Release version ${nextVersion} must be newer than the highest dashboard release ${highestPublishedVersion}`);
+}
 const releaseFileName = `smart-ai-hub-worker-app-${nextVersion}-x64-setup.exe`;
 const sourceReleasePath = join(sourceReleasesDir, releaseFileName);
 const runtimeReleasePath = join(runtimeReleasesDir, releaseFileName);
@@ -311,7 +328,7 @@ run("npm", ["run", "runtime:pack"]);
 assertReleaseRuntimePack();
 
 if (!skipBuild) {
-  run("npm", [
+  const tauriBuildArgs = [
     "run",
     "tauri:build",
     "--",
@@ -319,7 +336,18 @@ if (!skipBuild) {
     "cargo-xwin",
     "--target",
     "x86_64-pc-windows-msvc",
-  ]);
+  ];
+  if (skipFrontendTypecheck) {
+    // The standard `build` script runs `tsc --noEmit` before Vite. Keep the
+    // release path usable on constrained build hosts by asking Tauri to run
+    // Vite directly while retaining the same frontendDist output.
+    tauriBuildArgs.push(
+      "--config",
+      JSON.stringify({ build: { beforeBuildCommand: "npm exec vite -- build" } }),
+    );
+    console.log("[worker-app] frontend typecheck skipped; Tauri will run Vite directly.");
+  }
+  run("npm", tauriBuildArgs);
 }
 
 const bundlePath = join(

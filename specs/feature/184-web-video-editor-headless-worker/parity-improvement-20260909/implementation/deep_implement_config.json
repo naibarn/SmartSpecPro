@@ -1,0 +1,31 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/184-web-video-editor-headless-worker/parity-improvement-20260909/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-shared-contracts",
+    "section-02-bin-r2-ingest",
+    "section-03-transform-keyframes-camera",
+    "section-04-silence-audio-ducking",
+    "section-05-ai-music-recording-speakers-subtitles",
+    "section-06-blur-object-tracking",
+    "section-07-render-modes-exports",
+    "section-08-preview-ruler-timeline",
+    "section-09-symbols-ai-code-overlays",
+    "section-10-persistence-results-rollout-proof"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-09T18:32:26.102190+00:00"
+}

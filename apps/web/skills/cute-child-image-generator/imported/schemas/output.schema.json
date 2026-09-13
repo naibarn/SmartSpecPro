@@ -1,0 +1,145 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cute Child Image Generator v3 Output",
+  "type": "object",
+  "properties": {
+    "resolved": {
+      "type": "object",
+      "properties": {
+        "age": {
+          "type": "integer"
+        },
+        "age_group": {
+          "type": "string"
+        },
+        "requested_scene_mode": {
+          "type": "string"
+        },
+        "scene_id": {
+          "type": "string"
+        },
+        "scene_category": {
+          "type": "string"
+        },
+        "scene_label": {
+          "type": "object",
+          "properties": {
+            "th": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "en": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "scene_prompt": {
+          "type": "string"
+        },
+        "outfit": {
+          "type": "string"
+        },
+        "hairstyle": {
+          "type": "string"
+        },
+        "accessory": {
+          "type": "string"
+        },
+        "expression": {
+          "type": "string"
+        },
+        "shot_type": {
+          "type": "string"
+        },
+        "background_mood": {
+          "type": "string"
+        },
+        "reference_image_count": {
+          "type": "integer"
+        },
+        "identity_lock_mode": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "age",
+        "age_group",
+        "scene_id",
+        "scene_prompt"
+      ]
+    },
+    "generation_prompt": {
+      "type": "string",
+      "description": "Single prompt string ready to send directly to image-generation models."
+    },
+    "generation_request": {
+      "type": "object",
+      "properties": {
+        "prompt": {
+          "type": "string"
+        },
+        "aspect_ratio": {
+          "type": "string"
+        },
+        "reference_images": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "asset_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "role": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "prompt",
+        "aspect_ratio",
+        "reference_images"
+      ]
+    },
+    "prompt_debug": {
+      "type": "object",
+      "properties": {
+        "identity_block": {
+          "type": "string"
+        },
+        "subject_block": {
+          "type": "string"
+        },
+        "scene_block": {
+          "type": "string"
+        },
+        "style_block": {
+          "type": "string"
+        },
+        "safety_block": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": [
+    "resolved",
+    "generation_prompt",
+    "generation_request"
+  ]
+}

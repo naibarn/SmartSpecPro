@@ -46,6 +46,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -159,6 +160,17 @@ vi.mock("../../services/verticalDramaLocationImageGeneration", () => ({
       `Existing location description: ${params.description}`,
       `Creator's required edit: ${params.editInstruction}`,
     ].join("\n"),
+  buildLocationCameraVariantPrompt: (params: {
+    locationName: string;
+    description: string;
+    editInstruction: string;
+  }) =>
+    [
+      "IMAGE-TO-IMAGE CAMERA VARIANT",
+      `Location: ${params.locationName}`,
+      `Existing location description: ${params.description}`,
+      `Creator's required view: ${params.editInstruction}`,
+    ].join("\n"),
   InsufficientCreditsError: MockInsufficientCreditsError,
   VdSchemaValidationError: MockVdSchemaValidationError,
 }));
@@ -186,6 +198,10 @@ vi.mock("../../services/verticalDramaCharacterImageGeneration", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
+  createRateLimiter: vi.fn(() => ({
+    isAllowed: vi.fn(() => true),
+    getResetTime: vi.fn(() => 0),
+  })),
   mediaGenerationLimiter: {
     isAllowed: vi.fn(() => true),
     getResetTime: vi.fn(() => 0),
@@ -778,6 +794,50 @@ describe("generateLocationImage", () => {
     });
     expect(result).toMatchObject({
       generationMode: "image_to_image",
+      sourceMediaAssetId: "501",
+    });
+  });
+
+  it("uses a distinct camera-variant operation and keeps the primary reference attached", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce(
+      "https://cdn.example.com/store-plate.png"
+    );
+    mockGetPrimaryReferenceAssetId.mockResolvedValueOnce(501);
+
+    const result = await router.generateLocationImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        locationId: "5",
+        selectedImageModelId: "google-banana-2-lite",
+        operation: "camera_variant",
+        editInstruction:
+          "Zoom through the glass to see the reception counter inside",
+        cameraView: {
+          preset: "insert_detail_shot",
+          label: "Detail view",
+          directive: "close interior-facing view through the front glass",
+        },
+      },
+    });
+
+    const [request] = mockGenerateImageAsync.mock.calls[0];
+    expect(request.referenceImageUrls).toEqual([
+      "https://cdn.example.com/store-plate.png",
+    ]);
+    expect(request.prompt).toContain("IMAGE-TO-IMAGE CAMERA VARIANT");
+    expect(request.extraParams).toMatchObject({
+      __vd_location_generation_mode: "camera_variant",
+      __vd_location_edit_instruction:
+        "Zoom through the glass to see the reception counter inside",
+      __vd_location_source_media_asset_id: "501",
+    });
+    expect(result).toMatchObject({
+      generationMode: "camera_variant",
       sourceMediaAssetId: "501",
     });
   });

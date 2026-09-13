@@ -82,6 +82,7 @@ import { auditRouter } from "./routers/audit";
 import { usageRouter } from "./routers/usage";
 import { mediaJobsRouter } from "./routers/mediaJobs";
 import { videoEditorProjectsRouter } from "./routers/videoEditorProjects";
+import { storyboardSkillFrameworkRouter } from "./routers/storyboardSkillFramework";
 import { telegramRouter } from "./routers/telegram";
 import { workflowRouter } from "./routers/workflow";
 import { workflowHealthRouter } from "./routers/workflow-health";
@@ -146,6 +147,7 @@ import { localAiRouter } from "./routers/localAi";
 import { workpackRouter } from "./routers/workpack";
 import { roleMonitorRouter } from "./routers/roleMonitor";
 import { workerJobsRouter } from "./routers/workerJobs";
+import { editorMediaJobsRouter } from "./routers/editorMediaJobs";
 import { videoProjectsRouter } from "./routers/videoProjects";
 import {
   clearPendingTwoFactorCookie,
@@ -2278,6 +2280,7 @@ type AppRouterShape = {
   workpack: typeof workpackRouter;
   roleMonitor: typeof roleMonitorRouter;
   workerJobs: typeof workerJobsRouter;
+  editorMediaJobs: typeof editorMediaJobsRouter;
   videoProjects: typeof videoProjectsRouter;
   agentRegistry: typeof agentRegistryRouter;
   auth: typeof authRouter;
@@ -2330,6 +2333,7 @@ type AppRouterShape = {
   usage: typeof usageRouter;
   mediaJobs: typeof mediaJobsRouter;
   videoEditorProjects: typeof videoEditorProjectsRouter;
+  storyboardSkillFramework: typeof storyboardSkillFrameworkRouter;
   telegram: typeof telegramRouter;
   workflow: typeof workflowRouter;
   workflowHealth: typeof workflowHealthRouter;
@@ -2383,6 +2387,7 @@ const appRouterInternal = router<AppRouterShape>({
   workpack: workpackRouter,
   roleMonitor: roleMonitorRouter,
   workerJobs: workerJobsRouter,
+  editorMediaJobs: editorMediaJobsRouter,
   videoProjects: videoProjectsRouter,
   agentRegistry: agentRegistryRouter,
 
@@ -2508,6 +2513,7 @@ const appRouterInternal = router<AppRouterShape>({
 
   // Video Editor project persistence
   videoEditorProjects: videoEditorProjectsRouter,
+  storyboardSkillFramework: storyboardSkillFrameworkRouter,
 
   // Telegram notifications
   telegram: telegramRouter,

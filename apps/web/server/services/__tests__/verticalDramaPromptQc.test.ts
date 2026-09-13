@@ -192,6 +192,24 @@ describe("verticalDramaPromptQc", () => {
         "The negative space on the left frames the character's gaze.",
       );
     });
+
+    it("keeps an explicit negative continuation inside the canonical negative block", () => {
+      const result = mergeImageNegativePromptIntoPrompt(
+        [
+          "A quiet family scene at a desk.",
+          "IMAGE NEGATIVE CONSTRAINTS (MANDATORY — do not render): extra phones, fused hands",
+          "เพิ่มเติม: ห้ามมีบุคคลอื่น; ห้ามแสดงข้อความบนหน้าจอ",
+        ].join("\n"),
+      );
+
+      expect(result).toBe(
+        [
+          "A quiet family scene at a desk.",
+          "",
+          "IMAGE NEGATIVE CONSTRAINTS (MANDATORY — do not render): extra phones, fused hands, ห้ามมีบุคคลอื่น, ห้ามแสดงข้อความบนหน้าจอ",
+        ].join("\n"),
+      );
+    });
   });
 
   describe("ensurePromptWithinLimit", () => {
@@ -221,6 +239,38 @@ describe("verticalDramaPromptQc", () => {
         "MANDATORY PROTECTED FRAGMENTS",
       );
       expect(result.prompt.match(/IMAGE NEGATIVE CONSTRAINTS/g)).toHaveLength(1);
+    });
+
+    it("accepts an under-cap refiner result that splits a negative continuation line", async () => {
+      const sourcePrompt = mergeImageNegativePromptIntoPrompt(
+        [
+          "A quiet office scene.",
+          "IMAGE NEGATIVE CONSTRAINTS (MANDATORY — do not render): extra phones, fused hands, ห้ามมีบุคคลอื่น",
+        ].join("\n"),
+      );
+      const refinerOutput = [
+        "A quiet office scene.",
+        "IMAGE NEGATIVE CONSTRAINTS (MANDATORY — do not render): extra phones, fused hands",
+        "เพิ่มเติม: ห้ามมีบุคคลอื่น",
+      ].join("\n");
+      mockExecuteRetry.mockResolvedValueOnce(refinerResult(refinerOutput));
+
+      const result = await ensurePromptWithinLimit({
+        kind: "image",
+        prompt: sourcePrompt,
+        maxChars: 20_000,
+        finalizeWithRefiner: true,
+        failClosed: true,
+        userId: 1,
+        seriesId: 6,
+      });
+
+      expect(result.truncated).toBe(false);
+      expect(result.prompt).toContain(
+        "IMAGE NEGATIVE CONSTRAINTS (MANDATORY — do not render): extra phones, fused hands, ห้ามมีบุคคลอื่น",
+      );
+      expect(result.prompt.length).toBeLessThanOrEqual(20_000);
+      expect(mockExecuteRetry).toHaveBeenCalledTimes(1);
     });
 
     it("allows the final skill to rewrite identity-lock wording while retaining mapping anchors", async () => {

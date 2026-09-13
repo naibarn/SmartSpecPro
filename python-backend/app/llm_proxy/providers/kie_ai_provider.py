@@ -335,6 +335,49 @@ def _redact_url_for_log(value: str) -> str:
     return value
 
 
+KIE_REFERENCE_DOWNLOAD_MAX_RETRIES = max(
+    0,
+    int(os.getenv("KIE_REFERENCE_DOWNLOAD_MAX_RETRIES", "2")),
+)
+KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS = (0.5, 1.0, 2.0)
+KIE_REFERENCE_DOWNLOAD_RETRYABLE_STATUS_CODES = {408, 425, 429}
+KIE_REFERENCE_IMAGE_ACCESS_FAILED_MARKER = "KIE_REFERENCE_IMAGE_ACCESS_FAILED"
+
+
+def _reference_download_host(url: str) -> str:
+    try:
+        return (urlparse(url).hostname or "unknown").lower()
+    except ValueError:
+        return "unknown"
+
+
+def _reference_download_error(
+    url: str,
+    index: int,
+    *,
+    reason: str,
+    status_code: int | None = None,
+    permanent: bool = False,
+) -> RuntimeError:
+    marker = (
+        KIE_REFERENCE_IMAGE_ACCESS_FAILED_MARKER
+        if permanent
+        else "KIE_REFERENCE_IMAGE_DOWNLOAD_FAILED"
+    )
+    status = f" status={status_code}" if status_code is not None else ""
+    guidance = (
+        " Reference image was not found (HTTP 404). Please select or upload this image again."
+        if status_code == 404
+        else " Access to the reference image was denied. Please check its access or upload it again."
+        if status_code in {401, 403}
+        else " Please check the reference image and try again."
+    )
+    return RuntimeError(
+        f"{marker}: Kie reference image download failed for item {index + 1} "
+        f"(reason={reason}{status}, host={_reference_download_host(url)}).{guidance}"
+    )
+
+
 def _normalize_ref_urls_for_model(model: str | None, input_params: dict[str, Any]) -> dict[str, Any]:
     """Return a copy of ``input_params`` with reference URL fields cleaned up.
 
@@ -1119,13 +1162,75 @@ class KieAIProvider:
         tenant URL out of the provider task payload.
         """
         client = self._get_client_for_current_loop()
-        try:
-            source_response = await client.get(url, follow_redirects=True)
-            source_response.raise_for_status()
-        except httpx.HTTPError as exc:
-            raise RuntimeError(
-                f"Kie reference image download failed for item {index + 1}"
-            ) from exc
+        max_attempts = KIE_REFERENCE_DOWNLOAD_MAX_RETRIES + 1
+        source_response: httpx.Response | None = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                candidate_response = await client.get(url, follow_redirects=True)
+                candidate_response.raise_for_status()
+                source_response = candidate_response
+                break
+            except httpx.HTTPStatusError as exc:
+                status_code = exc.response.status_code
+                retryable = (
+                    status_code in KIE_REFERENCE_DOWNLOAD_RETRYABLE_STATUS_CODES
+                    or status_code >= 500
+                )
+                if retryable and attempt < max_attempts:
+                    delay = KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS[
+                        min(attempt - 1, len(KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS) - 1)
+                    ]
+                    logger.warning(
+                        "kie_ai_reference_download_retry",
+                        index=index + 1,
+                        host=_reference_download_host(url),
+                        status=status_code,
+                        attempt=attempt,
+                        max_attempts=max_attempts,
+                        delay_seconds=delay,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+                raise _reference_download_error(
+                    url,
+                    index,
+                    reason=("transient_http" if retryable else "http_access"),
+                    status_code=status_code,
+                    permanent=not retryable and 400 <= status_code < 500,
+                ) from exc
+            except httpx.RequestError as exc:
+                if attempt < max_attempts:
+                    delay = KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS[
+                        min(attempt - 1, len(KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS) - 1)
+                    ]
+                    logger.warning(
+                        "kie_ai_reference_download_retry",
+                        index=index + 1,
+                        host=_reference_download_host(url),
+                        status=None,
+                        attempt=attempt,
+                        max_attempts=max_attempts,
+                        delay_seconds=delay,
+                        error_type=type(exc).__name__,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+                raise _reference_download_error(
+                    url,
+                    index,
+                    reason="request_error",
+                ) from exc
+            except httpx.HTTPError as exc:
+                raise _reference_download_error(
+                    url,
+                    index,
+                    reason="http_error",
+                ) from exc
+
+        if source_response is None:
+            raise _reference_download_error(url, index, reason="no_response")
 
         content = source_response.content
         if not content:
@@ -1138,6 +1243,17 @@ class KieAIProvider:
         content_type = (
             source_response.headers.get("content-type") or ""
         ).split(";", 1)[0].strip().lower()
+        # Legacy managed assets can have JPEG names/headers but PNG bytes.
+        # Send Kie the format of the downloaded content, not stale metadata.
+        detected_type = (
+            "image/png" if content.startswith(b"\x89PNG\r\n\x1a\n")
+            else "image/jpeg" if content.startswith(b"\xff\xd8\xff")
+            else "image/gif" if content.startswith((b"GIF87a", b"GIF89a"))
+            else "image/webp" if content.startswith(b"RIFF") and content[8:12] == b"WEBP"
+            else None
+        )
+        if detected_type:
+            content_type = detected_type
         source_suffix = os.path.splitext(urlparse(url).path)[1].lower()
         if not content_type.startswith("image/"):
             inferred_type = mimetypes.guess_type(source_suffix)[0]

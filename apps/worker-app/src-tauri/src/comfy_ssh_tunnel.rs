@@ -170,12 +170,18 @@ fn open_inner(
     {
         return Err("comfy_ssh_tunnel_busy".into());
     }
-    let mut child = match Command::new("ssh")
+    let mut command = Command::new("ssh");
+    command
         .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
+        .stderr(Stdio::null());
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    let mut child = match command.spawn()
     {
         Ok(child) => child,
         Err(_) => {

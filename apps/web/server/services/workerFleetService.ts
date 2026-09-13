@@ -712,20 +712,12 @@ const defaultRepo: WorkerFleetRepository = {
     return readAffectedRowCount(deleted);
   },
   async cleanupJobEventsBefore(tenantId, cutoff) {
-    const db = await getDb();
-    const tenantJobs = await db
-      .select({ jobId: workerJobs.id })
-      .from(workerJobs)
-      .where(eq(workerJobs.tenantId, tenantId));
-    const jobIds = tenantJobs.map((row) => row.jobId);
-    if (!jobIds.length) {
-      return 0;
-    }
-
-    const deleted = await db
-      .delete(workerJobEvents)
-      .where(and(inArray(workerJobEvents.workerJobId, jobIds), lt(workerJobEvents.createdAt, cutoff)));
-    return readAffectedRowCount(deleted);
+    // Feature 186 makes worker_job_events the append-only canonical lifecycle
+    // ledger. Retention must archive to a separate evidence store first; a
+    // fleet cleanup must never delete recovery/audit history in place.
+    void tenantId;
+    void cutoff;
+    return 0;
   },
   async cleanupUnpublishedArtifactsBefore(tenantId, cutoff) {
     const db = await getDb();

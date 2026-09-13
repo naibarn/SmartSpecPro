@@ -374,8 +374,9 @@ from claiming this job. Add a defense-in-depth assertion at claim time that the
 claiming worker advertises `remotion-render` for this jobType.
 
 **Preview concurrency (spec §18.2):** before inserting a `profile:"preview"` job,
-reject if the user already has a queued/running preview job (1-concurrent-preview
-cap); `final` jobs are not capped but take priority (40 vs 20). The `assetManifest`
+reject if the user already has a queued/running preview job for the same
+`videoProjectId` and `projectRevision`; distinct targets may queue concurrently.
+`final` jobs are not subject to this preview guard but take priority (40 vs 20). The `assetManifest`
 embedded in `inputJson` is the one built by `buildAssetManifest` (§9.1a) — the
 queue function does not re-walk assets.
 

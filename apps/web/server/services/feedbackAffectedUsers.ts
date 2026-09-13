@@ -26,6 +26,22 @@ export function extractAffectedUserIds(contextJson: unknown): number[] {
   ).slice(0, 5);
 }
 
+/** Extract the bounded task correlation list used by automated queue reports. */
+export function extractAffectedTaskIds(contextJson: unknown): string[] {
+  if (!contextJson || typeof contextJson !== "object") return [];
+
+  const values = (contextJson as { affectedTaskIds?: unknown }).affectedTaskIds;
+  if (!Array.isArray(values)) return [];
+
+  return Array.from(
+    new Set(
+      values
+        .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+        .map(value => value.trim().slice(0, 128)),
+    ),
+  ).slice(0, 10);
+}
+
 /**
  * Resolve the current email for affected IDs at an admin-only server boundary.
  * Missing users/emails remain represented by their ID for diagnosis.

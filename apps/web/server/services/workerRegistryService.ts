@@ -82,6 +82,8 @@ import {
   runtimeProfiles,
   userGroups,
   workerArtifacts,
+  audioVoiceTrainingRuns,
+  audioTrainedVoiceModels,
   workerHeartbeats,
   workerJobEvents,
   workerJobs,
@@ -110,6 +112,81 @@ import {
 } from "./jobCompletionNotificationService";
 
 const DEFAULT_LEASE_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * Materialize the candidate descriptor produced by a completed local
+ * training job. The Worker artifact is the immutable model descriptor and is
+ * deliberately kept in candidate state until a separate evaluation and
+ * promotion mutation approves it.
+ */
+async function reconcileUnifiedAudioTrainingRun(
+  job: WorkerJobRecord,
+  status: "completed" | "failed" | "canceled",
+  payload: Record<string, unknown>,
+): Promise<void> {
+  if (job.jobType !== "voice_training_run") return;
+  const database = getDb();
+  const [run] = await database
+    .select()
+    .from(audioVoiceTrainingRuns)
+    .where(and(eq(audioVoiceTrainingRuns.tenantId, job.tenantId), eq(audioVoiceTrainingRuns.jobId, job.id)))
+    .limit(1);
+  if (!run) throw new Error("TRAINING_RUN_NOT_FOUND");
+
+  if (status !== "completed") {
+    await database.update(audioVoiceTrainingRuns).set({ status, updatedAt: new Date() }).where(eq(audioVoiceTrainingRuns.id, run.id));
+    return;
+  }
+
+  const artifacts = Array.isArray(payload.artifacts) ? payload.artifacts : [];
+  const candidate = artifacts.find((item) => {
+    if (!isPlainObject(item)) return false;
+    const value = item as Record<string, unknown>;
+    return value.artifactType === "voice_training_result" || value.artifact_type === "voice_training_result";
+  });
+  if (!isPlainObject(candidate) || typeof candidate.id !== "string" || !candidate.id.trim()) {
+    throw new Error("TRAINING_OUTPUT_INVALID: completed training job has no candidate artifact");
+  }
+  const artifact = candidate as Record<string, unknown>;
+  const metadata = isPlainObject(artifact.metadataJson) ? artifact.metadataJson : {};
+  const recipe = isPlainObject(job.inputJson?.recipe) ? job.inputJson.recipe : {};
+  const modelId = `trained-${artifact.id}`.slice(0, 160);
+  const [existing] = await database
+    .select({ id: audioTrainedVoiceModels.id, trainingRunId: audioTrainedVoiceModels.trainingRunId })
+    .from(audioTrainedVoiceModels)
+    .where(and(eq(audioTrainedVoiceModels.tenantId, job.tenantId), eq(audioTrainedVoiceModels.modelId, modelId)))
+    .limit(1);
+  if (!existing) {
+    await database.insert(audioTrainedVoiceModels).values({
+      modelId,
+      tenantId: job.tenantId,
+        // Keep the candidate linked to the durable audio training run. The
+        // worker job id remains available through that run's jobId field.
+        trainingRunId: String(run.id),
+      modelJson: {
+        artifactId: artifact.id,
+        storageRef: typeof artifact.storageRef === "string" ? artifact.storageRef : null,
+        checksumSha256: metadata.checksumSha256 ?? null,
+        providerId: metadata.providerId ?? recipe.providerId ?? null,
+        modelId: metadata.modelId ?? recipe.modelId ?? null,
+        baseModelRevision: recipe.baseModelRevision ?? null,
+        datasetId: job.inputJson?.dataset && isPlainObject(job.inputJson.dataset) ? job.inputJson.dataset.datasetId ?? null : null,
+        datasetRevision: job.inputJson?.dataset && isPlainObject(job.inputJson.dataset) ? job.inputJson.dataset.revision ?? null : null,
+        candidateArtifactType: "voice_training_result",
+        status: "candidate",
+      },
+      status: "candidate",
+      createdByUserId: job.requestedByUserId,
+    });
+  } else if (existing.trainingRunId !== String(run.id)) {
+    throw new Error("TRAINING_OUTPUT_INVALID: candidate artifact is already bound to another training run");
+  }
+  await database.update(audioVoiceTrainingRuns).set({
+    status: "completed",
+    checkpointJson: { candidateModelId: modelId, candidateArtifactId: artifact.id, checksumSha256: metadata.checksumSha256 ?? null },
+    updatedAt: new Date(),
+  }).where(eq(audioVoiceTrainingRuns.id, run.id));
+}
 
 /**
  * implementation-progress.md gap #2 closure — defense-in-depth claim-time
@@ -1996,6 +2073,22 @@ export async function recordWorkerJobEvent(
           jobId: job.id,
           actorUserId: job.requestedByUserId ?? null,
         });
+      }
+
+      // Feature 180 training completion is a separate lifecycle boundary:
+      // publication creates a private candidate model, while evaluation and
+      // promotion remain explicit follow-up operations.
+      if (job.jobType === "voice_training_run" && job.requestedByUserId) {
+        try {
+          await reconcileUnifiedAudioTrainingRun(
+            job,
+            nextStatus === "expired" ? "failed" : nextStatus,
+            sanitizedPayloadJson,
+          );
+        } catch (error) {
+          await getDb().update(audioVoiceTrainingRuns).set({ status: "failed", updatedAt: new Date() }).where(and(eq(audioVoiceTrainingRuns.tenantId, job.tenantId), eq(audioVoiceTrainingRuns.jobId, job.id))).catch(() => undefined);
+          throw error;
+        }
       }
 
       if (job.requestedByUserId) {

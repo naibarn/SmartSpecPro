@@ -59,6 +59,9 @@ export interface ReportSystemFailureParams {
   creditContext?: CreditFailureContext;
   /** Explicit escalation level for operational incidents. */
   priority?: "high" | "critical";
+  /** Bounded identifiers supplied by an automated detector for admin triage. */
+  affectedUserIds?: Array<number | string>;
+  affectedTaskIds?: string[];
   /** Extra diagnostic fields — whitelisted/sanitized before storage, see `sanitizeExtra`. */
   extra?: Record<string, unknown>;
 }
@@ -142,6 +145,26 @@ function resolveNumericUserId(userId: number | string | null | undefined): numbe
     if (!Number.isNaN(parsed)) return parsed;
   }
   return null;
+}
+
+function normalizeAffectedUserIds(values: Array<number | string> | undefined): number[] {
+  const ids: number[] = [];
+  for (const value of values ?? []) {
+    const parsed = typeof value === "number" ? value : Number(value);
+    if (!Number.isInteger(parsed) || parsed <= 0 || ids.includes(parsed)) continue;
+    ids.push(parsed);
+  }
+  return ids.slice(-5);
+}
+
+function normalizeAffectedTaskIds(values: string[] | undefined): string[] {
+  const ids: string[] = [];
+  for (const value of values ?? []) {
+    const taskId = String(value).trim().slice(0, 128);
+    if (!taskId || ids.includes(taskId)) continue;
+    ids.push(taskId);
+  }
+  return ids.slice(-10);
 }
 
 function creditContextForStorage(classification: CreditFailureClassification) {
@@ -248,6 +271,11 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
     }
     const { fingerprint, fp8 } = computeFingerprint(params.source, errorMessage);
     const numericUserId = resolveNumericUserId(params.userId);
+    const requestedAffectedUserIds = normalizeAffectedUserIds([
+      ...(params.affectedUserIds ?? []),
+      ...(numericUserId != null ? [numericUserId] : []),
+    ]);
+    const requestedAffectedTaskIds = normalizeAffectedTaskIds(params.affectedTaskIds);
     const creditClassification = classifyCreditFailure({
       errorMessage,
       path: params.path,
@@ -348,17 +376,14 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
       const existingContext = (existing.contextJson ?? {}) as Record<string, unknown>;
       const occurrences =
         (typeof existingContext.occurrences === "number" ? existingContext.occurrences : 1) + 1;
-      const affectedUserIds: number[] = Array.isArray(existingContext.affectedUserIds)
-        ? [...(existingContext.affectedUserIds as unknown[])].filter(
-            (v): v is number => typeof v === "number",
-          )
-        : [];
-      if (numericUserId != null) {
-        const idx = affectedUserIds.indexOf(numericUserId);
-        if (idx !== -1) affectedUserIds.splice(idx, 1);
-        affectedUserIds.push(numericUserId);
-      }
-      while (affectedUserIds.length > 5) affectedUserIds.shift();
+      const affectedUserIds = normalizeAffectedUserIds([
+        ...(Array.isArray(existingContext.affectedUserIds) ? existingContext.affectedUserIds as Array<number | string> : []),
+        ...requestedAffectedUserIds,
+      ]);
+      const affectedTaskIds = normalizeAffectedTaskIds([
+        ...(Array.isArray(existingContext.affectedTaskIds) ? existingContext.affectedTaskIds as string[] : []),
+        ...requestedAffectedTaskIds,
+      ]);
 
       await db
         .update(feedbackTickets)
@@ -381,6 +406,7 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
             errorMessage: errorMessage.slice(0, 2000),
             stack: params.stack ? params.stack.slice(0, 4000) : (existingContext.stack ?? null),
             affectedUserIds,
+            affectedTaskIds,
             creditFailure: storedCreditContext ?? existingContext.creditFailure ?? null,
             extra: sanitizeExtra(params.extra) ?? existingContext.extra ?? null,
           },
@@ -420,6 +446,14 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
         `Affected user: ${affectedUserEmail ? `${affectedUserEmail} (user #${numericUserId})` : `user #${numericUserId}`}`,
       );
     }
+    if (requestedAffectedUserIds.length > 0 && (
+      numericUserId == null || requestedAffectedUserIds.some((userId) => userId !== numericUserId)
+    )) {
+      descriptionLines.push(`Affected user IDs: ${requestedAffectedUserIds.join(", ")}`);
+    }
+    if (requestedAffectedTaskIds.length > 0) {
+      descriptionLines.push(`Affected task IDs: ${requestedAffectedTaskIds.join(", ")}`);
+    }
     const description = descriptionLines.join("\n");
 
     const contextJson = {
@@ -435,7 +469,8 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
       jobId: params.jobId ?? null,
       errorMessage: errorMessage.slice(0, 2000),
       stack: params.stack ? params.stack.slice(0, 4000) : null,
-      affectedUserIds: numericUserId != null ? [numericUserId] : [],
+      affectedUserIds: requestedAffectedUserIds,
+      affectedTaskIds: requestedAffectedTaskIds,
       creditFailure: storedCreditContext,
       extra: sanitizeExtra(params.extra),
     };

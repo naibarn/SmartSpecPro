@@ -36,7 +36,13 @@ describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
       <VerticalDramaStoryboardPanel
         locale="th"
         storyboard={{
-          shots: [{ shot_number: 1, visual_description: "เด็กเล่นของเล่น", characters: [] }],
+          shots: [
+            {
+              shot_number: 1,
+              visual_description: "เด็กเล่นของเล่น",
+              characters: [],
+            },
+          ],
         }}
         startFramePlan={{
           frames: [
@@ -60,7 +66,10 @@ describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
     expect(scene).toHaveTextContent("ฉากหลัง");
     expect(product).toBeInTheDocument();
     expect(
-      Boolean(scene.compareDocumentPosition(product) & Node.DOCUMENT_POSITION_FOLLOWING)
+      Boolean(
+        scene.compareDocumentPosition(product) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+      )
     ).toBe(true);
   });
 
@@ -185,7 +194,18 @@ describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
       />
     );
 
+    expect(
+      screen.getByTestId("vd-storyboard-location-variant-available-1")
+    ).toHaveTextContent("1 มุมพร้อมใช้");
+    expect(
+      screen.getByRole("button", {
+        name: "เลือกสถานที่และภาพมุมกล้องของช็อตนี้",
+      })
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("vd-storyboard-location-edit-1"));
+    expect(
+      screen.getByText(/เลือกภาพหลักหรือมุมกล้องที่สร้างไว้สำหรับช็อตนี้/)
+    ).toBeInTheDocument();
     expect(
       screen.getByTestId("vd-storyboard-location-variant-1-701")
     ).toBeInTheDocument();
@@ -193,6 +213,78 @@ describe("VerticalDramaStoryboardPanel — scene continuity UI", () => {
 
     expect(onSetShotLocationVariant).toHaveBeenCalledWith(1, "701");
     expect(onSetShotLocation).not.toHaveBeenCalled();
+  });
+
+  it("offers approved scene views as direct image choices on the shot card", () => {
+    const onSetShotLocationVariant = vi.fn();
+    render(
+      <VerticalDramaStoryboardPanel
+        {...baseProps}
+        episodeLocations={[
+          {
+            locationKey: "hall",
+            name: "โถง",
+            primaryReferenceUrl: "/hall-primary.png",
+            cameraVariants: [
+              {
+                variantId: "701",
+                label: "Reverse view",
+                role: "reverse_angle",
+                url: "/hall-reverse.png",
+                approved: true,
+              },
+            ],
+          },
+        ]}
+        onSetShotLocationVariant={onSetShotLocationVariant}
+      />
+    );
+
+    expect(
+      screen.getByTestId("vd-storyboard-location-variant-strip-1")
+    ).toHaveTextContent("มุมที่สร้างไว้");
+    fireEvent.click(
+      screen.getByTestId("vd-storyboard-location-variant-inline-1-701")
+    );
+
+    expect(onSetShotLocationVariant).toHaveBeenCalledWith(1, "701");
+  });
+
+  it("renders the selected reusable camera view instead of the primary thumbnail", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...baseProps}
+        startFramePlan={{
+          ...baseProps.startFramePlan,
+          frames: [
+            { ...baseProps.startFramePlan.frames[0], locationVariantId: "701" },
+          ],
+        }}
+        episodeLocations={[
+          {
+            locationKey: "hall",
+            name: "โถง",
+            primaryReferenceUrl: "/hall-primary.png",
+            cameraVariants: [
+              {
+                variantId: "701",
+                label: "Reverse view",
+                role: "reverse_angle",
+                url: "/hall-reverse.png",
+                approved: true,
+              },
+            ],
+          },
+        ]}
+      />
+    );
+
+    const chip = screen.getByTestId("vd-storyboard-location-chip-1");
+    expect(chip.querySelector("img")).toHaveAttribute(
+      "src",
+      "/hall-reverse.png"
+    );
+    expect(chip).toHaveTextContent("Reverse view");
   });
 
   it("explains prompt success separately from image failure and exposes retry actions", () => {

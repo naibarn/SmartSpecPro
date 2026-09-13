@@ -82,3 +82,7 @@ Read ../voice-lifecycle-v2.md and sections 11/12. Validate reference-only vs tra
 ## Convergence audit requirements
 
 Apply lifecycle sections 8–10 and contracts recovery clarifications; they refine earlier general wording. Use VoiceOwnerScope for profiles/datasets, AudioScope for executions. Include applicable C5-01 through C5-07 regression cases in ../claude-plan-tdd.md. Release reporting distinguishes core A+B, optional providers C and training D.
+
+## Implementation record (2026-09-07)
+
+The repeat audit is recorded in `../reviews/implementation-audit-10-rounds.md`. Focused Web, Worker Rust, Python and packaging checks are reproducible from the commands listed there; no paid provider call, model installation, DB migration or service restart was performed.

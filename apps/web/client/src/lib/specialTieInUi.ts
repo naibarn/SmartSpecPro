@@ -1,3 +1,15 @@
+export type SpecialTieInStartMode = "fresh" | "resume";
+
+export function shouldLoadSpecialTieInHistory(input: {
+  open: boolean;
+  initialInput?: unknown;
+  initialMode: SpecialTieInStartMode;
+}): boolean {
+  return (
+    input.open && (input.initialInput != null || input.initialMode === "resume")
+  );
+}
+
 export function canAddSpecialReferences(
   existingCount: number,
   incomingCount = 1

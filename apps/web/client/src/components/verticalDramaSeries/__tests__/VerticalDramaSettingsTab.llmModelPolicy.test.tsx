@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 /**
  * Manual LLM model override (added 2026-07-11, collapsed to a single
  * series-wide field 2026-07-11 — see
@@ -12,13 +14,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUpdateSeriesMutate = vi.fn();
 const mockSetLlmModelPolicyMutate = vi.fn();
+const mockSetGenerationSettingsMutate = vi.fn();
 const mockSetDurationProfileMutate = vi.fn();
 const mockSetDialogueLanguageProfileMutate = vi.fn();
 const mockSetSeriesLookLockMutate = vi.fn();
+const mockSetWorkerMediaWorkflowPolicyMutate = vi.fn();
 
 const PLANNING_MODELS = [
-  { modelId: "google/gemini-3.1-flash-lite-preview", label: "Google — Gemini 3.1 Flash Lite Preview" },
-  { modelId: "anthropic/claude-quality-large", label: "Anthropic — Claude Quality Large" },
+  {
+    modelId: "google/gemini-3.1-flash-lite-preview",
+    label: "Google — Gemini 3.1 Flash Lite Preview",
+    reasoningSupported: true,
+    reasoningEfforts: ["low", "high"],
+  },
+  {
+    modelId: "anthropic/claude-quality-large",
+    label: "Anthropic — Claude Quality Large",
+    reasoningSupported: false,
+    reasoningEfforts: [],
+  },
 ];
 
 vi.mock("@/lib/trpc", () => ({
@@ -60,6 +74,15 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         }),
       },
+      setSeriesGenerationSettings: {
+        useMutation: () => ({
+          mutateAsync: (input: unknown) => {
+            mockSetGenerationSettingsMutate(input);
+            return Promise.resolve({});
+          },
+          isPending: false,
+        }),
+      },
       setSeriesDurationProfile: {
         useMutation: () => ({
           mutateAsync: (input: unknown) => {
@@ -73,6 +96,15 @@ vi.mock("@/lib/trpc", () => ({
         useMutation: () => ({
           mutateAsync: (input: unknown) => {
             mockSetSeriesLookLockMutate(input);
+            return Promise.resolve({});
+          },
+          isPending: false,
+        }),
+      },
+      setSeriesWorkerMediaWorkflowPolicy: {
+        useMutation: () => ({
+          mutateAsync: (input: unknown) => {
+            mockSetWorkerMediaWorkflowPolicyMutate(input);
             return Promise.resolve({});
           },
           isPending: false,
@@ -107,7 +139,7 @@ vi.mock("@/components/ui/select", () => ({
       <select
         data-testid={testId}
         value={value}
-        onChange={(e) => onValueChange?.(e.target.value)}
+        onChange={e => onValueChange?.(e.target.value)}
       >
         {children}
       </select>
@@ -116,9 +148,13 @@ vi.mock("@/components/ui/select", () => ({
   SelectTrigger: ({ children }: any) => <>{children}</>,
   SelectValue: () => null,
   SelectGroup: ({ children }: any) => <>{children}</>,
-  SelectLabel: ({ children }: any) => <optgroup label={children}>{children}</optgroup>,
+  SelectLabel: ({ children }: any) => (
+    <optgroup label={children}>{children}</optgroup>
+  ),
   SelectContent: ({ children }: any) => <>{children}</>,
-  SelectItem: ({ value, children }: any) => <option value={value}>{children}</option>,
+  SelectItem: ({ value, children }: any) => (
+    <option value={value}>{children}</option>
+  ),
 }));
 
 vi.mock("@/components/ui/slider", () => ({
@@ -126,7 +162,7 @@ vi.mock("@/components/ui/slider", () => ({
     <input
       type="range"
       value={value?.[0]}
-      onChange={(e) => onValueChange?.([Number(e.target.value)])}
+      onChange={e => onValueChange?.([Number(e.target.value)])}
       {...props}
     />
   ),
@@ -146,18 +182,48 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+describe("VerticalDramaSettingsTab — Worker Shot generation opt-in", () => {
+  it("defaults to disabled when the saved Worker policy is absent", () => {
+    render(<VerticalDramaSettingsTab {...baseProps} />);
+    expect(
+      screen.getByTestId("vd-settings-worker-shot-generation-enabled")
+    ).toHaveAttribute("data-state", "unchecked");
+  });
+
+  it("persists the opt-in without changing the existing workflow defaults", async () => {
+    render(<VerticalDramaSettingsTab {...baseProps} />);
+    fireEvent.click(
+      screen.getByTestId("vd-settings-worker-shot-generation-enabled")
+    );
+    fireEvent.click(screen.getByRole("button", { name: "บันทึก" }));
+
+    await vi.waitFor(() => {
+      expect(mockSetWorkerMediaWorkflowPolicyMutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          seriesId: "10",
+          policy: expect.objectContaining({
+            workerShotGenerationEnabled: true,
+          }),
+        })
+      );
+    });
+  });
+});
+
 describe("VerticalDramaSettingsTab — manual LLM model override dropdown", () => {
   it("defaults to automatic when llmModelPolicy is absent", () => {
     render(<VerticalDramaSettingsTab {...baseProps} />);
     expect(
-      (screen.getByTestId("vd-settings-default-llm-model") as HTMLSelectElement).value,
+      (screen.getByTestId("vd-settings-default-llm-model") as HTMLSelectElement)
+        .value
     ).toBe("__automatic__");
   });
 
   it("defaults to automatic when llmModelPolicy is null", () => {
     render(<VerticalDramaSettingsTab {...baseProps} llmModelPolicy={null} />);
     expect(
-      (screen.getByTestId("vd-settings-default-llm-model") as HTMLSelectElement).value,
+      (screen.getByTestId("vd-settings-default-llm-model") as HTMLSelectElement)
+        .value
     ).toBe("__automatic__");
   });
 
@@ -165,11 +231,14 @@ describe("VerticalDramaSettingsTab — manual LLM model override dropdown", () =
     render(
       <VerticalDramaSettingsTab
         {...baseProps}
-        llmModelPolicy={{ defaultModelId: "google/gemini-3.1-flash-lite-preview" }}
-      />,
+        llmModelPolicy={{
+          defaultModelId: "google/gemini-3.1-flash-lite-preview",
+        }}
+      />
     );
     expect(
-      (screen.getByTestId("vd-settings-default-llm-model") as HTMLSelectElement).value,
+      (screen.getByTestId("vd-settings-default-llm-model") as HTMLSelectElement)
+        .value
     ).toBe("google/gemini-3.1-flash-lite-preview");
   });
 
@@ -177,9 +246,67 @@ describe("VerticalDramaSettingsTab — manual LLM model override dropdown", () =
     render(<VerticalDramaSettingsTab {...baseProps} />);
     const select = screen.getByTestId("vd-settings-default-llm-model");
     expect(
-      select.querySelector('option[value="google/gemini-3.1-flash-lite-preview"]')?.textContent,
+      select.querySelector(
+        'option[value="google/gemini-3.1-flash-lite-preview"]'
+      )?.textContent
     ).toBe("Google — Gemini 3.1 Flash Lite Preview");
-    expect(select.querySelector('option[value="anthropic/claude-quality-large"]')).toBeTruthy();
+    expect(
+      select.querySelector('option[value="anthropic/claude-quality-large"]')
+    ).toBeTruthy();
+  });
+
+  it("keeps thinking quality beside the series LLM model setting", () => {
+    render(
+      <VerticalDramaSettingsTab
+        {...baseProps}
+        llmModelPolicy={{
+          defaultModelId: "google/gemini-3.1-flash-lite-preview",
+        }}
+        generationSettings={{
+          llm: {
+            qualityProfile: "balanced",
+          },
+        }}
+      />
+    );
+    expect(screen.getByTestId("vd-settings-llm-reasoning")).toBeTruthy();
+    expect(
+      (
+        screen.getByTestId(
+          "vd-settings-llm-thinking-quality"
+        ) as HTMLSelectElement
+      ).value
+    ).toBe("balanced");
+  });
+
+  it("saves thinking quality with the selected series LLM model", async () => {
+    render(
+      <VerticalDramaSettingsTab
+        {...baseProps}
+        llmModelPolicy={{
+          defaultModelId: "google/gemini-3.1-flash-lite-preview",
+        }}
+        generationSettings={{
+          llm: {
+            qualityProfile: "balanced",
+          },
+        }}
+      />
+    );
+    fireEvent.change(screen.getByTestId("vd-settings-llm-thinking-quality"), {
+      target: { value: "high" },
+    });
+    fireEvent.click(screen.getByText("บันทึก"));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mockSetGenerationSettingsMutate).toHaveBeenCalledWith({
+      seriesId: "10",
+      settings: {
+        llm: {
+          qualityProfile: "high",
+        },
+      },
+    });
   });
 
   it("selecting a specific model updates local state (dropdown reflects the pick)", () => {
@@ -188,7 +315,8 @@ describe("VerticalDramaSettingsTab — manual LLM model override dropdown", () =
       target: { value: "anthropic/claude-quality-large" },
     });
     expect(
-      (screen.getByTestId("vd-settings-default-llm-model") as HTMLSelectElement).value,
+      (screen.getByTestId("vd-settings-default-llm-model") as HTMLSelectElement)
+        .value
     ).toBe("anthropic/claude-quality-large");
   });
 
@@ -221,8 +349,10 @@ describe("VerticalDramaSettingsTab — manual LLM model override dropdown", () =
     render(
       <VerticalDramaSettingsTab
         {...baseProps}
-        llmModelPolicy={{ defaultModelId: "google/gemini-3.1-flash-lite-preview" }}
-      />,
+        llmModelPolicy={{
+          defaultModelId: "google/gemini-3.1-flash-lite-preview",
+        }}
+      />
     );
     fireEvent.change(screen.getByTestId("vd-settings-default-llm-model"), {
       target: { value: "__automatic__" },
@@ -257,7 +387,9 @@ describe("VerticalDramaSettingsTab — series look lock", () => {
         }}
       />
     );
-    fireEvent.click(screen.getByRole("checkbox", { name: "แอ็กชัน / มหากาพย์" }));
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "แอ็กชัน / มหากาพย์" })
+    );
     fireEvent.click(screen.getByRole("button", { name: "บันทึก" }));
     await vi.waitFor(() => {
       expect(mockSetSeriesLookLockMutate).toHaveBeenCalledWith({

@@ -817,6 +817,7 @@ export interface GenerateEpisodeScriptParams {
   tenantId?: string;
   seriesId: number;
   episodeId: number;
+  episodeGenerationSettings?: unknown;
   episodeTitle: string;
   episodeNumber: number;
   locale: VerticalDramaSeriesLocale;
@@ -1938,6 +1939,12 @@ export async function generateEpisodeScript(
       schema: scriptBuilderGenerationSchema,
       label: "Episode script",
       planningAttemptObserver: params.planningAttemptObserver,
+      verticalDramaContext: {
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        taskClass: "script_generation",
+        settings: params.episodeGenerationSettings,
+      },
     });
 
   const validatedData = params.storySource.storyControlSeed

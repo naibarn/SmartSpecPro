@@ -10,7 +10,7 @@ use crate::diagnostics::{
 use crate::executor_state::ExecutorState;
 use crate::runtime_manifest::{
     doctor_from_installed_or_default_paths, read_runtime_pack_manifest, runtime_pack_paths,
-    DoctorCheck, DoctorSummary, RuntimePackManifest,
+    DoctorCheck, DoctorSummary, RuntimePackManifest, RuntimeTranscriptionProfile,
 };
 use crate::settings::{load_settings, save_settings, WorkerAppSettings};
 use crate::WorkerAppState;
@@ -50,7 +50,7 @@ use crate::local_llm_registry::{
 use crate::media_pipeline::{
     analyze_media_file, build_media_plan, probe_media_file, qc_derived_output_with_probe,
     run_allowlisted_ffmpeg, run_interactive_media_render, LocalMediaAnalysis, LocalMediaEditPlan,
-    LocalMediaQc, MediaPlanOptions, MediaToolchain,
+    validate_camera_motion_plan, CameraMotionPlan, LocalMediaQc, MediaPlanOptions, MediaToolchain,
 };
 use crate::series_workspace::{
     clear_root_state, create_child_folder, import_files_into_root, load_root_state_for_series,
@@ -2510,6 +2510,10 @@ pub async fn worker_app_transcribe_audio(
     video_path: String,
     language: Option<String>,
     model: Option<String>,
+    engine: Option<String>,
+    word_timestamps: Option<bool>,
+    diarization: Option<bool>,
+    _outputs: Option<Vec<String>>,
 ) -> Result<Value, String> {
     let source_path = PathBuf::from(video_path.trim());
     if !source_path.exists() {
@@ -2531,27 +2535,53 @@ pub async fn worker_app_transcribe_audio(
     let (manifest_path, sidecar_root) = runtime_pack_paths(&resource_dir, &effective_runtime_dir);
     let manifest = read_runtime_pack_manifest(&manifest_path)
         .map_err(|_| "transcription_unavailable".to_string())?;
-    let transcription = manifest
-        .transcription
-        .ok_or_else(|| "transcription_unavailable".to_string())?;
-    let mdl = model.unwrap_or_else(|| transcription.model.clone());
-    if mdl != transcription.model {
-        return Err(format!("unsupported_transcription_model: {mdl}"));
+    let selected_engine = engine.unwrap_or_else(|| "whisper.cpp".to_string());
+    let requested_words = word_timestamps.unwrap_or(false);
+    let requested_diarization = diarization.unwrap_or(false);
+    if selected_engine == "cloud" {
+        return Err("cloud_transcription_unavailable: no approved cloud ASR adapter is registered for this Worker".into());
     }
-    let temp_dir = app_data_dir.join("cache").join("transcriptions");
+    if selected_engine == "whisper.cpp" && requested_diarization {
+        return Err("diarization_unavailable: whisper.cpp profile has no diarization adapter".into());
+    }
+    // Keep each source revision in its own output directory. A shared
+    // `transcript.json` would allow a failed/retried profile to accidentally
+    // consume a previous run's artifact.
+    let source_fingerprint = crate::runtime_manifest::file_sha256(&source_path)
+        .map_err(|_| "transcription_failed: source checksum unavailable".to_string())?;
+    let run_fingerprint = format!(
+        "{:x}",
+        Sha256::digest(
+            format!(
+                "{}:{}:{}",
+                source_fingerprint,
+                selected_engine,
+                model.as_deref().unwrap_or_default()
+            )
+            .as_bytes(),
+        )
+    );
+    let temp_dir = app_data_dir
+        .join("cache")
+        .join("transcriptions")
+        .join(run_fingerprint.chars().take(24).collect::<String>());
+    if fs::symlink_metadata(&temp_dir)
+        .map(|metadata| metadata.file_type().is_symlink())
+        .unwrap_or(false)
+    {
+        return Err("transcription_output_unavailable: transcription output directory is a symlink".into());
+    }
     std::fs::create_dir_all(&temp_dir)
         .map_err(|error| format!("failed to create temp dir: {error}"))?;
+    if let Ok(entries) = std::fs::read_dir(&temp_dir) {
+        for entry in entries.flatten() {
+            if entry.path().extension().and_then(|value| value.to_str()) == Some("json") {
+                let _ = std::fs::remove_file(entry.path());
+            }
+        }
+    }
 
     let runtime_root = crate::runtime_manifest::runtime_pack_root_for_sidecars(&sidecar_root);
-    let whisper_path =
-        crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.binary_path)
-            .ok_or_else(|| "transcription_unavailable".to_string())?;
-    let model_path =
-        crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.model_path)
-            .ok_or_else(|| "transcription_unavailable".to_string())?;
-    if !whisper_path.is_file() || !model_path.is_file() {
-        return Err("transcription_unavailable".into());
-    }
     let node_path = runtime_root.join(if cfg!(target_os = "windows") {
         "node/node.exe"
     } else {
@@ -2569,58 +2599,391 @@ pub async fn worker_app_transcribe_audio(
                 "words": [],
                 "status": "empty",
                 "reason": "no_detectable_audio_activity",
-                "model": transcription.model
+                "engine": selected_engine,
             }))
         }
         Err(error) => return Err(error),
         Ok(true) => {}
     }
 
-    let output = crate::worker_loop::execute_hyperframes_transcription_process(
-        settings.runtime_environment.is_managed_wsl(),
-        settings.managed_wsl_root.clone(),
-        source_path.clone(),
-        temp_dir.clone(),
-        lang,
-        mdl,
-        whisper_path,
-        node_path,
-        cli_path,
-    )?;
+    let output = if selected_engine == "whisper.cpp" {
+        let transcription = manifest
+            .transcription
+            .as_ref()
+            .ok_or_else(|| "transcription_unavailable".to_string())?;
+        let mdl = model.unwrap_or_else(|| transcription.model.clone());
+        if mdl != transcription.model {
+            return Err(format!("unsupported_transcription_model: {mdl}"));
+        }
+        let whisper_path = crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.binary_path)
+            .ok_or_else(|| "transcription_unavailable".to_string())?;
+        let model_path = crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.model_path)
+            .ok_or_else(|| "transcription_unavailable".to_string())?;
+        if !whisper_path.is_file() || !model_path.is_file() {
+            return Err("transcription_unavailable".into());
+        }
+        let binary_checksum = crate::runtime_manifest::file_sha256(&whisper_path)
+            .map_err(|_| "transcription_runtime_integrity_failed".to_string())?;
+        let model_checksum = crate::runtime_manifest::file_sha256(&model_path)
+            .map_err(|_| "transcription_model_integrity_failed".to_string())?;
+        if !binary_checksum.eq_ignore_ascii_case(&transcription.binary_sha256) {
+            return Err("transcription_runtime_integrity_failed".into());
+        }
+        if !model_checksum.eq_ignore_ascii_case(&transcription.model_sha256) {
+            return Err("transcription_model_integrity_failed".into());
+        }
+        crate::worker_loop::execute_hyperframes_transcription_process(
+            settings.runtime_environment.is_managed_wsl(), settings.managed_wsl_root.clone(),
+            source_path.clone(), temp_dir.clone(), lang.clone(), mdl, whisper_path, node_path, cli_path,
+        )?
+    } else {
+        let profile = manifest.transcription_profiles.iter().find(|item| item.engine == selected_engine)
+            .ok_or_else(|| format!("unsupported_transcription_engine: {selected_engine}"))?;
+        if requested_words && !profile.word_timestamps {
+            return Err("word_timestamps_unavailable".into());
+        }
+        if requested_diarization && !profile.diarization {
+            return Err("diarization_unavailable".into());
+        }
+        if !profile.supported_languages.is_empty() && lang != "auto" && !profile.supported_languages.iter().any(|item| item == &lang) {
+            return Err(format!("language_unavailable: {lang}"));
+        }
+        execute_transcription_profile_process(
+            settings.runtime_environment.is_managed_wsl(), settings.managed_wsl_root.clone(),
+            source_path.clone(), temp_dir.clone(), lang.clone(), model.as_deref(), profile,
+            requested_words, requested_diarization, &runtime_root,
+        )?
+    };
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!("Transcription failed: {}", stderr));
+    }
+    let final_source_fingerprint = crate::runtime_manifest::file_sha256(&source_path)
+        .map_err(|_| "source_fingerprint_mismatch: source checksum unavailable after inference".to_string())?;
+    if final_source_fingerprint != source_fingerprint {
+        return Err("source_fingerprint_mismatch: source changed during transcription".into());
     }
 
     let stem = source_path
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("transcript");
-    let json_path = temp_dir.join(format!("{}.json", stem));
+    let json_path = [temp_dir.join(format!("{}.json", stem)), temp_dir.join("transcript.json")]
+        .into_iter()
+        .find(|path| {
+            fs::symlink_metadata(path)
+                .map(|metadata| metadata.file_type().is_file())
+                .unwrap_or(false)
+        });
 
-    if json_path.exists() {
-        let content = std::fs::read_to_string(&json_path)
+    if let Some(json_path) = json_path {
+        let content = std::fs::read_to_string(json_path)
             .map_err(|e| format!("Failed to read transcript json: {e}"))?;
         let parsed: Value = serde_json::from_str(&content)
             .map_err(|e| format!("Failed to parse transcript json: {e}"))?;
-        return crate::worker_loop::normalize_hyperframes_transcript_output(
+        let normalized = crate::worker_loop::normalize_hyperframes_transcript_output(
             &parsed,
             &temp_dir,
             duration_ms,
-        );
+        )?;
+        return canonicalize_transcript_output(normalized, &source_path, duration_ms, &lang, &selected_engine, &manifest, requested_words, requested_diarization);
     }
 
     let stdout_str = String::from_utf8_lossy(&output.stdout);
     if let Ok(parsed) = serde_json::from_str::<Value>(&stdout_str) {
-        return crate::worker_loop::normalize_hyperframes_transcript_output(
+        let normalized = crate::worker_loop::normalize_hyperframes_transcript_output(
             &parsed,
             &temp_dir,
             duration_ms,
-        );
+        )?;
+        return canonicalize_transcript_output(normalized, &source_path, duration_ms, &lang, &selected_engine, &manifest, requested_words, requested_diarization);
     }
 
     Err("Transcription completed but output transcript file was not found".to_string())
+}
+
+fn canonicalize_transcript_output(
+    mut normalized: Value,
+    source_path: &Path,
+    duration_ms: Option<u64>,
+    language: &str,
+    engine: &str,
+    manifest: &RuntimePackManifest,
+    requested_words: bool,
+    requested_diarization: bool,
+) -> Result<Value, String> {
+    const TRANSCRIPT_NORMALIZER_REVISION: &str = "worker-normalizer-v2";
+    let source_checksum = crate::runtime_manifest::file_sha256(source_path)
+        .map_err(|_| "transcription_failed: source checksum unavailable".to_string())?;
+    let source_id = format!("local-audio-{}", source_checksum.chars().take(24).collect::<String>());
+    let model_revision = manifest.transcription.as_ref().filter(|_| engine == "whisper.cpp").map(|item| item.version.clone())
+        .or_else(|| manifest.transcription_profiles.iter().find(|item| item.engine == engine).map(|item| item.version.clone()))
+        .unwrap_or_else(|| "unknown".into());
+    let transcript_fingerprint = format!(
+        "{:x}",
+        Sha256::digest(format!("{}:{}:{}:{}:{}", source_checksum, engine, model_revision, manifest.version, TRANSCRIPT_NORMALIZER_REVISION).as_bytes())
+    );
+    let transcript_id = format!("audio-transcript-{}", transcript_fingerprint.chars().take(24).collect::<String>());
+    let segments = normalized.get("segments").cloned().unwrap_or_else(|| json!([]));
+    let speaker_turns = normalized.get("speakerTurns").cloned().unwrap_or_else(|| json!([]));
+    let provider_words = normalized
+        .get("words")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    // The canonical contract stores words inside segments. Do not derive
+    // coverage from the provider's auxiliary top-level list, which can also
+    // contain unaligned evidence that is intentionally omitted from cue
+    // projection. Compute the claim from the actual persisted segment words.
+    let mut canonical_word_count = 0usize;
+    let mut canonical_timed_word_count = 0usize;
+    if let Some(segment_values) = segments.as_array() {
+        for segment in segment_values {
+            if let Some(segment_words) = segment.get("words").and_then(Value::as_array) {
+                canonical_word_count += segment_words.len();
+                canonical_timed_word_count += segment_words
+                    .iter()
+                    .filter(|word| {
+                        word.get("startMs").and_then(Value::as_u64).is_some()
+                            && word.get("endMs").and_then(Value::as_u64).is_some()
+                    })
+                    .count();
+            }
+        }
+    }
+    let achieved_word_timing = canonical_word_count > 0
+        && canonical_timed_word_count == canonical_word_count;
+    let word_timing_coverage = if canonical_word_count == 0 {
+        0.0
+    } else {
+        canonical_timed_word_count as f64 / canonical_word_count as f64
+    };
+    let provider_word_timing_complete = !provider_words.is_empty()
+        && provider_words.iter().all(|word| {
+            word.get("startMs").and_then(Value::as_u64).is_some()
+                && word.get("endMs").and_then(Value::as_u64).is_some()
+        });
+    let has_speaker_evidence = speaker_turns
+        .as_array()
+        .is_some_and(|turns| !turns.is_empty())
+        || segments.as_array().is_some_and(|items| {
+            items.iter().any(|segment| {
+                segment
+                    .get("speakerId")
+                    .and_then(Value::as_str)
+                    .is_some_and(|value| !value.trim().is_empty())
+            })
+        });
+    let status = if normalized.get("status").and_then(Value::as_str) == Some("empty") {
+        "empty"
+    } else if normalized.get("status").and_then(Value::as_str) == Some("needs_review")
+        || (requested_words && !provider_word_timing_complete)
+        || (requested_diarization && !has_speaker_evidence)
+    {
+        "needs_review"
+    } else {
+        "ready"
+    };
+    let mut warnings = Vec::new();
+    if normalized.get("status").and_then(Value::as_str) == Some("needs_review") {
+        warnings.push("provider_needs_review");
+    }
+    if requested_words && !provider_word_timing_complete {
+        warnings.push("word_timestamps_incomplete");
+    }
+    if requested_diarization && !has_speaker_evidence {
+        warnings.push("diarization_not_available_in_legacy_projection");
+    }
+    let timing_origin = if achieved_word_timing {
+        match normalized.get("timingOrigin").and_then(Value::as_str) {
+            Some("forced_alignment") => "forced_alignment",
+            _ => "native",
+        }
+    } else {
+        "segment_only"
+    };
+    normalized["provider"] = json!(engine);
+    normalized["wordTimestampsRequested"] = json!(requested_words);
+    normalized["diarizationRequested"] = json!(requested_diarization);
+    normalized["transcript"] = json!({
+        "schemaVersion": "audio-transcript.v1",
+        "artifactId": transcript_id,
+        "sourceArtifactId": source_id,
+        "sourceChecksum": source_checksum,
+        "sourceRevision": source_checksum,
+        "durationMs": duration_ms,
+        "language": language,
+        "profile": engine,
+        "modelRevision": model_revision,
+        "runtimeRevision": manifest.version,
+        "normalizerRevision": TRANSCRIPT_NORMALIZER_REVISION,
+        "timingOrigin": timing_origin,
+        "segments": segments,
+        "speakerTurns": speaker_turns,
+        "achievedGranularity": if achieved_word_timing { "word" } else { "segment" },
+        "wordTimingCoverage": word_timing_coverage,
+        "warnings": warnings,
+        "status": status,
+    });
+    Ok(normalized)
+}
+
+fn execute_transcription_profile_process(
+    managed_wsl: bool,
+    managed_wsl_root: String,
+    source_path: PathBuf,
+    output_dir: PathBuf,
+    language: String,
+    requested_model: Option<&str>,
+    profile: &RuntimeTranscriptionProfile,
+    word_timestamps: bool,
+    diarization: bool,
+    runtime_root: &Path,
+) -> Result<std::process::Output, String> {
+    let runner = crate::worker_loop::runtime_relative_path(runtime_root, &profile.runner_path)
+        .ok_or_else(|| "transcription_unavailable".to_string())?;
+    if !runner.is_file() {
+        return Err("transcription_unavailable".into());
+    }
+    if let Some(expected) = profile.runner_sha256.as_deref() {
+        let actual = crate::runtime_manifest::file_sha256(&runner)
+            .map_err(|_| "transcription_runtime_integrity_failed".to_string())?;
+        if !actual.eq_ignore_ascii_case(expected) {
+            return Err("transcription_runtime_integrity_failed".into());
+        }
+    }
+    if let Some(model_path) = profile.model_path.as_deref() {
+        let model = crate::worker_loop::runtime_relative_path(runtime_root, model_path)
+            .ok_or_else(|| "transcription_unavailable".to_string())?;
+        if !model.is_file() {
+            return Err("transcription_model_unavailable".into());
+        }
+        if let Some(expected) = profile.model_sha256.as_deref() {
+            let actual = crate::runtime_manifest::file_sha256(&model)
+                .map_err(|_| "transcription_model_integrity_failed".to_string())?;
+            if !actual.eq_ignore_ascii_case(expected) {
+                return Err("transcription_model_integrity_failed".into());
+            }
+        }
+    }
+    let model = requested_model.unwrap_or(profile.model.as_str());
+    if model != profile.model {
+        return Err(format!("unsupported_transcription_model: {model}"));
+    }
+    let input = source_path.to_string_lossy().to_string();
+    let output = output_dir.join("transcript.json").to_string_lossy().to_string();
+    let input_arg = if managed_wsl { crate::worker_loop::windows_path_to_wsl(&source_path) } else { input.clone() };
+    let output_arg = if managed_wsl { crate::worker_loop::windows_path_to_wsl(&output_dir.join("transcript.json")) } else { output.clone() };
+    let args = vec![
+        "--input", input_arg.as_str(), "--output", output_arg.as_str(), "--language", language.as_str(),
+        "--model", model, "--word-timestamps", if word_timestamps { "true" } else { "false" },
+        "--diarization", if diarization { "true" } else { "false" },
+    ];
+    if managed_wsl {
+        let root = command_managed_wsl_root_expr(&managed_wsl_root);
+        let runner_expr = format!("\"$ROOT\"/{}", command_shell_single_quote(&profile.runner_path));
+        let script = format!("set -eu\nROOT={root}\nexec {runner_expr} {}", args.iter().map(|arg| command_shell_single_quote(arg)).collect::<Vec<_>>().join(" "));
+        let mut command = std::process::Command::new("wsl.exe");
+        command.args(["-e", "bash", "-lc", &script]);
+        return run_transcription_command_with_timeout(command);
+    }
+    let mut command = std::process::Command::new(runner);
+    command.args(args);
+    run_transcription_command_with_timeout(command)
+}
+
+fn run_transcription_command_with_timeout(
+    mut command: std::process::Command,
+) -> Result<std::process::Output, String> {
+    const TRANSCRIPTION_PROCESS_TIMEOUT: Duration = Duration::from_secs(4 * 60 * 60);
+    command
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    let mut child = command
+        .spawn()
+        .map_err(|_| "transcription_unavailable".to_string())?;
+    let started = Instant::now();
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => {
+                return child
+                    .wait_with_output()
+                    .map_err(|_| "transcription_failed".to_string());
+            }
+            Ok(None) if started.elapsed() >= TRANSCRIPTION_PROCESS_TIMEOUT => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("transcription_timeout: ASR runner exceeded its bounded runtime".into());
+            }
+            Ok(None) => std::thread::sleep(Duration::from_millis(100)),
+            Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("transcription_failed: ASR runner wait failed".into());
+            }
+        }
+    }
+}
+
+fn command_shell_single_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+fn command_managed_wsl_root_expr(value: &str) -> String {
+    let trimmed = value.trim();
+    if trimmed == "~" { return "\"$HOME\"".into(); }
+    if let Some(rest) = trimmed.strip_prefix("~/") {
+        return format!("\"$HOME\"/{}", command_shell_single_quote(rest));
+    }
+    command_shell_single_quote(trimmed)
+}
+
+#[tauri::command]
+pub fn worker_app_transcription_capabilities(app: tauri::AppHandle) -> Result<Value, String> {
+    let resource_dir = app.path().resource_dir().map_err(|_| "runtime_unavailable".to_string())?;
+    let app_data_dir = app.path().app_data_dir().map_err(|_| "runtime_unavailable".to_string())?;
+    let effective_runtime_dir = get_effective_runtime_dir(&app)?;
+    let (manifest_path, sidecar_root) = runtime_pack_paths(&resource_dir, &effective_runtime_dir);
+    let manifest = read_runtime_pack_manifest(&manifest_path).map_err(|_| "runtime_unavailable".to_string())?;
+    let runtime_root = crate::runtime_manifest::runtime_pack_root_for_sidecars(&sidecar_root);
+    let mut capabilities = Vec::new();
+    if let Some(transcription) = manifest.transcription.as_ref() {
+        let binary = crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.binary_path);
+        let model = crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.model_path);
+        let ready = binary.is_some_and(|path| {
+            path.is_file()
+                && crate::runtime_manifest::file_sha256(&path)
+                    .is_ok_and(|actual| actual.eq_ignore_ascii_case(&transcription.binary_sha256))
+        }) && model.is_some_and(|path| {
+            path.is_file()
+                && crate::runtime_manifest::file_sha256(&path)
+                    .is_ok_and(|actual| actual.eq_ignore_ascii_case(&transcription.model_sha256))
+        });
+        capabilities.push(json!({ "engine": "whisper.cpp", "status": if ready { "ready" } else { "unavailable" }, "model": transcription.model, "wordTimestamps": ready, "diarization": false }));
+    } else {
+        capabilities.push(json!({ "engine": "whisper.cpp", "status": "unavailable", "reason": "runtime_manifest_missing" }));
+    }
+    for profile in &manifest.transcription_profiles {
+        let runner = crate::worker_loop::runtime_relative_path(&runtime_root, &profile.runner_path);
+        let runner_ready = runner.is_some_and(|path| {
+            path.is_file() && profile.runner_sha256.as_deref().is_none_or(|expected| {
+                crate::runtime_manifest::file_sha256(&path).is_ok_and(|actual| actual.eq_ignore_ascii_case(expected))
+            })
+        });
+        let model_ready = profile.model_path.as_deref().map(|path| {
+            crate::worker_loop::runtime_relative_path(&runtime_root, path).is_some_and(|item| {
+                item.is_file() && profile.model_sha256.as_deref().is_none_or(|expected| {
+                    crate::runtime_manifest::file_sha256(&item).is_ok_and(|actual| actual.eq_ignore_ascii_case(expected))
+                })
+            })
+        }).unwrap_or(true);
+        let ready = runner_ready && model_ready;
+        capabilities.push(json!({ "engine": profile.engine, "version": profile.version, "status": if ready { "ready" } else { "unavailable" }, "wordTimestamps": profile.word_timestamps, "diarization": profile.diarization, "maxDurationMs": profile.max_duration_ms }));
+    }
+    capabilities.push(json!({ "engine": "cloud", "status": "unavailable", "reason": "cloud_adapter_not_registered" }));
+    let _ = app_data_dir;
+    Ok(Value::Array(capabilities))
 }
 
 #[tauri::command]
@@ -2865,6 +3228,7 @@ pub async fn worker_app_submit_media_job(
     min_duration_sec: Option<f64>,
     softening_buffer_sec: Option<f64>,
     custom_silence_segments: Option<Vec<CustomSilenceSegmentInput>>,
+    camera_motion_plan: Option<CameraMotionPlan>,
     processing_mode: String,
     idempotency_key: String,
 ) -> Result<Value, String> {
@@ -2964,7 +3328,10 @@ pub async fn worker_app_submit_media_job(
     let pad_ms = (softening_buffer_sec.unwrap_or(0.2).clamp(0.0, 2.0) * 1000.0).round() as u64;
     let threshold_db = -50.0 + (threshold_pct / 100.0) * 35.0;
     let silence_ranges = custom_silence_segments.unwrap_or_default();
-    let payload = json!({ "kind": "broll_preprocess", "seriesId": series_id, "binding": { "seriesId": root.series_id, "rootId": root.root_id, "rootFingerprint": root.root_fingerprint, "bindingRevision": binding_revision, "workspaceMode": root.workspace_mode, "status": "active" }, "source": { "assetId": asset_id, "kind": kind, "sourceRevision": fingerprint, "sourceFingerprint": fingerprint, "fileName": canonical_source.file_name().and_then(|value| value.to_str()).unwrap_or("media"), "relativeName": source_relative_name, "sizeBytes": metadata.len(), "durationMs": duration_ms, "captureAt": Value::Null }, "probe": { "width": source_probe.as_ref().and_then(|probe| probe.width), "height": source_probe.as_ref().and_then(|probe| probe.height), "fps": Value::Null, "durationMs": duration_ms, "hasAudio": source_probe.as_ref().map(|probe| probe.has_audio).unwrap_or(false), "rotationDegrees": 0, "codec": source_probe.as_ref().and_then(|probe| probe.codec.clone()), "container": source_probe.as_ref().and_then(|probe| probe.container.clone()) }, "editPlan": { "planId": format!("plan-{}", &fingerprint[..24]), "planRevision": "worker-local-v2-dead-air-profile", "mode": processing_mode, "aspectRatio": if reframe_9x16 { "9:16" } else { "source" }, "deadAir": { "enabled": remove_dead_air, "thresholdDb": threshold_db, "minSilenceMs": min_silence_ms, "padMs": pad_ms, "silenceRanges": silence_ranges }, "budget": { "maxDurationMs": max_duration_ms.clamp(1000, 90000), "minDurationMs": 1000, "maxBrollMs": max_duration_ms.clamp(1000, 90000), "preserveNarrativeAudio": true }, "segments": [{ "segmentId": "segment-1", "sourceAssetId": asset_id, "sourceRevision": fingerprint, "startMs": 0, "endMs": duration_ms.unwrap_or(max_duration_ms).min(max_duration_ms), "removeDeadAir": remove_dead_air, "reframe": { "enabled": reframe_9x16, "target": target, "trackingMode": tracking_mode, "aspectRatio": "9:16", "maxCropFraction": 0.6, "fallback": "reject", "focusTrack": focus_track }, "stillMotion": still_motion.map(|motion| json!({ "enabled": true, "motion": motion, "startScale": 1.0, "endScale": 1.18, "durationMs": max_duration_ms.clamp(500, 90000) })) }], "rationale": if processing_mode == "automated_ai_editing" { "Worker App automated AI editing intent" } else { "Worker App local preprocessing intent" } }, "idempotencyKey": idempotency_key });
+    if let Some(camera_plan) = camera_motion_plan.as_ref() {
+        validate_camera_motion_plan(camera_plan)?;
+    }
+    let payload = json!({ "kind": "broll_preprocess", "seriesId": series_id, "binding": { "seriesId": root.series_id, "rootId": root.root_id, "rootFingerprint": root.root_fingerprint, "bindingRevision": binding_revision, "workspaceMode": root.workspace_mode, "status": "active" }, "source": { "assetId": asset_id, "kind": kind, "sourceRevision": fingerprint, "sourceFingerprint": fingerprint, "fileName": canonical_source.file_name().and_then(|value| value.to_str()).unwrap_or("media"), "relativeName": source_relative_name, "sizeBytes": metadata.len(), "durationMs": duration_ms, "captureAt": Value::Null }, "probe": { "width": source_probe.as_ref().and_then(|probe| probe.width), "height": source_probe.as_ref().and_then(|probe| probe.height), "fps": Value::Null, "durationMs": duration_ms, "hasAudio": source_probe.as_ref().map(|probe| probe.has_audio).unwrap_or(false), "rotationDegrees": 0, "codec": source_probe.as_ref().and_then(|probe| probe.codec.clone()), "container": source_probe.as_ref().and_then(|probe| probe.container.clone()) }, "editPlan": { "planId": format!("plan-{}", &fingerprint[..24]), "planRevision": "worker-local-v2-dead-air-profile", "mode": processing_mode, "aspectRatio": if reframe_9x16 { "9:16" } else { "source" }, "cameraMotionPlan": camera_motion_plan, "deadAir": { "enabled": remove_dead_air, "thresholdDb": threshold_db, "minSilenceMs": min_silence_ms, "padMs": pad_ms, "silenceRanges": silence_ranges }, "budget": { "maxDurationMs": max_duration_ms.clamp(1000, 90000), "minDurationMs": 1000, "maxBrollMs": max_duration_ms.clamp(1000, 90000), "preserveNarrativeAudio": true }, "segments": [{ "segmentId": "segment-1", "sourceAssetId": asset_id, "sourceRevision": fingerprint, "startMs": 0, "endMs": duration_ms.unwrap_or(max_duration_ms).min(max_duration_ms), "removeDeadAir": remove_dead_air, "reframe": { "enabled": reframe_9x16, "target": target, "trackingMode": tracking_mode, "aspectRatio": "9:16", "maxCropFraction": 0.6, "fallback": "reject", "focusTrack": focus_track }, "stillMotion": still_motion.map(|motion| json!({ "enabled": true, "motion": motion, "startScale": 1.0, "endScale": 1.18, "durationMs": max_duration_ms.clamp(500, 90000) })) }], "rationale": if processing_mode == "automated_ai_editing" { "Worker App automated AI editing intent" } else { "Worker App local preprocessing intent" } }, "idempotencyKey": idempotency_key });
     post_worker_json(
         &connection.server_url,
         &format!("/api/workers/{}/media-jobs", connection.worker_id),
@@ -3004,6 +3371,7 @@ pub async fn worker_app_submit_speaker_aware_job(
     let policy: crate::speaker_aware_adapters::AdapterPolicy = serde_json::from_value(adapter_policy.clone())
         .map_err(|error| format!("invalid_contract: adapterPolicy invalid: {error}"))?;
     crate::speaker_aware_adapters::validate_policy(&policy)?;
+    crate::speaker_model_manager::preflight(&app, &policy)?;
     crate::speaker_aware_adapters::probe_configured_runner()
         .map_err(|error| format!("speaker_aware_preflight_blocked: {error}"))?;
     let app_data_dir = app.path().app_data_dir().map_err(|error| format!("app data directory unavailable: {error}"))?;
@@ -3038,6 +3406,39 @@ pub async fn worker_app_submit_speaker_aware_job(
     let policy_hash = crate::speaker_aware_adapters::hash_policy_value(&policy_value);
     payload.as_object_mut().ok_or_else(|| "invalid_contract: payload must be an object".to_string())?.insert("adapterPolicyHash".into(), Value::String(policy_hash));
     post_worker_json(&connection.server_url, &format!("/api/workers/{}/speaker-aware-jobs", connection.worker_id), &connection.tokens.execution_token, &json!({ "payload": payload }), &connection.device_proof).await
+}
+
+#[tauri::command]
+pub async fn worker_app_get_speaker_model_status(
+    app: tauri::AppHandle,
+) -> Result<crate::speaker_model_manager::SpeakerModelStatusResponse, String> {
+    crate::speaker_model_manager::capabilities(&app)
+}
+
+#[tauri::command]
+pub async fn worker_app_set_speaker_model_path(
+    app: tauri::AppHandle,
+    adapter_id: String,
+    path: String,
+) -> Result<crate::speaker_model_manager::SpeakerModelStatusResponse, String> {
+    crate::speaker_model_manager::set_path(&app, &adapter_id, &path)
+}
+
+#[tauri::command]
+pub async fn worker_app_install_speaker_model_from_path(
+    app: tauri::AppHandle,
+    adapter_id: String,
+    path: String,
+) -> Result<crate::speaker_model_manager::SpeakerModelStatusResponse, String> {
+    crate::speaker_model_manager::install_from_path(&app, &adapter_id, &path)
+}
+
+#[tauri::command]
+pub async fn worker_app_clear_speaker_model_path(
+    app: tauri::AppHandle,
+    adapter_id: String,
+) -> Result<crate::speaker_model_manager::SpeakerModelStatusResponse, String> {
+    crate::speaker_model_manager::clear_path(&app, &adapter_id)
 }
 
 #[tauri::command]
@@ -7929,6 +8330,19 @@ fn is_worker_app_update_url(server_url: &str, candidate_url: &str) -> bool {
         .unwrap_or(false)
 }
 
+#[cfg_attr(not(any(target_os = "windows", target_os = "macos")), allow(dead_code))]
+fn is_mac_worker_app_update_url(server_url: &str, candidate_url: &str) -> bool {
+    if !is_worker_app_update_url(server_url, candidate_url) {
+        return false;
+    }
+    let Ok(url) = reqwest::Url::parse(candidate_url) else {
+        return false;
+    };
+    let query: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
+    query.get("platform").map(String::as_str) == Some("macos")
+        && query.get("architecture").map(String::as_str) == Some("arm64")
+}
+
 #[tauri::command]
 pub async fn worker_app_install_update(
     app: tauri::AppHandle,
@@ -7936,10 +8350,31 @@ pub async fn worker_app_install_update(
     url: String,
     version: String,
 ) -> Result<String, String> {
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        let url = url.trim();
+        let version = version.trim();
+        if version.is_empty() {
+            return Err("Worker App update version is missing.".into());
+        }
+        let server_url = state
+            .settings
+            .lock()
+            .map(|settings| settings.normalized_server_url())
+            .map_err(|_| "settings lock poisoned".to_string())?;
+        if !is_mac_worker_app_update_url(&server_url, url) {
+            return Err("macOS Worker App updates must use the configured server's macOS arm64 installer endpoint.".into());
+        }
+        app.opener()
+            .open_url(url, None::<&str>)
+            .map_err(|error| format!("failed to open macOS Worker App installer: {error}"))?;
+        Ok(format!("Worker App macOS installer for {version} opened."))
+    }
+
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
     {
         let _ = (&app, &state, &url, &version);
-        return Err("Worker App self-update is only supported on Windows.".into());
+        return Err("Worker App self-update is not supported on this operating system.".into());
     }
 
     #[cfg(target_os = "windows")]
@@ -7996,11 +8431,15 @@ pub async fn worker_app_install_update(
         let mut file = File::create(&partial_path)
             .map_err(|error| format!("failed to create Worker App update file: {error}"))?;
         let mut downloaded = 0_u64;
-        while let Some(chunk) = response
-            .chunk()
+        let download_started = Instant::now();
+        while let Some(chunk) = tokio::time::timeout(Duration::from_secs(30), response.chunk())
             .await
+            .map_err(|_| "Worker App update download stalled for 30 seconds.".to_string())?
             .map_err(|error| format!("failed while downloading Worker App update: {error}"))?
         {
+            if download_started.elapsed() > Duration::from_secs(5 * 60) {
+                return Err("Worker App update download exceeded the 5 minute limit.".into());
+            }
             downloaded = downloaded.saturating_add(chunk.len() as u64);
             file.write_all(&chunk)
                 .map_err(|error| format!("failed to save Worker App update: {error}"))?;
@@ -8276,7 +8715,8 @@ mod tests {
     use super::{
         build_comfy_upload_arguments, build_start_connect_registration_payload,
         find_comfy_schema_section, is_allowed_comfy_output_path, is_windows_installer_payload,
-        is_worker_app_update_url, normalize_machine_fingerprint_hash,
+        is_mac_worker_app_update_url, is_worker_app_update_url,
+        normalize_machine_fingerprint_hash,
         parse_managed_wsl_runtime_profile_hash, parse_managed_wsl_runtime_version, replace_dir,
         replace_runtime_directories, runtime_update_available, runtime_update_reason,
         runtime_update_required, same_url_origin, summarize_local_device_proof,
@@ -8531,6 +8971,22 @@ mod tests {
     }
 
     #[test]
+    fn mac_worker_app_update_requires_the_mac_arm64_target_query() {
+        assert!(is_mac_worker_app_update_url(
+            "https://smartaihub.app",
+            "https://smartaihub.app/api/desktop-releases/worker-app/download?platform=macos&architecture=arm64"
+        ));
+        assert!(!is_mac_worker_app_update_url(
+            "https://smartaihub.app",
+            "https://smartaihub.app/api/desktop-releases/worker-app/download"
+        ));
+        assert!(!is_mac_worker_app_update_url(
+            "https://smartaihub.app",
+            "https://smartaihub.app/api/desktop-releases/worker-app/download?platform=windows&architecture=x64"
+        ));
+    }
+
+    #[test]
     fn worker_app_update_accepts_only_windows_executable_payloads() {
         assert!(is_windows_installer_payload(b"MZ\x90\x00"));
         assert!(!is_windows_installer_payload(b"PK\x03\x04"));
@@ -8751,6 +9207,8 @@ mod tests {
         assert_eq!(req.remove_dead_air, true);
         assert_eq!(req.aspect_ratio, "9:16");
         assert_eq!(req.focus_x, Some(0.45));
+        assert!(!req.auto_pan_zoom);
+        assert_eq!(req.auto_pan_zoom_mode, "");
     }
 }
 
@@ -8955,6 +9413,14 @@ pub struct InteractiveProcessRequest {
     pub focus_mode: String,   // "auto_person", "manual_region"
     pub focus_x: Option<f64>,
     pub focus_y: Option<f64>,
+    #[serde(default)]
+    pub auto_pan_zoom: bool,
+    #[serde(default)]
+    pub auto_pan_zoom_mode: String,
+    #[serde(default)]
+    pub auto_pan_zoom_scale: Option<f64>,
+    #[serde(default)]
+    pub camera_motion_plan: Option<CameraMotionPlan>,
     pub series_id: Option<String>,
     #[serde(default)]
     pub volume_threshold_pct: Option<f64>,
@@ -8962,6 +9428,8 @@ pub struct InteractiveProcessRequest {
     pub min_duration_sec: Option<f64>,
     #[serde(default)]
     pub softening_buffer_sec: Option<f64>,
+    #[serde(default)]
+    pub audio_stream_index: Option<usize>,
     #[serde(default)]
     pub custom_silence_segments: Option<Vec<CustomSilenceSegmentInput>>,
     #[serde(default)]
@@ -8995,6 +9463,7 @@ pub async fn worker_app_detect_silence_custom(
     volume_threshold_pct: Option<f64>,
     min_duration_sec: Option<f64>,
     softening_buffer_sec: Option<f64>,
+    audio_stream_index: Option<usize>,
 ) -> Result<crate::media_pipeline::CustomSilenceDetectionResult, String> {
     let app_data_dir = app
         .path()
@@ -9046,6 +9515,7 @@ pub async fn worker_app_detect_silence_custom(
         volume_threshold_pct.unwrap_or(25.0),
         min_duration_sec.unwrap_or(0.5),
         softening_buffer_sec.unwrap_or(0.2),
+        audio_stream_index,
     )
 }
 
@@ -9141,6 +9611,7 @@ pub async fn worker_app_process_media_interactive(
                 request.volume_threshold_pct.unwrap_or(25.0),
                 request.min_duration_sec.unwrap_or(0.5),
                 request.softening_buffer_sec.unwrap_or(0.2),
+                request.audio_stream_index,
             ) {
                 for seg in &sil_res.silence_segments {
                     let start = seg.start_ms;
@@ -9313,6 +9784,10 @@ pub async fn worker_app_process_media_interactive(
         &tools,
         request.target_width,
         request.target_height,
+        request.auto_pan_zoom,
+        &request.auto_pan_zoom_mode,
+        request.auto_pan_zoom_scale,
+        request.camera_motion_plan.as_ref(),
     )?;
 
     let out_probe = probe_media_file(&output_path, &tools)?;

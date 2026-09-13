@@ -446,6 +446,10 @@ export async function planVerticalDramaStoryArchitecture(
             mode === "plan"
               ? "Vertical Drama story architecture"
               : `Vertical Drama story architecture repair ${attempt}`,
+          verticalDramaContext: {
+            seriesId: input.seriesId,
+            taskClass: "story_architecture",
+          },
         }
       );
     promptTokens += result.response.usage?.prompt_tokens ?? 0;

@@ -13,3 +13,7 @@ Exit: complete user flow from imported sample to genuine local and configured cl
 ## Convergence audit requirements
 
 Apply lifecycle sections 8–10 and contracts recovery clarifications; they refine earlier general wording. Use VoiceOwnerScope for profiles/datasets, AudioScope for executions. Include applicable C5-01 through C5-07 regression cases in ../claude-plan-tdd.md. Release reporting distinguishes core A+B, optional providers C and training D.
+
+## Implementation record (2026-09-07)
+
+Profile/revision, reference artifact id, optional transcript, consent, binding and execution snapshot flow is implemented in `unifiedAudioVoiceService.ts` and migration 0286. Worker receives immutable profile/reference data so clone adapters can stage bytes without re-resolving mutable rows.

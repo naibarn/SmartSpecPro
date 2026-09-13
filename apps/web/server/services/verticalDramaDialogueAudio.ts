@@ -1112,6 +1112,7 @@ export interface GenerateEpisodeDialogueAudioPlanParams {
   tenantId?: string;
   seriesId: number;
   episodeId: number;
+  episodeGenerationSettings?: unknown;
   locale: VerticalDramaSeriesLocale;
   /** Shared series-level spoken-language/market contract for generated audio text. */
   dialogueLanguageProfile?: VerticalDramaDialogueLanguageProfile;
@@ -1317,6 +1318,12 @@ export async function generateEpisodeDialogueAudioPlan(
     maxTokens: 12000,
     schema: dialogueAudioPlannerOutputSchema,
     label: "Dialogue audio plan",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      episodeId: params.episodeId,
+      taskClass: "dialogue_audio",
+      settings: params.episodeGenerationSettings,
+    },
   });
 
   const usage = response.usage;

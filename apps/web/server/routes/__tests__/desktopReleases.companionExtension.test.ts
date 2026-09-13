@@ -34,7 +34,7 @@ function invokeJsonRoute(routePath: string) {
   return payload;
 }
 
-async function invokeJsonRouteAsync(routePath: string) {
+async function invokeJsonRouteAsync(routePath: string, req: any = {}) {
   const handler = getRouteHandler(routePath);
   if (!handler) return null;
   let payload: any = null;
@@ -43,7 +43,7 @@ async function invokeJsonRouteAsync(routePath: string) {
     status: () => res,
     json: (value: any) => { payload = value; return res; },
   };
-  await handler({}, res);
+  await handler(req, res);
   return payload;
 }
 
@@ -108,5 +108,41 @@ describe("SmartAIHub Worker App public releases", () => {
       fileName: "smart-ai-hub-worker-app-0.1.211-x64-setup.exe",
       downloadUrl: "/api/desktop-releases/worker-app/download",
     });
+  });
+
+  it("selects the native macOS arm64 installer when the Worker App target is requested", async () => {
+    const releaseDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-app-macos-release-test-"));
+    temporaryDirs.push(releaseDir);
+    fs.writeFileSync(
+      path.join(releaseDir, "smart-ai-hub-worker-app-0.1.320-arm64-setup.dmg"),
+      "mac-installer",
+    );
+    fs.writeFileSync(
+      path.join(releaseDir, "smart-ai-hub-worker-app-0.1.321-x64-setup.exe"),
+      "windows-installer",
+    );
+    process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR = releaseDir;
+
+    const payload = await invokeJsonRouteAsync("/worker-app/latest", {
+      query: { platform: "macos", architecture: "arm64" },
+    });
+
+    expect(payload?.release).toMatchObject({
+      version: "0.1.320",
+      fileName: "smart-ai-hub-worker-app-0.1.320-arm64-setup.dmg",
+      installerFormat: "dmg",
+      platform: "macos",
+      architecture: "arm64",
+      downloadUrl:
+        "/api/desktop-releases/worker-app/download?platform=macos&architecture=arm64",
+    });
+  });
+
+  it("rejects unsupported Worker App target architecture requests", async () => {
+    const payload = await invokeJsonRouteAsync("/worker-app/latest", {
+      query: { platform: "macos", architecture: "x64" },
+    });
+
+    expect(payload).toEqual({ error: "worker_app_macos_arm64_required" });
   });
 });

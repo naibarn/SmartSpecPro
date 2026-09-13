@@ -23,6 +23,7 @@ import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import { resolveCatalogBackedPricing } from "./llmProviderCatalog";
 import type { CreditContextRef } from "../../shared/creditContextContracts";
 import { attachCreditContextToTransaction, inferCreditContextRefFromMetadata, validateCreditContextReference } from "./creditContextBilling";
+import { normalizeCreditTransactionDescription } from "./creditBillingErrors";
 
 export type TransactionType =
   | "purchase"
@@ -207,6 +208,8 @@ export async function addCreditsWithinTransaction(
     metadata,
     idempotencyKey,
   } = params;
+  const normalizedDescription =
+    normalizeCreditTransactionDescription(description);
   if (amount <= 0) {
     throw new Error("Amount must be positive");
   }
@@ -295,7 +298,7 @@ export async function addCreditsWithinTransaction(
     userId,
     amount,
     type,
-    description,
+    description: normalizedDescription,
     metadata,
     balanceAfter: result.newBalance,
     referenceId,
@@ -917,7 +920,7 @@ export async function deductCredits(params: DeductCreditsParams) {
         userId,
         amount: -amount, // Negative for deductions
         type: "usage",
-        description,
+        description: normalizeCreditTransactionDescription(description),
         metadata,
         balanceAfter: newBalance,
         idempotencyKey: idempotencyKey ?? null,

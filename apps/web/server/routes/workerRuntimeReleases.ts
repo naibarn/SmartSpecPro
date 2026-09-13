@@ -1,6 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
+import crypto from "crypto";
 
 import { Router } from "express";
 import multer from "multer";
@@ -19,6 +20,15 @@ import {
   MAX_WORKER_RUNTIME_RELEASE_BYTES,
 } from "../services/workerRuntimeReleaseService";
 import {
+  listWorkerRuntimeRunnerArtifacts,
+  MAX_WORKER_RUNTIME_RUNNER_BYTES,
+  finalizeWorkerRuntimeRunnerArtifactUpload,
+  presignWorkerRuntimeRunnerArtifactUpload,
+  persistWorkerRuntimeRunnerArtifactFromPath,
+  streamWorkerRuntimeRunnerArtifact,
+  WorkerRuntimeRunnerArtifactError,
+} from "../services/workerRuntimeRunnerArtifactService";
+import {
   getWorkerRuntimeSigningKey,
   setWorkerRuntimeSigningPublicKey,
   WorkerRuntimeSigningKeyError,
@@ -30,6 +40,10 @@ import {
   workerRuntimeReleaseFinalizeSchema,
   workerRuntimeReleaseLocalImportSchema,
   workerRuntimeReleaseUploadSchema,
+  workerRuntimeRunnerArtifactCatalogSchema,
+  workerRuntimeRunnerArtifactFinalizeSchema,
+  workerRuntimeRunnerArtifactSchema,
+  workerRuntimeRunnerArtifactUploadSchema,
   workerRuntimeSigningKeyCatalogSchema,
   workerRuntimeSigningKeyUpdateSchema,
   type WorkerRuntimeReleaseFinalize,
@@ -41,6 +55,103 @@ const TEMP_UPLOAD_DIR = path.join(
   "smartspec-worker-runtime-release-uploads"
 );
 fs.mkdirSync(TEMP_UPLOAD_DIR, { recursive: true });
+const TEMP_RUNNER_UPLOAD_DIR = path.join(
+  os.tmpdir(),
+  "smartspec-worker-runtime-runner-uploads"
+);
+fs.mkdirSync(TEMP_RUNNER_UPLOAD_DIR, { recursive: true });
+
+type LocalImportOperation = {
+  id: string;
+  key: string;
+  status: "running" | "succeeded" | "failed";
+  createdAt: string;
+  updatedAt: string;
+  release: Awaited<ReturnType<typeof importLocalWorkerRuntimeRelease>> | null;
+  error: { code: string; message: string; details?: unknown } | null;
+};
+
+const localImportOperations = new Map<string, LocalImportOperation>();
+const localImportOperationIdsByKey = new Map<string, string>();
+const LOCAL_IMPORT_OPERATION_TTL_MS = 24 * 60 * 60 * 1000;
+
+function publicLocalImportOperation(operation: LocalImportOperation) {
+  return {
+    id: operation.id,
+    status: operation.status,
+    createdAt: operation.createdAt,
+    updatedAt: operation.updatedAt,
+    release: operation.release,
+    error: operation.error,
+  };
+}
+
+function pruneLocalImportOperations(now = Date.now()): void {
+  for (const [id, operation] of localImportOperations) {
+    if (now - Date.parse(operation.updatedAt) <= LOCAL_IMPORT_OPERATION_TTL_MS)
+      continue;
+    localImportOperations.delete(id);
+    if (localImportOperationIdsByKey.get(operation.key) === id)
+      localImportOperationIdsByKey.delete(operation.key);
+  }
+}
+
+function startLocalImportOperation(input: {
+  release: Parameters<typeof importLocalWorkerRuntimeRelease>[0]["release"];
+  uploadedByUserId: number;
+}): LocalImportOperation {
+  pruneLocalImportOperations();
+  const key = `${input.release.runtimeId}:${input.release.version}:${input.release.channel}`;
+  const activeId = localImportOperationIdsByKey.get(key);
+  const active = activeId ? localImportOperations.get(activeId) : null;
+  if (active?.status === "running") return active;
+
+  const now = new Date().toISOString();
+  const operation: LocalImportOperation = {
+    id: crypto.randomUUID(),
+    key,
+    status: "running",
+    createdAt: now,
+    updatedAt: now,
+    release: null,
+    error: null,
+  };
+  localImportOperations.set(operation.id, operation);
+  localImportOperationIdsByKey.set(key, operation.id);
+
+  setImmediate(() => {
+    void importLocalWorkerRuntimeRelease(input)
+      .then(release => {
+        operation.status = "succeeded";
+        operation.release = release;
+        operation.updatedAt = new Date().toISOString();
+      })
+      .catch(error => {
+        operation.status = "failed";
+        operation.error = {
+          code:
+            error instanceof WorkerRuntimeReleaseError
+              ? error.code
+              : "worker_runtime_release_failed",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Worker runtime release operation failed",
+          details:
+            error instanceof WorkerRuntimeReleaseError
+              ? error.details
+              : undefined,
+        };
+        operation.updatedAt = new Date().toISOString();
+        console.error("[WorkerRuntime] Server artifact import failed", {
+          operationId: operation.id,
+          key: operation.key,
+          error: operation.error,
+        });
+      });
+  });
+  return operation;
+}
 
 function sendError(res: any, error: unknown): void {
   const databaseError = error as { code?: string; message?: string } | null;
@@ -48,6 +159,9 @@ function sendError(res: any, error: unknown): void {
     databaseError?.code === "42P01" ||
     databaseError?.message?.includes(
       'relation "worker_runtime_releases" does not exist'
+    ) ||
+    databaseError?.message?.includes(
+      'relation "worker_runtime_runner_artifacts" does not exist'
     )
   ) {
     res.status(503).json({
@@ -61,7 +175,8 @@ function sendError(res: any, error: unknown): void {
   }
   if (
     error instanceof WorkerRuntimeReleaseError ||
-    error instanceof WorkerRuntimeSigningKeyError
+    error instanceof WorkerRuntimeSigningKeyError ||
+    error instanceof WorkerRuntimeRunnerArtifactError
   ) {
     const details =
       error instanceof WorkerRuntimeReleaseError
@@ -181,6 +296,34 @@ export function createWorkerRuntimeReleaseRouter(): Router {
     }),
     limits: { fileSize: MAX_WORKER_RUNTIME_RELEASE_BYTES },
   });
+  const runnerUpload = multer({
+    storage: multer.diskStorage({
+      destination: TEMP_RUNNER_UPLOAD_DIR,
+      filename: (_req, file, callback) =>
+        callback(
+          null,
+          `${Date.now()}-${path.basename(file.originalname).replace(/[^a-zA-Z0-9._-]+/g, "-")}`
+        ),
+    }),
+    limits: { fileSize: MAX_WORKER_RUNTIME_RUNNER_BYTES },
+  });
+  const runnerUploadMiddleware = (req: any, res: any, next: any) =>
+    runnerUpload.single("file")(req, res, (error: unknown) => {
+      if (error) {
+        res.status((error as any)?.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({
+          error: {
+            code:
+              (error as any)?.code === "LIMIT_FILE_SIZE"
+                ? "worker_runtime_runner_too_large"
+                : "worker_runtime_runner_upload_failed",
+            message:
+              error instanceof Error ? error.message : "Runner upload failed.",
+          },
+        });
+        return;
+      }
+      next();
+    });
 
   router.use(limiter);
 
@@ -227,6 +370,119 @@ export function createWorkerRuntimeReleaseRouter(): Router {
           await listWorkerRuntimeReleaseCatalog({ includeUnpublished: true })
         )
       );
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.get("/runner-artifacts", async (req, res) => {
+    if ((await requireSystemAdmin(req, res)) === null) return;
+    try {
+      res.json(
+        workerRuntimeRunnerArtifactCatalogSchema.parse(
+          await listWorkerRuntimeRunnerArtifacts()
+        )
+      );
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.post(
+    "/runner-artifacts/upload-url",
+    enforceJsonBodyMaxBytes(64 * 1024),
+    async (req, res) => {
+      if ((await requireSystemAdmin(req, res)) === null) return;
+      try {
+        const input = workerRuntimeRunnerArtifactUploadSchema.parse(req.body ?? {});
+        const result = await presignWorkerRuntimeRunnerArtifactUpload(input);
+        res.json(result
+          ? { uploadUrl: result.uploadUrl, storageKey: result.storageKey, fallback: null }
+          : { uploadUrl: null, storageKey: null, fallback: "multipart" });
+      } catch (error) {
+        sendError(res, error);
+      }
+    }
+  );
+
+  router.post(
+    "/runner-artifacts/upload/complete",
+    enforceJsonBodyMaxBytes(128 * 1024),
+    async (req, res) => {
+      const userId = await requireSystemAdmin(req, res);
+      if (userId === null) return;
+      try {
+        const input = workerRuntimeRunnerArtifactFinalizeSchema.parse(req.body ?? {});
+        const artifact = await finalizeWorkerRuntimeRunnerArtifactUpload({
+          upload: input,
+          uploadedByUserId: userId,
+        });
+        res.status(201).json({ artifact: workerRuntimeRunnerArtifactSchema.parse(artifact) });
+      } catch (error) {
+        sendError(res, error);
+      }
+    }
+  );
+
+  router.post(
+    "/runner-artifacts/upload",
+    runnerUploadMiddleware,
+    async (req: any, res) => {
+      const userId = await requireSystemAdmin(req, res);
+      if (userId === null) {
+        cleanupFile(req);
+        return;
+      }
+      try {
+        if (!req.file?.path) {
+          res.status(400).json({
+            error: {
+              code: "worker_runtime_runner_file_missing",
+              message: "Choose a speaker-aware runner .exe file.",
+            },
+          });
+          return;
+        }
+        const artifact = await persistWorkerRuntimeRunnerArtifactFromPath({
+          filePath: req.file.path,
+          fileName: req.file.originalname,
+          contentType: req.file.mimetype,
+          uploadedByUserId: userId,
+        });
+        res.status(201).json({
+          artifact: workerRuntimeRunnerArtifactSchema.parse(artifact),
+        });
+      } catch (error) {
+        sendError(res, error);
+      } finally {
+        cleanupFile(req);
+      }
+    }
+  );
+
+  router.get("/runner-artifacts/:id/download", async (req, res) => {
+    if ((await requireSystemAdmin(req, res)) === null) return;
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id <= 0) {
+        res.status(400).json({
+          error: { code: "worker_runtime_runner_id_invalid", message: "Invalid runner artifact id." },
+        });
+        return;
+      }
+      const result = await streamWorkerRuntimeRunnerArtifact(id);
+      if (!result) {
+        res.status(404).json({
+          error: { code: "worker_runtime_runner_not_found", message: "Runner artifact was not found." },
+        });
+        return;
+      }
+      res.setHeader("Content-Type", result.row.contentType);
+      res.setHeader("Content-Length", String(result.stored.contentLength ?? result.row.fileSizeBytes));
+      res.setHeader("Content-Disposition", `attachment; filename="${path.basename(result.row.fileName).replace(/"/g, "")}"`);
+      const stream: any = result.stored.stream;
+      if (typeof stream.pipe === "function") stream.pipe(res);
+      else res.send(Buffer.from(await new Response(stream).arrayBuffer()));
     } catch (error) {
       sendError(res, error);
     }
@@ -335,18 +591,39 @@ export function createWorkerRuntimeReleaseRouter(): Router {
       const userId = await requireSystemAdmin(req, res);
       if (userId === null) return;
       try {
-        const release = await importLocalWorkerRuntimeRelease({
-          release: workerRuntimeReleaseLocalImportSchema.parse(req.body ?? {}),
+        const release = workerRuntimeReleaseLocalImportSchema.parse(
+          req.body ?? {}
+        );
+        const operation = startLocalImportOperation({
+          release,
           uploadedByUserId: userId,
         });
-        res.status(201).json({
-          release: workerRuntimeReleaseAssetSchema.parse(release),
+        res.status(202).json({
+          operation: publicLocalImportOperation(operation),
         });
       } catch (error) {
         sendError(res, error);
       }
     }
   );
+
+  router.get("/releases/import-local/:operationId", async (req, res) => {
+    if ((await requireSystemAdmin(req, res)) === null) return;
+    pruneLocalImportOperations();
+    const operation = localImportOperations.get(
+      String(req.params.operationId || "")
+    );
+    if (!operation) {
+      res.status(404).json({
+        error: {
+          code: "worker_runtime_import_operation_not_found",
+          message: "Runtime import operation was not found or has expired.",
+        },
+      });
+      return;
+    }
+    res.json({ operation: publicLocalImportOperation(operation) });
+  });
 
   router.post(
     "/releases/:id/publish",

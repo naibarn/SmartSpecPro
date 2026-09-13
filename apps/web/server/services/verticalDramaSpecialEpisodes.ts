@@ -395,6 +395,11 @@ export async function createSpecialTieInEpisode(input: {
             eq(verticalDramaEpisodes.seriesId, actorInput.seriesId)
           )
         );
+      const [seriesDefaults] = await tx
+        .select({ generationSettings: verticalDramaSeries.generationSettings })
+        .from(verticalDramaSeries)
+        .where(eq(verticalDramaSeries.id, actorInput.seriesId))
+        .limit(1);
       const [row] = await tx
         .insert(verticalDramaEpisodes)
         .values({
@@ -409,6 +414,7 @@ export async function createSpecialTieInEpisode(input: {
           status: "draft",
           targetDurationSeconds: parsedInput.durationSeconds,
           durationProfileId: `vertical_drama_special_${parsedInput.durationSeconds}s_variable_shots`,
+          generationSettings: seriesDefaults?.generationSettings ?? null,
         })
         .returning({
           id: verticalDramaEpisodes.id,
@@ -636,6 +642,47 @@ export async function materializeSpecialTieInStoryboardShots(input: {
 }
 
 /**
+ * A special episode's last committed artifacts must remain readable while a
+ * retry is queued/running. Recovery is safe only after the run has reached a
+ * terminal state and the durable plan is missing; never rebuild from a
+ * forensic snapshot while a newer generation is still in flight.
+ */
+export function shouldRecoverSpecialTieInArtifacts(input: {
+  skillRunStatus?: string | null;
+  hasStartFramePlan: boolean;
+  shotCount?: number | null;
+  hasForensicOutput: boolean;
+}): boolean {
+  return (
+    !input.hasStartFramePlan &&
+    (input.skillRunStatus === "succeeded" ||
+      input.skillRunStatus === "needs_clarification") &&
+    input.shotCount === 9 &&
+    input.hasForensicOutput
+  );
+}
+
+/**
+ * Do not expose artifacts produced for an older edited input version. Missing
+ * markers are treated as legacy data so existing episodes remain readable
+ * until their next successful write/recovery stamps the version.
+ */
+export function isSpecialTieInArtifactsStale(
+  inputVersion: unknown,
+  artifactsInputVersion: unknown
+): boolean {
+  const current = Number(inputVersion);
+  const producedBy = Number(artifactsInputVersion);
+  return (
+    Number.isInteger(current) &&
+    current > 0 &&
+    Number.isInteger(producedBy) &&
+    producedBy > 0 &&
+    producedBy !== current
+  );
+}
+
+/**
  * Recover an older successful 9-shot planner result that was persisted as
  * `needs_clarification` before the storyboard materialization policy was
  * relaxed. This is deliberately non-paid and idempotent: it only reads the
@@ -723,7 +770,12 @@ export async function materializeRecoverableSpecialTieInOutput(input: {
   // Backfill the explicit scene track for plans created before the product
   // reference/scene separation. This is free, idempotent, and intentionally
   // scoped to special episodes; normal-series plans are never rewritten.
-  if (row.startFramePlan) {
+  const existingFrames = Array.isArray(
+    (row.startFramePlan as { frames?: unknown[] } | null)?.frames
+  )
+    ? ((row.startFramePlan as { frames: unknown[] }).frames ?? [])
+    : [];
+  if (row.startFramePlan && existingFrames.length > 0) {
     const {
       buildSpecialTieInSceneDescription,
       buildSpecialTieInSceneInstruction,
@@ -916,7 +968,8 @@ export async function materializeRecoverableSpecialTieInOutput(input: {
 
   if (
     specialData.output?.shotCount !== 9 ||
-    specialData.skillRun?.status !== "needs_clarification"
+    (specialData.skillRun?.status !== "succeeded" &&
+      specialData.skillRun?.status !== "needs_clarification")
   )
     return false;
 
@@ -943,6 +996,17 @@ export async function materializeRecoverableSpecialTieInOutput(input: {
     )
     .limit(1);
   if (!forensic?.parsedOutput) return false;
+
+  if (
+    !shouldRecoverSpecialTieInArtifacts({
+      skillRunStatus: specialData.skillRun?.status,
+      hasStartFramePlan: existingFrames.length > 0,
+      shotCount: specialData.output?.shotCount,
+      hasForensicOutput: Boolean(forensic.parsedOutput),
+    })
+  ) {
+    return false;
+  }
 
   try {
     const {
@@ -1011,6 +1075,7 @@ export async function materializeRecoverableSpecialTieInOutput(input: {
     const recoveredData: SpecialEpisodeData = {
       ...specialData,
       outputVersion: Number(specialData.outputVersion ?? 0) + 1,
+      artifactsInputVersion: specialData.inputVersion,
       skillRun: {
         ...specialData.skillRun,
         status: "succeeded",
@@ -1183,11 +1248,17 @@ export async function updateSpecialTieInInput(input: {
     parsed,
     characterBindings
   );
+  const hasCommittedArtifacts = Boolean(
+    current.startFramePlan || current.motionPromptPack || current.storyboard
+  );
   const nextData: SpecialEpisodeData = {
     ...data,
     input: parsed,
     inputVersion: data.inputVersion + 1,
     outputVersion: data.outputVersion,
+    ...(hasCommittedArtifacts
+      ? { artifactsInputVersion: data.inputVersion }
+      : {}),
     skillRun: {
       ...data.skillRun,
       status: "queued",
@@ -1206,8 +1277,6 @@ export async function updateSpecialTieInInput(input: {
     .update(verticalDramaEpisodes)
     .set({
       specialData: nextData,
-      startFramePlan: null,
-      motionPromptPack: null,
       updatedAt: new Date(),
     })
     .where(

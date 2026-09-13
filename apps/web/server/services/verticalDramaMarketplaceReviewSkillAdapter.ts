@@ -1164,6 +1164,10 @@ export async function generateMarketplaceReviewIdeas(input: {
             extraBodyParams: {
               response_format: MARKETPLACE_REVIEW_IDEA_RESPONSE_FORMAT,
             },
+            verticalDramaContext: {
+              seriesId: input.seriesId,
+              taskClass: "script_generation",
+            },
             schemaRetryContract: MARKETPLACE_REVIEW_IDEA_OUTPUT_CONTRACT,
           });
       const rawOutput = input.execute

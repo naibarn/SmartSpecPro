@@ -4,13 +4,19 @@
 
 import { ENV } from "./_core/env";
 import { getCachedAppRuntimeConfig } from "./services/appRuntimeConfig";
+import crypto from "crypto";
 import path from "path";
 import fs from "fs";
 import { pipeline } from "stream/promises";
+import { Readable } from "stream";
 import { fileURLToPath } from "url";
 import {
   S3Client,
   PutObjectCommand,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
   GetObjectCommand,
   HeadObjectCommand,
   DeleteObjectCommand,
@@ -20,6 +26,11 @@ import { eq } from "drizzle-orm";
 
 // Maximum presigned URL expiry: 24 hours (prevents indefinitely-valid URLs)
 const MAX_PRESIGN_EXPIRY_S = 86400;
+
+// Keep server-side imports of large runtime archives below proxy/request limits.
+// R2 and S3 both support multipart uploads with a minimum 5 MiB part size.
+const LARGE_FILE_MULTIPART_THRESHOLD_BYTES = 100 * 1024 * 1024;
+const MULTIPART_PART_SIZE_BYTES = 64 * 1024 * 1024;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,11 +67,18 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
   const forgeUrl = runtimeConfig.forgeApiUrl || ENV.forgeApiUrl;
   const forgeKey = runtimeConfig.forgeApiKey || ENV.forgeApiKey;
   if (forgeUrl && forgeKey) {
-    return { provider: "forge", baseUrl: forgeUrl.replace(/\/+$/, ""), apiKey: forgeKey };
+    return {
+      provider: "forge",
+      baseUrl: forgeUrl.replace(/\/+$/, ""),
+      apiKey: forgeKey,
+    };
   }
 
   // Priority 2: Check cache
-  if (_configCache && Date.now() - _configCache.fetchedAt < CONFIG_CACHE_TTL_MS) {
+  if (
+    _configCache &&
+    Date.now() - _configCache.fetchedAt < CONFIG_CACHE_TTL_MS
+  ) {
     return _configCache.config;
   }
 
@@ -87,8 +105,14 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
 
     if (setting) {
       // R2 or S3 — build S3Client from DB setting
-      if (!setting.endpoint || !setting.accessKeyIdEncrypted || !setting.secretAccessKeyEncrypted) {
-        console.warn("[Storage] Active config missing endpoint or credentials, falling back");
+      if (
+        !setting.endpoint ||
+        !setting.accessKeyIdEncrypted ||
+        !setting.secretAccessKeyEncrypted
+      ) {
+        console.warn(
+          "[Storage] Active config missing endpoint or credentials, falling back"
+        );
         // Fall through to env-var fallback
       } else {
         const accessKeyId = decrypt(setting.accessKeyIdEncrypted);
@@ -101,7 +125,8 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
             endpoint: setting.endpoint,
             region: setting.region || "auto",
             credentials: { accessKeyId, secretAccessKey },
-            forcePathStyle: (setting.configJson as any)?.forcePathStyle ?? false,
+            forcePathStyle:
+              (setting.configJson as any)?.forcePathStyle ?? false,
           });
 
           const config: S3Config = {
@@ -119,7 +144,10 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
     }
     // No active DB setting — fall through to env-var fallback (Priority 4)
   } catch (error: any) {
-    console.warn("[Storage] Failed to load storage settings from DB:", error.message);
+    console.warn(
+      "[Storage] Failed to load storage settings from DB:",
+      error.message
+    );
     // Use stale cache if available
     if (_configCache) return _configCache.config;
   }
@@ -171,11 +199,16 @@ export function invalidateStorageCache(): void {
 export async function assertR2StorageActive(): Promise<void> {
   const config = await getActiveStorageConfig();
   if (config.provider !== "s3" || config.storageKind !== "r2") {
-    throw new Error("Generated media requires an active Cloudflare R2 storage configuration");
+    throw new Error(
+      "Generated media requires an active Cloudflare R2 storage configuration"
+    );
   }
 }
 
-function isDurableMediaContentType(contentType: string, relKey?: string): boolean {
+function isDurableMediaContentType(
+  contentType: string,
+  relKey?: string
+): boolean {
   const normalizedContentType = contentType.split(";", 1)[0].trim();
   if (/^(image|video|audio)\//i.test(normalizedContentType)) return true;
 
@@ -183,9 +216,24 @@ function isDurableMediaContentType(contentType: string, relKey?: string): boolea
   // invariant from the object key as a second line of defense.
   const extension = path.extname(relKey ?? "").toLowerCase();
   return new Set([
-    ".avif", ".gif", ".heic", ".heif", ".jpeg", ".jpg", ".m4a", ".mkv",
-    ".mov", ".mp3", ".mp4", ".oga", ".ogg", ".png", ".svg", ".wav",
-    ".webm", ".webp",
+    ".avif",
+    ".gif",
+    ".heic",
+    ".heif",
+    ".jpeg",
+    ".jpg",
+    ".m4a",
+    ".mkv",
+    ".mov",
+    ".mp3",
+    ".mp4",
+    ".oga",
+    ".ogg",
+    ".png",
+    ".svg",
+    ".wav",
+    ".webm",
+    ".webp",
   ]).has(extension);
 }
 
@@ -206,7 +254,10 @@ function normalizeKey(relKey: string): string {
     throw new Error("Invalid storage key: path traversal detected");
   }
   const resolved = path.resolve(UPLOADS_DIR, cleaned);
-  if (!resolved.startsWith(UPLOADS_DIR + path.sep) && resolved !== UPLOADS_DIR) {
+  if (
+    !resolved.startsWith(UPLOADS_DIR + path.sep) &&
+    resolved !== UPLOADS_DIR
+  ) {
     throw new Error("Invalid storage key: escapes uploads directory");
   }
   return cleaned;
@@ -225,16 +276,19 @@ function ensureUploadsDir(subPath?: string): string {
 async function localStoragePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
-  contentType: string,
+  contentType: string
 ): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
   ensureUploadsDir(path.dirname(key));
-  const buffer = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
+  const buffer =
+    typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
   fs.writeFileSync(path.join(UPLOADS_DIR, key), buffer);
   return { key, url: `/uploads/${key}` };
 }
 
-async function localStorageGet(relKey: string): Promise<{ key: string; url: string }> {
+async function localStorageGet(
+  relKey: string
+): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
   return { key, url: `/uploads/${key}` };
 }
@@ -261,7 +315,7 @@ async function s3StoragePut(
   config: S3Config,
   relKey: string,
   data: Buffer | Uint8Array | string,
-  contentType: string,
+  contentType: string
 ): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
   const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data);
@@ -272,7 +326,7 @@ async function s3StoragePut(
       Key: key,
       Body: body,
       ContentType: contentType,
-    }),
+    })
   );
 
   // Always use proxy URL to avoid R2 public URL SSL issues and presigned URL expiration
@@ -282,7 +336,7 @@ async function s3StoragePut(
 
 async function s3StorageGet(
   config: S3Config,
-  relKey: string,
+  relKey: string
 ): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
   const url = `/api/storage/files/${encodeURI(key)}`;
@@ -291,12 +345,12 @@ async function s3StorageGet(
 
 async function s3StorageDelete(
   config: S3Config,
-  relKey: string,
+  relKey: string
 ): Promise<boolean> {
   const key = normalizeKey(relKey);
   try {
     await config.client.send(
-      new DeleteObjectCommand({ Bucket: config.bucket, Key: key }),
+      new DeleteObjectCommand({ Bucket: config.bucket, Key: key })
     );
     return true;
   } catch (error: any) {
@@ -309,16 +363,20 @@ async function s3StorageDelete(
 
 async function s3StorageExists(
   config: S3Config,
-  relKey: string,
+  relKey: string
 ): Promise<boolean> {
   const key = normalizeKey(relKey);
   try {
     await config.client.send(
-      new HeadObjectCommand({ Bucket: config.bucket, Key: key }),
+      new HeadObjectCommand({ Bucket: config.bucket, Key: key })
     );
     return true;
   } catch (error: any) {
-    if (error.name === "NotFound" || error.name === "NoSuchKey" || error.$metadata?.httpStatusCode === 404) {
+    if (
+      error.name === "NotFound" ||
+      error.name === "NoSuchKey" ||
+      error.$metadata?.httpStatusCode === 404
+    ) {
       return false;
     }
     throw error;
@@ -351,7 +409,7 @@ function buildAuthHeaders(apiKey: string): HeadersInit {
 function toFormData(
   data: Buffer | Uint8Array | string,
   contentType: string,
-  fileName: string,
+  fileName: string
 ): FormData {
   const blob =
     typeof data === "string"
@@ -366,10 +424,13 @@ async function forgeStoragePut(
   config: ForgeConfig,
   relKey: string,
   data: Buffer | Uint8Array | string,
-  contentType: string,
+  contentType: string
 ): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
-  const uploadUrl = new URL("v1/storage/upload", ensureTrailingSlash(config.baseUrl));
+  const uploadUrl = new URL(
+    "v1/storage/upload",
+    ensureTrailingSlash(config.baseUrl)
+  );
   uploadUrl.searchParams.set("path", key);
 
   const formData = toFormData(data, contentType, key.split("/").pop() ?? key);
@@ -381,7 +442,84 @@ async function forgeStoragePut(
 
   if (!response.ok) {
     const message = await response.text().catch(() => response.statusText);
-    throw new Error(`Storage upload failed (${response.status} ${response.statusText}): ${message}`);
+    throw new Error(
+      `Storage upload failed (${response.status} ${response.statusText}): ${message}`
+    );
+  }
+  const url = (await response.json()).url;
+  return { key, url };
+}
+
+function createMultipartFileStream(input: {
+  filePath: string;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
+}): {
+  body: Readable;
+  contentType: string;
+  contentLength: number;
+} {
+  const boundary = `----SmartSpecRuntime-${crypto.randomBytes(16).toString("hex")}`;
+  const safeFileName = input.fileName.replace(/[\\"\r\n]/g, "_");
+  const prefix = Buffer.from(
+    `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="file"; filename="${safeFileName}"\r\n` +
+      `Content-Type: ${input.contentType}\r\n\r\n`,
+    "utf8"
+  );
+  const suffix = Buffer.from(`\r\n--${boundary}--\r\n`, "utf8");
+  const body = Readable.from(
+    (async function* () {
+      yield prefix;
+      for await (const chunk of fs.createReadStream(input.filePath)) {
+        yield chunk;
+      }
+      yield suffix;
+    })()
+  );
+  return {
+    body,
+    contentType: `multipart/form-data; boundary=${boundary}`,
+    contentLength: prefix.length + input.fileSize + suffix.length,
+  };
+}
+
+async function forgeStoragePutFromPath(
+  config: ForgeConfig,
+  relKey: string,
+  sourcePath: string,
+  contentType: string
+): Promise<{ key: string; url: string }> {
+  const key = normalizeKey(relKey);
+  const stat = await fs.promises.stat(sourcePath);
+  const multipart = createMultipartFileStream({
+    filePath: sourcePath,
+    fileName: key.split("/").pop() ?? key,
+    contentType,
+    fileSize: stat.size,
+  });
+  const uploadUrl = new URL(
+    "v1/storage/upload",
+    ensureTrailingSlash(config.baseUrl)
+  );
+  uploadUrl.searchParams.set("path", key);
+  const response = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      ...buildAuthHeaders(config.apiKey),
+      "Content-Type": multipart.contentType,
+      "Content-Length": String(multipart.contentLength),
+    },
+    body: multipart.body,
+    duplex: "half",
+  } as RequestInit & { duplex: "half" });
+
+  if (!response.ok) {
+    const message = await response.text().catch(() => response.statusText);
+    throw new Error(
+      `Storage upload failed (${response.status} ${response.statusText}): ${message}`
+    );
   }
   const url = (await response.json()).url;
   return { key, url };
@@ -389,10 +527,13 @@ async function forgeStoragePut(
 
 async function forgeStorageGet(
   config: ForgeConfig,
-  relKey: string,
+  relKey: string
 ): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
-  const downloadApiUrl = new URL("v1/storage/downloadUrl", ensureTrailingSlash(config.baseUrl));
+  const downloadApiUrl = new URL(
+    "v1/storage/downloadUrl",
+    ensureTrailingSlash(config.baseUrl)
+  );
   downloadApiUrl.searchParams.set("path", key);
   const response = await fetch(downloadApiUrl, {
     method: "GET",
@@ -400,17 +541,22 @@ async function forgeStorageGet(
   });
   if (!response.ok) {
     const message = await response.text().catch(() => response.statusText);
-    throw new Error(`Storage download URL failed (${response.status} ${response.statusText}): ${message}`);
+    throw new Error(
+      `Storage download URL failed (${response.status} ${response.statusText}): ${message}`
+    );
   }
   return { key, url: (await response.json()).url };
 }
 
 async function forgeStorageDelete(
   config: ForgeConfig,
-  relKey: string,
+  relKey: string
 ): Promise<boolean> {
   const key = normalizeKey(relKey);
-  const deleteUrl = new URL("v1/storage/delete", ensureTrailingSlash(config.baseUrl));
+  const deleteUrl = new URL(
+    "v1/storage/delete",
+    ensureTrailingSlash(config.baseUrl)
+  );
   deleteUrl.searchParams.set("path", key);
   const response = await fetch(deleteUrl, {
     method: "DELETE",
@@ -419,14 +565,16 @@ async function forgeStorageDelete(
   if (response.status === 404) return false;
   if (!response.ok) {
     const message = await response.text().catch(() => response.statusText);
-    throw new Error(`Storage delete failed (${response.status} ${response.statusText}): ${message}`);
+    throw new Error(
+      `Storage delete failed (${response.status} ${response.statusText}): ${message}`
+    );
   }
   return true;
 }
 
 async function forgeStorageExists(
   config: ForgeConfig,
-  relKey: string,
+  relKey: string
 ): Promise<boolean> {
   try {
     await forgeStorageGet(config, relKey);
@@ -442,7 +590,7 @@ async function forgeStorageExists(
 export async function storagePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
-  contentType = "application/octet-stream",
+  contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
   // Enforce the invariant at the storage boundary too: persistent
   // image/video/audio objects must never silently fall back to server-local
@@ -461,6 +609,98 @@ export async function storagePut(
   }
 }
 
+async function readFileChunk(
+  sourcePath: string,
+  start: number,
+  length: number
+): Promise<Buffer> {
+  const handle = await fs.promises.open(sourcePath, "r");
+  try {
+    const chunk = Buffer.allocUnsafe(length);
+    let offset = 0;
+    while (offset < length) {
+      const result = await handle.read(
+        chunk,
+        offset,
+        length - offset,
+        start + offset
+      );
+      if (result.bytesRead === 0) {
+        throw new Error(
+          `Unexpected end of file while reading multipart upload chunk at ${start + offset}.`
+        );
+      }
+      offset += result.bytesRead;
+    }
+    return chunk;
+  } finally {
+    await handle.close();
+  }
+}
+
+async function s3MultipartPutFromPath(
+  config: S3Config,
+  key: string,
+  sourcePath: string,
+  fileSize: number,
+  contentType: string
+): Promise<void> {
+  const initiated = await config.client.send(
+    new CreateMultipartUploadCommand({
+      Bucket: config.bucket,
+      Key: key,
+      ContentType: contentType,
+    })
+  );
+  const uploadId = initiated.UploadId;
+  if (!uploadId)
+    throw new Error("Storage provider did not return a multipart upload id.");
+
+  const parts: Array<{ ETag?: string; PartNumber: number }> = [];
+  try {
+    let partNumber = 1;
+    for (
+      let offset = 0;
+      offset < fileSize;
+      offset += MULTIPART_PART_SIZE_BYTES
+    ) {
+      const length = Math.min(MULTIPART_PART_SIZE_BYTES, fileSize - offset);
+      const body = await readFileChunk(sourcePath, offset, length);
+      const result = await config.client.send(
+        new UploadPartCommand({
+          Bucket: config.bucket,
+          Key: key,
+          UploadId: uploadId,
+          PartNumber: partNumber,
+          Body: body,
+          ContentLength: length,
+        })
+      );
+      parts.push({ ETag: result.ETag, PartNumber: partNumber });
+      partNumber += 1;
+    }
+    await config.client.send(
+      new CompleteMultipartUploadCommand({
+        Bucket: config.bucket,
+        Key: key,
+        UploadId: uploadId,
+        MultipartUpload: { Parts: parts },
+      })
+    );
+  } catch (error) {
+    await config.client
+      .send(
+        new AbortMultipartUploadCommand({
+          Bucket: config.bucket,
+          Key: key,
+          UploadId: uploadId,
+        })
+      )
+      .catch(() => undefined);
+    throw error;
+  }
+}
+
 /**
  * Store a file from a filesystem path while avoiding unnecessary memory copies.
  * This is used for large installer uploads.
@@ -468,7 +708,7 @@ export async function storagePut(
 export async function storagePutFromPath(
   relKey: string,
   sourcePath: string,
-  contentType = "application/octet-stream",
+  contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
   if (isDurableMediaContentType(contentType, relKey)) {
     await assertR2StorageActive();
@@ -484,26 +724,37 @@ export async function storagePutFromPath(
     }
     case "s3": {
       const key = normalizeKey(relKey);
-      await config.client.send(
-        new PutObjectCommand({
-          Bucket: config.bucket,
-          Key: key,
-          Body: fs.createReadStream(sourcePath),
-          ContentType: contentType,
-        }),
-      );
+      const stat = await fs.promises.stat(sourcePath);
+      if (stat.size < LARGE_FILE_MULTIPART_THRESHOLD_BYTES) {
+        await config.client.send(
+          new PutObjectCommand({
+            Bucket: config.bucket,
+            Key: key,
+            Body: fs.createReadStream(sourcePath),
+            ContentType: contentType,
+            ContentLength: stat.size,
+          })
+        );
+      } else {
+        await s3MultipartPutFromPath(
+          config,
+          key,
+          sourcePath,
+          stat.size,
+          contentType
+        );
+      }
       return { key, url: `/api/storage/files/${encodeURI(key)}` };
     }
     case "forge": {
-      const buffer = fs.readFileSync(sourcePath);
-      return storagePut(relKey, buffer, contentType);
+      return forgeStoragePutFromPath(config, relKey, sourcePath, contentType);
     }
   }
 }
 
 export async function storageCopyToPath(
   relKey: string,
-  targetPath: string,
+  targetPath: string
 ): Promise<{ key: string }> {
   const config = await getActiveStorageConfig();
 
@@ -519,28 +770,40 @@ export async function storageCopyToPath(
         new GetObjectCommand({
           Bucket: config.bucket,
           Key: key,
-        }),
+        })
       );
       const body = result.Body as
         | NodeJS.ReadableStream
         | { transformToByteArray?: () => Promise<Uint8Array> }
         | undefined;
       if (!body) throw new Error(`Storage object body missing for ${key}`);
-      if (typeof (body as { transformToByteArray?: () => Promise<Uint8Array> }).transformToByteArray === "function") {
-        const bytes = await (body as { transformToByteArray: () => Promise<Uint8Array> }).transformToByteArray();
+      if (
+        typeof (body as { transformToByteArray?: () => Promise<Uint8Array> })
+          .transformToByteArray === "function"
+      ) {
+        const bytes = await (
+          body as { transformToByteArray: () => Promise<Uint8Array> }
+        ).transformToByteArray();
         fs.writeFileSync(targetPath, Buffer.from(bytes));
       } else {
-        await pipeline(body as NodeJS.ReadableStream, fs.createWriteStream(targetPath));
+        await pipeline(
+          body as NodeJS.ReadableStream,
+          fs.createWriteStream(targetPath)
+        );
       }
       return { key };
     }
     case "forge": {
-      throw new Error("Forge storage copy-to-path is not supported for HyperFrames render staging.");
+      throw new Error(
+        "Forge storage copy-to-path is not supported for HyperFrames render staging."
+      );
     }
   }
 }
 
-export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
+export async function storageGet(
+  relKey: string
+): Promise<{ key: string; url: string }> {
   const config = await getActiveStorageConfig();
   switch (config.provider) {
     case "local":
@@ -600,7 +863,7 @@ export async function storagePresignPut(
   relKey: string,
   contentType: string,
   contentLength: number,
-  expiresIn = 3600,
+  expiresIn = 3600
 ): Promise<{ url: string; key: string } | null> {
   const config = await getActiveStorageConfig();
   if (config.provider !== "s3") return null;
@@ -613,7 +876,9 @@ export async function storagePresignPut(
     ContentLength: contentLength,
   });
   const clampedExpiry = Math.min(Math.max(expiresIn, 60), MAX_PRESIGN_EXPIRY_S);
-  const url = await getSignedUrl(config.client, cmd, { expiresIn: clampedExpiry });
+  const url = await getSignedUrl(config.client, cmd, {
+    expiresIn: clampedExpiry,
+  });
   return { url, key };
 }
 
@@ -627,7 +892,7 @@ export async function storagePresignPut(
  */
 export async function storagePresignGet(
   relKey: string,
-  expiresIn = 3600,
+  expiresIn = 3600
 ): Promise<{ url: string; key: string } | null> {
   const config = await getActiveStorageConfig();
   if (config.provider !== "s3") return null;
@@ -638,7 +903,9 @@ export async function storagePresignGet(
     Key: key,
   });
   const clampedExpiry = Math.min(Math.max(expiresIn, 60), MAX_PRESIGN_EXPIRY_S);
-  const url = await getSignedUrl(config.client, cmd, { expiresIn: clampedExpiry });
+  const url = await getSignedUrl(config.client, cmd, {
+    expiresIn: clampedExpiry,
+  });
   return { url, key };
 }
 
@@ -647,7 +914,9 @@ export async function storagePresignGet(
  * For S3/R2: returns a proxy URL through the Node.js server (/api/storage/files/...).
  * For local: returns /uploads/... path.
  */
-export async function storageResolveUrl(relKey: string): Promise<string | null> {
+export async function storageResolveUrl(
+  relKey: string
+): Promise<string | null> {
   const config = await getActiveStorageConfig();
   const key = normalizeKey(relKey);
 
@@ -676,11 +945,16 @@ export async function storageReadText(relKey: string): Promise<string | null> {
     }
     case "s3": {
       try {
-        const response = await config.client.send(new GetObjectCommand({
-          Bucket: config.bucket,
-          Key: key,
-        }));
-        if (!response.Body || typeof (response.Body as any).transformToString !== "function") {
+        const response = await config.client.send(
+          new GetObjectCommand({
+            Bucket: config.bucket,
+            Key: key,
+          })
+        );
+        if (
+          !response.Body ||
+          typeof (response.Body as any).transformToString !== "function"
+        ) {
           return null;
         }
         return await (response.Body as any).transformToString("utf8");
@@ -711,7 +985,9 @@ export async function storageReadText(relKey: string): Promise<string | null> {
  * `/api/storage/files/*` proxy. This helper reads through the storage adapter
  * directly and therefore works for local, R2/S3, and Forge storage.
  */
-export async function storageReadBuffer(relKey: string): Promise<Buffer | null> {
+export async function storageReadBuffer(
+  relKey: string
+): Promise<Buffer | null> {
   const config = await getActiveStorageConfig();
   if (config.provider === "forge") {
     const resolved = await forgeStorageGet(config, relKey);
@@ -743,16 +1019,16 @@ export async function storageReadBuffer(relKey: string): Promise<Buffer | null> 
   }
 
   const chunks: Buffer[] = [];
-  for await (const chunk of stream as AsyncIterable<Buffer | Uint8Array | string>) {
+  for await (const chunk of stream as AsyncIterable<
+    Buffer | Uint8Array | string
+  >) {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
   return Buffer.concat(chunks);
 }
 
 /** Read object metadata without opening a body stream for conditional requests. */
-export async function storageHeadFile(
-  relKey: string,
-): Promise<{
+export async function storageHeadFile(relKey: string): Promise<{
   contentType?: string;
   contentLength?: number;
   etag?: string;
@@ -777,7 +1053,7 @@ export async function storageHeadFile(
 
   try {
     const response = await config.client.send(
-      new HeadObjectCommand({ Bucket: config.bucket, Key: key }),
+      new HeadObjectCommand({ Bucket: config.bucket, Key: key })
     );
     return {
       contentType: response.ContentType,
@@ -786,7 +1062,11 @@ export async function storageHeadFile(
       lastModified: response.LastModified,
     };
   } catch (error: any) {
-    if (error?.name === "NotFound" || error?.name === "NoSuchKey" || error?.$metadata?.httpStatusCode === 404) {
+    if (
+      error?.name === "NotFound" ||
+      error?.name === "NoSuchKey" ||
+      error?.$metadata?.httpStatusCode === 404
+    ) {
       return null;
     }
     throw error;
@@ -799,7 +1079,7 @@ export async function storageHeadFile(
  */
 export async function storageStreamFile(
   relKey: string,
-  range?: string,
+  range?: string
 ): Promise<{
   stream: ReadableStream | NodeJS.ReadableStream;
   contentType: string;
@@ -846,7 +1126,10 @@ export async function storageStreamFile(
     // retrying a .jpg miss as .webp. Left uncaught, this NoSuchKey exception
     // instead skipped that fallback and surfaced as a bare 404 even when the
     // .webp original was present the whole time.
-    if (error?.name === "NoSuchKey" || error?.$metadata?.httpStatusCode === 404) {
+    if (
+      error?.name === "NoSuchKey" ||
+      error?.$metadata?.httpStatusCode === 404
+    ) {
       return null;
     }
     throw error;

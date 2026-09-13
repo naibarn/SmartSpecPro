@@ -18,17 +18,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockListTasks,
   mockListDeferredMediaTasks,
+  mockListMcpMediaTasks,
   mockListHermesMediaTasks,
   mockCreateInternalTokenFromAuth,
+  mockGetDb,
   mockDurabilizeMediaTaskHistory,
   mockProjectMediaTaskArtifacts,
 } = vi.hoisted(() => ({
   mockListTasks: vi.fn(),
   mockListDeferredMediaTasks: vi.fn().mockResolvedValue([]),
+  mockListMcpMediaTasks: vi.fn().mockResolvedValue([]),
   mockListHermesMediaTasks: vi.fn().mockResolvedValue([]),
   mockCreateInternalTokenFromAuth: vi
     .fn()
     .mockReturnValue("tenant-bound-media-token"),
+  mockGetDb: vi.fn().mockResolvedValue(null),
   mockDurabilizeMediaTaskHistory: vi.fn(
     async ({ tasks }: { tasks: unknown[] }) => tasks
   ),
@@ -57,7 +61,7 @@ vi.mock("../services/deferredMediaRetryService", () => ({
 }));
 
 vi.mock("../services/mcpMediaAdapter", () => ({
-  listMcpMediaTasks: vi.fn().mockResolvedValue([]),
+  listMcpMediaTasks: mockListMcpMediaTasks,
   // Other named exports referenced elsewhere in media.ts — stubbed so the
   // module import doesn't throw; unused by listTasks itself.
   submitMcpMediaTask: vi.fn(),
@@ -97,10 +101,12 @@ vi.mock("../services/tenantContext", () => ({
 }));
 
 vi.mock("../db", () => ({
-  getDb: vi.fn().mockResolvedValue(null),
+  getDb: mockGetDb,
 }));
 
 vi.mock("../../drizzle/schema", () => ({
+  libraryContentVersions: {},
+  libraryItems: {},
   marketplaceAutoReviewOutboxJobs: {
     userId: "userId",
     status: "status",
@@ -112,6 +118,9 @@ vi.mock("../../drizzle/schema", () => ({
   },
   mediaModels: { modelId: "modelId", creditCost: "creditCost", configJson: "configJson" },
   mediaProviders: {},
+  presentationAssetLinks: {},
+  presentationDecks: {},
+  presentationSlides: {},
   users: {},
 }));
 
@@ -121,6 +130,7 @@ vi.mock("drizzle-orm", () => ({
   and: vi.fn(),
   desc: vi.fn(),
   inArray: vi.fn(),
+  getTableColumns: vi.fn(() => ({})),
   sql: Object.assign(vi.fn(), { raw: vi.fn() }),
 }));
 
@@ -311,6 +321,21 @@ describe("mediaRouter.listTasks — seriesId filter", () => {
     expect(started).toEqual(["provider", "deferred"]);
     release();
     await pending;
+  });
+
+  it("keeps provider history available when optional history sources fail", async () => {
+    const providerTask = task({ id: "provider-task" });
+    mockListTasks.mockResolvedValue({ tasks: [providerTask], total: 1 });
+    mockListDeferredMediaTasks.mockRejectedValueOnce(new Error("Redis unavailable"));
+    mockListMcpMediaTasks.mockRejectedValueOnce(new Error("MCP database unavailable"));
+    mockListHermesMediaTasks.mockRejectedValueOnce(new Error("worker_jobs migration pending"));
+    mockGetDb.mockRejectedValueOnce(new Error("marketplace history database unavailable"));
+
+    const fn = mediaRouter.listTasks as Function;
+    const result = await fn({ ctx: CTX, input: { limit: 50 } });
+
+    expect(result.tasks.map((item: any) => item.id)).toEqual(["provider-task"]);
+    expect(result.total).toBe(1);
   });
 
   it("hydrates completed tasks before projecting history playback URLs", async () => {

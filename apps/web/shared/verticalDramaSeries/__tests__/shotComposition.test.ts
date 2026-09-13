@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  deriveVerticalDramaStartFrameShotComposition,
   ensureVerticalDramaShotCompositionLock,
+  ensureVerticalDramaStartFrameShotCompositionLock,
   findVerticalDramaShotGroundingIssues,
   normalizeVerticalDramaShotComposition,
   replaceVerticalDramaShotCompositionCharacterKeys,
   renderVerticalDramaShotCompositionLock,
+  sanitizeVerticalDramaStartFrameCameraSetup,
 } from "../shotComposition";
 
 describe("vertical drama shot composition grounding", () => {
@@ -42,8 +45,12 @@ describe("vertical drama shot composition grounding", () => {
     });
 
     expect(repairedPrompt).toContain("old prompt");
-    expect(repairedPrompt).toContain("CURRENT SHOT COMPOSITION LOCK (MANDATORY)");
-    expect(repairedPrompt).toContain("both faces visible, phone low in foreground");
+    expect(repairedPrompt).toContain(
+      "CURRENT SHOT COMPOSITION LOCK (MANDATORY)"
+    );
+    expect(repairedPrompt).toContain(
+      "both faces visible, phone low in foreground"
+    );
     expect(
       findVerticalDramaShotGroundingIssues({
         prompt: repairedPrompt,
@@ -124,5 +131,37 @@ describe("vertical drama shot composition grounding", () => {
         composition,
       })
     ).toEqual(["missing_current_shot_prop_visibility_rule"]);
+  });
+
+  it("removes a later phone insert from the Start Frame composition lock", () => {
+    const startComposition = deriveVerticalDramaStartFrameShotComposition(
+      normalizeVerticalDramaShotComposition({
+        shot_type: "medium_three_shot_with_phone_insert",
+        angle: "eye_level",
+        movement: "fast_push_in",
+        composition: "push toward the phone screen",
+        body_language: { Pim: "raises the phone" },
+        gaze_direction: { Pim: "at the phone screen" },
+      })
+    );
+    const prompt = ensureVerticalDramaStartFrameShotCompositionLock({
+      prompt:
+        "old prompt\nCURRENT SHOT COMPOSITION LOCK (MANDATORY):\n- Composition: phone insert\nCURRENT SHOT PROP VISIBILITY RULE (MANDATORY): old",
+      composition: startComposition,
+    });
+
+    expect(startComposition?.shotType).toBe("medium_three_shot");
+    expect(startComposition?.movement).toBeUndefined();
+    expect(prompt).toContain("Opening frame: freeze the initial blocking");
+    expect(prompt).not.toContain("phone insert");
+    expect(prompt).not.toContain("raises the phone");
+  });
+
+  it("keeps stable framing while removing terminal camera motion from Start Frame input", () => {
+    expect(
+      sanitizeVerticalDramaStartFrameCameraSetup(
+        "medium_three_shot_with_phone_insert · eye_level · fast_push_in"
+      )
+    ).toBe("medium_three_shot · eye_level");
   });
 });

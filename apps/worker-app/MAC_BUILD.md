@@ -1,11 +1,23 @@
 # Smart AI Hub Worker App — macOS build and release manual
 
-This source bundle is the complete source hand-off for building the native
-Worker App on an Apple Silicon Mac. It is not a ready-made DMG. The build must
-be performed on macOS (or a trusted macOS CI runner) because the Worker App
-contains native Rust/Tauri code and the HyperFrames render runtime contains
-Mach-O, arm64, Chromium, FFmpeg, Node, native Sharp/libvips, and a native
-render sidecar.
+This manual covers both the native release build and the source hand-off for
+building the Worker App on an Apple Silicon Mac. A published DMG is the normal
+production installation path; the source ZIP is a developer fallback. The
+build must be performed on macOS (or a trusted macOS CI runner) because the
+Worker App contains native Rust/Tauri code. The separately downloadable
+HyperFrames runtime is assembled from prebuilt macOS arm64 inputs and does not
+need to be packaged on macOS.
+
+## Distribution and Dashboard contract
+
+The Dashboard intentionally shows published Windows, macOS, and Linux releases
+so a user can download an installer for another machine. On macOS, choose the
+native `DMG` card for normal installation. The macOS source ZIP is labelled as
+developer-only and is not required for a normal user setup.
+
+The Worker App's in-app updater requests the matching `macos`/`arm64` release
+and opens the signed DMG. It does not attempt to replace the running `.app`
+in-place. Windows keeps its existing EXE/MSI self-update behavior.
 
 ## Non-negotiable platform rule
 
@@ -97,12 +109,12 @@ Do not copy `node_modules`, `target`, `dist`, a Windows installer, or a WSL2
 runtime from another machine into this source tree. The source download
 intentionally excludes generated binaries and secrets.
 
-## Build the native HyperFrames runtime
+## Assemble the native HyperFrames runtime ZIP
 
-The native runtime is a separate release artifact. Read
-`MAC_RUNTIME_BUILD.md` completely before assembling it. The packager refuses
-to run unless the host is macOS arm64 and all required native files are
-Mach-O arm64.
+The native runtime is a separate, optional release artifact. Read
+`MAC_RUNTIME_BUILD.md` completely before assembling it. The packager can run on
+the Linux server because it only combines prebuilt inputs; it still refuses any
+input that is not a native macOS arm64 artifact.
 
 Typical command:
 
@@ -131,13 +143,35 @@ The exact option names are printed by `--help`. The command must produce a
 manifest whose runtime id is `hyperframes-macos-arm64`. Never rename a WSL2
 archive to make it look like a Mac archive.
 
-The native sidecar must be supplied by the HyperFrames/Remotion build process
-or built from the approved source on macOS. If it is absent, stop: the script
-must fail rather than silently packaging a Linux or Windows executable.
+The `whisper/` input must include `lib/libwhisper.1.dylib`,
+`lib/libggml.0.dylib`, `lib/libggml-base.0.dylib`, and `lib/libomp.dylib`.
+FFmpeg's adjacent Darwin dylibs are bundled automatically. These libraries
+are copied into the ZIP so the Mac Worker App runs without Homebrew or WSL2.
+
+The Mac sidecar may be an approved portable POSIX launcher that delegates to
+the bundled Mac Node runtime, or a native Mach-O arm64 sidecar supplied by the
+HyperFrames/Remotion build process. If it is absent, stop: the script must
+fail rather than silently packaging a Linux or Windows executable.
 
 ## Build the Tauri application and DMG
 
 After the native runtime has been staged and verified:
+
+For the repeatable release path, use the repository packager. It updates the
+Tauri/Cargo version, builds the Apple Silicon app, finds the DMG, and copies it
+to the release directory with the canonical name
+`smart-ai-hub-worker-app-<version>-arm64-setup.dmg`:
+
+```bash
+npm --workspace apps/worker-app run release:mac -- \
+  --release-version 0.1.325
+```
+
+Use `--skip-build` only when an already-built, inspected DMG exists under the
+current `aarch64-apple-darwin` target directory. The packager refuses Linux,
+Intel Mac, and duplicate Mac release versions.
+
+The underlying Tauri command is:
 
 ```bash
 npm --workspace apps/worker-app run tauri:build -- \
@@ -147,8 +181,10 @@ npm --workspace apps/worker-app run tauri:build -- \
 
 The expected output contains an arm64 `.app` and `.dmg` under
 `apps/worker-app/src-tauri/target/aarch64-apple-darwin/release/bundle/`.
-The application bundle must contain the native runtime pack and must not
-contain `.exe`, `wsl.exe`, `hyperframes-wsl2`, or a Linux ELF executable.
+The application bundle is intentionally independent from the downloadable
+runtime pack. It must not contain `.exe`, `wsl.exe`, `hyperframes-wsl2`, or a
+Linux ELF executable. The app downloads and installs the matching Mac runtime
+into its per-user application data directory when needed.
 
 ## Sign, verify, notarize, and staple
 
@@ -201,6 +237,18 @@ shasum -a 256 "Smart AI Hub Worker.dmg"
 unzip -l smart-ai-hub-worker-app-macos-source-*.zip
 ```
 
+Upload the native DMG through the Desktop Release Portal with:
+
+- platform: `macos`
+- installer format: `dmg`
+- channel: `stable`, `beta`, or `nightly`
+- the exact Worker App version in the DMG filename
+
+The release catalog remains multi-platform. The Mac Worker App endpoint is
+`/api/desktop-releases/worker-app/latest?platform=macos&architecture=arm64`;
+the legacy endpoint without a platform query continues to serve the Windows
+installer for existing Windows clients.
+
 Test on a clean Apple Silicon Mac with no development checkout present:
 
 1. Install the signed/notarized DMG.
@@ -209,8 +257,9 @@ Test on a clean Apple Silicon Mac with no development checkout present:
 3. Run the native runtime checks and a small Remotion render.
 4. Confirm Hermes still reports its own runtime independently.
 5. Confirm the app never offers Managed WSL or a WSL2 setup action.
-6. Confirm a runtime update downloads the Mac archive and rejects a Windows or
-   WSL2 archive with a clear error.
+6. Confirm an app update opens the Mac DMG endpoint and rejects a Windows or
+   WSL2 app/runtime target with a clear error. Dashboard links for other OSes
+   remain visible and downloadable.
 7. Confirm a failed render includes the actual missing native file/path in the
    doctor output and does not silently fall back to another platform.
 
@@ -224,11 +273,12 @@ Application Support directory, reopen the native app, and install the Mac
 runtime through the app's runtime action. Do not edit the runtime id to a WSL2
 value.
 
-### `runtime packager requires macOS arm64`
+### `runtime packager rejects a native input`
 
-The command is running on Linux, WSL, an Intel Mac, or under an x86 Node/Rust
-toolchain. Verify `uname -m` and `node -p process.arch`; then rerun on a native
-Apple Silicon environment.
+The ZIP assembler is allowed to run on Linux. This error means one of the
+provided inputs is not a macOS Mach-O arm64 artifact. Replace that individual
+input with the approved Mac arm64 release; do not rename a Linux or Windows
+file.
 
 ### `not a Mach-O arm64 executable`
 
@@ -239,9 +289,10 @@ with a native arm64 build and run the runtime packager again.
 ### Sharp/libvips failure
 
 The runtime needs the Darwin arm64 Sharp packages and native libvips binding.
-Run `npm install --legacy-peer-deps` on the Mac, inspect the `sharp` and
-`@img/sharp-*-darwin-arm64` files in `runtime-pack/node/node_modules`, and
-rebuild the runtime staging directory. Never copy the Linux `@img` package.
+Run `npm install --legacy-peer-deps` in the HyperFrames input tree, inspect the
+`sharp` and `@img/sharp-*-darwin-arm64` files in
+`runtime-pack/hyperframes/node_modules`, and rebuild the runtime staging
+directory. Never copy the Linux `@img` package.
 
 ### Chrome or FFmpeg starts locally but the app fails
 

@@ -4,10 +4,6 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-if (process.platform !== "darwin" || process.arch !== "arm64") {
-  throw new Error("macOS runtime packaging must run on an Apple Silicon macOS host; WSL2 and Linux are rejected");
-}
-
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const runtimeReleaseScript = resolve(scriptDir, "package-runtime-release.mjs");
 const args = process.argv.slice(2);

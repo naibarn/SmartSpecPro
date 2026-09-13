@@ -45,6 +45,36 @@ Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Free-form 
 allowed only inside explicitly named string fields (e.g. `human_summary`, `notes`,
 `dialogue_line`, `final_prompt`, `revision_instruction`).
 
+## Temporal frame role — MANDATORY
+
+Every request in this skill is a `FRAME ROLE: START` image, never a stop frame or
+an illustration of the shot's final state. Read each shot's `CANONICAL SHOT SOURCE`
+as an ordered sequence of beats. Freeze the earliest useful visual state at the
+beginning of the shot, before later actions, reveals, prop interactions, or
+aftermath. The downstream video prompt owns those later transitions.
+
+When a synopsis contains several clauses, the first meaningful physical state is
+the start-frame state. Clauses introduced by words such as "then", "after",
+"while", "พร้อม", "จากนั้น", "เห็นว่า", or a later dialogue line describe what
+the video should animate after frame 0; they must not pull the still image forward
+to that later moment. For example, if a character walks beside another person and
+only later raises/checks a phone or reveals a message, the start frame shows the
+walker's pre-phone state — phone at rest or out of view — and the video prompt
+animates the phone action and message reveal later. Do not choose the later moment
+just because the prop or reveal is visually salient.
+
+For dialogue shots, preserve the opening conversational pose and the physical
+state immediately before the first beat. A prop or screen tied to a later spoken
+line must remain in its pre-action state at frame 0. Never let a final dialogue
+line or its consequence become the opening image unless the canonical source
+explicitly makes it the first beat.
+
+The positive `prompt` field must describe only the opening state. Do not copy a
+later action, phone/message reveal, insert, or terminal consequence into the
+positive prompt as a second simultaneous action. If the later action must be
+excluded, put the exclusion in `negative_prompt`; the downstream video prompt
+is responsible for animating that transition.
+
 ## Encode emotion into every image prompt — MANDATORY
 
 The incoming storyboard shot carries `emotion`, `facial_expression`, `body_language`,

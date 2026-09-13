@@ -1,0 +1,17 @@
+{
+  "package": "cute-child-image-generator-v3",
+  "version": "3.0.0",
+  "files": [
+    "README.md",
+    "docs/skill-invocation-guide.md",
+    "docs/storyboard-system-development-spec.md",
+    "prompt-builder.md",
+    "randomization-rules.json",
+    "runtime-example.ts",
+    "scene-presets.json",
+    "schemas/input.schema.json",
+    "schemas/output.schema.json",
+    "schemas/ui.schema.json",
+    "skill.meta.json"
+  ]
+}

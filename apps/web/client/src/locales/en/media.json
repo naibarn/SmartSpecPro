@@ -863,6 +863,7 @@
   "historyPage.details.providerFailureDetail": "Provider Failure Detail",
   "historyPage.details.errorSummary": "Error Summary",
   "historyPage.details.errorSummaryFallback": "Generation failed, but provider did not return a clear error message.",
+  "historyPage.details.providerGenerationFailed": "{{mediaType}} generation failed through {{provider}}. See API Debug for the technical provider response.",
   "historyPage.details.code": "Code",
   "historyPage.details.state": "State",
   "historyPage.details.details": "Details",

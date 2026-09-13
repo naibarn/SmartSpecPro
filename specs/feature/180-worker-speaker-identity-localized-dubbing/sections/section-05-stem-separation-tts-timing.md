@@ -67,3 +67,7 @@ Capture timing overflow, acceptable separation, unacceptable separation and all-
 ## v2 required integration
 
 Consume both 08 local and 09 cloud results. Probe actual decoded duration. Timing/aligner artifacts bind final stretched checksum; failed alignment retries alone. Preserve authored/native dialogue choice and optional translation. Enforce contracts-v2.md stretch bounds and explicit source policy.
+
+## Implementation record (2026-09-07)
+
+Existing Vertical Drama audio pipeline/QC/timeline modules consume durable audio artifacts. The unified cloud path records decoded duration, while local Worker artifacts carry checksum and provider provenance for downstream timing and mix stages.

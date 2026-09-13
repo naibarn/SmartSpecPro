@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 CONTRACT_VERSION = "feature-179-v1"
-RUNNER_VERSION = "0.1.0"
+RUNNER_VERSION = "0.1.1"
 ADAPTER_IDS = (
     "SileroOnnx",
     "FireRedOnnx",
@@ -89,6 +89,19 @@ def model_checksum(path: Path | None) -> str | None:
     return sha256_file(path) if path and path.is_file() else None
 
 
+def model_file_ready(path: Path | None, extensions: tuple[str, ...]) -> bool:
+    return bool(path and path.is_file() and path.stat().st_size > 0 and path.suffix.lower() in extensions)
+
+
+def model_directory_ready(path: Path | None) -> bool:
+    if not path or not path.is_dir():
+        return False
+    try:
+        return any(item.is_file() and item.stat().st_size > 0 for item in path.iterdir())
+    except OSError:
+        return False
+
+
 def device_for_onnx() -> str:
     try:
         import onnxruntime as ort  # type: ignore
@@ -127,7 +140,7 @@ def adapter_capability(adapter_id: str) -> dict[str, Any]:
         supported_rates = [8000, 16000]
         if not module_available("onnxruntime"):
             remediation = "install_onnxruntime"
-        elif not model or not model.is_file():
+        elif not model_file_ready(model, (".onnx",)):
             status = STATUS_MISSING_MODEL
             remediation = "install_silero_model"
         else:
@@ -153,7 +166,7 @@ def adapter_capability(adapter_id: str) -> dict[str, Any]:
         supported_inputs = ["audio", "video"]
         if not module_available("pyannote.audio"):
             remediation = "install_pyannote"
-        elif not model or not model.exists():
+        elif not model_directory_ready(model):
             status = STATUS_MISSING_MODEL
             remediation = "install_pyannote_model"
         else:
@@ -165,7 +178,7 @@ def adapter_capability(adapter_id: str) -> dict[str, Any]:
         supported_inputs = ["video", "image"]
         if not module_available("mediapipe") or not module_available("cv2"):
             remediation = "install_mediapipe_opencv"
-        elif not model or not model.is_file():
+        elif not model_file_ready(model, (".task",)):
             status = STATUS_MISSING_MODEL
             remediation = "install_mediapipe_model"
         else:
@@ -739,6 +752,7 @@ def write_output(path: Path, value: dict[str, Any]) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Smart AI Hub Feature 179 speaker-aware runner")
     parser.add_argument("--version", action="store_true")
+    parser.add_argument("--capabilities", action="store_true")
     parser.add_argument("--request")
     parser.add_argument("--input")
     parser.add_argument("--output")
@@ -746,8 +760,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.version:
         print(f"smartaihub-speaker-aware-runner {RUNNER_VERSION} contract={CONTRACT_VERSION}")
         return 0
+    if args.capabilities:
+        print(json.dumps({
+            "contractVersion": CONTRACT_VERSION,
+            "runnerVersion": RUNNER_VERSION,
+            "adapterCapabilities": list(adapter_capabilities().values()),
+            "checkedAt": now_iso(),
+        }, ensure_ascii=False))
+        return 0
     if not args.request or not args.input or not args.output:
-        parser.error("--request, --input and --output are required unless --version is used")
+        parser.error("--request, --input and --output are required unless --version or --capabilities is used")
     try:
         request = load_request(Path(args.request))
         input_path = Path(args.input)

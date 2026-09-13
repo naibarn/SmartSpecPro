@@ -1,13 +1,19 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { protectedProcedure, router } from "../_core/trpc";
+import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
 import {
   USER_WORKER_JOB_STATUSES,
   cancelQueuedUserWorkerJob,
   getUserWorkerJobDetail,
   listUserWorkerJobs,
 } from "../services/workerJobMonitorService";
+import {
+  applyCanonicalJobAction,
+  getCanonicalJobOverview,
+  getCanonicalJobTimeline,
+  listCanonicalJobs,
+} from "../services/jobControlPlaneMonitor";
 
 const statusSchema = z.enum(USER_WORKER_JOB_STATUSES);
 
@@ -73,4 +79,38 @@ export const workerJobsRouter = router({
         jobId: input.jobId,
       });
     }),
+
+  controlPlaneList: adminProcedure
+    .input(z.object({
+      tenantId: z.string().uuid().optional(),
+      status: z.string().max(40).optional(),
+      jobType: jobTypeSchema.optional(),
+      executionClass: z.string().trim().min(1).max(32).optional(),
+      adapter: z.string().max(80).optional(),
+      stale: z.boolean().optional(),
+      limit: z.number().int().min(1).max(100).default(50),
+      before: z.coerce.date().optional(),
+    }).optional())
+    .query(({ input }) => listCanonicalJobs({
+      tenantId: input?.tenantId,
+      status: input?.status,
+      jobType: input?.jobType,
+      executionClass: input?.executionClass,
+      adapter: input?.adapter,
+      stale: input?.stale,
+      limit: input?.limit ?? 50,
+      before: input?.before,
+    })),
+
+  controlPlaneTimeline: adminProcedure
+    .input(z.object({ jobId: z.string().uuid(), limit: z.number().int().min(1).max(500).default(200) }))
+    .query(({ input }) => getCanonicalJobTimeline(input.jobId, input.limit)),
+
+  controlPlaneOverview: adminProcedure
+    .input(z.object({ tenantId: z.string().uuid().optional() }).optional())
+    .query(({ input }) => getCanonicalJobOverview(input?.tenantId)),
+
+  controlPlaneAction: adminProcedure
+    .input(z.object({ jobId: z.string().uuid(), action: z.enum(["cancel", "requeue", "force_fail"]), reason: z.string().trim().min(1).max(500), actionId: z.string().uuid() }))
+    .mutation(({ ctx, input }) => applyCanonicalJobAction({ ...input, actorId: ctx.user?.id ?? undefined })),
 });

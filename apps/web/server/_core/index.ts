@@ -29,6 +29,7 @@ import { registerWorkerRuntimeReleaseRoutes } from "../routes/workerRuntimeRelea
 import { registerWorkflowNodeTypesRoute } from "../routes/workflowNodeTypes";
 import { registerWorkflowWorkerRuntimeRoutes } from "../routes/workflowWorkerRuntime";
 import { registerWorkerSeriesControlPlaneRoutes } from "../routes/workerSeriesControlPlane";
+import { registerJobControlPlaneRoutes } from "../routes/jobControlPlane";
 import { registerDesktopHostRoutes } from "../routes/desktopHost";
 import { registerDesktopReleaseRoutes } from "../routes/desktopReleases";
 import { registerContentAutomationRoutes } from "../routers/contentAutomationRoutes";
@@ -148,6 +149,10 @@ import {
   shutdownWorkerStallWatchdogJob,
 } from "../jobs/workerStallWatchdogJob";
 import {
+  initializeUnifiedJobControlPlaneReconcilerJob,
+  shutdownUnifiedJobControlPlaneReconcilerJob,
+} from "../jobs/unifiedJobControlPlaneReconcilerJob";
+import {
   initializeProductionExecutionReconciliationJob,
   shutdownProductionExecutionReconciliationJob,
 } from "../jobs/productionExecutionReconciliationJob";
@@ -155,6 +160,7 @@ import {
   initializeMarketplaceAutoReviewJob,
   shutdownMarketplaceAutoReviewJob,
 } from "../jobs/marketplaceAutoReviewJob";
+import { initializeCeleryMediaDoctorJob, shutdownCeleryMediaDoctorJob } from "../jobs/celeryMediaDoctorJob";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { startHistoryCollection } from "../services/llmQueue";
 import { recoverActiveRunsOnStartup } from "../services/runEngine";
@@ -191,6 +197,7 @@ import { initAutomationJobsQueue, closeAutomationJobsQueue } from "../services/j
 import {
   initVerticalDramaStoryJobsQueue,
   closeVerticalDramaStoryJobsQueue,
+  setVerticalDramaStoryJobsDraining,
 } from "../services/verticalDramaStoryJobs";
 import {
   initVerticalDramaInteractiveJobsQueue,
@@ -408,6 +415,8 @@ app.use(cookieParser(ENV.cookieSecret));
 // HEALTH CHECK ENDPOINTS (before auth/audit middleware for Cloud Run probes)
 // ============================================================================
 
+let applicationDraining = false;
+
 /**
  * GET /healthz - Liveness/startup probe
  * Returns 200 if the process is alive and accepting requests
@@ -440,6 +449,14 @@ app.get("/metrics", (_req, res) => {
 app.get("/readyz", async (_req, res) => {
   const checks: Record<string, string> = {};
   let allHealthy = true;
+
+  if (applicationDraining) {
+    res.status(503).json({
+      status: "draining",
+      checks: { lifecycle: "draining" },
+    });
+    return;
+  }
 
   // Check database connection (2 second timeout)
   try {
@@ -905,6 +922,7 @@ registerLiveBrowserStreamRoutes(app);
 registerWorkerRuntimeRoutes(app);
 registerWorkerRuntimeReleaseRoutes(app);
 registerWorkerSeriesControlPlaneRoutes(app);
+registerJobControlPlaneRoutes(app);
 registerDesktopHostRoutes(app);
 registerDesktopReleaseRoutes(app);
 registerWorkflowNodeTypesRoute(app);
@@ -1332,6 +1350,7 @@ app.post("/api/internal/feedback/auto-report", async (req, res) => {
       path: z.string().max(500).optional(),
       jobId: z.string().max(200).optional(),
       traceId: z.string().max(200).optional(),
+      priority: z.enum(["high", "critical"]).optional(),
       creditContext: z.object({
         source: z.enum(["user", "provider", "unknown"]).optional(),
         modelKind: z.enum(["llm", "media", "unknown"]).optional(),
@@ -1871,15 +1890,29 @@ async function main() {
     preflightErrors.push(`Database check failed: ${err.message}`);
   }
 
-  // Redis connectivity check (3s timeout)
-  try {
-    const redis = getRedisClient();
-    await Promise.race([
-      redis.ping(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 3000)),
-    ]);
-  } catch (err: any) {
-    preflightErrors.push(`Redis check failed: ${err.message}`);
+  // Redis may still be restoring its persisted RDB when the web process is
+  // started (the editor queue can be several GB). Retry readiness briefly so
+  // a healthy environment does not enter a crash loop, while still failing
+  // closed when Redis never becomes available.
+  const redis = getRedisClient();
+  let redisReady = false;
+  let lastRedisError = "unknown";
+  for (let attempt = 1; attempt <= 10 && !redisReady; attempt += 1) {
+    try {
+      await Promise.race([
+        redis.ping(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 2000)),
+      ]);
+      redisReady = true;
+    } catch (err: any) {
+      lastRedisError = err?.message || "unknown";
+      if (attempt < 10) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
+  }
+  if (!redisReady) {
+    preflightErrors.push(`Redis check failed after 10 attempts: ${lastRedisError}`);
   }
 
   if (preflightErrors.length > 0) {
@@ -2314,6 +2347,12 @@ async function main() {
   }
 
   try {
+    await initializeUnifiedJobControlPlaneReconcilerJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize Feature 186 job reconciler:", error);
+  }
+
+  try {
     await initializeProductionExecutionReconciliationJob();
   } catch (error) {
     console.error("[Startup] Failed to initialize production execution reconciler job:", error);
@@ -2323,6 +2362,12 @@ async function main() {
     await initializeMarketplaceAutoReviewJob();
   } catch (error) {
     console.error("[Startup] Failed to initialize marketplace auto-review job:", error);
+  }
+
+  try {
+    await initializeCeleryMediaDoctorJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize Celery media doctor:", error);
   }
 
   try {
@@ -2429,6 +2474,8 @@ process.on("unhandledRejection", (reason, promise) => {
 // Graceful shutdown: stop accepting new connections, flush logs, close queues and connections
 process.on("SIGTERM", async () => {
   console.log("[Shutdown] SIGTERM received, starting graceful shutdown...");
+  applicationDraining = true;
+  setVerticalDramaStoryJobsDraining(true);
 
   // 0. Stop background schedulers
   import("../services/aiPresentationService").then(({ stopPendingMediaScheduler }) => {
@@ -2487,8 +2534,10 @@ process.on("SIGTERM", async () => {
   await shutdownRoleRoutineSchedulerJob().catch(() => {});
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await Promise.resolve(shutdownWorkerStallWatchdogJob()).catch(() => {});
+  await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(() => {});
   await Promise.resolve(shutdownProductionExecutionReconciliationJob()).catch(() => {});
   await Promise.resolve(shutdownMarketplaceAutoReviewJob()).catch(() => {});
+  await Promise.resolve(shutdownCeleryMediaDoctorJob()).catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
 
@@ -2528,6 +2577,8 @@ process.on("SIGTERM", async () => {
 
 process.on("SIGINT", async () => {
   console.log("[Shutdown] SIGINT received, starting graceful shutdown...");
+  applicationDraining = true;
+  setVerticalDramaStoryJobsDraining(true);
 
   // Same shutdown sequence as SIGTERM
   if (httpServer) {
@@ -2562,8 +2613,10 @@ process.on("SIGINT", async () => {
   await shutdownRoleRoutineSchedulerJob().catch(() => {});
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await Promise.resolve(shutdownWorkerStallWatchdogJob()).catch(() => {});
+  await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(() => {});
   await Promise.resolve(shutdownProductionExecutionReconciliationJob()).catch(() => {});
   await Promise.resolve(shutdownMarketplaceAutoReviewJob()).catch(() => {});
+  await Promise.resolve(shutdownCeleryMediaDoctorJob()).catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
   await Promise.all(

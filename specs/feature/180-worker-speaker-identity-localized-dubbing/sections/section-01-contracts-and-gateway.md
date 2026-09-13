@@ -82,3 +82,7 @@ Read ../voice-lifecycle-v2.md. Add exact named fields and API types there. Exten
 ## Convergence audit requirements
 
 Apply lifecycle sections 8–10 and contracts recovery clarifications; they refine earlier general wording. Use VoiceOwnerScope for profiles/datasets, AudioScope for executions. Include applicable C5-01 through C5-07 regression cases in ../claude-plan-tdd.md. Release reporting distinguishes core A+B, optional providers C and training D.
+
+## Implementation record (2026-09-07)
+
+Implemented in `apps/web/shared/verticalDramaMedia/unifiedAudio.ts`, `ttsProviderRegistry.ts`, `apps/web/server/routers/unifiedAudio.ts`, `unifiedAudioVoiceService.ts`, `workerSchedulerService.ts`, and migration `0286_feature_180_unified_voice_lifecycle.sql`. Focused contract/provider/scheduler tests pass.

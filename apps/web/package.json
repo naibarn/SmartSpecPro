@@ -78,6 +78,9 @@
     "astryx": "node ../../node_modules/@astryxdesign/cli/bin/astryx.mjs",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
+    "backfill:unified-job-control-plane": "tsx scripts/backfill-unified-job-control-plane.ts",
+    "verify:feature-186": "tsx scripts/verify-feature-186.ts",
+    "audit:feature-186-call-sites": "tsx scripts/audit-feature-186-call-sites.ts",
     "release-gate:vertical-drama-assurance": "tsx scripts/verify-vertical-drama-assurance-release-gate.ts"
   },
   "dependencies": {

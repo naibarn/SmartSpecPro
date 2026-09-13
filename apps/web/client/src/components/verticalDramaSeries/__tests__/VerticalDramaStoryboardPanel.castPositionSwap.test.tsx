@@ -60,4 +60,78 @@ describe("VerticalDramaStoryboardPanel — cast position swaps", () => {
       screen.getByTestId("vd-storyboard-confirm-cast-position-1")
     ).toBeDisabled();
   });
+
+  it("gates Enhanced prompt generation on the current cast-position confirmation", () => {
+    const onGenerateEnhanced = vi.fn();
+    const props = baseProps({
+      startFramePlan: {
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "a prompt",
+            approvedMediaAssetId: "10",
+            requiredCharacterRefs: ["left-character", "right-character"],
+          },
+        ],
+      },
+      assetUrls: {
+        "10": {
+          url: "https://example.com/start-frame.png",
+          thumbnailUrl: null,
+        },
+      },
+      selectedVideoModelId: "video-model",
+      enhancedVideoPromptUiEnabled: true,
+      onGenerateShotVideoPrompt: vi.fn(),
+      onGenerateEnhancedShotVideoPrompt: onGenerateEnhanced,
+      enhancedReadinessByShot: { 1: { ready: false, reasons: ["SHOT_PRECONDITION_FAILED"] } },
+      enhancedGeneratingForShot: new Set(),
+    });
+    const { rerender } = render(
+      <VerticalDramaStoryboardPanel {...(props as any)} />
+    );
+
+    const enhancedButton = screen.getByTestId(
+      "vd-storyboard-generate-enhanced-video-prompt-1"
+    );
+    expect(enhancedButton).toBeDisabled();
+    const status = document.getElementById("vd-storyboard-enhanced-status-1")!;
+    expect(status).toHaveTextContent("ต้องยืนยันลำดับตัวละครซ้าย→ขวาจากภาพปัจจุบันก่อน");
+    expect(status).not.toHaveTextContent("ยังไม่มีภาพ");
+    const scrollIntoView = vi.fn();
+    const review = screen.getByTestId("vd-storyboard-cast-position-lock-1");
+    review.scrollIntoView = scrollIntoView;
+    fireEvent.click(screen.getByRole("button", { name: "ไปยืนยันลำดับตัวละคร" }));
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(review).toHaveFocus();
+
+    rerender(
+      <VerticalDramaStoryboardPanel
+        {...({
+          ...props,
+          enhancedReadinessByShot: { 1: { ready: true, reasons: [] } },
+          startFramePlan: {
+            ...props.startFramePlan,
+            frames: [
+              {
+                ...props.startFramePlan.frames[0],
+                castPositionLock: {
+                  assetId: "10",
+                  orderedCharacterRefs: ["left-character", "right-character"],
+                  confirmedAt: "2026-09-08T00:00:00.000Z",
+                },
+              },
+            ],
+          },
+        } as any)}
+      />
+    );
+
+    expect(enhancedButton).toBeEnabled();
+    fireEvent.click(enhancedButton);
+    expect(onGenerateEnhanced).toHaveBeenCalledWith(1);
+    expect(
+      screen.queryByTestId("vd-credit-confirm-enhanced-video-prompt-1")
+    ).not.toBeInTheDocument();
+  });
 });

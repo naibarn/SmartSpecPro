@@ -38,6 +38,21 @@ import type { VerticalDramaFinalRenderOptionsView } from "./VerticalDramaEpisode
 
 type PreviewShotOption = { shotNumber: number; ready: boolean };
 type CoverModel = { modelId: string; name: string; isEnabled?: boolean };
+
+export function isVerticalDramaEpisodePreviewSlotLocked(input: {
+  selectedShotCount: number;
+  submitting: boolean;
+  status?: VerticalDramaEpisodePreviewState["status"];
+  hasReadyCover: boolean;
+}): boolean {
+  return (
+    input.selectedShotCount !== 2 ||
+    input.submitting ||
+    input.status === "pending" ||
+    !input.hasReadyCover
+  );
+}
+
 type EpisodePreviewCoverRetryRequest = {
   seriesId: string;
   episodeId: string;
@@ -113,6 +128,9 @@ export function VerticalDramaEpisodePreviewPanel({
   );
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [failedPreviewSlots, setFailedPreviewSlots] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [submittingPreviewSlots, setSubmittingPreviewSlots] = useState<Set<number>>(
     () => new Set(),
   );
   const coverRetryRequestsRef = useRef(
@@ -303,10 +321,15 @@ export function VerticalDramaEpisodePreviewPanel({
     });
   const createPreviewMutation =
     trpc.verticalDramaEpisodes.createEpisodePreview.useMutation({
-      onSuccess: () => {
-        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate({
+      onSuccess: async (_data, variables) => {
+        await utils.verticalDramaEpisodes.getEpisodeDetail.invalidate({
           seriesId,
           episodeId,
+        });
+        setSubmittingPreviewSlots(current => {
+          const next = new Set(current);
+          next.delete(variables.slotId);
+          return next;
         });
         onPreviewChanged?.();
         toast.success(
@@ -315,7 +338,16 @@ export function VerticalDramaEpisodePreviewPanel({
             : "Episode preview render started"
         );
       },
-      onError: error => toast.error(error.message),
+      onError: (error, variables) => {
+        if (variables?.slotId != null) {
+          setSubmittingPreviewSlots(current => {
+            const next = new Set(current);
+            next.delete(variables.slotId);
+            return next;
+          });
+        }
+        toast.error(error.message);
+      },
     });
 
   const handleGenerateCover = (coverSlotId: number) => {
@@ -398,7 +430,15 @@ export function VerticalDramaEpisodePreviewPanel({
 
   const handleCreatePreview = (slotId: number) => {
     const selected = selectedBySlot[slotId] ?? [];
-    if (selected.length !== 2 || createPreviewMutation.isPending) return;
+    const serverPending = previews.some(
+      preview => preview.slotId === slotId && preview.status === "pending",
+    );
+    if (
+      selected.length !== 2 ||
+      submittingPreviewSlots.has(slotId) ||
+      serverPending
+    )
+      return;
     requestConfirmation({
       title:
         lang === "th"
@@ -412,6 +452,11 @@ export function VerticalDramaEpisodePreviewPanel({
       cancelLabel: lang === "th" ? "ยกเลิก" : "Cancel",
       testId: `vd-episode-preview-confirm-${slotId}`,
       onConfirm: () => {
+        setSubmittingPreviewSlots(current => {
+          const next = new Set(current);
+          next.add(slotId);
+          return next;
+        });
         createPreviewMutation.mutate({
           seriesId,
           episodeId,
@@ -427,9 +472,6 @@ export function VerticalDramaEpisodePreviewPanel({
 
   const previewBySlot = new Map<number, VerticalDramaEpisodePreviewState>(
     previews.map(preview => [preview.slotId, preview])
-  );
-  const hasPendingPreview = previews.some(
-    preview => preview.status === "pending"
   );
   const readyShotCount = shotOptions.filter(option => option.ready).length;
 
@@ -624,9 +666,7 @@ export function VerticalDramaEpisodePreviewPanel({
             {[1, 2, 3, 4].map(slotId => {
               const preview = previewBySlot.get(slotId);
               const selected = selectedBySlot[slotId] ?? [];
-              const busy =
-                createPreviewMutation.isPending &&
-                createPreviewMutation.variables?.slotId === slotId;
+              const busy = submittingPreviewSlots.has(slotId);
               return (
                 <Card
                   key={slotId}
@@ -774,12 +814,12 @@ export function VerticalDramaEpisodePreviewPanel({
                       type="button"
                       size="sm"
                       className="w-full gap-1.5"
-                      disabled={
-                        selected.length !== 2 ||
-                        busy ||
-                        hasPendingPreview ||
-                        !hasReadyCover
-                      }
+                      disabled={isVerticalDramaEpisodePreviewSlotLocked({
+                        selectedShotCount: selected.length,
+                        submitting: busy,
+                        status: preview?.status,
+                        hasReadyCover,
+                      })}
                       onClick={() => handleCreatePreview(slotId)}
                       data-testid={`vd-episode-preview-create-${slotId}`}
                     >
@@ -806,13 +846,6 @@ export function VerticalDramaEpisodePreviewPanel({
                         {lang === "th"
                           ? "สร้างหน้าปกอย่างน้อย 1 แบบให้เสร็จก่อนจึงจะสร้างตัวอย่างได้"
                           : "Generate at least one episode cover before rendering a preview."}
-                      </p>
-                    ) : null}
-                    {hasPendingPreview ? (
-                      <p className="text-[11px] text-muted-foreground">
-                        {lang === "th"
-                          ? "รอชุดที่กำลัง render เสร็จก่อน แล้วจึงสร้างชุดถัดไปได้"
-                          : "Wait for the active preview render to finish before starting another set."}
                       </p>
                     ) : null}
                   </CardContent>

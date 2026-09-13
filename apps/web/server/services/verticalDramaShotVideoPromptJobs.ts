@@ -15,7 +15,7 @@ const TURN_WAIT_TIMEOUT_MS = 30 * 60 * 1000;
 // Keep the worker lease alive long enough that healthy jobs are not marked
 // stalled while their durable Redis record remains "running".
 const BULLMQ_LOCK_DURATION_MS = 35 * 60 * 1000;
-const STALE_RUNNING_MS = 30 * 60 * 1000;
+const STALE_ACTIVE_JOB_MS = 30 * 60 * 1000;
 const MAX_ERROR_CHARS = 2_000;
 const MAX_TRANSIENT_EXECUTOR_RETRIES = 3;
 const TRANSIENT_RETRY_DELAYS_MS = [5_000, 15_000, 30_000] as const;
@@ -325,6 +325,21 @@ function isActive(status: VerticalDramaShotVideoPromptJobStatus): boolean {
   return status === "queued" || status === "running";
 }
 
+const STALE_JOB_ERROR =
+  "Background job became stale; it was not retried automatically.";
+
+function isStaleActiveJob(
+  record: VerticalDramaShotVideoPromptJobRecord,
+  now: number
+): boolean {
+  const updatedAtMs = Date.parse(record.updatedAt);
+  return (
+    isActive(record.status) &&
+    Number.isFinite(updatedAtMs) &&
+    now - updatedAtMs > STALE_ACTIVE_JOB_MS
+  );
+}
+
 function boundedError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   return (message.trim() || "Failed to generate the video prompt").slice(
@@ -462,7 +477,12 @@ export async function getVerticalDramaShotVideoPromptJobStatus(
 ): Promise<VerticalDramaShotVideoPromptJobSummary | null> {
   const deps = resolveDependencies(dependencies);
   const record = await readRecord(jobId, deps);
-  return record && ownerMatches(record, owner) ? toSummary(record, deps) : null;
+  if (!record || !ownerMatches(record, owner)) return null;
+  // A worker/process can disappear without emitting BullMQ's failed event.
+  // Reconcile that orphan on the read path so the browser cannot poll an
+  // active status forever and later shots cannot remain blocked behind it.
+  const reconciled = await reconcileStaleActiveJob(record, deps);
+  return toSummary(reconciled, deps);
 }
 
 export async function getActiveVerticalDramaShotVideoPromptJobs(
@@ -493,7 +513,12 @@ export async function getActiveVerticalDramaShotVideoPromptJobs(
       }) &&
       isActive(record.status)
     ) {
-      jobs.push(await toSummary(record, deps));
+      // The active-jobs query is also a recovery boundary: a page refresh can
+      // otherwise keep rendering a stale Redis pointer indefinitely.
+      const reconciled = await reconcileStaleActiveJob(record, deps);
+      if (isActive(reconciled.status)) {
+        jobs.push(await toSummary(reconciled, deps));
+      }
     }
   }
   return jobs;
@@ -664,6 +689,22 @@ async function markTerminalAndAdvance(
   await clearPointers(record, deps);
 }
 
+async function reconcileStaleActiveJob(
+  record: VerticalDramaShotVideoPromptJobRecord,
+  deps: VerticalDramaShotVideoPromptJobStoreDependencies
+): Promise<VerticalDramaShotVideoPromptJobRecord> {
+  if (!isStaleActiveJob(record, deps.now())) return record;
+
+  await markTerminalAndAdvance(record, "failed", null, STALE_JOB_ERROR, deps);
+  return {
+    ...record,
+    status: "failed",
+    result: null,
+    error: STALE_JOB_ERROR,
+    updatedAt: new Date(deps.now()).toISOString(),
+  };
+}
+
 /** Reconcile BullMQ terminal failures with the durable Redis job record. */
 export async function recoverVerticalDramaShotVideoPromptJob(
   jobId: string,
@@ -696,13 +737,13 @@ async function waitForTurn(
       if (prior && isActive(prior.status)) {
         if (
           prior.status === "running" &&
-          deps.now() - new Date(prior.updatedAt).getTime() > STALE_RUNNING_MS
+          deps.now() - new Date(prior.updatedAt).getTime() > STALE_ACTIVE_JOB_MS
         ) {
           await markTerminalAndAdvance(
             prior,
             "failed",
             null,
-            "Background job became stale; it was not retried automatically.",
+            STALE_JOB_ERROR,
             deps
           );
           continue;

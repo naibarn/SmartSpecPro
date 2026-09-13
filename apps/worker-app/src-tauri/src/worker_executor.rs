@@ -41,6 +41,11 @@ pub const VERTICAL_DRAMA_SCORE_MIX_CAPABILITY: &str = "episode-score-mix-v1";
 pub const VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE: &str = "speaker_aware_media_scan";
 pub const VERTICAL_DRAMA_SPEAKER_AWARE_EDIT_PLAN_JOB_TYPE: &str = "speaker_aware_edit_plan";
 pub const VERTICAL_DRAMA_SPEAKER_AWARE_CAPABILITY: &str = "speaker-aware-media-v1";
+pub const UNIFIED_AUDIO_TTS_JOB_TYPE: &str = "tts_utterance_generate";
+pub const UNIFIED_AUDIO_TRAINING_JOB_TYPE: &str = "voice_training_run";
+pub const UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE: &str = "audio_transcribe";
+pub const UNIFIED_AUDIO_ALIGN_JOB_TYPE: &str = "audio_align";
+pub const UNIFIED_AUDIO_CAPABILITY: &str = "unified-audio-v2";
 pub const COMFY_CAPABILITY_FAMILIES: [&str; 4] = [
     "comfyui-image-generate",
     "comfyui-video-generate",
@@ -131,6 +136,50 @@ pub const REMOTION_RENDER_VIDEO_FAILURE_CODES: [&str; 9] = [
 /// fallback value on the Node side).
 pub const REMOTION_RENDER_VIDEO_DEFAULT_FAILURE_CODE: &str = "render_failed";
 
+/// Web Media Workspace jobs use the canonical `smartaihub.media.job` envelope
+/// and are intentionally kept separate from the legacy local-footage job
+/// namespace. The Worker claims these only when its FFmpeg/FFprobe media
+/// toolchain is ready.
+pub const EDITOR_VIDEO_RENDER_JOB_TYPE: &str = "editor_video_render";
+pub const EDITOR_MEDIA_PROBE_JOB_TYPE: &str = "editor_media_probe";
+pub const EDITOR_MEDIA_PROXY_JOB_TYPE: &str = "editor_media_proxy";
+pub const EDITOR_MEDIA_WAVEFORM_JOB_TYPE: &str = "editor_media_waveform";
+pub const EDITOR_MEDIA_THUMBNAIL_JOB_TYPE: &str = "editor_media_thumbnail";
+pub const EDITOR_MEDIA_ANALYSIS_JOB_TYPE: &str = "editor_media_analysis";
+pub const EDITOR_MEDIA_AUDIO_EXTRACT_JOB_TYPE: &str = "editor_media_audio_extract";
+pub const EDITOR_MEDIA_AUDIO_EXPORT_JOB_TYPE: &str = "editor_media_audio_export";
+pub const EDITOR_MEDIA_AI_MUSIC_JOB_TYPE: &str = "editor_media_ai_music";
+pub const EDITOR_MEDIA_AI_MEDIA_STUDIO_JOB_TYPE: &str = "editor_media_ai_media_studio";
+pub const EDITOR_MEDIA_PRIVACY_TRACK_JOB_TYPE: &str = "editor_media_privacy_track";
+pub const EDITOR_MEDIA_RECORDING_NORMALIZE_JOB_TYPE: &str = "editor_media_recording_normalize";
+pub const EDITOR_VIDEO_RENDER_STILL_JOB_TYPE: &str = "editor_video_render_still";
+pub const EDITOR_MEDIA_CLAIM_CAPABILITY: &str = "editor-media-contract-1.0";
+pub const EDITOR_MEDIA_CAPABILITY_FAMILY: &str = "editor-video-render";
+
+/// Operation-level claim tokens.  These are intentionally separate from the
+/// descriptive capability family and from the protocol token above: the
+/// scheduler must only offer a job to a Worker that has a real executor for
+/// that operation.
+pub const EDITOR_MEDIA_OPERATION_CAPABILITIES: &[(&str, &str)] = &[
+    ("media.probe", "editor-media-operation-media-probe"),
+    ("media.proxy", "editor-media-operation-media-proxy"),
+    ("media.waveform", "editor-media-operation-media-waveform"),
+    ("media.thumbnail", "editor-media-operation-media-thumbnail"),
+    ("media.analysis", "editor-media-operation-media-analysis"),
+    ("media.silence_detect", "editor-media-operation-media-silence_detect"),
+    ("media.audio_extract", "editor-media-operation-media-audio_extract"),
+    ("media.audio_export", "editor-media-operation-media-audio_export"),
+    ("media.recording_normalize", "editor-media-operation-media-recording_normalize"),
+    ("video.render_still", "editor-media-operation-video-render_still"),
+    ("video.render", "editor-media-operation-video-render"),
+];
+
+pub fn editor_media_operation_capability(operation: &str) -> Option<&'static str> {
+    EDITOR_MEDIA_OPERATION_CAPABILITIES
+        .iter()
+        .find_map(|(candidate, capability)| (*candidate == operation).then_some(*capability))
+}
+
 pub fn is_known_remotion_render_video_progress_stage(stage: &str) -> bool {
     REMOTION_RENDER_VIDEO_PROGRESS_STAGES.contains(&stage)
 }
@@ -208,6 +257,7 @@ pub fn build_comfy_completed_event(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkerJobKind {
     LocalLlmInvoke,
+    EditorMedia,
     Hyperframes,
     RemotionRenderVideo,
     ComfyImageGeneration,
@@ -217,6 +267,7 @@ pub enum WorkerJobKind {
     VerticalDramaFootageRender,
     VerticalDramaAudioScoring,
     VerticalDramaSpeakerAware,
+    UnifiedAudio,
     HermesMediaImage,
     HermesMediaVideo,
     HermesConnectionAuthorize,
@@ -228,6 +279,19 @@ pub enum WorkerJobKind {
 pub fn classify_job_type(job_type: &str) -> WorkerJobKind {
     match job_type {
         LOCAL_LLM_INVOKE_JOB_TYPE => WorkerJobKind::LocalLlmInvoke,
+        EDITOR_VIDEO_RENDER_JOB_TYPE
+        | EDITOR_MEDIA_PROBE_JOB_TYPE
+        | EDITOR_MEDIA_PROXY_JOB_TYPE
+        | EDITOR_MEDIA_WAVEFORM_JOB_TYPE
+        | EDITOR_MEDIA_THUMBNAIL_JOB_TYPE
+        | EDITOR_MEDIA_ANALYSIS_JOB_TYPE
+        | EDITOR_MEDIA_AUDIO_EXTRACT_JOB_TYPE
+        | EDITOR_MEDIA_AUDIO_EXPORT_JOB_TYPE
+        | EDITOR_MEDIA_AI_MUSIC_JOB_TYPE
+        | EDITOR_MEDIA_AI_MEDIA_STUDIO_JOB_TYPE
+        | EDITOR_MEDIA_PRIVACY_TRACK_JOB_TYPE
+        | EDITOR_MEDIA_RECORDING_NORMALIZE_JOB_TYPE
+        | EDITOR_VIDEO_RENDER_STILL_JOB_TYPE => WorkerJobKind::EditorMedia,
         HYPERFRAMES_JOB_TYPE => WorkerJobKind::Hyperframes,
         REMOTION_RENDER_VIDEO_JOB_TYPE => WorkerJobKind::RemotionRenderVideo,
         COMFY_IMAGE_GENERATION_JOB_TYPE => WorkerJobKind::ComfyImageGeneration,
@@ -245,6 +309,7 @@ pub fn classify_job_type(job_type: &str) -> WorkerJobKind {
         | VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE => WorkerJobKind::VerticalDramaAudioScoring,
         VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE
         | VERTICAL_DRAMA_SPEAKER_AWARE_EDIT_PLAN_JOB_TYPE => WorkerJobKind::VerticalDramaSpeakerAware,
+        UNIFIED_AUDIO_TTS_JOB_TYPE | UNIFIED_AUDIO_TRAINING_JOB_TYPE | UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE | UNIFIED_AUDIO_ALIGN_JOB_TYPE => WorkerJobKind::UnifiedAudio,
         HERMES_MEDIA_IMAGE_JOB_TYPE => WorkerJobKind::HermesMediaImage,
         HERMES_MEDIA_VIDEO_JOB_TYPE => WorkerJobKind::HermesMediaVideo,
         HERMES_CONNECTION_AUTHORIZE_JOB_TYPE => WorkerJobKind::HermesConnectionAuthorize,
@@ -1776,6 +1841,31 @@ mod tests {
             WorkerJobKind::Hyperframes
         );
         assert_eq!(
+            classify_job_type(EDITOR_VIDEO_RENDER_JOB_TYPE),
+            WorkerJobKind::EditorMedia
+        );
+        for job_type in [
+            EDITOR_MEDIA_PROBE_JOB_TYPE,
+            EDITOR_MEDIA_PROXY_JOB_TYPE,
+            EDITOR_MEDIA_WAVEFORM_JOB_TYPE,
+            EDITOR_MEDIA_THUMBNAIL_JOB_TYPE,
+            EDITOR_MEDIA_ANALYSIS_JOB_TYPE,
+            EDITOR_MEDIA_AUDIO_EXTRACT_JOB_TYPE,
+            EDITOR_MEDIA_AUDIO_EXPORT_JOB_TYPE,
+            EDITOR_MEDIA_AI_MUSIC_JOB_TYPE,
+            EDITOR_MEDIA_AI_MEDIA_STUDIO_JOB_TYPE,
+            EDITOR_MEDIA_PRIVACY_TRACK_JOB_TYPE,
+            EDITOR_MEDIA_RECORDING_NORMALIZE_JOB_TYPE,
+            EDITOR_VIDEO_RENDER_STILL_JOB_TYPE,
+        ] {
+            assert_eq!(classify_job_type(job_type), WorkerJobKind::EditorMedia);
+        }
+        assert_eq!(
+            editor_media_operation_capability("media.audio_export"),
+            Some("editor-media-operation-media-audio_export")
+        );
+        assert!(editor_media_operation_capability("media.ai_music").is_none());
+        assert_eq!(
             classify_job_type(HERMES_MEDIA_IMAGE_JOB_TYPE),
             WorkerJobKind::HermesMediaImage
         );
@@ -1806,6 +1896,16 @@ mod tests {
         assert_eq!(
             classify_job_type(VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE),
             WorkerJobKind::VerticalDramaAudioScoring
+        );
+        assert_eq!(classify_job_type(UNIFIED_AUDIO_TTS_JOB_TYPE), WorkerJobKind::UnifiedAudio);
+        assert_eq!(classify_job_type(UNIFIED_AUDIO_TRAINING_JOB_TYPE), WorkerJobKind::UnifiedAudio);
+        assert_eq!(
+            classify_job_type(UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE),
+            WorkerJobKind::UnifiedAudio
+        );
+        assert_eq!(
+            classify_job_type(UNIFIED_AUDIO_ALIGN_JOB_TYPE),
+            WorkerJobKind::UnifiedAudio
         );
         assert_eq!(classify_job_type("video_assembly"), WorkerJobKind::Unknown);
     }

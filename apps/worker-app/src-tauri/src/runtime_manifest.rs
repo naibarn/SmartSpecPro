@@ -40,6 +40,10 @@ pub struct RuntimePackManifest {
     pub remotion_sidecar_script_path: Option<String>,
     #[serde(default)]
     pub transcription: Option<RuntimeTranscriptionManifest>,
+    /// Optional provider-neutral ASR packs. Keeping this separate from the
+    /// legacy whisper.cpp entry makes old signed manifests remain readable.
+    #[serde(default)]
+    pub transcription_profiles: Vec<RuntimeTranscriptionProfile>,
 }
 
 /// The transcription runtime is deliberately part of the signed runtime-pack
@@ -57,6 +61,29 @@ pub struct RuntimeTranscriptionManifest {
     pub model_path: String,
     pub model_sha256: String,
     pub model_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RuntimeTranscriptionProfile {
+    pub engine: String,
+    pub version: String,
+    pub runner_path: String,
+    #[serde(default)]
+    pub runner_sha256: Option<String>,
+    pub model: String,
+    #[serde(default)]
+    pub model_path: Option<String>,
+    #[serde(default)]
+    pub model_sha256: Option<String>,
+    #[serde(default)]
+    pub supported_languages: Vec<String>,
+    #[serde(default)]
+    pub word_timestamps: bool,
+    #[serde(default)]
+    pub diarization: bool,
+    #[serde(default)]
+    pub max_duration_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

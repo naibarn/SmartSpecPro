@@ -67,6 +67,7 @@ interface PreviewPlayerProps {
   onAddKeyframeAtCurrentTime?: (clipId: string) => void;
   onDeleteKeyframeAtCurrentTime?: (clipId: string) => void;
   onOpenKeyframePanel?: () => void;
+  onSaveCurrentFrame?: () => void;
   onTextDiagnostics?: (diagnostics: PreviewTextDiagnostics) => void;
   outputWidth?: number;
   outputHeight?: number;
@@ -216,6 +217,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   onAddKeyframeAtCurrentTime,
   onDeleteKeyframeAtCurrentTime,
   onOpenKeyframePanel,
+  onSaveCurrentFrame,
   onTextDiagnostics,
   outputWidth = 16,
   outputHeight = 9,
@@ -441,7 +443,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
             letterSpacing: config.letterSpacing ? `${config.letterSpacing}px` : undefined,
             cursor: 'pointer',
             pointerEvents: 'auto',
-            zIndex: 20 + index,
+            zIndex: index + 1,
             ...getTextEffectStyle(config),
           } satisfies React.CSSProperties,
         };
@@ -2338,6 +2340,17 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
             >
               Frame Guide
             </button>
+            {onSaveCurrentFrame && (
+              <button
+                className="control-button text-button"
+                onClick={onSaveCurrentFrame}
+                disabled={!activeClip}
+                title="Save the current playhead frame as a PNG job"
+                aria-label="Save current frame to image"
+              >
+                Save Frame
+              </button>
+            )}
             <div
               className="resolution-toggle"
               title="Preview display resolution"

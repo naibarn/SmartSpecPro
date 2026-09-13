@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type MutableRefObject } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Clipboard, Crop, Download, ExternalLink, Film, Grid3X3, History, ImagePlus, Layers, Loader2, Maximize2, Mic, Music2, Pencil, Play, RefreshCw, Scissors, Search, Square, Trash2, Video, X } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Clipboard, Crop, Download, ExternalLink, Film, Grid3X3, History, ImagePlus, Layers, Loader2, Maximize2, Mic, Music2, Pencil, Play, RefreshCw, Scissors, Search, Sparkles, Square, Trash2, Video, X } from "lucide-react";
 import { sanitizeProjectName } from "@smartspec/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10414,6 +10414,10 @@ export default function StoryboardReviewPage() {
               )}
               {locale === "th" ? "New Project" : "New Project"}
             </Button>
+            <Button type="button" size="sm" variant="outline" className="h-8 w-full px-2 text-xs sm:w-auto" onClick={() => setLocation("/storyboard-review/new/skill-framework")}>
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+              {locale === "th" ? "Skill Framework" : "Skill Framework"}
+            </Button>
             <Button variant="outline" size="sm" className="h-8 w-full px-2 text-xs sm:w-auto" onClick={() => setLocation("/media-studio")}>
               {t("mediaStudio.title")}
             </Button>
@@ -13862,12 +13866,14 @@ export default function StoryboardReviewPage() {
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="mt-3 flex items-center justify-between gap-2">
-                  <Badge variant="secondary">{t("mediaStudio.storyboardReviewReadyBadge", { completed: completedCount, total: tasks.length })}</Badge>
+                <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
+                  <Badge variant="secondary" className="max-w-full shrink-0">
+                    {t("mediaStudio.storyboardReviewReadyBadge", { completed: completedCount, total: tasks.length })}
+                  </Badge>
                   <Button
                     type="button"
                     size="sm"
-                    className="h-8 px-2 text-xs"
+                    className="h-8 w-full max-w-full shrink-0 whitespace-nowrap px-2 text-xs sm:w-auto"
                     onClick={createManualStoryboardReviewProject}
                     disabled={isCreatingManualReviewProject}
                   >
@@ -13877,6 +13883,10 @@ export default function StoryboardReviewPage() {
                       <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
                     )}
                     {locale === "th" ? "New Project" : "New Project"}
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" className="h-8 w-full max-w-full shrink-0 whitespace-nowrap px-2 text-xs sm:w-auto" onClick={() => setLocation("/storyboard-review/new/skill-framework")}>
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    {locale === "th" ? "Skill Framework" : "Skill Framework"}
                   </Button>
                 </div>
                 <div className="relative mt-3">

@@ -6,11 +6,50 @@ import {
   type WorkerRuntimeId,
   type WorkerRuntimeValidationCheck,
 } from "../../shared/workerRuntimeReleases";
+import { REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION } from "../../shared/workerRuntime";
 
 const deniedSidecarHashes = new Set([
   "f04671084625130d4ed59f89ebb29000a411247ed2e8491ecfa3216b6e9e0774",
   "4a73439229e3c18034ada679a32f005e7e126376631405062f05e88a5562920e",
 ]);
+
+// Runner 0.1.1 is the first packaged runner that exposes the capability
+// probe consumed by the Worker App model manager. Older archives can execute
+// jobs, but cannot provide truthful adapter readiness and would leave the UI
+// blocked after installation.
+export const MIN_SPEAKER_AWARE_RUNNER_VERSION = "0.1.1";
+// Runtime packs published from 2026.09.08.2 onward are required to carry the
+// Remotion sidecar. Without it the Worker App correctly withholds the
+// `remotion-render` claim hint, leaving Remotion jobs queued indefinitely.
+export const MIN_REMOTION_RUNTIME_VERSION = "2026.09.08.2";
+
+export function isRemotionRuntimeReadyManifest(
+  manifest: Record<string, unknown> | null,
+): boolean {
+  return Boolean(
+    manifest &&
+      stringField(manifest.remotionSidecarScriptPath) ===
+        "remotion-sidecar/render.mjs" &&
+      stringField(manifest.remotionPlatformContractVersion) ===
+        REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION &&
+      stringField(manifest.remotionRenderPackageVersion),
+  );
+}
+
+export function releaseRequiresRemotion(version: string): boolean {
+  const parse = (value: string) =>
+    value
+      .split(/[.+-]/)
+      .map((segment) => Number.parseInt(segment, 10))
+      .map((segment) => (Number.isFinite(segment) ? segment : 0));
+  const actual = parse(version);
+  const minimum = parse(MIN_REMOTION_RUNTIME_VERSION);
+  for (let index = 0; index < Math.max(actual.length, minimum.length); index += 1) {
+    const diff = (actual[index] ?? 0) - (minimum[index] ?? 0);
+    if (diff !== 0) return diff > 0;
+  }
+  return true;
+}
 
 export function requiredRuntimeArchiveFiles(
   runtimeId: WorkerRuntimeId
@@ -53,6 +92,11 @@ export function requiredRuntimeArchiveFiles(
       "runtime-pack/whisper/.cache/hyperframes/whisper/models/ggml-large-v3.bin",
       "runtime-pack/remotion-sidecar/render.mjs",
       "runtime-pack/remotion-sidecar/node_modules/@smartspec/remotion-render/dist/index.js",
+      "runtime-pack/remotion-sidecar/node_modules/@remotion/compositor-darwin-arm64/remotion",
+      "runtime-pack/remotion-sidecar/node_modules/@remotion/compositor-darwin-arm64/ffmpeg",
+      "runtime-pack/remotion-sidecar/node_modules/@remotion/compositor-darwin-arm64/ffprobe",
+      "runtime-pack/remotion-sidecar/node_modules/@esbuild/darwin-arm64/bin/esbuild",
+      "runtime-pack/remotion-sidecar/node_modules/@rspack/binding-darwin-arm64/rspack.darwin-arm64.node",
       "sidecars/hyperframes-render",
     ];
   }
@@ -82,6 +126,20 @@ function stringField(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+export function isSupportedSpeakerAwareRunnerVersion(value: string): boolean {
+  const parse = (input: string) => {
+    const match = input.match(/^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/);
+    return match ? match.slice(1, 4).map(Number) : null;
+  };
+  const actual = parse(value);
+  const required = parse(MIN_SPEAKER_AWARE_RUNNER_VERSION);
+  if (!actual || !required) return false;
+  for (let index = 0; index < 3; index += 1) {
+    if (actual[index] !== required[index]) return actual[index] > required[index];
+  }
+  return true;
+}
+
 function checksumContains(
   checksumText: string,
   filePath: string,
@@ -97,9 +155,16 @@ function checksumContains(
   });
 }
 
+function speakerAwareRunnerPath(runtimeId: WorkerRuntimeId): string {
+  return runtimeId === "hyperframes-macos-arm64"
+    ? "speaker-aware/speaker-aware-runner"
+    : "speaker-aware/speaker-aware-runner.exe";
+}
+
 function validateSpeakerAwareRunnerMetadata(
   manifest: Record<string, unknown> | null,
   entries: Set<string>,
+  runtimeId: WorkerRuntimeId,
   checksumText: string
 ): boolean {
   const raw = manifest?.speakerAwareRunner;
@@ -112,9 +177,11 @@ function validateSpeakerAwareRunnerMetadata(
   const version = stringField(runner.version);
   const contractVersion = stringField(runner.contractVersion);
   const sha256 = stringField(runner.sha256).toLowerCase();
+  const expectedPath = speakerAwareRunnerPath(runtimeId);
   if (
-    relativePath !== "speaker-aware/speaker-aware-runner.exe" ||
+    relativePath !== expectedPath ||
     !version ||
+    !isSupportedSpeakerAwareRunnerVersion(version) ||
     contractVersion !== "feature-179-v1" ||
     !/^[a-f0-9]{64}$/.test(sha256)
   ) {
@@ -334,11 +401,11 @@ export async function validateRuntimePackArchive(input: {
   version: string;
   runtimeId: WorkerRuntimeId;
   publicKey?: string | null;
-}): {
+}): Promise<{
   manifest: Record<string, unknown> | null;
   checks: WorkerRuntimeValidationCheck[];
   valid: boolean;
-} {
+}> {
   const checks: WorkerRuntimeValidationCheck[] = [];
   const check = (id: string, ok: boolean, message: string) =>
     checks.push({ id, status: ok ? "ok" : "error", message });
@@ -388,6 +455,17 @@ export async function validateRuntimePackArchive(input: {
     "required_files",
     entriesContainFiles(entries, requiredRuntimeArchiveFiles(input.runtimeId)),
     "All platform runtime, HyperFrames, media, and transcription files are present."
+  );
+  const remotionRequired =
+    releaseRequiresRemotion(input.version);
+  const remotionEntriesPresent =
+    entries.has("runtime-pack/remotion-sidecar/render.mjs") &&
+    entries.has("runtime-pack/remotion-sidecar/node_modules/@smartspec/remotion-render/dist/index.js");
+  check(
+    "remotion_sidecar",
+    !remotionRequired ||
+      (isRemotionRuntimeReadyManifest(manifest) && remotionEntriesPresent),
+    "Remotion sidecar, dependency tree, and platform contract are present."
   );
   const signature =
     archive.files.get("runtime-pack/SHA256SUMS.sig")?.trim() ?? "";
@@ -447,8 +525,8 @@ export async function validateRuntimePackArchive(input: {
   );
   check(
     "speaker_aware_runner",
-    validateSpeakerAwareRunnerMetadata(manifest, entries, checksumText),
-    "A declared Feature 179 runner exists in the archive and is bound by SHA256SUMS."
+    validateSpeakerAwareRunnerMetadata(manifest, entries, input.runtimeId, checksumText),
+    `A declared Feature 179 runner (>= ${MIN_SPEAKER_AWARE_RUNNER_VERSION}) exists in the archive and is bound by SHA256SUMS.`
   );
   let archiveStat: fs.Stats | null = null;
   try {

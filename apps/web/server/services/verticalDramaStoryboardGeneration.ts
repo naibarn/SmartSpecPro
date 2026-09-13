@@ -74,6 +74,8 @@ import {
 } from "./verticalDramaStorySafety";
 import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
 import { resolveVerticalDramaSupportingPresenceForShot } from "@shared/verticalDramaSeries/supportingPresence";
+import { canonicalizeStoryboardLocationGroups } from "@shared/verticalDramaSeries/locationGrouping";
+import { classifyDeviceMediatedCharacterRefs } from "@shared/verticalDramaSeries/characterPresence";
 import {
   deriveVerticalDramaEpisodeRuntimeSeconds,
   getActiveVerticalDramaShotDurations,
@@ -531,6 +533,7 @@ export interface GenerateStoryboardShotgridParams {
   tenantId?: string;
   seriesId: number;
   episodeId: number;
+  episodeGenerationSettings?: unknown;
   episodeTitle: string;
   episodeNumber: number;
   locale: VerticalDramaSeriesLocale;
@@ -1018,7 +1021,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     sceneBeatInstruction,
     existingLocationsInstruction,
     crossEpisodeWardrobeInstruction,
-    `Characters (reference these ids in "characters" and "required_character_refs"). "required_character_refs" means characters physically visible in the primary room/scene only. For a caller who is heard or shown only through a phone/video-call screen, put the character id in "screen_caller_refs" instead; never put that caller in "required_character_refs". The caller's approved portrait will still be attached and the image prompt must show that portrait only inside the visible call screen:\n${characterLines}`,
+    `Characters (reference these ids in "characters" and "required_character_refs"). "required_character_refs" means characters physically visible in the primary room/scene only. For a caller who is heard or shown only through a call, put the character id in "screen_caller_refs" instead; never put that caller in "required_character_refs". The caller's approved portrait will still be attached and the image prompt must show that portrait only inside a separate floating vertical virtual video-call screen/overlay, never on a real phone, tablet, monitor, or as a physical person in the scene:\n${characterLines}`,
     [
       "SHOT-LOCAL SUPPORTING PRESENCE (MANDATORY PER SHOT):",
       "Use supporting_presence for generic visible people or groups who are present in THIS shot but are not identity-locked series characters, such as one police officer, local villagers, building members, staff, or customers.",
@@ -1125,6 +1128,12 @@ export async function generateStoryboardShotgrid(
       schema: storyboardShotgridOutputSchema,
       label: "Storyboard shotgrid",
       planningAttemptObserver: params.planningAttemptObserver,
+      verticalDramaContext: {
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        taskClass: "storyboard_planning",
+        settings: params.episodeGenerationSettings,
+      },
     });
 
   // The selected profile is the production source of truth. Let the skill
@@ -1169,6 +1178,12 @@ export async function generateStoryboardShotgrid(
       schema: storyboardShotgridOutputSchema,
       label: `Storyboard shotgrid safe repair ${policyRepairAttempts}`,
       planningAttemptObserver: params.planningAttemptObserver,
+      verticalDramaContext: {
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        taskClass: "storyboard_planning",
+        settings: params.episodeGenerationSettings,
+      },
     });
     storyboardData = repaired.data;
     response = repaired.response;
@@ -1212,6 +1227,14 @@ export async function generateStoryboardShotgrid(
       ...(c.variants?.map(v => v.characterKey) ?? []),
     ])
   );
+  const characterPresenceSources = params.characters.flatMap(c => [
+    { characterKey: c.characterId, name: c.name },
+    ...(c.variants ?? []).map(variant => ({
+      characterKey: variant.characterKey,
+      name: c.name,
+      parentCharacterKey: c.characterId,
+    })),
+  ]);
   // Dialogue-speaker coverage (deterministic reconcile, added 2026-07-15) —
   // guarantees every character who SPEAKS a `dialogue_lines[]` line in a
   // shot's matching `episodeDraft` draft is present in that shot's
@@ -1282,8 +1305,13 @@ export async function generateStoryboardShotgrid(
       ...shot.characters,
       ...shot.required_character_refs,
     ].filter(id => validCharacterIds.has(id));
+    const explicitPresence = classifyDeviceMediatedCharacterRefs({
+      characterRefs: [...validCharacterIds],
+      characters: characterPresenceSources,
+      screenCallerCharacterRefs: explicitCallerIds,
+    });
     const physicallyPresentCharacterKeys = new Set(
-      [...validCharacterIds].filter(id => !explicitCallerIds.includes(id))
+      explicitPresence.sceneCharacterRefs,
     );
     const validLlmIds = candidateLlmIds.filter(id =>
       physicallyPresentCharacterKeys.has(id)
@@ -1495,6 +1523,34 @@ export async function generateStoryboardShotgrid(
         shot_numbers: group.shotNumbers,
       };
     });
+  }
+
+  // Physical-place identity is separate from camera coverage. A model can
+  // describe the same exterior as "หน้าคลินิก" and "ลานจอดรถหน้าคลินิก";
+  // those are two views of one place, not two location-stock rows. Fold only
+  // the shared, structural view-only prefixes in the pure shared helper. It
+  // deliberately keeps two different known roster keys separate, so this is
+  // not a broad fuzzy merge of locations.
+  if (storyboardData.distinct_locations?.length) {
+    const canonicalGroups = canonicalizeStoryboardLocationGroups(
+      storyboardData.distinct_locations.map(group => ({
+        locationKey: group.location_key,
+        locationName: group.location_name,
+        description: group.description,
+        shotNumbers: group.shot_numbers,
+      })),
+      {
+        knownLocationKeys: new Set(
+          (params.existingLocations ?? []).map(location => location.locationKey),
+        ),
+      },
+    );
+    storyboardData.distinct_locations = canonicalGroups.map(group => ({
+      location_key: group.locationKey,
+      location_name: group.locationName,
+      description: group.description,
+      shot_numbers: group.shotNumbers,
+    }));
   }
 
   const usage = response.usage;

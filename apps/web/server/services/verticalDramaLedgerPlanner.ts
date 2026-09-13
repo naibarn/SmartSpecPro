@@ -324,6 +324,10 @@ export async function runVerticalDramaLedgerPlanning(
     maxTokens: 8000,
     schema: rawLedgerPlannerOutputSchema,
     label: "Vertical Drama ledger planning",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "story_architecture",
+    },
   });
 
   const { ledgers, droppedRowCount } = validateAndCleanLedgers(

@@ -18,6 +18,7 @@ import type {
   SilentRegion,
   SilenceDetectionConfig,
   AnalysisStage,
+  Clip,
 } from '../../types/videoEditor';
 import {
   generateId,
@@ -113,11 +114,33 @@ export function shouldSkipSilence(params: {
 
 interface AssetWithWaveform {
   type?: 'video' | 'audio' | 'image';
+  name?: string;
+  filename?: string;
+  duration?: number;
   path?: string;
   originalPath?: string;
   url?: string;
   uri?: string;
   waveformData?: number[];
+}
+
+interface AnalysisSourceOption {
+  assetId: string;
+  asset: AssetWithWaveform;
+  assetUri: string;
+  label: string;
+  trackIds: string[];
+  clipRefs: Array<{ clip: Clip; trackId: string }>;
+}
+
+interface AudioStreamOption {
+  streamIndex: number;
+  title?: string;
+  language?: string;
+  codec?: string;
+  channels?: number;
+  channelLayout?: string;
+  isDefault: boolean;
 }
 
 interface DetectedSilenceSegment {
@@ -160,6 +183,11 @@ function getClipDurationSeconds(clip: any): number {
 
 function getClipTrimInSeconds(clip: any): number {
   return toSeconds(clip?.trimIn, toSecondsFromMs(clip?.inMs) ?? 0);
+}
+
+function getClipSpeed(clip: any): number {
+  const speed = toSeconds(clip?.speed ?? clip?.playbackRate, 1);
+  return speed > 0 ? speed : 1;
 }
 
 function getProjectDurationSeconds(project: VideoEditorProject): number {
@@ -325,7 +353,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
   // UI state
   const [playbackTime, setPlaybackTime] = useState(0);
   const [timelineZoom, setTimelineZoom] = useState(100);
-  const [applyToAllTracks, setApplyToAllTracks] = useState(false);
+  const [applyToAllTracks, setApplyToAllTracks] = useState(true);
 
   // Preview player state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -336,6 +364,10 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
   const [waveformData, setWaveformData] = useState<number[] | null>(null);
   const [waveformLoading, setWaveformLoading] = useState(false);
   const [waveformError, setWaveformError] = useState(false);
+  const [selectedSourceAssetId, setSelectedSourceAssetId] = useState<string | null>(null);
+  const [audioStreams, setAudioStreams] = useState<AudioStreamOption[]>([]);
+  const [selectedAudioStreamIndex, setSelectedAudioStreamIndex] = useState<number | null>(null);
+  const [audioStreamsLoading, setAudioStreamsLoading] = useState(false);
   const [timelineViewportNode, setTimelineViewportNode] = useState<HTMLDivElement | null>(null);
   const [timelineViewportSize, setTimelineViewportSize] = useState({ width: 0, height: 0 });
   const previewSeededRef = useRef(false);
@@ -357,43 +389,175 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     setTimelineViewportNode(node);
   }, []);
 
+  const audioTracks = useMemo(() => (
+    project.timeline.tracks.filter((track) => (
+      (track.type === 'audio' || track.type === 'video') && track.clips.length > 0
+    ))
+  ), [project]);
+
+  // One option represents one source asset, including every occurrence of it
+  // on the timeline. This is deterministic for a single video and explicit
+  // for multi-camera projects.
+  const analysisSources = useMemo<AnalysisSourceOption[]>(() => {
+    const byAssetId = new Map<string, AnalysisSourceOption>();
+    const addSources = (includeAudioFallback: boolean) => {
+      for (const track of project.timeline.tracks) {
+        if (!includeAudioFallback && track.type !== 'video') continue;
+        if (includeAudioFallback && track.type !== 'audio' && track.type !== 'video') continue;
+        for (const clip of track.clips) {
+          const asset = project.assets[clip.assetId] as AssetWithWaveform | undefined;
+          const assetUri = resolveAssetUri(asset);
+          if (!asset || !assetUri || asset.type === 'image') continue;
+          const isVideoSource = asset.type === 'video' || track.type === 'video';
+          const isAudioSource = asset.type === 'audio' || track.type === 'audio';
+          if (!includeAudioFallback && !isVideoSource) continue;
+          if (includeAudioFallback && !isVideoSource && !isAudioSource) continue;
+
+          const existing = byAssetId.get(clip.assetId);
+          if (existing) {
+            existing.trackIds = Array.from(new Set([...existing.trackIds, track.id]));
+            existing.clipRefs.push({ clip, trackId: track.id });
+            continue;
+          }
+
+          byAssetId.set(clip.assetId, {
+            assetId: clip.assetId,
+            asset,
+            assetUri,
+            label: asset.name?.trim() || asset.filename?.trim() || clip.assetId,
+            trackIds: [track.id],
+            clipRefs: [{ clip, trackId: track.id }],
+          });
+        }
+      }
+    };
+
+    addSources(false);
+    if (byAssetId.size === 0) addSources(true);
+    return Array.from(byAssetId.values()).sort((left, right) => {
+      const leftStart = Math.min(...left.clipRefs.map(({ clip }) => getClipStartSeconds(clip)));
+      const rightStart = Math.min(...right.clipRefs.map(({ clip }) => getClipStartSeconds(clip)));
+      return leftStart - rightStart || left.label.localeCompare(right.label);
+    });
+  }, [project]);
+
+  const selectedSource = useMemo(
+    () => analysisSources.find((source) => source.assetId === selectedSourceAssetId) ?? analysisSources[0] ?? null,
+    [analysisSources, selectedSourceAssetId],
+  );
+
+  const formatAudioStreamLabel = useCallback((stream: AudioStreamOption, ordinal: number) => {
+    const name = stream.title?.trim() || `Audio ${ordinal + 1}`;
+    const details = [
+      stream.language?.trim(),
+      stream.channelLayout?.trim() || (stream.channels ? `${stream.channels}ch` : undefined),
+      stream.codec?.trim(),
+    ].filter(Boolean);
+    return details.length > 0 ? `${name} · ${details.join(' · ')}` : name;
+  }, []);
+
+  useEffect(() => {
+    if (analysisSources.length === 0) {
+      setSelectedSourceAssetId(null);
+      return;
+    }
+    // Keep the first source as the stable default. The selected clip remains
+    // the preview preference, while this dropdown is the explicit analysis
+    // source choice for multi-camera projects.
+    const nextId = analysisSources[0].assetId;
+    if (!analysisSources.some((source) => source.assetId === selectedSourceAssetId)) {
+      setSelectedSourceAssetId(nextId);
+    }
+  }, [analysisSources, project, selectedClipId, selectedClipIds, selectedSourceAssetId]);
+
+  // Discover embedded audio tracks using the same absolute ffprobe stream
+  // index convention as Worker App. This is best-effort so waveform loading
+  // still works with older adapters that do not expose probe().
+  useEffect(() => {
+    let cancelled = false;
+    const sourceUri = selectedSource?.assetUri ?? '';
+    setAudioStreams([]);
+    setSelectedAudioStreamIndex(null);
+    if (!sourceUri) {
+      setAudioStreamsLoading(false);
+      return () => { cancelled = true; };
+    }
+
+    // Existing cached peaks are enough for a standalone audio asset. Video
+    // sources still probe even when cached peaks exist because their embedded
+    // audio-track dropdown must remain available.
+    if (
+      selectedSource?.asset.type === 'audio' &&
+      normalizeWaveformPeaks(selectedSource.asset.waveformData).length > 0
+    ) {
+      setAudioStreamsLoading(false);
+      return () => { cancelled = true; };
+    }
+
+    setAudioStreamsLoading(true);
+    const discover = async () => {
+      try {
+        const client = await createMediaJobClient();
+        const result = await client.probe(sourceUri);
+        if (cancelled || !mountedRef.current) return;
+        const rawStreams = (result as { derived?: { streams?: unknown } }).derived?.streams;
+        const streams = Array.isArray(rawStreams) ? rawStreams : [];
+        const audio = streams.flatMap((raw): AudioStreamOption[] => {
+          if (!raw || typeof raw !== 'object') return [];
+          const value = raw as Record<string, unknown>;
+          if (value.codec_type !== 'audio' || typeof value.index !== 'number') return [];
+          const tags = value.tags && typeof value.tags === 'object'
+            ? value.tags as Record<string, unknown>
+            : {};
+          const disposition = value.disposition && typeof value.disposition === 'object'
+            ? value.disposition as Record<string, unknown>
+            : {};
+          return [{
+            streamIndex: value.index,
+            title: typeof tags.title === 'string' ? tags.title : undefined,
+            language: typeof tags.language === 'string' ? tags.language : undefined,
+            codec: typeof value.codec_name === 'string' ? value.codec_name : undefined,
+            channels: typeof value.channels === 'number' ? value.channels : undefined,
+            channelLayout: typeof value.channel_layout === 'string' ? value.channel_layout : undefined,
+            isDefault: disposition.default === 1,
+          }];
+        });
+        setAudioStreams(audio);
+        setSelectedAudioStreamIndex(audio.find((stream) => stream.isDefault)?.streamIndex ?? audio[0]?.streamIndex ?? null);
+      } catch (error) {
+        if (!cancelled && mountedRef.current) console.warn('Audio stream discovery failed:', error);
+      } finally {
+        if (!cancelled && mountedRef.current) setAudioStreamsLoading(false);
+      }
+    };
+    void discover();
+    return () => { cancelled = true; };
+  }, [selectedSource?.assetUri]);
+
+  useEffect(() => {
+    setAnalysisComplete(false);
+    setRegions([]);
+    setRawRegions([]);
+    setAnalyzedPreviewClip(null);
+    setWaveformData(null);
+    setWaveformError(false);
+  }, [selectedSourceAssetId]);
+
   // Waveform data availability check
   useEffect(() => {
     let cancelled = false;
 
     const findWaveformSource = (): { assetUri: string; peaks: number[] | null } => {
-      if (analyzedPreviewClip?.videoUrl) {
-        return { assetUri: analyzedPreviewClip.videoUrl, peaks: null };
-      }
-
-      const pickFromTrack = (trackId: string): { assetUri: string; peaks: number[] | null } | null => {
-        const track = project.timeline.tracks.find((t) => t.id === trackId);
-        if (!track) return null;
-        for (const clip of track.clips) {
-          const asset = project.assets[clip.assetId] as AssetWithWaveform | undefined;
-          if (!asset || asset.type === 'image') continue;
-          const assetUri = resolveAssetUri(asset);
-          if (!assetUri) continue;
-          const peaks = normalizeWaveformPeaks(asset.waveformData);
-          return { assetUri, peaks: peaks.length > 0 ? peaks : null };
-        }
-        return null;
+      if (!selectedSource) return { assetUri: '', peaks: null };
+      // Cached peaks are only safe for the default/unspecified stream. A
+      // specific embedded track must be regenerated from that stream.
+      const cachedPeaks = selectedAudioStreamIndex === null
+        ? normalizeWaveformPeaks(selectedSource.asset.waveformData)
+        : [];
+      return {
+        assetUri: selectedSource.assetUri,
+        peaks: cachedPeaks.length > 0 ? cachedPeaks : null,
       };
-
-      for (const trackId of selectedTrackIds) {
-        const selected = pickFromTrack(trackId);
-        if (selected) return selected;
-      }
-
-      for (const track of project.timeline.tracks) {
-        if ((track.type !== 'audio' && track.type !== 'video') || track.clips.length === 0) {
-          continue;
-        }
-        const fallback = pickFromTrack(track.id);
-        if (fallback) return fallback;
-      }
-
-      return { assetUri: '', peaks: null };
     };
 
     const source = findWaveformSource();
@@ -421,7 +585,9 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     const fetchWaveform = async () => {
       try {
         const client = await createMediaJobClient();
-        const result = await client.getWaveformPeaks(source.assetUri);
+        const result = selectedAudioStreamIndex === null
+          ? await client.getWaveformPeaks(source.assetUri)
+          : await client.getWaveformPeaks(source.assetUri, 100, selectedAudioStreamIndex);
         if (!mountedRef.current || cancelled) return;
         const peaks = normalizeWaveformPeaks((result as { derived?: { peaks?: unknown } }).derived?.peaks);
         setWaveformData(peaks.length > 0 ? peaks : null);
@@ -440,7 +606,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [project, selectedTrackIds, analyzedPreviewClip?.videoUrl]);
+  }, [selectedSource, selectedAudioStreamIndex]);
 
   // Abort controller and stage timers cleanup
   useEffect(() => {
@@ -486,12 +652,6 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
       .filter((r) => r.selected && !r.skipped && r.adjustedDuration > 0)
       .sort((a, b) => a.adjustedStartTime - b.adjustedStartTime);
   }, [regions]);
-
-  // Get tracks with audio content (audio tracks + video tracks which contain audio)
-  const audioTracks = useMemo(() =>
-    project.timeline.tracks.filter((t) => (t.type === 'audio' || t.type === 'video') && t.clips.length > 0),
-    [project]
-  );
 
   // Resolve preview asset with priority:
   // 1) currently selected timeline clip, 2) selected analysis tracks, 3) any visual clip in project.
@@ -551,6 +711,18 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
       return null;
     };
 
+    const findSelectedSourceCandidate = (): ClipCandidate | null => {
+      const sourceClip = selectedSource?.clipRefs.find(({ clip }) => {
+        const asset = project.assets[clip.assetId] as AssetWithWaveform | undefined;
+        return Boolean(resolveAssetUri(asset));
+      });
+      if (!sourceClip) return null;
+      const asset = project.assets[sourceClip.clip.assetId] as AssetWithWaveform | undefined;
+      const assetUri = resolveAssetUri(asset);
+      if (!asset || !assetUri) return null;
+      return { clip: sourceClip.clip, asset: { ...asset, path: assetUri } };
+    };
+
     // After analysis, always preview the exact clip source that was analyzed.
     // This avoids edge-cases where selection/project scan points at a non-playable clip.
     if (analysisComplete && analyzedPreviewClip?.videoUrl) {
@@ -573,10 +745,12 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     }
 
     const selectedClipCandidate = findSelectedClipCandidate();
+    const selectedSourceCandidate = findSelectedSourceCandidate();
     const preferred =
       (selectedClipCandidate && (selectedClipCandidate.asset.type === 'video' || selectedClipCandidate.asset.type === 'image')
         ? selectedClipCandidate
         : null) ||
+      selectedSourceCandidate ||
       findFirstVisualClipInTracks(selectedTrackIds) ||
       findFirstVisualClipInProject() ||
       selectedClipCandidate;
@@ -612,7 +786,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
       activeClip: clipInfo,
       duration: Math.max(timelineDuration, fallbackDuration),
     };
-  }, [project, selectedTrackIds, selectedClipId, selectedClipIds, analyzedPreviewClip, analysisComplete]);
+  }, [project, selectedTrackIds, selectedClipId, selectedClipIds, analyzedPreviewClip, analysisComplete, selectedSource]);
 
   useEffect(() => {
     if (!timelineViewportNode) return;
@@ -708,7 +882,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     const end = Math.max(start, Math.max(startTime, endTime));
     if (end - start < 0.05) return;
 
-    const fallbackTrackId = selectedTrackIds[0] || audioTracks[0]?.id || 'manual-track';
+    const fallbackTrackId = selectedSource?.trackIds[0] || selectedTrackIds[0] || audioTracks[0]?.id || 'manual-track';
     const region: SilentRegion = {
       id: generateId('region'),
       startTime: start,
@@ -729,7 +903,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
       return next;
     });
     setSkipSilenceEnabled(true);
-  }, [analysisComplete, selectedTrackIds, audioTracks, threshold]);
+  }, [analysisComplete, selectedSource, selectedTrackIds, audioTracks, threshold]);
 
   const handleAddCutAtPlayhead = useCallback(() => {
     const time = Number.isFinite(playbackTime) ? Math.max(0, playbackTime) : 0;
@@ -748,14 +922,15 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
 
   // Handle analyze button
   const handleAutoDetect = async () => {
-    if (selectedTrackIds.length === 0) return;
-
-    // Filter out invalid track IDs (tracks that no longer exist)
-    const validTrackIds = selectedTrackIds.filter((id) =>
-      audioTracks.some((track) => track.id === id)
-    );
-    if (validTrackIds.length === 0) {
-      setAnalysisError('Selected tracks no longer exist. Please select a valid track.');
+    if (!selectedSource) {
+      setAnalysisError('เลือก video source ที่ต้องการวิเคราะห์ก่อน');
+      return;
+    }
+    const sourceClipRefs = selectedSource.clipRefs.filter(({ clip }) => (
+      Boolean(resolveAssetUri(project.assets[clip.assetId] as AssetWithWaveform | undefined))
+    ));
+    if (sourceClipRefs.length === 0) {
+      setAnalysisError('ไม่พบ clip ของ video source ที่เลือกใน timeline');
       return;
     }
 
@@ -788,24 +963,18 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
     }, 3000));
 
     try {
-      // Find asset URI
-      const firstTrack = project.timeline.tracks.find((t) => t.id === validTrackIds[0]);
-      if (!firstTrack || firstTrack.clips.length === 0) {
-        throw new Error('No clips found in selected track');
-      }
-
-      const firstClip = firstTrack.clips[0];
-      const asset = project.assets[firstClip.assetId] as AssetWithWaveform | undefined;
-      const assetUri = resolveAssetUri(asset);
+      const firstSourceClip = sourceClipRefs[0].clip;
+      const asset = selectedSource.asset;
+      const assetUri = selectedSource.assetUri;
       if (!asset || !assetUri) {
         throw new Error('Asset not found');
       }
 
       setAnalyzedPreviewClip({
         videoUrl: assetUri,
-        clipStartTime: getClipStartSeconds(firstClip),
-        trimIn: getClipTrimInSeconds(firstClip),
-        clipDuration: getClipDurationSeconds(firstClip),
+        clipStartTime: getClipStartSeconds(firstSourceClip),
+        trimIn: getClipTrimInSeconds(firstSourceClip),
+        clipDuration: getClipDurationSeconds(firstSourceClip),
         isImage: asset.type === 'image',
       });
 
@@ -817,6 +986,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
       const result = await client.detectDeadAir(assetUri, {
         thresholdDb: threshold,
         minSilenceMs: minDuration * 1000,
+        ...(selectedAudioStreamIndex === null ? {} : { audioStreamIndex: selectedAudioStreamIndex }),
       }, (progress) => {
         if (abortController.signal.aborted || !mountedRef.current) return;
 
@@ -858,52 +1028,51 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
 
       // Map segments to regions
       const silenceSegments = extractSilenceSegmentsFromDerived(result.derived);
-      const clipStart = getClipStartSeconds(firstClip);
-      const clipTrimIn = getClipTrimInSeconds(firstClip);
-      const clipDuration = getClipDurationSeconds(firstClip);
-      const clipSourceEnd = clipDuration > 0
-        ? clipTrimIn + clipDuration
-        : Number.POSITIVE_INFINITY;
-
       const rawRegions: SilentRegion[] = silenceSegments
-        .map((seg): SilentRegion | null => {
+        .flatMap((seg): SilentRegion[] => {
           const startMs = toMs(seg?.startMs, toMs(seg?.start, 0) * 1000);
           const endMs = toMs(seg?.endMs, toMs(seg?.end, 0) * 1000);
           if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
-            return null;
+            return [];
           }
 
           const sourceStart = Math.max(0, startMs / 1000);
           const sourceEnd = Math.max(sourceStart, endMs / 1000);
-
-          const visibleSourceStart = Math.max(sourceStart, clipTrimIn);
-          const visibleSourceEnd = Math.min(sourceEnd, clipSourceEnd);
-          if (!Number.isFinite(visibleSourceStart) || !Number.isFinite(visibleSourceEnd) || visibleSourceEnd <= visibleSourceStart) {
-            return null;
-          }
-
-          const timelineStart = clipStart + (visibleSourceStart - clipTrimIn);
-          const timelineEnd = clipStart + (visibleSourceEnd - clipTrimIn);
-          const regionDuration = timelineEnd - timelineStart;
-          if (!Number.isFinite(timelineStart) || !Number.isFinite(timelineEnd) || regionDuration <= 0) {
-            return null;
-          }
-
-          return {
-            id: generateId('region'),
-            startTime: timelineStart,
-            endTime: timelineEnd,
-            duration: regionDuration,
-            adjustedStartTime: 0,
-            adjustedEndTime: 0,
-            adjustedDuration: 0,
-            averageDb: toSeconds(seg?.averageDb, threshold),
-            trackId: firstTrack.id,
-            selected: true,
-            skipped: false,
-          };
+          return sourceClipRefs.flatMap(({ clip, trackId }) => {
+            const clipStart = getClipStartSeconds(clip);
+            const clipTrimIn = getClipTrimInSeconds(clip);
+            const clipDuration = getClipDurationSeconds(clip);
+            const speed = getClipSpeed(clip);
+            const clipSourceEnd = clipDuration > 0
+              ? clipTrimIn + clipDuration * speed
+              : Number.POSITIVE_INFINITY;
+            const visibleSourceStart = Math.max(sourceStart, clipTrimIn);
+            const visibleSourceEnd = Math.min(sourceEnd, clipSourceEnd);
+            if (!Number.isFinite(visibleSourceStart) || !Number.isFinite(visibleSourceEnd) || visibleSourceEnd <= visibleSourceStart) {
+              return [];
+            }
+            const timelineStart = clipStart + (visibleSourceStart - clipTrimIn) / speed;
+            const timelineEnd = clipStart + (visibleSourceEnd - clipTrimIn) / speed;
+            const regionDuration = timelineEnd - timelineStart;
+            if (!Number.isFinite(timelineStart) || !Number.isFinite(timelineEnd) || regionDuration <= 0) {
+              return [];
+            }
+            return [{
+              id: generateId('region'),
+              startTime: timelineStart,
+              endTime: timelineEnd,
+              duration: regionDuration,
+              adjustedStartTime: 0,
+              adjustedEndTime: 0,
+              adjustedDuration: 0,
+              averageDb: toSeconds(seg?.averageDb, threshold),
+              trackId,
+              selected: true,
+              skipped: false,
+            }];
+          });
         })
-        .filter((region): region is SilentRegion => region !== null);
+        .sort((left, right) => left.startTime - right.startTime);
 
       // Store raw regions for re-buffering
       setRawRegions(rawRegions);
@@ -1167,6 +1336,36 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
               justify-content: space-between;
               gap: 10px;
               min-height: 28px;
+              flex-wrap: wrap;
+            }
+            .audio-track-selector {
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              min-width: 0;
+              color: #c8d4df;
+              font-size: 12px;
+            }
+            .audio-track-selector select,
+            .source-select {
+              min-width: 180px;
+              max-width: min(420px, 100%);
+              padding: 6px 8px;
+              border: 1px solid #4b5b68;
+              border-radius: 5px;
+              background: #17212b;
+              color: #f0f4f8;
+              font-size: 12px;
+            }
+            .audio-track-selected {
+              color: #8ee7b2;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              max-width: 260px;
+            }
+            .audio-track-selected.muted {
+              color: #91a0ad;
             }
             .silence-timeline-zoom {
               display: flex;
@@ -1373,6 +1572,12 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
               display: flex;
               flex-direction: column;
               gap: 8px;
+            }
+            .source-select-group {
+              padding: 10px;
+              border: 1px solid #3d5363;
+              border-radius: 6px;
+              background: rgba(17, 35, 48, 0.72);
             }
             .control-label {
               display: flex;
@@ -1742,6 +1947,32 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
               <div className="settings-panel">
                 <h3 className="settings-heading">Detection Settings</h3>
 
+                <div className="control-group source-select-group" data-testid="analysis-source-selector">
+                  <label className="control-label" htmlFor="silence-analysis-source">
+                    <span>Video source to check</span>
+                    <span className="control-value">{analysisSources.length} source{analysisSources.length === 1 ? '' : 's'}</span>
+                  </label>
+                  <select
+                    id="silence-analysis-source"
+                    className="source-select"
+                    value={selectedSource?.assetId ?? ''}
+                    onChange={(event) => setSelectedSourceAssetId(event.target.value || null)}
+                    disabled={isAnalyzing || analysisSources.length === 0}
+                    data-testid="analysis-source-select"
+                  >
+                    {analysisSources.length === 0 ? (
+                      <option value="">No video source found</option>
+                    ) : analysisSources.map((source) => (
+                      <option key={source.assetId} value={source.assetId}>
+                        {source.label} · {source.trackIds.map((trackId) => project.timeline.tracks.find((track) => track.id === trackId)?.name || trackId).join(', ')}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="control-help">
+                    Waveform and Dead Air use this source only; selected cuts can still ripple every timeline track.
+                  </div>
+                </div>
+
                 {/* Volume Threshold Slider */}
                 <div className="control-group">
                   <label className="control-label">
@@ -1849,7 +2080,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                 <button
                   className="analyze-btn"
                   onClick={handleAutoDetect}
-                  disabled={isAnalyzing || selectedTrackIds.length === 0 || audioTracks.length === 0}
+                  disabled={isAnalyzing || !selectedSource || audioTracks.length === 0}
                   data-testid="analyze-btn"
                 >
                   {isAnalyzing
@@ -2009,6 +2240,38 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
             data-testid="silence-dialog-timeline"
           >
             <div className="silence-timeline-toolbar">
+              <div className="audio-track-selector" role="group" aria-label="Audio track selection">
+                <label htmlFor="dead-air-audio-track">Audio track:</label>
+                {audioStreams.length > 1 ? (
+                  <select
+                    id="dead-air-audio-track"
+                    value={selectedAudioStreamIndex ?? ''}
+                    disabled={isAnalyzing || audioStreamsLoading}
+                    onChange={(event) => {
+                      const next = Number(event.target.value);
+                      setSelectedAudioStreamIndex(Number.isInteger(next) ? next : null);
+                      setAnalysisComplete(false);
+                      setRegions([]);
+                      setRawRegions([]);
+                    }}
+                    data-testid="audio-stream-select"
+                  >
+                    {audioStreams.map((stream, index) => (
+                      <option key={stream.streamIndex} value={stream.streamIndex}>
+                        {formatAudioStreamLabel(stream, index)}{stream.isDefault ? ' · default' : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : audioStreams.length === 1 ? (
+                  <span className="audio-track-selected">
+                    {formatAudioStreamLabel(audioStreams[0], 0)}
+                  </span>
+                ) : (
+                  <span className="audio-track-selected muted">
+                    {audioStreamsLoading ? 'Discovering audio tracks…' : 'Default audio track'}
+                  </span>
+                )}
+              </div>
               <div className="silence-timeline-zoom">
                 <button
                   className="silence-timeline-zoom-btn"
@@ -2129,7 +2392,7 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
                   checked={applyToAllTracks}
                   onChange={(e) => setApplyToAllTracks(e.target.checked)}
                 />
-                Also apply to overlay &amp; text tracks
+                Apply same cuts to every track (sync cameras &amp; overlays)
               </label>
             </div>
             <button

@@ -1,7 +1,7 @@
 import path from "node:path";
 import crypto from "node:crypto";
 
-import type { Readable } from "node:stream";
+import { Readable, pipeline } from "node:stream";
 import type { SignOptions } from "jsonwebtoken";
 
 import { getLibraryItemById, type LibraryActor } from "./libraryService";
@@ -22,9 +22,9 @@ const MCP_DOWNLOAD_TTL_SECONDS = 5 * 60;
 // Provider submissions can wait behind the per-user image queue before KIE
 // fetches the references. Keep this provider-only grant alive for the queue
 // window while retaining the short TTL for browser/MCP downloads.
-const MCP_PROVIDER_DOWNLOAD_TTL = "24h";
 export const MCP_PROVIDER_DOWNLOAD_TTL_SECONDS = 24 * 60 * 60;
 const MCP_DOWNLOAD_GRANT_PREFIX = "ssp:f145:mcp:download:grant:";
+const MCP_PROVIDER_DOWNLOAD_TOKEN_PREFIX = "mcp_provider_";
 
 type DownloadResourceType = "library_item" | "media_task" | "storage_key";
 
@@ -139,6 +139,37 @@ async function issueDownloadRef(input: {
     JSON.stringify({ tenantId: input.viewer.tenantId, userId: input.viewer.userId, resourceType: input.resourceType, resourceId: input.resourceId }),
     "EX",
     ttlSeconds,
+  );
+  return token;
+}
+
+/**
+ * Provider fetchers do not need the browser/MCP JWT claims in the URL. Keep
+ * their reference compact because some image providers reject a reference
+ * URL before they attempt to fetch it when the request path is large.
+ * The Redis grant remains the authorization and expiry boundary.
+ */
+async function issueProviderDownloadRef(input: {
+  viewer: McpDownloadViewer;
+  resourceType: DownloadResourceType;
+  resourceId: string;
+  fileName: string;
+  contentType: string;
+  ttlSeconds: number;
+}): Promise<string> {
+  const token = `${MCP_PROVIDER_DOWNLOAD_TOKEN_PREFIX}${crypto.randomBytes(24).toString("base64url")}`;
+  await getCacheClient().set(
+    `${MCP_DOWNLOAD_GRANT_PREFIX}${crypto.createHash("sha256").update(token).digest("hex")}`,
+    JSON.stringify({
+      tenantId: input.viewer.tenantId,
+      userId: input.viewer.userId,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      fileName: safeFileName(input.fileName, "download.bin"),
+      contentType: input.contentType || "application/octet-stream",
+    }),
+    "EX",
+    input.ttlSeconds,
   );
   return token;
 }
@@ -282,12 +313,36 @@ export async function createProviderManagedStorageDownloadRef(
   storageKey: string,
   viewer: McpDownloadViewer,
 ): Promise<{ downloadRef: string; expiresInSeconds: number; fileName: string; contentType: string }> {
-  return createManagedStorageDownloadRefWithTtl(
-    storageKey,
-    viewer,
-    MCP_PROVIDER_DOWNLOAD_TTL,
-    MCP_PROVIDER_DOWNLOAD_TTL_SECONDS,
-  );
+  const normalizedKey = normalizeManagedMediaKey(storageKey);
+  if (!normalizedKey || !(await canReadManagedStorageKey(normalizedKey, viewer))) {
+    throw new Error("media_file_unavailable");
+  }
+  const fileName = safeFileName(path.basename(normalizedKey), "reference.bin");
+  const extension = path.extname(normalizedKey).toLowerCase();
+  const contentType = extension === ".jpg" || extension === ".jpeg"
+    ? "image/jpeg"
+    : extension === ".webp"
+      ? "image/webp"
+      : extension === ".gif"
+        ? "image/gif"
+        : extension === ".webm"
+          ? "video/webm"
+          : extension === ".mp4"
+            ? "video/mp4"
+            : "image/png";
+  return {
+    downloadRef: await issueProviderDownloadRef({
+      viewer,
+      resourceType: "storage_key",
+      resourceId: normalizedKey,
+      fileName,
+      contentType,
+      ttlSeconds: MCP_PROVIDER_DOWNLOAD_TTL_SECONDS,
+    }),
+    expiresInSeconds: MCP_PROVIDER_DOWNLOAD_TTL_SECONDS,
+    fileName,
+    contentType,
+  };
 }
 
 async function resolveResourceStorageKey(
@@ -313,10 +368,39 @@ export async function resolveMcpDownloadRef(
   range: string | undefined,
 ): Promise<McpDownloadResolution> {
   let claims: McpDownloadClaims;
-  try {
-    claims = await verifyBearerToken(token) as McpDownloadClaims;
-  } catch {
-    throw new Error("download_ref_invalid");
+  if (token.startsWith(MCP_PROVIDER_DOWNLOAD_TOKEN_PREFIX)) {
+    let providerGrantRaw: string | null;
+    try {
+      providerGrantRaw = await getCacheClient().get(
+        `${MCP_DOWNLOAD_GRANT_PREFIX}${crypto.createHash("sha256").update(token).digest("hex")}`,
+      );
+    } catch {
+      throw new Error("download_grant_unavailable");
+    }
+    if (!providerGrantRaw) throw new Error("download_ref_revoked");
+    try {
+      const grant = JSON.parse(providerGrantRaw) as Record<string, unknown>;
+      claims = {
+        sub: String(grant.userId ?? ""),
+        tenantId: String(grant.tenantId ?? ""),
+        aud: MCP_DOWNLOAD_AUDIENCE,
+        type: "access",
+        tokenUse: "mcp_download",
+        resourceType: grant.resourceType as DownloadResourceType,
+        resourceId: String(grant.resourceId ?? ""),
+        fileName: String(grant.fileName ?? "download.bin"),
+        contentType: String(grant.contentType ?? "application/octet-stream"),
+        jti: token,
+      } as McpDownloadClaims;
+    } catch {
+      throw new Error("download_ref_invalid");
+    }
+  } else {
+    try {
+      claims = await verifyBearerToken(token) as McpDownloadClaims;
+    } catch {
+      throw new Error("download_ref_invalid");
+    }
   }
   if (
     claims.aud !== MCP_DOWNLOAD_AUDIENCE
@@ -357,6 +441,29 @@ export async function resolveMcpDownloadRef(
   const storageKey = await resolveResourceStorageKey(claims, viewer);
   if (!storageKey) throw new Error("download_ref_revoked");
   const result = await storageStreamFile(storageKey, range);
+  if (!result && /\.jpe?g$/i.test(storageKey)) {
+    // GPT Image references use the same JPEG alias as /api/storage/files.
+    // The stored upload can still be WebP; authorize that object independently
+    // and convert its full stream, never byte ranges of the compressed source.
+    const webpKey = storageKey.replace(/\.jpe?g$/i, ".webp");
+    if (await canReadManagedStorageKey(webpKey, viewer)) {
+      const original = await storageStreamFile(webpKey);
+      if (original) {
+        const sharp = (await import("sharp")).default;
+        const source = typeof (original.stream as any).pipe === "function"
+          ? original.stream as Readable
+          : Readable.fromWeb(original.stream as any);
+        const jpeg = sharp().jpeg({ quality: 90 });
+        pipeline(source, jpeg, () => { /* Pipeline forwards errors to the output stream. */ });
+        return {
+          stream: jpeg,
+          fileName: safeFileName(claims.fileName, "reference.jpg"),
+          contentType: "image/jpeg",
+          isPartial: false,
+        };
+      }
+    }
+  }
   if (!result) throw new Error("download_file_unavailable");
   return {
     ...result,

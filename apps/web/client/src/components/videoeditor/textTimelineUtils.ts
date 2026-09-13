@@ -1,7 +1,11 @@
 import type { Clip, TextConfig, Track, VideoEditorProject } from '../../types/videoEditor';
 import { calculateProjectDuration, generateId } from '../../types/videoEditor';
 
-export const STRICT_PARITY_SUPPORTED_TEXT_EFFECTS = ['none', 'shadow', 'outline', 'glow'] as const;
+// Keep the browser editor limited to effects that the canonical timeline and
+// Worker renderers can reproduce identically.  Glow remains readable for old
+// projects, but is not offered as a new strict-parity choice until its render
+// semantics are versioned across every executor.
+export const STRICT_PARITY_SUPPORTED_TEXT_EFFECTS = ['none', 'shadow', 'outline'] as const;
 
 function isSupportedStrictParityEffect(effect: TextConfig['effect']): boolean {
   return STRICT_PARITY_SUPPORTED_TEXT_EFFECTS.includes(

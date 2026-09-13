@@ -5,6 +5,30 @@ import { canonicalJsonStringify, sha256Hex } from "../verticalDramaSeries/artifa
 export const UNIFIED_AUDIO_SCHEMA_VERSION = "unified-audio.v2" as const;
 export const UNIFIED_AUDIO_TTS_JOB_TYPE = "tts_utterance_generate" as const;
 export const UNIFIED_AUDIO_TRAINING_JOB_TYPE = "voice_training_run" as const;
+export const UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE = "audio_transcribe" as const;
+export const UNIFIED_AUDIO_ALIGN_JOB_TYPE = "audio_align" as const;
+export const UNIFIED_AUDIO_CAPABILITY = "unified-audio-v2" as const;
+export const AUDIO_TRANSCRIPTION_PROGRESS_STAGES = [
+  "validate_contract",
+  "stage_inputs",
+  "load_model",
+  "transcribe",
+  "align",
+  "diarize",
+  "verify_outputs",
+  "upload_artifacts",
+  "publish_artifacts",
+] as const;
+export const UNIFIED_AUDIO_PROGRESS_STAGES = [
+  "validate_contract",
+  "resolve_voice",
+  "stage_reference",
+  "load_model",
+  "synthesize",
+  "probe_output",
+  "upload_artifact",
+  "publish_provenance",
+] as const;
 
 const id = z.string().trim().min(1).max(160).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/);
 const modelId = z.string().trim().min(1).max(200).regex(/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/);
@@ -102,7 +126,17 @@ export const voiceProfileSchema = z.object({
   defaultReferenceAudioArtifactId: id.nullable(),
   consentIds: z.array(id).max(20),
   status: z.enum(["draft", "ready", "disabled", "revoked", "archived"]),
-}).strict();
+}).strict().superRefine((value, ctx) => {
+  if (value.defaultReferenceAudioArtifactId !== null && !value.references.some((reference) => reference.referenceAudioArtifactId === value.defaultReferenceAudioArtifactId)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["defaultReferenceAudioArtifactId"], message: "default reference must be included in references" });
+  }
+  if (value.references.some((reference) => !value.consentIds.includes(reference.consentId))) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["consentIds"], message: "profile consentIds must include every reference consent" });
+  }
+  if (value.status === "ready" && value.references.length === 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["references"], message: "ready voice profile requires a reference" });
+  }
+});
 export type VoiceProfile = z.infer<typeof voiceProfileSchema>;
 
 export const voiceBindingSchema = z.object({
@@ -142,7 +176,9 @@ export const executionPolicySchema = z.object({
   maxRuntimeMs: z.number().int().positive().max(86_400_000),
   priority: z.enum(["interactive", "timeline", "production", "benchmark", "download"]),
   privacyPolicyRef: id,
-}).strict();
+}).strict().superRefine((value, ctx) => {
+  if (value.allowedBindingIds.length === 0) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["allowedBindingIds"], message: "at least one binding is required" });
+});
 export type ExecutionPolicy = z.infer<typeof executionPolicySchema>;
 
 export const outputSpecSchema = z.object({ format: z.enum(["wav", "pcm16", "mp3"]), sampleRate: z.number().int().positive().max(192000), channels: z.union([z.literal(1), z.literal(2)]), wordTimestamps: z.boolean() }).strict();
@@ -163,7 +199,11 @@ export const ttsRequestSchema = z.object({
   voiceBindingRevision: revision,
   executionPolicy: executionPolicySchema,
   output: outputSpecSchema,
-}).strict();
+}).strict().superRefine((value, ctx) => {
+  if (!value.executionPolicy.allowedBindingIds.includes(value.voiceBindingId)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["executionPolicy", "allowedBindingIds"], message: "execution policy does not allow voiceBindingId" });
+  }
+});
 export type TtsRequest = z.infer<typeof ttsRequestSchema>;
 
 export const ttsResultSchema = z.object({
@@ -242,7 +282,11 @@ export function canUseVoiceBinding(binding: VoiceBinding, profile: VoiceProfile,
   if (binding.voiceProfileId !== profile.voiceProfileId || binding.voiceProfileRevision !== profile.revision) return false;
   if (binding.approval !== "approved" || profile.status === "revoked" || profile.status === "archived") return false;
   if (binding.mode === "catalog_voice" || binding.mode === "synthetic_design") return true;
-  return consent?.status === "granted" && consent.allowedOperations.includes("inference") && binding.consentSnapshot?.revision === consent.revision;
+  if (consent?.status !== "granted" || !consent.allowedOperations.includes("inference") || binding.consentSnapshot?.revision !== consent.revision) return false;
+  if ((binding.mode === "reference_clone" || binding.mode === "transcript_clone") && !consent.allowedOperations.includes("provider_clone")) return false;
+  if (consent.allowedProviders.length > 0 && !consent.allowedProviders.includes(binding.providerId)) return false;
+  if (consent.allowedLocales.length > 0 && !consent.allowedLocales.includes(binding.locale)) return false;
+  return true;
 }
 
 export function resolveExecutionTarget(policy: ExecutionPolicy, bindings: readonly VoiceBinding[]): VoiceBinding {
@@ -260,7 +304,7 @@ export function calculateRtf(synthesisRuntimeMs: number | null, durationMs: numb
 }
 
 export const unifiedAudioFailureCodeValues = [
-  "VOICE_SCOPE_MISMATCH", "VOICE_PROFILE_STALE", "VOICE_BINDING_STALE", "REFERENCE_NOT_FINALIZED", "REFERENCE_TRANSCRIPT_REQUIRED", "REFERENCE_TRANSCRIPT_UNVERIFIED", "REFERENCE_QUALITY_REVIEW_REQUIRED", "VOICE_MODE_UNSUPPORTED", "VOICE_CONSENT_REQUIRED", "VOICE_CONSENT_REVOKED", "TTS_PROVIDER_UNAVAILABLE", "TTS_PROVIDER_TIMEOUT", "TTS_OUTPUT_INVALID", "TTS_TIMING_OVERFLOW", "AUDIO_EXECUTION_TARGET_UNAVAILABLE", "GPU_RESOURCE_UNAVAILABLE", "TRAINING_UNAVAILABLE", "TRAINING_CONSENT_REQUIRED", "TRAINING_DATASET_INVALID", "TRAINING_CHECKPOINT_INVALID", "TRAINING_EVALUATION_REQUIRED", "STALE_INPUT", "CANCELED", "ARTIFACT_NOT_FOUND", "CREDIT_RESERVATION_FAILED",
+  "VOICE_SCOPE_MISMATCH", "VOICE_PROFILE_STALE", "VOICE_BINDING_STALE", "REFERENCE_NOT_FINALIZED", "REFERENCE_TRANSCRIPT_REQUIRED", "REFERENCE_TRANSCRIPT_UNVERIFIED", "REFERENCE_QUALITY_REVIEW_REQUIRED", "VOICE_MODE_UNSUPPORTED", "VOICE_CONSENT_REQUIRED", "VOICE_CONSENT_REVOKED", "TTS_PROVIDER_UNAVAILABLE", "TTS_PROVIDER_TIMEOUT", "TTS_PROVIDER_RATE_LIMITED", "TTS_OUTPUT_INVALID", "TTS_TIMING_OVERFLOW", "AUDIO_EXECUTION_TARGET_UNAVAILABLE", "GPU_RESOURCE_UNAVAILABLE", "TRAINING_UNAVAILABLE", "TRAINING_MODEL_REQUIRED", "TRAINING_MODEL_UNAVAILABLE", "TRAINING_MODEL_INVALID", "TRAINING_CONSENT_REQUIRED", "TRAINING_DATASET_INVALID", "TRAINING_CHECKPOINT_INVALID", "TRAINING_EVALUATION_REQUIRED", "TRAINING_EVALUATION_INVALID", "STALE_INPUT", "CANCELED", "ARTIFACT_NOT_FOUND", "CREDIT_RESERVATION_FAILED",
 ] as const;
 export const unifiedAudioFailureCodeSchema = z.enum(unifiedAudioFailureCodeValues);
 export type UnifiedAudioFailureCode = z.infer<typeof unifiedAudioFailureCodeSchema>;

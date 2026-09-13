@@ -20,9 +20,12 @@ import { ComfyJobsScreen } from "./screens/ComfyJobsScreen";
 import { WorkerPermissionsPanel } from "./screens/WorkerPermissionsPanel";
 import { LocalLlmSettingsScreen } from "./screens/LocalLlmSettingsScreen";
 import { AudioStudioSettingsCard } from "./screens/AudioStudioSettingsCard";
+import { SpeakerModelManagerCard } from "./screens/SpeakerModelManagerCard";
 import {
   fetchJsonWithTimeout,
+  buildWorkerAppLatestUrl,
   isNewerVersion,
+  resolveWorkerAppUpdateTarget,
   resolveSameOriginUrl,
   type RuntimeInstallResult,
   type RuntimeSetupStatus,
@@ -39,6 +42,8 @@ const CONNECTION_HEALTH_RETRY_INITIAL_DELAY_MS = 2_000;
 const isMacOSHost =
   typeof navigator !== "undefined" &&
   /macintosh|mac os x/i.test(`${navigator.platform} ${navigator.userAgent}`);
+const workerAppUpdateTarget = resolveWorkerAppUpdateTarget(isMacOSHost);
+const workerAppInstallerLabel = isMacOSHost ? "macOS DMG installer" : "Windows installer";
 
 type Settings = {
   locale: "th" | "en";
@@ -574,7 +579,10 @@ function App() {
         const payload = await fetchJsonWithTimeout<{
           release: WorkerAppRelease | null;
         }>(
-          `${settings.serverUrl.trim().replace(/\/$/, "")}/api/desktop-releases/worker-app/latest`,
+          buildWorkerAppLatestUrl(
+            settings.serverUrl.trim().replace(/\/$/, ""),
+            workerAppUpdateTarget,
+          ),
         );
         release = payload.release ?? null;
       }
@@ -814,7 +822,10 @@ function App() {
           const payload = await fetchJsonWithTimeout<{
             release: WorkerAppRelease | null;
           }>(
-            `${settings.serverUrl.trim().replace(/\/$/, "")}/api/desktop-releases/worker-app/latest`,
+            buildWorkerAppLatestUrl(
+              settings.serverUrl.trim().replace(/\/$/, ""),
+              workerAppUpdateTarget,
+            ),
           );
           release = payload.release ?? null;
           appCheckSucceeded = true;
@@ -840,7 +851,7 @@ function App() {
             if (updatePromptedRef.current !== promptKey) {
               updatePromptedRef.current = promptKey;
               const confirmed = await nativeConfirm(
-                `A newer Smart AI Hub Worker App is available.\n\nInstalled: ${appVersion}\nLatest: ${release.version}\n\nDownload and install the update now? The app will open the Windows installer and close itself.`,
+                `A newer Smart AI Hub Worker App is available.\n\nInstalled: ${appVersion}\nLatest: ${release.version}\n\nDownload and install the update now? The app will open the ${workerAppInstallerLabel}.`,
                 {
                   title: "Smart AI Hub Worker — update available",
                   kind: "info",
@@ -861,7 +872,7 @@ function App() {
                 } catch (error) {
                   setWorkerAppUpdateStatus(null);
                   await nativeMessage(
-                    `The Worker App update could not be installed automatically.\n\n${formatInvokeError(error)}\n\nYou can download the installer manually from the Dashboard.`,
+                    `The Worker App update could not be started automatically.\n\n${formatInvokeError(error)}\n\nYou can download the ${workerAppInstallerLabel} manually from the Dashboard.`,
                     {
                       title: "Smart AI Hub Worker — update failed",
                       kind: "error",
@@ -1791,7 +1802,10 @@ function App() {
         const payload = await fetchJsonWithTimeout<{
           release: WorkerAppRelease | null;
         }>(
-          `${settings.serverUrl.trim().replace(/\/$/, "")}/api/desktop-releases/worker-app/latest`,
+          buildWorkerAppLatestUrl(
+            settings.serverUrl.trim().replace(/\/$/, ""),
+            workerAppUpdateTarget,
+          ),
         );
         const release = payload.release ?? null;
         appCheckSucceeded = true;
@@ -2323,6 +2337,11 @@ function App() {
                 {connectMessage}
               </p>
             ) : null}
+            {startupRecoveryRequired ? (
+              <p className="connect-message error" data-testid="startup-recovery-required">
+                แอปตรวจพบว่ารอบก่อนหน้าปิดไม่สมบูรณ์ จึงหยุดรับงานอัตโนมัติเพื่อป้องกันงานซ้ำและ token ชนกัน กด “Start worker loop” หลังตรวจสอบสถานะได้เลย
+              </p>
+            ) : null}
             <button type="button" className="primary-button" onClick={connect}>
               {connectionState === "pending"
                 ? "Waiting for browser approval"
@@ -2797,6 +2816,8 @@ function App() {
             ) : null}
           </article>
 
+          <SpeakerModelManagerCard locale={settings.locale} />
+
           <article className="panel wide">
             <div className="panel-heading inline">
               <div>
@@ -3139,7 +3160,7 @@ function App() {
                     })();
                   }}
                 />
-                Start with Windows sign-in
+                Start at login
               </label>
               {startupActual !== null ? (
                 <p
@@ -3265,9 +3286,9 @@ function App() {
                 </div>
               ) : null}
               <p className="field-help">
-                This is Windows user-login autostart, not a Windows service.
-                Service mode is not installed in this build and will not be
-                shown as ready.
+                {isMacOSHost
+                  ? "This starts the Worker App when you log in to macOS through a LaunchAgent, not as a system service."
+                  : "This is Windows user-login autostart, not a Windows service. Service mode is not installed in this build and will not be shown as ready."}
               </p>
               <div style={{ marginTop: "8px" }}>
                 <button

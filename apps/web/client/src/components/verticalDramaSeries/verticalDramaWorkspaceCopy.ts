@@ -215,7 +215,7 @@ export const VD_COPY = {
     regenerateStageSuccess: "Stage rebuilt successfully",
     episodeContentRebuildTitle: "Create new episode content",
     episodeContentRebuildDescription:
-      "Use this when the episode story or prompts have a problem. Choose whether to rebuild the 9-shot storyboard from the current script or rewrite the whole episode; the current version remains available in history.",
+      "Use this when the episode story or prompts have a problem. Choose whether to replace the 9-shot storyboard from the current script or rewrite the whole episode; generated media remains in Media History.",
     episodeContentRebuildButton: "Create new content (9 shots)",
     episodeContentRebuildDialogTitle: "Choose how to rebuild this episode",
     episodeContentRebuildModeSameStory: "Rebuild from the current story",
@@ -227,7 +227,7 @@ export const VD_COPY = {
     episodeContentRebuildConfirmWarning:
       "This is a long AI job and may spend credits. Review the selected mode before starting.",
     episodeContentRebuildConfirmWarningSameStory:
-      "The current storyboard and downstream outputs will be replaced with a new set based on the existing script. Existing media remains in history where available.",
+      "The current 9-shot storyboard and shot-level bindings will be cleared, then rebuilt from the existing script. Existing media remains in history but is unlinked from this new run.",
     episodeContentRebuildConfirmWarningRewriteStory:
       "The synopsis, dialogue, and 9-shot storyboard will be rewritten using memory and the next episode. The current version and media remain in history.",
     episodeContentRebuildConfirmButton: "Confirm and start",
@@ -239,7 +239,7 @@ export const VD_COPY = {
     episodeContentRebuildDeduped:
       "Reusing the existing episode-content request.",
     episodeContentRebuildSuccess:
-      "New episode content is ready — regenerate images and videos from the new prompts. The previous version is preserved.",
+      "New episode content is ready — regenerate images and videos from the new prompts. Previous generated media remains in Media History.",
     episodeContentRebuildNeedsReview:
       "A new episode candidate needs safety or continuity review before use.",
     episodeContentRebuildFailed: "Creating new episode content failed",
@@ -565,8 +565,8 @@ export const VD_COPY = {
     compiledVideoAssemblePartial: "Assemble with completed clips only",
     compiledVideoProcessing: "Assembling the full Sub-episode video…",
     compiledVideoQueuedHint:
-      "The job has been queued for rendering — if this takes a while, check or cancel it on the Render Jobs page.",
-    compiledVideoOpenRenderJobs: "Open Render Jobs",
+      "The job has been queued for processing — if this takes a while, check or cancel it on the Worker Jobs page.",
+    compiledVideoOpenRenderJobs: "Open Worker Jobs",
     compiledVideoFailed: "Failed to assemble the full Sub-episode video.",
     compiledVideoRetry: "Retry",
     compiledVideoDurationLabel: "sec",
@@ -883,7 +883,7 @@ export const VD_COPY = {
      *  wave 2), added 2026-07-30 ---- */
     finalRenderUseRemotionLabel: "🎬 Use Remotion render (new queue)",
     finalRenderUseRemotionHelp:
-      "Renders through the render-jobs queue, supporting CSS subtitle presets and on-video text — if it fails, the system automatically falls back to the existing ffmpeg render.",
+      "Renders through the Worker Jobs queue, supporting CSS subtitle presets and on-video text — if it fails, the system automatically falls back to the existing ffmpeg render.",
     finalRenderSubtitleFontSizeRemotionDisabledHint:
       "Subtitle font size is not yet applied in Remotion render mode.",
     finalRenderSubtitleNoDialogueWarning:
@@ -978,7 +978,7 @@ export const VD_COPY = {
     regenerateStageSuccess: "สร้างผลลัพธ์ขั้นตอนใหม่แล้ว",
     episodeContentRebuildTitle: "สร้างเนื้อหาตอนใหม่",
     episodeContentRebuildDescription:
-      "ใช้เมื่อตอนมีปัญหาเรื่องเนื้อเรื่องหรือพรอมต์ กดปุ่มเพื่อเลือกว่าจะสร้าง storyboard ใหม่ครบ 9 ช็อตจากบทเดิม หรือซ่อมเนื้อหาและเขียนบทใหม่ทั้งตอน โดยเก็บเวอร์ชันเดิมไว้ในประวัติ",
+      "ใช้เมื่อตอนมีปัญหาเรื่องเนื้อเรื่องหรือพรอมต์ กดปุ่มเพื่อเลือกว่าจะเปลี่ยน storyboard ใหม่ครบ 9 ช็อตจากบทเดิม หรือซ่อมเนื้อหาและเขียนบทใหม่ทั้งตอน โดยสื่อที่สร้างไว้ยังอยู่ใน Media History",
     episodeContentRebuildButton: "สร้างเนื้อหาชุดใหม่ (9 ช็อต)",
     episodeContentRebuildDialogTitle: "เลือกวิธีสร้างเนื้อหาตอนใหม่",
     episodeContentRebuildModeSameStory: "สร้างใหม่ตามเนื้อหาเดิม",
@@ -990,7 +990,7 @@ export const VD_COPY = {
     episodeContentRebuildConfirmWarning:
       "งานนี้ใช้เวลานานและอาจใช้เครดิต กรุณาตรวจสอบโหมดที่เลือกก่อนเริ่ม",
     episodeContentRebuildConfirmWarningSameStory:
-      "ระบบจะแทนที่ storyboard และผลลัพธ์ขั้นตอนถัดไปด้วยชุดใหม่ โดยยึดบทเดิมเป็นหลัก สื่อเดิมยังอยู่ในประวัติเท่าที่มี",
+      "ระบบจะล้าง storyboard เดิมทั้ง 9 ช็อตและการผูกระดับช็อตก่อน แล้วสร้างชุดใหม่จากบทเดิม สื่อเดิมยังอยู่ในประวัติ แต่จะไม่ถูกผูกกับรอบใหม่",
     episodeContentRebuildConfirmWarningRewriteStory:
       "ระบบจะอ่านความจำและตอนถัดไป แล้วเขียนเรื่องย่อ บทพูด และ storyboard ใหม่ครบ 9 ช็อต โดยเก็บเวอร์ชันและสื่อปัจจุบันไว้ในประวัติ",
     episodeContentRebuildConfirmButton: "ยืนยันและเริ่มสร้าง",
@@ -1001,7 +1001,7 @@ export const VD_COPY = {
       "กำลังอ่านความจำและตอนถัดไป แล้วสร้างเนื้อหาตอนใหม่…",
     episodeContentRebuildDeduped: "ใช้คำขอสร้างเนื้อหาตอนเดิมแล้ว",
     episodeContentRebuildSuccess:
-      "สร้างเนื้อหาตอนใหม่สำเร็จ — กรุณาสร้างภาพและวิดีโอจากพรอมต์ชุดใหม่ โดยเวอร์ชันเดิมยังถูกเก็บไว้",
+      "สร้างเนื้อหาตอนใหม่สำเร็จ — กรุณาสร้างภาพและวิดีโอจากพรอมต์ชุดใหม่ โดยสื่อที่สร้างไว้ก่อนหน้านี้ยังอยู่ใน Media History",
     episodeContentRebuildNeedsReview:
       "สร้าง candidate ตอนใหม่แล้ว แต่ต้องตรวจสอบความปลอดภัยหรือความต่อเนื่องก่อนใช้งาน",
     episodeContentRebuildFailed: "สร้างเนื้อหาตอนใหม่ไม่สำเร็จ",
@@ -1315,8 +1315,8 @@ export const VD_COPY = {
     compiledVideoAssemblePartial: "ประกอบเฉพาะช็อตที่เสร็จแล้ว",
     compiledVideoProcessing: "กำลังประกอบวิดีโอรวม Sub-episode…",
     compiledVideoQueuedHint:
-      "งานถูกส่งเข้าคิวเรนเดอร์แล้ว — ถ้าใช้เวลานาน ตรวจสอบหรือยกเลิกได้ที่หน้า Render Jobs",
-    compiledVideoOpenRenderJobs: "ไปที่ Render Jobs",
+      "งานถูกส่งเข้าคิว Worker แล้ว — ถ้าใช้เวลานาน ตรวจสอบหรือยกเลิกได้ที่หน้า คิวงาน Worker",
+    compiledVideoOpenRenderJobs: "ไปที่คิวงาน Worker",
     compiledVideoFailed: "ประกอบวิดีโอรวม Sub-episode ไม่สำเร็จ",
     compiledVideoRetry: "ลองใหม่",
     compiledVideoDurationLabel: "วิ",
@@ -1606,7 +1606,7 @@ export const VD_COPY = {
      *  wave 2), added 2026-07-30 ---- */
     finalRenderUseRemotionLabel: "🎬 ใช้ Remotion render (คิวใหม่)",
     finalRenderUseRemotionHelp:
-      "เรนเดอร์ผ่านคิว render-jobs รองรับซับไตเติล CSS preset และข้อความบนวิดีโอ — หากไม่สำเร็จระบบจะถอยไปใช้ ffmpeg เดิมอัตโนมัติ",
+      "เรนเดอร์ผ่านคิว Worker Jobs รองรับซับไตเติล CSS preset และข้อความบนวิดีโอ — หากไม่สำเร็จระบบจะถอยไปใช้ ffmpeg เดิมอัตโนมัติ",
     finalRenderSubtitleFontSizeRemotionDisabledHint:
       "ขนาดตัวอักษรซับไตเติลยังไม่ถูกนำไปใช้ในโหมด Remotion render",
     finalRenderSubtitleNoDialogueWarning:

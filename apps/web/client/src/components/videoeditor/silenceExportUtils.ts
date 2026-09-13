@@ -14,6 +14,105 @@ import { generateId } from '../../types/videoEditor';
 
 const EPSILON = 1e-6; // Floating-point precision threshold
 
+export interface GlobalTimelineCutRange {
+  startTime: number;
+  endTime: number;
+}
+
+/**
+ * Normalize cuts once before applying them to any track. This is the same
+ * global time-map model used by Worker App, so overlays and camera tracks
+ * receive exactly the same timeline compression.
+ */
+export function normalizeGlobalTimelineCutRanges(
+  ranges: GlobalTimelineCutRange[],
+  duration: number,
+): GlobalTimelineCutRange[] {
+  const boundedDuration = Math.max(0, Number.isFinite(duration) ? duration : 0);
+  return ranges
+    .map((range) => ({
+      startTime: Math.max(0, Math.min(boundedDuration, range.startTime)),
+      endTime: Math.max(0, Math.min(boundedDuration, range.endTime)),
+    }))
+    .filter((range) => range.endTime > range.startTime + EPSILON)
+    .sort((left, right) => left.startTime - right.startTime)
+    .reduce<GlobalTimelineCutRange[]>((merged, range) => {
+      const previous = merged[merged.length - 1];
+      if (previous && range.startTime <= previous.endTime + 0.05) {
+        previous.endTime = Math.max(previous.endTime, range.endTime);
+      } else {
+        merged.push({ ...range });
+      }
+      return merged;
+    }, []);
+}
+
+function mapTimelineTime(time: number, cuts: GlobalTimelineCutRange[]): number {
+  let removed = 0;
+  for (const cut of cuts) {
+    if (time <= cut.startTime) break;
+    if (time < cut.endTime) return Math.max(0, cut.startTime - removed);
+    removed += cut.endTime - cut.startTime;
+  }
+  return Math.max(0, time - removed);
+}
+
+function remapClipAcrossGlobalCuts(
+  clip: Clip,
+  cuts: GlobalTimelineCutRange[],
+  trackType: Track['type'],
+): Clip[] {
+  const clipStart = Math.max(0, clip.startTime);
+  const clipEnd = Math.max(clipStart, clip.startTime + Math.max(0, clip.duration));
+  if (clipEnd <= clipStart + EPSILON) return [];
+
+  const boundaries = [
+    clipStart,
+    ...cuts.flatMap((cut) => [cut.startTime, cut.endTime]),
+    clipEnd,
+  ]
+    .filter((value) => value > clipStart + EPSILON && value < clipEnd - EPSILON)
+    .sort((left, right) => left - right);
+
+  const slices: Clip[] = [];
+  const isTextLike = trackType === 'text' || trackType === 'overlay';
+  const speed = Number.isFinite(clip.speed) && clip.speed > 0 ? clip.speed : 1;
+
+  for (let index = 0; index <= boundaries.length; index += 1) {
+    const sourceStart = index === 0 ? clipStart : boundaries[index - 1];
+    const sourceEnd = index === boundaries.length ? clipEnd : boundaries[index];
+    if (sourceEnd <= sourceStart + EPSILON) continue;
+
+    const isCut = cuts.some(
+      (cut) => sourceStart >= cut.startTime - EPSILON && sourceEnd <= cut.endTime + EPSILON,
+    );
+    if (isCut) continue;
+
+    const mappedStart = mapTimelineTime(sourceStart, cuts);
+    const mappedEnd = mapTimelineTime(sourceEnd, cuts);
+    const mappedDuration = mappedEnd - mappedStart;
+    if (mappedDuration <= EPSILON) continue;
+
+    const pieceOffset = sourceStart - clipStart;
+    const pieceDuration = sourceEnd - sourceStart;
+    const nextClip: Clip = {
+      ...clip,
+      id: slices.length === 0 ? clip.id : generateId('clip'),
+      startTime: mappedStart,
+      duration: mappedDuration,
+    };
+
+    if (!isTextLike) {
+      nextClip.trimIn = clip.trimIn + pieceOffset * speed;
+      nextClip.trimOut = clip.trimIn + (pieceOffset + pieceDuration) * speed;
+    }
+
+    slices.push(nextClip);
+  }
+
+  return slices;
+}
+
 /**
  * Split a clip at a timeline position.
  * Returns [originalClip] if position is at/outside clip bounds.
@@ -265,16 +364,28 @@ export function processExportToTimeline(
   // Deep clone project
   const newProject: VideoEditorProject = JSON.parse(JSON.stringify(project));
 
-  // Filter and sort regions
+  // Filter regions and build one shared timeline map. Regions may be repeated
+  // for multiple occurrences of the selected source asset; normalization makes
+  // those overlaps harmless.
   const validRegions = selectedRegions
     .filter(
       (r) => r.selected && !r.skipped && r.adjustedDuration > EPSILON,
     )
-    .sort((a, b) => b.adjustedStartTime - a.adjustedStartTime); // Descending order
+    .map((region) => ({
+      startTime: region.adjustedStartTime,
+      endTime: region.adjustedEndTime,
+    }));
 
   if (validRegions.length === 0) {
     return newProject;
   }
+
+  const projectDuration = Math.max(
+    calculateProjectDuration(newProject.timeline),
+    newProject.settings.duration || 0,
+  );
+  const globalCuts = normalizeGlobalTimelineCutRanges(validRegions, projectDuration);
+  if (globalCuts.length === 0) return newProject;
 
   // Determine target tracks
   const targetTrackIds = new Set<string>();
@@ -305,9 +416,11 @@ export function processExportToTimeline(
   }
 
   if (applyToAllTracks) {
-    // Also include overlay and text tracks
+    // Worker parity: one explicit global cut remaps every populated track,
+    // including overlays, text, muted tracks, and locked tracks. The user has
+    // explicitly chosen synchronized multi-track editing at this point.
     for (const track of newProject.timeline.tracks) {
-      if (!track.locked && !track.muted && track.clips.length > 0) {
+      if (track.clips.length > 0) {
         targetTrackIds.add(track.id);
       }
     }
@@ -319,22 +432,19 @@ export function processExportToTimeline(
       continue;
     }
 
-    // Remove regions from track
-    let processedClips = removeRegionsFromTrack(
-      track.clips,
-      validRegions,
-      track.type,
+    track.clips = track.clips.flatMap((clip) =>
+      remapClipAcrossGlobalCuts(clip, globalCuts, track.type),
     );
-
-    // Ripple delete to close gaps
-    processedClips = rippleDeleteTrack(processedClips);
-
-    // Update track clips
-    track.clips = processedClips;
   }
 
   // Recalculate project duration
   newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+  newProject.metadata = {
+    ...newProject.metadata,
+    deadAirCutCount: globalCuts.length,
+    deadAirCutRanges: globalCuts,
+    deadAirCutFingerprint: JSON.stringify(globalCuts),
+  };
 
   // Update timestamp
   newProject.modifiedAt = new Date().toISOString();

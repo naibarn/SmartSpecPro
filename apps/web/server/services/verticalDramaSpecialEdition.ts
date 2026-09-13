@@ -277,6 +277,10 @@ export async function synthesizeSpecialEditionBrief(
     maxTokens: 3000,
     schema: specialEditionLlmDraftSchema,
     label: "Special edition planning",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "story_architecture",
+    },
   });
 
   const usage = response.usage;

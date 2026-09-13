@@ -351,6 +351,7 @@ interface RecommendationApplyTarget {
 const categoryIcons: Record<string, typeof Sparkles> = {
   image_generation: Image,
   image_prompt_generation: Sparkles,
+  character_prompt_generation: Sparkles,
   video_generation: Video,
   video_prompt_generation: Sparkles,
   image_video_generation: Video,
@@ -373,6 +374,7 @@ const categoryIcons: Record<string, typeof Sparkles> = {
 const categoryLabelKeys: Record<string, string> = {
   image_generation: "admin.skillsPage.categoryLabels.imageGeneration",
   image_prompt_generation: "admin.skillsPage.categoryLabels.imagePromptGeneration",
+  character_prompt_generation: "admin.skillsPage.categoryLabels.characterPromptGeneration",
   video_generation: "admin.skillsPage.categoryLabels.videoGeneration",
   video_prompt_generation: "admin.skillsPage.categoryLabels.videoPromptGeneration",
   image_video_generation: "admin.skillsPage.categoryLabels.imageVideoGeneration",

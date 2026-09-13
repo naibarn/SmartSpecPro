@@ -5,10 +5,13 @@ from pydantic import BaseModel, ConfigDict, Field
 class AgentRuntimeConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     model: str | None = None
+    provider_model_id: str | None = None
+    api_style: Literal["chat-completions", "responses"] = "responses"
     require_explicit_model: Literal[True] = True
     max_turns_per_stage: int = Field(default=6, ge=1, le=20)
     max_contract_repair_attempts: int = Field(default=1, ge=0, le=3)
     max_input_chars_per_stage: int = Field(default=120_000, ge=1_000, le=1_000_000)
+    max_output_tokens_per_stage: int = Field(default=8_192, ge=1_024, le=32_768)
     max_total_tokens_per_stage: int | None = Field(default=80_000, ge=1_000)
     max_total_tokens_per_run: int | None = Field(default=500_000, ge=5_000)
     tracing_enabled: bool = True
@@ -29,6 +32,8 @@ class AgentRuntimeConfig(BaseModel):
         mapping = {
             "maxTurnsPerStage":"max_turns_per_stage","maxContractRepairAttempts":"max_contract_repair_attempts",
             "maxInputCharsPerStage":"max_input_chars_per_stage","maxTotalTokensPerStage":"max_total_tokens_per_stage",
+            "maxOutputTokensPerStage":"max_output_tokens_per_stage","providerModelId":"provider_model_id",
+            "apiStyle":"api_style",
             "maxTotalTokensPerRun":"max_total_tokens_per_run","tracingEnabled":"tracing_enabled",
             "traceIncludeSensitiveData":"trace_include_sensitive_data","useSessions":"use_sessions",
             "sessionHistoryLimit":"session_history_limit","allowResearchTool":"allow_research_tool",

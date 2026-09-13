@@ -1,4 +1,156 @@
-import type { NleClip } from "../../types/nleProject";
+import type { NleClip, SmartSpecProjectDraft } from "../../types/nleProject";
+
+export interface GlobalTimelineCutRange {
+  startMs: number;
+  endMs: number;
+}
+
+function normalizeGlobalCutRanges(ranges: GlobalTimelineCutRange[], durationMs: number): GlobalTimelineCutRange[] {
+  const boundedDuration = Math.max(0, Math.round(durationMs));
+  return ranges
+    .map((range) => ({
+      startMs: Math.max(0, Math.min(boundedDuration, Math.round(range.startMs))),
+      endMs: Math.max(0, Math.min(boundedDuration, Math.round(range.endMs))),
+    }))
+    .filter((range) => range.endMs > range.startMs)
+    .sort((left, right) => left.startMs - right.startMs)
+    .reduce<GlobalTimelineCutRange[]>((merged, range) => {
+      const previous = merged[merged.length - 1];
+      if (previous && range.startMs <= previous.endMs + 50) {
+        previous.endMs = Math.max(previous.endMs, range.endMs);
+      } else {
+        merged.push({ ...range });
+      }
+      return merged;
+    }, []);
+}
+
+function mapTimelineTimeMs(timeMs: number, cuts: GlobalTimelineCutRange[]): number {
+  let removedMs = 0;
+  for (const cut of cuts) {
+    if (timeMs <= cut.startMs) break;
+    if (timeMs < cut.endMs) return Math.max(0, cut.startMs - removedMs);
+    removedMs += cut.endMs - cut.startMs;
+  }
+  return Math.max(0, timeMs - removedMs);
+}
+
+function remapClipWords(clip: NleClip, sourceStartMs: number, sourceEndMs: number, cuts: GlobalTimelineCutRange[]): NleClip["words"] {
+  if (!clip.words?.length) return clip.words;
+  return clip.words
+    .filter((word) => word.endMs > sourceStartMs && word.startMs < sourceEndMs)
+    .map((word) => {
+      const startMs = Math.max(sourceStartMs, word.startMs);
+      const endMs = Math.min(sourceEndMs, word.endMs);
+      return {
+        ...word,
+        startMs: mapTimelineTimeMs(startMs, cuts),
+        endMs: mapTimelineTimeMs(endMs, cuts),
+      };
+    })
+    .filter((word) => word.endMs > word.startMs);
+}
+
+function remapClipAcrossCuts(clip: NleClip, cuts: GlobalTimelineCutRange[]): NleClip[] {
+  const clipStart = Math.max(0, clip.timelineStartMs);
+  const clipEnd = Math.max(clipStart, clip.timelineStartMs + clip.durationMs);
+  if (clipEnd <= clipStart) return [];
+
+  const boundaries = [clipStart, ...cuts.flatMap((cut) => [cut.startMs, cut.endMs]), clipEnd]
+    .filter((value) => value > clipStart && value < clipEnd)
+    .sort((left, right) => left - right);
+  const slices: NleClip[] = [];
+  const speed = Number.isFinite(clip.speed) && (clip.speed ?? 1) > 0 ? Math.max(0.001, clip.speed ?? 1) : 1;
+  const trimInMs = clip.trimInMs ?? 0;
+
+  for (let index = 0; index < boundaries.length + 1; index += 1) {
+    const sourceStartMs = index === 0 ? clipStart : boundaries[index - 1];
+    const sourceEndMs = index === boundaries.length ? clipEnd : boundaries[index];
+    if (sourceEndMs <= sourceStartMs) continue;
+    const isCut = cuts.some((cut) => sourceStartMs >= cut.startMs && sourceEndMs <= cut.endMs);
+    if (isCut) continue;
+
+    const pieceOffsetMs = sourceStartMs - clipStart;
+    const pieceDurationMs = sourceEndMs - sourceStartMs;
+    const nextTrimInMs = clip.sourcePath ? trimInMs + pieceOffsetMs * speed : clip.trimInMs;
+    const nextTrimOutMs = clip.sourcePath
+      ? trimInMs + (pieceOffsetMs + pieceDurationMs) * speed
+      : clip.trimOutMs;
+    const nextClip: NleClip = {
+      ...clip,
+      id: index === 0 ? clip.id : `${clip.id}__dead-air-${index}`,
+      timelineStartMs: mapTimelineTimeMs(sourceStartMs, cuts),
+      durationMs: Math.max(1, Math.round(pieceDurationMs)),
+      trimInMs: nextTrimInMs,
+      trimOutMs: nextTrimOutMs,
+      words: remapClipWords(clip, sourceStartMs, sourceEndMs, cuts),
+    };
+    slices.push(nextClip);
+  }
+  return slices;
+}
+
+export function applyGlobalTimelineCuts(
+  project: SmartSpecProjectDraft,
+  ranges: GlobalTimelineCutRange[],
+  fingerprint: string,
+  selectedAudioStreamIndex?: number | null,
+): SmartSpecProjectDraft {
+  const nextSelectedAudioStreamIndex = selectedAudioStreamIndex === undefined
+    ? project.metadata?.deadAirAudioStreamIndex
+    : selectedAudioStreamIndex ?? undefined;
+  if (project.metadata?.deadAirCutFingerprint === fingerprint) {
+    if (project.metadata.deadAirAudioStreamIndex === nextSelectedAudioStreamIndex) return project;
+    return {
+      ...project,
+      metadata: {
+        ...project.metadata,
+        deadAirAudioStreamIndex: nextSelectedAudioStreamIndex,
+      },
+    };
+  }
+  const durationMs = Math.max(
+    project.canvas.durationMs,
+    ...project.tracks.flatMap((track) => track.clips.map((clip) => clip.timelineStartMs + clip.durationMs)),
+  );
+  const cuts = normalizeGlobalCutRanges(ranges, durationMs);
+  if (cuts.length === 0) {
+    return {
+      ...project,
+      updatedAt: new Date().toISOString(),
+      metadata: {
+        ...project.metadata,
+        deadAirCutCount: 0,
+        timeSavedMs: 0,
+        deadAirCutFingerprint: "",
+        deadAirAudioStreamIndex: nextSelectedAudioStreamIndex,
+        deadAirCutRanges: [],
+      },
+    };
+  }
+  const timeSavedMs = cuts.reduce((sum, cut) => sum + cut.endMs - cut.startMs, 0);
+  const tracks = project.tracks.map((track) => ({
+    ...track,
+    clips: track.clips.flatMap((clip) => remapClipAcrossCuts(clip, cuts)),
+  }));
+  return {
+    ...project,
+    updatedAt: new Date().toISOString(),
+    canvas: {
+      ...project.canvas,
+      durationMs: Math.max(0, durationMs - timeSavedMs),
+    },
+    tracks,
+    metadata: {
+      ...project.metadata,
+      deadAirCutCount: cuts.length,
+      timeSavedMs,
+      deadAirCutFingerprint: fingerprint,
+      deadAirAudioStreamIndex: nextSelectedAudioStreamIndex,
+      deadAirCutRanges: cuts,
+    },
+  };
+}
 
 export function trimTimelineClip(clip: NleClip, edge: "left" | "right", deltaMs: number, sourceDurationMs?: number): NleClip {
   if (!Number.isFinite(deltaMs) || clip.isCompound) return clip;
@@ -67,4 +219,3 @@ export function detectClipOverlaps(clips: NleClip[]): Array<{ clip1: NleClip; cl
   }
   return overlaps;
 }
-

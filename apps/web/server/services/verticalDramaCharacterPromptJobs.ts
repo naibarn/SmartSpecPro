@@ -37,6 +37,7 @@ export interface VerticalDramaCharacterPromptJobInput {
   characterId: string;
   selectedImageModelId?: string;
   portraitCandidateCount?: number;
+  replacePortraitCandidateAssetLinkId?: string;
   customInstruction?: string;
   castingReferenceAssetLinkIds?: string[];
   castingLockClothing?: boolean;

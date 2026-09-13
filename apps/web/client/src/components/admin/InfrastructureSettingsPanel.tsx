@@ -341,8 +341,8 @@ export default function InfrastructureSettingsPanel() {
         ? "ให้เซิร์ฟเวอร์เรนเดอร์วิดีโอ (ffmpeg) เอง"
         : "Server also acts as an ffmpeg render worker",
       helper: isThai
-        ? "เมื่อเปิด เซิร์ฟเวอร์นี้จะดึงงาน ffmpeg จากคิว Render Jobs มาเรนเดอร์เอง (ทำงานเหมือน worker หนึ่งตัว, เฉพาะงาน ffmpeg ไม่รวม Remotion/Hyperframes). เมื่อปิด งานจะรอในคิวจนกว่าจะมี worker มารับ"
-        : "When on, this server claims and renders ffmpeg video-assembly jobs from the Render Jobs queue (acts like one worker; ffmpeg-only, not Remotion/Hyperframes). When off, jobs wait in the queue until another worker claims them.",
+        ? "เมื่อเปิด เซิร์ฟเวอร์นี้จะดึงงาน ffmpeg จากคิว Worker Jobs มาเรนเดอร์เอง (ทำงานเหมือน worker หนึ่งตัว, เฉพาะงาน ffmpeg ไม่รวม Remotion/Hyperframes). เมื่อปิด งานจะรอในคิวจนกว่าจะมี worker มารับ"
+        : "When on, this server claims and renders ffmpeg video-assembly jobs from the Worker Jobs queue (acts like one worker; ffmpeg-only, not Remotion/Hyperframes). When off, jobs wait in the queue until another worker claims them.",
     },
   } as const;
   const [activeTab, setActiveTab] = useState("gcp");

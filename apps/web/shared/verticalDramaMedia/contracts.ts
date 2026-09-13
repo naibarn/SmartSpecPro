@@ -42,6 +42,8 @@ export const mediaJobKindValues = [
   "episode_audio_analyze",
   "minimax_music3_generate",
   "episode_score_mix",
+  "audio_transcribe",
+  "audio_align",
 ] as const;
 // Keep the media contract aligned with the Worker job ledger. `completed` is
 // emitted before/alongside publication by some control-plane versions, while
@@ -141,6 +143,31 @@ export const shotBudgetPolicySchema = z.object({
   preserveNarrativeAudio: z.boolean(),
 }).strict();
 
+export const cameraMotionKeyframeSchema = z.object({
+  timeMs: z.number().int().nonnegative().max(86_400_000),
+  x: z.number().finite().min(0).max(1),
+  y: z.number().finite().min(0).max(1),
+  scale: z.number().finite().min(1).max(2.5),
+  easing: z.enum(["linear", "ease-in", "ease-out", "ease-in-out"]).optional(),
+  source: z.enum(["auto", "user_mark"]),
+  sourceMarkId: id.optional(),
+}).strict();
+export const cameraMotionPlanSchema = z.object({
+  version: z.literal("camera.motion.v1"),
+  mode: z.enum(["auto", "face_focus", "product_focus"]),
+  durationMs: z.number().int().nonnegative().max(86_400_000),
+  keyframes: z.array(cameraMotionKeyframeSchema).min(1).max(512),
+}).strict().superRefine((value, context) => {
+  let previousTime = -1;
+  for (const [index, keyframe] of value.keyframes.entries()) {
+    if (keyframe.timeMs < previousTime || keyframe.timeMs > value.durationMs) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ["keyframes", index, "timeMs"], message: "camera keyframes must be ordered within duration" });
+    }
+    previousTime = keyframe.timeMs;
+  }
+});
+export type CameraMotionPlanContract = z.infer<typeof cameraMotionPlanSchema>;
+
 export const mediaEditSegmentSchema = z.object({
   segmentId: id,
   sourceAssetId: id,
@@ -162,6 +189,7 @@ export const mediaEditPlanSchema = z.object({
   deadAir: deadAirPolicySchema,
   budget: shotBudgetPolicySchema,
   segments: z.array(mediaEditSegmentSchema).min(1).max(64),
+  cameraMotionPlan: cameraMotionPlanSchema.optional(),
   rationale: safeDescription,
 }).strict();
 
@@ -198,6 +226,7 @@ export const mediaIntelligenceMetadataSchema = z.object({
     confidence: z.number().min(0).max(1),
     method: z.string().trim().min(1).max(120),
   }).strict()).max(256).default([]),
+  cameraMotionPlan: cameraMotionPlanSchema.optional(),
   transform: z.object({
     aspectRatio: z.enum(["source", "9:16"]),
     trackingMode: z.enum(["auto_subject", "auto_person", "auto_object", "face_priority", "manual_region", "manual_keyframes", "center_fallback"]),
@@ -296,6 +325,8 @@ export const mediaWorkflowPolicySnapshotSchema = z.object({
   defaultWorkflowId: id,
   allowedWorkflowIds: z.array(id).min(1).max(32),
   allowUserOverride: z.boolean(),
+  /** Explicit Series opt-in for exposing the Worker Shot controls in the UI. */
+  workerShotGenerationEnabled: z.boolean().default(false),
   requiredCapabilities: z.array(id).max(32),
   workflowDefaults: z.record(z.string().trim().min(1).max(160), id).default({}),
 }).strict().superRefine((value, context) => {

@@ -182,7 +182,7 @@ describe("PROVIDER_TEMPLATES — WaveSpeed entry", () => {
   it("uses the official API root and launch model", () => {
     expect(wavespeedTemplate?.baseUrl).toBe("https://api.wavespeed.ai/api/v3");
     expect(wavespeedTemplate?.defaultModel).toBe("wavespeed-ai/cinematic-video-generator");
-    expect(wavespeedTemplate?.availableModels).toHaveLength(12);
+    expect(wavespeedTemplate?.availableModels).toHaveLength(14);
     expect(wavespeedTemplate?.availableModels).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: "bytedance/seedance-2.0/text-to-video",
@@ -199,6 +199,14 @@ describe("PROVIDER_TEMPLATES — WaveSpeed entry", () => {
       expect.objectContaining({
         id: "elevenlabs/eleven-v3",
         type: "audio",
+      }),
+      expect.objectContaining({
+        id: "openai/gpt-image-2.5-flare/text-to-image",
+        type: "image",
+      }),
+      expect.objectContaining({
+        id: "openai/gpt-image-2.5-sunburst/text-to-image",
+        type: "image",
       }),
     ]));
   });

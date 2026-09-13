@@ -17,9 +17,10 @@ from typing import Any
 
 from .agent_factory import AgentFactory
 from .config import AgentRuntimeConfig
+from .errors import safe_bridge_error_line
 from .context import DirectorRunContext
 from .errors import StageExecutionError
-from .models import AssetEvidence, CostEstimate, GenerationAuthorization
+from .models import AssetEvidence, CostEstimate, GenerationAuthorization, StageUsage
 from .openai_runner import OpenAIAgentsRunner
 from .schema_registry import StageContractRegistry
 from .orchestrator import DirectorOrchestrator, StageRunResult
@@ -140,14 +141,16 @@ def _package_input(payload: dict[str, Any]) -> dict[str, Any]:
             continue
         speaker = line.get("speakerHint") or line.get("speaker") or line.get("speakerId") or line.get("characterKey")
         speaker_id = line.get("speakerId") or line.get("characterKey")
+        position = str(line.get("position") or "").strip().lower()
+        is_offscreen = position == "viewer-offscreen"
         dialogue_lines.append({
             "lineId": str(line.get("lineId") or f"shot-line-{index + 1}"),
             "speakerId": str(speaker_id) if speaker_id else None,
             "speakerHint": str(speaker) if speaker else None,
             "text": text.strip(),
             "exactText": True,
-            "mustBeOnScreen": True,
-            "lipSyncRequired": True,
+            "mustBeOnScreen": not is_offscreen,
+            "lipSyncRequired": not is_offscreen,
         })
     assets = []
     start = bundle.get("startFrame")
@@ -310,7 +313,10 @@ def _intent_policy_conflicts(
     return conflicts
 
 
-def _observed_start_state_bullets(observed: dict[str, Any] | None) -> list[str]:
+def _observed_start_state_bullets(
+    observed: dict[str, Any] | None,
+    position_bound_by_hard_map: bool = False,
+) -> list[str]:
     if not isinstance(observed, dict):
         return ["Preserve the approved START_FRAME_IMAGE as authoritative State #0."]
     bullets: list[str] = []
@@ -329,11 +335,17 @@ def _observed_start_state_bullets(observed: dict[str, Any] | None) -> list[str]:
         elif isinstance(hands, str) and hands.strip():
             hand_text = f"; hands: {hands.strip()}"
         cid = character.get("characterId", "primary character")
-        bullets.append(
-            f"Character ({cid}): {character.get('screenPosition', 'in frame')}, "
-            f"pose: {character.get('pose', 'as in frame')}, "
-            f"gaze: {character.get('gaze', 'directed as in frame')}{hand_text}."
-        )
+        if position_bound_by_hard_map:
+            bullets.append(
+                f"Observed character ({cid}): preserve the visible pose, gaze and hand state "
+                "exactly; identity and screen position come only from the HARD SPEAKER MAP."
+            )
+        else:
+            bullets.append(
+                f"Character ({cid}): {character.get('screenPosition', 'in frame')}, "
+                f"pose: {character.get('pose', 'as in frame')}, "
+                f"gaze: {character.get('gaze', 'directed as in frame')}{hand_text}."
+            )
     for item in (observed.get("objects") or [])[:5]:
         if not isinstance(item, dict):
             continue
@@ -359,6 +371,10 @@ def _normalize_position_bucket(pos_str: str | None) -> str | None:
     if not pos_str or not isinstance(pos_str, str):
         return None
     p = pos_str.lower().strip()
+    if p == "viewer-screen":
+        return "viewer-screen"
+    if "offscreen" in p or "off-screen" in p:
+        return "viewer-offscreen"
     if "viewer-left" in p:
         return "viewer-left"
     if "viewer-right" in p:
@@ -413,7 +429,75 @@ def _resolve_character_positions(
                         pos_map[cid_str.lower()] = pos
                         pos_map[cid_str] = pos
 
+    # Selected callers have a screen role, not a physical left/right cast slot.
+    policy = shot.get("visualCastPolicy") or {}
+    caller_names = policy.get("screenCallerCharacterNames") or []
+    for index, caller_id in enumerate(policy.get("screenCallerCharacterRefs") or []):
+        keys = [caller_id]
+        if index < len(caller_names):
+            keys.append(caller_names[index])
+        for key in keys:
+            pos_map[str(key).strip().lower()] = "viewer-screen"
+            pos_map[str(key).strip()] = "viewer-screen"
+
+    narrative_names = policy.get("narrativeOnlyCharacterNames") or []
+    for index, narrative_id in enumerate(policy.get("narrativeOnlyCharacterRefs") or []):
+        keys = [narrative_id]
+        if index < len(narrative_names):
+            keys.append(narrative_names[index])
+        for key in keys:
+            pos_map[str(key).strip().lower()] = "viewer-offscreen"
+            pos_map[str(key).strip()] = "viewer-offscreen"
     return pos_map
+
+
+def _build_visual_cast_lock(payload: dict[str, Any]) -> str:
+    """Render the server-authoritative visual cast contract for the provider."""
+    shot = payload.get("shot") or {}
+    policy = shot.get("visualCastPolicy")
+    if not isinstance(policy, dict):
+        return ""
+
+    def entries(ref_key: str, name_key: str) -> list[str]:
+        refs = policy.get(ref_key) or []
+        names = policy.get(name_key) or []
+        if not isinstance(refs, list):
+            refs = [refs]
+        if not isinstance(names, list):
+            names = [names]
+        result: list[str] = []
+        for index, ref in enumerate(refs):
+            ref_text = str(ref).strip()
+            if not ref_text:
+                continue
+            name_text = str(names[index]).strip() if index < len(names) else ""
+            result.append(f"{name_text} ({ref_text})" if name_text and name_text != ref_text else ref_text)
+        return result
+
+    physical = entries("physicalCharacterRefs", "physicalCharacterNames")
+    callers = entries("screenCallerCharacterRefs", "screenCallerCharacterNames")
+    narrative_only = entries("narrativeOnlyCharacterRefs", "narrativeOnlyCharacterNames")
+    lines = [
+        "VISUAL CAST LOCK (SERVER-AUTHORITATIVE)",
+        "Physical scene cast ONLY: " + (", ".join(physical) if physical else "none"),
+    ]
+    if callers:
+        lines.append(
+            "Screen caller references ONLY (not physically present): "
+            + ", ".join(callers)
+            + ". viewer-screen means the caller's face on the selected call display only; "
+            "animate only that screen face during their dialogue. Do not add them to the physical scene."
+        )
+    if narrative_only:
+        lines.append(
+            "Narrative-only references (context only, NEVER visible in this shot): "
+            + ", ".join(narrative_only)
+            + ". Do not render, cast, or place them on screen."
+        )
+    lines.append(
+        "Do not infer additional visible characters from the synopsis, episode context, or storyboard prose."
+    )
+    return "\n".join(lines)
 
 
 def _bind_dialogue_to_character_positions(
@@ -426,7 +510,12 @@ def _bind_dialogue_to_character_positions(
     for index, line in enumerate(dialogue):
         speaker_id = str(line.get("speakerId") or line.get("characterKey") or "").strip()
         speaker = str(line.get("speaker") or line.get("speakerHint") or speaker_id).strip()
-        position = _normalize_position_bucket(line.get("position"))
+        # Caller selection overrides stale physical position metadata.
+        position = (
+            "viewer-screen"
+            if character_positions.get(speaker_id.lower()) == "viewer-screen"
+            else _normalize_position_bucket(line.get("position"))
+        )
         if not position:
             position = (
                 character_positions.get(speaker_id.lower())
@@ -434,7 +523,13 @@ def _bind_dialogue_to_character_positions(
                 or character_positions.get(speaker_id)
                 or character_positions.get(speaker)
             )
-        if not speaker_id or not speaker or not position:
+        # A dialogue speaker can be a narrative/off-screen mention. Preserve
+        # the authored line without inventing a visible cast slot; the user
+        # remains responsible for deciding whether the authored dialogue is
+        # semantically correct for the shot.
+        if not position and speaker_id and speaker:
+            position = "viewer-offscreen"
+        if not speaker_id or not speaker:
             missing.append(f"line {index + 1}: {speaker or speaker_id or 'unknown speaker'}")
             continue
         bound.append({**line, "speakerId": speaker_id, "speaker": speaker, "position": position})
@@ -538,6 +633,61 @@ def _build_motion_timeline(
             txt = line.get("text") or line.get("lineTh") or ""
             emotion = line.get("emotion")
             voice_cue = f"a {emotion} voice" if emotion else "a clear, natural voice"
+            speaker_identity_lock = (
+                f"Only speaker ID {speaker_id} ({speaker}) is allowed to speak: "
+                if speaker_id
+                else "Only the bound speaker is allowed to speak: "
+            )
+
+            # A three-shot with several visible listeners is otherwise easy for
+            # the video model to stage as direct-to-camera delivery. Use the
+            # adjacent turn in the canonical dialogue as the conversational
+            # partner when one is available; this is deterministic and does not
+            # infer an addressee from the synopsis.
+            partner_line = None
+            if idx + 1 < len(dialogue):
+                partner_line = dialogue[idx + 1]
+            elif idx > 0:
+                partner_line = dialogue[idx - 1]
+            partner_name = ""
+            partner_id = ""
+            partner_pos = ""
+            if isinstance(partner_line, dict):
+                partner_name = str(
+                    partner_line.get("speaker") or partner_line.get("speakerHint") or ""
+                ).strip()
+                partner_id = str(
+                    partner_line.get("speakerId") or partner_line.get("characterKey") or ""
+                ).strip()
+                partner_pos = str(partner_line.get("position") or "").strip()
+            if partner_name and partner_name.casefold() == str(speaker).casefold():
+                partner_name = ""
+            if partner_id and partner_id.casefold() == str(speaker_id).casefold():
+                partner_id = ""
+            partner_anchor = partner_name or partner_id
+            if partner_anchor and partner_pos:
+                partner_anchor = f"{partner_anchor} on {partner_pos}"
+            if pos == "viewer-screen":
+                eyeline = (
+                    "Eye-line: look only toward the visible phone/call display, never toward the camera lens."
+                )
+            elif pos == "viewer-offscreen":
+                eyeline = (
+                    "This is an off-screen/narrative voice only; do not render this speaker, add a body or face, "
+                    "or assign the line to any visible character. Visible characters continue the approved action "
+                    "with mouths closed unless they have their own canonical dialogue event."
+                )
+            elif partner_anchor:
+                eyeline = (
+                    f"Eye-line: at speech start, turn face and eyes away from the camera lens toward "
+                    f"{partner_anchor}, the visible conversational partner; keep a natural three-quarter "
+                    "conversational angle and never address the lens."
+                )
+            else:
+                eyeline = (
+                    "Eye-line: at speech start, turn face and eyes toward the relevant visible on-screen "
+                    "listener, never toward the camera lens; the camera is not a conversation partner."
+                )
 
             listeners: list[str] = []
             for other in chars_list:
@@ -554,8 +704,8 @@ def _build_motion_timeline(
 
             listeners_str = (" " + " ".join(listeners)) if listeners else ""
             events.append((
-                f"{speaker_anchor}; {speaker} says with {voice_cue}, "
-                f"precise realistic lip sync: \"{txt}\".{listeners_str}",
+                f"{speaker_identity_lock}{speaker_anchor}; {speaker} says with {voice_cue}, "
+                f"precise realistic lip sync: \"{txt}\". {eyeline}{listeners_str}",
                 "speech",
             ))
     else:
@@ -588,6 +738,94 @@ def _build_motion_timeline(
     return blocks
 
 
+def _build_grok_hard_speaker_map(
+    duration: float,
+    dialogue: list[dict[str, Any]],
+    all_characters: list[dict[str, str]],
+) -> str:
+    """Emit one unambiguous cast/speaker map for Grok multi-person shots.
+
+    The observed-frame stage can identify the visible people correctly while
+    still attaching an unstable character id to a face.  Grok then sees both
+    the observed label and the dialogue anchor and may choose the wrong mouth.
+    The approved cast-position lock is the stable authority at this boundary,
+    so keep the identity-to-position map together with the line ownership.
+    Exact dialogue text intentionally stays in the timed events only.
+    """
+    characters = [
+        character
+        for character in all_characters
+        if character.get("id") and character.get("name") and character.get("position")
+    ]
+    if len(characters) < 2 or not dialogue:
+        return ""
+
+    position_order = {
+        "viewer-left": 0,
+        "viewer-center-left": 1,
+        "viewer-center": 2,
+        "viewer-center-right": 3,
+        "viewer-right": 4,
+    }
+    characters = sorted(
+        characters,
+        key=lambda character: position_order.get(character.get("position", ""), 99),
+    )
+
+    lines = [
+        "HARD SPEAKER MAP (MANDATORY CAST POSITION LOCK; overrides ambiguous visual labels; do not swap)",
+        "All positions below are from the viewer/camera side and remain fixed for the entire shot.",
+    ]
+    for character in characters:
+        lines.append(
+            f"- {character['id']} = {character['name']}: {character['position']}; "
+            "preserve this identity, wardrobe and position."
+        )
+
+    speaker_ids: set[str] = set()
+    speaker_names: set[str] = set()
+    for index, line in enumerate(dialogue):
+        speaker = str(line.get("speaker") or line.get("speakerHint") or "").strip()
+        speaker_id = str(line.get("speakerId") or line.get("characterKey") or "").strip()
+        position = str(line.get("position") or "").strip()
+        if speaker_id:
+            speaker_ids.add(speaker_id.casefold())
+        if speaker:
+            speaker_names.add(speaker.casefold())
+        lines.append(
+            f"- Line {index + 1} ONLY: {speaker} ({speaker_id}) on {position}; "
+            "no other character may speak this line."
+        )
+
+    silent_characters = [
+        character
+        for character in characters
+        if character["id"].casefold() not in speaker_ids
+        and character["name"].casefold() not in speaker_names
+    ]
+    if silent_characters:
+        silent = ", ".join(
+            f"{character['name']} ({character['id']}) on {character['position']}"
+            for character in silent_characters
+        )
+        lines.append(
+            f"- Silent entire shot, mouth fully closed from 0.0–{duration:.1f} seconds: {silent}."
+        )
+    lines.append(
+        "Only the bound speaker moves their mouth during that speaker's timed event; "
+        "every listener keeps their mouth fully closed with no lip movement."
+    )
+    first = dialogue[0]
+    first_speaker = str(first.get("speaker") or first.get("speakerHint") or "").strip()
+    first_id = str(first.get("speakerId") or first.get("characterKey") or "").strip()
+    first_position = str(first.get("position") or "").strip()
+    lines.append(
+        f"FIRST SPEAKER LOCK: The first moving mouth must be {first_speaker} "
+        f"({first_id}) on {first_position}; never assign Line 1 to another character."
+    )
+    return "\n".join(lines)
+
+
 def _validate_dialogue_timeline(
     timeline_blocks: list[str], dialogue: list[dict[str, Any]]
 ) -> None:
@@ -607,17 +845,26 @@ def _validate_dialogue_timeline(
             )
 
 
-def _compact_observed_start_state_bullets(observed: dict[str, Any] | None) -> list[str]:
+def _compact_observed_start_state_bullets(
+    observed: dict[str, Any] | None,
+    position_bound_by_hard_map: bool = False,
+) -> list[str]:
     if not isinstance(observed, dict):
         return ["Approved START_FRAME_IMAGE is authoritative State #0."]
     bullets: list[str] = []
     for character in (observed.get("characters") or [])[:6]:
         if not isinstance(character, dict):
             continue
-        bullets.append(
-            f"Character {character.get('characterId', 'unknown')}: "
-            f"{character.get('screenPosition', 'position as shown')}; preserve identity, pose and wardrobe."
-        )
+        if position_bound_by_hard_map:
+            bullets.append(
+                f"Observed character {character.get('characterId', 'unknown')}: preserve visible "
+                "pose, gaze and hand state; use the HARD SPEAKER MAP for identity and position."
+            )
+        else:
+            bullets.append(
+                f"Character {character.get('characterId', 'unknown')}: "
+                f"{character.get('screenPosition', 'position as shown')}; preserve identity, pose and wardrobe."
+            )
     for item in (observed.get("objects") or [])[:4]:
         if isinstance(item, dict):
             bullets.append(
@@ -641,6 +888,87 @@ def _resolved_prompt_budget(payload: dict[str, Any]) -> int:
 def _prompt_char_length(text: str) -> int:
     """Match JavaScript String.length used by the server persistence boundary."""
     return len(text.encode("utf-16-le")) // 2
+
+
+def _local_observed_start_state(payload: dict[str, Any]) -> dict[str, Any]:
+    """Build a conservative State #0 when the vision authoring stage is unavailable.
+
+    This is intentionally derived only from the controller-owned cast lock and
+    legacy frame metadata. It never invents a future action or claims that an
+    unseen prop was observed in the image.
+    """
+    shot = payload.get("shot") or {}
+    characters: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    entries = shot.get("verifiedCastPositions") or (payload.get("continuity") or {}).get("verifiedCastPositions") or []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        character_id = str(entry.get("characterKey") or entry.get("id") or entry.get("name") or "").strip()
+        if not character_id or character_id.casefold() in seen:
+            continue
+        position = _normalize_position_bucket(entry.get("position")) or "position as approved"
+        characters.append({
+            "characterId": character_id,
+            "screenPosition": position,
+            "pose": "preserve the approved frame-0 pose",
+            "gaze": "preserve the approved frame-0 gaze",
+            "handOccupancy": {"left": None, "right": None},
+        })
+        seen.add(character_id.casefold())
+    frame_people = ((shot.get("frameAnalysis") or {}).get("people") or [])
+    for index, person in enumerate(frame_people):
+        if not isinstance(person, dict):
+            continue
+        character_id = str(person.get("characterId") or person.get("characterKey") or person.get("name") or f"frame-person-{index + 1}").strip()
+        if character_id.casefold() in seen:
+            continue
+        characters.append({
+            "characterId": character_id,
+            "screenPosition": _normalize_position_bucket(person.get("position")) or "position as shown",
+            "pose": "preserve the approved frame-0 pose",
+            "gaze": "preserve the approved frame-0 gaze",
+            "handOccupancy": {"left": None, "right": None},
+        })
+        seen.add(character_id.casefold())
+    return {
+        "source": "controller_cast_lock_fallback",
+        "characters": characters,
+        "objects": [],
+        "camera": {"framing": "as approved", "angle": "as approved", "movementAtT0": "unknown from still image"},
+        "environment": "as shown in the approved START_FRAME_IMAGE",
+        "lighting": "as shown in the approved START_FRAME_IMAGE",
+        "uncertainties": ["Vision authoring was unavailable; preserve all visible frame-0 details without inventing unseen facts."],
+    }
+
+
+def _local_prompt_intent(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return provider-neutral intent for the deterministic Enhanced fallback."""
+    shot = payload.get("shot") or {}
+    dialogue = _extract_dialogue_list(payload)
+    has_offscreen_dialogue = any(
+        str(line.get("position") or "").strip() == "viewer-offscreen"
+        for line in dialogue
+    )
+    return {
+        "scene": str(shot.get("description") or "Continue from the approved start frame").strip(),
+        "actions": [] if dialogue else ["Continue naturally from the approved frame-0 state with physically plausible movement."],
+        "camera": str(shot.get("cameraSetup") or "Natural perspective with smooth cinematic motion").strip(),
+        "dialogue": dialogue,
+        "audioIntent": (
+            "Exact canonical dialogue, including explicitly authored off-screen/narrative lines; "
+            "do not invent additional voices or visible people."
+            if has_offscreen_dialogue
+            else "Exact synchronous dialogue when present; no off-screen voices or background music."
+        ),
+        "endBridge": "Hold the resolved pose at the end of the continuous shot.",
+    }
+
+
+def _local_fallback_warning(stage: str, error: BaseException) -> str:
+    diagnostic = safe_bridge_error_line(error)
+    code = diagnostic.split(":", 1)[0]
+    return f"Enhanced local prompt fallback used after {stage} authoring failure ({code}); approved frame, cast and canonical dialogue were preserved."
 
 
 def _clean_acoustic_descriptor(text: str) -> str:
@@ -783,9 +1111,12 @@ def _build_native_audio_section(
         omni_events = []
         cur_sec = 0
         for idx, line in enumerate(dialogue):
-            text = line.get("text") or line.get("lineTh") or ""
             speaker = line.get("speaker") or line.get("speakerHint") or line.get("speakerId") or f"Character {idx+1}"
-            omni_events.append(f"[{cur_sec}-{cur_sec+2}s] {speaker}: \"{text}\"")
+            speaker_id = line.get("speakerId") or line.get("characterKey") or ""
+            identity = f" ({speaker_id})" if speaker_id else ""
+            omni_events.append(
+                f"[{cur_sec}-{cur_sec+2}s] Line {idx + 1}: use the canonical timed speech event for {speaker}{identity}; preserve its exact text."
+            )
             cur_sec += 2
         for f in foley_cues:
             omni_events.append(f"[{cur_sec}s] SFX: {f}")
@@ -796,8 +1127,15 @@ def _build_native_audio_section(
     elif "h3" in target_id.lower() or "hailuo" in target_id.lower():
         audio_subsections.append("ACOUSTIC BREVITY (H3): Keep ambient room tone minimal and speech clean.")
 
-    # Strict negative audio constraint
-    audio_subsections.append("Negative Audio: Strictly no background music, no score, no crowd chatter, no off-screen voices.")
+    # Strict negative audio constraint, except for explicitly authored
+    # off-screen/narrative dialogue lines.
+    if any(str(line.get("position") or "").strip() == "viewer-offscreen" for line in dialogue):
+        audio_subsections.append(
+            "Negative Audio: Strictly no background music, no score or crowd chatter. "
+            "Off-screen/narrative audio is limited to the canonical dialogue lines above; do not invent additional voices."
+        )
+    else:
+        audio_subsections.append("Negative Audio: Strictly no background music, no score, no crowd chatter, no off-screen voices.")
 
     return audio_subsections
 
@@ -818,10 +1156,21 @@ def _terminal_prompt(
     if duration_sec < 3.0:
         duration_sec = 8.0
     prompt_budget = _resolved_prompt_budget(payload)
+    is_grok_target = "grok" in target_id.casefold()
+    media_bundle = payload.get("mediaBundle") or {}
+    grok_has_single_start_frame = (
+        is_grok_target
+        and isinstance(media_bundle.get("startFrame"), dict)
+        and not (media_bundle.get("references") or [])
+        and not isinstance(media_bundle.get("stopFrame"), dict)
+    )
 
     unified_image_transport = _uses_unified_image_transport(target)
     start_frame_instruction = (
-        "REFERENCE FRAME SET: The approved START_FRAME_IMAGE is serialized as "
+        "START FRAME LOCK: Continue from the approved START_FRAME_IMAGE; preserve "
+        "identity, wardrobe, geometry, lighting, layout and object state."
+        if grok_has_single_start_frame
+        else "REFERENCE FRAME SET: The approved START_FRAME_IMAGE is serialized as "
         "the first item in the provider reference-image array. Preserve its "
         "identity, wardrobe, geometry, lighting, layout and object state as "
         "the strongest visual continuity anchor, but do not claim a hard "
@@ -839,6 +1188,11 @@ def _terminal_prompt(
     if dialogue and (observed_start_state is not None or character_positions):
         dialogue = _bind_dialogue_to_character_positions(dialogue, character_positions)
     continuity = payload.get("continuity") or {}
+    visual_cast_lock = _build_visual_cast_lock(payload)
+    has_offscreen_dialogue = any(
+        str(line.get("position") or "").strip() == "viewer-offscreen"
+        for line in dialogue
+    )
 
     all_characters: list[dict[str, str]] = []
     seen_char_keys = set()
@@ -878,7 +1232,18 @@ def _terminal_prompt(
     )
     if dialogue and all(line.get("position") for line in dialogue):
         _validate_dialogue_timeline(timeline_blocks, dialogue)
+    grok_hard_speaker_map = (
+        _build_grok_hard_speaker_map(duration_sec, dialogue, all_characters)
+        if is_grok_target
+        else ""
+    )
     camera_spec = str(intent.get("camera") or shot.get("cameraSetup") or "Natural 35mm-lens eye-level perspective with smooth cinematic motion").strip()
+    grok_camera_lock = (
+        "\n- Keep every mapped character in the same continuous three-shot; do not cut away, "
+        "isolate a face, or re-center onto the right-hand character."
+        if grok_hard_speaker_map
+        else ""
+    )
 
     native_audio_enabled = (
         "nativeAudioEnabled" not in payload
@@ -901,6 +1266,8 @@ def _terminal_prompt(
         start_frame_instruction,
         f"TARGET MODEL: {target_id}\nUse the server-resolved capability profile.\nOUTPUT: One continuous 9:16 vertical shot, approximately {int(duration_sec)} seconds, with native audio if supported.",
     ]
+    if visual_cast_lock:
+        sections.append(visual_cast_lock)
     if ep_synopsis:
         sections.append(f"DRAMATIC EPISODE CONTEXT\n\nEpisode Synopsis: {ep_synopsis}")
 
@@ -911,17 +1278,15 @@ def _terminal_prompt(
             spk_id = line.get("speakerId") or line.get("characterKey") or ""
             pos = line.get("position")
             pos_tag = f" on {pos}" if pos else ""
-            txt = line.get("text") or line.get("lineTh") or ""
-            emo = f" (Tone/Emotion: {line['emotion']})" if line.get("emotion") else ""
             dialogue_lines_formatted.append(
-                f"- Line {idx + 1} [{spk} ({spk_id}){pos_tag}]: \"{txt}\"{emo}"
+                f"- Line {idx + 1} [{spk} ({spk_id}){pos_tag}]: speak only in the matching timed event below."
             )
 
         dialogue_section = (
-            "CHARACTER, POSITION, AND DIALOGUE LOCK\n\n"
-            "SPOKEN DIALOGUE / LIP-SYNC\n\n"
-            "Each bracket binds speaker ID + viewer position + exact line; never transfer a line.\n"
-            "DIALOGUE: Preserve the canonical dialogue exactly; do not invent, translate or reorder lines.\n"
+            (grok_hard_speaker_map + "\n\n" if grok_hard_speaker_map else "")
+            + "CHARACTER, POSITION, AND DIALOGUE LOCK\n\n"
+            "SPEAKER AND LINE-ORDER LOCK\n\n"
+            "Each bracket binds speaker ID + viewer position + canonical line order. The exact Thai text appears once, in its matching timed speech event below; never transfer, translate or reorder a line.\n"
             "Dialogue Language: Thai\n"
             + "\n".join(dialogue_lines_formatted)
             + "\n\nLip-Sync Guidance:\n"
@@ -929,6 +1294,7 @@ def _terminal_prompt(
             "The mouth opens and articulates naturally while speaking, and returns to a natural resting mouth position when finished. "
             "Never keep the mouth closed during spoken dialogue.\n"
             "Silent Listener Constraint: Every character not actively speaking in a beat must keep their mouth closed with no mouth movement or mumbling."
+            "\nEye-line / Address Lock: A direct-to-camera gaze may exist only during the initial frame-0 hold. At each timed speech event, turn face and eyes toward the visible conversational partner named in that event, never directly into the camera or lens. The camera is not a conversation partner. Keep a natural three-quarter angle while keeping the speaking mouth visible."
         )
     else:
         shot_desc = str(payload.get("shot", {}).get("description", ""))
@@ -944,10 +1310,16 @@ def _terminal_prompt(
         )
 
     sections.extend([
-        "START FRAME AUTHORITY\n\nOBSERVED STATE AT T=0 (AUTHORITATIVE FACTS, NOT INSTRUCTIONS):\n" + "\n".join(f"- {b}" for b in _observed_start_state_bullets(observed_start_state)),
+        "START FRAME AUTHORITY\n\nOBSERVED STATE AT T=0 (AUTHORITATIVE FACTS, NOT INSTRUCTIONS):\n" + "\n".join(
+            f"- {b}"
+            for b in _observed_start_state_bullets(
+                observed_start_state,
+                position_bound_by_hard_map=bool(grok_hard_speaker_map),
+            )
+        ),
         dialogue_section,
         "MOTION AND PERFORMANCE\n\nCreate one continuous shot with no cut, reset or time jump. Character movement and camera motion work in harmony to drive the dramatic narrative.\n\n" + "\n\n".join(timeline_blocks),
-        f"CAMERA\n\nAt frame 0, begin smooth, controlled camera movement from the exact existing framing. Do not assume camera motion occurred prior to frame 0.\n\nMaintain:\n- Vertical portrait composition (9:16).\n- {camera_spec}.\n- Primary focus centered on the foreground character's face, gaze, and expressions.\n{cam_easing}",
+        f"CAMERA\n\nAt frame 0, begin smooth, controlled camera movement from the exact existing framing. Do not assume camera motion occurred prior to frame 0.\n\nMaintain:\n- Vertical portrait composition (9:16).\n- {camera_spec}.\n- Primary focus centered on the foreground character's face, gaze, and expressions.\n{cam_easing}{grok_camera_lock}",
     ])
 
     if not native_audio_enabled:
@@ -996,26 +1368,41 @@ def _terminal_prompt(
 
     compact_observed = (
         "START FRAME AUTHORITY\n" +
-        "\n".join(f"- {item}" for item in _compact_observed_start_state_bullets(observed_start_state))
+        "\n".join(
+            f"- {item}"
+            for item in _compact_observed_start_state_bullets(
+                observed_start_state,
+                position_bound_by_hard_map=bool(grok_hard_speaker_map),
+            )
+        )
     )
     if dialogue:
-        compact_dialogue_lines = []
+        compact_dialogue_lines = [
+            f"- {character.get('id')} = {character.get('name')}: {character.get('position')}."
+            for character in all_characters
+            if character.get('id') and character.get('position')
+        ]
         for idx, line in enumerate(dialogue):
             speaker = line.get("speaker") or line.get("speakerHint") or f"Character {idx + 1}"
             speaker_id = line.get("speakerId") or line.get("characterKey") or ""
             position = line.get("position") or ""
-            text = line.get("text") or line.get("lineTh") or ""
             compact_dialogue_lines.append(
-                f'- Line {idx + 1} [{speaker} ({speaker_id}) on {position}]: "{text}"'
+                f"- Line {idx + 1} [{speaker} ({speaker_id}) on {position}]: speak only in the matching timed event below."
             )
         compact_dialogue = (
-            "CHARACTER, POSITION, AND DIALOGUE LOCK\n"
-            "Exact Thai lines; never transfer, translate or reorder:\n"
+            "HARD SPEAKER MAP (authoritative; do not swap)\n"
+            + "CHARACTER, POSITION, AND DIALOGUE LOCK\n"
+            "SPEAKER AND LINE-ORDER LOCK; exact Thai text appears once in the matching timed event below:\n"
             + "\n".join(compact_dialogue_lines)
-            + "\nOnly the bound speaker moves their mouth; all listeners keep mouths closed."
+            + "\nOnly the timed speaker moves their mouth; all others keep mouths closed. "
+            "Characters without a dialogue event remain silent throughout. "
+            "viewer-screen identifies only the caller's face on the call display, never a person in the room. "
+            "At speech start, turn face and eyes toward the visible conversational partner named in that event, never the camera lens; the camera is not a conversation partner."
         )
         speech_timeline = _build_motion_timeline(
-            duration_sec, [], dialogue, character_positions, all_characters
+            # The global mouth rule already covers all listeners. Repeating
+            # their full names/IDs for every line can exceed Grok's budget.
+            duration_sec, [], dialogue, character_positions, []
         )
         _validate_dialogue_timeline(speech_timeline, dialogue)
     else:
@@ -1038,10 +1425,17 @@ def _terminal_prompt(
         compact_observed,
         compact_dialogue,
         compact_motion,
-        f"CAMERA: Start from frame-0 composition; {camera_spec}; smooth motion, no cut or reset.",
-        "AUDIO: Exact synchronous dialogue when present; no off-screen voices or background music.",
+        f"CAMERA: Start from frame-0 composition; {camera_spec}; smooth motion, no cut or reset.{grok_camera_lock}",
+        (
+            "AUDIO: Exact canonical dialogue when present; off-screen/narrative lines remain audio-only "
+            "and must not add visible people; no background music."
+            if has_offscreen_dialogue
+            else "AUDIO: Exact synchronous dialogue when present; no off-screen voices or background music."
+        ),
         "CONSTRAINTS: Preserve cast, props and environment; no duplicates, morphing, teleporting, cuts, resets or time jumps.",
     ]
+    if visual_cast_lock:
+        compact_sections.insert(2, visual_cast_lock)
     compact_text = "\n\n".join(compact_sections)
     if _prompt_char_length(compact_text) <= prompt_budget:
         return compact_text
@@ -1065,10 +1459,20 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
     root = Path(__file__).resolve().parents[2]
     contracts = StageContractRegistry(root)
     contracts.validate_input(_package_input(payload))
-    authoring_model = str((payload.get("authoringModel") or {}).get("id") or "").strip()
+    authoring_model_facts = payload.get("authoringModel") or {}
+    authoring_model = str(authoring_model_facts.get("id") or "").strip()
+    provider_model_id = str(authoring_model_facts.get("providerModelId") or authoring_model).strip()
+    api_style = str(authoring_model_facts.get("apiStyle") or "responses").strip().lower()
+    if api_style not in {"responses", "chat-completions"}:
+        raise RuntimeError("ENHANCED_UNSUPPORTED_PROVIDER_TRANSPORT")
+    supports_function_tools = authoring_model_facts.get("supportsFunctionTools") is not False
     config = AgentRuntimeConfig(
-        model=authoring_model,
-        allow_research_tool=str(payload.get("researchMode") or "off") == "bounded",
+        model=provider_model_id,
+        provider_model_id=provider_model_id,
+        api_style=api_style,
+        allow_research_tool=supports_function_tools and str(payload.get("researchMode") or "off") == "bounded",
+        allow_asset_evidence_tool=supports_function_tools,
+        allow_provider_profile_tool=supports_function_tools,
         allow_cost_estimate_tool=False,
         # The selected authoring provider key is not necessarily an OpenAI
         # platform tracing key (for example OpenRouter). Keep this isolated
@@ -1116,20 +1520,32 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
         for reference in payload.get("visionReferences") or []
         if isinstance(reference, dict) and reference.get("label") == "START_FRAME_IMAGE"
     ][:1]
-    observed_result = await orchestrator.run_stage(
-        "observed_start_state",
-        context=context,
-        input_payload={
-            "source": "start_frame",
-            "characterIds": shared_stage_input["characterIds"],
-            "legacyFrameAnalysis": (payload.get("shot") or {}).get("frameAnalysis") or {},
-            "_visionReferences": start_frame_references,
-            "instructions": (
-                "Observe the approved START_FRAME_IMAGE as State #0. The image overrides conflicting story text or legacy analysis. "
-                "Record exact pose, screen position, gaze, hand occupancy and object ownership/location; mark uncertainty instead of guessing."
-            ),
-        },
-    )
+    try:
+        observed_result = await orchestrator.run_stage(
+            "observed_start_state",
+            context=context,
+            input_payload={
+                "source": "start_frame",
+                "characterIds": shared_stage_input["characterIds"],
+                "legacyFrameAnalysis": (payload.get("shot") or {}).get("frameAnalysis") or {},
+                "_visionReferences": start_frame_references,
+                "instructions": (
+                    "Observe the approved START_FRAME_IMAGE as State #0. The image overrides conflicting story text or legacy analysis. "
+                    "Record exact pose, screen position, gaze, hand occupancy and object ownership/location; mark uncertainty instead of guessing."
+                ),
+            },
+        )
+    except Exception as exc:
+        observed_result = StageRunResult(
+            stage="observed_start_state",
+            payload=_local_observed_start_state(payload),
+            usage=StageUsage(),
+            warnings=[_local_fallback_warning("start-frame", exc)],
+            assumptions=["Start-frame visual details were preserved by the approved image lock; no unseen visual facts were inferred."],
+            needs_human_review=True,
+            confidence=0.0,
+            attempts=0,
+        )
     bound_dialogue = _bind_dialogue_to_character_positions(
         _extract_dialogue_list(payload),
         _resolve_character_positions(payload, observed_result.payload),
@@ -1146,17 +1562,29 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
             "Preserve canonical dialogue exactly; when dialogue is empty, use silent acting only. Do not choose a model or provider."
         ),
     }
-    result = await orchestrator.run_stage(
-        "prompt_intent",
-        context=context,
-        input_payload=stage_input,
-        instance_id=stage_input["shotId"],
-    )
+    try:
+        result = await orchestrator.run_stage(
+            "prompt_intent",
+            context=context,
+            input_payload=stage_input,
+            instance_id=stage_input["shotId"],
+        )
+    except Exception as exc:
+        result = StageRunResult(
+            stage="prompt_intent",
+            payload=_local_prompt_intent(runtime_payload),
+            usage=StageUsage(),
+            warnings=[_local_fallback_warning("prompt-intent", exc)],
+            assumptions=["Prompt intent was compiled locally from the approved shot data because Agent authoring was unavailable."],
+            needs_human_review=True,
+            confidence=0.0,
+            attempts=0,
+        )
     prompt_usage = result.usage
     prompt_warnings = list(result.warnings)
     prompt_assumptions = list(result.assumptions)
     policy_conflicts = _intent_policy_conflicts(runtime_payload, result.payload, observed_result.payload)
-    if policy_conflicts:
+    if policy_conflicts and not any("local prompt fallback" in warning.lower() for warning in prompt_warnings):
         repaired_stage_input = {
             **stage_input,
             "policyRepairFindings": policy_conflicts,
@@ -1165,12 +1593,24 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
                 + " The previous candidate failed mandatory State #0/dialogue policy. Rewrite the entire intent and resolve every policyRepairFinding."
             ),
         }
-        repair_result = await orchestrator.run_stage(
-            "prompt_intent",
-            context=context,
-            input_payload=repaired_stage_input,
-            instance_id=stage_input["shotId"],
-        )
+        try:
+            repair_result = await orchestrator.run_stage(
+                "prompt_intent",
+                context=context,
+                input_payload=repaired_stage_input,
+                instance_id=stage_input["shotId"],
+            )
+        except Exception as exc:
+            repair_result = StageRunResult(
+                stage="prompt_intent",
+                payload=_local_prompt_intent(runtime_payload),
+                usage=StageUsage(),
+                warnings=[_local_fallback_warning("prompt-intent-repair", exc)],
+                assumptions=["Prompt intent repair was compiled locally from the approved shot data."],
+                needs_human_review=True,
+                confidence=0.0,
+                attempts=0,
+            )
         remaining_conflicts = _intent_policy_conflicts(
             runtime_payload, repair_result.payload, observed_result.payload
         )
@@ -1249,5 +1689,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as exc:  # stderr only; stdout remains machine-readable.
-        print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
-        raise
+        print(safe_bridge_error_line(exc), file=sys.stderr)
+        raise SystemExit(2)

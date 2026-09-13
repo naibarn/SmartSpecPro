@@ -1,0 +1,28 @@
+feature: 186
+status: foundation-ready
+canonical_persistence:
+  jobs_table: worker_jobs
+  events_table: worker_job_events
+  canonical_id: worker_jobs.id
+  queue_is_source_of_truth: false
+active_side_effecting_adapter: legacy
+selected_job_types: []
+schema:
+  migrations:
+    - 0303_feature_186_unified_job_control_plane
+    - 0304_feature_186_contract_version
+    - 0305_feature_186_timeout_policy
+  current_schema_version: 0305
+  backfill_command: npm --workspace @smartspec/web run backfill:unified-job-control-plane -- --dry-run
+  apply_requires: backup-and-approved-maintenance-window
+rollout_gates:
+  - focused-contract-tests
+  - migration-shape-check
+  - dry-run-backfill-report
+  - adapter-contract-and-duplicate-delivery-tests
+  - tenant-admin-redaction-review
+  - build-restart-worker-connectivity
+rollback:
+  new_work_flag: feature186.adapter.<job_type>
+  rule: route-new-work-to-previous-adapter; preserve-canonical-terminal-history
+cloudflare_proof: not-established-by-local-tests

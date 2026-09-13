@@ -45,6 +45,10 @@ import {
 } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import { executeWithFallback } from "./llmRouter";
+import {
+  loadVerticalDramaGenerationSettings,
+  resolveVerticalDramaLlmExtraBodyParams,
+} from "./verticalDramaLlmPolicy";
 import { isAvailable } from "./providerHealth";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectBestLlmModel } from "./intelligentModelSelector";
@@ -420,6 +424,16 @@ export async function generateAdBannerPrompt(
       )
     : [];
   const userPromptText = buildAdBannerPromptUserPrompt(params, hasVision);
+  const adBannerSettings = await loadVerticalDramaGenerationSettings({
+    seriesId: params.seriesId,
+    taskClass: "ad_banner",
+    userId: params.userId,
+    tenantId: params.tenantId,
+  });
+  const adBannerExtraBodyParams = resolveVerticalDramaLlmExtraBodyParams({
+    settings: adBannerSettings,
+    taskClass: "ad_banner",
+  });
 
   const userContent = hasVision
     ? [
@@ -442,6 +456,7 @@ export async function generateAdBannerPrompt(
       userId: params.userId,
       maxTokens,
       temperature: 0.7,
+      extraBodyParams: adBannerExtraBodyParams,
     });
 
     if (result.type !== "success") {

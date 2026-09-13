@@ -1262,6 +1262,11 @@ export async function runVerticalDramaEpisodeQualityReview(
     maxTokens: 4000,
     schema: episodeQualityReviewOutputSchema,
     label: "Episode quality review",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      episodeId: params.episodeId,
+      taskClass: "semantic_quality_review",
+    },
   });
 
   // Spec §16.1 rule 1 — enforce in code: the LLM never gets the final say on

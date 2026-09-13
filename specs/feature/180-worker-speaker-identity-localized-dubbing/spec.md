@@ -1,11 +1,13 @@
 # Feature 180 — Unified Voice, Audio & Localized Dubbing v2
 
-**Status:** IMPLEMENTATION-READY SPECIFICATION v2 — runtime implementation and release proof pending
-**Revised:** 2026-09-07
+**Status:** IMPLEMENTED WORKSPACE SLICE v2 — runtime/provider release proof pending
+**Revised:** 2026-09-08
 **Authority:** This specification and `contracts-v2.md` define v2; sections implement them. Historical research/interview/reviews describe v1 and are not current acceptance evidence.
 **Created:** 2026-09-07
 **Owners:** SmartAIHub Web, Worker App, media/runtime platform
 **Related:** Feature 175 (native cinematic audio), Feature 176/177 (emotion/audio planning), Feature 178 (group-native Music3), Feature 179 (speaker-aware VAD/diarization/reframe)
+
+**ASR/alignment extension:** [Multi-engine ASR and script alignment](asr-alignment/spec.md), with [8 implementation sections](asr-alignment/sections/index.md). Core contracts, legacy projection, Worker capability gates and review/apply subtitle flow are implemented; signed model/provider runtime promotion remains separately gated and fail-closed.
 
 ## 1. Problem and outcome
 

@@ -14,6 +14,30 @@ from app.llm_proxy.providers.kie_ai_provider import (
 )
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("content,expected_type,suffix", [
+    (b"\x89PNG\r\n\x1a\nimage", "image/png", ".png"),
+    (b"\xff\xd8\xffimage", "image/jpeg", ".jpg"),
+    (b"GIF89aimage", "image/gif", ".gif"),
+    (b"RIFF1234WEBPimage", "image/webp", ".webp"),
+])
+async def test_reference_upload_uses_actual_format_when_metadata_is_wrong(content, expected_type, suffix):
+    provider = KieAIProvider(api_key="test-key")
+    provider.client.get = AsyncMock(return_value=httpx.Response(
+        200, content=content, headers={"content-type": "image/jpeg"},
+        request=httpx.Request("GET", "https://example.com/reference.jpg"),
+    ))
+    provider.client.post = AsyncMock(return_value=httpx.Response(
+        200, json={"data": {"downloadUrl": "https://kie.example/upload.png"}},
+        request=httpx.Request("POST", "https://kie.example/upload"),
+    ))
+    await provider._upload_reference_image("https://example.com/reference.jpg", 0)
+    name, uploaded, mime = provider.client.post.await_args.kwargs["files"]["file"]
+    assert mime == expected_type
+    assert name.endswith(suffix)
+    assert uploaded == content
+
+
 def test_clean_endpoint_removes_repeated_api_version_prefixes():
     assert _clean_endpoint("/api/v1/jobs/createTask") == "jobs/createTask"
     assert _clean_endpoint("api/v1/api/v1/jobs/createTask") == "jobs/createTask"
@@ -42,8 +66,16 @@ def test_http_client_is_recreated_when_provider_crosses_event_loops():
     async def get_client():
         return provider._get_client_for_current_loop()
 
-    first_client = asyncio.run(get_client())
-    second_client = asyncio.run(get_client())
+    # Do not unset pytest-asyncio's current loop for later async tests.
+    loops = [asyncio.new_event_loop(), asyncio.new_event_loop()]
+    try:
+        first_client = loops[0].run_until_complete(get_client())
+        second_client = loops[1].run_until_complete(get_client())
+        loops[0].run_until_complete(first_client.aclose())
+        loops[1].run_until_complete(second_client.aclose())
+    finally:
+        for loop in loops:
+            loop.close()
 
     assert second_client is not first_client
 
@@ -334,6 +366,73 @@ async def test_generate_image_routes_to_configured_model_variant_when_references
     upload_call = provider.client.post.await_args
     assert upload_call.args[0] == "https://kieai.redpandaai.co/api/file-stream-upload"
     assert upload_call.kwargs["headers"] == {"Authorization": "Bearer test-key"}
+
+
+@pytest.mark.asyncio
+async def test_upload_reference_image_retries_transient_http_failure():
+    provider = KieAIProvider(api_key="test-key")
+    failed_response = httpx.Response(
+        503,
+        request=httpx.Request(
+            "GET",
+            "https://smartaihub.app/api/mcp/downloads/signed-token/reference.png",
+        ),
+    )
+    success_response = httpx.Response(
+        200,
+        headers={"content-type": "image/png"},
+        content=b"reference-image",
+        request=httpx.Request("GET", "https://smartaihub.app/reference.png"),
+    )
+    provider.client.get = AsyncMock(side_effect=[failed_response, success_response])
+    provider.client.post = AsyncMock(
+        return_value=httpx.Response(
+            200,
+            json={"data": {"downloadUrl": "https://kie.example/reference.png"}},
+            request=httpx.Request("POST", "https://kieai.redpandaai.co/api/file-stream-upload"),
+        )
+    )
+
+    with patch(
+        "app.llm_proxy.providers.kie_ai_provider.asyncio.sleep",
+        new_callable=AsyncMock,
+    ) as sleep:
+        uploaded_url = await provider._upload_reference_image(
+            "https://smartaihub.app/api/mcp/downloads/signed-token/reference.png?token=secret",
+            4,
+        )
+
+    assert uploaded_url == "https://kie.example/reference.png"
+    assert provider.client.get.await_count == 2
+    sleep.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_upload_reference_image_rejects_permanent_http_failure_without_token_leak():
+    provider = KieAIProvider(api_key="test-key")
+    provider.client.get = AsyncMock(
+        return_value=httpx.Response(
+            403,
+            request=httpx.Request(
+                "GET",
+                "https://smartaihub.app/api/mcp/downloads/signed-token/reference.png?token=secret",
+            ),
+        )
+    )
+
+    with pytest.raises(RuntimeError) as error:
+        await provider._upload_reference_image(
+            "https://smartaihub.app/api/mcp/downloads/signed-token/reference.png?token=secret",
+            4,
+        )
+
+    message = str(error.value)
+    assert "KIE_REFERENCE_IMAGE_ACCESS_FAILED" in message
+    assert "item 5" in message
+    assert "status=403" in message
+    assert "smartaihub.app" in message
+    assert "secret" not in message
+    assert provider.client.get.await_count == 1
 
 
 @pytest.mark.asyncio

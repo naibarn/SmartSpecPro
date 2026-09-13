@@ -1,4 +1,5 @@
-export const FEEDBACK_LIGHTBOX_ZOOM_MIN = 1;
+export const FEEDBACK_LIGHTBOX_ZOOM_MIN = 0.25;
+export const FEEDBACK_LIGHTBOX_ZOOM_DEFAULT = 1;
 export const FEEDBACK_LIGHTBOX_ZOOM_MAX = 4;
 export const FEEDBACK_LIGHTBOX_ZOOM_STEP = 0.25;
 
@@ -17,9 +18,15 @@ export function getFeedbackLightboxZoomPercent(scale: number): number {
 export function getFeedbackLightboxImageStyle(
   scale: number,
   imageSize: { width: number; height: number } | null
-): { width: string; height: string } | undefined {
+): { width: string; height: string; maxHeight?: string } | undefined {
   const zoomedScale = clampFeedbackLightboxZoom(scale);
-  if (zoomedScale === FEEDBACK_LIGHTBOX_ZOOM_MIN) return undefined;
+  if (zoomedScale <= FEEDBACK_LIGHTBOX_ZOOM_DEFAULT) {
+    return {
+      width: `${zoomedScale * 100}%`,
+      height: "auto",
+      maxHeight: `calc((100dvh - 8rem) * ${zoomedScale})`,
+    };
+  }
 
   if (
     imageSize &&

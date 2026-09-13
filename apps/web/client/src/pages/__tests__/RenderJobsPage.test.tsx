@@ -122,6 +122,8 @@ describe("RenderJobsPage — remotion_render_video jobType", () => {
 
   it("renders the Thai label for remotion_render_video in the job list", () => {
     render(<RenderJobsPage />);
+    expect(screen.getByRole("heading", { name: "คิวงานประมวลผลของฉัน" })).toBeInTheDocument();
+    expect(document.title).toBe("Worker Jobs | SmartAIHub");
     const rows = screen.getAllByText("เรนเดอร์วิดีโอ Remotion");
     expect(rows.length).toBeGreaterThan(0);
   });

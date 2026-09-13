@@ -12,6 +12,7 @@ tags:
   - "browser approval"
   - "private worker"
   - "windows"
+  - "macos"
   - "help"
   - "help/en"
 aliases:
@@ -28,7 +29,9 @@ workspace and remain Online while work is running.
 
 ## Install and pair
 
-1. Download the latest Windows installer from this page.
+1. In the Dashboard release panel, download the installer matching the machine:
+   Windows EXE/MSI or the native Apple Silicon macOS DMG. The panel keeps all
+   operating-system releases visible for users who manage more than one machine.
 2. Install and open **Smart AI Hub Worker App**.
 3. In the app, select **Connect**. It opens this browser approval page with a
    short-lived user code.
@@ -49,9 +52,12 @@ to copy a registration token, password, cookie, or Grok credential.
 - Only an Online worker can be used for new private jobs.
 - Closing, signing out, or sleeping the machine can interrupt a running job.
 
-The downloadable installer on this page is currently the supported Windows
-path. If no macOS package is published, do not use a Windows runtime archive as
-a substitute.
+The macOS Worker App uses the native `hyperframes-macos-arm64` render runtime and
+never uses the Windows/WSL2 runtime. Hermes media runtime availability is a
+separate capability; if it is not published for the Mac target, keep using the
+supported capability shown by the app rather than substituting a Windows archive.
+The in-app updater checks only the current platform/architecture, while Dashboard
+downloads for other machines remain available.
 
 ## Common problems
 
@@ -71,4 +77,3 @@ a substitute.
 - [[grok-via-hermes-connections|Grok via Hermes Connections]]
 - [[grok-via-hermes-admin|Grok via Hermes Administration]]
 - [[grok-via-hermes-monitoring|Grok via Hermes Monitoring]]
-

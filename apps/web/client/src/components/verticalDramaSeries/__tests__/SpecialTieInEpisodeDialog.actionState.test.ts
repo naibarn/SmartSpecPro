@@ -8,6 +8,7 @@ import {
   resolveSpecialTieInDialogueMode,
   resolveSpecialTieInModelSelection,
 } from "../SpecialTieInEpisodeDialog";
+import { shouldLoadSpecialTieInHistory } from "@/lib/specialTieInUi";
 
 describe("special tie-in action state", () => {
   it("switches away from a stale model when selected references change", () => {
@@ -37,6 +38,34 @@ describe("special tie-in action state", () => {
     expect(
       resolveSpecialTieInDialogueMode({ dialogueMode: "character_dialogue" }),
     ).toBe("character_dialogue");
+  });
+
+  it("loads history only for resume mode or an existing episode edit", () => {
+    expect(
+      shouldLoadSpecialTieInHistory({
+        open: true,
+        initialMode: "fresh",
+      })
+    ).toBe(false);
+    expect(
+      shouldLoadSpecialTieInHistory({
+        open: true,
+        initialMode: "resume",
+      })
+    ).toBe(true);
+    expect(
+      shouldLoadSpecialTieInHistory({
+        open: true,
+        initialMode: "fresh",
+        initialInput: { idea: "existing episode" },
+      })
+    ).toBe(true);
+    expect(
+      shouldLoadSpecialTieInHistory({
+        open: false,
+        initialMode: "resume",
+      })
+    ).toBe(false);
   });
 
   it("does not mark final episode creation as pending while references are materialized", () => {

@@ -1,0 +1,5 @@
+{
+  "from": "running",
+  "to": "queued",
+  "reason": "stale-callback"
+}

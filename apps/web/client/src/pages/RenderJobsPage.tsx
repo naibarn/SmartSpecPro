@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   AlertCircle,
@@ -56,6 +56,19 @@ const STATUS_OPTIONS = [
  * every other/unrecognized job type, unchanged from prior behavior.
  */
 const JOB_TYPE_LABELS: Record<string, string> = {
+  editor_video_render: "เรนเดอร์วิดีโอจาก Web Editor",
+  editor_media_probe: "ตรวจสื่อจาก Web Editor",
+  editor_media_proxy: "สร้าง Proxy จาก Web Editor",
+  editor_media_waveform: "สร้าง Waveform จาก Web Editor",
+  editor_media_thumbnail: "สร้าง Thumbnail จาก Web Editor",
+  editor_media_analysis: "วิเคราะห์สื่อจาก Web Editor",
+  editor_media_audio_extract: "แยกเสียงจาก Web Editor",
+  editor_media_audio_export: "ส่งออกเสียง MP3 จาก Web Editor",
+  editor_media_ai_music: "สร้างดนตรี AI จาก Web Editor",
+  editor_media_ai_media_studio: "สร้างสื่อ AI จาก Web Editor",
+  editor_media_privacy_track: "ติดตามวัตถุสำหรับเบลอ",
+  editor_media_recording_normalize: "ปรับเสียงอัดให้มาตรฐาน",
+  editor_video_render_still: "บันทึกเฟรมภาพจาก Web Editor",
   remotion_render_video: "เรนเดอร์วิดีโอ Remotion",
   // Feature 135 (Hermes Grok media worker) section 12 — Thai labels for the
   // hermes job types; `workerJobs` router already lists these jobs, no
@@ -249,6 +262,13 @@ function getOutputVideoEditorRoute(ref: RenderJobOutputRef): string | null {
 }
 
 export default function RenderJobsPage() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = "Worker Jobs | SmartAIHub";
+    return () => {
+      document.title = previousTitle;
+    };
+  }, []);
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_OPTIONS)[number]>("all");
   const [jobTypeFilter, setJobTypeFilter] = useState<(typeof JOB_TYPE_FILTER_OPTIONS)[number]>("all");
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -315,7 +335,7 @@ export default function RenderJobsPage() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl font-semibold tracking-normal text-white sm:text-2xl">
-                    งานเรนเดอร์ของฉัน
+                    คิวงานประมวลผลของฉัน
                   </h1>
                   <Badge variant="outline" className="border-cyan-300/30 bg-cyan-400/10 text-cyan-100">
                     Worker queue

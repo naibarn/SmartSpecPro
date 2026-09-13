@@ -9,6 +9,7 @@ import {
   decideVariantAutoGenerateImage,
   isFirstPortraitCandidateEligible,
   resolveCharacterReferenceDisclosureDefault,
+  shouldShowCharacterCastingWorkspace,
   resolveCharacterLookDescription,
   resolveCharacterLookSummary,
   resolveCharacterLookPrompt,
@@ -18,6 +19,8 @@ import {
   resolveLookRenderInstruction,
   resolvePortraitCandidateVisibility,
   resolvePortraitCandidateResultsPlacement,
+  resolveActivePortraitCandidateBatch,
+  mergeActivePortraitCandidateBatch,
   resolveCharacterRoleTierMismatchMessage,
   resolveCharacterCreditCapacityMessage,
   resolveVdCharacterMutationErrorMessage,
@@ -93,6 +96,29 @@ describe("buildCreateCharacterVariantInput", () => {
   });
 });
 
+describe("resolveActivePortraitCandidateBatch", () => {
+  it("recovers the persisted preview when local state was lost after a refresh", () => {
+    const persisted = { characterId: "5", batchId: "persisted-preview" };
+    expect(
+      resolveActivePortraitCandidateBatch({
+        characterId: "5",
+        persisted: [persisted],
+      })
+    ).toBe(persisted);
+  });
+
+  it("keeps the immediate job response ahead of a stale persisted query", () => {
+    const ephemeral = { characterId: "5", batchId: "fresh-response" };
+    expect(
+      resolveActivePortraitCandidateBatch({
+        characterId: "5",
+        ephemeral,
+        persisted: [{ characterId: "5", batchId: "stale-query" }],
+      })
+    ).toBe(ephemeral);
+  });
+});
+
 describe("buildDetectCharacterVariantsSummaryMessage", () => {
   it("returns the 'nothing found' message (Thai) when all three counts are 0", () => {
     expect(
@@ -152,7 +178,11 @@ describe("buildPreviewCharacterPromptInput", () => {
       characterId: "5",
       customInstruction: "",
     });
-    expect(result).toEqual({ seriesId: "10", characterId: "5" });
+    expect(result).toEqual({
+      seriesId: "10",
+      characterId: "5",
+      castingCameraFraming: "half_body",
+    });
     expect(result.customInstruction).toBeUndefined();
   });
 
@@ -162,7 +192,11 @@ describe("buildPreviewCharacterPromptInput", () => {
       characterId: "5",
       customInstruction: "   ",
     });
-    expect(result).toEqual({ seriesId: "10", characterId: "5" });
+    expect(result).toEqual({
+      seriesId: "10",
+      characterId: "5",
+      castingCameraFraming: "half_body",
+    });
   });
 
   it("includes a trimmed customInstruction when non-blank", () => {
@@ -175,6 +209,7 @@ describe("buildPreviewCharacterPromptInput", () => {
       seriesId: "10",
       characterId: "5",
       customInstruction: "หน้าตรง ภาพเต็มตัว",
+      castingCameraFraming: "half_body",
     });
   });
 
@@ -186,7 +221,12 @@ describe("buildPreviewCharacterPromptInput", () => {
         customInstruction: "",
         portraitCandidateCount: 5,
       })
-    ).toEqual({ seriesId: "10", characterId: "5", portraitCandidateCount: 5 });
+    ).toEqual({
+      seriesId: "10",
+      characterId: "5",
+      portraitCandidateCount: 5,
+      castingCameraFraming: "half_body",
+    });
   });
 
   it("preserves the selected image model for candidate previews and retries", () => {
@@ -196,6 +236,7 @@ describe("buildPreviewCharacterPromptInput", () => {
         characterId: "5",
         selectedImageModelId: "gpt-image-2",
         customInstruction: "  natural daylight  ",
+        replacePortraitCandidateAssetLinkId: "554",
       })
     ).toEqual({
       seriesId: "10",
@@ -203,6 +244,79 @@ describe("buildPreviewCharacterPromptInput", () => {
       selectedImageModelId: "gpt-image-2",
       customInstruction: "natural daylight",
       portraitCandidateCount: 1,
+      replacePortraitCandidateAssetLinkId: "554",
+      castingCameraFraming: "half_body",
+    });
+  });
+
+  it("always sends camera framing and keeps pose/locks reference-only", () => {
+    expect(
+      buildPreviewCharacterPromptInput({
+        seriesId: "10",
+        characterId: "5",
+        customInstruction: "",
+        castingCameraFraming: "close_up",
+        castingPoseMode: "lock_reference",
+        castingLockClothing: true,
+      })
+    ).toEqual({
+      seriesId: "10",
+      characterId: "5",
+      castingCameraFraming: "close_up",
+    });
+    expect(
+      buildPreviewCharacterPromptInput({
+        seriesId: "10",
+        characterId: "5",
+        customInstruction: "",
+        castingReferenceAssetLinkIds: ["ref-1"],
+        castingCameraFraming: "three_quarter",
+        castingPoseMode: "lock_reference",
+        castingLockClothing: true,
+      })
+    ).toMatchObject({
+      castingReferenceAssetLinkIds: ["ref-1"],
+      castingCameraFraming: "three_quarter",
+      castingPoseMode: "lock_reference",
+      castingLockClothing: true,
+    });
+  });
+});
+
+describe("mergeActivePortraitCandidateBatch", () => {
+  it("replaces the failed slot in the existing grid without creating a new slot", () => {
+    const durable = {
+      batchId: "batch-1",
+      candidates: [
+        { assetLinkId: "552", index: 0, status: "completed" },
+        { assetLinkId: "553", index: 1, status: "completed" },
+        { assetLinkId: "554", index: 2, status: "failed" },
+      ],
+    };
+    const active = {
+      batchId: "batch-1",
+      candidates: [
+        {
+          assetLinkId: "554",
+          index: 2,
+          status: "previewed",
+          portraitPrompt: "fresh prompt",
+        },
+      ],
+    };
+
+    expect(mergeActivePortraitCandidateBatch(active, durable)).toEqual({
+      batchId: "batch-1",
+      candidates: [
+        { assetLinkId: "552", index: 0, status: "completed" },
+        { assetLinkId: "553", index: 1, status: "completed" },
+        {
+          assetLinkId: "554",
+          index: 2,
+          status: "previewed",
+          portraitPrompt: "fresh prompt",
+        },
+      ],
     });
   });
 });
@@ -331,6 +445,26 @@ describe("character reference disclosure default", () => {
   it("collapses automatically when the character already has a primary portrait", () => {
     expect(
       resolveCharacterReferenceDisclosureDefault({ hasPrimaryPortrait: true })
+    ).toBe(false);
+  });
+});
+
+describe("character casting workspace visibility", () => {
+  it("shows saved alternatives when the retired disclosure is collapsed", () => {
+    expect(
+      shouldShowCharacterCastingWorkspace({
+        disclosureExpanded: false,
+        hasSavedCandidates: true,
+      })
+    ).toBe(true);
+  });
+
+  it("keeps an empty collapsed workspace hidden", () => {
+    expect(
+      shouldShowCharacterCastingWorkspace({
+        disclosureExpanded: false,
+        hasSavedCandidates: false,
+      })
     ).toBe(false);
   });
 });
@@ -569,9 +703,8 @@ describe("compact character look display/editor helpers", () => {
 
 /**
  * `planning/vd-character-primary-portrait-control/plan.md` — a first-portrait
- * batch's unpicked faces are stored durably and used to render forever, so long
- * after the user chose one they kept appearing beside the winner and made
- * "which face IS this character?" hard to answer at a glance.
+ * batch's unpicked faces are stored durably. They must remain visible so the
+ * creator can change casting later without believing earlier images vanished.
  */
 describe("resolvePortraitCandidateVisibility", () => {
   const batch = [
@@ -580,14 +713,14 @@ describe("resolvePortraitCandidateVisibility", () => {
     { assetLinkId: "3", status: "completed" },
   ];
 
-  it("collapses a resolved batch to the picked face", () => {
+  it("keeps every saved alternative visible after one face is picked", () => {
     const result = resolvePortraitCandidateVisibility({
       candidates: batch,
       expanded: false,
     });
     expect(result.isResolved).toBe(true);
-    expect(result.visible.map(c => c.assetLinkId)).toEqual(["2"]);
-    expect(result.hiddenCount).toBe(2);
+    expect(result.visible.map(c => c.assetLinkId)).toEqual(["1", "2", "3"]);
+    expect(result.hiddenCount).toBe(0);
   });
 
   it("shows everything once the user expands it", () => {

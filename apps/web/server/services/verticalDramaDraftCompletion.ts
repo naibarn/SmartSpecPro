@@ -340,6 +340,10 @@ export async function completeVerticalDramaDraft(params: {
     timeoutMs: 90_000,
     maxSchemaRetries: 1,
     maxTransientRetries: 0,
+    verticalDramaContext: {
+      taskClass: "story_architecture",
+      settings: { llm: { qualityProfile: "high" } },
+    },
   });
   const usedModel = effectiveModel ?? model;
 

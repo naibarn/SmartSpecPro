@@ -28,7 +28,10 @@ import {
   type WorkerRuntimeReleaseLocalImport,
   type WorkerRuntimeReleaseUpload,
 } from "../../shared/workerRuntimeReleases";
-import { validateRuntimePackArchive } from "./workerRuntimePackValidation";
+import {
+  isSupportedSpeakerAwareRunnerVersion,
+  validateRuntimePackArchive,
+} from "./workerRuntimePackValidation";
 import { getWorkerRuntimeSigningKey } from "./workerRuntimeSigningKeyService";
 
 export const WORKER_RUNTIME_RELEASE_STORAGE_PREFIX = "worker-runtime-releases/";
@@ -281,6 +284,58 @@ async function selectRowById(id: number): Promise<ReleaseWithUploader | null> {
   return rows.find(row => row.id === id) ?? null;
 }
 
+async function selectRowByIdentity(input: {
+  runtimeId: WorkerRuntimeId;
+  version: string;
+  channel: WorkerRuntimeChannel;
+}): Promise<ReleaseWithUploader | null> {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      id: workerRuntimeReleases.id,
+      version: workerRuntimeReleases.version,
+      runtimeId: workerRuntimeReleases.runtimeId,
+      platform: workerRuntimeReleases.platform,
+      channel: workerRuntimeReleases.channel,
+      fileName: workerRuntimeReleases.fileName,
+      contentType: workerRuntimeReleases.contentType,
+      storageKey: workerRuntimeReleases.storageKey,
+      fileSizeBytes: workerRuntimeReleases.fileSizeBytes,
+      fileSha256: workerRuntimeReleases.fileSha256,
+      manifestJson: workerRuntimeReleases.manifestJson,
+      validationStatus: workerRuntimeReleases.validationStatus,
+      validationChecksJson: workerRuntimeReleases.validationChecksJson,
+      isPublished: workerRuntimeReleases.isPublished,
+      publishedAt: workerRuntimeReleases.publishedAt,
+      withdrawnAt: workerRuntimeReleases.withdrawnAt,
+      uploadedBy: workerRuntimeReleases.uploadedBy,
+      uploadedAt: workerRuntimeReleases.uploadedAt,
+      updatedAt: workerRuntimeReleases.updatedAt,
+      uploadedByName: users.name,
+    })
+    .from(workerRuntimeReleases)
+    .leftJoin(users, eq(workerRuntimeReleases.uploadedBy, users.id))
+    .where(
+      and(
+        eq(workerRuntimeReleases.runtimeId, input.runtimeId),
+        eq(workerRuntimeReleases.version, input.version),
+        eq(workerRuntimeReleases.channel, input.channel)
+      )
+    )
+    .limit(1);
+  return (row as ReleaseWithUploader | undefined) ?? null;
+}
+
+async function deleteUnreferencedStorageObject(storageKey: string): Promise<void> {
+  const db = getDb();
+  const [referenced] = await db
+    .select({ id: workerRuntimeReleases.id })
+    .from(workerRuntimeReleases)
+    .where(eq(workerRuntimeReleases.storageKey, storageKey))
+    .limit(1);
+  if (!referenced) await storageDelete(storageKey).catch(() => false);
+}
+
 export async function listWorkerRuntimeReleaseCatalog(
   input: { includeUnpublished?: boolean } = {}
 ): Promise<WorkerRuntimeReleaseCatalog> {
@@ -502,7 +557,9 @@ async function insertValidatedRelease(input: {
     if (!row) throw new Error("worker_runtime_release_record_load_failed");
     return mapRelease(row);
   } catch (error) {
-    await storageDelete(input.storageKey).catch(() => false);
+    await deleteUnreferencedStorageObject(input.storageKey).catch(
+      () => undefined
+    );
     throw error;
   }
 }
@@ -515,6 +572,14 @@ export async function finalizeWorkerRuntimeReleaseUpload(input: {
   uploadedByUserId: number;
 }): Promise<WorkerRuntimeReleaseAsset> {
   const upload = validateUploadInput(input.upload);
+  const existing = await selectRowByIdentity(upload);
+  if (existing) {
+    throw new WorkerRuntimeReleaseError(
+      "worker_runtime_release_duplicate",
+      409,
+      "A runtime release with this version, platform, and channel already exists."
+    );
+  }
   const expectedKey = createWorkerRuntimeReleaseStorageKey(upload);
   if (
     input.upload.storageKey !== expectedKey ||
@@ -547,7 +612,9 @@ export async function finalizeWorkerRuntimeReleaseUpload(input: {
         uploadedByUserId: input.uploadedByUserId,
       });
     } catch (error) {
-      await storageDelete(input.upload.storageKey).catch(() => false);
+      await deleteUnreferencedStorageObject(input.upload.storageKey).catch(
+        () => undefined
+      );
       throw error;
     }
   } finally {
@@ -561,12 +628,35 @@ export async function persistWorkerRuntimeReleaseUploadFromPath(input: {
   uploadedByUserId: number;
 }): Promise<WorkerRuntimeReleaseAsset> {
   const upload = validateUploadInput(input.upload);
+  const existing = await selectRowByIdentity(upload);
+  if (existing) {
+    throw new WorkerRuntimeReleaseError(
+      "worker_runtime_release_duplicate",
+      409,
+      "A runtime release with this version, platform, and channel already exists."
+    );
+  }
   const storageKey = createWorkerRuntimeReleaseStorageKey(upload);
-  const stored = await storagePutFromPath(
-    storageKey,
-    input.filePath,
-    upload.contentType
-  );
+  let stored: Awaited<ReturnType<typeof storagePutFromPath>>;
+  try {
+    stored = await storagePutFromPath(
+      storageKey,
+      input.filePath,
+      upload.contentType
+    );
+  } catch (error) {
+    console.error("[WorkerRuntime] Failed to persist runtime archive", {
+      storageKey,
+      filePath: input.filePath,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw new WorkerRuntimeReleaseError(
+      "worker_runtime_storage_upload_failed",
+      502,
+      "The runtime archive was validated locally but could not be stored by the configured server storage provider.",
+      { stage: "archive_storage", storageKey }
+    );
+  }
   try {
     return await insertValidatedRelease({
       upload,
@@ -575,7 +665,7 @@ export async function persistWorkerRuntimeReleaseUploadFromPath(input: {
       uploadedByUserId: input.uploadedByUserId,
     });
   } catch (error) {
-    await storageDelete(stored.key).catch(() => false);
+    await deleteUnreferencedStorageObject(stored.key).catch(() => undefined);
     throw error;
   }
 }
@@ -584,6 +674,8 @@ export async function importLocalWorkerRuntimeRelease(input: {
   release: WorkerRuntimeReleaseLocalImport;
   uploadedByUserId: number;
 }): Promise<WorkerRuntimeReleaseAsset> {
+  const existing = await selectRowByIdentity(input.release);
+  if (existing) return mapRelease(existing);
   const filePath = findLocalRuntimeReleasePath(input.release);
   if (!filePath) {
     throw new WorkerRuntimeReleaseError(
@@ -619,6 +711,24 @@ export async function publishWorkerRuntimeRelease(
       422,
       "Only a valid runtime release can be published.",
       { checks: current.validationChecksJson }
+    );
+  }
+  const speakerAwareRunner = current.manifestJson?.speakerAwareRunner;
+  if (
+    speakerAwareRunner &&
+    typeof speakerAwareRunner === "object" &&
+    !Array.isArray(speakerAwareRunner) &&
+    !isSupportedSpeakerAwareRunnerVersion(
+      typeof (speakerAwareRunner as Record<string, unknown>).version === "string"
+        ? (speakerAwareRunner as Record<string, unknown>).version
+        : ""
+    )
+  ) {
+    throw new WorkerRuntimeReleaseError(
+      "worker_runtime_release_runner_outdated",
+      422,
+      "This runtime contains an outdated speaker-aware runner. Rebuild it with runner version 0.1.1 or newer before publishing.",
+      { minimumRunnerVersion: "0.1.1" }
     );
   }
   const db = getDb();

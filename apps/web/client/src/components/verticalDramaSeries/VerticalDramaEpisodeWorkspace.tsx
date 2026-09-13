@@ -594,6 +594,14 @@ export interface VerticalDramaStoryboardPanelData {
     shotNumber: number,
     locationVariantId: string | null
   ) => void;
+  /** Apply a camera view to the related location-group shots that still use
+   * one shared source view; preserve shot-specific view overrides. */
+  onSetLocationVariantForShots?: (
+    locationKey: string,
+    shotNumbers: number[],
+    fromLocationVariantId: string | null,
+    locationVariantId: string | null
+  ) => void;
   onSetShotBarrierReferenceLocation?: (
     shotNumber: number,
     locationKey: string
@@ -670,6 +678,9 @@ export interface VerticalDramaStoryboardPanelData {
   selectedVideoResolution?: string;
   onSelectImageResolution?: (resolution: string) => void;
   onSelectVideoResolution?: (resolution: string) => void;
+  selectedImageQuality?: string;
+  imageQualityOptions?: string[];
+  onSelectImageQuality?: (quality: string) => void;
 
   /* ---- Independent image/video prompt language options ---- */
   selectedImagePromptLanguage?: string;
@@ -1154,6 +1165,72 @@ function findCurrentStage(
     }
   }
   return null;
+}
+
+type VerticalDramaPolicyErrorDetails = {
+  repairAttempts?: number;
+  findings?: Array<{
+    code?: string;
+    message?: string;
+    evidence?: {
+      fieldPath?: string;
+      shotNumber?: number;
+      matchedRule?: string;
+    };
+  }>;
+};
+
+function VerticalDramaStageErrorDetails({
+  errors,
+  locale,
+}: {
+  errors?: RunResult["errors"];
+  locale: VdLocale;
+}) {
+  if (!errors || errors.length === 0) return null;
+
+  return (
+    <ul className="mt-2 space-y-1">
+      {errors.map((error, index) => {
+        const details = error.details as
+          | VerticalDramaPolicyErrorDetails
+          | undefined;
+        return (
+          <li key={index} className="text-xs text-destructive">
+            <p>
+              [{error.code}] {error.message}
+            </p>
+            {Array.isArray(details?.findings) &&
+            details.findings.length > 0 ? (
+              <ul
+                className="mt-1 list-disc space-y-0.5 pl-4"
+                data-testid="vd-policy-finding-evidence"
+              >
+                {details.findings.map((finding, findingIndex) => (
+                  <li key={`${finding.code ?? "finding"}-${findingIndex}`}>
+                    {finding.code ?? "policy"}: {finding.message ?? "review required"}
+                    {finding.evidence?.shotNumber !== undefined
+                      ? ` (shot ${finding.evidence.shotNumber})`
+                      : ""}
+                    {finding.evidence?.fieldPath
+                      ? ` — ${finding.evidence.fieldPath}`
+                      : ""}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {details?.repairAttempts !== undefined ? (
+              <p className="mt-1 text-[11px] opacity-80">
+                {locale === "th"
+                  ? `ลองซ่อมอัตโนมัติแล้ว ${details.repairAttempts} ครั้ง — candidate เดิมยังถูกเก็บไว้ให้ตรวจสอบ`
+                  : `Automatic repair attempted ${details.repairAttempts} time(s); the candidate is preserved for review.`}
+              </p>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 function phaseStatus(
@@ -1678,6 +1755,9 @@ export function VerticalDramaEpisodeWorkspace({
           }
           onSetShotLocation={storyboardPanel?.onSetShotLocation}
           onSetShotLocationVariant={storyboardPanel?.onSetShotLocationVariant}
+          onSetLocationVariantForShots={
+            storyboardPanel?.onSetLocationVariantForShots
+          }
           onSetShotBarrierReferenceLocation={
             storyboardPanel?.onSetShotBarrierReferenceLocation
           }
@@ -1731,6 +1811,9 @@ export function VerticalDramaEpisodeWorkspace({
           selectedVideoResolution={storyboardPanel?.selectedVideoResolution}
           onSelectImageResolution={storyboardPanel?.onSelectImageResolution}
           onSelectVideoResolution={storyboardPanel?.onSelectVideoResolution}
+          selectedImageQuality={storyboardPanel?.selectedImageQuality}
+          imageQualityOptions={storyboardPanel?.imageQualityOptions}
+          onSelectImageQuality={storyboardPanel?.onSelectImageQuality}
           selectedImagePromptLanguage={
             storyboardPanel?.selectedImagePromptLanguage
           }
@@ -1755,9 +1838,7 @@ export function VerticalDramaEpisodeWorkspace({
           }
           shotReferencesByShot={storyboardPanel?.shotReferencesByShot}
           onAddShotReference={storyboardPanel?.onAddShotReference}
-          onAddShotProductReference={
-            storyboardPanel?.onAddShotProductReference
-          }
+          onAddShotProductReference={storyboardPanel?.onAddShotProductReference}
           onRemoveShotReference={storyboardPanel?.onRemoveShotReference}
           addingShotReferenceForShot={
             storyboardPanel?.addingShotReferenceForShot
@@ -2057,6 +2138,10 @@ export function VerticalDramaEpisodeWorkspace({
                   </p>
                 </div>
               ) : null}
+              <VerticalDramaStageErrorDetails
+                errors={current.errors}
+                locale={locale}
+              />
               {generatingEpisodeStage ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2
@@ -2258,15 +2343,10 @@ export function VerticalDramaEpisodeWorkspace({
                 </div>
               )}
 
-              {current.errors && current.errors.length > 0 ? (
-                <ul className="mt-2 space-y-1">
-                  {current.errors.map((e, i) => (
-                    <li key={i} className="text-xs text-destructive">
-                      [{e.code}] {e.message}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
+              <VerticalDramaStageErrorDetails
+                errors={current.errors}
+                locale={locale}
+              />
               {current.warnings && current.warnings.length > 0 ? (
                 <ul className="mt-2 space-y-1" data-testid="vd-stage-warnings">
                   {current.warnings.map((warning, i) => (

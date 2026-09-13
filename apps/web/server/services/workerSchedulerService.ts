@@ -20,6 +20,16 @@ import {
   type VerticalDramaAudioJobPayload,
 } from "../../shared/verticalDramaMedia/audioScoringContracts";
 import {
+  UNIFIED_AUDIO_CAPABILITY,
+  UNIFIED_AUDIO_PROGRESS_STAGES,
+  UNIFIED_AUDIO_TRAINING_JOB_TYPE,
+  UNIFIED_AUDIO_TTS_JOB_TYPE,
+  UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE,
+  UNIFIED_AUDIO_ALIGN_JOB_TYPE,
+  AUDIO_TRANSCRIPTION_PROGRESS_STAGES,
+  hashUnifiedAudioInput,
+} from "../../shared/verticalDramaMedia/unifiedAudio";
+import {
   hashAdapterPolicy,
   hashSpeakerAwarePayload,
   speakerAwareJobPayloadSchema,
@@ -175,14 +185,15 @@ export interface WorkerSchedulerRepository {
   ) => Promise<WorkerRecord | null>;
   insertJob: (values: Record<string, unknown>) => Promise<WorkerJobRecord>;
   /**
-   * Feature 133 section-04 — narrow lookup backing `queueRemotionRenderVideoJob`'s
-   * 1-concurrent-preview cap (spec §18.2). Optional: `defaultRepo` implements
-   * it; other `WorkerSchedulerRepository` implementers (existing tests) are
-   * unaffected since `queueRemotionRenderVideoJob` is the only caller.
+   * Narrow lookup backing `queueRemotionRenderVideoJob`'s exact-target preview
+   * duplicate guard. Optional so existing repository test doubles remain
+   * compatible.
    */
-  findActiveRemotionPreviewJobForUser?: (
+  findActiveRemotionPreviewJobForTarget?: (
     tenantId: string,
-    userId: number
+    userId: number,
+    videoProjectId: string,
+    projectRevision: number
   ) => Promise<WorkerJobRecord | null>;
 }
 
@@ -470,7 +481,12 @@ const defaultRepo: WorkerSchedulerRepository = {
       .returning();
     return job;
   },
-  async findActiveRemotionPreviewJobForUser(tenantId, userId) {
+  async findActiveRemotionPreviewJobForTarget(
+    tenantId,
+    userId,
+    videoProjectId,
+    projectRevision
+  ) {
     const db = await getDb();
     const [job] = await db
       .select()
@@ -481,7 +497,9 @@ const defaultRepo: WorkerSchedulerRepository = {
           eq(workerJobs.requestedByUserId, userId),
           eq(workerJobs.jobType, "remotion_render_video"),
           inArray(workerJobs.status, ["queued", "running"]),
-          sql`${workerJobs.capabilityRequirementsJson}->>'renderProfile' = 'preview'`
+          sql`${workerJobs.capabilityRequirementsJson}->>'renderProfile' = 'preview'`,
+          sql`${workerJobs.inputJson}->>'videoProjectId' = ${videoProjectId}`,
+          sql`${workerJobs.inputJson}->>'projectRevision' = ${String(projectRevision)}`
         )
       )
       .limit(1);
@@ -1494,6 +1512,119 @@ export async function queueVerticalDramaAudioWorkerJob(
   return { created: true, job };
 }
 
+export interface QueueUnifiedAudioWorkerJobInput {
+  tenantId: string;
+  requestedByUserId: number;
+  jobType: typeof UNIFIED_AUDIO_TTS_JOB_TYPE | typeof UNIFIED_AUDIO_TRAINING_JOB_TYPE | typeof UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE | typeof UNIFIED_AUDIO_ALIGN_JOB_TYPE;
+  inputJson: Record<string, unknown>;
+  priority?: number;
+  timeoutSeconds?: number;
+  idempotencyKey: string;
+  capabilityFamilies?: string[];
+  requiredClaimCapability?: string;
+  resourceProfile?: WorkerResourceProfile;
+  reservedCredits?: number | null;
+}
+
+/**
+ * Shared queue entry for the provider-neutral audio contract. Keeping this in
+ * the scheduler makes dispatch kill-switch, tenant feature gate, billing and
+ * idempotency semantics identical to every other Worker job family.
+ */
+export async function queueUnifiedAudioWorkerJob(
+  input: QueueUnifiedAudioWorkerJobInput,
+  deps: {
+    repo?: WorkerSchedulerRepository;
+    reserveCredits?: typeof reserveWorkerJobCredits;
+    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
+  } = {},
+): Promise<{ created: boolean; job: WorkerJobRecord }> {
+  if (!isDesktopWorkerDispatchEnabled()) {
+    throw new WorkerSchedulerError("dispatch_disabled", 503, "Smart AI Hub Worker dispatch is disabled by operator kill switch");
+  }
+  if (![UNIFIED_AUDIO_TTS_JOB_TYPE, UNIFIED_AUDIO_TRAINING_JOB_TYPE, UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE, UNIFIED_AUDIO_ALIGN_JOB_TYPE].includes(input.jobType)) {
+    throw new WorkerSchedulerError("unsupported_job_type", 400, "Unsupported unified audio job type");
+  }
+  if ((input.jobType === UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE || input.jobType === UNIFIED_AUDIO_ALIGN_JOB_TYPE)
+    && input.inputJson.runtimeGate !== "signed_ready") {
+    throw new WorkerSchedulerError(
+      "runtime_unavailable",
+      503,
+      "ASR/alignment Worker runtime gate has not passed; no credits were reserved",
+    );
+  }
+  if ((input.jobType === UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE || input.jobType === UNIFIED_AUDIO_ALIGN_JOB_TYPE)
+    && (input.inputJson.executionTarget === "server_cloud" || input.inputJson.profile === "cloud")) {
+    throw new WorkerSchedulerError(
+      "runtime_unavailable",
+      503,
+      "Cloud ASR/alignment adapter is not registered; no credits were reserved",
+    );
+  }
+  const getFeatureFlags = deps.getFeatureFlags ?? getTenantFeatureFlags;
+  const flags = await getFeatureFlags(input.tenantId);
+  if (!flags.verticalDramaSeries || flags.verticalDramaSeriesVoiceChain === false) {
+    throw new WorkerSchedulerError("feature_disabled", 403, "Vertical Drama voice chain is disabled for this tenant");
+  }
+  if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 128) {
+    throw new WorkerSchedulerError("invalid_contract", 400, "Unified audio idempotencyKey is required and must be at most 128 characters");
+  }
+  const repo = deps.repo ?? defaultRepo;
+  const existing = await repo.findJobByIdempotencyKey(input.tenantId, input.idempotencyKey);
+  if (existing) {
+    if (existing.jobType !== input.jobType || hashUnifiedAudioInput(existing.inputJson) !== hashUnifiedAudioInput(input.inputJson)) {
+      throw new WorkerSchedulerError("idempotency_conflict", 409, "Unified audio idempotency key is already bound to a different request");
+    }
+    return { created: false, job: existing };
+  }
+
+  const reserveCredits = deps.reserveCredits ?? reserveWorkerJobCredits;
+  const billing = await reserveCredits({
+    userId: input.requestedByUserId,
+    tenantId: input.tenantId,
+    requestedCredits: input.reservedCredits,
+    metadata: { jobType: input.jobType, capabilityFamilies: input.capabilityFamilies ?? [UNIFIED_AUDIO_CAPABILITY] },
+  });
+  try {
+    const job = await repo.insertJob({
+      tenantId: input.tenantId,
+      teamId: null,
+      workerId: null,
+      runtimeType: DESKTOP_RUNTIME_TYPE,
+      requestedByUserId: input.requestedByUserId,
+      requestedBySystemComponent: "unified_audio_scheduler",
+      jobType: input.jobType,
+      status: "queued",
+      statusReason: `unified_audio_${input.jobType}`,
+      priority: input.priority ?? 25,
+      resourceProfile: input.resourceProfile ?? (input.jobType === UNIFIED_AUDIO_TRAINING_JOB_TYPE ? "gpu_required" : input.jobType === UNIFIED_AUDIO_ALIGN_JOB_TYPE ? "gpu_required" : "cpu_heavy"),
+      capabilityRequirementsJson: {
+        capabilityFamilies: Array.from(new Set([UNIFIED_AUDIO_CAPABILITY, ...(input.capabilityFamilies ?? [])])),
+        requiredClaimCapability: input.requiredClaimCapability ?? UNIFIED_AUDIO_CAPABILITY,
+        executionTarget: input.inputJson.executionTarget
+          ?? (input.inputJson.executionPolicy && typeof input.inputJson.executionPolicy === "object"
+            ? (input.inputJson.executionPolicy as Record<string, unknown>).mode ?? null
+            : input.inputJson.target ?? null),
+      },
+      inputJson: input.inputJson,
+      instructionsJson: {
+        intent: input.jobType,
+        requiredProgressStages: input.jobType === UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE || input.jobType === UNIFIED_AUDIO_ALIGN_JOB_TYPE
+          ? [...AUDIO_TRANSCRIPTION_PROGRESS_STAGES]
+          : [...UNIFIED_AUDIO_PROGRESS_STAGES],
+        workerBilling: buildWorkerBillingMetadata(billing),
+      },
+      timeoutSeconds: input.timeoutSeconds ?? (input.jobType === UNIFIED_AUDIO_TRAINING_JOB_TYPE ? 86_400 : 3_600),
+      retryPolicyJson: { maxAttempts: 1, backoffSeconds: 0 },
+      idempotencyKey: input.idempotencyKey,
+    });
+    return { created: true, job };
+  } catch (error) {
+    if (billing?.reservationId) await refundReservation(billing.reservationId).catch(() => {});
+    throw error;
+  }
+}
+
 export interface QueueSpeakerAwareWorkerJobInput {
   tenantId: string;
   requestedByUserId: number;
@@ -2460,8 +2591,8 @@ function computeRemotionRenderVideoTimeoutSeconds(
  * additions specific to this job type: a render-submission rate limit
  * (spec §18.5), an idempotency key computed server-side from
  * `(videoProjectId, projectRevision, renderProfile.profile)` rather than
- * trusted verbatim from the caller, and a 1-concurrent-preview cap (spec
- * §18.2). `capabilityRequirementsJson.capabilityFamilies` is always
+ * trusted verbatim from the caller, and an exact-target active-preview guard
+ * (spec §18.2). `capabilityRequirementsJson.capabilityFamilies` is always
  * `REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES` (non-empty — the anti-mis-claim
  * safety mechanism, spec §6.3, see `workerJobMatchesSelection` above) and is
  * never caller-overridable.
@@ -2599,15 +2730,20 @@ export async function queueRemotionRenderVideoJob(
     input.renderProfile.profile === "preview" &&
     rawInput.requestedByUserId != null
   ) {
-    const findActivePreview = repo.findActiveRemotionPreviewJobForUser;
+    const findActivePreview = repo.findActiveRemotionPreviewJobForTarget;
     const activePreview = findActivePreview
-      ? await findActivePreview(rawInput.tenantId, rawInput.requestedByUserId)
+      ? await findActivePreview(
+          rawInput.tenantId,
+          rawInput.requestedByUserId,
+          input.videoProjectId,
+          input.projectRevision
+        )
       : null;
     if (activePreview) {
       throw new WorkerSchedulerError(
         "preview_concurrency_limit",
         409,
-        "Only one queued/running remotion_render_video preview job is allowed per user at a time"
+        "Only one queued/running remotion_render_video preview job is allowed for the same target at a time"
       );
     }
   }
@@ -2661,7 +2797,7 @@ export async function queueRemotionRenderVideoJob(
         executionTargetResolution: targetResolution,
         // `requiredClaimCapability` is the authoritative admission gate. The
         // descriptive families remain for observability and legacy routing.
-        // `renderProfile` is carried so `findActiveRemotionPreviewJobForUser`
+        // `renderProfile` is carried so the active-target preview lookup
         // can filter without deserializing inputJson.
         renderProfile: input.renderProfile.profile,
       },

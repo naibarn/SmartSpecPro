@@ -4,7 +4,31 @@ export type WorkerAppRelease = {
   fileSizeBytes: number;
   updatedAt: string;
   downloadUrl: string;
+  platform?: "windows" | "macos" | "linux";
+  architecture?: "x64" | "arm64" | null;
+  installerFormat?: "exe" | "msi" | "dmg" | "pkg" | "zip";
 };
+
+export type WorkerAppUpdateTarget = {
+  platform: "windows" | "macos";
+  architecture: "x64" | "arm64";
+};
+
+export function resolveWorkerAppUpdateTarget(isMacOSHost: boolean): WorkerAppUpdateTarget {
+  return isMacOSHost
+    ? { platform: "macos", architecture: "arm64" }
+    : { platform: "windows", architecture: "x64" };
+}
+
+export function buildWorkerAppLatestUrl(
+  baseUrl: string,
+  target: WorkerAppUpdateTarget,
+): string {
+  const url = new URL("/api/desktop-releases/worker-app/latest", baseUrl);
+  url.searchParams.set("platform", target.platform);
+  url.searchParams.set("architecture", target.architecture);
+  return url.toString();
+}
 
 export type RuntimeUpdateCheck = {
   runtimeId: string;

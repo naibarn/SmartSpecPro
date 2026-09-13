@@ -9,6 +9,8 @@ describe("preview canvas profile", () => {
     ["9:16", "9:16", 1080, 1920],
     ["16:9", "16:9", 1920, 1080],
     ["1:1", "1:1", 1080, 1080],
+    ["4:5", "4:5", 1080, 1350],
+    ["21:9", "21:9", 2560, 1080],
   ])("keeps the %s export boundary visible", (value, ratio, width, height) => {
     const profile = getPreviewCanvasProfile(value);
     expect(profile).toMatchObject({ aspectRatio: ratio, width, height });
@@ -16,7 +18,7 @@ describe("preview canvas profile", () => {
   });
 
   it("falls back safely for unsupported persisted canvas values", () => {
-    expect(normalizePreviewAspectRatio("4:5", "source")).toBe("source");
+    expect(normalizePreviewAspectRatio("custom", "source")).toBe("custom");
     expect(normalizePreviewAspectRatio(undefined, "16:9")).toBe("16:9");
     expect(getPreviewCanvasProfile("unsupported").aspectRatio).toBe("9:16");
   });

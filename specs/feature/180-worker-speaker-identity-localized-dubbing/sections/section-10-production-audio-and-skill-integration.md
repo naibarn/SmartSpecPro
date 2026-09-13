@@ -15,3 +15,7 @@ Read `../contracts-v2.md` before implementation. Depends on: 05, 06, Feature 178
 ## User-facing acceptance
 
 Use existing Thai-primary component patterns and the responsive/accessibility matrix in `spec.md`. Show ready, unavailable, running, partial, canceled, error and success with exact provider/target and repair action. No hidden generation or fallback. Test keyboard navigation, privacy/cost disclosures and persisted state on navigation.
+
+## Implementation record (2026-09-07)
+
+Existing `verticalDramaAudioPipelineCoordinator.ts`, `verticalDramaAudioQc.ts`, `verticalDramaAudioScoring` contracts and Skill-first execution remain authoritative for production audio. Unified TTS artifacts use the same durable Worker lane and preserve native-dialogue/source policy; no second music queue or fake Skill result was introduced.

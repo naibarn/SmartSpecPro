@@ -5,6 +5,11 @@ import type { DirectoryEntry } from "./MediaExplorerView";
 import type { NleClip, TextPresetStyle } from "../../types/nleProject";
 import { generateSrt, generateVtt, generateAss, type SubtitleSegmentItem } from "./subtitleFormatters";
 
+type SubtitleEngine = "whisper.cpp" | "faster-whisper" | "vibevoice-asr" | "cloud";
+type CapabilityState = "checking" | "ready" | "unavailable";
+type RawSubtitleWord = { word?: string; text?: string; startMs?: number; endMs?: number; start?: number; end?: number };
+type RawSubtitleSegment = { id?: number | string; cueId?: string; speakerId?: string | null; start?: number; end?: number; startMs?: number; endMs?: number; text?: string; words?: RawSubtitleWord[] };
+
 export interface AutoSubtitleModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -16,11 +21,20 @@ export interface AutoSubtitleModalProps {
 export function AutoSubtitleModal({
   isOpen,
   onClose,
-  videoDurationMs: _videoDurationMs,
+  videoDurationMs,
   sourceVideoFile,
   onApplySubtitles,
 }: AutoSubtitleModalProps) {
   const [language, setLanguage] = useState<"th" | "en" | "auto">("th");
+  const [engine, setEngine] = useState<SubtitleEngine>("whisper.cpp");
+  const [wordTimestamps, setWordTimestamps] = useState(false);
+  const [diarization, setDiarization] = useState(false);
+  const [engineCapabilities, setEngineCapabilities] = useState<Record<SubtitleEngine, CapabilityState>>({
+    "whisper.cpp": "checking",
+    "faster-whisper": "checking",
+    "vibevoice-asr": "checking",
+    cloud: "checking",
+  });
   const [stylePreset, setStylePreset] = useState<TextPresetStyle>("viral_word_highlight");
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcribeProgress, setTranscribeProgress] = useState(0);
@@ -28,6 +42,7 @@ export function AutoSubtitleModal({
 
   // Store last generated subtitle segments for exporting
   const [generatedSegments, setGeneratedSegments] = useState<SubtitleSegmentItem[]>([]);
+  const [pendingSubtitleClips, setPendingSubtitleClips] = useState<NleClip[]>([]);
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
@@ -39,6 +54,55 @@ export function AutoSubtitleModal({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, isTranscribing, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    void Promise.resolve().then(() => invoke<Array<{ engine?: string; status?: string }>>("worker_app_transcription_capabilities"))
+      .then((items) => {
+        if (!active || !Array.isArray(items)) return;
+        setEngineCapabilities(() => {
+          const next = {
+            "whisper.cpp": "unavailable" as CapabilityState,
+            "faster-whisper": "unavailable" as CapabilityState,
+            "vibevoice-asr": "unavailable" as CapabilityState,
+            cloud: "unavailable" as CapabilityState,
+          };
+          for (const item of items) {
+            // Older runtime manifests called the bundled HyperFrames profile
+            // `hyperframes-whisper.cpp`; keep that alias mapped to the same
+            // real local engine and never fabricate readiness.
+            const normalizedEngine = item.engine === "hyperframes-whisper.cpp" || item.engine === "hyperframes"
+              ? "whisper.cpp"
+              : item.engine;
+            if (normalizedEngine === "whisper.cpp" || normalizedEngine === "faster-whisper" || normalizedEngine === "vibevoice-asr" || normalizedEngine === "cloud") {
+              next[normalizedEngine] = item.status === "ready" || item.status === "available" || item.status === "ok" ? "ready" : "unavailable";
+            }
+          }
+          return next;
+        });
+      })
+      .catch(() => {
+        if (active) setEngineCapabilities({ "whisper.cpp": "unavailable", "faster-whisper": "unavailable", "vibevoice-asr": "unavailable", cloud: "unavailable" });
+      });
+    return () => { active = false; };
+  }, [isOpen]);
+
+  useEffect(() => {
+    // Never carry reviewed subtitles across a close or a different source
+    // video; applying them to a new media item would violate source lineage.
+    if (!isOpen) {
+      setGeneratedSegments([]);
+      setPendingSubtitleClips([]);
+      setTranscribeError(null);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    setGeneratedSegments([]);
+    setPendingSubtitleClips([]);
+    setTranscribeError(null);
+  }, [sourceVideoFile?.path]);
 
   if (!isOpen) return null;
 
@@ -54,46 +118,40 @@ export function AutoSubtitleModal({
 
     try {
       setTranscribeProgress(35);
-      const res = await invoke<{
-        text?: string;
-        segments?: Array<{
-          id?: number;
-          start?: number;
-          end?: number;
-          startMs?: number;
-          endMs?: number;
-          text?: string;
-          words?: Array<{ word: string; startMs?: number; endMs?: number; start?: number; end?: number }>;
-        }>;
-        words?: Array<{
-          text?: string;
-          word?: string;
-          startMs?: number;
-          endMs?: number;
-          start?: number;
-          end?: number;
-        }>;
-      }>("worker_app_transcribe_audio", {
+      const request: Record<string, unknown> = {
         videoPath: sourceVideoFile.path,
         language,
-      });
+      };
+      // Keep the legacy payload byte-for-byte compatible when the default
+      // profile is selected. Optional capabilities are explicit at the wire.
+      if (engine !== "whisper.cpp") request.engine = engine;
+      if (wordTimestamps) request.wordTimestamps = true;
+      if (diarization) request.diarization = true;
+      const res = await invoke<{
+        transcript?: { segments?: RawSubtitleSegment[] };
+        text?: string;
+        segments?: RawSubtitleSegment[];
+        words?: RawSubtitleWord[];
+      }>("worker_app_transcribe_audio", request);
 
       setTranscribeProgress(85);
 
-      const rawSegments = [...(res?.segments || [])];
-      if (rawSegments.length === 0 && res?.words?.length) {
+      const rawSegments: RawSubtitleSegment[] = Array.isArray(res?.transcript?.segments)
+        ? [...res.transcript.segments]
+        : (Array.isArray(res?.segments) ? [...res.segments] : []);
+      if (rawSegments.length === 0 && Array.isArray(res?.words) && res.words.length > 0) {
         const timedWords = res.words
           .map((word) => ({
-            word: word.word || word.text || "",
-            startMs: typeof word.startMs === "number" ? word.startMs : Math.round((word.start || 0) * 1000),
-            endMs: typeof word.endMs === "number" ? word.endMs : Math.round((word.end || 0) * 1000),
+            word: typeof word.word === "string" ? word.word : (typeof word.text === "string" ? word.text : ""),
+            startMs: typeof word.startMs === "number" ? word.startMs : (typeof word.start === "number" ? Math.round(word.start * 1000) : -1),
+            endMs: typeof word.endMs === "number" ? word.endMs : (typeof word.end === "number" ? Math.round(word.end * 1000) : -1),
           }))
           .filter((word) => word.word.trim() && word.endMs > word.startMs);
         if (timedWords.length > 0) {
           rawSegments.push({
             startMs: timedWords[0].startMs,
             endMs: timedWords[timedWords.length - 1].endMs,
-            text: res.text || timedWords.map((word) => word.word).join(" "),
+            text: typeof res.text === "string" ? res.text : timedWords.map((word) => word.word).join(" "),
             words: timedWords,
           });
         }
@@ -104,19 +162,30 @@ export function AutoSubtitleModal({
       }
 
       const parsedSegments: SubtitleSegmentItem[] = rawSegments.map((s, idx) => {
-        const startMs = typeof s.startMs === "number" ? s.startMs : Math.round((s.start || 0) * 1000);
-        const endMs = typeof s.endMs === "number" ? s.endMs : Math.round((s.end || (startMs / 1000 + 3)) * 1000);
-        const words = (s.words || []).map((w) => ({
-          word: w.word,
-          startMs: typeof w.startMs === "number" ? w.startMs : Math.round((w.start || 0) * 1000),
-          endMs: typeof w.endMs === "number" ? w.endMs : Math.round((w.end || 0) * 1000),
-        }));
+        const startMs = typeof s.startMs === "number" ? s.startMs : (typeof s.start === "number" ? Math.round(s.start * 1000) : -1);
+        const endMs = typeof s.endMs === "number" ? s.endMs : (typeof s.end === "number" ? Math.round(s.end * 1000) : -1);
+        if (!Number.isSafeInteger(startMs) || !Number.isSafeInteger(endMs) || startMs < 0 || endMs <= startMs) throw new Error("ผลลัพธ์ไม่มีช่วงเวลาเสียงที่ตรวจสอบได้");
+        if (videoDurationMs > 0 && endMs > videoDurationMs) throw new Error("timestamp เกินความยาววิดีโอ");
+        const words = (Array.isArray(s.words) ? s.words : []).map((w) => ({
+          word: typeof w.word === "string" ? w.word : (typeof w.text === "string" ? w.text : ""),
+          startMs: typeof w.startMs === "number" ? w.startMs : (typeof w.start === "number" ? Math.round(w.start * 1000) : -1),
+          endMs: typeof w.endMs === "number" ? w.endMs : (typeof w.end === "number" ? Math.round(w.end * 1000) : -1),
+        })).filter((w) => w.word.trim()
+          && Number.isSafeInteger(w.startMs)
+          && Number.isSafeInteger(w.endMs)
+          && w.startMs >= startMs
+          && w.endMs > w.startMs
+          && w.endMs <= endMs
+          && (videoDurationMs <= 0 || w.endMs <= videoDurationMs));
 
+        const segmentText = (typeof s.text === "string" ? s.text : "").trim() || words.map((word) => word.word).join(" ");
+        if (!segmentText.trim()) throw new Error("ผลลัพธ์มี cue ว่างที่ตรวจสอบไม่ได้");
         return {
-          id: s.id ?? idx,
+          id: s.id ?? s.cueId ?? idx,
           startMs,
           endMs,
-          text: s.text || "",
+          text: segmentText,
+          speakerId: typeof s.speakerId === "string" ? s.speakerId : null,
           words,
         };
       });
@@ -128,9 +197,10 @@ export function AutoSubtitleModal({
         id: `clip_caption_${Date.now()}_${idx}`,
         name: `Subtitle #${idx + 1}`,
         timelineStartMs: seg.startMs,
-        durationMs: Math.max(800, seg.endMs - seg.startMs),
+        durationMs: seg.endMs - seg.startMs,
         sourceType: "text",
         text: seg.text,
+        speakerId: seg.speakerId,
         stylePreset,
         fontSize: 42,
         fontColor: "#ffffff",
@@ -141,7 +211,7 @@ export function AutoSubtitleModal({
       }));
 
       setTranscribeProgress(100);
-      onApplySubtitles(subtitleClips);
+      setPendingSubtitleClips(subtitleClips);
     } catch (err) {
       console.warn("AI Transcribe error:", err);
       setTranscribeError(`การถอดเสียงล้มเหลว: ${String(err)}`);
@@ -195,6 +265,12 @@ export function AutoSubtitleModal({
     }
   };
 
+  const handleApplySubtitles = () => {
+    if (pendingSubtitleClips.length === 0) return;
+    onApplySubtitles(pendingSubtitleClips);
+    setPendingSubtitleClips([]);
+  };
+
   return (
     <div className="media-intent-modal-backdrop" onClick={onClose}>
       <div className="media-intent-modal-card auto-subtitle-card" onClick={(e) => e.stopPropagation()}>
@@ -203,7 +279,7 @@ export function AutoSubtitleModal({
             <span className="modal-title-icon">🎙️</span>
             <div>
               <h3>สร้าง Subtitle อัตโนมัติ (AI Whisper Transcribe)</h3>
-              <p className="modal-subtitle">ถอดเสียงจากวิดีโอจริงอัตโนมัติด้วย AI Whisper โมเดลความแม่นยำสูง</p>
+              <p className="modal-subtitle">เลือก engine ที่ติดตั้งจริง แล้วตรวจสอบผลก่อนวางลง Timeline</p>
             </div>
           </div>
           <button type="button" className="modal-close-button" onClick={onClose} disabled={isTranscribing}>✕</button>
@@ -229,6 +305,16 @@ export function AutoSubtitleModal({
           )}
           <div className="modal-grid-two">
             <div className="modal-field-block">
+              <label className="field-label" htmlFor="subtitle-engine">เครื่องมือถอดเสียง (ASR engine)</label>
+              <select id="subtitle-engine" value={engine} onChange={(e) => setEngine(e.target.value as SubtitleEngine)} disabled={isTranscribing}>
+                <option value="whisper.cpp" disabled={engineCapabilities["whisper.cpp"] === "unavailable"}>HyperFrames · Whisper.cpp · {engineCapabilities["whisper.cpp"] === "ready" ? "พร้อมใช้ (local)" : engineCapabilities["whisper.cpp"] === "checking" ? "กำลังตรวจสอบ runtime" : "runtime ไม่พร้อมใช้"}</option>
+                <option value="faster-whisper" disabled={engineCapabilities["faster-whisper"] !== "ready"}>Faster-Whisper + WhisperX · {engineCapabilities["faster-whisper"] === "ready" ? "พร้อมใช้" : "ยังไม่ติดตั้ง runtime"}</option>
+                <option value="vibevoice-asr" disabled={engineCapabilities["vibevoice-asr"] !== "ready"}>VibeVoice-ASR · {engineCapabilities["vibevoice-asr"] === "ready" ? "พร้อมใช้" : "รอ GPU/runtime gate"}</option>
+                <option value="cloud" disabled={engineCapabilities.cloud !== "ready"}>Cloud API · {engineCapabilities.cloud === "ready" ? "พร้อมใช้" : "รอ provider/สิทธิ์อัปโหลด"}</option>
+              </select>
+              <small className="field-hint">ระบบจะไม่ดาวน์โหลดโมเดลหรือสลับไป engine อื่นโดยอัตโนมัติ</small>
+            </div>
+            <div className="modal-field-block">
               <label className="field-label">ภาษาเสียงพูด (Spoken Language)</label>
               <select value={language} onChange={(e) => setLanguage(e.target.value as "th" | "en" | "auto")}>
                 <option value="th">🇹🇭 ภาษาไทย (Thai)</option>
@@ -247,6 +333,17 @@ export function AutoSubtitleModal({
                 <option value="call_to_action_pill">🚀 Call-To-Action (ปุ่มกระตุ้นติดตาม)</option>
               </select>
             </div>
+          </div>
+
+          <div className="modal-grid-two" style={{ marginTop: "10px" }}>
+            <label className="modal-checkbox-row">
+              <input type="checkbox" checked={wordTimestamps} onChange={(e) => setWordTimestamps(e.target.checked)} disabled={isTranscribing} />
+              <span>เก็บ word-level timestamps (ต้องมีหลักฐานจาก engine)</span>
+            </label>
+            <label className="modal-checkbox-row">
+              <input type="checkbox" checked={diarization} onChange={(e) => setDiarization(e.target.checked)} disabled={isTranscribing} />
+              <span>แยกผู้พูด (diarization)</span>
+            </label>
           </div>
 
           <div className="subtitle-preview-box">
@@ -292,7 +389,7 @@ export function AutoSubtitleModal({
               }}
             >
               <span style={{ fontSize: "0.85rem", color: "#34d399", fontWeight: 700 }}>
-                ✅ ถอดเสียงสำเร็จ ({generatedSegments.length} ประโยค) · ส่งออกไฟล์ Subtitle:
+                ✅ ตรวจผลแล้ว ({generatedSegments.length} ประโยค) {pendingSubtitleClips.length > 0 ? "· กด Apply เพื่อวางลง Timeline · " : "· "}ส่งออกไฟล์ Subtitle:
               </span>
               <div style={{ display: "flex", gap: "6px" }}>
                 <button
@@ -374,10 +471,15 @@ export function AutoSubtitleModal({
             type="button"
             className="primary-button"
             onClick={() => void handleGenerateSubtitles()}
-            disabled={isTranscribing}
+            disabled={isTranscribing || engineCapabilities[engine] === "unavailable"}
           >
-            {isTranscribing ? "⏳ กำลังถอดเสียง..." : "✨ ถอดเสียงและวางลง Timeline"}
+            {isTranscribing ? "⏳ กำลังถอดเสียง..." : "✨ ถอดเสียงและตรวจผล"}
           </button>
+          {pendingSubtitleClips.length > 0 && (
+            <button type="button" className="primary-button" onClick={handleApplySubtitles} disabled={isTranscribing}>
+              ✅ Apply ลง Timeline
+            </button>
+          )}
         </div>
       </div>
     </div>

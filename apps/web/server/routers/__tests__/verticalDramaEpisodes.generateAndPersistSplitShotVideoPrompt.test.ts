@@ -56,6 +56,8 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
+    publicProcedure: createProcedure(),
   };
 });
 
@@ -86,6 +88,7 @@ vi.mock("../../_core/tokens", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
+  createRateLimiter: vi.fn(() => ({ isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) })),
   mediaGenerationLimiter: { isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) },
 }));
 
@@ -168,7 +171,7 @@ vi.mock("../../services/verticalDramaEpisodeContinuation", () => ({
 vi.mock("../../services/verticalDramaShotReferences", () => ({
   verticalDramaShotReferencesService: {
     listForEpisode: vi.fn(),
-    listForShot: vi.fn(),
+    listForShot: vi.fn(async () => []),
     linkReference: vi.fn(),
     deleteReference: vi.fn(),
     reorder: vi.fn(),
@@ -503,13 +506,41 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
           durationSeconds: 6,
         },
       ],
-      warnings: [],
     };
     const episodeRow = baseEpisodeRow({ motionPromptPack: legacyPack });
+
+    mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch.mockResolvedValueOnce({
+      prompt: "A continuous kitchen argument, cutting between the hero and the villain.",
+      negativeMotionPrompt: "identity drift, warping",
+      dialogue: [
+        { characterKey: "hero", lineTh: "Why didn't you tell me the truth?" },
+        { characterKey: "villain", lineTh: "I was protecting you the whole time." },
+      ],
+      durationSeconds: 5,
+      distinctSpeakerCharacterKeys: ["hero", "villain"],
+      creditsUsed: 4,
+      model: "gpt-vision",
+      usedVision: true,
+      family: "veo",
+      warnings: ["legacy split pack warning"],
+      promptQuality: { mode: "judged", candidates: 2, verdict: "accept", repaired: false },
+    });
 
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 900,
+            storageKey: "vertical-drama/tenant-1/900.png",
+            originalUrl: "https://cdn/900.png",
+            mimeType: "image/png",
+            checksumSha256: null,
+            updatedAt: null,
+          },
+        ])
+      ) // resolveMediaAssetRecordsByIds
       .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
       .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
       .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query (multi-character disambiguation fix, polished-toasting-gadget.md — no portraits configured in this test, resolves to [])
@@ -593,6 +624,16 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
       // Judged best-of-2 quality loop (Phase 2) — persisted on the clip too.
       promptQuality: { mode: "judged", candidates: 2, verdict: "accept", repaired: false },
     });
+    expect(capturedSet.motionPromptPack.warnings).toEqual([
+      {
+        code: "vd_video_prompt_position_anchor_degraded",
+        severity: "warning",
+        message: "legacy split pack warning",
+        targetShotNumber: 1,
+        targetClipNumber: 1,
+        repairable: true,
+      },
+    ]);
     expect(clipsForShot1[0]).not.toHaveProperty("parentShotNumber");
     expect(clipsForShot1[0]).not.toHaveProperty("subShotNumber");
 

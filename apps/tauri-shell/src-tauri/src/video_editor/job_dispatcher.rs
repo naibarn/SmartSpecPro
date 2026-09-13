@@ -400,6 +400,12 @@ async fn handle_waveform(
         .and_then(|p| p.get("bucketMs"))
         .and_then(|v| v.as_u64())
         .unwrap_or(100);
+    let audio_stream_index = spec
+        .params
+        .as_ref()
+        .and_then(|p| p.get("audioStreamIndex"))
+        .and_then(|v| v.as_u64())
+        .map(|value| value as usize);
 
     let path = asset
         .uri
@@ -407,7 +413,11 @@ async fn handle_waveform(
         .or_else(|| asset.uri.strip_prefix("file://"))
         .unwrap_or(&asset.uri);
 
-    let peaks = super::ffmpeg::extract_waveform_pcm(path, bucket_ms as usize).await?;
+    let peaks = super::ffmpeg::extract_waveform_pcm_for_stream(
+        path,
+        bucket_ms as usize,
+        audio_stream_index,
+    ).await?;
 
     Ok(MediaJobResult {
         job_id: spec.job_id.clone(),
@@ -480,6 +490,12 @@ async fn handle_dead_air_detect(
         .and_then(|p| p.get("minSilenceMs"))
         .and_then(|v| v.as_u64())
         .unwrap_or(500);
+    let audio_stream_index = spec
+        .params
+        .as_ref()
+        .and_then(|p| p.get("audioStreamIndex"))
+        .and_then(|v| v.as_u64())
+        .map(|value| value as usize);
 
     let path = asset
         .uri
@@ -487,8 +503,12 @@ async fn handle_dead_air_detect(
         .or_else(|| asset.uri.strip_prefix("file://"))
         .unwrap_or(&asset.uri);
 
-    let silence_segments =
-        super::ffmpeg::detect_silence(path, threshold_db, min_silence_ms).await?;
+    let silence_segments = super::ffmpeg::detect_silence_for_stream(
+        path,
+        threshold_db,
+        min_silence_ms,
+        audio_stream_index,
+    ).await?;
 
     Ok(MediaJobResult {
         job_id: spec.job_id.clone(),

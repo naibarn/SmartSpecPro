@@ -28,7 +28,18 @@ class KieSubmissionRateLimitState:
 
 class KieSubmissionDeferred(RuntimeError):
     def __init__(self, retry_after_seconds: int, *, redis_available: bool) -> None:
-        super().__init__("Kie.ai image submission deferred by the global rate limiter")
+        self.code = (
+            "KIE_IMAGE_SUBMISSION_QUEUE_FULL"
+            if redis_available
+            else "KIE_IMAGE_ADMISSION_UNAVAILABLE"
+        )
+        message = (
+            "Image submission is waiting for a free slot in the system-wide Kie.ai queue."
+            if redis_available
+            else "Image submission is paused because the system cannot check queue capacity "
+            "(Redis unavailable or connection error). This is not a Kie.ai quota rejection."
+        )
+        super().__init__(f"{self.code}: {message}")
         self.retry_after_seconds = max(1, int(retry_after_seconds))
         self.redis_available = redis_available
 
@@ -56,9 +67,11 @@ class KieSubmissionRateLimiter:
         self.key = key
 
     async def _get_redis(self) -> Any | None:
-        if self._redis is None:
-            self._redis = await get_cache_redis()
-        return self._redis
+        # Only explicitly injected clients are retained here. In particular the
+        # module-level poll limiter must resolve the current loop's client.
+        if self._redis is not None:
+            return self._redis
+        return await get_cache_redis()
 
     async def acquire(self, *, task_id: str) -> KieSubmissionRateLimitState:
         redis_client = await self._get_redis()
@@ -88,9 +101,19 @@ class KieSubmissionRateLimiter:
                 redis_available=True,
             )
         except Exception as exc:
+            # Classify common async lifecycle errors without logging Redis URLs
+            # or credentials from arbitrary exception messages.
+            detail = str(exc).lower()
+            reason = (
+                "event_loop_closed" if "event loop is closed" in detail
+                else "event_loop_mismatch" if "different loop" in detail
+                else "redis_command_failed"
+            )
             logger.warning(
                 "kie_image_submission_rate_limit_error",
                 task_id=task_id,
                 error_type=type(exc).__name__,
+                reason=reason,
+                limiter_key=self.key,
             )
             return KieSubmissionRateLimitState(False, 0, self.window_seconds, False)

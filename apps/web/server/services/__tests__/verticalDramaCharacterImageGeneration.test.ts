@@ -1086,6 +1086,21 @@ describe("portrait candidate batch contract", () => {
     );
   });
 
+  it("rejects identical normalized portrait prompts even when structured DNA differs", () => {
+    const first = validPortraitCandidate("candidate-1", 0);
+    const second = structuredClone(validPortraitCandidate("candidate-2", 1));
+    second.primary_portrait_prompt = first.primary_portrait_prompt.toUpperCase();
+
+    expect(findPortraitCandidateDiversityIssues([first, second])).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          candidateIds: ["candidate-1", "candidate-2"],
+          message: expect.stringMatching(/normalized prompt text is identical/i),
+        }),
+      ]),
+    );
+  });
+
   it("generates all candidates in one LLM call and deducts prompt credits once", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute.mockResolvedValue(successResponse(validPortraitCandidateBatch(3)));
@@ -1105,6 +1120,26 @@ describe("portrait candidate batch contract", () => {
       "braid",
     );
     expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the candidate flow non-blocking after bounded anti-clone repair", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const duplicateBatch = validPortraitCandidateBatch(2);
+    duplicateBatch.portrait_candidate_batch.candidates[1] = structuredClone(
+      duplicateBatch.portrait_candidate_batch.candidates[0]!,
+    );
+    duplicateBatch.portrait_candidate_batch.candidates[1]!.candidate_id = "candidate-2";
+    mockExecute.mockResolvedValue(successResponse(duplicateBatch));
+
+    const result = await generateCharacterPortraitCandidates({
+      ...baseParams({ role: "นางเอก", roleTier: "lead_female" }),
+      portraitCandidateCount: 2,
+    });
+
+    expect(result.candidates).toHaveLength(2);
+    expect(result.warnings?.join(" ")).toMatch(/diversity remained similar/i);
+    expect(mockExecute).toHaveBeenCalledTimes(3);
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
@@ -2775,6 +2810,14 @@ describe("resolveFaceSourceReferenceForCharacter", () => {
 });
 
 describe("buildCharacterVisualPromptsUserPrompt — face_source_reference flow-through", () => {
+  it("carries the requested camera framing as structured generation data", () => {
+    const userPrompt = buildCharacterVisualPromptsUserPrompt(
+      baseParams({ cameraFraming: "full_body" }),
+    );
+    expect(userPrompt).toContain('"camera_framing": "full_body"');
+    expect(userPrompt).toContain("CAMERA FRAMING CONTRACT");
+  });
+
   it("includes a face_source_reference FACT object (image_url/lock_strength/relationship_note) when faceSourceReference is present", () => {
     const userPrompt = buildCharacterVisualPromptsUserPrompt(
       baseParams({

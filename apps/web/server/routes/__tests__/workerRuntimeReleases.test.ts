@@ -6,6 +6,9 @@ const {
   mockAuthenticateRequest,
   mockCatalog,
   mockImportLocal,
+  mockRunnerCatalog,
+  mockRunnerFinalize,
+  mockRunnerPresign,
   mockWorkerRuntimeReleaseError,
   mockWorkerRuntimeSigningKeyError,
   mockSigningKeyGet,
@@ -14,6 +17,9 @@ const {
   mockAuthenticateRequest: vi.fn(),
   mockCatalog: vi.fn(),
   mockImportLocal: vi.fn(),
+  mockRunnerCatalog: vi.fn(),
+  mockRunnerFinalize: vi.fn(),
+  mockRunnerPresign: vi.fn(),
   mockWorkerRuntimeReleaseError: class extends Error {
     code = "worker_runtime_release_failed";
     statusCode = 500;
@@ -47,6 +53,19 @@ vi.mock("../../services/workerRuntimeSigningKeyService", () => ({
   getWorkerRuntimeSigningKey: mockSigningKeyGet,
   setWorkerRuntimeSigningPublicKey: mockSigningKeySet,
   WorkerRuntimeSigningKeyError: mockWorkerRuntimeSigningKeyError,
+}));
+
+vi.mock("../../services/workerRuntimeRunnerArtifactService", () => ({
+  listWorkerRuntimeRunnerArtifacts: mockRunnerCatalog,
+  finalizeWorkerRuntimeRunnerArtifactUpload: mockRunnerFinalize,
+  presignWorkerRuntimeRunnerArtifactUpload: mockRunnerPresign,
+  persistWorkerRuntimeRunnerArtifactFromPath: vi.fn(),
+  streamWorkerRuntimeRunnerArtifact: vi.fn(),
+  WorkerRuntimeRunnerArtifactError: class extends Error {
+    code = "worker_runtime_runner_failed";
+    statusCode = 500;
+  },
+  MAX_WORKER_RUNTIME_RUNNER_BYTES: 1024 * 1024 * 1024,
 }));
 
 describe("worker runtime release admin routes", () => {
@@ -87,6 +106,25 @@ describe("worker runtime release admin routes", () => {
       uploadedByName: "Admin",
       downloadUrl:
         "/api/workers/runtime-pack/download/smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.09.07.1.zip",
+    });
+    mockRunnerCatalog.mockResolvedValue({
+      generatedAt: "2026-09-08T00:00:00.000Z",
+      artifacts: [],
+    });
+    mockRunnerPresign.mockResolvedValue({
+      uploadUrl: "https://storage.example.test/presigned-runner",
+      storageKey: "worker-runtime-runner-uploads/test-runner.exe",
+    });
+    mockRunnerFinalize.mockResolvedValue({
+      id: 9,
+      fileName: "speaker-aware-runner.exe",
+      contentType: "application/octet-stream",
+      fileSizeBytes: 442,
+      fileSha256: "a".repeat(64),
+      uploadedAt: "2026-09-08T00:00:00.000Z",
+      uploadedByUserId: 1,
+      uploadedByName: "Admin",
+      downloadUrl: "/api/admin/worker-runtime/runner-artifacts/9/download",
     });
     mockSigningKeyGet.mockResolvedValue({
       configured: false,
@@ -143,7 +181,58 @@ describe("worker runtime release admin routes", () => {
     expect(mockCatalog).toHaveBeenCalledWith({ includeUnpublished: true });
   });
 
-  it("imports a server-side runtime artifact for a system admin", async () => {
+  it("returns persisted runner artifacts to a system admin", async () => {
+    mockAuthenticateRequest.mockResolvedValue({ id: 1, role: "admin" });
+    const response = await request(await makeApp()).get(
+      "/api/admin/worker-runtime/runner-artifacts"
+    );
+    expect(response.status).toBe(200);
+    expect(response.body.artifacts).toEqual([]);
+    expect(mockRunnerCatalog).toHaveBeenCalledTimes(1);
+  });
+
+  it("presigns a direct runner upload for object storage", async () => {
+    mockAuthenticateRequest.mockResolvedValue({ id: 1, role: "admin" });
+    const response = await request(await makeApp())
+      .post("/api/admin/worker-runtime/runner-artifacts/upload-url")
+      .send({
+        fileName: "speaker-aware-runner.exe",
+        contentType: "application/octet-stream",
+        fileSizeBytes: 442,
+      });
+    expect(response.status).toBe(200);
+    expect(response.body.uploadUrl).toContain("presigned-runner");
+    expect(mockRunnerPresign).toHaveBeenCalledWith({
+      fileName: "speaker-aware-runner.exe",
+      contentType: "application/octet-stream",
+      fileSizeBytes: 442,
+    });
+  });
+
+  it("finalizes a direct runner upload and persists its provenance", async () => {
+    mockAuthenticateRequest.mockResolvedValue({ id: 1, role: "admin" });
+    const response = await request(await makeApp())
+      .post("/api/admin/worker-runtime/runner-artifacts/upload/complete")
+      .send({
+        fileName: "speaker-aware-runner.exe",
+        contentType: "application/octet-stream",
+        fileSizeBytes: 442,
+        storageKey: "worker-runtime-runner-uploads/test-runner.exe",
+      });
+    expect(response.status).toBe(201);
+    expect(response.body.artifact.fileName).toBe("speaker-aware-runner.exe");
+    expect(mockRunnerFinalize).toHaveBeenCalledWith({
+      upload: {
+        fileName: "speaker-aware-runner.exe",
+        contentType: "application/octet-stream",
+        fileSizeBytes: 442,
+        storageKey: "worker-runtime-runner-uploads/test-runner.exe",
+      },
+      uploadedByUserId: 1,
+    });
+  });
+
+  it("starts and reports a server-side runtime import for a system admin", async () => {
     mockAuthenticateRequest.mockResolvedValue({ id: 1, role: "admin" });
 
     const response = await request(await makeApp())
@@ -154,16 +243,122 @@ describe("worker runtime release admin routes", () => {
         channel: "stable",
       });
 
-    expect(response.status).toBe(201);
-    expect(response.body.release.version).toBe("2026.09.07.1");
-    expect(mockImportLocal).toHaveBeenCalledWith({
+    expect(response.status).toBe(202);
+    expect(response.body.operation.status).toBe("running");
+    expect(response.body.operation.id).toEqual(expect.any(String));
+
+    await vi.waitFor(() =>
+      expect(mockImportLocal).toHaveBeenCalledWith({
+        release: {
+          version: "2026.09.07.1",
+          runtimeId: "hyperframes-wsl2",
+          channel: "stable",
+        },
+        uploadedByUserId: 1,
+      })
+    );
+
+    const statusResponse = await request(await makeApp()).get(
+      `/api/admin/worker-runtime/releases/import-local/${response.body.operation.id}`
+    );
+    expect(statusResponse.status).toBe(200);
+    expect(statusResponse.body.operation.status).toBe("succeeded");
+    expect(statusResponse.body.operation.release.version).toBe("2026.09.07.1");
+  });
+
+  it("deduplicates concurrent server-side runtime imports", async () => {
+    mockAuthenticateRequest.mockResolvedValue({ id: 1, role: "admin" });
+    let completeImport!: (value: any) => void;
+    mockImportLocal.mockImplementationOnce(
+      () => new Promise(resolve => (completeImport = resolve))
+    );
+    const payload = {
+      version: "2026.09.07.2",
+      runtimeId: "hyperframes-wsl2",
+      channel: "stable",
+    };
+    const app = await makeApp();
+    const first = await request(app)
+      .post("/api/admin/worker-runtime/releases/import-local")
+      .send(payload);
+    const second = await request(app)
+      .post("/api/admin/worker-runtime/releases/import-local")
+      .send(payload);
+
+    expect(first.status).toBe(202);
+    expect(second.status).toBe(202);
+    expect(second.body.operation.id).toBe(first.body.operation.id);
+    await vi.waitFor(() => expect(mockImportLocal).toHaveBeenCalledTimes(1));
+    completeImport({
+      id: 43,
+      version: payload.version,
+    });
+  });
+
+  it("protects server-side import status from unauthenticated users", async () => {
+    const response = await request(await makeApp()).get(
+      "/api/admin/worker-runtime/releases/import-local/missing"
+    );
+    expect(response.status).toBe(401);
+  });
+
+  it("returns not found for an unknown server-side import operation", async () => {
+    mockAuthenticateRequest.mockResolvedValue({ id: 1, role: "admin" });
+    const response = await request(await makeApp()).get(
+      "/api/admin/worker-runtime/releases/import-local/missing"
+    );
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe(
+      "worker_runtime_import_operation_not_found"
+    );
+  });
+
+  it("reports a failed server-side import without dropping the HTTP connection", async () => {
+    mockAuthenticateRequest.mockResolvedValue({ id: 1, role: "admin" });
+    mockImportLocal.mockRejectedValueOnce(
+      new Error("R2 rejected the runtime archive")
+    );
+    const app = await makeApp();
+    const response = await request(app)
+      .post("/api/admin/worker-runtime/releases/import-local")
+      .send({
+        version: "2026.09.07.4",
+        runtimeId: "hyperframes-wsl2",
+        channel: "stable",
+      });
+
+    expect(response.status).toBe(202);
+    await vi.waitFor(async () => {
+      const statusResponse = await request(app).get(
+        `/api/admin/worker-runtime/releases/import-local/${response.body.operation.id}`
+      );
+      expect(statusResponse.body.operation.status).toBe("failed");
+      expect(statusResponse.body.operation.error.message).toBe(
+        "R2 rejected the runtime archive"
+      );
+    });
+  });
+
+  it("passes the canonical import payload to the service", async () => {
+    mockAuthenticateRequest.mockResolvedValue({ id: 1, role: "admin" });
+    const response = await request(await makeApp())
+      .post("/api/admin/worker-runtime/releases/import-local")
+      .send({
+        version: "2026.09.07.3",
+        runtimeId: "hyperframes-wsl2",
+        channel: "stable",
+      });
+    expect(response.status).toBe(202);
+    await vi.waitFor(() =>
+      expect(mockImportLocal).toHaveBeenCalledWith({
       release: {
-        version: "2026.09.07.1",
+        version: "2026.09.07.3",
         runtimeId: "hyperframes-wsl2",
         channel: "stable",
       },
       uploadedByUserId: 1,
-    });
+      })
+    );
   });
 
   it("protects server-side runtime import from unauthenticated users", async () => {

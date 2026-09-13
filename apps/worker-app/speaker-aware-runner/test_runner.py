@@ -18,6 +18,35 @@ class RunnerContractTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("contract=feature-179-v1", completed.stdout)
 
+    def test_capabilities_are_available_without_media_input(self):
+        completed = subprocess.run([sys.executable, str(RUNNER), "--capabilities"], capture_output=True, text=True, check=False)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertEqual(result["contractVersion"], "feature-179-v1")
+        self.assertEqual(
+            {item["adapterId"] for item in result["adapterCapabilities"]},
+            {"SileroOnnx", "FireRedOnnx", "TenVad", "WebRtcVad", "PyannoteDiarization", "MediaPipeFace", "PersonBody", "ActiveSpeakerFusion"},
+        )
+        active = next(item for item in result["adapterCapabilities"] if item["adapterId"] == "ActiveSpeakerFusion")
+        self.assertEqual(active["status"], "ready")
+
+    def test_model_capability_requires_expected_non_empty_format(self):
+        import tempfile
+        from speaker_aware_runner import model_file_ready, model_directory_ready
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bad = root / "model.txt"
+            bad.write_text("x", encoding="utf-8")
+            good = root / "model.onnx"
+            good.write_bytes(b"onnx")
+            folder = root / "pipeline"
+            folder.mkdir()
+            self.assertFalse(model_file_ready(bad, (".onnx",)))
+            self.assertTrue(model_file_ready(good, (".onnx",)))
+            self.assertFalse(model_directory_ready(folder))
+            (folder / "config.yaml").write_text("pipeline", encoding="utf-8")
+            self.assertTrue(model_directory_ready(folder))
+
     def test_manual_review_scan_emits_worker_contract(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

@@ -5,6 +5,27 @@ from smartaihub_video_director.schema_registry import StageContractRegistry
 
 
 class TestEnhancedAudioBridge(unittest.TestCase):
+    def test_terminal_prompt_uses_server_selected_cast_over_narrative_mentions(self):
+        payload = {
+            "targetVideoModel": {"id": "grok-imagine-video-1-5-preview"},
+            "shot": {
+                "description": "หน้าคลินิก มยุรีถูกเอ่ยถึงในเรื่องย่อ แต่ไม่อยู่ในภาพ",
+                "visualCastPolicy": {
+                    "physicalCharacterRefs": ["pim", "thir", "phum"],
+                    "physicalCharacterNames": ["พิมพ์ชนก", "ธีร์", "ภูมิ"],
+                    "screenCallerCharacterRefs": [],
+                    "narrativeOnlyCharacterRefs": ["mayuree"],
+                    "narrativeOnlyCharacterNames": ["มยุรี"],
+                },
+            },
+        }
+        prompt = _terminal_prompt(payload, {"scene": "The woman checks a folder"})
+
+        self.assertIn("Physical scene cast ONLY: พิมพ์ชนก (pim), ธีร์ (thir), ภูมิ (phum)", prompt)
+        self.assertIn("Narrative-only references (context only, NEVER visible in this shot): มยุรี (mayuree)", prompt)
+        self.assertIn("Do not render, cast, or place them on screen.", prompt)
+        self.assertNotIn("Physical scene cast ONLY: มยุรี", prompt)
+
     def test_terminal_prompt_when_native_audio_disabled_with_dialogue(self):
         payload = {
             "nativeAudioEnabled": False,
@@ -74,7 +95,11 @@ class TestEnhancedAudioBridge(unittest.TestCase):
         }
         prompt = _terminal_prompt(payload, intent)
         self.assertIn("TIMECODED AUDIO EVENTS (OMNI):", prompt)
-        self.assertIn("[0-2s] Somchai: \"สวัสดีครับ\"", prompt)
+        self.assertIn(
+            "[0-2s] Line 1: use the canonical timed speech event for Somchai (Somchai); preserve its exact text.",
+            prompt,
+        )
+        self.assertEqual(prompt.count("สวัสดีครับ"), 1)
 
     def test_terminal_prompt_seedance_physical_pairing(self):
         payload = {
@@ -155,7 +180,7 @@ class TestEnhancedAudioBridge(unittest.TestCase):
         self.assertIn("ธันวา", prompt)
 
         # 2. Dialogue section and lip-sync guidance
-        self.assertIn("SPOKEN DIALOGUE / LIP-SYNC", prompt)
+        self.assertIn("SPEAKER AND LINE-ORDER LOCK", prompt)
         self.assertIn("Lip-Sync Guidance:", prompt)
         self.assertIn("Never keep the mouth closed during spoken dialogue", prompt)
 
@@ -172,8 +197,10 @@ class TestEnhancedAudioBridge(unittest.TestCase):
 
         # 5. Omni timecodes with Thai dialogue
         self.assertIn("TIMECODED AUDIO EVENTS (OMNI):", prompt)
-        self.assertIn("[0-2s] ธันวา: \"พอแล้ว วันนี้เป็นโชคเกินไปแบบนั้น\"", prompt)
-        self.assertIn("[2-4s] ธันวา: \"จ่ายแพง ก็หาเงินไป\"", prompt)
+        self.assertIn("[0-2s] Line 1: use the canonical timed speech event for ธันวา (thanwa); preserve its exact text.", prompt)
+        self.assertIn("[2-4s] Line 2: use the canonical timed speech event for ธันวา (thanwa); preserve its exact text.", prompt)
+        self.assertEqual(prompt.count("พอแล้ว วันนี้เป็นโชคเกินไปแบบนั้น"), 1)
+        self.assertEqual(prompt.count("จ่ายแพง ก็หาเงินไป"), 1)
 
         # 6. Negative constraints
         self.assertIn("CONTINUITY AND NEGATIVE CONSTRAINTS", prompt)
@@ -249,9 +276,19 @@ class TestEnhancedAudioBridge(unittest.TestCase):
         self.assertIn('says with a สุภาพและเหนื่อยล้า voice, precise realistic lip sync: "ผมแค่ขอหลบฝนแป๊บเดียว"', prompt)
 
         # 4. Spoken dialogue section includes position anchors
-        self.assertIn("- Line 1 [แม่ค้า (character-2) on viewer-left]: \"เฮ้ย ตรงนี้ขายของนะ อย่าเข้ามาใกล้ปลา\"", prompt)
-        self.assertIn("- Line 2 [Thanwa (thanwa) on viewer-right]: \"ผมแค่ขอหลบฝนแป๊บเดียว\"", prompt)
+        self.assertIn(
+            "- Line 1 [แม่ค้า (character-2) on viewer-left]: speak only in the matching timed event below.",
+            prompt,
+        )
+        self.assertIn(
+            "- Line 2 [Thanwa (thanwa) on viewer-right]: speak only in the matching timed event below.",
+            prompt,
+        )
         self.assertIn("Silent Listener Constraint", prompt)
+        self.assertIn("Only speaker ID character-2 (แม่ค้า) is allowed to speak", prompt)
+        self.assertIn("Only speaker ID thanwa (Thanwa) is allowed to speak", prompt)
+        self.assertEqual(prompt.count("เฮ้ย ตรงนี้ขายของนะ อย่าเข้ามาใกล้ปลา"), 1)
+        self.assertEqual(prompt.count("ผมแค่ขอหลบฝนแป๊บเดียว"), 1)
 
         # 5. The binding block is adjacent to the observed character state,
         # before motion/camera prose, so providers do not have to reconnect a
@@ -262,7 +299,7 @@ class TestEnhancedAudioBridge(unittest.TestCase):
         self.assertLess(observed_index, binding_index)
         self.assertLess(binding_index, motion_index)
 
-    def test_terminal_prompt_fails_closed_when_dialogue_speaker_has_no_observed_position(self):
+    def test_terminal_prompt_keeps_dialogue_speaker_offscreen_when_not_in_observed_frame(self):
         payload = {
             "targetVideoModel": {"id": "grok-imagine-video-1-5-preview"},
             "shot": {
@@ -288,8 +325,27 @@ class TestEnhancedAudioBridge(unittest.TestCase):
             ]
         }
 
-        with self.assertRaisesRegex(RuntimeError, "SPEAKER_POSITION_BINDING_FAILED"):
-            _terminal_prompt(payload, {"actions": ["They continue walking"]}, observed)
+        prompt = _terminal_prompt(payload, {"actions": ["They continue walking"]}, observed)
+
+        self.assertIn("ภูมิ on viewer-offscreen; ภูมิ says with", prompt)
+        self.assertIn("off-screen/narrative voice only", prompt)
+        self.assertIn("do not render this speaker, add a body or face", prompt)
+
+    def test_packaged_offscreen_dialogue_is_not_required_to_be_on_screen(self):
+        packaged = _package_input({
+            "targetVideoModel": {"id": "grok-imagine-video-1-5-preview"},
+            "shot": {"description": "A woman checks a document"},
+            "dialogue": [{
+                "speakerId": "thir",
+                "speaker": "ธีร์",
+                "position": "viewer-offscreen",
+                "text": "ช่วยตรวจสอบเอกสารให้หน่อย",
+            }],
+        })
+
+        line = packaged["dialogue"]["lines"][0]
+        self.assertFalse(line["mustBeOnScreen"])
+        self.assertFalse(line["lipSyncRequired"])
 
     def test_episode_20_shot_1_keeps_each_thai_line_with_its_observed_speaker_position(self):
         payload = {
@@ -334,13 +390,15 @@ class TestEnhancedAudioBridge(unittest.TestCase):
         )
 
         self.assertIn(
-            '- Line 1 [ภูมิ (character-3-look-casual_home) on viewer-right]: "แม่ วันนี้ผมจะวาดบ้านของเรา"',
+            "- Line 1 [ภูมิ (character-3-look-casual_home) on viewer-right]: speak only in the matching timed event below.",
             prompt,
         )
         self.assertIn(
-            '- Line 2 [พิมพ์ชนก (character-variant-2) on viewer-left]: "ได้เลยลูก แต่อยู่ในสายตาแม่นะ"',
+            "- Line 2 [พิมพ์ชนก (character-variant-2) on viewer-left]: speak only in the matching timed event below.",
             prompt,
         )
+        self.assertEqual(prompt.count("แม่ วันนี้ผมจะวาดบ้านของเรา"), 1)
+        self.assertEqual(prompt.count("ได้เลยลูก แต่อยู่ในสายตาแม่นะ"), 1)
         self.assertNotIn("DIALOGUE POLICY: No spoken dialogue", prompt)
 
     def test_episode_258_style_actions_never_reassign_mouth_motion_to_the_wrong_speaker(self):
@@ -382,6 +440,65 @@ class TestEnhancedAudioBridge(unittest.TestCase):
         self.assertNotIn("พิมพ์ชนก on viewer-right as they", prompt)
         self.assertNotIn("ภูมิ on viewer-left as they", prompt)
         self.assertNotRegex(prompt, r"MOTION AND PERFORMANCE[\s\S]*(?:ขยับปาก|speaks with precise lip-sync)")
+
+    def test_grok_multicharacter_prompt_uses_one_hard_cast_map_for_the_first_speaker(self):
+        payload = {
+            "videoPromptMaxChars": 4096,
+            "targetVideoModel": {"id": "grok-imagine-video-1-5-preview"},
+            "mediaBundle": {
+                "startFrame": {"assetId": 6420},
+                "stopFrame": None,
+                "references": [],
+            },
+            "shot": {
+                "shotNumber": 7,
+                "description": "Three people walk together through a clinic corridor.",
+                "durationSeconds": 8,
+                "verifiedCastPositions": [
+                    {"characterKey": "character-look-casual_home", "name": "พิมพ์ชนก", "position": "viewer-left"},
+                    {"characterKey": "character-3-look-casual_home", "name": "ภูมิ", "position": "viewer-center"},
+                    {"characterKey": "character-2-look-casual_home", "name": "ธีร์", "position": "viewer-right"},
+                ],
+            },
+            "dialogue": [
+                {
+                    "characterKey": "character-3-look-casual_home",
+                    "speaker": "ภูมิ",
+                    "lineTh": "ธีร์กลับด้วยกันได้ไหมครับ",
+                },
+                {
+                    "characterKey": "character-look-casual_home",
+                    "speaker": "พิมพ์ชนก",
+                    "lineTh": "ได้ แต่ช่วยเดินข้างนอก ไม่ต้องอุ้มเขา",
+                },
+            ],
+        }
+        # Deliberately provide contradictory vision labels. The stable cast
+        # position lock must win and the prompt must not repeat that ambiguity.
+        observed = {
+            "characters": [
+                {"characterId": "character-2-look-casual_home", "screenPosition": "viewer-center"},
+                {"characterId": "character-3-look-casual_home", "screenPosition": "viewer-right"},
+                {"characterId": "character-look-casual_home", "screenPosition": "viewer-left"},
+            ]
+        }
+
+        prompt = _terminal_prompt(payload, {"actions": ["They continue walking together"]}, observed)
+
+        self.assertLessEqual(len(prompt), 4096)
+        self.assertIn("START FRAME LOCK: Continue from the approved START_FRAME_IMAGE", prompt)
+        self.assertIn("HARD SPEAKER MAP (MANDATORY CAST POSITION LOCK", prompt)
+        self.assertIn("character-look-casual_home = พิมพ์ชนก: viewer-left", prompt)
+        self.assertIn("character-3-look-casual_home = ภูมิ: viewer-center", prompt)
+        self.assertIn("character-2-look-casual_home = ธีร์: viewer-right", prompt)
+        self.assertIn("Line 1 ONLY: ภูมิ (character-3-look-casual_home) on viewer-center", prompt)
+        self.assertIn("Silent entire shot, mouth fully closed from 0.0–8.0 seconds: ธีร์ (character-2-look-casual_home) on viewer-right", prompt)
+        self.assertIn("FIRST SPEAKER LOCK: The first moving mouth must be ภูมิ (character-3-look-casual_home) on viewer-center", prompt)
+        self.assertIn("do not cut away, isolate a face, or re-center onto the right-hand character", prompt)
+        self.assertNotIn("Observed character character-2-look-casual_home: viewer-center", prompt)
+        self.assertNotIn("Observed character character-3-look-casual_home: viewer-right", prompt)
+        self.assertEqual(prompt.count("ธีร์กลับด้วยกันได้ไหมครับ"), 1)
+        self.assertEqual(prompt.count("ได้ แต่ช่วยเดินข้างนอก ไม่ต้องอุ้มเขา"), 1)
 
     def test_thai_and_english_speech_clauses_are_removed_from_physical_action_events(self):
         payload = {

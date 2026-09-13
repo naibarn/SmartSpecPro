@@ -90,6 +90,24 @@ creative wording and safety/realism decisions.
   use `character-candidate-prompt`; the existing batch contract is not mixed
   with the single-profile contract.
 
+### Candidate prompt diversity contract
+
+When portrait candidate casting requests three or five images, the casting
+skill must return one prompt per candidate. The server normalizes prompt text
+and checks exact and near-duplicate pairs before any draft or image task is
+created. Duplicate or missing candidates trigger an immediate bounded repair
+request that preserves age, region/ethnicity, reference locks, clothing lock,
+pose mode, camera framing, and user instructions while changing identity-bearing
+face and hair details.
+
+Repair is capped at two batch rounds, followed by at most two single-candidate
+fill calls for omitted blocks. Exhausting that budget never blocks the user
+flow: the server persists the available set with a diversity warning and
+`needs_review`-equivalent quality metadata. The router must never copy one
+prompt into multiple candidates. Skill and image-generation credit settlement
+remains idempotent per run, with repair counts and duplicate pairs recorded in
+settlement metadata.
+
 ## Persistence and compatibility
 
 Extend the shared approved visual-bible contract with an optional validated
@@ -149,6 +167,17 @@ only after a valid final profile, following the existing planning-call pattern.
   not resubmit the paid image task.
 
 ## Testing strategy
+
+### Same-slot prompt retry
+
+When one rendered candidate fails, `สร้าง prompt ใหม่` is a repair of that
+candidate slot. The client sends the failed `assetLinkId` through the durable
+prompt job. The stock service replaces the prompt metadata on that owner-scoped
+failed row while preserving its original `batchId`, `index`, and batch size.
+The UI overlays the refreshed prompt onto the same card and keeps completed
+siblings in place. Image rendering remains a separate explicit click on
+`สร้างภาพนี้`; retrying a prompt never creates an additional visible slot or
+submits an image automatically.
 
 Add focused tests for:
 

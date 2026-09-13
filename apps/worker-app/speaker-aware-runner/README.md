@@ -8,6 +8,7 @@ adapter policy in `--request`; the runner executes only the requested stages.
 
 ```text
 speaker-aware-runner.exe --version
+speaker-aware-runner.exe --capabilities
 speaker-aware-runner.exe --request runner-request.json --input source.mp4 --output result.json
 ```
 
@@ -37,3 +38,14 @@ with `workflow_capability_blocked`.
 The Worker App release packages the executable under
 `runtime-pack/speaker-aware/speaker-aware-runner.exe`; `SMARTAIHUB_SPEAKER_AWARE_RUNNER`
 remains an explicit override for development or a separately managed runner.
+
+The Runtime route in Worker App provides the supported setup flow. It imports
+user-downloaded model files into the app-managed `speaker-models` directory,
+persists only the selected paths, and runs `--capabilities` before queueing a
+job. The app does not silently download licensed weights; follow the adapter's
+official license and model instructions, then use **Choose model file** (or
+**Choose pipeline folder** for pyannote) and **Recheck**.
+
+After changing the runner contract, rebuild the Windows executable with
+`build-windows.ps1` and publish a new signed runtime release. Existing runtime
+archives containing runner version 0.1.0 do not expose `--capabilities`.

@@ -41,7 +41,18 @@ fn manifest(sidecar_sha256: String) -> RuntimePackManifest {
             model_url:
                 "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin".into(),
         }),
+        transcription_profiles: vec![],
     }
+}
+
+#[test]
+fn legacy_manifest_defaults_optional_transcription_profiles() {
+    let value = serde_json::to_value(manifest("sidecar-hash".into())).unwrap();
+    let object = value.as_object().cloned().unwrap();
+    let mut legacy = object;
+    legacy.remove("transcriptionProfiles");
+    let parsed: RuntimePackManifest = serde_json::from_value(serde_json::Value::Object(legacy)).unwrap();
+    assert!(parsed.transcription_profiles.is_empty());
 }
 
 fn write_minimal_official_renderer_files(root: &std::path::Path) {

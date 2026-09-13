@@ -5,6 +5,9 @@ import {
   buildEnhancedSkillInput,
   buildEnhancedJobKey,
   buildEnhancedInputFingerprint,
+  classifyEnhancedBridgeDiagnostic,
+  classifyEnhancedJobError,
+  EnhancedVideoDirectorBridgeError,
   buildUnavailableEnhancedVideoPromptReadiness,
   evaluateEnhancedVideoPromptReadiness,
   getEnhancedBridgeResultValidationError,
@@ -12,10 +15,14 @@ import {
   isEnhancedCapabilityCompatible,
   isEnhancedJobResultApplicable,
   normalizeEnhancedStoryboardShot,
+  resolveEnhancedSpeakerForPrompt,
+  selectEnhancedSpeakerIdentityCandidates,
+  resolveEnhancedSpeakerIdentity,
   resolveEnhancedRuntimeFacts,
   validateEnhancedBridgeResult,
   type EnhancedVideoPromptReadinessInput,
 } from "../verticalDramaEnhancedVideoPrompt";
+import { resolveVerticalDramaSpeakerIdentity } from "@shared/verticalDramaSeries/castPositionLock";
 import type { VideoShotMediaBundle } from "@shared/verticalDramaShotMedia";
 
 const h3FrameModes = {
@@ -168,6 +175,7 @@ const baseInput: EnhancedVideoPromptReadinessInput = {
     enabled: true,
     visionCapable: true,
     structuredOutputsCapable: true,
+    supportsFunctionTools: false,
   },
   targetVideoModel: {
     id: "veo-3.1",
@@ -182,6 +190,86 @@ const baseInput: EnhancedVideoPromptReadinessInput = {
 };
 
 describe("vertical drama Enhanced prompt boundary", () => {
+  it("recognizes a safe diagnostic after SDK warnings without exposing stderr", () => {
+    const result = classifyEnhancedBridgeDiagnostic(
+      "private SDK warning\nENHANCED_PROVIDER_RATE_LIMIT: secret response omitted",
+    );
+    expect(result.code).toBe("BRIDGE_PROVIDER_RATE_LIMIT");
+    expect(result.message).not.toContain("private");
+    expect(result.message).not.toContain("secret");
+  });
+
+  it("distinguishes local speaker validation from a provider failure", () => {
+    const result = classifyEnhancedBridgeDiagnostic(
+      "ENHANCED_SPEAKER_POSITION_BINDING_FAILED: private dialogue",
+    );
+    expect(result.message).toContain("ENHANCED_SPEAKER_POSITION_BINDING_FAILED");
+    expect(result.message).not.toContain("provider boundary");
+    expect(result.message).not.toContain("private dialogue");
+  });
+  it("maps provider budget failures to a safe actionable message", () => {
+    expect(classifyEnhancedBridgeDiagnostic(
+      "ENHANCED_PROVIDER_CREDIT_LIMIT: Provider credit limit reached; secret details omitted",
+    )).toEqual({
+      code: "BRIDGE_PROVIDER_CREDIT_LIMIT",
+      message: expect.stringContaining("credit limit"),
+    });
+    expect(classifyEnhancedBridgeDiagnostic(
+      "Traceback (/home/private/skill.py) ENHANCED_PROVIDER_CREDIT_LIMIT",
+    ).code).toBe("BRIDGE_FAILED");
+    expect(classifyEnhancedJobError(
+      new EnhancedVideoDirectorBridgeError("BRIDGE_PROVIDER_CREDIT_LIMIT", "safe provider limit"),
+    )).toMatchObject({ code: "blocked", message: "safe provider limit" });
+  });
+
+  it("classifies newly surfaced Agent and provider request diagnostics without leaking stderr", () => {
+    expect(classifyEnhancedBridgeDiagnostic(
+      "ENHANCED_PROVIDER_REQUEST_FAILED: private provider response",
+    )).toMatchObject({ code: "BRIDGE_FAILED" });
+    expect(classifyEnhancedBridgeDiagnostic(
+      "ENHANCED_PROVIDER_REQUEST_FAILED: private provider response",
+    ).message).not.toContain("private provider response");
+    expect(classifyEnhancedBridgeDiagnostic(
+      "ENHANCED_AGENT_OUTPUT_INVALID: private model output",
+    )).toMatchObject({ code: "BRIDGE_FAILED" });
+    expect(classifyEnhancedBridgeDiagnostic(
+      "ENHANCED_AGENT_OUTPUT_INVALID: private model output",
+    ).message).not.toContain("private model output");
+    expect(classifyEnhancedBridgeDiagnostic(
+      "ENHANCED_AGENT_MAX_TURNS: private details",
+    ).message).not.toContain("private details");
+  });
+
+  it("preserves provider-qualified authoring routing metadata in the skill input", () => {
+    const input = buildEnhancedSkillInput({
+      shot: { shotNumber: 1, description: "A woman looks toward the window" },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: baseInput.targetVideoModel,
+      authoringModel: {
+        ...baseInput.authoringModel,
+        providerModelId: "openai/gpt-5.6-sol",
+        apiStyle: "responses",
+      },
+    });
+    expect(input.authoringModel).toMatchObject({
+      id: "gpt-5.6-sol",
+      providerModelId: "openai/gpt-5.6-sol",
+      apiStyle: "responses",
+      supportsFunctionTools: false,
+    });
+  });
+
+  it("fails readiness closed for unsupported authoring provider transports", () => {
+    expect(evaluateEnhancedVideoPromptReadiness({
+      ...baseInput,
+      authoringModel: {
+        ...baseInput.authoringModel,
+        apiStyle: "gemini",
+      },
+    }).reasons).toContain("AGENT_PROVIDER_TRANSPORT_UNSUPPORTED");
+  });
+
   it("returns a non-throwing unavailable result for display-only preflight", () => {
     expect(buildUnavailableEnhancedVideoPromptReadiness()).toMatchObject({
       ready: false,
@@ -655,4 +743,94 @@ describe("vertical drama Enhanced prompt boundary", () => {
     expect((input.dialogue as any[])[1].text).toBe("จ่ายแพง ก็หาเงินไป");
     expect((input.shot.dialogue as any[])[0].text).toBe("พอแล้ว วันนี้เป็นโชคเกินไปแบบนั้น");
   });
+});
+
+
+describe("Enhanced current-frame speaker candidates", () => {
+  const roster = [
+    { characterKey: "character", name: "พิมพ์ชนก" },
+    { characterKey: "character-look-workwear", name: "พิมพ์ชนก" },
+    { characterKey: "character-2-look-workwear", name: "ธีร์" },
+    { characterKey: "character-6-look-workwear", name: "รินลดา" },
+  ];
+  it("resolves episode 259 shot 5's speaker to the approved frame look", () => {
+    const candidates = selectEnhancedSpeakerIdentityCandidates({
+      roster,
+      storyboardCharacterKeys: ["character", "character-2-look-workwear", "character-6-look-workwear"],
+      frameCharacterKeys: ["character-look-workwear", "character-2-look-workwear", "character-6-look-workwear"],
+    });
+    expect(resolveVerticalDramaSpeakerIdentity("พิมพ์ชนก", candidates)).toEqual({
+      status: "resolved", characterKey: "character-look-workwear",
+    });
+    expect(candidates).toHaveLength(3);
+  });
+  it("keeps explicit screen callers in the candidate set", () => {
+    const candidates = selectEnhancedSpeakerIdentityCandidates({
+      roster, storyboardCharacterKeys: [],
+      frameCharacterKeys: ["character-look-workwear"],
+      screenCallerCharacterKeys: ["character-2-look-workwear"],
+    });
+    expect(resolveVerticalDramaSpeakerIdentity("ธีร์", candidates)).toEqual({
+      status: "resolved", characterKey: "character-2-look-workwear",
+    });
+  });
+  it("still rejects two selected people with the same name", () => {
+    const candidates = selectEnhancedSpeakerIdentityCandidates({
+      roster: [{ characterKey: "a", name: "ชื่อซ้ำ" }, { characterKey: "b", name: "ชื่อซ้ำ" }],
+      storyboardCharacterKeys: [], frameCharacterKeys: ["a", "b"],
+    });
+    expect(resolveVerticalDramaSpeakerIdentity("ชื่อซ้ำ", candidates)).toEqual({ status: "ambiguous" });
+  });
+  it("falls back to storyboard keys only when frame references are absent", () => {
+    const candidates = selectEnhancedSpeakerIdentityCandidates({ roster, storyboardCharacterKeys: ["character"] });
+    expect(candidates).toEqual([roster[0]]);
+  });
+  it("does not admit the whole roster for an explicitly empty cast", () => {
+    expect(selectEnhancedSpeakerIdentityCandidates({
+      roster, storyboardCharacterKeys: ["character"], frameCharacterKeys: [],
+    })).toEqual([]);
+  });
+});
+
+
+it("maps canonical speaker keys through the user's selected look without guessing by name", () => {
+  const candidates = [{ characterKey: "character-look-workwear", name: "พิมพ์ชนก" }];
+  expect(resolveEnhancedSpeakerIdentity("character", candidates, [
+    { baseCharacterKey: "character", selectedLookKey: "character-look-workwear" },
+  ])).toEqual({ status: "resolved", characterKey: "character-look-workwear" });
+  expect(resolveEnhancedSpeakerIdentity("character", candidates)).toEqual({ status: "missing" });
+});
+
+it("keeps an authored speaker outside the selected shot cast as off-screen metadata", () => {
+  expect(resolveEnhancedSpeakerForPrompt({
+    authoredSpeaker: "ธีร์",
+    candidates: [{ characterKey: "pimchanok", name: "พิมพ์ชนก" }],
+  })).toEqual({
+    status: "offscreen",
+    characterKey: "ธีร์",
+    offscreen: true,
+  });
+});
+
+it("still fails closed when a speaker matches multiple selected identities", () => {
+  expect(resolveEnhancedSpeakerForPrompt({
+    authoredSpeaker: "ชื่อซ้ำ",
+    candidates: [
+      { characterKey: "look-a", name: "ชื่อซ้ำ" },
+      { characterKey: "look-b", name: "ชื่อซ้ำ" },
+    ],
+  })).toEqual({ status: "ambiguous" });
+});
+
+it("rejects conflicting selected-look assignments and preserves exact selected keys", () => {
+  const candidates = [
+    { characterKey: "look-a", name: "same" },
+    { characterKey: "look-b", name: "same" },
+  ];
+  const assignments = [
+    { baseCharacterKey: "base", selectedLookKey: "look-a" },
+    { baseCharacterKey: "base", selectedLookKey: "look-b" },
+  ];
+  expect(resolveEnhancedSpeakerIdentity("base", candidates, assignments)).toEqual({ status: "ambiguous" });
+  expect(resolveEnhancedSpeakerIdentity("look-a", candidates, assignments)).toEqual({ status: "resolved", characterKey: "look-a" });
 });

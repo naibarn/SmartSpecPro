@@ -345,6 +345,38 @@ export const verticalDramaCopy = {
     th: "ขยายร่างไม่สำเร็จ",
     en: "Failed to extend the draft",
   },
+  deepStoryDraftsRecoveryTitle: {
+    th: "งานสร้างสะดุดและกู้คืนได้",
+    en: "Generation stopped and can be recovered",
+  },
+  deepStoryDraftsRecoveryDescription: {
+    th: "ระบบบันทึกงานไว้แล้ว จะทำต่อเฉพาะตอนที่ยังไม่ครบ และไม่สร้างซ้ำตอนที่สำเร็จแล้ว",
+    en: "Your progress was saved. The system will continue only the incomplete episodes and keep completed work.",
+  },
+  deepStoryDraftsRecoveryContinue: {
+    th: "ซ่อมและทำต่อจาก checkpoint",
+    en: "Repair and continue from checkpoint",
+  },
+  deepStoryDraftsRecoveryConfirmTitle: {
+    th: "ยืนยันซ่อมและทำต่อ",
+    en: "Confirm repair and continue",
+  },
+  deepStoryDraftsRecoveryConfirmDescription: {
+    th: "ระบบจะเก็บตอนที่ทำสำเร็จแล้วไว้ และเรียก AI เฉพาะตอนที่ยังขาดตาม checkpoint",
+    en: "Completed episodes will be kept. AI will be called only for the episodes missing from the checkpoint.",
+  },
+  deepStoryDraftsRecoveryError: {
+    th: "ไม่สามารถซ่อมงานจาก checkpoint ได้",
+    en: "Unable to repair the job from its checkpoint",
+  },
+  deepStoryDraftsRecoveryNoCheckpoint: {
+    th: "งานนี้ไม่มี checkpoint ที่ปลอดภัยสำหรับทำต่อ กรุณาตรวจสอบก่อนสร้างใหม่",
+    en: "This job has no safe checkpoint to continue from. Review it before starting a new generation.",
+  },
+  deepStoryDraftsRecoveryUnavailable: {
+    th: "งานนี้ไม่สามารถซ่อมต่ออัตโนมัติได้ กรุณาตรวจสอบรายละเอียดก่อนเริ่มงานใหม่",
+    en: "This job cannot be repaired automatically. Review the details before starting a new generation.",
+  },
   // Feature 132 §4.4 (F132A) — read-only premise preview + edit-affordance
   // link in the Deep Story Drafts panel.
   deepStoryDraftsPremisePreviewLabel: {
@@ -368,11 +400,26 @@ export const verticalDramaCopy = {
   storyJobQueued: { th: "กำลังอยู่ในคิว…", en: "Queued…" },
   storyJobRoundLabel: { th: "รอบเรียก", en: "Call" },
   storyJobPhaseOutline: { th: "กำลังคิดโครง", en: "Outlining" },
-  storyJobPlanGenerating: { th: "กำลังสร้างโครงเรื่องหลัก…", en: "Generating the main story plan…" },
-  storyJobPlanCandidateSaved: { th: "บันทึกร่างโครงเรื่องแล้ว · กำลังตรวจสอบ", en: "Plan draft saved · validating" },
-  storyJobPlanValidating: { th: "กำลังตรวจสอบโครงเรื่อง…", en: "Validating the story plan…" },
-  storyJobPlanSaving: { th: "กำลังบันทึกโครงเรื่องลงซีรีย์…", en: "Saving the story plan to the series…" },
-  storyJobPlanHandoff: { th: "บันทึกโครงเรื่องแล้ว · ส่งต่องานสร้างรายละเอียด…", en: "Story plan saved · handing off to detailed drafting…" },
+  storyJobPlanGenerating: {
+    th: "กำลังสร้างโครงเรื่องหลัก…",
+    en: "Generating the main story plan…",
+  },
+  storyJobPlanCandidateSaved: {
+    th: "บันทึกร่างโครงเรื่องแล้ว · กำลังตรวจสอบ",
+    en: "Plan draft saved · validating",
+  },
+  storyJobPlanValidating: {
+    th: "กำลังตรวจสอบโครงเรื่อง…",
+    en: "Validating the story plan…",
+  },
+  storyJobPlanSaving: {
+    th: "กำลังบันทึกโครงเรื่องลงซีรีย์…",
+    en: "Saving the story plan to the series…",
+  },
+  storyJobPlanHandoff: {
+    th: "บันทึกโครงเรื่องแล้ว · ส่งต่องานสร้างรายละเอียด…",
+    en: "Story plan saved · handing off to detailed drafting…",
+  },
   /** Feature 132 §5 (F132B, ledgers-and-story-state) — the `ledger_plan` job phase, runs after "outline"/before per-episode "draft". */
   storyJobPhaseLedger: {
     th: "กำลังจัดทำบัญชีความต่อเนื่อง…",
@@ -583,6 +630,14 @@ export const verticalDramaCopy = {
   manualDialogueEditDeliveryPlaceholder: {
     th: "อารมณ์/วิธีพูด",
     en: "Delivery/emotion",
+  },
+  manualDialogueEditAddresseePlaceholder: {
+    th: "พูดกับ (ไม่บังคับ)",
+    en: "Addressed to (optional)",
+  },
+  manualDialogueEditNoAddressee: {
+    th: "ตามบริบท/ยังไม่ระบุ",
+    en: "Contextual / unspecified",
   },
   manualDialogueEditLineRequired: {
     th: "บทพูดห้ามว่าง",
@@ -1937,7 +1992,12 @@ export function improveScriptPartialFailureEpisodeReasonText(
 /** A structural (not imported) mirror of `services/verticalDramaStoryJobs.ts`'s `VerticalDramaStoryJobProgress` — keeps this file dependency-free of any server module. */
 export interface VerticalDramaStoryJobProgressCopyInput {
   phase: "outline" | "ledger" | "draft" | "review" | "fix" | "reading";
-  stage?: "generating" | "candidate_saved" | "validating" | "saving" | "handoff";
+  stage?:
+    | "generating"
+    | "candidate_saved"
+    | "validating"
+    | "saving"
+    | "handoff";
   chunkIndex?: number;
   chunkCount?: number;
   episodesDone?: number[];
@@ -2027,7 +2087,7 @@ export function storyJobProgressText(
 
   const visiblePhase = progress.retrying
     ? storyJobRetryText(lang, progress.retryEpisodeNumbers)
-    : planStageLabel ?? phaseLabel;
+    : (planStageLabel ?? phaseLabel);
 
   const savedEpisodes =
     progress.episodesCompleted != null && progress.episodesTotal != null
@@ -2045,7 +2105,11 @@ export function storyJobProgressText(
     .filter((value): value is string => value != null)
     .join(" · ");
 
-  if (planStageLabel || progress.chunkIndex == null || progress.chunkCount == null) {
+  if (
+    planStageLabel ||
+    progress.chunkIndex == null ||
+    progress.chunkCount == null
+  ) {
     return contextPrefix ? `${contextPrefix} · ${visiblePhase}` : visiblePhase;
   }
 
@@ -2059,4 +2123,21 @@ export function storyJobProgressText(
   }
 
   return `${contextPrefix ? `${contextPrefix} · ` : ""}${storyJobRoundText(lang, progress.chunkIndex, progress.chunkCount)} · ${visiblePhase}`;
+}
+
+export function deepStoryDraftsRecoveryEpisodeText(
+  lang: VerticalDramaLang,
+  completedCount: number,
+  remainingNumbers: number[] | null,
+): string {
+  const remaining = remainingNumbers === null
+    ? lang === "th" ? "ตอนที่ยังไม่ทราบจำนวน" : "the remaining episodes"
+    : remainingNumbers.length === 0
+      ? lang === "th" ? "ไม่มีตอนที่ค้าง" : "no episodes"
+      : remainingNumbers.length <= 6
+        ? remainingNumbers.join(", ")
+        : `${remainingNumbers[0]}–${remainingNumbers[remainingNumbers.length - 1]}`;
+  return lang === "th"
+    ? `บันทึกแล้ว ${completedCount} ตอน · จะทำต่อ ${remaining}`
+    : `${completedCount} episode(s) saved · continue with ${remaining}`;
 }

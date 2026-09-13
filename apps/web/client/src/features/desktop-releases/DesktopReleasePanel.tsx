@@ -69,8 +69,9 @@ const DESKTOP_RELEASE_BUILD_SESSION_STORAGE_KEY = "smartaihub.desktop-release.bu
 const DESKTOP_RELEASE_BUILD_STALE_AFTER_MS = 30 * 60 * 1000;
 const COMPANION_EXTENSION_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/companion-extension/download";
 const WORKER_APP_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/worker-app/download";
+const WORKER_APP_MAC_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/worker-app/download?platform=macos&architecture=arm64";
 const WORKER_APP_MAC_SOURCE_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/worker-app/macos-source/download";
-const HERMES_MACOS_RUNTIME_MANIFEST_URL = "/api/workers/runtime-pack/manifest?runtimeId=hermes-macos-arm64";
+const HYPERFRAMES_MACOS_RUNTIME_MANIFEST_URL = "/api/workers/runtime-pack/manifest?runtimeId=hyperframes-macos-arm64";
 
 type PublicDashboardRelease = {
   version: string;
@@ -78,7 +79,9 @@ type PublicDashboardRelease = {
   fileSizeBytes: number;
   updatedAt: string;
   downloadUrl: string;
-  installerFormat?: "exe" | "msi" | "zip";
+  installerFormat?: "exe" | "msi" | "dmg" | "pkg" | "zip";
+  platform?: "windows" | "macos" | "linux";
+  architecture?: "x64" | "arm64" | null;
 };
 
 type PublicDashboardReleaseState = {
@@ -91,7 +94,7 @@ type PublicDashboardReleaseState = {
 type PublicDashboardRuntimeManifest = {
   runtimeId: string;
   version: string;
-  hermesVersion: string;
+  hermesVersion?: string;
   allowed: boolean;
   denyReason?: string;
   archiveFileName?: string;
@@ -200,7 +203,7 @@ function usePublicDashboardRuntime(enabled: boolean): PublicDashboardRuntimeStat
     const controller = new AbortController();
     setState((previous) => ({ ...previous, isLoading: true, error: null }));
 
-    void fetch(HERMES_MACOS_RUNTIME_MANIFEST_URL, {
+    void fetch(HYPERFRAMES_MACOS_RUNTIME_MANIFEST_URL, {
       credentials: "include",
       cache: "no-store",
       signal: controller.signal,
@@ -772,6 +775,16 @@ export function DesktopReleasePanel(props: {
     unavailableError: "worker_app_release_unavailable",
   });
   const {
+    release: workerAppMacRelease,
+    isLoading: workerAppMacLoading,
+    error: workerAppMacError,
+    refresh: refreshWorkerAppMacRelease,
+  } = usePublicDashboardRelease({
+    enabled: variant === "dashboard" && enabled,
+    latestUrl: "/api/desktop-releases/worker-app/latest?platform=macos&architecture=arm64",
+    unavailableError: "worker_app_macos_release_unavailable",
+  });
+  const {
     release: workerAppMacSourceRelease,
     isLoading: workerAppMacSourceLoading,
     error: workerAppMacSourceError,
@@ -782,10 +795,10 @@ export function DesktopReleasePanel(props: {
     unavailableError: "worker_app_macos_source_release_unavailable",
   });
   const {
-    runtime: hermesMacRuntime,
-    isLoading: hermesMacRuntimeLoading,
-    error: hermesMacRuntimeError,
-    refresh: refreshHermesMacRuntime,
+    runtime: hyperframesMacRuntime,
+    isLoading: hyperframesMacRuntimeLoading,
+    error: hyperframesMacRuntimeError,
+    refresh: refreshHyperframesMacRuntime,
   } = usePublicDashboardRuntime(variant === "dashboard" && enabled);
   const [uploading, setUploading] = useState(false);
   const [actionInFlightId, setActionInFlightId] = useState<number | null>(null);
@@ -877,8 +890,9 @@ export function DesktopReleasePanel(props: {
     triggerBuildHistoryRefresh(true);
     refreshCompanionExtensionRelease();
     refreshWorkerAppRelease();
+    refreshWorkerAppMacRelease();
     refreshWorkerAppMacSourceRelease();
-    refreshHermesMacRuntime();
+    refreshHyperframesMacRuntime();
   };
 
   const buildProgressPhase = useMemo<DesktopReleaseBuildProgressPhase>(() => {
@@ -1842,6 +1856,76 @@ export function DesktopReleasePanel(props: {
           </div>
         </div>
 
+        <div className="mt-4 rounded-2xl border border-violet-100 bg-white/95 p-4 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-violet-100 bg-violet-50 text-violet-700">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className={dashboardCardTitleClass}>
+                    {t("dashboard:desktopReleases.workerAppMac.title")}
+                  </p>
+                  {workerAppMacRelease ? (
+                    <Badge variant="outline" className="border-violet-200 bg-violet-50 text-violet-700">
+                      {t("dashboard:desktopReleases.version", { version: workerAppMacRelease.version })}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                      {workerAppMacLoading
+                        ? t("dashboard:desktopReleases.loading")
+                        : t("dashboard:desktopReleases.noRelease")}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                    {workerAppMacRelease?.installerFormat
+                      ? formatInstallerLabel(t, workerAppMacRelease.installerFormat)
+                      : "DMG"}
+                  </Badge>
+                  <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                    {t("dashboard:desktopReleases.workerAppMac.architecture")}
+                  </Badge>
+                </div>
+                <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
+                  {t("dashboard:desktopReleases.workerAppMac.description")}
+                </p>
+                {workerAppMacRelease ? (
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {workerAppMacRelease.fileName} · {formatBytes(workerAppMacRelease.fileSizeBytes)}
+                  </p>
+                ) : workerAppMacError ? (
+                  <p className="mt-1 text-xs leading-5 text-amber-700">
+                    {workerAppMacError}
+                  </p>
+                ) : null}
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  {t("dashboard:desktopReleases.workerAppMac.installHint")}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {workerAppMacRelease ? (
+                <Button asChild className="bg-violet-700 text-white hover:bg-violet-800">
+                  <a href={workerAppMacRelease.downloadUrl || WORKER_APP_MAC_FALLBACK_DOWNLOAD_URL} download>
+                    <Download className="mr-2 h-4 w-4" />
+                    {t("dashboard:desktopReleases.workerAppMac.download")}
+                  </a>
+                </Button>
+              ) : (
+                <Button disabled className="bg-slate-200 text-slate-500 hover:bg-slate-200">
+                  {workerAppMacLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  {t("dashboard:desktopReleases.workerAppMac.download")}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="mt-4 rounded-2xl border border-amber-100 bg-white/95 p-4 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 gap-3">
@@ -1853,12 +1937,12 @@ export function DesktopReleasePanel(props: {
                   <p className={dashboardCardTitleClass}>
                     {t("dashboard:desktopReleases.workerAppMacRuntime.title")}
                   </p>
-                  {hermesMacRuntimeLoading ? (
+                  {hyperframesMacRuntimeLoading ? (
                     <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
                       <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
                       {t("dashboard:desktopReleases.loading")}
                     </Badge>
-                  ) : hermesMacRuntime?.allowed ? (
+                  ) : hyperframesMacRuntime?.allowed ? (
                     <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
                       {t("dashboard:desktopReleases.workerAppMacRuntime.ready")}
                     </Badge>
@@ -1867,9 +1951,9 @@ export function DesktopReleasePanel(props: {
                       {t("dashboard:desktopReleases.workerAppMacRuntime.notReady")}
                     </Badge>
                   )}
-                  {hermesMacRuntime?.version && hermesMacRuntime.version !== "0.0.0" ? (
+                  {hyperframesMacRuntime?.version && hyperframesMacRuntime.version !== "0.0.0" ? (
                     <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
-                      {t("dashboard:desktopReleases.version", { version: hermesMacRuntime.version })}
+                      {t("dashboard:desktopReleases.version", { version: hyperframesMacRuntime.version })}
                     </Badge>
                   ) : null}
                   <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
@@ -1879,9 +1963,9 @@ export function DesktopReleasePanel(props: {
                 <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
                   {t("dashboard:desktopReleases.workerAppMacRuntime.description")}
                 </p>
-                {hermesMacRuntimeError ? (
+                {hyperframesMacRuntimeError ? (
                   <p className="mt-1 text-xs leading-5 text-amber-700">
-                    {hermesMacRuntimeError}
+                    {hyperframesMacRuntimeError}
                   </p>
                 ) : null}
                 <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/70 p-3 text-xs leading-5 text-slate-700">
@@ -1901,9 +1985,9 @@ export function DesktopReleasePanel(props: {
                     {t("dashboard:desktopReleases.workerAppMacRuntime.scope")}
                   </p>
                 </div>
-                {hermesMacRuntime?.archiveFileName && hermesMacRuntime.archiveSizeBytes ? (
+                {hyperframesMacRuntime?.archiveFileName && hyperframesMacRuntime.archiveSizeBytes ? (
                   <p className="mt-1 text-xs leading-5 text-slate-500">
-                    {hermesMacRuntime.archiveFileName} · {formatBytes(hermesMacRuntime.archiveSizeBytes)}
+                    {hyperframesMacRuntime.archiveFileName} · {formatBytes(hyperframesMacRuntime.archiveSizeBytes)}
                   </p>
                 ) : null}
                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -1912,16 +1996,16 @@ export function DesktopReleasePanel(props: {
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-2">
-              {hermesMacRuntime?.allowed && hermesMacRuntime.archiveUrl ? (
+              {hyperframesMacRuntime?.allowed && hyperframesMacRuntime.archiveUrl ? (
                 <Button asChild className="bg-amber-700 text-white hover:bg-amber-800">
-                  <a href={hermesMacRuntime.archiveUrl} download>
+                  <a href={hyperframesMacRuntime.archiveUrl} download>
                     <Download className="mr-2 h-4 w-4" />
                     {t("dashboard:desktopReleases.workerAppMacRuntime.download")}
                   </a>
                 </Button>
               ) : (
                 <Button disabled className="bg-slate-200 text-slate-500 hover:bg-slate-200">
-                  {hermesMacRuntimeLoading ? (
+                  {hyperframesMacRuntimeLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <Download className="mr-2 h-4 w-4" />

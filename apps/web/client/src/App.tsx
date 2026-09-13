@@ -52,6 +52,7 @@ import { useTenantServiceRecovery } from "@/hooks/useTenantServiceRecovery";
 import { WelcomeLanguagePicker } from "@/components/WelcomeLanguagePicker";
 import { RuntimePerformanceOverlay } from "@/components/diagnostics/RuntimePerformanceOverlay";
 import { resolveAstryxColorTokens } from "@/lib/astryxThemeCompatibility";
+import { getCanonicalWorkerJobsPath } from "@/lib/workerJobsRoute";
 
 function AstryxWouterLink({
   href,
@@ -219,6 +220,7 @@ const Generate = lazy(() => import("./pages/Generate"));
 const MediaStudio = lazy(() => import("./pages/MediaStudio"));
 const ContentComposer = lazy(() => import("./pages/ContentComposer"));
 const StoryboardReviewPage = lazy(() => import("./pages/StoryboardReviewPage"));
+const StoryboardSkillFrameworkPage = lazy(() => import("./pages/StoryboardSkillFrameworkPage"));
 const VerticalDramaSeriesPage = lazy(
   () => import("./pages/VerticalDramaSeriesPage")
 );
@@ -538,6 +540,19 @@ function RequireDomainAdmin({ children }: { children: React.ReactNode }) {
   if (user.role !== "admin" && user.role !== "domain_admin")
     return <Redirect to="/dashboard" />;
   return <>{children}</>;
+}
+
+function LegacyWorkerJobsRedirect() {
+  const search = typeof window === "undefined" ? "" : window.location.search;
+  const target = getCanonicalWorkerJobsPath(search, { legacyAlias: true });
+  useEffect(() => {
+    getPostHog()?.capture("worker_jobs_legacy_alias_hit", {
+      legacy_route: "/render-jobs",
+      has_query: Boolean(search),
+      alias: "render-jobs",
+    });
+  }, [search]);
+  return <Redirect to={target} />;
 }
 
 /**
@@ -1289,6 +1304,11 @@ function Router() {
               <ContentComposer />
             </RequireAuth>
           </Route>
+          <Route path="/storyboard-review/new/skill-framework">
+            <RequireAuth>
+              <StoryboardSkillFrameworkPage />
+            </RequireAuth>
+          </Route>
           <Route path="/storyboard-review/:reviewId">
             <RequireAuth>
               <StoryboardReviewPage />
@@ -1299,9 +1319,14 @@ function Router() {
               <StoryboardReviewPage />
             </RequireAuth>
           </Route>
-          <Route path="/render-jobs">
+          <Route path="/worker-jobs">
             <RequireAuth>
               <RenderJobsPage />
+            </RequireAuth>
+          </Route>
+          <Route path="/render-jobs">
+            <RequireAuth>
+              <LegacyWorkerJobsRedirect />
             </RequireAuth>
           </Route>
           <Route path="/video-studio/:id">

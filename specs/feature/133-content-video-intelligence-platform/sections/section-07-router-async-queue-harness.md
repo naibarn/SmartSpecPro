@@ -362,9 +362,10 @@ client polls `getGenerationJobStatus` / `getActiveGenerationJob`.
      `{ workerJobId }`.
   - Status/detail/cancel are **not** here — the client uses the existing
     `workerJobs` router (spec §15.2). Do not duplicate.
-- The preview-concurrency cap (1 queued/running preview per user) and the
-  credit reservation live inside `queueRemotionRenderVideoJob` (section 04) — the
-  router does not re-implement them; it surfaces the resulting error.
+- The preview duplicate guard (one queued/running preview per exact target) and
+  the credit reservation live inside `queueRemotionRenderVideoJob` (section 04)
+  — distinct targets may queue concurrently, and the router does not
+  re-implement either policy.
 
 ### 4.5 Brand kits
 

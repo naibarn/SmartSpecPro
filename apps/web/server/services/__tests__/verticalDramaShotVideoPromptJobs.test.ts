@@ -134,8 +134,8 @@ describe("vertical drama shot video prompt queue", () => {
             idempotencyKey: "enhanced-1",
           },
         }),
-        { redis, enqueueBullmqJob },
-      ),
+        { redis, enqueueBullmqJob }
+      )
     ).rejects.toBeInstanceOf(VerticalDramaShotVideoPromptConflictError);
     expect(enqueueBullmqJob).toHaveBeenCalledOnce();
   });
@@ -340,5 +340,35 @@ describe("vertical drama shot video prompt queue", () => {
         { redis }
       )
     ).resolves.toEqual([expect.objectContaining({ jobId: second.jobId, queuePosition: 1 })]);
+  });
+
+  it("reconciles an orphaned active job when its status is polled after the stale threshold", async () => {
+    const redis = makeFakeRedis();
+    const submitted = await enqueueVerticalDramaShotVideoPromptJob(payload(), {
+      redis,
+      now: () => 0,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await expect(
+      getActiveVerticalDramaShotVideoPromptJobs(
+        {
+          tenantId: owner.tenantId,
+          userId: owner.userId,
+          seriesId: 21,
+          episodeId: 137,
+        },
+        { redis, now: () => 30 * 60 * 1000 + 1 }
+      )
+    ).resolves.toEqual([]);
+    await expect(
+      getVerticalDramaShotVideoPromptJobStatus(submitted.jobId, owner, {
+        redis,
+        now: () => 30 * 60 * 1000 + 1,
+      })
+    ).resolves.toMatchObject({
+      status: "failed",
+      error: "Background job became stale; it was not retried automatically.",
+    });
   });
 });

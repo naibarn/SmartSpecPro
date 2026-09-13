@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+
+SIDECAR_PATH="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+RUNTIME_ROOT="${SMARTAIHUB_RUNTIME_ROOT:-$(CDPATH= cd -- "$SIDECAR_PATH/.." && pwd)}"
+NODE="$RUNTIME_ROOT/runtime-pack/node/bin/node"
+SCRIPT="$RUNTIME_ROOT/runtime-pack/hyperframes-sidecar/render.mjs"
+
+if [ ! -x "$NODE" ]; then
+  echo "bundled Node runtime is missing or not executable: $NODE" >&2
+  exit 1
+fi
+if [ ! -f "$SCRIPT" ]; then
+  echo "HyperFrames sidecar script is missing: $SCRIPT" >&2
+  exit 1
+fi
+
+export SMARTAIHUB_RUNTIME_ROOT="$RUNTIME_ROOT"
+export SMARTAIHUB_HYPERFRAMES_LAUNCHER="smart-ai-hub-hyperframes-node-launcher"
+exec "$NODE" "$SCRIPT" "$@"

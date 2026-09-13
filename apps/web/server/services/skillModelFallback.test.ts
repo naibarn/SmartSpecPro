@@ -9,6 +9,16 @@ vi.mock("./auditLogger", () => ({
 
 vi.mock("./llmRouter", () => ({
   executeWithFallback: vi.fn(),
+  extractAnyAssistantText: (rawData: any) => {
+    const content = rawData?.choices?.[0]?.message?.content;
+    if (typeof content === "string") return content;
+    if (Array.isArray(content)) {
+      return content
+        .map((part: any) => typeof part === "string" ? part : part?.text ?? part?.content ?? "")
+        .join("");
+    }
+    return "";
+  },
   getProviderForModel: vi.fn(),
 }));
 
@@ -118,6 +128,23 @@ describe("executeSkillLlmWithFallback", () => {
     expect(result.attempts[0].attempt).toBe(1);
     expect(result.attempts[0].modelId).toBe("gpt-4o");
     expect(mockExecute).toHaveBeenCalledTimes(1);
+  });
+
+  it("normalizes OpenRouter-style array content without treating it as empty", async () => {
+    mockExecute.mockResolvedValueOnce({
+      type: "success" as const,
+      response: {
+        choices: [{ message: { content: [{ type: "text", text: "LLM " }, { type: "text", text: "says hi" }] } }],
+        usage: { prompt_tokens: 10, completion_tokens: 20 },
+      },
+      providerId: 1,
+      providerName: "openrouter",
+    });
+
+    const result = await executeSkillLlmWithFallback(makeRequest());
+
+    expect(result.success).toBe(true);
+    expect(result.content).toBe("LLM says hi");
   });
 
   // ═══════════════════════════════════════════════════════════════════════════

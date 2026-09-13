@@ -109,6 +109,53 @@ describe("vertical drama story safety", () => {
     expect(result.findings).toEqual([]);
   });
 
+  it("does not match the corpse marker across Thai word boundaries", () => {
+    const result = analyzeVerticalDramaStorySafety(
+      "พระราชาประกาศพักการตัดสินไว้ชั่วคราวในห้องทรงงานหลวง"
+    );
+
+    expect(result.level).toBe("low");
+    expect(result.findings).toEqual([]);
+  });
+
+  it("still blocks an explicit Thai corpse reference", () => {
+    const result = analyzeVerticalDramaStorySafety("ผู้ตรวจพบศพในห้องเก็บของ");
+
+    expect(result.level).toBe("high");
+    expect(result.findings.map(finding => finding.code)).toContain(
+      "graphic_violence"
+    );
+    expect(result.findings.find(finding => finding.code === "graphic_violence"))
+      .toMatchObject({
+        detectorVersion: expect.any(String),
+        evidence: {
+          source: "story",
+          fieldPath: "$",
+          matchedRule: "graphic_violence",
+          confidence: "high",
+        },
+      });
+  });
+
+  it("records the affected shot and field for a structured policy finding", () => {
+    const result = analyzeVerticalDramaStorySafety({
+      shots: [
+        { shot_number: 6, description: "ผู้ใหญ่ตรวจเอกสารอย่างสงบ" },
+        { shot_number: 7, description: "ผู้ตรวจพบศพในห้องเก็บของ" },
+      ],
+    });
+
+    expect(result.findings.find(finding => finding.code === "graphic_violence"))
+      .toMatchObject({
+        evidence: {
+          source: "story",
+          fieldPath: "$.shots[1].description",
+          shotNumber: 7,
+          matchedRule: "graphic_violence",
+        },
+      });
+  });
+
   it("still blocks a real minor threat in the shot story", () => {
     const result = analyzeVerticalDramaStorySafety(
       buildVerticalDramaVideoPromptSafetyInput({

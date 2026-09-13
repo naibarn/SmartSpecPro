@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyDeviceMediatedCharacterRefs,
   filterDeviceMediatedCharacterRefs,
+  resolveVerticalDramaVisualCast,
 } from "./characterPresence";
 
 const characters = [
@@ -46,6 +47,62 @@ describe("filterDeviceMediatedCharacterRefs", () => {
     });
   });
 
+  it("removes a caller's outfit variant from the physical scene role", () => {
+    expect(
+      classifyDeviceMediatedCharacterRefs({
+        characterRefs: ["thir-look-casual_home"],
+        characters: [
+          { characterKey: "thir", name: "ธีร์" },
+          {
+            characterKey: "thir-look-casual_home",
+            name: "ธีร์",
+            parentCharacterKey: "thir",
+          },
+        ],
+        screenCallerCharacterRefs: ["thir"],
+      })
+    ).toEqual({
+      sceneCharacterRefs: [],
+      screenCallerCharacterRefs: ["thir"],
+    });
+  });
+
+  it("also removes the base role when the selected caller is a variant", () => {
+    expect(
+      classifyDeviceMediatedCharacterRefs({
+        characterRefs: ["thir"],
+        characters: [
+          { characterKey: "thir", name: "ธีร์" },
+          {
+            characterKey: "thir-look-casual_home",
+            name: "ธีร์",
+            parentCharacterKey: "thir",
+          },
+        ],
+        screenCallerCharacterRefs: ["thir-look-casual_home"],
+      })
+    ).toEqual({
+      sceneCharacterRefs: [],
+      screenCallerCharacterRefs: ["thir-look-casual_home"],
+    });
+  });
+
+  it("does not merge unrelated characters that have no parent link", () => {
+    expect(
+      classifyDeviceMediatedCharacterRefs({
+        characterRefs: ["twin-b"],
+        characters: [
+          { characterKey: "twin-a", name: "มิน" },
+          { characterKey: "twin-b", name: "มิน" },
+        ],
+        screenCallerCharacterRefs: ["twin-a"],
+      })
+    ).toEqual({
+      sceneCharacterRefs: ["twin-b"],
+      screenCallerCharacterRefs: ["twin-a"],
+    });
+  });
+
   it("uses only the explicit caller list when partitioning references", () => {
     expect(
       filterDeviceMediatedCharacterRefs({
@@ -64,5 +121,32 @@ describe("filterDeviceMediatedCharacterRefs", () => {
         synopsis: "ภาคินนึกถึงกฤตระหว่างจัดเอกสาร",
       })
     ).toEqual(["pakin", "unknown"]);
+  });
+
+  it("treats the user-selected frame cast as authoritative over narrative storyboard refs", () => {
+    expect(
+      resolveVerticalDramaVisualCast({
+        selectedCharacterRefs: ["pakin", "irin"],
+        storyboardCharacterRefs: ["pakin", "irin", "krit"],
+        characterSelectionIsAuthoritative: true,
+        characters,
+      })
+    ).toEqual({
+      sceneCharacterRefs: ["pakin", "irin"],
+      screenCallerCharacterRefs: [],
+      narrativeOnlyCharacterRefs: ["krit"],
+    });
+  });
+
+  it("does not infer a caller from a narrative-only storyboard mention", () => {
+    expect(
+      resolveVerticalDramaVisualCast({
+        selectedCharacterRefs: ["pakin", "irin"],
+        storyboardCharacterRefs: ["pakin", "irin", "krit"],
+        storyboardCallerCharacterRefs: [],
+        characterSelectionIsAuthoritative: true,
+        characters,
+      }).screenCallerCharacterRefs
+    ).toEqual([]);
   });
 });

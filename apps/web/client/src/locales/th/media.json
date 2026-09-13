@@ -862,6 +862,7 @@
   "historyPage.details.providerFailureDetail": "รายละเอียดความล้มเหลวจากผู้ให้บริการ",
   "historyPage.details.errorSummary": "สรุปข้อผิดพลาด",
   "historyPage.details.errorSummaryFallback": "งานสร้างล้มเหลว แต่ผู้ให้บริการไม่ได้ส่งข้อความผิดพลาดที่ชัดเจนกลับมา",
+  "historyPage.details.providerGenerationFailed": "สร้าง{{mediaType}}ผ่าน {{provider}} ไม่สำเร็จ ดูรายละเอียดทางเทคนิคได้ที่ API Debug",
   "historyPage.details.code": "โค้ด",
   "historyPage.details.state": "สถานะ",
   "historyPage.details.details": "รายละเอียด",

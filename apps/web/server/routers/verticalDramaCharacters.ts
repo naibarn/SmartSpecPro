@@ -44,6 +44,8 @@ import {
   verticalDramaCharacterStockService,
   VerticalDramaCharacterStockError,
   VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE,
+  summarizePortraitCandidatePolicyReason,
+  type ClaimedPortraitCandidate,
 } from "../services/verticalDramaCharacterStock";
 import { isCharacterLockPolicyFailureMessage } from "@shared/verticalDramaSeries/characterLock";
 import {
@@ -153,7 +155,10 @@ import {
   recordSeriesLookLockAuditEvent,
 } from "../services/verticalDramaSeriesLookLockAudit";
 import { verticalDramaApprovedCharacterDesignSnapshotSchema } from "@shared/verticalDramaSeries/characterProfile";
-import { resolveCharacterCastingAgeProfile } from "@shared/verticalDramaSeries/characterCastingAge";
+import {
+  resolveCharacterCastingAgeProfile,
+  type CharacterCastingAgeProfile,
+} from "@shared/verticalDramaSeries/characterCastingAge";
 import {
   mergeCharacterIdentityDnaData,
   readCharacterIdentityDna,
@@ -198,6 +203,7 @@ import {
 // problem (see that file's Wave-7D `scriptCoverageDetail` doc comment).
 import { sanitizeSpeakableLineForDelivery } from "@shared/verticalDramaSeries/dialogueQuality";
 import { debugError } from "../_core/logger";
+import { CreditLedgerPersistenceError } from "../services/creditBillingErrors";
 import {
   verticalDramaCharacterVoiceConfigInputSchema,
   type VerticalDramaCharacterVoiceConfig,
@@ -1978,11 +1984,13 @@ export const verticalDramaCharactersRouter = router({
           )
         );
 
-      const manifest = await verticalDramaCharacterStockService.getManifest({
-        tenantId,
-        userId,
-        seriesId,
-      });
+      const owner = { tenantId, userId, seriesId };
+      const [manifest, portraitCandidateDraftBatches] = await Promise.all([
+        verticalDramaCharacterStockService.getManifest(owner),
+        verticalDramaCharacterStockService.getPortraitCandidateDraftBatches(
+          owner
+        ),
+      ]);
 
       // W12-A — additive `voiceConfig` field, flag-gated (see
       // `characterRowToDto`'s own doc comment for the byte-identical rationale).
@@ -2020,6 +2028,10 @@ export const verticalDramaCharactersRouter = router({
           ...characterTwinUiProjection(row, rows),
         })),
         manifest,
+        // Prompt-only rows deliberately remain absent from `manifest`; this
+        // owner-scoped projection lets the editor recover an unsubmitted
+        // preview after remount/refresh without exposing DNA snapshots.
+        portraitCandidateDraftBatches,
       };
     }),
 
@@ -2179,20 +2191,25 @@ export const verticalDramaCharactersRouter = router({
       } catch (error) {
         return mapCharacterPromptContractError(error);
       }
-      const previewCandidates = input.candidateId
-        ? [
-            await verticalDramaCharacterStockService.getPortraitCandidateForPreflight(
+      let previewCandidates: ClaimedPortraitCandidate[];
+      try {
+        previewCandidates = input.candidateId
+          ? [
+              await verticalDramaCharacterStockService.getPortraitCandidateForPreflight(
+                owner,
+                characterId,
+                input.batchId,
+                input.candidateId
+              ),
+            ]
+          : await verticalDramaCharacterStockService.getPortraitCandidateBatchForPreflight(
               owner,
               characterId,
-              input.batchId,
-              input.candidateId,
-            ),
-          ]
-        : await verticalDramaCharacterStockService.getPortraitCandidateBatchForPreflight(
-            owner,
-            characterId,
-            input.batchId
-          );
+              input.batchId
+            );
+      } catch (err) {
+        mapStockError(err);
+      }
       const referenceGuidedCandidateCount = previewCandidates.filter(
         candidate => candidate.referenceGuided
       ).length;
@@ -2322,7 +2339,7 @@ export const verticalDramaCharactersRouter = router({
                 owner,
                 characterId,
                 input.batchId,
-                input.candidateId,
+                input.candidateId
               ),
             ]
           : await verticalDramaCharacterStockService.claimPortraitCandidateBatch(
@@ -2365,6 +2382,8 @@ export const verticalDramaCharactersRouter = router({
         status: "queued" | "failed";
         taskId?: string;
         errorMessage?: string;
+        policyRejected?: boolean;
+        policyReason?: string;
       }> = [];
       for (const candidate of candidates) {
         try {
@@ -2566,6 +2585,17 @@ export const verticalDramaCharactersRouter = router({
             index: candidate.index,
             status: "failed",
             errorMessage,
+            ...(isCharacterLockPolicyFailureMessage(errorMessage)
+              ? {
+                  policyRejected: true,
+                  ...(summarizePortraitCandidatePolicyReason(errorMessage)
+                    ? {
+                        policyReason:
+                          summarizePortraitCandidatePolicyReason(errorMessage),
+                      }
+                    : {}),
+                }
+              : {}),
           });
         }
       }
@@ -2628,6 +2658,9 @@ export const verticalDramaCharactersRouter = router({
           assetLinkId: input.assetLinkId,
           taskId,
           status: "failed" as const,
+          ...(info.errorMessage ? { errorMessage: info.errorMessage } : {}),
+          ...(info.policyRejected ? { policyRejected: true } : {}),
+          ...(info.policyReason ? { policyReason: info.policyReason } : {}),
         };
       }
       if (!taskId) {
@@ -2732,6 +2765,14 @@ export const verticalDramaCharactersRouter = router({
             ? VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE
             : (task.errorMessage ?? undefined),
           policyRejected,
+          ...(policyRejected
+            ? (() => {
+                const policyReason = summarizePortraitCandidatePolicyReason(
+                  task.errorMessage
+                );
+                return policyReason ? { policyReason } : {};
+              })()
+            : {}),
         };
       }
       if (task.status !== "completed") {
@@ -3335,7 +3376,9 @@ export const verticalDramaCharactersRouter = router({
         // boundary can repair the group once the full DB adapter is available.
       }
       const editedRow = latestRows.find(candidate => candidate.id === row.id);
-      const twinGroup = editedRow ? resolveTwinGroup(editedRow, latestRows) : [];
+      const twinGroup = editedRow
+        ? resolveTwinGroup(editedRow, latestRows)
+        : [];
       if (twinGroup.length > 1) {
         try {
           await db.transaction(async tx => {
@@ -3344,7 +3387,8 @@ export const verticalDramaCharactersRouter = router({
               const synchronized = materializeTwinDnaData({
                 data: (member.data as Record<string, unknown> | null) ?? {},
                 sourceData: merged.data,
-                sourceCharacterId: resolveTwinGroupRoot(twinGroup)?.id ?? row.id,
+                sourceCharacterId:
+                  resolveTwinGroupRoot(twinGroup)?.id ?? row.id,
                 now: new Date().toISOString(),
               });
               await tx
@@ -3519,10 +3563,19 @@ export const verticalDramaCharactersRouter = router({
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = parseId(input.seriesId, "series id");
-      const sourceCharacterId = parseId(input.sourceCharacterId, "source character id");
-      const twinCharacterId = parseId(input.twinCharacterId, "twin character id");
+      const sourceCharacterId = parseId(
+        input.sourceCharacterId,
+        "source character id"
+      );
+      const twinCharacterId = parseId(
+        input.twinCharacterId,
+        "twin character id"
+      );
       if (sourceCharacterId === twinCharacterId) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "A character cannot be linked as its own twin." });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A character cannot be linked as its own twin.",
+        });
       }
       await loadOwnedSeries(tenantId, userId, seriesId);
       const rosterRows = (await db
@@ -3538,10 +3591,16 @@ export const verticalDramaCharactersRouter = router({
       const source = rosterRows.find(row => row.id === sourceCharacterId);
       const twin = rosterRows.find(row => row.id === twinCharacterId);
       if (!source || !twin) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Character not found",
+        });
       }
       if (source.parentCharacterId != null || twin.parentCharacterId != null) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Only independent base characters can be linked as twins." });
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Only independent base characters can be linked as twins.",
+        });
       }
 
       // Linking is group-aware: an already-linked member can be selected again
@@ -3551,16 +3610,23 @@ export const verticalDramaCharactersRouter = router({
       const sourceGroup = resolveTwinGroup(source, rosterRows);
       const twinGroup = resolveTwinGroup(twin, rosterRows);
       const groupById = new Map<number, VerticalDramaCharacterRow>();
-      for (const member of [...sourceGroup, ...twinGroup]) groupById.set(member.id, member);
-      const combinedGroup = [...groupById.values()].sort((left, right) => left.id - right.id);
-      const root =
-        resolveTwinGroupRoot(combinedGroup) ?? source;
-      const sourceWithDna =
-        (readCharacterIdentityDna((root.data as Record<string, unknown> | null) ?? {})
-          ? root
-          : combinedGroup.find(member =>
-              Boolean(readCharacterIdentityDna((member.data as Record<string, unknown> | null) ?? {}))
-            ));
+      for (const member of [...sourceGroup, ...twinGroup])
+        groupById.set(member.id, member);
+      const combinedGroup = [...groupById.values()].sort(
+        (left, right) => left.id - right.id
+      );
+      const root = resolveTwinGroupRoot(combinedGroup) ?? source;
+      const sourceWithDna = readCharacterIdentityDna(
+        (root.data as Record<string, unknown> | null) ?? {}
+      )
+        ? root
+        : combinedGroup.find(member =>
+            Boolean(
+              readCharacterIdentityDna(
+                (member.data as Record<string, unknown> | null) ?? {}
+              )
+            )
+          );
       if (!sourceWithDna) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
@@ -3569,7 +3635,8 @@ export const verticalDramaCharactersRouter = router({
       }
 
       const now = new Date().toISOString();
-      const sourceData = (sourceWithDna.data as Record<string, unknown> | null) ?? {};
+      const sourceData =
+        (sourceWithDna.data as Record<string, unknown> | null) ?? {};
       let synchronizedRows: VerticalDramaCharacterRow[] = [];
       await db.transaction(async tx => {
         for (const member of combinedGroup) {
@@ -3585,7 +3652,10 @@ export const verticalDramaCharactersRouter = router({
             } catch (error) {
               throw new TRPCError({
                 code: "PRECONDITION_FAILED",
-                message: error instanceof Error ? error.message : "Twin source Character DNA is required before linking.",
+                message:
+                  error instanceof Error
+                    ? error.message
+                    : "Twin source Character DNA is required before linking.",
               });
             }
           }
@@ -3606,7 +3676,11 @@ export const verticalDramaCharactersRouter = router({
             )
             .returning();
           if (!updated) {
-            throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Character changed while linking twins. Refresh and retry." });
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message:
+                "Character changed while linking twins. Refresh and retry.",
+            });
           }
         }
         synchronizedRows = (await tx
@@ -3620,9 +3694,14 @@ export const verticalDramaCharactersRouter = router({
             )
           )) as VerticalDramaCharacterRow[];
       });
-      const updatedSource = synchronizedRows.find(row => row.id === source.id) ?? source;
-      const updatedTwin = synchronizedRows.find(row => row.id === twin.id) ?? twin;
-      return { source: characterRowToDto(updatedSource), twin: characterRowToDto(updatedTwin) };
+      const updatedSource =
+        synchronizedRows.find(row => row.id === source.id) ?? source;
+      const updatedTwin =
+        synchronizedRows.find(row => row.id === twin.id) ?? twin;
+      return {
+        source: characterRowToDto(updatedSource),
+        twin: characterRowToDto(updatedTwin),
+      };
     }),
 
   /**
@@ -3707,7 +3786,8 @@ export const verticalDramaCharactersRouter = router({
         try {
           twinData = materializeTwinDnaData({
             data: twinData ?? {},
-            sourceData: (faceSource.data as Record<string, unknown> | null) ?? {},
+            sourceData:
+              (faceSource.data as Record<string, unknown> | null) ?? {},
             sourceCharacterId: faceSource.id,
             now: new Date().toISOString(),
           }).data;
@@ -4582,7 +4662,11 @@ export const verticalDramaCharactersRouter = router({
         // this mirrors the `as any` cast `chat.ts` itself uses at its own
         // call site rather than modifying the (out-of-scope) service file.
         const { assetId } = await createAssetFromAttachment(
-          { type: item.itemType === "video" ? "video" : "image", url: item.sourceUrl, mimeType } as any,
+          {
+            type: item.itemType === "video" ? "video" : "image",
+            url: item.sourceUrl,
+            mimeType,
+          } as any,
           { tenantId, userId } as any
         );
         return { mediaAssetId: String(assetId) };
@@ -4604,7 +4688,8 @@ export const verticalDramaCharactersRouter = router({
             : "image",
           mimeType: input.mimeType,
         });
-        if (managedAsset) return { mediaAssetId: String(managedAsset.mediaAssetId) };
+        if (managedAsset)
+          return { mediaAssetId: String(managedAsset.mediaAssetId) };
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Managed media result is missing or expired",
@@ -4760,6 +4845,11 @@ export const verticalDramaCharactersRouter = router({
         characterId: z.string().min(1),
         selectedImageModelId: z.string().trim().min(1).max(128).optional(),
         portraitCandidateCount: z.number().int().min(1).max(5).optional(),
+        replacePortraitCandidateAssetLinkId: z
+          .string()
+          .trim()
+          .min(1)
+          .optional(),
         castingReferenceAssetLinkIds: z
           .array(z.string().trim().min(1))
           .min(1)
@@ -4848,6 +4938,12 @@ export const verticalDramaCharactersRouter = router({
             : {}),
           ...(input.portraitCandidateCount
             ? { portraitCandidateCount: input.portraitCandidateCount }
+            : {}),
+          ...(input.replacePortraitCandidateAssetLinkId
+            ? {
+                replacePortraitCandidateAssetLinkId:
+                  input.replacePortraitCandidateAssetLinkId,
+              }
             : {}),
           ...(input.customInstruction
             ? { customInstruction: input.customInstruction }
@@ -5029,6 +5125,16 @@ export const verticalDramaCharactersRouter = router({
           parseId(id, "casting reference asset link id")
         );
       if (
+        input.replacePortraitCandidateAssetLinkId &&
+        input.portraitCandidateCount !== 1
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "A portrait candidate retry must generate exactly one prompt.",
+        });
+      }
+      if (
         input.portraitCandidateCount &&
         castingReferenceAssetLinkIds?.length
       ) {
@@ -5057,13 +5163,17 @@ export const verticalDramaCharactersRouter = router({
           });
         }
 
-        if (!castingAgeProfile) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message:
-              "ไม่สามารถกำหนดช่วงอายุสำหรับ casting ได้จาก DNA/บทบาทของตัวละคร กรุณาเติมรายละเอียดบทบาทหรือช่วงอายุในข้อมูลตัวละครก่อน",
-          });
-        }
+        const effectiveCastingAgeProfile: CharacterCastingAgeProfile =
+          castingAgeProfile ?? {
+            min: 18,
+            max: 20,
+            label: "18–20",
+            source: "role_context",
+            confidence: "inferred",
+            rationale:
+              "ไม่พบอายุที่ระบุชัด จึงใช้ช่วงอายุแคบชั่วคราวเพื่อให้สร้าง prompt ต่อได้",
+            isMinor: false,
+          };
         const genderPresentation =
           typeof characterData.genderPresentation === "string" &&
           characterData.genderPresentation.trim()
@@ -5081,8 +5191,8 @@ export const verticalDramaCharactersRouter = router({
           imageCount: input.portraitCandidateCount as 1 | 2 | 3 | 4 | 5,
           genderPresentation,
           ethnicity,
-          ageMin: castingAgeProfile.min,
-          ageMax: castingAgeProfile.max,
+          ageMin: effectiveCastingAgeProfile.min,
+          ageMax: effectiveCastingAgeProfile.max,
           lockClothing: input.castingLockClothing ?? false,
           poseMode: (input.castingPoseMode ??
             "auto_natural") as CharacterCandidatePoseMode,
@@ -5091,37 +5201,73 @@ export const verticalDramaCharactersRouter = router({
           additionalInstructions: input.customInstruction,
           model: null,
         });
-        const singleImageRenderPrompt =
-          buildCharacterCandidateSingleImageRenderPrompt(castingPrompt.prompt);
         const count = input.portraitCandidateCount;
+        const candidatePrompts =
+          Array.isArray(castingPrompt.prompts) &&
+          castingPrompt.prompts.length === count
+            ? castingPrompt.prompts
+            : Array.from(
+                { length: count },
+                (_, index) =>
+                  (Array.isArray(castingPrompt.prompts)
+                    ? castingPrompt.prompts[index]
+                    : undefined) ?? castingPrompt.prompt
+              );
         const candidateIds = Array.from({ length: count }, () =>
           crypto.randomUUID()
         );
+        const duplicatePairs = Array.isArray(castingPrompt.duplicatePairs)
+          ? castingPrompt.duplicatePairs
+          : [];
+        const sharedVisualLanguage = [
+          "Reference-guided casting prompt; each candidate is a new fictional person.",
+          ...(castingAgeProfile
+            ? []
+            : [
+                "Age warning: no explicit age was found; a narrow inferred 18–20 range was used and can be edited later.",
+              ]),
+          ...(duplicatePairs.length > 0
+            ? [
+                `Prompt diversity warning: ${duplicatePairs.length} candidate pair(s) remained similar after bounded repair; review before selecting.`,
+              ]
+            : []),
+        ].join(" ");
         let draftBatch;
         try {
-          draftBatch =
-            await verticalDramaCharacterStockService.createPortraitCandidateDraftBatch(
-              {
-                tenantId,
-                userId,
-                seriesId,
-                characterId,
-                characterKey: character.characterKey,
-                sharedVisualLanguage:
-                  "Reference-guided casting prompt; each candidate is a new fictional person.",
-                promptModel:
-                  castingPrompt.modelId ?? "character-candidate-prompt",
-                referenceGuided: true,
-                referenceAssetLinkIds: castingReferenceAssetLinkIds,
-                castingAgeProfile,
-                candidates: candidateIds.map(candidateId => ({
-                  candidateId,
-                  portraitPrompt: singleImageRenderPrompt,
-                  visualIdentitySummary:
-                    "New fictional casting candidate guided by the selected references.",
-                })),
-              }
-            );
+          const draftParams = {
+            tenantId,
+            userId,
+            seriesId,
+            characterId,
+            characterKey: character.characterKey,
+            sharedVisualLanguage,
+            promptModel: castingPrompt.modelId ?? "character-candidate-prompt",
+            referenceGuided: true,
+            referenceAssetLinkIds: castingReferenceAssetLinkIds,
+            castingAgeProfile: effectiveCastingAgeProfile,
+            candidates: candidateIds.map((candidateId, index) => ({
+              candidateId,
+              portraitPrompt: buildCharacterCandidateSingleImageRenderPrompt(
+                candidatePrompts[index]!
+              ),
+              visualIdentitySummary:
+                "New fictional casting candidate guided by the selected references.",
+            })),
+          };
+          draftBatch = input.replacePortraitCandidateAssetLinkId
+            ? await verticalDramaCharacterStockService.replacePortraitCandidateDraft(
+                {
+                  ...draftParams,
+                  assetLinkId: parseId(
+                    input.replacePortraitCandidateAssetLinkId,
+                    "portrait candidate asset link id"
+                  ),
+                  candidate: draftParams.candidates[0]!,
+                }
+              )
+            : await verticalDramaCharacterStockService.createPortraitCandidateDraftBatch(
+                draftParams
+              );
         } catch (err) {
           mapStockError(err);
         }
@@ -5131,25 +5277,37 @@ export const verticalDramaCharactersRouter = router({
             candidate,
           ])
         );
+        const replacementDraft = input.replacePortraitCandidateAssetLinkId
+          ? draftBatch.candidates[0]
+          : undefined;
         return {
           mode: "candidate_batch" as const,
           batchId: draftBatch.batchId,
           candidateCount: count,
-          sharedVisualLanguage:
-            "Reference-guided casting prompt; each candidate is a new fictional person.",
+          sharedVisualLanguage,
           model: castingPrompt.modelId ?? "character-candidate-prompt",
           referenceGuided: true,
-          castingAgeProfile,
-          candidates: candidateIds.map((candidateId, index) => ({
-            assetLinkId: String(
-              draftsByCandidateId.get(candidateId)!.assetLinkId
-            ),
-            candidateId,
-            index,
-            portraitPrompt: singleImageRenderPrompt,
-            visualIdentitySummary:
-              "New fictional casting candidate guided by the selected references.",
-          })),
+          castingAgeProfile: effectiveCastingAgeProfile,
+          promptQuality: {
+            repairCount: castingPrompt.repairCount ?? 0,
+            duplicatePairs,
+            warning: duplicatePairs.length > 0,
+            needsReview: duplicatePairs.length > 0,
+          },
+          candidates: candidateIds.map((candidateId, index) => {
+            const persistedDraft =
+              replacementDraft ?? draftsByCandidateId.get(candidateId)!;
+            return {
+              assetLinkId: String(persistedDraft.assetLinkId),
+              candidateId: persistedDraft.candidateId,
+              index: persistedDraft.index,
+              portraitPrompt: buildCharacterCandidateSingleImageRenderPrompt(
+                candidatePrompts[index]!
+              ),
+              visualIdentitySummary:
+                "New fictional casting candidate guided by the selected references.",
+            };
+          }),
         };
       }
 
@@ -5200,6 +5358,7 @@ export const verticalDramaCharactersRouter = router({
             presetVisualIdentity,
             customInstruction: input.customInstruction,
             characterDesignContext,
+            cameraFraming: input.castingCameraFraming,
             castingAgeProfile,
             portraitCandidateCount: input.portraitCandidateCount as
               | 1
@@ -5226,6 +5385,19 @@ export const verticalDramaCharactersRouter = router({
           if (err instanceof InsufficientCreditsError) {
             throw new TRPCError({ code: "FORBIDDEN", message: err.message });
           }
+          if (err instanceof CreditLedgerPersistenceError) {
+            debugError(
+              "CreditBilling",
+              "Character prompt skill settlement failed",
+              err
+            );
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message:
+                "Credit ledger is temporarily unavailable. No credits were charged. Please retry.",
+              cause: err,
+            });
+          }
           if (err instanceof VdSchemaValidationError) {
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
@@ -5243,26 +5415,37 @@ export const verticalDramaCharactersRouter = router({
 
         let draftBatch;
         try {
-          draftBatch =
-            await verticalDramaCharacterStockService.createPortraitCandidateDraftBatch(
-              {
-                tenantId,
-                userId,
-                seriesId,
-                characterId,
-                characterKey: character.characterKey,
-                sharedVisualLanguage: candidateResult.sharedVisualLanguage,
-                promptModel: candidateResult.model,
-                castingAgeProfile: candidateResult.castingAgeProfile,
-                candidates: candidateResult.candidates.map(candidate => ({
-                  candidateId: candidate.candidateId,
-                  portraitPrompt: candidate.portraitPrompt,
-                  negativePrompt: candidate.negativePrompt,
-                  visualIdentitySummary: candidate.visualIdentitySummary,
-                  visualBibleSnapshot: candidate.visualBibleSnapshot,
-                })),
-              }
-            );
+          const draftParams = {
+            tenantId,
+            userId,
+            seriesId,
+            characterId,
+            characterKey: character.characterKey,
+            sharedVisualLanguage: candidateResult.sharedVisualLanguage,
+            promptModel: candidateResult.model,
+            castingAgeProfile: candidateResult.castingAgeProfile,
+            candidates: candidateResult.candidates.map(candidate => ({
+              candidateId: candidate.candidateId,
+              portraitPrompt: candidate.portraitPrompt,
+              negativePrompt: candidate.negativePrompt,
+              visualIdentitySummary: candidate.visualIdentitySummary,
+              visualBibleSnapshot: candidate.visualBibleSnapshot,
+            })),
+          };
+          draftBatch = input.replacePortraitCandidateAssetLinkId
+            ? await verticalDramaCharacterStockService.replacePortraitCandidateDraft(
+                {
+                  ...draftParams,
+                  assetLinkId: parseId(
+                    input.replacePortraitCandidateAssetLinkId,
+                    "portrait candidate asset link id"
+                  ),
+                  candidate: draftParams.candidates[0]!,
+                }
+              )
+            : await verticalDramaCharacterStockService.createPortraitCandidateDraftBatch(
+                draftParams
+              );
         } catch (err) {
           mapStockError(err);
         }
@@ -5272,6 +5455,9 @@ export const verticalDramaCharactersRouter = router({
             candidate,
           ])
         );
+        const replacementDraft = input.replacePortraitCandidateAssetLinkId
+          ? draftBatch.candidates[0]
+          : undefined;
         return {
           mode: "candidate_batch" as const,
           batchId: draftBatch.batchId,
@@ -5289,19 +5475,22 @@ export const verticalDramaCharactersRouter = router({
           ...(candidateResult.warnings?.length
             ? { warnings: candidateResult.warnings }
             : {}),
-          candidates: candidateResult.candidates.map(candidate => ({
-            assetLinkId: String(
-              draftsByCandidateId.get(candidate.candidateId)!.assetLinkId
-            ),
-            candidateId: candidate.candidateId,
-            index: draftsByCandidateId.get(candidate.candidateId)!.index,
-            portraitPrompt: candidate.portraitPrompt,
-            negativePrompt: candidate.negativePrompt,
-            visualIdentitySummary: candidate.visualIdentitySummary,
-            ...(candidate.warnings?.length
-              ? { warnings: candidate.warnings }
-              : {}),
-          })),
+          candidates: candidateResult.candidates.map(candidate => {
+            const persistedDraft =
+              replacementDraft ??
+              draftsByCandidateId.get(candidate.candidateId)!;
+            return {
+              assetLinkId: String(persistedDraft.assetLinkId),
+              candidateId: persistedDraft.candidateId,
+              index: persistedDraft.index,
+              portraitPrompt: candidate.portraitPrompt,
+              negativePrompt: candidate.negativePrompt,
+              visualIdentitySummary: candidate.visualIdentitySummary,
+              ...(candidate.warnings?.length
+                ? { warnings: candidate.warnings }
+                : {}),
+            };
+          }),
         };
       }
 
@@ -5347,6 +5536,7 @@ export const verticalDramaCharactersRouter = router({
           faceSourceReference,
           customInstruction: input.customInstruction,
           characterDesignContext,
+          cameraFraming: input.castingCameraFraming,
           ...(previewPromptCapability
             ? {
                 imagePromptCapability: previewPromptCapability,

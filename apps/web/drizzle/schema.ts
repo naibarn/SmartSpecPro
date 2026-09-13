@@ -3484,6 +3484,17 @@ export const mediaModels = pgTable("media_models", {
   /** Supported voices for audio (JSON array) */
   voices: json("voices").$type<string[]>(),
 
+  /** Default thinking/reasoning mode; models without one use `none`. */
+  thinkingModeDefault: varchar("thinkingModeDefault", { length: 32 })
+    .notNull()
+    .default("none"),
+
+  /** Thinking/reasoning modes supported by the provider (JSON array). */
+  thinkingModes: json("thinkingModes")
+    .$type<string[]>()
+    .notNull()
+    .default(["none"]),
+
   /** Additional configuration */
   configJson: json("configJson").$type<Record<string, any>>(),
 
@@ -6195,6 +6206,7 @@ export type InsertUserCreditBudget = typeof userCreditBudgets.$inferInsert;
 export const skillCategoryEnum = pgEnum("skill_category", [
   "image_generation", // Generate Images
   "image_prompt_generation", // Create prompts for image generation
+  "character_prompt_generation", // Create prompts for characters
   "video_generation", // Generate Video
   "video_prompt_generation", // Create prompts for video generation
   "image_video_generation", // Generate both Image and Video
@@ -6513,7 +6525,9 @@ export const skillRevenueSettlements = pgTable(
   "skill_revenue_settlements",
   {
     id: serial("id").primaryKey(),
-    runId: varchar("runId", { length: 191 }).notNull(),
+    // Deterministic skill fingerprints can include bounded prompt/context data;
+    // keep the complete value so settlement idempotency never fails on length.
+    runId: text("runId").notNull(),
     skillId: integer("skillId").references(() => skills.id, {
       onDelete: "set null",
     }),
@@ -7247,6 +7261,40 @@ export const workerRuntimeReleases = pgTable(
 export type WorkerRuntimeRelease = typeof workerRuntimeReleases.$inferSelect;
 export type InsertWorkerRuntimeRelease =
   typeof workerRuntimeReleases.$inferInsert;
+
+export const workerRuntimeRunnerArtifacts = pgTable(
+  "worker_runtime_runner_artifacts",
+  {
+    id: serial("id").primaryKey(),
+    fileName: varchar("fileName", { length: 260 }).notNull(),
+    contentType: varchar("contentType", { length: 256 })
+      .notNull()
+      .default("application/octet-stream"),
+    storageKey: text("storageKey").notNull(),
+    fileSizeBytes: bigint("fileSizeBytes", { mode: "number" }).notNull(),
+    fileSha256: varchar("fileSha256", { length: 64 }).notNull(),
+    uploadedBy: integer("uploadedBy").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    uploadedAt: timestamp("uploadedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("worker_runtime_runner_artifacts_storage_key_unique").on(
+      t.storageKey
+    ),
+    uniqueIndex("worker_runtime_runner_artifacts_sha256_unique").on(
+      t.fileSha256
+    ),
+    index("worker_runtime_runner_artifacts_uploaded_at_idx").on(t.uploadedAt),
+  ]
+);
+
+export type WorkerRuntimeRunnerArtifact =
+  typeof workerRuntimeRunnerArtifacts.$inferSelect;
+export type InsertWorkerRuntimeRunnerArtifact =
+  typeof workerRuntimeRunnerArtifacts.$inferInsert;
 
 // ============================================================
 // System Settings - Platform-wide configuration
@@ -9568,6 +9616,267 @@ export const videoEditorProjects = pgTable(
 
 export type VideoEditorProject = typeof videoEditorProjects.$inferSelect;
 export type InsertVideoEditorProject = typeof videoEditorProjects.$inferInsert;
+
+/** Feature 184: immutable Web editor revisions and managed asset/job links. */
+export const videoEditorProjectRevisions = pgTable(
+  "video_editor_project_revisions",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    projectId: integer("projectId")
+      .notNull()
+      .references(() => videoEditorProjects.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull(),
+    schemaVersion: varchar("schemaVersion", { length: 32 }).notNull(),
+    document: jsonb("document").$type<Record<string, unknown>>().notNull(),
+    documentHash: varchar("documentHash", { length: 64 }).notNull(),
+    reason: varchar("reason", { length: 32 }).notNull().default("edit"),
+    actorUserId: integer("actorUserId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    clientMutationId: varchar("clientMutationId", { length: 160 }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("video_editor_project_revisions_project_revision_unique").on(
+      t.projectId,
+      t.revision
+    ),
+    uniqueIndex("video_editor_project_revisions_mutation_unique").on(
+      t.projectId,
+      t.clientMutationId
+    ),
+    index("video_editor_project_revisions_tenant_idx").on(t.tenantId),
+  ]
+);
+
+export type VideoEditorProjectRevision =
+  typeof videoEditorProjectRevisions.$inferSelect;
+export type InsertVideoEditorProjectRevision =
+  typeof videoEditorProjectRevisions.$inferInsert;
+
+export const videoEditorProjectAssets = pgTable(
+  "video_editor_project_assets",
+  {
+    id: serial("id").primaryKey(),
+    projectId: integer("projectId")
+      .notNull()
+      .references(() => videoEditorProjects.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    revisionId: varchar("revisionId", { length: 36 }).references(
+      () => videoEditorProjectRevisions.id,
+      { onDelete: "set null" }
+    ),
+    namespace: varchar("namespace", { length: 32 }).notNull(),
+    assetRef: jsonb("assetRef").$type<Record<string, unknown>>().notNull(),
+    sourceHash: varchar("sourceHash", { length: 128 }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    index("video_editor_project_assets_project_idx").on(t.projectId),
+    index("video_editor_project_assets_tenant_idx").on(t.tenantId),
+  ]
+);
+
+export type VideoEditorProjectAsset =
+  typeof videoEditorProjectAssets.$inferSelect;
+export type InsertVideoEditorProjectAsset =
+  typeof videoEditorProjectAssets.$inferInsert;
+
+export const videoEditorProjectJobs = pgTable(
+  "video_editor_project_jobs",
+  {
+    id: serial("id").primaryKey(),
+    projectId: integer("projectId")
+      .notNull()
+      .references(() => videoEditorProjects.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    revisionId: varchar("revisionId", { length: 36 })
+      .notNull()
+      .references(() => videoEditorProjectRevisions.id, {
+        onDelete: "restrict",
+      }),
+    // SQL migration adds the FK to worker_jobs; keep this field unlinked here
+    // because workerJobs is declared later in this large schema module.
+    workerJobId: varchar("workerJobId", { length: 36 }).notNull(),
+    planHash: varchar("planHash", { length: 64 }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("video_editor_project_jobs_worker_job_unique").on(
+      t.workerJobId
+    ),
+    index("video_editor_project_jobs_project_idx").on(t.projectId),
+  ]
+);
+
+export type VideoEditorProjectJob = typeof videoEditorProjectJobs.$inferSelect;
+export type InsertVideoEditorProjectJob =
+  typeof videoEditorProjectJobs.$inferInsert;
+
+/** Feature 184 parity: managed upload session state (migration 0290). */
+export const videoEditorUploadSessions = pgTable(
+  "video_editor_upload_sessions",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    projectId: integer("projectId").references(() => videoEditorProjects.id, {
+      onDelete: "cascade",
+    }),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceHash: varchar("sourceHash", { length: 128 }),
+    objectKey: text("objectKey").notNull(),
+    method: varchar("method", { length: 16 }).notNull(),
+    fileName: varchar("fileName", { length: 512 }).notNull(),
+    sizeBytes: bigint("sizeBytes", { mode: "number" }).notNull(),
+    mimeType: varchar("mimeType", { length: 256 }).notNull(),
+    partSizeBytes: integer("partSizeBytes"),
+    checksumAlgorithm: varchar("checksumAlgorithm", { length: 16 })
+      .notNull()
+      .default("sha256"),
+    expectedChecksum: varchar("expectedChecksum", { length: 128 }),
+    status: varchar("status", { length: 16 }).notNull().default("created"),
+    idempotencyKey: varchar("idempotencyKey", { length: 160 }).notNull(),
+    reservedBytes: bigint("reservedBytes", { mode: "number" })
+      .notNull()
+      .default(0),
+    reservedObjects: integer("reservedObjects").notNull().default(0),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    completedAt: timestamp("completedAt", { withTimezone: true }),
+    abortedAt: timestamp("abortedAt", { withTimezone: true }),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("video_editor_upload_sessions_idempotency_unique").on(
+      t.tenantId,
+      t.userId,
+      t.idempotencyKey
+    ),
+    index("video_editor_upload_sessions_project_status_idx").on(
+      t.projectId,
+      t.status
+    ),
+    index("video_editor_upload_sessions_expiry_idx").on(t.status, t.expiresAt),
+    index("video_editor_upload_sessions_source_hash_idx").on(
+      t.tenantId,
+      t.sourceHash
+    ),
+  ]
+);
+
+export type VideoEditorUploadSession =
+  typeof videoEditorUploadSessions.$inferSelect;
+export type InsertVideoEditorUploadSession =
+  typeof videoEditorUploadSessions.$inferInsert;
+
+export const videoEditorUploadParts = pgTable(
+  "video_editor_upload_parts",
+  {
+    id: serial("id").primaryKey(),
+    sessionId: varchar("sessionId", { length: 64 })
+      .notNull()
+      .references(() => videoEditorUploadSessions.id, { onDelete: "cascade" }),
+    partNumber: integer("partNumber").notNull(),
+    etag: varchar("etag", { length: 256 }),
+    sizeBytes: bigint("sizeBytes", { mode: "number" }),
+    checksum: varchar("checksum", { length: 128 }),
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("video_editor_upload_parts_session_part_unique").on(
+      t.sessionId,
+      t.partNumber
+    ),
+  ]
+);
+
+export type VideoEditorUploadPart = typeof videoEditorUploadParts.$inferSelect;
+export type InsertVideoEditorUploadPart =
+  typeof videoEditorUploadParts.$inferInsert;
+
+export const videoEditorAnalysisArtifacts = pgTable(
+  "video_editor_analysis_artifacts",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    projectId: integer("projectId").references(() => videoEditorProjects.id, {
+      onDelete: "cascade",
+    }),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    revisionId: varchar("revisionId", { length: 36 }).references(
+      () => videoEditorProjectRevisions.id,
+      { onDelete: "set null" }
+    ),
+    // workerJobs is declared later in this module; the SQL migration owns the FK.
+    workerJobId: varchar("workerJobId", { length: 36 }),
+    kind: varchar("kind", { length: 64 }).notNull(),
+    sourceAssetIds: jsonb("sourceAssetIds")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    algorithmVersion: varchar("algorithmVersion", { length: 64 }).notNull(),
+    artifact: jsonb("artifact").$type<Record<string, unknown>>().notNull(),
+    checksum: varchar("checksum", { length: 128 }),
+    confidence: jsonb("confidence").$type<Record<string, unknown>>(),
+    reviewDecision: varchar("reviewDecision", { length: 16 })
+      .notNull()
+      .default("pending"),
+    appliedRevisionId: varchar("appliedRevisionId", { length: 36 }).references(
+      () => videoEditorProjectRevisions.id,
+      { onDelete: "set null" }
+    ),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    index("video_editor_analysis_artifacts_project_kind_idx").on(
+      t.projectId,
+      t.kind
+    ),
+    index("video_editor_analysis_artifacts_tenant_status_idx").on(
+      t.tenantId,
+      t.reviewDecision
+    ),
+    index("video_editor_analysis_artifacts_revision_idx").on(t.revisionId),
+  ]
+);
+
+export type VideoEditorAnalysisArtifact =
+  typeof videoEditorAnalysisArtifacts.$inferSelect;
+export type InsertVideoEditorAnalysisArtifact =
+  typeof videoEditorAnalysisArtifacts.$inferInsert;
 
 // Media Studio Storyboard Review Projects — persistent pre-edit review workspaces
 export const mediaStudioStoryboardReviews = pgTable(
@@ -14644,16 +14953,22 @@ export const workerStatusEnum = pgEnum("worker_status", [
 ]);
 
 export const workerJobStatusEnum = pgEnum("worker_job_status", [
+  "pending",
   "queued",
+  "leased",
   "claimed",
   "preparing",
   "running",
+  "waiting_external",
+  "retry_scheduled",
   "uploading",
   "publishing",
   "indexing",
   "completed",
+  "succeeded",
   "failed",
   "canceled",
+  "cancelled",
   "expired",
 ]);
 
@@ -15229,6 +15544,9 @@ export const workerJobs = pgTable(
     }),
     jobType: varchar("jobType", { length: 100 }).notNull(),
     status: workerJobStatusEnum("status").notNull().default("queued"),
+    executionClass: varchar("executionClass", { length: 32 }).notNull().default("short"),
+    contractVersion: varchar("contractVersion", { length: 40 }).notNull().default("feature-186-v1"),
+    definitionHash: varchar("definitionHash", { length: 64 }),
     statusReason: text("statusReason"),
     priority: integer("priority").notNull().default(0),
     resourceProfile: workerResourceProfileEnum("resourceProfile")
@@ -15253,9 +15571,25 @@ export const workerJobs = pgTable(
       .$type<Record<string, unknown>>()
       .notNull()
       .default({}),
+    timeoutPolicyJson: jsonb("timeoutPolicyJson")
+      .$type<{ softTimeoutMs: number; hardTimeoutMs: number }>()
+      .notNull()
+      .default({ softTimeoutMs: 0, hardTimeoutMs: 3600000 }),
+    attempt: integer("attempt").notNull().default(1),
+    maxAttempts: integer("maxAttempts").notNull().default(1),
+    nextRetryAt: timestamp("nextRetryAt", { withTimezone: true }),
     idempotencyKey: varchar("idempotencyKey", { length: 128 }),
     leaseOwnerToken: varchar("leaseOwnerToken", { length: 128 }),
     leaseExpiresAt: timestamp("leaseExpiresAt", { withTimezone: true }),
+    heartbeatAt: timestamp("heartbeatAt", { withTimezone: true }),
+    fencingVersion: integer("fencingVersion").notNull().default(0),
+    progressJson: jsonb("progressJson")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    resultRef: text("resultRef"),
+    scheduledAt: timestamp("scheduledAt", { withTimezone: true }),
+    operatorReviewRequired: boolean("operatorReviewRequired").notNull().default(false),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -15274,6 +15608,8 @@ export const workerJobs = pgTable(
     ),
     index("worker_jobs_worker_status_idx").on(t.workerId, t.status),
     index("worker_jobs_lease_expires_idx").on(t.leaseExpiresAt),
+    index("worker_jobs_due_retry_idx").on(t.status, t.nextRetryAt),
+    index("worker_jobs_definition_hash_idx").on(t.tenantId, t.definitionHash),
     index("worker_jobs_series_binding_idx").on(
       t.workerSeriesBindingId,
       t.workerSeriesBindingRevision,
@@ -15393,6 +15729,9 @@ export const workerJobEvents = pgTable(
     eventType: varchar("eventType", { length: 100 }).notNull(),
     assignmentId: varchar("assignmentId", { length: 160 }),
     sequence: integer("sequence"),
+    eventSequence: integer("eventSequence"),
+    eventIdempotencyKey: varchar("eventIdempotencyKey", { length: 200 }),
+    attemptId: varchar("attemptId", { length: 36 }),
     payloadJson: jsonb("payloadJson")
       .$type<Record<string, unknown>>()
       .notNull()
@@ -15407,11 +15746,162 @@ export const workerJobEvents = pgTable(
     uniqueIndex("worker_job_events_assignment_sequence_unique")
       .on(t.workerJobId, t.assignmentId, t.sequence)
       .where(sql`"assignmentId" IS NOT NULL AND "sequence" IS NOT NULL`),
+    uniqueIndex("worker_job_events_job_event_sequence_unique")
+      .on(t.workerJobId, t.eventSequence)
+      .where(sql`"eventSequence" IS NOT NULL`),
+    uniqueIndex("worker_job_events_idempotency_unique")
+      .on(t.workerJobId, t.eventIdempotencyKey)
+      .where(sql`"eventIdempotencyKey" IS NOT NULL`),
   ]
 );
 
 export type WorkerJobEvent = typeof workerJobEvents.$inferSelect;
 export type InsertWorkerJobEvent = typeof workerJobEvents.$inferInsert;
+
+export const workerJobAttempts = pgTable(
+  "worker_job_attempts",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    workerJobId: varchar("workerJobId", { length: 36 })
+      .notNull()
+      .references(() => workerJobs.id, { onDelete: "cascade" }),
+    attempt: integer("attempt").notNull(),
+    leaseGeneration: integer("leaseGeneration").notNull().default(0),
+    runnerId: varchar("runnerId", { length: 160 }),
+    leaseTokenHash: varchar("leaseTokenHash", { length: 128 }),
+    leaseExpiresAt: timestamp("leaseExpiresAt", { withTimezone: true }),
+    startedAt: timestamp("startedAt", { withTimezone: true }),
+    finishedAt: timestamp("finishedAt", { withTimezone: true }),
+    terminalClass: varchar("terminalClass", { length: 32 }),
+    recoveryReason: varchar("recoveryReason", { length: 500 }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("worker_job_attempts_job_attempt_unique").on(t.workerJobId, t.attempt),
+    index("worker_job_attempts_job_created_idx").on(t.workerJobId, t.createdAt),
+  ],
+);
+
+export type WorkerJobAttempt = typeof workerJobAttempts.$inferSelect;
+export type InsertWorkerJobAttempt = typeof workerJobAttempts.$inferInsert;
+
+export const workerJobDispatches = pgTable(
+  "worker_job_dispatches",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    workerJobId: varchar("workerJobId", { length: 36 })
+      .notNull()
+      .references(() => workerJobs.id, { onDelete: "cascade" }),
+    attemptId: varchar("attemptId", { length: 36 }).references(() => workerJobAttempts.id, { onDelete: "set null" }),
+    adapter: varchar("adapter", { length: 80 }).notNull(),
+    referenceNamespace: varchar("referenceNamespace", { length: 120 }).notNull(),
+    dispatchKind: varchar("dispatchKind", { length: 40 }).notNull().default("publish"),
+    dedupeKey: varchar("dedupeKey", { length: 200 }).notNull(),
+    providerJobId: varchar("providerJobId", { length: 255 }),
+    queueJobId: varchar("queueJobId", { length: 255 }),
+    celeryTaskId: varchar("celeryTaskId", { length: 255 }),
+    workflowInstanceId: varchar("workflowInstanceId", { length: 255 }),
+    containerInstanceId: varchar("containerInstanceId", { length: 255 }),
+    publicationStatus: varchar("publicationStatus", { length: 32 }).notNull().default("published"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    publishedAt: timestamp("publishedAt", { withTimezone: true }),
+    consumedAt: timestamp("consumedAt", { withTimezone: true }),
+    failedAt: timestamp("failedAt", { withTimezone: true }),
+  },
+  t => [
+    uniqueIndex("worker_job_dispatches_dedupe_unique").on(t.adapter, t.dedupeKey),
+    index("worker_job_dispatches_job_created_idx").on(t.workerJobId, t.createdAt),
+    index("worker_job_dispatches_external_ref_idx").on(t.referenceNamespace, t.providerJobId),
+    uniqueIndex("worker_job_dispatches_provider_ref_unique")
+      .on(t.referenceNamespace, t.providerJobId)
+      .where(sql`"providerJobId" IS NOT NULL`),
+    uniqueIndex("worker_job_dispatches_queue_ref_unique")
+      .on(t.referenceNamespace, t.queueJobId)
+      .where(sql`"queueJobId" IS NOT NULL`),
+    uniqueIndex("worker_job_dispatches_celery_ref_unique")
+      .on(t.referenceNamespace, t.celeryTaskId)
+      .where(sql`"celeryTaskId" IS NOT NULL`),
+  ],
+);
+
+export type WorkerJobDispatch = typeof workerJobDispatches.$inferSelect;
+export type InsertWorkerJobDispatch = typeof workerJobDispatches.$inferInsert;
+
+export const workerJobOutbox = pgTable(
+  "worker_job_outbox",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    workerJobId: varchar("workerJobId", { length: 36 })
+      .notNull()
+      .references(() => workerJobs.id, { onDelete: "cascade" }),
+    attemptId: varchar("attemptId", { length: 36 }).references(() => workerJobAttempts.id, { onDelete: "set null" }),
+    envelopeVersion: varchar("envelopeVersion", { length: 40 }).notNull(),
+    envelopeJson: jsonb("envelopeJson").$type<Record<string, unknown>>().notNull(),
+    dedupeKey: varchar("dedupeKey", { length: 200 }).notNull(),
+    publishAttempts: integer("publishAttempts").notNull().default(0),
+    nextAttemptAt: timestamp("nextAttemptAt", { withTimezone: true }).defaultNow().notNull(),
+    publisherLeaseTokenHash: varchar("publisherLeaseTokenHash", { length: 128 }),
+    publisherLeaseExpiresAt: timestamp("publisherLeaseExpiresAt", { withTimezone: true }),
+    publisherFencingVersion: integer("publisherFencingVersion").notNull().default(0),
+    publishedAt: timestamp("publishedAt", { withTimezone: true }),
+    failedReason: text("failedReason"),
+    quarantinedAt: timestamp("quarantinedAt", { withTimezone: true }),
+    operatorReviewReason: text("operatorReviewReason"),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("worker_job_outbox_dedupe_unique").on(t.dedupeKey),
+    index("worker_job_outbox_due_idx").on(t.publishedAt, t.quarantinedAt, t.nextAttemptAt),
+    index("worker_job_outbox_job_idx").on(t.workerJobId, t.createdAt),
+  ],
+);
+
+export type WorkerJobOutbox = typeof workerJobOutbox.$inferSelect;
+export type InsertWorkerJobOutbox = typeof workerJobOutbox.$inferInsert;
+
+export const workerJobScheduleOccurrences = pgTable(
+  "worker_job_schedule_occurrences",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    scheduleId: varchar("scheduleId", { length: 160 }).notNull(),
+    occurrenceKey: varchar("occurrenceKey", { length: 200 }).notNull(),
+    scheduleVersion: varchar("scheduleVersion", { length: 80 }).notNull(),
+    timezone: varchar("timezone", { length: 80 }).notNull(),
+    definitionHash: varchar("definitionHash", { length: 64 }).notNull(),
+    workerJobId: varchar("workerJobId", { length: 36 }).notNull().references(() => workerJobs.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("worker_job_schedule_occurrence_unique").on(t.tenantId, t.scheduleId, t.occurrenceKey),
+    uniqueIndex("worker_job_schedule_occurrence_job_unique").on(t.workerJobId),
+    index("worker_job_schedule_occurrence_job_idx").on(t.workerJobId),
+  ],
+);
+
+export type WorkerJobScheduleOccurrence = typeof workerJobScheduleOccurrences.$inferSelect;
+export type InsertWorkerJobScheduleOccurrence = typeof workerJobScheduleOccurrences.$inferInsert;
+
+export const workerJobSettlements = pgTable(
+  "worker_job_settlements",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    workerJobId: varchar("workerJobId", { length: 36 }).notNull().references(() => workerJobs.id, { onDelete: "cascade" }),
+    attemptId: varchar("attemptId", { length: 36 }).references(() => workerJobAttempts.id, { onDelete: "set null" }),
+    settlementKey: varchar("settlementKey", { length: 200 }).notNull(),
+    settlementType: varchar("settlementType", { length: 64 }).notNull(),
+    payloadJson: jsonb("payloadJson").$type<Record<string, unknown>>().notNull().default({}),
+    committedAt: timestamp("committedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("worker_job_settlements_key_unique").on(t.settlementKey),
+    index("worker_job_settlements_job_idx").on(t.workerJobId, t.committedAt),
+  ],
+);
+
+export type WorkerJobSettlement = typeof workerJobSettlements.$inferSelect;
+export type InsertWorkerJobSettlement = typeof workerJobSettlements.$inferInsert;
 
 export const workerArtifacts = pgTable(
   "worker_artifacts",
@@ -21735,6 +22225,8 @@ export const verticalDramaSeries = pgTable(
      * resolution logic.
      */
     llmModelPolicy: jsonb("llmModelPolicy"),
+    /** Episode generation defaults copied into new episodes. */
+    generationSettings: jsonb("generationSettings"),
     /** VerticalDramaSeriesTrailerState (series-level narrated trailer, Bible tab) */
     trailer: jsonb("trailer"),
     /**
@@ -22885,6 +23377,8 @@ export const verticalDramaEpisodes = pgTable(
     startFramePlan: jsonb("startFramePlan"),
     dialogueAudioPlan: jsonb("dialogueAudioPlan"),
     motionPromptPack: jsonb("motionPromptPack"),
+    /** Per-episode image quality and LLM reasoning overrides. */
+    generationSettings: jsonb("generationSettings"),
     assemblyManifest: jsonb("assemblyManifest"),
     /** Backlink to the Storyboard Review project (media_studio_storyboard_reviews). */
     storyboardReviewId: varchar("storyboardReviewId", { length: 64 }),
@@ -23395,7 +23889,9 @@ export const verticalDramaObjectReferences = pgTable(
     status: varchar("status", { length: 16 }).default("active").notNull(),
     description: text("description"),
     canonicalPrompt: text("canonicalPrompt"),
-    objectType: varchar("objectType", { length: 32 }).default("other").notNull(),
+    objectType: varchar("objectType", { length: 32 })
+      .default("other")
+      .notNull(),
     narrativeRole: varchar("narrativeRole", { length: 160 }),
     continuityNotes: text("continuityNotes"),
     metadataJson: jsonb("metadataJson"),
@@ -23483,7 +23979,9 @@ export const verticalDramaShotObjectReferences = pgTable(
       .notNull(),
     confidence: real("confidence"),
     locked: boolean("locked").default(false).notNull(),
-    usageType: varchar("usageType", { length: 32 }).default("visible").notNull(),
+    usageType: varchar("usageType", { length: 32 })
+      .default("visible")
+      .notNull(),
     evidenceJson: jsonb("evidenceJson"),
     contextFingerprint: varchar("contextFingerprint", { length: 128 }),
     manualOverride: boolean("manualOverride").default(false).notNull(),
@@ -23530,7 +24028,9 @@ export const verticalDramaEpisodeObjectReferences = pgTable(
       }),
     role: varchar("role", { length: 24 }).default("object").notNull(),
     reviewedSnapshot: jsonb("reviewedSnapshot"),
-    source: varchar("source", { length: 32 }).default("special_tie_in").notNull(),
+    source: varchar("source", { length: 32 })
+      .default("special_tie_in")
+      .notNull(),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -23557,15 +24057,28 @@ export const verticalDramaObjectReferenceAliases = pgTable(
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     tenantId: varchar("tenantId", { length: 36 }).notNull(),
-    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-    seriesId: bigint("seriesId", { mode: "number" }).notNull().references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
-    objectReferenceId: bigint("objectReferenceId", { mode: "number" }).notNull().references(() => verticalDramaObjectReferences.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    objectReferenceId: bigint("objectReferenceId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaObjectReferences.id, {
+        onDelete: "cascade",
+      }),
     alias: varchar("alias", { length: 160 }).notNull(),
     normalizedAlias: varchar("normalizedAlias", { length: 160 }).notNull(),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
-    uniqueIndex("vdo_alias_series_normalized_idx").on(t.seriesId, t.normalizedAlias),
+    uniqueIndex("vdo_alias_series_normalized_idx").on(
+      t.seriesId,
+      t.normalizedAlias
+    ),
     index("vdo_alias_object_idx").on(t.tenantId, t.objectReferenceId),
   ]
 );
@@ -23576,14 +24089,26 @@ export const verticalDramaObjectDetectionSuggestions = pgTable(
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     tenantId: varchar("tenantId", { length: 36 }).notNull(),
-    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-    seriesId: bigint("seriesId", { mode: "number" }).notNull().references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
-    episodeId: bigint("episodeId", { mode: "number" }).notNull().references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    episodeId: bigint("episodeId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
     planningKey: varchar("planningKey", { length: 160 }),
     shotNumber: integer("shotNumber").notNull(),
-    objectReferenceId: bigint("objectReferenceId", { mode: "number" }).notNull().references(() => verticalDramaObjectReferences.id, { onDelete: "cascade" }),
+    objectReferenceId: bigint("objectReferenceId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaObjectReferences.id, {
+        onDelete: "cascade",
+      }),
     detectorVersion: varchar("detectorVersion", { length: 64 }).notNull(),
-    contextFingerprint: varchar("contextFingerprint", { length: 128 }).notNull(),
+    contextFingerprint: varchar("contextFingerprint", {
+      length: 128,
+    }).notNull(),
     evidenceJson: jsonb("evidenceJson"),
     confidence: real("confidence"),
     status: varchar("status", { length: 24 }).default("pending").notNull(),
@@ -23591,11 +24116,20 @@ export const verticalDramaObjectDetectionSuggestions = pgTable(
     retryCount: integer("retryCount").default(0).notNull(),
     nextRetryAt: timestamp("nextRetryAt", { withTimezone: true }),
     expiresAt: timestamp("expiresAt", { withTimezone: true }),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
-    uniqueIndex("vdo_suggestion_fingerprint_idx").on(t.episodeId, t.shotNumber, t.objectReferenceId, t.contextFingerprint),
+    uniqueIndex("vdo_suggestion_fingerprint_idx").on(
+      t.episodeId,
+      t.shotNumber,
+      t.objectReferenceId,
+      t.contextFingerprint
+    ),
     index("vdo_suggestion_pending_idx").on(t.tenantId, t.status, t.nextRetryAt),
   ]
 );
@@ -23606,20 +24140,36 @@ export const verticalDramaObjectReferencePromptRuns = pgTable(
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     tenantId: varchar("tenantId", { length: 36 }).notNull(),
-    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-    seriesId: bigint("seriesId", { mode: "number" }).notNull().references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
-    objectReferenceId: bigint("objectReferenceId", { mode: "number" }).notNull().references(() => verticalDramaObjectReferences.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    objectReferenceId: bigint("objectReferenceId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaObjectReferences.id, {
+        onDelete: "cascade",
+      }),
     operation: varchar("operation", { length: 24 }).notNull(),
     inputFingerprint: varchar("inputFingerprint", { length: 128 }).notNull(),
     status: varchar("status", { length: 24 }).default("queued").notNull(),
     resultJson: jsonb("resultJson"),
     idempotencyKey: varchar("idempotencyKey", { length: 128 }).notNull(),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
     uniqueIndex("vdo_prompt_idempotency_idx").on(t.tenantId, t.idempotencyKey),
-    index("vdo_prompt_object_idx").on(t.tenantId, t.objectReferenceId, t.status),
+    index("vdo_prompt_object_idx").on(
+      t.tenantId,
+      t.objectReferenceId,
+      t.status
+    ),
   ]
 );
 
@@ -23629,13 +24179,27 @@ export const verticalDramaObjectReferenceProjections = pgTable(
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     tenantId: varchar("tenantId", { length: 36 }).notNull(),
-    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-    episodeId: bigint("episodeId", { mode: "number" }).notNull().references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    episodeId: bigint("episodeId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
     shotNumber: integer("shotNumber").notNull(),
-    objectReferenceId: bigint("objectReferenceId", { mode: "number" }).notNull().references(() => verticalDramaObjectReferences.id, { onDelete: "cascade" }),
-    shotReferenceId: bigint("shotReferenceId", { mode: "number" }).notNull().references(() => verticalDramaShotReferences.id, { onDelete: "cascade" }),
+    objectReferenceId: bigint("objectReferenceId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaObjectReferences.id, {
+        onDelete: "cascade",
+      }),
+    shotReferenceId: bigint("shotReferenceId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaShotReferences.id, {
+        onDelete: "cascade",
+      }),
     sourceRevision: integer("sourceRevision").notNull(),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
     uniqueIndex("vdo_projection_reference_idx").on(t.shotReferenceId),
@@ -24537,11 +25101,17 @@ export const verticalDramaSeriesSoundBibles = pgTable(
       .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
     version: integer("version").notNull().default(1),
     audioStyle: jsonb("audioStyle").notNull(),
-    characterVoiceProfiles: jsonb("characterVoiceProfiles").notNull().default([]),
+    characterVoiceProfiles: jsonb("characterVoiceProfiles")
+      .notNull()
+      .default([]),
     locationSoundProfiles: jsonb("locationSoundProfiles").notNull().default([]),
     transitionPolicy: jsonb("transitionPolicy").notNull().default({}),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
     uniqueIndex("vd_sound_bible_series_version_idx").on(t.seriesId, t.version),
@@ -24549,8 +25119,10 @@ export const verticalDramaSeriesSoundBibles = pgTable(
   ]
 );
 
-export type VerticalDramaSeriesSoundBible = typeof verticalDramaSeriesSoundBibles.$inferSelect;
-export type InsertVerticalDramaSeriesSoundBible = typeof verticalDramaSeriesSoundBibles.$inferInsert;
+export type VerticalDramaSeriesSoundBible =
+  typeof verticalDramaSeriesSoundBibles.$inferSelect;
+export type InsertVerticalDramaSeriesSoundBible =
+  typeof verticalDramaSeriesSoundBibles.$inferInsert;
 
 /** Feature 175: Granular Audio QC Reports per clip */
 export const verticalDramaAudioQcReports = pgTable(
@@ -24575,15 +25147,17 @@ export const verticalDramaAudioQcReports = pgTable(
     phaseCorrelation: text("phaseCorrelation"),
     bgmBleedDetected: boolean("bgmBleedDetected").default(false).notNull(),
     flags: jsonb("flags").default([]).notNull(),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
-  t => [
-    index("vd_audio_qc_episode_shot_idx").on(t.episodeId, t.shotNumber),
-  ]
+  t => [index("vd_audio_qc_episode_shot_idx").on(t.episodeId, t.shotNumber)]
 );
 
-export type VerticalDramaAudioQcReportRow = typeof verticalDramaAudioQcReports.$inferSelect;
-export type InsertVerticalDramaAudioQcReportRow = typeof verticalDramaAudioQcReports.$inferInsert;
+export type VerticalDramaAudioQcReportRow =
+  typeof verticalDramaAudioQcReports.$inferSelect;
+export type InsertVerticalDramaAudioQcReportRow =
+  typeof verticalDramaAudioQcReports.$inferInsert;
 
 /** Feature 175: Multi-Stem Audio Manifests per shot */
 export const verticalDramaAudioManifests = pgTable(
@@ -24599,20 +25173,32 @@ export const verticalDramaAudioManifests = pgTable(
       .references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
     shotNumber: integer("shotNumber").notNull(),
     version: integer("version").notNull().default(1),
-    nativeAudioMode: varchar("nativeAudioMode", { length: 32 }).notNull().default("native_baked"),
+    nativeAudioMode: varchar("nativeAudioMode", { length: 32 })
+      .notNull()
+      .default("native_baked"),
     stems: jsonb("stems").notNull().default({}),
     mixDeltas: jsonb("mixDeltas").notNull().default({}),
     takeHistory: jsonb("takeHistory").notNull().default([]),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
-    uniqueIndex("vd_audio_manifest_shot_version_idx").on(t.episodeId, t.shotNumber, t.version),
+    uniqueIndex("vd_audio_manifest_shot_version_idx").on(
+      t.episodeId,
+      t.shotNumber,
+      t.version
+    ),
   ]
 );
 
-export type VerticalDramaAudioManifestRow = typeof verticalDramaAudioManifests.$inferSelect;
-export type InsertVerticalDramaAudioManifestRow = typeof verticalDramaAudioManifests.$inferInsert;
+export type VerticalDramaAudioManifestRow =
+  typeof verticalDramaAudioManifests.$inferSelect;
+export type InsertVerticalDramaAudioManifestRow =
+  typeof verticalDramaAudioManifests.$inferInsert;
 
 /** Feature 176/177: durable source analysis and semantic score-plan state. */
 export const verticalDramaAudioAnalyses = pgTable(
@@ -24620,9 +25206,15 @@ export const verticalDramaAudioAnalyses = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     tenantId: varchar("tenantId", { length: 36 }).notNull(),
-    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-    seriesId: bigint("seriesId", { mode: "number" }).notNull().references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
-    episodeId: bigint("episodeId", { mode: "number" }).notNull().references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    episodeId: bigint("episodeId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
     planningKey: varchar("planningKey", { length: 160 }),
     status: varchar("status", { length: 24 }).notNull().default("queued"),
     sourceRevision: varchar("sourceRevision", { length: 128 }).notNull(),
@@ -24631,28 +25223,56 @@ export const verticalDramaAudioAnalyses = pgTable(
     resultJson: jsonb("resultJson"),
     workerJobId: varchar("workerJobId", { length: 36 }),
     error: text("error"),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
-    index("vd_audio_analysis_owner_idx").on(t.tenantId, t.userId, t.seriesId, t.episodeId, t.createdAt),
+    index("vd_audio_analysis_owner_idx").on(
+      t.tenantId,
+      t.userId,
+      t.seriesId,
+      t.episodeId,
+      t.createdAt
+    ),
     index("vd_audio_analysis_status_idx").on(t.tenantId, t.status, t.createdAt),
-    index("vd_audio_analysis_scope_status_idx").on(t.tenantId, t.seriesId, t.episodeId, t.status),
-    index("vd_audio_analysis_planning_status_idx").on(t.tenantId, t.seriesId, t.planningKey, t.status),
+    index("vd_audio_analysis_scope_status_idx").on(
+      t.tenantId,
+      t.seriesId,
+      t.episodeId,
+      t.status
+    ),
+    index("vd_audio_analysis_planning_status_idx").on(
+      t.tenantId,
+      t.seriesId,
+      t.planningKey,
+      t.status
+    ),
   ]
 );
 
-export type VerticalDramaAudioAnalysisRow = typeof verticalDramaAudioAnalyses.$inferSelect;
-export type InsertVerticalDramaAudioAnalysisRow = typeof verticalDramaAudioAnalyses.$inferInsert;
+export type VerticalDramaAudioAnalysisRow =
+  typeof verticalDramaAudioAnalyses.$inferSelect;
+export type InsertVerticalDramaAudioAnalysisRow =
+  typeof verticalDramaAudioAnalyses.$inferInsert;
 
 export const verticalDramaEmotionPlans = pgTable(
   "vertical_drama_emotion_plans",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     tenantId: varchar("tenantId", { length: 36 }).notNull(),
-    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-    seriesId: bigint("seriesId", { mode: "number" }).notNull().references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
-    episodeId: bigint("episodeId", { mode: "number" }).notNull().references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    episodeId: bigint("episodeId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaEpisodes.id, { onDelete: "cascade" }),
     planningKey: varchar("planningKey", { length: 160 }),
     revision: integer("revision").notNull().default(1),
     status: varchar("status", { length: 24 }).notNull().default("needs_review"),
@@ -24660,44 +25280,93 @@ export const verticalDramaEmotionPlans = pgTable(
     planHash: varchar("planHash", { length: 64 }).notNull(),
     planJson: jsonb("planJson").notNull(),
     skillMetadata: jsonb("skillMetadata").notNull(),
-    rightsStatus: varchar("rightsStatus", { length: 32 }).notNull().default("unreviewed"),
+    rightsStatus: varchar("rightsStatus", { length: 32 })
+      .notNull()
+      .default("unreviewed"),
     rightsPolicyHash: varchar("rightsPolicyHash", { length: 64 }).notNull(),
-    rightsReview: jsonb("rightsReview").$type<{
+    rightsReview: jsonb("rightsReview")
+      .$type<{
       status: string;
       evidenceRef: string | null;
       scope: string | null;
       reviewerId: number | null;
       reviewedAt: string | null;
-    }>().notNull().default({ status: "unreviewed", evidenceRef: null, scope: null, reviewerId: null, reviewedAt: null }),
+      }>()
+      .notNull()
+      .default({
+        status: "unreviewed",
+        evidenceRef: null,
+        scope: null,
+        reviewerId: null,
+        reviewedAt: null,
+      }),
     approvedAt: timestamp("approvedAt", { withTimezone: true }),
-    approvedBy: integer("approvedBy").references(() => users.id, { onDelete: "set null" }),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+    approvedBy: integer("approvedBy").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
-    uniqueIndex("vd_emotion_plan_episode_unique").on(t.tenantId, t.userId, t.episodeId),
-    index("vd_emotion_plan_series_idx").on(t.tenantId, t.userId, t.seriesId, t.createdAt),
-    index("vd_emotion_plan_admission_idx").on(t.tenantId, t.episodeId, t.status, t.rightsStatus),
-    index("vd_emotion_plan_scope_revision_idx").on(t.tenantId, t.seriesId, t.episodeId, t.revision),
-    index("vd_emotion_plan_planning_revision_idx").on(t.tenantId, t.seriesId, t.planningKey, t.revision),
+    uniqueIndex("vd_emotion_plan_episode_unique").on(
+      t.tenantId,
+      t.userId,
+      t.episodeId
+    ),
+    index("vd_emotion_plan_series_idx").on(
+      t.tenantId,
+      t.userId,
+      t.seriesId,
+      t.createdAt
+    ),
+    index("vd_emotion_plan_admission_idx").on(
+      t.tenantId,
+      t.episodeId,
+      t.status,
+      t.rightsStatus
+    ),
+    index("vd_emotion_plan_scope_revision_idx").on(
+      t.tenantId,
+      t.seriesId,
+      t.episodeId,
+      t.revision
+    ),
+    index("vd_emotion_plan_planning_revision_idx").on(
+      t.tenantId,
+      t.seriesId,
+      t.planningKey,
+      t.revision
+    ),
   ]
 );
 
-export type VerticalDramaEmotionPlanRow = typeof verticalDramaEmotionPlans.$inferSelect;
-export type InsertVerticalDramaEmotionPlanRow = typeof verticalDramaEmotionPlans.$inferInsert;
+export type VerticalDramaEmotionPlanRow =
+  typeof verticalDramaEmotionPlans.$inferSelect;
+export type InsertVerticalDramaEmotionPlanRow =
+  typeof verticalDramaEmotionPlans.$inferInsert;
 
 export const verticalDramaEmotionPlanRevisions = pgTable(
   "vertical_drama_emotion_plan_revisions",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    planId: uuid("planId").notNull().references(() => verticalDramaEmotionPlans.id, { onDelete: "cascade" }),
+    planId: uuid("planId")
+      .notNull()
+      .references(() => verticalDramaEmotionPlans.id, { onDelete: "cascade" }),
     tenantId: varchar("tenantId", { length: 36 }).notNull(),
     revision: integer("revision").notNull(),
     planHash: varchar("planHash", { length: 64 }).notNull(),
     planJson: jsonb("planJson").notNull(),
     changeReason: varchar("changeReason", { length: 120 }).notNull(),
-    createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
-    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    createdBy: integer("createdBy").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
     uniqueIndex("vd_emotion_plan_revision_unique").on(t.planId, t.revision),
@@ -24705,8 +25374,10 @@ export const verticalDramaEmotionPlanRevisions = pgTable(
   ]
 );
 
-export type VerticalDramaEmotionPlanRevisionRow = typeof verticalDramaEmotionPlanRevisions.$inferSelect;
-export type InsertVerticalDramaEmotionPlanRevisionRow = typeof verticalDramaEmotionPlanRevisions.$inferInsert;
+export type VerticalDramaEmotionPlanRevisionRow =
+  typeof verticalDramaEmotionPlanRevisions.$inferSelect;
+export type InsertVerticalDramaEmotionPlanRevisionRow =
+  typeof verticalDramaEmotionPlanRevisions.$inferInsert;
 
 // Feature 180 v2 — provider-neutral voice lifecycle. These tables hold
 // metadata and immutable revisions; binary media remains in the managed
@@ -24716,19 +25387,35 @@ export const audioVoiceProfiles = pgTable(
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     voiceProfileId: varchar("voice_profile_id", { length: 160 }).notNull(),
-    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
-    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    createdByUserId: integer("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     ownerScopeType: varchar("owner_scope_type", { length: 16 }).notNull(),
     ownerScopeId: varchar("owner_scope_id", { length: 160 }).notNull(),
+    workspaceId: varchar("workspace_id", { length: 160 }).notNull(),
     currentRevision: integer("current_revision").notNull().default(1),
     status: varchar("status", { length: 16 }).notNull().default("draft"),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
-    uniqueIndex("audio_voice_profiles_tenant_profile_unique").on(t.tenantId, t.voiceProfileId),
-    index("audio_voice_profiles_owner_idx").on(t.tenantId, t.ownerScopeType, t.ownerScopeId),
-  ],
+    uniqueIndex("audio_voice_profiles_tenant_profile_unique").on(
+      t.tenantId,
+      t.voiceProfileId
+    ),
+    index("audio_voice_profiles_owner_idx").on(
+      t.tenantId,
+      t.ownerScopeType,
+      t.ownerScopeId
+    ),
+  ]
 );
 export type AudioVoiceProfile = typeof audioVoiceProfiles.$inferSelect;
 export type InsertAudioVoiceProfile = typeof audioVoiceProfiles.$inferInsert;
@@ -24737,38 +25424,67 @@ export const audioVoiceProfileRevisions = pgTable(
   "audio_voice_profile_revisions",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    profileId: bigint("profile_id", { mode: "number" }).notNull().references(() => audioVoiceProfiles.id, { onDelete: "cascade" }),
+    profileId: bigint("profile_id", { mode: "number" })
+      .notNull()
+      .references(() => audioVoiceProfiles.id, { onDelete: "cascade" }),
     tenantId: varchar("tenant_id", { length: 36 }).notNull(),
     revision: integer("revision").notNull(),
-    profileJson: jsonb("profile_json").$type<Record<string, unknown>>().notNull(),
+    profileJson: jsonb("profile_json")
+      .$type<Record<string, unknown>>()
+      .notNull(),
     contentHash: varchar("content_hash", { length: 64 }).notNull(),
-    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "set null" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    createdByUserId: integer("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
-    uniqueIndex("audio_voice_profile_revisions_unique").on(t.profileId, t.revision),
-    index("audio_voice_profile_revisions_tenant_idx").on(t.tenantId, t.createdAt),
-  ],
+    uniqueIndex("audio_voice_profile_revisions_unique").on(
+      t.profileId,
+      t.revision
+    ),
+    index("audio_voice_profile_revisions_tenant_idx").on(
+      t.tenantId,
+      t.createdAt
+    ),
+  ]
 );
-export type AudioVoiceProfileRevision = typeof audioVoiceProfileRevisions.$inferSelect;
+export type AudioVoiceProfileRevision =
+  typeof audioVoiceProfileRevisions.$inferSelect;
 
 export const audioVoiceConsents = pgTable(
   "audio_voice_consents",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     consentId: varchar("consent_id", { length: 160 }).notNull(),
-    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
-    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    createdByUserId: integer("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     revision: integer("revision").notNull().default(1),
-    consentJson: jsonb("consent_json").$type<Record<string, unknown>>().notNull(),
+    consentJson: jsonb("consent_json")
+      .$type<Record<string, unknown>>()
+      .notNull(),
     status: varchar("status", { length: 16 }).notNull().default("pending"),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
-    uniqueIndex("audio_voice_consents_tenant_unique").on(t.tenantId, t.consentId, t.revision),
+    uniqueIndex("audio_voice_consents_tenant_unique").on(
+      t.tenantId,
+      t.consentId,
+      t.revision
+    ),
     index("audio_voice_consents_status_idx").on(t.tenantId, t.status),
-  ],
+  ]
 );
 export type AudioVoiceConsent = typeof audioVoiceConsents.$inferSelect;
 
@@ -24777,20 +25493,38 @@ export const audioVoiceBindings = pgTable(
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     voiceBindingId: varchar("voice_binding_id", { length: 160 }).notNull(),
-    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
     voiceProfileId: varchar("voice_profile_id", { length: 160 }).notNull(),
     voiceProfileRevision: integer("voice_profile_revision").notNull(),
     revision: integer("revision").notNull().default(1),
-    bindingJson: jsonb("binding_json").$type<Record<string, unknown>>().notNull(),
+    bindingJson: jsonb("binding_json")
+      .$type<Record<string, unknown>>()
+      .notNull(),
     status: varchar("status", { length: 16 }).notNull().default("pending"),
-    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    createdByUserId: integer("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
-    uniqueIndex("audio_voice_bindings_tenant_unique").on(t.tenantId, t.voiceBindingId, t.revision),
-    index("audio_voice_bindings_profile_idx").on(t.tenantId, t.voiceProfileId, t.status),
-  ],
+    uniqueIndex("audio_voice_bindings_tenant_unique").on(
+      t.tenantId,
+      t.voiceBindingId,
+      t.revision
+    ),
+    index("audio_voice_bindings_profile_idx").on(
+      t.tenantId,
+      t.voiceProfileId,
+      t.status
+    ),
+  ]
 );
 export type AudioVoiceBinding = typeof audioVoiceBindings.$inferSelect;
 
@@ -24799,19 +25533,35 @@ export const audioVoiceDatasets = pgTable(
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     datasetId: varchar("dataset_id", { length: 160 }).notNull(),
-    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
-    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    createdByUserId: integer("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     ownerScopeType: varchar("owner_scope_type", { length: 16 }).notNull(),
     ownerScopeId: varchar("owner_scope_id", { length: 160 }).notNull(),
+    workspaceId: varchar("workspace_id", { length: 160 }).notNull(),
     currentRevision: integer("current_revision").notNull().default(1),
     status: varchar("status", { length: 16 }).notNull().default("draft"),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
-    uniqueIndex("audio_voice_datasets_tenant_unique").on(t.tenantId, t.datasetId),
-    index("audio_voice_datasets_owner_idx").on(t.tenantId, t.ownerScopeType, t.ownerScopeId),
-  ],
+    uniqueIndex("audio_voice_datasets_tenant_unique").on(
+      t.tenantId,
+      t.datasetId
+    ),
+    index("audio_voice_datasets_owner_idx").on(
+      t.tenantId,
+      t.ownerScopeType,
+      t.ownerScopeId
+    ),
+  ]
 );
 export type AudioVoiceDataset = typeof audioVoiceDatasets.$inferSelect;
 
@@ -24819,39 +25569,421 @@ export const audioVoiceDatasetRevisions = pgTable(
   "audio_voice_dataset_revisions",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    datasetId: bigint("dataset_id", { mode: "number" }).notNull().references(() => audioVoiceDatasets.id, { onDelete: "cascade" }),
+    datasetId: bigint("dataset_id", { mode: "number" })
+      .notNull()
+      .references(() => audioVoiceDatasets.id, { onDelete: "cascade" }),
     tenantId: varchar("tenant_id", { length: 36 }).notNull(),
     revision: integer("revision").notNull(),
-    manifestJson: jsonb("manifest_json").$type<Record<string, unknown>>().notNull(),
+    manifestJson: jsonb("manifest_json")
+      .$type<Record<string, unknown>>()
+      .notNull(),
     manifestHash: varchar("manifest_hash", { length: 64 }).notNull(),
     status: varchar("status", { length: 16 }).notNull().default("draft"),
-    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "set null" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    createdByUserId: integer("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
-  t => [uniqueIndex("audio_voice_dataset_revisions_unique").on(t.datasetId, t.revision)],
+  t => [
+    uniqueIndex("audio_voice_dataset_revisions_unique").on(
+      t.datasetId,
+      t.revision
+    ),
+  ]
 );
-export type AudioVoiceDatasetRevision = typeof audioVoiceDatasetRevisions.$inferSelect;
+export type AudioVoiceDatasetRevision =
+  typeof audioVoiceDatasetRevisions.$inferSelect;
+
+// Feature 185 — Skill Framework Storyboard and reusable character library.
+// These tables are intentionally separate from the series-scoped Drama tables;
+// bindings store immutable snapshots so a later library edit cannot rewrite a
+// previously generated storyboard.
+export const storyboardSkillProjects = pgTable(
+  "storyboard_skill_projects",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    projectKey: varchar("project_key", { length: 160 }).notNull(),
+    title: varchar("title", { length: 256 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("draft"),
+    reviewId: integer("review_id").references(
+      () => mediaStudioStoryboardReviews.id,
+      { onDelete: "set null" }
+    ),
+    activeRunId: uuid("active_run_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+  },
+  t => [
+    uniqueIndex("storyboard_skill_projects_tenant_key_unique").on(
+      t.tenantId,
+      t.projectKey
+    ),
+    index("storyboard_skill_projects_owner_status_idx").on(
+      t.tenantId,
+      t.userId,
+      t.status,
+      t.updatedAt
+    ),
+  ]
+);
+export type StoryboardSkillProject =
+  typeof storyboardSkillProjects.$inferSelect;
+export type InsertStoryboardSkillProject =
+  typeof storyboardSkillProjects.$inferInsert;
+
+export const storyboardSkillRuns = pgTable(
+  "storyboard_skill_runs",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => storyboardSkillProjects.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    idempotencyKey: varchar("idempotency_key", { length: 160 }).notNull(),
+    confirmationFingerprint: varchar("confirmation_fingerprint", {
+      length: 64,
+    }).notNull(),
+    status: varchar("status", { length: 32 })
+      .notNull()
+      .default("awaiting_confirmation"),
+    normalizedSnapshot: jsonb("normalized_snapshot")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    skillSnapshot: jsonb("skill_snapshot")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    modelSnapshot: jsonb("model_snapshot")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    error: jsonb("error").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  t => [
+    uniqueIndex("storyboard_skill_runs_tenant_idempotency_unique").on(
+      t.tenantId,
+      t.idempotencyKey
+    ),
+    index("storyboard_skill_runs_project_status_idx").on(
+      t.projectId,
+      t.status,
+      t.updatedAt
+    ),
+    index("storyboard_skill_runs_owner_idx").on(
+      t.tenantId,
+      t.userId,
+      t.createdAt
+    ),
+  ]
+);
+export type StoryboardSkillRun = typeof storyboardSkillRuns.$inferSelect;
+export type InsertStoryboardSkillRun = typeof storyboardSkillRuns.$inferInsert;
+
+export const storyboardSkillShots = pgTable(
+  "storyboard_skill_shots",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => storyboardSkillRuns.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    shotNumber: integer("shot_number").notNull(),
+    beat: varchar("beat", { length: 80 }).notNull(),
+    context: text("context").notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("pending"),
+    skillInput: jsonb("skill_input").$type<Record<string, unknown>>().notNull(),
+    skillResponse: jsonb("skill_response").$type<Record<
+      string,
+      unknown
+    > | null>(),
+    generationPrompt: text("generation_prompt"),
+    generationRequest: jsonb("generation_request").$type<Record<
+      string,
+      unknown
+    > | null>(),
+    effectiveGenerationRequest: jsonb(
+      "effective_generation_request"
+    ).$type<Record<string, unknown> | null>(),
+    imageAssetId: bigint("image_asset_id", { mode: "number" }).references(
+      () => mediaAssets.id,
+      { onDelete: "set null" }
+    ),
+    videoPrompt: text("video_prompt"),
+    videoModelId: varchar("video_model_id", { length: 160 }),
+    attempt: integer("attempt").notNull().default(0),
+    error: jsonb("error").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    uniqueIndex("storyboard_skill_shots_run_number_unique").on(
+      t.runId,
+      t.shotNumber
+    ),
+    index("storyboard_skill_shots_tenant_status_idx").on(
+      t.tenantId,
+      t.status,
+      t.updatedAt
+    ),
+  ]
+);
+export type StoryboardSkillShot = typeof storyboardSkillShots.$inferSelect;
+export type InsertStoryboardSkillShot =
+  typeof storyboardSkillShots.$inferInsert;
+
+export const characterLibraryCharacters = pgTable(
+  "character_library_characters",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    characterKey: varchar("character_key", { length: 160 }).notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    currentRevision: integer("current_revision").notNull().default(1),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+  },
+  t => [
+    uniqueIndex("character_library_tenant_key_unique").on(
+      t.tenantId,
+      t.characterKey
+    ),
+    index("character_library_owner_status_idx").on(
+      t.tenantId,
+      t.userId,
+      t.status,
+      t.updatedAt
+    ),
+  ]
+);
+export type CharacterLibraryCharacter =
+  typeof characterLibraryCharacters.$inferSelect;
+
+export const characterLibraryRevisions = pgTable(
+  "character_library_revisions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characterLibraryCharacters.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull(),
+    profileJson: jsonb("profile_json")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    skillSnapshot: jsonb("skill_snapshot")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    contentHash: varchar("content_hash", { length: 64 }).notNull(),
+    createdByUserId: integer("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    uniqueIndex("character_library_revision_unique").on(
+      t.characterId,
+      t.revision
+    ),
+    index("character_library_revision_tenant_idx").on(t.tenantId, t.createdAt),
+  ]
+);
+export type CharacterLibraryRevision =
+  typeof characterLibraryRevisions.$inferSelect;
+
+export const characterLibraryLooks = pgTable(
+  "character_library_looks",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characterLibraryCharacters.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 160 }).notNull(),
+    revision: integer("revision").notNull().default(1),
+    lookJson: jsonb("look_json").$type<Record<string, unknown>>().notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    index("character_library_looks_owner_idx").on(
+      t.tenantId,
+      t.characterId,
+      t.status
+    ),
+  ]
+);
+
+export const characterLibraryAssets = pgTable(
+  "character_library_assets",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characterLibraryCharacters.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    mediaAssetId: bigint("media_asset_id", { mode: "number" })
+      .notNull()
+      .references(() => mediaAssets.id, { onDelete: "restrict" }),
+    role: varchar("role", { length: 40 }).notNull().default("reference"),
+    revision: integer("revision").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    uniqueIndex("character_library_asset_unique").on(
+      t.characterId,
+      t.mediaAssetId,
+      t.role
+    ),
+    index("character_library_assets_owner_idx").on(t.tenantId, t.characterId),
+  ]
+);
+
+export const storyboardSkillProjectCharacters = pgTable(
+  "storyboard_skill_project_characters",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => storyboardSkillProjects.id, { onDelete: "cascade" }),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characterLibraryCharacters.id, {
+        onDelete: "restrict",
+      }),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull(),
+    nameSnapshot: varchar("name_snapshot", { length: 160 }).notNull(),
+    roleSnapshot: varchar("role_snapshot", { length: 120 }),
+    snapshotJson: jsonb("snapshot_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    lookId: uuid("look_id").references(() => characterLibraryLooks.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  t => [
+    uniqueIndex("storyboard_skill_project_character_unique").on(
+      t.projectId,
+      t.characterId
+    ),
+    index("storyboard_skill_project_characters_owner_idx").on(
+      t.tenantId,
+      t.projectId
+    ),
+  ]
+);
 
 export const audioVoiceTrainingRuns = pgTable(
   "audio_voice_training_runs",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     jobId: varchar("job_id", { length: 160 }).notNull(),
-    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
     datasetId: varchar("dataset_id", { length: 160 }).notNull(),
     datasetRevision: integer("dataset_revision").notNull(),
     idempotencyKey: varchar("idempotency_key", { length: 128 }).notNull(),
     recipeJson: jsonb("recipe_json").$type<Record<string, unknown>>().notNull(),
     status: varchar("status", { length: 32 }).notNull().default("queued"),
-    checkpointJson: jsonb("checkpoint_json").$type<Record<string, unknown> | null>(),
-    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    checkpointJson: jsonb("checkpoint_json").$type<Record<
+      string,
+      unknown
+    > | null>(),
+    createdByUserId: integer("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
-    uniqueIndex("audio_voice_training_runs_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
-    index("audio_voice_training_runs_status_idx").on(t.tenantId, t.status, t.updatedAt),
-  ],
+    uniqueIndex("audio_voice_training_runs_tenant_idempotency_unique").on(
+      t.tenantId,
+      t.idempotencyKey
+    ),
+    index("audio_voice_training_runs_status_idx").on(
+      t.tenantId,
+      t.status,
+      t.updatedAt
+    ),
+  ]
 );
 export type AudioVoiceTrainingRun = typeof audioVoiceTrainingRuns.$inferSelect;
 
@@ -24860,17 +25992,29 @@ export const audioTrainedVoiceModels = pgTable(
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     modelId: varchar("model_id", { length: 160 }).notNull(),
-    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
     trainingRunId: varchar("training_run_id", { length: 160 }).notNull(),
     modelJson: jsonb("model_json").$type<Record<string, unknown>>().notNull(),
     status: varchar("status", { length: 16 }).notNull().default("candidate"),
-    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    createdByUserId: integer("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   t => [
-    uniqueIndex("audio_trained_voice_models_tenant_unique").on(t.tenantId, t.modelId),
+    uniqueIndex("audio_trained_voice_models_tenant_unique").on(
+      t.tenantId,
+      t.modelId
+    ),
     index("audio_trained_voice_models_status_idx").on(t.tenantId, t.status),
-  ],
+  ]
 );
-export type AudioTrainedVoiceModel = typeof audioTrainedVoiceModels.$inferSelect;
+export type AudioTrainedVoiceModel =
+  typeof audioTrainedVoiceModels.$inferSelect;

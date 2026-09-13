@@ -2,6 +2,27 @@ import { splitTimelineClip, trimTimelineClip } from "./timelineEdits";
 import { isProjectFilePath } from "./projectPersistence";
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import type { SmartSpecProjectDraft, NleTrack, NleClip, ProjectAsset } from "../../types/nleProject";
+import {
+  canMoveTimelineClip,
+  canPlaceMediaOnTrack,
+  chooseAssetTargetTrack,
+  moveTimelineClip,
+  normalizeTimelineDropAsset,
+} from "./mediaWorkspaceTimeline";
+
+const TIMELINE_CLIP_MIME = "application/x-smartspec-timeline-clip";
+
+type TimelinePointerDrag = {
+  sourceTrackId: string;
+  clipId: string;
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  pointerOffsetMs: number;
+  moved: boolean;
+  targetTrackId: string;
+  timelineStartMs: number;
+};
 
 export interface MultiTrackTimelineProps {
   project: SmartSpecProjectDraft;
@@ -71,6 +92,11 @@ export function MultiTrackTimeline({
   const timelineTracksRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = React.useState<number>(1.0); // 1.0 = fit, up to 4.0
   const [soloTrackId, setSoloTrackId] = useState<string | null>(null);
+  const [selectedClip, setSelectedClip] = useState<{ trackId: string; clipId: string } | null>(null);
+  const [selectedTargetTrackId, setSelectedTargetTrackId] = useState<string | null>("track_v1");
+  const pointerDragRef = useRef<TimelinePointerDrag | null>(null);
+  const [pointerDraggingClip, setPointerDraggingClip] = useState<{ trackId: string; clipId: string } | null>(null);
+  const [pointerDragTargetTrackId, setPointerDragTargetTrackId] = useState<string | null>(null);
 
   const [trimmingClip, setTrimmingClip] = useState<{
     trackId: string;
@@ -95,6 +121,49 @@ export function MultiTrackTimeline({
 
   // Expand timeline with 30s tail padding so user can scroll horizontally and drop clips after existing video!
   const effectiveDurationMs = Math.max(1000, durationMs || project.canvas.durationMs || 60000, maxClipEndMs + 30000);
+
+  useEffect(() => {
+    setSelectedTargetTrackId((current) => {
+      if (current && project.tracks.some((track) => track.id === current && !track.locked)) return current;
+      return project.tracks.find((track) => track.id === "track_v1" && !track.locked)?.id
+        ?? project.tracks.find((track) => !track.locked)?.id
+        ?? null;
+    });
+    setSelectedClip((current) => {
+      if (!current) return current;
+      const track = project.tracks.find((candidate) => candidate.id === current.trackId);
+      return track?.clips.some((clip) => clip.id === current.clipId) ? current : null;
+    });
+  }, [project.tracks]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target instanceof HTMLInputElement
+        || target instanceof HTMLTextAreaElement
+        || target instanceof HTMLSelectElement
+        || target instanceof HTMLButtonElement
+        || target?.isContentEditable
+      ) return;
+      if (!selectedClip) return;
+      const track = project.tracks.find((candidate) => candidate.id === selectedClip.trackId);
+      if (!track || track.locked) return;
+
+      event.preventDefault();
+      onUpdateProject({
+        ...project,
+        tracks: project.tracks.map((candidate) => candidate.id === selectedClip.trackId
+          ? { ...candidate, clips: candidate.clips.filter((clip) => clip.id !== selectedClip.clipId) }
+          : candidate),
+      });
+      setSelectedClip(null);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onUpdateProject, project, selectedClip]);
 
   // Mouse Move & Up for Mouse Drag Trimming (In / Out)
   useEffect(() => {
@@ -134,23 +203,135 @@ export function MultiTrackTimeline({
     };
   }, [trimmingClip, effectiveDurationMs, onUpdateProject, project]);
 
+  const getDropTimeMs = (clientX: number) => {
+    if (!timelineTracksRef.current) return Math.round(currentTimeMs);
+    const rect = timelineTracksRef.current.getBoundingClientRect();
+    if (rect.width <= 0) return Math.round(currentTimeMs);
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return Math.round(ratio * effectiveDurationMs);
+  };
+
+  const getPointerDrop = (clientX: number, clientY: number, drag: TimelinePointerDrag) => {
+    const hovered = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>("[data-track-id]");
+    const targetTrackId = hovered?.dataset.trackId ?? drag.targetTrackId;
+    const targetTrack = project.tracks.find((track) => track.id === targetTrackId);
+    const sourceTrack = project.tracks.find((track) => track.id === drag.sourceTrackId);
+    if (!targetTrack || !sourceTrack || !canMoveTimelineClip(sourceTrack, targetTrack)) return null;
+    return {
+      targetTrackId,
+      timelineStartMs: Math.max(0, getDropTimeMs(clientX) - drag.pointerOffsetMs),
+    };
+  };
+
+  useEffect(() => {
+    if (!pointerDraggingClip) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const drag = pointerDragRef.current;
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      if (Math.abs(event.clientX - drag.startClientX) > 4 || Math.abs(event.clientY - drag.startClientY) > 4) {
+        drag.moved = true;
+      }
+      if (!drag.moved) return;
+      const nextDrop = getPointerDrop(event.clientX, event.clientY, drag);
+      drag.targetTrackId = nextDrop?.targetTrackId ?? drag.targetTrackId;
+      drag.timelineStartMs = nextDrop?.timelineStartMs ?? drag.timelineStartMs;
+      setPointerDragTargetTrackId(nextDrop?.targetTrackId ?? null);
+    };
+
+    const finishPointerDrag = (event: PointerEvent, canceled = false) => {
+      const drag = pointerDragRef.current;
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      const nextDrop = !canceled && drag.moved
+        ? getPointerDrop(event.clientX, event.clientY, drag)
+        : null;
+      if (nextDrop) {
+        const nextTracks = moveTimelineClip(
+          project.tracks,
+          drag.sourceTrackId,
+          drag.clipId,
+          nextDrop.targetTrackId,
+          nextDrop.timelineStartMs,
+        );
+        if (nextTracks !== project.tracks) {
+          onUpdateProject({ ...project, tracks: nextTracks });
+          setSelectedClip({ trackId: nextDrop.targetTrackId, clipId: drag.clipId });
+          setSelectedTargetTrackId(nextDrop.targetTrackId);
+        }
+      }
+      pointerDragRef.current = null;
+      setPointerDraggingClip(null);
+      setPointerDragTargetTrackId(null);
+    };
+
+    const handlePointerUp = (event: PointerEvent) => finishPointerDrag(event);
+    const handlePointerCancel = (event: PointerEvent) => finishPointerDrag(event, true);
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerCancel);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerCancel);
+    };
+  }, [pointerDraggingClip, project, effectiveDurationMs, onUpdateProject]);
+
+  const handleClipPointerDown = (trackId: string, clip: NleClip, event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("button, .clip-trim-handle")) return;
+    const timelineRect = timelineTracksRef.current?.getBoundingClientRect();
+    const clipRect = event.currentTarget.getBoundingClientRect();
+    const pointerOffsetMs = timelineRect && timelineRect.width > 0
+      ? Math.max(0, Math.min(effectiveDurationMs, ((event.clientX - clipRect.left) / timelineRect.width) * effectiveDurationMs))
+      : 0;
+    event.preventDefault();
+    event.stopPropagation();
+    pointerDragRef.current = {
+      sourceTrackId: trackId,
+      clipId: clip.id,
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      pointerOffsetMs,
+      moved: false,
+      targetTrackId: trackId,
+      timelineStartMs: clip.timelineStartMs,
+    };
+    setSelectedClip({ trackId, clipId: clip.id });
+    setSelectedTargetTrackId(trackId);
+    setPointerDraggingClip({ trackId, clipId: clip.id });
+    setPointerDragTargetTrackId(trackId);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
   const handleTrackDrop = (trackId: string, e: React.DragEvent) => {
     e.preventDefault();
     e.currentTarget.classList.remove("drop-target-active");
-    if (project.tracks.find((track) => track.id === trackId)?.locked) return;
-    try {
-      const dataStr = e.dataTransfer.getData("application/json");
-      if (!dataStr) return;
-      const asset = JSON.parse(dataStr);
-      if (!asset) return;
+    const targetTrack = project.tracks.find((track) => track.id === trackId);
+    if (!targetTrack || targetTrack.locked) return;
+    setSelectedTargetTrackId(trackId);
 
-      let dropTimeMs = currentTimeMs;
-      if (timelineTracksRef.current) {
-        const rect = timelineTracksRef.current.getBoundingClientRect();
-        const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-        dropTimeMs = Math.round(ratio * effectiveDurationMs);
+    try {
+      const timelineClipData = e.dataTransfer.getData(TIMELINE_CLIP_MIME);
+      const dropTimeMs = getDropTimeMs(e.clientX);
+      if (timelineClipData) {
+        const payload = JSON.parse(timelineClipData) as { trackId?: string; clipId?: string };
+        if (!payload.trackId || !payload.clipId) return;
+        const nextTracks = moveTimelineClip(project.tracks, payload.trackId, payload.clipId, trackId, dropTimeMs);
+        if (nextTracks !== project.tracks) {
+          onUpdateProject({ ...project, tracks: nextTracks });
+          setSelectedClip({ trackId, clipId: payload.clipId });
+        }
+        return;
       }
 
+      const dataStr = e.dataTransfer.getData("application/json") || e.dataTransfer.getData("text/plain");
+      if (!dataStr) return;
+      const asset = normalizeTimelineDropAsset(JSON.parse(dataStr));
+      if (!asset) return;
+      const mediaType = asset.mediaType || "video";
+      if (!canPlaceMediaOnTrack(targetTrack, mediaType)) return;
       onDropAsset?.(trackId, asset, dropTimeMs);
     } catch (err) {
       console.warn("Track drop error:", err);
@@ -219,19 +400,13 @@ export function MultiTrackTimeline({
       return t;
     });
     onUpdateProject({ ...project, tracks: nextTracks });
+    setSelectedClip(null);
   };
 
 
   const handlePlaceAssetOnTimeline = (asset: ProjectAsset) => {
-    const candidateTrack = project.tracks.find((t) => {
-      if (t.locked) return false;
-      if (asset.mediaType === "audio") {
-        return t.type === "audio_music" || t.type === "audio_sfx" || t.type === "audio_voice" || t.id === "track_a2" || t.id === "track_a1";
-      }
-      return t.type === "video_broll" || t.type === "video_main" || t.id === "track_v2" || t.id === "track_v1";
-    }) ?? project.tracks.find((t) => !t.locked && (asset.mediaType === "audio" ? t.type?.startsWith("audio") : t.type?.startsWith("video")));
-
-    const targetTrackId = candidateTrack?.id ?? (asset.mediaType === "audio" ? "track_a2" : "track_v2");
+    const targetTrackId = chooseAssetTargetTrack(project.tracks, asset.mediaType, selectedTargetTrackId);
+    if (!targetTrackId) return;
     const defaultDuration = asset.durationMs && asset.durationMs > 0 ? asset.durationMs : 5000;
     const newClip: NleClip = {
       id: `clip_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -257,6 +432,7 @@ export function MultiTrackTimeline({
     });
 
     onUpdateProject({ ...project, tracks: nextTracks });
+    setSelectedTargetTrackId(targetTrackId);
   };
 
   const handleRemoveAssetFromBin = (assetId: string) => {
@@ -735,6 +911,19 @@ export function MultiTrackTimeline({
               </div>
             </div>
 
+            <div className="media-bin-target-row">
+              <label htmlFor="media-bin-target-track">วางลงแทร็ก:</label>
+              <select
+                id="media-bin-target-track"
+                value={selectedTargetTrackId ?? ""}
+                onChange={(event) => setSelectedTargetTrackId(event.target.value || null)}
+              >
+                {project.tracks.filter((track) => !track.locked).map((track) => (
+                  <option key={track.id} value={track.id}>{track.name}</option>
+                ))}
+              </select>
+            </div>
+
             <div className="media-bin-sidebar-content">
               {mediaPool.length === 0 ? (
                 <div className="bin-empty-sidebar">
@@ -765,7 +954,10 @@ export function MultiTrackTimeline({
                       className="bin-item-card-sidebar"
                       draggable
                       onDragStart={(e) => {
-                        e.dataTransfer.setData("application/json", JSON.stringify(asset));
+                        const payload = JSON.stringify(asset);
+                        e.dataTransfer.setData("application/json", payload);
+                        e.dataTransfer.setData("text/plain", payload);
+                        e.dataTransfer.effectAllowed = "copy";
                       }}
                       title={`คลิกค้างแล้วลากไปวางบน Timeline แทร็ก V1, V2, A1 ได้ทันที\nพาธ: ${asset.filePath}`}
                     >
@@ -817,7 +1009,12 @@ export function MultiTrackTimeline({
         <div className="nle-track-headers-column">
           <div className="ruler-header-spacer">TRACKS</div>
           {project.tracks.map((track) => (
-            <div key={track.id} className={`track-header-item type-${track.type}`}>
+            <div
+              key={track.id}
+              className={`track-header-item type-${track.type} ${selectedTargetTrackId === track.id ? "selected-target-track" : ""}`}
+              onClick={() => setSelectedTargetTrackId(track.id)}
+              title={`เลือก ${track.name} เป็นแทร็กปลายทางสำหรับการวางจาก Bin`}
+            >
               <div className="track-title-row">
                 <span className="track-badge">
                   {track.type === "video_main"
@@ -925,10 +1122,12 @@ export function MultiTrackTimeline({
             {project.tracks.map((track) => (
               <div
                 key={track.id}
-                className="track-lane-row"
+                data-track-id={track.id}
+                className={`track-lane-row ${selectedTargetTrackId === track.id ? "selected-target-track" : ""} ${pointerDragTargetTrackId === track.id ? "pointer-drag-target" : ""}`}
+                onMouseDown={() => setSelectedTargetTrackId(track.id)}
                 onDragOver={(e) => {
                   e.preventDefault();
-                  e.dataTransfer.dropEffect = "copy";
+                  e.dataTransfer.dropEffect = e.dataTransfer.types.includes(TIMELINE_CLIP_MIME) ? "move" : "copy";
                   e.currentTarget.classList.add("drop-target-active");
                 }}
                 onDragLeave={(e) => {
@@ -943,7 +1142,13 @@ export function MultiTrackTimeline({
                   return (
                     <div
                       key={clip.id}
-                      className={`timeline-clip-block clip-${track.type}`}
+                      className={`timeline-clip-block clip-${track.type} ${selectedClip?.trackId === track.id && selectedClip.clipId === clip.id ? "selected-timeline-clip" : ""} ${pointerDraggingClip?.trackId === track.id && pointerDraggingClip.clipId === clip.id ? "pointer-dragging" : ""}`}
+                      onPointerDown={(event) => handleClipPointerDown(track.id, clip, event)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedClip({ trackId: track.id, clipId: clip.id });
+                        setSelectedTargetTrackId(track.id);
+                      }}
                       style={{
                         left: `${clipLeft}%`,
                         width: `${clipWidth}%`,

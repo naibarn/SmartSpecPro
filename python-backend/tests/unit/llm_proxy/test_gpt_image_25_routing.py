@@ -55,6 +55,7 @@ async def test_generate_image_sends_the_selected_gpt_image_25_operation(
         prompt="Create a cinematic product image",
         callback_url="",
         api_config=api_config,
+        extra_params={"quality": "high"},
         reference_image_urls=["https://smartaihub.app/reference.png"],
     )
 
@@ -62,6 +63,7 @@ async def test_generate_image_sends_the_selected_gpt_image_25_operation(
     assert kwargs == {}
     assert args[0] == image_model
     assert args[1]["input_urls"] == ["https://kie.example/reference.png"]
+    assert args[1]["quality"] == "high"
 
     provider.create_task.reset_mock()
     provider._prepare_reference_image_urls.reset_mock()

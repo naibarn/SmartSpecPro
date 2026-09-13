@@ -247,7 +247,7 @@ function RenderJobsPage() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl font-semibold tracking-normal text-white sm:text-2xl">
-                    งานเรนเดอร์ของฉัน
+                    คิวงานประมวลผลของฉัน
                   </h1>
                   <badge_1.Badge variant="outline" className="border-cyan-300/30 bg-cyan-400/10 text-cyan-100">
                     Worker queue

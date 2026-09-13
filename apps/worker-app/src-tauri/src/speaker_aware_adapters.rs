@@ -14,7 +14,10 @@ use sha2::{Digest, Sha256};
 pub const SPEAKER_AWARE_CONTRACT_VERSION: &str = "feature-179-v1";
 pub const SPEAKER_AWARE_RUNNER_ENV: &str = "SMARTAIHUB_SPEAKER_AWARE_RUNNER";
 pub const SPEAKER_AWARE_CAPABILITY: &str = "speaker-aware-media-v1";
+#[cfg(target_os = "windows")]
 pub const BUNDLED_SPEAKER_AWARE_RUNNER_RELATIVE_PATH: &str = "speaker-aware/speaker-aware-runner.exe";
+#[cfg(not(target_os = "windows"))]
+pub const BUNDLED_SPEAKER_AWARE_RUNNER_RELATIVE_PATH: &str = "speaker-aware/speaker-aware-runner";
 
 fn canonical_json(value: &serde_json::Value) -> String {
     match value {
@@ -119,7 +122,13 @@ pub fn probe_allowlisted_command(command: &str, model_path: Option<&Path>, gpu_r
     let adapter_id = match command { "silero-onnx" => AdapterId::SileroOnnx, "firered-vad" => AdapterId::FireRedOnnx, "ten-vad" => AdapterId::TenVad, "webrtc-vad" => AdapterId::WebRtcVad, "pyannote" => AdapterId::PyannoteDiarization, "mediapipe-face" => AdapterId::MediaPipeFace, "person-body" => AdapterId::PersonBody, "active-speaker-fusion" => AdapterId::ActiveSpeakerFusion, _ => return AdapterCapability { adapter_id: AdapterId::WebRtcVad, version: "unknown".into(), status: AdapterStatus::Incompatible, runtime: None, device: "unknown".into(), model_checksum: None, remediation_key: Some("unknown_adapter".into()) } };
     if gpu_required && std::env::var("CUDA_VISIBLE_DEVICES").ok().as_deref() == Some("") { return AdapterCapability { adapter_id, version: "unknown".into(), status: AdapterStatus::GpuUnavailable, runtime: Some(command.into()), device: "cuda".into(), model_checksum: None, remediation_key: Some("gpu_required".into()) }; }
     if model_path.is_some_and(|path| !path.is_file()) { return AdapterCapability { adapter_id, version: "unknown".into(), status: AdapterStatus::MissingModel, runtime: Some(command.into()), device: if gpu_required { "cuda" } else { "cpu" }.into(), model_checksum: None, remediation_key: Some("install_model".into()) }; }
-    let ready = Command::new(command).arg("--version").output().is_ok();
+    let mut probe = Command::new(command);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        probe.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    let ready = probe.arg("--version").output().is_ok();
     AdapterCapability { adapter_id, version: "unknown".into(), status: if ready { AdapterStatus::Ready } else { AdapterStatus::MissingRuntime }, runtime: Some(command.into()), device: if gpu_required { "cuda" } else { "cpu" }.into(), model_checksum: None, remediation_key: if ready { None } else { Some("install_runtime".into()) } }
 }
 
@@ -170,7 +179,13 @@ pub fn configure_bundled_runner(resource_dir: &Path, app_data_dir: Option<&Path>
 
 pub fn probe_configured_runner() -> Result<String, String> {
     let command = configured_runner().ok_or_else(|| "workflow_capability_blocked: speaker-aware runner is not configured".to_string())?;
-    let output = Command::new(&command).arg("--version").output()
+    let mut probe = Command::new(&command);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        probe.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    let output = probe.arg("--version").output()
         .map_err(|error| format!("workflow_capability_blocked: speaker-aware runner unavailable: {error}"))?;
     if !output.status.success() {
         return Err("workflow_capability_blocked: speaker-aware runner failed --version".into());
@@ -185,7 +200,13 @@ pub fn run_configured_runner(
     timeout: Duration,
 ) -> Result<(), String> {
     let command = probe_configured_runner()?;
-    let mut child = Command::new(&command)
+    let mut child = Command::new(&command);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        child.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    let mut child = child
         .arg("--request").arg(request_path)
         .arg("--input").arg(input_path)
         .arg("--output").arg(output_path)

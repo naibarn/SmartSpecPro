@@ -33,11 +33,13 @@ describe("Admin Feedback Hub deep-link and lightbox contracts", () => {
         FEEDBACK_LIGHTBOX_ZOOM_MAX + FEEDBACK_LIGHTBOX_ZOOM_STEP
       )
     ).toBe(FEEDBACK_LIGHTBOX_ZOOM_MAX);
+    expect(getFeedbackLightboxImageStyle(0.25, { width: 8000, height: 12000 }))
+      .toEqual({ width: "25%", height: "auto", maxHeight: "calc((100dvh - 8rem) * 0.25)" });
     expect(clampFeedbackLightboxZoom(2.5)).toBe(2.5);
     expect(getFeedbackLightboxZoomPercent(2.5)).toBe(250);
     expect(
       getFeedbackLightboxImageStyle(1, { width: 100, height: 50 })
-    ).toBeUndefined();
+    ).toEqual({ width: "100%", height: "auto", maxHeight: "calc((100dvh - 8rem) * 1)" });
     expect(
       getFeedbackLightboxImageStyle(1.25, { width: 100, height: 50 })
     ).toEqual({
@@ -53,7 +55,9 @@ describe("Admin Feedback Hub deep-link and lightbox contracts", () => {
     );
 
     expect(screen.getByText("100%")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "ย่อภาพ" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "ย่อภาพ" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "ย่อภาพ" }));
+    expect(onScaleChange).toHaveBeenCalledWith(0.75);
     expect(screen.getByRole("button", { name: "ขยายภาพ" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "ขยายภาพ" }));
     expect(onScaleChange).toHaveBeenCalledWith(1.25);
@@ -64,8 +68,13 @@ describe("Admin Feedback Hub deep-link and lightbox contracts", () => {
         onScaleChange={onScaleChange}
       />
     );
+    fireEvent.click(screen.getByRole("button", { name: "รีเซ็ตขนาด" }));
+    expect(onScaleChange).toHaveBeenCalledWith(1);
     expect(screen.getByText("400%")).toBeTruthy();
     expect(screen.getByRole("button", { name: "ขยายภาพ" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "รีเซ็ตขนาด" })).toBeEnabled();
+    rerender(<FeedbackLightboxZoomControls scale={0.25} onScaleChange={onScaleChange} />);
+    expect(screen.getByText("25%")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "ย่อภาพ" })).toBeDisabled();
   });
 });

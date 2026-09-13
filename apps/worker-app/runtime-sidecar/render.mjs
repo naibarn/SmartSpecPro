@@ -703,7 +703,7 @@ const hyperframesCli = join(runtimePack, "hyperframes", "node_modules", "hyperfr
 const hyperframesPackage = join(runtimePack, "hyperframes", "node_modules", "hyperframes", "package.json");
 let ffmpegPath = join(runtimePack, "bin", process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
 let ffprobePath = join(runtimePack, "bin", process.platform === "win32" ? "ffprobe.exe" : "ffprobe");
-let chromePath = findFile(join(runtimePack, "browser"), ["chrome.exe", "headless_shell.exe", "chrome", "headless_shell"]);
+let chromePath = findFile(join(runtimePack, "browser"), ["chrome.exe", "headless_shell.exe", "chrome", "headless_shell", "chrome-headless-shell"]);
 const browserLibsPath = join(runtimePack, "browser-libs");
 if (!existsSync(hyperframesCli)) fail(`official HyperFrames CLI is missing: ${hyperframesCli}`);
 
@@ -745,6 +745,9 @@ const env = {
   LD_LIBRARY_PATH: existsSync(browserLibsPath)
     ? `${browserLibsPath}${process.env.LD_LIBRARY_PATH ? `:${process.env.LD_LIBRARY_PATH}` : ""}`
     : process.env.LD_LIBRARY_PATH,
+  DYLD_LIBRARY_PATH: process.platform === "darwin"
+    ? `${dirname(ffmpegPath)}${process.env.DYLD_LIBRARY_PATH ? `:${process.env.DYLD_LIBRARY_PATH}` : ""}`
+    : process.env.DYLD_LIBRARY_PATH,
   PATH: `${dirname(ffmpegPath)}${process.platform === "win32" ? ";" : ":"}${process.env.PATH ?? ""}`,
 };
 

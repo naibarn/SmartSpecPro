@@ -12,7 +12,15 @@ import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { Loader2, Save, Sparkles, Trash2, Upload } from "lucide-react";
+import {
+  Download,
+  Expand,
+  Loader2,
+  Save,
+  Sparkles,
+  Trash2,
+  Upload,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +29,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
+import {
+  AuthenticatedMediaImage,
+  fetchAuthenticatedMedia,
+} from "@/components/media/AuthenticatedMediaImage";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -57,6 +69,12 @@ import {
   type VerticalDramaSeriesLlmModelPolicy,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries/contracts";
+import {
+  normalizeVerticalDramaEpisodeGenerationSettings,
+  resolveVerticalDramaLlmQualityProfile,
+  type VerticalDramaEpisodeGenerationSettings,
+  type VerticalDramaLlmQualityProfile,
+} from "@shared/verticalDramaSeries/generationSettings";
 import {
   readVerticalDramaDialogueLanguageProfile,
   VERTICAL_DRAMA_SPOKEN_LOCALE_GROUP_LABELS_EN,
@@ -105,7 +123,11 @@ const WORKER_WORKFLOW_OPERATION_FIELDS = [
   { id: "broll_preprocess", th: "เตรียม B-roll", en: "B-roll preprocess" },
   { id: "shot_generation", th: "สร้าง Shot", en: "Shot generation" },
   { id: "image_to_video", th: "ภาพเป็นวิดีโอ", en: "Image to video" },
-  { id: "reference_to_video", th: "Reference เป็นวิดีโอ", en: "Reference to video" },
+  {
+    id: "reference_to_video",
+    th: "Reference เป็นวิดีโอ",
+    en: "Reference to video",
+  },
 ] as const;
 
 /**
@@ -150,6 +172,8 @@ export interface VerticalDramaSettingsTabProps {
    *  trust a jsonb column's runtime shape client-side, same convention as
    *  `watermark`/`bible` in this same file). Absent/`null` field = automatic. */
   llmModelPolicy?: unknown;
+  /** Series-level image/LLM generation defaults shared with new episodes. */
+  generationSettings?: unknown;
   /** Series-level Worker/ComfyUI workflow policy, stored under policy JSONB. */
   policy?: unknown;
   /** Text Overlay Suite (F131AB, task #34) — gates the watermark card
@@ -220,6 +244,7 @@ export function VerticalDramaSettingsTab({
   locale,
   bible,
   llmModelPolicy,
+  generationSettings,
   policy,
   textOverlaySuiteEnabled = false,
   lookLockEnabled = false,
@@ -233,8 +258,7 @@ export function VerticalDramaSettingsTab({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const durationPlan = useMemo(
-    () =>
-      resolveVerticalDramaDurationPlan(bible, legacyDurationSeconds),
+    () => resolveVerticalDramaDurationPlan(bible, legacyDurationSeconds),
     [bible, legacyDurationSeconds]
   );
   const [shotDurationInput, setShotDurationInput] = useState(
@@ -265,42 +289,70 @@ export function VerticalDramaSettingsTab({
     typeof llmPolicyObj?.defaultModelId === "string"
       ? llmPolicyObj.defaultModelId
       : null;
+  const seriesGenerationSettingsFromProps = useMemo(
+    () => normalizeVerticalDramaEpisodeGenerationSettings(generationSettings),
+    [generationSettings]
+  );
+  const defaultLlmQualityProfileFromProps =
+    resolveVerticalDramaLlmQualityProfile(seriesGenerationSettingsFromProps);
   const [defaultModelInput, setDefaultModelInput] = useState<string | null>(
     defaultModelIdFromProps
   );
+  const [llmQualityProfileInput, setLlmQualityProfileInput] =
+    useState<VerticalDramaLlmQualityProfile>(defaultLlmQualityProfileFromProps);
   const workflowPolicyFromProps = useMemo(
     () => readVerticalDramaWorkflowPolicy(policy),
     [policy]
   );
   const workerAccessPolicyFromProps = useMemo(() => {
-    const raw = policy && typeof policy === "object" && !Array.isArray(policy)
+    const raw =
+      policy && typeof policy === "object" && !Array.isArray(policy)
       ? (policy as Record<string, unknown>).workerAccess
       : null;
     const parsed = workerSeriesAccessPolicySchema.safeParse(raw);
     return parsed.success
       ? parsed.data
-      : { mode: "private" as const, userIds: [], groupIds: [], revision: "worker-access-v1" };
+      : {
+          mode: "private" as const,
+          userIds: [],
+          groupIds: [],
+          revision: "worker-access-v1",
+        };
   }, [policy]);
   const [workerDefaultWorkflowInput, setWorkerDefaultWorkflowInput] = useState(
     workflowPolicyFromProps.defaultWorkflowId
   );
-  const [workerAllowedWorkflowsInput, setWorkerAllowedWorkflowsInput] = useState(
-    workflowPolicyFromProps.allowedWorkflowIds.join(", ")
-  );
+  const [workerAllowedWorkflowsInput, setWorkerAllowedWorkflowsInput] =
+    useState(workflowPolicyFromProps.allowedWorkflowIds.join(", "));
   const [workerAllowOverrideInput, setWorkerAllowOverrideInput] = useState(
     workflowPolicyFromProps.allowUserOverride
   );
-  const [workerOperationDefaultsInput, setWorkerOperationDefaultsInput] = useState<Record<string, string>>(
-    Object.fromEntries(WORKER_WORKFLOW_OPERATION_FIELDS.map(({ id }) => [
-      id,
-      workflowPolicyFromProps.workflowDefaults[id] ?? workflowPolicyFromProps.defaultWorkflowId,
-    ]))
+  const [
+    workerShotGenerationEnabledInput,
+    setWorkerShotGenerationEnabledInput,
+  ] = useState(workflowPolicyFromProps.workerShotGenerationEnabled);
+  const [workerOperationDefaultsInput, setWorkerOperationDefaultsInput] =
+    useState<Record<string, string>>(
+      Object.fromEntries(
+        WORKER_WORKFLOW_OPERATION_FIELDS.map(({ id }) => [
+          id,
+          workflowPolicyFromProps.workflowDefaults[id] ??
+            workflowPolicyFromProps.defaultWorkflowId,
+        ])
+      )
+    );
+  const [workerAccessModeInput, setWorkerAccessModeInput] = useState(
+    workerAccessPolicyFromProps.mode
   );
-  const [workerAccessModeInput, setWorkerAccessModeInput] = useState(workerAccessPolicyFromProps.mode);
-  const [workerAccessUserIdsInput, setWorkerAccessUserIdsInput] = useState(workerAccessPolicyFromProps.userIds.join(", "));
-  const [workerAccessGroupIdsInput, setWorkerAccessGroupIdsInput] = useState(workerAccessPolicyFromProps.groupIds.join(", "));
-  const bibleRecord = bible && typeof bible === "object"
-    ? bible as Record<string, unknown>
+  const [workerAccessUserIdsInput, setWorkerAccessUserIdsInput] = useState(
+    workerAccessPolicyFromProps.userIds.join(", ")
+  );
+  const [workerAccessGroupIdsInput, setWorkerAccessGroupIdsInput] = useState(
+    workerAccessPolicyFromProps.groupIds.join(", ")
+  );
+  const bibleRecord =
+    bible && typeof bible === "object"
+      ? (bible as Record<string, unknown>)
     : {};
   const dialogueLanguageProfile = readVerticalDramaDialogueLanguageProfile(
     bibleRecord.dialogueLanguageProfile
@@ -321,9 +373,13 @@ export function VerticalDramaSettingsTab({
           lookControl.visualNarrativeEnabled ?? visualNarrativeEnabledFromBible,
       }
     : bibleRecord.presetVisualIdentity
-      ? { mode: "inherit_source", visualNarrativeEnabled: visualNarrativeEnabledFromBible }
+      ? {
+          mode: "inherit_source",
+          visualNarrativeEnabled: visualNarrativeEnabledFromBible,
+        }
       : { mode: "none", visualNarrativeEnabled: false };
-  const [lookInput, setLookInput] = useState<SeriesLookLockPickerValue>(lookValueFromProps);
+  const [lookInput, setLookInput] =
+    useState<SeriesLookLockPickerValue>(lookValueFromProps);
 
   // Keep local form state in sync when the parent series data changes
   // (e.g. after a refetch triggered elsewhere).
@@ -342,18 +398,34 @@ export function VerticalDramaSettingsTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultModelIdFromProps]);
   useEffect(() => {
+    setLlmQualityProfileInput(defaultLlmQualityProfileFromProps);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultLlmQualityProfileFromProps]);
+  useEffect(() => {
     setWorkerDefaultWorkflowInput(workflowPolicyFromProps.defaultWorkflowId);
-    setWorkerAllowedWorkflowsInput(workflowPolicyFromProps.allowedWorkflowIds.join(", "));
+    setWorkerAllowedWorkflowsInput(
+      workflowPolicyFromProps.allowedWorkflowIds.join(", ")
+    );
     setWorkerAllowOverrideInput(workflowPolicyFromProps.allowUserOverride);
-    setWorkerOperationDefaultsInput(Object.fromEntries(WORKER_WORKFLOW_OPERATION_FIELDS.map(({ id }) => [
-      id,
-      workflowPolicyFromProps.workflowDefaults[id] ?? workflowPolicyFromProps.defaultWorkflowId,
-    ])));
+    setWorkerShotGenerationEnabledInput(
+      workflowPolicyFromProps.workerShotGenerationEnabled
+    );
+    setWorkerOperationDefaultsInput(
+      Object.fromEntries(
+        WORKER_WORKFLOW_OPERATION_FIELDS.map(({ id }) => [
+          id,
+          workflowPolicyFromProps.workflowDefaults[id] ??
+            workflowPolicyFromProps.defaultWorkflowId,
+        ])
+      )
+    );
   }, [workflowPolicyFromProps]);
   useEffect(() => {
     setWorkerAccessModeInput(workerAccessPolicyFromProps.mode);
     setWorkerAccessUserIdsInput(workerAccessPolicyFromProps.userIds.join(", "));
-    setWorkerAccessGroupIdsInput(workerAccessPolicyFromProps.groupIds.join(", "));
+    setWorkerAccessGroupIdsInput(
+      workerAccessPolicyFromProps.groupIds.join(", ")
+    );
   }, [workerAccessPolicyFromProps]);
   useEffect(() => {
     setDialogueSpokenInput(dialogueLanguageProfile.spokenLocale ?? "auto");
@@ -376,7 +448,8 @@ export function VerticalDramaSettingsTab({
   // shape — `parseSeriesWatermarkConfig` never throws, same convention as
   // every other Vertical Drama jsonb reader).
   const parsedWatermark = useMemo(
-    () => parseSeriesWatermarkConfig(watermark) ?? DEFAULT_PRIMARY_WATERMARK_SLOT,
+    () =>
+      parseSeriesWatermarkConfig(watermark) ?? DEFAULT_PRIMARY_WATERMARK_SLOT,
     [watermark]
   );
   const [watermarkDraft, setWatermarkDraft] =
@@ -403,8 +476,16 @@ export function VerticalDramaSettingsTab({
       includeModelId: defaultModelIdFromProps,
     });
   const planningModels = planningModelsQuery.data ?? [];
+  const selectedPlanningModel = planningModels.find(
+    model => model.modelId === defaultModelInput
+  );
+  const llmReasoningSupported = Boolean(
+    defaultModelInput && selectedPlanningModel?.reasoningSupported
+  );
   const llmModelPolicyMutation =
     trpc.verticalDramaSeries.setSeriesLlmModelPolicy.useMutation();
+  const generationSettingsMutation =
+    trpc.verticalDramaSeries.setSeriesGenerationSettings.useMutation();
   // Optional chaining keeps older test doubles/older clients renderable while
   // the server router is rolled forward. The production tRPC client always
   // exposes this mutation.
@@ -416,7 +497,8 @@ export function VerticalDramaSettingsTab({
     trpc.verticalDramaSeries.setSeriesDurationProfile.useMutation();
   const dialogueLanguageProfileMutation =
     trpc.verticalDramaSeries.setSeriesDialogueLanguageProfile.useMutation();
-  const lookLockMutation = trpc.verticalDramaSeries.setSeriesLookLock.useMutation();
+  const lookLockMutation =
+    trpc.verticalDramaSeries.setSeriesLookLock.useMutation();
   const updateWatermarkMutation =
     trpc.verticalDramaSeries.updateSeriesWatermark.useMutation({
       onSuccess: () => {
@@ -437,26 +519,42 @@ export function VerticalDramaSettingsTab({
   const dirty = titleInput !== title || statusInput !== status;
   const regionDirty = regionInput !== bibleRegion;
   const llmModelPolicyDirty = defaultModelInput !== defaultModelIdFromProps;
+  const reasoningQualityDirty =
+    llmQualityProfileInput !== defaultLlmQualityProfileFromProps;
+  const shouldSaveGenerationSettings = reasoningQualityDirty;
   const workerWorkflowPolicyDirty =
     workerDefaultWorkflowInput !== workflowPolicyFromProps.defaultWorkflowId ||
-    workerAllowedWorkflowsInput !== workflowPolicyFromProps.allowedWorkflowIds.join(", ") ||
+    workerAllowedWorkflowsInput !==
+      workflowPolicyFromProps.allowedWorkflowIds.join(", ") ||
     workerAllowOverrideInput !== workflowPolicyFromProps.allowUserOverride ||
-    WORKER_WORKFLOW_OPERATION_FIELDS.some(({ id }) => workerOperationDefaultsInput[id] !== (workflowPolicyFromProps.workflowDefaults[id] ?? workflowPolicyFromProps.defaultWorkflowId));
+    workerShotGenerationEnabledInput !==
+      workflowPolicyFromProps.workerShotGenerationEnabled ||
+    WORKER_WORKFLOW_OPERATION_FIELDS.some(
+      ({ id }) =>
+        workerOperationDefaultsInput[id] !==
+        (workflowPolicyFromProps.workflowDefaults[id] ??
+          workflowPolicyFromProps.defaultWorkflowId)
+    );
   const workerAccessPolicyDirty =
     workerAccessModeInput !== workerAccessPolicyFromProps.mode ||
-    workerAccessUserIdsInput !== workerAccessPolicyFromProps.userIds.join(", ") ||
-    workerAccessGroupIdsInput !== workerAccessPolicyFromProps.groupIds.join(", ");
+    workerAccessUserIdsInput !==
+      workerAccessPolicyFromProps.userIds.join(", ") ||
+    workerAccessGroupIdsInput !==
+      workerAccessPolicyFromProps.groupIds.join(", ");
   const durationDirty =
     durationTouched && Number.isFinite(Number(shotDurationInput));
   const dialogueLanguageProfileDirty =
     dialogueSpokenInput !== (dialogueLanguageProfile.spokenLocale ?? "auto");
-  const lookLockDirty = lookInput.mode !== lookValueFromProps.mode
-    || lookInput.genreKey !== lookValueFromProps.genreKey
-    || lookInput.visualNarrativeEnabled !== lookValueFromProps.visualNarrativeEnabled;
+  const lookLockDirty =
+    lookInput.mode !== lookValueFromProps.mode ||
+    lookInput.genreKey !== lookValueFromProps.genreKey ||
+    lookInput.visualNarrativeEnabled !==
+      lookValueFromProps.visualNarrativeEnabled;
   const isSaving =
     updateMutation.isPending ||
     regionMutation.isPending ||
     llmModelPolicyMutation.isPending ||
+    generationSettingsMutation.isPending ||
     Boolean(workerWorkflowPolicyMutation?.isPending) ||
     Boolean(workerAccessPolicyMutation?.isPending) ||
     durationProfileMutation.isPending ||
@@ -517,47 +615,86 @@ export function VerticalDramaSettingsTab({
           })
         );
       }
+      if (shouldSaveGenerationSettings) {
+        mutations.push(
+          generationSettingsMutation.mutateAsync({
+            seriesId,
+            settings: {
+              llm: {
+                qualityProfile: llmQualityProfileInput,
+              },
+            } satisfies VerticalDramaEpisodeGenerationSettings,
+          })
+        );
+      }
       if (workerWorkflowPolicyDirty && workerWorkflowPolicyMutation) {
-        const allowedWorkflowIds = Array.from(new Set(
-          workerAllowedWorkflowsInput.split(",").map(value => value.trim()).filter(Boolean)
-        )).slice(0, 32);
+        const allowedWorkflowIds = Array.from(
+          new Set(
+            workerAllowedWorkflowsInput
+              .split(",")
+              .map(value => value.trim())
+              .filter(Boolean)
+          )
+        ).slice(0, 32);
         const defaultWorkflowId = workerDefaultWorkflowInput.trim();
-        if (!defaultWorkflowId || !allowedWorkflowIds.includes(defaultWorkflowId)) {
-          throw new Error(lang === "th"
+        if (
+          !defaultWorkflowId ||
+          !allowedWorkflowIds.includes(defaultWorkflowId)
+        ) {
+          throw new Error(
+            lang === "th"
             ? "Default workflow ต้องอยู่ในรายการ workflow ที่อนุญาต"
-            : "The default workflow must be included in the allowed workflow list");
+              : "The default workflow must be included in the allowed workflow list"
+          );
         }
-        const workflowDefaults = Object.fromEntries(WORKER_WORKFLOW_OPERATION_FIELDS.map(({ id }) => {
+        const workflowDefaults = Object.fromEntries(
+          WORKER_WORKFLOW_OPERATION_FIELDS.map(({ id }) => {
           const workflowId = (workerOperationDefaultsInput[id] ?? "").trim();
           if (!workflowId || !allowedWorkflowIds.includes(workflowId)) {
-            throw new Error(lang === "th"
+              throw new Error(
+                lang === "th"
               ? `Workflow ของ ${id} ต้องอยู่ในรายการ workflow ที่อนุญาต`
-              : `The workflow for ${id} must be included in the allowed workflow list`);
+                  : `The workflow for ${id} must be included in the allowed workflow list`
+              );
           }
           return [id, workflowId];
-        }));
-        mutations.push(workerWorkflowPolicyMutation.mutateAsync({
+          })
+        );
+        mutations.push(
+          workerWorkflowPolicyMutation.mutateAsync({
           seriesId,
           policy: {
             ...workflowPolicyFromProps,
             defaultWorkflowId,
             allowedWorkflowIds,
             allowUserOverride: workerAllowOverrideInput,
+              workerShotGenerationEnabled: workerShotGenerationEnabledInput,
             workflowDefaults,
           },
           expectedRevision: workflowPolicyFromProps.policyRevision,
-        }));
+          })
+        );
       }
       if (workerAccessPolicyDirty && workerAccessPolicyMutation) {
-        const userIds = workerAccessUserIdsInput.split(",").map(value => Number(value.trim())).filter(value => Number.isSafeInteger(value) && value > 0).slice(0, 100);
-        const groupIds = workerAccessGroupIdsInput.split(",").map(value => value.trim()).filter(Boolean).slice(0, 100);
-        mutations.push(workerAccessPolicyMutation.mutateAsync({
+        const userIds = workerAccessUserIdsInput
+          .split(",")
+          .map(value => Number(value.trim()))
+          .filter(value => Number.isSafeInteger(value) && value > 0)
+          .slice(0, 100);
+        const groupIds = workerAccessGroupIdsInput
+          .split(",")
+          .map(value => value.trim())
+          .filter(Boolean)
+          .slice(0, 100);
+        mutations.push(
+          workerAccessPolicyMutation.mutateAsync({
           seriesId,
           mode: workerAccessModeInput,
           userIds,
           groupIds,
           expectedRevision: workerAccessPolicyFromProps.revision,
-        }));
+          })
+        );
       }
       if (lookLockEnabled && lookLockDirty) {
         const hasPersistedVisualNarrativePreference =
@@ -568,8 +705,9 @@ export function VerticalDramaSettingsTab({
           lookLockMutation.mutateAsync({
             seriesId,
             mode: lookInput.mode,
-            genreKey: lookInput.mode === "genre"
-              ? lookInput.genreKey as VdLookLockGenre
+            genreKey:
+              lookInput.mode === "genre"
+              ? (lookInput.genreKey as VdLookLockGenre)
               : undefined,
             ...(hasPersistedVisualNarrativePreference
               ? { visualNarrativeEnabled: lookInput.visualNarrativeEnabled }
@@ -673,12 +811,21 @@ export function VerticalDramaSettingsTab({
           </CardTitle>
         </CardHeader>
         <CardContent className="grid max-w-md gap-3">
-          <Badge variant={durationPlan ? "secondary" : "outline"} className="w-fit">
+          <Badge
+            variant={durationPlan ? "secondary" : "outline"}
+            className="w-fit"
+          >
             {formatVerticalDramaDurationPlan(durationPlan, lang)}
           </Badge>
           {durationDirty && (
-            <Badge variant="outline" className="w-fit" data-testid="vd-settings-duration-pending">
-              {lang === "th" ? "มีการเปลี่ยนแปลงที่ยังไม่บันทึก" : "Unsaved duration change"}
+            <Badge
+              variant="outline"
+              className="w-fit"
+              data-testid="vd-settings-duration-pending"
+            >
+              {lang === "th"
+                ? "มีการเปลี่ยนแปลงที่ยังไม่บันทึก"
+                : "Unsaved duration change"}
             </Badge>
           )}
           {durationPlan?.status === "legacy_compat" && (
@@ -720,7 +867,10 @@ export function VerticalDramaSettingsTab({
               ))}
             </SelectContent>
           </Select>
-          <p id="vd-settings-shot-duration-help" className="text-xs text-muted-foreground">
+          <p
+            id="vd-settings-shot-duration-help"
+            className="text-xs text-muted-foreground"
+          >
             {lang === "th"
               ? "ระบบจะวาง 9 ช็อตต่อหนึ่งตอน และคำนวณ runtime จาก duration ที่เลือก ไม่ใช้ค่าความยาวต่อตอนแบบเดิม"
               : "Each episode is planned as nine shots; runtime is derived from the selected shot duration, not a fixed episode duration."}
@@ -756,10 +906,15 @@ export function VerticalDramaSettingsTab({
             />
           </div>
 
-          <Card className="border-primary/30 bg-primary/5" data-testid="vd-settings-worker-workflow-policy">
+          <Card
+            className="border-primary/30 bg-primary/5"
+            data-testid="vd-settings-worker-workflow-policy"
+          >
             <CardHeader className="pb-3">
               <CardTitle className="text-base">
-                {lang === "th" ? "ค่าเริ่มต้น Worker / ComfyUI MCP" : "Worker / ComfyUI MCP defaults"}
+                {lang === "th"
+                  ? "ค่าเริ่มต้น Worker / ComfyUI MCP"
+                  : "Worker / ComfyUI MCP defaults"}
               </CardTitle>
               <p className="text-xs text-muted-foreground">
                 {lang === "th"
@@ -768,80 +923,181 @@ export function VerticalDramaSettingsTab({
               </p>
             </CardHeader>
             <CardContent className="grid max-w-2xl gap-3">
+              <div className="flex items-start gap-3 rounded-md border border-primary/20 bg-background/60 p-3">
+                <Switch
+                  id="vd-settings-worker-shot-generation-enabled"
+                  checked={workerShotGenerationEnabledInput}
+                  onCheckedChange={setWorkerShotGenerationEnabledInput}
+                  disabled={readOnly || isSaving}
+                  data-testid="vd-settings-worker-shot-generation-enabled"
+                />
+                <div className="grid gap-1">
+                  <Label htmlFor="vd-settings-worker-shot-generation-enabled">
+                    {lang === "th"
+                      ? "เปิดใช้การสร้าง Shot ด้วย Worker"
+                      : "Enable Worker Shot generation"}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === "th"
+                      ? "ค่าเริ่มต้นปิดไว้ เปิดเมื่อมี Worker และ workflow พร้อมใช้งานแล้ว"
+                      : "Disabled by default. Enable this after a Worker and workflow are ready to use."}
+                  </p>
+                </div>
+              </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="vd-settings-worker-default-workflow">Default workflow</Label>
+                <Label htmlFor="vd-settings-worker-default-workflow">
+                  Default workflow
+                </Label>
                 <Input
                   id="vd-settings-worker-default-workflow"
                   value={workerDefaultWorkflowInput}
-                  onChange={event => setWorkerDefaultWorkflowInput(event.target.value)}
+                  onChange={event =>
+                    setWorkerDefaultWorkflowInput(event.target.value)
+                  }
                   disabled={readOnly || isSaving}
-                  placeholder={DEFAULT_VERTICAL_DRAMA_WORKFLOW_POLICY.defaultWorkflowId}
+                  placeholder={
+                    DEFAULT_VERTICAL_DRAMA_WORKFLOW_POLICY.defaultWorkflowId
+                  }
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="vd-settings-worker-allowed-workflows">Allowed workflows (comma-separated)</Label>
+                <Label htmlFor="vd-settings-worker-allowed-workflows">
+                  Allowed workflows (comma-separated)
+                </Label>
                 <Input
                   id="vd-settings-worker-allowed-workflows"
                   value={workerAllowedWorkflowsInput}
-                  onChange={event => setWorkerAllowedWorkflowsInput(event.target.value)}
+                  onChange={event =>
+                    setWorkerAllowedWorkflowsInput(event.target.value)
+                  }
                   disabled={readOnly || isSaving}
                 />
               </div>
               <div className="grid gap-3 rounded-md border p-3">
                 <div>
-                  <Label>{lang === "th" ? "ค่าเริ่มต้นแยกตามฟังก์ชัน" : "Per-operation defaults"}</Label>
+                  <Label>
+                    {lang === "th"
+                      ? "ค่าเริ่มต้นแยกตามฟังก์ชัน"
+                      : "Per-operation defaults"}
+                  </Label>
                   <p className="text-xs text-muted-foreground">
-                    {lang === "th" ? "เลือก workflow เริ่มต้นให้แต่ละงาน โดยต้องอยู่ใน allowlist ด้านบน" : "Choose a default workflow for each operation; every value must be in the allowlist above."}
+                    {lang === "th"
+                      ? "เลือก workflow เริ่มต้นให้แต่ละงาน โดยต้องอยู่ใน allowlist ด้านบน"
+                      : "Choose a default workflow for each operation; every value must be in the allowlist above."}
                   </p>
                 </div>
                 {WORKER_WORKFLOW_OPERATION_FIELDS.map(({ id, th, en }) => (
                   <div className="grid gap-1.5" key={id}>
-                    <Label htmlFor={`vd-settings-worker-operation-${id}`}>{lang === "th" ? th : en}</Label>
+                    <Label htmlFor={`vd-settings-worker-operation-${id}`}>
+                      {lang === "th" ? th : en}
+                    </Label>
                     <Input
                       id={`vd-settings-worker-operation-${id}`}
                       value={workerOperationDefaultsInput[id] ?? ""}
-                      onChange={event => setWorkerOperationDefaultsInput(current => ({ ...current, [id]: event.target.value }))}
+                      onChange={event =>
+                        setWorkerOperationDefaultsInput(current => ({
+                          ...current,
+                          [id]: event.target.value,
+                        }))
+                      }
                       disabled={readOnly || isSaving}
                     />
                   </div>
                 ))}
               </div>
               <label className="flex items-center gap-2 text-sm">
-                <Switch checked={workerAllowOverrideInput} onCheckedChange={setWorkerAllowOverrideInput} disabled={readOnly || isSaving} />
-                {lang === "th" ? "อนุญาตให้ผู้ใช้เลือก workflow ใน Shot ได้" : "Allow user workflow override in Shot"}
+                <Switch
+                  checked={workerAllowOverrideInput}
+                  onCheckedChange={setWorkerAllowOverrideInput}
+                  disabled={readOnly || isSaving}
+                />
+                {lang === "th"
+                  ? "อนุญาตให้ผู้ใช้เลือก workflow ใน Shot ได้"
+                  : "Allow user workflow override in Shot"}
               </label>
               <p className="text-xs text-muted-foreground">
-                {lang === "th" ? "การบันทึกจะเพิ่ม policy revision ใหม่และไม่แก้ค่า setting อื่นของ Series" : "Saving creates a new policy revision and preserves unrelated Series settings."}
+                {lang === "th"
+                  ? "การบันทึกจะเพิ่ม policy revision ใหม่และไม่แก้ค่า setting อื่นของ Series"
+                  : "Saving creates a new policy revision and preserves unrelated Series settings."}
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-primary/30 bg-primary/5" data-testid="vd-settings-worker-access-policy">
+          <Card
+            className="border-primary/30 bg-primary/5"
+            data-testid="vd-settings-worker-access-policy"
+          >
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">{lang === "th" ? "สิทธิ์ Worker ของ Series" : "Series Worker access"}</CardTitle>
-              <p className="text-xs text-muted-foreground">{lang === "th" ? "กำหนดว่า Worker ของเจ้าของ กลุ่ม หรือ tenant นี้จะเห็นและประมวลผล Series ได้หรือไม่" : "Choose which Worker principals may discover and operate this Series."}</p>
+              <CardTitle className="text-base">
+                {lang === "th"
+                  ? "สิทธิ์ Worker ของ Series"
+                  : "Series Worker access"}
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                {lang === "th"
+                  ? "กำหนดว่า Worker ของเจ้าของ กลุ่ม หรือ tenant นี้จะเห็นและประมวลผล Series ได้หรือไม่"
+                  : "Choose which Worker principals may discover and operate this Series."}
+              </p>
             </CardHeader>
             <CardContent className="grid max-w-2xl gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="vd-settings-worker-access-mode">Access mode</Label>
-                <Select value={workerAccessModeInput} onValueChange={value => setWorkerAccessModeInput(value as "private" | "group" | "tenant")} disabled={readOnly || isSaving}>
-                  <SelectTrigger id="vd-settings-worker-access-mode"><SelectValue /></SelectTrigger>
+                <Label htmlFor="vd-settings-worker-access-mode">
+                  Access mode
+                </Label>
+                <Select
+                  value={workerAccessModeInput}
+                  onValueChange={value =>
+                    setWorkerAccessModeInput(
+                      value as "private" | "group" | "tenant"
+                    )
+                  }
+                  disabled={readOnly || isSaving}
+                >
+                  <SelectTrigger id="vd-settings-worker-access-mode">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="private">Private / explicit users</SelectItem>
+                    <SelectItem value="private">
+                      Private / explicit users
+                    </SelectItem>
                     <SelectItem value="group">Worker group</SelectItem>
                     <SelectItem value="tenant">Tenant workers</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="vd-settings-worker-access-users">User IDs (comma-separated)</Label>
-                <Input id="vd-settings-worker-access-users" value={workerAccessUserIdsInput} onChange={event => setWorkerAccessUserIdsInput(event.target.value)} disabled={readOnly || isSaving} placeholder="เช่น 12, 34" />
+                <Label htmlFor="vd-settings-worker-access-users">
+                  User IDs (comma-separated)
+                </Label>
+                <Input
+                  id="vd-settings-worker-access-users"
+                  value={workerAccessUserIdsInput}
+                  onChange={event =>
+                    setWorkerAccessUserIdsInput(event.target.value)
+                  }
+                  disabled={readOnly || isSaving}
+                  placeholder="เช่น 12, 34"
+                />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="vd-settings-worker-access-groups">Group IDs (comma-separated)</Label>
-                <Input id="vd-settings-worker-access-groups" value={workerAccessGroupIdsInput} onChange={event => setWorkerAccessGroupIdsInput(event.target.value)} disabled={readOnly || isSaving} placeholder="เช่น team-editors" />
+                <Label htmlFor="vd-settings-worker-access-groups">
+                  Group IDs (comma-separated)
+                </Label>
+                <Input
+                  id="vd-settings-worker-access-groups"
+                  value={workerAccessGroupIdsInput}
+                  onChange={event =>
+                    setWorkerAccessGroupIdsInput(event.target.value)
+                  }
+                  disabled={readOnly || isSaving}
+                  placeholder="เช่น team-editors"
+                />
               </div>
-              <p className="text-xs text-muted-foreground">{lang === "th" ? "ระบบจะตรวจสิทธิ์และ revision อีกครั้งตอน bind/process/publish ทุกครั้ง" : "Access and revision are rechecked at bind/process/publish time."}</p>
+              <p className="text-xs text-muted-foreground">
+                {lang === "th"
+                  ? "ระบบจะตรวจสิทธิ์และ revision อีกครั้งตอน bind/process/publish ทุกครั้ง"
+                  : "Access and revision are rechecked at bind/process/publish time."}
+              </p>
             </CardContent>
           </Card>
 
@@ -928,19 +1184,20 @@ export function VerticalDramaSettingsTab({
                 {Array.from(
                   new Set(
                     VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS.map(
-                      option => option.group,
-                    ),
-                  ),
+                      option => option.group
+                    )
+                  )
                 ).map(group => (
                   <SelectGroup key={group}>
                     <SelectLabel>
                       {(lang === "th"
                         ? VERTICAL_DRAMA_SPOKEN_LOCALE_GROUP_LABELS_TH
-                        : VERTICAL_DRAMA_SPOKEN_LOCALE_GROUP_LABELS_EN)[group] ??
-                        group}
+                        : VERTICAL_DRAMA_SPOKEN_LOCALE_GROUP_LABELS_EN)[
+                        group
+                      ] ?? group}
                     </SelectLabel>
                     {VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS.filter(
-                      option => option.group === group,
+                      option => option.group === group
                     ).map(option => (
                       <SelectItem key={option.id} value={option.id}>
                         {lang === "th" ? option.labelTh : option.labelEn}
@@ -956,9 +1213,11 @@ export function VerticalDramaSettingsTab({
                 : "Applies only to dialogue, subtitles, and voice — Auto infers from setting, market, and characters without changing the narrative language."}
             </p>
             <p className="text-xs text-muted-foreground">
-              {VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS.find(
-                option => option.id === dialogueSpokenInput,
-              )?.prompt}
+              {
+                VERTICAL_DRAMA_SPOKEN_LOCALE_OPTIONS.find(
+                  option => option.id === dialogueSpokenInput
+                )?.prompt
+              }
             </p>
             {dialogueLanguageProfileDirty && (
               <Badge variant="outline" className="w-fit">
@@ -1005,12 +1264,72 @@ export function VerticalDramaSettingsTab({
             </p>
           </div>
 
+          <div
+            className="grid gap-1.5 rounded-lg border bg-muted/20 p-3"
+            data-testid="vd-settings-llm-reasoning"
+          >
+            <Label
+              htmlFor="vd-settings-llm-thinking-quality"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              {lang === "th" ? "คุณภาพการคิดของ LLM" : "LLM thinking quality"}
+            </Label>
+            <Select
+              value={llmQualityProfileInput}
+              onValueChange={value =>
+                setLlmQualityProfileInput(
+                  value as VerticalDramaLlmQualityProfile
+                )
+              }
+              disabled={readOnly || isSaving}
+            >
+              <SelectTrigger
+                id="vd-settings-llm-thinking-quality"
+                data-testid="vd-settings-llm-thinking-quality"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="balanced">
+                  {lang === "th" ? "สมดุล (แนะนำ)" : "Balanced (recommended)"}
+                </SelectItem>
+                <SelectItem value="high">
+                  {lang === "th"
+                    ? "สูง — เนื้อเรื่องซับซ้อน"
+                    : "High — complex story work"}
+                </SelectItem>
+                <SelectItem value="maximum">
+                  {lang === "th"
+                    ? "สูงสุด — ตรวจทานเข้มข้น"
+                    : "Maximum — deepest review"}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {llmReasoningSupported
+                ? lang === "th"
+                  ? "ระบบจะแปลงระดับนี้เป็น effort ที่เหมาะกับแต่ละงาน และส่งให้เฉพาะ model/provider ที่รองรับเท่านั้น"
+                  : "The system maps this level per task and sends reasoning only to compatible model/provider routes."
+                : lang === "th"
+                  ? "หากเส้นทางที่เลือกไม่รองรับ ระบบจะลดระดับอย่างปลอดภัยและทำงานต่อโดยไม่ส่งพารามิเตอร์ที่ไม่รองรับ"
+                  : "If the selected route does not support reasoning, the system safely downgrades and continues without unsupported fields."}
+            </p>
+            {reasoningQualityDirty && (
+              <Badge variant="outline" className="w-fit">
+                {lang === "th"
+                  ? "มีการเปลี่ยนแปลงที่ยังไม่บันทึก"
+                  : "Unsaved thinking quality change"}
+              </Badge>
+            )}
+          </div>
+
           {lookLockEnabled ? (
             <SeriesLookLockPicker
               lang={lang}
               value={lookInput}
               hasInheritedLook={Boolean(
-                lookControl?.inheritedIdentity || bibleRecord.presetVisualIdentity
+                lookControl?.inheritedIdentity ||
+                bibleRecord.presetVisualIdentity
               )}
               isDisabled={readOnly || isSaving}
               onChange={setLookInput}
@@ -1025,6 +1344,7 @@ export function VerticalDramaSettingsTab({
                 (!dirty &&
                   !regionDirty &&
                   !llmModelPolicyDirty &&
+                  !shouldSaveGenerationSettings &&
                   !workerWorkflowPolicyDirty &&
                   !workerAccessPolicyDirty &&
                   !durationDirty &&
@@ -1142,9 +1462,15 @@ function guessImageMimeFromName(name: string | undefined): string {
  * usable image reference, so the caller can surface a real error instead of
  * silently writing junk into the URL field.
  */
-function readDroppedImageUrl(dt: DataTransfer | null | undefined): string | null {
+function readDroppedImageUrl(
+  dt: DataTransfer | null | undefined
+): string | null {
   if (!dt) return null;
-  const raw = (dt.getData?.("text/uri-list") || dt.getData?.("text/plain") || "")
+  const raw = (
+    dt.getData?.("text/uri-list") ||
+    dt.getData?.("text/plain") ||
+    ""
+  )
     .split(/[\r\n]+/)
     .map(line => line.trim())
     .find(line => line && !line.startsWith("#"));
@@ -1207,7 +1533,9 @@ function VerticalDramaSeriesWatermarkCard({
       ? "ลายน้ำเรื่อง (โลโก้ชื่อเรื่อง)"
       : "Title watermark (series logo)";
   const secondaryHeading =
-    lang === "th" ? "ลายน้ำช่อง (โลโก้ช่อง)" : "Channel watermark (channel logo)";
+    lang === "th"
+      ? "ลายน้ำช่อง (โลโก้ช่อง)"
+      : "Channel watermark (channel logo)";
 
   const previewVisible = primaryValue.enabled || secondaryValue.enabled;
 
@@ -1272,7 +1600,9 @@ function VerticalDramaSeriesWatermarkCard({
                   style={{ opacity: primaryValue.opacity }}
                   data-testid="vd-watermark-preview-marker-primary"
                 >
-                  {primaryValue.type === "text" ? primaryValue.text || "LOGO" : "IMG"}
+                  {primaryValue.type === "text"
+                    ? primaryValue.text || "LOGO"
+                    : "IMG"}
                 </span>
               ) : null}
               {secondaryValue.enabled ? (
@@ -1281,7 +1611,9 @@ function VerticalDramaSeriesWatermarkCard({
                   style={{ opacity: secondaryValue.opacity }}
                   data-testid="vd-watermark-preview-marker-secondary"
                 >
-                  {secondaryValue.type === "text" ? secondaryValue.text || "CH" : "IMG"}
+                  {secondaryValue.type === "text"
+                    ? secondaryValue.text || "CH"
+                    : "IMG"}
                 </span>
               ) : null}
             </div>
@@ -1347,6 +1679,8 @@ function VerticalDramaWatermarkSlotForm({
   >(null);
   const [watermarkDragActive, setWatermarkDragActive] = useState(false);
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
+  const [logoLightboxOpen, setLogoLightboxOpen] = useState(false);
+  const [logoDownloadBusy, setLogoDownloadBusy] = useState(false);
   const watermarkFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const testId = (name: string) => `vd-watermark-${name}-${slotId}`;
@@ -1359,8 +1693,7 @@ function VerticalDramaWatermarkSlotForm({
     // the server re-validates extension + magic bytes either way.
     const looksLikeImage =
       file.type.toLowerCase().startsWith("image/") ||
-      (!file.type &&
-        /\.(png|jpe?g|webp|svg)$/i.test(file.name || ""));
+      (!file.type && /\.(png|jpe?g|webp|svg)$/i.test(file.name || ""));
     if (!looksLikeImage) {
       setWatermarkUploadError(
         lang === "th"
@@ -1422,6 +1755,48 @@ function VerticalDramaWatermarkSlotForm({
     type: "image",
     enabled: true,
   });
+
+  const logoLabel =
+    slotId === "primary"
+      ? lang === "th"
+        ? "โลโก้ชื่อเรื่อง"
+        : "Series logo"
+      : lang === "th"
+        ? "โลโก้ช่อง"
+        : "Channel logo";
+
+  const handleDownloadLogo = async () => {
+    const imageUrl = value.imageUrl?.trim();
+    if (!imageUrl || logoDownloadBusy) return;
+
+    setLogoDownloadBusy(true);
+    try {
+      const blob = await fetchAuthenticatedMedia(imageUrl);
+      const objectUrl = URL.createObjectURL(blob);
+      const extension =
+        blob.type === "image/svg+xml"
+          ? "svg"
+          : blob.type === "image/webp"
+            ? "webp"
+            : blob.type === "image/jpeg"
+              ? "jpg"
+              : "png";
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = `${slotId === "primary" ? "series-logo" : "channel-logo"}.${extension}`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      toast.error(
+        lang === "th" ? "ดาวน์โหลดโลโก้ไม่สำเร็จ" : "Failed to download logo"
+      );
+      console.error("Failed to download watermark logo", error);
+    } finally {
+      setLogoDownloadBusy(false);
+    }
+  };
 
   const handleWatermarkDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     if (readOnly || watermarkUploadBusy) return;
@@ -1568,7 +1943,7 @@ function VerticalDramaWatermarkSlotForm({
               Chrome to treat the element as a real drop target. The drop only
               fills the field — saving stays an explicit action, so a mis-drop
               is recoverable. */}
-          {(
+          {
             <div
               className={`grid gap-1.5 rounded-md p-1 transition-colors ${
                 watermarkDragActive ? "bg-primary/5 ring-2 ring-primary" : ""
@@ -1658,15 +2033,99 @@ function VerticalDramaWatermarkSlotForm({
                 data-testid={testId("image-url")}
               />
               {value.imageUrl ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
                 <AuthenticatedMediaImage
                   src={value.imageUrl}
-                  alt=""
+                      alt={logoLabel}
                   className="h-14 w-14 rounded border border-border bg-muted object-contain"
                   style={{ opacity: value.opacity ?? 1 }}
+                      data-testid={testId("image-preview")}
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setLogoLightboxOpen(true)}
+                        aria-label={`${lang === "th" ? "ดู" : "View"} ${logoLabel} ${lang === "th" ? "เต็มจอ" : "fullscreen"}`}
+                        data-testid={testId("view-image")}
+                      >
+                        <Expand
+                          className="mr-1.5 h-3.5 w-3.5"
+                          aria-hidden="true"
+                        />
+                        {lang === "th" ? "ดูเต็มจอ" : "View fullscreen"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void handleDownloadLogo()}
+                        disabled={logoDownloadBusy}
+                        data-testid={testId("download-image")}
+                      >
+                        {logoDownloadBusy ? (
+                          <Loader2
+                            className="mr-1.5 h-3.5 w-3.5 animate-spin"
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <Download
+                            className="mr-1.5 h-3.5 w-3.5"
+                            aria-hidden="true"
+                          />
+                        )}
+                        {logoDownloadBusy
+                          ? lang === "th"
+                            ? "กำลังดาวน์โหลด…"
+                            : "Downloading…"
+                          : lang === "th"
+                            ? "ดาวน์โหลด"
+                            : "Download"}
+                      </Button>
+                    </div>
+                  </div>
+                  <Dialog
+                    open={logoLightboxOpen}
+                    onOpenChange={setLogoLightboxOpen}
+                  >
+                    <DialogContent
+                      fullscreen
+                      className="flex flex-col bg-black/95 p-4 sm:p-6 [&>button]:text-white [&>button]:opacity-100"
+                      data-testid={testId("lightbox")}
+                    >
+                      <DialogTitle className="sr-only">{logoLabel}</DialogTitle>
+                      <div className="flex min-h-0 flex-1 items-center justify-center">
+                        <AuthenticatedMediaImage
+                          src={value.imageUrl}
+                          alt={logoLabel}
+                          loading="eager"
+                          className="max-h-full max-w-full object-contain"
+                          data-testid={testId("lightbox-image")}
                 />
+                      </div>
+                      <div className="flex justify-center">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => void handleDownloadLogo()}
+                          disabled={logoDownloadBusy}
+                          data-testid={testId("lightbox-download")}
+                        >
+                          <Download
+                            className="mr-1.5 h-4 w-4"
+                            aria-hidden="true"
+                          />
+                          {lang === "th" ? "ดาวน์โหลดโลโก้" : "Download logo"}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </>
               ) : null}
             </div>
-          )}
+          }
 
           <div className="grid gap-1.5">
             <Label className="text-xs font-medium text-muted-foreground">
@@ -1674,7 +2133,9 @@ function VerticalDramaWatermarkSlotForm({
             </Label>
             <Select
               value={value.position}
-              onValueChange={v => onPatch({ position: v as VdWatermarkPosition })}
+              onValueChange={v =>
+                onPatch({ position: v as VdWatermarkPosition })
+              }
               disabled={readOnly}
             >
               <SelectTrigger data-testid={testId("position")}>
@@ -1683,7 +2144,11 @@ function VerticalDramaWatermarkSlotForm({
               <SelectContent>
                 {VD_WATERMARK_POSITIONS.map(pos => (
                   <SelectItem key={pos} value={pos}>
-                    {VD_WATERMARK_POSITION_LABELS[pos][lang === "th" ? "th" : "en"]}
+                    {
+                      VD_WATERMARK_POSITION_LABELS[pos][
+                        lang === "th" ? "th" : "en"
+                      ]
+                    }
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -1724,7 +2189,9 @@ function VerticalDramaWatermarkSlotForm({
               max={20}
               step={1}
               value={[value.scalePct]}
-              onValueChange={([v]) => onPatch({ scalePct: v ?? value.scalePct })}
+              onValueChange={([v]) =>
+                onPatch({ scalePct: v ?? value.scalePct })
+              }
               disabled={readOnly}
               data-testid={testId("scale")}
             />

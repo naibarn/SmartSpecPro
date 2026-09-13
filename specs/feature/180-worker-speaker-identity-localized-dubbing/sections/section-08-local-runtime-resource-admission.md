@@ -19,3 +19,9 @@ Use existing Thai-primary component patterns and the responsive/accessibility ma
 ## Expanded lifecycle dependency
 
 Read ../voice-lifecycle-v2.md and sections 11/12. Validate reference-only vs transcript-required vs trained modes separately. Existing inference readiness cannot authorize training. Release evidence must distinguish A/B/C/D and must cover profile API lifecycle, transitive rights and rollback where enabled.
+
+## Implementation record (2026-09-07)
+
+`apps/worker-app/src-tauri/src/tts_provider.rs` and `worker_loop.rs` implement local admission, heartbeat readiness, reference/dataset/model staging, cancellation and fail-closed process execution. `tts-runtime/provider_registry.py` plus `package-runtime-release.mjs` define the fixed operator command allowlist. Rust library tests: 236 passed.
+
+Unified audio reference staging now uses the snapshot-scoped Worker audio-input route and verifies managed artifact publication/checksum; TTS progress sequence numbers are monotonic so `probe_output` cannot be discarded as a replay.

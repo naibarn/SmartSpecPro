@@ -30,8 +30,15 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { parseSkillFile } from "@smartspec/skills";
-import { resolveSkillDirCandidates, resolveSkillManifestPath } from "./skillFiles";
-import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
+import {
+  resolveSkillDirCandidates,
+  resolveSkillManifestPath,
+} from "./skillFiles";
+import {
+  hasEnoughCredits,
+  deductCredits,
+  calculateCreditsForLLM,
+} from "./creditService";
 import {
   InsufficientCreditsError,
   VdSchemaValidationError,
@@ -49,7 +56,10 @@ import type {
 
 export { InsufficientCreditsError, VdSchemaValidationError };
 
-const SKILL_FOLDER_PATH = path.join("skills", "vertical-drama-location-visual-bible");
+const SKILL_FOLDER_PATH = path.join(
+  "skills",
+  "vertical-drama-location-visual-bible"
+);
 
 /* -------------------------------------------------------------------------- */
 /* System prompt loading — the skill.md body (after frontmatter), verbatim.   */
@@ -71,7 +81,8 @@ let cachedLocationVisualBibleSystemPrompt: string | null = null;
  * bundle-dir fallback.
  */
 function loadLocationVisualBibleSystemPrompt(): string {
-  if (cachedLocationVisualBibleSystemPrompt) return cachedLocationVisualBibleSystemPrompt;
+  if (cachedLocationVisualBibleSystemPrompt)
+    return cachedLocationVisualBibleSystemPrompt;
 
   for (const dir of resolveSkillDirCandidates(SKILL_FOLDER_PATH)) {
     const manifestPath = resolveSkillManifestPath(dir);
@@ -86,7 +97,7 @@ function loadLocationVisualBibleSystemPrompt(): string {
   }
 
   throw new Error(
-    `Could not locate skill.md for "vertical-drama-location-visual-bible" under any known skills directory`,
+    `Could not locate skill.md for "vertical-drama-location-visual-bible" under any known skills directory`
   );
 }
 
@@ -102,7 +113,9 @@ const locationVisualBibleOutputSchema = z
   })
   .passthrough();
 
-export type LocationVisualBibleOutput = z.infer<typeof locationVisualBibleOutputSchema>;
+export type LocationVisualBibleOutput = z.infer<
+  typeof locationVisualBibleOutputSchema
+>;
 
 /* -------------------------------------------------------------------------- */
 /* User-prompt construction — matches skill.md's worked-example input shape   */
@@ -178,7 +191,9 @@ export interface GenerateLocationVisualPromptsParams {
  * location has no role/description to match an archetype against, and
  * skill.md says wardrobe/archetype facets don't apply to it anyway.
  */
-function buildLocationPresetVisualIdentityFacts(identity: VerticalDramaPresetVisualIdentity): {
+function buildLocationPresetVisualIdentityFacts(
+  identity: VerticalDramaPresetVisualIdentity
+): {
   style_name: string;
   palette: string[];
   lighting: string;
@@ -194,7 +209,9 @@ function buildLocationPresetVisualIdentityFacts(identity: VerticalDramaPresetVis
   };
 }
 
-export function buildLocationVisualPromptsUserPrompt(params: GenerateLocationVisualPromptsParams): string {
+export function buildLocationVisualPromptsUserPrompt(
+  params: GenerateLocationVisualPromptsParams
+): string {
   const inputPayload = {
     location_key: params.locationKey,
     location_name: params.locationName,
@@ -204,7 +221,11 @@ export function buildLocationVisualPromptsUserPrompt(params: GenerateLocationVis
       : {}),
     ...(params.seriesContext ? { series_context: params.seriesContext } : {}),
     ...(params.presetVisualIdentity
-      ? { preset_visual_identity: buildLocationPresetVisualIdentityFacts(params.presetVisualIdentity) }
+      ? {
+          preset_visual_identity: buildLocationPresetVisualIdentityFacts(
+            params.presetVisualIdentity
+          ),
+        }
       : {}),
     ...(params.hasOwnReferenceImage ? { has_own_reference_image: true } : {}),
     ...(params.coverageRole ? { coverage_role: params.coverageRole } : {}),
@@ -212,14 +233,23 @@ export function buildLocationVisualPromptsUserPrompt(params: GenerateLocationVis
     ...(params.cameraView
       ? {
           camera_view: {
-            ...(params.cameraView.preset ? { preset: params.cameraView.preset } : {}),
+            ...(params.cameraView.preset
+              ? { preset: params.cameraView.preset }
+              : {}),
             label: params.cameraView.label,
-            ...(params.cameraView.directive ? { directive: params.cameraView.directive } : {}),
+            ...(params.cameraView.directive
+              ? { directive: params.cameraView.directive }
+              : {}),
           },
         }
       : {}),
     ...(params.imagePromptMaxChars
-      ? { prompt_max_chars: Math.min(20_000, Math.max(3_800, Math.floor(params.imagePromptMaxChars))) }
+      ? {
+          prompt_max_chars: Math.min(
+            20_000,
+            Math.max(3_800, Math.floor(params.imagePromptMaxChars))
+          ),
+        }
       : {}),
   };
 
@@ -251,14 +281,16 @@ export interface BuildLocationImageEditPromptParams {
  * location form and the paid image provider call.
  */
 export function buildLocationImageEditPrompt(
-  params: BuildLocationImageEditPromptParams,
+  params: BuildLocationImageEditPromptParams
 ): string {
   const editInstruction = params.editInstruction.trim();
   const description = params.description.trim();
   const cameraView = params.cameraView
     ? [
         params.cameraView.label,
-        params.cameraView.directive ? `Directive: ${params.cameraView.directive}` : null,
+        params.cameraView.directive
+          ? `Directive: ${params.cameraView.directive}`
+          : null,
       ]
         .filter(Boolean)
         .join(" — ")
@@ -276,6 +308,48 @@ export function buildLocationImageEditPrompt(
   ].join("\n");
 }
 
+export interface BuildLocationCameraVariantPromptParams {
+  locationName: string;
+  description: string;
+  editInstruction: string;
+  cameraView?: VerticalDramaLocationCameraView;
+}
+
+/**
+ * Build the provider-facing prompt for a reusable camera variant. This is
+ * intentionally not the same contract as a primary-image edit: the provider
+ * must create a new composition and may reframe/reposition the camera while
+ * keeping the location's fixed identity coherent.
+ */
+export function buildLocationCameraVariantPrompt(
+  params: BuildLocationCameraVariantPromptParams
+): string {
+  const editInstruction = params.editInstruction.trim();
+  const description = params.description.trim();
+  const cameraView = params.cameraView
+    ? [
+        params.cameraView.label,
+        params.cameraView.directive
+          ? `Directive: ${params.cameraView.directive}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" — ")
+    : "Use a clearly different camera distance or composition from the source image.";
+
+  return [
+    "IMAGE-TO-IMAGE CAMERA VARIANT — create a new camera composition from the attached location reference.",
+    `Location: ${params.locationName.trim()}`,
+    `Existing location description (identity context): ${description || params.locationName.trim()}`,
+    `Creator's required camera-view change (highest priority): ${editInstruction}`,
+    `Requested camera view: ${cameraView}`,
+    "Move or reframe the camera as requested: this is a new shot of the same physical location, not an edit that preserves the source framing.",
+    "Do not return a copy of the original framing. Make the requested change visible in the composition, camera distance, and field of view.",
+    "Preserve the location's architecture, spatial layout, fixed fixtures, permanent materials, and visual identity where they remain visible. If the requested view looks through glass or an opening, reveal the specified interior area while keeping the surrounding structure coherent.",
+    "Do not add people, text, logos, watermarks, unrelated objects, or a new location. Keep the result coherent and photorealistic.",
+  ].join("\n");
+}
+
 /* -------------------------------------------------------------------------- */
 /* Model resolution — reuses the same quality large-context resolver tier as  */
 /* the character visual bible, routed through the centralized per-series      */
@@ -283,8 +357,13 @@ export function buildLocationImageEditPrompt(
 /* `resolveCharacterVisualBibleModel` in the character sibling module).       */
 /* -------------------------------------------------------------------------- */
 
-export async function resolveLocationVisualBibleModel(seriesId: number): Promise<string> {
-  return resolveVerticalDramaSeriesModel(seriesId, resolveQualityLargeContextModelId);
+export async function resolveLocationVisualBibleModel(
+  seriesId: number
+): Promise<string> {
+  return resolveVerticalDramaSeriesModel(
+    seriesId,
+    resolveQualityLargeContextModelId
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -315,7 +394,7 @@ export interface GenerateLocationVisualPromptsResult {
  * responsibility via `mediaGenerationService`.
  */
 export async function generateLocationVisualPrompts(
-  params: GenerateLocationVisualPromptsParams,
+  params: GenerateLocationVisualPromptsParams
 ): Promise<GenerateLocationVisualPromptsResult> {
   const hasCredits = await hasEnoughCredits(params.userId, 1);
   if (!hasCredits) {
@@ -330,22 +409,27 @@ export async function generateLocationVisualPrompts(
   // much smaller than the multi-field character visual bible, but shares the
   // same fragile executeWithFallback+extractJson pattern, so it gets the same
   // one-retry-on-truncated/invalid-JSON safety net.
-  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
-    model,
-    systemPrompt,
-    userPrompt,
-    temperature: 0.7,
-    userId: params.userId,
-    maxTokens: 2000,
-    schema: locationVisualBibleOutputSchema,
-    label: "Location visual bible",
-  });
+  const { data: validatedData, response } =
+    await executeJsonPlanningCallWithRetry({
+      model,
+      systemPrompt,
+      userPrompt,
+      temperature: 0.7,
+      userId: params.userId,
+      maxTokens: 2000,
+      schema: locationVisualBibleOutputSchema,
+      label: "Location visual bible",
+      verticalDramaContext: {
+        seriesId: params.seriesId,
+        taskClass: "visual_bible",
+      },
+    });
 
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
-    model,
+    model
   );
 
   await deductCredits({

@@ -72,3 +72,7 @@ Capture locale selection, cue review, condensation diff, partial failure/retry a
 ## v2 required integration
 
 Localization is optional for authored/source-language dialogue. Validate transcript privacy before Skill execution; preserve source text. No permitted semantic executor means explicit unavailable or manual plan, not silent cloud transfer.
+
+## Implementation record (2026-09-07)
+
+Existing subtitle/Skill-first localization paths remain the source-authoritative planning boundary. Unified TTS accepts only approved `UtteranceRef` text and does not translate, rewrite or overwrite source subtitles; localization remains optional for authored dialogue.

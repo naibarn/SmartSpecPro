@@ -98,7 +98,7 @@ vi.mock("@/lib/trpc", () => ({
           media: { service: "celery-media", containerName: "smartspec-celery-media", status: "running", project: "smartspecpro", health: "healthy", restartCount: 0, startedAt: null, duplicate: false, candidates: [] },
           beat: { service: "celery-beat", containerName: "smartspec-celery-beat", status: "running", project: "smartspecpro", health: "healthy", restartCount: 0, startedAt: null, duplicate: false, candidates: [] },
         },
-        queue: { redisMediaDepth: 0, pendingCount: 0, processingCount: 0, stalePendingCount: 0 },
+        queue: { redisMediaDepth: 0, pendingCount: 0, processingCount: 0, inFlightCount: 0, claimedPendingCount: 0, unclaimedPendingCount: 0, stalePendingCount: 0 },
         users: [], selectedUser: null, repair: { available: false, reason: null },
       }) },
       runCeleryMediaDoctor: { useMutation: () => ({ mutate: doctorMutationMock, isPending: false }) },

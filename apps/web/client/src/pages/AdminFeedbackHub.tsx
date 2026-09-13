@@ -15,7 +15,7 @@ import {
 } from "@/components/feedback/AuthenticatedAttachmentImage";
 import { parseFeedbackTicketId } from "./feedbackHubNavigation";
 import {
-  FEEDBACK_LIGHTBOX_ZOOM_MIN,
+  FEEDBACK_LIGHTBOX_ZOOM_DEFAULT,
   getFeedbackLightboxImageStyle,
 } from "./feedbackHubZoom";
 import { FeedbackLightboxZoomControls } from "./FeedbackLightboxZoomControls";
@@ -164,7 +164,7 @@ export default function AdminFeedbackHub() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxZoom, setLightboxZoom] = useState(
-    FEEDBACK_LIGHTBOX_ZOOM_MIN,
+    FEEDBACK_LIGHTBOX_ZOOM_DEFAULT,
   );
   const [lightboxImageSize, setLightboxImageSize] = useState<{
     width: number;
@@ -553,7 +553,7 @@ export default function AdminFeedbackHub() {
   const openLightbox = (attachmentId: number) => {
     const idx = imageAttachments.findIndex((a: any) => a.id === attachmentId);
     setLightboxIndex(idx >= 0 ? idx : 0);
-    setLightboxZoom(FEEDBACK_LIGHTBOX_ZOOM_MIN);
+    setLightboxZoom(FEEDBACK_LIGHTBOX_ZOOM_DEFAULT);
     setLightboxImageSize(null);
     setLightboxOpen(true);
   };
@@ -619,7 +619,7 @@ export default function AdminFeedbackHub() {
   };
 
   useEffect(() => {
-    setLightboxZoom(FEEDBACK_LIGHTBOX_ZOOM_MIN);
+    setLightboxZoom(FEEDBACK_LIGHTBOX_ZOOM_DEFAULT);
     setLightboxImageSize(null);
     lightboxPanRef.current = null;
     setLightboxPanning(false);
@@ -2030,7 +2030,7 @@ export default function AdminFeedbackHub() {
                 onOpenChange={open => {
                   setLightboxOpen(open);
                   if (!open) {
-                    setLightboxZoom(FEEDBACK_LIGHTBOX_ZOOM_MIN);
+                    setLightboxZoom(FEEDBACK_LIGHTBOX_ZOOM_DEFAULT);
                     setLightboxImageSize(null);
                     lightboxPanRef.current = null;
                     setLightboxPanning(false);
@@ -2039,14 +2039,16 @@ export default function AdminFeedbackHub() {
               >
                 <DialogContent
                   fullscreen
-                  className="relative h-[100dvh] w-[100vw] max-w-none rounded-none p-0 overflow-hidden flex flex-col"
+                  layerIndex={10000}
+                  className="relative h-[100dvh] w-[100vw] max-w-none rounded-none p-0 overflow-hidden flex flex-col [&>button]:bg-background [&>button]:text-foreground [&>button]:opacity-100"
                 >
+                  <DialogTitle className="sr-only">ภาพแนบ Feedback</DialogTitle>
                   {imageAttachments[lightboxIndex] && (
                     <>
                       <div
                         ref={lightboxViewportRef}
                         className={`relative flex-1 min-h-0 overflow-auto bg-black select-none ${
-                          lightboxZoom > FEEDBACK_LIGHTBOX_ZOOM_MIN
+                          lightboxZoom > FEEDBACK_LIGHTBOX_ZOOM_DEFAULT
                             ? lightboxPanning
                               ? "cursor-grabbing"
                               : "cursor-grab"
@@ -2055,7 +2057,7 @@ export default function AdminFeedbackHub() {
                         style={{
                           overflowAnchor: "none",
                           touchAction:
-                            lightboxZoom > FEEDBACK_LIGHTBOX_ZOOM_MIN
+                            lightboxZoom > FEEDBACK_LIGHTBOX_ZOOM_DEFAULT
                               ? "none"
                               : "auto",
                         }}
@@ -2066,7 +2068,7 @@ export default function AdminFeedbackHub() {
                       >
                         <div
                           className={`flex min-h-full min-w-full p-4 ${
-                            lightboxZoom === FEEDBACK_LIGHTBOX_ZOOM_MIN
+                            lightboxZoom <= FEEDBACK_LIGHTBOX_ZOOM_DEFAULT
                               ? "items-center justify-center"
                               : "items-start justify-start"
                           }`}
@@ -2079,7 +2081,7 @@ export default function AdminFeedbackHub() {
                             }
                             alt={imageAttachments[lightboxIndex].fileName}
                             className={
-                              lightboxZoom === FEEDBACK_LIGHTBOX_ZOOM_MIN
+                              lightboxZoom <= FEEDBACK_LIGHTBOX_ZOOM_DEFAULT
                                 ? "h-full w-full object-contain"
                                 : "block max-h-none max-w-none shrink-0 object-contain"
                             }
@@ -2095,28 +2097,33 @@ export default function AdminFeedbackHub() {
                             }}
                           />
                         </div>
-
-                        {imageAttachments.length > 1 && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white"
-                              onClick={() => navigateLightbox("prev")}
-                            >
-                              <ChevronLeft className="w-6 h-6" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white"
-                              onClick={() => navigateLightbox("next")}
-                            >
-                              <ChevronRight className="w-6 h-6" />
-                            </Button>
-                          </>
-                        )}
                       </div>
+                      {imageAttachments.length > 1 && (
+                        <>
+                          <Button
+                            type="button"
+                            aria-label="ภาพก่อนหน้า"
+                            title="ภาพก่อนหน้า (←)"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute left-3 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white"
+                            onClick={() => navigateLightbox("prev")}
+                          >
+                            <ChevronLeft className="w-6 h-6" />
+                          </Button>
+                          <Button
+                            type="button"
+                            aria-label="ภาพถัดไป"
+                            title="ภาพถัดไป (→)"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white"
+                            onClick={() => navigateLightbox("next")}
+                          >
+                            <ChevronRight className="w-6 h-6" />
+                          </Button>
+                        </>
+                      )}
                       <FeedbackLightboxZoomControls
                         scale={lightboxZoom}
                         onScaleChange={setLightboxZoom}

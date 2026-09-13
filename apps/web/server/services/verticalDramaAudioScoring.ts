@@ -27,6 +27,7 @@ import {
 import { getSkillByIdAsync } from "./skillRegistry";
 import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
 import { executeSkillLlmWithFallback } from "./skillModelFallback";
+import { settleSkillRun } from "./skillRevenueBilling";
 import { reconcileApprovedVerticalDramaAudioPipeline } from "./verticalDramaAudioPipelineCoordinator";
 
 export const VERTICAL_DRAMA_EMOTION_PLAN_SKILL_VERSION = "1.0.0" as const;
@@ -328,6 +329,11 @@ export async function runVerticalDramaEmotionPlanJob(
       maxModelAttempts: 1,
       temperature: 0,
       maxTokens: 12000,
+      verticalDramaContext: {
+        seriesId: analysis.seriesId,
+        episodeId: analysis.episodeId,
+        taskClass: "semantic_quality_review",
+      },
       messages: [
         { role: "system", content: skillFiles.content },
         {
@@ -373,6 +379,11 @@ export async function runVerticalDramaEmotionPlanJob(
       maxModelAttempts: 1,
       temperature: 0,
       maxTokens: 6000,
+      verticalDramaContext: {
+        seriesId: analysis.seriesId,
+        episodeId: analysis.episodeId,
+        taskClass: "semantic_quality_review",
+      },
       messages: [
         { role: "system", content: skillFiles.content },
         {
@@ -397,6 +408,35 @@ export async function runVerticalDramaEmotionPlanJob(
     }
     const critiqueProvider = critiqueLlm.provider?.providerName?.trim();
     if (!critiqueProvider) throw new Error("SKILL_CRITIQUE_INVALID: provider identity missing");
+
+    // The analysis and critique calls are one logical skill run. Settle once
+    // after both calls succeed so the user sees one idempotent credit
+    // transaction rather than two provider-level charges or no charge at all.
+    const skillRunId = execution.traceId?.trim() || `vertical-drama-audio:${analysisId}:${analysis.sourceHash}`;
+    await settleSkillRun({
+      runId: skillRunId,
+      userId: payload.userId,
+      tenantId: payload.tenantId,
+      skillSlug: VERTICAL_DRAMA_EMOTION_SKILL_ID,
+      description: `Skill run: ${VERTICAL_DRAMA_EMOTION_SKILL_ID}`,
+      metadata: {
+        runtimeKind: "llm",
+        originSurface: "vertical_drama_audio_scoring",
+        stage: "emotion_plan",
+        analysisModel: llm.modelId,
+        analysisProvider: provider,
+        analysisInputTokens: llm.inputTokens ?? 0,
+        analysisOutputTokens: llm.outputTokens ?? 0,
+        critiqueModel: critiqueLlm.modelId,
+        critiqueProvider,
+        critiqueInputTokens: critiqueLlm.inputTokens ?? 0,
+        critiqueOutputTokens: critiqueLlm.outputTokens ?? 0,
+        analysisId,
+        seriesId: analysis.seriesId,
+        episodeId: analysis.episodeId,
+      },
+    });
+
     const critiqueSkill = {
       skillId: VERTICAL_DRAMA_EMOTION_SKILL_ID,
       skillVersion: skillFiles.version,

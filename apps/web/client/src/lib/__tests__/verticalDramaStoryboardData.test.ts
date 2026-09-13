@@ -88,6 +88,93 @@ describe("buildVerticalDramaUnifiedStoryboardData", () => {
     ]);
   });
 
+  it("keeps special tie-in dialogue after image approval removes the pending motion clip", () => {
+    const result = buildVerticalDramaUnifiedStoryboardData({
+      episodeTitle: "ตอนพิเศษ",
+      storyboard: {
+        shots: [{ shot_number: 1, visual_description: "ฉากในร้าน" }],
+      },
+      startFramePlan: {
+        frames: [{ shotNumber: 1, canonicalShotSummary: "ตัวละครทดลองสินค้า" }],
+      },
+      motionPromptPack: { clips: [] },
+      dialogueAudioPlan: {
+        dialogue_lines: [
+          {
+            shot_number: 1,
+            speaker_character_key: "fifa",
+            speaker_name: "ฟีฟ่า",
+            dialogue_line: "ลองใช้ตัวนี้ดูนะ",
+          },
+        ],
+      },
+      characterPortraits: { fifa: { name: "ฟีฟ่า" } },
+    });
+
+    expect(result.canonicalShotDrafts).toEqual([
+      {
+        shotNumber: 1,
+        summary: "ตัวละครทดลองสินค้า",
+        dialogueLines: [{ speaker: "ฟีฟ่า", line: "ลองใช้ตัวนี้ดูนะ" }],
+      },
+    ]);
+  });
+
+  it("preserves authored Overview dialogue over audio-plan and legacy clip fallbacks", () => {
+    const result = buildVerticalDramaUnifiedStoryboardData({
+      storyboard: { shots: [{ shot_number: 1, visual_description: "ฉาก" }] },
+      episodePlanShotDrafts: [
+        {
+          shotNumber: 1,
+          summary: "ตัวละครคุยกัน",
+          dialogueLines: [{ speaker: "ฟีฟ่า", line: "บทพูดล่าสุด" }],
+        },
+      ],
+      dialogueAudioPlan: {
+        dialogue_lines: [
+          {
+            shot_number: 1,
+            speaker_name: "ฟีฟ่า",
+            dialogue_line: "บทพูดจากแผนเสียง",
+          },
+        ],
+      },
+      motionPromptPack: {
+        clips: [
+          {
+            sourceShotNumbers: [1],
+            dialogue: [{ characterKey: "fifa", lineTh: "บทพูดจากคลิปเก่า" }],
+          },
+        ],
+      },
+    });
+
+    expect(result.canonicalShotDrafts[0]?.dialogueLines).toEqual([
+      { speaker: "ฟีฟ่า", line: "บทพูดล่าสุด" },
+    ]);
+  });
+
+  it("uses legacy clip dialogue when an Overview draft has no dialogue and no audio plan exists", () => {
+    const result = buildVerticalDramaUnifiedStoryboardData({
+      storyboard: { shots: [{ shot_number: 1, visual_description: "ฉาก" }] },
+      episodePlanShotDrafts: [
+        { shotNumber: 1, summary: "ตัวละครคุยกัน", dialogueLines: [] },
+      ],
+      motionPromptPack: {
+        clips: [
+          {
+            sourceShotNumbers: [1],
+            dialogue: [{ characterKey: "fifa", lineTh: "บทพูดจากคลิปเก่า" }],
+          },
+        ],
+      },
+    });
+
+    expect(result.canonicalShotDrafts[0]?.dialogueLines).toEqual([
+      { speaker: "fifa", line: "บทพูดจากคลิปเก่า" },
+    ]);
+  });
+
   it("merges missing frame shots into an existing storyboard without dropping locations", () => {
     const result = buildVerticalDramaUnifiedStoryboardData({
       storyboard: {

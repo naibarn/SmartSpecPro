@@ -12,6 +12,10 @@ import { isFreeModelIdentifier, resolveEnabledLlmModelId } from "./enabledLlmMod
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import { resolveCatalogBackedPricing } from "./llmProviderCatalog";
 import { queueWorkerLlmInvoke } from "./workerLocalLlmService";
+import {
+  adaptVerticalDramaReasoningForProvider,
+  VERTICAL_DRAMA_REASONING_POLICY_KEY,
+} from "./verticalDramaLlmPolicy";
 import type { Message } from "../_core/llm";
 
 // --- Types ---
@@ -24,6 +28,8 @@ export interface ProviderCandidate {
   providerModelId: string;
   apiStyle?: "chat-completions" | "responses" | "messages" | "gemini";
   supportsResponses?: boolean;
+  supportsFunctionTools?: boolean;
+  supportsThinking?: boolean | null;
   pricingInput: number;
   pricingOutput: number;
   isFree: boolean;
@@ -219,6 +225,8 @@ async function resolveProvidersWithRule(modelId: string): Promise<ResolveResult>
       apiKeyEncrypted: llmProviders.apiKeyEncrypted,
       availableModels: llmProviders.availableModels,
       supportsResponses: modelProviderMap.supportsResponses,
+      supportsFunctionTools: modelProviderMap.supportsFunctionTools,
+      supportsThinking: modelProviderMap.supportsThinking,
       providerModelId: modelProviderMap.providerModelId,
       apiStyle: modelProviderMap.apiStyle,
       pricingInput: modelProviderMap.pricingInput,
@@ -272,6 +280,8 @@ async function resolveProvidersWithRule(modelId: string): Promise<ResolveResult>
       providerModelId: r.providerModelId,
       apiStyle: r.apiStyle ?? undefined,
       supportsResponses: r.supportsResponses ?? undefined,
+      supportsFunctionTools: r.supportsFunctionTools ?? undefined,
+      supportsThinking: r.supportsThinking ?? undefined,
       pricingInput: effectivePricing.pricingInput,
       pricingOutput: effectivePricing.pricingOutput,
       isFree: effectivePricing.isFree,
@@ -534,6 +544,57 @@ function extractPlainTextContent(content: unknown): string {
     .join("\n");
 }
 
+const OPENROUTER_REASONING_EFFORT_RATIOS: Record<string, number> = {
+  minimal: 0.1,
+  low: 0.2,
+  medium: 0.5,
+  high: 0.8,
+  xhigh: 0.95,
+  max: 0.95,
+};
+
+/**
+ * Keep a usable final-answer budget when OpenRouter reasoning is enabled.
+ * OpenRouter's effort mode allocates part of `max_tokens` to reasoning; a
+ * high/xhigh request with a small raw max_tokens value can therefore return
+ * HTTP 200 with reasoning but no assistant content. Convert the effort to a
+ * bounded reasoning budget and expand the total completion budget so the
+ * caller's requested output budget remains available.
+ */
+export function normalizeOpenRouterReasoningBudget(input: {
+  reasoning: unknown;
+  maxTokens?: number;
+}): { reasoning: Record<string, unknown>; maxTokens?: number } {
+  if (!input.reasoning || typeof input.reasoning !== "object" || Array.isArray(input.reasoning)) {
+    return { reasoning: {}, maxTokens: input.maxTokens };
+  }
+
+  const reasoning = input.reasoning as Record<string, unknown>;
+  const requestedOutputTokens = Number.isFinite(input.maxTokens) && (input.maxTokens ?? 0) > 0
+    ? Math.ceil(input.maxTokens as number)
+    : 0;
+  if (requestedOutputTokens === 0) {
+    return { reasoning: { ...reasoning }, maxTokens: input.maxTokens };
+  }
+
+  const explicitReasoningTokens = Number(reasoning.max_tokens);
+  const effort = typeof reasoning.effort === "string" ? reasoning.effort.toLowerCase() : "medium";
+  const inferredReasoningTokens = Math.min(
+    4_096,
+    Math.max(1_024, Math.ceil(requestedOutputTokens * (OPENROUTER_REASONING_EFFORT_RATIOS[effort] ?? 0.5))),
+  );
+  const reasoningTokens = Number.isFinite(explicitReasoningTokens) && explicitReasoningTokens > 0
+    ? Math.ceil(explicitReasoningTokens)
+    : inferredReasoningTokens;
+  const { effort: _effort, enabled: _enabled, max_tokens: _maxTokens, ...rest } = reasoning;
+  const finalOutputReserve = Math.max(1_024, requestedOutputTokens);
+
+  return {
+    reasoning: { ...rest, max_tokens: reasoningTokens },
+    maxTokens: Math.max(requestedOutputTokens, reasoningTokens + finalOutputReserve),
+  };
+}
+
 function toAnthropicTextBlocks(content: unknown): Array<Record<string, unknown>> {
   const text = extractPlainTextContent(content);
   return text.length > 0 ? [{ type: "text", text }] : [];
@@ -604,7 +665,7 @@ function extractResponsesOutputText(output: unknown): string {
     .join("");
 }
 
-function extractAnyAssistantText(rawData: any): string {
+export function extractAnyAssistantText(rawData: any): string {
   const directOutputText = typeof rawData?.output_text === "string"
     ? rawData.output_text
     : typeof rawData?.response?.output_text === "string"
@@ -951,6 +1012,22 @@ export async function executeWithFallback(params: {
         requestApiStyle === "gemini"
         || candidate.providerName.toLowerCase() === "google"
         || candidate.providerName.toLowerCase().includes("gemini");
+      const isOpenRouter = candidate.providerName.toLowerCase() === "openrouter";
+      const adaptedReasoning = adaptVerticalDramaReasoningForProvider({
+        extraBodyParams: params.extraBodyParams,
+        providerName: candidate.providerName,
+        supportsThinking: candidate.supportsThinking,
+      });
+      const rawOpenRouterReasoning = isOpenRouter && candidate.supportsThinking === true
+        ? (adaptedReasoning.reasoning ?? (params.enableThinking ? { effort: "high" } : undefined))
+        : undefined;
+      const openRouterReasoning = rawOpenRouterReasoning
+        ? normalizeOpenRouterReasoningBudget({
+            reasoning: rawOpenRouterReasoning,
+            maxTokens: params.maxTokens,
+          })
+        : undefined;
+      const requestMaxTokens = openRouterReasoning?.maxTokens ?? params.maxTokens;
       const url = shouldUseResponses
         ? resolveResponsesUrl(candidate.baseUrl, candidate.providerName, candidate.providerModelId)
         : shouldUseMessages
@@ -980,9 +1057,10 @@ export async function executeWithFallback(params: {
                 }
               : {}),
             stream: params.stream,
-            ...(params.maxTokens != null ? { max_output_tokens: params.maxTokens } : {}),
+            ...(requestMaxTokens != null ? { max_output_tokens: requestMaxTokens } : {}),
             ...(params.temperature != null ? { temperature: params.temperature } : {}),
-            ...(params.enableThinking ? { reasoning: { effort: "high" } } : {}),
+            ...(params.enableThinking && !isOpenRouter ? { reasoning: { effort: "high" } } : {}),
+            ...(openRouterReasoning ? { reasoning: openRouterReasoning.reasoning } : {}),
             ...(() => {
               const incomingText =
                 params.extraBodyParams?.text !== undefined
@@ -1059,12 +1137,16 @@ export async function executeWithFallback(params: {
                 model: candidate.providerModelId,
                 messages: params.messages,
                 stream: params.stream,
-                ...(params.maxTokens != null ? { max_tokens: params.maxTokens } : {}),
+                ...(requestMaxTokens != null ? { max_tokens: requestMaxTokens } : {}),
                 ...(params.temperature != null ? { temperature: params.temperature } : {}),
-                ...(params.enableThinking ? { reasoning: { effort: "high" } } : {}),
+                ...(params.enableThinking && !isOpenRouter ? { reasoning: { effort: "high" } } : {}),
                 ...(() => {
                   const extraBodyParams = params.extraBodyParams ?? {};
-                  const { provider: providerFromExtra, ...restExtraBodyParams } = extraBodyParams as Record<string, unknown>;
+                  const {
+                    provider: providerFromExtra,
+                    [VERTICAL_DRAMA_REASONING_POLICY_KEY]: _verticalDramaReasoningPolicy,
+                    ...restExtraBodyParams
+                  } = extraBodyParams as Record<string, unknown>;
                   const normalizedResponseFormat = normalizeResponseFormatForCandidate(
                     candidate,
                     restExtraBodyParams.response_format,
@@ -1093,6 +1175,7 @@ export async function executeWithFallback(params: {
                   return {
                     ...(provider ? { provider } : {}),
                     ...restExtraBodyParams,
+                    ...(openRouterReasoning ? { reasoning: openRouterReasoning.reasoning } : {}),
                     ...(normalizedResponseFormat !== undefined
                       ? { response_format: normalizedResponseFormat }
                       : {}),
@@ -1238,8 +1321,16 @@ export async function executeWithFallback(params: {
         const outputTokens = data?.usage?.completion_tokens ?? 0;
 
         if (!hasUsableAssistantText(data)) {
-          const emptyResponseMessage =
-            "Provider returned HTTP 200 with no assistant text";
+          const responseMessage = data?.choices?.[0]?.message;
+          const hasReasoningPayload = Boolean(
+            responseMessage && typeof responseMessage === "object" && (
+              typeof responseMessage.reasoning === "string" ||
+              typeof responseMessage.reasoning_content === "string"
+            ),
+          );
+          const emptyResponseMessage = isOpenRouter && hasReasoningPayload
+            ? "OpenRouter returned HTTP 200 with reasoning but no final assistant text; the reasoning budget may have consumed the response budget"
+            : "Provider returned HTTP 200 with no assistant text";
           failureDetails.push({
             providerId: candidate.providerId,
             providerName: candidate.providerName,
@@ -1291,6 +1382,7 @@ export async function executeWithFallback(params: {
               },
               choiceCount: data?.choices?.length ?? 0,
               finishReason: data?.choices?.[0]?.finish_reason ?? null,
+              hasReasoningPayload,
               assistantPreview: "",
             },
           });

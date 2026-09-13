@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+if [ "${1:-}" = "inspect" ]; then
+    printf '%s\n' "${FAKE_DOCKER_INSPECT:-running|false|0|0}"
+    exit 0
+fi
+
+exit 0

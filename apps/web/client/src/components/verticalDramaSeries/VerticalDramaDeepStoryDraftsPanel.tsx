@@ -103,6 +103,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  Wrench,
   Trash2,
   XCircle,
 } from "lucide-react";
@@ -163,6 +164,7 @@ import {
   deepStoryDraftsNewCharactersCreatedText,
   deepStoryDraftsNewLocationsCreatedText,
   deepStoryDraftsPartialWarningText,
+  deepStoryDraftsRecoveryEpisodeText,
   deepStoryDraftsScopeKeepHintText,
   deepStoryDraftsScorecardBelowFloorDimText,
   deepStoryDraftsScorecardOverallBadgeText,
@@ -255,7 +257,12 @@ export interface VerticalDramaStoryJobProgressLike {
    * `storyJobProgressText` for the matching label branch.
    */
   phase: "outline" | "ledger" | "draft" | "review" | "fix" | "reading";
-  stage?: "generating" | "candidate_saved" | "validating" | "saving" | "handoff";
+  stage?:
+    | "generating"
+    | "candidate_saved"
+    | "validating"
+    | "saving"
+    | "handoff";
   chunkIndex?: number;
   chunkCount?: number;
   callsDone?: number;
@@ -313,6 +320,24 @@ export interface VerticalDramaStoryJobStatusLike {
   updatedAt?: string;
   result?: unknown;
   error?: string;
+}
+
+export interface VerticalDramaStoryJobRecoveryLike {
+  jobId: string;
+  kind: VerticalDramaStoryJobKind;
+  status: "queued" | "running" | "succeeded" | "failed";
+  canResume: boolean;
+  reason: string;
+  completedEpisodeNumbers: number[];
+  remainingEpisodeNumbers: number[] | null;
+  completedEpisodeCount: number;
+  remainingEpisodeCount: number | null;
+  totalEpisodeCount: number | null;
+  recoveryAttempts: number;
+  maxRecoveryAttempts: number;
+  checkpointUpdatedAt: string | null;
+  error: string | null;
+  updatedAt: string;
 }
 
 type StoryPlanGenerationResult = {
@@ -433,6 +458,7 @@ const shotDialogueLineSchema = z
     speaker: z.string().min(1),
     line: z.string().min(1),
     delivery: z.string().optional(),
+    addressed_to: z.string().optional(),
   })
   .passthrough();
 
@@ -729,6 +755,7 @@ export type ManualDialogueEditDraftLine = {
   speaker: string;
   line: string;
   delivery: string;
+  addressedTo: string;
 };
 
 /** `updateEpisodeDraftDialogue`'s per-line mutation input shape — a client-local mirror of the router's `updateEpisodeDraftDialogueLineInput` (a server-only file's zod schema, not importable from the client). */
@@ -736,6 +763,7 @@ export type ManualDialogueEditLineInput = {
   speaker?: string;
   line: string;
   delivery?: string;
+  addressed_to?: string;
 };
 
 /** Seeds a shot's stored `dialogue_lines` into editable draft-line rows (blank speaker/delivery become `""`, never `undefined`, so every field is always a controlled input value). */
@@ -746,6 +774,7 @@ export function toManualDialogueEditDraftLines(
     speaker: line.speaker ?? "",
     line: line.line,
     delivery: line.delivery ?? "",
+    addressedTo: line.addressed_to ?? "",
   }));
 }
 
@@ -756,10 +785,12 @@ export function toManualDialogueEditLineInput(
   const speaker = row.speaker.trim();
   const line = row.line.trim();
   const delivery = row.delivery.trim();
+  const addressedTo = row.addressedTo.trim();
   return {
     ...(speaker ? { speaker } : {}),
     line,
     ...(delivery ? { delivery } : {}),
+    ...(addressedTo ? { addressed_to: addressedTo } : {}),
   };
 }
 
@@ -1098,6 +1129,7 @@ export function VerticalDramaDeepStoryDraftsActions({
 }: VerticalDramaDeepStoryDraftsActionsProps) {
   const utils = trpc.useUtils();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [repairConfirmOpen, setRepairConfirmOpen] = useState(false);
   const [scope, setScope] = useState<VerticalDramaDeepDraftScope>("keep");
   // Production-grade full-story generation upgrade (2026-07-13) — defaults
   // to "premium" (was "standard"): the quality-loop pipeline (fan-out +
@@ -1164,6 +1196,19 @@ export function VerticalDramaDeepStoryDraftsActions({
       },
     });
 
+  const recoveryQuery = trpc.verticalDramaSeries.getStoryJobRecovery.useQuery(
+    { seriesId },
+    { enabled: Boolean(seriesId), staleTime: 10_000 },
+  );
+  const repairMutation = trpc.verticalDramaSeries.repairStoryJob.useMutation({
+    onError: (err: { message?: string }) => {
+      toast.error(
+        err?.message ||
+          pickCopy(lang, verticalDramaCopy.deepStoryDraftsRecoveryError),
+      );
+    },
+  });
+
   /**
    * Refresh-safe resume (#28) — on mount (and whenever the series' active
    * story job changes), picks up any `deep_generate`/`extend` job still
@@ -1204,7 +1249,8 @@ export function VerticalDramaDeepStoryDraftsActions({
             // second client submission.
             invalidateSeries();
             const deepJobId =
-              result && typeof result === "object" &&
+              result &&
+              typeof result === "object" &&
               typeof (result as { deepJobId?: unknown }).deepJobId === "string"
                 ? (result as { deepJobId: string }).deepJobId
                 : null;
@@ -1323,7 +1369,8 @@ export function VerticalDramaDeepStoryDraftsActions({
       active.kind !== "plan" &&
       active.kind !== "deep_generate" &&
       active.kind !== "extend"
-    ) return;
+    )
+      return;
     if (resumedStoryJobRef.current || storyJobPollInFlightRef.current) return;
     resumedStoryJobRef.current = true;
     void pollStoryJob(active.jobId, active.kind);
@@ -1336,8 +1383,13 @@ export function VerticalDramaDeepStoryDraftsActions({
   const isMutating =
     generateMutation.isPending ||
     extendMutation.isPending ||
+    repairMutation.isPending ||
     isChaining ||
     isPollingThisCard;
+  const canRepairFromCheckpoint = Boolean(
+    recoveryQuery.data?.status === "failed" &&
+      recoveryQuery.data.canResume,
+  );
 
   /**
    * Deep-draft phase only — the pre-consolidation behavior, still used as-is
@@ -1380,6 +1432,23 @@ export function VerticalDramaDeepStoryDraftsActions({
       await pollStoryJob(res.jobId, "deep_generate");
     } catch {
       // Enqueue-level error toast already shown by generateMutation's own onError.
+    }
+  };
+
+  const runCheckpointRecovery = async () => {
+    const recovery = recoveryQuery.data;
+    if (!recovery || !recovery.canResume || recovery.status !== "failed") return;
+    try {
+      const result = await repairMutation.mutateAsync({
+        seriesId,
+        jobId: recovery.jobId,
+      });
+      setRepairConfirmOpen(false);
+      if (!result.jobId) return;
+      await pollStoryJob(result.jobId, result.state?.kind ?? recovery.kind);
+      void recoveryQuery.refetch();
+    } catch {
+      // Error toast is owned by repairMutation's onError handler.
     }
   };
 
@@ -1468,7 +1537,7 @@ export function VerticalDramaDeepStoryDraftsActions({
     ? Math.max(
         0,
         deepDraftSummary.episodesNeedingRepair ??
-          deepDraftSummary.totalEpisodes - deepDraftSummary.episodesWithDrafts,
+          deepDraftSummary.totalEpisodes - deepDraftSummary.episodesWithDrafts
       )
     : horizon;
   const episodesToProcess =
@@ -1541,6 +1610,136 @@ export function VerticalDramaDeepStoryDraftsActions({
         runId={assuranceRunId}
       />
       {partialBanner}
+
+      {recoveryQuery.data?.status === "failed" && (
+        <div
+          className="flex flex-col gap-2 rounded-md border border-amber-400/60 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200"
+          data-testid="vd-deep-story-drafts-recovery-banner"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex items-start gap-2">
+            <Wrench
+              aria-hidden="true"
+              className="mt-0.5 h-4 w-4 shrink-0"
+            />
+            <div className="min-w-0 space-y-1">
+              <p className="font-medium">
+                {pickCopy(lang, verticalDramaCopy.deepStoryDraftsRecoveryTitle)}
+              </p>
+              <p>
+                {pickCopy(
+                  lang,
+                  verticalDramaCopy.deepStoryDraftsRecoveryDescription,
+                )}
+              </p>
+              <p data-testid="vd-deep-story-drafts-recovery-summary">
+                {deepStoryDraftsRecoveryEpisodeText(
+                  lang,
+                  recoveryQuery.data.completedEpisodeCount,
+                  recoveryQuery.data.remainingEpisodeNumbers,
+                )}
+              </p>
+              {recoveryQuery.data.error && (
+                <p className="break-words text-[11px] opacity-80">
+                  {recoveryQuery.data.error}
+                </p>
+              )}
+            </div>
+          </div>
+          {!recoveryQuery.data.canResume ? (
+            <p data-testid="vd-deep-story-drafts-recovery-unavailable">
+              {recoveryQuery.data.reason === "no_checkpoint"
+                ? pickCopy(
+                    lang,
+                    verticalDramaCopy.deepStoryDraftsRecoveryNoCheckpoint,
+                  )
+                : pickCopy(
+                    lang,
+                    verticalDramaCopy.deepStoryDraftsRecoveryUnavailable,
+                  )}
+            </p>
+          ) : !readOnly ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-fit gap-2 border-amber-500/60 bg-background"
+              disabled={isMutating}
+              onClick={() => setRepairConfirmOpen(true)}
+              data-testid="vd-deep-story-drafts-recovery-cta"
+            >
+              {repairMutation.isPending ? (
+                <Loader2
+                  className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Wrench className="h-4 w-4" aria-hidden="true" />
+              )}
+              {pickCopy(
+                lang,
+                verticalDramaCopy.deepStoryDraftsRecoveryContinue,
+              )}
+            </Button>
+          ) : null}
+        </div>
+      )}
+
+      <AlertDialog
+        open={repairConfirmOpen}
+        onOpenChange={open => {
+          if (!repairMutation.isPending) setRepairConfirmOpen(open);
+        }}
+      >
+        <AlertDialogContent data-testid="vd-deep-story-drafts-recovery-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pickCopy(
+                lang,
+                verticalDramaCopy.deepStoryDraftsRecoveryConfirmTitle,
+              )}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-1.5">
+              <span className="block">
+                {pickCopy(
+                  lang,
+                  verticalDramaCopy.deepStoryDraftsRecoveryConfirmDescription,
+                )}
+              </span>
+              {recoveryQuery.data && (
+                <span className="block font-medium">
+                  {deepStoryDraftsRecoveryEpisodeText(
+                    lang,
+                    recoveryQuery.data.completedEpisodeCount,
+                    recoveryQuery.data.remainingEpisodeNumbers,
+                  )}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={repairMutation.isPending}>
+              {pickCopy(lang, verticalDramaCopy.deepStoryDraftsConfirmCancel)}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void runCheckpointRecovery()}
+              disabled={repairMutation.isPending || !canRepairFromCheckpoint}
+              data-testid="vd-deep-story-drafts-recovery-confirm-submit"
+            >
+              {repairMutation.isPending ? (
+                <Loader2
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+                />
+              ) : null}
+              {pickCopy(
+                lang,
+                verticalDramaCopy.deepStoryDraftsRecoveryContinue,
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent data-testid="vd-deep-story-drafts-confirm">
@@ -1743,7 +1942,7 @@ export function VerticalDramaDeepStoryDraftsActions({
         <Button
           type="button"
           className="w-fit gap-2"
-          disabled={isMutating}
+          disabled={isMutating || canRepairFromCheckpoint}
           onClick={openConfirmDialog}
           data-testid="vd-deep-story-drafts-primary-cta"
         >
@@ -1946,6 +2145,8 @@ function ManualDialogueEditShotForm({
   onAddLine,
   onRemoveLine,
   onApplyCleaned,
+  addressCandidates,
+  showAddressee,
   onCancel,
   onSave,
 }: {
@@ -1970,6 +2171,8 @@ function ManualDialogueEditShotForm({
     index: number,
     cleaned: VerticalDramaLineSpeakabilityCleaned
   ) => void;
+  addressCandidates: string[];
+  showAddressee: boolean;
   onCancel: () => void;
   onSave: () => void;
 }) {
@@ -2117,6 +2320,47 @@ function ManualDialogueEditShotForm({
                     className="h-7 text-xs"
                     data-testid={`vd-deep-story-draft-edit-delivery-${episodeNumber}-${shotNumber}-${index}`}
                   />
+                  {showAddressee && (
+                    <Select
+                      value={row.addressedTo || "__contextual__"}
+                      onValueChange={value =>
+                        onChangeLine(index, {
+                          addressedTo: value === "__contextual__" ? "" : value,
+                        })
+                      }
+                    >
+                      <SelectTrigger
+                        className="h-7 text-xs"
+                        aria-label={pickCopy(
+                          lang,
+                          verticalDramaCopy.manualDialogueEditAddresseePlaceholder
+                        )}
+                        data-testid={`vd-deep-story-draft-edit-addressee-${episodeNumber}-${shotNumber}-${index}`}
+                      >
+                        <SelectValue
+                          placeholder={pickCopy(
+                            lang,
+                            verticalDramaCopy.manualDialogueEditAddresseePlaceholder
+                          )}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__contextual__">
+                          {pickCopy(
+                            lang,
+                            verticalDramaCopy.manualDialogueEditNoAddressee
+                          )}
+                        </SelectItem>
+                        {addressCandidates
+                          .filter(candidate => candidate !== row.speaker.trim())
+                          .map(candidate => (
+                            <SelectItem key={candidate} value={candidate}>
+                              {candidate}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <Button
                   type="button"
@@ -2372,7 +2616,7 @@ export function VerticalDramaDeepStoryDraftEpisodeDetail({
     setDraftLines(prev =>
       prev.length >= MANUAL_DIALOGUE_EDIT_MAX_LINES
         ? prev
-        : [...prev, { speaker: "", line: "", delivery: "" }]
+        : [...prev, { speaker: "", line: "", delivery: "", addressedTo: "" }]
     );
   };
   const handleRemoveLine = (index: number) => {
@@ -2389,6 +2633,7 @@ export function VerticalDramaDeepStoryDraftEpisodeDetail({
               speaker: cleaned.speaker ?? "",
               line: cleaned.line,
               delivery: cleaned.delivery ?? row.delivery,
+              addressedTo: row.addressedTo,
             }
           : row
       )
@@ -2568,6 +2813,19 @@ export function VerticalDramaDeepStoryDraftEpisodeDetail({
         <ol className="mt-2 grid gap-2">
           {shotDrafts.map(shot => {
             const isEditingThisShot = editingShotNumber === shot.shot_number;
+            const addressCandidates = Array.from(
+              new Set(
+                [
+                  ...(shot.characters ?? []).map(character => character.name),
+                  ...shot.dialogue_lines.map(line => line.speaker),
+                  ...(isEditingThisShot
+                    ? draftLines.map(line => line.speaker)
+                    : []),
+                ]
+                  .map(value => value.trim())
+                  .filter(Boolean)
+              )
+            );
             const isEdited =
               manualEditShotNumbers.includes(shot.shot_number) ||
               manualSummaryEditShotNumbers.includes(shot.shot_number);
@@ -2665,6 +2923,8 @@ export function VerticalDramaDeepStoryDraftEpisodeDetail({
                     onAddLine={handleAddLine}
                     onRemoveLine={handleRemoveLine}
                     onApplyCleaned={handleApplyCleaned}
+                    addressCandidates={addressCandidates}
+                    showAddressee={addressCandidates.length >= 3}
                     onCancel={handleCancelEdit}
                     onSave={() => handleSave(shot)}
                   />

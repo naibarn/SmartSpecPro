@@ -12,7 +12,7 @@ const file = { name: "video.mp4", path: "/fixture/video.mp4", isDirectory: false
   invoke: async (command: string) => {
     if (command === "worker_app_browse_directory") return { currentPath: "/fixture", parentPath: null, breadcrumbs: [], entries: [file, { ...file, name: "bad.ssproj", path: "/fixture/bad.ssproj", extension: "ssproj", isVideo: false }], totalFolders: 0, totalFiles: 2, totalVideoFiles: 1 };
     if (command === "worker_app_load_nle_project") return '{}';
-    if (command === "worker_app_detect_silence_custom") return {durationMs: 1000, silenceSegments: [], waveformPeaks: [0.2], cutCount: 0, timeSavedMs: 0};
+    if (command === "worker_app_detect_silence_custom") return {durationMs: 1000, silenceSegments: [], waveformPeaks: [0.2], audioTracks: [{streamIndex: 1, audioOrdinal: 0, title: "Dialogue", language: "th", channels: 2, isDefault: true}], selectedAudioStreamIndex: 1, cutCount: 0, timeSavedMs: 0};
     throw new Error(`Unsupported fixture command: ${command}`);
   },
 };

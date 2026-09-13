@@ -64,6 +64,7 @@ const CATEGORIES = [
   { value: "all", label: "All Skills" },
   { value: "image_generation", label: "Image Generation" },
   { value: "image_prompt_generation", label: "Create Prompt for Image Generation" },
+  { value: "character_prompt_generation", label: "Create Character Prompts" },
   { value: "video_generation", label: "Video Generation" },
   { value: "video_prompt_generation", label: "Create Prompt for Video Generation" },
   { value: "audio_generation", label: "Audio / TTS" },
@@ -86,6 +87,7 @@ const CATEGORIES = [
 const CATEGORY_ICONS: Record<string, any> = {
   image_generation: Image,
   image_prompt_generation: Sparkles,
+  character_prompt_generation: Sparkles,
   video_generation: Video,
   video_prompt_generation: Sparkles,
   audio_generation: Music,

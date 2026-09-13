@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { NleCanvas, SmartSpecProjectDraft } from "../../types/nleProject";
+import type { NleCanvas, PreviewAspectRatio, SmartSpecProjectDraft } from "../../types/nleProject";
 
 export interface ProjectSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   project: SmartSpecProjectDraft | null;
-  currentAspectRatio: "9:16" | "16:9" | "1:1" | "source";
+  currentAspectRatio: PreviewAspectRatio;
   boundSeriesId?: string | null;
   onSaveSettings: (settings: {
     title: string;

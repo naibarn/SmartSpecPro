@@ -102,6 +102,32 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     expect(handler).toContain("ยังไม่มี prompt ภาพ กรุณากด ‘สร้าง prompt + ภาพ’ ก่อน");
   });
 
+  it("keeps episode storyboard rebuild feedback visible after the fast async submit", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+
+    expect(source).toContain("storyboardRebuildPersistedInFlight");
+    expect(source).toContain("episodeContentRebuildInFlight");
+    expect(source).toContain(
+      'data-testid="vd-episode-content-rebuild-status"'
+    );
+    expect(source).toContain("ล้าง storyboard เดิมแล้ว");
+    const submitHandler = source.slice(
+      source.indexOf("function submitEpisodeContentRebuild()"),
+      source.indexOf(
+        "// Fast submit only",
+        source.indexOf("function submitEpisodeContentRebuild()")
+      )
+    );
+    expect(submitHandler).toContain("regenerateStageMutation");
+    expect(submitHandler).toContain("mutateAsync");
+    expect(submitHandler).toContain(
+      'setEpisodeContentRebuildUiStatus("running")'
+    );
+  });
+
   it("bridges special tie-in clip dialogue into the canonical storyboard preview", () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
@@ -109,6 +135,9 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     );
     expect(source).toContain("buildVerticalDramaUnifiedStoryboardData");
     expect(source).toContain("dialogueLines");
+    expect(source).toContain(
+      "dialogueAudioPlan: episodeDetailQuery.data?.dialogueAudioPlan"
+    );
     expect(source).toContain(
       "canonicalShotDrafts: unifiedStoryboardData.canonicalShotDrafts"
     );
@@ -183,11 +212,61 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
 
     expect(handler).toContain("const promptResult");
     expect(handler).toContain("preparedImagePrompt = promptResult.prompt");
+    expect(handler).toContain("imagePrompt: preparedImagePrompt");
     expect(handler).toContain("getEpisodeDetail.fetch");
     expect(handler).toContain("getVerticalDramaPendingLookLabels");
     expect(handler).toContain(
       "await generateStartFrameImageMutation.mutateAsync(request)"
     );
+  });
+
+  it("opts only the Start Frame prompt-plus-image action into quality-driven synopsis direct mode", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+    const handler = source.slice(
+      source.indexOf("async function handleGeneratePromptAndImage("),
+      source.indexOf(
+        "/* ---- Video prompt pack",
+        source.indexOf("async function handleGeneratePromptAndImage(")
+      )
+    );
+    expect(handler).toContain("reauthor && selectedImageQuality !== \"auto\"");
+    expect(handler).toContain('"shot_synopsis_direct"');
+
+    const routerSource = fs.readFileSync(
+      path.resolve(__dirname, "../../../../server/routers/verticalDramaEpisodes.ts"),
+      "utf8"
+    );
+    expect(routerSource).toContain(
+      'promptSource: z.enum(["shot_synopsis_direct"]).optional()'
+    );
+    expect(routerSource).toContain("shotStartFramePromptImageQuality");
+    expect(routerSource).toContain("promptSourceStamp");
+  });
+
+  it("carries a completed prompt across a missing-frame recovery boundary", () => {
+    const routerSource = fs.readFileSync(
+      path.resolve(__dirname, "../../../../server/routers/verticalDramaEpisodes.ts"),
+      "utf8"
+    );
+    const imageRoute = routerSource.slice(
+      routerSource.indexOf("generateStartFrameImage:"),
+      routerSource.indexOf("generateStartFrameAngleVariations:")
+    );
+    const angleRoute = routerSource.slice(
+      routerSource.indexOf("generateStartFrameAngleVariations:"),
+      routerSource.indexOf("repairShotImage:")
+    );
+
+    expect(imageRoute).toContain("imagePrompt: z.string().trim().max(390000)");
+    expect(imageRoute).toContain("recoveredPromptHandoff");
+    expect(imageRoute).toContain('.for("update")');
+    expect(imageRoute).toContain("has no durable start-frame prompt yet");
+    expect(angleRoute).toContain("imagePrompt: z.string().trim().max(390000)");
+    expect(angleRoute).toContain("recoveredPromptHandoffPlan");
+    expect(angleRoute).toContain('.for("update")');
   });
 
   it("persists the image task before polling and resumes durable tasks after reload", () => {
@@ -349,6 +428,7 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     );
     expect(source).toContain("const enhancedReadinessFrameKey = useMemo(");
     expect(source).toContain("frame.approvedMediaAssetId");
+    expect(source).toContain("frame.castPositionLock?.orderedCharacterRefs");
     expect(source).toContain("enhancedReadinessFrameKey,");
   });
 

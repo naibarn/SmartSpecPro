@@ -10,13 +10,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   enqueueVerticalDramaStoryJob,
   enqueueVerticalDramaStoryJobHandoff,
+  getVerticalDramaStoryJobRecovery,
   getActiveVerticalDramaStoryJob,
   getVerticalDramaStoryJobStatus,
+  recoverVerticalDramaStoryJob,
+  reconcileVerticalDramaStoryJobFailure,
   runVerticalDramaStoryJob,
   submitVerticalDramaSystemFeedback,
   updateVerticalDramaStoryJobCheckpoint,
   initVerticalDramaStoryJobsQueue,
   closeVerticalDramaStoryJobsQueue,
+  reconcileVerticalDramaStoryJobsQueueOnce,
+  setVerticalDramaStoryJobsDraining,
   type VerticalDramaStoryJobCheckpoint,
   type VerticalDramaStoryJobExecutor,
   type VerticalDramaStoryJobPayload,
@@ -39,12 +44,14 @@ vi.mock("../../_core/logger", () => ({
  * comment); `../redis`'s `getRedisClient` is mocked for the same reason.
  */
 const mockQueueAdd = vi.fn().mockResolvedValue(undefined);
+const mockQueueGetJobs = vi.fn().mockResolvedValue([]);
 const mockQueueClose = vi.fn().mockResolvedValue(undefined);
 const mockWorkerClose = vi.fn().mockResolvedValue(undefined);
 vi.mock("bullmq", () => ({
   Queue: vi.fn().mockImplementation(function MockQueue() {
     return {
       add: mockQueueAdd,
+      getJobs: mockQueueGetJobs,
       close: mockQueueClose,
     };
   }),
@@ -116,6 +123,16 @@ function makeFakeRedis(): VerticalDramaStoryJobRedisAdapter & { store: Map<strin
       const existed = store.delete(key);
       return existed ? 1 : 0;
     }),
+    setIfAbsent: vi.fn(async (key: string, value: string) => {
+      if (store.has(key)) return false;
+      store.set(key, value);
+      return true;
+    }),
+    delIfValue: vi.fn(async (key: string, value: string) => {
+      if (store.get(key) !== value) return 0;
+      store.delete(key);
+      return 1;
+    }),
   };
 }
 
@@ -152,7 +169,7 @@ describe("enqueueVerticalDramaStoryJob", () => {
     const { jobId, deduped } = await enqueueVerticalDramaStoryJob(basePayload(), { redis, enqueueBullmqJob });
 
     expect(deduped).toBe(false);
-    expect(enqueueBullmqJob).toHaveBeenCalledWith(jobId);
+    expect(enqueueBullmqJob).toHaveBeenCalledWith(jobId, expect.any(String));
 
     const record = await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis });
     expect(record).toMatchObject({ jobId, kind: "deep_generate", status: "queued", progress: null, result: null, error: null });
@@ -283,6 +300,238 @@ describe("getActiveVerticalDramaStoryJob", () => {
 
     expect(await getActiveVerticalDramaStoryJob({ tenantId: "tenant-1", seriesId: 10 }, { redis })).toBeNull();
     expect(await redis.get(`vd:story-job:active:tenant-1:10`)).toBeNull(); // pointer cleared by the self-heal
+  });
+});
+
+describe("checkpoint recovery", () => {
+  async function failedCheckpointJob(
+    redis: ReturnType<typeof makeFakeRedis>,
+    overrides: Partial<VerticalDramaStoryJobPayload> = {},
+  ) {
+    const { jobId } = await enqueueVerticalDramaStoryJob(
+      basePayload({
+        input: { mode: "standard", horizonEpisodes: 4 },
+        ...overrides,
+      }),
+      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
+    );
+    await updateVerticalDramaStoryJobCheckpoint(
+      jobId,
+      {
+        draftedItems: [{ episodeNumber: 1 }, { episodeNumber: 2 }],
+        completedEpisodeNumbers: [1, 2],
+        chunkSizesDone: [2],
+        creditsUsed: 12,
+        updatedAt: new Date().toISOString(),
+      },
+      { redis },
+    );
+    const persisted = await getVerticalDramaStoryJobStatus(
+      jobId,
+      { tenantId: "tenant-1", seriesId: 10 },
+      { redis },
+    );
+    await reconcileVerticalDramaStoryJobFailure(
+      jobId,
+      new Error("job stalled more than allowable limit"),
+      { redis },
+      persisted?.dispatchId,
+    );
+    return jobId;
+  }
+
+  it("publishes a truthful recoverable summary from the latest checkpoint", async () => {
+    const redis = makeFakeRedis();
+    const jobId = await failedCheckpointJob(redis);
+
+    const state = await getVerticalDramaStoryJobRecovery(
+      { tenantId: "tenant-1", seriesId: 10 },
+      { redis },
+    );
+
+    expect(state).toMatchObject({
+      jobId,
+      status: "failed",
+      canResume: true,
+      completedEpisodeNumbers: [1, 2],
+      remainingEpisodeNumbers: [3, 4],
+      completedEpisodeCount: 2,
+      remainingEpisodeCount: 2,
+      error: "job stalled more than allowable limit",
+    });
+  });
+
+  it("reconciles a BullMQ failure left behind while the domain record is still running", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(
+      basePayload({ input: { mode: "standard", horizonEpisodes: 4 } }),
+      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
+    );
+    await updateVerticalDramaStoryJobCheckpoint(
+      jobId,
+      {
+        draftedItems: [{ episodeNumber: 1 }, { episodeNumber: 2 }],
+        completedEpisodeNumbers: [1, 2],
+        chunkSizesDone: [2],
+        creditsUsed: 12,
+        updatedAt: new Date().toISOString(),
+      },
+      { redis },
+    );
+    const runningRecord = await getVerticalDramaStoryJobStatus(
+      jobId,
+      { tenantId: "tenant-1", seriesId: 10 },
+      { redis },
+    );
+
+    // Recreate the pre-deploy failure shape: the active pointer and domain
+    // record still say running, while BullMQ has already marked delivery
+    // failed and the new listener never saw that event.
+    const recovery = await getVerticalDramaStoryJobRecovery(
+      { tenantId: "tenant-1", seriesId: 10 },
+      {
+        redis,
+        findFailedBullmqJob: vi.fn().mockResolvedValue({
+          error: "job stalled more than allowable limit",
+          dispatchId: runningRecord?.dispatchId,
+        }),
+      },
+    );
+
+    expect(recovery).toMatchObject({
+      jobId,
+      status: "failed",
+      canResume: true,
+      reason: "checkpoint_available",
+    });
+  });
+
+  it("does not let a stale BullMQ failure overwrite a newer active dispatch", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(
+      basePayload({ input: { mode: "standard", horizonEpisodes: 4 } }),
+      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
+    );
+    await updateVerticalDramaStoryJobCheckpoint(
+      jobId,
+      {
+        draftedItems: [{ episodeNumber: 1 }],
+        completedEpisodeNumbers: [1],
+        chunkSizesDone: [1],
+        creditsUsed: 6,
+        updatedAt: new Date().toISOString(),
+      },
+      { redis },
+    );
+
+    const recovery = await getVerticalDramaStoryJobRecovery(
+      { tenantId: "tenant-1", seriesId: 10 },
+      {
+        redis,
+        findFailedBullmqJob: vi.fn().mockResolvedValue({
+          error: "old delivery stalled",
+          dispatchId: "stale-dispatch",
+        }),
+      },
+    );
+
+    expect(recovery).toMatchObject({
+      jobId,
+      status: "running",
+      reason: "active",
+      canResume: false,
+    });
+  });
+
+  it("requeues the same domain job and preserves its checkpoint", async () => {
+    const redis = makeFakeRedis();
+    const jobId = await failedCheckpointJob(redis);
+    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
+
+    const result = await recoverVerticalDramaStoryJob(
+      { tenantId: "tenant-1", seriesId: 10 },
+      jobId,
+      { redis, enqueueBullmqJob },
+    );
+
+    expect(result).toMatchObject({ started: true, jobId, status: "queued" });
+    expect(enqueueBullmqJob).toHaveBeenCalledTimes(1);
+    expect(enqueueBullmqJob).toHaveBeenCalledWith(jobId, expect.any(String));
+    expect(
+      (await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis }))?.checkpoint,
+    ).toMatchObject({ completedEpisodeNumbers: [1, 2], creditsUsed: 12 });
+    expect(await getVerticalDramaStoryJobRecovery({ tenantId: "tenant-1", seriesId: 10 }, { redis })).toMatchObject({
+      jobId,
+      status: "queued",
+      reason: "active",
+      canResume: false,
+    });
+  });
+
+  it("is idempotent when two recovery requests target the same job", async () => {
+    const redis = makeFakeRedis();
+    const jobId = await failedCheckpointJob(redis);
+    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
+
+    const first = await recoverVerticalDramaStoryJob(
+      { tenantId: "tenant-1", seriesId: 10 },
+      jobId,
+      { redis, enqueueBullmqJob },
+    );
+    const second = await recoverVerticalDramaStoryJob(
+      { tenantId: "tenant-1", seriesId: 10 },
+      jobId,
+      { redis, enqueueBullmqJob },
+    );
+
+    expect(first.started).toBe(true);
+    expect(second).toMatchObject({ started: false, jobId, status: "queued" });
+    expect(enqueueBullmqJob).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses recovery when the terminal job has no checkpoint", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(basePayload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+    const persisted = await getVerticalDramaStoryJobStatus(
+      jobId,
+      { tenantId: "tenant-1", seriesId: 10 },
+      { redis },
+    );
+    await reconcileVerticalDramaStoryJobFailure(
+      jobId,
+      new Error("provider failed"),
+      { redis },
+      persisted?.dispatchId,
+    );
+
+    const state = await getVerticalDramaStoryJobRecovery(
+      { tenantId: "tenant-1", seriesId: 10 },
+      { redis },
+    );
+    expect(state).toMatchObject({ canResume: false, reason: "no_checkpoint" });
+
+    const result = await recoverVerticalDramaStoryJob(
+      { tenantId: "tenant-1", seriesId: 10 },
+      jobId,
+      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
+    );
+    expect(result).toMatchObject({ started: false, reason: "no_checkpoint" });
+  });
+
+  it("does not disclose a recoverable job to another tenant or series", async () => {
+    const redis = makeFakeRedis();
+    const jobId = await failedCheckpointJob(redis);
+
+    expect(await getVerticalDramaStoryJobRecovery({ tenantId: "tenant-2", seriesId: 10 }, { redis })).toBeNull();
+    const result = await recoverVerticalDramaStoryJob(
+      { tenantId: "tenant-2", seriesId: 10 },
+      jobId,
+      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
+    );
+    expect(result).toMatchObject({ started: false, reason: "not_found" });
   });
 });
 
@@ -1110,6 +1359,9 @@ describe("heartbeat TTL (added 2026-07-14)", () => {
 describe("BullMQ auto-retry options (added 2026-07-14)", () => {
   afterEach(async () => {
     await closeVerticalDramaStoryJobsQueue();
+    setVerticalDramaStoryJobsDraining(false);
+    mockQueueGetJobs.mockReset();
+    mockQueueGetJobs.mockResolvedValue([]);
   });
 
   it("enqueues onto the real BullMQ queue with attempts/backoff/bounded removeOnFail", async () => {
@@ -1128,5 +1380,41 @@ describe("BullMQ auto-retry options (added 2026-07-14)", () => {
       backoff: { type: "exponential", delay: 10_000 },
       removeOnFail: { age: 24 * 60 * 60 },
     });
+  });
+
+  it("reconciles a failed delivery left behind by a restart", async () => {
+    await initVerticalDramaStoryJobsQueue();
+    const { jobId } = await enqueueVerticalDramaStoryJob(basePayload());
+    const record = await getVerticalDramaStoryJobStatus(
+      jobId,
+      { tenantId: "tenant-1", seriesId: 10 },
+    );
+    mockQueueGetJobs.mockResolvedValueOnce([
+      {
+        data: { jobId, dispatchId: record?.dispatchId },
+        failedReason: "job stalled more than allowable limit",
+      },
+    ]);
+
+    const summary = await reconcileVerticalDramaStoryJobsQueueOnce();
+
+    expect(summary).toEqual({ inspected: 1, reconciled: 1 });
+    expect(
+      (await getVerticalDramaStoryJobStatus(
+        jobId,
+        { tenantId: "tenant-1", seriesId: 10 },
+      ))?.status,
+    ).toBe("failed");
+  });
+
+  it("rejects new story submissions while the process is draining", async () => {
+    setVerticalDramaStoryJobsDraining(true);
+
+    await expect(
+      enqueueVerticalDramaStoryJob(basePayload(), {
+        redis: makeFakeRedis(),
+        enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+      }),
+    ).rejects.toThrow("VD_STORY_JOBS_DRAINING");
   });
 });

@@ -171,7 +171,10 @@ vi.mock("../../services/creditService", () => ({
   // getStageEstimate/dispatch pricing, but the router imports it.
   calculateCreditsForLLMDynamic: vi.fn(() => Promise.resolve(1)),
 }));
-vi.mock("../../storage", () => ({ storagePut: vi.fn() }));
+vi.mock("../../storage", () => ({
+  storagePut: vi.fn(),
+  assertR2StorageActive: vi.fn(() => Promise.resolve()),
+}));
 
 // Feature 142, section-04 (additive) — newly imported by the router; this
 // file doesn't exercise the LLM-backed stages, so simple default doubles.

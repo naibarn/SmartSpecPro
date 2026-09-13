@@ -167,6 +167,35 @@ describe("LibrarySearchPanel", () => {
     expect(html).toContain("<video");
   });
 
+  it("renders legacy HTTPS media URLs when storage-key metadata is absent", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(LibrarySearchPanel, {
+        query: "legacy",
+        onQueryChange: vi.fn(),
+        isLoading: false,
+        selectedItemId: null,
+        onSelect: vi.fn(),
+        results: [
+          {
+            item_id: 12,
+            item_type: "image",
+            title: "Legacy image",
+            source_url: "https://cdn.example.com/legacy.png",
+            thumbnail_url: null,
+            metadata: {},
+            status: "ready",
+            source: "media_task",
+            provider_name: "kie.ai",
+            model_name: "z-image",
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain('src="https://cdn.example.com/legacy.png"');
+    expect(html).not.toContain("No preview");
+  });
+
   it("marks searchable results as draggable for reference reuse", () => {
     const html = renderToStaticMarkup(
       React.createElement(LibrarySearchPanel, {

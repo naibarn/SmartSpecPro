@@ -85,6 +85,26 @@ describe("buildStartFrameRenderPlanUserPrompt — prompt language (shared-field 
     );
   });
 
+  it("marks batch requests as temporal START frames and keeps later actions for video", () => {
+    const prompt = buildStartFrameRenderPlanUserPrompt(
+      baseParams({
+        storyboardShots: [{
+          shotNumber: 8,
+          description: "Thir walks beside Phimchanok; she later raises a phone to read a message.",
+          cameraSetup: "medium three-shot",
+          characterIds: ["thir", "phimchanok", "phum"],
+          durationSeconds: 8,
+          canonicalShotSummary:
+            "หน้าคลินิก ธีร์เดินถือกระเป๋ายาอยู่ข้างภูมิแต่ไม่แตะตัวเด็ก พิมพ์ชนกหยิบโทรศัพท์ขึ้นมาเห็นข้อความภายหลัง",
+        }],
+      }),
+    );
+    expect(prompt).toContain("START FRAME TEMPORAL ROLE (MANDATORY)");
+    expect(prompt).toContain("frame_role: START");
+    expect(prompt).toContain("later actions, reveals, and prop interactions belong to the downstream video prompt");
+    expect(prompt).toContain("พิมพ์ชนกหยิบโทรศัพท์ขึ้นมาเห็นข้อความภายหลัง");
+  });
+
   it("defaults to English when promptLanguage is omitted", () => {
     const prompt = buildStartFrameRenderPlanUserPrompt(baseParams());
     expect(prompt).toContain(

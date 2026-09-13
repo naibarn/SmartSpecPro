@@ -16,8 +16,9 @@
  *
  * Deliberately much simpler than `VerticalDramaCharacterStockPanel.tsx`: no
  * variants/twins, no voice/speech-profile sections, no character-sheet/
- * turnaround UI, no drag-drop Library/History sidebar picker. Locations are a
- * flat roster with one primary establishing plate plus additive camera-view
+ * turnaround UI, and no Library/History sidebar picker. Location gallery images
+ * can still be inspected, replaced by upload, or replaced by hard-disk drop. It
+ * is a flat roster with one primary establishing plate plus additive camera-view
  * coverage images (reverse, side, and detail) managed from the selected
  * location detail card.
  *
@@ -39,7 +40,13 @@
  * location" control.
  */
 
-import { useEffect, useState } from "react";
+import {
+  type ChangeEvent,
+  type DragEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   AlertTriangle,
   Camera,
@@ -51,6 +58,7 @@ import {
   Save,
   Sparkles,
   Trash2,
+  UploadCloud,
   Wand2,
   X,
 } from "lucide-react";
@@ -65,6 +73,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
+import {
+  DROPPED_IMAGE_FILE_MAX_BYTES,
+  readDroppedImageInput,
+  readFileAsDataUrl,
+} from "@/components/media/ImageSourcePicker";
 import { trpc } from "@/lib/trpc";
 import { useVerticalDramaLang } from "@/components/verticalDramaSeries/verticalDramaCopy";
 import { ImageLightbox } from "@/components/chat/media/ImageLightbox";
@@ -437,9 +450,10 @@ interface VdLocationAssetCandidate {
 }
 
 type LocationGenerationMetadata = {
-  mode: "text_to_image" | "image_to_image";
+  mode: "text_to_image" | "image_to_image" | "camera_variant";
   editInstruction?: string;
   sourceAssetLinkId?: string;
+  coverageRole?: VerticalDramaLocationCoverageRole;
   cameraView?: VerticalDramaLocationCameraView;
 };
 
@@ -542,6 +556,17 @@ export function VerticalDramaLocationStockPanel({
     src: string;
     alt?: string;
   } | null>(null);
+  const [dragOverAssetLinkId, setDragOverAssetLinkId] = useState<string | null>(
+    null
+  );
+  const [replacementTarget, setReplacementTarget] = useState<{
+    locationId: string;
+    assetLinkId: string;
+  } | null>(null);
+  const [replacingAssetLinkId, setReplacingAssetLinkId] = useState<
+    string | null
+  >(null);
+  const replacementFileInputRef = useRef<HTMLInputElement>(null);
 
   /** Make the view-management UI discoverable on first load. Previously the
    * detail card (including the camera-view selector) stayed hidden until the
@@ -804,6 +829,7 @@ export function VerticalDramaLocationStockPanel({
   const linkMutation = trpc.verticalDramaLocations.linkAsset.useMutation();
   const approveMutation =
     trpc.verticalDramaLocations.approveAsset.useMutation();
+  const locationUploadMutation = trpc.ai.upload.useMutation();
 
   const [previewByLocationId, setPreviewByLocationId] = useState<
     Record<
@@ -836,6 +862,10 @@ export function VerticalDramaLocationStockPanel({
     useState<Record<string, LocationGenerationMetadata>>({});
   const [editInstructionByLocationId, setEditInstructionByLocationId] =
     useState<Record<string, string>>({});
+  const [
+    cameraVariantInstructionByLocationId,
+    setCameraVariantInstructionByLocationId,
+  ] = useState<Record<string, string>>({});
   /** `locationId` -> `assetLinkId` for a reference approved THIS session —
    *  the only source of a manageable `assetLinkId` until the backend's
    *  `list` DTO carries `primaryReferenceAssetLinkId` for pre-existing
@@ -1106,6 +1136,7 @@ export function VerticalDramaLocationStockPanel({
       mode: "image_to_image",
       editInstruction,
       sourceAssetLinkId: location.primaryReferenceAssetLinkId,
+      coverageRole: coverageRoleByLocationId[location.locationId],
       ...(cameraView ? { cameraView } : {}),
     };
     requestConfirmation({
@@ -1128,6 +1159,106 @@ export function VerticalDramaLocationStockPanel({
           {
             seriesId,
             locationId: location.locationId,
+            operation: "primary_edit",
+            editInstruction,
+            selectedImageModelId,
+            ...(cameraView ? { cameraView } : {}),
+            ...buildLocationGenerateImageTransportFields({
+              imageModelUsesMcp,
+              mcpConnectionId,
+              sharedGroupId: mcpSharedGroupId,
+              imageModelUsesHermes,
+              hermesConnectionId,
+            }),
+          },
+          {
+            onSuccess: res =>
+              void pollLocationImageTask(
+                res.taskId,
+                location.locationId,
+                generationMetadata
+              ),
+            onError: () =>
+              setRenderingLocationId(current =>
+                current === location.locationId ? null : current
+              ),
+          }
+        );
+      },
+    });
+  };
+
+  const handleGenerateCameraVariant = (location: VdLocationListItem) => {
+    const editInstruction =
+      cameraVariantInstructionByLocationId[location.locationId]?.trim();
+    if (!editInstruction) {
+      toast.error(
+        t(
+          lang,
+          "กรุณาระบุสิ่งที่ต้องการเห็นในมุมมองย่อย",
+          "Describe what should be visible in the alternate view"
+        )
+      );
+      return;
+    }
+    if (
+      !location.primaryReferenceAssetLinkId ||
+      !location.primaryReferenceUrl
+    ) {
+      toast.error(
+        t(
+          lang,
+          "ไม่พบภาพหลักสำหรับใช้เป็น reference",
+          "No primary reference image is available"
+        )
+      );
+      return;
+    }
+    if (!requireModelSelected()) return;
+    if (!requireMcpConnectionOrToast()) return;
+    if (!requireHermesConnectionOrToast()) return;
+    const cameraView = buildLocationCameraView({
+      preset: cameraPresetByLocationId[location.locationId],
+      directive: cameraDirectiveByLocationId[location.locationId],
+    });
+    if (cameraView?.preset === "custom" && !cameraView.directive) {
+      toast.error(
+        t(
+          lang,
+          "กรุณาระบุรายละเอียดมุมกล้องแบบกำหนดเอง",
+          "Describe the custom camera view first"
+        )
+      );
+      return;
+    }
+    const generationMetadata: LocationGenerationMetadata = {
+      mode: "camera_variant",
+      editInstruction,
+      sourceAssetLinkId: location.primaryReferenceAssetLinkId,
+      coverageRole: coverageRoleByLocationId[location.locationId],
+      ...(cameraView ? { cameraView } : {}),
+    };
+    requestConfirmation({
+      title: t(lang, "ยืนยันสร้างมุมมองย่อย", "Confirm camera variant"),
+      description: t(
+        lang,
+        "ระบบจะใช้ภาพหลักเดิมเป็น reference แล้วสร้างภาพมุมมองย่อยใหม่ โดยจะไม่เปลี่ยนภาพหลัก",
+        "The current primary image will be used as a reference to create a new camera view. The primary image will not change."
+      ),
+      confirmLabel: t(lang, "สร้างมุมมองย่อย", "Generate camera variant"),
+      cancelLabel: t(lang, "ยกเลิก", "Cancel"),
+      testId: `vd-credit-confirm-location-camera-variant-${location.locationId}`,
+      onConfirm: () => {
+        setRenderingLocationId(location.locationId);
+        setGenerationMetadataByLocationId(prev => ({
+          ...prev,
+          [location.locationId]: generationMetadata,
+        }));
+        generateMutation.mutate(
+          {
+            seriesId,
+            locationId: location.locationId,
+            operation: "camera_variant",
             editInstruction,
             selectedImageModelId,
             ...(cameraView ? { cameraView } : {}),
@@ -1188,6 +1319,9 @@ export function VerticalDramaLocationStockPanel({
         ...(generationMetadata?.sourceAssetLinkId
           ? { sourceAssetLinkId: generationMetadata.sourceAssetLinkId }
           : {}),
+        ...(generationMetadata?.coverageRole
+          ? { coverageRole: generationMetadata.coverageRole }
+          : {}),
         ...(generationMetadata?.cameraView
           ? { cameraView: generationMetadata.cameraView }
           : {}),
@@ -1201,10 +1335,14 @@ export function VerticalDramaLocationStockPanel({
         mediaAssetId: resolved.mediaAssetId,
         assetType: "location_reference",
         role:
-          previewByLocationId[locationId]?.coverageRole ??
-          (previewByLocationId[locationId]?.cameraView
-            ? "other"
-            : "establishing_plate"),
+          generationMetadata?.mode === "camera_variant"
+            ? (generationMetadata.coverageRole ?? "other")
+            : generationMetadata?.mode === "image_to_image"
+              ? "establishing_plate"
+              : (previewByLocationId[locationId]?.coverageRole ??
+                (previewByLocationId[locationId]?.cameraView
+                  ? "other"
+                  : "establishing_plate")),
         source: "generated",
         metadata,
         ...(generationMetadata?.sourceAssetLinkId
@@ -1310,6 +1448,11 @@ export function VerticalDramaLocationStockPanel({
       delete next[locationId];
       return next;
     });
+    setCameraVariantInstructionByLocationId(prev => {
+      const next = { ...prev };
+      delete next[locationId];
+      return next;
+    });
   };
 
   const transitionAssetMutation =
@@ -1322,6 +1465,8 @@ export function VerticalDramaLocationStockPanel({
   const [confirmingDeleteLocationId, setConfirmingDeleteLocationId] = useState<
     string | null
   >(null);
+  const [confirmingDeleteAssetLinkId, setConfirmingDeleteAssetLinkId] =
+    useState<string | null>(null);
 
   /* ---- Multiple candidates, pick a primary (Location Visual Bible Phase C) ----
    * `listLocationAssets` is the durable-side companion to the in-session
@@ -1413,6 +1558,185 @@ export function VerticalDramaLocationStockPanel({
         },
       }
     );
+  };
+
+  const handleDeleteAsset = (locationId: string, assetLinkId: string) => {
+    deleteAssetMutation.mutate(
+      { seriesId, assetLinkId },
+      {
+        onSuccess: () => {
+          setConfirmingDeleteAssetLinkId(null);
+          invalidate();
+          toast.success(t(lang, "ลบมุมมองแล้ว", "Camera view deleted"));
+          if (approvedAssetLinkByLocationId[locationId] === assetLinkId) {
+            clearLocationSessionState(locationId);
+          }
+        },
+      }
+    );
+  };
+
+  const handleReplaceLocationAsset = async (
+    locationId: string,
+    candidate: VdLocationAssetCandidate,
+    input: { file?: File; url?: string; mimeType?: string; fileName?: string }
+  ) => {
+    if (readOnly || replacingAssetLinkId) return;
+    if (!input.file && !input.url) return;
+    setReplacingAssetLinkId(candidate.assetLinkId);
+    try {
+      let imageUrl = input.url;
+      let mimeType = input.mimeType ?? "image/jpeg";
+      let fileName = input.fileName;
+      if (input.file) {
+        if (!input.file.type.startsWith("image/")) {
+          throw new Error(
+            t(
+              lang,
+              "รองรับเฉพาะไฟล์ภาพเท่านั้น",
+              "Only image files are supported"
+            )
+          );
+        }
+        if (input.file.size > DROPPED_IMAGE_FILE_MAX_BYTES) {
+          throw new Error(
+            t(
+              lang,
+              `ไฟล์ภาพใหญ่เกินไป (สูงสุด ${Math.round(DROPPED_IMAGE_FILE_MAX_BYTES / (1024 * 1024))}MB)`,
+              `Image is too large (max ${Math.round(DROPPED_IMAGE_FILE_MAX_BYTES / (1024 * 1024))}MB)`
+            )
+          );
+        }
+        const dataUrl = await readFileAsDataUrl(input.file);
+        const uploaded = await locationUploadMutation.mutateAsync({
+          fileName: input.file.name || `location-replacement-${Date.now()}.jpg`,
+          fileType: input.file.type || "image/jpeg",
+          fileBase64: dataUrl,
+        });
+        imageUrl = uploaded.url;
+        mimeType = uploaded.fileType;
+        fileName = input.file.name;
+      }
+      if (!imageUrl) throw new Error("Uploaded image URL is missing");
+
+      const resolved = await resolveMutation.mutateAsync({
+        seriesId,
+        source: "url",
+        url: imageUrl,
+        mimeType,
+        ...(fileName ? { fileName } : {}),
+      });
+      const linked = await linkMutation.mutateAsync({
+        seriesId,
+        locationId,
+        mediaAssetId: resolved.mediaAssetId,
+        assetType: "location_reference",
+        role: candidate.role ?? "establishing_plate",
+        source: "imported",
+        metadata: {
+          ...((candidate.metadata as Record<string, unknown> | null) ?? {}),
+          source: "uploaded_replacement",
+          replacedAssetLinkId: candidate.assetLinkId,
+        },
+      });
+      await approveMutation.mutateAsync({
+        seriesId,
+        assetLinkId: linked.asset.assetLinkId,
+      });
+      if (candidate.isPrimary) {
+        await setPrimaryMutation.mutateAsync({
+          seriesId,
+          locationId,
+          assetLinkId: linked.asset.assetLinkId,
+        });
+      }
+      await deleteAssetMutation.mutateAsync({
+        seriesId,
+        assetLinkId: candidate.assetLinkId,
+      });
+      invalidate();
+      toast.success(
+        t(
+          lang,
+          "เปลี่ยนภาพในคลังภาพแล้ว",
+          "Image replaced in the scene library"
+        )
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : t(lang, "เปลี่ยนภาพไม่สำเร็จ", "Image replacement failed")
+      );
+    } finally {
+      setReplacingAssetLinkId(null);
+      setReplacementTarget(null);
+      setDragOverAssetLinkId(null);
+    }
+  };
+
+  const handleSelectReplacementFile = (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !replacementTarget) return;
+    const candidate = candidatesForSelected.find(
+      item => item.assetLinkId === replacementTarget.assetLinkId
+    );
+    if (!candidate) return;
+    void handleReplaceLocationAsset(replacementTarget.locationId, candidate, {
+      file,
+    });
+  };
+
+  const handleDropReplacement = (
+    event: DragEvent,
+    locationId: string,
+    candidate: VdLocationAssetCandidate
+  ) => {
+    event.preventDefault();
+    setDragOverAssetLinkId(null);
+    if (readOnly || replacingAssetLinkId) return;
+    const { input, error } = readDroppedImageInput(event);
+    if (error) {
+      toast.error(
+        error.kind === "unsupported-file-type"
+          ? t(
+              lang,
+              "รองรับเฉพาะไฟล์ภาพเท่านั้น",
+              "Only image files are supported"
+            )
+          : t(
+              lang,
+              `ไฟล์ภาพใหญ่เกินไป (สูงสุด ${Math.round(error.maxBytes / (1024 * 1024))}MB)`,
+              `Image is too large (max ${Math.round(error.maxBytes / (1024 * 1024))}MB)`
+            )
+      );
+      return;
+    }
+    if (!input) {
+      toast.error(t(lang, "ไม่พบไฟล์ภาพที่ลากมา", "No image file was dropped"));
+      return;
+    }
+    if (input.kind === "file") {
+      void handleReplaceLocationAsset(locationId, candidate, {
+        file: input.file,
+      });
+    } else {
+      void handleReplaceLocationAsset(locationId, candidate, {
+        url: input.url,
+        mimeType: "image/jpeg",
+      });
+    }
+  };
+
+  const handleStartReplacingAsset = (
+    locationId: string,
+    assetLinkId: string
+  ) => {
+    setReplacementTarget({ locationId, assetLinkId });
+    replacementFileInputRef.current?.click();
   };
 
   const selectedLocation =
@@ -1620,8 +1944,15 @@ export function VerticalDramaLocationStockPanel({
                           </Badge>
                         ) : null}
                         {location.slotStatus === "pending" ? (
-                          <Badge variant="secondary" className="w-fit text-[9px]">
-                            {t(lang, "รอสร้างภาพฉากจาก Tie-in", "Tie-in scene slot pending")}
+                          <Badge
+                            variant="secondary"
+                            className="w-fit text-[9px]"
+                          >
+                            {t(
+                              lang,
+                              "รอสร้างภาพฉากจาก Tie-in",
+                              "Tie-in scene slot pending"
+                            )}
                           </Badge>
                         ) : null}
                         {location.cameraVariants?.length ? (
@@ -1853,84 +2184,233 @@ export function VerticalDramaLocationStockPanel({
                       `Scene image library — primary and reusable views (${candidatesForSelected.length})`
                     )}
                   </span>
+                  {!readOnly && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {t(
+                        lang,
+                        "คลิกภาพเพื่อดูเต็มจอ กด “แทนที่” หรือ ลากไฟล์ภาพจากเครื่องมาวางบนภาพนั้นเพื่อเปลี่ยนภาพ",
+                        "Click an image to view it full screen. Use Replace or drop an image file from your computer onto it to replace it."
+                      )}
+                    </p>
+                  )}
                   <div className="flex flex-wrap items-start gap-2">
                     {candidatesForSelected.map(candidate => (
-                      <button
+                      <div
                         key={candidate.assetLinkId}
-                        type="button"
-                        disabled={
-                          readOnly ||
-                          candidate.isPrimary ||
-                          candidate.role !== "establishing_plate" ||
-                          setPrimaryMutation.isPending
-                        }
-                        aria-pressed={candidate.isPrimary}
-                        aria-label={
-                          candidate.isPrimary
-                            ? t(
-                                lang,
-                                "ภาพหลักปัจจุบัน",
-                                "Current primary image"
-                              )
-                            : candidate.role !== "establishing_plate"
-                              ? t(
-                                  lang,
-                                  "ภาพ coverage (เลือกเป็นภาพหลักไม่ได้)",
-                                  "Coverage image (not primary)"
-                                )
-                              : t(
-                                  lang,
-                                  "ตั้งเป็นภาพหลัก",
-                                  "Set as primary image"
-                                )
-                        }
                         className={cn(
-                          "flex flex-col items-center gap-0.5",
-                          readOnly ||
-                            candidate.isPrimary ||
-                            candidate.role !== "establishing_plate"
-                            ? "cursor-default"
-                            : "cursor-pointer"
+                          "flex flex-col items-center gap-1 rounded-md p-1 transition-colors",
+                          dragOverAssetLinkId === candidate.assetLinkId &&
+                            "bg-sky-100 ring-2 ring-sky-400 dark:bg-sky-950/40"
                         )}
-                        onClick={() =>
-                          handleSetPrimary(selectedLocation, candidate)
+                        onDragOver={event => {
+                          if (readOnly || replacingAssetLinkId) return;
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "copy";
+                          setDragOverAssetLinkId(candidate.assetLinkId);
+                        }}
+                        onDragLeave={() =>
+                          setDragOverAssetLinkId(current =>
+                            current === candidate.assetLinkId ? null : current
+                          )
                         }
-                        data-testid={`vd-location-candidate-${candidate.assetLinkId}`}
+                        onDrop={event =>
+                          handleDropReplacement(
+                            event,
+                            selectedLocation.locationId,
+                            candidate
+                          )
+                        }
+                        data-testid={`vd-location-replace-drop-${candidate.assetLinkId}`}
                       >
-                        <span className="relative block">
-                          <AuthenticatedMediaImage
-                            src={candidate.url}
-                            alt=""
-                            className={cn(
-                              "h-14 w-14 rounded border border-border object-cover",
-                              candidate.isPrimary &&
-                                "border-emerald-400 ring-2 ring-emerald-300"
+                        <button
+                          type="button"
+                          className="group relative block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+                          onClick={() =>
+                            setLightboxImage({
+                              src: candidate.url,
+                              alt: selectedLocation.name,
+                            })
+                          }
+                          aria-label={t(
+                            lang,
+                            `ดูภาพเต็มจอของ ${selectedLocation.name}`,
+                            `View full-size image of ${selectedLocation.name}`
+                          )}
+                          data-testid={`vd-location-candidate-${candidate.assetLinkId}`}
+                        >
+                          <span className="relative block">
+                            <AuthenticatedMediaImage
+                              src={candidate.url}
+                              alt=""
+                              className={cn(
+                                "h-14 w-14 rounded border border-border object-cover transition-transform group-hover:scale-[1.03]",
+                                candidate.isPrimary &&
+                                  "border-emerald-400 ring-2 ring-emerald-300"
+                              )}
+                            />
+                            {candidate.isPrimary && (
+                              <span className="absolute -right-1 -top-1 rounded-full bg-emerald-500 p-0.5 text-white">
+                                <Check
+                                  aria-hidden="true"
+                                  className="h-2.5 w-2.5"
+                                />
+                              </span>
                             )}
-                          />
-                          {candidate.isPrimary && (
-                            <span className="absolute -right-1 -top-1 rounded-full bg-emerald-500 p-0.5 text-white">
-                              <Check
-                                aria-hidden="true"
-                                className="h-2.5 w-2.5"
-                              />
+                          </span>
+                        </button>
+                        <div className="flex max-w-32 flex-wrap items-center justify-center gap-1">
+                          {candidate.isPrimary ? (
+                            <span className="text-[9px] font-medium text-emerald-700 dark:text-emerald-300">
+                              {t(lang, "ภาพหลัก", "Primary")}
+                            </span>
+                          ) : !readOnly &&
+                            candidate.role === "establishing_plate" ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-1.5 text-[9px]"
+                              onClick={() =>
+                                handleSetPrimary(selectedLocation, candidate)
+                              }
+                              disabled={setPrimaryMutation.isPending}
+                              aria-label={t(
+                                lang,
+                                "ตั้งภาพนี้เป็นภาพหลัก",
+                                "Set this image as primary"
+                              )}
+                              data-testid={`vd-location-candidate-set-primary-${candidate.assetLinkId}`}
+                            >
+                              {t(lang, "ตั้งเป็นภาพหลัก", "Set primary")}
+                            </Button>
+                          ) : null}
+                          {!candidate.approved && (
+                            <span className="text-[9px] text-muted-foreground">
+                              {t(lang, "รอตรวจสอบ", "Pending")}
                             </span>
                           )}
-                        </span>
-                        {!candidate.approved && (
-                          <span className="text-[9px] text-muted-foreground">
-                            {t(lang, "รอตรวจสอบ", "Pending")}
-                          </span>
+                          {candidate.role &&
+                          candidate.role !== "establishing_plate" ? (
+                            <span className="text-[9px] text-sky-700 dark:text-sky-300">
+                              {getVerticalDramaLocationCameraViewLabel({
+                                role: candidate.role,
+                                metadata: candidate.metadata,
+                              })}
+                            </span>
+                          ) : null}
+                        </div>
+                        {!readOnly && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-6 gap-1 px-1.5 text-[9px]"
+                            onClick={() =>
+                              handleStartReplacingAsset(
+                                selectedLocation.locationId,
+                                candidate.assetLinkId
+                              )
+                            }
+                            disabled={Boolean(replacingAssetLinkId)}
+                            aria-label={t(
+                              lang,
+                              "อัปโหลดภาพใหม่แทนภาพนี้",
+                              "Upload a replacement image"
+                            )}
+                            title={t(
+                              lang,
+                              "กดเพื่อเลือกไฟล์ หรือวางไฟล์ลงบนภาพนี้",
+                              "Click to choose a file or drop one on this image"
+                            )}
+                            data-testid={`vd-location-replace-asset-${candidate.assetLinkId}`}
+                          >
+                            {replacingAssetLinkId === candidate.assetLinkId ? (
+                              <Loader2
+                                aria-hidden="true"
+                                className="h-3 w-3 animate-spin"
+                              />
+                            ) : (
+                              <UploadCloud
+                                aria-hidden="true"
+                                className="h-3 w-3"
+                              />
+                            )}
+                            {t(lang, "แทนที่", "Replace")}
+                          </Button>
                         )}
-                        {candidate.role &&
-                        candidate.role !== "establishing_plate" ? (
-                          <span className="text-[9px] text-sky-700 dark:text-sky-300">
-                            {getVerticalDramaLocationCameraViewLabel({
-                              role: candidate.role,
-                              metadata: candidate.metadata,
-                            })}
-                          </span>
-                        ) : null}
-                      </button>
+                        {!readOnly &&
+                          !candidate.isPrimary &&
+                          (confirmingDeleteAssetLinkId ===
+                          candidate.assetLinkId ? (
+                            <div className="mt-1 flex items-center gap-1">
+                              <Button
+                                type="button"
+                                size="icon-sm"
+                                variant="ghost"
+                                onClick={() =>
+                                  setConfirmingDeleteAssetLinkId(null)
+                                }
+                                aria-label={t(
+                                  lang,
+                                  "ยกเลิกการลบมุมมอง",
+                                  "Cancel view deletion"
+                                )}
+                              >
+                                <X aria-hidden="true" className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                type="button"
+                                size="icon-sm"
+                                variant="destructive"
+                                onClick={() =>
+                                  handleDeleteAsset(
+                                    selectedLocation.locationId,
+                                    candidate.assetLinkId
+                                  )
+                                }
+                                disabled={deleteAssetMutation.isPending}
+                                aria-label={t(
+                                  lang,
+                                  "ยืนยันลบมุมมองนี้",
+                                  "Confirm delete this view"
+                                )}
+                                data-testid={`vd-location-confirm-delete-asset-${candidate.assetLinkId}`}
+                              >
+                                {deleteAssetMutation.isPending ? (
+                                  <Loader2
+                                    aria-hidden="true"
+                                    className="h-3 w-3 animate-spin"
+                                  />
+                                ) : (
+                                  <Trash2
+                                    aria-hidden="true"
+                                    className="h-3 w-3"
+                                  />
+                                )}
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="icon-sm"
+                              variant="ghost"
+                              className="mt-1 h-6 w-6 text-destructive"
+                              onClick={() =>
+                                setConfirmingDeleteAssetLinkId(
+                                  candidate.assetLinkId
+                                )
+                              }
+                              aria-label={t(
+                                lang,
+                                "ลบมุมมองนี้",
+                                "Delete this view"
+                              )}
+                              data-testid={`vd-location-delete-asset-${candidate.assetLinkId}`}
+                            >
+                              <Trash2 aria-hidden="true" className="h-3 w-3" />
+                            </Button>
+                          ))}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -1947,14 +2427,31 @@ export function VerticalDramaLocationStockPanel({
               {!readOnly && (
                 <div className="flex flex-col gap-1.5 border-t pt-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Label
-                      htmlFor={`vd-location-camera-role-${selectedLocation.locationId}`}
-                      className="text-xs text-muted-foreground"
-                    >
-                      {t(lang, "มุมกล้องของสถานที่", "Location camera view")}
-                    </Label>
+                    <div className="min-w-44">
+                      <Label
+                        htmlFor={`vd-location-camera-role-${selectedLocation.locationId}`}
+                        className="text-xs text-muted-foreground"
+                      >
+                        {t(
+                          lang,
+                          "ช่องที่ 1: มุมกล้องของสถานที่",
+                          "Field 1: Location camera view"
+                        )}
+                      </Label>
+                      <p
+                        id={`vd-location-camera-role-help-${selectedLocation.locationId}`}
+                        className="text-[10px] text-muted-foreground"
+                      >
+                        {t(
+                          lang,
+                          "เลือกตำแหน่งและภาษาของกล้อง เช่น ภาพกว้าง หรือภาพแทรก/รายละเอียด",
+                          "Choose the camera position and shot grammar, such as wide or insert/detail."
+                        )}
+                      </p>
+                    </div>
                     <select
                       id={`vd-location-camera-role-${selectedLocation.locationId}`}
+                      aria-describedby={`vd-location-camera-role-help-${selectedLocation.locationId}`}
                       value={
                         coverageRoleByLocationId[selectedLocation.locationId] ??
                         cameraPresetByLocationId[selectedLocation.locationId] ??
@@ -2038,40 +2535,60 @@ export function VerticalDramaLocationStockPanel({
                       </option>
                     </select>
                     {cameraPresetByLocationId[selectedLocation.locationId] ? (
-                      <Input
-                        value={
-                          cameraDirectiveByLocationId[
-                            selectedLocation.locationId
-                          ] ?? ""
-                        }
-                        onChange={event => {
-                          const directive = event.target.value;
-                          setCameraDirectiveByLocationId(prev => ({
-                            ...prev,
-                            [selectedLocation.locationId]: directive,
-                          }));
-                          setPreviewByLocationId(prev => {
-                            const next = { ...prev };
-                            delete next[selectedLocation.locationId];
-                            return next;
-                          });
-                        }}
-                        placeholder={t(
-                          lang,
-                          "ระบุจุด/ทิศ/องค์ประกอบ เช่น โต๊ะริมหน้าต่าง หรือใต้น้ำเหนือปะการัง",
-                          "Describe the place-specific view, e.g. table by the window or underwater above the coral"
-                        )}
-                        className="min-w-64 flex-1 text-xs"
-                        maxLength={1000}
-                        aria-label={t(
-                          lang,
-                          "รายละเอียดมุมกล้องเฉพาะสถานที่",
-                          "Location-specific camera directive"
-                        )}
-                        data-testid={`vd-location-camera-directive-${selectedLocation.locationId}`}
-                      />
+                      <div className="min-w-64 flex-1">
+                        <Label
+                          htmlFor={`vd-location-camera-directive-${selectedLocation.locationId}`}
+                          className="text-[10px] text-muted-foreground"
+                        >
+                          {t(
+                            lang,
+                            "รายละเอียดจุดที่กล้องเล็ง (ไม่บังคับ)",
+                            "Specific camera target (optional)"
+                          )}
+                        </Label>
+                        <Input
+                          id={`vd-location-camera-directive-${selectedLocation.locationId}`}
+                          value={
+                            cameraDirectiveByLocationId[
+                              selectedLocation.locationId
+                            ] ?? ""
+                          }
+                          onChange={event => {
+                            const directive = event.target.value;
+                            setCameraDirectiveByLocationId(prev => ({
+                              ...prev,
+                              [selectedLocation.locationId]: directive,
+                            }));
+                            setPreviewByLocationId(prev => {
+                              const next = { ...prev };
+                              delete next[selectedLocation.locationId];
+                              return next;
+                            });
+                          }}
+                          placeholder={t(
+                            lang,
+                            "ระบุจุด/ทิศ/องค์ประกอบ เช่น หน้าเคาน์เตอร์ หรือผ่านกระจกเข้าไปด้านใน",
+                            "Describe the target, direction, or element, e.g. the reception counter or through the front glass"
+                          )}
+                          className="text-xs"
+                          maxLength={1000}
+                          aria-label={t(
+                            lang,
+                            "รายละเอียดมุมกล้องเฉพาะสถานที่",
+                            "Location-specific camera directive"
+                          )}
+                          data-testid={`vd-location-camera-directive-${selectedLocation.locationId}`}
+                        />
+                      </div>
                     ) : null}
                   </div>
+                  <p className="rounded-md border border-sky-200/70 bg-sky-50/60 px-2.5 py-2 text-[11px] text-sky-800 dark:bg-sky-950/20 dark:text-sky-200">
+                    {t(
+                      lang,
+                      "วิธีกรอก: ช่องมุมกล้องกำหนดว่า “กล้องอยู่ตรงไหน/ถ่ายแบบใด” ส่วนช่องรายละเอียดกำหนดว่า “กล้องต้องเล็งไปที่จุดใด” ค่าทั้งสองจะถูกใช้ร่วมกับคำสั่งสร้างมุมมองย่อยด้านล่าง",
+                      "How to fill this in: the camera view field defines where the camera is and how the shot is framed; the detail field defines what the camera should target. Both are combined with the camera-variant instruction below."
+                    )}
+                  </p>
                   {/* Image-model picker (model-picker parity plan) — shown
                       above every generate-flow state (fresh/preview/candidate)
                       so the model (and its per-model credit cost, shown inside
@@ -2182,11 +2699,21 @@ export function VerticalDramaLocationStockPanel({
                         >
                           {t(
                             lang,
-                            "แก้ไขภาพเดิมด้วย image-to-image",
-                            "Edit existing image with image-to-image"
+                            "แก้ไขภาพเดิมด้วย image-to-image — สิ่งที่ต้องการแก้",
+                            "Edit existing image with image-to-image — what to change"
                           )}
                         </Label>
                       </div>
+                      <p
+                        id={`vd-location-edit-instruction-help-${selectedLocation.locationId}`}
+                        className="text-[11px] text-sky-800 dark:text-sky-200"
+                      >
+                        {t(
+                          lang,
+                          "กล่องสีฟ้านี้ใช้แก้สิ่งที่มีอยู่ในภาพหลักเท่านั้น เช่น เปลี่ยนโต๊ะหรือสีผนัง ไม่ใช่ช่องสร้างมุมกล้องใหม่",
+                          "This blue box edits something already present in the primary image, such as a desk or wall color. It does not create a new camera angle."
+                        )}
+                      </p>
                       <Textarea
                         id={`vd-location-edit-instruction-${selectedLocation.locationId}`}
                         value={
@@ -2208,6 +2735,7 @@ export function VerticalDramaLocationStockPanel({
                         maxLength={1200}
                         rows={3}
                         disabled={isRenderingSelected}
+                        aria-describedby={`vd-location-edit-instruction-help-${selectedLocation.locationId}`}
                         data-testid={`vd-location-edit-instruction-${selectedLocation.locationId}`}
                       />
                       <p className="text-[11px] text-muted-foreground">
@@ -2260,6 +2788,109 @@ export function VerticalDramaLocationStockPanel({
                               lang,
                               "แก้ไขภาพเดิมด้วย AI",
                               "Edit existing image with AI"
+                            )}
+                      </Button>
+                    </div>
+                  )}
+
+                  {detailHasApprovedReference && (
+                    <div className="flex flex-col gap-2 rounded-md border border-emerald-300/70 bg-emerald-50/70 p-3 dark:bg-emerald-950/20">
+                      <div className="flex items-center gap-2">
+                        <Camera
+                          aria-hidden="true"
+                          className="h-4 w-4 text-emerald-600"
+                        />
+                        <Label
+                          htmlFor={`vd-location-camera-variant-instruction-${selectedLocation.locationId}`}
+                        >
+                          {t(
+                            lang,
+                            "สร้างมุมมองย่อยจากภาพหลัก — สิ่งที่ต้องการให้เห็น",
+                            "Create a camera variant from the primary image — what should be visible"
+                          )}
+                        </Label>
+                      </div>
+                      <p
+                        id={`vd-location-camera-variant-instruction-help-${selectedLocation.locationId}`}
+                        className="text-[11px] font-medium text-emerald-800 dark:text-emerald-200"
+                      >
+                        {t(
+                          lang,
+                          "กล่องสีเขียวนี้บอกเนื้อหาของภาพมุมย่อย เช่น ต้องการเห็นเคาน์เตอร์ด้านในหรือรายละเอียดตรงประตู โดยใช้มุมกล้องจากด้านบนร่วมกัน",
+                          "This green box describes the content of the new view, such as the interior counter or door detail. It is combined with the camera view selected above."
+                        )}
+                      </p>
+                      <Textarea
+                        id={`vd-location-camera-variant-instruction-${selectedLocation.locationId}`}
+                        value={
+                          cameraVariantInstructionByLocationId[
+                            selectedLocation.locationId
+                          ] ?? ""
+                        }
+                        onChange={event =>
+                          setCameraVariantInstructionByLocationId(prev => ({
+                            ...prev,
+                            [selectedLocation.locationId]: event.target.value,
+                          }))
+                        }
+                        placeholder={t(
+                          lang,
+                          "เช่น zoom เข้าไปใกล้ มองผ่านกระจกให้เห็นเคาน์เตอร์ต้อนรับด้านใน โดยคงโครงสร้างคลินิกเดิม",
+                          "e.g. zoom in through the glass to reveal the reception counter inside while preserving the clinic structure"
+                        )}
+                        maxLength={1200}
+                        rows={3}
+                        disabled={isRenderingSelected}
+                        aria-describedby={`vd-location-camera-variant-instruction-help-${selectedLocation.locationId}`}
+                        data-testid={`vd-location-camera-variant-instruction-${selectedLocation.locationId}`}
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        {t(
+                          lang,
+                          "ใช้ภาพหลักเป็น reference แต่เปลี่ยนระยะและองค์ประกอบกล้องอย่างชัดเจน ผลลัพธ์จะถูกเก็บเป็นมุมย่อยและไม่เปลี่ยนภาพหลัก",
+                          "The primary image is the reference, but the camera distance and composition will change visibly. The result is saved as a reusable view and does not replace the primary."
+                        )}
+                      </p>
+                      {selectedImageModelMaxReferenceImages === 0 ? (
+                        <p className="text-xs text-destructive">
+                          {t(
+                            lang,
+                            "โมเดลนี้ไม่รองรับ image-to-image กรุณาเลือกโมเดลที่รองรับภาพอ้างอิง",
+                            "This model does not support image-to-image references. Choose a compatible model."
+                          )}
+                        </p>
+                      ) : null}
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="w-fit gap-1.5 bg-emerald-600 hover:bg-emerald-700"
+                        onClick={() =>
+                          handleGenerateCameraVariant(selectedLocation)
+                        }
+                        disabled={
+                          isRenderingSelected ||
+                          !cameraVariantInstructionByLocationId[
+                            selectedLocation.locationId
+                          ]?.trim() ||
+                          !selectedImageModelId ||
+                          selectedImageModelMaxReferenceImages === 0
+                        }
+                        data-testid={`vd-location-generate-camera-variant-${selectedLocation.locationId}`}
+                      >
+                        {isRenderingSelected ? (
+                          <Loader2
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5 animate-spin"
+                          />
+                        ) : (
+                          <Camera aria-hidden="true" className="h-3.5 w-3.5" />
+                        )}
+                        {isRenderingSelected
+                          ? t(lang, "กำลังสร้างมุมย่อย…", "Creating variant…")
+                          : t(
+                              lang,
+                              "สร้างมุมมองย่อยด้วย AI",
+                              "Create camera variant with AI"
                             )}
                       </Button>
                     </div>
@@ -2466,27 +3097,27 @@ export function VerticalDramaLocationStockPanel({
                           )}
                         </div>
                       )}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="w-fit gap-1.5"
-                        onClick={() => handlePreview(selectedLocation)}
-                        disabled={isPreviewLoadingSelected}
-                        data-testid={`vd-location-preview-prompt-${selectedLocation.locationId}`}
-                      >
-                        {isPreviewLoadingSelected ? (
-                          <Loader2
-                            aria-hidden="true"
-                            className="h-3.5 w-3.5 animate-spin"
-                          />
-                        ) : (
-                          <Wand2 aria-hidden="true" className="h-3.5 w-3.5" />
-                        )}
-                        {detailHasApprovedReference
-                          ? t(lang, "สร้างภาพเพิ่ม", "Generate another")
-                          : t(lang, "สร้าง prompt", "Generate prompt")}
-                      </Button>
+                      {!detailHasApprovedReference && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="w-fit gap-1.5"
+                          onClick={() => handlePreview(selectedLocation)}
+                          disabled={isPreviewLoadingSelected}
+                          data-testid={`vd-location-preview-prompt-${selectedLocation.locationId}`}
+                        >
+                          {isPreviewLoadingSelected ? (
+                            <Loader2
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5 animate-spin"
+                            />
+                          ) : (
+                            <Wand2 aria-hidden="true" className="h-3.5 w-3.5" />
+                          )}
+                          {t(lang, "สร้าง prompt", "Generate prompt")}
+                        </Button>
+                      )}
                     </>
                   )}
                 </div>
@@ -2506,6 +3137,19 @@ export function VerticalDramaLocationStockPanel({
         isLoading={imageModelsQuery.isLoading}
         loadError={imageModelsQuery.isError}
         onRetry={() => void imageModelsQuery.refetch()}
+      />
+
+      <input
+        ref={replacementFileInputRef}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        onChange={handleSelectReplacementFile}
+        aria-label={t(
+          lang,
+          "เลือกภาพใหม่เพื่อแทนที่ภาพสถานที่",
+          "Choose a replacement location image"
+        )}
       />
 
       <ImageLightbox

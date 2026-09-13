@@ -13,6 +13,7 @@ export * from "./characterAssets";
 export * from "./clipIdentityQc";
 export * from "./motionProfile";
 export * from "./locationAssets";
+export * from "./locationGrouping";
 export * from "./storyboardLocations";
 export * from "./contactSheets";
 export * from "./providerRouting";

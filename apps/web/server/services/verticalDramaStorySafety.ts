@@ -10,6 +10,17 @@
 
 export type VerticalDramaStorySafetyLevel = "low" | "medium" | "high";
 
+export const VERTICAL_DRAMA_STORY_SAFETY_DETECTOR_VERSION = "2026-09-12.2";
+
+export type VerticalDramaStorySafetyEvidence = {
+  source: "story" | "generated_prompt" | "metadata";
+  fieldPath: string;
+  shotNumber?: number;
+  matchedRule: string;
+  excerpt: string;
+  confidence: "medium" | "high";
+};
+
 export type VerticalDramaStorySafetyFinding = {
   code:
     | "minor_distress"
@@ -20,6 +31,8 @@ export type VerticalDramaStorySafetyFinding = {
     | "oversized_or_malformed_input";
   level: "medium" | "high";
   message: string;
+  detectorVersion?: string;
+  evidence?: VerticalDramaStorySafetyEvidence;
 };
 
 export type VerticalDramaStorySafetyResult = {
@@ -102,10 +115,18 @@ const GRAPHIC_VIOLENCE_MARKERS = [
   "graphic injury",
   "blood pooling",
   "dismember",
-  "ศพ",
   "เลือดสาด",
   "แผลฉกรรจ์",
 ];
+
+// Thai does not have whitespace between every lexical unit. Matching the
+// short marker "ศพ" as a raw substring therefore turns "ประกาศพัก" into a
+// false corpse hit (the final "ศ" of "ประกาศ" is immediately followed by
+// the "พ" of "พัก"). Keep standalone corpse mentions and common explicit
+// corpse phrases detectable without matching across an unrelated word
+// boundary.
+const CORPSE_MARKER_PATTERN =
+  /(?:^|[^\u0e00-\u0e7f])ศพ(?:$|[^\u0e00-\u0e7f])|(?:พบ|เห็น|เจอ|มี|ร่าง|เก็บ|ลาก|ซ่อน|ขุด|ตรวจ)ศพ|ศพ(?:ของ|ผู้|คน|อยู่|นอน|ใน|บน|ถูก|ที่|หลาย|สอง)/i;
 
 const COERCION_MARKERS = [
   "abuse",
@@ -277,6 +298,13 @@ function containsAny(text: string, markers: string[]): boolean {
   });
 }
 
+function containsGraphicViolenceMarker(text: string): boolean {
+  return (
+    containsAny(text, GRAPHIC_VIOLENCE_MARKERS) ||
+    CORPSE_MARKER_PATTERN.test(text)
+  );
+}
+
 function containsCoercionMarker(text: string): boolean {
   const storyText = text
     .replace(NEGATED_ENGLISH_COERCION_PATTERN, " ")
@@ -285,6 +313,133 @@ function containsCoercionMarker(text: string): boolean {
     containsAny(storyText, COERCION_MARKERS) ||
     CONTEXTUAL_RESTRAINT_PATTERNS.some(pattern => pattern.test(storyText))
   );
+}
+
+type SafetyEvidenceSegment = {
+  text: string;
+  fieldPath: string;
+  shotNumber?: number;
+  source: VerticalDramaStorySafetyEvidence["source"];
+};
+
+function classifySafetyEvidenceSource(
+  fieldPath: string,
+): VerticalDramaStorySafetyEvidence["source"] {
+  return /imageprompt|videoprompt|negativeprompt|prompt|lock|reference|metadata|instruction|contract/i.test(
+    fieldPath,
+  )
+    ? "generated_prompt"
+    : "story";
+}
+
+function readShotNumber(value: unknown): number | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  const shotNumber = record.shot_number ?? record.shotNumber;
+  return typeof shotNumber === "number" && Number.isInteger(shotNumber)
+    ? shotNumber
+    : undefined;
+}
+
+function collectSafetyEvidenceSegments(
+  input: unknown,
+  fieldPath = "$",
+  inheritedShotNumber?: number,
+  output: SafetyEvidenceSegment[] = [],
+  depth = 0,
+): SafetyEvidenceSegment[] {
+  if (output.length >= 256 || depth > 8) return output;
+  const shotNumber = readShotNumber(input) ?? inheritedShotNumber;
+  const source = classifySafetyEvidenceSource(fieldPath);
+  if (typeof input === "string") {
+    const text = input.trim();
+    if (text) output.push({ text, fieldPath, shotNumber, source });
+    return output;
+  }
+  if (Array.isArray(input)) {
+    input.forEach((value, index) => {
+      collectSafetyEvidenceSegments(
+        value,
+        `${fieldPath}[${index}]`,
+        shotNumber,
+        output,
+        depth + 1,
+      );
+    });
+    return output;
+  }
+  if (!input || typeof input !== "object") return output;
+  Object.entries(input as Record<string, unknown>)
+    .filter(([key]) => !SAFETY_METADATA_KEYS.has(key))
+    .forEach(([key, value]) => {
+      const childPath = `${fieldPath}.${key}`;
+      if (typeof value === "string") {
+        const text = value.trim();
+        if (text) {
+          output.push({
+            text: `${key}: ${text}`,
+            fieldPath: childPath,
+            shotNumber,
+            source: classifySafetyEvidenceSource(childPath),
+          });
+        }
+        return;
+      }
+      collectSafetyEvidenceSegments(
+        value,
+        childPath,
+        shotNumber,
+        output,
+        depth + 1,
+      );
+    });
+  return output;
+}
+
+function buildSafetyEvidence(
+  input: unknown,
+  code: VerticalDramaStorySafetyFinding["code"],
+  matches: (text: string) => boolean,
+): VerticalDramaStorySafetyEvidence | undefined {
+  if (code === "oversized_or_malformed_input") {
+    return {
+      source: "story",
+      fieldPath: "$",
+      matchedRule: code,
+      excerpt: "input exceeded bounded safety scan",
+      confidence: "high",
+    };
+  }
+  const segment = collectSafetyEvidenceSegments(input).find(item =>
+    matches(item.text.toLocaleLowerCase()),
+  );
+  if (!segment) return undefined;
+  return {
+    source: segment.source,
+    fieldPath: segment.fieldPath,
+    ...(segment.shotNumber === undefined
+      ? {}
+      : { shotNumber: segment.shotNumber }),
+    matchedRule: code,
+    excerpt: segment.text.slice(0, 240),
+    confidence: "high",
+  };
+}
+
+function createSafetyFinding(
+  input: unknown,
+  code: VerticalDramaStorySafetyFinding["code"],
+  level: VerticalDramaStorySafetyFinding["level"],
+  message: string,
+  matches: (text: string) => boolean,
+): VerticalDramaStorySafetyFinding {
+  return {
+    code,
+    level,
+    message,
+    detectorVersion: VERTICAL_DRAMA_STORY_SAFETY_DETECTOR_VERSION,
+    evidence: buildSafetyEvidence(input, code, matches),
+  };
 }
 
 /**
@@ -376,26 +531,38 @@ export function analyzeVerticalDramaStorySafety(
   const findings: VerticalDramaStorySafetyFinding[] = [];
 
   if (scanState.truncated) {
-    findings.push({
-      code: "oversized_or_malformed_input",
-      level: "high",
-      message: "ข้อมูลเนื้อเรื่องยาวหรือซับซ้อนเกินขอบเขตการตรวจสอบความปลอดภัย",
-    });
+    findings.push(
+      createSafetyFinding(
+        input,
+        "oversized_or_malformed_input",
+        "high",
+        "ข้อมูลเนื้อเรื่องยาวหรือซับซ้อนเกินขอบเขตการตรวจสอบความปลอดภัย",
+        () => false,
+      ),
+    );
   }
 
   if (containsAny(text, SEXUAL_MARKERS)) {
-    findings.push({
-      code: "sexual_or_nudity",
-      level: "high",
-      message: "พบถ้อยคำทางเพศหรือการเปลือยในเนื้อเรื่อง",
-    });
+    findings.push(
+      createSafetyFinding(
+        input,
+        "sexual_or_nudity",
+        "high",
+        "พบถ้อยคำทางเพศหรือการเปลือยในเนื้อเรื่อง",
+        value => containsAny(value, SEXUAL_MARKERS),
+      ),
+    );
   }
-  if (containsAny(text, GRAPHIC_VIOLENCE_MARKERS)) {
-    findings.push({
-      code: "graphic_violence",
-      level: "high",
-      message: "พบถ้อยคำความรุนแรงเชิงกราฟิกในเนื้อเรื่อง",
-    });
+  if (containsGraphicViolenceMarker(text)) {
+    findings.push(
+      createSafetyFinding(
+        input,
+        "graphic_violence",
+        "high",
+        "พบถ้อยคำความรุนแรงเชิงกราฟิกในเนื้อเรื่อง",
+        containsGraphicViolenceMarker,
+      ),
+    );
   }
   const hasMinorWithCoercion = safetySegments.some(
     segment =>
@@ -414,28 +581,46 @@ export function analyzeVerticalDramaStorySafety(
   );
 
   if (hasMinorWithCoercion) {
-    findings.push({
-      code: "abuse_or_coercion",
-      level: "high",
-      message: "พบเด็ก/ผู้เยาว์ร่วมกับบริบทการบังคับหรือการทำร้าย",
-    });
+    findings.push(
+      createSafetyFinding(
+        input,
+        "abuse_or_coercion",
+        "high",
+        "พบเด็ก/ผู้เยาว์ร่วมกับบริบทการบังคับหรือการทำร้าย",
+        segment =>
+          containsAny(segment, MINOR_MARKERS) &&
+          containsCoercionMarker(segment),
+      ),
+    );
   }
   if (
     hasMinorWithThreat &&
     !findings.some(f => f.code === "abuse_or_coercion")
   ) {
-    findings.push({
-      code: "minor_threat_or_surveillance",
-      level: "high",
-      message: "พบเด็ก/ผู้เยาว์ร่วมกับภัยคุกคามหรือการเฝ้าระวัง",
-    });
+    findings.push(
+      createSafetyFinding(
+        input,
+        "minor_threat_or_surveillance",
+        "high",
+        "พบเด็ก/ผู้เยาว์ร่วมกับภัยคุกคามหรือการเฝ้าระวัง",
+        segment =>
+          containsAny(segment, MINOR_MARKERS) &&
+          containsAny(segment, THREAT_MARKERS),
+      ),
+    );
   }
   if (hasMinorWithDistress) {
-    findings.push({
-      code: "minor_distress",
-      level: "medium",
-      message: "พบเด็ก/ผู้เยาว์ร่วมกับรายละเอียดความทุกข์หรือร้องไห้",
-    });
+    findings.push(
+      createSafetyFinding(
+        input,
+        "minor_distress",
+        "medium",
+        "พบเด็ก/ผู้เยาว์ร่วมกับรายละเอียดความทุกข์หรือร้องไห้",
+        segment =>
+          containsAny(segment, MINOR_MARKERS) &&
+          containsAny(segment, DISTRESS_MARKERS),
+      ),
+    );
   }
 
   const level = findings.some(f => f.level === "high")

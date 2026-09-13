@@ -194,6 +194,10 @@ export async function generateNextEpisodesViaLlm(
     maxTokens: 6000,
     schema: continuationResponseSchema,
     label: "Episode continuation",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "script_generation",
+    },
   });
 
   // All-or-nothing: a batch that comes back short of `count` is a validation

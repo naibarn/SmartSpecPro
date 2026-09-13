@@ -54,6 +54,7 @@ vi.mock("../../db", () => ({
 
 import {
   buildCharacterAssetManifest,
+  buildPortraitCandidateDraftBatchProjections,
   deriveCharacterAssetState,
   characterAssetRowToContract,
   buildDemotedPrimaryPortraitPatch,
@@ -300,6 +301,201 @@ describe("characterAssetRowToContract", () => {
       referenceGuided: true,
     });
     expect(JSON.stringify(projected)).not.toContain("referenceAssetLinkIds");
+  });
+});
+
+describe("buildPortraitCandidateDraftBatchProjections", () => {
+  it("recovers the latest complete owner-scoped prompt preview without exposing it in the manifest", () => {
+    const makeRow = (id: number, index: number) => ({
+      id,
+      characterId: 5,
+      mediaAssetId: null,
+      role: "portrait_candidate",
+      metadata: {
+        state: "draft",
+        source: "generated",
+        portraitCandidate: {
+          batchId: "batch-latest",
+          candidateId: `candidate-${index}`,
+          index,
+          count: 2,
+          status: "previewed",
+          characterKey: "hero",
+          portraitPrompt: `FULL_PROMPT_${index}`,
+          negativePrompt: `NEGATIVE_${index}`,
+          visualIdentitySummary: `summary ${index}`,
+          sharedVisualLanguage: "cinematic casting",
+          promptModel: "character-prompt-skill",
+          referenceGuided: true,
+          expiresAt: "2026-09-09T00:00:00.000Z",
+        },
+      },
+      createdAt: new Date("2026-09-08T11:00:00.000Z"),
+      updatedAt: new Date(`2026-09-08T11:0${index}:00.000Z`),
+    });
+
+    expect(
+      buildPortraitCandidateDraftBatchProjections(
+        [makeRow(101, 0), makeRow(102, 1)] as any,
+        new Date("2026-09-08T12:00:00.000Z").getTime()
+      )
+    ).toEqual([
+      {
+        batchId: "batch-latest",
+        characterId: "5",
+        sharedVisualLanguage: "cinematic casting",
+        model: "character-prompt-skill",
+        referenceGuided: true,
+        createdAt: "2026-09-08T11:00:00.000Z",
+        candidates: [
+          {
+            assetLinkId: "101",
+            candidateId: "candidate-0",
+            index: 0,
+            portraitPrompt: "FULL_PROMPT_0",
+            negativePrompt: "NEGATIVE_0",
+            visualIdentitySummary: "summary 0",
+            status: "previewed",
+          },
+          {
+            assetLinkId: "102",
+            candidateId: "candidate-1",
+            index: 1,
+            portraitPrompt: "FULL_PROMPT_1",
+            negativePrompt: "NEGATIVE_1",
+            visualIdentitySummary: "summary 1",
+            status: "previewed",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("recovers one retried slot from a partially completed original batch", () => {
+    const row = {
+      id: 554,
+      characterId: 5,
+      mediaAssetId: null,
+      role: "portrait_candidate",
+      metadata: {
+        state: "draft",
+        source: "generated",
+        portraitCandidate: {
+          batchId: "original-three-slot-batch",
+          candidateId: "replacement-candidate",
+          index: 2,
+          count: 3,
+          status: "previewed",
+          characterKey: "hero",
+          portraitPrompt: "FRESH_SLOT_THREE_PROMPT",
+          visualIdentitySummary: "replacement for slot three",
+          sharedVisualLanguage: "cinematic casting",
+          promptModel: "character-prompt-skill",
+          referenceGuided: true,
+          expiresAt: "2026-09-09T00:00:00.000Z",
+        },
+      },
+      createdAt: new Date("2026-09-08T08:00:00.000Z"),
+      updatedAt: new Date("2026-09-08T12:00:00.000Z"),
+    };
+
+    expect(
+      buildPortraitCandidateDraftBatchProjections(
+        [row] as any,
+        new Date("2026-09-08T12:30:00.000Z").getTime()
+      )
+    ).toMatchObject([
+      {
+        batchId: "original-three-slot-batch",
+        candidates: [
+          {
+            assetLinkId: "554",
+            index: 2,
+            status: "previewed",
+            portraitPrompt: "FRESH_SLOT_THREE_PROMPT",
+          },
+        ],
+      },
+    ]);
+  });
+});
+
+describe("VerticalDramaCharacterStockService.replacePortraitCandidateDraft", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFor.mockResolvedValue([]);
+  });
+
+  it("writes the fresh prompt into the failed asset while preserving its batch and index", async () => {
+    mockFor.mockResolvedValueOnce([
+      {
+        id: 554,
+        metadata: {
+          state: "generated",
+          rejectionReason: "provider rejected",
+          portraitCandidate: {
+            batchId: "original-batch",
+            candidateId: "old-candidate",
+            index: 2,
+            count: 3,
+            status: "failed",
+            characterKey: "marcus",
+            portraitPrompt: "old prompt",
+            visualIdentitySummary: "old summary",
+            sharedVisualLanguage: "old language",
+            promptModel: "old model",
+            referenceGuided: true,
+            expiresAt: "2026-09-09T00:00:00.000Z",
+            taskId: "failed-task",
+            policyRejected: true,
+          },
+        },
+      },
+    ]);
+
+    const service = new VerticalDramaCharacterStockService();
+    const result = await service.replacePortraitCandidateDraft({
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 24,
+      characterId: 123,
+      assetLinkId: 554,
+      characterKey: "marcus",
+      sharedVisualLanguage: "fresh language",
+      promptModel: "character-prompt-skill",
+      referenceGuided: true,
+      candidate: {
+        candidateId: "fresh-candidate",
+        portraitPrompt: "fresh prompt",
+        visualIdentitySummary: "fresh summary",
+      },
+    });
+
+    expect(result).toEqual({
+      batchId: "original-batch",
+      candidates: [
+        { assetLinkId: 554, candidateId: "old-candidate", index: 2 },
+      ],
+    });
+    expect(mockUpdateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        approved: false,
+        qcStatus: "pending",
+        metadata: expect.objectContaining({
+          state: "draft",
+          portraitCandidate: expect.objectContaining({
+            batchId: "original-batch",
+            index: 2,
+            count: 3,
+            candidateId: "old-candidate",
+            status: "previewed",
+            portraitPrompt: "fresh prompt",
+            taskId: undefined,
+            policyRejected: undefined,
+          }),
+        }),
+      })
+    );
   });
 });
 
@@ -1132,6 +1328,9 @@ describe("VerticalDramaCharacterStockService.markPortraitCandidateSubmissionFail
     expect(mockUpdate).toHaveBeenCalledTimes(1);
     const setArg = mockUpdateSet.mock.calls[0][0] as any;
     expect(setArg.metadata.portraitCandidate.policyRejected).toBe(true);
+    expect(setArg.metadata.portraitCandidate.policyReason).toBe(
+      rawProviderError
+    );
     expect(setArg.metadata.portraitCandidate.errorMessage).toBe(
       VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE
     );

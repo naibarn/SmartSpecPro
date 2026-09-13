@@ -12,7 +12,7 @@ import type {
   VideoEditorProject,
   SilentRegion,
 } from '../../../types/videoEditor';
-import { generateId } from '../../../types/videoEditor';
+import { createEmptyProject, generateId } from '../../../types/videoEditor';
 
 // Helper to create test clips
 function createClip(
@@ -282,6 +282,56 @@ describe('rippleDeleteTrack', () => {
     expect(result[0].startTime).toBe(0);
     expect(result[1].startTime).toBe(3);
     expect(result[2].startTime).toBe(7);
+  });
+});
+
+describe('processExportToTimeline — global multi-track cuts', () => {
+  it('uses one shared time map for video, overlay, text, and locked tracks', () => {
+    const project = createEmptyProject('Global cut');
+    const makeTimelineClip = (id: string, trackId: string): Clip => ({
+      ...createClip(id, 0, 10, 0, 10),
+      assetId: 'asset-1',
+      trackId,
+      type: 'video',
+      clipType: 'video',
+    } as any);
+    project.assets['asset-1'] = {
+      id: 'asset-1',
+      type: 'video',
+      source: 'imported',
+      path: '/test/video.mp4',
+      filename: 'video.mp4',
+      format: 'mp4',
+      duration: 10,
+    };
+    const video = project.timeline.tracks.find((track) => track.id === 'track-v1')!;
+    const overlay = project.timeline.tracks.find((track) => track.id === 'track-v2')!;
+    const text = project.timeline.tracks.find((track) => track.id === 'track-t1')!;
+    const locked = project.timeline.tracks.find((track) => track.id === 'track-a1')!;
+    locked.locked = true;
+    video.clips = [makeTimelineClip('video', video.id)];
+    overlay.clips = [makeTimelineClip('overlay', overlay.id)];
+    text.clips = [{ ...makeTimelineClip('text', text.id), type: 'text', clipType: 'text' } as any];
+    locked.clips = [makeTimelineClip('locked', locked.id)];
+    project.settings.duration = 10;
+
+    const next = processExportToTimeline(
+      project,
+      [createRegion('dead-air', 4, 6)],
+      true,
+      [video.id],
+    );
+
+    for (const track of [video, overlay, text, locked]) {
+      const nextTrack = next.timeline.tracks.find((item) => item.id === track.id)!;
+      expect(nextTrack.clips.map((clip) => [clip.startTime, clip.duration])).toEqual([
+        [0, 4],
+        [4, 4],
+      ]);
+    }
+    expect(next.settings.duration).toBe(8);
+    expect(next.metadata?.deadAirCutCount).toBe(1);
+    expect(project.settings.duration).toBe(10);
   });
 });
 

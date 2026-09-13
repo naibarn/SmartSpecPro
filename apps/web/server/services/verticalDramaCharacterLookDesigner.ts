@@ -817,6 +817,11 @@ export async function designVerticalDramaCharacterLooks(
         "Return exactly one object with contract_version=1 and designs. Each design must include request_key, review_required, look_design, evidence_refs. look_design must contain the complete outfit, hair, makeup, footwear, accessories, palette, continuity_notes, negative_constraints, identity_lock, and all quality_checks fields. Use strings for outfit.top, outfit.bottom or outfit.one_piece, and outfit.outerwear.",
       schema: providerDesignOutputSchema,
       label: "Vertical Drama character look designer",
+      verticalDramaContext: {
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        taskClass: "visual_bible",
+      },
     }
   );
   const validatedData = designOutputSchema.parse(data);

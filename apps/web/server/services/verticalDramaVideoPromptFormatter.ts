@@ -58,6 +58,10 @@ import { sanitizeSpeakableLineForDelivery } from "@shared/verticalDramaSeries/di
 // a second time). One-directional import only (this module is never
 // imported back by the generation module) — no circular dependency.
 import { promptEmbedsDialogueVerbatim } from "./verticalDramaVideoMotionPromptGeneration";
+import {
+  renderVerticalDramaHardSpeakerMapPromptBlock,
+  VERTICAL_DRAMA_HARD_SPEAKER_MAP_MARKER,
+} from "@shared/verticalDramaSeries/spokenCallerVirtualScreen";
 
 /* -------------------------------------------------------------------------- */
 /* Input contracts                                                            */
@@ -156,6 +160,12 @@ export interface FormatVideoClipRequestParams {
     id?: string;
   };
   aspectRatio?: "9:16" | "16:9" | "1:1";
+  /** Server-resolved physical cast for the approved start frame. */
+  physicalCharacterRefs?: string[];
+  physicalCharacterNames?: string[];
+  /** Server-resolved callers that may speak only inside the existing start-frame inset. */
+  screenCallerCharacterRefs?: string[];
+  screenCallerCharacterNames?: string[];
 }
 
 /* -------------------------------------------------------------------------- */
@@ -354,6 +364,24 @@ export function formatVideoClipRequest(
   if (clip.startFrameAssetId && capabilities.supportsStartFrame) {
     finalPrompt =
       `Use the attached first image as the exact start frame and visual source of truth — continue motion from it; keep faces, wardrobe, set and composition identical. ${finalPrompt}`.trim();
+  }
+  if (dialogueLines.length > 0) {
+    const hardSpeakerMapBlock = renderVerticalDramaHardSpeakerMapPromptBlock({
+      physicalCharacterRefs: params.physicalCharacterRefs ?? [],
+      physicalCharacterNames: params.physicalCharacterNames,
+      screenCallerCharacterRefs: params.screenCallerCharacterRefs ?? [],
+      screenCallerCharacterNames: params.screenCallerCharacterNames,
+      dialogueLines,
+      // Native dialogue is appended below through the existing speakability
+      // sanitizer. Do not echo raw authored text in this role-lock block.
+      includeCanonicalLineText: false,
+    });
+    if (
+      hardSpeakerMapBlock &&
+      !finalPrompt.includes(VERTICAL_DRAMA_HARD_SPEAKER_MAP_MARKER)
+    ) {
+      finalPrompt = `${finalPrompt}\n\n${hardSpeakerMapBlock}`.trim();
+    }
   }
   // Silence-aware / idempotent dialogue clause
   // (`planning/vd-video-prompt-skill-first/plan.md` Phase 3b) — (a) an empty

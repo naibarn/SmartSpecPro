@@ -43,6 +43,56 @@ function baseProps(overrides: Record<string, unknown> = {}) {
 }
 
 describe("VerticalDramaStoryboardPanel — supplementary reference frames (Phase 6c)", () => {
+  it("does not display a caller's look variant as a physical chip", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          storyboard: {
+            shots: [
+              {
+                shot_number: 1,
+                visual_description: "caller speaks by phone",
+                required_character_refs: ["thir-look-casual_home"],
+                screen_caller_refs: ["thir"],
+              },
+            ],
+          },
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "a phone call",
+                requiredCharacterRefs: ["thir-look-casual_home"],
+              },
+            ],
+          },
+          characterPortraits: {
+            thir: {
+              characterId: "thir-db-id",
+              name: "ธีร์",
+              portraitUrl: "https://cdn/thir.jpg",
+            },
+            "thir-look-casual_home": {
+              characterId: "thir-look-db-id",
+              name: "ธีร์",
+              portraitUrl: "https://cdn/thir-look.jpg",
+              parentCharacterId: "thir-db-id",
+            },
+          },
+        }) as any)}
+      />
+    );
+
+    expect(
+      screen.queryByTestId(
+        "vd-storyboard-character-chip-1-thir-look-casual_home"
+      )
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId("vd-storyboard-screen-caller-section-1")
+    ).toBeInTheDocument();
+  });
+
   it("keeps lazy prompt authoring separate from render-only image generation for every episode type", () => {
     const { rerender } = render(
       <VerticalDramaStoryboardPanel
@@ -213,6 +263,15 @@ describe("VerticalDramaStoryboardPanel — supplementary reference frames (Phase
       screen.getByTestId("vd-storyboard-object-reference-card-1")
     ).toBeInTheDocument();
     expect(
+      screen.getByTestId("vd-storyboard-object-reference-toggle-1")
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByTestId("vd-storyboard-prop-object-reference-strip-1")
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByTestId("vd-storyboard-object-reference-toggle-1")
+    );
+    expect(
       screen.getByTestId("vd-storyboard-prop-object-reference-strip-1")
     ).toBeInTheDocument();
     expect(
@@ -223,6 +282,87 @@ describe("VerticalDramaStoryboardPanel — supplementary reference frames (Phase
         .getByTestId("vd-storyboard-upload-prop-object-reference-1")
         .querySelector("input")
     ).toHaveAttribute("accept", "image/*");
+  });
+
+  it("lets users collapse and re-expand the empty reference card", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          objectReferenceEnabled: true,
+          onAddShotReference: vi.fn(),
+          onRemoveShotReference: vi.fn(),
+        }) as any)}
+      />
+    );
+
+    const toggle = screen.getByTestId(
+      "vd-storyboard-object-reference-toggle-1"
+    );
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByTestId("vd-storyboard-prop-object-reference-strip-1")
+    ).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByTestId("vd-storyboard-prop-object-reference-strip-1")
+    ).not.toBeInTheDocument();
+  });
+
+  it("auto-expands when an attached image appears and collapses after it is removed", async () => {
+    const { rerender } = render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          productTieInByShot: { 1: { productName: "สินค้า" } },
+        }) as any)}
+      />
+    );
+
+    const toggle = screen.getByTestId(
+      "vd-storyboard-object-reference-toggle-1"
+    );
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    rerender(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          productTieInByShot: { 1: { productName: "สินค้า" } },
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "สินค้าอยู่ในฉาก",
+                productReferenceAssetIds: ["https://cdn.example/product.png"],
+              },
+            ],
+          },
+        }) as any)}
+      />
+    );
+    await waitFor(() =>
+      expect(toggle).toHaveAttribute("aria-expanded", "true")
+    );
+    expect(
+      screen.getByTestId("vd-storyboard-prop-object-reference-strip-1")
+    ).toBeInTheDocument();
+
+    rerender(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          productTieInByShot: { 1: { productName: "สินค้า" } },
+        }) as any)}
+      />
+    );
+    await waitFor(() =>
+      expect(toggle).toHaveAttribute("aria-expanded", "false")
+    );
+    expect(
+      screen.queryByTestId("vd-storyboard-prop-object-reference-strip-1")
+    ).not.toBeInTheDocument();
   });
 
   it("uses the same wide card and reference list for Product tie-in shots", () => {
@@ -328,6 +468,9 @@ describe("VerticalDramaStoryboardPanel — supplementary reference frames (Phase
       />
     );
 
+    fireEvent.click(
+      screen.getByTestId("vd-storyboard-object-reference-toggle-1")
+    );
     const sharedStrip = screen.getByTestId(
       "vd-storyboard-prop-object-reference-strip-1"
     );

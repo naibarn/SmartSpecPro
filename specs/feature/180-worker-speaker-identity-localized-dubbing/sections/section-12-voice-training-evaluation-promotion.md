@@ -13,3 +13,9 @@ Exit: Release D proof includes genuine checkpoint, baseline comparison, approved
 ## Convergence audit requirements
 
 Apply lifecycle sections 8–10 and contracts recovery clarifications; they refine earlier general wording. Use VoiceOwnerScope for profiles/datasets, AudioScope for executions. Include applicable C5-01 through C5-07 regression cases in ../claude-plan-tdd.md. Release reporting distinguishes core A+B, optional providers C and training D.
+
+## Implementation record (2026-09-07)
+
+Dataset/revision/freeze/hash and training consent checks, durable scheduler insertion with compensation, evaluation and promotion endpoints are implemented in `unifiedAudioVoiceService.ts`. Worker admission is pinned to VoxCPM2 LoRA; `SMARTSPEC_TTS_VOXCPM2_TRAIN_COMMAND` is optional and missing configuration returns `TRAINING_UNAVAILABLE`.
+
+When a Worker training job completes, the terminal reconciliation path materializes a private `audio_trained_voice_models` candidate linked to the durable training run and published result artifact; failed/expired/canceled runs are durably marked failed/canceled and never auto-promoted. After held-out evaluation and explicit promotion, a VoxCPM2 `trained_voice` binding snapshots the promoted model artifact and the Worker stages it by checksum for ordinary TTS.

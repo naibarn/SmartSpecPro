@@ -28,6 +28,7 @@ import type { VideoPromptModelTarget } from "./videoPromptModelFamily";
 import type {
   VdImagePromptMode,
   VdImagePromptModeStamp,
+  VdImagePromptSourceStamp,
 } from "./imagePromptModelFamily";
 import type {
   VdIdentityRisk,
@@ -852,6 +853,8 @@ export type VerticalDramaStartFramePlan = {
      * "NO CODE-SIDE PROMPT APPENDING" rule.
      */
     promptMode?: VdImagePromptModeStamp;
+    /** Quality-driven Start Frame shortcut: the current shot synopsis was sent directly to the image provider. */
+    promptSource?: VdImagePromptSourceStamp;
     /**
      * Mode 1's top-level `safety_adjustments` OR mode 2's
      * `analysis_summary.safety_adjustments` — each entry an
@@ -1670,6 +1673,8 @@ export type RunResult = {
     message: string;
     targetArtifactId?: string;
     repairable: boolean;
+    /** Bounded, machine-readable recovery context; never contains the full candidate. */
+    details?: Record<string, unknown>;
   }>;
   warnings: VerticalDramaWarning[];
   qc?: VerticalDramaQcResult;

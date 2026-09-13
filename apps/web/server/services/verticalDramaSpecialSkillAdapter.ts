@@ -1593,6 +1593,10 @@ export async function generateSpecialSkillOutput(input: {
           maxTransientRetries: 1,
           schema: planningSchema,
           label: "special tie-in idea-to-video-prompt",
+          verticalDramaContext: {
+            seriesId: input.seriesId,
+            taskClass: "story_architecture",
+          },
           rawPayloadObserver: input.forensics?.rawPayloadObserver
             ? async event => { await input.forensics?.rawPayloadObserver?.(event); }
             : undefined,
@@ -1878,8 +1882,6 @@ export async function executeSpecialTieInSkill(
           errorMessage: undefined,
         },
       },
-      startFramePlan: null,
-      motionPromptPack: null,
       updatedAt: new Date(),
     })
     .where(
@@ -2288,6 +2290,7 @@ export async function executeSpecialTieInSkill(
   const nextData: SpecialEpisodeData = {
     ...specialData,
     outputVersion: nextOutputVersion,
+    artifactsInputVersion: raw.inputVersion,
     skillRun: {
       ...specialData.skillRun,
       status: promptReady ? "succeeded" : "needs_clarification",

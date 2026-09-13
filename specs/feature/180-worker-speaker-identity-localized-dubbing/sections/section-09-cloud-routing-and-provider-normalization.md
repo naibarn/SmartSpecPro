@@ -19,3 +19,7 @@ Use existing Thai-primary component patterns and the responsive/accessibility ma
 ## Expanded lifecycle dependency
 
 Read ../voice-lifecycle-v2.md and sections 11/12. Validate reference-only vs transcript-required vs trained modes separately. Existing inference readiness cannot authorize training. Release evidence must distinguish A/B/C/D and must cover profile API lifecycle, transitive rights and rollback where enabled.
+
+## Implementation record (2026-09-07)
+
+`unifiedAudioVoiceService.ts` routes registered cloud bindings through the existing internal TTS gateway, freezes snapshots, accepts managed references for supported clone adapters, probes decoded duration, stores managed artifacts and reconciles billing. `ttsService.ts` now returns null when duration cannot be decoded instead of estimating it.

@@ -76,13 +76,13 @@ describe("useMenuItems", () => {
     expect(entry?.IconComponent).not.toBe(Sparkles);
   });
 
-  it("places Render Jobs directly after Media History in the main sidebar", () => {
+  it("places Worker Jobs directly after Media History in the main sidebar", () => {
     const items = getResolvedMenuItems("user", "main");
     const mediaHistoryIndex = items.findIndex((item) => item.id === "media-history");
-    const renderJobsIndex = items.findIndex((item) => item.id === "render-jobs");
+    const workerJobsIndex = items.findIndex((item) => item.id === "worker-jobs");
 
     expect(mediaHistoryIndex).toBeGreaterThanOrEqual(0);
-    expect(renderJobsIndex).toBe(mediaHistoryIndex + 1);
-    expect(items[renderJobsIndex]?.path).toBe("/render-jobs");
+    expect(workerJobsIndex).toBe(mediaHistoryIndex + 1);
+    expect(items[workerJobsIndex]?.path).toBe("/worker-jobs");
   });
 });

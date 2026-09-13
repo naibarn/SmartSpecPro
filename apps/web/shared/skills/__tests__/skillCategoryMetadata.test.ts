@@ -31,6 +31,16 @@ describe("skillCategoryMetadata", () => {
     expect(isExecutionModeCompatibleWithSkillCategory("audio_generation", "llm-only")).toBe(false);
   });
 
+  it("treats character prompt generation as an image prompt skill", () => {
+    expect(getAllowedExecutionModesForSkillCategory("character_prompt_generation")).toEqual([
+      "llm-only",
+      "enhance-prompt",
+      "python",
+    ]);
+    expect(isPromptGenerationSkillCategory("character_prompt_generation")).toBe(true);
+    expect(isImagePromptSkillCategory("character_prompt_generation")).toBe(true);
+  });
+
   it("returns recommended execution modes by category", () => {
     expect(getRecommendedExecutionModeForSkillCategory("article_generation")).toBe("llm-only");
     expect(getRecommendedExecutionModeForSkillCategory("slide_generation")).toBe("sandbox-command");

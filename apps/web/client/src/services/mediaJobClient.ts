@@ -44,6 +44,8 @@ export interface ThumbnailResult {
 export interface DeadAirParams {
   thresholdDb?: number;
   minSilenceMs?: number;
+  /** Absolute ffprobe stream index, matching Worker App's audio track choice. */
+  audioStreamIndex?: number;
 }
 
 export interface DeadAirResult {
@@ -225,6 +227,7 @@ export class MediaJobClient {
   async getWaveformPeaks(
     assetUri: string,
     bucketMs: number = 100,
+    audioStreamIndex?: number,
   ): Promise<MediaJobResult> {
     const jobId = generateJobId();
     const spec: MediaJobSpec = {
@@ -234,7 +237,12 @@ export class MediaJobClient {
       inputs: {
         assets: [{ assetId: "input", kind: "audio", uri: assetUri }],
       },
-      params: { bucketMs },
+      params: {
+        bucketMs,
+        ...(typeof audioStreamIndex === "number" && Number.isInteger(audioStreamIndex) && audioStreamIndex >= 0
+          ? { audioStreamIndex }
+          : {}),
+      },
       output: { mode: "memory", target: "" },
     };
     await this.submitJob(spec);
@@ -274,8 +282,11 @@ export class MediaJobClient {
         assets: [{ assetId: "input", kind: "audio", uri: assetUri }],
       },
       params: {
-        thresholdDb: params?.thresholdDb ?? -30,
-        minSilenceMs: params?.minSilenceMs ?? 300,
+        thresholdDb: params?.thresholdDb ?? -40,
+        minSilenceMs: params?.minSilenceMs ?? 500,
+        ...(Number.isInteger(params?.audioStreamIndex) && (params?.audioStreamIndex ?? -1) >= 0
+          ? { audioStreamIndex: params?.audioStreamIndex }
+          : {}),
       },
       output: { mode: "memory", target: "" },
     };

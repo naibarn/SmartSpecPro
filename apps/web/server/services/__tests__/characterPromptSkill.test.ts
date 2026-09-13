@@ -126,6 +126,28 @@ describe("character-prompt-skill adapter", () => {
     expect(mocks.executeJsonPlanningCallWithRetry).toHaveBeenCalledTimes(1);
     const request = JSON.parse(mocks.executeJsonPlanningCallWithRetry.mock.calls[0][0].userPrompt);
     expect(request.generation).toEqual({ images_per_character: 1, face_diversity: "high", render_context: "portrait" });
+    const planningCall = mocks.executeJsonPlanningCallWithRetry.mock.calls[0][0];
+    expect(planningCall.maxSchemaRetries).toBe(2);
+    expect(planningCall.extraBodyParams).toMatchObject({
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "vertical_drama_character_prompt_profile_v1",
+          strict: false,
+          schema: expect.objectContaining({
+            required: expect.arrayContaining([
+              "prompt_id",
+              "series_context",
+              "character_identity",
+              "presentation_profile",
+            ]),
+          }),
+        },
+      },
+    });
+    expect(planningCall.schemaRetryContract).toContain(
+      "Required top-level keys: prompt_id, role, age_band"
+    );
     expect(mocks.deductCredits).toHaveBeenCalledWith(expect.objectContaining({ amount: 2, skillSlug: "character-prompt-skill", sourceType: "skill" }));
     expect(result.visualBibleSnapshot.characterPromptProfile).toEqual(profile);
   });
@@ -145,5 +167,20 @@ describe("character-prompt-skill adapter", () => {
     const request = JSON.parse(mocks.executeJsonPlanningCallWithRetry.mock.calls[0][0].userPrompt);
     expect(request.generation.render_context).toBe("sheet:face_detail");
     expect(mocks.executeJsonPlanningCallWithRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes camera framing as a structured generation constraint", async () => {
+    await generateCharacterPromptWithSkill({
+      userId: 10,
+      seriesId: 20,
+      characterId: 30,
+      characterKey: "char-1",
+      name: "ป้าสายใจ",
+      role: "แม่ค้า",
+      description: "A practical vendor.",
+      cameraFraming: "three_quarter",
+    });
+    const request = JSON.parse(mocks.executeJsonPlanningCallWithRetry.mock.calls[0][0].userPrompt);
+    expect(request.generation.camera_framing).toBe("three_quarter");
   });
 });

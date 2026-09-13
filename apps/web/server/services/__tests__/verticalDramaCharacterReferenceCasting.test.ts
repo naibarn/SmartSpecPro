@@ -32,7 +32,9 @@ import {
   buildCharacterCandidatePromptInput,
   buildCharacterCandidatePromptMessages,
   buildCharacterCandidateSingleImageRenderPrompt,
+  findCharacterCandidatePromptDuplicatePairs,
   generateCharacterReferenceCastingPrompt,
+  parseCharacterCandidatePromptOutput,
 } from "../verticalDramaCharacterReferenceCasting";
 
 describe("verticalDramaCharacterReferenceCasting", () => {
@@ -73,6 +75,7 @@ describe("verticalDramaCharacterReferenceCasting", () => {
     ).toEqual({
       reference_images: ["/one.jpg", "/two.jpg"],
       image_count: 3,
+      candidate_count: 3,
       gender_presentation: "female",
       ethnicity: "Thai / Southeast Asian",
       age_min: 23,
@@ -122,10 +125,13 @@ describe("verticalDramaCharacterReferenceCasting", () => {
     });
 
     expect(result).toEqual({
+      prompts: ["Create a new fictional casting character."],
       prompt: "Create a new fictional casting character.",
       modelId: "vision-model",
       creditsUsed: 2,
       runId: "run-1",
+      repairCount: 0,
+      duplicatePairs: [],
     });
     expect(mockExecuteLlm).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -149,6 +155,96 @@ describe("verticalDramaCharacterReferenceCasting", () => {
     );
     expect(prompt).toContain("exactly one single image only");
     expect(prompt).toContain("not the person in any reference image");
+  });
+
+  it("parses a numbered batch and detects exact/near duplicate prompts", () => {
+    const prompts = parseCharacterCandidatePromptOutput(
+      [
+        "CANDIDATE 1:\nA warm Thai woman with an oval face and long waves.\nEND CANDIDATE 1",
+        "CANDIDATE 2:\nA warm Thai woman with an oval face and long waves.\nEND CANDIDATE 2",
+        "CANDIDATE 3:\nA Thai woman with a diamond face, cropped curls, and a small scar.\nEND CANDIDATE 3",
+      ].join("\n"),
+      3,
+    );
+    expect(prompts).toHaveLength(3);
+    expect(findCharacterCandidatePromptDuplicatePairs(prompts)).toEqual([[0, 1]]);
+  });
+
+  it("repairs an incomplete batch with one prompt per missing candidate", async () => {
+    mockExecuteLlm
+      .mockResolvedValueOnce({
+        success: true,
+        content: "CANDIDATE 1:\nFirst distinct person with an oval face and waves.\nEND CANDIDATE 1",
+        modelId: "vision-model",
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        content: "Second distinct person with a diamond face and cropped curls.",
+        modelId: "vision-model",
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        content: "Third distinct person with a square face and a braided bob.",
+        modelId: "vision-model",
+      });
+
+    const result = await generateCharacterReferenceCastingPrompt({
+      userId: 7,
+      tenantId: "tenant-1",
+      referenceImages: ["https://cdn/ref.jpg"],
+      imageCount: 3,
+      genderPresentation: "female",
+      ethnicity: "Thai",
+      ageMin: 23,
+      ageMax: 25,
+      lockClothing: false,
+      poseMode: "auto_natural",
+      cameraFraming: "half_body",
+    });
+
+    expect(result.prompts).toHaveLength(3);
+    expect(new Set(result.prompts).size).toBe(3);
+    expect(result.duplicatePairs).toEqual([]);
+    expect(result.repairCount).toBeGreaterThan(0);
+  });
+
+  it("regenerates a duplicate batch before returning it", async () => {
+    mockExecuteLlm
+      .mockResolvedValueOnce({
+        success: true,
+        content: [
+          "CANDIDATE 1:\nA warm Thai woman with an oval face, almond eyes, and long waves wearing a cream blouse.\nEND CANDIDATE 1",
+          "CANDIDATE 2:\nA warm Thai woman with an oval face, almond eyes, and long waves wearing a cream blouse.\nEND CANDIDATE 2",
+        ].join("\n"),
+        modelId: "vision-model",
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        content: [
+          "CANDIDATE 1:\nA warm Thai woman with an oval face, almond eyes, and long waves wearing a cream blouse.\nEND CANDIDATE 1",
+          "CANDIDATE 2:\nA warm Thai woman with a diamond face, narrow eyes, cropped curls, and a small cheek scar wearing a cream blouse.\nEND CANDIDATE 2",
+        ].join("\n"),
+        modelId: "vision-model",
+      });
+
+    const result = await generateCharacterReferenceCastingPrompt({
+      userId: 7,
+      tenantId: "tenant-1",
+      referenceImages: ["https://cdn/ref.jpg"],
+      imageCount: 2,
+      genderPresentation: "female",
+      ethnicity: "Thai",
+      ageMin: 23,
+      ageMax: 25,
+      lockClothing: false,
+      poseMode: "auto_natural",
+      cameraFraming: "half_body",
+    });
+
+    expect(mockExecuteLlm).toHaveBeenCalledTimes(2);
+    expect(result.repairCount).toBe(1);
+    expect(result.duplicatePairs).toEqual([]);
+    expect(new Set(result.prompts).size).toBe(2);
   });
 
   it("rejects an empty skill response before settlement", async () => {

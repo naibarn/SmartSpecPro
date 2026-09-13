@@ -1676,10 +1676,12 @@ async def _poll_wavespeed_video_task_async(
                 await provider.aclose()
 
         if poll_result.state == "success" and poll_result.result_url:
-            actual_duration = _get_wavespeed_requested_duration(
-                _coerce_json_dict(task.parameters),
-                submission,
-            )
+            actual_duration = None
+            if task.media_type != MediaType.IMAGE.value:
+                actual_duration = _get_wavespeed_requested_duration(
+                    _coerce_json_dict(task.parameters),
+                    submission,
+                )
             task.status = TaskStatus.COMPLETED
             task.error_message = None
             task.result_url = poll_result.result_url
@@ -1697,7 +1699,7 @@ async def _poll_wavespeed_video_task_async(
                     },
                     "provider_status": poll_result.raw_status,
                     "provider_response": poll_result.raw_response,
-                    "actual_duration": actual_duration,
+                    **({"actual_duration": actual_duration} if actual_duration is not None else {}),
                 },
                 remove_keys=("failure", "retry"),
             )
@@ -2450,6 +2452,68 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
             task.result_url = result_url
             submission_record = None
             kie_polling_record = None
+            wavespeed_polling_record = None
+            if response.provider == "wavespeed_ai" and provider_task_id:
+                from app.llm_proxy.providers.wavespeed_media_provider import WaveSpeedMediaProvider
+                from app.services.media_provider_service import get_media_provider_key
+
+                provider_config = await get_media_provider_key("wavespeed_ai")
+                if not provider_config or not provider_config.get("apiKey"):
+                    raise RuntimeError("WaveSpeed provider configuration unavailable after image submission")
+                extra_params = request.extra_params if isinstance(request.extra_params, dict) else {}
+                api_config = request.api_config if isinstance(request.api_config, dict) else {}
+                reference_image_urls = request.reference_image_urls or extra_params.get("images")
+                has_references = bool(reference_image_urls)
+                submit_endpoint = gateway._get_api_config_string(
+                    api_config,
+                    "endpoint_with_references" if has_references else "endpoint",
+                )
+                provider_model_id = gateway._get_api_config_string(
+                    api_config,
+                    "provider_model_id_with_references" if has_references else "provider_model_id",
+                )
+                if not submit_endpoint:
+                    model_stem = request.model.split("/text-to-image", 1)[0]
+                    submit_endpoint = f"/{model_stem}/edit" if has_references else f"/{model_stem}/text-to-image"
+                if not provider_model_id:
+                    model_stem = request.model.split("/text-to-image", 1)[0]
+                    provider_model_id = f"{model_stem}/edit" if has_references else request.model
+                wavespeed_provider = WaveSpeedMediaProvider(
+                    api_key=provider_config["apiKey"],
+                    base_url=provider_config.get("baseUrl"),
+                    submit_endpoint=submit_endpoint,
+                    result_endpoint_template=WaveSpeedMediaProvider.resolve_result_endpoint_template(api_config),
+                    provider_model_id=provider_model_id,
+                )
+                try:
+                    wavespeed_submission = {
+                        "provider": "wavespeed_ai",
+                        "provider_model_id": provider_model_id,
+                        "provider_task_id": provider_task_id,
+                        "base_url": wavespeed_provider.base_url,
+                        "submit_endpoint": wavespeed_provider.submit_endpoint,
+                        "result_endpoint_template": wavespeed_provider.result_endpoint_template,
+                        "media_type": "image",
+                        "request_summary": {
+                            "prompt_length": len(request.prompt or ""),
+                            "reference_image_count": len(reference_image_urls or []),
+                            "aspect_ratio": request.aspect_ratio or extra_params.get("aspect_ratio") or "1:1",
+                            "resolution": request.resolution or extra_params.get("resolution") or "1k",
+                            "quality": extra_params.get("quality") or "medium",
+                            "output_format": request.output_format or extra_params.get("output_format") or "png",
+                        },
+                    }
+                finally:
+                    await wavespeed_provider.aclose()
+                submission_record = _make_json_safe(wavespeed_submission)
+                wavespeed_polling_record = {
+                    "provider": "wavespeed_ai",
+                    "state": "scheduled",
+                    "attempts": 0,
+                    "raw_status": "created",
+                    "last_delay_seconds": 0,
+                    "next_delay_seconds": 3,
+                }
             if response.provider == "magnific":
                 submission_record = _build_magnific_submission_record(
                     provider_task_id=provider_task_id,
@@ -2494,6 +2558,7 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
                     else {}
                 ),
                 **({"polling": kie_polling_record} if kie_polling_record else {}),
+                **({"polling": wavespeed_polling_record} if wavespeed_polling_record else {}),
             })
             task.credits_used = int(response.credits_used) if response.credits_used else None
             task.credits_balance = int(response.credits_balance) if response.credits_balance else None
@@ -2522,6 +2587,8 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
 
             if response.provider == "magnific" and provider_task_id:
                 _enqueue_magnific_poll(task_id, _get_magnific_poll_policy(request.model)["initial"])
+            if response.provider == "wavespeed_ai" and provider_task_id:
+                _enqueue_wavespeed_poll(task_id, 3)
             if response.provider == "kie_ai" and provider_task_id:
                 _enqueue_kie_image_poll(task_id, KIE_IMAGE_POLL_INITIAL_SECONDS)
 
@@ -2553,15 +2620,20 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
                     task.result_data = _merge_task_result_data(
                         task.result_data,
                         {
-                        "debug": {
-                            "trace_id": trace_id,
-                            "provider_hint": api_config.get("provider"),
-                            "log_file": debug_log_file,
-                        },
-                        "failure": {
-                            "error": str(e),
-                            "error_type": type(e).__name__,
-                        },
+                            "debug": {
+                                "trace_id": trace_id,
+                                "provider_hint": api_config.get("provider"),
+                                "log_file": debug_log_file,
+                            },
+                            "failure": {
+                                "error": str(e),
+                                "error_type": type(e).__name__,
+                                "provider": (
+                                    api_config.get("provider")
+                                    or api_config.get("providerName")
+                                ),
+                                "provider_message": str(e),
+                            },
                         },
                         remove_keys=("retry",),
                     )
@@ -4173,7 +4245,11 @@ async def _recover_stuck_pending_tasks_async():
                         age_minutes=age_minutes,
                     )
                     if task.media_type == MediaType.IMAGE.value:
-                        _enqueue_kie_image_poll(task.id, KIE_IMAGE_POLL_INITIAL_SECONDS)
+                        submission = task_result_data.get("submission")
+                        if isinstance(submission, dict) and submission.get("provider") == "wavespeed_ai":
+                            _enqueue_wavespeed_poll(task.id, 3)
+                        else:
+                            _enqueue_kie_image_poll(task.id, KIE_IMAGE_POLL_INITIAL_SECONDS)
                     continue
 
                 # Check Celery task state to avoid duplicate execution

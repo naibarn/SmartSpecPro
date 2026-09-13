@@ -52,6 +52,8 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
+    publicProcedure: createProcedure(),
   };
 });
 
@@ -88,6 +90,7 @@ vi.mock("../../_core/tokens", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
+  createRateLimiter: vi.fn(() => ({ isAllowed: vi.fn(() => true) })),
   mediaGenerationLimiter: {
     isAllowed: vi.fn(() => true),
     getResetTime: vi.fn(() => 0),
@@ -170,7 +173,7 @@ vi.mock("../../services/verticalDramaEpisodeContinuation", () => ({
 vi.mock("../../services/verticalDramaShotReferences", () => ({
   verticalDramaShotReferencesService: {
     listForEpisode: vi.fn(),
-    listForShot: vi.fn(),
+    listForShot: vi.fn(async () => []),
     linkReference: vi.fn(),
     deleteReference: vi.fn(),
     reorder: vi.fn(),
@@ -645,6 +648,91 @@ describe("generateShotVideoPrompt", () => {
           repaired: false,
         },
       }),
+    ]);
+  });
+
+  it("accepts a legacy motion prompt pack without a warnings array when the generator returns warnings", async () => {
+    const legacyPack = {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [
+        {
+          clipNumber: 1,
+          sourceShotNumbers: [1],
+          prompt: "old placeholder prompt",
+          durationSeconds: 6,
+        },
+      ],
+      // Legacy JSONB rows may omit `warnings` entirely.
+    };
+    const episodeRow = baseEpisodeRow({ motionPromptPack: legacyPack });
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 900,
+            storageKey: "vertical-drama/tenant-1/900.png",
+            originalUrl: "https://stale-provider.example/900.png",
+          },
+        ])
+      )
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 900,
+            storageKey: "vertical-drama/tenant-1/900.png",
+            originalUrl: "https://stale-provider.example/900.png",
+            mimeType: "image/png",
+            checksumSha256: null,
+            updatedAt: null,
+          },
+        ])
+      )
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+      .mockReturnValueOnce(selectChain([]));
+
+    mockGenerateVerticalDramaShotVideoPrompt.mockResolvedValueOnce({
+      prompt: "generated motion prompt",
+      negativeMotionPrompt: "no glitching",
+      dialogue: [],
+      creditsUsed: 3,
+      model: "gpt-vision",
+      usedVision: true,
+      family: "veo",
+      warnings: ["legacy pack warning"],
+      promptQuality: {
+        mode: "single",
+        candidates: 1,
+        verdict: "accept",
+        repaired: false,
+      },
+    });
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((v: any) => {
+        capturedSet = v;
+        return updateChain([episodeRow]);
+      }),
+    });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(capturedSet.motionPromptPack.warnings).toEqual([
+      {
+        code: "vd_video_prompt_position_anchor_degraded",
+        severity: "warning",
+        message: "legacy pack warning",
+        targetShotNumber: 1,
+        targetClipNumber: 1,
+        repairable: true,
+      },
     ]);
   });
 
@@ -3340,5 +3428,32 @@ describe("generateShotVideoPrompt — locationReferenceImage (Phase E, planning/
     expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
       expect.objectContaining({ locationReferenceImage: undefined })
     );
+  });
+});
+
+
+describe("Enhanced display readiness", () => {
+  it("does not hide missing or unauthorized episodes as display readiness", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([]));
+    await expect(router.getEnhancedVideoPromptReadiness({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+  it("preserves the actionable precondition instead of claiming the image is missing", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([baseEpisodeRow({ motionPromptPack: null })]))
+      .mockReturnValueOnce(selectChain([{ id: 10, userId: 42, tenantId: "tenant-1" }]));
+    const result = await router.getEnhancedVideoPromptReadiness({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+    expect(result).toMatchObject({
+      ready: false,
+      fallback: "none",
+      reasons: ["ยังไม่มี motion prompt pack ของตอนนี้"],
+    });
+    expect(mockDb.update).not.toHaveBeenCalled();
+    expect(mockDb.insert).not.toHaveBeenCalled();
   });
 });

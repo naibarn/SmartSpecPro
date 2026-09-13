@@ -78,7 +78,6 @@ function loadRefinerSystemPrompt(): string {
     `Could not locate skill.md for "cinematic-prompt-refiner-pro" under any known skills directory`,
   );
 }
-
 /**
  * Weak-model-tolerant `string[]` — accepts the array the schema wants, OR the
  * bare string weaker QC models (e.g. `google/gemini-3.1-flash-lite`) routinely
@@ -134,9 +133,16 @@ function collectImageNegativeConstraints(value: string | undefined): string[] {
   if (!value?.trim()) return [];
   const markedValue = value.match(IMAGE_NEGATIVE_SECTION_RE)?.[1] ?? value;
   return markedValue
+    .replace(/^(?:เพิ่มเติม|also\s+(?:avoid|exclude))\s*:\s*/i, "")
     .split(/[,;\n]+/)
     .map(item => item.replace(/\s+/g, " ").trim().replace(/[.!]+$/, ""))
     .filter(Boolean);
+}
+
+function isLikelyImageNegativeContinuation(value: string): boolean {
+  return /^(?:เพิ่มเติม\s*:|ห้าม\b|also\s+(?:avoid|exclude)\b|(?:avoid|do not|don't|without|no)\b)/i.test(
+    value.trim(),
+  );
 }
 
 /**
@@ -146,8 +152,9 @@ function collectImageNegativeConstraints(value: string | undefined): string[] {
  * constraints are preserved, and exact constraints are deduplicated
  * case-insensitively while retaining their first-seen wording/order.
  *
- * This is intentionally conservative: it only treats a line beginning with a
- * known negative-section marker as negative content. Ordinary positive prose
+ * This is intentionally conservative: it treats a line beginning with a
+ * known negative-section marker, plus an immediately following line with an
+ * explicit negative prefix, as negative content. Ordinary positive prose
  * containing words such as "negative" is never moved or rewritten.
  */
 export function mergeImageNegativePromptIntoPrompt(
@@ -155,11 +162,20 @@ export function mergeImageNegativePromptIntoPrompt(
   negativePrompt?: string,
 ): string {
   const negativeConstraints: string[] = [];
+  let inNegativeSection = false;
   const positiveLines = prompt.split(/\r?\n/).filter(line => {
     const match = line.match(IMAGE_NEGATIVE_SECTION_RE);
-    if (!match) return true;
-    negativeConstraints.push(...collectImageNegativeConstraints(match[1]));
-    return false;
+    if (match) {
+      inNegativeSection = true;
+      negativeConstraints.push(...collectImageNegativeConstraints(match[1]));
+      return false;
+    }
+    if (inNegativeSection && isLikelyImageNegativeContinuation(line)) {
+      negativeConstraints.push(...collectImageNegativeConstraints(line));
+      return false;
+    }
+    inNegativeSection = false;
+    return true;
   });
   negativeConstraints.push(...collectImageNegativeConstraints(negativePrompt));
 
@@ -191,10 +207,15 @@ function countExactOccurrences(text: string, fragment: string): number {
 }
 
 function imageNegativeSectionFragments(prompt: string): string[] {
-  return prompt
+  const fragments = prompt
     .split(/\r?\n/)
     .map(line => line.trim())
-    .filter(line => line.startsWith(IMAGE_NEGATIVE_SECTION_LABEL));
+    .filter(line => line.startsWith(IMAGE_NEGATIVE_SECTION_LABEL))
+    .flatMap(line => [
+      IMAGE_NEGATIVE_SECTION_LABEL,
+      ...collectImageNegativeConstraints(line),
+    ]);
+  return Array.from(new Set(fragments));
 }
 
 /**
@@ -235,20 +256,23 @@ function isValidFinalImagePrompt(
   maxChars: number,
 ): boolean {
   const trimmed = prompt.trim();
-  if (!trimmed || trimmed.length > maxChars) return false;
+  const canonical = mergeImageNegativePromptIntoPrompt(trimmed);
+  if (!canonical || canonical.length > maxChars) return false;
   if (
     protectedFragments?.some(
-      fragment => countExactOccurrences(trimmed, fragment) !== 1,
+      fragment => countExactOccurrences(canonical, fragment) !== 1,
     )
   ) {
     return false;
   }
-  if (!hasSemanticProtectedMarkers(trimmed, semanticProtectedFragments)) {
+  if (!hasSemanticProtectedMarkers(canonical, semanticProtectedFragments)) {
     return false;
   }
-  // The optimizer must return the canonical one-prompt representation itself;
-  // no post-optimizer cleanup or negative-block append is allowed.
-  return mergeImageNegativePromptIntoPrompt(trimmed) === trimmed;
+  return true;
+}
+
+function canonicalizeValidatedFinalImagePrompt(prompt: string): string {
+  return mergeImageNegativePromptIntoPrompt(prompt).trim();
 }
 
 /** Resolve one call's cap while preserving the legacy floor and provider limit. */
@@ -532,6 +556,10 @@ async function refineOnce(params: {
     maxTokens: 3000,
     schema: refinerOutputSchema,
     label: `Vertical Drama prompt QC refine (${params.label})`,
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "semantic_quality_review",
+    },
   });
 
   const usage = response.usage;
@@ -643,7 +671,7 @@ export async function ensurePromptWithinLimit(
     ) {
       if (params.finalizeWithRefiner) {
         return {
-          prompt: first.optimizedPrompt.trim(),
+          prompt: canonicalizeValidatedFinalImagePrompt(first.optimizedPrompt),
           refined: true,
           creditsUsed,
           truncated: false,
@@ -694,7 +722,7 @@ export async function ensurePromptWithinLimit(
     ) {
       if (params.finalizeWithRefiner) {
         return {
-          prompt: second.optimizedPrompt.trim(),
+          prompt: canonicalizeValidatedFinalImagePrompt(second.optimizedPrompt),
           refined: true,
           creditsUsed,
           truncated: false,

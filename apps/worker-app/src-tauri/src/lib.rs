@@ -21,6 +21,8 @@ pub mod runtime_manifest;
 pub mod series_workspace;
 pub mod settings;
 pub mod speaker_aware_adapters;
+pub mod speaker_model_manager;
+pub mod tts_provider;
 pub mod worker_control_plane;
 pub mod worker_executor;
 pub mod worker_loop;
@@ -145,6 +147,9 @@ pub fn run() {
             let settings = data_dir.as_deref().map(load_settings).unwrap_or_default();
             if let Ok(resource_dir) = app.path().resource_dir() {
                 speaker_aware_adapters::configure_bundled_runner(&resource_dir, data_dir.as_deref());
+            }
+            if let Some(dir) = data_dir.as_deref() {
+                speaker_model_manager::apply(dir);
             }
             let mut had_unclean_previous_session = false;
             if let Some(dir) = data_dir.as_deref() {
@@ -339,6 +344,10 @@ pub fn run() {
             commands::worker_app_process_media_asset,
             commands::worker_app_submit_media_job,
             commands::worker_app_submit_speaker_aware_job,
+            commands::worker_app_get_speaker_model_status,
+            commands::worker_app_set_speaker_model_path,
+            commands::worker_app_install_speaker_model_from_path,
+            commands::worker_app_clear_speaker_model_path,
             commands::worker_app_submit_media_ingest_job,
             commands::worker_app_browse_directory,
             commands::worker_app_detect_silence_custom,
@@ -351,6 +360,7 @@ pub fn run() {
             commands::worker_app_generate_music_cue,
             commands::worker_app_cancel_music_cue,
             commands::worker_app_transcribe_audio,
+            commands::worker_app_transcription_capabilities,
             commands::worker_app_save_binary_file,
             commands::worker_app_get_media_history,
             commands::worker_app_get_server_library,

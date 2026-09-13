@@ -1,11 +1,16 @@
-import { useState, useRef, useEffect, useMemo, useCallback, type SetStateAction } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, type CSSProperties, type SetStateAction } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
+import {
+  createCameraMotionPlan,
+  evaluateCameraMotionPlan,
+  type CameraMotionPlan,
+} from "@smartspec/shared";
 import type { Detection, FaceDetector as MediaPipeFaceDetector } from "@mediapipe/tasks-vision";
 import type { DirectoryEntry } from "./MediaExplorerView";
 import type { SmartSpecProjectDraft, NleClip, ProjectAsset, NleCanvas, NleTrack, PreviewAspectRatio } from "../../types/nleProject";
 import { createDefaultProjectDraft, getPreviewCanvasProfile, normalizePreviewAspectRatio } from "../../types/nleProject";
-import { preserveLockedClips } from "./timelineEdits";
+import { applyGlobalTimelineCuts, preserveLockedClips } from "./timelineEdits";
 import { useProjectAutosave } from "./useProjectAutosave";
 import { parseProjectDraft, saveNleProject, saveCapCutDraft, isProjectFilePath, safeConvertFileSrc } from "./projectPersistence";
 import { MultiTrackTimeline } from "./MultiTrackTimeline";
@@ -15,6 +20,11 @@ import { CodeOverlayModal } from "./CodeOverlayModal";
 import { AssetDrawerPanel } from "./AssetDrawerPanel";
 import { AutoAudioScoringModal } from "./AutoAudioScoringModal";
 import { ProjectSettingsModal } from "./ProjectSettingsModal";
+import {
+  resizeAspectLockedCropRect,
+  type CropRect,
+  type CropResizeHandle,
+} from "./cropResize";
 import { TextOverlayModal } from "./TextOverlayModal";
 import { StockSvgModal } from "./StockSvgModal";
 import { BlurOverlayModal } from "./BlurOverlayModal";
@@ -22,9 +32,18 @@ import { VoiceoverRecordModal } from "./VoiceoverRecordModal";
 import { AiMediaStudioModal } from "./AiMediaStudioModal";
 import {
   advancePlayableTimeMs,
+  chooseAudioTrackIndex,
+  getTimelineVideoSources,
   getPlayableTimeMs,
+  getAudioTrackLabel,
+  normalizeTimelineDropAsset,
+  normalizeWaveformBinsForDisplay,
+  getDeadAirCutFingerprint,
+  getNoiseThresholdDb,
   getWaveformThresholdTopPercent,
+  type AudioTrackInfo,
   type DeadAirRenderSelection,
+  type WaveformBin,
 } from "./mediaWorkspaceTimeline";
 
 export interface MediaVideoEditorPlayerProps {
@@ -58,6 +77,7 @@ export interface MediaVideoEditorPlayerProps {
   isBusy?: boolean;
   loadedProjectDraft?: SmartSpecProjectDraft | null;
   onProjectDraftChange?: (draft: SmartSpecProjectDraft | null) => void;
+  onTimelineProjectChange?: (draft: SmartSpecProjectDraft | null) => void;
   importedAsset?: ProjectAsset | null;
 }
 
@@ -73,6 +93,9 @@ interface CustomSilenceDetectionResult {
   durationMs: number;
   silenceSegments: LocalMediaAnalysisSegment[];
   waveformPeaks: number[];
+  waveformBins?: WaveformBin[];
+  audioTracks?: AudioTrackInfo[];
+  selectedAudioStreamIndex?: number | null;
   cutCount: number;
   timeSavedMs: number;
   noiseThresholdDb: number;
@@ -263,6 +286,7 @@ export function MediaVideoEditorPlayer({
   isBusy,
   loadedProjectDraft,
   onProjectDraftChange,
+  onTimelineProjectChange,
   importedAsset,
 }: MediaVideoEditorPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -289,7 +313,16 @@ export function MediaVideoEditorPlayer({
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [silenceSegments, setSilenceSegments] = useState<LocalMediaAnalysisSegment[]>([]);
-  const [waveformPeaks, setWaveformPeaks] = useState<number[]>([]);
+  const [waveformBins, setWaveformBins] = useState<WaveformBin[]>([]);
+  const [audioTracks, setAudioTracks] = useState<AudioTrackInfo[]>([]);
+  const [selectedAudioStreamIndex, setSelectedAudioStreamIndex] = useState<number | null>(null);
+  const [selectedAnalysisTrackId, setSelectedAnalysisTrackId] = useState<string | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const analysisRequestIdRef = useRef(0);
+  // A cut removes source-time content, so switching tracks must reapply the
+  // new map from the original project rather than trying to expand a cut clip.
+  const deadAirAnalysisBaseProjectRef = useRef<SmartSpecProjectDraft | null>(null);
+  const deadAirAnalysisBaseVideoPathRef = useRef<string | null>(null);
   const [detectedCutCount, setCutCount] = useState<number>(0);
   const [timeSavedMs, setTimeSavedMs] = useState<number>(0);
 
@@ -348,6 +381,15 @@ export function MediaVideoEditorPlayer({
   const [isDraggingCrop, setIsDraggingCrop] = useState(false);
   const isDraggingCropRef = useRef(false);
   const cropDragStartRef = useRef<{ clientX: number; clientY: number; startX: number; startY: number } | null>(null);
+  const cropResizeRef = useRef<{
+    handle: CropResizeHandle;
+    startClientX: number;
+    startClientY: number;
+    startRect: CropRect;
+    stageWidth: number;
+    stageHeight: number;
+    baseWidth: number;
+  } | null>(null);
   const personAnchorRef = useRef<{ x: number; y: number } | null>(null);
   const focusXRef = useRef(focusX);
   const focusYRef = useRef(focusY);
@@ -355,9 +397,10 @@ export function MediaVideoEditorPlayer({
   const mediaPipeFaceDetectorRef = useRef<MediaPipeFaceDetector | null>(null);
   const mediaPipeFaceDetectorInitRef = useRef<Promise<MediaPipeFaceDetector | null> | null>(null);
   const mediaPipeLastTimestampRef = useRef(-1);
-  const faceTrackingConfigRef = useRef<{ aspectRatio: PreviewAspectRatio; scale: number }>({
+  const faceTrackingConfigRef = useRef<{ aspectRatio: PreviewAspectRatio; scale: number; targetRatio: number | null }>({
     aspectRatio: propsReframe9x16 === false ? "source" : "9:16",
     scale: 1,
+    targetRatio: propsReframe9x16 === false ? null : 9 / 16,
   });
   const mountedRef = useRef(true);
   const [faceDetectorStatus, setFaceDetectorStatus] = useState<FaceDetectorStatus>("idle");
@@ -576,6 +619,26 @@ export function MediaVideoEditorPlayer({
     setProjectState((previous) => preserveLockedClips(previous, typeof update === "function" ? update(previous) : update));
   }, []);
 
+  // Expose the live timeline to workspace tools (speaker analysis, export,
+  // and source selectors) without making the project loader authoritative.
+  useEffect(() => {
+    onTimelineProjectChange?.(nleProject);
+  }, [nleProject, onTimelineProjectChange]);
+
+  useEffect(() => {
+    if (selectedAudioStreamIndex === null) return;
+    setProjectState((current) => {
+      if (!current || current.metadata?.deadAirAudioStreamIndex === selectedAudioStreamIndex) return current;
+      return {
+        ...current,
+        metadata: {
+          ...current.metadata,
+          deadAirAudioStreamIndex: selectedAudioStreamIndex,
+        },
+      };
+    });
+  }, [selectedAudioStreamIndex]);
+
   // A loaded draft is authoritative for the preview canvas. Sync each persisted profile
   // once so external draft updates are reflected without fighting live toolbar changes.
   const syncedProjectAspectRef = useRef<string | null>(null);
@@ -628,6 +691,49 @@ export function MediaVideoEditorPlayer({
   const effectiveDuration = useMemo(() => {
     return Math.max(duration, timelineMaxDurationSec);
   }, [duration, timelineMaxDurationSec]);
+
+  const analysisVideoSources = useMemo(
+    () => getTimelineVideoSources(nleProject),
+    [nleProject],
+  );
+
+  const selectedAnalysisSource = useMemo(
+    () => analysisVideoSources.find((source) => source.trackId === selectedAnalysisTrackId)
+      ?? analysisVideoSources[0]
+      ?? null,
+    [analysisVideoSources, selectedAnalysisTrackId],
+  );
+
+  // When a project contains only a V2/B-roll video, use that clip as the
+  // analysis source instead of continuing to probe the old V1/videoFile path.
+  const analysisSourcePath = selectedAnalysisSource?.path || videoFile?.path || "";
+
+  const displayedWaveformBins = useMemo(
+    () => waveformBins.length > 0
+      ? normalizeWaveformBinsForDisplay(waveformBins, 200, getNoiseThresholdDb(volumeThreshold))
+      : audioTracks.length > 0
+        ? normalizeWaveformBinsForDisplay([], 200, getNoiseThresholdDb(volumeThreshold))
+        : [],
+    [audioTracks.length, volumeThreshold, waveformBins],
+  );
+
+  useEffect(() => {
+    if (analysisVideoSources.length === 0) {
+      setSelectedAnalysisTrackId(null);
+      return;
+    }
+    if (!analysisVideoSources.some((source) => source.trackId === selectedAnalysisTrackId)) {
+      setSelectedAnalysisTrackId(analysisVideoSources[0].trackId);
+    }
+  }, [analysisVideoSources, selectedAnalysisTrackId]);
+
+  useEffect(() => {
+    setAudioTracks([]);
+    setSelectedAudioStreamIndex(null);
+    setWaveformBins([]);
+    setSilenceSegments([]);
+    setAnalysisError(null);
+  }, [analysisSourcePath]);
   const [isAutoSubModalOpen, setIsAutoSubModalOpen] = useState(false);
   const lastAutoSubtitleRequestRef = useRef(openAutoSubtitleRequest ?? 0);
   const [isCodeOverlayModalOpen, setIsCodeOverlayModalOpen] = useState(false);
@@ -731,9 +837,53 @@ export function MediaVideoEditorPlayer({
   const [hidePinsOnPreview, setHidePinsOnPreview] = useState<boolean>(false);
   const [manualScale, setManualScale] = useState<number>(1.0);
 
+  const renderAspectRatio = useMemo(() => {
+    if (aspectRatio === "source") return null;
+    const projectWidth = nleProject?.canvas?.width;
+    const projectHeight = nleProject?.canvas?.height;
+    if (projectWidth && projectHeight && projectWidth > 0 && projectHeight > 0) {
+      return projectWidth / projectHeight;
+    }
+    const profile = getPreviewCanvasProfile(aspectRatio);
+    return profile.width / profile.height;
+  }, [aspectRatio, nleProject?.canvas?.height, nleProject?.canvas?.width]);
+
+  const cameraMotionPlan = useMemo<CameraMotionPlan | null>(() => {
+    if (smartDirectorMode === "off" || aspectRatio === "source" || effectiveDuration <= 0) return null;
+    return createCameraMotionPlan({
+      durationMs: Math.round(effectiveDuration * 1000),
+      mode: smartDirectorMode,
+      focusX,
+      focusY,
+      baseScale: smartDirectorMode === "face_focus"
+        ? 1.18
+        : smartDirectorMode === "product_focus"
+          ? Math.max(1, manualScale || 1.18)
+          : 1.16,
+      marks: productPins,
+    });
+  }, [aspectRatio, effectiveDuration, focusX, focusY, manualScale, productPins, smartDirectorMode]);
+
   useEffect(() => {
-    faceTrackingConfigRef.current = { aspectRatio, scale: manualScale };
-  }, [aspectRatio, manualScale]);
+    if (!cameraMotionPlan) return;
+    setNleProject((previous) => {
+      if (!previous) return previous;
+      const current = previous.metadata?.cameraMotionPlan;
+      if (JSON.stringify(current) === JSON.stringify(cameraMotionPlan)) return previous;
+      return {
+        ...previous,
+        updatedAt: new Date().toISOString(),
+        metadata: {
+          ...previous.metadata,
+          cameraMotionPlan,
+        },
+      };
+    });
+  }, [cameraMotionPlan, setNleProject]);
+
+  useEffect(() => {
+    faceTrackingConfigRef.current = { aspectRatio, scale: manualScale, targetRatio: renderAspectRatio };
+  }, [aspectRatio, manualScale, renderAspectRatio]);
 
   useEffect(() => {
     if (!videoFile) return;
@@ -794,7 +944,8 @@ export function MediaVideoEditorPlayer({
         isManual: segment.classification === "manual",
       }))
       .filter((segment) => Number.isFinite(segment.startMs)),
-  }), [minDuration, silenceSegments, softeningBuffer, volumeThreshold]);
+    cameraMotionPlan,
+  }), [cameraMotionPlan, minDuration, silenceSegments, softeningBuffer, volumeThreshold, _propsRemoveDeadAir]);
 
   // Workspace Splitter State: Height percentage for video stage (Default 62%)
   const [stageHeightPercent, setStageHeightPercent] = useState<number>(() => {
@@ -1295,6 +1446,17 @@ export function MediaVideoEditorPlayer({
 
   const handleAddAssetClip = (trackId: string, clip: NleClip) => {
     if (!nleProject) return;
+    const targetTrack = nleProject.tracks.find((track) => track.id === trackId);
+    if (!targetTrack) {
+      setProjectStatusMsg(`❌ ไม่พบแทร็กปลายทาง ${trackId}`);
+      setTimeout(() => setProjectStatusMsg(null), 4000);
+      return;
+    }
+    if (targetTrack.locked) {
+      setProjectStatusMsg(`🔒 แทร็ก ${targetTrack.name} ถูกล็อกอยู่`);
+      setTimeout(() => setProjectStatusMsg(null), 4000);
+      return;
+    }
     const updatedTracks = nleProject.tracks.map((t) => {
       if (t.id === trackId) {
         return { ...t, clips: [...t.clips, clip] };
@@ -1402,7 +1564,7 @@ export function MediaVideoEditorPlayer({
         peaks.push(Math.min(0.96, Math.max(0.14, wave)));
       }
     }
-    setWaveformPeaks(peaks);
+    setWaveformBins(peaks.map((peak) => ({ min: -peak, max: peak, rms: peak, peak })));
 
     const bufMs = Math.round(sBuf * 1000);
     const finalSegs: LocalMediaAnalysisSegment[] = [];
@@ -1442,15 +1604,16 @@ export function MediaVideoEditorPlayer({
     srcUrl: string,
     vThresh: number,
     mDur: number,
-    sBuf: number
+    sBuf: number,
+    requestId: number,
+    audioStreamIndex: number | null,
   ): Promise<boolean> => {
-    const totalDur = duration > 0 ? duration : (videoRef.current?.duration || 63.1);
+    const isCurrentRequest = () => analysisRequestIdRef.current === requestId;
 
     try {
       const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtxClass) {
-        synthesizeWaveformAndSilence(totalDur, vThresh, mDur, sBuf);
-        return true;
+        return false;
       }
       const audioCtx = new AudioCtxClass();
       let arrayBuf: ArrayBuffer | null = null;
@@ -1462,22 +1625,25 @@ export function MediaVideoEditorPlayer({
       }
 
       if (!arrayBuf || arrayBuf.byteLength === 0) {
-        synthesizeWaveformAndSilence(totalDur, vThresh, mDur, sBuf);
         void audioCtx.close();
-        return true;
+        return false;
       }
 
       let audioBuf: AudioBuffer | null = null;
       try {
         audioBuf = await audioCtx.decodeAudioData(arrayBuf);
       } catch (dErr) {
-        console.warn("AudioBuffer decode fallback, activating speech waveform synthesizer:", dErr);
+        console.warn("AudioBuffer decode fallback failed:", dErr);
       }
 
       if (!audioBuf) {
-        synthesizeWaveformAndSilence(totalDur, vThresh, mDur, sBuf);
         void audioCtx.close();
-        return true;
+        return false;
+      }
+
+      if (!isCurrentRequest()) {
+        void audioCtx.close();
+        return false;
       }
 
       const channel = audioBuf.getChannelData(0);
@@ -1485,23 +1651,34 @@ export function MediaVideoEditorPlayer({
       const totalSamples = channel.length;
       const decodedDur = audioBuf.duration;
 
-      // 1. Generate 200 Real Waveform Peak Bars
+      // 1. Generate 200 real min/max/RMS waveform bins
       const BARS = 200;
-      const blockSize = Math.max(1, Math.floor(totalSamples / BARS));
-      const peaks: number[] = [];
+      const bins: WaveformBin[] = [];
       for (let b = 0; b < BARS; b++) {
-        let maxVal = 0;
-        const start = b * blockSize;
-        const end = Math.min(start + blockSize, totalSamples);
+        const start = Math.floor((b * totalSamples) / BARS);
+        const end = Math.min(totalSamples, Math.max(start + 1, Math.ceil(((b + 1) * totalSamples) / BARS)));
+        let minVal = Number.POSITIVE_INFINITY;
+        let maxVal = Number.NEGATIVE_INFINITY;
+        let sumSq = 0;
+        let peak = 0;
         const step = Math.max(1, Math.floor((end - start) / 64));
+        let count = 0;
         for (let i = start; i < end; i += step) {
-          const val = Math.abs(channel[i]);
-          if (val > maxVal) maxVal = val;
+          const sample = channel[i] ?? 0;
+          minVal = Math.min(minVal, sample);
+          maxVal = Math.max(maxVal, sample);
+          sumSq += sample * sample;
+          peak = Math.max(peak, Math.abs(sample));
+          count++;
         }
-        const displayAmp = Math.min(1.0, Math.pow(maxVal, 0.62) * 1.35);
-        peaks.push(Math.max(0.08, displayAmp));
+        bins.push({
+          min: Number.isFinite(minVal) ? minVal : 0,
+          max: Number.isFinite(maxVal) ? maxVal : 0,
+          rms: Math.sqrt(sumSq / Math.max(1, count)),
+          peak,
+        });
       }
-      setWaveformPeaks(peaks);
+      setWaveformBins(bins);
 
       // 2. Dead Air / Silence Detection
       const sliceDuration = 0.05;
@@ -1576,6 +1753,26 @@ export function MediaVideoEditorPlayer({
       setSilenceSegments(finalSegs);
       setCutCount(count);
       setTimeSavedMs(savedMs);
+      setDuration(decodedDur);
+
+      const cutRanges = finalSegs
+        .filter((segment) => segment.endMs !== undefined && segment.endMs !== null)
+        .map((segment) => ({ startMs: segment.startMs, endMs: segment.endMs as number }));
+      const fingerprint = getDeadAirCutFingerprint(cutRanges, decodedDur * 1000);
+      setProjectState((current) => {
+        if (!current) return current;
+        const baseProject = deadAirAnalysisBaseProjectRef.current ?? current;
+        const withTrack = baseProject.metadata?.deadAirAudioStreamIndex === audioStreamIndex
+          ? baseProject
+          : {
+            ...baseProject,
+            metadata: {
+              ...baseProject.metadata,
+              deadAirAudioStreamIndex: audioStreamIndex ?? undefined,
+            },
+          };
+        return applyGlobalTimelineCuts(withTrack, cutRanges, fingerprint, audioStreamIndex);
+      });
 
       if (finalSegs.length > 0) {
         if (finalSegs[0].startMs <= 500 && finalSegs[0].endMs) {
@@ -1591,10 +1788,9 @@ export function MediaVideoEditorPlayer({
       return true;
     } catch (e) {
       console.warn("WebAudio analysis fallback caught:", e);
-      synthesizeWaveformAndSilence(totalDur, vThresh, mDur, sBuf);
-      return true;
+      return false;
     }
-  }, [duration, synthesizeWaveformAndSilence]);
+  }, []);
 
   // Auto Person & Face Centering with the bundled MediaPipe Face Detector.
   // The detector returns a face bounding box plus six facial keypoints. We do
@@ -1673,11 +1869,13 @@ export function MediaVideoEditorPlayer({
         let cropHeight = 1;
         if (trackingConfig.aspectRatio !== "source") {
           const sourceRatio = video.videoWidth / video.videoHeight;
-          const targetRatio = trackingConfig.aspectRatio === "9:16"
-            ? 9 / 16
-            : trackingConfig.aspectRatio === "16:9"
-              ? 16 / 9
-              : 1;
+          const targetRatio = trackingConfig.targetRatio ?? (
+            trackingConfig.aspectRatio === "9:16"
+              ? 9 / 16
+              : trackingConfig.aspectRatio === "16:9"
+                ? 16 / 9
+                : 1
+          );
           if (targetRatio < sourceRatio) {
             cropWidth = targetRatio / sourceRatio;
           } else if (targetRatio > sourceRatio) {
@@ -1723,38 +1921,108 @@ export function MediaVideoEditorPlayer({
   const runCustomSilenceDetection = async (
     overrideThreshold?: number,
     overrideMinDur?: number,
-    overrideBuffer?: number
+    overrideBuffer?: number,
+    requestedAudioStreamIndex?: number | null,
   ) => {
-    if (!videoFile) return;
+    if (!analysisSourcePath) {
+      setAnalysisError("ยังไม่มีไฟล์วิดีโอใน Timeline สำหรับวิเคราะห์ Dead Air");
+      return;
+    }
+    const requestId = ++analysisRequestIdRef.current;
     setIsAnalyzing(true);
     setProcessError(null);
+    setAnalysisError(null);
+    setWaveformBins([]);
+    setSilenceSegments([]);
+    setCutCount(0);
+    setTimeSavedMs(0);
 
     const vThresh = overrideThreshold ?? volumeThreshold;
     const mDur = overrideMinDur ?? minDuration;
     const sBuf = overrideBuffer ?? softeningBuffer;
+    const audioStreamIndex = requestedAudioStreamIndex === undefined
+      ? selectedAudioStreamIndex
+      : requestedAudioStreamIndex;
+    if (
+      nleProject
+      && (!deadAirAnalysisBaseProjectRef.current || deadAirAnalysisBaseVideoPathRef.current !== analysisSourcePath)
+    ) {
+      deadAirAnalysisBaseProjectRef.current = nleProject;
+      deadAirAnalysisBaseVideoPathRef.current = analysisSourcePath;
+    }
 
     try {
       const res = await invoke<CustomSilenceDetectionResult>("worker_app_detect_silence_custom", {
-        sourcePath: videoFile.path,
+        sourcePath: analysisSourcePath,
         volumeThresholdPct: vThresh,
         minDurationSec: mDur,
         softeningBufferSec: sBuf,
+        audioStreamIndex,
       });
 
-      const usableWaveformPeaks = Array.isArray(res?.waveformPeaks)
+      if (requestId !== analysisRequestIdRef.current) return;
+
+      const returnedAudioTracks = Array.isArray(res?.audioTracks) ? res.audioTracks : [];
+      const hasNativeTrackCatalog = Array.isArray(res?.audioTracks);
+      setAudioTracks(returnedAudioTracks);
+      const resolvedAudioStreamIndex = typeof res?.selectedAudioStreamIndex === "number"
+        ? res.selectedAudioStreamIndex
+        : chooseAudioTrackIndex(returnedAudioTracks);
+      setSelectedAudioStreamIndex(resolvedAudioStreamIndex);
+      if (hasNativeTrackCatalog && returnedAudioTracks.length === 0) {
+        setSilenceSegments([]);
+        setWaveformBins([]);
+        setCutCount(0);
+        setTimeSavedMs(0);
+        setAnalysisError("ไฟล์นี้ไม่มี Audio Track สำหรับวิเคราะห์ Dead Air");
+        return;
+      }
+
+      const usableWaveformBins = Array.isArray(res?.waveformBins)
+        ? res.waveformBins
+          .filter((bin) => (
+            Number.isFinite(bin.min)
+            && Number.isFinite(bin.max)
+            && Number.isFinite(bin.rms)
+            && Number.isFinite(bin.peak)
+            && bin.min <= bin.max
+            && bin.rms >= 0
+            && bin.peak >= 0
+          ))
+        : [];
+      const legacyWaveformBins = usableWaveformBins.length === 0 && Array.isArray(res?.waveformPeaks)
         ? res.waveformPeaks
           .filter((peak) => Number.isFinite(peak) && peak >= 0)
-          .map((peak) => Math.max(0, Math.min(1, peak)))
+          .map((peak) => ({ min: -peak, max: peak, rms: peak / Math.SQRT2, peak }))
         : [];
+      const usableWaveformData = usableWaveformBins.length > 0 ? usableWaveformBins : legacyWaveformBins;
       if (
         res &&
-        usableWaveformPeaks.length > 0 &&
-        usableWaveformPeaks.some((peak) => peak > 0)
+        usableWaveformData.length > 0
       ) {
         setSilenceSegments(res.silenceSegments);
-        setWaveformPeaks(usableWaveformPeaks);
+        setWaveformBins(usableWaveformData);
         setCutCount(res.cutCount);
         setTimeSavedMs(res.timeSavedMs);
+
+        const cutRanges = res.silenceSegments
+          .filter((segment) => Number.isFinite(segment.startMs) && segment.endMs !== undefined && segment.endMs !== null)
+          .map((segment) => ({ startMs: segment.startMs, endMs: segment.endMs as number }));
+        const fingerprint = getDeadAirCutFingerprint(cutRanges, res.durationMs || duration * 1000);
+        setProjectState((current) => {
+          if (!current) return current;
+          const baseProject = deadAirAnalysisBaseProjectRef.current ?? current;
+          const withTrack = baseProject.metadata?.deadAirAudioStreamIndex === resolvedAudioStreamIndex
+            ? baseProject
+            : {
+              ...baseProject,
+              metadata: {
+                ...baseProject.metadata,
+                deadAirAudioStreamIndex: resolvedAudioStreamIndex ?? undefined,
+              },
+            };
+          return applyGlobalTimelineCuts(withTrack, cutRanges, fingerprint, resolvedAudioStreamIndex);
+        });
 
         if (res.durationMs > 0) {
           const totalDurSec = res.durationMs / 1000;
@@ -1786,14 +2054,44 @@ export function MediaVideoEditorPlayer({
           setTrimEnd(autoEnd);
         }
       } else {
-        // Rust returned 0 cuts or empty waveform, decode via Web Audio API
-        await analyzeAudioWithWebAudio(videoSrc, vThresh, mDur, sBuf);
+        // Rust returned no waveform. Web Audio can only be a safe fallback
+        // when the native response did not provide a stream catalog; it cannot
+        // select a specific embedded stream by itself.
+        if (!hasNativeTrackCatalog || returnedAudioTracks.length === 1) {
+          const fallbackSucceeded = await analyzeAudioWithWebAudio(
+            isProjectFilePath(analysisSourcePath) ? videoSrc : safeConvertFileSrc(analysisSourcePath),
+            vThresh,
+            mDur,
+            sBuf,
+            requestId,
+            resolvedAudioStreamIndex,
+          );
+          if (!fallbackSucceeded && requestId === analysisRequestIdRef.current) {
+            setWaveformBins([]);
+            setAnalysisError("ไม่สามารถอ่านเสียงจริงเพื่อสร้าง Waveform ได้");
+          }
+        } else {
+          setWaveformBins([]);
+          setAnalysisError("ไม่สามารถสร้าง Waveform จาก Audio Track ที่เลือกได้");
+        }
       }
     } catch (err) {
-      console.warn("Rust silence detection fallback to WebAudio:", err);
-      await analyzeAudioWithWebAudio(videoSrc, vThresh, mDur, sBuf);
+      console.warn("Native silence detection failed:", err);
+      if (requestId !== analysisRequestIdRef.current) return;
+      const fallbackSucceeded = await analyzeAudioWithWebAudio(
+        isProjectFilePath(analysisSourcePath) ? videoSrc : safeConvertFileSrc(analysisSourcePath),
+        vThresh,
+        mDur,
+        sBuf,
+        requestId,
+        null,
+      );
+      if (!fallbackSucceeded && requestId === analysisRequestIdRef.current) {
+        setWaveformBins([]);
+        setAnalysisError(`วิเคราะห์ Audio Track ไม่สำเร็จ: ${String(err)}`);
+      }
     } finally {
-      setIsAnalyzing(false);
+      if (requestId === analysisRequestIdRef.current) setIsAnalyzing(false);
     }
   };
 
@@ -1807,10 +2105,17 @@ export function MediaVideoEditorPlayer({
       setTrimEnd(0);
       setProcessResult(null);
       setProcessError(null);
+      setAnalysisError(null);
+      setAudioTracks([]);
+      setSelectedAudioStreamIndex(null);
+      setWaveformBins([]);
+      setSilenceSegments([]);
+      deadAirAnalysisBaseProjectRef.current = null;
+      deadAirAnalysisBaseVideoPathRef.current = null;
       setUploadResult(null);
       setUploadError(null);
       setCustomTitle(videoFile.name.replace(/\.[^/.]+$/, ""));
-      void runCustomSilenceDetection();
+      void runCustomSilenceDetection(undefined, undefined, undefined, null);
     }
   }, [videoFile?.path]);
 
@@ -1837,23 +2142,24 @@ export function MediaVideoEditorPlayer({
   const lastTrackTimeRef = useRef<number>(0);
 
   const handleDropAssetOnTrack = useCallback((trackId: string, asset: any, dropTimeMs?: number) => {
-    if (!asset || !asset.title) return;
+    const normalizedAsset = normalizeTimelineDropAsset(asset);
+    if (!normalizedAsset) return;
     const timeMs = dropTimeMs !== undefined ? dropTimeMs : Math.round(currentTime * 1000);
-    const clipPath = asset.filePath || asset.sourceUrl || "";
+    const clipPath = normalizedAsset.path;
     const clip: NleClip = {
       id: `drag_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      name: asset.title,
+      name: normalizedAsset.name,
       timelineStartMs: timeMs,
-      durationMs: asset.durationMs || 4000,
-      sourceType: asset.filePath ? "local_file" : "smartaihub_library",
-      sourcePath: asset.filePath || undefined,
+      durationMs: normalizedAsset.durationMs || 4000,
+      sourceType: normalizedAsset.mediaType === "video" || normalizedAsset.mediaType === "audio" || normalizedAsset.mediaType === "image" ? "local_file" : "smartaihub_library",
+      sourcePath: normalizedAsset.path,
       sourceUrl: clipPath,
       volume: trackId.startsWith("track_a") ? 0.4 : 1.0,
       transform: trackId === "track_v2" ? { x: 0.5, y: 0.5, scale: 1.0, opacity: 1.0 } : undefined,
     };
     handleAddAssetClip(trackId, clip);
     const trackLabel = trackId === "track_v2" ? "V2 (B-Roll)" : trackId === "track_a2" ? "A2 (BGM)" : trackId === "track_a3" ? "A3 (SFX)" : trackId;
-    setProjectStatusMsg(`✨ วางคลิป "${asset.title}" ลงบนแทร็ก ${trackLabel} เรียบร้อย`);
+    setProjectStatusMsg(`✨ วางคลิป "${normalizedAsset.name}" ลงบนแทร็ก ${trackLabel} เรียบร้อย`);
     setTimeout(() => setProjectStatusMsg(null), 4000);
   }, [currentTime, handleAddAssetClip]);
 
@@ -2224,6 +2530,94 @@ export function MediaVideoEditorPlayer({
   };
 
   // Mouse Dragging on Crop Box & Viewport canvas with Smooth Controlled Damping & Hand Pointer
+  const handleCropResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>, handle: CropResizeHandle) => {
+    if (e.button !== 0 || !renderAspectRatio) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const stageEl = videoStageRef.current;
+    const cropEl = e.currentTarget.parentElement;
+    if (!stageEl || !cropEl) return;
+
+    const stageRect = stageEl.getBoundingClientRect();
+    const cropRect = cropEl.getBoundingClientRect();
+    const stageWidth = stageRect.width || 0;
+    const stageHeight = stageRect.height || 0;
+    if (stageWidth <= 0 || stageHeight <= 0) return;
+
+    const startRect: CropRect = {
+      left: cropRect.left - stageRect.left,
+      top: cropRect.top - stageRect.top,
+      width: cropRect.width,
+      height: cropRect.height,
+    };
+    const sourceRatio = (videoDimensions.width || 1920) / (videoDimensions.height || 1080);
+    const baseWidth = renderAspectRatio < sourceRatio
+      ? stageWidth * (renderAspectRatio / sourceRatio)
+      : stageWidth;
+    cropResizeRef.current = {
+      handle,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startRect,
+      stageWidth,
+      stageHeight,
+      baseWidth,
+    };
+    setSmartDirectorMode("off");
+    setFocusMode("manual_region");
+    onFocusModeChange?.("manual_region");
+    isDraggingCropRef.current = true;
+    setIsDraggingCrop(true);
+
+    const handleMouseMove = (ev: MouseEvent) => {
+      const resize = cropResizeRef.current;
+      if (!resize || !isDraggingCropRef.current) return;
+
+      const nextRect = resizeAspectLockedCropRect(
+        resize.startRect,
+        ev.clientX - resize.startClientX,
+        ev.clientY - resize.startClientY,
+        resize.handle,
+        renderAspectRatio,
+        {
+          width: resize.stageWidth,
+          height: resize.stageHeight,
+          minWidth: resize.baseWidth / 2.5,
+          maxWidth: resize.baseWidth,
+        },
+      );
+      const nextScale = Math.max(
+        1,
+        Math.min(2.5, resize.baseWidth / Math.max(1, nextRect.width)),
+      );
+      const nextX = Math.max(
+        0.05,
+        Math.min(0.95, (nextRect.left + nextRect.width / 2) / resize.stageWidth),
+      );
+      const nextY = Math.max(
+        0.05,
+        Math.min(0.95, (nextRect.top + nextRect.height / 2) / resize.stageHeight),
+      );
+      setManualScale(Number(nextScale.toFixed(3)));
+      setFocusX(nextX);
+      setFocusY(nextY);
+      onFocusXChange?.(nextX);
+      onFocusYChange?.(nextY);
+    };
+
+    const handleMouseUp = () => {
+      cropResizeRef.current = null;
+      isDraggingCropRef.current = false;
+      setIsDraggingCrop(false);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
+
   const handleUniversalMouseDown = (e: React.MouseEvent<HTMLDivElement>, isCropBox: boolean = false) => {
     if (e.button !== 0) return;
 
@@ -2332,10 +2726,21 @@ export function MediaVideoEditorPlayer({
           focusMode,
           focusX,
           focusY,
+          // Manual crop resizing uses the same scale path as the automated
+          // camera so FFmpeg receives the exact framing shown in the preview.
+          autoPanZoom: aspectRatio !== "source" && (smartDirectorMode !== "off" || manualScale > 1.0),
+          autoPanZoomMode: smartDirectorMode === "off" ? "manual_region" : smartDirectorMode,
+          autoPanZoomScale: smartDirectorMode === "face_focus"
+            ? 1.18
+            : smartDirectorMode === "product_focus"
+              ? Math.max(1.0, manualScale || 1.18)
+              : Math.max(1.0, manualScale || 1.0),
+          cameraMotionPlan,
           seriesId: seriesId || null,
           volumeThresholdPct: volumeThreshold,
           minDurationSec: minDuration,
           softeningBufferSec: softeningBuffer,
+          audioStreamIndex: selectedAudioStreamIndex,
           customSilenceSegments: removeDeadAir
             ? silenceSegments.map((segment) => ({
               startMs: segment.startMs,
@@ -2348,6 +2753,7 @@ export function MediaVideoEditorPlayer({
         },
       });
       setProcessResult(res);
+      setIsRenderPanelCollapsed(false);
 
       // Save to localStorage render history so it immediately appears in Media History
       try {
@@ -2448,10 +2854,9 @@ export function MediaVideoEditorPlayer({
   // Save Project Settings (Aspect ratio, Resolution, FPS)
   const handleSaveProjectSettings = ({ title, canvas }: { title: string; canvas: NleCanvas }) => {
     setCustomTitle(title);
-    if (canvas.aspectRatio === "9:16" || canvas.aspectRatio === "16:9" || canvas.aspectRatio === "1:1") {
-      setAspectRatio(canvas.aspectRatio as "9:16" | "16:9" | "1:1");
-      onReframe9x16Change?.(canvas.aspectRatio === "9:16");
-    }
+    const nextAspectRatio = normalizePreviewAspectRatio(canvas.aspectRatio, "custom");
+    setAspectRatio(nextAspectRatio);
+    onReframe9x16Change?.(nextAspectRatio === "9:16");
     if (nleProject) {
       const updated: SmartSpecProjectDraft = {
         ...nleProject,
@@ -2471,7 +2876,7 @@ export function MediaVideoEditorPlayer({
         title,
         videoPath: videoFile.path,
         videoDurationMs: (duration || 60) * 1000,
-        aspectRatio: canvas.aspectRatio === "16:9" ? "16:9" : canvas.aspectRatio === "1:1" ? "1:1" : "9:16",
+        aspectRatio: nextAspectRatio === "16:9" ? "16:9" : nextAspectRatio === "1:1" ? "1:1" : "9:16",
       });
       newProj.canvas = { ...newProj.canvas, ...canvas };
       setNleProject(newProj);
@@ -2609,6 +3014,36 @@ export function MediaVideoEditorPlayer({
         panY: focusY,
         phase: "off",
         label: "",
+      };
+    }
+
+    // The same versioned plan is used by preview and every render path. This
+    // deliberately replaces the old cosine loop so the camera holds still for
+    // several seconds between slow, deterministic moves.
+    if (cameraMotionPlan) {
+      const activeTimeMs = Math.round((isPlaying ? smoothTime : currentTime) * 1000);
+      const sample = evaluateCameraMotionPlan(cameraMotionPlan, activeTimeMs);
+      const previous = [...cameraMotionPlan.keyframes]
+        .reverse()
+        .find((keyframe) => keyframe.timeMs <= activeTimeMs);
+      const next = cameraMotionPlan.keyframes.find((keyframe) => keyframe.timeMs > activeTimeMs);
+      const isMoving = Boolean(previous && next && (
+        Math.abs(previous.x - next.x) > 0.0001
+        || Math.abs(previous.y - next.y) > 0.0001
+        || Math.abs(previous.scale - next.scale) > 0.0001
+      ));
+      const phase = isMoving ? "slow_move" : sample.source === "user_mark" ? "user_mark_hold" : "settled_hold";
+      const label = sample.source === "user_mark"
+        ? `📍 ถือจุดที่ผู้ใช้กำหนด${sample.sourceMarkId ? ` (${sample.sourceMarkId})` : ""} · ${sample.scale.toFixed(2)}x`
+        : isMoving
+          ? `🎥 เคลื่อนกล้องช้า · ${sample.scale.toFixed(2)}x`
+          : `🎬 กล้องนิ่ง · ${sample.scale.toFixed(2)}x`;
+      return {
+        scale: sample.scale,
+        panX: sample.x,
+        panY: sample.y,
+        phase,
+        label,
       };
     }
 
@@ -2954,7 +3389,7 @@ export function MediaVideoEditorPlayer({
       phase: "wide_hold",
       label: `🎬 กล้องหลัก: มุมกว้างนิ่ง (Wide Master ${Math.ceil(18.0 - t)}s)`,
     };
-  }, [smartDirectorMode, aspectRatio, currentTime, smoothTime, isPlaying, focusX, focusY, productPins, videoDimensions, manualScale, isPinningActive]);
+  }, [cameraMotionPlan, smartDirectorMode, aspectRatio, currentTime, smoothTime, isPlaying, focusX, focusY, productPins, videoDimensions, manualScale, isPinningActive]);
 
   // WYSIWYG Video Style: transforms source video inside cropped container to match final render
   const wysiwygVideoStyle = useMemo<React.CSSProperties>(() => {
@@ -2993,18 +3428,12 @@ export function MediaVideoEditorPlayer({
 
   // Visual Crop Box Guide Overlay with mathematically exact aspect ratio & Smart Director scaling
   const cropBoxStyle = useMemo(() => {
-    if (aspectRatio === "source" || previewMode === "wysiwyg") return null;
+    if (aspectRatio === "source" || previewMode === "wysiwyg" || !renderAspectRatio) return null;
 
     const vw = videoDimensions.width || 1920;
     const vh = videoDimensions.height || 1080;
     const videoRatio = vw / vh;
-
-    let targetRatio = 9 / 16;
-    if (aspectRatio === "16:9") {
-      targetRatio = 16 / 9;
-    } else if (aspectRatio === "1:1") {
-      targetRatio = 1.0;
-    }
+    const targetRatio = renderAspectRatio;
 
     const effectiveScale = (directorState.scale && directorState.scale > 1.0)
       ? directorState.scale
@@ -3060,7 +3489,7 @@ export function MediaVideoEditorPlayer({
       top: `${topPercent}%`,
       transition: isDraggingCrop || smartDirectorMode !== "off" ? "none" : "all 1.6s cubic-bezier(0.22, 1, 0.36, 1)",
     };
-  }, [aspectRatio, previewMode, directorState, videoDimensions, isDraggingCrop, smartDirectorMode]);
+  }, [aspectRatio, previewMode, directorState, videoDimensions, isDraggingCrop, smartDirectorMode, renderAspectRatio]);
 
   // Ruler markers calculation (every 10 seconds)
   const rulerTicks = useMemo(() => {
@@ -3873,10 +4302,8 @@ export function MediaVideoEditorPlayer({
               style={{
                 aspectRatio:
                   previewMode === "wysiwyg" && aspectRatio !== "source"
-                    ? aspectRatio === "9:16"
-                      ? "9 / 16"
-                      : aspectRatio === "16:9"
-                      ? "16 / 9"
+                    ? renderAspectRatio
+                      ? `${renderAspectRatio} / 1`
                       : "1 / 1"
                     : videoDimensions.width && videoDimensions.height
                     ? `${videoDimensions.width} / ${videoDimensions.height}`
@@ -3974,10 +4401,26 @@ export function MediaVideoEditorPlayer({
                     onWheel={handleStageWheel}
                     title="คลิกค้างแล้วลากเพื่อขยับตำแหน่งกรอบวิดีโอ (หมุนล้อเมาส์ Scroll เพื่อปรับซูม)"
                   >
-                    <div className="crop-box-corner top-left" />
-                    <div className="crop-box-corner top-right" />
-                    <div className="crop-box-corner bottom-left" />
-                    <div className="crop-box-corner bottom-right" />
+                    <div
+                      className="crop-box-corner top-left"
+                      onMouseDown={(e) => handleCropResizeMouseDown(e, "top-left")}
+                      title="ลากเพื่อปรับขนาดกรอบ โดยล็อกสัดส่วน Project"
+                    />
+                    <div
+                      className="crop-box-corner top-right"
+                      onMouseDown={(e) => handleCropResizeMouseDown(e, "top-right")}
+                      title="ลากเพื่อปรับขนาดกรอบ โดยล็อกสัดส่วน Project"
+                    />
+                    <div
+                      className="crop-box-corner bottom-left"
+                      onMouseDown={(e) => handleCropResizeMouseDown(e, "bottom-left")}
+                      title="ลากเพื่อปรับขนาดกรอบ โดยล็อกสัดส่วน Project"
+                    />
+                    <div
+                      className="crop-box-corner bottom-right"
+                      onMouseDown={(e) => handleCropResizeMouseDown(e, "bottom-right")}
+                      title="ลากเพื่อปรับขนาดกรอบ โดยล็อกสัดส่วน Project"
+                    />
                     <div className="crop-box-center-crosshair">✛</div>
                     <span className="crop-frame-ratio-label">{previewFrameLabel}</span>
                     <div className="crop-box-tag" onWheel={handleStageWheel}>
@@ -4796,6 +5239,61 @@ export function MediaVideoEditorPlayer({
               </div>
             </div>
 
+            <div className="audio-track-selector-row" role="group" aria-label="Audio track selection">
+              <label htmlFor="dead-air-video-source">🎬 Video source:</label>
+              {analysisVideoSources.length > 1 ? (
+                <select
+                  id="dead-air-video-source"
+                  value={selectedAnalysisTrackId ?? analysisVideoSources[0]?.trackId ?? ""}
+                  disabled={isAnalyzing}
+                  onChange={(e) => {
+                    setSelectedAnalysisTrackId(e.target.value || null);
+                    setAudioTracks([]);
+                    setSelectedAudioStreamIndex(null);
+                    setWaveformBins([]);
+                    setSilenceSegments([]);
+                    setAnalysisError(null);
+                  }}
+                >
+                  {analysisVideoSources.map((source) => (
+                    <option key={source.trackId} value={source.trackId}>
+                      {source.trackName} · {source.name}
+                    </option>
+                  ))}
+                </select>
+              ) : analysisVideoSources.length === 1 ? (
+                <span className="audio-track-selected">{analysisVideoSources[0].trackName} · {analysisVideoSources[0].name}</span>
+              ) : (
+                <span className="audio-track-selected muted">{videoFile?.name || "ยังไม่มี Video source"}</span>
+              )}
+            </div>
+            <div className="audio-track-selector-row" role="group" aria-label="Audio track selection">
+              <label htmlFor="dead-air-audio-track">🎚️ Audio Track ที่ใช้ตัด Dead Air:</label>
+              {audioTracks.length > 1 ? (
+                <select
+                  id="dead-air-audio-track"
+                  value={selectedAudioStreamIndex ?? ""}
+                  disabled={isAnalyzing}
+                  onChange={(event) => {
+                    const nextStreamIndex = Number(event.target.value);
+                    setSelectedAudioStreamIndex(nextStreamIndex);
+                    void runCustomSilenceDetection(undefined, undefined, undefined, nextStreamIndex);
+                  }}
+                >
+                  {audioTracks.map((track) => (
+                    <option key={track.streamIndex} value={track.streamIndex}>
+                      {getAudioTrackLabel(track)}{track.isDefault ? " · default" : ""}
+                    </option>
+                  ))}
+                </select>
+              ) : audioTracks.length === 1 ? (
+                <span className="audio-track-selected">{getAudioTrackLabel(audioTracks[0])}</span>
+              ) : (
+                <span className="audio-track-selected muted">{isAnalyzing ? "กำลังค้นหา Audio Track..." : "ยังไม่พบ Audio Track"}</span>
+              )}
+              {analysisError && <span className="audio-track-error" role="alert">{analysisError}</span>}
+            </div>
+
             {/* 3. Audio Waveform Track (Emerald Green on Dark Pine Background) */}
             <div
               className="waveform-track"
@@ -4814,14 +5312,15 @@ export function MediaVideoEditorPlayer({
               title="ลากบนกราฟเสียงเพื่อเลือกช่วงตัดเอง • ดับเบิลคลิกเพื่อเพิ่มจุดตัด 1 วินาที • คลิก ✕ เพื่อยกเลิก"
             >
               <div className="waveform-bars">
-                {waveformPeaks.length > 0 ? (
-                  waveformPeaks.map((peak, idx) => (
+                {displayedWaveformBins.length > 0 ? (
+                  displayedWaveformBins.map((bin, idx) => (
                     <div
                       key={idx}
-                      className={`waveform-bar ${peak <= 0.08 ? "silence-bar" : "speech-bar"}`}
+                      className={`waveform-bar ${bin.isSilence ? "silence-bar" : "speech-bar"}`}
                       style={{
-                        height: `${Math.max(8, peak * 100)}%`,
-                      }}
+                        "--waveform-positive": `${Math.max(0, bin.max) * 100}%`,
+                        "--waveform-negative": `${Math.max(0, -bin.min) * 100}%`,
+                      } as CSSProperties}
                     />
                   ))
                 ) : (
@@ -4830,6 +5329,7 @@ export function MediaVideoEditorPlayer({
                   </div>
                 )}
               </div>
+              <div className="waveform-center-line" aria-hidden="true" />
 
               {duration > 0 && (
                 <div
@@ -5414,6 +5914,11 @@ export function MediaVideoEditorPlayer({
                     className="btn-remotion-render"
                     onClick={() => {
                       setIsRenderModalOpen(false);
+                      // Queue results are reported by the Worker job monitor;
+                      // keep the result/download surface visible while that
+                      // artifact is being produced instead of leaving it
+                      // hidden behind the collapsed panel.
+                      setIsRenderPanelCollapsed(false);
                       if (onSubmitJob) {
                         onSubmitJob(deadAirRenderSelection);
                       } else if (onBuildPlan) {

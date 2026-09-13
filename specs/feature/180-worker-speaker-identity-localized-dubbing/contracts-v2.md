@@ -60,6 +60,10 @@ Official reference baseline: [VoxCPM2](https://huggingface.co/openbmb/VoxCPM2), 
 
 Installation states: not_installed, downloading, installed, model_missing, dependency_error, license_required, hardware_incompatible, healthy, degraded, disabled. Pin package/model hashes, verify space and download approval, resumable download, isolated environments per provider, redacted logs, atomic activation with prior version retained for rollback. No model download in default tests. Removal blocks new admissions, waits for/requires cancellation of active leases and preserves user references/results.
 
+### 4.1 Implemented registry amendment (2026-09-07)
+
+The executable implementation uses an exact provider registry. VoxCPM2 (`VoxCPM2`), Confucius4-TTS (`Confucius4-TTS`) and MOSS-TTS (`MOSS-TTS`) are local reference-clone lanes; a promoted VoxCPM2 model may additionally be used through `trained_voice` after evaluation. Fish Speech is registered but disabled by its license/GPU gate. The configured server gateway currently exposes ElevenLabs as catalog TTS and OmniVoice as catalog plus managed-reference/transcript clone. ElevenLabs direct reference clone remains unavailable until the gateway forwards the reference payload to an official clone endpoint. A binding cannot bypass this matrix by selecting `prefer_cloud`, and no unregistered provider/model is inferred from a name.
+
 ## 5. Jobs and operation boundaries
 
 Use `audio.tts` as capability; durable job kind is `tts_utterance_generate`. Server runs cloud adapter attempts using the existing durable orchestration mechanism; only local attempts are Worker-claimable. Localization runs through existing versioned skill execution. Do not dispatch a cloud job to a Worker just to have it call the server again.

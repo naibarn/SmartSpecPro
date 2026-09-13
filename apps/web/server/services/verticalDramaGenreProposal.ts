@@ -309,6 +309,10 @@ export async function runVerticalDramaGenreProposal(
     maxTokens: 600,
     schema: genreProposalOutputSchema,
     label: "Genre proposal",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "story_architecture",
+    },
   });
 
   const usage = response.usage;

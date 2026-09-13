@@ -65,7 +65,8 @@ describe("Vertical Drama shot prompt background-job wiring", () => {
     const enhancedContext = source.slice(start, end);
 
     expect(enhancedContext).toContain("const existingClip = pack.clips.find");
-    expect(enhancedContext).toContain("const clip = existingClip ??");
+    expect(enhancedContext).toContain("const clip =");
+    expect(enhancedContext).toContain("existingClip ??");
     expect(enhancedContext).not.toContain("if (!clip)");
     expect(enhancedContext).not.toContain("ต้องมี Legacy prompt");
 

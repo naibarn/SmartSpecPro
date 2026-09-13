@@ -3,6 +3,7 @@ import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
 import { executeSkillLlmWithFallback } from "./skillModelFallback";
 import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
 import { calculateCreditsForLLMDynamic } from "./creditService";
+import { settleSkillRun } from "./skillRevenueBilling";
 import {
   detectProviderFamily,
   buildWebSearchParams,
@@ -1938,7 +1939,9 @@ export async function executeTeamRunSkillTurn(
           route: routeInput.route.route,
           reason: routeInput.route.reason,
         },
-        creditMode: "calculate_only",
+        // Team skill turns own their parent skill charge. Media child jobs
+        // still settle independently through their own skill run ids.
+        creditMode: routeInput.route.route === "skill" ? "deduct" : "calculate_only",
       };
 
       const result = await executeUnified(request);
@@ -2239,11 +2242,41 @@ export async function executeTeamRunSkillTurn(
   const rawContent = fallback.content ?? "";
   const { cleaned, hint: nextSpeakerHint } = parseNextSpeakerHint(rawContent);
 
-  const costCredits = await calculateCreditsForLLMDynamic(
+  const estimatedWorkCredits = await calculateCreditsForLLMDynamic(
     fallback.inputTokens ?? 0,
     fallback.outputTokens ?? 0,
     fallback.modelId ?? executionPolicy.modelId ?? "unknown"
   );
+
+  const budgetSnapshot =
+    input.run.budgetSnapshotJson && typeof input.run.budgetSnapshotJson === "object"
+      ? input.run.budgetSnapshotJson as { perAgent?: Record<string, { turnCount?: number }> }
+      : {};
+  const currentAgentTurnCount = Number(budgetSnapshot.perAgent?.[input.assistantId]?.turnCount ?? 0);
+  const skillRunId =
+    runtimeTurn.runtime.traceId?.trim() ||
+    `team-skill:${input.run.id}:${input.assistantId}:${currentAgentTurnCount + 1}:${skill.id}`;
+  const settlement = await settleSkillRun({
+    runId: skillRunId,
+    userId: input.userId,
+    tenantId: input.tenantId,
+    skillSlug: skill.id,
+    actualWorkCredits: estimatedWorkCredits,
+    description: `Skill run: ${skill.name}`,
+    metadata: {
+      runtimeKind: "llm",
+      originSurface: "team_room",
+      runtimeTraceId: runtimeTurn.runtime.traceId ?? null,
+      model: fallback.modelId ?? executionPolicy.modelId ?? null,
+      provider: fallback.provider?.providerName ?? null,
+      inputTokens: fallback.inputTokens ?? 0,
+      outputTokens: fallback.outputTokens ?? 0,
+      teamId: input.teamId,
+      roomId: input.roomId,
+      runId: input.run.id,
+    },
+  });
+  const costCredits = settlement.totalCredits;
 
   const baseResult: TeamRunSkillExecutionResult = {
     content: cleaned,

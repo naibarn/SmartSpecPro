@@ -15,11 +15,27 @@ describe("spoken caller virtual-screen policy", () => {
     expect(result.physicalSceneCharacterRefs).toEqual(["phakin"]);
     expect(result.spokenScreenCallerCharacterRefs).toEqual(["krit"]);
     expect(result.virtualScreens).toEqual([
-      { callerCharacterRef: "krit", screenIndex: 1, orientation: "vertical", visibleFaceRequired: true },
+      {
+        callerCharacterRef: "krit",
+        screenIndex: 1,
+        orientation: "vertical",
+        visibleFaceRequired: true,
+      },
     ]);
-    expect(renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(result)).toContain(
-      "dedicated vertical virtual phone screen",
+    expect(
+      renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(result)
+    ).toContain("dedicated floating vertical virtual screen/overlay");
+    expect(
+      renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(result)
+    ).toContain(
+      "Never show any caller physically in the room"
     );
+    expect(
+      renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(result)
+    ).toContain("floating vertical virtual video-call screen/overlay");
+    expect(
+      renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(result)
+    ).toContain("Never show the caller on a real phone, tablet, monitor");
   });
 
   it("creates separate screens in first-speaking order and supports display-name aliases", () => {
@@ -32,11 +48,12 @@ describe("spoken caller virtual-screen policy", () => {
 
     expect(result.physicalSceneCharacterRefs).toEqual(["phakin"]);
     expect(result.spokenScreenCallerCharacterRefs).toEqual(["wara", "krit"]);
-    expect(result.virtualScreens.map(screen => screen.screenIndex)).toEqual([1, 2]);
-    expect(result.virtualScreens.map(screen => screen.callerCharacterRef)).toEqual([
-      "wara",
-      "krit",
+    expect(result.virtualScreens.map(screen => screen.screenIndex)).toEqual([
+      1, 2,
     ]);
+    expect(
+      result.virtualScreens.map(screen => screen.callerCharacterRef)
+    ).toEqual(["wara", "krit"]);
   });
 
   it("renders an explicit face lock against the attached caller reference image", () => {
@@ -47,7 +64,8 @@ describe("spoken caller virtual-screen policy", () => {
       faceReferenceImageIndexByCharacterRef: { krit: 2 },
     });
 
-    const prompt = renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(result);
+    const prompt =
+      renderVerticalDramaSpokenCallerVirtualScreenPromptBlock(result);
 
     expect(prompt).toContain("CALLER FACE IDENTITY LOCK (MANDATORY)");
     expect(prompt).toContain("screen_1=krit");
@@ -56,7 +74,7 @@ describe("spoken caller virtual-screen policy", () => {
     expect(prompt).toContain("Never use a different face");
   });
 
-  it("does not infer a caller from an unmatched dialogue speaker", () => {
+  it("keeps an explicitly selected caller on a virtual screen without dialogue", () => {
     const input = {
       physicalSceneCharacterRefs: ["phakin"],
       screenCallerCharacterRefs: ["krit"],
@@ -68,8 +86,26 @@ describe("spoken caller virtual-screen policy", () => {
       physicalSceneCharacterRefs: ["phakin"],
       screenCallerCharacterRefs: ["krit"],
       spokenScreenCallerCharacterRefs: [],
-      virtualScreens: [],
+      virtualScreens: [
+        {
+          callerCharacterRef: "krit",
+          screenIndex: 1,
+          orientation: "vertical",
+          visibleFaceRequired: true,
+        },
+      ],
     });
     expect(input.physicalSceneCharacterRefs).toEqual(["phakin"]);
+  });
+
+  it("removes a selected caller from the physical cast even without dialogue", () => {
+    const result = deriveVerticalDramaSpokenCallerVirtualScreens({
+      physicalSceneCharacterRefs: ["phakin", "krit"],
+      screenCallerCharacterRefs: ["krit"],
+      dialogueSpeakerRefs: [],
+    });
+
+    expect(result.physicalSceneCharacterRefs).toEqual(["phakin"]);
+    expect(result.virtualScreens[0]?.callerCharacterRef).toBe("krit");
   });
 });

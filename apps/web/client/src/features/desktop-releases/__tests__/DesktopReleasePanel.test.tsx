@@ -440,7 +440,7 @@ describe("DesktopReleasePanel", () => {
     render(<DesktopReleasePanel variant="dashboard" enabled />);
 
     expect(await screen.findByText("dashboard:desktopReleases.workerApp.title")).toBeInTheDocument();
-    expect(screen.getByText(/smart-ai-hub-worker-app-0\.1\.0-x64-setup\.exe/)).toBeInTheDocument();
+    expect(screen.getAllByText(/smart-ai-hub-worker-app-0\.1\.0-x64-setup\.exe/).length).toBeGreaterThan(0);
     const downloadLink = screen.getByRole("link", {
       name: /dashboard:desktopReleases\.workerApp\.download/,
     });
@@ -448,6 +448,46 @@ describe("DesktopReleasePanel", () => {
     expect(
       screen.queryByRole("link", { name: /dashboard:desktopReleases\.workerApp\.openJobs/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the native macOS Worker App installer separately from the source bundle", async () => {
+    fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
+      const href = String(url);
+      if (href.includes("/companion-extension/latest")) {
+        return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), { status: 200 });
+      }
+      if (href.includes("/worker-app/latest?platform=macos&architecture=arm64")) {
+        return new Response(JSON.stringify({
+          generatedAt: "2026-04-10T10:00:00.000Z",
+          release: {
+            version: "0.1.325",
+            fileName: "smart-ai-hub-worker-app-0.1.325-arm64-setup.dmg",
+            fileSizeBytes: 4_200_000,
+            updatedAt: "2026-04-10T10:00:00.000Z",
+            downloadUrl: "/api/desktop-releases/worker-app/download?platform=macos&architecture=arm64",
+            installerFormat: "dmg",
+            platform: "macos",
+            architecture: "arm64",
+          },
+        }), { status: 200 });
+      }
+      if (href.includes("/worker-app/latest")) {
+        return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), { status: 200 });
+      }
+      throw new Error(`Unexpected fetch call: ${href}`);
+    });
+
+    render(<DesktopReleasePanel variant="dashboard" enabled />);
+
+    expect(await screen.findByText("dashboard:desktopReleases.workerAppMac.title")).toBeInTheDocument();
+    expect(screen.getByText(/smart-ai-hub-worker-app-0\.1\.325-arm64-setup\.dmg/)).toBeInTheDocument();
+    const downloadLink = screen.getByRole("link", {
+      name: /dashboard:desktopReleases\.workerAppMac\.download/,
+    });
+    expect(downloadLink).toHaveAttribute(
+      "href",
+      "/api/desktop-releases/worker-app/download?platform=macos&architecture=arm64",
+    );
   });
 
   it("shows a collapsible build history with persisted run details", async () => {

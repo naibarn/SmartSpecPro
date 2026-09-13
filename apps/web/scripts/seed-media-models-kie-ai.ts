@@ -87,6 +87,8 @@ interface ModelDefinition {
   supportedResolutions?: string[];
   supportedDurations?: number[];
   supportedAspectRatios?: string[];
+  thinkingModeDefault?: string;
+  thinkingModes?: string[];
 }
 
 const ELEVENLABS_VOICE_LIST_URL = "https://api.elevenlabs.io/v1/voices";
@@ -1801,6 +1803,8 @@ const IMAGE_MODELS = [
       "gpt image 2.5 flare image to image",
     ],
     creditCost: 30,
+    thinkingModeDefault: "medium",
+    thinkingModes: ["low", "medium", "high", "xhigh", "max"],
     priority: 7,
     sortOrder: 7,
     aspectRatios: [
@@ -1820,6 +1824,7 @@ const IMAGE_MODELS = [
         kie_model_id_with_references: "gpt-image-2-5-flare-image-to-image",
         reference_image_input_key: "input_urls",
         reference_image_input_type: "array",
+        defaultInputParams: { quality: "medium" },
       },
       inputFields: [
         { key: "input_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", maxItems: 16 },
@@ -1830,6 +1835,10 @@ const IMAGE_MODELS = [
           { value: "27:16", label: "27:16" }, { value: "16:27", label: "16:27" }, { value: "9:8", label: "9:8" },
           { value: "8:9", label: "8:9" },
         ], default: "auto", syncWith: "aspect_ratio" },
+        { key: "quality", label: "Thinking Mode", type: "select", options: [
+          { value: "low", label: "Low" }, { value: "medium", label: "Medium" }, { value: "high", label: "High" },
+          { value: "xhigh", label: "XHigh" }, { value: "max", label: "Max" },
+        ], default: "medium" },
         { key: "resolution", label: "Resolution", type: "select", affectsPricing: true, options: [
           { value: "1K", label: "1K" }, { value: "2K", label: "2K" }, { value: "4K", label: "4K" },
         ], default: "1K", syncWith: "resolution" },
@@ -1852,6 +1861,8 @@ const IMAGE_MODELS = [
       "gpt image 2.5 sunburst image to image",
     ],
     creditCost: 30,
+    thinkingModeDefault: "medium",
+    thinkingModes: ["low", "medium", "high", "xhigh", "max"],
     priority: 7,
     sortOrder: 7,
     aspectRatios: [
@@ -1871,6 +1882,7 @@ const IMAGE_MODELS = [
         kie_model_id_with_references: "gpt-image-2-5-sunburst-image-to-image",
         reference_image_input_key: "input_urls",
         reference_image_input_type: "array",
+        defaultInputParams: { quality: "medium" },
       },
       inputFields: [
         { key: "input_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", maxItems: 16 },
@@ -1881,6 +1893,10 @@ const IMAGE_MODELS = [
           { value: "27:16", label: "27:16" }, { value: "16:27", label: "16:27" }, { value: "9:8", label: "9:8" },
           { value: "8:9", label: "8:9" },
         ], default: "auto", syncWith: "aspect_ratio" },
+        { key: "quality", label: "Thinking Mode", type: "select", options: [
+          { value: "low", label: "Low" }, { value: "medium", label: "Medium" }, { value: "high", label: "High" },
+          { value: "xhigh", label: "XHigh" }, { value: "max", label: "Max" },
+        ], default: "medium" },
         { key: "resolution", label: "Resolution", type: "select", affectsPricing: true, options: [
           { value: "1K", label: "1K" }, { value: "2K", label: "2K" }, { value: "4K", label: "4K" },
         ], default: "1K", syncWith: "resolution" },
@@ -2700,6 +2716,112 @@ const IMAGE_MODELS = [
       pricingFormula: "flat",
     } as ModelDefinition,
   },
+  {
+    modelId: "qwen3/pro-text-to-image",
+    name: "Qwen Image 3 Pro",
+    description: "Alibaba Qwen Image 3 Pro generation and reference-image editing via Kie AI.",
+    modelType: "image",
+    provider: "kie.ai",
+    aliases: [
+      "qwen image 3 pro",
+      "qwen3 pro",
+      "qwen3/pro-text-to-image",
+      "qwen3/pro-image-to-image",
+      "qwen image 3 pro image to image",
+    ],
+    creditCost: 30,
+    priority: 23,
+    sortOrder: 23,
+    aspectRatios: ["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16", "21:9"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "qwen3/pro-text-to-image",
+      generateType: "text-to-image",
+      maxPromptLength: 5000,
+      supportsReferenceImages: true,
+      maxReferenceImages: 3,
+      apiConfig: {
+        kie_model_id_with_references: "qwen3/pro-image-to-image",
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        drop_params: ["aspect_ratio"],
+      },
+      inputFields: [
+        { key: "image_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", providerPayloadKey: "image_urls", maxItems: 3 },
+        { key: "image_size", label: "Image Size", type: "select", options: [
+          { value: "1:1", label: "1:1" }, { value: "3:2", label: "3:2" }, { value: "2:3", label: "2:3" },
+          { value: "4:3", label: "4:3" }, { value: "3:4", label: "3:4" }, { value: "16:9", label: "16:9" },
+          { value: "9:16", label: "9:16" }, { value: "21:9", label: "21:9" },
+        ], default: "1:1" },
+        { key: "resolution", label: "Resolution", type: "select", options: [
+          { value: "1K", label: "1K" }, { value: "2K", label: "2K" },
+        ], default: "1K", affectsPricing: true, syncWith: "resolution" },
+        { key: "output_format", label: "Output Format", type: "select", options: [
+          { value: "png", label: "PNG" }, { value: "jpeg", label: "JPEG" },
+        ], default: "png" },
+        { key: "prompt_extend", label: "Prompt Extend", type: "boolean", default: true },
+        { key: "negative_prompt", label: "Negative Prompt", type: "text", required: false, max: 5000 },
+        { key: "seed", label: "Seed", type: "number", required: false, advancedOnly: true, min: 0, max: 2147483647 },
+        { key: "nsfw_checker", label: "NSFW Checker", type: "boolean", default: false },
+      ],
+      pricingTiers: { default: 30, "1K": 30, "2K": 50 },
+      pricingFormula: "flat",
+    } as ModelDefinition,
+  },
+  {
+    modelId: "qwen3/text-to-image",
+    name: "Qwen Image 3",
+    description: "Alibaba Qwen Image 3 generation and reference-image editing via Kie AI.",
+    modelType: "image",
+    provider: "kie.ai",
+    aliases: [
+      "qwen image 3",
+      "qwen3",
+      "qwen3/text-to-image",
+      "qwen3/image-to-image",
+      "qwen image 3 image to image",
+    ],
+    creditCost: 30,
+    priority: 24,
+    sortOrder: 24,
+    aspectRatios: ["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16", "21:9"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "qwen3/text-to-image",
+      generateType: "text-to-image",
+      maxPromptLength: 5000,
+      supportsReferenceImages: true,
+      maxReferenceImages: 3,
+      apiConfig: {
+        kie_model_id_with_references: "qwen3/image-to-image",
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        drop_params: ["aspect_ratio"],
+      },
+      inputFields: [
+        { key: "image_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", providerPayloadKey: "image_urls", maxItems: 3 },
+        { key: "image_size", label: "Image Size", type: "select", options: [
+          { value: "1:1", label: "1:1" }, { value: "3:2", label: "3:2" }, { value: "2:3", label: "2:3" },
+          { value: "4:3", label: "4:3" }, { value: "3:4", label: "3:4" }, { value: "16:9", label: "16:9" },
+          { value: "9:16", label: "9:16" }, { value: "21:9", label: "21:9" },
+        ], default: "1:1" },
+        { key: "resolution", label: "Resolution", type: "select", options: [
+          { value: "1K", label: "1K" }, { value: "2K", label: "2K" },
+        ], default: "1K", affectsPricing: true, syncWith: "resolution" },
+        { key: "output_format", label: "Output Format", type: "select", options: [
+          { value: "png", label: "PNG" }, { value: "jpeg", label: "JPEG" },
+        ], default: "png" },
+        { key: "prompt_extend", label: "Prompt Extend", type: "boolean", default: true },
+        { key: "negative_prompt", label: "Negative Prompt", type: "text", required: false, max: 5000 },
+        { key: "seed", label: "Seed", type: "number", required: false, advancedOnly: true, min: 0, max: 2147483647 },
+        { key: "nsfw_checker", label: "NSFW Checker", type: "boolean", default: false },
+      ],
+      pricingTiers: { default: 30, "1K": 30, "2K": 50 },
+      pricingFormula: "flat",
+    } as ModelDefinition,
+  },
 
   // === Z-Image ===
   {
@@ -3277,7 +3399,7 @@ async function seed() {
       await sql`
         INSERT INTO media_models (
           "modelId", name, description, "modelType", provider,
-          aliases, "creditCost", priority, "sortOrder", "configJson", "isEnabled"
+          aliases, "creditCost", "thinkingModeDefault", "thinkingModes", priority, "sortOrder", "configJson", "isEnabled"
         ) VALUES (
           ${model.modelId},
           ${model.name},
@@ -3286,6 +3408,8 @@ async function seed() {
           ${model.provider},
           ${sql.json(model.aliases)},
           ${model.creditCost},
+          ${model.thinkingModeDefault ?? "none"},
+          ${sql.json(model.thinkingModes ?? ["none"])},
           ${model.priority},
           ${model.sortOrder},
           ${sql.json(model.configJson)},
@@ -3298,6 +3422,8 @@ async function seed() {
           provider = EXCLUDED.provider,
           aliases = EXCLUDED.aliases,
           "creditCost" = EXCLUDED."creditCost",
+          "thinkingModeDefault" = EXCLUDED."thinkingModeDefault",
+          "thinkingModes" = EXCLUDED."thinkingModes",
           priority = EXCLUDED.priority,
           "sortOrder" = EXCLUDED."sortOrder",
           "configJson" = EXCLUDED."configJson",
@@ -3313,7 +3439,7 @@ async function seed() {
       await sql`
         INSERT INTO media_models (
           "modelId", name, description, "modelType", provider,
-          aliases, "aspectRatios", "creditCost", priority, "sortOrder", "configJson", "isEnabled"
+          aliases, "aspectRatios", "creditCost", "thinkingModeDefault", "thinkingModes", priority, "sortOrder", "configJson", "isEnabled"
         ) VALUES (
           ${model.modelId},
           ${model.name},
@@ -3323,6 +3449,8 @@ async function seed() {
           ${sql.json(model.aliases)},
           ${sql.json(model.aspectRatios)},
           ${model.creditCost},
+          ${model.thinkingModeDefault ?? "none"},
+          ${sql.json(model.thinkingModes ?? ["none"])},
           ${model.priority},
           ${model.sortOrder},
           ${sql.json(model.configJson)},
@@ -3336,6 +3464,8 @@ async function seed() {
           aliases = EXCLUDED.aliases,
           "aspectRatios" = EXCLUDED."aspectRatios",
           "creditCost" = EXCLUDED."creditCost",
+          "thinkingModeDefault" = EXCLUDED."thinkingModeDefault",
+          "thinkingModes" = EXCLUDED."thinkingModes",
           priority = EXCLUDED.priority,
           "sortOrder" = EXCLUDED."sortOrder",
           "configJson" = EXCLUDED."configJson",
@@ -3351,7 +3481,7 @@ async function seed() {
       await sql`
         INSERT INTO media_models (
           "modelId", name, description, "modelType", provider,
-          aliases, voices, "creditCost", priority, "sortOrder", "configJson", "isEnabled"
+          aliases, voices, "creditCost", "thinkingModeDefault", "thinkingModes", priority, "sortOrder", "configJson", "isEnabled"
         ) VALUES (
           ${model.modelId},
           ${model.name},
@@ -3361,6 +3491,8 @@ async function seed() {
           ${sql.json(model.aliases)},
           ${sql.json(model.voices)},
           ${model.creditCost},
+          ${model.thinkingModeDefault ?? "none"},
+          ${sql.json(model.thinkingModes ?? ["none"])},
           ${model.priority},
           ${model.sortOrder},
           ${sql.json(model.configJson)},
@@ -3374,6 +3506,8 @@ async function seed() {
           aliases = EXCLUDED.aliases,
           voices = EXCLUDED.voices,
           "creditCost" = EXCLUDED."creditCost",
+          "thinkingModeDefault" = EXCLUDED."thinkingModeDefault",
+          "thinkingModes" = EXCLUDED."thinkingModes",
           priority = EXCLUDED.priority,
           "sortOrder" = EXCLUDED."sortOrder",
           "configJson" = EXCLUDED."configJson",

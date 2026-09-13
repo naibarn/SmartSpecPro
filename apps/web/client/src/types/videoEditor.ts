@@ -17,6 +17,14 @@ export interface VideoEditorProject {
   assets: Record<string, Asset>;
   audioMixing: AudioMixing;
   export: ExportSettings;
+  /** Durable metadata for editor operations that remap the whole timeline. */
+  metadata?: {
+    deadAirCutFingerprint?: string;
+    deadAirCutCount?: number;
+    deadAirCutRanges?: Array<{ startTime: number; endTime: number }>;
+    deadAirAudioStreamIndex?: number;
+    [key: string]: unknown;
+  };
 }
 
 export interface ProjectSettings {
@@ -37,6 +45,10 @@ export interface Track {
   name: string;              // "V1", "V2", "A1", "T1", etc.
   clips: Clip[];
   muted: boolean;
+  /** Solo isolates this track during preview/render when any audio track is soloed. */
+  solo?: boolean;
+  /** Track-level gain multiplier, applied before clip volume. */
+  volume?: number;
   locked: boolean;
   visible: boolean;          // Whether track is visible in preview/render
   height?: number;           // UI track height
@@ -61,6 +73,8 @@ export interface Clip {
   inTransition?: ClipTransition;  // Clip-to-clip transition from previous clip
   transform?: ClipTransform; // For overlay clips
   textConfig?: TextConfig;   // For text clips
+  /** Browser editor camera guidance. Heavy face/object analysis is performed by Worker. */
+  smartCamera?: SmartCameraSettings;
   groupId?: string;          // For compound clip grouping
   duplicateBoundaryFrameTrim?: {
     frameCount: number;
@@ -68,6 +82,17 @@ export interface Clip {
     fps: number;
     reason: 'matching_first_last_frame_boundary';
   };
+}
+
+export type SmartCameraMode = 'off' | 'auto_face' | 'auto_object' | 'manual_keyframes';
+
+export interface SmartCameraSettings {
+  mode: SmartCameraMode;
+  autoZoom: boolean;
+  autoPan: boolean;
+  intensity: number;
+  safeMargin: number;
+  analysisRequested?: boolean;
 }
 
 export interface TextConfig {
@@ -94,6 +119,8 @@ export interface Asset {
 
   // For generated media
   taskId?: string;           // backend task_id
+  /** Tenant-owned media asset id used by the headless Worker contract. */
+  mediaAssetId?: number;
   model?: string;
 
   // File info
@@ -366,6 +393,8 @@ export interface MediaLibraryAsset {
   resolution?: string;
   format: string;
   localPath?: string;
+  /** Tenant-owned media asset id, when already resolved by the web uploader. */
+  mediaAssetId?: number;
   fileSize?: number;
   /** Original generation prompt (from Draft with AI or Quick Generate) */
   generationPrompt?: string;
@@ -437,6 +466,8 @@ export function createEmptyProject(name: string = 'Untitled Project'): VideoEdit
           name: 'A1',
           clips: [],
           muted: false,
+          solo: false,
+          volume: 1,
           locked: false,
           visible: true,
           height: 60
@@ -523,6 +554,7 @@ export function addAssetToProject(
     type: asset.type,
     source: 'generated',
     taskId: asset.id,
+    ...(asset.mediaAssetId ? { mediaAssetId: asset.mediaAssetId } : {}),
     model: asset.model,
     name: asset.title,
     path: localPath,

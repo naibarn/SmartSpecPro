@@ -846,13 +846,15 @@ describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", ()
         },
       ],
       screenCallerCharacterRefs: ["character-3"],
-      spokenCallerCharacterRefs: ["character-3"],
+      spokenCallerCharacterRefs: [],
     });
 
     expect(prompt).toContain("SPOKEN CALLER VIRTUAL SCREENS (MANDATORY)");
     expect(prompt).toContain("screen_1=character-3");
-    expect(prompt).toContain("vertical phone screen");
-    expect(prompt).toContain("Never show a spoken caller physically in the room");
+    expect(prompt).toContain("floating vertical virtual video-call screen/overlay");
+    expect(prompt).toContain("Never show any caller physically in the room");
+    expect(prompt).toContain("floating vertical virtual video-call screen/overlay");
+    expect(prompt).toContain("Never show the caller on a real phone, tablet, monitor");
     expect(prompt).toContain("CALLER FACE IDENTITY LOCK (MANDATORY)");
     expect(prompt).toContain("Image 3 = character-3");
     expect(prompt).toContain("Never use a different face");
@@ -881,6 +883,7 @@ describe("buildStartFrameShotPromptUserPrompt — mode-aware fact lines (e)", ()
     expect(prompt).toContain("SPOKEN CALLER VIRTUAL SCREENS (MANDATORY)");
     expect(prompt).toContain("CALLER FACE IDENTITY LOCK (MANDATORY)");
     expect(prompt).toContain("Image 3 = character-3");
+    expect(prompt).toContain("CALLER VIRTUAL SCREEN FINAL OUTPUT OVERRIDE (MANDATORY)");
   });
 
   it("removes scene-wide cast staging while preserving environment continuity", () => {

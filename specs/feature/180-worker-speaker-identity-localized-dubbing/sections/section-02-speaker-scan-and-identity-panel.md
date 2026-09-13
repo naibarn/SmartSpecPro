@@ -69,3 +69,7 @@ Capture one-speaker, multi-speaker, low-confidence, standalone naming and Series
 ## v2 required integration
 
 Reuse speaker_aware_media_scan without a second scan job kind. Authored dialogue identity bypasses scanning; no automatic canonical character mutation. Map v1 nullable Series scope at the boundary.
+
+## Implementation record (2026-09-07)
+
+Existing `speakerAwareContracts.ts`, `speakerAwareWorkflow.ts`, `SpeakerAwareWorkflowPanel.tsx`, `speaker_aware_adapters.rs` and bundled runner provide the scan/identity boundary. Focused speaker-aware contract/render tests pass; unified voice binding consumes approved identities without mutating canonical Series characters.

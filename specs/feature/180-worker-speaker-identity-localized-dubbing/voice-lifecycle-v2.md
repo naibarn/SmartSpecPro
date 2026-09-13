@@ -49,7 +49,7 @@ Extend authenticated unifiedAudio procedures; reuse existing upload/artifact tra
 
 Imports expire after 24h; incomplete temp uploads cleaned after expiry, never finalized assets. MIME sniffing and sandboxed decode use CPU/time/memory limits; reject malformed/polyglot media, traversal and decompression bombs. Upload URL scope binds actor/import/size; checksum alone is not authorization. Duplicate finalize is idempotent. Local import must be handled by owner Worker with active binding, not asserted by browser.
 
-Common errors: VOICE_PROFILE_STALE, VOICE_BINDING_STALE, REFERENCE_NOT_FINALIZED, REFERENCE_TRANSCRIPT_REQUIRED, REFERENCE_TRANSCRIPT_UNVERIFIED, REFERENCE_QUALITY_REVIEW_REQUIRED, VOICE_MODE_UNSUPPORTED, VOICE_SCOPE_MISMATCH, VOICE_REFERENCE_IN_USE, TRAINING_UNAVAILABLE. Reuse existing consent/artifact/budget errors. Return HTTP 409 for stale/idempotency conflict, 413 bounds, 403 scope/rights, 422 input/mode failures; unavailable provider 503 with stable reason. Durable job failures use structured codes rather than transport errors.
+Common errors: VOICE_PROFILE_STALE, VOICE_BINDING_STALE, REFERENCE_NOT_FINALIZED, REFERENCE_TRANSCRIPT_REQUIRED, REFERENCE_TRANSCRIPT_UNVERIFIED, REFERENCE_QUALITY_REVIEW_REQUIRED, VOICE_MODE_UNSUPPORTED, VOICE_SCOPE_MISMATCH, VOICE_REFERENCE_IN_USE, TRAINING_UNAVAILABLE, TRAINING_MODEL_REQUIRED, TRAINING_MODEL_UNAVAILABLE, TRAINING_MODEL_INVALID, TRAINING_EVALUATION_INVALID. Reuse existing consent/artifact/budget errors. Return HTTP 409 for stale/idempotency conflict, 413 bounds, 403 scope/rights, 422 input/mode failures; unavailable provider 503 with stable reason. Durable job failures use structured codes rather than transport errors.
 
 ## 4. Provider mapping and mode negotiation
 

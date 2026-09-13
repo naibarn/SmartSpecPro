@@ -63,6 +63,10 @@ Consent fields, provider status, clone confirmation and revoke actions require l
 
 State clearly that “UVoice clone API ยังไม่ยืนยัน” is unavailable for automated creation; explain consent scope and credit impact before preview/generation.
 
+### Implemented provider note (2026-09-07)
+
+The runtime registry is authoritative. Local VoxCPM2, Confucius4-TTS and MOSS-TTS reference cloning are enabled only after Worker readiness; Fish Speech is visible as a disabled license/GPU gate. Cloud ElevenLabs is currently catalog-only in the unified adapter because the existing gateway does not forward raw reference bytes to an official clone endpoint. OmniVoice may use managed reference bytes for clone/transcript clone through its configured provider adapter. The UI and API must show these states as unavailable rather than silently falling back.
+
 ### Browser Evidence Required
 
 Capture available provider, UVoice unverified, missing consent, revoked consent, preview progress and approved binding without exposing keys or raw samples.

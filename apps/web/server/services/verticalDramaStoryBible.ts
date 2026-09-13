@@ -19,7 +19,16 @@ import {
   resolveSkillDirCandidates,
   resolveSkillManifestPath,
 } from "./skillFiles";
-import { executeWithFallback, type PhysicalLlmAttemptEvent, type RawLlmPayloadEvent } from "./llmRouter";
+import {
+  executeWithFallback,
+  type PhysicalLlmAttemptEvent,
+  type RawLlmPayloadEvent,
+} from "./llmRouter";
+import {
+  loadVerticalDramaGenerationSettings,
+  resolveVerticalDramaLlmExtraBodyParams,
+  type VerticalDramaLlmContext,
+} from "./verticalDramaLlmPolicy";
 import { isAvailable } from "./providerHealth";
 import { resolveExternalMediaReferenceUrls } from "./mediaGenerationService";
 import { ensureExternalMediaAssetDurable } from "./durableMediaAssetService";
@@ -66,6 +75,11 @@ import {
   type VerticalDramaDialogueLanguageProfile,
 } from "@shared/verticalDramaSeries/dialogueLanguageProfile";
 import { buildVerticalDramaCharacterNamingContractPrompt } from "@shared/verticalDramaSeries/characterNaming";
+import {
+  buildVerticalDramaStoryTruthPackage,
+  renderVerticalDramaStoryTruthPromptBlock,
+  type VerticalDramaStoryTruthPackage,
+} from "@shared/verticalDramaSeries/storyTruth";
 import { renderVerticalDramaDraftStoryContextBlock } from "@shared/verticalDramaSeries/draftStoryContext";
 import { renderVerticalDramaDraftStoryDesignBlock } from "@shared/verticalDramaSeries/draftStoryDesign";
 import type { VerticalDramaDraftStoryContext } from "@shared/verticalDramaSeries/draftStoryContext";
@@ -322,6 +336,8 @@ const shotDialogueLineSchema = z
     speaker: z.string().min(1),
     line: z.string().min(1),
     delivery: z.string().optional(),
+    /** Optional explicit addressee for deterministic start-frame eye-line staging. */
+    addressed_to: z.string().trim().min(1).max(60).optional(),
   })
   .passthrough();
 
@@ -1601,6 +1617,8 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
   retryMaxTokens?: number;
   /** Extra body params forwarded to the selected provider, e.g. structured output. */
   extraBodyParams?: Record<string, unknown>;
+  /** Task-aware quality policy resolved once and adapted per provider attempt. */
+  verticalDramaContext?: VerticalDramaLlmContext;
   /** Draft stages can opt out of provider fallback while retaining legacy defaults elsewhere. */
   disableProviderFallbacks?: boolean;
   /** Optional refs-only observer for each physical provider candidate. */
@@ -1614,7 +1632,9 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
   /** Optional raw request/response observer for forensic special-job logging. */
   rawPayloadObserver?: (event: RawLlmPayloadEvent) => Promise<void> | void;
   /** Optional retry-decision observer; never changes retry behavior. */
-  retryDecisionObserver?: (event: JsonPlanningRetryEvent) => Promise<void> | void;
+  retryDecisionObserver?: (
+    event: JsonPlanningRetryEvent
+  ) => Promise<void> | void;
   /** After transient retries, rotate into the admin-curated LLM Recommend set. */
   modelFallbackPolicy?: "recommended";
   /** Also rotate after schema retries; intended for quality-critical Draft planning. */
@@ -1718,6 +1738,19 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
   /** Only present when `onSchemaRetriesExhausted` accepted a degraded response instead of throwing. Absent (`undefined`) on every normal successful parse, and for every caller that never supplies the option. */
   warnings?: string[];
 }> {
+  const verticalDramaSettings = params.verticalDramaContext
+    ? await loadVerticalDramaGenerationSettings({
+        ...params.verticalDramaContext,
+        userId: params.userId,
+      })
+    : undefined;
+  const resolvedExtraBodyParams = params.verticalDramaContext
+    ? resolveVerticalDramaLlmExtraBodyParams({
+        settings: verticalDramaSettings,
+        taskClass: params.verticalDramaContext.taskClass,
+        extraBodyParams: params.extraBodyParams,
+      })
+    : params.extraBodyParams;
   let activeModel = params.model;
   let modelFallbackAttempts = 0;
   const excludedFallbackModels = new Set([params.model]);
@@ -1741,9 +1774,13 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
     try {
       await params.retryDecisionObserver?.(event);
     } catch (error) {
-      debugError("vd_planning_retry_audit", `${params.label}: retry observer failed`, {
-        message: error instanceof Error ? error.message : String(error),
-      });
+      debugError(
+        "vd_planning_retry_audit",
+        `${params.label}: retry observer failed`,
+        {
+          message: error instanceof Error ? error.message : String(error),
+        }
+      );
     }
   };
 
@@ -1767,7 +1804,7 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
       maxTokens,
       temperature: params.temperature,
       timeoutMs: params.timeoutMs,
-      extraBodyParams: params.extraBodyParams,
+      extraBodyParams: resolvedExtraBodyParams,
       disableProviderFallbacks: params.disableProviderFallbacks,
       physicalAttemptObserver: async event => {
         physicalAttempts.push(event);
@@ -2005,7 +2042,8 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
           modelFallbackAttempt: modelFallbackAttempts,
           remainingBudget: {
             schemaRetries: effectiveMaxSchemaRetries - schemaRetriesUsed,
-            transientRetries: effectiveMaxTransientRetries - transientRetriesUsed,
+            transientRetries:
+              effectiveMaxTransientRetries - transientRetriesUsed,
             modelFallbacks: maxModelFallbackAttempts - modelFallbackAttempts,
             totalAttempts: planningMaxAttempts - attemptNumber,
           },
@@ -2060,7 +2098,8 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
             modelFallbackAttempt: modelFallbackAttempts,
             remainingBudget: {
               schemaRetries: effectiveMaxSchemaRetries - schemaRetriesUsed,
-              transientRetries: effectiveMaxTransientRetries - transientRetriesUsed,
+              transientRetries:
+                effectiveMaxTransientRetries - transientRetriesUsed,
               modelFallbacks: maxModelFallbackAttempts - modelFallbackAttempts,
               totalAttempts: planningMaxAttempts - attemptNumber,
             },
@@ -2102,7 +2141,8 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
           modelFallbackAttempt: modelFallbackAttempts,
           remainingBudget: {
             schemaRetries: effectiveMaxSchemaRetries - schemaRetriesUsed,
-            transientRetries: effectiveMaxTransientRetries - transientRetriesUsed,
+            transientRetries:
+              effectiveMaxTransientRetries - transientRetriesUsed,
             modelFallbacks: maxModelFallbackAttempts - modelFallbackAttempts,
             totalAttempts: planningMaxAttempts - attemptNumber,
           },
@@ -2150,7 +2190,8 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
             modelFallbackAttempt: modelFallbackAttempts,
             remainingBudget: {
               schemaRetries: effectiveMaxSchemaRetries - schemaRetriesUsed,
-              transientRetries: effectiveMaxTransientRetries - transientRetriesUsed,
+              transientRetries:
+                effectiveMaxTransientRetries - transientRetriesUsed,
               modelFallbacks: maxModelFallbackAttempts - modelFallbackAttempts,
               totalAttempts: planningMaxAttempts - attemptNumber,
             },
@@ -2341,13 +2382,12 @@ const MAX_VISION_INLINE_TOTAL_BYTES = 20 * 1024 * 1024;
 
 function isManagedVisionBrokerUrl(
   value: string,
-  publicUrl?: string | null,
+  publicUrl?: string | null
 ): boolean {
   try {
     const parsed = new URL(value);
-    const configuredOrigin = new URL(
-      publicUrl || getCachedPublicAppUrl(),
-    ).origin;
+    const configuredOrigin = new URL(publicUrl || getCachedPublicAppUrl())
+      .origin;
     return (
       parsed.origin === configuredOrigin &&
       parsed.pathname.startsWith("/api/mcp/downloads/")
@@ -2367,7 +2407,7 @@ function isManagedVisionBrokerUrl(
  */
 async function materializeVisionBrokerImagesForRetry(
   images: VisionAwareImageInput[],
-  publicUrl?: string | null,
+  publicUrl?: string | null
 ): Promise<VisionAwareImageInput[] | null> {
   if (!images.some(image => isManagedVisionBrokerUrl(image.url, publicUrl))) {
     return null;
@@ -2387,29 +2427,38 @@ async function materializeVisionBrokerImagesForRetry(
           response.headers.get("content-type")?.split(";", 1)[0]?.trim() ||
           "image/png";
         if (!contentType.startsWith("image/")) {
-          throw new Error(`broker returned unexpected content type ${contentType}`);
+          throw new Error(
+            `broker returned unexpected content type ${contentType}`
+          );
         }
 
         const bytes = Buffer.from(await response.arrayBuffer());
-        if (bytes.length === 0 || bytes.length > MAX_VISION_INLINE_IMAGE_BYTES) {
-          throw new Error(`broker image size ${bytes.length} exceeds inline retry limit`);
+        if (
+          bytes.length === 0 ||
+          bytes.length > MAX_VISION_INLINE_IMAGE_BYTES
+        ) {
+          throw new Error(
+            `broker image size ${bytes.length} exceeds inline retry limit`
+          );
         }
         totalBytes += bytes.length;
         if (totalBytes > MAX_VISION_INLINE_TOTAL_BYTES) {
-          throw new Error("combined broker image size exceeds inline retry limit");
+          throw new Error(
+            "combined broker image size exceeds inline retry limit"
+          );
         }
 
         return {
           ...image,
           url: `data:${contentType};base64,${bytes.toString("base64")}`,
         };
-      }),
+      })
     );
     return materialized;
   } catch (error) {
     console.warn(
       "[executeVisionAwareJsonCallWithRetry] Could not inline broker images for recovery:",
-      error instanceof Error ? error.message : error,
+      error instanceof Error ? error.message : error
     );
     return null;
   }
@@ -2418,7 +2467,7 @@ async function materializeVisionBrokerImagesForRetry(
 function isVisionReferenceDownloadError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return /vision reference image unavailable|error while downloading (?:file|image)|upstream status code(?: of)?\s*:?[ ]?404/i.test(
-    message,
+    message
   );
 }
 
@@ -2519,6 +2568,7 @@ export async function runVisionAwareJsonAttempt<T>(args: {
   content: VisionAwareContent;
   userId: number;
   maxTokens: number;
+  extraBodyParams?: Record<string, unknown>;
   schema: {
     safeParse: (value: unknown) => {
       success: boolean;
@@ -2539,6 +2589,7 @@ export async function runVisionAwareJsonAttempt<T>(args: {
     userId: args.userId,
     maxTokens: args.maxTokens,
     temperature: 0.7,
+    extraBodyParams: args.extraBodyParams,
     modelFallbackFrom: args.modelFallbackFrom,
     modelFallbackReason: args.modelFallbackReason,
   });
@@ -2584,6 +2635,8 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
   userId: number;
   tenantId?: string;
   publicUrl?: string | null;
+  extraBodyParams?: Record<string, unknown>;
+  verticalDramaContext?: VerticalDramaLlmContext;
   schema: {
     safeParse: (value: unknown) => {
       success: boolean;
@@ -2609,6 +2662,19 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
   response: VisionAwareCallResponse;
   usedVision: boolean;
 }> {
+  const verticalDramaSettings = args.verticalDramaContext
+    ? await loadVerticalDramaGenerationSettings({
+        ...args.verticalDramaContext,
+        userId: args.userId,
+      })
+    : undefined;
+  const resolvedExtraBodyParams = args.verticalDramaContext
+    ? resolveVerticalDramaLlmExtraBodyParams({
+        settings: verticalDramaSettings,
+        taskClass: args.verticalDramaContext.taskClass,
+        extraBodyParams: args.extraBodyParams,
+      })
+    : args.extraBodyParams;
   const images = args.hasVision
     ? await prepareVisionReferenceUrls(args)
     : args.images;
@@ -2624,6 +2690,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
       userId: args.userId,
       maxTokens: args.firstAttemptMaxTokens,
       schema: args.schema,
+      extraBodyParams: resolvedExtraBodyParams,
     });
     return { ...result, usedVision: args.hasVision };
   } catch (firstError) {
@@ -2641,7 +2708,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
     if (args.hasVision && isVisionReferenceDownloadError(firstError)) {
       const inlineImages = await materializeVisionBrokerImagesForRetry(
         images,
-        args.publicUrl,
+        args.publicUrl
       );
       if (inlineImages) {
         try {
@@ -2651,17 +2718,18 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
             content: buildVisionAwareContent(
               args.userPromptText,
               args.hasVision,
-              inlineImages,
+              inlineImages
             ),
             userId: args.userId,
             maxTokens: args.retryMaxTokens,
             schema: args.schema,
+            extraBodyParams: resolvedExtraBodyParams,
           });
           return { ...result, usedVision: args.hasVision };
         } catch (inlineError) {
           console.warn(
             `[executeVisionAwareJsonCallWithRetry] Inline vision recovery failed for model ${args.model}:`,
-            inlineError instanceof Error ? inlineError.message : inlineError,
+            inlineError instanceof Error ? inlineError.message : inlineError
           );
         }
       }
@@ -2694,6 +2762,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
           userId: args.userId,
           maxTokens: args.retryMaxTokens,
           schema: args.schema,
+          extraBodyParams: resolvedExtraBodyParams,
           modelFallbackFrom: args.model,
           modelFallbackReason: "vision_provider_response_failure",
         });
@@ -2712,6 +2781,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
         userId: args.userId,
         maxTokens: args.retryMaxTokens,
         schema: args.schema,
+        extraBodyParams: resolvedExtraBodyParams,
       });
       return { ...result, usedVision: args.hasVision };
     } catch (retryError) {
@@ -2759,6 +2829,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
               userId: args.userId,
               maxTokens: Math.max(args.retryMaxTokens * 2, 8000),
               schema: args.schema,
+              extraBodyParams: resolvedExtraBodyParams,
             });
             return { ...result, usedVision: args.hasVision };
           } catch (recoveryError) {
@@ -2792,6 +2863,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
             userId: args.userId,
             maxTokens: args.retryMaxTokens,
             schema: args.schema,
+            extraBodyParams: resolvedExtraBodyParams,
             modelFallbackFrom: args.model,
             modelFallbackReason: "vision_retry_failed",
           });
@@ -2812,6 +2884,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
           userId: args.userId,
           maxTokens: args.retryMaxTokens,
           schema: args.schema,
+          extraBodyParams: resolvedExtraBodyParams,
         });
         // The final recovery attempt deliberately omits all images. Report
         // the actual mode so callers can fail closed for image-grounded
@@ -3173,7 +3246,18 @@ export async function generateStoryBible(
       )
       .digest("hex")
       .slice(0, 24)}`;
-  const { systemPrompt, userPrompt } = buildPrompts(params);
+  const { systemPrompt, userPrompt: baseUserPrompt } = buildPrompts(params);
+  const storyTruth = buildVerticalDramaStoryTruthPackage({
+    sourceVersion: `series:${params.seriesId}:origin-input-v1`,
+    story: params.bible,
+    lockedKeys: ["story"],
+  });
+  const userPrompt = [
+    baseUserPrompt,
+    renderVerticalDramaStoryTruthPromptBlock(storyTruth),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   // Base ceiling raised from 3500 to 6000 — `episodeBreakdown` grows with
   // `targetEpisodeCount` (each entry has a workingTitle/logline/3-5
@@ -3196,6 +3280,10 @@ export async function generateStoryBible(
     schema: expandedStoryBibleSchema,
     disableProviderFallbacks: true,
     label: "Story bible",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "story_architecture",
+    },
   });
 
   const storySafety = analyzeVerticalDramaStorySafety(validatedData);
@@ -4958,6 +5046,7 @@ function buildDeepDraftPrompts(params: {
   seasonLineage?: VdSeasonLineageContext;
   /** Deterministic semantic findings to repair in this paid retry pass. */
   qualityRepairInstructions?: string[];
+  storyTruth?: VerticalDramaStoryTruthPackage;
 }): { systemPrompt: string; userPrompt: string } {
   const langInstruction =
     params.locale === "th"
@@ -5060,6 +5149,7 @@ function buildDeepDraftPrompts(params: {
     "Apply the POLICY-SAFE STORY FILTER as a hard constraint: do not combine a child/minor with distress, threat, surveillance, secret photography, helplessness, medical detail, abuse, or coercion. Keep all characters fully clothed and all dramatic tension non-graphic; preserve plot purpose through adult reactions, neutral objects, and unanswered questions.",
     'SPEAKABILITY RULES (hard requirement): every "line" must be literally speakable as written — no wrapping quote marks, no parenthetical stage direction, no symbols (~ * [ ] / ` < > _), no em-dash as a spoken beat (use a comma instead), at most one "…" per line, no emoji. Put delivery/emotion notes in the separate "delivery" field, NEVER inside "line" itself. A shot that is only an animal/ambient sound or otherwise wordless must set "silence_intent" instead of writing the sound as a dialogue line.',
     'A shot must NEVER set BOTH "silence_intent" and one or more "dialogue_lines" — pick exactly one: give it real speakable dialogue, or mark it "silence_intent" only if it truly has no speech at all.',
+    'For dialogue_lines, optionally set "addressed_to" only when the speaker is clearly addressing a specific visible character in this shot. Omit it when the addressee is ambiguous; never invent a character or add visual presence from the field.',
     durationProfileText,
     storyControlSeedBlock,
     shotDurations
@@ -5086,7 +5176,7 @@ function buildDeepDraftPrompts(params: {
       ? '- identity_safe_shot_boundaries: REQUIRED — apply the skill\'s "Identity-safe shot boundaries" section.'
       : null,
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
-    `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "characters": [{"name": string, "emotion": string, "emotion_after": string}], "location_key": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}${sceneContractShotShapeSuffix(params.sceneContractsEnabled)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "genre_evidence": {"observed_cues": string[], "world_mechanic": string, "causal_cost": string, "shot_numbers": number[]}, "price_paid": string, "episode_memory": {"recap": string, "canonical_facts": string[], "threads_opened": [{"thread_id": string, "description": string, "thread_class": "plot"|"domestic"|"career"|"financial"|"health"|"relationship", "expected_resolution": "this_episode"|"future_episode"|"season", "expected_resolution_episode": number, "closure_intent": "payoff_required"|"background_close_ok"|"intentional_open"|"surprise_payoff", "expected_evidence": string[]}], "threads_resolved": string[], "thread_closures": [{"thread_id": string, "disposition": "explicit_payoff"|"implicit_payoff"|"expected_continuation"|"intentional_open"|"surprise_payoff"|"needs_repair", "evidence_episode_numbers": number[], "rationale": string, "confidence": "high"|"medium"|"low"}], "relationship_graph_deltas": [{"operation": "add"|"update_status"|"reveal"|"end"|"retcon", "edgeId": string, "fromCharacterKey": string, "toCharacterKey": string, "relationType": string, "validFromEpisode": number, "validToEpisode": number, "disclosure": "private"|"secret"|"known_to_some"|"public"|"misunderstood"|"undeclared", "beliefState": "unknown"|"suspected"|"believed"|"known"|"false", "knownByCharacterKeys": string[], "evidenceRefs": string[], "affectedCharacterKeys": string[], "supersedesRevisionId": string}], "relationship_changes": [{"pair": [string, string], "status": string, "disclosure": "secret"|"known_to_some"|"public"|"undeclared", "known_by": string[]}], "knowledge_changes": [{"character_key": string, "learned": string}]}}], "open_threads": string[], "new_locations": [{"location_key": string, "name": string, "description": string, "environment": string, "time_of_day": string, "mood": string}]}`,
+    `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "characters": [{"name": string, "emotion": string, "emotion_after": string}], "location_key": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string, "addressed_to": string (optional)}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}${sceneContractShotShapeSuffix(params.sceneContractsEnabled)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "genre_evidence": {"observed_cues": string[], "world_mechanic": string, "causal_cost": string, "shot_numbers": number[]}, "price_paid": string, "episode_memory": {"recap": string, "canonical_facts": string[], "threads_opened": [{"thread_id": string, "description": string, "thread_class": "plot"|"domestic"|"career"|"financial"|"health"|"relationship", "expected_resolution": "this_episode"|"future_episode"|"season", "expected_resolution_episode": number, "closure_intent": "payoff_required"|"background_close_ok"|"intentional_open"|"surprise_payoff", "expected_evidence": string[]}], "threads_resolved": string[], "thread_closures": [{"thread_id": string, "disposition": "explicit_payoff"|"implicit_payoff"|"expected_continuation"|"intentional_open"|"surprise_payoff"|"needs_repair", "evidence_episode_numbers": number[], "rationale": string, "confidence": "high"|"medium"|"low"}], "relationship_graph_deltas": [{"operation": "add"|"update_status"|"reveal"|"end"|"retcon", "edgeId": string, "fromCharacterKey": string, "toCharacterKey": string, "relationType": string, "validFromEpisode": number, "validToEpisode": number, "disclosure": "private"|"secret"|"known_to_some"|"public"|"misunderstood"|"undeclared", "beliefState": "unknown"|"suspected"|"believed"|"known"|"false", "knownByCharacterKeys": string[], "evidenceRefs": string[], "affectedCharacterKeys": string[], "supersedesRevisionId": string}], "relationship_changes": [{"pair": [string, string], "status": string, "disclosure": "secret"|"known_to_some"|"public"|"undeclared", "known_by": string[]}], "knowledge_changes": [{"character_key": string, "learned": string}]}}], "open_threads": string[], "new_locations": [{"location_key": string, "name": string, "description": string, "environment": string, "time_of_day": string, "mood": string}]}`,
     `"episodeBreakdown" must contain exactly ${params.chunkEpisodes.length} entries — one per Sub-episode listed below, using the SAME episodeNumber/workingTitle/logline/keyBeats given (do not rename or renumber) — each with EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} "shotDrafts", and EVERY shot's "characters" (>= 1) and "location_key" filled in per this system prompt's shot-completeness/new-location rules.`,
     "Every Sub-episode MUST contain at least one genuine spoken dialogue line across its shotDrafts. Individual shots may use silence_intent, but an entire Sub-episode must never be silent.",
     '"open_threads" must be the UPDATED list of unresolved plot threads/hooks after these episodes: carry forward every thread you were given that is still open, add any new thread you introduce, and drop any thread you fully resolve.',
@@ -5163,6 +5253,9 @@ function buildDeepDraftPrompts(params: {
         "Preserve the approved premise, character identities, episode count, and intended reveal order. Return a complete draft, not a repair report.",
       ].join("\n")
     : "";
+  const storyTruthBlock = renderVerticalDramaStoryTruthPromptBlock(
+    params.storyTruth
+  );
 
   const userPrompt = [
     userPremiseBlockForDeepDraft,
@@ -5177,6 +5270,7 @@ function buildDeepDraftPrompts(params: {
     knownLocationsBlock,
     seasonLineageBlock,
     qualityRepairBlock,
+    storyTruthBlock,
     storyContextBlock,
     storyDesignBlock,
     storyArchitectureBlock,
@@ -6241,6 +6335,25 @@ export async function generateStoryBibleDeep(
       knownCharacters: params.knownCharacters,
       seasonLineage: params.seasonLineage,
       qualityRepairInstructions: params.qualityRepairInstructions,
+      storyTruth: buildVerticalDramaStoryTruthPackage({
+        sourceVersion: `series:${params.seriesId}:generation-input-v1`,
+        story: {
+          title: params.title,
+          genre: params.genre,
+          tone: params.tone,
+          premise: params.userPremise,
+          storyContext: params.storyContext,
+          storyContract: params.storyContract,
+          storyDesign: params.storyDesign,
+        },
+        characters: params.knownCharacters,
+        locations: knownLocationsForPrompt,
+        timeline: chunkEpisodes.map(episode => ({
+          episodeNumber: episode.episodeNumber,
+          workingTitle: episode.workingTitle,
+        })),
+        lockedKeys: ["story"],
+      }),
     });
 
     try {
@@ -6254,6 +6367,10 @@ export async function generateStoryBibleDeep(
         schema: deepDraftChunkResponseSchema,
         disableProviderFallbacks: true,
         label: "Deep story draft chunk",
+        verticalDramaContext: {
+          seriesId: params.seriesId,
+          taskClass: "script_generation",
+        },
       });
 
       const firstSafety = analyzeVerticalDramaStorySafety(first.data);
@@ -6380,6 +6497,10 @@ export async function generateStoryBibleDeep(
             schema: deepDraftChunkResponseSchema,
             disableProviderFallbacks: true,
             label: "Deep story draft chunk (missing-episode retry)",
+            verticalDramaContext: {
+              seriesId: params.seriesId,
+              taskClass: "script_generation",
+            },
           });
 
           const retrySafety = analyzeVerticalDramaStorySafety(retry.data);
@@ -7872,7 +7993,7 @@ function buildPremiumRevisePrompts(params: {
     // MUST come from the "CHARACTER BIBLE" FACT block in the user message
     // below (a canonical name or one of its declared aliases), never a new
     // invented spelling.
-    'If the feedback calls for correcting a character\'s "name" (in "characters[]" or a "dialogue_lines[].speaker"), the corrected value MUST be EXACTLY one of the names/aliases declared in the "CHARACTER BIBLE" block below — never invent a new spelling or a new character.',
+    'If the feedback calls for correcting a character\'s "name" (in "characters[]", "dialogue_lines[].speaker", or "dialogue_lines[].addressed_to"), the corrected value MUST be EXACTLY one of the names/aliases declared in the "CHARACTER BIBLE" block below — never invent a new spelling or a new character.',
     'Each Sub-episode\'s "currentStructure" (when given) is its already-recorded antagonist_tactics/character_decisions/protagonist_stake/world_rules/price_paid — carry each forward UNCHANGED in your revised entry unless the feedback specifically calls for updating that one, in which case update ONLY that field.',
     buildTieInDraftSystemBlock(params.tieInDraftContext),
     renderSeriesFormatPromptBlock(params.seriesFormat),
@@ -7888,7 +8009,7 @@ function buildPremiumRevisePrompts(params: {
       ? 'If an episode\'s "currentDraft" already has a shot marked "tie_in.has_product_moment": true and the feedback does not ask you to change the product placement, KEEP that SAME shot marked (refine it — e.g. making it feel more organic — only if the feedback calls for that) — do not move the placement to a different shot or drop it.'
       : null,
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
-    `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "characters": [{"name": string, "emotion": string, "emotion_after": string}], "location_key": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "genre_evidence": {"observed_cues": string[], "world_mechanic": string, "causal_cost": string, "shot_numbers": number[]}, "format_evidence": object, "price_paid": string}], "new_locations": [{"location_key": string, "name": string, "description": string, "environment": string, "time_of_day": string, "mood": string}]}`,
+    `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "characters": [{"name": string, "emotion": string, "emotion_after": string}], "location_key": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string, "addressed_to": string (optional)}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "genre_evidence": {"observed_cues": string[], "world_mechanic": string, "causal_cost": string, "shot_numbers": number[]}, "format_evidence": object, "price_paid": string}], "new_locations": [{"location_key": string, "name": string, "description": string, "environment": string, "time_of_day": string, "mood": string}]}`,
     `"episodeBreakdown" must contain exactly ${params.episodes.length} entries — one per Sub-episode listed below, using the SAME episodeNumber/workingTitle/logline/keyBeats given — each with EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} "shotDrafts".`,
     "Every revised Sub-episode MUST retain or add at least one genuine spoken dialogue line across its shotDrafts. Individual shots may use silence_intent, but an entire Sub-episode must never be silent.",
     '"new_locations" is OPTIONAL — include it ONLY if a fix requires a location not already in "EXISTING LOCATIONS" or already declared for this episode.',
@@ -8144,6 +8265,10 @@ async function callPremiumFanoutCandidate(
     schema: deepDraftChunkResponseSchema,
     disableProviderFallbacks: true,
     label: `Premium deep draft candidate ${candidateIndex} (${VD_PREMIUM_DRAFT_LENS_LABELS[candidateIndex]})`,
+    verticalDramaContext: {
+      seriesId: ctx.seriesId,
+      taskClass: "script_generation",
+    },
   });
   return { data, usage: response.usage };
 }
@@ -8163,6 +8288,10 @@ async function callPremiumJudge(
     schema: premiumJudgeResponseSchema,
     disableProviderFallbacks: true,
     label: "Premium deep draft judge",
+    verticalDramaContext: {
+      seriesId: ctx.seriesId,
+      taskClass: "semantic_quality_review",
+    },
   });
   return { scores: data.scores as PremiumJudgeScore[], usage: response.usage };
 }
@@ -8182,6 +8311,10 @@ async function callPremiumRejudge(
     schema: premiumRejudgeResponseSchema,
     disableProviderFallbacks: true,
     label: "Premium deep draft re-judge",
+    verticalDramaContext: {
+      seriesId: ctx.seriesId,
+      taskClass: "semantic_quality_review",
+    },
   });
   return { scores: data.scores, usage: response.usage };
 }
@@ -8201,6 +8334,10 @@ async function callPremiumRevise(
     schema: premiumReviseResponseSchema,
     disableProviderFallbacks: true,
     label: params.label,
+    verticalDramaContext: {
+      seriesId: ctx.seriesId,
+      taskClass: "script_generation",
+    },
   });
   return { data, usage: response.usage };
 }
@@ -8220,6 +8357,10 @@ async function callPremiumSweep(
     schema: premiumSweepResponseSchema,
     disableProviderFallbacks: true,
     label: "Premium deep draft season continuity sweep",
+    verticalDramaContext: {
+      seriesId: ctx.seriesId,
+      taskClass: "semantic_quality_review",
+    },
   });
   return { issues: data.issues, usage: response.usage };
 }
@@ -9927,6 +10068,7 @@ export type VdManualDialogueEditLine = {
   speaker?: string;
   line: string;
   delivery?: string;
+  addressed_to?: string;
 };
 
 /** One line's speakability report for `updateEpisodeDraftDialogue` — the client already offers live cleaning before submit, so the server only REPORTS violations here; it never silently cleans a manually-authored line (see `applyManualDialogueEdit`'s doc comment). */
@@ -10113,6 +10255,9 @@ export function applyManualDialogueEdit(
         : VD_MANUAL_DIALOGUE_EDIT_UNSPECIFIED_SPEAKER,
     line: line.line,
     delivery: line.delivery,
+    ...(line.addressed_to?.trim()
+      ? { addressed_to: line.addressed_to.trim() }
+      : {}),
   }));
 
   let updatedShot: VdDeepDraftShotDraft;

@@ -475,6 +475,46 @@ function explicitlyBindsAgeCueToCharacter(
   });
 }
 
+/**
+ * Outfit words in a multi-character shot belong to the named character only
+ * when the prose binds the person to the outfit (for example
+ * "ธีร์ในชุดทำงาน"). A shot-level text blob often also mentions another
+ * character's clothes; treating every outfit cue as global makes the
+ * deterministic selector switch the whole cast to that one look.
+ */
+function explicitlyBindsOutfitCueToCharacter(
+  text: string,
+  characterName: string,
+  intent: LookIntent
+): boolean {
+  const normalizedText = normalizeLookText(text);
+  const normalizedName = normalizeLookText(characterName);
+  if (!normalizedName || intent.variantType !== "outfit") return false;
+
+  const terms = uniqueStrings([
+    intent.label,
+    intent.key,
+    ...intent.phrases,
+  ]).sort((left, right) => right.length - left.length);
+  return terms.some(term => {
+    const normalizedTerm = normalizeLookText(term);
+    if (!normalizedTerm) return false;
+    // Keep the association window deliberately short and require a clothing
+    // relation word. This prevents "พิมพ์ชนก ... ธีร์ในชุดทำงาน" from
+    // assigning ธีร์'s outfit to พิมพ์ชนก merely because both are in the
+    // same shot description.
+    const nameToLook = new RegExp(
+      `${escapeRegularExpression(normalizedName)}.{0,16}(?:ใน|สวม|ใส่|แต่งกายด้วย|wearing|wears|in).{0,8}${escapeRegularExpression(normalizedTerm)}`,
+      "i"
+    );
+    const lookToName = new RegExp(
+      `${escapeRegularExpression(normalizedTerm)}.{0,16}(?:ของ|ที่ใส่|บนตัว|by|for).{0,8}${escapeRegularExpression(normalizedName)}`,
+      "i"
+    );
+    return nameToLook.test(normalizedText) || lookToName.test(normalizedText);
+  });
+}
+
 const HISTORICAL_AGE_STAGE_CUES = [
   "ย้อนอดีต",
   "ฉากย้อนเวลา",
@@ -547,6 +587,9 @@ function findCharacterScopedIntentMatches(
   const relationalAdultReference =
     familyCount > 1 && isRelationalAdultReference(text);
   return matches.filter(intent => {
+    if (intent.variantType === "outfit" && familyCount > 1) {
+      return explicitlyBindsOutfitCueToCharacter(text, character.name, intent);
+    }
     if (!intent.ageStage) return true;
     const explicitlyBound = explicitlyBindsAgeCueToCharacter(
       text,
@@ -1060,10 +1103,6 @@ export function selectVerticalDramaCharacterLooks(params: {
         detectedIntent?.ageStage === "adult" &&
         baseEntry.authoritativeAgeBand === "adult"
       );
-      const intent =
-        incompatibleAgeStage || redundantAdultStage
-          ? undefined
-          : detectedIntent;
       const prior = priorShot.get(familyKey);
       const transition = Boolean(
         prior &&
@@ -1084,6 +1123,32 @@ export function selectVerticalDramaCharacterLooks(params: {
         historicalAgeStageOverride,
       });
       const carriedLookKey = carriedLookEntry.characterKey;
+      const carriedIntent = intentForEntry(carriedLookEntry);
+      const samePhysicalContext = Boolean(
+        prior &&
+          prior.locationKey &&
+          shot.locationKey &&
+          prior.locationKey === shot.locationKey &&
+          (!prior.sceneKey ||
+            !shot.sceneKey ||
+            prior.sceneKey === shot.sceneKey) &&
+          !transition
+      );
+      // A model can repeat a different outfit phrase in every shot even when
+      // the character is still in the same continuous place. Once a concrete
+      // outfit is established for that physical context, keep it until the
+      // scene/time changes; otherwise the raw phrase would make the look flip
+      // back and forth across adjacent shots.
+      const continuityLockedOutfit = Boolean(
+        samePhysicalContext &&
+          detectedIntent?.variantType === "outfit" &&
+          carriedIntent?.variantType === "outfit" &&
+          detectedIntent.key !== carriedIntent.key
+      );
+      const intent =
+        incompatibleAgeStage || redundantAdultStage || continuityLockedOutfit
+          ? undefined
+          : detectedIntent;
 
       if (manual) {
         nextKeys.push(rawKey);

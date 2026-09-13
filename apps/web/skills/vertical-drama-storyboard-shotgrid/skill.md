@@ -264,6 +264,16 @@ the actual physical place a shot happens in — a much rarer, more deliberate
 decision than camera/lighting variety, which defaults to staying fixed for
 the whole episode.
 
+**Physical place versus camera coverage — MANDATORY:** A wide view from a
+parking lot toward a clinic, a closer view of the clinic facade, and a detail
+view of its entrance are views of the SAME physical location when the story
+does not establish a move to another place. Keep one stable `location_key` and
+put the difference in each shot's `camera`, `visual_description`, and
+`image_prompt`. Never mint a second location key for words such as "หน้าคลินิก"
+and "ลานจอดรถหน้าคลินิก" merely because the camera distance or approach changed.
+The location visual bible/coverage flow will use the approved primary image as
+the reference for additional angles.
+
 1. **Default: ONE location for all 9 shots.** Unless the episode's own
    scene list (see "Episode scenes" in the input — the concrete
    scene-by-scene breakdown already fed to this skill, not the thin

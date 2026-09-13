@@ -344,10 +344,14 @@ fn run_powershell_script(script: &str, env_pairs: &[(&str, &str)]) -> Result<Str
 #[cfg(target_os = "windows")]
 fn resolve_powershell_binary() -> Result<String, String> {
     for name in ["pwsh.exe", "powershell.exe", "pwsh", "powershell"] {
-        if Command::new(name)
+        use std::os::windows::process::CommandExt;
+        let mut command = Command::new(name);
+        command
             .args(["-NoProfile", "-Command", "$PSVersionTable.PSVersion.Major"])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
+            .creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+        if command
             .status()
             .is_ok_and(|status| status.success())
         {

@@ -1365,6 +1365,7 @@ const th: TranslationDictionary = {
   "admin.skillsPage.nativeBundleLabels.missing": "ไม่มี",
   "admin.skillsPage.categoryLabels.imageGeneration": "สร้างภาพ",
   "admin.skillsPage.categoryLabels.imagePromptGeneration": "สร้างพรอมต์สำหรับภาพ",
+  "admin.skillsPage.categoryLabels.characterPromptGeneration": "สร้างพรอมต์ตัวละคร",
   "admin.skillsPage.categoryLabels.videoGeneration": "สร้างวิดีโอ",
   "admin.skillsPage.categoryLabels.videoPromptGeneration": "สร้างพรอมต์สำหรับวิดีโอ",
   "admin.skillsPage.categoryLabels.imageVideoGeneration": "สร้างภาพ/วิดีโอ",

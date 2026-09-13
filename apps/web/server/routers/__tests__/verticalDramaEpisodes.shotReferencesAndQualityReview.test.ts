@@ -114,6 +114,10 @@ vi.mock("../../_core/tokens", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
+  createRateLimiter: vi.fn(() => ({
+    isAllowed: vi.fn(() => true),
+    getResetTime: vi.fn(() => 0),
+  })),
   mediaGenerationLimiter: {
     isAllowed: vi.fn(() => true),
     getResetTime: vi.fn(() => 0),
@@ -543,13 +547,20 @@ vi.mock("../../services/verticalDramaVideoMotionPromptGeneration", () => ({
 // not exported by this file's `../../_core/trpc` mock above). Mock the QC
 // module directly (pass-through: returns the prompt unchanged) so that
 // unrelated import chain never loads.
-vi.mock("../../services/verticalDramaPromptQc", () => ({
-  ensurePromptWithinLimit: vi.fn(async ({ prompt }: { prompt: string }) => ({
+const { mockEnsurePromptWithinLimit } = vi.hoisted(() => ({
+  mockEnsurePromptWithinLimit: vi.fn(async ({ prompt }: { prompt: string }) => ({
     prompt,
     refined: false,
     creditsUsed: 0,
     truncated: false,
   })),
+}));
+vi.mock("../../services/verticalDramaPromptQc", () => ({
+  ensurePromptWithinLimit: mockEnsurePromptWithinLimit,
+  mergeImageNegativePromptIntoPrompt: vi.fn(
+    (prompt: string, negativePrompt?: string) =>
+      negativePrompt?.trim() ? `${prompt}\n${negativePrompt.trim()}` : prompt,
+  ),
 }));
 
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
@@ -848,7 +859,9 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
   it("demotes the previous main image into the reference strip and removes the new asset from the strip", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithFrame("900")])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])) // mediaAssets ownership lookup for the new asset
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      ) // mediaAssets ownership lookup for the new asset
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
 
@@ -891,7 +904,9 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
   it("does not demote or promote-dedup when there was no previous main image", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithFrame(undefined)])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])) // mediaAssets ownership lookup
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      ) // mediaAssets ownership lookup
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
 
@@ -920,7 +935,9 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
   it("is a no-op for demotion/promotion when the new asset is the same as the current main image", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithFrame("900")])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 900, mimeType: "image/png", status: "ready" }])) // mediaAssets ownership lookup (same asset)
+      .mockReturnValueOnce(
+        selectChain([{ id: 900, mimeType: "image/png", status: "ready" }])
+      ) // mediaAssets ownership lookup (same asset)
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
 
@@ -963,7 +980,9 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
     };
     mockDb.select
       .mockReturnValueOnce(selectChain([row])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])) // mediaAssets ownership
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      ) // mediaAssets ownership
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
     const update = updateChain([{}]);
     mockDb.update.mockReturnValueOnce(update);
@@ -987,7 +1006,9 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
   it("still completes the swap even if demoting the previous asset throws a shot-reference error (best-effort)", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithFrame("900")])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])) // mediaAssets ownership lookup
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      ) // mediaAssets ownership lookup
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
     mockShotReferencesService.linkReference.mockRejectedValue(
@@ -1038,7 +1059,9 @@ describe("recordShotAngleGridAsset — persisted alternate-angle backup stills (
       .mockReturnValueOnce(
         selectChain([episodeRowWithAngleGridFrame(undefined)])
       ) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])) // mediaAssets ownership lookup
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      ) // mediaAssets ownership lookup
       .mockReturnValueOnce(
         selectChain([{ id: 901, originalUrl: "https://cdn/901.png" }])
       ); // resolveMediaAssetUrlsByIds
@@ -1181,7 +1204,9 @@ describe("recordShotAngleGridAsset — persisted alternate-angle backup stills (
           },
         ])
       ) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])); // mediaAssets ownership lookup
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      ); // mediaAssets ownership lookup
 
     await expect(
       router.recordShotAngleGridAsset({
@@ -1199,7 +1224,9 @@ describe("recordShotAngleGridAsset — persisted alternate-angle backup stills (
   it("throws NOT_FOUND when no start-frame plan entry exists for the requested shot", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithAngleGridFrame([])])) // loadOwnedEpisode — only shot 1 exists
-      .mockReturnValueOnce(selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])); // mediaAssets ownership lookup
+      .mockReturnValueOnce(
+        selectChain([{ id: 901, mimeType: "image/png", status: "ready" }])
+      ); // mediaAssets ownership lookup
 
     await expect(
       router.recordShotAngleGridAsset({
@@ -1584,6 +1611,162 @@ describe("setShotLocation — manual per-shot location override (Phase D, planni
       })
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     expect(mockDb.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("setShotLocationVariant — reusable location camera view selection", () => {
+  it("creates the missing shot frame entry instead of rejecting an approved view selection", async () => {
+    const episodeRow = {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      storyboard: {
+        distinct_locations: [
+          {
+            location_key: "loc_store",
+            location_name: "ร้านสะดวกซื้อ",
+            shot_numbers: [1, 8],
+          },
+        ],
+      },
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "store front",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+          },
+        ],
+      },
+      motionPromptPack: null,
+    };
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])
+      );
+    mockListLocationAssets.mockResolvedValueOnce([
+      {
+        assetLinkId: 777,
+        mediaAssetId: 888,
+        url: "https://cdn.example.com/store-counter.png",
+        approved: true,
+        role: "detail_corner",
+      },
+    ]);
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotLocationVariant({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 8,
+        locationVariantId: "777",
+      },
+    });
+
+    expect(result.startFramePlan.frames.map(frame => frame.shotNumber)).toEqual(
+      [1, 8]
+    );
+    expect(result.startFramePlan.frames[1]).toMatchObject({
+      shotNumber: 8,
+      imagePrompt: "",
+      locationVariantId: "777",
+      imageStaleReason: "location_variant_changed",
+    });
+    expect(mockDb.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("changes only shots that still use the shared source view", async () => {
+    const episodeRow = {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      storyboard: {
+        distinct_locations: [
+          {
+            location_key: "loc_store",
+            location_name: "ร้านสะดวกซื้อ",
+            shot_numbers: [1, 2, 3],
+          },
+        ],
+      },
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "store front",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+          },
+          {
+            shotNumber: 2,
+            imagePrompt: "store counter",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            locationVariantId: "999",
+          },
+        ],
+      },
+      motionPromptPack: null,
+    };
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])
+      );
+    mockListLocationAssets.mockResolvedValueOnce([
+      {
+        assetLinkId: 777,
+        mediaAssetId: 888,
+        url: "https://cdn.example.com/store-counter.png",
+        approved: true,
+        role: "detail_corner",
+      },
+    ]);
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotLocationVariants({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        locationKey: "loc_store",
+        shotNumbers: [1, 2, 3],
+        fromLocationVariantId: null,
+        locationVariantId: "777",
+      },
+    });
+
+    expect(result.updatedShotNumbers).toEqual([1, 3]);
+    expect(result.skippedShotNumbers).toEqual([2]);
+    expect(result.startFramePlan.frames).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          shotNumber: 1,
+          locationVariantId: "777",
+        }),
+        expect.objectContaining({
+          shotNumber: 2,
+          locationVariantId: "999",
+        }),
+        expect.objectContaining({
+          shotNumber: 3,
+          locationVariantId: "777",
+        }),
+      ])
+    );
   });
 });
 
@@ -6145,6 +6328,7 @@ describe("repairShotImage (Phase 6.5)", () => {
 
   beforeEach(() => {
     mockDb.select.mockReset();
+    mockEnsurePromptWithinLimit.mockClear();
     mockHasEnoughCredits.mockResolvedValue(true);
     mockDeductCredits.mockResolvedValue(undefined as any);
     mockDeriveModelResolutionOptions.mockReturnValue(undefined);
@@ -6301,8 +6485,10 @@ describe("repairShotImage (Phase 6.5)", () => {
   });
 
   it("submits an image-to-image edit with the current image as the sole reference, a preservation directive, and reserves credits", async () => {
+    const repairEpisode = episodeRowWithApprovedAsset();
+    repairEpisode.startFramePlan.selectedImageModelId = "google-nano-banana-pro";
     mockDb.select
-      .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([repairEpisode])) // loadOwnedEpisode
       .mockReturnValueOnce(
         selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
       ) // resolveMediaAssetUrlsByIds
@@ -6353,6 +6539,13 @@ describe("repairShotImage (Phase 6.5)", () => {
         }),
         repairInstruction: "change the jacket to red",
         gridLayout: null,
+      })
+    );
+    expect(mockEnsurePromptWithinLimit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "image",
+        finalizeWithRefiner: false,
+        failClosed: true,
       })
     );
   });

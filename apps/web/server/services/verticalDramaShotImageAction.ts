@@ -303,6 +303,11 @@ export async function generateShotImageAction(
     maxTokens: 3000,
     schema: shotImageActionOutputSchema,
     label: `Shot image action (${params.action}, shot ${params.shot.shotNumber})`,
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      episodeId: params.episodeId,
+      taskClass: "visual_bible",
+    },
   });
 
   const usage = response.usage;

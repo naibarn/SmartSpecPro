@@ -4,7 +4,10 @@
  * Redis stores only bounded job-control state and BullMQ dispatches work.
  */
 import { createHash, randomUUID } from "crypto";
-import type { VdImagePromptModeStamp } from "@shared/verticalDramaSeries/imagePromptModelFamily";
+import type {
+  VdImagePromptModeStamp,
+  VdImagePromptSourceStamp,
+} from "@shared/verticalDramaSeries/imagePromptModelFamily";
 import { debugError } from "../_core/logger";
 import { getRedisClient } from "./redis";
 
@@ -32,6 +35,7 @@ export interface VerticalDramaShotPromptJobInput {
   attachShotImage?: boolean;
   imageUrl?: string;
   additionalImageUrls?: string[];
+  promptSource?: "shot_synopsis_direct";
   idempotencyKey?: string;
 }
 
@@ -50,6 +54,7 @@ export interface VerticalDramaShotPromptJobResult {
   creditsUsed: number;
   usedVision: boolean;
   promptMode?: VdImagePromptModeStamp;
+  promptSource?: VdImagePromptSourceStamp;
 }
 
 export interface VerticalDramaShotPromptJobPayload

@@ -71,6 +71,51 @@ export type WorkerRuntimeReleaseAsset = z.output<
   typeof workerRuntimeReleaseAssetSchema
 >;
 
+export const workerRuntimeRunnerArtifactSchema = z.object({
+  id: z.number().int().positive(),
+  fileName: z.string().min(1),
+  contentType: z.string().min(1),
+  fileSizeBytes: z.number().int().positive(),
+  fileSha256: z.string().regex(/^[a-f0-9]{64}$/i),
+  uploadedAt: z.string().datetime(),
+  uploadedByUserId: z.number().int().positive().nullable(),
+  uploadedByName: z.string().nullable(),
+  downloadUrl: z.string().min(1),
+});
+
+export type WorkerRuntimeRunnerArtifact = z.output<
+  typeof workerRuntimeRunnerArtifactSchema
+>;
+
+export const workerRuntimeRunnerArtifactCatalogSchema = z.object({
+  generatedAt: z.string().datetime(),
+  artifacts: z.array(workerRuntimeRunnerArtifactSchema),
+});
+
+export type WorkerRuntimeRunnerArtifactCatalog = z.output<
+  typeof workerRuntimeRunnerArtifactCatalogSchema
+>;
+
+export const workerRuntimeRunnerArtifactUploadSchema = z.object({
+  fileName: z.string().trim().min(1).max(255),
+  contentType: z.string().trim().min(1).max(255),
+  fileSizeBytes: z.number().int().positive(),
+});
+
+export type WorkerRuntimeRunnerArtifactUpload = z.output<
+  typeof workerRuntimeRunnerArtifactUploadSchema
+>;
+
+export const workerRuntimeRunnerArtifactFinalizeSchema =
+  workerRuntimeRunnerArtifactUploadSchema.extend({
+    storageKey: z.string().min(1),
+    fileSha256: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
+  });
+
+export type WorkerRuntimeRunnerArtifactFinalize = z.output<
+  typeof workerRuntimeRunnerArtifactFinalizeSchema
+>;
+
 export const workerRuntimeReleaseCatalogSchema = z.object({
   generatedAt: z.string().datetime(),
   releases: z.array(workerRuntimeReleaseAssetSchema),

@@ -414,6 +414,22 @@ async function listHyperframesRenderHistoryTasks(input: {
   return rows.map(hyperframesJobToMediaTask).filter((task): task is MediaTask => Boolean(task));
 }
 
+async function readOptionalMediaHistorySource<T>(
+  source: string,
+  read: () => Promise<T>,
+  fallback: T,
+): Promise<T> {
+  try {
+    return await read();
+  } catch (error) {
+    console.warn("[MediaHistory] optional source unavailable", {
+      source,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return fallback;
+  }
+}
+
 function getGeminiOmniIds(extraParams: Record<string, any> | undefined, key: "character_ids" | "audio_ids"): string[] {
   const value = extraParams?.[key];
   if (!Array.isArray(value)) return [];
@@ -1081,6 +1097,8 @@ function toMediaModelResponse(model: {
   supportsSizes?: string[];
   supportsDurations?: number[];
   supportsVoices?: string[];
+  thinkingModeDefault?: string;
+  thinkingModes?: string[];
   configJson?: Record<string, unknown>;
 }) {
   return {
@@ -1095,6 +1113,8 @@ function toMediaModelResponse(model: {
     supportsSizes: model.supportsSizes,
     supportsDurations: model.supportsDurations,
     supportsVoices: model.supportsVoices,
+    thinkingModeDefault: model.thinkingModeDefault ?? "none",
+    thinkingModes: model.thinkingModes ?? ["none"],
     configJson: model.configJson,
   };
 }
@@ -2384,6 +2404,8 @@ export const mediaRouter = router({
             supportsAspectRatios: mediaModels.aspectRatios,
             supportsSizes: mediaModels.sizes,
             supportsDurations: mediaModels.durations,
+            thinkingModeDefault: mediaModels.thinkingModeDefault,
+            thinkingModes: mediaModels.thinkingModes,
             configJson: mediaModels.configJson,
           })
           .from(mediaModels)
@@ -2442,6 +2464,8 @@ export const mediaRouter = router({
         supportsSizes: model.sizes,
         supportsDurations: model.durations,
         supportsVoices: model.voices,
+        thinkingModeDefault: model.thinkingModeDefault,
+        thinkingModes: model.thinkingModes,
         configJson: model.configJson,
       }));
       return {
@@ -2473,6 +2497,8 @@ export const mediaRouter = router({
               supportsSizes: mediaModels.sizes,
               supportsDurations: mediaModels.durations,
               supportsVoices: mediaModels.voices,
+              thinkingModeDefault: mediaModels.thinkingModeDefault,
+              thinkingModes: mediaModels.thinkingModes,
             })
             .from(mediaModels)
             .where(and(eq(mediaModels.modelId, input.modelId), eq(mediaModels.isEnabled, true)))
@@ -4362,15 +4388,23 @@ export const mediaRouter = router({
             offset: input?.seriesId ? undefined : input?.offset,
             daysAgo: input?.daysAgo,
           }),
-          listDeferredMediaTasks(ctx.user.id, fetchLimit, tenantId ?? undefined),
-          listHyperframesRenderHistoryTasks({
-            userId: ctx.user.id,
-            tenantId,
-            mediaType: input?.mediaType as MediaType | undefined,
-            status: input?.status as TaskStatus | undefined,
-            limit: fetchLimit,
-            daysAgo: input?.daysAgo,
-          }),
+          readOptionalMediaHistorySource(
+            "deferred",
+            () => listDeferredMediaTasks(ctx.user.id, fetchLimit, tenantId ?? undefined),
+            [],
+          ),
+          readOptionalMediaHistorySource(
+            "hyperframes",
+            () => listHyperframesRenderHistoryTasks({
+              userId: ctx.user.id,
+              tenantId,
+              mediaType: input?.mediaType as MediaType | undefined,
+              status: input?.status as TaskStatus | undefined,
+              limit: fetchLimit,
+              daysAgo: input?.daysAgo,
+            }),
+            [],
+          ),
         ]);
         const filteredDeferredTasks = deferredTasks.filter((task) => {
           if (input?.mediaType && task.mediaType !== input.mediaType) return false;
@@ -4419,21 +4453,29 @@ export const mediaRouter = router({
         );
         const nonDuplicateHyperframesTasks = hyperframesTasks.filter(task => !providerTaskIds.has(task.id));
         const [mcpTasks, hermesTasks] = await Promise.all([
-          listMcpMediaTasks({
-            userId: ctx.user.id,
-            tenantId: tenantId ?? undefined,
-            mediaType: input?.mediaType as MediaType | undefined,
-            status: input?.status,
-            limit: fetchLimit,
-          }),
-          listHermesMediaTasks({
-            userId: ctx.user.id,
-            tenantId: tenantId ?? undefined,
-            mediaType: input?.mediaType as MediaType | undefined,
-            status: input?.status,
-            limit: fetchLimit,
-            daysAgo: input?.daysAgo,
-          }),
+          readOptionalMediaHistorySource(
+            "mcp",
+            () => listMcpMediaTasks({
+              userId: ctx.user.id,
+              tenantId: tenantId ?? undefined,
+              mediaType: input?.mediaType as MediaType | undefined,
+              status: input?.status,
+              limit: fetchLimit,
+            }),
+            [],
+          ),
+          readOptionalMediaHistorySource(
+            "hermes",
+            () => listHermesMediaTasks({
+              userId: ctx.user.id,
+              tenantId: tenantId ?? undefined,
+              mediaType: input?.mediaType as MediaType | undefined,
+              status: input?.status,
+              limit: fetchLimit,
+              daysAgo: input?.daysAgo,
+            }),
+            [],
+          ),
         ]);
         const allMergedTasks = [...hermesTasks, ...mcpTasks, ...activeDeferredTasks, ...nonDuplicateHyperframesTasks, ...providerTasks]
           .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));

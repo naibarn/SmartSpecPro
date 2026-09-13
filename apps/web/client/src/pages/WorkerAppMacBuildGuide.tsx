@@ -87,6 +87,14 @@ export default function WorkerAppMacBuildGuide() {
             Back to documentation
           </Link>
           <a
+            href="/api/desktop-releases/worker-app/download?platform=macos&architecture=arm64"
+            className="inline-flex items-center gap-2 text-sm font-medium text-emerald-700 hover:underline"
+            download
+          >
+            <ExternalLink className="h-4 w-4" />
+            Download native Mac DMG
+          </a>
+          <a
             href="/api/desktop-releases/worker-app/macos-source/download"
             className="inline-flex items-center gap-2 text-sm font-medium text-sky-700 hover:underline"
             download
@@ -109,6 +117,13 @@ export default function WorkerAppMacBuildGuide() {
             Tauri app and DMG, signing, notarization, publication, and clean-machine
             verification. The final native build must run on macOS arm64 or a trusted
             macOS CI runner.
+          </p>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
+            For normal installation, download the published native DMG from the
+            Dashboard or the link above. The source ZIP below is only for developers
+            who need to build or inspect the Mac release. The Dashboard continues to
+            show releases for every operating system, and the in-app updater selects
+            only the matching macOS arm64 installer.
           </p>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             {proofCards.map(({ Icon, label, value }) => (
@@ -227,10 +242,16 @@ runtime-pack/bin/ffmpeg -version`}</CodeBlock>
           </Section>
 
           <Section id="tauri" title="7. Build the native Tauri app and DMG">
-            <CodeBlock>{`npm --workspace apps/worker-app run tauri:build -- \\
+            <CodeBlock>{`npm --workspace apps/worker-app run release:mac -- \\
+  --release-version VERSION
+
+# underlying Tauri command
+npm --workspace apps/worker-app run tauri:build -- \\
   --target aarch64-apple-darwin \\
   --bundles app,dmg`}</CodeBlock>
             <p>
+              The repository packager creates the canonical
+              <code>smart-ai-hub-worker-app-&lt;version&gt;-arm64-setup.dmg</code>.
               Expected artifacts are an arm64 <code>.app</code> and <code>.dmg</code>
               under <code>apps/worker-app/src-tauri/target/aarch64-apple-darwin/release/bundle/</code>.
               Inspect the final app and confirm it contains no Windows/WSL2 files.
@@ -268,7 +289,7 @@ xcrun stapler validate "Smart AI Hub Worker.dmg"`}</CodeBlock>
               <li>Run a small Remotion render and inspect the output.</li>
               <li>Confirm Hermes remains independently healthy.</li>
               <li>Confirm no Managed WSL/WSL2 control is shown on macOS.</li>
-              <li>Confirm a Windows/WSL2 archive is rejected rather than installed.</li>
+              <li>Confirm an in-app update opens the matching macOS DMG endpoint; Windows and WSL2 targets are rejected by the native boundary.</li>
               <li>Compare the downloaded archive SHA-256 with the server manifest.</li>
             </ol>
           </Section>

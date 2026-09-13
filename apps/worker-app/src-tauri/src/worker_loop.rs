@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
@@ -47,10 +47,11 @@ use crate::hermes_runtime::{
 use crate::local_llm_registry::{load_registry, LocalLlmRegistry};
 use crate::media_pipeline::{
     analyze_media_file, audio_has_detectable_activity, build_media_plan, collect_media_manifest,
+    execute_editor_media_operation,
     probe_media_file, qc_derived_output_with_probe, run_allowlisted_ffmpeg,
-    run_allowlisted_ffmpeg_segments, run_episode_score_export, run_episode_score_mix,
+    run_allowlisted_ffmpeg_segments, run_editor_nle_render, run_episode_score_export, run_episode_score_mix,
     write_checkpoint_atomic, LocalMediaAnalysis, LocalMediaProbe, LocalMediaQc, MediaCheckpoint,
-    MediaFocusKeyframe, MediaPlanOptions, MediaToolchain,
+    CameraMotionPlan, MediaFocusKeyframe, MediaPlanOptions, MediaToolchain,
 };
 use crate::runtime_manifest::{
     doctor_from_manifest_path, read_runtime_pack_manifest, runtime_pack_paths,
@@ -60,10 +61,11 @@ use crate::runtime_manifest::{
 use crate::series_workspace::{load_root_state, load_root_state_for_series, validate_local_root, STANDALONE_WORKSPACE_ID};
 use crate::settings::WorkerAppSettings;
 use crate::speaker_aware_adapters::{self, SPEAKER_AWARE_CAPABILITY};
+use crate::tts_provider;
 use crate::worker_control_plane::{
     build_worker_heartbeat_payload, claim_worker_job, download_worker_bytes, download_worker_file,
     get_worker_json, post_worker_json_with_idempotency, publish_vertical_drama_media,
-    report_worker_job_event, send_worker_heartbeat, upload_worker_artifact_file,
+    refresh_reference_urls, report_worker_job_event, send_worker_heartbeat, upload_worker_artifact_file,
     WorkerClaimRequest, WorkerClaimResponse, WorkerJobEventPayload, WorkerLoopConnection,
 };
 use crate::worker_executor::{
@@ -92,7 +94,21 @@ use crate::worker_executor::{
     VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE, VERTICAL_DRAMA_SHOT_VIDEO_GENERATION_JOB_TYPE,
     VERTICAL_DRAMA_SPEAKER_AWARE_EDIT_PLAN_JOB_TYPE,
     VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE,
+    UNIFIED_AUDIO_ALIGN_JOB_TYPE, UNIFIED_AUDIO_CAPABILITY, UNIFIED_AUDIO_TRAINING_JOB_TYPE,
+    UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE, UNIFIED_AUDIO_TTS_JOB_TYPE,
+    EDITOR_MEDIA_CLAIM_CAPABILITY,
+    EDITOR_VIDEO_RENDER_JOB_TYPE, EDITOR_MEDIA_CAPABILITY_FAMILY,
+    EDITOR_MEDIA_OPERATION_CAPABILITIES,
 };
+
+#[cfg(target_os = "windows")]
+fn hide_console_window(command: &mut Command) {
+    use std::os::windows::process::CommandExt;
+    command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+}
+
+#[cfg(not(target_os = "windows"))]
+fn hide_console_window(_command: &mut Command) {}
 
 /// Feature 135 §11 — hermes has its own single-job slot, independent of the
 /// render (HyperFrames) slot(s) governed by `max_concurrent_jobs`. Default 1
@@ -288,6 +304,45 @@ pub fn build_worker_claim_capability_hints_with_media_mcp_audio_and_speaker(
     hints
 }
 
+/// Adds the Web Media Workspace claim token while preserving the existing
+/// local-footage capability builder for older callers and tests.
+pub fn build_worker_claim_capability_hints_with_editor_media(
+    render_ready: bool,
+    remotion_contract_ready: bool,
+    hermes_media_advertised: bool,
+    media_ready: bool,
+    mcp_ready: bool,
+    audio_runtime_ready: bool,
+    speaker_aware_runtime_ready: bool,
+    editor_media_ready: bool,
+) -> Vec<String> {
+    let mut hints = build_worker_claim_capability_hints_with_media_mcp_audio_and_speaker(
+        render_ready,
+        remotion_contract_ready,
+        hermes_media_advertised,
+        media_ready,
+        mcp_ready,
+        audio_runtime_ready,
+        speaker_aware_runtime_ready,
+    );
+    if editor_media_ready {
+        hints.extend([
+            EDITOR_MEDIA_CAPABILITY_FAMILY,
+            EDITOR_MEDIA_CLAIM_CAPABILITY,
+            EDITOR_VIDEO_RENDER_JOB_TYPE,
+        ].into_iter().map(str::to_string));
+        // Advertise operation-level tokens only for executors that are
+        // compiled into this Worker.  Advanced AI/ASR/vision operations are
+        // deliberately absent until their adapter health probe is wired.
+        hints.extend(
+            EDITOR_MEDIA_OPERATION_CAPABILITIES
+                .iter()
+                .map(|(_, capability)| (*capability).to_string()),
+        );
+    }
+    hints
+}
+
 fn local_media_runtime_ready(app_data_dir: &Path, settings: &WorkerAppSettings) -> bool {
     let Ok(Some(root)) = load_root_state(app_data_dir) else {
         return false;
@@ -295,6 +350,12 @@ fn local_media_runtime_ready(app_data_dir: &Path, settings: &WorkerAppSettings) 
     if validate_local_root(&root.root_path).is_err() {
         return false;
     }
+    MediaToolchain::from_settings(settings, app_data_dir).is_ready()
+}
+
+/// Web editor jobs stage tenant-owned managed media into an isolated worker
+/// workspace, so they do not require the legacy local footage root binding.
+fn editor_media_runtime_ready(app_data_dir: &Path, settings: &WorkerAppSettings) -> bool {
     MediaToolchain::from_settings(settings, app_data_dir).is_ready()
 }
 
@@ -1316,12 +1377,15 @@ async fn worker_loop_tick(
     } else {
         local_media_runtime_ready(app_data_dir, &settings_snapshot)
     };
+    let editor_media_ready = !render_active_now
+        && editor_media_runtime_ready(app_data_dir, &settings_snapshot);
     let audio_status = if render_active_now {
         None
     } else {
         Some(probe_audio_runtime_status().await)
     };
     let audio_runtime_ready = audio_status.as_ref().is_some_and(|status| status.ready);
+    let tts_runtime_ready = !render_active_now && tts_provider::local_unified_audio_ready(app_data_dir);
     let speaker_aware_runtime_ready = !render_active_now
         && speaker_aware_adapters::probe_configured_runner().is_ok();
     let active_profile_id = active_comfy_profile(app_data_dir, &settings_snapshot, None)
@@ -1409,8 +1473,10 @@ async fn worker_loop_tick(
         || hermes_ready
         || comfy_ready
         || media_ready
+        || editor_media_ready
         || mcp_ready
         || audio_runtime_ready
+        || tts_runtime_ready
         || speaker_aware_runtime_ready;
     let accepts_jobs = settings_snapshot.accept_jobs && any_runtime_ready;
     let connection_snapshot = clone_connection(connection)?;
@@ -1426,9 +1492,10 @@ async fn worker_loop_tick(
         render_active_now,
         hermes_active_now,
         (!render_active_now).then_some(&heartbeat_comfy_readiness),
-        (!render_active_now).then_some(media_ready),
+        (!render_active_now).then_some(media_ready || editor_media_ready),
         (!render_active_now).then_some(mcp_ready),
         audio_status.as_ref(),
+        (!render_active_now).then_some(tts_runtime_ready),
     )
     .await?;
 
@@ -1460,9 +1527,13 @@ async fn worker_loop_tick(
         comfy_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
     let can_claim_media =
         media_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_editor_media = editor_media_ready
+        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
     let can_claim_mcp =
         mcp_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
     let can_claim_audio = (media_ready || audio_runtime_ready)
+        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_unified_audio = tts_runtime_ready
         && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
     let can_claim_speaker_aware = speaker_aware_runtime_ready
         && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
@@ -1471,8 +1542,10 @@ async fn worker_loop_tick(
         && !can_claim_hermes
         && !can_claim_comfy
         && !can_claim_media
+        && !can_claim_editor_media
         && !can_claim_mcp
         && !can_claim_audio
+        && !can_claim_unified_audio
         && !can_claim_speaker_aware
     {
         set_executor_polling(
@@ -1492,7 +1565,7 @@ async fn worker_loop_tick(
         WorkerClaimRequest {
             max_jobs,
             capability_hints: {
-                let mut hints = build_worker_claim_capability_hints_with_media_mcp_audio_and_speaker(
+                let mut hints = build_worker_claim_capability_hints_with_editor_media(
                     can_claim_render,
                     remotion_render_video_contract_ready(&doctor),
                     can_claim_hermes,
@@ -1500,7 +1573,11 @@ async fn worker_loop_tick(
                     can_claim_mcp,
                     audio_runtime_ready && can_claim_audio,
                     can_claim_speaker_aware,
+                    can_claim_editor_media,
                 );
+                if can_claim_unified_audio {
+                    hints.extend(tts_provider::capability_hints());
+                }
                 if can_claim_comfy {
                     hints.extend(
                         COMFY_CAPABILITY_FAMILIES
@@ -1564,7 +1641,7 @@ async fn worker_loop_tick(
             "jobId": job.id,
             "jobType": job.job_type,
             "assignmentAttempt": job.assignment_attempt,
-            "renderLane": matches!(classify_job_type(&job.job_type), WorkerJobKind::Hyperframes | WorkerJobKind::RemotionRenderVideo | WorkerJobKind::VerticalDramaFootageRender),
+            "renderLane": matches!(classify_job_type(&job.job_type), WorkerJobKind::Hyperframes | WorkerJobKind::RemotionRenderVideo | WorkerJobKind::VerticalDramaFootageRender | WorkerJobKind::EditorMedia),
         }),
     );
 
@@ -1805,6 +1882,26 @@ async fn worker_loop_tick(
             });
             Ok(())
         }
+        WorkerJobKind::UnifiedAudio => {
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let job_owned = job.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_unified_audio_job(&executor, &app_data_dir_owned, &connection, job_owned.clone(), &cancel).await;
+                if let Err(error) = &result {
+                    let failure = build_failure_event(&job_owned, FAILURE_EVENT_SEQUENCE_NUMBER, unified_audio_failure_code(error), error);
+                    let _ = send_event_with_refresh(&app_data_dir_owned, &connection, &job_owned.id, failure).await;
+                }
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
         WorkerJobKind::HermesMediaImage | WorkerJobKind::HermesMediaVideo => {
             hermes_active.store(true, Ordering::Relaxed);
             let executor = executor.clone();
@@ -1853,6 +1950,31 @@ async fn worker_loop_tick(
             });
             Ok(())
         }
+        WorkerJobKind::EditorMedia => {
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let resource_dir_owned = resource_dir.to_path_buf();
+            let connection = connection.clone();
+            let settings_owned = settings_snapshot.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_editor_media_job(
+                    &executor,
+                    &app_data_dir_owned,
+                    &resource_dir_owned,
+                    &connection,
+                    job,
+                    &settings_owned,
+                    &cancel,
+                ).await;
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
         WorkerJobKind::LocalLlmInvoke => {
             let result = execute_local_llm_job(app_data_dir, &job, cancel).await;
             match result {
@@ -1890,6 +2012,238 @@ async fn worker_loop_tick(
             ))
         }
     }
+}
+
+fn is_native_editor_media_operation(operation: &str) -> bool {
+    EDITOR_MEDIA_OPERATION_CAPABILITIES
+        .iter()
+        .any(|(candidate, _)| *candidate == operation)
+}
+
+fn editor_asset_ids(input: &Value) -> Vec<String> {
+    let mut ids = HashSet::new();
+    let Some(inputs) = input.get("inputs").and_then(Value::as_object) else { return Vec::new() };
+    if let Some(assets) = inputs.get("assets").and_then(Value::as_array) {
+        for asset in assets {
+            let Some(asset) = asset.as_object() else { continue };
+            if asset.get("namespace").and_then(Value::as_str) != Some("media_asset") { continue; }
+            if let Some(value) = asset.get("id") {
+                let id = value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string());
+                if !id.is_empty() { ids.insert(id); }
+            }
+        }
+    }
+    if let Some(project) = inputs.get("project").and_then(Value::as_object) {
+        if let Some(tracks) = project.get("tracks").and_then(Value::as_array) {
+            for track in tracks {
+                let Some(clips) = track.get("clips").and_then(Value::as_array) else { continue };
+                for clip in clips {
+                    let Some(asset) = clip.get("asset").and_then(Value::as_object) else { continue };
+                    if asset.get("namespace").and_then(Value::as_str) != Some("media_asset") { continue; }
+                    if let Some(value) = asset.get("id") {
+                        let id = value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string());
+                        if !id.is_empty() { ids.insert(id); }
+                    }
+                }
+            }
+        }
+    }
+    let mut result = ids.into_iter().collect::<Vec<_>>();
+    result.sort();
+    result
+}
+
+fn editor_asset_extension(input: &Value, asset_id: &str) -> &'static str {
+    input
+        .get("inputs")
+        .and_then(Value::as_object)
+        .and_then(|inputs| inputs.get("assetKinds"))
+        .and_then(Value::as_object)
+        .and_then(|kinds| kinds.get(asset_id))
+        .and_then(Value::as_str)
+        .map(|kind| match kind {
+            "image" => "png",
+            "audio" => "audio",
+            _ => "mp4",
+        })
+        .unwrap_or("mp4")
+}
+
+async fn execute_editor_media_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    app_data_dir: &Path,
+    resource_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    let result = async {
+        if cancel.load(Ordering::Relaxed) { return Err("editor_job_canceled".to_string()); }
+        let operation = job
+            .input_json
+            .get("operation")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "editor_operation_missing".to_string())?
+            .to_string();
+        let project = job
+            .input_json
+            .get("inputs")
+            .and_then(Value::as_object)
+            .and_then(|inputs| inputs.get("project"))
+            .cloned();
+        let workspace_root = workspace_root(settings, resource_dir, app_data_dir)?
+            .join("editor-media")
+            .join(sanitize_segment(&job.id));
+        let assets_dir = workspace_root.join("assets");
+        fs::create_dir_all(&assets_dir).map_err(|_| "editor_workspace_failed".to_string())?;
+        send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+            event_type: "job.running".into(),
+            sequence_number: 1,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "validate_contract", "percent": 5 }),
+        }).await?;
+
+        let mut reference_urls = job.reference_urls.clone();
+        let asset_ids = editor_asset_ids(&job.input_json);
+        if reference_urls.len() < asset_ids.len() {
+            let connection_snapshot = clone_connection(connection)?;
+            if let Ok(refreshed) = refresh_reference_urls(&connection_snapshot, &job.id, &job.lease_owner_token).await {
+                reference_urls = refreshed.reference_urls;
+            }
+        }
+        let mut staged_paths = HashMap::new();
+        for (index, asset_id) in asset_ids.iter().enumerate() {
+            if cancel.load(Ordering::Relaxed) { return Err("editor_job_canceled".to_string()); }
+            let reference = reference_urls
+                .iter()
+                .find(|entry| entry.asset_id == *asset_id)
+                .ok_or_else(|| format!("editor_reference_url_missing:{asset_id}"))?;
+            let url = reqwest::Url::parse(&reference.url).map_err(|_| "editor_reference_url_invalid".to_string())?;
+            if url.scheme() != "https" && !(url.scheme() == "http" && matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "::1"))) {
+                return Err("editor_reference_url_invalid".into());
+            }
+            let path = assets_dir.join(format!("asset-{asset_id}.{}", editor_asset_extension(&job.input_json, asset_id)));
+            download_source_asset(&url, &path).await?;
+            staged_paths.insert(asset_id.clone(), path);
+            send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+                event_type: "job.progress".into(),
+                sequence_number: (index as u32) + 2,
+                lease_owner_token: job.lease_owner_token.clone(),
+                assignment_attempt: job.assignment_attempt.clone(),
+                payload_json: json!({ "stage": "stage_inputs", "percent": 10 + ((index + 1) * 30 / asset_ids.len().max(1)) }),
+            }).await?;
+        }
+
+        let tools = MediaToolchain::from_settings(settings, app_data_dir);
+        let render_sequence = asset_ids.len() as u32 + 2;
+        send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: render_sequence,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "execute", "percent": 55 }),
+        }).await?;
+        if operation != "video.render" {
+            if !is_native_editor_media_operation(&operation) {
+                // A queued advanced operation must fail with the explicit
+                // adapter gate even when its contract intentionally has no
+                // source asset (for example AI music).  This keeps the
+                // terminal reason actionable and prevents a misleading
+                // `editor_source_asset_missing` result.
+                return Err("editor_operation_adapter_unavailable".into());
+            }
+            let source_id = asset_ids
+                .first()
+                .ok_or_else(|| "editor_source_asset_missing".to_string())?;
+            let source = staged_paths
+                .get(source_id)
+                .ok_or_else(|| "editor_source_asset_not_staged".to_string())?;
+            let operation_output = execute_editor_media_operation(
+                &operation,
+                source,
+                &workspace_root.join("output"),
+                job.input_json.get("options").unwrap_or(&Value::Null),
+                &tools,
+            )?;
+            send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+                event_type: "job.progress".into(),
+                sequence_number: render_sequence + 1,
+                lease_owner_token: job.lease_owner_token.clone(),
+                assignment_attempt: job.assignment_attempt.clone(),
+                payload_json: json!({ "stage": "verify_outputs", "percent": 80, "metadata": operation_output.metadata.clone() }),
+            }).await?;
+            let uploaded = upload_worker_artifact_file_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                &operation_output.artifact_type,
+                &operation_output.output_path,
+                &operation_output.file_name,
+                &operation_output.content_type,
+                &job.lease_owner_token,
+                &job.assignment_attempt,
+                json!({ "operation": operation, "metadata": operation_output.metadata.clone(), "projectId": job.input_json.get("projectId"), "revisionId": job.input_json.get("revisionId") }),
+            ).await?;
+            send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+                event_type: "job.completed".into(),
+                sequence_number: render_sequence + 2,
+                lease_owner_token: job.lease_owner_token.clone(),
+                assignment_attempt: job.assignment_attempt.clone(),
+                payload_json: json!({ "status": "completed", "stage": "publish_artifacts", "artifacts": [uploaded.artifact], "operation": operation, "metadata": operation_output.metadata }),
+            }).await?;
+            return Ok(());
+        }
+        let project = project.ok_or_else(|| "editor_project_missing".to_string())?;
+        let output = workspace_root.join("render.mp4");
+        let qc = run_editor_nle_render(&project, &staged_paths, &output, &tools)?;
+        if cancel.load(Ordering::Relaxed) {
+            let _ = fs::remove_file(&output);
+            return Err("editor_job_canceled".to_string());
+        }
+        send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+            event_type: "job.progress".into(),
+            sequence_number: render_sequence + 1,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "verify_outputs", "percent": 80, "qc": qc.clone() }),
+        }).await?;
+        let uploaded = upload_worker_artifact_file_with_refresh(
+            app_data_dir,
+            connection,
+            &job.id,
+            EDITOR_VIDEO_RENDER_JOB_TYPE,
+            &output,
+            "render.mp4",
+            "video/mp4",
+            &job.lease_owner_token,
+            &job.assignment_attempt,
+            json!({ "operation": operation, "qc": qc.clone(), "projectId": job.input_json.get("projectId"), "revisionId": job.input_json.get("revisionId") }),
+        ).await?;
+        send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+            event_type: "job.completed".into(),
+            sequence_number: render_sequence + 2,
+            lease_owner_token: job.lease_owner_token.clone(),
+            assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "status": "completed", "stage": "publish_artifacts", "artifacts": [uploaded.artifact], "qc": qc }),
+        }).await?;
+        Ok(())
+    }.await;
+    match &result {
+        Ok(()) => {
+            set_executor_last_job(executor, &job, "success", "Web editor media job completed.", None);
+            set_executor_job_complete(executor, &job.id, "Web editor media job completed.");
+        }
+        Err(error) => {
+            let failure = build_failure_event(&job, FAILURE_EVENT_SEQUENCE_NUMBER, "editor_media_failed", error);
+            let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
+            set_executor_last_job(executor, &job, "error", error, None);
+            set_executor_job_error(executor, &job.id, error.clone());
+        }
+    }
+    result
 }
 
 /// A spawned job's error can no longer propagate back through the tick's
@@ -2026,6 +2380,7 @@ fn build_heartbeat_runtime_metadata(
     media_ready: Option<bool>,
     mcp_ready: Option<bool>,
     audio_status: Option<&AudioRuntimeStatus>,
+    tts_runtime_ready: Option<bool>,
 ) -> Value {
     let runtime_version = doctor
         .checks
@@ -2133,6 +2488,15 @@ fn build_heartbeat_runtime_metadata(
             "reason": if media_ready || mcp_ready { "media_adapter_ready" } else { "local_root_ffmpeg_or_mcp_not_ready" },
         });
     }
+    if let Some(tts_ready) = tts_runtime_ready {
+        runtime_metadata["unifiedAudio"] = json!({
+            "capability": tts_provider::UNIFIED_AUDIO_CAPABILITY,
+            "ready": tts_ready,
+            "providers": tts_provider::LOCAL_PROVIDER_MANIFESTS.iter().filter(|manifest| manifest.enabled && tts_provider::local_tts_provider_ready(manifest.provider_id)).map(|manifest| manifest.provider_id).collect::<Vec<_>>(),
+            "trainingProviders": tts_provider::LOCAL_PROVIDER_MANIFESTS.iter().filter(|manifest| manifest.enabled && tts_provider::local_training_provider_ready(manifest.provider_id)).map(|manifest| manifest.provider_id).collect::<Vec<_>>(),
+            "reason": if tts_ready { "provider_runner_ready" } else { "provider_runner_not_ready" },
+        });
+    }
     let speaker_ready = speaker_aware_adapters::probe_configured_runner().is_ok();
     runtime_metadata["speakerAware"] = json!({
         "capability": SPEAKER_AWARE_CAPABILITY,
@@ -2157,6 +2521,7 @@ async fn heartbeat(
     media_ready: Option<bool>,
     mcp_ready: Option<bool>,
     audio_status: Option<&AudioRuntimeStatus>,
+    tts_runtime_ready: Option<bool>,
 ) -> Result<(), String> {
     let current_job_count =
         active_worker_job_count(has_active_job(executor)?, render_active, hermes_active);
@@ -2188,6 +2553,7 @@ async fn heartbeat(
             media_ready,
             mcp_ready,
             audio_status,
+            tts_runtime_ready,
         ),
     );
     let response = send_worker_heartbeat(connection, &payload).await?;
@@ -2757,16 +3123,8 @@ fn transcript_text_and_tokens(value: &Value) -> (String, Vec<Value>) {
             .and_then(Value::as_str)
             .unwrap_or_default()
             .trim();
-        let start = item.get("startMs").and_then(Value::as_u64).or_else(|| {
-            item.get("start")
-                .and_then(Value::as_f64)
-                .map(|v| (v * 1000.0) as u64)
-        });
-        let end = item.get("endMs").and_then(Value::as_u64).or_else(|| {
-            item.get("end")
-                .and_then(Value::as_f64)
-                .map(|v| (v * 1000.0) as u64)
-        });
+        let start = item.get("startMs").and_then(Value::as_u64).or_else(|| transcript_timestamp_ms(item.get("start")));
+        let end = item.get("endMs").and_then(Value::as_u64).or_else(|| transcript_timestamp_ms(item.get("end")));
         if !token_text.is_empty() && start.is_some() && end.is_some() && end > start {
             tokens.push(json!({ "text": token_text.chars().take(500).collect::<String>(), "startMs": start.unwrap(), "endMs": end.unwrap(), "confidence": item.get("confidence").or_else(|| item.get("probability")).and_then(Value::as_f64) }));
         }
@@ -2806,7 +3164,19 @@ pub(crate) fn runtime_relative_path(runtime_root: &Path, relative: &str) -> Opti
     {
         return None;
     }
-    Some(runtime_root.join(relative_path))
+    let candidate = runtime_root.join(relative_path);
+    // A signed manifest may still point at a replaced local file. Resolve an
+    // existing candidate and reject symlinks that escape the runtime pack;
+    // keep the lexical path for missing fixtures so readiness can report a
+    // normal unavailable state instead of turning it into a path error.
+    if candidate.exists() {
+        let root = runtime_root.canonicalize().ok()?;
+        let resolved = candidate.canonicalize().ok()?;
+        if !resolved.starts_with(root) {
+            return None;
+        }
+    }
+    Some(candidate)
 }
 
 fn transcription_output_dir(app_data_dir: &Path, source_path: &Path) -> PathBuf {
@@ -2827,7 +3197,7 @@ fn transcription_output_dir(app_data_dir: &Path, source_path: &Path) -> PathBuf 
         .join(&id[..24])
 }
 
-fn windows_path_to_wsl(path: &Path) -> String {
+pub(crate) fn windows_path_to_wsl(path: &Path) -> String {
     let mut value = path.to_string_lossy().replace('\\', "/");
     if value.starts_with("//?/") {
         value = value[4..].to_string();
@@ -2838,6 +3208,51 @@ fn windows_path_to_wsl(path: &Path) -> String {
     } else {
         value
     }
+}
+
+fn transcript_timestamp_ms(value: Option<&Value>) -> Option<u64> {
+    let seconds = value?.as_f64()?;
+    if !seconds.is_finite() || seconds < 0.0 {
+        return None;
+    }
+    let millis = seconds * 1000.0;
+    if millis > 86_400_000.0 {
+        return None;
+    }
+    Some(millis as u64)
+}
+
+fn transcript_confidence(value: Option<&Value>) -> Value {
+    let Some(number) = value.and_then(Value::as_f64) else {
+        return Value::Null;
+    };
+    if number.is_finite() && (0.0..=1.0).contains(&number) {
+        json!(number)
+    } else {
+        Value::Null
+    }
+}
+
+fn mark_transcript_word_timing_unavailable(word: &mut Value) {
+    if let Some(object) = word.as_object_mut() {
+        object.insert("startMs".into(), Value::Null);
+        object.insert("endMs".into(), Value::Null);
+        object.insert("timingOrigin".into(), Value::String("unavailable".into()));
+    }
+}
+
+fn transcript_identifier(value: &str) -> Option<String> {
+    let normalized = value.trim();
+    if normalized.is_empty() || normalized.len() > 160 {
+        return None;
+    }
+    if !normalized
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '.' | '_' | ':' | '-'))
+    {
+        return None;
+    }
+    Some(normalized.to_string())
 }
 
 fn shell_single_quote(value: &str) -> String {
@@ -2870,54 +3285,97 @@ pub(crate) fn normalize_hyperframes_transcript_output(
     } else {
         output.clone()
     };
-    let raw_items = words
-        .as_array()
+    let source = words
+        .get("transcript")
+        .filter(|value| value.is_object())
         .cloned()
-        .or_else(|| {
-            words
-                .get("transcription")
-                .and_then(Value::as_array)
-                .cloned()
-        })
-        .ok_or_else(|| "transcription_failed".to_string())?;
-    let words_array = raw_items
+        .unwrap_or_else(|| words.clone());
+    let source_segments = source
+        .get("segments")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    // Keep the source-segment association while normalizing words. It lets
+    // segment-only providers retain unavailable word evidence without ever
+    // inventing timestamps or dropping the authored segment text.
+    let raw_items: Vec<(Value, Option<usize>)> = if let Some(items) = source.as_array() {
+        items.iter().cloned().map(|item| (item, None)).collect()
+    } else if let Some(items) = source
+        .get("words")
+        .and_then(Value::as_array)
+        .filter(|items| !items.is_empty())
+    {
+        items.iter().cloned().map(|item| (item, None)).collect()
+    } else if let Some(items) = source
+        .get("transcription")
+        .and_then(Value::as_array)
+        .filter(|items| !items.is_empty())
+    {
+        items.iter().cloned().map(|item| (item, None)).collect()
+    } else {
+        source_segments
+            .iter()
+            .enumerate()
+            .flat_map(|(segment_index, segment)| {
+                segment
+                    .get("words")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flat_map(move |items| items.iter().cloned().map(move |item| (item, Some(segment_index))))
+            })
+            .collect()
+    };
+    let normalized_words: Vec<(Value, Option<usize>)> = raw_items
         .iter()
-        .filter_map(|word| {
+        .enumerate()
+        .filter_map(|(index, (word, segment_index))| {
             let text = word
                 .get("text")
                 .or_else(|| word.get("word"))
                 .and_then(Value::as_str)
                 .map(str::trim)
                 .filter(|value| !value.is_empty())?;
-            let start_ms = word
+            let mut start_ms = word
                 .get("startMs")
                 .and_then(Value::as_u64)
                 .or_else(|| word.get("offsets").and_then(|v| v.get("from")).and_then(Value::as_u64))
-                .or_else(|| word.get("start").and_then(Value::as_f64).map(|v| (v * 1000.0) as u64))?;
+                .or_else(|| transcript_timestamp_ms(word.get("start")));
             let mut end_ms = word
                 .get("endMs")
                 .and_then(Value::as_u64)
                 .or_else(|| word.get("offsets").and_then(|v| v.get("to")).and_then(Value::as_u64))
-                .or_else(|| word.get("end").and_then(Value::as_f64).map(|v| (v * 1000.0) as u64))?;
-            if let Some(duration_ms) = max_duration_ms {
-                if start_ms >= duration_ms {
-                    return None;
+                .or_else(|| transcript_timestamp_ms(word.get("end")));
+            let has_valid_timing = matches!((start_ms, end_ms), (Some(start), Some(end)) if end > start);
+            if has_valid_timing {
+                if let Some(duration_ms) = max_duration_ms {
+                    if start_ms.is_some_and(|start| start >= duration_ms) {
+                        return None;
+                    } else if let Some(end) = end_ms.as_mut() {
+                        *end = (*end).min(duration_ms);
+                        if start_ms.is_some_and(|start| *end <= start) {
+                            return None;
+                        }
+                    }
                 }
-                end_ms = end_ms.min(duration_ms);
+            } else {
+                start_ms = None;
+                end_ms = None;
             }
-            if end_ms <= start_ms {
-                return None;
-            }
-            Some(json!({
+            Some((json!({
+                "wordId": format!("word-{}", index + 1),
                 "text": text.chars().take(500).collect::<String>(),
+                "textStart": Value::Null,
+                "textEnd": Value::Null,
                 "startMs": start_ms,
                 "endMs": end_ms,
-                "confidence": word.get("confidence").or_else(|| word.get("probability")).cloned().unwrap_or(Value::Null),
-            }))
+                "confidence": transcript_confidence(word.get("confidence").or_else(|| word.get("probability"))),
+                "timingOrigin": if has_valid_timing { "native" } else { "unavailable" },
+            }), *segment_index))
         })
         .take(12_000)
         .collect::<Vec<_>>();
-    let text = words_array
+    let words_array = normalized_words.iter().map(|(word, _)| word.clone()).collect::<Vec<_>>();
+    let mut text = words_array
         .iter()
         .filter_map(|word| {
             word.get("text")
@@ -2928,13 +3386,199 @@ pub(crate) fn normalize_hyperframes_transcript_output(
         .filter(|word| !word.is_empty())
         .collect::<Vec<_>>()
         .join(" ");
+    if text.is_empty() && !source_segments.is_empty() {
+        text = source_segments
+            .iter()
+            .filter_map(|segment| segment.get("text").and_then(Value::as_str))
+            .map(str::trim)
+            .filter(|segment| !segment.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ");
+    }
+    let mut segments: Vec<Value> = Vec::new();
+    for word in words_array.iter().filter(|word| word.get("startMs").and_then(Value::as_u64).is_some() && word.get("endMs").and_then(Value::as_u64).is_some()) {
+        let start = word.get("startMs").and_then(Value::as_u64).unwrap_or(0);
+        let end = word.get("endMs").and_then(Value::as_u64).unwrap_or(start);
+        let should_start_new = segments.last().and_then(|segment| segment.get("endMs").and_then(Value::as_u64))
+            .is_some_and(|previous_end| start.saturating_sub(previous_end) > 1_200);
+        if should_start_new || segments.is_empty() {
+            segments.push(json!({
+                "cueId": format!("cue-{}", segments.len() + 1),
+                "startMs": start,
+                "endMs": end,
+                "text": word.get("text").and_then(Value::as_str).unwrap_or(""),
+                "speakerId": Value::Null,
+                "confidence": word.get("confidence").cloned().unwrap_or(Value::Null),
+                "words": [word],
+            }));
+        } else if let Some(segment) = segments.last_mut() {
+            let existing_text = segment.get("text").and_then(Value::as_str).unwrap_or("").to_string();
+            segment["text"] = json!(join_transcript_tokens(&existing_text, word.get("text").and_then(Value::as_str).unwrap_or("")));
+            segment["endMs"] = json!(end);
+            if let Some(words) = segment.get_mut("words").and_then(Value::as_array_mut) { words.push(word.clone()); }
+        }
+    }
+    if !source_segments.is_empty() {
+        let mut source_based_segments = Vec::new();
+        let mut used_cue_ids = HashSet::new();
+        for (index, source_segment) in source_segments.iter().enumerate() {
+            let mut segment_word_values = normalized_words
+                .iter()
+                .filter_map(|(word, segment_index)| (*segment_index == Some(index)).then_some(word.clone()))
+                .collect::<Vec<_>>();
+            let mut start = source_segment.get("startMs").and_then(Value::as_u64).or_else(|| transcript_timestamp_ms(source_segment.get("start")));
+            let mut end = source_segment.get("endMs").and_then(Value::as_u64).or_else(|| transcript_timestamp_ms(source_segment.get("end")));
+            // Some providers expose segment boundaries separately from a
+            // top-level words array. Associate timed words by overlap when
+            // the provider omitted the per-segment word list.
+            if segment_word_values.is_empty() {
+                if let (Some(source_start), Some(source_end)) = (start, end) {
+                    segment_word_values = normalized_words
+                        .iter()
+                        .filter_map(|(word, segment_index)| {
+                            if segment_index.is_some() { return None; }
+                            let word_start = word.get("startMs").and_then(Value::as_u64)?;
+                            let word_end = word.get("endMs").and_then(Value::as_u64)?;
+                            (word_start < source_end && word_end > source_start).then_some(word.clone())
+                        })
+                        .collect();
+                }
+            }
+            if start.is_none() {
+                start = segment_word_values.iter().filter_map(|word| word.get("startMs").and_then(Value::as_u64)).min();
+            }
+            if end.is_none() {
+                end = segment_word_values.iter().filter_map(|word| word.get("endMs").and_then(Value::as_u64)).max();
+            }
+            let Some(start) = start else { continue };
+            let Some(mut end_value) = end.take() else { continue };
+            if let Some(duration_ms) = max_duration_ms {
+                if start >= duration_ms { continue; }
+                end_value = end_value.min(duration_ms);
+            }
+            if end_value <= start { continue; }
+            for word in &mut segment_word_values {
+                let out_of_segment = match (
+                    word.get("startMs").and_then(Value::as_u64),
+                    word.get("endMs").and_then(Value::as_u64),
+                ) {
+                    (Some(word_start), Some(word_end)) => {
+                        word_start < start || word_end > end_value || word_end <= word_start
+                    }
+                    _ => false,
+                };
+                if out_of_segment {
+                    mark_transcript_word_timing_unavailable(word);
+                }
+            }
+            let text = source_segment
+                .get("text")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+                .unwrap_or_else(|| {
+                    segment_word_values
+                        .iter()
+                        .filter_map(|word| word.get("text").and_then(Value::as_str))
+                        .map(str::trim)
+                        .filter(|value| !value.is_empty())
+                        .fold(String::new(), |left, right| join_transcript_tokens(&left, right))
+                });
+            if text.is_empty() { continue; }
+            let mut cue_id = source_segment
+                .get("cueId")
+                .or_else(|| source_segment.get("id"))
+                .and_then(Value::as_str)
+                .and_then(transcript_identifier)
+                .unwrap_or_else(|| format!("cue-{}", index + 1));
+            if !used_cue_ids.insert(cue_id.clone()) {
+                cue_id = format!("cue-{}", index + 1);
+                while !used_cue_ids.insert(cue_id.clone()) {
+                    cue_id.push_str("-dup");
+                }
+            }
+            let speaker_id = source_segment
+                .get("speakerId")
+                .or_else(|| source_segment.get("speaker"))
+                .and_then(Value::as_str)
+                .and_then(transcript_identifier);
+            source_based_segments.push(json!({
+                "cueId": cue_id,
+                "startMs": start,
+                "endMs": end_value,
+                "text": text.chars().take(4000).collect::<String>(),
+                "speakerId": speaker_id,
+                "confidence": transcript_confidence(source_segment.get("confidence")),
+                "words": segment_word_values,
+            }));
+        }
+        if !source_based_segments.is_empty() {
+            segments = source_based_segments;
+        }
+    }
+    let speaker_turns = source
+        .get("speakerTurns")
+        .and_then(Value::as_array)
+        .map(|turns| turns.iter().filter_map(|turn| {
+            let speaker_id = turn.get("speakerId").or_else(|| turn.get("speaker")).and_then(Value::as_str).and_then(transcript_identifier)?;
+            let start = turn.get("startMs").and_then(Value::as_u64).or_else(|| transcript_timestamp_ms(turn.get("start")))?;
+            let mut end = turn.get("endMs").and_then(Value::as_u64).or_else(|| transcript_timestamp_ms(turn.get("end")))?;
+            if let Some(duration_ms) = max_duration_ms {
+                if start >= duration_ms { return None; }
+                end = end.min(duration_ms);
+            }
+            if end <= start { return None; }
+            Some(json!({ "speakerId": speaker_id, "startMs": start, "endMs": end, "confidence": transcript_confidence(turn.get("confidence")) }))
+        }).take(100_000).collect::<Vec<_>>())
+        .unwrap_or_default();
+    let all_words_timed = !words_array.is_empty() && words_array.iter().all(|word| word.get("startMs").and_then(Value::as_u64).is_some() && word.get("endMs").and_then(Value::as_u64).is_some());
+    let timed_word_count = words_array.iter().filter(|word| word.get("startMs").and_then(Value::as_u64).is_some() && word.get("endMs").and_then(Value::as_u64).is_some()).count();
+    let segment_words = segments
+        .iter()
+        .filter_map(|segment| segment.get("words").and_then(Value::as_array))
+        .flat_map(|items| items.iter())
+        .collect::<Vec<_>>();
+    let segment_timed_word_count = segment_words
+        .iter()
+        .filter(|word| {
+            word.get("startMs").and_then(Value::as_u64).is_some()
+                && word.get("endMs").and_then(Value::as_u64).is_some()
+        })
+        .count();
+    let segment_word_coverage = if segment_words.is_empty() {
+        0.0
+    } else {
+        segment_timed_word_count as f64 / segment_words.len() as f64
+    };
+    let segment_word_timing_complete = segment_words.is_empty()
+        || segment_timed_word_count == segment_words.len();
+    let effective_word_timing_complete = all_words_timed && segment_word_timing_complete;
+    let timing_origin = if all_words_timed {
+        matches!(source.get("timingOrigin").and_then(Value::as_str), Some("forced_alignment"))
+            .then_some("forced_alignment")
+            .unwrap_or("native")
+    } else {
+        "segment_only"
+    };
     Ok(json!({
+        "schemaVersion": "audio-transcript.v1",
         "text": text,
         "words": words_array,
+        "segments": segments,
+        "speakerTurns": speaker_turns,
+        "timingOrigin": timing_origin,
+        "achievedGranularity": if all_words_timed { "word" } else { "segment" },
+        "wordTimingCoverage": if segment_words.is_empty() { if words_array.is_empty() { 0.0 } else { timed_word_count as f64 / words_array.len() as f64 } } else { segment_word_coverage },
         "provider": "hyperframes-whisper.cpp",
-        "status": if words_array.is_empty() { "empty" } else { "ready" },
+        "status": if words_array.is_empty() && segments.is_empty() { "empty" } else if effective_word_timing_complete || (!words_array.is_empty() && timed_word_count == words_array.len() && segments.is_empty()) { "ready" } else { "needs_review" },
         "metadata": output,
     }))
+}
+
+fn join_transcript_tokens(left: &str, right: &str) -> String {
+    let is_thai = |value: &str| value.chars().any(|ch| ('\u{0E00}'..='\u{0E7F}').contains(&ch));
+    if is_thai(left) || is_thai(right) { format!("{left}{right}") } else { format!("{left} {right}") }
 }
 
 pub(crate) fn execute_hyperframes_transcription_process(
@@ -2969,6 +3613,7 @@ pub(crate) fn execute_hyperframes_transcription_process(
             &language,
             &model,
         ]);
+        hide_console_window(&mut command);
         command
             .output()
             .map_err(|_| "transcription_unavailable".to_string())
@@ -2978,6 +3623,7 @@ pub(crate) fn execute_hyperframes_transcription_process(
             .map(Path::to_path_buf)
             .unwrap_or_else(|| PathBuf::from("."));
         let mut command = Command::new(&node);
+        hide_console_window(&mut command);
         command
             .current_dir(source_path.parent().unwrap_or(Path::new(".")))
             .env("HYPERFRAMES_WHISPER_PATH", &whisper_path)
@@ -2994,7 +3640,11 @@ pub(crate) fn execute_hyperframes_transcription_process(
                 "--model",
                 &model,
                 "--json",
-            ])
+            ]);
+        if cfg!(target_os = "macos") {
+            command.env("DYLD_LIBRARY_PATH", whisper_home.join("lib"));
+        }
+        command
             .output()
             .map_err(|_| "transcription_unavailable".to_string())
     }
@@ -3265,12 +3915,46 @@ fn audio_failure_code(error: &str) -> &'static str {
     }
 }
 
+fn unified_audio_failure_code(error: &str) -> &'static str {
+    let normalized = error.to_ascii_lowercase();
+    if normalized.contains("canceled") { "CANCELED" }
+    else if normalized.contains("model_not_installed") { "TTS_PROVIDER_UNAVAILABLE" }
+    else if normalized.contains("training_unavailable") { "TRAINING_UNAVAILABLE" }
+    else if normalized.contains("reference_not_finalized") { "REFERENCE_NOT_FINALIZED" }
+    else if normalized.contains("runtime_incompatible") { "TTS_PROVIDER_UNAVAILABLE" }
+    else if normalized.contains("artifact") { "ARTIFACT_NOT_FOUND" }
+    else if normalized.contains("generation") { "TTS_OUTPUT_INVALID" }
+    else { "VOICE_MODE_UNSUPPORTED" }
+}
+
 fn audio_source_refs(input: &Value) -> Vec<Value> {
     input
         .get("sourceRefs")
         .and_then(Value::as_array)
         .cloned()
         .unwrap_or_default()
+}
+
+fn probe_local_tts_duration_ms(app_data_dir: &Path, audio_path: &Path) -> Result<u64, String> {
+    let mut candidates = Vec::new();
+    if let Ok(path) = std::env::var("FFPROBE_PATH") {
+        if !path.trim().is_empty() { candidates.push(PathBuf::from(path)); }
+    }
+    let executable = if cfg!(target_os = "windows") { "ffprobe.exe" } else { "ffprobe" };
+    candidates.push(app_data_dir.join("runtime-pack").join("bin").join(executable));
+    candidates.push(PathBuf::from(executable));
+    let ffprobe = candidates.into_iter().find(|candidate| candidate.is_file()).ok_or_else(|| "runtime_incompatible: ffprobe is not installed for local TTS output validation".to_string())?;
+    let mut command = Command::new(ffprobe);
+    hide_console_window(&mut command);
+    let output = command
+        .args(["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1"])
+        .arg(audio_path)
+        .output()
+        .map_err(|error| format!("runtime_incompatible: failed to run ffprobe: {error}"))?;
+    if !output.status.success() { return Err("generation_failed: local TTS output failed ffprobe validation".into()); }
+    let seconds = String::from_utf8_lossy(&output.stdout).trim().parse::<f64>().map_err(|_| "generation_failed: local TTS duration is invalid".to_string())?;
+    if !seconds.is_finite() || seconds <= 0.0 { return Err("generation_failed: local TTS duration is unavailable".into()); }
+    Ok((seconds * 1000.0).round() as u64)
 }
 
 async fn download_audio_source(
@@ -3471,6 +4155,211 @@ async fn execute_speaker_aware_job(
         event_type: "job.completed".into(), sequence_number: 5,
         lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
         payload_json: json!({ "stage": "publish_artifacts", "status": "published", "artifacts": [artifact.artifact], "checksumSha256": checksum }),
+    }).await?;
+    Ok(())
+}
+
+async fn execute_unified_audio_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    if job.job_type == UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE || job.job_type == UNIFIED_AUDIO_ALIGN_JOB_TYPE {
+        return Err("transcription_unavailable: durable ASR/alignment runtime is not installed on this Worker".into());
+    }
+    if job.job_type != UNIFIED_AUDIO_TTS_JOB_TYPE && job.job_type != UNIFIED_AUDIO_TRAINING_JOB_TYPE {
+        return Err(format!("invalid_contract: unsupported unified audio job {}", job.job_type));
+    }
+    if job.input_json.get("schemaVersion").and_then(Value::as_str) != Some("unified-audio.v2") {
+        return Err("invalid_contract: unsupported unified audio schema version".into());
+    }
+    if cancel.load(Ordering::Relaxed) { return Err("canceled".into()); }
+    send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+        event_type: "job.running".into(), sequence_number: 1,
+        lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": "validate_contract", "percent": 5, "capability": UNIFIED_AUDIO_CAPABILITY }),
+    }).await?;
+
+    let is_training = job.job_type == UNIFIED_AUDIO_TRAINING_JOB_TYPE;
+    let training_provider_model = if is_training {
+        Some(tts_provider::validate_training_request(&job.input_json)?)
+    } else {
+        None
+    };
+    let admission = if is_training {
+        None
+    } else {
+        Some(tts_provider::validate_tts_request(&job.input_json).map_err(|error| format!("invalid_contract: {error}"))?)
+    };
+    let provider_id = admission.as_ref().map(|value| value.provider_id.as_str()).or_else(|| training_provider_model.as_ref().map(|value| value.0.as_str())).unwrap_or("unknown");
+    let model_id = admission.as_ref().map(|value| value.model_id.as_str()).or_else(|| training_provider_model.as_ref().map(|value| value.1.as_str())).unwrap_or("unknown");
+    let runtime = tts_provider::local_runtime_command(app_data_dir)
+        .ok_or_else(|| if is_training { "training_unavailable: local training runtime is not installed".to_string() } else { tts_provider::model_not_installed_message(provider_id, model_id) })?;
+    let runtime_script = app_data_dir.join("runtime-pack").join("tts-runtime").join("provider_runner.py");
+    if !runtime_script.is_file() {
+        return Err(if is_training { "training_unavailable: provider runner is not installed".into() } else { tts_provider::model_not_installed_message(provider_id, model_id) });
+    }
+    let work_dir = app_data_dir.join("unified-audio").join(sanitize_segment(&job.id));
+    fs::create_dir_all(&work_dir).map_err(|error| format!("runtime_incompatible: audio workspace unavailable: {error}"))?;
+    let request_path = work_dir.join("request.json");
+    let output_path = work_dir.join(if is_training { "training-result.json" } else { "output.wav" });
+    let mut runner_request = job.input_json.clone();
+    if is_training {
+        let manifest = job.input_json.pointer("/dataset/manifestArtifact")
+            .ok_or_else(|| "invalid_contract: training dataset manifest artifact is missing".to_string())?;
+        let source = json!({
+            "artifactId": manifest.get("artifactId"),
+            "checksum": manifest.get("checksum"),
+        });
+        let manifest_path = work_dir.join("dataset-manifest.json");
+        download_audio_source(app_data_dir, connection, &job, &source, &manifest_path).await?;
+        if let Some(object) = runner_request.as_object_mut() {
+            object.insert("stagedDatasetManifestPath".to_string(), Value::String(manifest_path.to_string_lossy().into_owned()));
+        }
+    }
+    if let Some(admission) = admission.as_ref() {
+        let mut staged_references = Vec::with_capacity(admission.reference_ids.len());
+        if !admission.reference_ids.is_empty() {
+            let references = job.input_json.pointer("/voiceProfile/references").and_then(Value::as_array)
+                .ok_or_else(|| "invalid_contract: voice profile reference snapshot is missing".to_string())?;
+            for (index, reference_id) in admission.reference_ids.iter().enumerate() {
+                let reference = references.iter().find(|value| value.get("referenceAudioArtifactId").and_then(Value::as_str) == Some(reference_id))
+                    .ok_or_else(|| format!("invalid_contract: selected voice reference {reference_id} is missing from profile snapshot"))?;
+                let artifact_ref = reference.get("artifactRef").ok_or_else(|| format!("invalid_contract: voice reference {reference_id} has no artifact ref"))?;
+                let source = json!({
+                    "artifactId": artifact_ref.get("artifactId"),
+                    "checksum": artifact_ref.get("checksum"),
+                });
+                let reference_path = work_dir.join(format!("reference-{index}.audio"));
+                download_audio_source(app_data_dir, connection, &job, &source, &reference_path).await?;
+                staged_references.push(json!({
+                    "referenceAudioArtifactId": reference_id,
+                    "path": reference_path,
+                    "checksum": artifact_ref.get("checksum"),
+                    "referenceTranscript": reference.get("referenceTranscript"),
+                    "referenceTranscriptArtifactId": reference.get("referenceTranscriptArtifactId"),
+                }));
+            }
+        }
+        if let Some(model_artifact_id) = admission.trained_model_artifact_id.as_deref() {
+            let model = job.input_json.get("trainedVoiceModel").and_then(Value::as_object)
+                .ok_or_else(|| "invalid_contract: trained voice model snapshot is missing".to_string())?;
+            if model.get("artifactId").and_then(Value::as_str) != Some(model_artifact_id)
+                || model.get("checksum").and_then(Value::as_str).is_none()
+                || model.get("status").and_then(Value::as_str) != Some("promoted") {
+                return Err("invalid_contract: trained voice model snapshot is not promoted or does not match binding".into());
+            }
+            let model_path = work_dir.join("trained-model.bin");
+            let source = json!({ "artifactId": model_artifact_id, "checksum": model.get("checksum") });
+            download_audio_source(app_data_dir, connection, &job, &source, &model_path).await?;
+            if let Some(object) = runner_request.as_object_mut() {
+                object.insert("stagedTrainedModelPath".to_string(), Value::String(model_path.to_string_lossy().into_owned()));
+                object.insert("trainedVoiceModel".to_string(), Value::Object(model.clone()));
+            }
+        }
+        if let Some(object) = runner_request.as_object_mut() {
+            object.insert("stagedReferenceAudio".to_string(), Value::Array(staged_references));
+        }
+    }
+    fs::write(&request_path, serde_json::to_vec(&runner_request).map_err(|error| format!("invalid_contract: cannot serialize audio request: {error}"))?)
+        .map_err(|error| format!("runtime_incompatible: cannot stage audio request: {error}"))?;
+    if admission.is_some() {
+        send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+            event_type: "job.progress".into(), sequence_number: 2,
+            lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+            payload_json: json!({ "stage": "stage_reference", "percent": 15 }),
+        }).await?;
+    }
+    let load_sequence = if admission.is_some() { 3 } else { 2 };
+    send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+        event_type: "job.progress".into(), sequence_number: load_sequence,
+        lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": "load_model", "percent": 20, "providerId": provider_id, "modelId": model_id }),
+    }).await?;
+    let request_path_owned = request_path.clone();
+    let output_path_owned = output_path.clone();
+    let cancel_owned = cancel.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        let mut command = Command::new(&runtime);
+        hide_console_window(&mut command);
+        let mut child = command
+            .arg(&runtime_script)
+            .arg("--request")
+            .arg(&request_path_owned)
+            .arg("--output")
+            .arg(&output_path_owned)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|error| format!("runtime_incompatible: failed to start provider runner: {error}"))?;
+        loop {
+            if cancel_owned.load(Ordering::Relaxed) {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err("canceled".into());
+            }
+            match child.try_wait().map_err(|error| format!("generation_failed: runner wait failed: {error}"))? {
+                Some(status) if status.success() => break,
+                Some(status) => return Err(if is_training { format!("training_unavailable: provider training runner exited with {status}") } else { format!("generation_failed: provider runner exited with {status}") }),
+                None => std::thread::sleep(Duration::from_millis(100)),
+            }
+        }
+        Ok(())
+    }).await.map_err(|error| format!("generation_failed: provider runner task failed: {error}"))??;
+    let _ = result;
+    if cancel.load(Ordering::Relaxed) { return Err("canceled".into()); }
+    if !output_path.is_file() {
+        return Err("generation_failed: provider runner did not produce an output artifact".into());
+    }
+    let metadata = fs::metadata(&output_path).map_err(|error| format!("generation_failed: output metadata unavailable: {error}"))?;
+    if metadata.len() == 0 { return Err("generation_failed: provider runner produced an empty output".into()); }
+    let duration_ms = if is_training {
+        let training_output: Value = serde_json::from_slice(&fs::read(&output_path).map_err(|error| format!("training_unavailable: training result cannot be read: {error}"))?)
+            .map_err(|error| format!("training_unavailable: training result is not valid JSON: {error}"))?;
+        let status = training_output.get("status").and_then(Value::as_str).unwrap_or("");
+        let model_artifact = training_output.get("modelArtifactId").and_then(Value::as_str).unwrap_or("");
+        let base_revision = training_output.get("baseModelRevision").and_then(Value::as_str).unwrap_or("");
+        if status != "candidate" || model_artifact.is_empty() || base_revision.is_empty() {
+            return Err("training_unavailable: provider runner did not publish a validated candidate descriptor".into());
+        }
+        None
+    } else {
+        Some(probe_local_tts_duration_ms(app_data_dir, &output_path)?)
+    };
+    let output_checksum = speaker_aware_file_checksum(&output_path)?;
+    let provenance = json!({
+        "voiceProfileId": job.input_json.get("voiceProfileId"),
+        "voiceProfileRevision": job.input_json.get("voiceProfileRevision"),
+        "voiceBindingId": job.input_json.get("voiceBindingId"),
+        "voiceBindingRevision": job.input_json.get("voiceBindingRevision"),
+        "consentId": job.input_json.pointer("/voiceBinding/consentSnapshot/consentId"),
+        "consentRevision": job.input_json.pointer("/voiceBinding/consentSnapshot/revision"),
+        "referenceAudioArtifactIds": admission.as_ref().map(|value| value.reference_ids.clone()).unwrap_or_default(),
+        "referenceHashes": job.input_json.pointer("/voiceProfile/references").and_then(Value::as_array).map(|references| references.iter().filter_map(|reference| {
+            let id = reference.get("referenceAudioArtifactId").and_then(Value::as_str)?;
+            if admission.as_ref().map(|value| value.reference_ids.iter().any(|selected| selected == id)).unwrap_or(false) {
+                reference.pointer("/artifactRef/checksum").cloned()
+            } else { None }
+        }).collect::<Vec<_>>()).unwrap_or_default(),
+        "trainedModelArtifactId": admission.as_ref().and_then(|value| value.trained_model_artifact_id.clone()),
+        "trainedModelId": job.input_json.pointer("/trainedVoiceModel/modelId").cloned(),
+    });
+    let probe_sequence = load_sequence + 1;
+    send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+        event_type: "job.progress".into(), sequence_number: probe_sequence,
+        lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "stage": "probe_output", "percent": 75, "sizeBytes": metadata.len(), "durationMs": duration_ms }),
+    }).await?;
+    let artifact_type = if is_training { "voice_training_result" } else { "tts_audio" };
+    let content_type = if is_training { "application/json" } else { "audio/wav" };
+    let artifact = upload_worker_artifact_file_with_refresh(app_data_dir, connection, &job.id, artifact_type, &output_path, output_path.file_name().and_then(|name| name.to_str()).unwrap_or("output.bin"), content_type, &job.lease_owner_token, &job.assignment_attempt, json!({ "providerId": provider_id, "modelId": model_id, "checksumSha256": output_checksum, "durationMs": duration_ms, "provenance": provenance })).await?;
+    send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
+        event_type: "job.completed".into(), sequence_number: probe_sequence + 1,
+        lease_owner_token: job.lease_owner_token.clone(), assignment_attempt: job.assignment_attempt.clone(),
+        payload_json: json!({ "status": "completed", "stage": "publish_provenance", "artifacts": [artifact.artifact], "providerId": provider_id, "modelId": model_id, "checksumSha256": output_checksum, "durationMs": duration_ms }),
     }).await?;
     Ok(())
 }
@@ -3861,7 +4750,7 @@ async fn execute_vertical_drama_media_job(
             let output_relative = format!("derived/footage-prepared/{}/prepared.mp4", sanitize_segment(&job.id));
             let fit_policy = job.input_json.get("fitPolicy").and_then(Value::as_str).unwrap_or("9:16_cover");
             let mute_audio = job.input_json.get("baseAudioPolicy").and_then(Value::as_str) == Some("mute");
-            let output = run_allowlisted_ffmpeg_segments(&root_path, &source_relative, &output_relative, &approved_segments, fit_policy == "9:16_cover", mute_audio, None, None, &[], &media_tools)?;
+            let output = run_allowlisted_ffmpeg_segments(&root_path, &source_relative, &output_relative, &approved_segments, fit_policy == "9:16_cover", mute_audio, None, None, &[], None, &media_tools)?;
             let qc = qc_derived_output_with_probe(&root_path, &output, &media_tools)?;
             if fit_policy != "source" { ensure_portrait_9x16_qc(&qc)?; }
             let mut prepared_cursor = 0u64;
@@ -4023,8 +4912,12 @@ async fn execute_vertical_drama_media_job(
         let target = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|reframe| reframe.get("target"));
         let still_motion = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("stillMotion")).and_then(|motion| motion.get("motion")).and_then(Value::as_str).map(str::to_string);
         let focus_track = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|value| value.get("focusTrack")).and_then(|value| serde_json::from_value::<Vec<MediaFocusKeyframe>>(value.clone()).ok()).unwrap_or_default();
+        let camera_motion_plan = match edit_plan.get("cameraMotionPlan") {
+            Some(value) if !value.is_null() => Some(serde_json::from_value::<CameraMotionPlan>(value.clone()).map_err(|_| "camera_motion_plan_invalid".to_string())?),
+            _ => None,
+        };
         let selected_segment = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first());
-        let options = MediaPlanOptions { remove_dead_air: edit_plan.get("deadAir").and_then(|value| value.get("enabled")).and_then(Value::as_bool).unwrap_or(false), reframe_9x16: edit_plan.get("aspectRatio").and_then(Value::as_str) == Some("9:16"), focus_mode: edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|value| value.get("trackingMode")).and_then(Value::as_str).unwrap_or("auto_person").into(), still_motion, max_duration_ms: budget.get("maxDurationMs").and_then(Value::as_u64).unwrap_or(90_000).min(90_000), source_duration_ms: duration_ms, requested_start_ms: selected_segment.and_then(|segment| segment.get("startMs")).and_then(Value::as_u64), requested_end_ms: selected_segment.and_then(|segment| segment.get("endMs")).and_then(Value::as_u64), focus_x: target.and_then(|value| value.get("normalizedX")).and_then(Value::as_f64), focus_y: target.and_then(|value| value.get("normalizedY")).and_then(Value::as_f64), focus_track, volume_threshold_pct: dead_air.get("thresholdDb").and_then(Value::as_f64).map(|db| ((db + 50.0) / 35.0 * 100.0).clamp(1.0, 100.0)), min_duration_sec: dead_air.get("minSilenceMs").and_then(Value::as_u64).map(|value| value as f64 / 1000.0), softening_buffer_sec: dead_air.get("padMs").and_then(Value::as_u64).map(|value| value as f64 / 1000.0), custom_silence_segments: None };
+        let options = MediaPlanOptions { remove_dead_air: edit_plan.get("deadAir").and_then(|value| value.get("enabled")).and_then(Value::as_bool).unwrap_or(false), reframe_9x16: edit_plan.get("aspectRatio").and_then(Value::as_str) == Some("9:16"), focus_mode: edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|value| value.get("trackingMode")).and_then(Value::as_str).unwrap_or("auto_person").into(), still_motion, max_duration_ms: budget.get("maxDurationMs").and_then(Value::as_u64).unwrap_or(90_000).min(90_000), source_duration_ms: duration_ms, requested_start_ms: selected_segment.and_then(|segment| segment.get("startMs")).and_then(Value::as_u64), requested_end_ms: selected_segment.and_then(|segment| segment.get("endMs")).and_then(Value::as_u64), focus_x: target.and_then(|value| value.get("normalizedX")).and_then(Value::as_f64), focus_y: target.and_then(|value| value.get("normalizedY")).and_then(Value::as_f64), focus_track, volume_threshold_pct: dead_air.get("thresholdDb").and_then(Value::as_f64).map(|db| ((db + 50.0) / 35.0 * 100.0).clamp(1.0, 100.0)), min_duration_sec: dead_air.get("minSilenceMs").and_then(Value::as_u64).map(|value| value as f64 / 1000.0), softening_buffer_sec: dead_air.get("padMs").and_then(Value::as_u64).map(|value| value as f64 / 1000.0), custom_silence_segments: None, camera_motion_plan };
         let plan = build_media_plan(source_name, &options)?;
         let binding_revision = expected_binding_revision;
         let checkpoint_path = root_path.join("derived/.checkpoints").join(format!("{}.json", job.id));
@@ -4054,6 +4947,7 @@ async fn execute_vertical_drama_media_job(
                 plan.focus_x,
                 plan.focus_y,
                 &plan.focus_track,
+                plan.camera_motion_plan.as_ref(),
                 &media_tools,
             )?
         };
@@ -4077,7 +4971,7 @@ async fn execute_vertical_drama_media_job(
         if !analysis_silence.is_empty() { intelligence_tags.push("has_dead_air".into()); }
         if !analysis_scenes.is_empty() { intelligence_tags.push("scene_candidates".into()); }
         if local_analysis.as_ref().is_some_and(|analysis| analysis.focus_candidates.iter().any(|candidate| candidate.requires_review)) { intelligence_tags.push("focus_requires_review".into()); }
-        let intelligence = json!({ "tags": intelligence_tags, "subjects": if has_focus { vec!["manual_region"] } else { Vec::<&str>::new() }, "scenes": analysis_scenes, "silenceSegments": analysis_silence, "focusTrack": focus_track, "transform": { "aspectRatio": if options.reframe_9x16 { "9:16" } else { "source" }, "trackingMode": if has_focus { "manual_region" } else { "center_fallback" }, "fallback": if options.reframe_9x16 { json!("reject") } else { Value::Null }, "stillMotion": options.still_motion.clone() } });
+        let intelligence = json!({ "tags": intelligence_tags, "subjects": if has_focus { vec!["manual_region"] } else { Vec::<&str>::new() }, "scenes": analysis_scenes, "silenceSegments": analysis_silence, "focusTrack": focus_track, "cameraMotionPlan": plan.camera_motion_plan.clone(), "transform": { "aspectRatio": if options.reframe_9x16 { "9:16" } else { "source" }, "trackingMode": if has_focus { "manual_region" } else { "center_fallback" }, "fallback": if options.reframe_9x16 { json!("reject") } else { Value::Null }, "stillMotion": options.still_motion.clone() } });
         let publication_payload = json!({ "jobId": job.id, "workerArtifactId": artifact_id, "bindingRevision": binding_revision, "artifact": { "artifactId": artifact_id, "artifactRevision": plan.plan_id, "kind": "normalized_video", "storageKey": artifact_id, "checksum": qc.checksum, "sizeBytes": qc.size_bytes, "contentType": "video/mp4", "durationMs": qc.duration_ms.unwrap_or(duration_ms), "qc": qc_json, "sourceAssetId": source.get("assetId"), "sourceRevision": source.get("sourceRevision"), "intelligence": intelligence }, "qc": qc_json });
         let connection_snapshot = refresh_connection_for_control_plane(app_data_dir, connection, "media publication").await?;
         let publication = publish_vertical_drama_media(&connection_snapshot, job.input_json.get("seriesId").and_then(Value::as_str).ok_or_else(|| "series_id_missing".to_string())?, &publication_payload).await?;
@@ -5712,6 +6606,7 @@ async fn execute_hyperframes_job_inner(
             None,
             None,
             None,
+            None,
         )
         .await;
         let mut metadata = json!({
@@ -6361,6 +7256,7 @@ async fn run_remotion_sidecar_and_collect(
                 None,
                 None,
                 None,
+                None,
             )
             .await;
             last_heartbeat = Instant::now();
@@ -6569,6 +7465,7 @@ async fn stage_hyperframes_source_videos(
             None,
             true,
             false,
+            None,
             None,
             None,
             None,
@@ -7024,6 +7921,7 @@ async fn run_sidecar_with_active_heartbeat(
                 None,
                 true,
                 false,
+                None,
                 None,
                 None,
                 None,
@@ -7762,6 +8660,9 @@ mod tests {
         .unwrap();
         assert_eq!(normalized["text"], "สวัสดี ครับ");
         assert_eq!(normalized["words"].as_array().unwrap().len(), 2);
+        assert_eq!(normalized["segments"][0]["startMs"], 100);
+        assert_eq!(normalized["segments"][0]["endMs"], 1200);
+        assert_eq!(normalized["segments"][0]["text"], "สวัสดีครับ");
         assert_eq!(transcript_text_and_tokens(&normalized).0, "สวัสดี ครับ");
     }
 
@@ -7804,6 +8705,94 @@ mod tests {
     }
 
     #[test]
+    fn transcript_normalization_preserves_unavailable_word_evidence_without_timing() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(
+            dir.path().join("transcript.json"),
+            r#"[{"text":"มีเวลา","start":0.1,"end":0.4},{"text":"ไม่มีเวลา"}]"#,
+        )
+        .unwrap();
+        let normalized = normalize_hyperframes_transcript_output(&json!({}), dir.path(), None).unwrap();
+        assert_eq!(normalized["words"].as_array().unwrap().len(), 2);
+        assert_eq!(normalized["words"][1]["timingOrigin"], "unavailable");
+        assert!(normalized["words"][1]["startMs"].is_null());
+        assert!(normalized["segments"].as_array().unwrap().len() == 1);
+    }
+
+    #[test]
+    fn transcript_normalization_keeps_segment_word_evidence_and_coverage() {
+        let normalized = normalize_hyperframes_transcript_output(
+            &json!({
+                "words": [],
+                "segments": [{
+                    "startMs": 100,
+                    "endMs": 900,
+                    "text": "มีเวลา ไม่มีเวลา",
+                    "speakerId": "spk-1",
+                    "words": [
+                        { "text": "มีเวลา", "startMs": 100, "endMs": 400 },
+                        { "text": "ไม่มีเวลา" }
+                    ]
+                }]
+            }),
+            Path::new("/tmp/does-not-exist"),
+            Some(1_000),
+        )
+        .unwrap();
+        assert_eq!(normalized["segments"][0]["words"].as_array().unwrap().len(), 2);
+        assert_eq!(normalized["segments"][0]["words"][1]["timingOrigin"], "unavailable");
+        assert_eq!(normalized["wordTimingCoverage"], 0.5);
+        assert_eq!(normalized["status"], "needs_review");
+    }
+
+    #[test]
+    fn transcript_normalization_downgrades_word_outside_segment_bounds() {
+        let normalized = normalize_hyperframes_transcript_output(
+            &json!({
+                "segments": [{
+                    "startMs": 100,
+                    "endMs": 900,
+                    "text": "นอกช่วง",
+                    "words": [{ "text": "นอกช่วง", "startMs": 50, "endMs": 950 }]
+                }]
+            }),
+            Path::new("/tmp/does-not-exist"),
+            Some(1_000),
+        )
+        .unwrap();
+        assert_eq!(normalized["segments"][0]["words"][0]["timingOrigin"], "unavailable");
+        assert!(normalized["segments"][0]["words"][0]["startMs"].is_null());
+        assert_eq!(normalized["wordTimingCoverage"], 0.0);
+        assert_eq!(normalized["status"], "needs_review");
+    }
+
+    #[test]
+    fn transcript_normalization_rejects_negative_second_timestamps() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("transcript.json"), r#"[{"text":"ผิดเวลา","start":-0.1,"end":0.2}]"#).unwrap();
+        let normalized = normalize_hyperframes_transcript_output(&json!({}), dir.path(), None).unwrap();
+        assert_eq!(normalized["words"][0]["timingOrigin"], "unavailable");
+        assert!(normalized["segments"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn transcript_normalization_preserves_segment_only_speakers_and_turns() {
+        let normalized = normalize_hyperframes_transcript_output(
+            &json!({
+                "segments": [{ "cueId": "cue-1", "startMs": 100, "endMs": 800, "text": "สวัสดี", "speakerId": "spk-a" }],
+                "speakerTurns": [{ "speakerId": "spk-a", "startMs": 100, "endMs": 800, "confidence": 0.8 }]
+            }),
+            Path::new("/tmp/does-not-exist"),
+            Some(1_000),
+        )
+        .unwrap();
+        assert_eq!(normalized["segments"][0]["speakerId"], "spk-a");
+        assert_eq!(normalized["speakerTurns"][0]["speakerId"], "spk-a");
+        assert_eq!(normalized["achievedGranularity"], "segment");
+        assert_eq!(normalized["timingOrigin"], "segment_only");
+    }
+
+    #[test]
     fn runtime_relative_path_rejects_absolute_and_parent_paths() {
         let root = Path::new("/runtime-pack");
         assert!(runtime_relative_path(root, "/etc/passwd").is_none());
@@ -7812,6 +8801,17 @@ mod tests {
             runtime_relative_path(root, "whisper/whisper-cli").unwrap(),
             root.join("whisper/whisper-cli")
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn runtime_relative_path_rejects_existing_symlink_escape() {
+        let root = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        fs::write(outside.path().join("runner"), b"outside").unwrap();
+        std::os::unix::fs::symlink(outside.path().join("runner"), root.path().join("runner"))
+            .unwrap();
+        assert!(runtime_relative_path(root.path(), "runner").is_none());
     }
 
     #[test]
@@ -7825,6 +8825,12 @@ mod tests {
             managed_wsl_root_expr("C:\\Program Files\\Smart AI Hub"),
             "'C:\\Program Files\\Smart AI Hub'"
         );
+    }
+
+    #[test]
+    fn windows_paths_are_translated_for_managed_wsl_profile_runners() {
+        assert_eq!(windows_path_to_wsl(Path::new(r"D:\media\clip.mp4")), "/mnt/d/media/clip.mp4");
+        assert_eq!(windows_path_to_wsl(Path::new("/mnt/d/media/clip.mp4")), "/mnt/d/media/clip.mp4");
     }
 
     #[test]
@@ -8026,6 +9032,31 @@ mod tests {
     }
 
     #[test]
+    fn editor_media_claim_hints_require_the_editor_runtime_gate() {
+        let ready = build_worker_claim_capability_hints_with_editor_media(
+            false, false, false, false, false, false, false, true,
+        );
+        assert!(ready.contains(&EDITOR_MEDIA_CLAIM_CAPABILITY.to_string()));
+        assert!(ready.contains(&EDITOR_VIDEO_RENDER_JOB_TYPE.to_string()));
+        assert!(ready.contains(&"editor-media-operation-media-audio_export".to_string()));
+        assert!(ready.contains(&"editor-media-operation-media-silence_detect".to_string()));
+        assert!(!ready.contains(&"editor-media-operation-media-ai_music".to_string()));
+        assert!(ready.contains(&EDITOR_MEDIA_CAPABILITY_FAMILY.to_string()));
+
+        let unavailable = build_worker_claim_capability_hints_with_editor_media(
+            false, false, false, false, false, false, false, false,
+        );
+        assert!(!unavailable.contains(&EDITOR_MEDIA_CLAIM_CAPABILITY.to_string()));
+    }
+
+    #[test]
+    fn advanced_editor_operations_are_explicitly_adapter_gated() {
+        assert!(is_native_editor_media_operation("media.audio_export"));
+        assert!(!is_native_editor_media_operation("media.ai_music"));
+        assert!(!is_native_editor_media_operation("media.transcribe"));
+    }
+
+    #[test]
     fn mcp_claim_hints_are_separate_from_local_media_hints() {
         let mcp_only = build_worker_claim_capability_hints_with_media_and_mcp(
             false, false, false, false, true,
@@ -8197,6 +9228,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         assert_eq!(ready_metadata["hermesMedia"]["advertised"], true);
         assert_eq!(ready_metadata["hermesMedia"]["hermesVersion"], "0.18.2");
@@ -8219,6 +9251,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         assert_eq!(comfy_metadata["comfyUi"]["advertised"], true);
         assert_eq!(
@@ -8235,6 +9268,7 @@ mod tests {
             None,
             Some(true),
             Some(false),
+            None,
             None,
         );
         assert_eq!(
@@ -8257,6 +9291,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         assert_eq!(blocked_metadata["hermesMedia"]["advertised"], false);
 
@@ -8269,6 +9304,7 @@ mod tests {
             &hermes_ready,
             true,
             "ready",
+            None,
             None,
             None,
             None,

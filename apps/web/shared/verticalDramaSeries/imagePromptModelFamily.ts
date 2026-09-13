@@ -41,6 +41,20 @@ export const VD_IMAGE_PROMPT_MODES: readonly VdImagePromptMode[] = [
 ] as const;
 
 /**
+ * Prompt source used by the quality-driven Start Frame shortcut. It is kept
+ * separate from `VdImagePromptMode` because this path does not select a
+ * prompt-authoring skill at all.
+ */
+export type VdImagePromptSource = "shot_synopsis_direct";
+
+export interface VdImagePromptSourceStamp {
+  source: VdImagePromptSource;
+  quality: string;
+  imageModelId: string;
+  generatedAt: string;
+}
+
+/**
  * Single source of truth for which skill folder each mode loads — used by
  * both the service's skill loaders and the real-file gate test, so the two
  * can never silently drift apart (taught-not-wired failure class).

@@ -87,6 +87,8 @@ export interface ModelMetadata {
   supportsSizes?: string[];
   supportsDurations?: number[];
   supportsVoices?: string[];
+  thinkingModeDefault?: string;
+  thinkingModes?: string[];
   creditCost: number;
   configJson?: Record<string, unknown>;
 }
@@ -105,6 +107,8 @@ const wavespeedModelMetadata: Record<string, ModelMetadata> =
         supportsDurations: [...seed.durations],
         supportsAspectRatios: [...seed.aspectRatios],
         creditCost: seed.creditCost,
+        thinkingModeDefault: seed.thinkingModeDefault,
+        thinkingModes: seed.thinkingModes ? [...seed.thinkingModes] : undefined,
         configJson: seed.configJson,
       } satisfies ModelMetadata,
     ])

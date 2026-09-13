@@ -70,6 +70,8 @@ function mapCategoryToEnum(category?: string): string {
     "image-generation": "image_generation",
     "image_prompt_generation": "image_prompt_generation",
     "image-prompt-generation": "image_prompt_generation",
+    "character_prompt_generation": "character_prompt_generation",
+    "character-prompt-generation": "character_prompt_generation",
     "video_generation": "video_generation",
     "video-generation": "video_generation",
     "video_prompt_generation": "video_prompt_generation",
@@ -111,6 +113,7 @@ function mapCategoryToEnum(category?: string): string {
   };
   const cat = category?.toLowerCase() || "";
   if (categoryMap[cat]) return categoryMap[cat];
+  if (cat.includes("character") && cat.includes("prompt")) return "character_prompt_generation";
   if ((cat.includes("image") || cat.includes("photo")) && cat.includes("prompt")) return "image_prompt_generation";
   if ((cat.includes("video") || cat.includes("film")) && cat.includes("prompt")) return "video_prompt_generation";
   if ((cat.includes("audio") || cat.includes("music") || cat.includes("sound")) && cat.includes("prompt")) return "audio_prompt_generation";

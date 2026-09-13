@@ -220,6 +220,8 @@ export type SpecialEpisodeData = {
   createIntentId: string;
   inputVersion: number;
   outputVersion: number;
+  /** Input version that produced the currently committed media/story artifacts. */
+  artifactsInputVersion?: number;
   input: SpecialTieInInput;
   skillRun: SpecialSkillRun;
   referenceBindings: SpecialReferenceBinding[];

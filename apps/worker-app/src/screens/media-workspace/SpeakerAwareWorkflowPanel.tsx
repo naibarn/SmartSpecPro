@@ -10,7 +10,7 @@ export type AdapterPolicy = {
   maxScanWindowMs: number;
   maxConcurrentProcesses: number;
 };
-export type WireAdapterId = "sileroOnnx" | "fireRedOnnx" | "tenVad" | "webRtcVad" | "pyannoteDiarization" | "mediaPipeFace" | "personBody" | "activeSpeakerFusion";
+export type WireAdapterId = AdapterId;
 export type WireAdapterPolicy = {
   contractVersion: "feature-179-v1";
   vad: { enabledAdapters: WireAdapterId[]; primary: WireAdapterId; fallbackPolicy: "deny" | "allow_listed" | "report_unknown"; fallbackAllowList: WireAdapterId[]; required: boolean };
@@ -25,14 +25,17 @@ export type WireAdapterPolicy = {
 type WorkflowMode = "subtitle_first" | "speaker_first" | "full_assisted" | "custom";
 export type AdapterId = "SileroOnnx" | "FireRedOnnx" | "TenVad" | "WebRtcVad" | "PyannoteDiarization" | "MediaPipeFace" | "PersonBody" | "ActiveSpeakerFusion";
 const wireAdapterId: Record<AdapterId, WireAdapterId> = {
-  SileroOnnx: "sileroOnnx",
-  FireRedOnnx: "fireRedOnnx",
-  TenVad: "tenVad",
-  WebRtcVad: "webRtcVad",
-  PyannoteDiarization: "pyannoteDiarization",
-  MediaPipeFace: "mediaPipeFace",
-  PersonBody: "personBody",
-  ActiveSpeakerFusion: "activeSpeakerFusion",
+  // The Worker/Rust and server contracts use the canonical enum spellings.
+  // Keep this conversion at the UI boundary so camelCase DOM/state values can
+  // never leak into an adapterPolicy payload.
+  SileroOnnx: "SileroOnnx",
+  FireRedOnnx: "FireRedOnnx",
+  TenVad: "TenVad",
+  WebRtcVad: "WebRtcVad",
+  PyannoteDiarization: "PyannoteDiarization",
+  MediaPipeFace: "MediaPipeFace",
+  PersonBody: "PersonBody",
+  ActiveSpeakerFusion: "ActiveSpeakerFusion",
 };
 
 export function serializeAdapterPolicy(policy: AdapterPolicy): WireAdapterPolicy {
@@ -63,6 +66,15 @@ function formatSpeakerAwareError(error: unknown): string {
   }
   if (raw.includes("diarization required primary adapter is not enabled")) {
     return "ขั้นตอนแยก Speaker เปิดอยู่ แต่ยังไม่ได้เปิด pyannote ใน Adapter ที่อนุญาต";
+  }
+  if (raw.includes("speaker_aware_preflight_blocked")) {
+    return "Preflight ของ Speaker-aware ยังไม่ผ่าน — เปิด Runtime และติดตั้ง/เลือก model หรือ dependency ของ adapter ที่แจ้ง แล้วกดตรวจใหม่";
+  }
+  if (raw.includes("speaker_model_path_missing")) {
+    return "ไม่พบไฟล์หรือโฟลเดอร์ model ที่เลือก — ตรวจ path แล้วเลือกใหม่จากหน้า Runtime";
+  }
+  if (raw.includes("adapterPolicy invalid") && raw.includes("unknown variant")) {
+    return "Worker ใช้สัญญา Adapter คนละรุ่น — อัปเดต Worker App ให้เป็นรุ่นล่าสุด แล้วเปิดแผงนี้ใหม่";
   }
   return raw;
 }
@@ -147,6 +159,10 @@ export interface SpeakerAwareWorkflowPanelProps {
   sourceLabel?: string | null;
   busy?: boolean;
   onOpenSubtitleEditor?: () => void;
+  onRequestSourceSelection?: () => void;
+  sourceOptions?: Array<{ path: string; label: string; relativeName?: string }>;
+  selectedSourcePath?: string | null;
+  onSourcePathChange?: (path: string) => void;
   onRequestScan?: (input: { workflowMode: WorkflowMode; adapters: WireAdapterId[]; adapterPolicy: WireAdapterPolicy; requestedStages: string[]; outputStage: string }) => void | Promise<{ jobId?: string; status?: string } | void>;
 }
 
@@ -168,7 +184,7 @@ const adapters: Array<{ id: AdapterId; label: string; stage: string }> = [
   { id: "ActiveSpeakerFusion", label: "Active speaker fusion", stage: "VAD + ภาพ" },
 ];
 
-export const SpeakerAwareWorkflowPanel = forwardRef<HTMLElement, SpeakerAwareWorkflowPanelProps>(function SpeakerAwareWorkflowPanel({ seriesId, sourceLabel, busy = false, onOpenSubtitleEditor, onRequestScan }, ref) {
+export const SpeakerAwareWorkflowPanel = forwardRef<HTMLElement, SpeakerAwareWorkflowPanelProps>(function SpeakerAwareWorkflowPanel({ seriesId, sourceLabel, busy = false, onOpenSubtitleEditor, onRequestSourceSelection, sourceOptions, selectedSourcePath, onSourcePathChange, onRequestScan }, ref) {
   const [mode, setMode] = useState<WorkflowMode>("subtitle_first");
   const [selectedAdapters, setSelectedAdapters] = useState<AdapterId[]>(["SileroOnnx", "MediaPipeFace", "PersonBody", "ActiveSpeakerFusion"]);
   const [fallbackPolicy, setFallbackPolicy] = useState<"deny" | "allow_listed" | "report_unknown">("deny");
@@ -180,6 +196,10 @@ export const SpeakerAwareWorkflowPanel = forwardRef<HTMLElement, SpeakerAwareWor
   const recipe = useMemo(() => recipes.find((item) => item.id === mode) ?? recipes[0], [mode]);
   const stageErrors = useMemo(() => validateSpeakerAwareStageSelection(enabledStages, stageOrder), [enabledStages, stageOrder]);
   const adapterErrors = useMemo(() => validateSpeakerAwareAdapterSelection(selectedAdapters, enabledStages), [selectedAdapters, enabledStages]);
+  const timelineSources = sourceOptions ?? [];
+  const hasSource = sourceOptions
+    ? Boolean(selectedSourcePath && timelineSources.some((option) => option.path === selectedSourcePath))
+    : Boolean(sourceLabel?.trim());
   useEffect(() => {
     setEnabledStages(defaultSpeakerAwareStages(mode, selectedAdapters.includes("PyannoteDiarization")));
   }, [mode]);
@@ -206,7 +226,12 @@ export const SpeakerAwareWorkflowPanel = forwardRef<HTMLElement, SpeakerAwareWor
     required,
   });
   const submit = async () => {
-    if (!sourceLabel) { setMessage("เลือก source video ก่อนเริ่มสแกน"); return; }
+    if (!hasSource) {
+      setSubmissionState("error");
+      setMessage("ยังไม่ได้เลือก source video — เปิดแท็บ Media แล้วเลือกไฟล์วิดีโอก่อนสแกน");
+      onRequestSourceSelection?.();
+      return;
+    }
     if (mode === "subtitle_first") {
       if (!onOpenSubtitleEditor) {
         setSubmissionState("error");
@@ -255,7 +280,14 @@ export const SpeakerAwareWorkflowPanel = forwardRef<HTMLElement, SpeakerAwareWor
       setMessage(formatSpeakerAwareError(error));
     }
   };
-  const actionDisabled = busy || submissionState === "preflight" || !sourceLabel || (mode === "subtitle_first" ? !onOpenSubtitleEditor : !onRequestScan) || stageErrors.length > 0 || (mode !== "subtitle_first" && adapterErrors.length > 0);
+  const actionDisabled = busy || submissionState === "preflight" || stageErrors.length > 0 || (mode !== "subtitle_first" && adapterErrors.length > 0);
+  const actionLabel = !hasSource
+    ? "เลือก source video"
+    : submissionState === "preflight"
+      ? "กำลังตรวจสอบ…"
+      : mode === "subtitle_first"
+        ? "เปิด Auto Subtitle"
+        : "ตรวจ Preflight และส่งคิว";
   return (
     <section ref={ref} id="speaker-aware-workflow-panel" className="speaker-aware-workflow-panel" aria-labelledby="speaker-aware-workflow-heading">
       <header className="speaker-aware-workflow-header">
@@ -267,11 +299,27 @@ export const SpeakerAwareWorkflowPanel = forwardRef<HTMLElement, SpeakerAwareWor
         <div className="speaker-aware-header-actions">
           <span className="speaker-aware-contract-badge" role="status">Feature 179 · fail-closed</span>
           <button type="button" className="primary-button speaker-aware-header-submit" onClick={submit} disabled={actionDisabled} aria-disabled={actionDisabled}>
-            {submissionState === "preflight" ? "กำลังตรวจสอบ…" : mode === "subtitle_first" ? "เปิด Auto Subtitle" : "ตรวจ Preflight และส่งคิว"}
+            {actionLabel}
           </button>
         </div>
       </header>
       <div className="speaker-aware-workflow-grid">
+        <fieldset>
+          <legend>Source video ใน Timeline</legend>
+          {timelineSources.length > 0 ? (
+            <select
+              aria-label="Source video ใน Timeline"
+              value={selectedSourcePath ?? ""}
+              onChange={(event) => onSourcePathChange?.(event.target.value)}
+              disabled={busy || submissionState === "preflight"}
+            >
+              {timelineSources.map((option) => <option key={option.path} value={option.path}>{option.label}</option>)}
+            </select>
+          ) : (
+            <p className="speaker-aware-help">ยังไม่มีคลิปวิดีโอใน Timeline — เพิ่มวิดีโอลง Timeline ก่อนเริ่มสแกน</p>
+          )}
+          {timelineSources.length > 0 ? <p className="speaker-aware-help">เลือกได้เฉพาะคลิปวิดีโอที่อยู่ใน Timeline ปัจจุบัน</p> : null}
+        </fieldset>
         <fieldset>
           <legend>Workflow</legend>
           {recipes.map((item) => (
@@ -320,10 +368,10 @@ export const SpeakerAwareWorkflowPanel = forwardRef<HTMLElement, SpeakerAwareWor
         </fieldset>
       </div>
       <footer className="speaker-aware-workflow-footer">
-        <span>{sourceLabel ? `Source: ${sourceLabel}` : "เลือก source video ก่อนเริ่มสแกน"}</span>
+        <span>{hasSource ? `Source: ${sourceLabel!.trim()}` : "เลือก source video ก่อนเริ่มสแกน"}</span>
         <span className="speaker-aware-submission-state" role="status">{submissionState === "queued" ? `เข้าคิวแล้ว${lastJobId ? ` · ${lastJobId.slice(0, 12)}` : ""}` : submissionState === "preflight" ? "กำลังตรวจ Preflight…" : submissionState === "error" ? "ส่งงานไม่สำเร็จ" : "ยังไม่ได้ส่งงาน"}</span>
         <button type="button" className="primary-button" onClick={submit} disabled={actionDisabled} aria-disabled={actionDisabled}>
-          {busy || submissionState === "preflight" ? "กำลังตรวจสอบ…" : mode === "subtitle_first" ? "เปิด Auto Subtitle" : "ตรวจ Preflight และส่งคิว"}
+          {busy ? "กำลังตรวจสอบ…" : actionLabel}
         </button>
       </footer>
       {message ? <p className="connect-message" role="status" aria-live="polite">{message}</p> : null}

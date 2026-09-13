@@ -60,7 +60,7 @@ export interface NleClip {
   // Video / B-Roll specific
   transform?: Transform2D;
   crop?: {
-    ratio: "9:16" | "16:9" | "1:1" | "source";
+    ratio: PreviewAspectRatio;
     focusX: number;
     focusY: number;
   };
@@ -78,6 +78,8 @@ export interface NleClip {
 
   // Text & Subtitle specific
   text?: string;
+  /** Canonical diarization label; never treated as a real-world identity. */
+  speakerId?: string | null;
   stylePreset?: TextPresetStyle | string;
   words?: SubtitleWord[];
   fontSize?: number;
@@ -139,7 +141,9 @@ export interface NleCanvas {
   backgroundColor?: string;
 }
 
-export type PreviewAspectRatio = "9:16" | "16:9" | "1:1" | "source";
+export type PreviewAspectRatio = "9:16" | "16:9" | "1:1" | "4:5" | "21:9" | "custom" | "source";
+
+import type { CameraMotionPlan } from "@smartspec/shared";
 
 export interface PreviewCanvasProfile {
   aspectRatio: PreviewAspectRatio;
@@ -152,10 +156,13 @@ const PREVIEW_CANVAS_PROFILES: Record<Exclude<PreviewAspectRatio, "source">, Pre
   "9:16": { aspectRatio: "9:16", width: 1080, height: 1920, label: "9:16 · 1080×1920" },
   "16:9": { aspectRatio: "16:9", width: 1920, height: 1080, label: "16:9 · 1920×1080" },
   "1:1": { aspectRatio: "1:1", width: 1080, height: 1080, label: "1:1 · 1080×1080" },
+  "4:5": { aspectRatio: "4:5", width: 1080, height: 1350, label: "4:5 · 1080×1350" },
+  "21:9": { aspectRatio: "21:9", width: 2560, height: 1080, label: "21:9 · 2560×1080" },
+  custom: { aspectRatio: "custom", width: 1080, height: 1920, label: "Custom" },
 };
 
 export function normalizePreviewAspectRatio(value: unknown, fallback: PreviewAspectRatio = "source"): PreviewAspectRatio {
-  return value === "9:16" || value === "16:9" || value === "1:1" || value === "source" ? value : fallback;
+  return value === "9:16" || value === "16:9" || value === "1:1" || value === "4:5" || value === "21:9" || value === "custom" || value === "source" ? value : fallback;
 }
 
 export function getPreviewCanvasProfile(value: unknown): PreviewCanvasProfile {
@@ -195,6 +202,10 @@ export interface VideoProjectDraft {
     transcriptionSummary?: string;
     seriesId?: string | null;
     workspacePath?: string | null;
+    deadAirAudioStreamIndex?: number;
+    deadAirCutFingerprint?: string;
+    deadAirCutRanges?: Array<{ startMs: number; endMs: number }>;
+    cameraMotionPlan?: CameraMotionPlan;
   };
 }
 
@@ -208,14 +219,22 @@ export function createDefaultProjectDraft(options: {
   title: string;
   videoPath: string;
   videoDurationMs: number;
-  aspectRatio?: "9:16" | "16:9" | "1:1" | "source";
+  aspectRatio?: PreviewAspectRatio;
   focusX?: number;
   focusY?: number;
   deadAirSegments?: Array<{ startMs: number; endMs: number }>;
 }): SmartSpecProjectDraft {
-  const ratio = options.aspectRatio === "16:9" ? "16:9" : options.aspectRatio === "1:1" ? "1:1" : "9:16";
-  const width = ratio === "16:9" ? 1920 : ratio === "1:1" ? 1080 : 1080;
-  const height = ratio === "16:9" ? 1080 : ratio === "1:1" ? 1080 : 1920;
+  const ratio = options.aspectRatio === "16:9"
+    ? "16:9"
+    : options.aspectRatio === "1:1"
+      ? "1:1"
+      : options.aspectRatio === "4:5"
+        ? "4:5"
+        : options.aspectRatio === "21:9"
+          ? "21:9"
+          : "9:16";
+  const width = ratio === "16:9" ? 1920 : ratio === "21:9" ? 2560 : 1080;
+  const height = ratio === "16:9" ? 1080 : ratio === "1:1" ? 1080 : ratio === "4:5" ? 1350 : ratio === "21:9" ? 1080 : 1920;
 
   // Split Main Video into active speech clips if deadAirSegments are provided
   const mainClips: NleClip[] = [];
@@ -466,6 +485,9 @@ export function createDefaultProjectDraft(options: {
     metadata: {
       originalSourceVideo: hasValidVideo ? options.videoPath : "",
       deadAirCutCount: sorted.length,
+      timeSavedMs: sorted.reduce((sum, segment) => sum + segment.endMs - segment.startMs, 0),
+      deadAirCutFingerprint: sorted.map((segment) => `${segment.startMs}-${segment.endMs}`).join(","),
+      deadAirCutRanges: sorted,
     },
   };
 }

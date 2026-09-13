@@ -250,6 +250,10 @@ export async function runVerticalDramaSeriesMemoryPlanning(
     maxTokens: 8000,
     schema: seriesMemoryPlannerOutputSchema,
     label: "Series memory planning",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "story_architecture",
+    },
   });
 
   const usage = response.usage;

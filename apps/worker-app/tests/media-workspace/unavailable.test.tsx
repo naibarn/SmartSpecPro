@@ -32,6 +32,10 @@ it("passes the opened project's source video to native transcription", async () 
       await Promise.resolve();
     });
     expect(invoke).toHaveBeenCalledWith("worker_app_transcribe_audio", { videoPath: "D:/workspace/clip.mp4", language: "th" });
+    expect(apply).not.toHaveBeenCalled();
+    const applyButton = Array.from(el.querySelectorAll("button")).find((button) => button.textContent?.includes("Apply ลง Timeline")) as HTMLButtonElement | undefined;
+    expect(applyButton).toBeTruthy();
+    act(() => applyButton?.click());
     expect(apply).toHaveBeenCalled();
   } finally { act(() => root.unmount()); }
 });

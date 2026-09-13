@@ -10,6 +10,7 @@ Split Redis client for Cloud Run deployment.
 - get_redis(): Compatibility shim that returns the cache client.
 """
 
+import asyncio
 import logging
 import os
 from typing import Optional
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 _redis_client: Optional[Redis] = None
 _cache_client: Optional[Redis] = None
+_cache_client_context: tuple | None = None
 _realtime_client: Optional[Redis] = None
 
 
@@ -39,16 +41,28 @@ def _resolve_realtime_url() -> Optional[str]:
 
 async def get_cache_redis() -> Optional[Redis]:
     """Get Upstash Redis client for stateless operations (rate limit, locks, dedup)."""
-    global _cache_client
-    if _cache_client is None:
+    global _cache_client, _cache_client_context
+    # Async Redis pools contain transports bound to their creating event loop.
+    # Celery may change loops or fork after this module has been initialized.
+    context = (os.getpid(), asyncio.get_running_loop())
+    if _cache_client is None or _cache_client_context != context:
         url = _resolve_cache_url()
         if url:
+            client = None
             try:
-                _cache_client = Redis.from_url(url, encoding="utf-8", decode_responses=True)
-                await _cache_client.ping()
+                client = Redis.from_url(url, encoding="utf-8", decode_responses=True)
+                await client.ping()
+                _cache_client = client
+                _cache_client_context = context
+                return client
             except Exception as e:
                 logger.error("redis_cache_connection_failed", extra={"error_type": type(e).__name__})
-                _cache_client = None
+                if client is not None:
+                    try:
+                        await client.close()
+                    except Exception:
+                        pass
+        return None
     return _cache_client
 
 

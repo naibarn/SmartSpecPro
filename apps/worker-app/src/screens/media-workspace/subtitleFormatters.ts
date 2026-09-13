@@ -9,6 +9,7 @@ export interface SubtitleSegmentItem {
   startMs: number;
   endMs: number;
   text: string;
+  speakerId?: string | null;
   words?: SubtitleWordTiming[];
 }
 
@@ -98,6 +99,15 @@ export function hexToAssColor(hexStr: string, alphaHex = "00"): string {
   return `&H${alphaHex}${b}${g}${r}`.toUpperCase();
 }
 
+/** Escape ASS override syntax while preserving line breaks as ASS newlines. */
+export function escapeAssText(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/\{/g, "\\{")
+    .replace(/\}/g, "\\}")
+    .replace(/\r?\n/g, "\\N");
+}
+
 /**
  * Generate SubRip (.srt) subtitle string
  */
@@ -174,10 +184,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       const styleName = options.stylePreset === "viral_word_highlight" ? "ViralHighlight" : "Default";
 
       // If word-level timings are present, generate word highlight ASS tags
-      let formattedText = text;
+      let formattedText = escapeAssText(text);
       if (seg.words && seg.words.length > 0) {
         formattedText = seg.words
-          .map((w) => `{\\1c&H00FFFF&}${w.word}{\\r}`)
+          .map((w) => `{\\1c&H00FFFF&}${escapeAssText(w.word)}{\\r}`)
           .join(" ");
       }
 

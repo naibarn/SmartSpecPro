@@ -840,6 +840,7 @@ async function defaultEvaluate(params: {
   immutableConstraints: DraftQualityQcImmutableConstraints;
   userId: number;
   model: string;
+  seriesId?: number;
 }): Promise<DraftQualityQcCallResult> {
   const result = await executeJsonPlanningCallWithRetry({
     model: params.model,
@@ -856,6 +857,10 @@ async function defaultEvaluate(params: {
     extraBodyParams: { response_format: DRAFT_QC_JUDGE_RESPONSE_FORMAT },
     disableProviderFallbacks: true,
     label: "Vertical Drama draft QC evaluate",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "semantic_quality_review",
+    },
     schemaRetryContract: DRAFT_QC_JUDGE_OUTPUT_CONTRACT,
     onSchemaRetriesExhausted: ({ parsedJson }) => {
       const normalized = normalizeDraftQualityQcJudgeOutput(parsedJson);
@@ -880,6 +885,7 @@ async function defaultRevise(params: {
   immutableConstraints: DraftQualityQcImmutableConstraints;
   userId: number;
   model: string;
+  seriesId?: number;
 }): Promise<DraftQualityQcCallResult> {
   const result = await executeJsonPlanningCallWithRetry({
     model: params.model,
@@ -896,6 +902,10 @@ async function defaultRevise(params: {
     schema: revisedDraftOutputSchema,
     disableProviderFallbacks: true,
     label: "Vertical Drama draft QC revise",
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      taskClass: "script_generation",
+    },
     onSchemaRetriesExhausted: ({ parsedJson }) =>
       recoverDraftQualityQcRevisionOutput(parsedJson, params.draft),
   });
@@ -1003,10 +1013,10 @@ export async function runVerticalDramaDraftQualityQc(
     dependencies.chargeLlmCall ?? chargeVerticalDramaLlmCall;
   const evaluate =
     dependencies.evaluate ??
-    (params => defaultEvaluate({ ...params, model: activeModel }));
+    (params => defaultEvaluate({ ...params, model: activeModel, seriesId: input.seriesId }));
   const revise =
     dependencies.revise ??
-    (params => defaultRevise({ ...params, model: activeModel }));
+    (params => defaultRevise({ ...params, model: activeModel, seriesId: input.seriesId }));
   const now = dependencies.now ?? (() => new Date().toISOString());
   let callsDone = 0;
   let actualCredits = 0;
@@ -1518,10 +1528,10 @@ export async function runVerticalDramaDraftQualityQcRepair(
     dependencies.chargeLlmCall ?? chargeVerticalDramaLlmCall;
   const evaluate =
     dependencies.evaluate ??
-    (params => defaultEvaluate({ ...params, model: activeModel }));
+    (params => defaultEvaluate({ ...params, model: activeModel, seriesId: input.seriesId }));
   const revise =
     dependencies.revise ??
-    (params => defaultRevise({ ...params, model: activeModel }));
+    (params => defaultRevise({ ...params, model: activeModel, seriesId: input.seriesId }));
   const now = dependencies.now ?? (() => new Date().toISOString());
   let callsDone = 0;
   let actualCredits = 0;

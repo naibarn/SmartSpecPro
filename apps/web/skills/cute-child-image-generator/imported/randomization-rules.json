@@ -1,0 +1,146 @@
+{
+  "version": "3.0.0",
+  "age_randomization": {
+    "default_range": [
+      2,
+      8
+    ],
+    "weighted_distribution": [
+      {
+        "ages": [
+          2,
+          3,
+          4
+        ],
+        "weight": 50
+      },
+      {
+        "ages": [
+          5,
+          6
+        ],
+        "weight": 30
+      },
+      {
+        "ages": [
+          7,
+          8
+        ],
+        "weight": 20
+      }
+    ]
+  },
+  "age_groups": [
+    {
+      "min": 1,
+      "max": 2,
+      "name": "toddler"
+    },
+    {
+      "min": 3,
+      "max": 4,
+      "name": "preschooler"
+    },
+    {
+      "min": 5,
+      "max": 8,
+      "name": "young_child"
+    },
+    {
+      "min": 9,
+      "max": 12,
+      "name": "older_child"
+    }
+  ],
+  "outfit_pools": {
+    "girl": [
+      "a pastel pink cotton dress with ruffled sleeves and a white Peter Pan collar",
+      "a lavender puff-sleeve dress with tiny embroidered flowers",
+      "a mint-green cotton dress with a cream lace collar",
+      "a peach dress with soft floral embroidery",
+      "cute pastel overalls with a soft cotton inner shirt",
+      "a sky-blue dress with small white floral details",
+      "a cream blouse with a pastel skirt and child-friendly embroidery",
+      "a soft yellow cotton dress with tiny daisy details"
+    ],
+    "boy": [
+      "a light-blue cotton shirt with beige shorts",
+      "a cream toddler sweater with soft green pants",
+      "a pastel striped shirt with suspenders",
+      "a cute checkered shirt with soft shorts",
+      "a cozy neutral-toned romper",
+      "a mint polo-style child shirt with cream shorts",
+      "a soft denim overall set with a pastel inner shirt",
+      "a pale yellow cotton shirt with light brown shorts"
+    ],
+    "any": [
+      "a soft pastel cotton outfit with child-friendly details",
+      "a cream and pastel homewear set",
+      "a cozy cute child outfit in soft tones",
+      "a playful pastel outfit with subtle childlike patterns",
+      "a simple cotton outfit with soft warm colors",
+      "a light neutral outfit with tiny embroidered details"
+    ]
+  },
+  "hair_pools": {
+    "girl": [
+      "dark brown hair styled in twin buns with wispy bangs",
+      "dark brown hair styled in a high messy bun with soft bangs",
+      "dark brown hair in low pigtails with wispy bangs",
+      "dark brown hair in two soft braids",
+      "a short bob haircut with childlike bangs",
+      "natural shoulder-length dark hair with soft bangs"
+    ],
+    "boy": [
+      "soft short dark hair with a neat childlike style",
+      "a cute bowl cut with soft texture",
+      "fluffy short dark hair with a natural playful look",
+      "side-swept child hair with a soft natural finish"
+    ],
+    "any": [
+      "a natural child hairstyle with soft texture",
+      "slightly tousled dark hair with a cute childlike appearance",
+      "soft dark hair with wispy bangs and a natural child look"
+    ]
+  },
+  "accessories": {
+    "bow": [
+      "a large pastel pink bow",
+      "a soft lavender bow",
+      "a cream bow with floral detail"
+    ],
+    "flower_clip": [
+      "tiny flower clips in the hair",
+      "soft pastel flower hair clips",
+      "small floral accessories"
+    ],
+    "hat": [
+      "a pastel beret",
+      "a soft cotton child hat",
+      "a cute child cap"
+    ],
+    "headband": [
+      "a pastel headband",
+      "a floral headband",
+      "a soft child headband"
+    ],
+    "none": [
+      "no accessory"
+    ]
+  },
+  "expressions": {
+    "smile": "a sweet warm smile",
+    "laughing": "a joyful laughing expression",
+    "playful": "a playful cheerful expression",
+    "cute_pout": "an adorable tiny pout",
+    "curious": "a curious bright expression",
+    "shy": "a shy gentle smile"
+  },
+  "shot_types": {
+    "close_up": "close-up portrait",
+    "medium_close_up": "medium close-up portrait",
+    "waist_up": "waist-up portrait",
+    "full_body": "full-body portrait"
+  },
+  "single_prompt_safety_suffix": "Keep the child clearly looking like a child. Make the child extra adorable, wholesome, and age-appropriate. Use realistic child proportions and natural skin texture. Clothing must be modest, cute, and age-appropriate. Avoid adult-like styling, heavy makeup, glamorous fashion-model posing, mature body proportions, sexualized appearance, revealing clothing, dramatic cosmetics, luxury influencer styling, text overlays, and watermarks."
+}

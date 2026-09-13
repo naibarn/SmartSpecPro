@@ -21,6 +21,9 @@ const webAssetResolver = new WebAssetResolver();
 interface MediaLibraryPanelProps {
   onAddToTimeline?: (asset: MediaLibraryAsset, localPath: string) => void;
   projectAssets?: Record<string, Asset>;
+  projectId?: number | null;
+  title?: string;
+  initialSourceMode?: LibrarySourceMode;
 }
 
 type LibraryRecentDaysFilter = 'all' | 1 | 3 | 7 | 15 | 30;
@@ -41,7 +44,10 @@ const isValidAsset = (asset: unknown): asset is MediaLibraryAsset => {
 
 export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
   onAddToTimeline,
-  projectAssets
+  projectAssets,
+  projectId,
+  title = '📚 Media Library',
+  initialSourceMode = 'generated',
 }) => {
   const [videos, setVideos] = useState<MediaLibraryAsset[]>([]);
   const [audio, setAudio] = useState<MediaLibraryAsset[]>([]);
@@ -103,7 +109,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
   };
 
   // Library search state
-  const [sourceMode, setSourceMode] = useState<LibrarySourceMode>('generated');
+  const [sourceMode, setSourceMode] = useState<LibrarySourceMode>(initialSourceMode);
   const [librarySearchQuery, setLibrarySearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [libraryTypeFilter, setLibraryTypeFilter] = useState<'all' | 'video' | 'audio' | 'image'>('all');
@@ -197,6 +203,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
       createdAt: new Date(),
       format: a.format || 'mp4',
       localPath: a.path,
+      ...(a.mediaAssetId ? { mediaAssetId: a.mediaAssetId } : {}),
     }));
   }, [projectAssets]);
 
@@ -242,13 +249,17 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
         (percent) => {
           // Update per-file progress
           setCurrentFileProgress({ fileName: file.name, percent });
-        }
+        },
+        {
+          projectId: projectId ?? undefined,
+          idempotencyKey: `library-upload:${projectId ?? 'unscoped'}:${file.name}:${file.size}:${file.lastModified}`,
+        },
       );
 
       // Store abort function so user can cancel
       setCurrentUploadAbort(() => abort);
 
-      const { assetId, uri } = await promise;
+      const { assetId, uri, mediaAssetId } = await promise;
 
       const isVideo = file.type.startsWith('video/');
       const isImage = file.type.startsWith('image/');
@@ -263,6 +274,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
         model: 'uploaded',
         createdAt: new Date(),
         format: file.name.split('.').pop() || 'mp4',
+        ...(mediaAssetId ? { mediaAssetId: Number(mediaAssetId) } : {}),
       };
 
       if (isImage) {
@@ -399,8 +411,26 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
     setDownloadingIds(prev => new Set(prev).add(asset.id));
 
     try {
-      // Platform-aware: desktop downloads to workspace, web uses URL directly
-      let localPath = await videoEditorMediaLibrary.downloadToWorkspace(asset);
+      // Platform-aware: desktop keeps its workspace adapter; Web always resolves
+      // a tenant-owned managed asset before it can enter the project document.
+      let localPath: string;
+      if (isDesktopPlatform) {
+        localPath = await videoEditorMediaLibrary.downloadToWorkspace(asset);
+      } else {
+        const managed = await webAssetResolver.importRemoteAsset(asset.url, {
+          mediaType: asset.type,
+          projectId: projectId ?? undefined,
+          idempotencyKey: `library:${asset.id}:${projectId ?? 'unscoped'}`,
+        });
+        asset = {
+          ...asset,
+          id: managed.assetId,
+          url: managed.uri,
+          localPath: managed.uri,
+          ...(managed.mediaAssetId ? { mediaAssetId: Number(managed.mediaAssetId) } : {}),
+        };
+        localPath = managed.uri;
+      }
       let needsTranscode = false;
 
       // Probe file to get actual metadata
@@ -943,7 +973,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
 
       <div className="media-library-header">
         <div className="media-library-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>📚 Media Library</span>
+          <span>{title}</span>
           {!isDesktopPlatform && sourceMode === 'generated' && (
             <button
               className="add-button"

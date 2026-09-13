@@ -12,12 +12,13 @@ import os
 import shutil
 import subprocess
 import zipfile
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+
+import pypdf
 import pytest
-from unittest.mock import MagicMock, patch, call
 from celery.exceptions import SoftTimeLimitExceeded
 from PIL import Image, ImageChops, ImageStat
-import pypdf
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -112,6 +113,7 @@ def _make_mock_playwright(png_bytes: bytes = MOCK_PNG_BYTES, slide_ready: bool =
     """
     mock_page = MagicMock()
     mock_page.evaluate.return_value = slide_ready
+    mock_page.goto.return_value = SimpleNamespace(status=200)
 
     def fake_screenshot(**kwargs):
         path = kwargs.get("path")
@@ -186,6 +188,7 @@ def _make_mock_playwright_video(tmp_dir: str, slide_ready: bool = True):
 
     mock_page = MagicMock()
     mock_page.evaluate.return_value = slide_ready
+    mock_page.goto.return_value = SimpleNamespace(status=200)
     mock_page.video = mock_video
 
     def fake_close():
@@ -210,6 +213,39 @@ def _make_mock_playwright_video(tmp_dir: str, slide_ready: bool = True):
 
     mock_sync_playwright = MagicMock(return_value=mock_cm)
     return mock_sync_playwright, mock_page
+
+
+def _make_media_degraded_page():
+    page = MagicMock()
+    page.goto.return_value = SimpleNamespace(status=200)
+
+    def evaluate_side_effect(script):
+        if "window.__slideReady === true" in script:
+            return True
+        if "window.__slideReadyState" in script:
+            return {"status": "ready", "mediaDegraded": True, "mediaReady": True}
+        return True
+
+    page.evaluate.side_effect = evaluate_side_effect
+    return page
+
+
+def _make_retryable_media_playwright(page_sequence):
+    mock_context = MagicMock()
+    mock_context.new_page.side_effect = page_sequence
+
+    mock_browser = MagicMock()
+    mock_browser.new_context.return_value = mock_context
+
+    mock_pw_instance = MagicMock()
+    mock_pw_instance.chromium.launch.return_value = mock_browser
+
+    mock_cm = MagicMock()
+    mock_cm.__enter__ = MagicMock(return_value=mock_pw_instance)
+    mock_cm.__exit__ = MagicMock(return_value=None)
+
+    mock_sync_playwright = MagicMock(return_value=mock_cm)
+    return mock_sync_playwright, mock_context
 
 
 def _make_render_spec(num_slides: int = 2, fmt: str = "mp4") -> dict:
@@ -334,15 +370,15 @@ class TestMakeSlideToken:
 
     def test_token_has_expiry_approximately_5_minutes(self, monkeypatch):
         """Token exp claim is approximately 5 minutes (300s) from now."""
-        import jwt
         import time
+
+        import jwt
 
         monkeypatch.setenv("JWT_SECRET", "test-secret-key-for-unit-tests")
         from app.tasks.presentation_render import _make_slide_token
 
         before = int(time.time())
         token = _make_slide_token(deck_id=1, slide_index=0)
-        after = int(time.time())
 
         payload = jwt.decode(token, "test-secret-key-for-unit-tests", algorithms=["HS256"])
         ttl = payload["exp"] - before
@@ -595,6 +631,89 @@ class TestSlideReadyTimeout:
 
         assert not mock_page.screenshot.called
 
+    def test_media_degraded_state_retries_with_a_fresh_page_and_recovers(self, monkeypatch, tmp_path):
+        """A transient media failure gets a fresh render request before capture."""
+        monkeypatch.setenv("JWT_SECRET", "test-secret-key-for-unit-tests")
+        monkeypatch.setenv("INTERNAL_RENDER_BASE_URL", "http://localhost:3000")
+
+        first_page = _make_media_degraded_page()
+        second_page = MagicMock()
+        second_page.goto.return_value = SimpleNamespace(status=200)
+
+        def recovered_evaluate(script):
+            if "window.__slideReady === true" in script:
+                return True
+            if "window.__slideReadyState" in script:
+                return {"status": "ready", "mediaDegraded": False, "mediaReady": True}
+            return True
+
+        second_page.evaluate.side_effect = recovered_evaluate
+
+        def fake_screenshot(**kwargs):
+            path = kwargs.get("path")
+            if path:
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "wb") as f:
+                    f.write(MOCK_PNG_BYTES)
+
+        second_page.screenshot.side_effect = fake_screenshot
+        mock_sync_playwright, mock_context = _make_retryable_media_playwright([first_page, second_page])
+        task_self = _make_mock_task_self()
+        render_spec = _make_render_spec(num_slides=1)
+
+        with patch("app.tasks.presentation_render.sync_playwright", mock_sync_playwright):
+            from app.tasks.presentation_render import _render_slides_to_screenshots
+
+            result = _render_slides_to_screenshots(task_self, render_spec, str(tmp_path))
+
+        assert len(result) == 1
+        assert mock_context.new_page.call_count == 2
+        assert first_page.close.call_count == 1
+        assert second_page.close.call_count == 1
+        assert second_page.screenshot.call_count == 1
+        assert "X-Internal-Token" in first_page.set_extra_http_headers.call_args[0][0]
+        assert "X-Internal-Token" in second_page.set_extra_http_headers.call_args[0][0]
+
+    def test_media_degraded_state_stops_after_bounded_retries(self, monkeypatch, tmp_path):
+        """Persistent media failure never loops beyond the configured retry budget."""
+        monkeypatch.setenv("JWT_SECRET", "test-secret-key-for-unit-tests")
+        monkeypatch.setenv("INTERNAL_RENDER_BASE_URL", "http://localhost:3000")
+
+        pages = [_make_media_degraded_page() for _ in range(3)]
+        mock_sync_playwright, mock_context = _make_retryable_media_playwright(pages)
+        task_self = _make_mock_task_self()
+        render_spec = _make_render_spec(num_slides=1)
+
+        with patch("app.tasks.presentation_render.sync_playwright", mock_sync_playwright):
+            from app.tasks.presentation_render import _render_slides_to_screenshots
+
+            with pytest.raises(RuntimeError, match="E_SLIDE_MEDIA_DEGRADED"):
+                _render_slides_to_screenshots(task_self, render_spec, str(tmp_path))
+
+        assert mock_context.new_page.call_count == 3
+        assert all(page.close.call_count == 1 for page in pages)
+        assert all(not page.screenshot.called for page in pages)
+
+    def test_terminal_http_error_does_not_retry(self, monkeypatch, tmp_path):
+        """A deterministic render-route HTTP error fails without another request."""
+        monkeypatch.setenv("JWT_SECRET", "test-secret-key-for-unit-tests")
+        monkeypatch.setenv("INTERNAL_RENDER_BASE_URL", "http://localhost:3000")
+
+        page = MagicMock()
+        page.goto.return_value = SimpleNamespace(status=404)
+        mock_sync_playwright, mock_context = _make_retryable_media_playwright([page])
+        task_self = _make_mock_task_self()
+        render_spec = _make_render_spec(num_slides=1)
+
+        with patch("app.tasks.presentation_render.sync_playwright", mock_sync_playwright):
+            from app.tasks.presentation_render import _render_slides_to_screenshots
+
+            with pytest.raises(RuntimeError, match="E_SLIDE_RENDER_HTTP_404"):
+                _render_slides_to_screenshots(task_self, render_spec, str(tmp_path))
+
+        assert mock_context.new_page.call_count == 1
+        assert page.close.call_count == 1
+
 
 # ---------------------------------------------------------------------------
 # Tests: dynamic video MP4 path
@@ -604,6 +723,46 @@ class TestSlideReadyTimeout:
 @pytest.mark.unit
 class TestDynamicVideoExportPath:
     """MP4 exports with hasDynamicVideo use clip-recording path."""
+
+    def test_media_degraded_state_retries_in_record_mode(self, monkeypatch, tmp_path):
+        """Record-mode rendering also refreshes the slide before retrying media."""
+        monkeypatch.setenv("JWT_SECRET", "test-secret-key-for-unit-tests")
+        monkeypatch.setenv("INTERNAL_RENDER_BASE_URL", "http://localhost:3000")
+
+        first_page = _make_media_degraded_page()
+        second_page = MagicMock()
+        second_page.goto.return_value = SimpleNamespace(status=200)
+        second_page.evaluate.side_effect = lambda script: (
+            True
+            if "window.__slideReady === true" in script
+            else {"status": "ready", "mediaDegraded": False, "mediaReady": True}
+            if "window.__slideReadyState" in script
+            else True
+        )
+        raw_video_path = os.path.join(str(tmp_path), "recorded_retry.webm")
+        second_video = MagicMock()
+        second_video.path.return_value = raw_video_path
+        second_page.video = second_video
+
+        def fake_close():
+            with open(raw_video_path, "wb") as f:
+                f.write(b"webm")
+
+        second_page.close.side_effect = fake_close
+        mock_sync_playwright, mock_context = _make_retryable_media_playwright([first_page, second_page])
+        task_self = _make_mock_task_self()
+        render_spec = _make_render_spec(num_slides=1, fmt="mp4")
+
+        with patch("app.tasks.presentation_render.sync_playwright", mock_sync_playwright):
+            from app.tasks.presentation_render import _render_slides_to_video_clips
+
+            result = _render_slides_to_video_clips(task_self, render_spec, str(tmp_path))
+
+        assert len(result) == 1
+        assert mock_context.new_page.call_count == 2
+        assert first_page.close.call_count == 1
+        assert second_page.close.call_count == 1
+        assert "mode=record" in second_page.goto.call_args[0][0]
 
     def test_render_slides_to_video_clips_uses_record_mode_url(self, monkeypatch, tmp_path):
         monkeypatch.setenv("JWT_SECRET", "test-secret-key-for-unit-tests")

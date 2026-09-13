@@ -768,6 +768,7 @@ describe("settlePortraitCandidate — failed branch (Set A gap 7 policy classifi
       status: "failed",
       errorMessage: MOCK_VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE,
       policyRejected: true,
+      policyReason: "Image blocked: content policy violation detected",
     });
     // The RAW provider text (not the classified one) is what's forwarded for
     // durable persistence — classification happens once, inside

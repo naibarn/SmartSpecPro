@@ -8,6 +8,7 @@
  */
 
 import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
+import { probeAudioDurationMs } from "./videoProjectAudioDuration";
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -19,7 +20,9 @@ export const MAX_TTS_CHARS = 5000;
 export interface TTSResult {
   audioBuffer: Buffer;
   contentType: string; // "audio/mpeg", "audio/pcm", or "audio/wav"
-  duration: number;    // estimated seconds
+  /** Actual decoded duration. Null means the runtime could not probe it. */
+  duration: number | null;
+  durationMs: number | null;
 }
 
 export interface SynthesizeOptions {
@@ -89,8 +92,8 @@ export async function synthesize(
   const arrayBuffer = await response.arrayBuffer();
   const audioBuffer = Buffer.from(arrayBuffer);
 
-  // Estimate duration from buffer size (rough: MP3 ~128kbps)
-  const duration = audioBuffer.byteLength / (128 * 1024 / 8);
+  const durationMs = await probeAudioDurationMs(audioBuffer, contentType);
+  const duration = durationMs === undefined ? null : durationMs / 1000;
 
-  return { audioBuffer, contentType, duration };
+  return { audioBuffer, contentType, duration, durationMs: durationMs ?? null };
 }

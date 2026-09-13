@@ -49,6 +49,8 @@ import { trpc } from "@/lib/trpc";
 import {
   canAddSpecialReferences,
   resolveSpecialTieInCharacterId,
+  shouldLoadSpecialTieInHistory,
+  type SpecialTieInStartMode,
   toggleBoundedSelection,
 } from "@/lib/specialTieInUi";
 import {
@@ -501,6 +503,7 @@ export function SpecialTieInEpisodeDialog({
   onCreated,
   onOpenCharacterSettings,
   initialInput,
+  initialMode = "resume",
   onSubmitInput,
 }: {
   lang: "th" | "en";
@@ -510,8 +513,10 @@ export function SpecialTieInEpisodeDialog({
   onCreated?: (episodeId: string) => void;
   onOpenCharacterSettings?: () => void;
   initialInput?: SpecialTieInInput | null;
+  initialMode?: SpecialTieInStartMode;
   onSubmitInput?: (input: SpecialTieInInput) => Promise<void>;
 }) {
+  const utils = trpc.useUtils();
   const [idea, setIdea] = useState("");
   const [referenceType, setReferenceType] = useState<ReferenceType>("product");
   const [references, setReferences] = useState<Reference[]>([]);
@@ -780,7 +785,18 @@ export function SpecialTieInEpisodeDialog({
   const ideaHistoryQuery =
     trpc.verticalDramaEpisodes.listMarketplaceReviewIdeas.useQuery(
       { seriesId, productId: selectedProductId ?? undefined },
-      { enabled: open, staleTime: 10_000, refetchOnWindowFocus: false }
+      {
+        enabled: shouldLoadSpecialTieInHistory({
+          open,
+          initialInput,
+          initialMode,
+        }),
+        // Resume must see the idea run created by the previous episode, not a
+        // still-fresh React Query snapshot from an older editor session.
+        staleTime: 0,
+        refetchOnMount: "always",
+        refetchOnWindowFocus: false,
+      }
     );
   const currentIdeaGenerationScopeKey = selectedProductId
     ? `marketplace-review-ideas:${seriesId}:${selectedProductId}`
@@ -1140,6 +1156,8 @@ export function SpecialTieInEpisodeDialog({
     if (
       historyHydratedRef.current ||
       initialInput ||
+      initialMode !== "resume" ||
+      ideaHistoryQuery.isFetching ||
       !ideaHistoryQuery.data?.length
     ) {
       return;
@@ -1227,10 +1245,12 @@ export function SpecialTieInEpisodeDialog({
   }, [
     historyHydratedRef,
     ideaHistoryQuery.data,
+    ideaHistoryQuery.isFetching,
     initialInput,
     open,
     characters,
     charactersQuery.isLoading,
+    initialMode,
   ]);
 
   useEffect(() => {
@@ -2148,6 +2168,12 @@ export function SpecialTieInEpisodeDialog({
         seriesId,
         createIntentId: crypto.randomUUID(),
         input: parsed.data,
+      });
+      // The new episode's idea run is now the latest resumable work. Mark the
+      // cached list stale so a later explicit "โหลดงานเดิม" cannot reuse an
+      // older snapshot from before this episode was created.
+      void utils.verticalDramaEpisodes.listMarketplaceReviewIdeas.invalidate({
+        seriesId,
       });
       toast.success(
         lang === "th"
