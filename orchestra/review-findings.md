@@ -4,7 +4,7 @@
 
 - Rounds 01-14 completed for the current workspace after the latest implementation/spec updates.
 - Fixed additive outbox cancellation index migration, publisher cancellation race, adapter reference attempt validation, Node executor pre-side-effect lease assertion, Python `assert-active` parity, hard lease deadline capping, and Kie redirect/private-target/size guards.
-- Fresh proof: Node focused control-plane suite 6 files / 35 tests passed; Python focused control-plane/media/Kie suite 85 tests passed with `--no-cov`; changed Python modules compile; Feature 186 verifier passed with additive migration; call-site inventory reports 53 intentionally unmigrated direct transport sites; config JSON and diff checks passed.
+- Fresh proof: Node focused control-plane suite 6 files / 35 tests passed; Python focused control-plane/media/Kie suite 85 tests passed with `--no-cov`; changed Python modules compile; Feature 186 verifier passed with additive migration; call-site inventory reports 52 intentionally unmigrated direct transport sites; config JSON and diff checks passed.
 - TypeScript typecheck was intentionally skipped because the user identified the workspace RAM constraint. Production Cloudflare/Hyperdrive, live provider, deployment/restart, browser, and full legacy call-site migration remain explicit external or rollout gates; no claim of production cutover is made.
 - No `.env`, archive, or oversized changed file is in the publication candidate set.
 
@@ -13,7 +13,7 @@
 - Rounds 01-10 completed across persistence, identity, lifecycle, lease, retry, outbox, adapters, scheduler, security/admin, migration/data, and operations.
 - Material findings were fixed in scoped implementation files; no unresolved MUST_FIX or MUST_DO_NOW finding remains.
 - Rounds 11-12 were clean consecutive rounds after the final code/schema changes.
-- Fresh gates: 8 Feature 186 test files / 31 tests passed; migration runner applied/no-op succeeded; migration verifier passed; Python compile passed; audit found 53 intentionally legacy direct transport call sites; journal JSON and diff checks passed.
+- Fresh gates: 8 Feature 186 test files / 31 tests passed; migration runner applied/no-op succeeded; migration verifier passed; Python compile passed; audit found 52 intentionally legacy direct transport call sites; journal JSON and diff checks passed.
 - Final local DB snapshot: zero missing definition hashes, zero missing event sequence/idempotency keys, zero duplicate event sequences, zero duplicate attempts, zero pending outbox rows; migration hashes for 0304 and 0303 matched.
 - Deferred by explicit scope: adapter-by-adapter migration of legacy call sites and production Cloudflare proof.
 
@@ -25,7 +25,7 @@
 - Found and disabled the legacy fleet cleanup deletion of `worker_job_events`; canonical lifecycle history is now protected from in-place deletion.
 - Final local snapshot: 507 jobs, 7,262 events, 502 attempts, zero pending/unquarantined outbox rows, zero orphan companion rows, zero missing hashes/policies, and zero duplicate event sequences.
 - Focused proof: 8 files / 34 tests passed; `db:migrate`, `verify:feature-186`, dry-run backfill, static call-site inventory, and Python compile passed.
-- Remaining explicit gates: 53 legacy direct transport call sites, adapter registry/cutover, full repository typecheck, Python pytest dependency, and production Cloudflare proof.
+- Remaining explicit gates: 52 legacy direct transport call sites, adapter registry/cutover, full repository typecheck, and production Cloudflare proof.
 
 ## Kie attachment boundary repeat audit — 2026-09-13
 

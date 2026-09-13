@@ -85,7 +85,7 @@ confirmed defects were corrected before the next round.
 - Repository-wide TypeScript typecheck still reports unrelated pre-existing
   errors outside the changed control-plane paths; this is recorded as a
   baseline limitation, not hidden as Feature 186 proof.
-- Direct transport audit remains 53 legacy call sites with no migrated wave;
+- Direct transport audit remains 52 legacy call sites with no migrated wave;
   this is intentional under incremental rollout and remains a deployment gate.
 - Cloudflare production/account proof and the tenant-transfer runtime wave are
   not claimed by local tests.

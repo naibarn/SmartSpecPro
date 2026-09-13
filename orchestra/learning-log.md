@@ -51,7 +51,7 @@ Evidence:
   focused_tests: 8 files / 34 tests passed
   database: 507 jobs, 7262 events, 502 attempts, zero pending outbox, zero orphan companion rows, zero duplicate event sequences
   migrations: 0303, 0304, 0305 applied
-  static_inventory: 53 direct legacy transport call sites, migrated waves empty
+  static_inventory: 52 direct legacy transport call sites, migrated waves empty
   environment: `.env` unchanged; no provider, credit, deploy, or Cloudflare mutation
 
 ## Learning entry - 2026-09-13T16:30:00+07:00

@@ -74,7 +74,7 @@ Mode: inline sequential conductor review because SocratiCode and sub-agent tooli
 
 - Evidence: repo migration runner, local PostgreSQL counts, backfill script, call-site audit, runbook/manifest.
 - Finding: local data had new legacy rows/events appear while backfill was running; audit must not falsely claim all queues migrated.
-- Fix: made event backfill transactionally serialized per job; reran bounded apply until the checked snapshot had zero missing hashes/sequences/keys; audit reports 53 direct legacy transport call sites and `migratedWave: []` truthfully.
+- Fix: made event backfill transactionally serialized per job; reran bounded apply until the checked snapshot had zero missing hashes/sequences/keys; audit reports 52 direct legacy transport call sites and `migratedWave: []` truthfully.
 - Gate: `db:migrate` applied 0304 successfully; latest local migration hash matched the file; additive verification passed.
 
 ## Round 11 — clean regression round
@@ -96,4 +96,4 @@ Mode: inline sequential conductor review because SocratiCode and sub-agent tooli
 - Rounds run: 12 (minimum requested: 10).
 - Clean consecutive rounds: 2 (Rounds 11–12).
 - Must-fix findings: fixed in Rounds 02–10.
-- Safely deferred: adapter-by-adapter migration of the 53 legacy direct call sites and production Cloudflare account/deployment proof; both are explicit Feature 186 rollout/external gates.
+- Safely deferred: adapter-by-adapter migration of the 52 legacy direct call sites and production Cloudflare account/deployment proof; both are explicit Feature 186 rollout/external gates.
