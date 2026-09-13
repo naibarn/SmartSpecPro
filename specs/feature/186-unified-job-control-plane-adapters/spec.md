@@ -273,6 +273,7 @@ Extend the existing table only where the field is part of canonical current stat
 | `tenantId`, actor fields | Server-derived ownership and audit scope. |
 | `jobType`, `executionClass`, `priority` | Allowlisted routing inputs; not arbitrary executable code. |
 | `contractVersion` | Persisted immutable envelope/schema contract version; retries, recovery, and adapters reuse the canonical row's version rather than hard-coding a transport version. |
+| `definitionHash` | Immutable server-derived digest of the canonical create definition; persisted before the create response and used for idempotency-conflict checks. |
 | `status` | Single canonical materialized state with compatibility projection for legacy values. |
 | `attempt`, `maxAttempts`, `nextRetryAt` | Business-level retry state; incremented only by guarded control-plane transitions. |
 | `timeoutPolicyJson` | Persisted soft/hard timeout policy; soft timeout is a cooperative request signal and hard timeout is an enforced execution bound. `timeoutSeconds` remains a legacy compatibility projection. |
@@ -281,6 +282,7 @@ Extend the existing table only where the field is part of canonical current stat
 | `runnerId`/worker binding | Current execution owner; use existing worker binding where it is authoritative and add an ephemeral runner identity only if required. |
 | `scheduledAt`, `startedAt`, `finishedAt` | Lifecycle timestamps; all timestamps are UTC with server time. |
 | `errorCode`, `errorMessage` | Last classified error, redacted for secrets and bounded in size. Existing `statusReason`/`failureReason` may provide this projection only when the API exposes a stable safe code/message mapping; otherwise add dedicated canonical fields. |
+| `operatorReviewRequired`, `operatorReviewReason` | Explicit review gate and bounded reason for ambiguous/unknown recovery, transfer pause, poison outbox, or other fail-closed conditions; a review flag never authorizes automatic dispatch. |
 | `progressJson` | Current progress projection: percent, stage, message, and optional measured metadata. |
 | `payloadRef`, `resultRef` | References to managed storage or domain rows for large payload/result data; do not persist expiring URLs as canonical data. A committed result reference is immutable for that attempt/job except through an explicit redaction/compliance workflow. |
 | schedule identity | `scheduleId` plus `occurrenceKey`, either on the row or through a unique companion mapping, must be sufficient to deduplicate scheduled creation. |
@@ -291,7 +293,7 @@ Existing `inputJson`, `instructionsJson`, `outputJson`, `retryPolicyJson`, and t
 
 Events are append-only, tenant-scoped through the parent job, and ordered by a server-assigned monotonic per-job event sequence plus creation timestamp. The existing assignment sequence is a separate compatibility key and must not be assumed to provide total lifecycle ordering. Event writes must be idempotent using a stable event key such as `(workerJobId, attemptId, eventKey)` or the existing assignment/sequence contract. State-transition events are never sampled. `HEARTBEAT` and high-frequency `PROGRESS` events use a documented per-class sampling/coalescing policy while the latest value remains on `worker_jobs`; raw high-volume telemetry belongs outside the lifecycle ledger.
 
-The logical event record therefore includes `eventSequence` (monotonic within `workerJobId`) and an idempotency key in addition to the existing event type, attempt, payload, and timestamp. If the existing `sequence` column cannot serve both assignment ordering and lifecycle ordering without ambiguity, add a separately named field rather than overloading it.
+The logical event record therefore includes `eventSequence` (monotonic within `workerJobId`) and an idempotency key/event key in addition to the existing event type, attempt, payload, and timestamp. Event sequence allocation is performed under the canonical job row lock (or an equivalent serializable allocator) in the same transaction as the guarded state change; a timestamp or application-process counter is not sufficient. If the existing `sequence` column cannot serve both assignment ordering and lifecycle ordering without ambiguity, add a separately named field rather than overloading it.
 
 The initial event vocabulary is:
 
@@ -317,6 +319,10 @@ COMPLETED
 CANCEL_REQUESTED
 CANCELLED
 EXPIRED
+CALLBACK_ACCEPTED
+CALLBACK_REJECTED
+SETTLEMENT_RECORDED
+PROJECTION_REPAIRED
 ```
 
 Event payloads must include only bounded structured data: actor/source, attempt ID, adapter name, external reference, stage, safe error code, and measured values. Raw provider responses, secrets, access tokens, arbitrary user prompt text, and unbounded logs belong in redacted logs or managed artifacts with a reference.
@@ -332,6 +338,8 @@ Companion tables are allowed only for one-to-many history or publication coordin
 - `worker_job_outbox` also stores `nextAttemptAt`, publisher lease/fencing metadata, and a quarantine/operator-review reason so one lost or poison publisher cannot block the queue.
 - `worker_job_outbox.cancelledAt` (or an equivalent immutable cancellation marker) prevents unpublished intent from being republished after a guarded cancellation; published dispatch references remain retained for reconciliation.
 - `worker_job_settlements`: one durable settlement/projection marker per idempotency key for result publication, billing/credit guards, notification, webhook, or other domain completion that cannot share the lifecycle transaction. It is evidence/coordination metadata, not an independent job state.
+- `worker_job_actions`: one durable record per operator/API mutation idempotency key, storing actor, reason, expected state/attempt/fencing target, authorization scope, effective outcome, and safe error. A unique constraint makes a repeated action return the original outcome and prevents a second effective mutation.
+- `worker_job_callbacks`: one durable inbound-callback/replay record keyed by adapter namespace plus authenticated provider event ID. When a provider supplies no stable event ID, the adapter must use a documented bounded replay key; if it cannot prove replay identity, the callback may request read-only inspection but may not mutate canonical state.
 - Transfer plan/preview/item/checkpoint companions, when required by the transfer domain, persist the immutable preview fingerprint, deterministic item keys, handler/policy versions, dispositions, and resumable results linked to the canonical `tenant_data_transfer` job. They must not own status, retry, lease, result identity, or create identity.
 - A schedule-occurrence companion mapping may be used when existing schedule tables cannot safely own `scheduleId` plus `occurrenceKey`; it must have a unique constraint and point back to `worker_jobs.id`.
 
@@ -348,7 +356,7 @@ The implementation plan must define database-level protection for the invariants
 - `eventSequence` is unique per canonical job, and schedule occurrence uniqueness is scoped by tenant plus `scheduleId` plus `occurrenceKey`;
 - a provider/external reference is unique within its adapter/reference namespace where the provider contract permits it, preventing one external task from binding to two canonical jobs;
 - event idempotency keys prevent duplicate lifecycle events while allowing legitimate repeated `HEARTBEAT`/`PROGRESS` events under their bounded sequence policy;
-- foreign keys from attempts, dispatches, outbox rows, settlements, schedule occurrences, and transfer plan/item/checkpoint records point to `worker_jobs.id` with deletion behavior chosen to preserve audit history. A pre-existing cascade must not silently erase lifecycle or settlement evidence; parent deletion is blocked or preceded by verified immutable archival/redaction under the retention and privacy policy;
+- foreign keys from attempts, dispatches, outbox rows, settlements, actions, callbacks, schedule occurrences, and transfer plan/item/checkpoint records point to `worker_jobs.id` with deletion behavior chosen to preserve audit history. A pre-existing cascade must not silently erase lifecycle or settlement evidence; parent deletion is blocked or preceded by verified immutable archival/redaction under the retention and privacy policy;
 - query paths have indexes for tenant/status/priority, due retries, unexpired/expired leases, unpublished outbox rows, job timeline reads, and external-reference reconciliation;
 - terminal job/event retention, archival, and partitioning are explicit operational policies. Retention must not silently delete evidence needed for billing settlement, audit, incident recovery, or the configured rollback window.
 - tenant deletion/export and privacy workflows define how job payloads, events, dispatch references, and managed artifacts are redacted, retained, or deleted without breaking the minimum audit/settlement obligations; a provider ID is not a reason to retain secret material.
@@ -374,7 +382,16 @@ pending/queued/running/waiting_external/retry_scheduled ──deadline──> ex
 
 For a transfer operation paused by a recoverable system/database/transport error, the operation projection is `paused_on_error` while the canonical job remains `retry_scheduled` with `operatorReviewRequired`; due-retry reconciliation must not dispatch it until an authorized idempotent resume command clears the review gate. This is a transfer-specific recovery projection and does not add a second canonical status column.
 
-Only the arrows shown, plus idempotent repeats of an already-applied command, are legal. Attempts to complete a cancelled/expired/failed job, claim a terminal job, heartbeat an unleased job, or retry a succeeded job return a stable domain error such as `JOB_STATE_CONFLICT` and append no misleading success event. A terminal job may be reprocessed only through an explicitly authorized new business request that creates a new canonical job; `retry` always means another attempt on the existing canonical job and never an implicit clone.
+An `unknown` or ambiguous failure is normally materialized as `failed` with
+`operatorReviewRequired = true`; it is not automatically retried. An explicitly
+authorized, idempotent operator-resolution action may, after inspecting durable
+side-effect/provider evidence, record `succeeded`, `expired`, or a guarded
+`retry_scheduled` recovery on the same canonical job. This is the only exception
+to ordinary terminal-failure reopening, is audited with the evidence and target
+attempt, and must not create a replacement job or reuse an unresolved provider
+operation with a new idempotency key.
+
+Only the arrows shown, the explicit unknown-resolution exception above, plus idempotent repeats of an already-applied command, are legal. Attempts to complete a cancelled/expired/failed job, claim a terminal job, heartbeat an unleased job, or retry a succeeded job return a stable domain error such as `JOB_STATE_CONFLICT` and append no misleading success event. A terminal job may be reprocessed only through an explicitly authorized new business request that creates a new canonical job, except for the evidence-backed unknown-resolution exception; ordinary `retry` always means another attempt on the existing canonical job and never an implicit clone.
 
 The `retry`/`requeue` operator actions are state-specific: they may request a due or recoverable non-terminal attempt and preserve the same canonical ID, but they cannot reopen `succeeded`, `cancelled`, `expired`, or terminal `failed` jobs. Reprocessing a terminal job is a new business request with a new `worker_jobs.id`, an explicit causal reference to the original, and its own idempotency key. This keeps the admin action list from implying that a terminal row can be mutated back into execution.
 

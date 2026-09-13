@@ -1274,14 +1274,17 @@ class KieAIProvider:
             netloc = "api.kie.ai"
 
         normalized_path = path.rstrip("/")
+        # Provider configuration has historically accepted either a service
+        # root, API root, or a copied jobs endpoint. Reduce all of them to one
+        # API root so joining a model endpoint cannot create /api/v1/api/v1.
+        normalized_path = re.sub(r"/jobs(?:/.*)?$", "", normalized_path, flags=re.IGNORECASE)
+        normalized_path = re.sub(r"(?:/api/v\d+)+$", "/api/v1", normalized_path, flags=re.IGNORECASE)
         if normalized_path in {"", "/"}:
             normalized_path = "/api/v1"
         elif normalized_path == "/v1":
             normalized_path = "/api/v1"
-        elif normalized_path == "/api/v1/jobs":
-            normalized_path = "/api/v1"
-        elif normalized_path.startswith("/api/v1/jobs/"):
-            normalized_path = f"/api/v1{normalized_path[len('/api/v1/jobs'):]}"
+        elif not re.search(r"/api/v\d+$", normalized_path, flags=re.IGNORECASE):
+            normalized_path = f"{normalized_path}/api/v1"
 
         normalized = urlunparse((scheme, netloc, normalized_path, "", "", ""))
         return normalized.rstrip("/")
@@ -1899,6 +1902,10 @@ class KieAIProvider:
         # a stale/custom catalog row can never produce `/api/v1/api/v1/...`.
         relative_endpoint = _clean_endpoint(endpoint)
         url = f"{self.base_url}/{relative_endpoint}"
+        if re.search(r"/api/v\d+/api/v\d+(?:/|$)", url, flags=re.IGNORECASE):
+            # Fail closed before any provider/paid side effect if a future
+            # caller bypasses one of the normalizers above.
+            raise ValueError("KIE_INVALID_API_URL: duplicate API version prefix")
 
         logger.info("kie_ai_request", method=method, url=url)
 

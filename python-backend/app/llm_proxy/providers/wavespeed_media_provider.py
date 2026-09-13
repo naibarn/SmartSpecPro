@@ -12,6 +12,7 @@ import asyncio
 from dataclasses import dataclass
 from email.utils import parsedate_to_datetime
 import ipaddress
+import re
 import time
 from typing import Any, Optional
 from urllib.parse import unquote
@@ -419,12 +420,18 @@ def normalize_wavespeed_base_url(base_url: Optional[str]) -> str:
         raise WaveSpeedError("WaveSpeed base URL must use http or https")
 
     path = parsed.path.rstrip("/")
-    if not path:
-        path = "/api/v3"
-    elif not path.endswith("/api/v3"):
-        path = f"{path}/api/v3"
+    api_root_marker = "/api/v3"
+    api_root_match = re.search(r"/api/v3(?:/|$)", path, flags=re.IGNORECASE)
+    if api_root_match is not None:
+        # A persisted URL may contain a copied endpoint or a duplicated API
+        # prefix. Keep the configured proxy path, but make the API root unique.
+        path = f"{path[:api_root_match.start()]}{api_root_marker}"
+    elif not path:
+        path = api_root_marker
+    else:
+        path = f"{path}{api_root_marker}"
 
-    normalized = parsed.copy_with(path=path)
+    normalized = parsed.copy_with(path=path, query=None, fragment=None)
     normalized_str = str(normalized).rstrip("/")
     _assert_public_https_url(normalized_str, "WaveSpeed base URL")
     return normalized_str
@@ -446,6 +453,11 @@ def normalize_relative_media_endpoint_path(
 
     normalized = trimmed if trimmed.startswith("/") else f"/{trimmed}"
     normalized_decoded = decoded if decoded.startswith("/") else f"/{decoded}"
+    # WaveSpeed base_url already contains /api/v3. Accept legacy/custom
+    # endpoint metadata that copied that prefix, but remove it before joining
+    # so the final request cannot become /api/v3/api/v3/....
+    normalized = re.sub(r"^/api/v3(?=/|$)", "", normalized, count=1, flags=re.IGNORECASE) or "/"
+    normalized_decoded = re.sub(r"^/api/v3(?=/|$)", "", normalized_decoded, count=1, flags=re.IGNORECASE) or "/"
     placeholders = [segment.strip() for segment in _extract_placeholders(normalized_decoded)]
     allowed = {"requestId"} if allow_request_id_placeholder else set()
     for placeholder in placeholders:

@@ -25,7 +25,10 @@ from app.llm_proxy.providers.wavespeed_media_provider import (
 def test_normalize_wavespeed_base_url_appends_api_root_once():
     assert normalize_wavespeed_base_url("https://api.wavespeed.ai") == "https://api.wavespeed.ai/api/v3"
     assert normalize_wavespeed_base_url("https://api.wavespeed.ai/api/v3") == "https://api.wavespeed.ai/api/v3"
+    assert normalize_wavespeed_base_url("https://api.wavespeed.ai/api/v3/api/v3") == "https://api.wavespeed.ai/api/v3"
+    assert normalize_wavespeed_base_url("https://api.wavespeed.ai/api/v3/wavespeed-ai/cinematic-video-generator") == "https://api.wavespeed.ai/api/v3"
     assert normalize_wavespeed_base_url("https://proxy.example.com/wavespeed") == "https://proxy.example.com/wavespeed/api/v3"
+    assert normalize_wavespeed_base_url("https://proxy.example.com/wavespeed/api/v3/api/v3?token=ignored#fragment") == "https://proxy.example.com/wavespeed/api/v3"
     with pytest.raises(WaveSpeedError, match="https"):
         normalize_wavespeed_base_url("http://api.wavespeed.ai")
     with pytest.raises(WaveSpeedError, match="public host"):
@@ -43,6 +46,15 @@ def test_normalize_relative_media_endpoint_path_rejects_unsafe_values():
         normalize_relative_media_endpoint_path("%68%74%74%70%73%3A%2F%2Fevil.example.com/submit")
     with pytest.raises(WaveSpeedError, match="placeholder"):
         normalize_relative_media_endpoint_path("/predictions/{jobId}/result", allow_request_id_placeholder=True)
+
+
+def test_normalize_relative_media_endpoint_path_removes_copied_api_root():
+    assert normalize_relative_media_endpoint_path("/api/v3/wavespeed-ai/cinematic-video-generator") == (
+        "/wavespeed-ai/cinematic-video-generator"
+    )
+    assert normalize_relative_media_endpoint_path("api/v3/predictions/{requestId}/result", allow_request_id_placeholder=True) == (
+        "/predictions/{requestId}/result"
+    )
 
 
 def test_build_submit_payload_maps_prompt_images_aspect_ratio_and_duration():
@@ -362,6 +374,35 @@ async def test_create_prediction_posts_to_normalized_submit_endpoint():
     assert called_url == "https://api.wavespeed.ai/api/v3/wavespeed-ai/cinematic-video-generator"
     assert called_json["images"] == ["https://cdn.example.com/1.png"]
     assert called_json["duration"] == 5
+
+
+@pytest.mark.asyncio
+async def test_create_prediction_collapses_duplicated_api_root_before_submit():
+    provider = WaveSpeedMediaProvider(
+        api_key="test-key",
+        base_url="https://api.wavespeed.ai/api/v3/api/v3",
+    )
+    response = MagicMock()
+    response.raise_for_status = MagicMock()
+    response.json.return_value = {"data": {"id": "pred-duplicate-root", "status": "created"}}
+    provider.client.post = AsyncMock(return_value=response)
+
+    try:
+        await provider.create_prediction(
+            prompt="A cinematic waterfall",
+            reference_image_urls=[],
+            aspect_ratio="16:9",
+            duration=5,
+        )
+    finally:
+        await provider.aclose()
+
+    assert provider.client.post.await_args.args[0] == (
+        "https://api.wavespeed.ai/api/v3/wavespeed-ai/cinematic-video-generator"
+    )
+    assert provider.build_result_url("pred-duplicate-root") == (
+        "https://api.wavespeed.ai/api/v3/predictions/pred-duplicate-root/result"
+    )
 
 
 @pytest.mark.asyncio

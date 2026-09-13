@@ -8,7 +8,7 @@ import {
   getGeminiOmniVoicePreset,
 } from "../../shared/geminiOmni";
 import { decrypt } from "./crypto";
-import { assertPublicSafeHttpUrl, normalizeMediaProviderName } from "./mediaProviderUtils";
+import { assertPublicSafeHttpUrl, normalizeKieBaseUrl, normalizeMediaProviderName } from "./mediaProviderUtils";
 
 export type MediaProviderAssetCapability =
   | typeof GEMINI_OMNI_CHARACTER_CAPABILITY
@@ -20,7 +20,6 @@ const ALLOWED_CAPABILITIES = new Set<string>([
 ]);
 
 const KIE_PROVIDER_NAME = "kie.ai";
-const KIE_DEFAULT_BASE_URL = "https://api.kie.ai";
 
 export function assertSupportedProviderAssetCapability(capability: string): asserts capability is MediaProviderAssetCapability {
   if (!ALLOWED_CAPABILITIES.has(capability)) {
@@ -145,12 +144,10 @@ async function resolveKieConnection(): Promise<{ baseUrl: string; apiKey: string
     throw new Error("Kie.ai provider API key is unavailable");
   }
 
-  const baseUrl = provider.baseUrl?.trim() || KIE_DEFAULT_BASE_URL;
-  assertPublicSafeHttpUrl(baseUrl, "Kie.ai base URL", { requireHttps: true });
-  return { baseUrl: baseUrl.replace(/\/+$/, ""), apiKey };
+  return { baseUrl: normalizeKieBaseUrl(provider.baseUrl), apiKey };
 }
 
-async function postKieOmniAsset(endpoint: "/api/v1/omni/audio/create" | "/api/v1/omni/character/create", payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+async function postKieOmniAsset(endpoint: "/omni/audio/create" | "/omni/character/create", payload: Record<string, unknown>): Promise<Record<string, unknown>> {
   const connection = await resolveKieConnection();
   const response = await fetch(`${connection.baseUrl}${endpoint}`, {
     method: "POST",
@@ -195,7 +192,7 @@ export async function createGeminiOmniAudioAsset(params: {
   if (!voicePreset) {
     throw new Error("unsupported_gemini_omni_audio_id");
   }
-  const data = await postKieOmniAsset("/api/v1/omni/audio/create", {
+  const data = await postKieOmniAsset("/omni/audio/create", {
     audio_id: voicePreset.id,
     name: params.name,
     voice_description: params.voiceDescription,
@@ -239,7 +236,7 @@ export async function createGeminiOmniCharacterAsset(params: {
   }
   assertPublicSafeHttpUrl(params.imageUrls[0], "Gemini Omni Character image");
 
-  const data = await postKieOmniAsset("/api/v1/omni/character/create", {
+  const data = await postKieOmniAsset("/omni/character/create", {
     description: params.description,
     image_urls: params.imageUrls,
     audio_ids: params.audioIds ?? [],

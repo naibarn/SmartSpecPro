@@ -18,6 +18,7 @@ import {
   getWaveSpeedProviderAvailableModels,
   isReferenceImageRequiredFromConfig,
   normalizeMediaProviderName,
+  normalizeKieBaseUrl,
   normalizeMagnificBaseUrl,
   normalizePersistedMediaProviderBaseUrl,
   normalizeRelativeMediaEndpointPath,
@@ -67,7 +68,20 @@ describe("mediaProviderUtils", () => {
   it("normalizes both service-root and api-root WaveSpeed base URLs to a single api root", () => {
     expect(normalizeWaveSpeedBaseUrl("https://api.wavespeed.ai")).toBe("https://api.wavespeed.ai/api/v3");
     expect(normalizeWaveSpeedBaseUrl("https://api.wavespeed.ai/api/v3")).toBe("https://api.wavespeed.ai/api/v3");
+    expect(normalizeWaveSpeedBaseUrl("https://api.wavespeed.ai/api/v3/api/v3")).toBe("https://api.wavespeed.ai/api/v3");
+    expect(normalizeWaveSpeedBaseUrl("https://api.wavespeed.ai/api/v3/wavespeed-ai/cinematic-video-generator")).toBe("https://api.wavespeed.ai/api/v3");
     expect(normalizeWaveSpeedBaseUrl("https://proxy.example.com/wavespeed")).toBe("https://proxy.example.com/wavespeed/api/v3");
+    expect(normalizeWaveSpeedBaseUrl("https://proxy.example.com/wavespeed/api/v3/api/v3?token=ignored#fragment")).toBe("https://proxy.example.com/wavespeed/api/v3");
+  });
+
+  it("normalizes Kie service, API, and copied endpoint URLs to one API root", () => {
+    expect(normalizeKieBaseUrl("https://api.kie.ai")).toBe("https://api.kie.ai/api/v1");
+    expect(normalizeKieBaseUrl("https://api.kie.ai/api/v1/api/v1")).toBe("https://api.kie.ai/api/v1");
+    expect(normalizeKieBaseUrl("https://api.kie.ai/api/v1/jobs/createTask")).toBe("https://api.kie.ai/api/v1");
+    expect(normalizePersistedMediaProviderBaseUrl("kie.ai", "https://api.kie.ai/api/v1/api/v1")).toBe(
+      "https://api.kie.ai/api/v1",
+    );
+    expect(() => normalizeKieBaseUrl("http://api.kie.ai/api/v1")).toThrow(/https/i);
   });
 
   it("normalizes Magnific base URLs while requiring public HTTPS hosts", () => {

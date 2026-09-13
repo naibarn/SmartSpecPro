@@ -110,6 +110,18 @@ def test_clean_endpoint_removes_repeated_api_version_prefixes():
     assert _clean_endpoint("https://api.kie.ai/api/v1/jobs/createTask") == "jobs/createTask"
 
 
+@pytest.mark.parametrize(
+    ("configured", "expected"),
+    [
+        ("https://api.kie.ai", "https://api.kie.ai/api/v1"),
+        ("https://api.kie.ai/api/v1/api/v1", "https://api.kie.ai/api/v1"),
+        ("https://api.kie.ai/api/v1/jobs/createTask", "https://api.kie.ai/api/v1"),
+    ],
+)
+def test_normalize_base_url_collapses_legacy_duplicate_api_prefixes(configured, expected):
+    assert KieAIProvider.normalize_base_url(configured) == expected
+
+
 @pytest.mark.asyncio
 async def test_make_request_cannot_build_duplicate_api_version_path():
     provider = KieAIProvider(api_key="test-key")
@@ -124,6 +136,18 @@ async def test_make_request_cannot_build_duplicate_api_version_path():
 
     request = provider.client.post.await_args.args[0]
     assert request == "https://api.kie.ai/api/v1/jobs/createTask"
+
+
+@pytest.mark.asyncio
+async def test_make_request_fails_closed_if_a_caller_bypasses_base_url_normalization():
+    provider = KieAIProvider(api_key="test-key")
+    provider.base_url = "https://api.kie.ai/api/v1/api/v1"
+    provider.client.post = AsyncMock()
+
+    with pytest.raises(ValueError, match="KIE_INVALID_API_URL"):
+        await provider._make_request("POST", "/api/v1/jobs/createTask", data={})
+
+    provider.client.post.assert_not_awaited()
 
 
 def test_http_client_is_recreated_when_provider_crosses_event_loops():

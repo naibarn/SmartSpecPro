@@ -13,6 +13,7 @@ import {
   getElevenLabsProviderAvailableModels,
   getMagnificProviderAvailableModels,
   getWaveSpeedProviderAvailableModels,
+  normalizeKieBaseUrl,
   MAGNIFIC_BASE_URL,
   MAGNIFIC_DEFAULT_MODEL_ID,
   MAGNIFIC_PROVIDER,
@@ -575,8 +576,8 @@ function validateExternalUrl(url: string): void {
 export async function testKieAI(apiKey: string, baseUrl: string): Promise<{ success: boolean; message: string }> {
   // Kie AI uses a jobs API. Probe createTask with an intentionally invalid payload:
   // 400/422 means auth + endpoint are reachable without spending credits.
-  validateExternalUrl(baseUrl);
-  const response = await fetch(`${baseUrl}/jobs/createTask`, {
+  const normalizedBaseUrl = normalizeKieBaseUrl(baseUrl);
+  const response = await fetch(`${normalizedBaseUrl}/jobs/createTask`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,

@@ -6,6 +6,8 @@ export const WAVESPEED_LAUNCH_MODEL_DESCRIPTION =
 export const MAGNIFIC_PROVIDER = "magnific";
 export const MAGNIFIC_BASE_URL = "https://api.magnific.com";
 export const MAGNIFIC_DEFAULT_MODEL_ID = "magnific/mystic";
+export const KIE_PROVIDER = "kie_ai";
+export const KIE_DEFAULT_BASE_URL = "https://api.kie.ai/api/v1";
 export const WAVESPEED_ALLOWED_DURATIONS = [5, 10, 15] as const;
 export const WAVESPEED_ALLOWED_ASPECT_RATIOS = ["16:9", "9:16", "4:3", "3:4"] as const;
 export const WAVESPEED_SEEDANCE_ALLOWED_ASPECT_RATIOS = ["16:9", "9:16", "4:3", "3:4", "1:1", "21:9"] as const;
@@ -1784,6 +1786,32 @@ export function assertPublicSafeHttpUrl(
   }
 }
 
+/**
+ * Kie media endpoints are relative to one `/api/v1` API root. Normalize both
+ * newly entered and legacy persisted values so a model endpoint such as
+ * `/api/v1/jobs/createTask` cannot be joined onto `/api/v1/api/v1`.
+ */
+export function normalizeKieBaseUrl(baseUrl: string | null | undefined): string {
+  const raw = String(baseUrl ?? "").trim() || KIE_DEFAULT_BASE_URL;
+  const parsed = new URL(raw);
+  let pathname = parsed.pathname.replace(/\/+$/, "");
+
+  // Values copied from a task endpoint are still reduced to the API root.
+  pathname = pathname.replace(/\/jobs(?:\/.*)?$/i, "");
+  // Collapse repeated API-version prefixes, including `/api/v1/api/v1`.
+  pathname = pathname.replace(/(?:\/api\/v\d+)+$/i, "/api/v1");
+
+  if (!pathname || pathname === "/" || pathname === "/v1") {
+    pathname = "/api/v1";
+  } else if (!/\/api\/v\d+$/i.test(pathname)) {
+    pathname = `${pathname}/api/v1`;
+  }
+
+  const normalized = `${parsed.origin}${pathname}`;
+  assertPublicSafeHttpUrl(normalized, "Kie.ai base URL", { requireHttps: true });
+  return normalized;
+}
+
 export function normalizePersistedMediaProviderBaseUrl(
   providerName: string,
   baseUrl: string | null | undefined,
@@ -1798,7 +1826,9 @@ export function normalizePersistedMediaProviderBaseUrl(
   }
 
   const normalizedProviderName = normalizeMediaProviderName(providerName);
-  const normalizedUrl = normalizedProviderName === WAVESPEED_PROVIDER
+  const normalizedUrl = normalizedProviderName === KIE_PROVIDER
+    ? normalizeKieBaseUrl(trimmed)
+    : normalizedProviderName === WAVESPEED_PROVIDER
     ? normalizeWaveSpeedBaseUrl(trimmed)
     : normalizedProviderName === MAGNIFIC_PROVIDER
       ? normalizeMagnificBaseUrl(trimmed)
@@ -1831,14 +1861,21 @@ export function normalizeWaveSpeedBaseUrl(baseUrl: string | null | undefined): s
   const rawValue = String(baseUrl ?? "").trim() || "https://api.wavespeed.ai";
   const parsed = new URL(rawValue);
   const pathname = parsed.pathname.replace(/\/+$/, "");
+  const apiRootMarker = "/api/v3";
+  const apiRootMatch = pathname.match(/\/api\/v3(?:\/|$)/i);
 
-  if (!pathname || pathname === "/") {
-    parsed.pathname = "/api/v3";
-  } else if (pathname.endsWith("/api/v3")) {
-    parsed.pathname = pathname;
+  if (apiRootMatch?.index != null) {
+    // A persisted URL may contain a copied endpoint or a duplicated API
+    // prefix. Keep the configured proxy path, but make the API root unique.
+    parsed.pathname = `${pathname.slice(0, apiRootMatch.index)}${apiRootMarker}`;
+  } else if (!pathname || pathname === "/") {
+    parsed.pathname = apiRootMarker;
   } else {
-    parsed.pathname = `${pathname}/api/v3`;
+    parsed.pathname = `${pathname}${apiRootMarker}`;
   }
+
+  parsed.search = "";
+  parsed.hash = "";
 
   return parsed.toString().replace(/\/$/, "");
 }

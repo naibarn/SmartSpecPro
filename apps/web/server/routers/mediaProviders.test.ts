@@ -586,6 +586,19 @@ describe("testKieAI", () => {
     });
   });
 
+  it("repairs a legacy duplicated API prefix before probing Kie", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => "model is invalid",
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await testKieAI("my-secret-key", "https://api.kie.ai/api/v1/api/v1");
+
+    expect(fetchSpy.mock.calls[0][0]).toBe("https://api.kie.ai/api/v1/jobs/createTask");
+  });
+
   it("returns failure on 401", async () => {
     vi.stubGlobal(
       "fetch",

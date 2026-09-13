@@ -2133,8 +2133,14 @@ def _resolve_audio_api_target(provider_hint: str, api_config: dict[str, Any]) ->
         else:
             base_url = "https://api.kie.ai/api/v1"
 
-    if provider_hint == "kie_ai" and endpoint.startswith("/api/v1/"):
-        endpoint = endpoint[len("/api/v1/"):]
+    if provider_hint == "kie_ai":
+        # Keep the routing/debug snapshot on the same canonical join contract
+        # as the live Kie client. This also repairs legacy duplicate prefixes
+        # before they can hide the real target in diagnostics.
+        from app.llm_proxy.providers.kie_ai_provider import KieAIProvider, _clean_endpoint
+
+        base_url = KieAIProvider.normalize_base_url(base_url)
+        endpoint = _clean_endpoint(endpoint)
 
     request_url = f"{base_url.rstrip('/')}/{endpoint.lstrip('/')}"
     return endpoint, request_url
