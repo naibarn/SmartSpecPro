@@ -616,6 +616,103 @@ Operational policies must also define per-class admission limits: maximum payloa
 - Credit/payment/provider side effects require an idempotency key and durable settlement marker. A retry must preserve authored creative state and must not silently regenerate or consume credits again.
 - Cross-tenant reconciliation, dispatch, and admin queries fail closed. Background system jobs use an explicit system tenant/actor representation rather than a fake user.
 
+## Completeness closure requirements
+
+The following requirements close the remaining implementation ambiguity. They
+are part of Feature 186 acceptance, not optional documentation or future
+convenience work.
+
+### Server context and command idempotency
+
+The public create/dispatch/report APIs must accept an authenticated server
+context rather than trusting `tenantId`, actor, adapter, routing, or billing
+fields from a transport payload. The internal context includes tenant scope,
+actor type/ID, authorization scope, correlation ID, and request/action
+idempotency key. System jobs use an explicit system actor and tenant policy.
+
+Every mutating operator/API command has a durable action record before its
+response is returned. The action records the expected status, attempt,
+fencing version, and authorization decision. A retried request with the same
+action key returns the original result; a reused key with a different command
+or target returns `IDEMPOTENCY_CONFLICT`.
+
+### Ambiguous publication and inbound callbacks
+
+Each adapter must define how a publish is deduplicated when the process loses
+the response after the remote side effect. BullMQ/Celery task IDs and any
+provider message ID used for this purpose must be deterministically derived
+from the outbox/dispatch dedupe key where the transport permits it. An adapter
+without a queryable or deterministic publication boundary must quarantine the
+outbox item for operator resolution rather than blind republish.
+
+Inbound callbacks are accepted only after signature/key validation, tenant and
+stored-operation correlation, timestamp/replay-window checks, and durable
+callback-idempotency insertion. Duplicate callbacks return the original
+disposition. Callback records may request reconciliation, but only a guarded
+lease-bearing control-plane command may change progress, settlement, or
+terminal state. Invalid, cross-tenant, or replayed callbacks are bounded
+security observations and cannot claim or complete a job.
+
+### Transaction, ordering, and recovery semantics
+
+The implementation must document the PostgreSQL isolation level, row-lock or
+compare-and-swap predicate, event-sequence allocator, and bounded transaction
+retry policy for every state-changing command. No transaction may span a
+provider call, transport publish, external wait, or callback network request.
+After a serialization/deadlock retry, the same command/action/event key is
+reused and no external side effect is repeated automatically.
+
+If a result, billing, notification, webhook, artifact, or domain projection
+cannot commit with the lifecycle transition, its settlement marker must state
+the effect type, idempotency key, canonical job/attempt, result digest or
+managed reference, and current reconciliation disposition. A terminal job is
+not reported as fully settled until all required markers are durably resolved
+or explicitly placed in operator review.
+
+### API and observability contract
+
+Status APIs must expose canonical status, compatibility status, attempt,
+lease/stale information, operator-review state, and transport observations as
+separate fields. They must not expose raw lease tokens, credentials, signed
+URLs, unrestricted payloads, or provider responses. Cursor pagination uses a
+validated signed cursor and a stable `(createdAt, id)` ordering; page limits,
+filter limits, and event time/row windows are server-enforced.
+
+Metrics and logs must use bounded/cardinality-safe labels and must distinguish
+canonical transitions from broker/provider observations. Required dashboards
+must show recovery latency, outbox age, settlement age, stale lease age,
+callback rejection, quarantine, and per-tenant admission/backpressure. Alert
+thresholds and owners are recorded per execution class before enabling it.
+
+### Capacity, time, and disaster recovery
+
+The rollout manifest must contain numeric per-class budgets for payload/result
+size, concurrent jobs per tenant and class, publisher/reconciler work per tick,
+heartbeat freshness, lease duration, provider deadline, outbox age, event rate,
+and database transaction/query duration. Admission control must reject or
+defer work truthfully before provider/credit side effects when a budget is
+exhausted.
+
+Backup/PITR, restore, archival, and region/database failover procedures must
+preserve the canonical job/event/settlement ordering and provider idempotency
+evidence. A restore rehearsal must prove that replaying outbox, callback, or
+reconciler work does not duplicate a paid/provider/artifact side effect.
+
+### Migration ownership and completion proof
+
+The call-site inventory must separately track producers, consumers, status
+readers/writers, result pollers, callbacks, and domain projections. Each wave
+has one named owner, one active side-effecting producer, a legacy drain rule,
+an enable flag, a canary sample, rollback criteria, and evidence links.
+
+Feature 186 is not considered production-complete while any discovered
+side-effecting producer is outside an approved compatibility allowlist, while
+tenant transfer remains exposed without registered handlers and its own
+checkpoint tests, or while a Cloudflare adapter lacks target-account
+connectivity, capability, rollback, and recovery evidence. Local mocks,
+structural migration checks, and health endpoints are necessary but do not
+substitute for these gates.
+
 ## Migration strategy
 
 Migration is adapter-by-adapter and reversible at each queue-family boundary.
@@ -681,6 +778,9 @@ Each rollout wave must publish a small migration manifest containing the selecte
 - Lifecycle timeline reads are totally ordered by the canonical per-job event sequence, including concurrent writers.
 - Attempt count and retry schedule are controlled by PostgreSQL and remain correct when Redis/broker state is unavailable.
 - Domain projection failures leave a durable result/settlement marker and are recoverable by canonical `job_id` without creating a replacement job.
+- Operator/API action retries return the original durable outcome, while a reused action key with a different target or command returns `IDEMPOTENCY_CONFLICT`.
+- Event sequence allocation remains totally ordered under concurrent writers and bounded database transaction retries do not duplicate events or external effects.
+- Unknown/ambiguous failures have an evidence-backed operator-resolution path that is audited and cannot silently create a new job or provider operation.
 - Before a job class is enabled, its lease/heartbeat, timeout, retry, payload, concurrency, outbox-age, and event-rate budgets are recorded in the rollout manifest and exercised by a bounded test fixture.
 
 ### Adapter boundaries
@@ -698,7 +798,9 @@ Each rollout wave must publish a small migration manifest containing the selecte
 - Duplicate delivery tests prove no duplicate credit deduction, provider submission, notification, webhook, or artifact publication.
 - Broker loss after database commit is recovered through outbox publication.
 - Publish success followed by producer response loss is reconciled without creating a duplicate canonical job.
+- Publish ambiguity is either resolved by a deterministic/queryable adapter dedupe boundary or quarantined for operator review; it is never blindly republished for an irreversible effect.
 - Worker crash, event-loop stall, container restart, provider timeout, and late callback paths are bounded and observable.
+- Authenticated callback replay, cross-tenant callback, invalid signature, and duplicate callback tests prove no unauthorized or duplicate terminal mutation.
 - Retryable and permanent errors are classified; no default retry loop is unbounded.
 - Tenant authorization, admin actions, payload redaction, secret handling, and audit events are covered by tests.
 
@@ -710,6 +812,7 @@ Each rollout wave must publish a small migration manifest containing the selecte
 - A Workflow-like multi-step adapter test demonstrates persisted step/reference mapping without replacing PostgreSQL truth.
 - A Container-like executor test demonstrates capability routing, heartbeat, timeout, and artifact reporting.
 - The rollout runbook identifies exact deploy, flag, migration, rollback, and evidence gates. Mock tests are not presented as production Cloudflare proof.
+- Backup/restore or PITR rehearsal proves that replaying outbox, callback, and reconciler work preserves event ordering and does not duplicate paid/provider/artifact side effects.
 
 ## Verification plan
 
