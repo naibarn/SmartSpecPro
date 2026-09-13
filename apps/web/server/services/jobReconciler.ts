@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, lte } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lte, sql } from "drizzle-orm";
 
 import { db, getDb } from "../db";
 import { workerJobs } from "../../drizzle/schema";
@@ -23,6 +23,8 @@ export type JobReconcilerResult = {
   externalWaitsRecovered: number;
   deadlinesExpired: number;
   softTimeoutsRequested: number;
+  cancelRequestsScanned: number;
+  cancelRequestsFinalized: number;
 };
 
 /**
@@ -52,6 +54,7 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
     .from(workerJobs)
     .where(and(
       eq(workerJobs.status, "retry_scheduled" as any),
+      eq(workerJobs.operatorReviewRequired, false),
       isNotNull(workerJobs.nextRetryAt),
       lte(workerJobs.nextRetryAt, now),
     ))
@@ -59,6 +62,18 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
   let retriesMadeDue = 0;
   for (const row of dueRetries) {
     if (await controlPlane.makeRetryDue(row.id)) retriesMadeDue += 1;
+  }
+
+  const cancellationRequests = await db.select({ id: workerJobs.id })
+    .from(workerJobs)
+    .where(and(
+      sql`${workerJobs.statusReason} LIKE 'cancel_requested:%'`,
+      sql`${workerJobs.status} NOT IN ('succeeded', 'failed', 'cancelled', 'expired')`,
+    ))
+    .limit(limit);
+  let cancelRequestsFinalized = 0;
+  for (const row of cancellationRequests) {
+    if (await controlPlane.reconcileCancellationRequest(row.id) === "finalized") cancelRequestsFinalized += 1;
   }
 
   const deadlineCandidates = await db.select({ id: workerJobs.id })
@@ -111,5 +126,7 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
     externalWaitsRecovered,
     deadlinesExpired,
     softTimeoutsRequested,
+    cancelRequestsScanned: cancellationRequests.length,
+    cancelRequestsFinalized,
   };
 }

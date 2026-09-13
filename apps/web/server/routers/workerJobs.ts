@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
+import { adminProcedure, protectedProcedure, rateLimitedAdminProcedure, router } from "../_core/trpc";
 import {
   USER_WORKER_JOB_STATUSES,
   cancelQueuedUserWorkerJob,
@@ -90,6 +90,7 @@ export const workerJobsRouter = router({
       stale: z.boolean().optional(),
       limit: z.number().int().min(1).max(100).default(50),
       before: z.coerce.date().optional(),
+      beforeCursor: z.string().max(512).optional(),
     }).optional())
     .query(({ input }) => listCanonicalJobs({
       tenantId: input?.tenantId,
@@ -100,6 +101,7 @@ export const workerJobsRouter = router({
       stale: input?.stale,
       limit: input?.limit ?? 50,
       before: input?.before,
+      beforeCursor: input?.beforeCursor,
     })),
 
   controlPlaneTimeline: adminProcedure
@@ -110,7 +112,7 @@ export const workerJobsRouter = router({
     .input(z.object({ tenantId: z.string().uuid().optional() }).optional())
     .query(({ input }) => getCanonicalJobOverview(input?.tenantId)),
 
-  controlPlaneAction: adminProcedure
+  controlPlaneAction: rateLimitedAdminProcedure
     .input(z.object({ jobId: z.string().uuid(), action: z.enum(["cancel", "requeue", "force_fail"]), reason: z.string().trim().min(1).max(500), actionId: z.string().uuid() }))
     .mutation(({ ctx, input }) => applyCanonicalJobAction({ ...input, actorId: ctx.user?.id ?? undefined })),
 });

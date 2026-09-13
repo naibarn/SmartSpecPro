@@ -45,8 +45,9 @@ function normalizeForHash(value: unknown): unknown {
   if (value && typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>)
+        .map(([key, child]) => [key.normalize("NFC"), child] as const)
         .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
-        .map(([key, child]) => [key.normalize("NFC"), normalizeForHash(child)]),
+        .map(([key, child]) => [key, normalizeForHash(child)]),
     );
   }
   if (typeof value === "string") return value.normalize("NFC");
@@ -84,6 +85,12 @@ export function validateJobDefinition(definition: JobDefinition): void {
   if (!EXECUTION_CLASSES.has(definition.executionClass)) {
     throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "Unsupported execution class");
   }
+  if (!definition.input || typeof definition.input !== "object" || Array.isArray(definition.input)) {
+    throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "input must be a JSON object");
+  }
+  if (definition.requiredCapabilities !== undefined && (!definition.requiredCapabilities || typeof definition.requiredCapabilities !== "object" || Array.isArray(definition.requiredCapabilities))) {
+    throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "requiredCapabilities must be a JSON object");
+  }
   if (definition.requestedByUserId !== undefined && (!Number.isSafeInteger(definition.requestedByUserId) || definition.requestedByUserId <= 0)) {
     throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "requestedByUserId must be a positive integer");
   }
@@ -97,6 +104,20 @@ export function validateJobDefinition(definition: JobDefinition): void {
   const timeout = definition.timeoutPolicy;
   if (!timeout || !Number.isFinite(timeout.softTimeoutMs) || timeout.softTimeoutMs < 0 || !Number.isFinite(timeout.hardTimeoutMs) || timeout.hardTimeoutMs <= 0 || timeout.softTimeoutMs > timeout.hardTimeoutMs) {
     throw new JobControlPlaneError("TIMEOUT_POLICY_INVALID", "Timeout policy is invalid");
+  }
+  if (definition.schedule) {
+    const schedule = definition.schedule;
+    if (!schedule.scheduleId || schedule.scheduleId.length > 160 || !schedule.occurrenceKey || schedule.occurrenceKey.length > 200 || !schedule.scheduleVersion || schedule.scheduleVersion.length > 80 || !schedule.timezone || schedule.timezone.length > 80 || !schedule.missedOccurrencePolicy) {
+      throw new JobControlPlaneError("SCHEDULE_DEFINITION_INVALID", "Scheduled jobs require a complete schedule definition");
+    }
+    if (!["skip", "coalesce", "catch_up"].includes(schedule.missedOccurrencePolicy)) {
+      throw new JobControlPlaneError("SCHEDULE_DEFINITION_INVALID", "Unsupported missed-occurrence policy");
+    }
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: schedule.timezone }).format();
+    } catch {
+      throw new JobControlPlaneError("SCHEDULE_DEFINITION_INVALID", "Schedule timezone is invalid");
+    }
   }
   const seenKeys = { count: 0 };
   assertSafeValue(hashInput(definition), 0, seenKeys);
@@ -133,6 +154,19 @@ export function computeJobDefinitionHash(definition: JobDefinition): JobDefiniti
 
 export function redactJobPayload(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(redactJobPayload);
+  if (typeof value === "string") {
+    if (/^data:/i.test(value)) return "[REDACTED_DATA_URL]";
+    try {
+      const url = new URL(value);
+      const protectedPath = /\/(?:api\/)?(?:storage\/files|mcp\/downloads|uploads)\//i.test(url.pathname);
+      if (url.search || url.hash || protectedPath) {
+        return `${url.origin}${protectedPath ? "/[REDACTED_PATH]" : url.pathname}`;
+      }
+    } catch {
+      // Non-URL strings are safe to preserve unless their key is secret-like.
+    }
+    return value;
+  }
   if (!value || typeof value !== "object") return value;
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>).map(([key, child]) => [

@@ -11,9 +11,12 @@ import {
   type WorkerJob,
 } from "../../drizzle/schema";
 import { HYPERFRAMES_FINAL_VIDEO_MIN_BYTES } from "./hyperframesWorkerVerificationService";
+import { createJobControlPlane } from "./jobControlPlane";
 
 export const USER_WORKER_JOB_STATUSES = [
+  "pending",
   "queued",
+  "leased",
   "claimed",
   "preparing",
   "running",
@@ -21,7 +24,10 @@ export const USER_WORKER_JOB_STATUSES = [
   "publishing",
   "indexing",
   "completed",
+  "succeeded",
   "failed",
+  "retry_scheduled",
+  "cancelled",
   "canceled",
   "expired",
 ] as const;
@@ -49,6 +55,7 @@ type WorkerJobRow = Pick<
   | "resourceProfile"
   | "outputJson"
   | "failureReason"
+  | "inputJson"
   | "createdAt"
   | "startedAt"
   | "finishedAt"
@@ -74,6 +81,7 @@ type WorkerSummaryRow = {
 type EventRow = {
   id: string;
   workerJobId: string;
+  eventSequence: number | null;
   eventType: string;
   payloadJson: JsonRecord;
   createdAt: Date;
@@ -191,6 +199,7 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
         resourceProfile: workerJobs.resourceProfile,
         outputJson: workerJobs.outputJson,
         failureReason: workerJobs.failureReason,
+        inputJson: workerJobs.inputJson,
         createdAt: workerJobs.createdAt,
         startedAt: workerJobs.startedAt,
         finishedAt: workerJobs.finishedAt,
@@ -226,6 +235,7 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
         resourceProfile: workerJobs.resourceProfile,
         outputJson: workerJobs.outputJson,
         failureReason: workerJobs.failureReason,
+        inputJson: workerJobs.inputJson,
         createdAt: workerJobs.createdAt,
         startedAt: workerJobs.startedAt,
         finishedAt: workerJobs.finishedAt,
@@ -256,6 +266,7 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
       .select({
         id: workerJobEvents.id,
         workerJobId: workerJobEvents.workerJobId,
+        eventSequence: workerJobEvents.eventSequence,
         eventType: workerJobEvents.eventType,
         payloadJson: workerJobEvents.payloadJson,
         createdAt: workerJobEvents.createdAt,
@@ -444,7 +455,7 @@ function projectJob(
 ): UserWorkerJobSummary {
   const events = (eventsByJobId.get(row.id) ?? [])
     .slice()
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .sort((a, b) => (b.eventSequence ?? Number.MAX_SAFE_INTEGER) - (a.eventSequence ?? Number.MAX_SAFE_INTEGER) || b.createdAt.getTime() - a.createdAt.getTime())
     .map(projectEvent);
   const artifactRefs = (artifactsByJobId.get(row.id) ?? [])
     .map(projectArtifact)
@@ -488,7 +499,7 @@ function projectJob(
     latestEvent: events[0] ?? null,
     worker: row.worker?.id ? row.worker : null,
     outputRefs,
-    canCancel: ["queued", "claimed", "preparing", "running", "uploading", "publishing", "indexing"].includes(status),
+    canCancel: ["pending", "queued", "leased", "running", "waiting_external", "retry_scheduled", "claimed", "preparing", "uploading", "publishing", "indexing"].includes(status),
   };
 }
 
@@ -553,7 +564,7 @@ export async function getUserWorkerJobDetail(
     ...summary,
     events: events
       .slice()
-      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+      .sort((a, b) => (a.eventSequence ?? Number.MAX_SAFE_INTEGER) - (b.eventSequence ?? Number.MAX_SAFE_INTEGER) || a.createdAt.getTime() - b.createdAt.getTime())
       .map(projectEvent),
   };
 }
@@ -563,9 +574,27 @@ export async function cancelQueuedUserWorkerJob(
     auth: WorkerJobMonitorAuth;
     jobId: string;
   },
-  deps: { repo?: WorkerJobMonitorRepository } = {},
+  deps: { repo?: WorkerJobMonitorRepository; controlPlane?: Pick<ReturnType<typeof createJobControlPlane>, "cancel"> } = {},
 ): Promise<{ canceled: true; jobId: string }> {
   const repo = deps.repo ?? defaultWorkerJobMonitorRepo;
+  const current = await repo.getUserJob(input);
+  const controlPlane = deps.controlPlane ?? (repo === defaultWorkerJobMonitorRepo ? createJobControlPlane() : undefined);
+  if (current && controlPlane && [
+    "pending", "queued", "retry_scheduled", "leased", "running", "waiting_external",
+    "claimed", "preparing", "uploading", "publishing", "indexing",
+  ].includes(current.status)) {
+    const actionId = `user-cancel:${input.auth.tenantId}:${input.auth.userId}:${input.jobId}`;
+    await controlPlane.cancel(
+      input.jobId,
+      "cancelled_by_request",
+      actionId,
+      input.auth.userId,
+      { tenantId: input.auth.tenantId, requestedByUserId: input.auth.userId },
+    );
+    const cancelled = await repo.getUserJob(input);
+    if (cancelled) await resetCancelledDomainProjection(input, cancelled as WorkerJobRowWithInput);
+    return { canceled: true, jobId: input.jobId };
+  }
   const updated = await repo.cancelQueuedJob(input);
   if (!updated) {
     const current = await repo.getUserJob(input);
@@ -578,6 +607,13 @@ export async function cancelQueuedUserWorkerJob(
     });
   }
 
+  return finalizeLegacyCancelledJob(input, updated);
+}
+
+async function finalizeLegacyCancelledJob(
+  input: { auth: WorkerJobMonitorAuth; jobId: string },
+  updated: WorkerJobRowWithInput,
+): Promise<{ canceled: true; jobId: string }> {
   // Vertical Drama Render Queue plan §4.5 — a canceled
   // `vertical_drama_ffmpeg_assembly` job leaves its linked episode/series
   // state stuck on "pending"/"processing" unless reset here. Best-effort
@@ -613,4 +649,25 @@ export async function cancelQueuedUserWorkerJob(
   }
 
   return { canceled: true, jobId: updated.id };
+}
+
+async function resetCancelledDomainProjection(
+  input: { auth: WorkerJobMonitorAuth; jobId: string },
+  updated: WorkerJobRowWithInput,
+): Promise<void> {
+  if (!updated.inputJson) return;
+  try {
+    const { VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE, verticalDramaFfmpegAssemblyJobContractSchema } =
+      await import("../../shared/workerRuntime");
+    if (updated.jobType === VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE) {
+      const { resetVerticalDramaFfmpegAssemblyStateOnCancel } = await import("./verticalDramaFfmpegAssemblyRunner");
+      await resetVerticalDramaFfmpegAssemblyStateOnCancel(verticalDramaFfmpegAssemblyJobContractSchema.parse(updated.inputJson));
+    }
+    if (updated.jobType === "remotion_render_video") {
+      const { resetEpisodePreviewStateOnCancel } = await import("./verticalDramaEpisodePreview");
+      await resetEpisodePreviewStateOnCancel({ tenantId: input.auth.tenantId, userId: input.auth.userId, jobId: updated.id, inputJson: updated.inputJson });
+    }
+  } catch (error) {
+    console.error(`[workerJobMonitorService] Failed to reset VD state for canceled job ${updated.id}:`, error);
+  }
 }

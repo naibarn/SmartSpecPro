@@ -1,4 +1,6 @@
-import { and, count, desc, eq, exists, inArray, isNotNull, lt, not } from "drizzle-orm";
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+import { and, asc, count, desc, eq, exists, inArray, isNotNull, lt, not, or } from "drizzle-orm";
 
 import { db } from "../db";
 import { workerJobDispatches, workerJobEvents, workerJobSettlements, workerJobs } from "../../drizzle/schema";
@@ -16,7 +18,41 @@ export type JobMonitorFilter = {
   stale?: boolean;
   limit: number;
   before?: Date;
+  beforeCursor?: string;
 };
+
+export type JobMonitorCursor = { createdAt: string; jobId: string };
+
+function monitorCursorSecret(): string {
+  const configured = process.env.FEATURE_186_MONITOR_CURSOR_SECRET;
+  if (!configured && process.env.NODE_ENV === "production") throw new Error("FEATURE_186_MONITOR_CURSOR_SECRET_REQUIRED");
+  return configured ?? "feature-186-monitor-cursor-development-secret";
+}
+
+export function encodeJobMonitorCursor(cursor: JobMonitorCursor): string {
+  const payload = Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
+  const signature = createHmac("sha256", monitorCursorSecret()).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+export function decodeJobMonitorCursor(value: string): JobMonitorCursor {
+  try {
+    const parts = value.split(".");
+    if (parts.length !== 2) throw new Error("invalid");
+    const [payload, signature] = parts;
+    if (!payload || !signature) throw new Error("invalid");
+    const expected = createHmac("sha256", monitorCursorSecret()).update(payload).digest();
+    const supplied = Buffer.from(signature, "base64url");
+    if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) throw new Error("invalid");
+    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as Partial<JobMonitorCursor>;
+    if (typeof parsed.createdAt !== "string" || Number.isNaN(Date.parse(parsed.createdAt)) || typeof parsed.jobId !== "string" || !parsed.jobId) {
+      throw new Error("invalid");
+    }
+    return { createdAt: new Date(parsed.createdAt).toISOString(), jobId: parsed.jobId };
+  } catch {
+    throw new Error("JOB_MONITOR_CURSOR_INVALID");
+  }
+}
 
 export async function listCanonicalJobs(filter: JobMonitorFilter) {
   const conditions = [] as any[];
@@ -27,6 +63,14 @@ export async function listCanonicalJobs(filter: JobMonitorFilter) {
   if (filter.adapter) conditions.push(exists(db.select({ id: workerJobDispatches.id }).from(workerJobDispatches).where(and(eq(workerJobDispatches.workerJobId, workerJobs.id), eq(workerJobDispatches.adapter, filter.adapter)))));
   if (filter.stale) conditions.push(lt(workerJobs.leaseExpiresAt, new Date()));
   if (filter.before) conditions.push(lt(workerJobs.createdAt, filter.before));
+  if (filter.beforeCursor) {
+    const cursor = decodeJobMonitorCursor(filter.beforeCursor);
+    const cursorDate = new Date(cursor.createdAt);
+    conditions.push(or(
+      lt(workerJobs.createdAt, cursorDate),
+      and(eq(workerJobs.createdAt, cursorDate), lt(workerJobs.id, cursor.jobId)),
+    ));
+  }
   return db.select({
     jobId: workerJobs.id,
     tenantId: workerJobs.tenantId,
@@ -46,7 +90,7 @@ export async function listCanonicalJobs(filter: JobMonitorFilter) {
     startedAt: workerJobs.startedAt,
     finishedAt: workerJobs.finishedAt,
   }).from(workerJobs).where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(desc(workerJobs.createdAt)).limit(Math.max(1, Math.min(filter.limit, 100)));
+    .orderBy(desc(workerJobs.createdAt), desc(workerJobs.id)).limit(Math.max(1, Math.min(filter.limit, 100)));
 }
 
 export async function getCanonicalJobTimeline(jobId: string, limit = 200) {
@@ -58,7 +102,7 @@ export async function getCanonicalJobTimeline(jobId: string, limit = 200) {
     payloadJson: workerJobEvents.payloadJson,
     createdAt: workerJobEvents.createdAt,
   }).from(workerJobEvents).where(eq(workerJobEvents.workerJobId, jobId))
-    .orderBy(workerJobEvents.eventSequence).limit(Math.max(1, Math.min(limit, 500)));
+    .orderBy(asc(workerJobEvents.eventSequence), asc(workerJobEvents.createdAt), asc(workerJobEvents.id)).limit(Math.max(1, Math.min(limit, 500)));
   return rows.map(row => ({ ...row, payloadJson: redactJobPayload(row.payloadJson ?? {}) as Record<string, unknown> }));
 }
 
@@ -97,7 +141,7 @@ export async function applyCanonicalJobAction(input: {
 }) {
   const controlPlane = createJobControlPlane();
   if (input.action === "cancel") await controlPlane.cancel(input.jobId, input.reason, input.actionId, input.actorId);
-  else if (input.action === "requeue") await controlPlane.makeRetryDue(input.jobId, input.actionId, input.actorId);
+  else if (input.action === "requeue") await controlPlane.makeRetryDue(input.jobId, input.actionId, input.actorId, input.reason);
   else await controlPlane.forceFail(input.jobId, input.reason, input.actionId, input.actorId);
   return { jobId: input.jobId, action: input.action, accepted: true };
 }

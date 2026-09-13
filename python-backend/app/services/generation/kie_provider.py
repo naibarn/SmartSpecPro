@@ -4,21 +4,22 @@ Unified interface for all kie.ai generation APIs.
 """
 
 import asyncio
-import httpx
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
+import httpx
 import structlog
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.llm_proxy.providers.kie_ai_provider import KieAIProvider as CanonicalKieAIProvider
 from app.services.generation.models import (
+    ALL_MODELS,
     GenerationModel,
     MediaType,
     get_model,
-    ALL_MODELS,
 )
 
 logger = structlog.get_logger()
@@ -143,6 +144,13 @@ class KieAIProvider:
         if not model:
             raise ValueError(f"Unknown model: {request.model_id}")
         
+        # Keep the compatibility generation API on the same attachment
+        # boundary as the active media API. This router is currently not
+        # registered by ``app.main``, but leaving a second direct-URL path here
+        # would reintroduce the exact Kie attachment regressions if it is
+        # enabled again.
+        request = await self._prepare_reference_inputs(request)
+
         # Build request payload based on model type
         payload = self._build_payload(model, request)
         
@@ -187,6 +195,30 @@ class KieAIProvider:
         except Exception as e:
             logger.error("Error creating task", error=str(e))
             raise
+
+    async def _prepare_reference_inputs(self, request: GenerationRequest) -> GenerationRequest:
+        if not request.image_urls and not request.video_url:
+            return request
+
+        attachment_provider = CanonicalKieAIProvider(api_key=self.api_key)
+        try:
+            data = request.model_dump() if hasattr(request, "model_dump") else request.dict()
+            if request.image_urls:
+                data["image_urls"] = await attachment_provider._prepare_reference_image_urls(
+                    list(request.image_urls),
+                    request.model_id,
+                    {"reference_image_require_upload": True},
+                )
+            if request.video_url:
+                data["video_url"] = (
+                    await attachment_provider._prepare_reference_video_urls(
+                        [request.video_url],
+                        {"reference_video_require_upload": True},
+                    )
+                )[0]
+            return GenerationRequest(**data)
+        finally:
+            await attachment_provider.client.aclose()
     
     def _build_payload(
         self,

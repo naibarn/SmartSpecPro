@@ -9,6 +9,7 @@ Create the shared runtime-neutral contract used by TypeScript services, adapters
 - Add `apps/web/server/services/jobControlPlaneTypes.ts` for statuses, command errors, job definitions, lease context, progress/result/error, dispatch request/reference, schedule occurrence, and operator action types.
 - Add `apps/web/server/services/jobCanonicalization.ts` for bounded normalization, trusted server-owned fields, deterministic canonical form, SHA-256 definition hash, and redaction helpers.
 - Add `apps/web/server/services/__tests__/jobCanonicalization.test.ts`.
+- `CANONICAL_JOB_COMMANDS` is the single exported command vocabulary; adapters and monitor actions must not invent a second command enum.
 
 ## Requirements
 

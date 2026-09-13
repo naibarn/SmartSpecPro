@@ -2248,16 +2248,6 @@ function getReferenceImageLimitForModel(modelId: string): number {
   return getReferenceImageLimitFromConfig(model?.configJson) ?? 5;
 }
 
-function isGptImageModel(modelId: string): boolean {
-  const normalized = (modelId || "").toLowerCase();
-  return normalized.includes("gpt-image") || normalized.includes("gpt_image");
-}
-
-function isBananaModel(modelId: string): boolean {
-  const normalized = (modelId || "").toLowerCase();
-  return normalized.includes("banana");
-}
-
 function resolveReferenceImageUrlsForModel(
   modelId: string,
   urls: string[] | undefined,
@@ -2285,15 +2275,10 @@ function resolveReferenceImageUrlsForModel(
   const sliced = preserveReferenceOrder || hasDeclarativeVideoCapabilityProfile
     ? urls
     : urls.slice(0, getReferenceImageLimitForModel(modelId));
-  const isGptImage = isGptImageModel(modelId) && !isBananaModel(modelId);
-
-  return sliced.map(url => {
-    let resolved = resolveReferenceUrl(url, publicUrl);
-    if (isGptImage) {
-      resolved = resolved.replace(/\.webp(\?.*)?$/i, ".jpg$1");
-    }
-    return resolved;
-  });
+  // Do not rewrite a file extension without changing the underlying bytes.
+  // The Python Kie boundary validates the downloaded signature and uploads a
+  // provider-ready file, so a WebP URL must remain WebP until that boundary.
+  return sliced.map(url => resolveReferenceUrl(url, publicUrl));
 }
 
 export function resolveReferenceImageUrlsForModelForTest(

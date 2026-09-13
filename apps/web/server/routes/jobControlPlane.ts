@@ -65,6 +65,7 @@ export function registerJobControlPlaneRoutes(app: Express): void {
   };
 
   leaseAction("start", (lease) => createJobControlPlane().start(lease));
+  leaseAction("assert-active", (lease) => createJobControlPlane().assertActive(lease));
   leaseAction("heartbeat", (lease) => createJobControlPlane().heartbeat(lease));
   leaseAction("progress", (lease, body) => {
     const progress = progressSchema.parse(body.progress);

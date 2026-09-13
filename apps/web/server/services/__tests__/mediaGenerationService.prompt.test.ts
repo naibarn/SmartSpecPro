@@ -341,7 +341,7 @@ describe("buildMediaRequestAuditPayload", () => {
   });
 });
 
-describe("resolveReferenceImageUrlsForModel webp vs jpg rules", () => {
+describe("resolveReferenceImageUrlsForModel preserves source media identity", () => {
   it("preserves the complete validated order for profile-backed video bundles", () => {
     const input = Array.from({ length: 8 }, (_, index) =>
       `https://smartaihub.app/api/storage/files/ref-${index}.png`,
@@ -356,7 +356,7 @@ describe("resolveReferenceImageUrlsForModel webp vs jpg rules", () => {
     ).toEqual(input);
   });
 
-  it("converts .webp reference image URLs to .jpg for gpt-image models", () => {
+  it("does not relabel .webp bytes as .jpg for gpt-image models", () => {
     const input = [
       "https://smartaihub.app/api/storage/files/marketplace-captures/cap-1/images/asset_01.webp",
       "https://smartaihub.app/api/storage/files/marketplace-captures/cap-1/images/asset_02.webp?v=1",
@@ -366,10 +366,7 @@ describe("resolveReferenceImageUrlsForModel webp vs jpg rules", () => {
       input,
       "https://smartaihub.app"
     );
-    expect(resolved).toEqual([
-      "https://smartaihub.app/api/storage/files/marketplace-captures/cap-1/images/asset_01.jpg",
-      "https://smartaihub.app/api/storage/files/marketplace-captures/cap-1/images/asset_02.jpg?v=1",
-    ]);
+    expect(resolved).toEqual(input);
   });
 
   it("preserves .webp reference image URLs as .webp for google-banana models (banana-2, banana-lite, banana-pro)", () => {

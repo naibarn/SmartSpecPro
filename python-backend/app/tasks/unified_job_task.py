@@ -5,8 +5,8 @@ ack/retry settings remain transport controls; the control-plane client owns
 business attempt and terminal semantics.
 """
 
-from collections.abc import Callable
 import os
+from collections.abc import Callable
 from typing import Any
 
 from app.core.celery_app import celery_app
@@ -36,6 +36,7 @@ def execute_unified_job(self, job_id: str, runner_id: str | None = None) -> dict
         return {"job_id": job_id, "state": "failed"}
     client.start(lease)
     try:
+        client.assert_active(lease)
         result = executor(context, client, lease)
         client.complete(lease, result or {})
         return {"job_id": job_id, "state": "completed"}

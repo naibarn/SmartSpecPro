@@ -45,7 +45,20 @@ function makeRepository() {
       },
       insertSettlement: async values => { settlements.push(values); },
       insertEvent: async input => { events.push(input); },
-      insertOutbox: async values => { outbox.push(values); },
+      insertOutbox: async values => { outbox.push({ id: `outbox-${outbox.length + 1}`, ...values }); },
+      findOutboxForAttempt: async (jobId, attemptId) => [...outbox].reverse().find(item => item.workerJobId === jobId && (!attemptId || item.attemptId === attemptId)) ?? null,
+      resetOutbox: async ({ id, nextAttemptAt }) => {
+        const item = outbox.find(entry => entry.id === id);
+        if (item) Object.assign(item, { nextAttemptAt, cancelledAt: null, quarantinedAt: null, failedReason: null, operatorReviewReason: null });
+      },
+      cancelUnpublishedOutbox: async ({ jobId, cancelledAt, reason }) => {
+        for (const item of outbox) {
+          if (item.workerJobId === jobId && !item.publishedAt && !item.cancelledAt) {
+            item.cancelledAt = cancelledAt;
+            item.failedReason = reason;
+          }
+        }
+      },
     }),
   };
   return { repository, jobs, events, outbox, attempts, settlements };
@@ -99,6 +112,21 @@ describe("job control plane", () => {
     expect(state.attempts).toHaveLength(1);
   });
 
+  it("fences a reporter whose attempt id does not match the current attempt", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    await controlPlane.start(lease!);
+    const staleAttempt = { ...lease!, attemptId: "00000000-0000-4000-8000-000000000099" };
+
+    await expect(controlPlane.heartbeat(staleAttempt)).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
+    await expect(controlPlane.progress(staleAttempt, { progress: 10, stage: "work" })).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
+    await expect(controlPlane.complete(staleAttempt, { resultRef: "artifact:stale" })).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
+    await expect(controlPlane.fail(staleAttempt, { code: "timeout", message: "stale", class: "retryable" })).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
+    expect(state.jobs.get(created.jobId).status).toBe("running");
+  });
+
   it("does not allow a late completion after cancellation or fencing", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
@@ -142,10 +170,22 @@ describe("job control plane", () => {
     const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
     await controlPlane.start(lease!);
     state.jobs.get(created.jobId).createdAt = new Date(Date.now() - 10_000);
+    state.jobs.get(created.jobId).startedAt = new Date(Date.now() - 10_000);
     state.jobs.get(created.jobId).timeoutSeconds = 1;
+    state.jobs.get(created.jobId).timeoutPolicyJson = { softTimeoutMs: 100, hardTimeoutMs: 1 };
     await expect(controlPlane.heartbeat(lease!)).rejects.toMatchObject({ code: "JOB_TIMEOUT" });
     expect(state.jobs.get(created.jobId).status).toBe("expired");
     expect(state.events.map(event => event.eventType)).toContain("TIMEOUT");
+  });
+
+  it("does not count queue time against the execution hard timeout", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined, timeoutPolicy: { softTimeoutMs: 100, hardTimeoutMs: 60_000 } });
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    await controlPlane.start(lease!);
+    state.jobs.get(created.jobId).createdAt = new Date(Date.now() - 120_000);
+    await expect(controlPlane.heartbeat(lease!)).resolves.toBeUndefined();
   });
 
   it("records cancellation request before final cancellation and keeps action idempotent", async () => {
@@ -159,6 +199,52 @@ describe("job control plane", () => {
     expect(state.events.map(event => event.eventType)).toContain("CANCEL_REQUESTED");
     expect(state.events.map(event => event.eventType)).toContain("CANCELLED");
     expect(state.events.filter(event => event.eventType === "CANCELLED")).toHaveLength(1);
+    expect(state.outbox[0].cancelledAt).toBeInstanceOf(Date);
+  });
+
+  it("reconciles a durable cancellation request after finalization is interrupted", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    await controlPlane.requestCancel(created.jobId, "publisher_shutdown");
+    expect(state.jobs.get(created.jobId).status).toBe("queued");
+    await expect(controlPlane.reconcileCancellationRequest(created.jobId)).resolves.toBe("finalized");
+    expect(state.jobs.get(created.jobId).status).toBe("cancelled");
+    expect(state.events.filter(event => event.eventType === "CANCELLED")).toHaveLength(1);
+  });
+
+  it("does not auto-dispatch an operator-review retry, but requeues it with the same outbox", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create(definition);
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    await controlPlane.start(lease!);
+    await controlPlane.fail(lease!, { code: "timeout", message: "review", class: "retryable", operatorReviewRequired: true });
+    const job = state.jobs.get(created.jobId);
+    const retryOutbox = state.outbox[1];
+    retryOutbox.quarantinedAt = new Date();
+    expect(await controlPlane.makeRetryDue(created.jobId)).toBe(false);
+    expect(await controlPlane.makeRetryDue(created.jobId, "00000000-0000-4000-8000-000000000003", 9, "operator reviewed provider timeout")).toBe(true);
+    expect(job.status).toBe("queued");
+    expect(job.operatorReviewRequired).toBe(false);
+    expect(state.outbox).toHaveLength(2);
+    expect(retryOutbox.quarantinedAt).toBeNull();
+    const operatorAction = state.events.find(event => event.eventType === "OPERATOR_ACTION");
+    expect(operatorAction?.payloadJson).toMatchObject({ action: "requeue", reason: "operator reviewed provider timeout" });
+  });
+
+  it("does not requeue a cancellation request as normal work", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create(definition);
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    await controlPlane.start(lease!);
+    await controlPlane.fail(lease!, { code: "timeout", message: "retry", class: "retryable" });
+    await controlPlane.requestCancel(created.jobId, "account_move");
+    expect(await controlPlane.makeRetryDue(created.jobId)).toBe(false);
+    expect(state.jobs.get(created.jobId).status).toBe("retry_scheduled");
+    await controlPlane.reconcileCancellationRequest(created.jobId);
+    expect(state.jobs.get(created.jobId).status).toBe("cancelled");
   });
 
   it("supports an audited, idempotent operator force-fail action", async () => {

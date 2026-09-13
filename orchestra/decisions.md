@@ -1,11 +1,10 @@
 # Orchestra Decisions
 
-[2026-09-12T00:00:00+07:00] AUTO-APPROVED: Inline sequential review/repair of Feature 186 because no sub-agent tool or SocratiCode MCP is exposed.
-Reason: auto_by_default mode active; scoped work remains conductor-owned and recoverable.
-Risk: HIGH
-Files affected: Feature 186 control-plane, adapter, schema, route, Python, and test paths.
-
-[2026-09-12T00:00:00+07:00] AUTO-APPROVED: Preserve all existing unrelated dirty worktree files and do not reset/clean them.
-Reason: repository instructions and user-owned changes require dirty-worktree safety.
-Risk: MEDIUM
-Files affected: unrelated existing worktree paths.
+- [2026-09-13T01:54:06Z] DECISION: Use a provider-boundary upload/validation contract instead of a Qwen-specific patch. Context: the same long/protected URL and format failures can affect multiple Kie image/video models. Alternatives considered: patch only Qwen3 or pass base64; both leave recurrence paths.
+- [2026-09-13T01:54:06Z] DECISION: No automatic base64 fallback for provider references. Context: it increases payload size and can reduce fidelity or hit request limits; the Kie file-upload API is the canonical re-hosting boundary.
+- [2026-09-13T09:10:00+07:00] DECISION: Detect actual bytes and preserve the source format at the Python Kie boundary. Context: headers/extensions can be stale (including WebP stored under a JPEG name); the adapter must validate before paid submission and never silently relabel content.
+- [2026-09-13T09:10:00+07:00] DECISION: Classify deterministic attachment access/format failures as non-retryable. Context: transport retries cannot repair a missing tenant reference or invalid bytes and otherwise recreate the observed retry loop.
+- [2026-09-13T16:30:00+07:00] DECISION: Fail closed when staged reference conversion fails. Context: forwarding the original data/unsupported reference after a conversion error recreates the exact provider failure the boundary is meant to prevent; the job must surface a deterministic preparation error before paid submission.
+- [2026-09-13T16:30:00+07:00] DECISION: Use stable attachment error markers for retry classification. Context: human-readable size text changes with environment limits, so classification must not depend on `10MB`/`100MB` literals.
+- [2026-09-13T16:30:00+07:00] DECISION: Preserve transient video download errors as retryable. Context: a video-specific permanent marker must not be emitted for temporary 429/5xx/network failures.
+- [2026-09-13T16:30:00+07:00] DECISION: Do not weaken tenant-scoped managed-reference tests to hide baseline failures. Context: the exact media service suite has unrelated fixture/endpoint failures; changing authorization or URL behavior would create a regression in the attachment safety contract.

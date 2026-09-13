@@ -53,6 +53,7 @@ export async function publishJobOutboxRow(
       .where(and(
         eq(workerJobOutbox.id, outboxId),
         isNull(workerJobOutbox.publishedAt),
+        isNull(workerJobOutbox.cancelledAt),
         isNull(workerJobOutbox.quarantinedAt),
         lte(workerJobOutbox.nextAttemptAt, now),
         or(
@@ -100,10 +101,18 @@ export async function publishJobOutboxRow(
     const message = error instanceof Error ? error.message.slice(0, 2000) : "transport_publish_failed";
     return recordPublishFailure(outboxId, publisherLeaseTokenHash, message, claimed.publishAttempts, now);
   }
-  if (reference.jobId !== claimed.workerJobId || reference.dedupeKey !== claimed.dedupeKey || reference.adapter !== adapter.name || reference.referenceNamespace !== adapter.referenceNamespace || !reference.dispatchId) {
+  if (
+    reference.jobId !== claimed.workerJobId ||
+    reference.attemptId !== (request.attemptId ?? undefined) ||
+    reference.dedupeKey !== claimed.dedupeKey ||
+    reference.adapter !== adapter.name ||
+    reference.referenceNamespace !== adapter.referenceNamespace ||
+    !reference.dispatchId
+  ) {
     return quarantineOutbox(outboxId, publisherLeaseTokenHash, "adapter_reference_mismatch", now);
   }
 
+  let cancellationWon = false;
   await db.transaction(async tx => {
     const query = tx as any;
     await query.insert(workerJobDispatches).values({
@@ -135,7 +144,7 @@ export async function publishJobOutboxRow(
         celeryTaskId: reference.celeryTaskId,
       },
     });
-    await query.update(workerJobOutbox).set({
+    const [published] = await query.update(workerJobOutbox).set({
       publishedAt: now,
       publisherLeaseTokenHash: null,
       publisherLeaseExpiresAt: null,
@@ -144,8 +153,22 @@ export async function publishJobOutboxRow(
       eq(workerJobOutbox.id, claimed.id),
       eq(workerJobOutbox.publisherLeaseTokenHash, publisherLeaseTokenHash),
       eq(workerJobOutbox.publisherFencingVersion, claimed.publisherFencingVersion + 1),
-    ));
+      isNull(workerJobOutbox.cancelledAt),
+    )).returning({ id: workerJobOutbox.id });
+    cancellationWon = !published;
   });
+
+  if (cancellationWon && adapter.cancel) {
+    try {
+      await adapter.cancel(reference);
+    } catch (error) {
+      console.warn("feature_186_transport_cancel_after_race_failed", {
+        outboxId,
+        adapter: adapter.name,
+        error: error instanceof Error ? error.message.slice(0, 500) : "unknown_error",
+      });
+    }
+  }
 
   return { outboxId, state: "published", dispatchRef: reference };
 }
@@ -238,6 +261,7 @@ export async function publishPendingJobOutbox(
     .innerJoin(workerJobs, eq(workerJobOutbox.workerJobId, workerJobs.id))
     .where(and(
       isNull(workerJobOutbox.publishedAt),
+      isNull(workerJobOutbox.cancelledAt),
       isNull(workerJobOutbox.quarantinedAt),
       lte(workerJobOutbox.nextAttemptAt, now),
     ))

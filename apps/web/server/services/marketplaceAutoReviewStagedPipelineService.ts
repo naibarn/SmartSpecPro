@@ -55,7 +55,7 @@ import {
   assertStagedProviderSpendAllowed,
   transitionStagedCheckpoint,
 } from "./marketplaceAutoReviewStagedCheckpointService";
-import { mediaGenerationService } from "./mediaGenerationService";
+import { mediaGenerationService, resolveReferenceUrl } from "./mediaGenerationService";
 import { getUnifiedMediaTask } from "./mediaTaskPollingService";
 import { ensureMarketplaceAutoReviewMediaUrlDurable } from "./marketplaceAutoReviewMediaAssetService";
 import { getModelById, deriveModelResolutionOptions } from "./modelRegistry";
@@ -80,6 +80,7 @@ type Runtime = { userToken?: string | null; publicUrl?: string | null };
 const STAGED_IMAGE_MODEL = "google-banana-2";
 const STAGED_VIDEO_MODEL = "veo3/generate-veo-3-video-lite";
 const STAGED_AUDIO_MODEL = "elevenlabs-tts";
+const KIE_AI_STAGED_REFERENCE_MAX_BYTES = 10 * 1024 * 1024;
 
 function record(value: unknown): Record<string, any> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -274,12 +275,15 @@ async function convertReferenceImageForKieAi(params: {
     } else {
       const response = await fetch(params.source);
       if (!response.ok) return null;
+      const contentLength = Number(response.headers.get("content-length") || 0);
+      if (contentLength > KIE_AI_STAGED_REFERENCE_MAX_BYTES) return null;
       buffer = Buffer.from(await response.arrayBuffer());
     }
-    const converted = await sharp(buffer).jpeg({ quality: 90 }).toBuffer();
-    const key = `marketplace-auto-review/${params.runId}/reference-uploads/${nanoid(12)}.jpg`;
+    if (buffer.length === 0 || buffer.length > KIE_AI_STAGED_REFERENCE_MAX_BYTES) return null;
+    const converted = await sharp(buffer).png().toBuffer();
+    const key = `marketplace-auto-review/${params.runId}/reference-uploads/${nanoid(12)}.png`;
     await assertR2StorageActive();
-    const stored = await storagePut(key, converted, "image/jpeg");
+    const stored = await storagePut(key, converted, "image/png");
     return stored.url;
   } catch (error) {
     console.warn(
@@ -304,26 +308,34 @@ async function sanitizeReferenceUrlsForProvider(
   for (const raw of urls) {
     if (raw.startsWith("data:")) {
       const converted = await convertReferenceImageForKieAi({ source: raw, runId });
-      // On failed conversion, still push the raw value: Kie.ai will reject it
-      // with a clear error rather than the shot silently losing a reference.
-      result.push(converted ?? raw);
+      if (!converted) {
+        throw new Error(`staged_reference_prepare_failed:image:${result.length + 1}`);
+      }
+      result.push(converted);
       continue;
     }
     try {
-      const url = new URL(raw);
+      const resolvedSource = raw.startsWith("/") ? resolveReferenceUrl(raw, publicUrl) : raw;
+      const url = new URL(resolvedSource);
       const pathname = url.pathname;
       const extMatch = pathname.match(/\.([a-z0-9]+)$/i);
       const ext = extMatch ? extMatch[1].toLowerCase() : "";
 
       if (KIE_AI_SUPPORTED_EXTENSIONS.has(ext)) {
-        result.push(raw);
+        result.push(resolvedSource);
         continue;
       }
 
-      const converted = await convertReferenceImageForKieAi({ source: raw, runId });
-      result.push(converted ?? raw);
-    } catch {
-      result.push(raw);
+      const converted = await convertReferenceImageForKieAi({ source: resolvedSource, runId });
+      if (!converted) {
+        throw new Error(`staged_reference_prepare_failed:image:${result.length + 1}`);
+      }
+      result.push(converted);
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("staged_reference_prepare_failed:")) {
+        throw error;
+      }
+      throw new Error(`staged_reference_prepare_failed:image:${result.length + 1}`);
     }
   }
   return result;
@@ -1813,8 +1825,10 @@ async function handleImageProvider(params: {
   if (referenceImageUrls.length === 0)
     throw new Error("staged_reference_missing");
 
-  // Sanitize URLs for the target provider (e.g. Kie.ai rejects .webp files
-  // and can't fetch raw data: URIs at all)
+  // Keep Kie references provider-safe before dispatch. The Python Kie adapter
+  // remains the canonical fetch/upload boundary; this staging path only applies
+  // a lossless PNG normalization when a legacy Kie model rejects the source
+  // extension. Never fall back to a lossy JPEG or silently drop a reference.
   referenceImageUrls = await sanitizeReferenceUrlsForProvider(
     provider,
     referenceImageUrls,

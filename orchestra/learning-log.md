@@ -9,6 +9,7 @@ Outcome:
   skipped_or_deferred: legacy adapter cutover and Cloudflare production proof require explicit rollout/external gates.
 
 Loop counters:
+
   iterations_used: 12/12
   tool_call_batches_used: 24/30 manual proxy
   dispatch_waves_used: 0/6
@@ -52,3 +53,24 @@ Evidence:
   migrations: 0303, 0304, 0305 applied
   static_inventory: 53 direct legacy transport call sites, migrated waves empty
   environment: `.env` unchanged; no provider, credit, deploy, or Cloudflare mutation
+
+## Learning entry - 2026-09-13T16:30:00+07:00
+
+Outcome:
+  stop_reason: convergence_reached_with_baseline_gates_recorded
+  requested_goal: Repeat implementation audit at least ten rounds and immediately repair every in-scope gap found.
+  completed_scope: 20 fresh Kie attachment-boundary review rounds; fail-closed staged conversion, stable attachment error markers, transient video retry correction, and private redirect-target hardening.
+  repair_rounds_used: 3 scoped repairs within the 20-round audit
+
+Evidence quality:
+  focused_python: 81/81 passed
+  focused_node: 58/58 passed
+  syntax_lint: canonical provider Ruff, Python compilation, async compatibility import, and diff check passed
+  baseline_gates: exact media service suite 7/52 failures; repository typecheck and full legacy Ruff remain noisy
+  external_gates: live Kie/provider, deployment, browser, and production recovery proof not run
+
+Learning:
+  fail_closed_at_the_last_local_boundary is required; conversion errors must never fall through to the original provider reference.
+  retry classification must use stable machine markers, not environment-dependent human-readable limit text.
+  public direct URLs remain an intentional narrow optimization; protected/managed/query/data/private/long references must use the canonical upload boundary.
+  baseline tests must be reported separately rather than repaired by weakening tenant or media safety rules.

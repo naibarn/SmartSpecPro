@@ -9,7 +9,7 @@ Make Celery and Beat thin adapters using canonical IDs while preserving existing
 - Add `python-backend/app/services/job_control_plane.py` and `python-backend/app/tasks/job_adapter.py`.
 - Add `python-backend/tests/services/test_job_control_plane.py` and adapter tests.
 - Add/update `python-backend/app/core/celery_app.py` only for explicit wrapper registrations/Beat intent entries.
-- Add `rollout-manifest.json` with all discovered direct producer call sites and their migration state.
+- Update `rollout-manifest.yaml` with all discovered direct producer call sites and their migration state.
 
 ## Requirements
 

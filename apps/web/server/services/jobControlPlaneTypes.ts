@@ -11,7 +11,25 @@ export const CANONICAL_JOB_STATUSES = [
   "expired",
 ] as const;
 
+export const CANONICAL_JOB_COMMANDS = [
+  "create",
+  "claim",
+  "start",
+  "heartbeat",
+  "progress",
+  "wait_for_external",
+  "resume_external",
+  "complete",
+  "fail",
+  "request_cancel",
+  "cancel",
+  "retry_due",
+  "force_fail",
+  "reconcile",
+] as const;
+
 export type CanonicalJobStatus = (typeof CANONICAL_JOB_STATUSES)[number];
+export type CanonicalJobCommand = (typeof CANONICAL_JOB_COMMANDS)[number];
 export type ExecutionClass = "short" | "long" | "external" | "cpu" | "gpu" | "scheduled";
 export type JitterPolicy = "none" | "bounded" | "recorded";
 

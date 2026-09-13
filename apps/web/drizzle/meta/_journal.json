@@ -2045,6 +2045,13 @@
       "when": 1789152000002,
       "tag": "0305_feature_186_timeout_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 292,
+      "version": "7",
+      "when": 1789152000003,
+      "tag": "0306_feature_186_outbox_cancellation",
+      "breakpoints": true
     }
   ]
 }

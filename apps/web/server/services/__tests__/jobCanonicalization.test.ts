@@ -43,6 +43,14 @@ describe("job canonicalization", () => {
     );
   });
 
+  it("normalizes Unicode object keys before sorting them", () => {
+    const composed = "\u00e9";
+    const decomposed = "e\u0301";
+    expect(canonicalizeJobDefinition({ ...baseDefinition, input: { z: 2, [composed]: 1, a: true } })).toBe(
+      canonicalizeJobDefinition({ ...baseDefinition, input: { [decomposed]: 1, a: true, z: 2 } }),
+    );
+  });
+
   it("changes the hash for a meaningful definition difference", () => {
     expect(computeJobDefinitionHash(baseDefinition)).not.toBe(
       computeJobDefinitionHash({ ...baseDefinition, jobType: "audio_render" }),
@@ -55,12 +63,19 @@ describe("job canonicalization", () => {
       "Job definition identity is incomplete",
     );
     expect(() => validateJobDefinition({ ...baseDefinition, input: { nested: { value: "x" } } })).not.toThrow();
+    expect(() => validateJobDefinition({ ...baseDefinition, input: [] as unknown as Record<string, unknown> })).toThrow("input must be a JSON object");
+    expect(() => validateJobDefinition({ ...baseDefinition, schedule: { scheduleId: "daily", occurrenceKey: "2026-09-13" } })).toThrow("complete schedule definition");
+    expect(() => validateJobDefinition({ ...baseDefinition, schedule: { scheduleId: "daily", occurrenceKey: "2026-09-13", scheduleVersion: "v1", timezone: "Asia/Bangkok", missedOccurrencePolicy: "coalesce" } })).not.toThrow();
   });
 
   it("redacts secret-like keys without changing safe values", () => {
     expect(redactJobPayload({ apiKey: "secret", nested: { token: "hidden", ok: true } })).toEqual({
       apiKey: "[REDACTED]",
       nested: { token: "[REDACTED]", ok: true },
+    });
+    expect(redactJobPayload({ signed: "https://example.test/api/storage/files/tenant/file.png?sig=secret", data: "data:image/png;base64,abc" })).toEqual({
+      signed: "https://example.test/[REDACTED_PATH]",
+      data: "[REDACTED_DATA_URL]",
     });
   });
 });

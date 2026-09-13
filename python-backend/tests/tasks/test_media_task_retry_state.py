@@ -109,6 +109,34 @@ def test_permanent_reference_image_access_errors_are_non_retryable():
     assert _is_non_retryable_media_error(error) is True
 
 
+def test_permanent_reference_video_and_invalid_format_errors_are_non_retryable():
+    assert _is_non_retryable_media_error(
+        RuntimeError("KIE_REFERENCE_VIDEO_ACCESS_FAILED: status=403")
+    ) is True
+    assert _is_non_retryable_media_error(
+        RuntimeError("KIE_REFERENCE_IMAGE_INVALID_DATA_URL: invalid encoded data")
+    ) is True
+    assert _is_non_retryable_media_error(
+        RuntimeError("Kie reference image 1 has unsupported content type image/avif")
+    ) is True
+
+
+def test_transient_reference_video_download_error_remains_retryable():
+    assert _is_non_retryable_media_error(
+        RuntimeError(
+            "KIE_REFERENCE_VIDEO_DOWNLOAD_FAILED: Kie reference video download failed"
+        )
+    ) is False
+
+
+def test_reference_size_marker_is_non_retryable_even_when_limit_is_configured():
+    assert _is_non_retryable_media_error(
+        RuntimeError(
+            "KIE_REFERENCE_IMAGE_TOO_LARGE: Kie reference image exceeds the 5MB upload limit"
+        )
+    ) is True
+
+
 def test_openai_policy_errors_are_separated_from_other_permanent_failures():
     policy_error = RuntimeError(
         "500: Image generation failed: Task failed: Sorry, but the image we created "

@@ -8,7 +8,7 @@ Publish canonical job intents reliably while keeping BullMQ/Celery transport IDs
 
 - Add `apps/web/server/services/jobOutboxPublisher.ts`.
 - Add `apps/web/server/services/jobTransportAdapters.ts` with generic, BullMQ, and Celery-compatible implementations.
-- Add `apps/web/server/services/__tests__/jobOutboxPublisher.test.ts` and adapter contract tests.
+- Add adapter contract tests. A dedicated database publisher harness remains a follow-up test surface; the migration contract and control-plane tests cover the durable cancellation invariant in this slice.
 
 ## Requirements
 

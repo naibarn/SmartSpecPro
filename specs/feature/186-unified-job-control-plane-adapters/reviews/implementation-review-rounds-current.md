@@ -1,5 +1,8 @@
 # Feature 186 implementation review — current convergence run
 
+> Superseded by `implementation-review-rounds-final.md`, the final ten-round
+> review for the current implementation slice.
+
 Date: 2026-09-12
 Scope: compare the implemented control plane with `spec.md`; fix safe in-scope gaps immediately.
 Mode: inline sequential conductor review because SocratiCode and sub-agent tooling were unavailable.

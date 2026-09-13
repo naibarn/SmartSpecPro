@@ -17,6 +17,42 @@ Create a runtime-neutral Job Control Plane on top of the existing PostgreSQL `wo
 - Existing legacy jobs are inventoried and backfilled only when identity can be proven; ambiguous in-flight jobs are quarantined for operator review.
 - The implementation is testable with fake transports and has a staged route toward Cloudflare without coupling domain services to provider APIs.
 
+Cloudflare control-plane connectivity uses a dedicated Hyperdrive binding to
+the existing PostgreSQL source of truth. Hyperdrive is not a second ledger or
+authoritative cache; fresh lifecycle reads bypass caching as needed, database
+transactions stay short, and a Hyperdrive/PostgreSQL outage prevents message
+acknowledgement or completion until a durable control-plane write exists.
+Creating the environment binding, validating origin access/pool limits/cache
+behavior, and proving rollback are deployment gates rather than local-test
+claims.
+
+Existing `statusReason`/`failureReason` columns may back the safe error
+projection only when the API exposes stable error-code/message semantics;
+otherwise the migration adds dedicated bounded canonical error fields.
+Lifecycle, settlement, and transfer checkpoint history must not be silently
+deleted by a parent-row cascade; archival/redaction precedes any permitted
+deletion.
+
+## Account and tenant data-transfer boundary
+
+Changing an account's `currentTenantId` never implicitly transfers historical
+data. An explicit authorized transfer is limited in v1 to source-user to
+target-user within the same active tenant and uses versioned allowlisted
+resource handlers. It preserves tenant scope, primary keys, authorship,
+execution actors, canonical job IDs, lifecycle history, billing/usage
+references, and managed artifact identity; credentials, sessions, secrets,
+credits, transactions, billing/settlement history, and active execution state
+remain outside the transfer.
+
+Queueable canonical jobs are previewed, fenced, cancelled, and recorded as a
+separate `queue_cancelled` disposition; active jobs block approval. The
+transfer itself is one `tenant_data_transfer` canonical job with immutable
+preview fingerprint, deterministic item keys, resumable checkpoints, explicit
+unsupported/conflict outcomes, operator-reviewed pause/resume, and terminal
+cancellation that retains already transferred items. It never flushes a shared
+queue, creates a replacement operation, or repeats a paid/provider/artifact
+side effect.
+
 ## Constraints
 
 Use existing Drizzle schema and migration numbering, existing TypeScript/Vitest and Python/pytest conventions, and preserve all unrelated dirty worktree changes. The configured `.env` is not changed. A data-mutating database migration requires a verified backup and an explicit execution gate; implementation includes dry-run and verification tooling first.

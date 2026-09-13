@@ -70,6 +70,28 @@ The physical migration may add the target enum values in an expand/compatibility
 
 When a job transition changes a domain projection, the implementation must either commit both changes in one database transaction or persist a durable projection/settlement outbox item linked to the same canonical job and event. A projection mismatch is reconciled by `job_id` and an explicit domain policy; it is never repaired by creating a replacement job or by blindly copying the queue state.
 
+## Account and tenant data-transfer boundary
+
+Feature 186 also defines the execution boundary for an explicit, authorized data-transfer operation. This operation is separate from changing an account's `currentTenantId`: changing the account tenant does not move old data, files, jobs, credits, transactions, or usage history. A later transfer must be initiated explicitly by an authorized Tenant Admin/System Admin workflow and must never be triggered implicitly by an identity move.
+
+When a System Admin changes an account's tenant binding, the guarded move operation must cancel/fence only that user's verified canonical queueable jobs (`pending`, `queued`, and `retry_scheduled`) before committing the new binding; `leased`, `running`, and `waiting_external` work blocks the move until its execution/provider state is resolved or explicitly reviewed. If queue cancellation partially succeeds but the move cannot commit, the cancellation evidence remains durable and a repeat of the same idempotent action continues from the remaining jobs. A shared broker queue must never be globally flushed. Unbound legacy queue items are handled by an explicit drain/quarantine policy and are never attributed to a user from queue position or payload.
+
+The v1 transfer scope is source-user to target-user within the same active tenant. Transferable resources are limited to resources with a registered, versioned server-side handler and may include:
+
+- images, videos, and files in an allowlisted supported format;
+- Series, Presentations, Storyboards, projects, and workflows;
+- completed artifacts/results and every other terminal job-linked domain resource whose handler proves ownership, dependency, storage, and audit safety.
+
+The supported-format list is handler-owned and versioned. An unregistered resource type or unsupported format is reported explicitly as `unsupported`; it is never silently skipped. A resource handler may change only approved target-user ownership/access fields. It must preserve tenant scope, primary keys, original authorship/execution actors, canonical `worker_jobs.id`, lifecycle history, billing/usage references, and managed artifact identity. Exposing a transferred result to the target user is not a transfer or rewrite of transaction history, usage history, credits, or job lifecycle history.
+
+The following are always excluded and remain associated with the original scope: transactions, usage history, credits, billing/settlement records, credentials, passwords, sessions/tokens, secrets, admin roles, and active execution state. `pending`, `queued`, and `retry_scheduled` job-linked work is not transferred: the transfer preview must automatically enumerate it, the approved operation must issue a guarded `CANCEL_REQUESTED`/`CANCELLED` action, fence any attempt, mark unpublished outbox work cancelled, retain published dispatch references, remove/cancel transport delivery where supported, and record a separate `queue_cancelled` disposition. A cancelled canonical job must reject later claim/redelivery; a transport message that cannot be deleted is acknowledged only as a no-op or routed to an operator-visible quarantine/DLQ according to adapter capability. No shared queue flush, requeue, provider resubmission, regeneration, credit charge, or replacement job is allowed.
+
+`leased`, `running`, and `waiting_external` work is a blocking conflict. Transfer approval returns a stable `ACTIVE_JOB_BLOCKED` result until those jobs settle or are explicitly reviewed; it must not begin partial transfer around the blocker. The operation must resolve the lease/provider operation or require operator review before continuing. A legacy queue item without a verified one-to-one canonical job binding cannot be inferred or transferred from queue position/payload; it is quarantined or killed under the legacy drain policy with bounded evidence and no copied side effect.
+
+Transfer execution is itself one canonical `worker_jobs` record with `jobType = tenant_data_transfer`; `operationId` is that canonical job ID, and item/plan tables are projections and checkpoints only. A large preview persists immutable per-resource preview items and exposes cursor pagination; approval fingerprints the complete snapshot, not only the first page. Approval must re-enumerate queueable jobs and reject with `PREVIEW_STALE` if the resource, queue-candidate, handler, or policy set changed; it must not silently add newly discovered work after review. The operation is preview-first, has immutable selection/fingerprint and deterministic item keys, persists per-item outcomes and checkpoints, and may enter `paused_on_error` on a recoverable system/database/transport failure. In that state the canonical job maps to `retry_scheduled` with `operatorReviewRequired = true`; the reconciler must not publish it automatically. An authorized, idempotent resume action reuses the same canonical job, attempt policy, item keys, and durable results, skips already transferred/approved-skipped items, and continues until all eligible items settle or explicit conflicts/unsupported/permanent items remain. It must never create a replacement operation or duplicate a paid/provider/artifact side effect.
+
+Cancelling a transfer operation fences its active attempt, marks the canonical transfer job `cancelled`, and marks only unsettled transfer items with an explicit `operator_cancelled` disposition; already transferred items are retained and are not rolled back automatically. Cancellation is terminal for that transfer operation and cannot be resumed as a hidden retry.
+
 ## Architecture
 
 ```text
@@ -258,7 +280,7 @@ Extend the existing table only where the field is part of canonical current stat
 | `leaseOwnerToken`, `leaseExpiresAt`, `heartbeatAt` | Current application lease. Store only a non-replayable token representation if raw token storage is not required by an existing protocol. |
 | `runnerId`/worker binding | Current execution owner; use existing worker binding where it is authoritative and add an ephemeral runner identity only if required. |
 | `scheduledAt`, `startedAt`, `finishedAt` | Lifecycle timestamps; all timestamps are UTC with server time. |
-| `errorCode`, `errorMessage` | Last classified error, redacted for secrets and bounded in size. |
+| `errorCode`, `errorMessage` | Last classified error, redacted for secrets and bounded in size. Existing `statusReason`/`failureReason` may provide this projection only when the API exposes a stable safe code/message mapping; otherwise add dedicated canonical fields. |
 | `progressJson` | Current progress projection: percent, stage, message, and optional measured metadata. |
 | `payloadRef`, `resultRef` | References to managed storage or domain rows for large payload/result data; do not persist expiring URLs as canonical data. A committed result reference is immutable for that attempt/job except through an explicit redaction/compliance workflow. |
 | schedule identity | `scheduleId` plus `occurrenceKey`, either on the row or through a unique companion mapping, must be sufficient to deduplicate scheduled creation. |
@@ -308,6 +330,9 @@ Companion tables are allowed only for one-to-many history or publication coordin
 - Legacy task identifiers may be stored in the same dispatch-reference record with an explicit `legacy` reference type and source; they are never promoted to canonical identity without a verified one-to-one binding.
 - `worker_job_outbox`: transactional publication intent linked to the canonical job and event/attempt; stores a versioned envelope, dedupe key, publish attempts, and `publishedAt`/failure metadata.
 - `worker_job_outbox` also stores `nextAttemptAt`, publisher lease/fencing metadata, and a quarantine/operator-review reason so one lost or poison publisher cannot block the queue.
+- `worker_job_outbox.cancelledAt` (or an equivalent immutable cancellation marker) prevents unpublished intent from being republished after a guarded cancellation; published dispatch references remain retained for reconciliation.
+- `worker_job_settlements`: one durable settlement/projection marker per idempotency key for result publication, billing/credit guards, notification, webhook, or other domain completion that cannot share the lifecycle transaction. It is evidence/coordination metadata, not an independent job state.
+- Transfer plan/preview/item/checkpoint companions, when required by the transfer domain, persist the immutable preview fingerprint, deterministic item keys, handler/policy versions, dispositions, and resumable results linked to the canonical `tenant_data_transfer` job. They must not own status, retry, lease, result identity, or create identity.
 - A schedule-occurrence companion mapping may be used when existing schedule tables cannot safely own `scheduleId` plus `occurrenceKey`; it must have a unique constraint and point back to `worker_jobs.id`.
 
 No companion table may define its own independent job status, retry counter, lease, result, or idempotency identity.
@@ -323,7 +348,7 @@ The implementation plan must define database-level protection for the invariants
 - `eventSequence` is unique per canonical job, and schedule occurrence uniqueness is scoped by tenant plus `scheduleId` plus `occurrenceKey`;
 - a provider/external reference is unique within its adapter/reference namespace where the provider contract permits it, preventing one external task from binding to two canonical jobs;
 - event idempotency keys prevent duplicate lifecycle events while allowing legitimate repeated `HEARTBEAT`/`PROGRESS` events under their bounded sequence policy;
-- foreign keys from attempts, dispatches, outbox rows, and schedule occurrences point to `worker_jobs.id` with deletion behavior chosen to preserve audit history;
+- foreign keys from attempts, dispatches, outbox rows, settlements, schedule occurrences, and transfer plan/item/checkpoint records point to `worker_jobs.id` with deletion behavior chosen to preserve audit history. A pre-existing cascade must not silently erase lifecycle or settlement evidence; parent deletion is blocked or preceded by verified immutable archival/redaction under the retention and privacy policy;
 - query paths have indexes for tenant/status/priority, due retries, unexpired/expired leases, unpublished outbox rows, job timeline reads, and external-reference reconciliation;
 - terminal job/event retention, archival, and partitioning are explicit operational policies. Retention must not silently delete evidence needed for billing settlement, audit, incident recovery, or the configured rollback window.
 - tenant deletion/export and privacy workflows define how job payloads, events, dispatch references, and managed artifacts are redacted, retained, or deleted without breaking the minimum audit/settlement obligations; a provider ID is not a reason to retain secret material.
@@ -346,6 +371,8 @@ running ──lease timeout──> [LEASE_EXPIRED event] ──recover──> re
 pending/queued/leased/running/waiting_external/retry_scheduled ──CANCEL_REQUESTED + cancel──> cancelled
 pending/queued/running/waiting_external/retry_scheduled ──deadline──> expired
 ```
+
+For a transfer operation paused by a recoverable system/database/transport error, the operation projection is `paused_on_error` while the canonical job remains `retry_scheduled` with `operatorReviewRequired`; due-retry reconciliation must not dispatch it until an authorized idempotent resume command clears the review gate. This is a transfer-specific recovery projection and does not add a second canonical status column.
 
 Only the arrows shown, plus idempotent repeats of an already-applied command, are legal. Attempts to complete a cancelled/expired/failed job, claim a terminal job, heartbeat an unleased job, or retry a succeeded job return a stable domain error such as `JOB_STATE_CONFLICT` and append no misleading success event. A terminal job may be reprocessed only through an explicitly authorized new business request that creates a new canonical job; `retry` always means another attempt on the existing canonical job and never an implicit clone.
 
@@ -489,6 +516,35 @@ The Cloudflare boundary is intentionally capability-based and must be verified a
 - **Cloudflare Containers Adapter:** execution for CPU/memory/filesystem-heavy workloads that do not belong in a Worker event loop. Container instance identity and lifecycle signals remain execution metadata.
 - **Cloudflare Cron Scheduler Adapter:** creates scheduled job intents with the same occurrence dedupe contract as Celery Beat.
 - **Worker App Adapter:** dispatches to a registered Worker App/runtime using existing worker capability and artifact contracts; it does not create a second job ledger.
+
+### Cloudflare PostgreSQL connectivity boundary
+
+When a Cloudflare adapter is enabled, its control-plane connectivity must use a
+dedicated Hyperdrive configuration and binding for the existing PostgreSQL
+source of truth. Hyperdrive is only a connection/pooling/query gateway; it is
+not a replacement database, a D1 ledger, a cache-authoritative state store, or
+a reason to create a second `worker_jobs` table. The environment-specific
+Hyperdrive configuration, binding name (for example `HYPERDRIVE`), database
+firewall/ACL, TLS, and origin target are deployment configuration and must not
+be committed to source control or copied into `.env`.
+
+Canonical lifecycle writes and fresh reads of `worker_jobs`,
+`worker_job_events`, attempts, dispatches, outbox rows, and settlement markers
+must use a supported PostgreSQL driver through that binding. Reads that decide
+lease, fencing, status, outbox publication, or terminal recovery must bypass
+or disable query caching where necessary so a cached result cannot become
+canonical truth. Database transactions remain short and bounded: never hold a
+transaction or Hyperdrive origin connection across provider calls, external
+waits, or transport publication. Pool capacity, query duration, transaction
+duration, and regional latency are per-environment rollout budgets.
+
+If Hyperdrive or PostgreSQL is unavailable, a Cloudflare consumer must not
+acknowledge a message or report completion without a durable control-plane
+write; it follows bounded redelivery or operator-visible quarantine according
+to the job class. A new Hyperdrive configuration/binding, connectivity proof,
+cache behavior proof, pool-capacity proof, and rollback evidence are explicit
+Cloudflare deployment gates. Local mocks and health checks do not satisfy
+these gates.
 
 The future adapter may use provider-native retries and durable steps, but it must still report canonical lease, progress, result, and terminal state to PostgreSQL. A provider-native workflow that cannot safely reconcile with `worker_jobs` is not an accepted migration target.
 
@@ -681,5 +737,6 @@ These references inform the future adapter boundary and must be revalidated duri
 - [Cloudflare Queues batching, retries, and delays](https://developers.cloudflare.com/queues/configuration/batching-retries/) — transport retry/DLQ and delay behavior.
 - [Cloudflare Workflows overview](https://developers.cloudflare.com/workflows/) and [rules of Workflows](https://developers.cloudflare.com/workflows/build/rules-of-workflows/) — durable multi-step execution, waits, retries, and idempotent steps.
 - [Cloudflare Containers overview](https://developers.cloudflare.com/containers/) — containerized CPU/memory/filesystem-heavy execution managed from Workers.
+- [Cloudflare Hyperdrive PostgreSQL connection](https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/) and [Hyperdrive limits](https://developers.cloudflare.com/hyperdrive/platform/limits/) — the future connectivity binding, origin pool, and query/connection limits must be validated in the target account.
 
 These links are architectural inputs, not permission to couple the business layer directly to provider APIs.

@@ -15844,6 +15844,7 @@ export const workerJobOutbox = pgTable(
     publisherLeaseExpiresAt: timestamp("publisherLeaseExpiresAt", { withTimezone: true }),
     publisherFencingVersion: integer("publisherFencingVersion").notNull().default(0),
     publishedAt: timestamp("publishedAt", { withTimezone: true }),
+    cancelledAt: timestamp("cancelledAt", { withTimezone: true }),
     failedReason: text("failedReason"),
     quarantinedAt: timestamp("quarantinedAt", { withTimezone: true }),
     operatorReviewReason: text("operatorReviewReason"),
@@ -15852,7 +15853,7 @@ export const workerJobOutbox = pgTable(
   },
   t => [
     uniqueIndex("worker_job_outbox_dedupe_unique").on(t.dedupeKey),
-    index("worker_job_outbox_due_idx").on(t.publishedAt, t.quarantinedAt, t.nextAttemptAt),
+    index("worker_job_outbox_due_idx").on(t.publishedAt, t.cancelledAt, t.quarantinedAt, t.nextAttemptAt),
     index("worker_job_outbox_job_idx").on(t.workerJobId, t.createdAt),
   ],
 );

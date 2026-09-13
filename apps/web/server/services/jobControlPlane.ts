@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { db, getDb } from "../db";
 import {
@@ -52,6 +52,8 @@ export type TxRepo = {
   updateJob(input: {
     jobId: string;
     expectedStatus: string;
+    expectedTenantId?: string;
+    expectedRequestedByUserId?: number;
     expectedAttempt?: number;
     expectedLeaseHash?: string;
     expectedFencingVersion?: number;
@@ -68,6 +70,9 @@ export type TxRepo = {
     eventIdempotencyKey: string;
   }): Promise<void>;
   insertOutbox(values: Record<string, unknown>): Promise<void>;
+  findOutboxForAttempt(jobId: string, attemptId?: string): Promise<{ id: string; publishedAt: Date | null; cancelledAt: Date | null; quarantinedAt: Date | null } | null>;
+  resetOutbox(input: { id: string; nextAttemptAt: Date }): Promise<void>;
+  cancelUnpublishedOutbox(input: { jobId: string; reason: string; cancelledAt: Date }): Promise<void>;
 };
 
 export type JobControlPlaneRepository = {
@@ -127,6 +132,8 @@ function buildDefaultRepository(): JobControlPlaneRepository {
               eq(workerJobs.id, input.jobId),
               eq(workerJobs.status, input.expectedStatus as any),
             ];
+            if (input.expectedTenantId !== undefined) conditions.push(eq(workerJobs.tenantId, input.expectedTenantId));
+            if (input.expectedRequestedByUserId !== undefined) conditions.push(eq(workerJobs.requestedByUserId, input.expectedRequestedByUserId));
             if (input.expectedAttempt !== undefined) conditions.push(eq(workerJobs.attempt, input.expectedAttempt));
             if (input.expectedLeaseHash !== undefined) conditions.push(eq(workerJobs.leaseOwnerToken, input.expectedLeaseHash));
             if (input.expectedFencingVersion !== undefined) conditions.push(eq(workerJobs.fencingVersion, input.expectedFencingVersion));
@@ -147,6 +154,43 @@ function buildDefaultRepository(): JobControlPlaneRepository {
           },
           async insertOutbox(values) {
             await query.insert(workerJobOutbox).values(values);
+          },
+          async findOutboxForAttempt(jobId, attemptId) {
+            const conditions = [eq(workerJobOutbox.workerJobId, jobId)];
+            if (attemptId) conditions.push(eq(workerJobOutbox.attemptId, attemptId));
+            const [row] = await query.select({
+              id: workerJobOutbox.id,
+              publishedAt: workerJobOutbox.publishedAt,
+              cancelledAt: workerJobOutbox.cancelledAt,
+              quarantinedAt: workerJobOutbox.quarantinedAt,
+            }).from(workerJobOutbox).where(and(...conditions)).orderBy(sql`${workerJobOutbox.createdAt} DESC`).limit(1);
+            return row ?? null;
+          },
+          async resetOutbox({ id, nextAttemptAt }) {
+            await query.update(workerJobOutbox).set({
+              nextAttemptAt,
+              cancelledAt: null,
+              quarantinedAt: null,
+              failedReason: null,
+              operatorReviewReason: null,
+              publisherLeaseTokenHash: null,
+              publisherLeaseExpiresAt: null,
+              updatedAt: nextAttemptAt,
+            }).where(eq(workerJobOutbox.id, id));
+          },
+          async cancelUnpublishedOutbox({ jobId, reason, cancelledAt }) {
+            await query.update(workerJobOutbox).set({
+              cancelledAt,
+              failedReason: reason,
+              operatorReviewReason: null,
+              publisherLeaseTokenHash: null,
+              publisherLeaseExpiresAt: null,
+              updatedAt: cancelledAt,
+            }).where(and(
+              eq(workerJobOutbox.workerJobId, jobId),
+              isNull(workerJobOutbox.publishedAt),
+              isNull(workerJobOutbox.cancelledAt),
+            ));
           },
         };
         return work(repo);
@@ -188,6 +232,11 @@ export type CreateJobOptions = {
   runtimeType?: string;
   workerId?: string | null;
   requestedBySystemComponent?: string | null;
+};
+
+export type JobMutationScope = {
+  tenantId: string;
+  requestedByUserId?: number;
 };
 
 export type JobControlPlane = ReturnType<typeof createJobControlPlane>;
@@ -358,12 +407,14 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
     async heartbeat(lease: LeaseContext): Promise<void> {
       return repository.transaction(async repo => {
         const job = await repo.findJob(lease.jobId);
+        await assertLeaseAttempt(repo, lease, job);
         const now = new Date();
         const timeoutPolicy = (job?.timeoutPolicyJson ?? {}) as Record<string, unknown>;
         const hardTimeoutMs = Number.isFinite(Number(timeoutPolicy.hardTimeoutMs)) && Number(timeoutPolicy.hardTimeoutMs) > 0
           ? Number(timeoutPolicy.hardTimeoutMs)
           : (job ? job.timeoutSeconds * 1000 : 0);
-        if (!job || job.status !== "running" || now.getTime() >= job.createdAt.getTime() + hardTimeoutMs) {
+        const executionStartedAt = job?.startedAt ?? job?.createdAt;
+        if (!job || job.status !== "running" || !executionStartedAt || now.getTime() >= executionStartedAt.getTime() + hardTimeoutMs) {
           if (job?.status === "running") {
             const expired = await repo.updateJob({
               jobId: lease.jobId,
@@ -374,6 +425,7 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
               values: { status: "expired", statusReason: "hard_timeout", leaseOwnerToken: null, leaseExpiresAt: null, finishedAt: now },
             });
             if (expired) {
+              await repo.cancelUnpublishedOutbox({ jobId: lease.jobId, reason: "expired:hard_timeout", cancelledAt: now });
               await repo.updateAttempt({ attemptId: lease.attemptId, values: { finishedAt: now, terminalClass: "expired", recoveryReason: "hard_timeout" } });
               await repo.insertEvent({ workerJobId: lease.jobId, eventType: "TIMEOUT", attemptId: lease.attemptId, eventIdempotencyKey: `timeout:${lease.attemptId}`, payloadJson: { kind: "hard" } });
               await repo.insertEvent({ workerJobId: lease.jobId, eventType: "EXPIRED", attemptId: lease.attemptId, eventIdempotencyKey: `expired:${lease.attemptId}`, payloadJson: { reason: "hard_timeout" } });
@@ -381,13 +433,16 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
           }
           throw new JobControlPlaneError("JOB_TIMEOUT", "Job hard deadline has elapsed");
         }
+        const hardDeadlineAt = new Date(executionStartedAt.getTime() + hardTimeoutMs);
+        const requestedLeaseExpiry = nowPlus(leaseDurationMs(job.executionClass), now);
+        const leaseExpiresAt = new Date(Math.min(requestedLeaseExpiry.getTime(), hardDeadlineAt.getTime()));
         const updated = await repo.updateJob({
           jobId: lease.jobId,
           expectedStatus: "running",
           expectedAttempt: job.attempt,
           expectedLeaseHash: leaseHash(lease.leaseToken),
           expectedFencingVersion: lease.fencingVersion,
-          values: { heartbeatAt: now, leaseExpiresAt: nowPlus(leaseDurationMs(job.executionClass), now) },
+          values: { heartbeatAt: now, leaseExpiresAt },
         });
         if (!updated) throw new JobControlPlaneError("JOB_LEASE_STALE", "Job lease is no longer active");
         await repo.insertEvent({ workerJobId: lease.jobId, eventType: "HEARTBEAT", attemptId: lease.attemptId, eventIdempotencyKey: `heartbeat:${lease.attemptId}:${now.toISOString()}`, payloadJson: {} });
@@ -401,6 +456,7 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
       validateBoundedPayload(update.measured ?? {}, "progress.measured");
       await repository.transaction(async repo => {
         const job = await repo.findJob(lease.jobId);
+        await assertLeaseAttempt(repo, lease, job);
         const previous = job?.progressJson as Record<string, unknown> | undefined;
         const sameStage = previous?.stage === update.stage;
         if (sameStage && typeof previous?.progress === "number" && update.progress < previous.progress) {
@@ -468,6 +524,7 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
       if (!error.code || error.code.length > 100 || !error.message || error.message.length > 2000) throw new JobControlPlaneError("JOB_ERROR_INVALID", "Classified error is invalid");
       await repository.transaction(async repo => {
         const job = await repo.findJob(lease.jobId);
+        await assertLeaseAttempt(repo, lease, job);
         if (!job || job.status !== "running") {
           throw new JobControlPlaneError("JOB_STATE_CONFLICT", "Job is no longer running");
         }
@@ -509,6 +566,9 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
           terminalClass: nextStatus === "failed" ? error.class : "retryable",
           recoveryReason: error.code,
         }});
+        if (!shouldRetry) {
+          await repo.cancelUnpublishedOutbox({ jobId: job.id, reason: `failed:${error.code}`, cancelledAt: now });
+        }
         if (shouldRetry && nextAttemptId) {
           await repo.insertAttempt({
             id: nextAttemptId,
@@ -570,7 +630,7 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
       });
     },
 
-    async requestCancel(jobId: string, reason = "cancelled_by_request", actionId?: string, actorId?: number): Promise<void> {
+    async requestCancel(jobId: string, reason = "cancelled_by_request", actionId?: string, actorId?: number, scope?: JobMutationScope): Promise<void> {
       await repository.transaction(async repo => {
         const job = await repo.findJob(jobId);
         const keyPrefix = actionId ? `operator:${actionId}` : `cancel:${jobId}:${job?.attempt ?? 0}`;
@@ -581,6 +641,8 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
         const updated = await repo.updateJob({
           jobId,
           expectedStatus: job.status,
+          expectedTenantId: scope?.tenantId,
+          expectedRequestedByUserId: scope?.requestedByUserId,
           expectedAttempt: job.attempt,
           values: { statusReason: `cancel_requested:${reason}`, leaseOwnerToken: null, leaseExpiresAt: null },
         });
@@ -590,33 +652,73 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
       });
     },
 
-    async finalizeCancel(jobId: string, reason = "cancelled_by_request", actionId?: string, actorId?: number): Promise<void> {
+    async finalizeCancel(jobId: string, reason = "cancelled_by_request", actionId?: string, actorId?: number, scope?: JobMutationScope): Promise<void> {
       await repository.transaction(async repo => {
         const job = await repo.findJob(jobId);
         if (!job || job.status === "cancelled") return;
         if (["succeeded", "failed", "expired"].includes(job.status)) throw new JobControlPlaneError("JOB_STATE_CONFLICT", "Job cannot be cancelled in its current state");
         const keyPrefix = actionId ? `operator:${actionId}` : `cancel:${jobId}:${job.attempt}`;
-        const updated = await repo.updateJob({ jobId, expectedStatus: job.status, expectedAttempt: job.attempt, values: { status: "cancelled", statusReason: reason, leaseOwnerToken: null, leaseExpiresAt: null, finishedAt: new Date() } });
+        const updated = await repo.updateJob({ jobId, expectedStatus: job.status, expectedTenantId: scope?.tenantId, expectedRequestedByUserId: scope?.requestedByUserId, expectedAttempt: job.attempt, values: { status: "cancelled", statusReason: reason, leaseOwnerToken: null, leaseExpiresAt: null, finishedAt: new Date() } });
         if (!updated) throw new JobControlPlaneError("JOB_STATE_CONFLICT", "Job changed while finalizing cancellation");
+        await repo.cancelUnpublishedOutbox({ jobId, reason: `cancelled:${reason}`, cancelledAt: new Date() });
         const currentAttempt = await repo.findAttempt(jobId, job.attempt);
         if (currentAttempt) await repo.updateAttempt({ attemptId: currentAttempt.id, values: { finishedAt: new Date(), terminalClass: "cancelled", recoveryReason: reason } });
         await repo.insertEvent({ workerJobId: jobId, eventType: "CANCELLED", attemptId: currentAttempt?.id, eventIdempotencyKey: `${keyPrefix}:cancelled`, payloadJson: { reason, actionId, actorId } });
       });
     },
 
-    async cancel(jobId: string, reason = "cancelled_by_request", actionId?: string, actorId?: number): Promise<void> {
-      await this.requestCancel(jobId, reason, actionId, actorId);
-      await this.finalizeCancel(jobId, reason, actionId, actorId);
+    async reconcileCancellationRequest(jobId: string): Promise<"finalized" | "ignored"> {
+      return repository.transaction(async repo => {
+        const job = await repo.findJob(jobId);
+        if (!job || job.status === "cancelled") return "ignored";
+        if (!job.statusReason?.startsWith("cancel_requested:")) return "ignored";
+        if (["succeeded", "failed", "expired"].includes(job.status)) return "ignored";
+        const reason = job.statusReason.slice("cancel_requested:".length).slice(0, 2000) || "cancelled_by_request";
+        const updated = await repo.updateJob({
+          jobId,
+          expectedStatus: job.status,
+          expectedAttempt: job.attempt,
+          values: { status: "cancelled", statusReason: reason, leaseOwnerToken: null, leaseExpiresAt: null, finishedAt: new Date() },
+        });
+        if (!updated) return "ignored";
+        await repo.cancelUnpublishedOutbox({ jobId, reason: `cancelled:${reason}`, cancelledAt: new Date() });
+        const currentAttempt = await repo.findAttempt(jobId, job.attempt);
+        if (currentAttempt) await repo.updateAttempt({ attemptId: currentAttempt.id, values: { finishedAt: new Date(), terminalClass: "cancelled", recoveryReason: reason } });
+        await repo.insertEvent({ workerJobId: jobId, eventType: "CANCELLED", attemptId: currentAttempt?.id, eventIdempotencyKey: `cancel:${jobId}:${job.attempt}:cancelled`, payloadJson: { reason, recovered: true } });
+        return "finalized";
+      });
     },
 
-    async makeRetryDue(jobId: string, actionId?: string, actorId?: number): Promise<boolean> {
+    async cancel(jobId: string, reason = "cancelled_by_request", actionId?: string, actorId?: number, scope?: JobMutationScope): Promise<void> {
+      await this.requestCancel(jobId, reason, actionId, actorId, scope);
+      await this.finalizeCancel(jobId, reason, actionId, actorId, scope);
+    },
+
+    async makeRetryDue(jobId: string, actionId?: string, actorId?: number, reason = "retry_due"): Promise<boolean> {
       return repository.transaction(async repo => {
         const job = await repo.findJob(jobId);
         if (!job || job.status !== "retry_scheduled") return false;
-        const updated = await repo.updateJob({ jobId, expectedStatus: "retry_scheduled", expectedAttempt: job.attempt, values: { status: "queued", nextRetryAt: null } });
+        if (job.operatorReviewRequired && !actionId) return false;
+        if (job.statusReason?.startsWith("cancel_requested:")) return false;
+        const currentAttempt = await repo.findAttempt(jobId, job.attempt);
+        const existingOutbox = await repo.findOutboxForAttempt(jobId, currentAttempt?.id);
+        const updated = await repo.updateJob({ jobId, expectedStatus: "retry_scheduled", expectedAttempt: job.attempt, values: { status: "queued", nextRetryAt: null, operatorReviewRequired: false } });
         if (!updated) return false;
-        if (actionId) await repo.insertEvent({ workerJobId: jobId, eventType: "OPERATOR_ACTION", eventIdempotencyKey: `operator:${actionId}:action`, payloadJson: { action: "requeue", actorId, targetAttempt: job.attempt, targetStatus: job.status } });
-        await repo.insertEvent({ workerJobId: jobId, eventType: "RECOVERED", eventIdempotencyKey: actionId ? `operator:${actionId}:requeue` : `retry-due:${jobId}:${job.attempt}`, payloadJson: { attempt: job.attempt, actionId } });
+        if (existingOutbox && !existingOutbox.publishedAt) {
+          await repo.resetOutbox({ id: existingOutbox.id, nextAttemptAt: new Date() });
+        } else if (!existingOutbox) {
+          await repo.insertEvent({ workerJobId: jobId, eventType: "DISPATCH_REQUESTED", attemptId: currentAttempt?.id, eventIdempotencyKey: `dispatch-requested:${jobId}:${job.attempt}:requeue`, payloadJson: { attempt: job.attempt, reason: actionId ? "operator_requeue" : "retry_due" } });
+          await repo.insertOutbox({
+            workerJobId: jobId,
+            attemptId: currentAttempt?.id,
+            envelopeVersion: job.contractVersion,
+            envelopeJson: { jobId, businessAttempt: job.attempt, attemptId: currentAttempt?.id, reason: actionId ? "operator_requeue" : "retry_due" },
+            dedupeKey: `job:${jobId}:attempt:${job.attempt}`,
+            nextAttemptAt: new Date(),
+          });
+        }
+        if (actionId) await repo.insertEvent({ workerJobId: jobId, eventType: "OPERATOR_ACTION", eventIdempotencyKey: `operator:${actionId}:action`, payloadJson: { action: "requeue", reason: reason.slice(0, 500), actorId, targetAttempt: job.attempt, targetStatus: job.status } });
+        await repo.insertEvent({ workerJobId: jobId, eventType: "RECOVERED", eventIdempotencyKey: actionId ? `operator:${actionId}:requeue` : `retry-due:${jobId}:${job.attempt}`, payloadJson: { attempt: job.attempt, actionId, reason: reason.slice(0, 500) } });
         return true;
       });
     },
@@ -628,6 +730,7 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
         if (!job || ["succeeded", "failed", "cancelled", "expired"].includes(job.status)) throw new JobControlPlaneError("JOB_STATE_CONFLICT", "Job cannot be force-failed in its current state");
         const updated = await repo.updateJob({ jobId, expectedStatus: job.status, expectedAttempt: job.attempt, values: { status: "failed", statusReason: "operator_force_fail", failureReason: reason.slice(0, 2000), operatorReviewRequired: true, leaseOwnerToken: null, leaseExpiresAt: null, finishedAt: new Date() } });
         if (!updated) throw new JobControlPlaneError("JOB_STATE_CONFLICT", "Job changed while force-failing");
+        await repo.cancelUnpublishedOutbox({ jobId, reason: "failed:operator_force_fail", cancelledAt: new Date() });
         const currentAttempt = await repo.findAttempt(jobId, job.attempt);
         if (currentAttempt) await repo.updateAttempt({ attemptId: currentAttempt.id, values: { finishedAt: new Date(), terminalClass: "operator", recoveryReason: reason.slice(0, 500) } });
         await repo.insertEvent({ workerJobId: jobId, eventType: "OPERATOR_ACTION", attemptId: currentAttempt?.id, eventIdempotencyKey: `operator:${actionId}:action`, payloadJson: { action: "force_fail", reason, actorId, targetAttempt: job.attempt, targetStatus: job.status } });
@@ -643,6 +746,7 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
         if (!updated) return "ignored";
         const currentAttempt = await repo.findAttempt(jobId, job.attempt);
         if (currentAttempt) await repo.updateAttempt({ attemptId: currentAttempt.id, values: { finishedAt: now, terminalClass: "failed", recoveryReason: reason.slice(0, 500) } });
+        await repo.cancelUnpublishedOutbox({ jobId, reason: "failed:external_wait_timeout", cancelledAt: now });
         await repo.insertEvent({ workerJobId: jobId, eventType: "TIMEOUT", attemptId: currentAttempt?.id, eventIdempotencyKey: `external-timeout:${jobId}:${job.attempt}`, payloadJson: { reason } });
         await repo.insertEvent({ workerJobId: jobId, eventType: "FAILED", attemptId: currentAttempt?.id, eventIdempotencyKey: `external-failed:${jobId}:${job.attempt}`, payloadJson: { code: "EXTERNAL_WAIT_TIMEOUT", operatorReviewRequired } });
         return "failed";
@@ -666,6 +770,7 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
         if (!updated) return "ignored";
         const currentAttempt = await repo.findAttempt(jobId, job.attempt);
         if (currentAttempt) await repo.updateAttempt({ attemptId: currentAttempt.id, values: { finishedAt: now, terminalClass: "expired", recoveryReason: "job_deadline" } });
+        await repo.cancelUnpublishedOutbox({ jobId, reason: "expired:job_deadline", cancelledAt: now });
         await repo.insertEvent({ workerJobId: jobId, eventType: "TIMEOUT", attemptId: currentAttempt?.id, eventIdempotencyKey: `deadline-timeout:${jobId}:${job.attempt}`, payloadJson: { kind: "deadline" } });
         await repo.insertEvent({ workerJobId: jobId, eventType: "EXPIRED", attemptId: currentAttempt?.id, eventIdempotencyKey: `deadline-expired:${jobId}:${job.attempt}`, payloadJson: { reason: "job_deadline" } });
         return "expired";
@@ -705,6 +810,7 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
         });
         if (!updated) return "ignored";
         if (currentAttempt) await repo.updateAttempt({ attemptId: currentAttempt.id, values: { finishedAt: now, terminalClass: nextStatus === "expired" ? "expired" : "retryable", recoveryReason: "lease_expired" } });
+        if (nextStatus === "expired") await repo.cancelUnpublishedOutbox({ jobId, reason: "expired:lease_expired", cancelledAt: now });
         await repo.insertEvent({ workerJobId: jobId, eventType: "LEASE_EXPIRED", eventIdempotencyKey: `lease-expired:${jobId}:${job.fencingVersion}`, payloadJson: { attempt: job.attempt, priorStatus: job.status } });
         if (shouldRetry && nextAttemptId) {
           await repo.insertAttempt({ id: nextAttemptId, workerJobId: jobId, attempt: nextAttempt, leaseGeneration: 0, recoveryReason: "lease_expired" });
@@ -725,7 +831,8 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
     async assertActive(lease: LeaseContext): Promise<void> {
       await repository.transaction(async repo => {
         const job = await repo.findJob(lease.jobId);
-        if (!job || job.status !== "running" || job.leaseOwnerToken !== leaseHash(lease.leaseToken) || job.fencingVersion !== lease.fencingVersion) {
+        const attempt = job ? await repo.findAttempt(job.id, job.attempt) : null;
+        if (!job || !attempt || attempt.id !== lease.attemptId || attempt.leaseGeneration !== lease.fencingVersion || job.status !== "running" || job.leaseOwnerToken !== leaseHash(lease.leaseToken) || job.fencingVersion !== lease.fencingVersion) {
           throw new JobControlPlaneError("JOB_LEASE_STALE", "Job lease is no longer active");
         }
       });
@@ -744,6 +851,8 @@ async function guardedLeaseUpdate(
   settlement?: { settlementKey: string; settlementType: string },
 ): Promise<void> {
   await repository.transaction(async repo => {
+    const job = await repo.findJob(lease.jobId);
+    await assertLeaseAttempt(repo, lease, job);
     const updated = await repo.updateJob({
       jobId: lease.jobId,
       expectedStatus,
@@ -766,6 +875,18 @@ async function guardedLeaseUpdate(
       payloadJson: payload,
     });
   });
+}
+
+async function assertLeaseAttempt(
+  repo: TxRepo,
+  lease: LeaseContext,
+  job: WorkerJob | null,
+): Promise<void> {
+  if (!job) throw new JobControlPlaneError("JOB_LEASE_STALE", "Job lease is no longer active");
+  const attempt = await repo.findAttempt(job.id, job.attempt);
+  if (!attempt || attempt.id !== lease.attemptId || attempt.leaseGeneration !== lease.fencingVersion) {
+    throw new JobControlPlaneError("JOB_LEASE_STALE", "Job attempt lease is no longer active");
+  }
 }
 
 export function isRetryableError(error: unknown): boolean {

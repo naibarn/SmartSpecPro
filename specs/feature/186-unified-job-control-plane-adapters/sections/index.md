@@ -44,7 +44,7 @@ END_MANIFEST -->
 Canonical types, status transitions, trusted identity, deterministic definition hashing, redaction, and contract tests.
 
 ### section-02-persistence-migration
-Additive Drizzle schema/migration, companion tables, constraints/indexes, and safe dry-run/backfill tooling.
+Additive Drizzle schema/migration, lifecycle and transfer checkpoint companions, constraints/indexes, and safe dry-run/backfill tooling.
 
 ### section-03-lifecycle-service
 Transactional create/claim/lease/reporter/retry/cancel/reconcile operations with fencing and event sequencing.
@@ -53,10 +53,10 @@ Transactional create/claim/lease/reporter/retry/cancel/reconcile operations with
 Transactional outbox publisher, dedupe/reclaim/quarantine behavior, and BullMQ/Celery-neutral transport adapters.
 
 ### section-05-runtime-reconciler
-Executor/reporter integration, external wait, provider callback boundary, scheduler occurrence handling, and reconciler job.
+Executor/reporter integration, external wait, provider callback boundary, scheduler occurrence handling, and the existing reconciler job entry point.
 
 ### section-06-monitor-security
-Canonical job monitor, cursor/timeline projection, guarded operator actions, tenant isolation, and redaction.
+Canonical job monitor, cursor/timeline projection, guarded operator actions, tenant isolation, redaction, and explicit tenant-transfer workflow.
 
 ### section-07-python-celery-compatibility
 Python control-plane client, thin Celery wrappers/Beat intent helpers, and legacy reference migration inventory.

@@ -602,3 +602,27 @@ describe("staged dispatch task records carry an in-flight status (grep-guard)", 
     }
   });
 });
+
+describe("staged Kie reference preparation is fail-closed (grep-guard)", () => {
+  it("never forwards an unprepared raw reference after conversion or fetch failure", async () => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../marketplaceAutoReviewStagedPipelineService.ts"
+      ),
+      "utf-8"
+    );
+    const sanitizer = source.slice(
+      source.indexOf("async function sanitizeReferenceUrlsForProvider"),
+      source.indexOf("\nfunction stagedPlanFromMetadata")
+    );
+
+    expect(sanitizer).not.toContain("result.push(converted ?? raw)");
+    expect(sanitizer).not.toContain("catch {\n      result.push(raw)");
+    expect(sanitizer).toContain("staged_reference_prepare_failed:image:");
+    expect(sanitizer).toContain("resolveReferenceUrl(raw, publicUrl)");
+    expect(source).toContain("KIE_AI_STAGED_REFERENCE_MAX_BYTES");
+  });
+});

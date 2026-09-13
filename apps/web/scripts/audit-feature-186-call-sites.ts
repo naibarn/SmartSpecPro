@@ -18,6 +18,12 @@ const allowed = new Set(["server/services/jobTransportAdapters.ts", "server/serv
 const findings = files.flatMap(path => {
   const name = relative(root, path).replaceAll("\\", "/");
   if (allowed.has(name)) return [];
-  return readFileSync(path, "utf8").split("\n").flatMap((line, index) => patterns.some(pattern => pattern.test(line)) ? [{ file: name, line: index + 1, text: line.trim().slice(0, 180) }] : []);
+  return readFileSync(path, "utf8").split("\n").flatMap((line, index) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("//") || trimmed.startsWith("#")) return [];
+    return patterns.some(pattern => pattern.test(line))
+      ? [{ file: name, line: index + 1, text: trimmed.slice(0, 180) }]
+      : [];
+  });
 });
 console.log(JSON.stringify({ feature: 186, mode: "inventory", directTransportCallSites: findings.length, findings, migratedWave: [] }, null, 2));

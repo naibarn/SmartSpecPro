@@ -7,12 +7,94 @@ canonical_persistence:
   queue_is_source_of_truth: false
 active_side_effecting_adapter: legacy
 selected_job_types: []
+producer_inventory:
+  source: apps/web/scripts/audit-feature-186-call-sites.ts
+  audited_at: "2026-09-13"
+  direct_transport_call_sites: 52
+  migrated_wave: []
+  bullmq:
+    status: legacy-unmigrated
+    call_sites:
+      - "apps/web/server/jobs/capacityAssessmentJob.ts:44"
+      - "apps/web/server/jobs/databaseBackupJob.ts:60"
+      - "apps/web/server/services/deliveryQueue.ts:338"
+      - "apps/web/server/services/embeddingQueue.ts:78"
+      - "apps/web/server/services/jobAutomationService.ts:192"
+      - "apps/web/server/services/webhookDeliveryService.ts:150"
+      - "apps/web/server/services/webhookDeliveryService.ts:197"
+      - "apps/web/server/services/webhookDispatchQueue.ts:293"
+  celery:
+    status: legacy-unmigrated
+    call_sites:
+      - "python-backend/app/api/admin.py:1064"
+      - "python-backend/app/api/agency_creator.py:65"
+      - "python-backend/app/api/agency_creator.py:170"
+      - "python-backend/app/api/automation_copilot.py:110"
+      - "python-backend/app/api/automation_copilot.py:191"
+      - "python-backend/app/api/internal_gdrive.py:105"
+      - "python-backend/app/api/internal_gdrive.py:123"
+      - "python-backend/app/api/internal_gdrive.py:159"
+      - "python-backend/app/api/internal_library.py:2807"
+      - "python-backend/app/api/internal_onedrive.py:133"
+      - "python-backend/app/api/internal_onedrive.py:151"
+      - "python-backend/app/api/internal_onedrive.py:187"
+      - "python-backend/app/api/internal_vertical_drama.py:43"
+      - "python-backend/app/api/meta_webhooks.py:186"
+      - "python-backend/app/api/v1/media_generation.py:2052"
+      - "python-backend/app/api/v1/media_generation.py:2121"
+      - "python-backend/app/api/v1/media_jobs.py:40"
+      - "python-backend/app/api/v1/presentation_import.py:115"
+      - "python-backend/app/api/v1/presentations_export.py:217"
+      - "python-backend/app/api/vision.py:86"
+      - "python-backend/app/api/workflows.py:259"
+      - "python-backend/app/api/workflows.py:389"
+      - "python-backend/app/api/workflows.py:869"
+      - "python-backend/app/api/workflows.py:2269"
+      - "python-backend/app/services/queue_consumer.py:119"
+      - "python-backend/app/services/sandbox_dispatcher.py:230"
+      - "python-backend/app/services/social/workflow_trigger_listener.py:88"
+      - "python-backend/app/tasks/agency_creator_task.py:380"
+      - "python-backend/app/tasks/agency_creator_task.py:391"
+      - "python-backend/app/tasks/google_drive_tasks.py:941"
+      - "python-backend/app/tasks/media_tasks.py:907"
+      - "python-backend/app/tasks/media_tasks.py:911"
+      - "python-backend/app/tasks/media_tasks.py:955"
+      - "python-backend/app/tasks/media_tasks.py:1017"
+      - "python-backend/app/tasks/media_tasks.py:1082"
+      - "python-backend/app/tasks/media_tasks.py:3367"
+      - "python-backend/app/tasks/media_tasks.py:3369"
+      - "python-backend/app/tasks/media_tasks.py:4326"
+      - "python-backend/app/tasks/onedrive_tasks.py:195"
+      - "python-backend/app/tasks/onedrive_tasks.py:226"
+      - "python-backend/app/tasks/onedrive_tasks.py:1073"
+      - "python-backend/app/tasks/onedrive_tasks.py:1149"
+      - "python-backend/app/tasks/social_webhook_task.py:335"
+      - "python-backend/app/tasks/social_workflow_trigger_task.py:359"
+  beat: []
+  callbacks: []
+rollout_waves: []
+compatibility_projection:
+  legacy_status_aliases: true
+  api_projection_required_until_reader_migration: true
+backfill_drain_policy:
+  identity: verified-one-to-one-binding-only
+  ambiguous_legacy_items: quarantine-for-operator-review
+  shared_queue_flush: forbidden
+admission_budgets: {}
+event_rate_budgets: {}
+evidence_links: []
+tenant_data_transfer_boundary:
+  status: not_enabled
+  canonical_job_type: tenant_data_transfer
+  implementation_gate: separate_registered-handler-schema-and-authz-wave
+  rule: do-not-expose-preview-approval-or-execution-routes-until-the-transfer-plan-item-schema-handlers-and-queue-cancellation-tests-are-live
 schema:
   migrations:
     - 0303_feature_186_unified_job_control_plane
     - 0304_feature_186_contract_version
     - 0305_feature_186_timeout_policy
-  current_schema_version: 0305
+    - 0306_feature_186_outbox_cancellation
+  current_schema_version: "0306"
   backfill_command: npm --workspace @smartspec/web run backfill:unified-job-control-plane -- --dry-run
   apply_requires: backup-and-approved-maintenance-window
 rollout_gates:
@@ -26,3 +108,8 @@ rollback:
   new_work_flag: feature186.adapter.<job_type>
   rule: route-new-work-to-previous-adapter; preserve-canonical-terminal-history
 cloudflare_proof: not-established-by-local-tests
+cloudflare_connectivity:
+  mode: hyperdrive-to-existing-postgresql
+  binding: HYPERDRIVE
+  new_configuration_required: true
+  proof: not-established-by-local-tests

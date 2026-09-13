@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const migration = readFileSync(new URL("./0303_feature_186_unified_job_control_plane.sql", import.meta.url), "utf8");
 const contractMigration = readFileSync(new URL("./0304_feature_186_contract_version.sql", import.meta.url), "utf8");
 const timeoutMigration = readFileSync(new URL("./0305_feature_186_timeout_policy.sql", import.meta.url), "utf8");
+const cancellationMigration = readFileSync(new URL("./0306_feature_186_outbox_cancellation.sql", import.meta.url), "utf8");
 
 describe("Feature 186 migration contract", () => {
   it("is additive and preserves legacy status values", () => {
@@ -42,5 +43,12 @@ describe("Feature 186 migration contract", () => {
   it("persists soft and hard timeout policy on the canonical row", () => {
     expect(timeoutMigration).toContain('ADD COLUMN IF NOT EXISTS "timeoutPolicyJson"');
     expect(timeoutMigration).not.toMatch(/DROP TABLE|TRUNCATE|DELETE FROM/i);
+  });
+
+  it("makes unpublished outbox cancellation durable and additive", () => {
+    expect(cancellationMigration).toContain('ADD COLUMN IF NOT EXISTS "cancelledAt"');
+    expect(cancellationMigration).toContain('DROP INDEX IF EXISTS "worker_job_outbox_due_idx"');
+    expect(cancellationMigration).toContain("worker_job_outbox_due_idx");
+    expect(cancellationMigration).not.toMatch(/DROP TABLE|TRUNCATE|DELETE FROM/i);
   });
 });

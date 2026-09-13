@@ -47,6 +47,7 @@ vi.mock("../../_core/trpc", () => {
     router: (routes: any) => routes,
     protectedProcedure: createProcedure(),
     adminProcedure: createProcedure(),
+    rateLimitedAdminProcedure: createProcedure(),
   };
 });
 

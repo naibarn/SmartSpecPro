@@ -1,15 +1,20 @@
 import asyncio
+import base64
+import binascii
 import hashlib
+import io
+import ipaddress
 import json
 import mimetypes
 import os
 import re
 import time
 from typing import Any
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import unquote_to_bytes, urljoin, urlparse, urlunparse
 
 import httpx
 import structlog
+from PIL import Image, ImageOps
 
 logger = structlog.get_logger()
 
@@ -328,8 +333,32 @@ def _redact_url_for_log(value: str) -> str:
     """Keep provider diagnostics useful without persisting signed URL tokens."""
     try:
         parsed = urlparse(value)
-        if parsed.query:
-            return urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, "[redacted]", ""))
+        protected_path_markers = (
+            "/api/mcp/downloads/",
+            "/api/storage/files/",
+            "/uploads/",
+        )
+        lowered_path = parsed.path.lower()
+        for marker in protected_path_markers:
+            marker_index = lowered_path.find(marker)
+            if marker_index >= 0:
+                safe_path = (
+                    f"{parsed.path[:marker_index]}"
+                    f"{parsed.path[marker_index:marker_index + len(marker)]}"
+                    "[redacted]"
+                )
+                return urlunparse((parsed.scheme, parsed.netloc, safe_path, "", "", ""))
+        if parsed.query or parsed.fragment:
+            return urlunparse(
+                (
+                    parsed.scheme,
+                    parsed.netloc,
+                    parsed.path,
+                    parsed.params,
+                    "[redacted]" if parsed.query else "",
+                    "[redacted]" if parsed.fragment else "",
+                )
+            )
     except ValueError:
         pass
     return value
@@ -342,6 +371,24 @@ KIE_REFERENCE_DOWNLOAD_MAX_RETRIES = max(
 KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS = (0.5, 1.0, 2.0)
 KIE_REFERENCE_DOWNLOAD_RETRYABLE_STATUS_CODES = {408, 425, 429}
 KIE_REFERENCE_IMAGE_ACCESS_FAILED_MARKER = "KIE_REFERENCE_IMAGE_ACCESS_FAILED"
+KIE_REFERENCE_VIDEO_ACCESS_FAILED_MARKER = "KIE_REFERENCE_VIDEO_ACCESS_FAILED"
+KIE_REFERENCE_IMAGE_INVALID_CONTENT_MARKER = "KIE_REFERENCE_IMAGE_INVALID_CONTENT"
+KIE_REFERENCE_VIDEO_INVALID_CONTENT_MARKER = "KIE_REFERENCE_VIDEO_INVALID_CONTENT"
+KIE_REFERENCE_IMAGE_TOO_LARGE_MARKER = "KIE_REFERENCE_IMAGE_TOO_LARGE"
+KIE_REFERENCE_VIDEO_TOO_LARGE_MARKER = "KIE_REFERENCE_VIDEO_TOO_LARGE"
+KIE_REFERENCE_IMAGE_EMPTY_MARKER = "KIE_REFERENCE_IMAGE_EMPTY"
+KIE_REFERENCE_VIDEO_EMPTY_MARKER = "KIE_REFERENCE_VIDEO_EMPTY"
+KIE_REFERENCE_IMAGE_UNSUPPORTED_TYPE_MARKER = "KIE_REFERENCE_IMAGE_UNSUPPORTED_TYPE"
+KIE_REFERENCE_VIDEO_UNSUPPORTED_TYPE_MARKER = "KIE_REFERENCE_VIDEO_UNSUPPORTED_TYPE"
+KIE_REFERENCE_URL_MAX_LENGTH = max(1, int(os.getenv("KIE_REFERENCE_URL_MAX_LENGTH", "2048")))
+KIE_REFERENCE_IMAGE_MAX_BYTES = max(
+    1,
+    int(os.getenv("KIE_REFERENCE_IMAGE_MAX_BYTES", str(10 * 1024 * 1024))),
+)
+KIE_REFERENCE_VIDEO_MAX_BYTES = max(
+    1,
+    int(os.getenv("KIE_REFERENCE_VIDEO_MAX_BYTES", str(100 * 1024 * 1024))),
+)
 
 
 def _reference_download_host(url: str) -> str:
@@ -358,24 +405,155 @@ def _reference_download_error(
     reason: str,
     status_code: int | None = None,
     permanent: bool = False,
+    media_kind: str = "image",
 ) -> RuntimeError:
+    label = "video" if media_kind == "video" else "image"
     marker = (
-        KIE_REFERENCE_IMAGE_ACCESS_FAILED_MARKER
+        (
+            KIE_REFERENCE_VIDEO_ACCESS_FAILED_MARKER
+            if media_kind == "video"
+            else KIE_REFERENCE_IMAGE_ACCESS_FAILED_MARKER
+        )
         if permanent
-        else "KIE_REFERENCE_IMAGE_DOWNLOAD_FAILED"
+        else f"KIE_REFERENCE_{label.upper()}_DOWNLOAD_FAILED"
     )
     status = f" status={status_code}" if status_code is not None else ""
     guidance = (
-        " Reference image was not found (HTTP 404). Please select or upload this image again."
+        f" Reference {label} was not found (HTTP 404). Please select or upload this {label} again."
         if status_code == 404
-        else " Access to the reference image was denied. Please check its access or upload it again."
+        else f" Access to the reference {label} was denied. Please check its access or upload it again."
         if status_code in {401, 403}
-        else " Please check the reference image and try again."
+        else f" Please check the reference {label} and try again."
     )
     return RuntimeError(
-        f"{marker}: Kie reference image download failed for item {index + 1} "
+        f"{marker}: Kie reference {label} download failed for item {index + 1} "
         f"(reason={reason}{status}, host={_reference_download_host(url)}).{guidance}"
     )
+
+
+def _reference_requires_upload(url: str, *, force: bool = False) -> bool:
+    """Identify references that Kie cannot safely consume as direct URLs."""
+    if force or url.lower().startswith("data:") or len(url) > KIE_REFERENCE_URL_MAX_LENGTH:
+        return True
+
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        return True
+
+    if parsed.scheme not in {"http", "https"}:
+        return True
+    if parsed.query or parsed.fragment:
+        return True
+
+    path = parsed.path.lower()
+    # Kie has inconsistent support for WebP across image models. Rehost and
+    # normalize it at this boundary so every model receives a provider-safe
+    # PNG instead of relying on the remote URL's extension/content negotiation.
+    if path.endswith(".webp"):
+        return True
+    return any(
+        marker in path
+        for marker in (
+            "/api/mcp/downloads/",
+            "/api/storage/files/",
+            "/uploads/",
+        )
+    )
+
+
+def _reference_url_is_private_target(url: str) -> bool:
+    """Reject direct private targets while allowing our managed media broker."""
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme.lower() not in {"http", "https"}:
+            return True
+        hostname = (parsed.hostname or "").lower().rstrip(".")
+        if hostname in {"localhost", "localhost.localdomain", "metadata.google.internal"}:
+            return True
+        if hostname.endswith((".local", ".internal")):
+            return True
+        try:
+            return ipaddress.ip_address(hostname).is_private or ipaddress.ip_address(hostname).is_loopback
+        except ValueError:
+            return False
+    except ValueError:
+        return True
+
+
+def _detect_reference_content_type(content: bytes, media_kind: str) -> str | None:
+    """Detect a media type from bytes; headers and file extensions are advisory."""
+    if media_kind == "video":
+        if len(content) >= 12 and content[4:8] == b"ftyp":
+            return "video/quicktime" if content[8:12] == b"qt  " else "video/mp4"
+        if content.startswith(b"\x1a\x45\xdf\xa3"):
+            return "video/webm"
+        if len(content) >= 12 and content.startswith(b"RIFF") and content[8:12] == b"AVI ":
+            return "video/x-msvideo"
+        return None
+
+    if content.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if content.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if content.startswith((b"GIF87a", b"GIF89a")):
+        return "image/gif"
+    if len(content) >= 12 and content.startswith(b"RIFF") and content[8:12] == b"WEBP":
+        return "image/webp"
+    if content.startswith(b"BM"):
+        return "image/bmp"
+    if content.startswith((b"II*\x00", b"MM\x00*")):
+        return "image/tiff"
+    return None
+
+
+def _normalize_kie_image_content(content: bytes, content_type: str) -> tuple[bytes, str]:
+    """Convert WebP references to lossless PNG before Kie submission."""
+    if content_type != "image/webp":
+        return content, content_type
+    try:
+        with Image.open(io.BytesIO(content)) as image:
+            image = ImageOps.exif_transpose(image)
+            if image.width * image.height > 100_000_000:
+                raise ValueError("reference image dimensions are too large")
+            mode = "RGBA" if "A" in image.getbands() else "RGB"
+            converted = image.convert(mode)
+            output = io.BytesIO()
+            converted.save(output, format="PNG", optimize=False)
+            normalized = output.getvalue()
+    except Exception as exc:
+        raise RuntimeError("KIE_REFERENCE_IMAGE_INVALID_CONTENT: WebP normalization failed") from exc
+    if not normalized:
+        raise RuntimeError("KIE_REFERENCE_IMAGE_EMPTY: normalized reference image is empty")
+    return normalized, "image/png"
+
+
+def _decode_reference_data_url(url: str, index: int, media_kind: str) -> bytes | None:
+    if not url.lower().startswith("data:"):
+        return None
+
+    label = "video" if media_kind == "video" else "image"
+    try:
+        header, payload = url.split(",", 1)
+        metadata = header[5:].split(";")
+        if "base64" in metadata:
+            content = base64.b64decode(payload, validate=True)
+        else:
+            content = unquote_to_bytes(payload)
+    except (ValueError, binascii.Error) as exc:
+        raise RuntimeError(
+            f"KIE_REFERENCE_{label.upper()}_INVALID_DATA_URL: "
+            f"reference {label} item {index + 1} is not valid encoded data"
+        ) from exc
+
+    if not content:
+        empty_marker = (
+            KIE_REFERENCE_VIDEO_EMPTY_MARKER
+            if media_kind == "video"
+            else KIE_REFERENCE_IMAGE_EMPTY_MARKER
+        )
+        raise RuntimeError(f"{empty_marker}: Kie reference {label} {index + 1} is empty")
+    return content
 
 
 def _normalize_ref_urls_for_model(model: str | None, input_params: dict[str, Any]) -> dict[str, Any]:
@@ -1151,120 +1329,206 @@ class KieAIProvider:
         logger.info("kie_ai_http_client_recreated_for_event_loop")
         return self.client
 
-    async def _upload_reference_image(self, url: str, index: int) -> str:
-        """Upload one reference to Kie's file service before image-to-image.
-
-        Kie's image-to-image contracts require a Kie-hosted ``input_urls``
-        value. Passing SmartSpec's tenant-scoped download broker URL directly
-        is not reliable: Kie may reject it even when the URL is reachable from
-        our own web process. Streaming the bytes through the File Upload API
-        removes that provider-to-app fetch dependency and keeps the original
-        tenant URL out of the provider task payload.
-        """
+    async def _upload_reference_media(
+        self,
+        url: str,
+        index: int,
+        *,
+        media_kind: str,
+    ) -> str:
+        """Fetch and stream one reference to Kie without sending app URLs/base64."""
+        label = "video" if media_kind == "video" else "image"
+        max_bytes = KIE_REFERENCE_VIDEO_MAX_BYTES if media_kind == "video" else KIE_REFERENCE_IMAGE_MAX_BYTES
         client = self._get_client_for_current_loop()
-        max_attempts = KIE_REFERENCE_DOWNLOAD_MAX_RETRIES + 1
+        decoded_data = _decode_reference_data_url(url, index, media_kind)
         source_response: httpx.Response | None = None
-        for attempt in range(1, max_attempts + 1):
-            try:
-                candidate_response = await client.get(url, follow_redirects=True)
-                candidate_response.raise_for_status()
-                source_response = candidate_response
-                break
-            except httpx.HTTPStatusError as exc:
-                status_code = exc.response.status_code
-                retryable = (
-                    status_code in KIE_REFERENCE_DOWNLOAD_RETRYABLE_STATUS_CODES
-                    or status_code >= 500
+
+        if decoded_data is not None:
+            content = decoded_data
+        else:
+            if _reference_url_is_private_target(url):
+                raise _reference_download_error(
+                    url,
+                    index,
+                    reason="blocked_private_target",
+                    permanent=True,
+                    media_kind=media_kind,
                 )
-                if retryable and attempt < max_attempts:
-                    delay = KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS[
-                        min(attempt - 1, len(KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS) - 1)
-                    ]
-                    logger.warning(
-                        "kie_ai_reference_download_retry",
-                        index=index + 1,
-                        host=_reference_download_host(url),
-                        status=status_code,
-                        attempt=attempt,
-                        max_attempts=max_attempts,
-                        delay_seconds=delay,
+            max_attempts = KIE_REFERENCE_DOWNLOAD_MAX_RETRIES + 1
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    candidate_url = url
+                    candidate_response = None
+                    for _ in range(6):
+                        if _reference_url_is_private_target(candidate_url):
+                            raise _reference_download_error(
+                                url,
+                                index,
+                                reason="blocked_private_redirect",
+                                permanent=True,
+                                media_kind=media_kind,
+                            )
+                        response = await client.get(candidate_url, follow_redirects=False)
+                        if response.status_code not in {301, 302, 303, 307, 308}:
+                            candidate_response = response
+                            break
+                        location = response.headers.get("location")
+                        if not location:
+                            raise _reference_download_error(
+                                url,
+                                index,
+                                reason="redirect_missing_location",
+                                permanent=True,
+                                media_kind=media_kind,
+                            )
+                        candidate_url = urljoin(candidate_url, location)
+                    if candidate_response is None:
+                        raise _reference_download_error(
+                            url,
+                            index,
+                            reason="redirect_limit",
+                            permanent=True,
+                            media_kind=media_kind,
+                        )
+                    candidate_response.raise_for_status()
+                    content_length = candidate_response.headers.get("content-length")
+                    if content_length:
+                        try:
+                            declared_length = int(content_length)
+                        except ValueError:
+                            declared_length = None
+                        if declared_length is not None and declared_length > max_bytes:
+                            limit_mb = max_bytes / (1024 * 1024)
+                            size_marker = (
+                                KIE_REFERENCE_VIDEO_TOO_LARGE_MARKER
+                                if media_kind == "video"
+                                else KIE_REFERENCE_IMAGE_TOO_LARGE_MARKER
+                            )
+                            raise RuntimeError(
+                                f"{size_marker}: Kie reference {label} {index + 1} exceeds the {limit_mb:g}MB download limit"
+                            )
+                    source_response = candidate_response
+                    break
+                except httpx.HTTPStatusError as exc:
+                    status_code = exc.response.status_code
+                    retryable = (
+                        status_code in KIE_REFERENCE_DOWNLOAD_RETRYABLE_STATUS_CODES
+                        or status_code >= 500
                     )
-                    await asyncio.sleep(delay)
-                    continue
+                    if retryable and attempt < max_attempts:
+                        delay = KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS[
+                            min(attempt - 1, len(KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS) - 1)
+                        ]
+                        logger.warning(
+                            "kie_ai_reference_download_retry",
+                            index=index + 1,
+                            host=_reference_download_host(url),
+                            status=status_code,
+                            attempt=attempt,
+                            max_attempts=max_attempts,
+                            delay_seconds=delay,
+                            media_kind=media_kind,
+                        )
+                        await asyncio.sleep(delay)
+                        continue
 
-                raise _reference_download_error(
-                    url,
-                    index,
-                    reason=("transient_http" if retryable else "http_access"),
-                    status_code=status_code,
-                    permanent=not retryable and 400 <= status_code < 500,
-                ) from exc
-            except httpx.RequestError as exc:
-                if attempt < max_attempts:
-                    delay = KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS[
-                        min(attempt - 1, len(KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS) - 1)
-                    ]
-                    logger.warning(
-                        "kie_ai_reference_download_retry",
-                        index=index + 1,
-                        host=_reference_download_host(url),
-                        status=None,
-                        attempt=attempt,
-                        max_attempts=max_attempts,
-                        delay_seconds=delay,
-                        error_type=type(exc).__name__,
-                    )
-                    await asyncio.sleep(delay)
-                    continue
+                    raise _reference_download_error(
+                        url,
+                        index,
+                        reason=("transient_http" if retryable else "http_access"),
+                        status_code=status_code,
+                        permanent=not retryable and 400 <= status_code < 500,
+                        media_kind=media_kind,
+                    ) from exc
+                except httpx.RequestError as exc:
+                    if attempt < max_attempts:
+                        delay = KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS[
+                            min(attempt - 1, len(KIE_REFERENCE_DOWNLOAD_RETRY_DELAYS_SECONDS) - 1)
+                        ]
+                        logger.warning(
+                            "kie_ai_reference_download_retry",
+                            index=index + 1,
+                            host=_reference_download_host(url),
+                            status=None,
+                            attempt=attempt,
+                            max_attempts=max_attempts,
+                            delay_seconds=delay,
+                            error_type=type(exc).__name__,
+                            media_kind=media_kind,
+                        )
+                        await asyncio.sleep(delay)
+                        continue
 
-                raise _reference_download_error(
-                    url,
-                    index,
-                    reason="request_error",
-                ) from exc
-            except httpx.HTTPError as exc:
-                raise _reference_download_error(
-                    url,
-                    index,
-                    reason="http_error",
-                ) from exc
+                    raise _reference_download_error(
+                        url,
+                        index,
+                        reason="request_error",
+                        media_kind=media_kind,
+                    ) from exc
+                except httpx.HTTPError as exc:
+                    raise _reference_download_error(
+                        url,
+                        index,
+                        reason="http_error",
+                        media_kind=media_kind,
+                    ) from exc
 
-        if source_response is None:
-            raise _reference_download_error(url, index, reason="no_response")
+            if source_response is None:
+                raise _reference_download_error(url, index, reason="no_response", media_kind=media_kind)
+            content = source_response.content
 
-        content = source_response.content
         if not content:
-            raise RuntimeError(f"Kie reference image {index + 1} is empty")
-        if len(content) > 10 * 1024 * 1024:
+            empty_marker = (
+                KIE_REFERENCE_VIDEO_EMPTY_MARKER
+                if media_kind == "video"
+                else KIE_REFERENCE_IMAGE_EMPTY_MARKER
+            )
+            raise RuntimeError(f"{empty_marker}: Kie reference {label} {index + 1} is empty")
+        if len(content) > max_bytes:
+            limit_mb = max_bytes / (1024 * 1024)
+            size_marker = (
+                KIE_REFERENCE_VIDEO_TOO_LARGE_MARKER
+                if media_kind == "video"
+                else KIE_REFERENCE_IMAGE_TOO_LARGE_MARKER
+            )
             raise RuntimeError(
-                f"Kie reference image {index + 1} exceeds the 10MB upload limit"
+                f"{size_marker}: Kie reference {label} {index + 1} exceeds the {limit_mb:g}MB upload limit"
             )
 
-        content_type = (
-            source_response.headers.get("content-type") or ""
-        ).split(";", 1)[0].strip().lower()
-        # Legacy managed assets can have JPEG names/headers but PNG bytes.
-        # Send Kie the format of the downloaded content, not stale metadata.
-        detected_type = (
-            "image/png" if content.startswith(b"\x89PNG\r\n\x1a\n")
-            else "image/jpeg" if content.startswith(b"\xff\xd8\xff")
-            else "image/gif" if content.startswith((b"GIF87a", b"GIF89a"))
-            else "image/webp" if content.startswith(b"RIFF") and content[8:12] == b"WEBP"
-            else None
+        detected_type = _detect_reference_content_type(content, media_kind)
+        if not detected_type:
+            invalid_marker = (
+                KIE_REFERENCE_VIDEO_INVALID_CONTENT_MARKER
+                if media_kind == "video"
+                else KIE_REFERENCE_IMAGE_INVALID_CONTENT_MARKER
+            )
+            raise RuntimeError(
+                f"{invalid_marker}: Kie reference {label} {index + 1} has invalid {label} content"
+            )
+        content_type = detected_type
+        allowed_types = (
+            {"video/mp4", "video/webm", "video/quicktime", "video/x-msvideo"}
+            if media_kind == "video"
+            else {"image/jpeg", "image/png", "image/webp", "image/gif", "image/bmp", "image/tiff"}
         )
-        if detected_type:
-            content_type = detected_type
-        source_suffix = os.path.splitext(urlparse(url).path)[1].lower()
-        if not content_type.startswith("image/"):
-            inferred_type = mimetypes.guess_type(source_suffix)[0]
-            if inferred_type and inferred_type.startswith("image/"):
-                content_type = inferred_type
-        if content_type not in {"image/jpeg", "image/png", "image/webp", "image/gif"}:
+        if content_type not in allowed_types:
+            unsupported_marker = (
+                KIE_REFERENCE_VIDEO_UNSUPPORTED_TYPE_MARKER
+                if media_kind == "video"
+                else KIE_REFERENCE_IMAGE_UNSUPPORTED_TYPE_MARKER
+            )
             raise RuntimeError(
-                f"Kie reference image {index + 1} has unsupported content type"
+                f"{unsupported_marker}: Kie reference {label} {index + 1} has unsupported content type {content_type}"
             )
 
-        extension = mimetypes.guess_extension(content_type) or ".png"
+        content, content_type = _normalize_kie_image_content(content, content_type)
+        if len(content) > max_bytes:
+            limit_mb = max_bytes / (1024 * 1024)
+            raise RuntimeError(
+                f"{KIE_REFERENCE_IMAGE_TOO_LARGE_MARKER}: Kie reference image {index + 1} exceeds the {limit_mb:g}MB normalized upload limit"
+            )
+
+        extension = mimetypes.guess_extension(content_type) or (".mp4" if media_kind == "video" else ".png")
         file_name = (
             f"smartspec-reference-{hashlib.sha256(content).hexdigest()[:16]}"
             f"{extension}"
@@ -1274,7 +1538,7 @@ class KieAIProvider:
                 f"{self.file_upload_base_url}/api/file-stream-upload",
                 headers={"Authorization": f"Bearer {self.api_key}"},
                 data={
-                    "uploadPath": "images/user-uploads",
+                    "uploadPath": f"{label}s/user-uploads",
                     "fileName": file_name,
                 },
                 files={"file": (file_name, content, content_type)},
@@ -1283,8 +1547,18 @@ class KieAIProvider:
             upload_body = upload_response.json()
         except (httpx.HTTPError, json.JSONDecodeError) as exc:
             raise RuntimeError(
-                f"Kie reference image upload failed for item {index + 1}"
+                f"Kie reference {label} upload failed for item {index + 1}"
             ) from exc
+
+        upload_code = upload_body.get("code") if isinstance(upload_body, dict) else None
+        if upload_code is not None and str(upload_code).strip() not in {"200", "0"}:
+            raise RuntimeError(
+                f"Kie reference {label} upload failed for item {index + 1}"
+            )
+        if isinstance(upload_body, dict) and upload_body.get("success") is False:
+            raise RuntimeError(
+                f"Kie reference {label} upload failed for item {index + 1}"
+            )
 
         upload_data = upload_body.get("data") if isinstance(upload_body, dict) else None
         candidates = [
@@ -1303,7 +1577,7 @@ class KieAIProvider:
         )
         if not uploaded_url or not uploaded_url.startswith(("http://", "https://")):
             raise RuntimeError(
-                f"Kie reference image upload returned no usable URL for item {index + 1}"
+                f"Kie reference {label} upload returned no usable URL for item {index + 1}"
             )
 
         logger.info(
@@ -1311,8 +1585,17 @@ class KieAIProvider:
             index=index + 1,
             bytes=len(content),
             content_type=content_type,
+            media_kind=media_kind,
         )
         return uploaded_url
+
+    async def _upload_reference_image(self, url: str, index: int) -> str:
+        """Upload one image reference while preserving its original bytes/format."""
+        return await self._upload_reference_media(url, index, media_kind="image")
+
+    async def _upload_reference_video(self, url: str, index: int) -> str:
+        """Upload one video reference while preserving its original bytes/format."""
+        return await self._upload_reference_media(url, index, media_kind="video")
 
     async def _prepare_reference_image_urls(
         self,
@@ -1320,25 +1603,68 @@ class KieAIProvider:
         api_model: str,
         api_config: dict[str, Any] | None,
     ) -> list[str]:
-        """Return provider-ready refs, uploading Kie ``input_urls`` inputs."""
+        """Return provider-ready refs, rehosting unsafe URLs through Kie."""
         reference_key, _ = _resolve_reference_image_input_config(
             api_config,
             default_key=_default_reference_image_key_for_model(api_model),
         )
-        requires_upload = (
+        force_upload = (
             reference_key == "input_urls"
             or api_model in {
                 "gpt-image-2-image-to-image",
                 "gpt-image/1.5-image-to-image",
             }
+            or _get_api_config_bool(
+                api_config,
+                "reference_image_require_upload",
+                "referenceImageRequireUpload",
+            )
         )
-        if not requires_upload:
-            return reference_image_urls
+        uploaded_by_source: dict[str, str] = {}
+        prepared: list[str] = []
+        for index, url in enumerate(reference_image_urls):
+            if not _reference_requires_upload(url, force=force_upload):
+                prepared.append(url)
+                continue
+            if url not in uploaded_by_source:
+                uploaded_by_source[url] = await self._upload_reference_image(url, index)
+            prepared.append(uploaded_by_source[url])
+        return prepared
 
-        return [
-            await self._upload_reference_image(url, index)
-            for index, url in enumerate(reference_image_urls)
-        ]
+    async def _prepare_reference_video_urls(
+        self,
+        reference_video_urls: list[str],
+        api_config: dict[str, Any] | None,
+    ) -> list[str]:
+        force_upload = _get_api_config_bool(
+            api_config,
+            "reference_video_require_upload",
+            "referenceVideoRequireUpload",
+        )
+        uploaded_by_source: dict[str, str] = {}
+        prepared: list[str] = []
+        for index, url in enumerate(reference_video_urls):
+            if not _reference_requires_upload(url, force=force_upload):
+                prepared.append(url)
+                continue
+            if url not in uploaded_by_source:
+                uploaded_by_source[url] = await self._upload_reference_video(url, index)
+            prepared.append(uploaded_by_source[url])
+        return prepared
+
+    async def _prepare_reference_image_input_value(
+        self,
+        value: Any,
+        *,
+        input_type: str,
+        api_model: str,
+        api_config: dict[str, Any] | None,
+    ) -> list[str] | str | None:
+        urls = normalize_reference_url_list(value)
+        if not urls:
+            return None
+        prepared = await self._prepare_reference_image_urls(urls, api_model, api_config)
+        return prepared[0] if input_type == "url" else prepared
 
     @staticmethod
     def _extract_task_id(result: dict[str, Any], *, include_record_id: bool = False) -> str | None:
@@ -2288,12 +2614,39 @@ class KieAIProvider:
                         urls=[_redact_url_for_log(url) for url in ref_urls[:2]],
                     )  # Log first 2 for debug
 
+        # Dynamic catalog fields may carry an image reference without using the
+        # high-level reference_image_urls argument. Apply the same boundary so
+        # extra_params cannot bypass validation/re-hosting.
+        reference_image_input_key, reference_image_input_type = _resolve_reference_image_input_config(
+            api_config,
+            default_key=_default_reference_image_key_for_model(api_model),
+        )
+        if not reference_image_urls and input_params.get(reference_image_input_key):
+            prepared_extra_reference = await self._prepare_reference_image_input_value(
+                input_params[reference_image_input_key],
+                input_type=reference_image_input_type,
+                api_model=api_model,
+                api_config=api_config,
+            )
+            if prepared_extra_reference is None:
+                input_params.pop(reference_image_input_key, None)
+            else:
+                input_params[reference_image_input_key] = prepared_extra_reference
+
         if grok_operation == "image-edit" and not input_params.get("image_urls"):
             raise ValueError("Grok Image 2 image-edit requires at least one image_url")
 
         # Add reference style URL if provided
         if kwargs.get("reference_style_url"):
-            input_params["style_reference"] = kwargs["reference_style_url"]
+            style_url = str(kwargs["reference_style_url"]).strip()
+            if not style_url:
+                raise ValueError("Kie style reference URL cannot be empty")
+            style_reference = await self._prepare_reference_image_urls(
+                [style_url],
+                api_model,
+                api_config,
+            )
+            input_params["style_reference"] = style_reference[0]
             logger.info("kie_ai_style_reference", has_style_reference=True)
 
         # Last write wins: strip anything the selected mode's endpoint rejects.
@@ -2454,6 +2807,11 @@ class KieAIProvider:
                     api_config,
                     default_key="imageUrls" if is_veo_generation_request else "image_urls",
                 )
+                ref_urls = await self._prepare_reference_image_urls(
+                    normalize_reference_url_list(ref_urls),
+                    api_model,
+                    api_config,
+                )
                 _apply_reference_urls_to_input(
                     input_params,
                     ref_urls,
@@ -2461,6 +2819,25 @@ class KieAIProvider:
                     input_type=reference_image_input_type,
                     overflow_keys=_resolve_reference_overflow_keys(api_config, subject="image"),
                 )
+
+        # Dynamic video fields can carry images without the high-level
+        # reference_image_urls argument; keep them on the same Kie boundary.
+        if not kwargs.get("reference_image_urls"):
+            dynamic_image_key, dynamic_image_type = _resolve_reference_image_input_config(
+                api_config,
+                default_key="imageUrls" if is_veo_generation_request else "image_urls",
+            )
+            if input_params.get(dynamic_image_key):
+                prepared_dynamic_images = await self._prepare_reference_image_input_value(
+                    input_params[dynamic_image_key],
+                    input_type=dynamic_image_type,
+                    api_model=api_model,
+                    api_config=api_config,
+                )
+                if prepared_dynamic_images is None:
+                    input_params.pop(dynamic_image_key, None)
+                else:
+                    input_params[dynamic_image_key] = prepared_dynamic_images
 
         if is_veo_generation_request:
             _normalize_veo_generation_payload(input_params)
@@ -2499,7 +2876,14 @@ class KieAIProvider:
         if reference_video_input_type == "object_array":
             normalized_video_list = _normalize_reference_video_object_list(existing_video_value)
             if normalized_video_list:
-                input_params[reference_video_input_key] = normalized_video_list
+                prepared_video_list: list[dict[str, Any]] = []
+                for item in normalized_video_list:
+                    prepared_item = dict(item)
+                    prepared_item["url"] = (
+                        await self._prepare_reference_video_urls([item["url"]], api_config)
+                    )[0]
+                    prepared_video_list.append(prepared_item)
+                input_params[reference_video_input_key] = prepared_video_list
             else:
                 input_params.pop(reference_video_input_key, None)
         elif reference_video_input_type == "url" and isinstance(existing_video_value, list):
@@ -2508,9 +2892,20 @@ class KieAIProvider:
                 None,
             )
             if first_video:
-                input_params[reference_video_input_key] = first_video
+                input_params[reference_video_input_key] = (
+                    await self._prepare_reference_video_urls([first_video], api_config)
+                )[0]
             else:
                 input_params.pop(reference_video_input_key, None)
+        elif isinstance(existing_video_value, list):
+            input_params[reference_video_input_key] = await self._prepare_reference_video_urls(
+                normalize_reference_url_list(existing_video_value),
+                api_config,
+            )
+        elif isinstance(existing_video_value, str) and existing_video_value.strip():
+            input_params[reference_video_input_key] = (
+                await self._prepare_reference_video_urls([existing_video_value.strip()], api_config)
+            )[0]
 
         # Last write wins: strip anything the selected mode's endpoint rejects
         # (minimax-h3/image-to-video has no `aspect_ratio` parameter at all).
