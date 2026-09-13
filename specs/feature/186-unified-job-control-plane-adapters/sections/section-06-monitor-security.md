@@ -22,7 +22,7 @@ Expose canonical state and safe control actions while preserving tenant isolatio
 
 ## Requirements
 
-Provide cursor-paginated jobs, sequence-ordered event timeline, attempts/dispatch references, stale/outbox age, safe errors, and explicit PostgreSQL-versus-transport observations. Retry/requeue/cancel/force-fail are state-specific, authenticated, audited, reasoned, targeted by attempt/state, and idempotent. Redact credentials, signed URLs, raw provider payloads, arbitrary commands, and unbounded messages. Enforce tenant/elevated scope, CSRF/rate limits, and callback correlation.
+Provide cursor-paginated jobs, sequence-ordered event timeline, attempts/dispatch references, stale/outbox age, safe errors, and explicit PostgreSQL-versus-transport observations. Retry/requeue/cancel/force-fail are state-specific, authenticated, audited, reasoned, targeted by attempt/state, and idempotent through a durable action record. Redact credentials, signed URLs, raw provider payloads, arbitrary commands, and unbounded messages. Enforce tenant/elevated scope, CSRF/rate limits, callback replay protection, and callback correlation.
 
 Account tenant binding changes and data transfer are separate operations. A
 verified System Admin tenant move cancels/fences only that user's queueable
@@ -92,9 +92,9 @@ canonical status.
 
 ## TDD acceptance
 
-Cover tenant/admin scope, cursor tampering, redaction, action idempotency,
-illegal terminal actions, rate limits, callback authentication, and browser
-state/accessibility cases. Cover transfer preview immutability, `PREVIEW_STALE`,
+Cover tenant/admin scope, cursor tampering, redaction, durable action idempotency,
+illegal terminal actions, canonical-versus-transport projections, rate limits,
+callback authentication/replay, and browser state/accessibility cases. Cover transfer preview immutability, `PREVIEW_STALE`,
 `ACTIVE_JOB_BLOCKED`, queue cancellation/fencing, unsupported handlers,
 pause/resume checkpoints, operator cancellation, and preservation of already
 transferred items, and tenant-binding move failure/repeat behavior.

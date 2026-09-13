@@ -13,7 +13,7 @@ Create the shared runtime-neutral contract used by TypeScript services, adapters
 
 ## Requirements
 
-Use authenticated tenant/actor values, normalize object-key order/optional defaults/numeric and Unicode representation, and exclude idempotency key, generated IDs, timestamps, and transport references from the definition hash. Reject oversized/deep/untrusted payloads and return stable `IDEMPOTENCY_CONFLICT` semantics. Define the target statuses and legal command names in one export; preserve legacy aliases elsewhere.
+Use authenticated tenant/actor values, normalize object-key order/optional defaults/numeric and Unicode representation, and exclude idempotency key, generated IDs, timestamps, and transport references from the definition hash. Reject oversized/deep/untrusted payloads and return stable `IDEMPOTENCY_CONFLICT` semantics. Define the target statuses and legal command names in one export; preserve legacy aliases elsewhere. Include an authenticated server context, durable operator-action idempotency, and callback/replay metadata; transport payloads never supply trusted tenant, actor, adapter, routing, or billing scope.
 
 ## TDD acceptance
 
