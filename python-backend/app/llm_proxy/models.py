@@ -52,6 +52,7 @@ class ImageGenerationRequest(BaseModel):
     tenant_id: Optional[str] = Field(default=None, alias="tenantId")
     # Node skill runs are settled atomically by the web ledger.
     skill_billing_run_id: Optional[str] = Field(default=None, alias="skill_billing_run_id")
+    skill_billing_skill_slug: Optional[str] = Field(default=None, alias="skill_billing_skill_slug")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name
 
@@ -94,6 +95,7 @@ class VideoGenerationRequest(BaseModel):
     extra_params: Optional[Dict[str, Any]] = Field(default=None, alias="extraParams")
     tenant_id: Optional[str] = Field(default=None, alias="tenantId")
     skill_billing_run_id: Optional[str] = Field(default=None, alias="skill_billing_run_id")
+    skill_billing_skill_slug: Optional[str] = Field(default=None, alias="skill_billing_skill_slug")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name
 
@@ -126,6 +128,7 @@ class AudioGenerationRequest(BaseModel):
     extra_params: Optional[Dict[str, Union[str, int, float, bool, List, Dict]]] = Field(default=None, alias="extraParams")
     tenant_id: Optional[str] = Field(default=None, alias="tenantId")
     skill_billing_run_id: Optional[str] = Field(default=None, alias="skill_billing_run_id")
+    skill_billing_skill_slug: Optional[str] = Field(default=None, alias="skill_billing_skill_slug")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name
 

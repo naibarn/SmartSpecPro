@@ -292,7 +292,9 @@ export function createPublicSkillsRouter(): Router {
           return execution;
         });
 
-        const creditsUsed = (result as any)?.creditsUsed ?? estimatedCost;
+        const creditsUsed = (result as any)?.success === false
+          ? 0
+          : (result as any)?.creditsUsed ?? estimatedCost;
 
         // Get remaining balance
         let remaining = 0;

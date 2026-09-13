@@ -2217,7 +2217,7 @@ async function executeSkillViaMcp(
 
     return {
       result,
-      creditsUsed: result.creditsUsed ?? estimatedCost,
+      creditsUsed: result.success ? result.creditsUsed ?? estimatedCost : 0,
     };
   });
 }

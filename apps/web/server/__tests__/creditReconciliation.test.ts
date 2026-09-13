@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+const { mockSettleSkillRun } = vi.hoisted(() => ({
+  mockSettleSkillRun: vi.fn().mockResolvedValue({ duplicate: true }),
+}));
+
 // Mock tokens module to avoid JWT_SECRET env var requirement
 vi.mock("../_core/tokens", () => ({
   signBearerToken: vi.fn(() => "mock-token"),
@@ -11,6 +15,10 @@ vi.mock("../services/creditService", () => ({
   deductCredits: vi.fn().mockResolvedValue({}),
   refundCredits: vi.fn().mockResolvedValue({}),
   hasEnoughCredits: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock("../services/skillRevenueBilling", () => ({
+  settleSkillRun: mockSettleSkillRun,
 }));
 
 vi.mock("../services/pricingCalculator", () => ({
@@ -104,6 +112,28 @@ describe("reconcileTaskCredits", () => {
       skillRunId: "skill-run-1",
       tenantId: "tenant-1",
     }));
+  });
+
+  it("repairs a missing fixed-credit settlement after async skill media succeeds", async () => {
+    const result = await reconcileTaskCredits({
+      task: makeTask({
+        parameters: {
+          skill_billing_run_id: "skill-run-2",
+          skill_billing_skill_slug: "custom-skill",
+          transportMetadata: { tenantId: "tenant-1" },
+        },
+      }) as any,
+      userId: 1,
+    });
+
+    expect(result).toEqual({ adjusted: true, difference: 0, action: "none" });
+    expect(mockSettleSkillRun).toHaveBeenCalledWith(expect.objectContaining({
+      runId: "skill-run-2",
+      skillSlug: "custom-skill",
+      tenantId: "tenant-1",
+      userId: 1,
+    }));
+    expect(mockRefundCredits).not.toHaveBeenCalled();
   });
 
   it("charges when actual cost > reserved", async () => {

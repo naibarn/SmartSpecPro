@@ -1446,6 +1446,8 @@ export interface MediaAuditContext {
   traceId?: string;
   /** Fixed-credit skill billing marker consumed by the Python gateway. */
   skillRunId?: string;
+  /** Canonical skill slug used to repair a missing async settlement. */
+  skillSlug?: string;
   source?: string;
   stage?: string;
   [key: string]: unknown;
@@ -3238,6 +3240,9 @@ export class MediaGenerationService {
     };
     if (request.auditContext?.skillRunId) {
       payload.skill_billing_run_id = request.auditContext.skillRunId;
+      if (request.auditContext.skillSlug) {
+        payload.skill_billing_skill_slug = request.auditContext.skillSlug;
+      }
     }
 
     // Add resolution if provided (e.g., "1K", "2K", "4K")
@@ -3414,6 +3419,9 @@ export class MediaGenerationService {
     };
     if (request.auditContext?.skillRunId) {
       payload.skill_billing_run_id = request.auditContext.skillRunId;
+      if (request.auditContext.skillSlug) {
+        payload.skill_billing_skill_slug = request.auditContext.skillSlug;
+      }
     }
 
     // Add resolution if provided (e.g., "720p", "1080p")
@@ -3602,6 +3610,9 @@ export class MediaGenerationService {
     };
     if (request.auditContext?.skillRunId) {
       payload.skill_billing_run_id = request.auditContext.skillRunId;
+      if (request.auditContext.skillSlug) {
+        payload.skill_billing_skill_slug = request.auditContext.skillSlug;
+      }
     }
 
     // Add apiConfig for model-specific endpoints and payload formats
@@ -3921,6 +3932,9 @@ export class MediaGenerationService {
     };
     if (request.auditContext?.skillRunId) {
       payload.skill_billing_run_id = request.auditContext.skillRunId;
+      if (request.auditContext.skillSlug) {
+        payload.skill_billing_skill_slug = request.auditContext.skillSlug;
+      }
     }
 
     // Get publicUrl from request for resolving relative URLs to tenant domain

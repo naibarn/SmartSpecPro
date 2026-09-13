@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSkillRevenueAllocations,
+  buildSkillRevenueShares,
   calculateSkillRevenueCharge,
   normalizeSkillRevenuePricing,
   resolveSkillRevenueReportTenantScope,
@@ -54,6 +55,18 @@ describe("skill fixed-credit revenue contract", () => {
       tenantCredits: 2,
       skillOwnerCredits: 0,
     }).entries())).toEqual([[7, 2]]);
+  });
+
+  it("keeps tenant and skill-owner shares separately auditable for one recipient", () => {
+    expect(buildSkillRevenueShares({
+      tenantOwnerId: 7,
+      skillOwnerId: 7,
+      tenantCredits: 2,
+      skillOwnerCredits: 5,
+    })).toEqual([
+      { recipientId: 7, amount: 2, role: "tenant_revenue" },
+      { recipientId: 7, amount: 5, role: "skill_owner_revenue" },
+    ]);
   });
 
   it("caps the configured price at measured work credits", () => {

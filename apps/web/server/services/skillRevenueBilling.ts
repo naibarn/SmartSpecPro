@@ -162,6 +162,41 @@ export function buildSkillRevenueAllocations(input: {
   return allocations;
 }
 
+export type SkillRevenueShare = {
+  recipientId: number;
+  amount: number;
+  role: "tenant_revenue" | "skill_owner_revenue";
+};
+
+/**
+ * Keep each revenue role as its own ledger row even when both roles resolve to
+ * the same user. The balance may be shared, but the settlement audit must be
+ * able to prove both allocations independently.
+ */
+export function buildSkillRevenueShares(input: {
+  tenantOwnerId: number | null;
+  skillOwnerId: number | null;
+  tenantCredits: number;
+  skillOwnerCredits: number;
+}): SkillRevenueShare[] {
+  const shares: SkillRevenueShare[] = [];
+  if (input.tenantOwnerId && input.tenantCredits > 0) {
+    shares.push({
+      recipientId: input.tenantOwnerId,
+      amount: input.tenantCredits,
+      role: "tenant_revenue",
+    });
+  }
+  if (input.skillOwnerId && input.skillOwnerCredits > 0) {
+    shares.push({
+      recipientId: input.skillOwnerId,
+      amount: input.skillOwnerCredits,
+      role: "skill_owner_revenue",
+    });
+  }
+  return shares;
+}
+
 /** The configured price is an upper bound, never a charge above measured work. */
 export function calculateSkillRevenueCharge(
   pricing: SkillRevenuePricing,
@@ -537,7 +572,7 @@ export async function settleSkillRun(input: {
           return settlementResult(concurrent, true);
         }
 
-        const recipientCredits = buildSkillRevenueAllocations({
+        const revenueShares = buildSkillRevenueShares({
           tenantOwnerId,
           skillOwnerId,
           tenantCredits: charge.tenantCreditCost,
@@ -546,7 +581,7 @@ export async function settleSkillRun(input: {
 
         const balances = await lockUsers(tx, [
           input.userId,
-          ...recipientCredits.keys(),
+          ...revenueShares.map((share) => share.recipientId),
         ]);
         const user = balances.get(input.userId);
         if (!user || user.isDisabled)
@@ -611,7 +646,7 @@ export async function settleSkillRun(input: {
 
         let tenantRevenueTransactionId: number | null = null;
         let skillRevenueTransactionId: number | null = null;
-        for (const [recipientId, amount] of recipientCredits) {
+        for (const { recipientId, amount, role } of revenueShares) {
           const [balance] = await tx
             .update(users)
             .set({ credits: sql`${users.credits} + ${amount}` })
@@ -619,12 +654,6 @@ export async function settleSkillRun(input: {
             .returning({ balanceAfter: users.credits });
           if (!balance)
             throw new Error(`Revenue recipient ${recipientId} not found`);
-          const role =
-            recipientId === tenantOwnerId && recipientId === skillOwnerId
-              ? "tenant_revenue"
-              : recipientId === tenantOwnerId
-                ? "tenant_revenue"
-                : "skill_owner_revenue";
           const [revenueTransaction] = await tx
             .insert(creditTransactions)
             .values({
@@ -654,7 +683,7 @@ export async function settleSkillRun(input: {
               }),
             })
             .returning({ id: creditTransactions.id });
-          if (recipientId === tenantOwnerId)
+          if (role === "tenant_revenue")
             tenantRevenueTransactionId = revenueTransaction?.id ?? null;
           else skillRevenueTransactionId = revenueTransaction?.id ?? null;
         }

@@ -260,6 +260,23 @@ describe("POST /v1/skills/:skillId/execute", () => {
     expect(res.body).toHaveProperty("credits_used");
   });
 
+  it("reports zero credits when execution fails before settlement", async () => {
+    mockExecuteSkill.mockResolvedValueOnce({
+      success: false,
+      skillId: "image_prompt_engineer",
+      type: "text",
+      error: "Skill execution failed",
+    } as any);
+
+    const res = await request(makeApp())
+      .post("/v1/skills/image_prompt_engineer/execute")
+      .send({ inputs: { prompt: "sunset" } });
+
+    expect(res.status).toBe(200);
+    expect(res.body.credits_used).toBe(0);
+    expect(res.headers["x-credits-used"]).toBe("0");
+  });
+
   it("with stream=true returns SSE content-type", async () => {
     const res = await request(makeApp())
       .post("/v1/skills/image_prompt_engineer/execute")

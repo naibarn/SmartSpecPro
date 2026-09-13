@@ -940,16 +940,38 @@ export async function reconcileTaskCredits(params: {
       : typeof extraParams?.skill_billing_run_id === "string"
         ? extraParams.skill_billing_run_id as string
         : undefined;
+    const skillSlug = typeof (taskParams as Record<string, unknown>).skill_billing_skill_slug === "string"
+      ? (taskParams as Record<string, unknown>).skill_billing_skill_slug as string
+      : typeof extraParams?.skill_billing_skill_slug === "string"
+        ? extraParams.skill_billing_skill_slug as string
+        : undefined;
     const originSurface = typeof extraParams.__origin_surface === "string"
       ? extraParams.__origin_surface
       : undefined;
     const reservedCredits = Number(extraParams.__reserved_credits);
 
-    // A skill media task is already charged at fixed price on submission.
-    // Only a terminal provider failure may reverse that settlement; never run
-    // legacy duration reconciliation against a fixed skill charge.
+    // A skill media task is charged at the fixed price on submission. A
+    // completed task also repairs a settlement that may have been lost after
+    // provider submission but before the local billing transaction committed.
     if (skillRunId) {
-      if (task.status !== "failed") return noOp;
+      if (task.status === "completed") {
+        if (!skillSlug) return noOp;
+        const { settleSkillRun } = await import("../services/skillRevenueBilling");
+        await settleSkillRun({
+          runId: skillRunId,
+          userId,
+          tenantId: skillTenantId,
+          skillSlug,
+          metadata: {
+            model: task.model,
+            taskId: task.id,
+            runtimeKind: "media_reconciliation",
+          },
+        });
+        await redis.set(reconcileKey, JSON.stringify({ action: "settlement_repaired", difference: 0, timestamp: Date.now() }), "EX", 86400);
+        return { adjusted: true, difference: 0, action: "none" };
+      }
+      if (!["failed", "cancelled", "canceled", "expired"].includes(task.status)) return noOp;
       await refundCredits({
         userId,
         amount: 0,
