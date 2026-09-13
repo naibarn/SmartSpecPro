@@ -117,6 +117,9 @@ async def test_generate_video_routes_launch_model_to_wavespeed_and_maps_submit_f
         aspect_ratio="9:16",
         duration=10,
         resolution=None,
+        extra_params={},
+        reference_video_urls=None,
+        reference_audio_urls=None,
     )
     client.aclose.assert_awaited_once()
 
