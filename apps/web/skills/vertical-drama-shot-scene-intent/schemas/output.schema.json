@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["contract_version", "shots"],
+  "properties": {
+    "contract_version": { "const": "vd-shot-scene-intent-v1" },
+    "shots": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "required": ["shot_number", "scene_intent"],
+        "properties": {
+          "shot_number": { "type": "integer", "minimum": 1 },
+          "scene_intent": {
+            "type": "object",
+            "required": [
+              "contract_version",
+              "physical_character_refs",
+              "screen_caller_refs",
+              "offscreen_speaker_refs",
+              "mentioned_only_refs",
+              "supporting_presence",
+              "communication_mode",
+              "visual_plan",
+              "dialogue_routing",
+              "confidence",
+              "needs_review",
+              "reason_codes"
+            ],
+            "properties": {
+              "contract_version": { "const": "vd-shot-scene-intent-v1" },
+              "physical_character_refs": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "screen_caller_refs": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "offscreen_speaker_refs": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "mentioned_only_refs": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "supporting_presence": { "type": "array" },
+              "communication_mode": { "type": "string" },
+              "visual_plan": { "type": "object" },
+              "dialogue_routing": { "type": "array" },
+              "confidence": { "enum": ["high", "medium", "low"] },
+              "needs_review": { "type": "boolean" },
+              "reason_codes": { "type": "array", "items": { "type": "string" } }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

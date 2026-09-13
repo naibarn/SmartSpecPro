@@ -132,6 +132,11 @@ import {
   type StoryboardShotgridOutput,
   type GenerateStoryboardShotgridParams,
 } from "./verticalDramaStoryboardGeneration";
+import {
+  applyVerticalDramaShotSceneIntent,
+  generateVerticalDramaShotSceneIntent,
+  VerticalDramaShotSceneIntentReviewRequiredError,
+} from "./verticalDramaShotSceneIntent";
 // Deep story drafts hydration (W10-B, added 2026-07-08) — TYPE-ONLY (erased
 // at compile time, zero runtime import). The VALUES (`getActiveBreakdown`/
 // `readItemShotDrafts`/`readItemCliffhangerLine`) are loaded via a runtime
@@ -3733,7 +3738,7 @@ export class VerticalDramaEpisodePipeline {
         creditsUsed: scriptResult.creditsUsed + storyboardResult.creditsUsed,
         creditCharges: [
           scriptResult.creditCharge,
-          storyboardResult.creditCharge,
+          ...(storyboardResult.creditCharges ?? [storyboardResult.creditCharge]),
         ].filter((charge): charge is NonNullable<typeof charge> =>
           Boolean(charge)
         ),
@@ -3832,6 +3837,80 @@ export class VerticalDramaEpisodePipeline {
         catalog,
       });
       if (handoff) return handoff;
+    }
+    return undefined;
+  }
+
+  /**
+   * Load only the nearest usable previous episode's final shots for the
+   * scene-intent preflight. This is continuity evidence, not a cast seed:
+   * the semantic skill must still decide presence from the current shot.
+   */
+  private async resolvePreviousEpisodeShotSceneIntentContext(
+    owner: EpisodeRunOwner,
+    episode: Pick<VerticalDramaEpisodeRow, "episodeNumber">,
+  ): Promise<unknown> {
+    if (episode.episodeNumber <= 1) return undefined;
+    let previousEpisodes: Array<{
+      episodeNumber: number;
+      episodeKind: string;
+      storyboard: unknown;
+    }>;
+    try {
+      previousEpisodes = await db
+        .select({
+          episodeNumber: verticalDramaEpisodes.episodeNumber,
+          episodeKind: verticalDramaEpisodes.episodeKind,
+          storyboard: verticalDramaEpisodes.storyboard,
+        })
+        .from(verticalDramaEpisodes)
+        .where(
+          and(
+            eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+            eq(verticalDramaEpisodes.userId, owner.userId),
+            eq(verticalDramaEpisodes.seriesId, owner.seriesId),
+            lt(verticalDramaEpisodes.episodeNumber, episode.episodeNumber),
+          ),
+        )
+        .orderBy(desc(verticalDramaEpisodes.episodeNumber))
+        .limit(20);
+    } catch (error) {
+      debugError(
+        "vd_shot_scene_intent_previous_episode",
+        `Previous-episode scene context unavailable for episode #${episode.episodeNumber}`,
+        error,
+      );
+      return undefined;
+    }
+    for (const previous of previousEpisodes) {
+      if (previous.episodeKind === "special_tie_in" || !previous.storyboard) {
+        continue;
+      }
+      const shots = (previous.storyboard as Record<string, unknown>).shots;
+      if (!Array.isArray(shots) || shots.length === 0) continue;
+      return {
+        episodeNumber: previous.episodeNumber,
+        finalShots: shots.slice(-2).map(shot => {
+          const record = (shot ?? {}) as Record<string, unknown>;
+          const previousShotText = [
+            record.narrative_purpose,
+            record.dialogue_excerpt,
+            record.dialogue,
+            record.visual_description,
+          ]
+            .filter((value): value is string => typeof value === "string")
+            .join(" ")
+            .slice(0, 1200);
+          return {
+            shotNumber: record.shot_number,
+            synopsis: previousShotText,
+            location:
+              typeof record.location === "string"
+                ? record.location.slice(0, 180)
+                : undefined,
+          };
+        }),
+      };
     }
     return undefined;
   }
@@ -4549,6 +4628,14 @@ export class VerticalDramaEpisodePipeline {
       skillSlug: string;
       description: string;
     };
+    creditCharges?: Array<{
+      amount: number;
+      model: string;
+      inputTokens: number;
+      outputTokens: number;
+      skillSlug: string;
+      description: string;
+    }>;
   }> {
     const [seriesRow] = await db
       .select()
@@ -4936,6 +5023,9 @@ export class VerticalDramaEpisodePipeline {
       })
     );
 
+    const previousEpisodeIntentContext =
+      await this.resolvePreviousEpisodeShotSceneIntentContext(owner, episode);
+
     const generated = await generateStoryboardShotgrid({
       userId: owner.userId,
       tenantId: owner.tenantId,
@@ -5030,10 +5120,77 @@ export class VerticalDramaEpisodePipeline {
       deferCreditDeduction,
       planningAttemptObserver,
     });
+    // Semantic preflight is intentionally a separate skill call. The first
+    // storyboard call may mention a character without placing that person in
+    // the frame; this pass converts the narrative into an explicit, guarded
+    // presence/caller/offscreen contract before any image-stage consumer sees
+    // the storyboard.
+    const sceneIntentCharacters = characterRows.flatMap(
+      (character: VdCharacterRosterRow) => [
+        {
+          characterId: character.characterKey,
+          name: character.name,
+          role: character.role,
+        },
+        ...(variantsByParentId.get(character.id) ?? []).map(variant => ({
+          characterId: variant.characterKey,
+          name: character.name,
+          role: character.role,
+        })),
+      ],
+    );
+    const sceneIntentResult = await generateVerticalDramaShotSceneIntent({
+      userId: owner.userId,
+      tenantId: owner.tenantId,
+      seriesId: owner.seriesId,
+      episodeId: owner.episodeId,
+      episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
+      currentEpisodeNumber: episode.episodeNumber,
+      locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
+      characters: sceneIntentCharacters,
+      shots: generated.storyboard.shots.map(shot => {
+        const record = shot as unknown as Record<string, unknown>;
+        return {
+          shotNumber: shot.shot_number,
+          synopsis: shot.narrative_purpose,
+          action:
+            typeof record.action === "string" ? record.action : undefined,
+          dialogueExcerpt:
+            typeof record.dialogue_excerpt === "string"
+              ? record.dialogue_excerpt
+              : typeof record.dialogue === "string"
+                ? record.dialogue
+                : undefined,
+          visualDescription: shot.visual_description,
+          location:
+            typeof record.location === "string"
+              ? record.location
+              : undefined,
+        };
+      }),
+      sceneBeats,
+      previousEpisodeContext: previousEpisodeIntentContext,
+      episodeGenerationSettings: episode.generationSettings,
+      deferCreditDeduction,
+      planningAttemptObserver,
+    });
+    const projectedSceneIntent = applyVerticalDramaShotSceneIntent({
+      storyboard: generated.storyboard as unknown as {
+        shots: Array<Record<string, any>>;
+      },
+      intents: sceneIntentResult.intent.shots,
+      validCharacterIds: sceneIntentCharacters.map(
+        (character: { characterId: string }) => character.characterId,
+      ),
+    });
+    const storyboardWithSceneIntent = {
+      ...generated.storyboard,
+      shots: projectedSceneIntent.shots,
+    } as StoryboardShotgridOutput;
     const storyboard = await applyAutomaticCharacterLooksToStoryboard({
       owner,
       episode,
-      storyboard: generated.storyboard,
+      storyboard: storyboardWithSceneIntent,
       rows: allCharacterRows as PipelineCharacterLookRow[],
       crossEpisodeWardrobeHandoff,
       seriesContext: {
@@ -5063,8 +5220,15 @@ export class VerticalDramaEpisodePipeline {
     });
     return {
       ...generated,
+      creditsUsed: generated.creditsUsed + sceneIntentResult.creditsUsed,
       storyboard: storyboardWithHandoff,
       warnings: wardrobeWarnings,
+      creditCharges: [
+        generated.creditCharge,
+        sceneIntentResult.creditCharge,
+      ].filter(
+        (charge): charge is NonNullable<typeof charge> => Boolean(charge),
+      ),
     };
   }
 
@@ -9093,3 +9257,11 @@ export async function sweepStaleStoryboardShotgridRuns(
 
 /** Shared singleton wired with the dry-run-safe stub port. */
 export const verticalDramaEpisodePipeline = new VerticalDramaEpisodePipeline();
+  if (error instanceof VerticalDramaShotSceneIntentReviewRequiredError) {
+    return {
+      code: error.code,
+      message: error.message,
+      repairable: true,
+      details: { issues: error.issues },
+    };
+  }

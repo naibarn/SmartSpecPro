@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "episode_title",
+    "current_episode_number",
+    "characters",
+    "shots"
+  ],
+  "properties": {
+    "episode_title": { "type": "string" },
+    "current_episode_number": { "type": "integer", "minimum": 1 },
+    "characters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["character_id", "name"],
+        "properties": {
+          "character_id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "role": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      }
+    },
+    "shots": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "required": ["shot_number", "synopsis"],
+        "properties": {
+          "shot_number": { "type": "integer", "minimum": 1 },
+          "synopsis": { "type": "string" },
+          "action": { "type": "string" },
+          "dialogue_excerpt": { "type": "string" },
+          "visual_description": { "type": "string" },
+          "location": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "previous_episode_context": {}
+  },
+  "additionalProperties": true
+}

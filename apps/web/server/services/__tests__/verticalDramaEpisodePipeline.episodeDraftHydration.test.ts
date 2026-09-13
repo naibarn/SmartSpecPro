@@ -52,6 +52,9 @@ const { mockGenerateEpisodeScript, mockGenerateStoryboardShotgrid } = vi.hoisted
   mockGenerateEpisodeScript: vi.fn(),
   mockGenerateStoryboardShotgrid: vi.fn(),
 }));
+const { mockGenerateShotSceneIntent } = vi.hoisted(() => ({
+  mockGenerateShotSceneIntent: vi.fn(),
+}));
 vi.mock("../verticalDramaScriptGeneration", () => ({
   generateEpisodeScript: mockGenerateEpisodeScript,
   InsufficientCreditsError: class extends Error {},
@@ -70,6 +73,11 @@ vi.mock("../verticalDramaStoryboardGeneration", () => ({
   generateStoryboardShotgrid: mockGenerateStoryboardShotgrid,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+}));
+vi.mock("../verticalDramaShotSceneIntent", () => ({
+  generateVerticalDramaShotSceneIntent: mockGenerateShotSceneIntent,
+  applyVerticalDramaShotSceneIntent: vi.fn(({ storyboard }: any) => storyboard),
+  VerticalDramaShotSceneIntentReviewRequiredError: class extends Error {},
 }));
 // `repairStage`'s real-repair wiring added a static import of this module's
 // `generateEpisodeDialogueAudioPlan`/`buildDialogueAudioPlan` — not exercised
@@ -188,6 +196,11 @@ beforeEach(() => {
   mockGenerateStoryboardShotgrid.mockResolvedValue({
     storyboard: { shots: [] },
     creditsUsed: 1,
+    model: "gpt-x",
+  });
+  mockGenerateShotSceneIntent.mockResolvedValue({
+    intent: { contract_version: "vd-shot-scene-intent-v1", shots: [] },
+    creditsUsed: 0,
     model: "gpt-x",
   });
   mockGetPrimaryPortraitUrl.mockResolvedValue(null);
